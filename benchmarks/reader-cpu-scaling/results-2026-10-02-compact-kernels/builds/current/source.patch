@@ -1,0 +1,857 @@
+--- a/r-package/dtatools/NEWS.md
++++ b/r-package/dtatools/NEWS.md
+@@ -1,4 +1,13 @@
+ # dtatools (development version)
++
++* Compact numeric scalar reads forward directly to the native getter and
++  resolve wrapper state once. Retained readers cache the entire current chunk
++  for forward, reverse, and permuted access.
++
++* `read_dta()` and `read_arrow()` use direct object-identity checks while
++  constructing dibbles, reducing setup work for wide tables. Scalar access
++  to retained compact Arrow numerics reuses the current immutable chunk,
++  reducing repeated native lookups during traversal.
+ 
+ * Validated native paths speed up supported `repl()`/`replace_values()`,
+   `gen()`, dibble `:=`, and `mutate()` expressions. Public dependency changes
+--- a/r-package/dtatools/R/dibble.R
++++ b/r-package/dtatools/R/dibble.R
+@@ -229,7 +229,7 @@
+     for (index in seq_along(column_names)) {
+         column <- .subset2(x, index)
+         typed <- .typed_column(column, row_count, "as_dibble()")
+-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
++        if (!rlang::is_reference(typed, column)) {
+             captured <- .Call(C_dtatools_capture_column, typed)
+             .Call(C_dtatools_set_data_column, x, as.integer(index), captured)
+         }
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -224,6 +224,9 @@
+ extern int dtatools_owned_numeric_region(
+     const void *, size_t, size_t, const void **, size_t *
+ );
++extern int dtatools_owned_numeric_scalar_span(
++    const void *, size_t, const void **, size_t *, size_t *
++);
+ extern size_t dtatools_owned_numeric_live_bytes(void);
+ extern size_t dtatools_owned_numeric_live_owners(void);
+ extern size_t dtatools_owned_numeric_chunks(const void *);
+@@ -278,6 +281,11 @@
+     size_t missing_count;
+     /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+     const void *native_owner;
++    /* Only R's scalar ALTREP getter updates this borrowed immutable span.
++       Each handle owns its descriptor; native workers never use this cache. */
++    const void *scalar_values;
++    size_t scalar_start;
++    size_t scalar_end;
+ } numeric_data;
+ 
+ /* A retained payload keeps its bytes behind the immutable Rust owner and is
+--- a/r-package/dtatools/src/metadata-proxies.c
++++ b/r-package/dtatools/src/metadata-proxies.c
+@@ -96,10 +96,10 @@
+ }
+ 
+ SEXP metadata_proxy_source(SEXP value) {
+-    SEXP state = metadata_proxy_state(value);
+-    SEXP source = state == R_NilValue
+-        ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
+-    if (state != R_NilValue && XLENGTH(state) == 3 &&
++    SEXP state = R_altrep_data1(value);
++    R_xlen_t slots = TYPEOF(state) == VECSXP ? XLENGTH(state) : 0;
++    SEXP source = slots == 2 || slots == 3 ? VECTOR_ELT(state, 0) : state;
++    if (slots == 3 &&
+         ALTREP(source) && R_altrep_inherits(source, dtatools_numeric_class) &&
+         R_altrep_data2(source) == R_NilValue) {
+         numeric_data *origin = (numeric_data *) R_ExternalPtrAddr(VECTOR_ELT(state, 2));
+@@ -135,10 +135,14 @@
+ 
+ double metadata_real_value(SEXP value, R_xlen_t index) {
+     SEXP materialized = R_altrep_data2(value);
+-    return REAL_ELT(
+-        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
+-        index
+-    );
++    if (materialized != R_NilValue) return REAL_ELT(materialized, index);
++    SEXP source = metadata_proxy_source(value);
++    /* Known compact sources already validate their index and materialized
++       state. Call that getter directly instead of dispatching through R again. */
++    if (R_altrep_inherits(source, dtatools_numeric_class)) {
++        return numeric_value(source, index);
++    }
++    return REAL_ELT(source, index);
+ }
+ 
+ R_xlen_t metadata_real_region(
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -425,6 +425,28 @@
+     if (temporal == 1) return value - 3653.0;
+     if (temporal == 2) return value / 1000.0 - 315619200.0;
+     return value;
++}
++
++/* Only the scalar ALTREP getter calls this cache. Its descriptor roots the
++   immutable owner, and this helper neither allocates nor invokes R callbacks.
++   Cache the complete chunk so reverse reads reuse it as well as forward reads.
++   Region and native reader kernels keep their existing read-only paths. */
++static const void *numeric_scalar_span(
++    numeric_data *data, size_t index, size_t width
++) {
++    if (index < data->scalar_start || index >= data->scalar_end) {
++        const void *values = NULL;
++        size_t start = 0, end = 0;
++        if (!dtatools_owned_numeric_scalar_span(data, index, &values, &start, &end) ||
++            values == NULL || index < start || index >= end) {
++            Rf_error("invalid owned compact scalar span");
++        }
++        data->scalar_values = values;
++        data->scalar_start = start;
++        data->scalar_end = end;
++    }
++    return (const unsigned char *) data->scalar_values +
++        (index - data->scalar_start) * width;
+ }
+ 
+ #define DEFINE_NUMERIC_KERNELS(NAME, TYPE, MISSING_OFFSET)                    \
+@@ -444,16 +466,39 @@
+         return raw;                                                           \
+     }                                                                         \
+                                                                               \
+-    static double numeric_##NAME##_value_at(                                  \
+-        const numeric_data *data, size_t index                                \
+-    ) {                                                                       \
+-        TYPE raw = numeric_##NAME##_raw_at(data, index);                      \
+-        int missing = MISSING_OFFSET(raw, data->format_version);              \
+-        return missing >= 0                                                   \
+-            ? numeric_missing_value(missing)                                  \
+-            : numeric_observed_value((double) raw, data->temporal);           \
+-    }                                                                         \
+-                                                                              \
++    static double numeric_##NAME##_decode(                                   \
++        TYPE raw, const numeric_data *data                                   \
++    ) {                                                                      \
++        int missing = MISSING_OFFSET(raw, data->format_version);             \
++        return missing >= 0                                                  \
++            ? numeric_missing_value(missing)                                 \
++            : numeric_observed_value((double) raw, data->temporal);          \
++    }                                                                        \
++                                                                             \
++    static double numeric_##NAME##_value_at(                                 \
++        const numeric_data *data, size_t index                               \
++    ) {                                                                      \
++        return numeric_##NAME##_decode(                                      \
++            numeric_##NAME##_raw_at(data, index), data                       \
++        );                                                                   \
++    }                                                                        \
++                                                                             \
++    static double numeric_##NAME##_scalar_value_at(                          \
++        numeric_data *data, size_t index                                     \
++    ) {                                                                      \
++        TYPE raw;                                                            \
++        if (!numeric_payload_retained(data)) {                               \
++            memcpy(&raw, (const char *) data->values + index * sizeof(raw),  \
++                   sizeof(raw));                                             \
++        } else {                                                             \
++            const void *source = numeric_scalar_span(                        \
++                data, index, sizeof(raw)                                     \
++            );                                                               \
++            memcpy(&raw, source, sizeof(raw));                               \
++        }                                                                    \
++        return numeric_##NAME##_decode(raw, data);                           \
++    }                                                                        \
++                                                                             \
+     static void numeric_##NAME##_region(                                      \
+         const numeric_data *data, size_t index, size_t length, double *output \
+     ) {                                                                       \
+@@ -859,7 +904,10 @@
+ DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+ DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
+ DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
+-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
+ DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+ DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+@@ -1675,7 +1723,18 @@
+     if (index < 0 || (size_t) index >= data->length) {
+         Rf_error("invalid dtatools numeric-vector index");
+     }
+-    return numeric_value_at(data, (size_t) index);
++    switch (data->kind) {
++    case NUMERIC_BYTE:
++        return numeric_byte_scalar_value_at(data, (size_t) index);
++    case NUMERIC_INT:
++        return numeric_int_scalar_value_at(data, (size_t) index);
++    case NUMERIC_LONG:
++        return numeric_long_scalar_value_at(data, (size_t) index);
++    case NUMERIC_FLOAT:
++        return numeric_float_scalar_value_at(data, (size_t) index);
++    default:
++        Rf_error("invalid dtatools numeric storage kind");
++    }
+ }
+ 
+ R_xlen_t numeric_region(
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -239,6 +239,10 @@
+     missing_count: usize,
+     // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+     native_owner: *const c_void,
++    // Per-descriptor borrowed span, updated only by R's scalar ALTREP getter.
++    scalar_values: *const c_void,
++    scalar_start: usize,
++    scalar_end: usize,
+ }
+ 
+ impl Drop for NumericData {
+@@ -257,6 +261,9 @@
+             format_version: c_int::from(data.format_version.as_u16()),
+             missing_count: data.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -346,6 +353,9 @@
+         format_version: 119,
+         missing_count,
+         native_owner: ptr::null(),
++        scalar_values: ptr::null(),
++        scalar_start: 0,
++        scalar_end: 0,
+     }))
+     .cast::<c_void>()
+ }
+@@ -3361,11 +3371,75 @@
+         let output =
+             unsafe { std::slice::from_raw_parts_mut(data.values.add(output_start), row_count) };
+         let mut missing_count = 0;
+-        for (row, target) in output.iter_mut().enumerate() {
+-            let value = unsafe { *source.get_unchecked(row * stride) };
+-            *target = value;
+-            missing_count +=
+-                usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++        if stride == 1 {
++            for (row, target) in output.iter_mut().enumerate() {
++                let value = unsafe { *source.get_unchecked(row) };
++                *target = value;
++                missing_count +=
++                    usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++            }
++        } else {
++            macro_rules! gather_strided {
++                ($format:expr) => {{
++                    // Independent counts shorten the dependency chain for strided input.
++                    let mut missing0 = 0;
++                    let mut missing1 = 0;
++                    let mut missing2 = 0;
++                    let mut missing3 = 0;
++                    let mut groups = output.chunks_exact_mut(4);
++                    for (group, target) in groups.by_ref().enumerate() {
++                        let row = group * 4;
++                        // SAFETY: each row is below row_count, so the complete range
++                        // validation above also covers all four strided loads.
++                        let value0 = unsafe { *source.get_unchecked(row * stride) };
++                        let value1 = unsafe { *source.get_unchecked((row + 1) * stride) };
++                        let value2 = unsafe { *source.get_unchecked((row + 2) * stride) };
++                        let value3 = unsafe { *source.get_unchecked((row + 3) * stride) };
++                        target[0] = value0;
++                        target[1] = value1;
++                        target[2] = value2;
++                        target[3] = value3;
++                        missing0 += usize::from(
++                            classify_byte_missing_for_version(value0 as i8, $format).is_some(),
++                        );
++                        missing1 += usize::from(
++                            classify_byte_missing_for_version(value1 as i8, $format).is_some(),
++                        );
++                        missing2 += usize::from(
++                            classify_byte_missing_for_version(value2 as i8, $format).is_some(),
++                        );
++                        missing3 += usize::from(
++                            classify_byte_missing_for_version(value3 as i8, $format).is_some(),
++                        );
++                    }
++                    let mut missing_count = missing0 + missing1 + missing2 + missing3;
++                    let tail_start = row_count - row_count % 4;
++                    for (offset, target) in groups.into_remainder().iter_mut().enumerate() {
++                        let value =
++                            unsafe { *source.get_unchecked((tail_start + offset) * stride) };
++                        *target = value;
++                        missing_count += usize::from(
++                            classify_byte_missing_for_version(value as i8, $format).is_some(),
++                        );
++                    }
++                    missing_count
++                }};
++            }
++            // These are exactly the two families in the version-aware byte
++            // classifier. Constant representatives keep that dispatch out of
++            // every lane while still using the shared classification logic.
++            missing_count = match version {
++                FormatVersion::V105
++                | FormatVersion::V108
++                | FormatVersion::V110
++                | FormatVersion::V111 => gather_strided!(FormatVersion::V111),
++                FormatVersion::V113
++                | FormatVersion::V114
++                | FormatVersion::V115
++                | FormatVersion::V117
++                | FormatVersion::V118
++                | FormatVersion::V119 => gather_strided!(FormatVersion::V118),
++            };
+         }
+         data.missing_count += missing_count;
+         Ok(true)
+@@ -6094,13 +6168,66 @@
+     }
+ 
+     #[test]
++    fn compact_byte_batch_preserves_every_byte_in_each_gather_lane() {
++        use crate::{
++            classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
++            RNumericData,
++        };
++        for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
++            let version = FormatVersion::try_from(release).unwrap();
++            for stride in [1, 3, 17, 7176] {
++                for phase in 0..4 {
++                    // Cycling the phase puts every raw byte in every lane;
++                    // three extra rows also exercise the scalar remainder.
++                    let values: Vec<u8> = (0..259).map(|row| (row + phase) as u8).collect();
++                    let mut source = vec![42_u8; (values.len() - 1) * stride + 1];
++                    for (row, &value) in values.iter().enumerate() {
++                        source[row * stride] = value;
++                    }
++                    let mut output = vec![42_u8; values.len() + 2];
++                    let mut column = RColumn::NumericAltRep {
++                        vector: ptr::null_mut(),
++                        data: RNumericData {
++                            backing: ptr::null_mut(),
++                            values: output.as_mut_ptr(),
++                            length: output.len(),
++                            kind: NumericKind::Byte,
++                            temporal: TemporalKind::None,
++                            format_version: version,
++                            missing_count: 7,
++                        },
++                    };
++                    assert!(column
++                        .try_push_byte_rows(1, values.len(), &source, stride, version)
++                        .unwrap());
++                    assert_eq!(output[0], 42);
++                    assert_eq!(output[values.len() + 1], 42);
++                    assert_eq!(&output[1..values.len() + 1], values.as_slice());
++                    let expected = values
++                        .iter()
++                        .filter(|&&value| {
++                            classify_byte_missing_for_version(value as i8, version).is_some()
++                        })
++                        .count();
++                    let RColumn::NumericAltRep { data, .. } = column else {
++                        unreachable!()
++                    };
++                    assert_eq!(data.missing_count, 7 + expected);
++                }
++            }
++        }
++    }
++
++    #[test]
+     fn compact_byte_batch_preserves_short_tails_and_accumulated_counts() {
+         use crate::{
+             classify_byte_missing_for_version, DtaColumnSink, FormatVersion, NumericKind, RColumn,
+             RNumericData,
+         };
+         for version in [FormatVersion::V111, FormatVersion::V118] {
+-            for count in [0, 1, 15, 16, 17, 31, 32, 33, 255, 256, 257] {
++            for count in [
++                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 255, 256, 257,
++            ] {
+                 for stride in [1, 3, 17] {
+                     let values: Vec<u8> = (0..count).map(|row| (row + 99) as u8).collect();
+                     let mut source = vec![42_u8; count * stride];
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -280,6 +280,9 @@
+             format_version: c_int::from(self.version.as_u16()),
+             missing_count: self.missing_count,
+             native_owner: Arc::into_raw(self.owner).cast(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -476,6 +479,9 @@
+             format_version: source.format_version,
+             missing_count: source.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         });
+         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
+         result.native_owner = source.native_owner;
+@@ -521,6 +527,50 @@
+     };
+     *values = chunk.pointer().add((start - first) * owner.width).cast();
+     *count = requested.min(chunk.end - start);
++    1
++}
++
++/// Return the complete owning chunk containing a scalar index. The base
++/// pointer and half-open row bounds stay valid while the owner is rooted.
++/// This function does not allocate, invoke R, or mutate any owner or buffer.
++///
++/// # Safety
++///
++/// `data` must be null or a live NumericData descriptor. Non-null output
++/// pointers must be valid writable slots disjoint from the descriptor.
++#[no_mangle]
++pub unsafe extern "C" fn dtatools_owned_numeric_scalar_span(
++    data: *const c_void,
++    index: usize,
++    values: *mut *const c_void,
++    start: *mut usize,
++    end: *mut usize,
++) -> c_int {
++    if data.is_null() || values.is_null() || start.is_null() || end.is_null() {
++        return 0;
++    }
++    *values = ptr::null();
++    *start = 0;
++    *end = 0;
++    let source = &*data.cast::<NumericData>();
++    if source.native_owner.is_null() || index >= source.length {
++        return 0;
++    }
++    let owner = &*source.native_owner.cast::<Owner>();
++    if index >= owner.length {
++        return 0;
++    }
++    let chunk_index = owner.chunks.partition_point(|chunk| chunk.end <= index);
++    let Some(chunk) = owner.chunks.get(chunk_index) else {
++        return 0;
++    };
++    *values = chunk.pointer().cast();
++    *start = if chunk_index == 0 {
++        0
++    } else {
++        owner.chunks[chunk_index - 1].end
++    };
++    *end = chunk.end;
+     1
+ }
+ 
+@@ -581,6 +631,195 @@
+             row += count;
+         }
+         assert_eq!(observed, expected_bytes);
++    }
++
++    unsafe fn scalar_span(data: &NumericData, index: usize) -> Option<(*const u8, usize, usize)> {
++        let mut values = ptr::null();
++        let mut start = usize::MAX;
++        let mut end = usize::MAX;
++        let status = dtatools_owned_numeric_scalar_span(
++            (data as *const NumericData).cast(),
++            index,
++            &mut values,
++            &mut start,
++            &mut end,
++        );
++        if status == 0 {
++            assert!(values.is_null());
++            assert_eq!((start, end), (0, 0));
++            None
++        } else {
++            assert_eq!(status, 1);
++            Some((values.cast(), start, end))
++        }
++    }
++
++    #[test]
++    fn scalar_spans_return_whole_sliced_arrow_chunks_in_any_order() {
++        let whole = Int16Array::from(vec![99_i16, 10, 11, 12, 20, 21, 99]);
++        let arrays: Vec<ArrayRef> = vec![
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++            Arc::new(whole.slice(1, 3)),
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++            Arc::new(whole.slice(4, 2)),
++            Arc::new(Int16Array::from(Vec::<i16>::new())),
++        ];
++        let first_pointer = whole.values().as_ptr().wrapping_add(1).cast::<u8>();
++        let second_pointer = whole.values().as_ptr().wrapping_add(4).cast::<u8>();
++        let data = prepare_from_arrow(
++            &arrays,
++            NumericKind::Int,
++            TemporalKind::None,
++            FormatVersion::V118,
++            5,
++            || false,
++        )
++        .unwrap()
++        .into_descriptor();
++        drop(arrays);
++        drop(whole);
++        for index in [4, 3, 2, 1, 0, 2, 4, 0, 3, 1] {
++            let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
++            let (expected_pointer, expected_start, expected_end, expected_values) = if index < 3 {
++                (first_pointer, 0, 3, &[10_i16, 11, 12][..])
++            } else {
++                (second_pointer, 3, 5, &[20_i16, 21][..])
++            };
++            assert_eq!(values, expected_pointer);
++            assert_eq!((start, end), (expected_start, expected_end));
++            assert_eq!(
++                unsafe { std::slice::from_raw_parts(values.cast::<i16>(), end - start) },
++                expected_values
++            );
++            assert!(start <= index && index < end);
++            // The existing bulk API still starts at the requested row.
++            let mut region_values = ptr::null();
++            let mut count = 0;
++            assert_eq!(
++                unsafe {
++                    dtatools_owned_numeric_region(
++                        (&data as *const NumericData).cast(),
++                        index,
++                        usize::MAX,
++                        &mut region_values,
++                        &mut count,
++                    )
++                },
++                1
++            );
++            assert_eq!(
++                region_values.cast::<u8>(),
++                values.wrapping_add((index - start) * 2)
++            );
++            assert_eq!(count, end - index);
++        }
++        for index in [5, 6, usize::MAX] {
++            assert!(unsafe { scalar_span(&data, index) }.is_none());
++        }
++    }
++
++    #[test]
++    fn scalar_spans_cover_raw_chunk_edges_for_every_storage_width() {
++        for kind in [
++            NumericKind::Byte,
++            NumericKind::Int,
++            NumericKind::Long,
++            NumericKind::Float,
++        ] {
++            let bytes: Vec<u8> = (0..7 * width(kind)).map(|index| index as u8).collect();
++            let descriptor = unsafe {
++                dtatools_owned_numeric_from_raw(
++                    bytes.as_ptr(),
++                    7,
++                    3,
++                    kind as c_int,
++                    TemporalKind::None as c_int,
++                    118,
++                    0,
++                )
++            };
++            assert!(!descriptor.is_null());
++            let data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
++            for index in [6, 5, 4, 3, 2, 1, 0, 4, 1, 6, 0] {
++                let (values, start, end) = unsafe { scalar_span(&data, index).unwrap() };
++                let expected_start = index / 3 * 3;
++                let expected_end = (expected_start + 3).min(7);
++                assert_eq!((start, end), (expected_start, expected_end));
++                assert_eq!(values, bytes.as_ptr().wrapping_add(start * width(kind)));
++                assert_eq!(
++                    unsafe { std::slice::from_raw_parts(values, (end - start) * width(kind)) },
++                    &bytes[start * width(kind)..end * width(kind)]
++                );
++            }
++            assert!(unsafe { scalar_span(&data, 7) }.is_none());
++        }
++    }
++
++    #[test]
++    fn scalar_spans_reject_empty_plain_and_invalid_arguments() {
++        let empty = prepare_from_arrow(
++            &[],
++            NumericKind::Byte,
++            TemporalKind::None,
++            FormatVersion::V118,
++            0,
++            || false,
++        )
++        .unwrap()
++        .into_descriptor();
++        for index in [0, 1, usize::MAX] {
++            assert!(unsafe { scalar_span(&empty, index) }.is_none());
++        }
++        let plain = NumericData::new(crate::RNumericData {
++            backing: ptr::null_mut(),
++            values: ptr::null_mut(),
++            length: 0,
++            kind: NumericKind::Byte,
++            temporal: TemporalKind::None,
++            format_version: FormatVersion::V118,
++            missing_count: 0,
++        });
++        assert!(unsafe { scalar_span(&plain, 0) }.is_none());
++        let data = (&empty as *const NumericData).cast();
++        let mut values = ptr::null();
++        let mut start = 0;
++        let mut end = 0;
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(
++                    ptr::null(),
++                    0,
++                    &mut values,
++                    &mut start,
++                    &mut end,
++                )
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(data, 0, ptr::null_mut(), &mut start, &mut end)
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(data, 0, &mut values, ptr::null_mut(), &mut end)
++            },
++            0
++        );
++        assert_eq!(
++            unsafe {
++                dtatools_owned_numeric_scalar_span(
++                    data,
++                    0,
++                    &mut values,
++                    &mut start,
++                    ptr::null_mut(),
++                )
++            },
++            0
++        );
+     }
+ 
+     #[test]
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -2,6 +2,89 @@
+ freeze_numeric <- function(x, chunk_rows = 2) {
+     .Call(C_dtatools_owned_numeric_freeze, x, chunk_rows)
+ }
++
++test_that("scalar retained reads cross chunks and survive independent handle writes", {
++    values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
++    permutation <- c(seq.int(2L, length(values), by = 2L),
++                     seq.int(1L, length(values), by = 2L))
++    positions <- c(seq_along(values), rev(seq_along(values)), permutation, 1L, 31L, 2L)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (chunk_rows in c(1, 2, 7, 100)) {
++            frozen <- freeze_numeric(constructor(values), chunk_rows)
++            snapshot <- as.double(frozen)
++            # Base is.na and scalar extraction read through the bare ALTREP
++            # handles. The reverse pass revisits chunks after a forward scan.
++            expect_identical(is.na(snapshot), is.na(values))
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++            before <- owned_numeric_info(snapshot)
++
++            .Call(C_dtatools_mutate_first_numeric_altrep, frozen, 8)
++            gc()
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
++            expect_identical(is.na(snapshot), is.na(values))
++            expect_equal(owned_numeric_info(snapshot)[["compatibility_bytes"]],
++                         before[["compatibility_bytes"]])
++
++            .force_altrep_materialization(snapshot)
++            gc()
++            actual <- vapply(rev(positions), function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[rev(positions)])
++            expect_identical(missing_tag(actual), missing_tag(values[rev(positions)]))
++            expect_identical(is.na(snapshot), is.na(values))
++        }
++    }
++})
++
++test_that("scalar Arrow reads retain native batches after source materialization and GC", {
++    rows <- 2L * 65536L + 7L
++    values <- rep_len(c(-1, 0, 1, NA_real_, tagged_missing(letters)), rows)
++    days <- values - 3653
++    # Preserve tagged missing payloads rather than relying on arithmetic NaNs.
++    days[is.na(values)] <- values[is.na(values)]
++    date <- dtatools:::.construct_dta_numeric(days, NULL, "int", temporal = 1L)
++    date <- dtatools:::.attach_dta_temporal(
++        date,
++        structure(double(), format.stata = "%td",
++                  class = c("dta_temporal", "dta_date", "Date")),
++        "int"
++    )
++    source <- tibble::tibble(b = dta_byte(values), i = dta_int(values),
++                             l = dta_long(values), f = dta_float(values), day = date)
++    expected <- list(b = values, i = values, l = values, f = values, day = days)
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(source, path, threads = 1L)
++    imported <- read_arrow(path, output = "tibble", threads = 1L)
++    positions <- c(1L, 65535:65538, 131071:131074, rows, 2L, 65536L)
++    snapshots <- lapply(imported, as.double)
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_gt(owned_numeric_info(snapshot)[["chunks"]], 1)
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][positions])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][positions]))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++        .force_altrep_materialization(imported[[name]])
++    }
++    rm(imported, source, date)
++    unlink(path)
++    gc()
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_equal(owned_numeric_info(snapshot)[["owned"]], 1)
++        actual <- vapply(rev(positions), function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][rev(positions)])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][rev(positions)]))
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++    }
++})
+ 
+ test_that("immutable compact regions preserve all missing codes and chunk edges", {
+     values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
+@@ -617,3 +700,113 @@
+     expect_identical(attributes(saved$x), attributes(captured))
+     expect_identical(dta_storage_type(data$x), "int")
+ })
++
++# Use a native REAL_ELT traversal of the original proxy, since public casts
++# can create another handle and miss the exact forwarding path.
++local({
++    owned_scalar_call <- function(name, ...) {
++        .Call(get(name, envir = asNamespace("dtatools"), inherits = FALSE), ...)
++    }
++    owned_scalar_sum <- function(x) owned_scalar_call("C_dtatools_summarize_sum", x)
++    owned_scalar_compact <- function(x) {
++        get(".is_unmaterialized_numeric_altrep", asNamespace("dtatools"))(x)
++    }
++    owned_scalar_constructors <- list(
++        dtatools::dta_byte, dtatools::dta_int,
++        dtatools::dta_long, dtatools::dta_float
++    )
++
++    testthat::test_that("metadata scalar forwarding preserves isolated compact captures", {
++        for (constructor in owned_scalar_constructors) {
++            for (retained in c(FALSE, TRUE)) {
++                source <- constructor(c(1, 3, 5))
++                if (retained) {
++                    source <- owned_scalar_call("C_dtatools_owned_numeric_freeze", source, 2)
++                }
++                proxy <- owned_scalar_call("C_dtatools_metadata_copy", source)
++                attributes_before <- attributes(proxy)
++                testthat::expect_identical(
++                    owned_scalar_call("C_dtatools_metadata_proxy_depth", proxy), 1L)
++                testthat::expect_identical(owned_scalar_sum(proxy), 9)
++                testthat::expect_true(owned_scalar_compact(proxy))
++                owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 7)
++                gc()
++                testthat::expect_identical(owned_scalar_sum(source), 15)
++                testthat::expect_identical(owned_scalar_sum(proxy), 9)
++                testthat::expect_identical(attributes(proxy), attributes_before)
++                testthat::expect_true(owned_scalar_compact(proxy))
++
++                tagged <- constructor(c(1, dtatools::tagged_missing("z"), 5))
++                if (retained) {
++                    tagged <- owned_scalar_call("C_dtatools_owned_numeric_freeze", tagged, 1)
++                }
++                tagged_proxy <- owned_scalar_call("C_dtatools_metadata_copy", tagged)
++                testthat::expect_true(
++                    owned_scalar_call("C_dtatools_has_tagged_na", tagged_proxy))
++                testthat::expect_true(owned_scalar_compact(tagged_proxy))
++            }
++        }
++    })
++
++    testthat::test_that("metadata scalar forwarding respects both materialized states", {
++        for (constructor in owned_scalar_constructors) {
++            source <- constructor(c(1, 3, 5))
++            # The two-slot view intentionally follows this physical source handle.
++            proxy <- owned_scalar_call("C_dtatools_metadata_view", source)
++            testthat::expect_identical(owned_scalar_sum(proxy), 9)
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 7)
++            testthat::expect_identical(owned_scalar_sum(proxy), 15)
++
++            # Once the proxy has its own data2, it must take priority over source.
++            owned_scalar_call("C_dtatools_force_altrep_materialization", proxy)
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", proxy, 11)
++            testthat::expect_identical(owned_scalar_sum(proxy), 19)
++            testthat::expect_identical(owned_scalar_sum(source), 15)
++            testthat::expect_false(owned_scalar_compact(proxy))
++        }
++    })
++
++    testthat::test_that("three-slot scalar views track live compact values and missing counts", {
++        for (constructor in owned_scalar_constructors) {
++            source <- constructor(c(1, 2, 3))
++            views <- owned_scalar_call("C_dtatools_mutation_views", list(x = source))
++            proxy <- views[[1L]]
++            testthat::expect_identical(owned_scalar_sum(proxy), 6)
++            testthat::expect_false(anyNA(proxy))
++
++            # No public capture occurs before these writes: the private descriptor
++            # shares the original compact bytes and synchronizes missing_count.
++            owned_scalar_call("C_dtatools_patch_vector", source, 2L, NA_real_)
++            testthat::expect_true(is.na(owned_scalar_sum(proxy)))
++            testthat::expect_true(anyNA(proxy))
++            owned_scalar_call("C_dtatools_patch_vector", source, 2L, 4)
++            testthat::expect_identical(owned_scalar_sum(proxy), 8)
++            testthat::expect_false(anyNA(proxy))
++
++            # Physical source materialization must not invalidate the descriptor's
++            # retained raw allocation or redirect it to the new writable doubles.
++            owned_scalar_call("C_dtatools_mutate_first_numeric_altrep", source, 9)
++            gc()
++            testthat::expect_identical(owned_scalar_sum(source), 16)
++            testthat::expect_identical(owned_scalar_sum(proxy), 8)
++            testthat::expect_true(owned_scalar_compact(proxy))
++        }
++    })
++
++    testthat::test_that("native scalar forwarding does not inspect foreign class metadata", {
++        calls <- 0L
++        source <- dtatools::dta_int(c(1, 3, 5))
++        classes <- owned_scalar_call(
++            "C_dtatools_callback_character", class(source), function() NULL)
++        attr(source, "class") <- classes
++        proxy <- owned_scalar_call("C_dtatools_metadata_view", source)
++        owned_scalar_call("C_dtatools_arm_callback_character", classes, function() {
++            calls <<- calls + 1L
++            stop("foreign scalar class metadata callback")
++        })
++        testthat::expect_identical(owned_scalar_sum(proxy), 9)
++        testthat::expect_identical(calls, 0L)
++        testthat::expect_error(classes[[1L]], "foreign scalar class metadata callback")
++        testthat::expect_identical(calls, 1L)
++    })
++})

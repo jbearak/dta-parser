@@ -1,0 +1,13 @@
+{
+  "files": 449,
+  "changed": [
+    "NEWS.md",
+    "R/dta-numeric.R",
+    "src/dtatools-internal.h",
+    "src/mutation-transactions.c",
+    "src/numeric-payload.c",
+    "src/owned-columns.h",
+    "tests/testthat/test-owned-numeric-buffers.R"
+  ],
+  "source_matches": true
+}

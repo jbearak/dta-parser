@@ -1,0 +1,83 @@
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -3371,11 +3371,75 @@
+         let output =
+             unsafe { std::slice::from_raw_parts_mut(data.values.add(output_start), row_count) };
+         let mut missing_count = 0;
+-        for (row, target) in output.iter_mut().enumerate() {
+-            let value = unsafe { *source.get_unchecked(row * stride) };
+-            *target = value;
+-            missing_count +=
+-                usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++        if stride == 1 {
++            for (row, target) in output.iter_mut().enumerate() {
++                let value = unsafe { *source.get_unchecked(row) };
++                *target = value;
++                missing_count +=
++                    usize::from(classify_byte_missing_for_version(value as i8, version).is_some());
++            }
++        } else {
++            macro_rules! gather_strided {
++                ($format:expr) => {{
++                    // Independent counts shorten the dependency chain for strided input.
++                    let mut missing0 = 0;
++                    let mut missing1 = 0;
++                    let mut missing2 = 0;
++                    let mut missing3 = 0;
++                    let mut groups = output.chunks_exact_mut(4);
++                    for (group, target) in groups.by_ref().enumerate() {
++                        let row = group * 4;
++                        // SAFETY: each row is below row_count, so the complete range
++                        // validation above also covers all four strided loads.
++                        let value0 = unsafe { *source.get_unchecked(row * stride) };
++                        let value1 = unsafe { *source.get_unchecked((row + 1) * stride) };
++                        let value2 = unsafe { *source.get_unchecked((row + 2) * stride) };
++                        let value3 = unsafe { *source.get_unchecked((row + 3) * stride) };
++                        target[0] = value0;
++                        target[1] = value1;
++                        target[2] = value2;
++                        target[3] = value3;
++                        missing0 += usize::from(
++                            classify_byte_missing_for_version(value0 as i8, $format).is_some(),
++                        );
++                        missing1 += usize::from(
++                            classify_byte_missing_for_version(value1 as i8, $format).is_some(),
++                        );
++                        missing2 += usize::from(
++                            classify_byte_missing_for_version(value2 as i8, $format).is_some(),
++                        );
++                        missing3 += usize::from(
++                            classify_byte_missing_for_version(value3 as i8, $format).is_some(),
++                        );
++                    }
++                    let mut missing_count = missing0 + missing1 + missing2 + missing3;
++                    let tail_start = row_count - row_count % 4;
++                    for (offset, target) in groups.into_remainder().iter_mut().enumerate() {
++                        let value =
++                            unsafe { *source.get_unchecked((tail_start + offset) * stride) };
++                        *target = value;
++                        missing_count += usize::from(
++                            classify_byte_missing_for_version(value as i8, $format).is_some(),
++                        );
++                    }
++                    missing_count
++                }};
++            }
++            // These are exactly the two families in the version-aware byte
++            // classifier. Constant representatives keep that dispatch out of
++            // every lane while still using the shared classification logic.
++            missing_count = match version {
++                FormatVersion::V105
++                | FormatVersion::V108
++                | FormatVersion::V110
++                | FormatVersion::V111 => gather_strided!(FormatVersion::V111),
++                FormatVersion::V113
++                | FormatVersion::V114
++                | FormatVersion::V115
++                | FormatVersion::V117
++                | FormatVersion::V118
++                | FormatVersion::V119 => gather_strided!(FormatVersion::V118),
++            };
+         }
+         data.missing_count += missing_count;
+         Ok(true)

@@ -1,0 +1,72 @@
+[
+  {
+    "kind": "dta",
+    "threads": 1,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 2,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 4,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 8,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 12,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 16,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "dta",
+    "threads": 0,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 1,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 2,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 4,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 8,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 12,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 16,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  },
+  {
+    "kind": "arrow",
+    "threads": 0,
+    "datasig": "724115:5972:e404e6f1cf51f55a"
+  }
+]

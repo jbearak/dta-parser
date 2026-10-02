@@ -1,0 +1,13 @@
+# Unselected combined candidate review
+
+The combined source has now been built and validated as a private candidate. It has not been benchmarked or selected by this agent. It starts from candidate-reverse/source and copies exactly the source-resolution helper from candidate-sourcecheck and the direct scalar getter from candidate-dispatch-v2. The independent native test/cache changes remain intact. No production files changed.
+
+The combined getter first honors materialized proxy data2, then resolves the current source without caching any SEXP or raw pointer across calls. Three-slot missing_count synchronization still occurs before direct forwarding, under the original matching allocation/owner checks. Known compact class identity is checked through R_altrep_inherits, whose ordinary-object guard is already part of R's API implementation. The compact getter retains its own bounds, type and materialized-source handling. Nested/foreign sources retain REAL_ELT fallback. No constructor, copy isolation, owner claim, finalizer, or materialization policy changed.
+
+Full-chunk caching affects only the retained compact scalar getter. The same descriptor retains the immutable owner; cloned descriptors still start with an empty cache, and detached/materialized handles take their existing paths. Direct forwarding reaches the same getter and does not weaken these lifetime checks. Plain DTA scalar storage and the bulk region ABI remain unchanged. Existing frame-size caveats from the reverse-only candidate must be remeasured for the combination.
+
+Four focused tests and their helpers were appended within a local block using owned_scalar_ helper names. The private header, not-run claim and exploratory footer were removed. These tests cover isolated copies, proxy/source materialization, live three-slot missing-count changes and class-metadata callbacks. The existing reverse candidate tests cover retained native Arrow chunks, RRaw chunks, scalar permutations, tags, temporal values and GC. The arbitrary-foreign-ALTREAL-inside-metadata-proxy fallback is preserved by inspection; public constructors do not produce that exact state, so the appended tests do not claim to exercise it.
+
+The NEWS entry describes the three mechanisms without timing claims. Changed files and incremental patch hash are recorded in combined-preparation.json.
+
+The source-bound build receipt was reverified after the installed test run. All 41 Rust bridge tests and all 1399 assertions across 33 installed owned-numeric tests pass, with no failures, errors, warnings or skips. Clippy with warnings denied and formatting checks pass. Hashes and exact counts are recorded in combined-validation.json.

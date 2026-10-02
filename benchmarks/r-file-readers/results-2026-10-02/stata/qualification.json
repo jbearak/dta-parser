@@ -1,0 +1,152 @@
+[
+  {
+    "case": "numeric",
+    "operation": "source",
+    "pair": 0,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "source",
+    "pair": 0,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 1,
+    "output_sha256": "2f21b6a2096f397330444273a38dddf654c6c4ac9e0cd3a3484f7d6ef0af9f98",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 1,
+    "output_sha256": "459627f020151cfb247f81df10b44acc19e460fb137237ea3b815f31a7d95616",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 2,
+    "output_sha256": "0380684db485bc4a8b1422ad997661791a2e38ec7458ccd719fe4b74f6ccd3d3",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 2,
+    "output_sha256": "08772612d57546e97880c9fc3b44094ca05787a9413b450b11e855cb5733c2ef",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 3,
+    "output_sha256": "4dc09689037ef8c1749a74139b27a42c67ff7e738fc1168f5749a7cd1a361f73",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 3,
+    "output_sha256": "6f2e9e5de0c04da48a053848441c8e28e89d37a4a998abefa036ca85fa7a62b8",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 4,
+    "output_sha256": "95a8a49a8b7087b11161d41f0fe42b4f8a8d19cfdafadb3397ae4d240763403c",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 4,
+    "output_sha256": "103475e254907279a6ad8b6b8ad1389019a48d7c866980584016f1745a0871b0",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 5,
+    "output_sha256": "04ae6a5b7ec0c54f37289497534c2865849f2e94829b303b3cb85bef5e073d84",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 5,
+    "output_sha256": "4660276a5618fc1bfb41f9c9004b717ee2201965057616d6314a77e0f486f83f",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "compact",
+    "operation": "save",
+    "pair": 6,
+    "output_sha256": "cfb58fd0aa503cdea0278e259623f944f1dff8b44998eb75d5c66281511aa9d7",
+    "output_bytes": 96021035,
+    "qualification": "signature",
+    "signature": "1000000:32:c36bbe2983631a7a",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  },
+  {
+    "case": "numeric",
+    "operation": "save",
+    "pair": 6,
+    "output_sha256": "cbf21d1295342b8f6a32ca8507a97fd09969a48bb82755fcb3fa473aaf9301bb",
+    "output_bytes": 51221035,
+    "qualification": "signature",
+    "signature": "200000:32:6adc33d4c0800259",
+    "consumption": "omitted_read_only",
+    "consumption_sha256": null
+  }
+]

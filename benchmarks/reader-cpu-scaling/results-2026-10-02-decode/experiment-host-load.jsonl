@@ -1,0 +1,11 @@
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 39}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:46:52+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:47:22+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:47:52+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:48:22+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:48:52+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:49:22+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:49:52+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:50:22+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 0, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:50:52+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 5, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:51:22+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"arrow-phases": 42, "gather4-v2": 48}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:51:52+00:00"}

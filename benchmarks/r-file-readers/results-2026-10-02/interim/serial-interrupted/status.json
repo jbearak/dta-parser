@@ -1,0 +1,8 @@
+{
+  "after_bindings_available": false,
+  "completed_stage": false,
+  "raw_observations": 0,
+  "reason": "Stopped after completed default run revealed compact DTA consumption overhead; qualification had not completed.",
+  "status": "interrupted",
+  "summaries_used": false
+}

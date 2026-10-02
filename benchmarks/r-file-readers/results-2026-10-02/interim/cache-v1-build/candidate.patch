@@ -1,0 +1,199 @@
+--- a/r-package/dtatools/R/dibble.R
++++ b/r-package/dtatools/R/dibble.R
+@@ -229,7 +229,7 @@
+     for (index in seq_along(column_names)) {
+         column <- .subset2(x, index)
+         typed <- .typed_column(column, row_count, "as_dibble()")
+-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
++        if (!rlang::is_reference(typed, column)) {
+             captured <- .Call(C_dtatools_capture_column, typed)
+             .Call(C_dtatools_set_data_column, x, as.integer(index), captured)
+         }
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -278,6 +278,11 @@
+     size_t missing_count;
+     /* Opaque immutable Rust owner. values is NULL when this is non-NULL. */
+     const void *native_owner;
++    /* Only R's scalar ALTREP getter updates this borrowed immutable span.
++       Each handle owns its descriptor; native workers never use this cache. */
++    const void *scalar_values;
++    size_t scalar_start;
++    size_t scalar_end;
+ } numeric_data;
+ 
+ /* A retained payload keeps its bytes behind the immutable Rust owner and is
+--- a/r-package/dtatools/src/numeric-payload.c
++++ b/r-package/dtatools/src/numeric-payload.c
+@@ -859,7 +859,10 @@
+ DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
+ DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
+ DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
+-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
++DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
+ DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+ DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+@@ -1674,6 +1677,25 @@
+     numeric_data *data = numeric_read_storage(value);
+     if (index < 0 || (size_t) index >= data->length) {
+         Rf_error("invalid dtatools numeric-vector index");
++    }
++    if (numeric_payload_retained(data)) {
++        size_t row = (size_t) index;
++        if (row < data->scalar_start || row >= data->scalar_end) {
++            size_t count = 0;
++            const void *values = numeric_read_span(
++                data, row, data->length - row, &count
++            );
++            data->scalar_values = values;
++            data->scalar_start = row;
++            data->scalar_end = row + count;
++        }
++        /* The descriptor roots the immutable owner for the cached span's
++           complete lifetime. Decode with the existing plain-byte kernels;
++           no R allocation or callback occurs while this local view is live. */
++        numeric_data span = *data;
++        span.values = (void *) data->scalar_values;
++        span.native_owner = NULL;
++        return numeric_value_at(&span, row - data->scalar_start);
+     }
+     return numeric_value_at(data, (size_t) index);
+ }
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -239,6 +239,10 @@
+     missing_count: usize,
+     // Opaque immutable owner, or null for the legacy R-rooted writable bytes.
+     native_owner: *const c_void,
++    // Per-descriptor borrowed span, updated only by R's scalar ALTREP getter.
++    scalar_values: *const c_void,
++    scalar_start: usize,
++    scalar_end: usize,
+ }
+ 
+ impl Drop for NumericData {
+@@ -257,6 +261,9 @@
+             format_version: c_int::from(data.format_version.as_u16()),
+             missing_count: data.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -346,6 +353,9 @@
+         format_version: 119,
+         missing_count,
+         native_owner: ptr::null(),
++        scalar_values: ptr::null(),
++        scalar_start: 0,
++        scalar_end: 0,
+     }))
+     .cast::<c_void>()
+ }
+--- a/r-package/dtatools/src/rust/src/owned_numeric.rs
++++ b/r-package/dtatools/src/rust/src/owned_numeric.rs
+@@ -280,6 +280,9 @@
+             format_version: c_int::from(self.version.as_u16()),
+             missing_count: self.missing_count,
+             native_owner: Arc::into_raw(self.owner).cast(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         }
+     }
+ }
+@@ -476,6 +479,9 @@
+             format_version: source.format_version,
+             missing_count: source.missing_count,
+             native_owner: ptr::null(),
++            scalar_values: ptr::null(),
++            scalar_start: 0,
++            scalar_end: 0,
+         });
+         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
+         result.native_owner = source.native_owner;
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -2,6 +2,76 @@
+ freeze_numeric <- function(x, chunk_rows = 2) {
+     .Call(C_dtatools_owned_numeric_freeze, x, chunk_rows)
+ }
++
++test_that("scalar retained reads cross chunks and survive independent handle writes", {
++    values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)
++    positions <- c(seq_along(values), rev(seq_along(values)), 1L, 31L, 2L)
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (chunk_rows in c(1, 2, 7, 100)) {
++            frozen <- freeze_numeric(constructor(values), chunk_rows)
++            snapshot <- as.double(frozen)
++            # Base is.na and scalar extraction read through the bare ALTREP
++            # handles. The reverse pass revisits chunks after a forward scan.
++            expect_identical(is.na(snapshot), is.na(values))
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++            before <- owned_numeric_info(snapshot)
++
++            .Call(C_dtatools_mutate_first_numeric_altrep, frozen, 8)
++            gc()
++            expect_identical(vapply(positions, function(i) snapshot[[i]], double(1)),
++                             values[positions])
++            expect_identical(is.na(snapshot), is.na(values))
++            expect_equal(owned_numeric_info(snapshot)[["compatibility_bytes"]],
++                         before[["compatibility_bytes"]])
++        }
++    }
++})
++
++test_that("scalar Arrow reads retain native batches after source materialization and GC", {
++    rows <- 2L * 65536L + 7L
++    values <- rep_len(c(-1, 0, 1, NA_real_, tagged_missing(letters)), rows)
++    days <- values - 3653
++    # Preserve tagged missing payloads rather than relying on arithmetic NaNs.
++    days[is.na(values)] <- values[is.na(values)]
++    date <- dtatools:::.construct_dta_numeric(days, NULL, "int", temporal = 1L)
++    date <- dtatools:::.attach_dta_temporal(
++        date,
++        structure(double(), format.stata = "%td",
++                  class = c("dta_temporal", "dta_date", "Date")),
++        "int"
++    )
++    source <- tibble::tibble(b = dta_byte(values), i = dta_int(values),
++                             l = dta_long(values), f = dta_float(values), day = date)
++    expected <- list(b = values, i = values, l = values, f = values, day = days)
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(source, path, threads = 1L)
++    imported <- read_arrow(path, output = "tibble", threads = 1L)
++    positions <- c(1L, 65535:65538, 131071:131074, rows, 2L, 65536L)
++    snapshots <- lapply(imported, as.double)
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_gt(owned_numeric_info(snapshot)[["chunks"]], 1)
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        expect_identical(vapply(positions, function(i) snapshot[[i]], double(1)),
++                         expected[[name]][positions])
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++        .force_altrep_materialization(imported[[name]])
++    }
++    rm(imported, source, date)
++    unlink(path)
++    gc()
++    for (name in names(snapshots)) {
++        snapshot <- snapshots[[name]]
++        expect_equal(owned_numeric_info(snapshot)[["owned"]], 1)
++        expect_identical(vapply(rev(positions), function(i) snapshot[[i]], double(1)),
++                         expected[[name]][rev(positions)])
++        expect_identical(is.na(snapshot), is.na(expected[[name]]))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
++    }
++})
+ 
+ test_that("immutable compact regions preserve all missing codes and chunk edges", {
+     values <- c(-1, 0, 1, NA_real_, tagged_missing(letters), 5)

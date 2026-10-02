@@ -1,0 +1,185 @@
+{
+  "ready": true,
+  "builds": {
+    "current": "<scalar-work>/candidate-combined",
+    "mask": "<compact-work>/candidate-kernel",
+    "sum": "<compact-work>/candidate-kernel-final",
+    "accepted": "<compact-work>/candidate-kernel-float"
+  },
+  "stages": {
+    "screen": "<compact-work>/screen",
+    "sum-gate": "<compact-work>/final-gate-v2",
+    "float-gate": "<compact-work>/float-gate",
+    "acceptance": "<compact-work>/acceptance"
+  },
+  "files": [
+    {
+      "source": "<compact-work>/throughput.py",
+      "destination": "controllers/throughput.py"
+    },
+    {
+      "source": "<compact-work>/screen/throughput.py",
+      "destination": "screen/controllers/throughput.py"
+    },
+    {
+      "source": "<compact-work>/throughput-worker.R",
+      "destination": "controllers/throughput-worker.R"
+    },
+    {
+      "source": "<compact-work>/screen/throughput-worker.R",
+      "destination": "screen/controllers/throughput-worker.R"
+    },
+    {
+      "source": "<compact-work>/reproduce.md",
+      "destination": "controllers/README.md"
+    },
+    {
+      "source": "<compact-work>/accepted-incremental.patch",
+      "destination": "patches/accepted-incremental.patch"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/receipt.json",
+      "destination": "compiler/receipt.json"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/summary.json",
+      "destination": "compiler/summary.json"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/compiler.log",
+      "destination": "compiler/compiler.log"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/numeric_missing_mask_span.s",
+      "destination": "compiler/numeric_missing_mask_span.s"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/sum_span.s",
+      "destination": "compiler/sum_span.s"
+    },
+    {
+      "source": "<compact-work>/vectorization-accepted/sum-ordered-remarks.txt",
+      "destination": "compiler/sum-ordered-remarks.txt"
+    },
+    {
+      "source": "<compact-work>/full-tests.R",
+      "destination": "validation/full-tests.R"
+    },
+    {
+      "source": "<compact-work>/full-tests.csv",
+      "destination": "validation/full-tests.csv"
+    },
+    {
+      "source": "<compact-work>/full-tests.log",
+      "destination": "validation/full-tests.log"
+    },
+    {
+      "source": "<compact-work>/test-compact-semantics.R",
+      "destination": "validation/test-compact-semantics.R"
+    },
+    {
+      "source": "<compact-work>/compact-semantic-tests.R",
+      "destination": "validation/compact-semantic-tests.R"
+    },
+    {
+      "source": "<compact-work>/compact-sum-tests.R",
+      "destination": "validation/compact-sum-tests.R"
+    },
+    {
+      "source": "<compact-work>/baseline-semantics.csv",
+      "destination": "validation/baseline-semantics.csv"
+    },
+    {
+      "source": "<compact-work>/candidate-semantics.csv",
+      "destination": "validation/candidate-semantics.csv"
+    },
+    {
+      "source": "<compact-work>/baseline-sum-semantics.csv",
+      "destination": "validation/baseline-sum-semantics.csv"
+    },
+    {
+      "source": "<compact-work>/accepted-sum-semantics.csv",
+      "destination": "validation/accepted-sum-semantics.csv"
+    },
+    {
+      "source": "<compact-work>/block-boundary.R",
+      "destination": "validation/block-boundary.R"
+    },
+    {
+      "source": "<compact-work>/block-boundary.csv",
+      "destination": "validation/block-boundary.csv"
+    },
+    {
+      "source": "<compact-work>/block-boundary.log",
+      "destination": "validation/block-boundary.log"
+    },
+    {
+      "source": "<compact-work>/parity-repro.R",
+      "destination": "validation/parity-repro.R"
+    },
+    {
+      "source": "<compact-work>/baseline-repro.csv",
+      "destination": "validation/baseline-repro.csv"
+    },
+    {
+      "source": "<compact-work>/baseline-repro.log",
+      "destination": "validation/baseline-repro.log"
+    },
+    {
+      "source": "<compact-work>/accepted-repro.csv",
+      "destination": "validation/accepted-repro.csv"
+    },
+    {
+      "source": "<compact-work>/accepted-repro.log",
+      "destination": "validation/accepted-repro.log"
+    },
+    {
+      "source": "<compact-work>/public-reduction-check.R",
+      "destination": "validation/public-reduction-check.R"
+    },
+    {
+      "source": "<compact-work>/public-reduction-baseline.log",
+      "destination": "validation/public-reduction-baseline.log"
+    },
+    {
+      "source": "<compact-work>/source-applied.json",
+      "destination": "validation/source-applied.json"
+    },
+    {
+      "source": "<scalar-work>/scalar-access-probe.c",
+      "destination": "controllers/probe/scalar-access-probe.c"
+    },
+    {
+      "source": "<scalar-work>/scalar-probe-build.json",
+      "destination": "controllers/probe/scalar-probe-build.json"
+    },
+    {
+      "source": "<scalar-work>/scalar-probe-check.json",
+      "destination": "controllers/probe/scalar-probe-check.json"
+    },
+    {
+      "source": "<repository>/benchmarks/r-file-readers/run.py",
+      "destination": "controllers/r-file-readers/run.py"
+    },
+    {
+      "source": "<repository>/benchmarks/r-file-readers/record-builds.py",
+      "destination": "controllers/r-file-readers/record-builds.py"
+    },
+    {
+      "source": "<repository>/benchmarks/r-file-readers/build-snapshot.py",
+      "destination": "controllers/r-file-readers/build-snapshot.py"
+    },
+    {
+      "source": "<repository>/benchmarks/r-file-readers/runtime.R",
+      "destination": "controllers/r-file-readers/runtime.R"
+    },
+    {
+      "source": "<compact-work>/validate-final.py",
+      "destination": "controllers/validate-final.py"
+    },
+    {
+      "source": "<compact-work>/write-report.py",
+      "destination": "controllers/write-report.py"
+    }
+  ]
+}

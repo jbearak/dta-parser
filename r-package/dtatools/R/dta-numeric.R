@@ -1574,7 +1574,7 @@ vec_proxy.dta_temporal <- function(x, ...) {
 
 #' @export
 is.na.dta_temporal <- function(x) {
-    is.na(as.double(.base_dta_temporal(x)))
+    .dta_read_is_na(as.double(.base_dta_temporal(x)))
 }
 
 #' @export

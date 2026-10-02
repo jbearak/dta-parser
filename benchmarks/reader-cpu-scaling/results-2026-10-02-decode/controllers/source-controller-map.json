@@ -1,0 +1,20 @@
+[
+  {
+    "executed_as_published": false,
+    "file": "controllers/thread-sweep.py",
+    "measured_provenance": "sweep/provenance-before.json",
+    "note": "This is a modified rerun template, not the unchanged measured controller. The original measured source hash remains in provenance. Syntax parsed; transformed copy not executed.",
+    "original_private_sha256": "8eef3fe09b3c81501368a2bb835980fa7a5a41a61445ff46faa3eb94e7f0df0f",
+    "published_sha256": "1452970aff3998da48f33dfd0c555607efd898883d764e448e84e3baebb647e3",
+    "transformation": "ROOT, OLD and REPO Path assignments replaced by DTATOOLS_DECODE_WORK, DTATOOLS_PREVIOUS_READER_WORK and DTATOOLS_REPO environment lookups. Added sys import and normalized ru_maxrss to bytes on Linux; macOS values remain unchanged. Reject platforms other than macOS and Linux before setup."
+  },
+  {
+    "executed_as_published": false,
+    "file": "controllers/phase-benchmark.py",
+    "measured_provenance": "arrow-phases/provenance-before.json",
+    "note": "This is a modified rerun template, not the unchanged measured controller. The original measured source hash remains in provenance. Syntax parsed; transformed copy not executed.",
+    "original_private_sha256": "0fdaa4317f9ec6c7d78bda4a324a5c036bae31a4ce49d0356c23d943dc6a9378",
+    "published_sha256": "e43fe1201f032717819ba33bde03c3cac4d3600e8b8314e209259a7dfe29a3b6",
+    "transformation": "Only ROOT, OLD and REPO Path assignments replaced by DTATOOLS_DECODE_WORK, DTATOOLS_PREVIOUS_READER_WORK and DTATOOLS_REPO environment lookups."
+  }
+]

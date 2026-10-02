@@ -1,0 +1,9 @@
+{
+  "changed_files": [
+    "src/dtatools-internal.h",
+    "src/numeric-payload.c",
+    "src/rust/src/owned_numeric.rs",
+    "tests/testthat/test-owned-numeric-buffers.R"
+  ],
+  "incremental_patch_sha256": "696e8d4cfbddcc6c7befd5709d43e811b83c3c99489192002bf420b4c9133e48"
+}

@@ -1,0 +1,4 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"compact-sum-tests.R","compact-sum-tests","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0,0.264,0.045,0.308,640
+"compact-sum-tests.R","compact-sum-tests","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0,0.103,0.019,0.125,216
+"compact-sum-tests.R","compact-sum-tests","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0,0.105,0.02,0.124,252

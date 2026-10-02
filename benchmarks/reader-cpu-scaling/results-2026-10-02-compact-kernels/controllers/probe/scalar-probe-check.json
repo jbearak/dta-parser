@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/opt/homebrew/bin/Rscript",
+    "--vanilla",
+    "<scalar-work>/scalar-probe-check.R"
+  ],
+  "returncode": 0,
+  "timed": false,
+  "files": {
+    "scalar-probe-check.R": "f0637fefaa6b60a08cd12127c620bff0465b91f64f64bffc136e81a3e34a811b",
+    "scalar-access-probe.c": "28e960f8f1e860a0e2cec1ede4706a6d4336fb126a15ee8e4ac8ba7cd14b27d3",
+    "scalar_access_probe.so": "1f88f7b429a44d0696ae399b4eaaa87bf1d80eca3287f76d716141cbeca17445"
+  }
+}

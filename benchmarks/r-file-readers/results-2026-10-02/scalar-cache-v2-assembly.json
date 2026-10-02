@@ -1,0 +1,71 @@
+{
+  "architecture": "arm64",
+  "method": "Read existing object assembly with otool -tvV; no source compilation or benchmark execution. Normalize function addresses and branch destinations relative to function start; strip adrp page comments.",
+  "versions": {
+    "baseline": {
+      "object_sha256": "1fb10a5235bfa117e4c333485b80e1b17f50b29e6a5fed55ae38b86f1b291c7c",
+      "getter_instructions": 58,
+      "getter_entry": [
+        "stp\tx20, x19, [sp, #-0x20]!",
+        "stp\tx29, x30, [sp, #0x10]",
+        "add\tx29, sp, #0x10",
+        "mov\tx19, x1"
+      ],
+      "getter_call_sites": 6
+    },
+    "v1": {
+      "object_sha256": "5b9eaf0a1f825f06e24e75220ef79586f5bb66293893c4591b4f8422cd5cf1ed",
+      "getter_instructions": 122,
+      "getter_entry": [
+        "sub\tsp, sp, #0x70",
+        "stp\tx20, x19, [sp, #0x50]",
+        "stp\tx29, x30, [sp, #0x60]",
+        "add\tx29, sp, #0x60"
+      ],
+      "getter_call_sites": 11
+    },
+    "v2": {
+      "object_sha256": "b83ad9adba86785b8a1de8ea2adfa2dde30afc6cbe92a9617ad4dd4b94076bbb",
+      "getter_instructions": 242,
+      "getter_entry": [
+        "sub\tsp, sp, #0x30",
+        "stp\tx20, x19, [sp, #0x10]",
+        "stp\tx29, x30, [sp, #0x20]",
+        "add\tx29, sp, #0x20"
+      ],
+      "getter_call_sites": 10
+    }
+  },
+  "general_decoders": {
+    "_numeric_byte_value_at": {
+      "normalized_instructions_identical": true,
+      "baseline_instructions": 67,
+      "v2_instructions": 67
+    },
+    "_numeric_int_value_at": {
+      "normalized_instructions_identical": true,
+      "baseline_instructions": 70,
+      "v2_instructions": 70
+    },
+    "_numeric_long_value_at": {
+      "normalized_instructions_identical": true,
+      "baseline_instructions": 69,
+      "v2_instructions": 69
+    },
+    "_numeric_float_value_at": {
+      "normalized_instructions_identical": true,
+      "baseline_instructions": 75,
+      "v2_instructions": 75
+    }
+  },
+  "scalar_helpers_inlined_in_v2": true,
+  "findings": [
+    "V1 numeric_value reserves 112 bytes and copies 72 bytes of descriptor on retained reads.",
+    "V2 numeric_value reserves 48 bytes because scalar decoders are fully inlined; its plain DTA path has no scalar cache access and no extra call.",
+    "Baseline numeric_value reserves 32 bytes and tail-transfers to typed decoders that each reserve48bytes. V2 removes that second prologue/epilogue sequence.",
+    "V2 has no local numeric_data descriptor and no 72-byte descriptor copy.",
+    "All four general numeric_TYPE_value_at instruction sequences are unchanged after address normalization.",
+    "Cache miss calls are confined to retained branches. Timing must confirm effect; assembly alone does not establish speedup."
+  ],
+  "call_site_note": "Static call-site counts include error branches and retained cache misses. The ordinary DTA path has the same three R API calls before value decoding in both baseline and v2, and no additional decoder call in v2."
+}

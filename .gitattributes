@@ -10,3 +10,11 @@
 
 # Stata console spaces are part of the byte-for-byte tabulation oracles.
 /r-package/dtatools/tests/testthat/fixtures/tabulate*.log whitespace=-blank-at-eol,-blank-at-eof
+
+# Preserve hash-bound benchmark evidence byte for byte, including CSV line
+# endings, patch context lines and captured test output. Reports remain normal
+# reviewable Markdown files outside these generated artifact directories.
+benchmarks/r-file-readers/results-2026-10-02/** -text -whitespace linguist-generated=true
+benchmarks/reader-cpu-scaling/results-2026-10-02-decode/** -text -whitespace linguist-generated=true
+benchmarks/reader-cpu-scaling/results-2026-10-02-scalar/** -text -whitespace linguist-generated=true
+benchmarks/reader-cpu-scaling/results-2026-10-02-compact-kernels/** -text -whitespace linguist-generated=true

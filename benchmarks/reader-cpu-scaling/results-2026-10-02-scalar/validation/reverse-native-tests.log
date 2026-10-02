@@ -1,0 +1,72 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling libc v0.2.189
+   Compiling zerocopy v0.8.56
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling pkg-config v0.3.34
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling version_check v0.9.5
+   Compiling getrandom v0.3.4
+   Compiling bytes v1.12.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling semver v1.0.28
+   Compiling chacha20 v0.10.2
+   Compiling ahash v0.8.12
+   Compiling iana-time-zone v0.1.65
+   Compiling num-traits v0.2.19
+   Compiling rustc_version v0.4.1
+   Compiling arrow-schema v59.2.0
+   Compiling zstd-safe v7.2.4
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling flatbuffers v25.12.19
+   Compiling hashbrown v0.17.1
+   Compiling serde_json v1.0.151
+   Compiling serde v1.0.229
+   Compiling thiserror v2.0.19
+   Compiling bitflags v2.13.1
+   Compiling unicode-general-category v1.1.0
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling encoding_rs v0.8.35
+   Compiling rand v0.10.2
+   Compiling jobserver v0.1.35
+   Compiling cc v1.4.4
+   Compiling twox-hash v2.1.4
+   Compiling thiserror-impl v2.0.19
+   Compiling serde_derive v1.0.229
+   Compiling lz4_flex v0.14.0
+   Compiling num-integer v0.1.47
+   Compiling chrono v0.4.45
+   Compiling num-complex v0.4.6
+   Compiling num-bigint v0.5.1
+   Compiling zerocopy-derive v0.8.56
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling half v2.7.1
+   Compiling arrow-buffer v59.2.0
+   Compiling zstd v0.13.3
+   Compiling arrow-data v59.2.0
+   Compiling arrow-array v59.2.0
+   Compiling arrow-select v59.2.0
+   Compiling arrow-ipc v59.2.0
+   Compiling dta-tools v0.11.0 (<private-path>
+   Compiling dtatools-r v0.11.0 (<private-path>
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.86s
+     Running unittests src/lib.rs (<private-path>
+
+running 3 tests
+test owned_numeric::tests::scalar_spans_reject_empty_plain_and_invalid_arguments ... ok
+test owned_numeric::tests::scalar_spans_cover_raw_chunk_edges_for_every_storage_width ... ok
+test owned_numeric::tests::scalar_spans_return_whole_sliced_arrow_chunks_in_any_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.00s
+

@@ -1,0 +1,51 @@
+{
+  "coordinated_after_reverse_tests_stopped": true,
+  "note": "Original test header described pre-execution state; this receipt records completed execution. No test-only changes were required.",
+  "runner_sha256": "90a62ca443a38ce9e78b1d91a66de4a856dbf48a3c77b4b9746fc8f23c1d4d50",
+  "runs": [
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>"
+      ],
+      "counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 132,
+        "skipped": 0,
+        "warning": 0
+      },
+      "csv_sha256": "efd4483cdc9e5ae6cc5b96c1533291086ed3cadb171596c0e6c9915caeba49f6",
+      "exit_code": 0,
+      "library_sha256": "3bb3cbad02ac6c8716a8bd8d836b9014b6a40b938bd47bd7d853b1f85e97e5af",
+      "log_sha256": "cdc3741c8547bf028d0dbf63039749e0e7d42ecd4f26a6f22d4deeac02000c13",
+      "role": "dispatch",
+      "tests": 4
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "<private-path>",
+        "<private-path>",
+        "<private-path>"
+      ],
+      "counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 132,
+        "skipped": 0,
+        "warning": 0
+      },
+      "csv_sha256": "a7832bb302f22211a3c47da11a126bdcdcfd0db84077742efe519fb9fa6f172c",
+      "exit_code": 0,
+      "library_sha256": "4342f06890e1791574e14ef79d363d17ed3a4cde12aa992d841f9aa7471aa99b",
+      "log_sha256": "cdc3741c8547bf028d0dbf63039749e0e7d42ecd4f26a6f22d4deeac02000c13",
+      "role": "reverse",
+      "tests": 4
+    }
+  ],
+  "runs_sequential": true,
+  "test_file_sha256": "bd5b87c71f744614dad8e75b890367d7eba48bbb45144c14143277725f58e35f"
+}

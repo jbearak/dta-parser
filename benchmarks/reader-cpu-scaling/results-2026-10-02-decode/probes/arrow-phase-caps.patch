@@ -1,0 +1,98 @@
+--- a/src/dta-tools/src/arrow/read.rs
++++ b/src/dta-tools/src/arrow/read.rs
+@@ -1694,6 +1694,15 @@
+         .max(1)
+ }
+ 
++// Private diagnostic cap, applied after normal admission and worker limits.
++// Unset, malformed, or zero values preserve the resolved stock count.
++fn diagnostic_phase_thread_limit(resolved: usize, value: Option<&str>) -> usize {
++    value
++        .and_then(|value| value.parse::<usize>().ok())
++        .filter(|&limit| limit > 0)
++        .map_or(resolved, |limit| resolved.min(limit))
++}
++
+ /// One parallel work unit: a contiguous range of selected columns within one
+ /// planned block.
+ struct DecodeTask {
+@@ -2576,6 +2585,12 @@
+                 &context,
+                 &prepared.plans,
+                 prepared.produced,
++            );
++            let threads = diagnostic_phase_thread_limit(
++                threads,
++                std::env::var("DIAGNOSTIC_ARROW_DECODE_THREADS")
++                    .ok()
++                    .as_deref(),
+             );
+             if threads > 1 {
+                 decode_blocks_parallel(
+@@ -3563,6 +3578,17 @@
+         );
+     }
+ 
++    #[test]
++    fn diagnostic_decode_thread_cap_preserves_admission_and_stock_defaults() {
++        for value in [None, Some(""), Some("bad"), Some("0"), Some("-1")] {
++            assert_eq!(diagnostic_phase_thread_limit(16, value), 16);
++        }
++        assert_eq!(diagnostic_phase_thread_limit(16, Some("4")), 4);
++        assert_eq!(diagnostic_phase_thread_limit(12, Some("16")), 12);
++        assert_eq!(diagnostic_phase_thread_limit(1, Some("16")), 1);
++        assert_eq!(diagnostic_phase_thread_limit(16, Some("1")), 1);
++    }
++
+     #[cfg(unix)]
+     #[test]
+     fn parallel_decode_uses_the_prepared_file_snapshot() {
+--- a/src/rust/src/arrow_ffi.rs
++++ b/src/rust/src/arrow_ffi.rs
+@@ -3194,6 +3194,15 @@
+     threads.min(task_count).max(1)
+ }
+ 
++// Private diagnostic cap, applied after normal admission and worker limits.
++// Unset, malformed, or zero values preserve the resolved stock count.
++fn diagnostic_phase_thread_limit(resolved: usize, value: Option<&str>) -> usize {
++    value
++        .and_then(|value| value.parse::<usize>().ok())
++        .filter(|&limit| limit > 0)
++        .map_or(resolved, |limit| resolved.min(limit))
++}
++
+ /// Claim fill tasks from the shared queue. The R thread polls interrupts
+ /// between tasks and owned scan blocks. Workers only observe peer cancellation.
+ fn fill_task_loop(
+@@ -3714,6 +3723,12 @@
+         // Fill: pure conversions, in parallel when worthwhile.
+         let task_count = fills.iter().filter(|fill| fill.is_some()).count();
+         let threads = fill_thread_count(requested, task_count, row_count);
++        let threads = diagnostic_phase_thread_limit(
++            threads,
++            std::env::var("DIAGNOSTIC_ARROW_FILL_THREADS")
++                .ok()
++                .as_deref(),
++        );
+         let outcomes = run_column_fills(&result.columns, fills, threads)?;
+ 
+         // Finalize on the R thread: ALTREP wrapping, classes, attributes.
+@@ -3892,6 +3907,17 @@
+     }
+ 
+     #[test]
++    fn diagnostic_fill_thread_cap_preserves_admission_and_stock_defaults() {
++        for value in [None, Some(""), Some("bad"), Some("0"), Some("-1")] {
++            assert_eq!(diagnostic_phase_thread_limit(16, value), 16);
++        }
++        assert_eq!(diagnostic_phase_thread_limit(16, Some("4")), 4);
++        assert_eq!(diagnostic_phase_thread_limit(12, Some("16")), 12);
++        assert_eq!(diagnostic_phase_thread_limit(1, Some("16")), 1);
++        assert_eq!(diagnostic_phase_thread_limit(16, Some("1")), 1);
++    }
++
++    #[test]
+     fn owned_fill_peer_failure_is_not_a_user_interrupt() {
+         let columns = vec![
+             ArrowReadColumn {

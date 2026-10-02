@@ -1,0 +1,329 @@
+{
+  "build_boundary": "both builds use verified candidate receipts; current is previously accepted scalar optimization",
+  "cases": [
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-byte-is_na",
+      "kind": "byte",
+      "operation": "is_na"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-byte-is_missing",
+      "kind": "byte",
+      "operation": "is_missing"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-byte-sum",
+      "kind": "byte",
+      "operation": "sum"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-byte-min",
+      "kind": "byte",
+      "operation": "min"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-byte-max",
+      "kind": "byte",
+      "operation": "max"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-int-is_na",
+      "kind": "int",
+      "operation": "is_na"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-int-is_missing",
+      "kind": "int",
+      "operation": "is_missing"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-int-sum",
+      "kind": "int",
+      "operation": "sum"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-int-min",
+      "kind": "int",
+      "operation": "min"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-int-max",
+      "kind": "int",
+      "operation": "max"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-long-is_na",
+      "kind": "long",
+      "operation": "is_na"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-long-is_missing",
+      "kind": "long",
+      "operation": "is_missing"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-long-sum",
+      "kind": "long",
+      "operation": "sum"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-long-min",
+      "kind": "long",
+      "operation": "min"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-long-max",
+      "kind": "long",
+      "operation": "max"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-float-is_na",
+      "kind": "float",
+      "operation": "is_na"
+    },
+    {
+      "format": "dta",
+      "group": "core",
+      "id": "dta-float-is_missing",
+      "kind": "float",
+      "operation": "is_missing"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-float-sum",
+      "kind": "float",
+      "operation": "sum"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-float-min",
+      "kind": "float",
+      "operation": "min"
+    },
+    {
+      "format": "dta",
+      "group": "reductions",
+      "id": "dta-float-max",
+      "kind": "float",
+      "operation": "max"
+    },
+    {
+      "format": "dta",
+      "group": "multi",
+      "id": "dta-mixed-multi4",
+      "kind": "mixed",
+      "operation": "multi4"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-byte-is_na",
+      "kind": "byte",
+      "operation": "is_na"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-byte-is_missing",
+      "kind": "byte",
+      "operation": "is_missing"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-byte-sum",
+      "kind": "byte",
+      "operation": "sum"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-byte-min",
+      "kind": "byte",
+      "operation": "min"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-byte-max",
+      "kind": "byte",
+      "operation": "max"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-int-is_na",
+      "kind": "int",
+      "operation": "is_na"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-int-is_missing",
+      "kind": "int",
+      "operation": "is_missing"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-int-sum",
+      "kind": "int",
+      "operation": "sum"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-int-min",
+      "kind": "int",
+      "operation": "min"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-int-max",
+      "kind": "int",
+      "operation": "max"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-long-is_na",
+      "kind": "long",
+      "operation": "is_na"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-long-is_missing",
+      "kind": "long",
+      "operation": "is_missing"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-long-sum",
+      "kind": "long",
+      "operation": "sum"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-long-min",
+      "kind": "long",
+      "operation": "min"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-long-max",
+      "kind": "long",
+      "operation": "max"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-float-is_na",
+      "kind": "float",
+      "operation": "is_na"
+    },
+    {
+      "format": "arrow",
+      "group": "core",
+      "id": "arrow-float-is_missing",
+      "kind": "float",
+      "operation": "is_missing"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-float-sum",
+      "kind": "float",
+      "operation": "sum"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-float-min",
+      "kind": "float",
+      "operation": "min"
+    },
+    {
+      "format": "arrow",
+      "group": "reductions",
+      "id": "arrow-float-max",
+      "kind": "float",
+      "operation": "max"
+    },
+    {
+      "format": "arrow",
+      "group": "multi",
+      "id": "arrow-mixed-multi4",
+      "kind": "mixed",
+      "operation": "multi4"
+    }
+  ],
+  "cleared_environment": [],
+  "command": [
+    "<compact-work>/throughput.py",
+    "--variants",
+    "kernel",
+    "--cases",
+    "all",
+    "--rounds",
+    "1",
+    "--reps",
+    "64",
+    "--mode",
+    "diagnostic",
+    "--parity-gate",
+    "1.25",
+    "--work",
+    "<compact-work>/float-gate"
+  ],
+  "controls": "is_na and is_missing on classed compact values versus the same public function on ordinary doubles; reductions on classed compact values include public result construction; only qualification strips result metadata outside the timer",
+  "interval": "preloaded operation repetitions with last output retained; explicit GC, input reads, reference traversal and exact pre/post qualification outside; automatic GC and output allocation inside",
+  "mode": "diagnostic",
+  "order": "case rotations and reversed adjacent rounds; alternating compact/plain within each worker; rotating and reversing build order",
+  "parity_gate": 1.25,
+  "process_boundary": "one process per build/round for diagnostic, one per build/case/round for confirmation",
+  "qualification": "complete output identity plus full generic native checksum/missing counts and selected exact values/tags; reductions check native result exactly against doubles, then public result under existing Stata storage policy; compact inputs remain lazy",
+  "reps": 64,
+  "rounds": 1,
+  "variants": [
+    "kernel"
+  ]
+}

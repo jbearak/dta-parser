@@ -1,0 +1,21 @@
+{
+  "bindings_matched": true,
+  "configurations": 7,
+  "controller_sha256": "0fdaa4317f9ec6c7d78bda4a324a5c036bae31a4ce49d0356c23d943dc6a9378",
+  "datasig": "724115:5972:e404e6f1cf51f55a",
+  "observations": 42,
+  "qualified_configurations": 7,
+  "result_sha256": {
+    "build-bindings.json": "22186e9f84f8d3de8ddefb97913dad63b954970eccd499d53e748704bb4f5ea7",
+    "diagnostic.patch": "b9622e7b1c5d1f9685a530f302e798f9374bc2219ebf6273ca3edc5416cca599",
+    "paired-summary.csv": "9ac1dcf9e487695c6511c67e3bccd73bd0d11bf49fe304db8650095abc796cf2",
+    "protocol.json": "bd61a059541a81f3f9ec34a71533074a0458b421ff9db0fd9c3a821f1bd5669a",
+    "provenance-after.json": "667354a9f5f5344370eb9c3e382ddb061e74163748cbca8a9f5c5019bfbce27f",
+    "provenance-before.json": "667354a9f5f5344370eb9c3e382ddb061e74163748cbca8a9f5c5019bfbce27f",
+    "qualification.json": "da9f50fc52b9912f47d5282e9ffd3af0afa8fbd202a1ff0efdfc309387965190",
+    "raw.csv": "dd1a674b1c8cbfd8abe6e700a2982b98c31211dd231f893a50643c7083107e39",
+    "raw.jsonl": "a9a12a1dfb35b1191056b9ff30ac1b9ec30a61af04532c0a0108f258dfce3182",
+    "stock.patch": "e22f1248f37c61313fb30f3fef62ea6c1192943eb9b24353ad6aed8b85af8452",
+    "summary.csv": "5cf26291986c29296bc0a42f4ca556353874c349c7ff769a365e6cc87c9fb834"
+  }
+}

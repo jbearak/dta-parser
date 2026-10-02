@@ -1,0 +1,5 @@
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"sweep": 0}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:33:33+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"sweep": 0}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:34:03+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"sweep": 27}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:34:33+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"sweep": 53}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:35:03+00:00"}
+{"cpu_source": "ps pcpu", "cpu_threshold": 50, "nonowned_heavy": [], "raw_row_counts": {"sweep": 79}, "sample_period_seconds": 30, "schema_version": 2, "utc": "2026-10-02T03:35:33+00:00"}

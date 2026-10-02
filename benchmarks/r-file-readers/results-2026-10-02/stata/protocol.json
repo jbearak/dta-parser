@@ -1,0 +1,19 @@
+{
+  "pairs": 6,
+  "cases": [
+    "numeric",
+    "compact"
+  ],
+  "processors": 1,
+  "operations": [
+    "use",
+    "save"
+  ],
+  "process": "one operation per fresh Stata process",
+  "clocks": "same-interval plugin CLOCK_MONOTONIC and getrusage(RUSAGE_SELF)",
+  "rss": "whole Stata process wait4 peak; save includes untimed setup use",
+  "cache": "warm filesystem; no explicit fsync or cold-storage claim",
+  "qualification": "dtatools datasig on each source and every saved output outside timing",
+  "ordering": "case rotation; use/save order reversed between repetitions",
+  "overhead_subtracted": false
+}

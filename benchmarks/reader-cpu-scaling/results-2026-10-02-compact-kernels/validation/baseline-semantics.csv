@@ -1,0 +1,10 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing masks cover all tags tails and retained chunk boundaries",1360,0,FALSE,FALSE,0,0.646,0.119,0.765,1360
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing predicates merge columns without changing recycling or names",40,0,FALSE,FALSE,0,0.0249999999999999,0.002,0.0270000000000001,40
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0,0.0170000000000001,0.002,0.018,32
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0,0.0309999999999999,0.006,0.042,37
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0,0.0449999999999999,0.00900000000000001,0.052,96
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0,0.116,0.001,0.117,24
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0,0.255,0.003,0.258,32
+"compact-baseline-semantics.R","compact-baseline-semantics","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0,0.567,0.001,0.568,12
+"compact-baseline-semantics.R","compact-baseline-semantics","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.0100000000000002,20

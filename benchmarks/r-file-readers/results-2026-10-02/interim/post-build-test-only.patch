@@ -1,0 +1,44 @@
+--- a/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
++++ b/r-package/dtatools/tests/testthat/test-owned-numeric-buffers.R
+@@ -15,13 +15,15 @@
+             expect_identical(is.na(snapshot), is.na(values))
+             actual <- vapply(positions, function(i) snapshot[[i]], double(1))
+             expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
+             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
+             before <- owned_numeric_info(snapshot)
+ 
+             .Call(C_dtatools_mutate_first_numeric_altrep, frozen, 8)
+             gc()
+-            expect_identical(vapply(positions, function(i) snapshot[[i]], double(1)),
+-                             values[positions])
++            actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++            expect_identical(actual, values[positions])
++            expect_identical(missing_tag(actual), missing_tag(values[positions]))
+             expect_identical(is.na(snapshot), is.na(values))
+             expect_equal(owned_numeric_info(snapshot)[["compatibility_bytes"]],
+                          before[["compatibility_bytes"]])
+@@ -55,8 +57,9 @@
+         snapshot <- snapshots[[name]]
+         expect_gt(owned_numeric_info(snapshot)[["chunks"]], 1)
+         expect_identical(is.na(snapshot), is.na(expected[[name]]))
+-        expect_identical(vapply(positions, function(i) snapshot[[i]], double(1)),
+-                         expected[[name]][positions])
++        actual <- vapply(positions, function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][positions])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][positions]))
+         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
+         .force_altrep_materialization(imported[[name]])
+     }
+@@ -66,8 +69,9 @@
+     for (name in names(snapshots)) {
+         snapshot <- snapshots[[name]]
+         expect_equal(owned_numeric_info(snapshot)[["owned"]], 1)
+-        expect_identical(vapply(rev(positions), function(i) snapshot[[i]], double(1)),
+-                         expected[[name]][rev(positions)])
++        actual <- vapply(rev(positions), function(i) snapshot[[i]], double(1))
++        expect_identical(actual, expected[[name]][rev(positions)])
++        expect_identical(missing_tag(actual), missing_tag(expected[[name]][rev(positions)]))
+         expect_identical(is.na(snapshot), is.na(expected[[name]]))
+         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
+     }

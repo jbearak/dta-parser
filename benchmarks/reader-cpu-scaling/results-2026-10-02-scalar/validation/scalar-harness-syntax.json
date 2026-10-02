@@ -1,0 +1,18 @@
+{
+  "R_parse": {
+    "command": [
+      "/opt/homebrew/bin/Rscript",
+      "--vanilla",
+      "-e",
+      "invisible(parse('<private-path>')); cat(\"R syntax OK\\n\")"
+    ],
+    "exit_code": 0,
+    "output": "R syntax OK\n"
+  },
+  "files": {
+    "scalar-benchmark.py": "dc336e357c31bd44d97a772694dd59c126f9616b8d09bf4f65ef5f5b37f4aab8",
+    "scalar-worker.R": "66851d08551144a04d5b534b24cc7083f7876b45f80bf121ac00282f561ec8a9"
+  },
+  "python_ast": "passed",
+  "timing_executed": false
+}

@@ -1,0 +1,22 @@
+{
+  "logs": {
+    "candidate-arrow-phases/bridge-diagnostic-tests.log": "0d9e68b09401d7815c1b21f29ee073f2ab590cccb18efeebb1b4d7b512f52951",
+    "candidate-arrow-phases/bridge-peer-cancel-tests.log": "684598f4af42498b5489e927ca26ff250aaaa2cd134112f9d4ec6a7631d3a815",
+    "candidate-arrow-phases/bridge-reader-policy-tests.log": "2659451e052362ce9c8b80f9ed5464f30fa9c4871924226972f7e59c629f8a27",
+    "candidate-arrow-phases/build.log": "8ccb0acb0a09ae844fd90fad5872f1a57be28542e739b1e6f696f90e619e2864",
+    "candidate-arrow-phases/core-diagnostic-cached-tests.log": "90aebe3c49f39768fdafabc0196291ae38ffd456e70b81be3cc92a18f0b27954",
+    "candidate-arrow-phases/core-diagnostic-qualified-tests.log": "7c3ed93e2ac7493297024714b57d8a728622fb4a1ae673702dca5778f1004401",
+    "candidate-arrow-phases/core-diagnostic-tests.log": "5625683e0f7a5c88316bdbc9e4a617d87e03abcd3599db0332ce1b1dbbd43dc9",
+    "candidate-arrow-phases/core-diagnostic-vendored-tests.log": "c1a8d614a1fb4c9b393d447bd656e40c208f84b7bce0962bd665c25687845230",
+    "candidate-arrow-phases/core-reader-policy-tests.log": "e4faba0af85ccfc0639d7c8fe95049b714a9c0664b3a2479c1b94a3946f04690",
+    "candidate-arrow-phases/core-snapshot-tests.log": "a53efac20b00e2546b19df84ad6c5fa2b7e1c789abbe81fee7317f343d0548b3",
+    "candidate-arrow-phases/correctness-grid.log": "9853f30bce15d36bdd149b63e0c87534d2ff94da8e9d054949a5c3bbee539a23",
+    "gather4-baseline-tests.log": "e7b8bcf86fe2e84d40d685a9c60f060c7af7da483ed79f40663c090268123019",
+    "gather4-candidate-tests.log": "108ca0b880eee6182bce0b956e977032821f9e046695ff49144c8d6bc9109038",
+    "gather4-v2-after-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gather4-v2-after-tests.log": "8144b6841750de12e368ef27c96de88555e135029a0e9ec9a21acba7c611e0f7",
+    "gather4-v2-before-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gather4-v2-before-tests.log": "87211804f02331f144f968d9b832991d860cf1a9643112eb0a0df1e2dd9d73f5"
+  },
+  "note": "Hashes only; raw build, setup and test logs remain private."
+}

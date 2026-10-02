@@ -1,0 +1,14 @@
+{
+  "helper_scope": "local block; owned_scalar_ prefix",
+  "incremental_patch_sha256": "ee1d3786df331470edadb67408f8bcf207fd16fb91e73b8734f3bc28d45e5373",
+  "source_files_changed": [
+    "NEWS.md",
+    "src/dtatools-internal.h",
+    "src/metadata-proxies.c",
+    "src/numeric-payload.c",
+    "src/rust/src/owned_numeric.rs",
+    "tests/testthat/test-owned-numeric-buffers.R"
+  ],
+  "status": "built and validated private candidate; not benchmarked or selected",
+  "tests_appended": 4
+}

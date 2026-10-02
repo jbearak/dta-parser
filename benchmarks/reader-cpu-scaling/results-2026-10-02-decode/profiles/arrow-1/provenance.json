@@ -1,0 +1,15 @@
+{
+  "kind": "arrow",
+  "requested_threads": 1,
+  "sampler_exit": 0,
+  "available": true,
+  "excluded_samples": 22,
+  "input_sha256": "f1449a871b3fabbeed303b04a2dc0b884e4a76c7f213d7f095e0b25acd76dfcc",
+  "library_dll_sha256": "72f6661c57f70065b84dd2ef2aaef953aa8b69c49cd0cb3964dce649db0d2add",
+  "build_binding_sha256": "d92d42f9b2e2ca37e37b3e22be255954031a0fbdb6e42532ec021804cd963835",
+  "read_worker_sha256": "813f557b95a96939e724319c5e508e17273dd19a1f4d89e111fcb2568b20d169",
+  "profile_worker_sha256": "06160cad380fdeb0085da2a413eb724fd69489d270f10d97f23d371840a9ec3c",
+  "sample_seconds": 5,
+  "interval_ms": 1,
+  "interpretation": "All-thread stack samples include waits and inter-read collection; counts are not CPU percentages."
+}

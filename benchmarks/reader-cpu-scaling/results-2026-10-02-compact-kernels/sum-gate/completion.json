@@ -1,0 +1,19 @@
+{
+  "bindings_matched": true,
+  "exact_validation": true,
+  "observations": 84,
+  "parity_failures": [
+    {
+      "case": "dta-float-sum",
+      "ratio": 1.4225352112676117,
+      "variant": "kernel"
+    },
+    {
+      "case": "arrow-float-sum",
+      "ratio": 1.4225352112676117,
+      "variant": "kernel"
+    }
+  ],
+  "parity_gate": 1.25,
+  "processes": 1
+}

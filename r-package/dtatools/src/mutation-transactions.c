@@ -3016,6 +3016,17 @@ SEXP C_dtatools_is_missing(SEXP values) {
             string_reader = reference_string_reader_create(value, R_NilValue);
             string_reader_pointer = &string_reader;
         } else {
+            numeric_data storage;
+            SEXP root = PROTECT(numeric_missing_mask_capture(value, &storage));
+            if (root != R_NilValue) {
+                if ((R_xlen_t) storage.length != size) {
+                    Rf_error("dtatools numeric storage length does not match vector length");
+                }
+                unresolved -= (R_xlen_t) numeric_missing_mask(&storage, output, 1);
+                UNPROTECT(1);
+                continue;
+            }
+            UNPROTECT(1);
             reader = numeric_reader_create(value, size);
             reader_pointer = &reader;
         }

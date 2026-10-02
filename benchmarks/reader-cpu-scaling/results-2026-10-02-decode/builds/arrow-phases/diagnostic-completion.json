@@ -1,0 +1,95 @@
+{
+  "background_processes_remaining": false,
+  "base_commit": "93cc80890032da4c6ef93e8beb4f5b6eb0175a29",
+  "build_receipt": "<private-build-receipt>",
+  "correctness_grid": {
+    "assertions": "identical full datasig and identical values/attributes against serial native read",
+    "batches": 3,
+    "columns": 18,
+    "invalid_values_preserve_defaults": [
+      "",
+      "0",
+      "bad",
+      "-1"
+    ],
+    "log": "correctness-grid.log",
+    "phase_pairs": [
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        4
+      ],
+      [
+        4,
+        16
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        12,
+        8
+      ],
+      [
+        12,
+        12
+      ]
+    ],
+    "public_thread_limits": [
+      16,
+      1
+    ],
+    "rows": 131079,
+    "signature": "131079:18:95492924291e1c3f",
+    "timing_collected": false,
+    "unset_control": true
+  },
+  "incremental_patch": "<private-incremental-patch>",
+  "incremental_patch_sha256": "0fa35a08b9adbee4f840a48784c5b4307f4f1a240b79c61d0f4e1607a72dc3fd",
+  "installed_dll_sha256": "745aa36a49031fc9d30a17c6415e110762aaf5c2aaa99dc20b6a960a5c639d0f",
+  "library": "<private-library>",
+  "native_checks": [
+    {
+      "failed": 0,
+      "log": "bridge-diagnostic-tests.log",
+      "passed": 1
+    },
+    {
+      "failed": 0,
+      "log": "bridge-reader-policy-tests.log",
+      "passed": 1
+    },
+    {
+      "failed": 0,
+      "log": "bridge-peer-cancel-tests.log",
+      "passed": 1
+    },
+    {
+      "failed": 0,
+      "log": "core-diagnostic-qualified-tests.log",
+      "passed": 1
+    },
+    {
+      "failed": 0,
+      "log": "core-reader-policy-tests.log",
+      "passed": 2
+    },
+    {
+      "failed": 0,
+      "log": "core-snapshot-tests.log",
+      "passed": 1
+    }
+  ],
+  "native_pass_total": 7,
+  "original_record_sha256": "46ac38d438686ac5258465e4381acf074f052fc69ff98cf5be7101ddd2bd9b84",
+  "production_checkout_modified": false,
+  "sanitization": "Four local path fields replaced with placeholders; original bytes remain bound by hash in phase provenance.",
+  "source_patch_from_base_sha256": "b9622e7b1c5d1f9685a530f302e798f9374bc2219ebf6273ca3edc5416cca599",
+  "source_snapshot": "<private-source-snapshot>",
+  "status": "ready for parent qualification and phase benchmarks",
+  "test_setup_notes": "Core tests initially could not resolve sha2 from R vendor; tests use private copies of already cached dev dependencies, their cached archive checksums, and a private copy of the referenced repository fixture. Production build vendor and installed DLL were unchanged. Setup failures retained in logs."
+}

@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "assembly_lines": 76,
+    "data1_calls": 2,
+    "library_sha256": "bee56dcf1e51cce520ebed497d529eee597597099c4720c9401e4e370b68792d",
+    "metadata_proxy_source_assembly_sha256": "17811d38eb9408fd39f4acebe89aef3e2278017d0cbed0835999e87840681fe2",
+    "type_of_calls": 1,
+    "xlength_calls": 3
+  },
+  "sourcecheck": {
+    "assembly_lines": 62,
+    "data1_calls": 1,
+    "library_sha256": "e5f0fa612da2181d2ef815020c90a03ee26bc891cbe3dbd651cfd8063205fe2c",
+    "metadata_proxy_source_assembly_sha256": "ca247d9edbc19a71fbe52c2e5a3e98bcd826d451a612f41222c9ef5736b76fa9",
+    "type_of_calls": 1,
+    "xlength_calls": 1
+  }
+}

@@ -427,6 +427,28 @@ double numeric_observed_value(double value, int temporal) {
     return value;
 }
 
+/* Only the scalar ALTREP getter calls this cache. Its descriptor roots the
+   immutable owner, and this helper neither allocates nor invokes R callbacks.
+   Cache the complete chunk so reverse reads reuse it as well as forward reads.
+   Region and native reader kernels keep their existing read-only paths. */
+static const void *numeric_scalar_span(
+    numeric_data *data, size_t index, size_t width
+) {
+    if (index < data->scalar_start || index >= data->scalar_end) {
+        const void *values = NULL;
+        size_t start = 0, end = 0;
+        if (!dtatools_owned_numeric_scalar_span(data, index, &values, &start, &end) ||
+            values == NULL || index < start || index >= end) {
+            Rf_error("invalid owned compact scalar span");
+        }
+        data->scalar_values = values;
+        data->scalar_start = start;
+        data->scalar_end = end;
+    }
+    return (const unsigned char *) data->scalar_values +
+        (index - data->scalar_start) * width;
+}
+
 #define DEFINE_NUMERIC_KERNELS(NAME, TYPE, MISSING_OFFSET)                    \
     static TYPE numeric_##NAME##_raw_at(                                     \
         const numeric_data *data, size_t index                               \
@@ -444,16 +466,39 @@ double numeric_observed_value(double value, int temporal) {
         return raw;                                                           \
     }                                                                         \
                                                                               \
-    static double numeric_##NAME##_value_at(                                  \
-        const numeric_data *data, size_t index                                \
-    ) {                                                                       \
-        TYPE raw = numeric_##NAME##_raw_at(data, index);                      \
-        int missing = MISSING_OFFSET(raw, data->format_version);              \
-        return missing >= 0                                                   \
-            ? numeric_missing_value(missing)                                  \
-            : numeric_observed_value((double) raw, data->temporal);           \
-    }                                                                         \
-                                                                              \
+    static double numeric_##NAME##_decode(                                   \
+        TYPE raw, const numeric_data *data                                   \
+    ) {                                                                      \
+        int missing = MISSING_OFFSET(raw, data->format_version);             \
+        return missing >= 0                                                  \
+            ? numeric_missing_value(missing)                                 \
+            : numeric_observed_value((double) raw, data->temporal);          \
+    }                                                                        \
+                                                                             \
+    static double numeric_##NAME##_value_at(                                 \
+        const numeric_data *data, size_t index                               \
+    ) {                                                                      \
+        return numeric_##NAME##_decode(                                      \
+            numeric_##NAME##_raw_at(data, index), data                       \
+        );                                                                   \
+    }                                                                        \
+                                                                             \
+    static double numeric_##NAME##_scalar_value_at(                          \
+        numeric_data *data, size_t index                                     \
+    ) {                                                                      \
+        TYPE raw;                                                            \
+        if (!numeric_payload_retained(data)) {                               \
+            memcpy(&raw, (const char *) data->values + index * sizeof(raw),  \
+                   sizeof(raw));                                             \
+        } else {                                                             \
+            const void *source = numeric_scalar_span(                        \
+                data, index, sizeof(raw)                                     \
+            );                                                               \
+            memcpy(&raw, source, sizeof(raw));                               \
+        }                                                                    \
+        return numeric_##NAME##_decode(raw, data);                           \
+    }                                                                        \
+                                                                             \
     static void numeric_##NAME##_region(                                      \
         const numeric_data *data, size_t index, size_t length, double *output \
     ) {                                                                       \
@@ -473,34 +518,6 @@ double numeric_observed_value(double value, int temporal) {
                 );                                                            \
             }                                                                 \
         }                                                                     \
-    }                                                                         \
-                                                                              \
-    static void numeric_##NAME##_sum_accumulate(                              \
-        const numeric_data *data, Rboolean na_rm, long double *accumulator    \
-    ) {                                                                       \
-        long double sum = *accumulator;                                       \
-        if (data->missing_count == 0) {                                       \
-            for (size_t index = 0; index < data->length; index++) {           \
-                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
-                TYPE raw = numeric_##NAME##_raw_at(data, index);              \
-                sum += numeric_observed_value((double) raw, data->temporal);  \
-            }                                                                 \
-        } else {                                                              \
-            for (size_t index = 0; index < data->length; index++) {           \
-                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
-                double element = numeric_##NAME##_value_at(data, index);      \
-                if (!na_rm || !ISNAN(element)) sum += element;                \
-            }                                                                 \
-        }                                                                     \
-        *accumulator = sum;                                                   \
-    }                                                                         \
-                                                                              \
-    static long double numeric_##NAME##_sum(                                  \
-        const numeric_data *data, Rboolean na_rm                              \
-    ) {                                                                       \
-        long double sum = 0.0;                                                \
-        numeric_##NAME##_sum_accumulate(data, na_rm, &sum);                   \
-        return sum;                                                           \
     }                                                                         \
                                                                               \
     static void numeric_##NAME##_extreme_accumulate(                          \
@@ -564,6 +581,91 @@ DEFINE_NUMERIC_KERNELS(float, float, float_missing_offset)
 
 #undef DEFINE_NUMERIC_KERNELS
 
+
+/* A sum keeps one ordered accumulator across every block and span. Direct
+   typed loads avoid scalar decode dispatch; invariant missingness and temporal
+   policies select the loop before it starts. Independent partial sums would
+   change rounding, so these loops deliberately do not reassociate addition. */
+#define NUMERIC_SUM_ROWS(TYPE, PREPARE, VALUE)                               \
+    do {                                                                    \
+        for (size_t start = 0; start < data->length; ) {                      \
+            size_t count = data->length - start;                             \
+            if (count > 65536) count = 65536;                                \
+            if (data->length >= 16384) R_CheckUserInterrupt();               \
+            for (size_t i = start; i < start + count; i++) {                 \
+                TYPE raw;                                                   \
+                memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));         \
+                PREPARE                                                     \
+                double element = (VALUE);                                   \
+                sum += element;                                             \
+            }                                                               \
+            start += count;                                                 \
+        }                                                                   \
+    } while (0)
+
+#define NUMERIC_SUM_OBSERVED(VALUE) (VALUE)
+#define NUMERIC_SUM_DECODED(VALUE)                                           \
+    (missing >= 0 ? numeric_missing_value(missing) : (VALUE))
+
+#define NUMERIC_SUM_TEMPORAL(TYPE, PREPARE, DECODE)                           \
+    do {                                                                    \
+        if (temporal == 1) {                                                 \
+            NUMERIC_SUM_ROWS(TYPE, PREPARE, DECODE((double) raw - 3653.0));   \
+        } else if (temporal == 2) {                                          \
+            NUMERIC_SUM_ROWS(TYPE, PREPARE,                                  \
+                             DECODE((double) raw / 1000.0 - 315619200.0));   \
+        } else {                                                            \
+            NUMERIC_SUM_ROWS(TYPE, PREPARE, DECODE((double) raw));           \
+        }                                                                   \
+    } while (0)
+
+#define DEFINE_NUMERIC_SUM(NAME, TYPE, MISSING_OFFSET, FAST_OBSERVED)        \
+    static void numeric_##NAME##_sum_accumulate(                             \
+        const numeric_data *data, Rboolean na_rm, long double *accumulator   \
+    ) {                                                                     \
+        const unsigned char *bytes = data->values;                           \
+        int temporal = data->temporal;                                      \
+        long double sum = *accumulator;                                      \
+        if (data->missing_count == 0) {                                      \
+            NUMERIC_SUM_TEMPORAL(TYPE, (void) 0;, NUMERIC_SUM_OBSERVED);     \
+        } else if (na_rm) {                                                 \
+            if (data->format_version <= 111) {                               \
+                NUMERIC_SUM_TEMPORAL(TYPE,                                  \
+                    if (!(FAST_OBSERVED) &&                                 \
+                        (MISSING_OFFSET(raw, 111) >= 0 ||                    \
+                         isnan((double) raw))) continue;,                   \
+                    NUMERIC_SUM_OBSERVED);                                  \
+            } else {                                                        \
+                NUMERIC_SUM_TEMPORAL(TYPE,                                  \
+                    if (!(FAST_OBSERVED) &&                                 \
+                        (MISSING_OFFSET(raw, 119) >= 0 ||                    \
+                         isnan((double) raw))) continue;,                   \
+                    NUMERIC_SUM_OBSERVED);                                  \
+            }                                                               \
+        } else if (data->format_version <= 111) {                            \
+            NUMERIC_SUM_TEMPORAL(TYPE,                                      \
+                int missing = MISSING_OFFSET(raw, 111);, NUMERIC_SUM_DECODED);\
+        } else {                                                            \
+            NUMERIC_SUM_TEMPORAL(TYPE,                                      \
+                int missing = MISSING_OFFSET(raw, 119);, NUMERIC_SUM_DECODED);\
+        }                                                                   \
+        *accumulator = sum;                                                  \
+    }
+
+DEFINE_NUMERIC_SUM(byte, int8_t, byte_missing_offset, 0)
+DEFINE_NUMERIC_SUM(int, int16_t, int_missing_offset, 0)
+DEFINE_NUMERIC_SUM(long, int32_t, long_missing_offset, 0)
+/* Every Stata float missing code is at least 2^127. An ordered comparison
+   excludes either NaN sign; ordinary values and negative infinity need no
+   further predicate. Large positive values retain the full format check. */
+DEFINE_NUMERIC_SUM(float, float, float_missing_offset, raw < 0x1p127f)
+
+#undef DEFINE_NUMERIC_SUM
+#undef NUMERIC_SUM_TEMPORAL
+#undef NUMERIC_SUM_DECODED
+#undef NUMERIC_SUM_OBSERVED
+#undef NUMERIC_SUM_ROWS
+
 static double numeric_value_at(const numeric_data *data, size_t index) {
     switch (data->kind) {
     case NUMERIC_BYTE:
@@ -612,6 +714,90 @@ int numeric_value_is_missing_at(
         isnan(numeric_float_raw_at(data, index));
 }
 
+/* Missingness needs only storage codes, never decoded doubles. Select the
+   representation once per contiguous span; keep R dispatch and interrupt
+   checks outside the vectorizable byte loops. The caller roots a descriptor
+   snapshot and its backing before allocating the output. */
+typedef struct {
+    int *output;
+    int combine;
+    size_t added;
+} numeric_missing_mask_context;
+
+#define NUMERIC_MISSING_MASK_LOOP(TYPE, MISSING)                             \
+    do {                                                                    \
+        const unsigned char *restrict bytes = span->values;                 \
+        int *restrict output = context->output + offset;                    \
+        for (size_t start = 0; start < span->length; ) {                      \
+            size_t count = span->length - start;                             \
+            if (count > 65536) count = 65536;                                \
+            if (span->length >= 16384) R_CheckUserInterrupt();               \
+            if (context->combine) {                                         \
+                size_t added = 0;                                           \
+                for (size_t i = start; i < start + count; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    int missing = (MISSING);                                \
+                    int previous = output[i];                               \
+                    output[i] = previous | missing;                         \
+                    added += (size_t) (missing & !previous);                \
+                }                                                           \
+                context->added += added;                                    \
+            } else {                                                        \
+                for (size_t i = start; i < start + count; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    output[i] = (MISSING);                                  \
+                }                                                           \
+            }                                                               \
+            start += count;                                                 \
+        }                                                                   \
+    } while (0)
+
+static void numeric_missing_mask_span(
+    const numeric_data *span, size_t offset, void *raw_context
+) {
+    numeric_missing_mask_context *context = raw_context;
+    int legacy = span->format_version <= 111;
+    switch (span->kind) {
+    case NUMERIC_BYTE:
+        if (legacy) NUMERIC_MISSING_MASK_LOOP(int8_t, raw == INT8_C(127));
+        else NUMERIC_MISSING_MASK_LOOP(int8_t, raw >= INT8_C(101));
+        break;
+    case NUMERIC_INT:
+        if (legacy) NUMERIC_MISSING_MASK_LOOP(int16_t, raw == INT16_C(32767));
+        else NUMERIC_MISSING_MASK_LOOP(int16_t, raw >= INT16_C(32741));
+        break;
+    case NUMERIC_LONG:
+        if (legacy) NUMERIC_MISSING_MASK_LOOP(int32_t, raw == INT32_MAX);
+        else NUMERIC_MISSING_MASK_LOOP(int32_t, raw >= INT32_C(2147483621));
+        break;
+    case NUMERIC_FLOAT:
+        if (legacy) {
+            NUMERIC_MISSING_MASK_LOOP(uint32_t,
+                (raw >= UINT32_C(0x7f000000) && raw < UINT32_C(0x80000000)) |
+                ((raw & UINT32_C(0x7fffffff)) > UINT32_C(0x7f800000)));
+        } else {
+            NUMERIC_MISSING_MASK_LOOP(uint32_t,
+                (raw >= UINT32_C(0x7f000000) && raw <= UINT32_C(0x7f00d000) &&
+                 (raw & UINT32_C(0x000007ff)) == 0) |
+                ((raw & UINT32_C(0x7fffffff)) > UINT32_C(0x7f800000)));
+        }
+        break;
+    default:
+        Rf_error("invalid dtatools numeric storage kind");
+    }
+}
+#undef NUMERIC_MISSING_MASK_LOOP
+
+/* combine=0 writes a fresh mask; combine=1 ORs into an existing 0/1 mask and
+   returns the number of newly missing rows for argument-level short circuit. */
+size_t numeric_missing_mask(const numeric_data *data, int *output, int combine) {
+    numeric_missing_mask_context context = {output, combine, 0};
+    numeric_for_each_span(data, 0, data->length, numeric_missing_mask_span, &context);
+    return context.added;
+}
+
 static size_t numeric_count_missing(const numeric_data *data) {
     size_t count = 0;
     for (size_t index = 0; index < data->length; index++) {
@@ -638,6 +824,20 @@ SEXP numeric_payload_root(SEXP value) {
     }
     if (ALTREP(value) && R_altrep_data2(value) != R_NilValue) return R_altrep_data2(value);
     return value;
+}
+
+/* Retaining an immutable owner's bytes creates a distinct native owner.
+   Derive its descriptor only after the private handle has captured it: an
+   allocation callback may materialize the public handle during capture. For
+   plain backing, the raw allocation root keeps the entry descriptor valid. */
+SEXP numeric_missing_mask_capture(SEXP value, numeric_data *storage) {
+    SEXP source = numeric_base_source(value);
+    if (source == R_NilValue) return R_NilValue;
+    numeric_data entry = *numeric_read_storage(source);
+    SEXP root = numeric_payload_root(source);
+    *storage = numeric_payload_retained(&entry)
+        ? *numeric_read_storage(root) : entry;
+    return root;
 }
 
 numeric_reader numeric_reader_create(
@@ -859,7 +1059,10 @@ DTATOOLS_LAYOUT_ASSERT(gather_y_owner, offsetof(numeric_gather_column, y_owner) 
 DTATOOLS_LAYOUT_ASSERT(gather_x_length, offsetof(numeric_gather_column, x_length) == 80);
 DTATOOLS_LAYOUT_ASSERT(gather_size, sizeof(numeric_gather_column) == 96);
 DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40);
-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 48);
+DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
+DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
+DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
 DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
@@ -1675,7 +1878,18 @@ double numeric_value(SEXP value, R_xlen_t index) {
     if (index < 0 || (size_t) index >= data->length) {
         Rf_error("invalid dtatools numeric-vector index");
     }
-    return numeric_value_at(data, (size_t) index);
+    switch (data->kind) {
+    case NUMERIC_BYTE:
+        return numeric_byte_scalar_value_at(data, (size_t) index);
+    case NUMERIC_INT:
+        return numeric_int_scalar_value_at(data, (size_t) index);
+    case NUMERIC_LONG:
+        return numeric_long_scalar_value_at(data, (size_t) index);
+    case NUMERIC_FLOAT:
+        return numeric_float_scalar_value_at(data, (size_t) index);
+    default:
+        Rf_error("invalid dtatools numeric storage kind");
+    }
 }
 
 R_xlen_t numeric_region(

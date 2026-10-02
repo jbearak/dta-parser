@@ -1,0 +1,12 @@
+{
+  "baseline": {
+    "library_sha256": "bee56dcf1e51cce520ebed497d529eee597597099c4720c9401e4e370b68792d",
+    "numeric_value_assembly_sha256": "c24d76492b68324e022bd867555b7799d07a850d688f5b2d9f7f37a96fb21a7c",
+    "numeric_value_lines": 243
+  },
+  "reverse": {
+    "library_sha256": "4342f06890e1791574e14ef79d363d17ed3a4cde12aa992d841f9aa7471aa99b",
+    "numeric_value_assembly_sha256": "7d30a38d9ae1733e05d8fe25d05da2881b6df5da0fa0f35ebaa018d634710fe6",
+    "numeric_value_lines": 282
+  }
+}

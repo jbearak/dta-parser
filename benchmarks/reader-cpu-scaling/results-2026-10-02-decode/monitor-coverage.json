@@ -1,0 +1,17 @@
+{
+  "note": "Experiment monitoring began during the gather screen, so screen coverage is partial. ps CPU samples do not measure interval utilization or establish continuous host isolation.",
+  "samples": {
+    "experiment-host-load.jsonl": {
+      "first_utc": "2026-10-02T03:46:52+00:00",
+      "last_utc": "2026-10-02T03:51:52+00:00",
+      "samples": 11,
+      "samples_with_heavy_processes": 0
+    },
+    "host-load.jsonl": {
+      "first_utc": "2026-10-02T03:33:33+00:00",
+      "last_utc": "2026-10-02T03:35:33+00:00",
+      "samples": 5,
+      "samples_with_heavy_processes": 0
+    }
+  }
+}

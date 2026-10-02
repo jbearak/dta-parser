@@ -1,0 +1,60 @@
+{
+  "reads": [
+    {
+      "arrow": "<private-path>",
+      "columns": 32,
+      "csv": "<private-path>",
+      "dta": "<private-path>",
+      "feather": "<private-path>",
+      "fst": "<private-path>",
+      "id": "numeric",
+      "qs2": "<private-path>",
+      "qualification": "values",
+      "rds": "<private-path>",
+      "reference": "<private-path>",
+      "rows": 200000
+    },
+    {
+      "arrow": "<private-path>",
+      "columns": 32,
+      "csv": "<private-path>",
+      "dta": "<private-path>",
+      "feather": "<private-path>",
+      "fst": "<private-path>",
+      "id": "compact",
+      "qs2": "<private-path>",
+      "qualification": "values",
+      "rds": "<private-path>",
+      "reference": "<private-path>",
+      "rows": 1000000
+    },
+    {
+      "arrow": "<private-path>",
+      "columns": 32,
+      "csv": "<private-path>",
+      "dta": "<private-path>",
+      "feather": "<private-path>",
+      "fst": "<private-path>",
+      "id": "mixed",
+      "qs2": "<private-path>",
+      "qualification": "values",
+      "rds": "<private-path>",
+      "reference": "<private-path>",
+      "rows": 200000
+    },
+    {
+      "arrow": "<private-path>",
+      "columns": 4096,
+      "csv": "<private-path>",
+      "dta": "<private-path>",
+      "feather": "<private-path>",
+      "fst": "<private-path>",
+      "id": "wide",
+      "qs2": "<private-path>",
+      "qualification": "values",
+      "rds": "<private-path>",
+      "reference": "<private-path>",
+      "rows": 128
+    }
+  ]
+}
