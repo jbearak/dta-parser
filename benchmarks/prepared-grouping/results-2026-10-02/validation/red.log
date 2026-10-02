@@ -1,0 +1,6 @@
+  scalar_values prepared_values  prepared_bytes 
+              0               0               0 
+  scalar_values prepared_values  prepared_bytes 
+         249092               0               0 
+Error: counts[["scalar_values"]] + counts[["prepared_values"]] <= n is not TRUE
+Execution halted

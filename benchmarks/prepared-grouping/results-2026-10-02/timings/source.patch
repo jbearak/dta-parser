@@ -1,0 +1,587 @@
+--- a/src/egen-groups.h
++++ b/src/egen-groups.h
+@@ -4,12 +4,47 @@
+ #include "dtatools-internal.h"
+ 
+ /* Stable multicolumn ordering over compact readers. Scratch space contains
+- * row positions and cached UTF-8 references. Source columns stay compact. */
++ * row positions, cached UTF-8 references and prepared numeric order keys.
++ * Source columns stay compact. */
+ #include <R_ext/Memory.h>
++
++/* Private structural counters keep the preparation bound testable without
++   timing assertions. Counters are enabled only by the diagnostic reset. */
++static int egen_group_counting = 0;
++static double egen_group_scalar_values = 0;
++static double egen_group_prepared_values = 0;
++static double egen_group_prepared_bytes = 0;
++
++SEXP C_dtatools_egen_group_stats(SEXP reset) {
++    if (Rf_asLogical(reset) == TRUE) {
++        egen_group_scalar_values = egen_group_prepared_values = 0;
++        egen_group_prepared_bytes = 0;
++        egen_group_counting = 1;
++    }
++    SEXP result = PROTECT(Rf_allocVector(REALSXP, 3));
++    REAL(result)[0] = egen_group_scalar_values;
++    REAL(result)[1] = egen_group_prepared_values;
++    REAL(result)[2] = egen_group_prepared_bytes;
++    SEXP names = PROTECT(Rf_allocVector(STRSXP, 3));
++    SET_STRING_ELT(names, 0, Rf_mkChar("scalar_values"));
++    SET_STRING_ELT(names, 1, Rf_mkChar("prepared_values"));
++    SET_STRING_ELT(names, 2, Rf_mkChar("prepared_bytes"));
++    Rf_setAttrib(result, R_NamesSymbol, names);
++    if (Rf_asLogical(reset) != TRUE) egen_group_counting = 0;
++    UNPROTECT(2);
++    return result;
++}
++
++static double egen_group_scalar(const numeric_reader *reader, R_xlen_t index,
++                                int *missing, int allow_nan) {
++    if (egen_group_counting) egen_group_scalar_values++;
++    return egen_numeric_at(reader, index, missing, allow_nan);
++}
+ 
+ typedef struct {
+     SEXP column;
+     const char **strings;
++    uint64_t *prepared; /* Eight bytes per row for wholly known numeric keys. */
+     numeric_reader numeric;
+     int string;
+     int allow_nan;
+@@ -21,15 +56,111 @@
+         if (keys[k].string) {
+             int comparison = strcmp(keys[k].strings[left], keys[k].strings[right]);
+             if (comparison) return comparison < 0 ? -1 : 1;
++        } else if (keys[k].prepared != NULL) {
++            uint64_t a = keys[k].prepared[left], b = keys[k].prepared[right];
++            if (a != b) return a < b ? -1 : 1;
+         } else {
+             int am, bm;
+-            double a = egen_numeric_at(&keys[k].numeric, left, &am, keys[k].allow_nan);
+-            double b = egen_numeric_at(&keys[k].numeric, right, &bm, keys[k].allow_nan);
++            double a = egen_group_scalar(&keys[k].numeric, left, &am, keys[k].allow_nan);
++            double b = egen_group_scalar(&keys[k].numeric, right, &bm, keys[k].allow_nan);
+             if (am != bm) return am < bm ? -1 : 1;
+             if (am < 0 && a != b) return a < b ? -1 : 1;
+         }
+     }
+     return 0;
++}
++
++/* Validation has already excluded infinities, unsupported NaNs and values
++   outside Stata double's observed range. Ordered IEEE bits preserve numeric
++   order, with both zero signs sharing one key. The top 27 keys hold . through
++   .z and lie above every admitted observed value. No R NaN is reconstructed
++   while comparing these private keys. */
++static uint64_t egen_group_order_key(double value, int missing) {
++    if (missing >= 0) {
++        unsigned rank = missing == 0 ? 0 : (unsigned) (missing - 'a' + 1);
++        return UINT64_MAX - 26 + rank;
++    }
++    uint64_t bits = 0;
++    if (value != 0) memcpy(&bits, &value, sizeof(bits));
++    return bits & UINT64_C(0x8000000000000000)
++        ? ~bits : bits ^ UINT64_C(0x8000000000000000);
++}
++
++/* A foreign numeric/string provider or class can mutate another key while
++   admission or sorting runs. Keep the complete scalar route for those calls,
++   including its callback order. Only wholly known numeric inputs prepare
++   keys. Their row-major validation remains exactly where it was. */
++static int egen_group_can_prepare(SEXP columns, SEXP include_missing, SEXP allow_nan) {
++    if (ALTREP(columns) || ALTREP(include_missing) || ALTREP(allow_nan)) return 0;
++    for (R_xlen_t k = 0; k < XLENGTH(columns); k++) {
++        SEXP value = VECTOR_ELT(columns, k);
++        if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP &&
++            TYPEOF(value) != LGLSXP) return 0;
++        if (ALTREP(value) && !owned_column(value) &&
++            unmaterialized_numeric_read_storage(value) == NULL) return 0;
++        SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
++        if (classes != R_NilValue &&
++            (TYPEOF(classes) != STRSXP || ALTREP(classes))) return 0;
++    }
++    return 1;
++}
++
++/* All allocations precede reader preparation. Known ordinary readers borrow
++   their captured allocation, and compact readers use the descriptor captured
++   with its matching root. No pointer is recovered from a public handle after
++   callbacks could have replaced its backing. The region read and validation
++   loops allocate nothing and invoke no provider callbacks; interrupt polling
++   remains. */
++static R_xlen_t egen_group_prepare(
++    egen_key_reader *keys, egen_block_reader *readers, SEXP roots,
++    R_xlen_t count, R_xlen_t n, int missing, R_xlen_t *order
++) {
++    if (n == 0) return 0;
++    if ((size_t) count > SIZE_MAX / sizeof(uint64_t) / (size_t) n)
++        Rf_error("Grouping numeric key storage is too large");
++    for (R_xlen_t k = 0; k < count; k++) {
++        keys[k].prepared = (uint64_t *) R_alloc((size_t) n, sizeof(uint64_t));
++        if (egen_group_counting)
++            egen_group_prepared_bytes += (double) n * sizeof(uint64_t);
++    }
++    /* Bound decode scratch to available rows and 8,192 values except for
++       wider one-row tiles. Only the final eight-byte keys grow with both
++       rows and columns. */
++    R_xlen_t rows = count < 8192 ? 8192 / count : 1;
++    if (rows > n) rows = n;
++    size_t slots = (size_t) rows * (size_t) count;
++    double *values = (double *) R_alloc(slots, sizeof(double));
++    int *codes = (int *) R_alloc(slots, sizeof(int));
++    for (R_xlen_t k = 0; k < count; k++)
++        egen_prepare_reader(readers + k, VECTOR_ELT(roots, k), n);
++    R_xlen_t admitted = 0;
++    for (R_xlen_t start = 0; start < n;) {
++        R_CheckUserInterrupt();
++        R_xlen_t length = n - start < rows ? n - start : rows;
++        for (R_xlen_t k = 0; k < count; k++) {
++            size_t offset = (size_t) k * (size_t) rows;
++            numeric_reader_region(&readers[k].reader, start, length,
++                                  values + offset, codes + offset);
++        }
++        /* Decode without validation above; validate in the original row/key
++           order so two invalid inputs keep their existing error precedence. */
++        for (R_xlen_t row = 0; row < length; row++) {
++            int eligible = 1;
++            for (R_xlen_t k = 0; k < count; k++) {
++                size_t offset = (size_t) k * (size_t) rows + (size_t) row;
++                int code = codes[offset];
++                double value = egen_block_value(readers + k, start + row,
++                    values[offset], &code, keys[k].allow_nan);
++                keys[k].prepared[start + row] = egen_group_order_key(value, code);
++                if (!missing && code >= 0) eligible = 0;
++            }
++            if (eligible) order[admitted++] = start + row;
++        }
++        start += length;
++    }
++    if (egen_group_counting)
++        egen_group_prepared_values += (double) n * (double) count;
++    return admitted;
+ }
+ 
+ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+@@ -37,14 +168,31 @@
+     if (TYPEOF(columns) != VECSXP || XLENGTH(columns) == 0)
+         Rf_error("Supply at least one grouping column");
+     R_xlen_t count = XLENGTH(columns);
++    int prepare = egen_group_can_prepare(columns, include_missing, allow_nan);
++    egen_block_reader *readers = prepare
++        ? (egen_block_reader *) R_alloc((size_t) count, sizeof(egen_block_reader)) : NULL;
++    int source_rooted = prepare;
++    SEXP sources = prepare ? PROTECT(Rf_allocVector(VECSXP, count)) : columns;
+     /* Numeric readers survive callbacks from every other key, including
+        foreign string Elt methods during admission and numeric Elt in sort. */
+     SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, count));
+-    for (R_xlen_t k = 0; k < count; k++) {
+-        SET_VECTOR_ELT(read_roots, k,
+-                       numeric_payload_root(VECTOR_ELT(columns, k)));
+-    }
+-    R_xlen_t n = XLENGTH(VECTOR_ELT(columns, 0));
++    if (prepare) {
++        for (R_xlen_t k = 0; k < count; k++)
++            SET_VECTOR_ELT(sources, k, VECTOR_ELT(columns, k));
++        /* Allocation can run finalizers on some R builds. Recheck before
++           reading classes, then capture temporal policy without allocation. */
++        prepare = egen_group_can_prepare(sources, include_missing, allow_nan);
++        if (prepare) for (R_xlen_t k = 0; k < count; k++) {
++            readers[k].source = VECTOR_ELT(sources, k);
++            egen_prepare_temporal(readers + k);
++        }
++    }
++    for (R_xlen_t k = 0; k < count; k++) {
++        SEXP column = VECTOR_ELT(prepare ? sources : columns, k);
++        SET_VECTOR_ELT(read_roots, k, prepare
++            ? egen_capture_reader(column, readers + k) : numeric_payload_root(column));
++    }
++    R_xlen_t n = XLENGTH(VECTOR_ELT(prepare ? sources : columns, 0));
+     if (n > INT_MAX) Rf_error("Grouping currently supports at most INT_MAX rows");
+     egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
+     /* Root every cached CHARSXP, including strings produced by an ALTREP
+@@ -52,9 +200,10 @@
+      * cached CHAR pointers then survive all allocations and GC during sort. */
+     SEXP string_roots = PROTECT(Rf_allocVector(VECSXP, count));
+     for (R_xlen_t k = 0; k < count; k++) {
+-        SEXP column = VECTOR_ELT(columns, k);
++        SEXP column = VECTOR_ELT(prepare ? sources : columns, k);
+         if (XLENGTH(column) != n) Rf_error("Grouping columns must have equal lengths");
+         keys[k].column = column;
++        keys[k].prepared = NULL;
+         keys[k].string = TYPEOF(column) == STRSXP;
+         keys[k].allow_nan = Rf_asLogical(allow_nan) == TRUE;
+         if (keys[k].string) {
+@@ -62,36 +211,39 @@
+             SEXP cache = PROTECT(Rf_allocVector(STRSXP, n));
+             SET_VECTOR_ELT(string_roots, k, cache);
+             UNPROTECT(1);
+-        } else keys[k].numeric = numeric_reader_create(column, n);
++        } else if (!prepare) keys[k].numeric = numeric_reader_create(column, n);
+     }
+     R_xlen_t *order = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
+     R_xlen_t *scratch = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
+-    R_xlen_t admitted = 0;
+     int missing = Rf_asLogical(include_missing);
+-    for (R_xlen_t row = 0; row < n; row++) {
+-        if ((row & 16383) == 0) R_CheckUserInterrupt();
+-        int eligible = 1;
+-        for (R_xlen_t k = 0; k < count; k++) {
+-            if (keys[k].string) {
+-                const void *temporary = vmaxget();
+-                SEXP value = PROTECT(STRING_ELT(keys[k].column, row));
+-                if (value == NA_STRING) Rf_error("Grouping keys cannot contain NA_character_");
+-                if (!missing && LENGTH(value) == 0) eligible = 0;
+-                SEXP translated = Rf_mkCharCE(Rf_translateCharUTF8(value), CE_UTF8);
+-                SET_STRING_ELT(VECTOR_ELT(string_roots, k), row, translated);
+-                keys[k].strings[row] = CHAR(translated);
+-                UNPROTECT(1);
+-                /* A Latin-1/native translation may allocate a temporary
+-                 * buffer. The interned, rooted copy above owns the bytes
+-                 * used by the comparator, so release that buffer now. */
+-                vmaxset(temporary);
+-            } else {
+-                int code;
+-                egen_numeric_at(&keys[k].numeric, row, &code, keys[k].allow_nan);
+-                if (!missing && code >= 0) eligible = 0;
+-            }
+-        }
+-        if (eligible) order[admitted++] = row;
++    R_xlen_t admitted = prepare
++        ? egen_group_prepare(keys, readers, read_roots, count, n, missing, order) : 0;
++    if (!prepare) {
++        for (R_xlen_t row = 0; row < n; row++) {
++            if ((row & 16383) == 0) R_CheckUserInterrupt();
++            int eligible = 1;
++            for (R_xlen_t k = 0; k < count; k++) {
++                if (keys[k].string) {
++                    const void *temporary = vmaxget();
++                    SEXP value = PROTECT(STRING_ELT(keys[k].column, row));
++                    if (value == NA_STRING) Rf_error("Grouping keys cannot contain NA_character_");
++                    if (!missing && LENGTH(value) == 0) eligible = 0;
++                    SEXP translated = Rf_mkCharCE(Rf_translateCharUTF8(value), CE_UTF8);
++                    SET_STRING_ELT(VECTOR_ELT(string_roots, k), row, translated);
++                    keys[k].strings[row] = CHAR(translated);
++                    UNPROTECT(1);
++                    /* A Latin-1/native translation may allocate a temporary
++                     * buffer. The interned, rooted copy above owns the bytes
++                     * used by the comparator, so release that buffer now. */
++                    vmaxset(temporary);
++                } else {
++                    int code;
++                    egen_group_scalar(&keys[k].numeric, row, &code, keys[k].allow_nan);
++                    if (!missing && code >= 0) eligible = 0;
++                }
++            }
++            if (eligible) order[admitted++] = row;
++        }
+     }
+     for (R_xlen_t width = 1; width < admitted; width *= 2) {
+         for (R_xlen_t start = 0; start < admitted; start += 2 * width) {
+@@ -139,7 +291,7 @@
+     SET_STRING_ELT(names, 0, Rf_mkChar("codes"));
+     SET_STRING_ELT(names, 1, Rf_mkChar("first"));
+     Rf_setAttrib(result, R_NamesSymbol, names);
+-    UNPROTECT(7);
++    UNPROTECT(7 + source_rooted);
+     return result;
+ }
+ 
+--- a/src/init.c
++++ b/src/init.c
+@@ -314,6 +314,7 @@
+     {"C_dtatools_owned_pointer", (DL_FUNC) &C_dtatools_owned_pointer, 2},
+     {"C_dtatools_owned_pointer_write", (DL_FUNC) &C_dtatools_owned_pointer_write, 3},
+     {"C_dtatools_egen_group", (DL_FUNC) &dtatools_egen_group, 3},
++    {"C_dtatools_egen_group_stats", (DL_FUNC) &C_dtatools_egen_group_stats, 1},
+     {"C_dtatools_egen_summary", (DL_FUNC) &C_dtatools_egen_summary, 4},
+     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
+     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
+--- a/tests/testthat/test-egen-groups.R
++++ b/tests/testthat/test-egen-groups.R
+@@ -160,3 +160,211 @@
+     egen(data, g = dta_group_id(x / x, missing = TRUE, label = TRUE))
+     expect_identical(attr(data$g, "labels"), c("." = 1))
+ })
++
++test_that("known numeric grouping prepares each value once before sorting", {
++    values <- as.double((seq_len(10000L) * 13L) %% 97L - 48L)
++    expected <- as.double(match(values, sort(unique(values))))
++    first <- match(sort(unique(values)), values)
++    for (constructor in list(identity, dta_byte, dta_int, dta_long, dta_float, dta_double)) {
++        source <- constructor(values)
++        inputs <- list(source)
++        if (dtatools:::.is_unmaterialized_numeric_altrep(source)) {
++            inputs <- c(inputs, list(.Call(C_dtatools_owned_numeric_freeze, source, 7L)))
++        }
++        for (input in inputs) {
++            compact <- dtatools:::.is_unmaterialized_numeric_altrep(input)
++            .Call(C_dtatools_egen_group_stats, TRUE)
++            plan <- .Call(C_dtatools_egen_group, list(input), FALSE, FALSE)
++            counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++            expect_identical(as.double(plan$codes), expected)
++            expect_identical(plan$first, first)
++            expect_identical(counts[["scalar_values"]], 0)
++            expect_identical(counts[["prepared_values"]], as.double(length(values)))
++            expect_identical(counts[["prepared_bytes"]], 8 * length(values))
++            expect_identical(as.double(input), values)
++            expect_identical(dtatools:::.is_unmaterialized_numeric_altrep(input), compact)
++        }
++    }
++})
++
++test_that("prepared numeric keys preserve missing ranks zero ties and extreme doubles", {
++    values <- c(-.Machine$double.xmax / 2, -1, -0, 0,
++                .Machine$double.xmin * .Machine$double.eps, 1,
++                .Machine$double.xmax / 2, NA_real_, tagged_missing(letters))
++    expected <- as.double(c(1, 2, 3, 3, 4:33))
++    permutation <- c(length(values):1L, seq_along(values), 4L, 3L)
++    for (constructor in list(identity, dta_double)) {
++        input <- constructor(values[permutation])
++        expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected[permutation])
++        observed <- expected[permutation]
++        observed[is.na(values[permutation])] <- NA_real_
++        expect_identical(as.double(dta_group_id(input)), observed)
++        tags <- as.double(!duplicated(expected[permutation]))
++        expect_identical(as.double(dta_group_tag(input, missing = TRUE)), tags)
++    }
++    pattern <- c(3, -2, 0, -0, NA_real_, tagged_missing(letters))
++    ranks <- as.double(c(3, 1, 2, 2, 4:30))
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (size in c(0L, 1L, 31L, 1023L, 1025L)) {
++            input <- .Call(C_dtatools_owned_numeric_freeze,
++                           constructor(rep_len(pattern, size)), 7L)
++            # Smaller samples renumber only ranks actually present.
++            expected <- as.double(match(rep_len(ranks, size), sort(unique(rep_len(ranks, size)))))
++            expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected)
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
++        }
++    }
++})
++
++test_that("prepared multiple numeric keys retain stable first rows and row-major errors", {
++    left <- c(2, 1, 1, 2, 1, NA, tagged_missing("a"), 1)
++    right <- c(0, 2, 1, 0, 1, 0, 0, NA)
++    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
++                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right), 5L))
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    plan <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(plan$codes), c(4, 2, 1, 4, 1, 5, 6, 3))
++    expect_identical(plan$first, c(3L, 2L, 8L, 1L, 6L, 7L))
++    expect_identical(counts[["prepared_values"]], 16)
++    expect_identical(counts[["prepared_bytes"]], 128)
++    expect_identical(counts[["scalar_values"]], 0)
++    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
++    expect_error(dta_group_id(c(1, NaN), c(1e308, 0)), "Stata double storage")
++    expect_error(dta_group_id(c(1, 1e308), c(NaN, 0)), "NaN|infinities")
++    for (allow in c(FALSE, TRUE)) {
++        for (invalid in list(Inf, -Inf, tagged_nan_for_test("A"), 1e308)) {
++            expect_error(.Call(C_dtatools_egen_group, list(c(1, invalid)), TRUE, allow),
++                         "NaN|infinities|Stata double storage")
++        }
++    }
++    expect_error(.Call(C_dtatools_egen_group, list(c(1, NaN)), TRUE, FALSE), "NaN")
++    normalized <- .Call(C_dtatools_egen_group, list(c(NaN, 1, NA_real_)), TRUE, TRUE)
++    expect_identical(as.double(normalized$codes), c(2, 1, 2))
++    expect_identical(normalized$first, c(2L, 1L))
++})
++
++test_that("foreign grouping keys preserve callbacks and decline preparation as a whole", {
++    events <- character()
++    first <- .Call(C_dtatools_callback_integer_after, c(2L, 1L, 2L),
++                   function() events <<- c(events, "first-row-two"), 1L)
++    second <- .Call(C_dtatools_callback_double, c(0, 0, 0),
++                    function() events <<- c(events, "second-row-one"), TRUE)
++    compact <- .Call(C_dtatools_owned_numeric_freeze, dta_int(c(1, 1, 1)), 1L)
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(first, compact, second), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), c(2, 1, 2))
++    expect_identical(events, c("second-row-one", "first-row-two"))
++    expect_identical(counts[["prepared_values"]], 0)
++    expect_identical(counts[["prepared_bytes"]], 0)
++    expect_gt(counts[["scalar_values"]], 9)
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact))
++
++    # The foreign key changes a known key on its first comparison, after the
++    # admission scan. Preparing only the known column would miss this write.
++    changed <- dta_double(c(2, 1, 2))
++    pointer <- .Call(C_dtatools_owned_pointer, changed, TRUE)
++    foreign <- .Call(C_dtatools_callback_integer_after, c(0L, 0L, 0L),
++                     function() .Call(C_dtatools_owned_pointer_write, pointer, 1L, 0), 3L)
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(foreign, changed), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), c(1, 2, 3))
++    expect_identical(as.double(changed), c(0, 1, 2))
++    expect_identical(counts[["prepared_values"]], 0)
++
++    # A class callback remains on the original scalar path and may materialize
++    # a compact public handle while its captured bytes remain in use.
++    classes <- .Call(C_dtatools_callback_character, class(compact), function() NULL)
++    attr(compact, "class") <- classes
++    calls <- 0L
++    .Call(C_dtatools_arm_callback_character, classes, function() {
++        calls <<- calls + 1L
++        .force_altrep_materialization(compact)
++        gc()
++    })
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(compact), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), rep(1, 3))
++    expect_identical(calls, 1L)
++    expect_identical(counts[["prepared_values"]], 0)
++})
++
++test_that("prepared keys survive collection and temporal and legacy decoding", {
++    for (version in c(105L, 108L, 110L, 111L)) {
++        data <- read_dta(fixture(paste0("synthetic_v", version, ".dta")), output = "tibble")
++        for (source in data) {
++            if (!dtatools:::.is_unmaterialized_numeric_altrep(source)) next
++            plain <- readBin(writeBin(as.double(source), raw(), size = 8L),
++                             double(), length(source), size = 8L)
++            expect_identical(as.double(dta_group_id(source, missing = TRUE)),
++                             as.double(dta_group_id(plain, missing = TRUE)))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source))
++        }
++    }
++    columns <- list(dta_int(c(2, 1, 2, NA)), dta_float(c(0, 0, 0, 1)))
++    collect <- function() {
++        previous <- gctorture(TRUE)
++        on.exit(gctorture(previous))
++        .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    }
++    plan <- collect()
++    expect_identical(as.double(plan$codes), c(2, 1, 2, 3))
++    expect_identical(plan$first, c(2L, 1L, 4L))
++    dates <- structure(c(-3652, -3653, -3652, NA_real_), class = "Date")
++    times <- structure(c(-315619199, -315619200, -315619199, NA_real_),
++                       class = c("POSIXct", "POSIXt"))
++    for (input in list(dates, times)) {
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
++        expect_identical(as.double(result$codes), c(2, 1, 2, 3))
++        expect_identical(result$first, c(2L, 1L, 4L))
++    }
++})
++
++
++test_that("prepared compact IEEE NaNs obey the existing calculation scope", {
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    on.exit(unlink(path), add = TRUE)
++    patch_numeric_fixture_row(path, 0L, list(x_float = as.raw(c(1, 0, 192, 127))))
++    patch_numeric_fixture_row(path, 1L, list(x_float = as.raw(c(1, 0, 192, 255))))
++    patch_numeric_fixture_row(path, 2L, list(x_float = as.raw(c(0, 0, 128, 63))))
++    source <- read_dta(path, col_select = "x_float", n_max = 3L)$x_float
++    for (input in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 1L))) {
++        expect_error(.Call(C_dtatools_egen_group, list(input), TRUE, FALSE), "NaN")
++        .Call(C_dtatools_egen_group_stats, TRUE)
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, TRUE)
++        counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++        expect_identical(as.double(result$codes), c(2, 2, 1))
++        expect_identical(result$first, c(3L, 1L))
++        expect_identical(counts[["prepared_values"]], 3)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
++    }
++})
++
++test_that("bounded numeric grouping tiles preserve multicolumn order and errors", {
++    rows <- seq_len(10003L)
++    left <- as.double((rows * 13L) %% 7L)
++    right <- as.double(rows %% 11L)
++    expected <- left * 11 + right + 1
++    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
++                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right / 8), 1021L))
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), expected)
++    expect_identical(result$first, match(as.double(1:77), expected))
++    expect_identical(counts[["prepared_values"]], 2 * length(rows))
++    expect_identical(counts[["scalar_values"]], 0)
++    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
++    # The earlier error remains in the second column even when the later error
++    # starts a new decode tile.
++    expect_error(dta_group_id(c(rep(0, 4096), NaN),
++                             c(rep(0, 4095), 1e308, 0)), "Stata double storage")
++    for (input in list(c(2L, 1L, NA_integer_, 2L), c(TRUE, FALSE, NA, TRUE))) {
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
++        expect_identical(as.double(result$codes), c(2, 1, 3, 2))
++        expect_identical(result$first, c(2L, 1L, 3L))
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -14774,7 +14774,7 @@
+         },
+         {
+           "path": "tests/testthat/test-egen-groups.R",
+-          "sha256": "df0e83c2f2e81f9dce911dea145346e74791183c349d4b7887dc7e605457b689"
++          "sha256": "9856ed3c843cf755d26d91b3d7c74269ab460430a280c8d48f671547a10ad22c"
+         },
+         {
+           "path": "tests/testthat/test-egen-stata-fixture.R",
+@@ -15240,6 +15240,62 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 1,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "known numeric grouping prepares each value once before sorting",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 70,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared numeric keys preserve missing ranks zero ties and extreme doubles",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 46,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared multiple numeric keys retain stable first rows and row-major errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 19,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "foreign grouping keys preserve callbacks and decline preparation as a whole",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 12,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared keys survive collection and temporal and legacy decoding",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 38,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared compact IEEE NaNs obey the existing calculation scope",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 10,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "bounded numeric grouping tiles preserve multicolumn order and errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 10,
+           "warnings": 0
+         },
+         {

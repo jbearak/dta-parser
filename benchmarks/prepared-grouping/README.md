@@ -7,6 +7,9 @@ storage at 100,000 rows with one or four keys, plus one-million-row int
 and float cases with one key. Random and sorted layouts use the same sample.
 Compact inputs use contiguous constructor storage; retained chunks have separate unit coverage.
 
+The [October 2 results](results-2026-10-02.md) include all observations, build
+receipts, correctness evidence, an independent audit and explicit memory costs.
+
 The baseline repeats numeric decoding and validation while sorting. The
 candidate prepares one ordered 64-bit key per row and numeric column before
 sorting. Its new temporary key payload is exactly `8 * rows * columns` bytes;
@@ -42,6 +45,21 @@ python3 benchmarks/prepared-grouping/run.py \
   --candidate /private/tmp/grouping-candidate \
   --output /private/tmp/grouping-results --rounds 6
 ```
+
+Recompute compact/control CPU ratios, paired-round ratios and memory medians:
+
+```sh
+python3 benchmarks/prepared-grouping/analyze.py \
+  --results /private/tmp/grouping-results \
+  --output /private/tmp/grouping-ratios.csv
+```
+
+`publish.py` verifies a completed run against the original clean-build receipts
+and a separate correctness-validation binding, substitutes private paths, and
+records both original and published hashes for every artifact. The published
+source map preserves that distinction; sanitizing a receipt does not make its
+published hash equal its original hash. Both analysis and publication refuse
+Python's `-O` mode so their assertions cannot be silently disabled.
 
 The controller checks clean-build receipts, package source and installed-file
 inventories, DLL equality, and controller hashes before and after measurement.

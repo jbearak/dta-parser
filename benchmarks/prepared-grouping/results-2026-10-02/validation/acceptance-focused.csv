@@ -1,0 +1,61 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-egen-block-kernels.R","egen block summaries agree with ordinary values across compact chunks",672,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen row blocks preserve column order and all-missing policy",31,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks keep one ordered double accumulator across boundaries",14,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block extrema preserve all missing ranks and signed-zero ties",28,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block calculations keep legacy numeric missing domains",128,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks preserve Stata temporal conversion order and strip metadata",16,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block admission preserves foreign row-major callback order",3,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block validation retains NaN policy and unsupported-tag rejection",18,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks normalize compact IEEE NaNs only in calculation scope",10,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen scalar fallback retains foreign class callbacks and captured storage",3,0,FALSE,FALSE,0
+"test-egen-command.R","egen, gen and := agree without filters and distinguish filtered inputs",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen reuses target capture and formula conventions",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen calls actual functions and supports namespace qualification",8,0,FALSE,FALSE,0
+"test-egen-command.R","egen type, placement and row positions validate before mutation",11,0,FALSE,FALSE,0
+"test-egen-command.R","egen uses Stata key identity and does not reorder for by",3,0,FALSE,FALSE,0
+"test-egen-command.R","egen stages bysort and commits only after success",8,0,FALSE,FALSE,0
+"test-egen-command.R","egen shares gen()'s group plan: factor keys, empty dplyr groups, zero rows",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen grouped inputs supply groups and counters describe the sample",5,0,FALSE,FALSE,0
+"test-egen-command.R","egen tag fills excluded rows with zero and forces byte",10,0,FALSE,FALSE,0
+"test-egen-command.R","egen does not evaluate values separately for each admitted row",2,0,FALSE,FALSE,0
+"test-egen-command.R","egen validates source NaN and normalizes arithmetic NaN",29,0,FALSE,FALSE,0
+"test-egen-command.R","egen handles empty samples without inventing observations",4,0,FALSE,FALSE,0
+"test-egen-command.R","egen preserves aliases and copy isolation through pipelines",4,0,FALSE,FALSE,0
+"test-egen-command.R","egen rejects containers that are not dibbles",5,0,FALSE,FALSE,0
+"test-egen-command.R","egen grouped calculations leave compact source columns untouched",6,0,FALSE,FALSE,0
+"test-egen-command.R","egen calculations read private views, so a retained column cannot alias the dataset",6,0,FALSE,FALSE,0
+"test-egen-command.R","egen growth rebuilds its view on the new table and keeps aliases on the old one",6,0,FALSE,FALSE,0
+"test-egen-groups.R","group IDs sort mixed keys and tags select first eligible rows",7,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys preserve every missing identity and signed zero",4,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys compare mixed encodings by their UTF-8 text",4,0,FALSE,FALSE,0
+"test-egen-groups.R","cached group text remains rooted through GC without materializing sources",4,0,FALSE,FALSE,0
+"test-egen-groups.R","group inputs and options are checked without changing sources",23,0,FALSE,FALSE,0
+"test-egen-groups.R","autotype uses Stata integer storage thresholds",7,0,FALSE,FALSE,0
+"test-egen-groups.R","group labels own mappings and truncate Unicode components",8,0,FALSE,FALSE,0
+"test-egen-groups.R","group metadata survives DTA and Arrow round trips",14,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys use encoded temporal values",5,0,FALSE,FALSE,0
+"test-egen-groups.R","computed NaN group labels use the normalized system missing",1,0,FALSE,FALSE,0
+"test-egen-groups.R","known numeric grouping prepares each value once before sorting",70,0,FALSE,FALSE,0
+"test-egen-groups.R","prepared numeric keys preserve missing ranks zero ties and extreme doubles",46,0,FALSE,FALSE,0
+"test-egen-groups.R","prepared multiple numeric keys retain stable first rows and row-major errors",19,0,FALSE,FALSE,0
+"test-egen-groups.R","foreign grouping keys preserve callbacks and decline preparation as a whole",12,0,FALSE,FALSE,0
+"test-egen-groups.R","prepared keys survive collection and temporal and legacy decoding",38,0,FALSE,FALSE,0
+"test-egen-groups.R","prepared compact IEEE NaNs obey the existing calculation scope",10,0,FALSE,FALSE,0
+"test-egen-groups.R","bounded numeric grouping tiles preserve multicolumn order and errors",10,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","numeric egen values match the Stata 18 differential fixture",56,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group identifiers and tags match the Stata 18 fixture",8,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group labels match Stata numeric formatting and Unicode truncation",3,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","egen commands reproduce source call shapes and Stata storage",15,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","egen accumulation follows Stata double precision and input order",24,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group numeric labels match Stata fixed and exponential formatting",2,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","Unicode descriptions follow the measured group width contract",8,0,FALSE,FALSE,0
+"test-egen-values.R","numeric summaries apply Stata missing rules without rounding",21,0,FALSE,FALSE,0
+"test-egen-values.R","row calculations accept columns and preserve all-missing rules",8,0,FALSE,FALSE,0
+"test-egen-values.R","numeric calculations validate input classes, shapes, and options",33,0,FALSE,FALSE,0
+"test-egen-values.R","calculations discard metadata and use encoded temporal numbers",10,0,FALSE,FALSE,0
+"test-egen-values.R","datetime calculations use the package epoch conversion order",4,0,FALSE,FALSE,0
+"test-egen-values.R","numeric calculations leave compact inputs unmaterialized",8,0,FALSE,FALSE,0
+"test-egen-values.R","Arrow numeric calculations preserve compact input storage",6,0,FALSE,FALSE,0
+"test-egen-values.R","egen calculation scope normalizes only ordinary NaN payloads",3,0,FALSE,FALSE,0
+"test-egen-values.R","numeric value functions compose with grouped dibble assignment",5,0,FALSE,FALSE,0

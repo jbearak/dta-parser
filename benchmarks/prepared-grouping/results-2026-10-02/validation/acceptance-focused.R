@@ -1,0 +1,7 @@
+.libPaths(c('<candidate>/library', .libPaths()))
+library(dtatools)
+library(testthat)
+results <- testthat::test_dir('<repo>/r-package/dtatools/tests/testthat', filter='^egen-(groups|block-kernels|values|command|stata-fixture)$', package='dtatools', load_package='installed', reporter='summary', stop_on_failure=FALSE)
+frame <- as.data.frame(results)
+write.csv(frame[c('file','test','passed','failed','error','skipped','warning')], '<development>/acceptance-focused-final.csv', row.names=FALSE)
+stopifnot(!any(frame$failed), !any(frame$error), !any(frame$skipped))

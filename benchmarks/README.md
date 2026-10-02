@@ -70,6 +70,12 @@ Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls belo
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
 
+The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
+prepares numeric order keys once instead of decoding and validating them during
+sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
+faster and matches typed/ordinary-double throughput within the measured spread.
+It reports the additional eight-byte-per-row-per-key cache cost explicitly.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762
