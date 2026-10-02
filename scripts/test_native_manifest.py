@@ -1,6 +1,7 @@
 """Keep the installed native-test inventory aligned with package sources."""
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -9,9 +10,24 @@ import unittest
 
 PACKAGE = Path(__file__).resolve().parents[1] / "r-package" / "dtatools"
 MANIFEST = json.loads((PACKAGE / "tools/native-test-manifest.json").read_text(encoding="utf-8"))
+RUNNER_SPEC = importlib.util.spec_from_file_location("run_r_native", Path(__file__).with_name("run-r-native.py"))
+RUNNER = importlib.util.module_from_spec(RUNNER_SPEC)
+RUNNER_SPEC.loader.exec_module(RUNNER)
 
 
 class NativeManifestTests(unittest.TestCase):
+    def test_native_runner_accepts_current_export_manifest(self):
+        RUNNER.validate_exports(MANIFEST["exports"])
+
+    def test_native_runner_rejects_missing_or_invalid_export_names(self):
+        for exports in (None, [], "summ", {"summ": True}, [""], ["summ", 1]):
+            with self.subTest(exports=exports), self.assertRaisesRegex(ValueError, "export-name list"):
+                RUNNER.validate_exports(exports)
+
+    def test_native_runner_rejects_duplicate_export_names(self):
+        with self.assertRaisesRegex(ValueError, "unique"):
+            RUNNER.validate_exports([*MANIFEST["exports"], "summ"])
+
     def test_exports_match_namespace(self):
         exports = []
         for value in re.findall(r"^export\((.+)\)$", (PACKAGE / "NAMESPACE").read_text(encoding="utf-8"), re.M):

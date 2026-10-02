@@ -38,6 +38,13 @@ def require(ok, message):
         raise ValueError(message)
 
 
+def validate_exports(exports):
+    require(isinstance(exports, list) and bool(exports) and
+            all(isinstance(name, str) and bool(name) for name in exports),
+            "Explicit nonempty export-name list required")
+    require(len(exports) == len(set(exports)), "Export names must be unique")
+
+
 def r_literal(value):
     # Trusted generated data only, never interpolate caller-provided R code.
     if value is None:
@@ -143,8 +150,7 @@ def main():
         expected = dict(lane["expected_packages"])
         require("dtatools" not in expected, "dtatools must have its own installed library")
         expected["dtatools"] = {"path": str(installed), "version": cfg["package"]["version"]}
-        require(len(manifest["exports"]) == 115 and len(set(manifest["exports"])) == 115,
-                "Explicit 115-name export manifest required")
+        validate_exports(manifest["exports"])
         source_root = Path(cfg["source_root"]).resolve(strict=True)
         tools_dir = source_root / "tools"
         tool_files = cfg["tools"]
