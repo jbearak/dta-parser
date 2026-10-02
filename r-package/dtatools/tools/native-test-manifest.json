@@ -5973,7 +5973,7 @@
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
-          "sha256": "bdad22bbd7d373ebdb1fe0d1d59b9c478f5a1d2057b51a4da81c044f88792b39"
+          "sha256": "40d9f9bd72b63f76bd5ba619aa3bb6fa05b10ffec91dcfaa8812fa73795b8caa"
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
@@ -7377,6 +7377,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 252,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "live Arrow storage does not force collection on each small read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 23,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-numeric-buffers.R",
+          "test": "R-backed owners and retained handle forks add no native allocation debt",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         },
         {

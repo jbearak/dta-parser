@@ -1,0 +1,44 @@
+{
+  "build_order": "baseline first in odd rounds; candidate first in even rounds",
+  "checksums": true,
+  "condition_order": [
+    [
+      "none",
+      "63",
+      "65"
+    ],
+    [
+      "63",
+      "65",
+      "none"
+    ],
+    [
+      "65",
+      "none",
+      "63"
+    ],
+    [
+      "65",
+      "63",
+      "none"
+    ],
+    [
+      "none",
+      "65",
+      "63"
+    ],
+    [
+      "63",
+      "none",
+      "65"
+    ]
+  ],
+  "controls": "No retained storage, 63 MiB and 65 MiB. Tiny ordinary-double and compact-float results.",
+  "fresh_process_per_observation": true,
+  "interval": "Public read calls include dispatch, file I/O, verification, allocations and automatic/forced GC. Setup, warm read, explicit GC, qualification and hashing excluded.",
+  "limits": "One warm-cache host; repeated eight-row reads. No throughput or memory-bound claim for arbitrary file sizes or cold storage.",
+  "repetitions": "2000 per interval, except baseline 65 MiB uses 200 due to forced GC cost",
+  "rounds": 6,
+  "storage_order": "double first in odd rounds; float first in even rounds",
+  "threads": 1
+}
