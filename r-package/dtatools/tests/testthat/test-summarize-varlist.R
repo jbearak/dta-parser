@@ -21,7 +21,7 @@ test_that("summarize preserves literal names containing Stata punctuation", {
     result <- .summarize_varlist(data, names(data), rep(TRUE, 3))
     expect_identical(result$names, names(data))
     expect_identical(result$values, unname(as.list(data)))
-    result <- summarize(data)
+    result <- summ(data)
     expect_identical(result$statistics$variable, names(data))
     expect_identical(result$statistics$mean, c(2, 5, 8, 11))
 })

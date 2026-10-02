@@ -1,16 +1,16 @@
 #' Summarize variables using Stata's statistics
 #'
-#' @name summarize
+#' @name summ
 #' @export
-summarize <- function(x, ..., data = NULL, where = NULL, rows = NULL,
-                      by = NULL, weights = NULL,
-                      weight = c("aweight", "fweight", "iweight"),
-                      detail = FALSE, meanonly = FALSE, format = FALSE,
-                      separator = 5, vsquish = FALSE, noemptycells = FALSE,
-                      baselevels = FALSE, allbaselevels = FALSE,
-                      nofvlabel = FALSE, fvwrap = 1,
-                      fvwrapon = c("word", "width"), time = NULL,
-                      panel = NULL, delta = 1) {
+summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
+                 by = NULL, weights = NULL,
+                 weight = c("aweight", "fweight", "iweight"),
+                 detail = FALSE, meanonly = FALSE, format = FALSE,
+                 separator = 5, vsquish = FALSE, noemptycells = FALSE,
+                 baselevels = FALSE, allbaselevels = FALSE,
+                 nofvlabel = FALSE, fvwrap = 1,
+                 fvwrapon = c("word", "width"), time = NULL,
+                 panel = NULL, delta = 1) {
     caller <- rlang::caller_env()
     x_quo <- if (missing(x)) NULL else rlang::enquo(x)
     dots <- rlang::enquos(...)
@@ -71,7 +71,7 @@ summarize <- function(x, ..., data = NULL, where = NULL, rows = NULL,
             }), n = length(first))
     }
     if (inherits(data, "rowwise_df"))
-        stop("`summarize()` does not accept rowwise data", call. = FALSE)
+        stop("`summ()` does not accept rowwise data", call. = FALSE)
     grouped_request <- !rlang::quo_is_null(by_quo) || inherits(data, "grouped_df")
     group_rows <- if (n == 0L && grouped_request) list() else
         if (is.null(groups)) list(seq_len(n)) else groups$rows
@@ -181,14 +181,6 @@ summarize <- function(x, ..., data = NULL, where = NULL, rows = NULL,
     class(result) <- "dta_summarize"
     if (meanonly) invisible(result) else result
 }
-
-#' @rdname summarize
-#' @export
-summarise <- summarize
-
-#' @rdname summarize
-#' @export
-summ <- summarize
 
 .summarize_inputs <- function(x, dots, data, caller) {
     if (!is.null(data) && !is.data.frame(data))

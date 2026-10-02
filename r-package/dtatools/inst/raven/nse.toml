@@ -215,18 +215,6 @@ captured_dots = false
 
 # Summary variables, filters, grouping names and weights are captured.
 [[function]]
-name = "summarize"
-formals = ["x", "...", "data", "where", "rows", "by", "weights", "weight", "detail", "meanonly", "format", "separator", "vsquish", "noemptycells", "baselevels", "allbaselevels", "nofvlabel", "fvwrap", "fvwrapon", "time", "panel", "delta"]
-captured = ["x", "where", "by", "weights"]
-captured_dots = true
-
-[[function]]
-name = "summarise"
-formals = ["x", "...", "data", "where", "rows", "by", "weights", "weight", "detail", "meanonly", "format", "separator", "vsquish", "noemptycells", "baselevels", "allbaselevels", "nofvlabel", "fvwrap", "fvwrapon", "time", "panel", "delta"]
-captured = ["x", "where", "by", "weights"]
-captured_dots = true
-
-[[function]]
 name = "summ"
 formals = ["x", "...", "data", "where", "rows", "by", "weights", "weight", "detail", "meanonly", "format", "separator", "vsquish", "noemptycells", "baselevels", "allbaselevels", "nofvlabel", "fvwrap", "fvwrapon", "time", "panel", "delta"]
 captured = ["x", "where", "by", "weights"]

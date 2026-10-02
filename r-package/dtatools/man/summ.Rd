@@ -1,27 +1,7 @@
-\name{summarize}
-\alias{summarize}
-\alias{summarise}
+\name{summ}
 \alias{summ}
 \title{Summarize variables using Stata's statistics}
 \usage{
-summarize(
-  x, ..., data = NULL, where = NULL, rows = NULL, by = NULL,
-  weights = NULL, weight = c("aweight", "fweight", "iweight"),
-  detail = FALSE, meanonly = FALSE, format = FALSE, separator = 5,
-  vsquish = FALSE, noemptycells = FALSE, baselevels = FALSE,
-  allbaselevels = FALSE, nofvlabel = FALSE, fvwrap = 1,
-  fvwrapon = c("word", "width"), time = NULL, panel = NULL, delta = 1
-)
-
-summarise(
-  x, ..., data = NULL, where = NULL, rows = NULL, by = NULL,
-  weights = NULL, weight = c("aweight", "fweight", "iweight"),
-  detail = FALSE, meanonly = FALSE, format = FALSE, separator = 5,
-  vsquish = FALSE, noemptycells = FALSE, baselevels = FALSE,
-  allbaselevels = FALSE, nofvlabel = FALSE, fvwrap = 1,
-  fvwrapon = c("word", "width"), time = NULL, panel = NULL, delta = 1
-)
-
 summ(
   x, ..., data = NULL, where = NULL, rows = NULL, by = NULL,
   weights = NULL, weight = c("aweight", "fweight", "iweight"),
@@ -93,8 +73,10 @@ within each panel.}
 }
 \description{
 Computes and displays descriptive statistics using Stata's
-\code{summarize} conventions. \code{summarise} and \code{summ} are aliases
-with the same arguments and return value.
+\code{summarize} conventions. The popular R package dplyr exports
+\code{dplyr::summarise()} and its alias \code{dplyr::summarize()}.
+dtatools uses \code{summ()} for Stata's \code{summarize} command to avoid
+those name conflicts.
 }
 \details{
 The default table reports each variable's nonmissing observation count,
@@ -165,14 +147,14 @@ invisibly, and both \code{format()} and \code{print()} remain silent.
 \href{https://www.stata.com/manuals/rsummarize.pdf}{Stata summarize manual}.
 }
 \examples{
-summarize(mtcars, mpg, wt)
-summarise(mtcars, mpg, detail = TRUE)
+summ(mtcars, mpg, wt)
+summ(mtcars, mpg, detail = TRUE)
 summ(mtcars, mpg, where = cyl == 6, rows = 1:20)
-summarize(mtcars, mpg, by = cyl)
-summarize(mtcars, mpg, weights = wt, weight = "aweight")
-summarize(mtcars, "i.cyl")
+summ(mtcars, mpg, by = cyl)
+summ(mtcars, mpg, weights = wt, weight = "aweight")
+summ(mtcars, "i.cyl")
 
-result <- summarize(mtcars, mpg, meanonly = TRUE)
+result <- summ(mtcars, mpg, meanonly = TRUE)
 result$r$mean
 as.data.frame(result)
 }

@@ -1,27 +1,29 @@
 # Stata summarize in R
 
-`dtatools::summarize()`, `dtatools::summarise()`, and `dtatools::summ()` are
-the same function. They calculate each variable separately, using Stata's
-missing-value, weighting, percentile, and moment conventions.
+`dtatools::summ()` is the R equivalent of Stata's `summarize` command. It
+calculates each variable separately, using Stata's missing-value, weighting,
+percentile, and moment conventions. dplyr exports `dplyr::summarise()` and
+its alias `dplyr::summarize()`. dtatools uses the name `summ()` to avoid
+conflicts with those functions.
 
 | Stata | R |
 | --- | --- |
-| `summarize` | `summarize(data)` |
-| `summarize x y` | `summarize(data, x, y)` |
-| `summarize x-z` | `summarize(data, "x-z")` or `summarize(data, x:z)` |
-| `summarize x if eligible` | `summarize(data, x, where = eligible)` |
-| `summarize x in 2/10` | `summarize(data, x, rows = 2:10)` |
-| `by group: summarize x` | `summarize(data, x, by = group)` |
-| `summarize x [aw=w]` | `summarize(data, x, weights = w, weight = "aweight")` |
-| `summarize x [fw=w]` | `summarize(data, x, weights = w, weight = "fweight")` |
-| `summarize x [iw=w]` | `summarize(data, x, weights = w, weight = "iweight")` |
-| `summarize x, detail` | `summarize(data, x, detail = TRUE)` |
-| `summarize x, meanonly` | `summarize(data, x, meanonly = TRUE)` |
-| `summarize i.group##c.x` | `summarize(data, "i.group##c.x")` |
-| `summarize L(1/3).x` after `tsset time` | `summarize(data, "L(1/3).x", time = "time")` |
-| `summarize L.x` after `xtset id time` | `summarize(data, "L.x", time = "time", panel = "id")` |
+| `summarize` | `summ(data)` |
+| `summarize x y` | `summ(data, x, y)` |
+| `summarize x-z` | `summ(data, "x-z")` or `summ(data, x:z)` |
+| `summarize x if eligible` | `summ(data, x, where = eligible)` |
+| `summarize x in 2/10` | `summ(data, x, rows = 2:10)` |
+| `by group: summarize x` | `summ(data, x, by = group)` |
+| `summarize x [aw=w]` | `summ(data, x, weights = w, weight = "aweight")` |
+| `summarize x [fw=w]` | `summ(data, x, weights = w, weight = "fweight")` |
+| `summarize x [iw=w]` | `summ(data, x, weights = w, weight = "iweight")` |
+| `summarize x, detail` | `summ(data, x, detail = TRUE)` |
+| `summarize x, meanonly` | `summ(data, x, meanonly = TRUE)` |
+| `summarize i.group##c.x` | `summ(data, "i.group##c.x")` |
+| `summarize L(1/3).x` after `tsset time` | `summ(data, "L(1/3).x", time = "time")` |
+| `summarize L.x` after `xtset id time` | `summ(data, "L.x", time = "time", panel = "id")` |
 
-The manual page `?summarize` documents display options, return values, and
+The manual page `?summ` documents display options, return values, and
 calendar formats. Grouping follows the package's existing `by` convention,
 visiting groups in order of first appearance without sorting or modifying
 the input. Time-series operators match time values, including gaps, rather
@@ -38,9 +40,7 @@ combines statistics and group keys for further R calculations.
 Stata's surrounding command environment is expressed through R calls.
 Collect results with `as.data.frame()`, and repeat calls over samples or
 windows for the roles of `statsby`, `rolling`, or resampling prefixes.
-The function does not parse Stata prefix programs. Use
-`dplyr::summarise()` explicitly for dplyr aggregation when both packages
-are attached.
+The function does not parse Stata prefix programs.
 
 ## Verification
 
@@ -56,7 +56,7 @@ The fixtures cover missing values and weights, zero and negative weights,
 frequency-weight validation, percentile boundaries, empty and constant
 samples, single observations, cancellation, and moment overflow and
 underflow. Separate tests check factor expansion, hidden bases, interactions,
-grouped samples, time operators, printed tables, formats, aliases, input
+grouped samples, time operators, printed tables, formats, input
 containers, and integration with existing dplyr methods.
 
 ## Ties with extreme weights

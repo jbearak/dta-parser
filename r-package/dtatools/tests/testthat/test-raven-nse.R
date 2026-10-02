@@ -84,8 +84,6 @@ expected_policy <- list(
     tab1 = list(captured = "x", captured_dots = TRUE),
     tab2 = list(captured = "x", captured_dots = TRUE),
     tabi = list(captured = character(), captured_dots = FALSE),
-    summarize = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),
-    summarise = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),
     summ = list(captured = c("x", "where", "by", "weights"), captured_dots = TRUE),
     read_dta = list(captured = "col_select", captured_dots = FALSE),
     read_arrow = list(captured = "col_select", captured_dots = FALSE),
