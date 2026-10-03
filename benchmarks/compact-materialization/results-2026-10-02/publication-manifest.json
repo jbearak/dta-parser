@@ -126,7 +126,7 @@
     },
     "publication-source-map.json": {
       "bytes": 35239,
-      "sha256": "91f6e04cff9ba6bfe9c37d0e763e4b52a89eba032c7e5abaf171aff4e1e2574f"
+      "sha256": "8afb78b9fa011896b131f5419c0652c641b6feeb5e154992888f0586ec9fffdf"
     },
     "timings/01-baseline.csv": {
       "bytes": 13072,
@@ -309,8 +309,8 @@
       "sha256": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
     },
     "validation/archive-checker-tests.log": {
-      "bytes": 105,
-      "sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8"
+      "bytes": 109,
+      "sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4"
     },
     "validation/combined-controller-tests.log": {
       "bytes": 315,
@@ -337,8 +337,8 @@
       "sha256": "9dc929a4a19c99af8551066c27b479d7cf07a83bcb6539166e734197dceef042"
     },
     "validation/conformance-integration-v2.json": {
-      "bytes": 38015,
-      "sha256": "802db36bb1c3bf3f665224a9fe1ea79059a4b73834837eb97c267d6d15ddb48f"
+      "bytes": 38109,
+      "sha256": "887a4431299dfdcb3fe422071de3cfcba9f5436c1708a9b69841a2dcece61b27"
     },
     "validation/conformance-integration-v2.log": {
       "bytes": 22688,
@@ -481,12 +481,12 @@
       "sha256": "cdad1adb15db116d50e11d46301b02e23498c1c60c30dccd313e0bce28df75fa"
     },
     "validation/test-validate-conformance-archive.py": {
-      "bytes": 5429,
-      "sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a"
+      "bytes": 6596,
+      "sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083"
     },
     "validation/validate-conformance-archive.py": {
-      "bytes": 3204,
-      "sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b"
+      "bytes": 5295,
+      "sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
     }
   },
   "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."

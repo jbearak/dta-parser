@@ -380,8 +380,8 @@
     "source": "<private-evidence>/acceptance-v1/summary.csv"
   },
   "validation/archive-checker-tests.log": {
-    "original_sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8",
-    "published_sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8",
+    "original_sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4",
+    "published_sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4",
     "source": "<private-evidence>/archive-checker-tests.log"
   },
   "validation/combined-controller-tests.log": {
@@ -415,8 +415,8 @@
     "source": "<private-evidence>/conformance-integration-v2-binding-validation.log"
   },
   "validation/conformance-integration-v2.json": {
-    "original_sha256": "802db36bb1c3bf3f665224a9fe1ea79059a4b73834837eb97c267d6d15ddb48f",
-    "published_sha256": "802db36bb1c3bf3f665224a9fe1ea79059a4b73834837eb97c267d6d15ddb48f",
+    "original_sha256": "887a4431299dfdcb3fe422071de3cfcba9f5436c1708a9b69841a2dcece61b27",
+    "published_sha256": "887a4431299dfdcb3fe422071de3cfcba9f5436c1708a9b69841a2dcece61b27",
     "source": "<private-evidence>/conformance-integration-v2.json"
   },
   "validation/conformance-integration-v2.log": {
@@ -590,13 +590,13 @@
     "source": "<private-evidence>/regression-tests.log"
   },
   "validation/test-validate-conformance-archive.py": {
-    "original_sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a",
-    "published_sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a",
+    "original_sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083",
+    "published_sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083",
     "source": "<private-evidence>/test-validate-conformance-archive.py"
   },
   "validation/validate-conformance-archive.py": {
-    "original_sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b",
-    "published_sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b",
+    "original_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+    "published_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
     "source": "<private-evidence>/validate-conformance-archive.py"
   }
 }
