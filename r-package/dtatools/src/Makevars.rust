@@ -4,7 +4,8 @@ $(SHLIB): $(RUST_LIB) dtatools-win.def
 
 # R derives OBJECTS from every C source in this directory.
 $(OBJECTS): dtatools-internal.h owned-columns.h row-filter.h mutation-write.h mutation-fast.h egen-values.h egen-groups.h
-numeric-payload.o: numeric-arithmetic.h
+# Split arithmetic producers are included transitively by numeric-payload.c.
+numeric-payload.o: $(wildcard numeric-arithmetic*.h)
 
 $(RUST_LIB):
 	CARGO_TARGET_DIR=$(RUST_TARGET_DIR) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml $(RUST_BUILD_TARGET) --release --locked --offline
