@@ -60,42 +60,17 @@ unsafe fn pair_exact<
 }
 
 #[inline(always)]
-unsafe fn pair_block<
-    const X_MODERN: bool,
-    const Y_MODERN: bool,
-    F: Fn(f32, f32) -> bool,
-    M: Fn(u8, u8) -> bool,
->(
-    x: *const f32,
-    y: *const f32,
-    output: *mut c_int,
-    length: usize,
-    observed: &F,
-    missing: &M,
-) -> bool {
-    // Prove a whole bounded block ordinary before selecting its loop. A
-    // per-row branch defeats vectorization and is expensive for mixed tags.
+unsafe fn ordinary_block(x: *const f32, y: *const f32, length: usize) -> bool {
     // Below-DOT absolute bit patterns are finite and exclude every missing
-    // code. Unsigned maximum avoids packing a per-lane boolean reduction.
-    // Large negative observed values and either infinity conservatively use
-    // the same exact vectorizable classifier as high positive imports.
+    // code. Unsigned maximum vectorizes without packing per-lane booleans.
+    // Large negative observed values and either infinity conservatively fail.
     let mut maximum = 0_u32;
     for index in 0..length {
         maximum = maximum
             .max(x.add(index).read_unaligned().to_bits() & 0x7fff_ffff)
             .max(y.add(index).read_unaligned().to_bits() & 0x7fff_ffff);
     }
-    if maximum < DOT {
-        for index in 0..length {
-            output.add(index).write(c_int::from(observed(
-                x.add(index).read_unaligned(),
-                y.add(index).read_unaligned(),
-            )));
-        }
-        true
-    } else {
-        pair_exact::<X_MODERN, Y_MODERN, _, _>(x, y, output, length, observed, missing)
-    }
+    maximum < DOT
 }
 
 unsafe fn pair<
@@ -114,26 +89,40 @@ unsafe fn pair<
     const BLOCK: usize = 64;
     let mut start = 0;
     let mut valid = true;
-    while length - start >= BLOCK {
-        valid &= pair_block::<X_MODERN, Y_MODERN, _, _>(
-            x.add(start),
-            y.add(start),
-            output.add(start),
-            BLOCK,
-            &observed,
-            &missing,
-        );
-        start += BLOCK;
-    }
-    if start < length {
-        valid &= pair_block::<X_MODERN, Y_MODERN, _, _>(
-            x.add(start),
-            y.add(start),
-            output.add(start),
-            length - start,
-            &observed,
-            &missing,
-        );
+    let mut failed_blocks = 0;
+    while start < length {
+        let count = BLOCK.min(length - start);
+        let xp = x.add(start);
+        let yp = y.add(start);
+        let result = output.add(start);
+        if ordinary_block(xp, yp, count) {
+            failed_blocks = 0;
+            for index in 0..count {
+                result.add(index).write(c_int::from(observed(
+                    xp.add(index).read_unaligned(),
+                    yp.add(index).read_unaligned(),
+                )));
+            }
+        } else {
+            failed_blocks += 1;
+            // Repeated failed proofs only choose the exact algorithm for the
+            // rest of this span. They never establish a fact about later rows.
+            // This bounds wasted scans on dense missing or unusual imports.
+            if failed_blocks == 4 {
+                return valid
+                    & pair_exact::<X_MODERN, Y_MODERN, _, _>(
+                        xp,
+                        yp,
+                        result,
+                        length - start,
+                        &observed,
+                        &missing,
+                    );
+            }
+            valid &=
+                pair_exact::<X_MODERN, Y_MODERN, _, _>(xp, yp, result, count, &observed, &missing);
+        }
+        start += count;
     }
     valid
 }
@@ -409,6 +398,63 @@ mod tests {
                     if position < length {
                         x[position] = edge;
                         y[(position + 1) % length] = f32::from_bits(DOT + 3 * STEP);
+                    }
+                    for xv in [FormatVersion::V111, FormatVersion::V119] {
+                        for yv in [FormatVersion::V111, FormatVersion::V119] {
+                            let left = view(&x, xv);
+                            let right = view(&y, yv);
+                            for op in 0..=5 {
+                                let expected: Option<Vec<c_int>> = (0..length)
+                                    .map(|i| unsafe {
+                                        compare_operand_element(left, i)
+                                            .zip(compare_operand_element(right, i))
+                                            .map(|(a, b)| compare_decoded(op, a, b))
+                                    })
+                                    .collect();
+                                let mut output = vec![-19; length + 2];
+                                let valid = unsafe {
+                                    compare(
+                                        op,
+                                        left,
+                                        Some(right),
+                                        ComparedElement { rank: 0, value: 0. },
+                                        output.as_mut_ptr().add(1),
+                                        length,
+                                    )
+                                };
+                                assert_eq!(valid, Some(expected.is_some()));
+                                if let Some(expected) = expected {
+                                    assert_eq!(&output[1..length + 1], expected.as_slice());
+                                }
+                                assert_eq!(output[0], -19);
+                                assert_eq!(output[length + 1], -19);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn float_pair_dense_switch_preserves_late_rows_and_invalidity() {
+        for length in [255_usize, 256, 257, 320, 1025] {
+            for pattern in 0..3 {
+                for invalid in [None, Some(1), Some(193), Some(length - 1)] {
+                    let mut x: Vec<f32> = (0..length).map(|i| (i % 7) as f32 / 8.).collect();
+                    let mut y: Vec<f32> = (0..length).map(|i| (i % 3) as f32 / 8.).collect();
+                    for i in 0..length {
+                        let tagged = match pattern {
+                            0 => i < 256,
+                            1 => i >= 64,
+                            _ => i / 64 % 2 == 0,
+                        };
+                        if tagged {
+                            x[i] = f32::from_bits(DOT + (i % 27) as u32 * STEP);
+                            y[i] = f32::from_bits(DOT + (26 - i % 27) as u32 * STEP);
+                        }
+                    }
+                    if let Some(i) = invalid {
+                        x[i] = f32::from_bits(0xffc00001);
                     }
                     for xv in [FormatVersion::V111, FormatVersion::V119] {
                         for yv in [FormatVersion::V111, FormatVersion::V119] {
