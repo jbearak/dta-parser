@@ -1,0 +1,9 @@
+rehashed files: 1
+blocks added: 7, removed: 0, counts changed: 0
+  added:   test-numeric-materialization.R :: shared compact materialization decodes without copying compact bytes
+  added:   test-numeric-materialization.R :: allocation finalizers can alias materialize or patch compact inputs
+  added:   test-numeric-materialization.R :: ordinary writable pointer dispatch also avoids a compact detour
+  added:   test-numeric-materialization.R :: private materialization does not consume stale missing-count proofs
+  added:   test-numeric-materialization.R :: failed materialization preserves compact state and finalizer aliases
+  added:   test-numeric-materialization.R :: unwinding materialization restores a private compact write claim
+  added:   test-numeric-materialization.R :: materialization roots survive collection at every allocation

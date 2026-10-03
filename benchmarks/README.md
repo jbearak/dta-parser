@@ -93,6 +93,13 @@ A 256-row missing prefix on a million-row plain compact pair improves by
 3.17 to 3.24 times CPU. The 768-observation comparison includes retained spans,
 dense and ordinary controls, and the measured smaller regressions.
 
+The [compact materialization follow-up](compact-materialization/results-2026-10-02.md)
+removes a redundant compact copy before decoding aliased columns into doubles.
+Million-row byte/int/long/float inputs save 1/2/4/4 MB of temporary copying;
+the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased inputs.
+The report separates exact allocation savings from timing and states its high
+missing density, batch intervals and retained-owner controls.
+
 The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
 prepares numeric order keys once instead of decoding and validating them during
 sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×

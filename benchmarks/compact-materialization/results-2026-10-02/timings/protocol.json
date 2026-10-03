@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+  "candidate_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0",
+  "cases_per_build_round": 32,
+  "interval": "Shared external C loop calls ordinary R DATAPTR_RO once per preconstructed fresh compact handle. Includes materialized result allocation and automatic GC. Construction, full checks, explicit GC, profiling and destruction are excluded.",
+  "limits": "One host and deterministic missing-bearing inputs. Private compact inputs are controls for decode/output allocation. All comparisons use the identical external pointer probe; no internal package test forcing route or ordinary-double no-op is timed.",
+  "memory": "Separate single-call diagnostics: exact compact-copy and retained-compatibility byte counters, Rprofmem logged allocation bytes, and gc() Vcells high-water increase above the pre-call live vector heap. Live Vcells delta is also reported. These metrics overlap and must not be added. They exclude external allocations and are not process RSS.",
+  "order": "Fresh process per build/round. Alternate build order and private/aliased positions; fixed size/width/backing case order.",
+  "probe_binary_sha256": "349fbc663c6ed2f296f9802d82f80e3607b540737d8ff083de768a1b40a415a6",
+  "probe_source_sha256": "cabec15c6fabe720e62204b345d605a9d87f68e7955a553407e9fbe0d7a92ba1",
+  "repetitions": "Fixed per-case batches of at most 1024 handles and about 64 MiB compact-plus-double payload; sum retained intervals until CPU and wall each reach 150 ms. Every request consumes a different unmaterialized handle. All individual proc.time() intervals are retained, including zeros, and their range and sums are independently verified; the aggregate threshold does not establish individual timer precision.",
+  "retained": "Test adapter freezes constructor bytes into immutable retained chunks (257 rows for small input, 8191 for large); no Arrow reader or decompression is measured.",
+  "rounds": 6,
+  "values": "Deterministic exact finite values plus all 27 missing ranks. Source and result checked bitwise via nonmutating region reads, including every timed handle and its alias. Alias independence checked by later target mutation and alias materialization outside timing."
+}
