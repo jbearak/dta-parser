@@ -21,3 +21,5 @@ benchmarks/reader-cpu-scaling/results-2026-10-02-compact-kernels/** -text -white
 benchmarks/native-operations/results-2026-10-02/** -text -whitespace linguist-generated=true
 benchmarks/native-operations/results-2026-10-02-arithmetic-parity/** -text -whitespace linguist-generated=true
 benchmarks/native-operations/results-2026-10-02-arithmetic-parity-review/** -text -whitespace linguist-generated=true
+benchmarks/prepared-grouping/results-2026-10-02/** -text -whitespace linguist-generated=true
+benchmarks/native-comparison/results-2026-10-03/** -text -whitespace linguist-generated=true

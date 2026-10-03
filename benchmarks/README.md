@@ -70,11 +70,28 @@ The 432-observation constructed-column matrix reaches double-control throughput
 with exact missing-code and scalar-precision semantics. Retained-column
 throughput remains a separate question.
 
+The [retained-float and decoded-double comparison follow-up](native-comparison/results-2026-10-03.md)
+measures direct double-pair kernels, retained scheduling and vectorized float
+block comparisons. It reports ordinary/sparse parity, dense-missing guards,
+the scheduling CPU/elapsed-time tradeoff and rejected per-row shortcuts.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
+
+The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
+prepares numeric order keys once instead of decoding and validating them during
+sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
+faster and matches typed/ordinary-double throughput within the measured spread.
+It reports the additional eight-byte-per-row-per-key cache cost explicitly.
+
+The [nullable Arrow string follow-up](nullable-arrow-strings/results-2026-10-02.md)
+moves nullable character construction into one caught C call per column.
+Across 504 fresh-process observations, nullable read CPU improves by 1.08 to
+1.42 times and read-plus-full-consumption CPU by 1.08 to 1.32 times. It preserves
+the eager nullable result and reports the deferred dictionary costs separately.
 
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,

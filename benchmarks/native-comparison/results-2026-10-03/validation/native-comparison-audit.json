@@ -1,0 +1,215 @@
+{
+  "artifacts": {
+    "completion.json": "fd090fd7251959390a05e3de049eae68d8f471810380dfb2212a40c8989c2a1c",
+    "protocol.json": "b5f825a2ac712211a0ab272009c788434997451ffa60ead7e1024eb4c37299d9",
+    "provenance-after.json": "68129b0465d6bef5141668ea9d3ffdbd8f7b42e8145b80b9b64718defdb750b4",
+    "provenance-before.json": "68129b0465d6bef5141668ea9d3ffdbd8f7b42e8145b80b9b64718defdb750b4",
+    "raw.csv": "8b5427cfa3962aba68f892c4ea17e25b8cc586b8334e36ca387c0cff8bb308ba",
+    "source.patch": "2e0e39a719f338af3b27a2ce03dfa3076165e4579770b0228e07771cc6ff9f59",
+    "summary.csv": "c95aa28a5da1a08881557c3b112d29c6fda042c5c272b0ba6688d905bdc154d7"
+  },
+  "audit": "Independent read-only artifact recomputation; no R/build/timing jobs",
+  "baseline_candidate_tradeoff": [
+    {
+      "bare_cpu_ratio": 1.001651411330562,
+      "compact_cpu_speedup": 1.2881056815715504,
+      "compact_wall_ratio": 2.5946372092644414,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 4.9286566009951285,
+      "typed_double_wall_ratio": 0.756331540645272
+    },
+    {
+      "bare_cpu_ratio": 0.9972505846427904,
+      "compact_cpu_speedup": 1.4542843218336505,
+      "compact_wall_ratio": 2.052234991675398,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 1.000462816589835,
+      "typed_double_wall_ratio": 0.9979008317671985
+    },
+    {
+      "bare_cpu_ratio": 0.9992447336805648,
+      "compact_cpu_speedup": 1.2793071851897986,
+      "compact_wall_ratio": 2.6368560684485014,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "0",
+      "typed_double_cpu_speedup": 5.824338310145452,
+      "typed_double_wall_ratio": 0.6443798797222334
+    },
+    {
+      "bare_cpu_ratio": 0.9975778033019945,
+      "compact_cpu_speedup": 1.2867221621147937,
+      "compact_wall_ratio": 2.6312162399167445,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 4.680064445777757,
+      "typed_double_wall_ratio": 0.7976231605192969
+    },
+    {
+      "bare_cpu_ratio": 0.9975094698066671,
+      "compact_cpu_speedup": 1.3938985000862116,
+      "compact_wall_ratio": 2.144697369051621,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 1.0005042241233675,
+      "typed_double_wall_ratio": 0.9985216792798105
+    },
+    {
+      "bare_cpu_ratio": 0.9957885031605728,
+      "compact_cpu_speedup": 1.2822236906689015,
+      "compact_wall_ratio": 2.6328804511050747,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "0",
+      "typed_double_cpu_speedup": 5.259898041831488,
+      "typed_double_wall_ratio": 0.7119521519979751
+    },
+    {
+      "bare_cpu_ratio": 1.0334093313445158,
+      "compact_cpu_speedup": 0.9960629921259843,
+      "compact_wall_ratio": 0.998031496062992,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 4.2365455107830305,
+      "typed_double_wall_ratio": 0.236517210765913
+    },
+    {
+      "bare_cpu_ratio": 1.028109720123298,
+      "compact_cpu_speedup": 1.001342118306641,
+      "compact_wall_ratio": 1.0002404449196363,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 0.9678706794996191,
+      "typed_double_wall_ratio": 1.0331037273705095
+    },
+    {
+      "bare_cpu_ratio": 0.9983416252072969,
+      "compact_cpu_speedup": 1.0482038707417463,
+      "compact_wall_ratio": 0.9541048697886255,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "1",
+      "typed_double_cpu_speedup": 4.83084918974784,
+      "typed_double_wall_ratio": 0.20700294311033976
+    },
+    {
+      "bare_cpu_ratio": 0.9983552631578948,
+      "compact_cpu_speedup": 1.0013597411221553,
+      "compact_wall_ratio": 0.9980461761879038,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 4.057925182687145,
+      "typed_double_wall_ratio": 0.24643135468993538
+    },
+    {
+      "bare_cpu_ratio": 1.047731481481478,
+      "compact_cpu_speedup": 1.0192338611737268,
+      "compact_wall_ratio": 0.9793429022633812,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 1.0269869308573851,
+      "typed_double_wall_ratio": 0.9737314072351104
+    },
+    {
+      "bare_cpu_ratio": 1.0009141839150528,
+      "compact_cpu_speedup": 1.0003512808363109,
+      "compact_wall_ratio": 1.003038817188003,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "1",
+      "typed_double_cpu_speedup": 4.713429003889403,
+      "typed_double_wall_ratio": 0.21253810197506906
+    }
+  ],
+  "candidate_thread_tradeoff": [
+    {
+      "auto_compact_typed_cpu": 1.6575454001783276,
+      "auto_cpu_ms": 0.6366580630681191,
+      "auto_wall_ms": 0.6366580630681191,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "serial_cpu_ms": 0.6496163682864451,
+      "serial_wall_ms": 0.6483375959079284
+    },
+    {
+      "auto_compact_typed_cpu": 1.0852118737961562,
+      "auto_cpu_ms": 0.27794561933534795,
+      "auto_wall_ms": 0.27744209466263847,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "serial_cpu_ms": 0.29309339775459764,
+      "serial_wall_ms": 0.29309339775459764
+    },
+    {
+      "auto_compact_typed_cpu": 1.7349423743630754,
+      "auto_cpu_ms": 0.6377106946470633,
+      "auto_wall_ms": 0.6368421052631621,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "serial_cpu_ms": 0.6407249466950958,
+      "serial_wall_ms": 0.6417910447761194
+    },
+    {
+      "auto_compact_typed_cpu": 1.5528472810495504,
+      "auto_cpu_ms": 0.6353893372740727,
+      "auto_wall_ms": 0.6364692508809844,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "serial_cpu_ms": 0.638790259230165,
+      "serial_wall_ms": 0.638592750533049
+    },
+    {
+      "auto_compact_typed_cpu": 1.0229374723348093,
+      "auto_cpu_ms": 0.2904740225509862,
+      "auto_wall_ms": 0.29139909905592515,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "serial_cpu_ms": 0.2796760992862244,
+      "serial_wall_ms": 0.27916693431677475
+    },
+    {
+      "auto_compact_typed_cpu": 1.548017171631254,
+      "auto_cpu_ms": 0.6351918285769527,
+      "auto_wall_ms": 0.635766535075682,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "serial_cpu_ms": 0.6377106946470643,
+      "serial_wall_ms": 0.6385927505330501
+    }
+  ],
+  "caveats": [
+    "Native qualification proves eligibility, not a per-timed-call entry counter.",
+    "Missing-bearing ordinary R has different NA propagation semantics.",
+    "Retained constructor adapter uses one fixed mismatched chunk geometry; no reader/decompression workload."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete case matrix and all six permutations",
+    "every CPU/wall median and ratio",
+    "full result/source/metadata hashes and unchanged state",
+    "separate native eligibility",
+    "same-contract representation agreement",
+    "before/after full binding and exact Rscript execution/build runtime equality",
+    "current controller hashes, source patch and completion ratio bindings"
+  ],
+  "cpu_interval_range": [
+    0.236999999999998,
+    0.342999999999999
+  ],
+  "observations": 432,
+  "summary_rows": 12,
+  "wall_interval_range": [
+    0.0760000000000005,
+    0.341999999999999
+  ]
+}

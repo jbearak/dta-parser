@@ -1,0 +1,78 @@
+{
+  "source_sha256": "7b016591e90963f0c7d827106ae574f4d26df7b3347559bb2a295248c85472ad",
+  "population": "Nullable string fixtures; read-return workflow only; ratio of six-round medians",
+  "cases": [
+    {
+      "id": "high-one",
+      "threads": "0",
+      "baseline": 0.162,
+      "candidate": 0.148,
+      "ratio": 1.0945945945945947,
+      "saved_ms": 14.000000000000012
+    },
+    {
+      "id": "high-one",
+      "threads": "1",
+      "baseline": 0.1545,
+      "candidate": 0.142,
+      "ratio": 1.0880281690140845,
+      "saved_ms": 12.50000000000001
+    },
+    {
+      "id": "high-sparse",
+      "threads": "0",
+      "baseline": 0.162,
+      "candidate": 0.149,
+      "ratio": 1.087248322147651,
+      "saved_ms": 13.00000000000001
+    },
+    {
+      "id": "high-sparse",
+      "threads": "1",
+      "baseline": 0.155,
+      "candidate": 0.142,
+      "ratio": 1.091549295774648,
+      "saved_ms": 13.00000000000001
+    },
+    {
+      "id": "low-one",
+      "threads": "0",
+      "baseline": 0.049,
+      "candidate": 0.037,
+      "ratio": 1.3243243243243243,
+      "saved_ms": 12.000000000000004
+    },
+    {
+      "id": "low-one",
+      "threads": "1",
+      "baseline": 0.042,
+      "candidate": 0.03,
+      "ratio": 1.4000000000000001,
+      "saved_ms": 12.000000000000004
+    },
+    {
+      "id": "low-sparse",
+      "threads": "0",
+      "baseline": 0.0485,
+      "candidate": 0.0375,
+      "ratio": 1.2933333333333334,
+      "saved_ms": 11.000000000000004
+    },
+    {
+      "id": "low-sparse",
+      "threads": "1",
+      "baseline": 0.042499999999999996,
+      "candidate": 0.03,
+      "ratio": 1.4166666666666665,
+      "saved_ms": 12.499999999999996
+    }
+  ],
+  "ratio_range": [
+    1.087248322147651,
+    1.4166666666666665
+  ],
+  "saved_ms_range": [
+    11.000000000000004,
+    14.000000000000012
+  ]
+}

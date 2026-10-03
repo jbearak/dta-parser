@@ -7,6 +7,13 @@ use std::ffi::c_int;
 const DOT: u32 = 0x7f00_0000;
 const STEP: u32 = 0x800;
 
+/// The same typed kernel can read plain buffers and retained float spans.
+pub(super) fn supports(x: CompareOperandView, y: Option<CompareOperandView>) -> bool {
+    x.temporal == 0
+        && matches!(x.storage, CompareStorage::Float(_))
+        && y.is_none_or(|y| y.temporal == 0 && matches!(y.storage, CompareStorage::Float(_)))
+}
+
 #[inline(always)]
 fn rank<const MODERN: bool>(bits: u32) -> u8 {
     if MODERN {
@@ -22,38 +29,100 @@ fn rank<const MODERN: bool>(bits: u32) -> u8 {
 }
 
 #[inline(always)]
-fn ordered_key<const MODERN: bool>(value: f32) -> (u32, bool) {
-    let bits = value.to_bits();
-    let missing = rank::<MODERN>(bits);
-    // Observed infinities and permissive high finite imports precede missing
-    // values too. Their IEEE order keys end at 0xff800000, below these slots.
-    let normalized = if value == 0.0 { 0 } else { bits };
-    let observed = if normalized & 0x8000_0000 != 0 {
-        !normalized
-    } else {
-        normalized ^ 0x8000_0000
-    };
-    let key = if missing != 0 {
-        u32::MAX - 27 + u32::from(missing)
-    } else {
-        observed
-    };
-    (key, missing != 0 || !value.is_nan())
-}
-
-unsafe fn pair<const X_MODERN: bool, const Y_MODERN: bool, F: Fn(u32, u32) -> bool>(
+unsafe fn pair_exact<
+    const X_MODERN: bool,
+    const Y_MODERN: bool,
+    F: Fn(f32, f32) -> bool,
+    M: Fn(u8, u8) -> bool,
+>(
     x: *const f32,
     y: *const f32,
     output: *mut c_int,
     length: usize,
-    compare: F,
+    observed: &F,
+    missing: &M,
 ) -> bool {
     let mut valid = true;
     for index in 0..length {
-        let (a, av) = ordered_key::<X_MODERN>(x.add(index).read_unaligned());
-        let (b, bv) = ordered_key::<Y_MODERN>(y.add(index).read_unaligned());
-        valid &= av & bv;
-        output.add(index).write(c_int::from(compare(a, b)));
+        let a = x.add(index).read_unaligned();
+        let b = y.add(index).read_unaligned();
+        let ar = rank::<X_MODERN>(a.to_bits());
+        let br = rank::<Y_MODERN>(b.to_bits());
+        valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
+        let result = if ar | br == 0 {
+            observed(a, b)
+        } else {
+            missing(ar, br)
+        };
+        output.add(index).write(c_int::from(result));
+    }
+    valid
+}
+
+#[inline(always)]
+unsafe fn ordinary_block(x: *const f32, y: *const f32, length: usize) -> bool {
+    // Below-DOT absolute bit patterns are finite and exclude every missing
+    // code. Unsigned maximum vectorizes without packing per-lane booleans.
+    // Large negative observed values and either infinity conservatively fail.
+    let mut maximum = 0_u32;
+    for index in 0..length {
+        maximum = maximum
+            .max(x.add(index).read_unaligned().to_bits() & 0x7fff_ffff)
+            .max(y.add(index).read_unaligned().to_bits() & 0x7fff_ffff);
+    }
+    maximum < DOT
+}
+
+unsafe fn pair<
+    const X_MODERN: bool,
+    const Y_MODERN: bool,
+    F: Fn(f32, f32) -> bool,
+    M: Fn(u8, u8) -> bool,
+>(
+    x: *const f32,
+    y: *const f32,
+    output: *mut c_int,
+    length: usize,
+    observed: F,
+    missing: M,
+) -> bool {
+    const BLOCK: usize = 64;
+    let mut start = 0;
+    let mut valid = true;
+    let mut failed_blocks = 0;
+    while start < length {
+        let count = BLOCK.min(length - start);
+        let xp = x.add(start);
+        let yp = y.add(start);
+        let result = output.add(start);
+        if ordinary_block(xp, yp, count) {
+            failed_blocks = 0;
+            for index in 0..count {
+                result.add(index).write(c_int::from(observed(
+                    xp.add(index).read_unaligned(),
+                    yp.add(index).read_unaligned(),
+                )));
+            }
+        } else {
+            failed_blocks += 1;
+            // Repeated failed proofs only choose the exact algorithm for the
+            // rest of this span. They never establish a fact about later rows.
+            // This bounds wasted scans on dense missing or unusual imports.
+            if failed_blocks == 4 {
+                return valid
+                    & pair_exact::<X_MODERN, Y_MODERN, _, _>(
+                        xp,
+                        yp,
+                        result,
+                        length - start,
+                        &observed,
+                        &missing,
+                    );
+            }
+            valid &=
+                pair_exact::<X_MODERN, Y_MODERN, _, _>(xp, yp, result, count, &observed, &missing);
+        }
+        start += count;
     }
     valid
 }
@@ -85,12 +154,12 @@ unsafe fn pair_operator<const X: bool, const Y: bool>(
     length: usize,
 ) -> bool {
     match op {
-        0 => pair::<X, Y, _>(x, y, output, length, |a, b| a == b),
-        1 => pair::<X, Y, _>(x, y, output, length, |a, b| a != b),
-        2 => pair::<X, Y, _>(x, y, output, length, |a, b| a < b),
-        3 => pair::<X, Y, _>(x, y, output, length, |a, b| a <= b),
-        4 => pair::<X, Y, _>(x, y, output, length, |a, b| a > b),
-        _ => pair::<X, Y, _>(x, y, output, length, |a, b| a >= b),
+        0 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a == b, |a, b| a == b),
+        1 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a != b, |a, b| a != b),
+        2 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a < b, |a, b| a < b),
+        3 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a <= b, |a, b| a <= b),
+        4 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a > b, |a, b| a > b),
+        _ => pair::<X, Y, _, _>(x, y, output, length, |a, b| a >= b, |a, b| a >= b),
     }
 }
 
@@ -135,7 +204,7 @@ pub(super) unsafe fn compare(
     let CompareStorage::Float(x_version) = x.storage else {
         return None;
     };
-    if x.temporal != 0 || x.native_owner != 0 || !(0..=5).contains(&op) {
+    if !supports(x, y) || x.native_owner != 0 || !(0..=5).contains(&op) {
         return None;
     }
     let xp = x.values as *const f32;
@@ -249,6 +318,176 @@ mod tests {
                         Some(true)
                     );
                     assert_eq!(actual, expected);
+                }
+            }
+        }
+    }
+    #[test]
+    fn float_pair_ieee_edges_and_missing_values_match_decoding() {
+        let mut values = vec![
+            0.0,
+            -0.0,
+            f32::MIN,
+            f32::MAX,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::from_bits(DOT - 1),
+            f32::from_bits(DOT + 1),
+            f32::NAN,
+            f32::from_bits(0xffc00001),
+        ];
+        values.extend((0..27).map(|tag| f32::from_bits(DOT + tag * STEP)));
+        for xv in [FormatVersion::V111, FormatVersion::V119] {
+            for yv in [FormatVersion::V111, FormatVersion::V119] {
+                for &a in &values {
+                    for &b in &values {
+                        let x = [a];
+                        let y = [b];
+                        let left = view(&x, xv);
+                        let right = view(&y, yv);
+                        let decoded = unsafe {
+                            compare_operand_element(left, 0).zip(compare_operand_element(right, 0))
+                        };
+                        for op in 0..=5 {
+                            let mut output = [0];
+                            let valid = unsafe {
+                                compare(
+                                    op,
+                                    left,
+                                    Some(right),
+                                    ComparedElement { rank: 0, value: 0. },
+                                    output.as_mut_ptr(),
+                                    1,
+                                )
+                            };
+                            assert_eq!(valid, Some(decoded.is_some()));
+                            if let Some((a, b)) = decoded {
+                                assert_eq!(output[0], compare_decoded(op, a, b));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn float_pair_blocks_preserve_boundaries_and_invalid_fallback() {
+        let edges = [
+            -0.0,
+            f32::from_bits(DOT - 1),
+            f32::from_bits(DOT),
+            f32::from_bits(DOT + STEP),
+            f32::from_bits(DOT + 26 * STEP),
+            f32::from_bits(DOT + 1),
+            f32::MAX,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NAN,
+            f32::from_bits(0xffc00001),
+        ];
+        for length in [0_usize, 1, 15, 16, 17, 63, 64, 65, 127, 128, 129] {
+            // The out-of-range position leaves full blocks and tails ordinary.
+            let mut positions = vec![length, 0, length / 2, length.saturating_sub(1), 63, 64, 65];
+            positions.sort_unstable();
+            positions.dedup();
+            for position in positions {
+                for edge in edges {
+                    let mut x: Vec<f32> = (0..length).map(|i| (i % 7) as f32 / 8.).collect();
+                    let mut y: Vec<f32> = (0..length).map(|i| (i % 3) as f32 / 8.).collect();
+                    if position < length {
+                        x[position] = edge;
+                        y[(position + 1) % length] = f32::from_bits(DOT + 3 * STEP);
+                    }
+                    for xv in [FormatVersion::V111, FormatVersion::V119] {
+                        for yv in [FormatVersion::V111, FormatVersion::V119] {
+                            let left = view(&x, xv);
+                            let right = view(&y, yv);
+                            for op in 0..=5 {
+                                let expected: Option<Vec<c_int>> = (0..length)
+                                    .map(|i| unsafe {
+                                        compare_operand_element(left, i)
+                                            .zip(compare_operand_element(right, i))
+                                            .map(|(a, b)| compare_decoded(op, a, b))
+                                    })
+                                    .collect();
+                                let mut output = vec![-19; length + 2];
+                                let valid = unsafe {
+                                    compare(
+                                        op,
+                                        left,
+                                        Some(right),
+                                        ComparedElement { rank: 0, value: 0. },
+                                        output.as_mut_ptr().add(1),
+                                        length,
+                                    )
+                                };
+                                assert_eq!(valid, Some(expected.is_some()));
+                                if let Some(expected) = expected {
+                                    assert_eq!(&output[1..length + 1], expected.as_slice());
+                                }
+                                assert_eq!(output[0], -19);
+                                assert_eq!(output[length + 1], -19);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn float_pair_dense_switch_preserves_late_rows_and_invalidity() {
+        for length in [255_usize, 256, 257, 320, 1025] {
+            for pattern in 0..3 {
+                for invalid in [None, Some(1), Some(193), Some(length - 1)] {
+                    let mut x: Vec<f32> = (0..length).map(|i| (i % 7) as f32 / 8.).collect();
+                    let mut y: Vec<f32> = (0..length).map(|i| (i % 3) as f32 / 8.).collect();
+                    for i in 0..length {
+                        let tagged = match pattern {
+                            0 => i < 256,
+                            1 => i >= 64,
+                            _ => i / 64 % 2 == 0,
+                        };
+                        if tagged {
+                            x[i] = f32::from_bits(DOT + (i % 27) as u32 * STEP);
+                            y[i] = f32::from_bits(DOT + (26 - i % 27) as u32 * STEP);
+                        }
+                    }
+                    if let Some(i) = invalid {
+                        x[i] = f32::from_bits(0xffc00001);
+                    }
+                    for xv in [FormatVersion::V111, FormatVersion::V119] {
+                        for yv in [FormatVersion::V111, FormatVersion::V119] {
+                            let left = view(&x, xv);
+                            let right = view(&y, yv);
+                            for op in 0..=5 {
+                                let expected: Option<Vec<c_int>> = (0..length)
+                                    .map(|i| unsafe {
+                                        compare_operand_element(left, i)
+                                            .zip(compare_operand_element(right, i))
+                                            .map(|(a, b)| compare_decoded(op, a, b))
+                                    })
+                                    .collect();
+                                let mut output = vec![-19; length + 2];
+                                let valid = unsafe {
+                                    compare(
+                                        op,
+                                        left,
+                                        Some(right),
+                                        ComparedElement { rank: 0, value: 0. },
+                                        output.as_mut_ptr().add(1),
+                                        length,
+                                    )
+                                };
+                                assert_eq!(valid, Some(expected.is_some()));
+                                if let Some(expected) = expected {
+                                    assert_eq!(&output[1..length + 1], expected.as_slice());
+                                }
+                                assert_eq!(output[0], -19);
+                                assert_eq!(output[length + 1], -19);
+                            }
+                        }
+                    }
                 }
             }
         }

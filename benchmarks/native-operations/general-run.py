@@ -46,7 +46,10 @@ def worker_runtime(rscript):
     r_home = Path(subprocess.check_output(
         [str(rscript), '--vanilla', '-e', 'cat(R.home())'], text=True).strip())
     return dict(Rscript_launcher_sha256=sha(rscript),
-                R_runtime_sha256=sha(r_home / 'bin/exec/R'))
+                R_runtime_sha256=sha(r_home / 'bin/exec/R'),
+                R_version=subprocess.check_output(
+                    [str(rscript), '--vanilla', '-e', 'cat(R.version.string)'],
+                    text=True).strip())
 
 
 def write_json(path, value):
@@ -94,6 +97,8 @@ def main():
     parser.add_argument('--rounds', default=6, type=int)
     args = parser.parse_args()
     require(args.rounds >= 6 and args.rounds % 6 == 0, 'Rounds must be a positive multiple of six')
+    require(platform.system() != 'Windows',
+            'This benchmark requires the Unix R runtime layout; Windows is not supported')
     found = shutil.which('Rscript')
     require(found is not None, 'Rscript was not found on PATH')
     rscript = Path(found).resolve(strict=True)
@@ -108,7 +113,7 @@ def main():
             {runtime_before['R_runtime_sha256']}, 'Worker runtime differs from package build runtime')
     write_json(output / 'provenance-before.json', dict(builds=before, controllers=controllers, runtime=runtime_before,
         platform=platform.platform(), machine=platform.machine(),
-        R=subprocess.check_output(['R', '--version'], text=True).splitlines()[0]))
+        R=runtime_before['R_version']))
     patch = []
     for name in sorted(set(before['baseline']['source']) | set(before['candidate']['source'])):
         if before['baseline']['source'].get(name) == before['candidate']['source'].get(name):

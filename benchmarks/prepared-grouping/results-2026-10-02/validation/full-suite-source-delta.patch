@@ -1,0 +1,34 @@
+diff --git a/r-package/dtatools/src/egen-groups.h b/r-package/dtatools/src/egen-groups.h
+index 800fc482..2d0f406d 100644
+--- a/r-package/dtatools/src/egen-groups.h
++++ b/r-package/dtatools/src/egen-groups.h
+@@ -109,21 +109,25 @@ static int egen_group_can_prepare(SEXP columns, SEXP include_missing, SEXP allow
+    their captured allocation, and compact readers use the descriptor captured
+    with its matching root. No pointer is recovered from a public handle after
+    callbacks could have replaced its backing. The region read and validation
+-   loops allocate nothing and invoke no R callbacks. */
++   loops allocate nothing and invoke no provider callbacks; interrupt polling
++   remains. */
+ static R_xlen_t egen_group_prepare(
+     egen_key_reader *keys, egen_block_reader *readers, SEXP roots,
+     R_xlen_t count, R_xlen_t n, int missing, R_xlen_t *order
+ ) {
+-    if (n != 0 && (size_t) count > SIZE_MAX / sizeof(uint64_t) / (size_t) n)
++    if (n == 0) return 0;
++    if ((size_t) count > SIZE_MAX / sizeof(uint64_t) / (size_t) n)
+         Rf_error("Grouping numeric key storage is too large");
+     for (R_xlen_t k = 0; k < count; k++) {
+         keys[k].prepared = (uint64_t *) R_alloc((size_t) n, sizeof(uint64_t));
+         if (egen_group_counting)
+             egen_group_prepared_bytes += (double) n * sizeof(uint64_t);
+     }
+-    /* Bound decode scratch to 8,192 values except for wider one-row tiles.
+-       Only the final eight-byte keys grow with both rows and columns. */
++    /* Bound decode scratch to available rows and 8,192 values except for
++       wider one-row tiles. Only the final eight-byte keys grow with both
++       rows and columns. */
+     R_xlen_t rows = count < 8192 ? 8192 / count : 1;
++    if (rows > n) rows = n;
+     size_t slots = (size_t) rows * (size_t) count;
+     double *values = (double *) R_alloc(slots, sizeof(double));
+     int *codes = (int *) R_alloc(slots, sizeof(int));

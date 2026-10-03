@@ -26,6 +26,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod double_compare;
 mod float_compare;
 mod native_pressure;
 mod owned_numeric;
@@ -794,7 +795,8 @@ unsafe fn compare_numeric_range(
         let x_view = x.contiguous(x_values);
         let destination = output.add(first);
         let fast = compare_raw_int(op, x_view, y_view, scalar, destination, count)
-            .or_else(|| float_compare::compare(op, x_view, y_view, scalar, destination, count));
+            .or_else(|| float_compare::compare(op, x_view, y_view, scalar, destination, count))
+            .or_else(|| double_compare::compare(op, x_view, y_view, destination, count));
         let done = match fast {
             Some(done) => done,
             None if y_view.is_none() && matches!(x_view.storage, CompareStorage::Double) => {
@@ -1232,10 +1234,19 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         if scalar.rank == 0 && scalar.value.is_nan() {
             return false;
         }
+        if (x.native_owner != 0 || y.is_some_and(|view| view.native_owner != 0))
+            && float_compare::supports(x, y)
+        {
+            // These typed loops use the same serial policy as plain floats.
+            // Creating workers for cheap comparisons spends more total CPU;
+            // retained spans use the same inner loop without copying bytes.
+            return unsafe { compare_numeric_range(op, x, y, scalar, output, 0, length) };
+        }
         if x.native_owner == 0 && y.is_none_or(|view| view.native_owner == 0) {
             if let Some(done) = unsafe {
                 compare_raw_int(op, x, y, scalar, output, length)
                     .or_else(|| float_compare::compare(op, x, y, scalar, output, length))
+                    .or_else(|| double_compare::compare(op, x, y, output, length))
             } {
                 return done;
             }

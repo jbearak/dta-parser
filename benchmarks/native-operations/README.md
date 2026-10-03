@@ -97,6 +97,11 @@ and long/float addition. `x * 2` remains a control for the previous kernel.
 Each build has 102 observations per round across compact, typed-double and bare
 double inputs. Six balanced rounds produce 1,224 observations.
 
+The general controller and source builder currently require the Unix R runtime
+layout used on macOS and Linux; the general controller rejects Windows before
+launching workers. This benchmark limitation does not change the package's
+supported platforms.
+
 Use the same clean-build steps above, then run with other CPU workloads stopped:
 
 ```sh

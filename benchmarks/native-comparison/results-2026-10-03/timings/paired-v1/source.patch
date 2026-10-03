@@ -1,0 +1,364 @@
+--- a/src/rust/src/double_compare.rs
++++ b/src/rust/src/double_compare.rs
+@@ -0,0 +1,172 @@
++//! Pair comparisons of decoded doubles, with dispatch outside the row loop.
++use super::{double_missing_rank, double_payload_canonical, CompareOperandView, CompareStorage};
++use std::ffi::c_int;
++
++unsafe fn pair<F: Fn(f64, f64) -> bool, M: Fn(u8, u8) -> bool>(
++    x: *const f64,
++    y: *const f64,
++    output: *mut c_int,
++    length: usize,
++    observed: F,
++    missing: M,
++) -> bool {
++    let mut valid = true;
++    for index in 0..length {
++        let a = x.add(index).read_unaligned();
++        let b = y.add(index).read_unaligned();
++        let a_missing = a.is_nan();
++        let b_missing = b.is_nan();
++        let result = if a_missing | b_missing {
++            // If either side is missing, rank alone determines the result.
++            // Ordinary infinities still have rank zero. Invalid NaN payloads
++            // decline the whole call so the R fallback retains its errors.
++            valid &= (!a_missing || double_payload_canonical(a.to_bits()))
++                & (!b_missing || double_payload_canonical(b.to_bits()));
++            let ar = if a_missing {
++                double_missing_rank(a.to_bits())
++            } else {
++                0
++            };
++            let br = if b_missing {
++                double_missing_rank(b.to_bits())
++            } else {
++                0
++            };
++            missing(ar, br)
++        } else {
++            observed(a, b)
++        };
++        output.add(index).write(c_int::from(result));
++    }
++    valid
++}
++
++pub(super) unsafe fn compare(
++    op: c_int,
++    x: CompareOperandView,
++    y: Option<CompareOperandView>,
++    output: *mut c_int,
++    length: usize,
++) -> Option<bool> {
++    let y = y?;
++    if !matches!(x.storage, CompareStorage::Double)
++        || !matches!(y.storage, CompareStorage::Double)
++        || x.native_owner != 0
++        || y.native_owner != 0
++        || !(0..=5).contains(&op)
++    {
++        return None;
++    }
++    // Double operands are already in decoded units, including temporal values.
++    let xp = x.values as *const f64;
++    let yp = y.values as *const f64;
++    Some(match op {
++        0 => pair(xp, yp, output, length, |a, b| a == b, |a, b| a == b),
++        1 => pair(xp, yp, output, length, |a, b| a != b, |a, b| a != b),
++        2 => pair(xp, yp, output, length, |a, b| a < b, |a, b| a < b),
++        3 => pair(xp, yp, output, length, |a, b| a <= b, |a, b| a <= b),
++        4 => pair(xp, yp, output, length, |a, b| a > b, |a, b| a > b),
++        _ => pair(xp, yp, output, length, |a, b| a >= b, |a, b| a >= b),
++    })
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::{compare_decoded, compare_operand_element, DOUBLE_TAGGED_NA_LAYOUT};
++
++    fn view(values: &[f64]) -> CompareOperandView {
++        CompareOperandView {
++            values: values.as_ptr() as usize,
++            storage: CompareStorage::Double,
++            temporal: 0,
++            native_owner: 0,
++        }
++    }
++
++    #[test]
++    fn pair_matches_decoded_order_across_ieee_values_and_every_missing_payload() {
++        let mut values = vec![
++            f64::NEG_INFINITY,
++            -f64::MAX,
++            -1.0,
++            -f64::MIN_POSITIVE,
++            -f64::from_bits(1),
++            -0.0,
++            0.0,
++            f64::from_bits(1),
++            f64::MIN_POSITIVE,
++            1.0,
++            f64::MAX,
++            f64::INFINITY,
++        ];
++        for tag in std::iter::once(0).chain(b'a'..=b'z') {
++            for sign in [0, 1_u64 << 63] {
++                for quiet in [0, 1_u64 << 51] {
++                    values.push(f64::from_bits(
++                        DOUBLE_TAGGED_NA_LAYOUT | (u64::from(tag) << 32) | sign | quiet,
++                    ));
++                }
++            }
++        }
++        let mut x = Vec::new();
++        let mut y = Vec::new();
++        for &a in &values {
++            for &b in &values {
++                x.push(a);
++                y.push(b);
++            }
++        }
++        let mut seed = 0x7349_5281_8314_7243_u64;
++        for _ in 0..10_000 {
++            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
++            let a = f64::from_bits(seed);
++            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
++            let b = f64::from_bits(seed);
++            if !a.is_nan() && !b.is_nan() {
++                x.push(a);
++                y.push(b);
++            }
++        }
++        let xv = view(&x);
++        let yv = view(&y);
++        for op in 0..=5 {
++            let mut output = vec![0; x.len()];
++            assert_eq!(
++                unsafe { compare(op, xv, Some(yv), output.as_mut_ptr(), x.len()) },
++                Some(true)
++            );
++            for (index, actual) in output.into_iter().enumerate() {
++                let expected = unsafe {
++                    compare_decoded(
++                        op,
++                        compare_operand_element(xv, index).unwrap(),
++                        compare_operand_element(yv, index).unwrap(),
++                    )
++                };
++                assert_eq!(actual, expected, "op={op}, row={index}");
++            }
++        }
++    }
++
++    #[test]
++    fn unrecognized_nan_payloads_decline_either_operand() {
++        for bits in [
++            0x7ff8_0000_0000_0000,
++            0xfff0_0000_0000_0001,
++            DOUBLE_TAGGED_NA_LAYOUT | (u64::from(b'A') << 32),
++            DOUBLE_TAGGED_NA_LAYOUT ^ 1,
++        ] {
++            let invalid = [1.0, f64::from_bits(bits), 0.0];
++            let valid = [0.0, 1.0, f64::from_bits(DOUBLE_TAGGED_NA_LAYOUT)];
++            for (x, y) in [(&invalid, &valid), (&valid, &invalid)] {
++                for op in 0..=5 {
++                    assert_eq!(
++                        unsafe { compare(op, view(x), Some(view(y)), [0; 3].as_mut_ptr(), 3) },
++                        Some(false)
++                    );
++                }
++            }
++        }
++    }
++}
+--- a/src/rust/src/float_compare.rs
++++ b/src/rust/src/float_compare.rs
+@@ -6,6 +6,13 @@
+ 
+ const DOT: u32 = 0x7f00_0000;
+ const STEP: u32 = 0x800;
++
++/// The same typed kernel can read plain buffers and retained float spans.
++pub(super) fn supports(x: CompareOperandView, y: Option<CompareOperandView>) -> bool {
++    x.temporal == 0
++        && matches!(x.storage, CompareStorage::Float(_))
++        && y.is_none_or(|y| y.temporal == 0 && matches!(y.storage, CompareStorage::Float(_)))
++}
+ 
+ #[inline(always)]
+ fn rank<const MODERN: bool>(bits: u32) -> u8 {
+@@ -135,7 +142,7 @@
+     let CompareStorage::Float(x_version) = x.storage else {
+         return None;
+     };
+-    if x.temporal != 0 || x.native_owner != 0 || !(0..=5).contains(&op) {
++    if !supports(x, y) || x.native_owner != 0 || !(0..=5).contains(&op) {
+         return None;
+     }
+     let xp = x.values as *const f32;
+--- a/src/rust/src/lib.rs
++++ b/src/rust/src/lib.rs
+@@ -26,6 +26,7 @@
+ };
+ 
+ mod arrow_ffi;
++mod double_compare;
+ mod float_compare;
+ mod native_pressure;
+ mod owned_numeric;
+@@ -794,7 +795,8 @@
+         let x_view = x.contiguous(x_values);
+         let destination = output.add(first);
+         let fast = compare_raw_int(op, x_view, y_view, scalar, destination, count)
+-            .or_else(|| float_compare::compare(op, x_view, y_view, scalar, destination, count));
++            .or_else(|| float_compare::compare(op, x_view, y_view, scalar, destination, count))
++            .or_else(|| double_compare::compare(op, x_view, y_view, destination, count));
+         let done = match fast {
+             Some(done) => done,
+             None if y_view.is_none() && matches!(x_view.storage, CompareStorage::Double) => {
+@@ -1232,10 +1234,19 @@
+         if scalar.rank == 0 && scalar.value.is_nan() {
+             return false;
+         }
++        if (x.native_owner != 0 || y.is_some_and(|view| view.native_owner != 0))
++            && float_compare::supports(x, y)
++        {
++            // These typed loops use the same serial policy as plain floats.
++            // Creating workers for cheap comparisons spends more total CPU;
++            // retained spans use the same inner loop without copying bytes.
++            return unsafe { compare_numeric_range(op, x, y, scalar, output, 0, length) };
++        }
+         if x.native_owner == 0 && y.is_none_or(|view| view.native_owner == 0) {
+             if let Some(done) = unsafe {
+                 compare_raw_int(op, x, y, scalar, output, length)
+                     .or_else(|| float_compare::compare(op, x, y, scalar, output, length))
++                    .or_else(|| double_compare::compare(op, x, y, output, length))
+             } {
+                 return done;
+             }
+--- a/tests/testthat/test-dta-compare-native.R
++++ b/tests/testthat/test-dta-compare-native.R
+@@ -240,6 +240,51 @@
+ .float_comparison_freeze <- function(value, rows) {
+     .Call(C_dtatools_owned_numeric_freeze, value, rows)
+ }
++
++test_that("double pair kernels preserve every missing rank and IEEE comparisons", {
++    values <- c(-Inf, -.Machine$double.xmax, -1, -0, 0,
++                .Machine$double.xmin, 1, .Machine$double.xmax, Inf,
++                NA_real_, tagged_missing(letters))
++    plain <- rep(values, each = length(values))
++    other <- rep(values, times = length(values))
++    # Permissive imported doubles may contain infinities and high finite values
++    # that the public storage constructor does not create.
++    x <- plain
++    y <- other
++    attributes(x) <- attributes(dta_double())
++    attributes(y) <- attributes(dta_double())
++    .float_comparison_expect(x, y, plain, other)
++    .float_comparison_expect(y, x, other, plain)
++    expect_identical(as.double(x), plain)
++    expect_identical(as.double(y), other)
++})
++
++test_that("double pair kernels retain native decline and public NaN errors", {
++    other <- dta_double(c(1, 2, tagged_missing("z")))
++    for (invalid in list(NaN, tagged_nan_for_test("?"), tagged_nan_for_test("A"))) {
++        x <- c(1, invalid, NA_real_)
++        attributes(x) <- attributes(dta_double())
++        for (op in c("==", "!=", "<", "<=", ">", ">=")) {
++            operation <- getExportedValue("base", op)
++            expect_null(dtatools:::.dta_compare_native(op, x, other))
++            expect_null(dtatools:::.dta_compare_native(op, other, x))
++            expect_error(operation(x, other), "noncanonical NaN")
++            expect_error(operation(other, x), "noncanonical NaN")
++        }
++    }
++})
++
++test_that("double temporal pairs compare their already decoded values", {
++    path <- fixture_with_temporal_storage("price")
++    on.exit(unlink(path), add = TRUE)
++    prototype <- read_dta(path)$price
++    plain <- c(-0, 0, 1, 1 + 2^-52, NA_real_, tagged_missing(letters))
++    other <- rev(plain)
++    x <- dtatools:::.restore_dta_temporal(plain, prototype, "double")
++    y <- dtatools:::.restore_dta_temporal(other, prototype, "double")
++    .float_comparison_expect(x, y, plain, other)
++    .float_comparison_expect(y, x, other, plain)
++})
+ 
+ .float_comparison_fixture <- function(bits, display_format = NULL) {
+     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+@@ -327,6 +372,19 @@
+     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+     expect_identical(as.double(x), plain)
+     expect_identical(as.double(y), other)
++})
++
++test_that("float kernels combine retained and plain operands in either order", {
++    plain <- rep_len(c(-5, -0, 0, 5, NA_real_, tagged_missing(letters)), 17003L)
++    other <- rev(plain)
++    x <- .float_comparison_freeze(dta_float(plain), 257L)
++    y <- dta_float(other)
++    previous <- options(dtatools.threads = 0L)
++    on.exit(options(previous), add = TRUE)
++    .float_comparison_expect(x, y, plain, other)
++    .float_comparison_expect(y, x, other, plain)
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+ })
+ 
+ test_that("modern float imports retain tag gaps high values and infinity ordering", {
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -13622,7 +13622,7 @@
+         },
+         {
+           "path": "tests/testthat/test-dta-compare-native.R",
+-          "sha256": "264b51be6b45070e03e1f5b1a17fa95f033c98740e3f850a393e148a32ddf090"
++          "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
+         },
+         {
+           "path": "tests/testthat/test-dta-identical.R",
+@@ -14303,6 +14303,38 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 350,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "double pair kernels preserve every missing rank and IEEE comparisons",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 26,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "double pair kernels retain native decline and public NaN errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 72,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "double temporal pairs compare their already decoded values",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 24,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "float kernels combine retained and plain operands in either order",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 26,
+           "warnings": 0
+         },
+         {

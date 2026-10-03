@@ -101,7 +101,11 @@ jobs:
           python3 benchmarks/native-operations/test-run.py
           python3 benchmarks/native-operations/test-general-run.py
           python3 benchmarks/float-comparison/test-run.py
+          python3 benchmarks/native-comparison/test-run.py
           python3 benchmarks/arrow-memory-pressure/test-run.py
+          python3 benchmarks/prepared-grouping/test-run.py
+          python3 benchmarks/nullable-arrow-strings/test-run.py
+          python3 -O benchmarks/nullable-arrow-strings/test-run.py
           python3 benchmarks/r-corpus-roundtrip/test-verify-extra-cache.py
       - run: scripts/check-r-cargo-vendor.sh
       - run: scripts/rebuild-r-vendor.sh
