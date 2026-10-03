@@ -75,14 +75,17 @@ unsafe fn pair_block<
 ) -> bool {
     // Prove a whole bounded block ordinary before selecting its loop. A
     // per-row branch defeats vectorization and is expensive for mixed tags.
-    // The ordered tests exclude NaNs and all release-specific missing codes;
-    // high permissive imports still use the exact vectorizable classifier.
-    let mut ordinary = true;
+    // Below-DOT absolute bit patterns are finite and exclude every missing
+    // code. Unsigned maximum avoids packing a per-lane boolean reduction.
+    // Large negative observed values and either infinity conservatively use
+    // the same exact vectorizable classifier as high positive imports.
+    let mut maximum = 0_u32;
     for index in 0..length {
-        ordinary &= (x.add(index).read_unaligned() < f32::from_bits(DOT))
-            & (y.add(index).read_unaligned() < f32::from_bits(DOT));
+        maximum = maximum
+            .max(x.add(index).read_unaligned().to_bits() & 0x7fff_ffff)
+            .max(y.add(index).read_unaligned().to_bits() & 0x7fff_ffff);
     }
-    if ordinary {
+    if maximum < DOT {
         for index in 0..length {
             output.add(index).write(c_int::from(observed(
                 x.add(index).read_unaligned(),
