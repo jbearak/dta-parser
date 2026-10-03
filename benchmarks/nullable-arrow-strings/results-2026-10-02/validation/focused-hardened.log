@@ -1,0 +1,6 @@
+arrow-nullable-strings: .............................Error in .Call(C_dtatools_read_arrow, snapshot, column_indices, row_window$skip,  : 
+  embedded nul in string: 'nullable\0arrow-embedded-nul-sentinel-04719'
+..
+...
+
+══ DONE ════════════════════════════════════════════════════════════════════════

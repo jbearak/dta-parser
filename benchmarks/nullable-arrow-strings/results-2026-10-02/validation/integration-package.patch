@@ -1,0 +1,1290 @@
+diff --git a/r-package/dtatools/src/egen-groups.h b/r-package/dtatools/src/egen-groups.h
+index 16229e77..2d0f406d 100644
+--- a/r-package/dtatools/src/egen-groups.h
++++ b/r-package/dtatools/src/egen-groups.h
+@@ -4,12 +4,47 @@
+ #include "dtatools-internal.h"
+ 
+ /* Stable multicolumn ordering over compact readers. Scratch space contains
+- * row positions and cached UTF-8 references. Source columns stay compact. */
++ * row positions, cached UTF-8 references and prepared numeric order keys.
++ * Source columns stay compact. */
+ #include <R_ext/Memory.h>
+ 
++/* Private structural counters keep the preparation bound testable without
++   timing assertions. Counters are enabled only by the diagnostic reset. */
++static int egen_group_counting = 0;
++static double egen_group_scalar_values = 0;
++static double egen_group_prepared_values = 0;
++static double egen_group_prepared_bytes = 0;
++
++SEXP C_dtatools_egen_group_stats(SEXP reset) {
++    if (Rf_asLogical(reset) == TRUE) {
++        egen_group_scalar_values = egen_group_prepared_values = 0;
++        egen_group_prepared_bytes = 0;
++        egen_group_counting = 1;
++    }
++    SEXP result = PROTECT(Rf_allocVector(REALSXP, 3));
++    REAL(result)[0] = egen_group_scalar_values;
++    REAL(result)[1] = egen_group_prepared_values;
++    REAL(result)[2] = egen_group_prepared_bytes;
++    SEXP names = PROTECT(Rf_allocVector(STRSXP, 3));
++    SET_STRING_ELT(names, 0, Rf_mkChar("scalar_values"));
++    SET_STRING_ELT(names, 1, Rf_mkChar("prepared_values"));
++    SET_STRING_ELT(names, 2, Rf_mkChar("prepared_bytes"));
++    Rf_setAttrib(result, R_NamesSymbol, names);
++    if (Rf_asLogical(reset) != TRUE) egen_group_counting = 0;
++    UNPROTECT(2);
++    return result;
++}
++
++static double egen_group_scalar(const numeric_reader *reader, R_xlen_t index,
++                                int *missing, int allow_nan) {
++    if (egen_group_counting) egen_group_scalar_values++;
++    return egen_numeric_at(reader, index, missing, allow_nan);
++}
++
+ typedef struct {
+     SEXP column;
+     const char **strings;
++    uint64_t *prepared; /* Eight bytes per row for wholly known numeric keys. */
+     numeric_reader numeric;
+     int string;
+     int allow_nan;
+@@ -21,10 +56,13 @@ static int egen_key_compare(egen_key_reader *keys, R_xlen_t count,
+         if (keys[k].string) {
+             int comparison = strcmp(keys[k].strings[left], keys[k].strings[right]);
+             if (comparison) return comparison < 0 ? -1 : 1;
++        } else if (keys[k].prepared != NULL) {
++            uint64_t a = keys[k].prepared[left], b = keys[k].prepared[right];
++            if (a != b) return a < b ? -1 : 1;
+         } else {
+             int am, bm;
+-            double a = egen_numeric_at(&keys[k].numeric, left, &am, keys[k].allow_nan);
+-            double b = egen_numeric_at(&keys[k].numeric, right, &bm, keys[k].allow_nan);
++            double a = egen_group_scalar(&keys[k].numeric, left, &am, keys[k].allow_nan);
++            double b = egen_group_scalar(&keys[k].numeric, right, &bm, keys[k].allow_nan);
+             if (am != bm) return am < bm ? -1 : 1;
+             if (am < 0 && a != b) return a < b ? -1 : 1;
+         }
+@@ -32,19 +70,129 @@ static int egen_key_compare(egen_key_reader *keys, R_xlen_t count,
+     return 0;
+ }
+ 
++/* Validation has already excluded infinities, unsupported NaNs and values
++   outside Stata double's observed range. Ordered IEEE bits preserve numeric
++   order, with both zero signs sharing one key. The top 27 keys hold . through
++   .z and lie above every admitted observed value. No R NaN is reconstructed
++   while comparing these private keys. */
++static uint64_t egen_group_order_key(double value, int missing) {
++    if (missing >= 0) {
++        unsigned rank = missing == 0 ? 0 : (unsigned) (missing - 'a' + 1);
++        return UINT64_MAX - 26 + rank;
++    }
++    uint64_t bits = 0;
++    if (value != 0) memcpy(&bits, &value, sizeof(bits));
++    return bits & UINT64_C(0x8000000000000000)
++        ? ~bits : bits ^ UINT64_C(0x8000000000000000);
++}
++
++/* A foreign numeric/string provider or class can mutate another key while
++   admission or sorting runs. Keep the complete scalar route for those calls,
++   including its callback order. Only wholly known numeric inputs prepare
++   keys. Their row-major validation remains exactly where it was. */
++static int egen_group_can_prepare(SEXP columns, SEXP include_missing, SEXP allow_nan) {
++    if (ALTREP(columns) || ALTREP(include_missing) || ALTREP(allow_nan)) return 0;
++    for (R_xlen_t k = 0; k < XLENGTH(columns); k++) {
++        SEXP value = VECTOR_ELT(columns, k);
++        if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP &&
++            TYPEOF(value) != LGLSXP) return 0;
++        if (ALTREP(value) && !owned_column(value) &&
++            unmaterialized_numeric_read_storage(value) == NULL) return 0;
++        SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
++        if (classes != R_NilValue &&
++            (TYPEOF(classes) != STRSXP || ALTREP(classes))) return 0;
++    }
++    return 1;
++}
++
++/* All allocations precede reader preparation. Known ordinary readers borrow
++   their captured allocation, and compact readers use the descriptor captured
++   with its matching root. No pointer is recovered from a public handle after
++   callbacks could have replaced its backing. The region read and validation
++   loops allocate nothing and invoke no provider callbacks; interrupt polling
++   remains. */
++static R_xlen_t egen_group_prepare(
++    egen_key_reader *keys, egen_block_reader *readers, SEXP roots,
++    R_xlen_t count, R_xlen_t n, int missing, R_xlen_t *order
++) {
++    if (n == 0) return 0;
++    if ((size_t) count > SIZE_MAX / sizeof(uint64_t) / (size_t) n)
++        Rf_error("Grouping numeric key storage is too large");
++    for (R_xlen_t k = 0; k < count; k++) {
++        keys[k].prepared = (uint64_t *) R_alloc((size_t) n, sizeof(uint64_t));
++        if (egen_group_counting)
++            egen_group_prepared_bytes += (double) n * sizeof(uint64_t);
++    }
++    /* Bound decode scratch to available rows and 8,192 values except for
++       wider one-row tiles. Only the final eight-byte keys grow with both
++       rows and columns. */
++    R_xlen_t rows = count < 8192 ? 8192 / count : 1;
++    if (rows > n) rows = n;
++    size_t slots = (size_t) rows * (size_t) count;
++    double *values = (double *) R_alloc(slots, sizeof(double));
++    int *codes = (int *) R_alloc(slots, sizeof(int));
++    for (R_xlen_t k = 0; k < count; k++)
++        egen_prepare_reader(readers + k, VECTOR_ELT(roots, k), n);
++    R_xlen_t admitted = 0;
++    for (R_xlen_t start = 0; start < n;) {
++        R_CheckUserInterrupt();
++        R_xlen_t length = n - start < rows ? n - start : rows;
++        for (R_xlen_t k = 0; k < count; k++) {
++            size_t offset = (size_t) k * (size_t) rows;
++            numeric_reader_region(&readers[k].reader, start, length,
++                                  values + offset, codes + offset);
++        }
++        /* Decode without validation above; validate in the original row/key
++           order so two invalid inputs keep their existing error precedence. */
++        for (R_xlen_t row = 0; row < length; row++) {
++            int eligible = 1;
++            for (R_xlen_t k = 0; k < count; k++) {
++                size_t offset = (size_t) k * (size_t) rows + (size_t) row;
++                int code = codes[offset];
++                double value = egen_block_value(readers + k, start + row,
++                    values[offset], &code, keys[k].allow_nan);
++                keys[k].prepared[start + row] = egen_group_order_key(value, code);
++                if (!missing && code >= 0) eligible = 0;
++            }
++            if (eligible) order[admitted++] = start + row;
++        }
++        start += length;
++    }
++    if (egen_group_counting)
++        egen_group_prepared_values += (double) n * (double) count;
++    return admitted;
++}
++
+ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+                                SEXP allow_nan) {
+     if (TYPEOF(columns) != VECSXP || XLENGTH(columns) == 0)
+         Rf_error("Supply at least one grouping column");
+     R_xlen_t count = XLENGTH(columns);
++    int prepare = egen_group_can_prepare(columns, include_missing, allow_nan);
++    egen_block_reader *readers = prepare
++        ? (egen_block_reader *) R_alloc((size_t) count, sizeof(egen_block_reader)) : NULL;
++    int source_rooted = prepare;
++    SEXP sources = prepare ? PROTECT(Rf_allocVector(VECSXP, count)) : columns;
+     /* Numeric readers survive callbacks from every other key, including
+        foreign string Elt methods during admission and numeric Elt in sort. */
+     SEXP read_roots = PROTECT(Rf_allocVector(VECSXP, count));
++    if (prepare) {
++        for (R_xlen_t k = 0; k < count; k++)
++            SET_VECTOR_ELT(sources, k, VECTOR_ELT(columns, k));
++        /* Allocation can run finalizers on some R builds. Recheck before
++           reading classes, then capture temporal policy without allocation. */
++        prepare = egen_group_can_prepare(sources, include_missing, allow_nan);
++        if (prepare) for (R_xlen_t k = 0; k < count; k++) {
++            readers[k].source = VECTOR_ELT(sources, k);
++            egen_prepare_temporal(readers + k);
++        }
++    }
+     for (R_xlen_t k = 0; k < count; k++) {
+-        SET_VECTOR_ELT(read_roots, k,
+-                       numeric_payload_root(VECTOR_ELT(columns, k)));
++        SEXP column = VECTOR_ELT(prepare ? sources : columns, k);
++        SET_VECTOR_ELT(read_roots, k, prepare
++            ? egen_capture_reader(column, readers + k) : numeric_payload_root(column));
+     }
+-    R_xlen_t n = XLENGTH(VECTOR_ELT(columns, 0));
++    R_xlen_t n = XLENGTH(VECTOR_ELT(prepare ? sources : columns, 0));
+     if (n > INT_MAX) Rf_error("Grouping currently supports at most INT_MAX rows");
+     egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
+     /* Root every cached CHARSXP, including strings produced by an ALTREP
+@@ -52,9 +200,10 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+      * cached CHAR pointers then survive all allocations and GC during sort. */
+     SEXP string_roots = PROTECT(Rf_allocVector(VECSXP, count));
+     for (R_xlen_t k = 0; k < count; k++) {
+-        SEXP column = VECTOR_ELT(columns, k);
++        SEXP column = VECTOR_ELT(prepare ? sources : columns, k);
+         if (XLENGTH(column) != n) Rf_error("Grouping columns must have equal lengths");
+         keys[k].column = column;
++        keys[k].prepared = NULL;
+         keys[k].string = TYPEOF(column) == STRSXP;
+         keys[k].allow_nan = Rf_asLogical(allow_nan) == TRUE;
+         if (keys[k].string) {
+@@ -62,36 +211,39 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+             SEXP cache = PROTECT(Rf_allocVector(STRSXP, n));
+             SET_VECTOR_ELT(string_roots, k, cache);
+             UNPROTECT(1);
+-        } else keys[k].numeric = numeric_reader_create(column, n);
++        } else if (!prepare) keys[k].numeric = numeric_reader_create(column, n);
+     }
+     R_xlen_t *order = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
+     R_xlen_t *scratch = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
+-    R_xlen_t admitted = 0;
+     int missing = Rf_asLogical(include_missing);
+-    for (R_xlen_t row = 0; row < n; row++) {
+-        if ((row & 16383) == 0) R_CheckUserInterrupt();
+-        int eligible = 1;
+-        for (R_xlen_t k = 0; k < count; k++) {
+-            if (keys[k].string) {
+-                const void *temporary = vmaxget();
+-                SEXP value = PROTECT(STRING_ELT(keys[k].column, row));
+-                if (value == NA_STRING) Rf_error("Grouping keys cannot contain NA_character_");
+-                if (!missing && LENGTH(value) == 0) eligible = 0;
+-                SEXP translated = Rf_mkCharCE(Rf_translateCharUTF8(value), CE_UTF8);
+-                SET_STRING_ELT(VECTOR_ELT(string_roots, k), row, translated);
+-                keys[k].strings[row] = CHAR(translated);
+-                UNPROTECT(1);
+-                /* A Latin-1/native translation may allocate a temporary
+-                 * buffer. The interned, rooted copy above owns the bytes
+-                 * used by the comparator, so release that buffer now. */
+-                vmaxset(temporary);
+-            } else {
+-                int code;
+-                egen_numeric_at(&keys[k].numeric, row, &code, keys[k].allow_nan);
+-                if (!missing && code >= 0) eligible = 0;
++    R_xlen_t admitted = prepare
++        ? egen_group_prepare(keys, readers, read_roots, count, n, missing, order) : 0;
++    if (!prepare) {
++        for (R_xlen_t row = 0; row < n; row++) {
++            if ((row & 16383) == 0) R_CheckUserInterrupt();
++            int eligible = 1;
++            for (R_xlen_t k = 0; k < count; k++) {
++                if (keys[k].string) {
++                    const void *temporary = vmaxget();
++                    SEXP value = PROTECT(STRING_ELT(keys[k].column, row));
++                    if (value == NA_STRING) Rf_error("Grouping keys cannot contain NA_character_");
++                    if (!missing && LENGTH(value) == 0) eligible = 0;
++                    SEXP translated = Rf_mkCharCE(Rf_translateCharUTF8(value), CE_UTF8);
++                    SET_STRING_ELT(VECTOR_ELT(string_roots, k), row, translated);
++                    keys[k].strings[row] = CHAR(translated);
++                    UNPROTECT(1);
++                    /* A Latin-1/native translation may allocate a temporary
++                     * buffer. The interned, rooted copy above owns the bytes
++                     * used by the comparator, so release that buffer now. */
++                    vmaxset(temporary);
++                } else {
++                    int code;
++                    egen_group_scalar(&keys[k].numeric, row, &code, keys[k].allow_nan);
++                    if (!missing && code >= 0) eligible = 0;
++                }
+             }
++            if (eligible) order[admitted++] = row;
+         }
+-        if (eligible) order[admitted++] = row;
+     }
+     for (R_xlen_t width = 1; width < admitted; width *= 2) {
+         for (R_xlen_t start = 0; start < admitted; start += 2 * width) {
+@@ -139,7 +291,7 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
+     SET_STRING_ELT(names, 0, Rf_mkChar("codes"));
+     SET_STRING_ELT(names, 1, Rf_mkChar("first"));
+     Rf_setAttrib(result, R_NamesSymbol, names);
+-    UNPROTECT(7);
++    UNPROTECT(7 + source_rooted);
+     return result;
+ }
+ 
+diff --git a/r-package/dtatools/src/init.c b/r-package/dtatools/src/init.c
+index 07d9f111..0a3fec94 100644
+--- a/r-package/dtatools/src/init.c
++++ b/r-package/dtatools/src/init.c
+@@ -314,6 +314,7 @@ static const R_CallMethodDef CallEntries[] = {
+     {"C_dtatools_owned_pointer", (DL_FUNC) &C_dtatools_owned_pointer, 2},
+     {"C_dtatools_owned_pointer_write", (DL_FUNC) &C_dtatools_owned_pointer_write, 3},
+     {"C_dtatools_egen_group", (DL_FUNC) &dtatools_egen_group, 3},
++    {"C_dtatools_egen_group_stats", (DL_FUNC) &C_dtatools_egen_group_stats, 1},
+     {"C_dtatools_egen_summary", (DL_FUNC) &C_dtatools_egen_summary, 4},
+     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
+     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
+diff --git a/r-package/dtatools/src/rust/src/float_compare.rs b/r-package/dtatools/src/rust/src/float_compare.rs
+new file mode 100644
+index 00000000..1ea341c9
+--- /dev/null
++++ b/r-package/dtatools/src/rust/src/float_compare.rs
+@@ -0,0 +1,336 @@
++//! Typed float comparison without expanding values and ranks into f64 records.
++//! Exact missing classification preserves permissive imports. No canonical
++//! column-domain assumption is made, and temporal values keep the decoder.
++use super::{tagged_missing_version, CompareOperandView, CompareStorage, ComparedElement};
++use std::ffi::c_int;
++
++const DOT: u32 = 0x7f00_0000;
++const STEP: u32 = 0x800;
++
++#[inline(always)]
++fn rank<const MODERN: bool>(bits: u32) -> u8 {
++    if MODERN {
++        let delta = bits.wrapping_sub(DOT);
++        if delta <= 26 * STEP && delta & (STEP - 1) == 0 {
++            (delta / STEP) as u8 + 1
++        } else {
++            0
++        }
++    } else {
++        u8::from((DOT..0x8000_0000).contains(&bits))
++    }
++}
++
++#[inline(always)]
++fn ordered_key<const MODERN: bool>(value: f32) -> (u32, bool) {
++    let bits = value.to_bits();
++    let missing = rank::<MODERN>(bits);
++    // Observed infinities and permissive high finite imports precede missing
++    // values too. Their IEEE order keys end at 0xff800000, below these slots.
++    let normalized = if value == 0.0 { 0 } else { bits };
++    let observed = if normalized & 0x8000_0000 != 0 {
++        !normalized
++    } else {
++        normalized ^ 0x8000_0000
++    };
++    let key = if missing != 0 {
++        u32::MAX - 27 + u32::from(missing)
++    } else {
++        observed
++    };
++    (key, missing != 0 || !value.is_nan())
++}
++
++unsafe fn pair<const X_MODERN: bool, const Y_MODERN: bool, F: Fn(u32, u32) -> bool>(
++    x: *const f32,
++    y: *const f32,
++    output: *mut c_int,
++    length: usize,
++    compare: F,
++) -> bool {
++    let mut valid = true;
++    for index in 0..length {
++        let (a, av) = ordered_key::<X_MODERN>(x.add(index).read_unaligned());
++        let (b, bv) = ordered_key::<Y_MODERN>(y.add(index).read_unaligned());
++        valid &= av & bv;
++        output.add(index).write(c_int::from(compare(a, b)));
++    }
++    valid
++}
++
++unsafe fn scalar<const MODERN: bool, F: Fn(f64, u8) -> bool>(
++    x: *const f32,
++    output: *mut c_int,
++    length: usize,
++    compare: F,
++) -> bool {
++    let mut valid = true;
++    for index in 0..length {
++        let value = x.add(index).read_unaligned();
++        let missing = rank::<MODERN>(value.to_bits());
++        valid &= missing != 0 || !value.is_nan();
++        // Widen the input exactly. R scalars must never be rounded to f32.
++        output
++            .add(index)
++            .write(c_int::from(compare(f64::from(value), missing)));
++    }
++    valid
++}
++
++unsafe fn pair_operator<const X: bool, const Y: bool>(
++    op: c_int,
++    x: *const f32,
++    y: *const f32,
++    output: *mut c_int,
++    length: usize,
++) -> bool {
++    match op {
++        0 => pair::<X, Y, _>(x, y, output, length, |a, b| a == b),
++        1 => pair::<X, Y, _>(x, y, output, length, |a, b| a != b),
++        2 => pair::<X, Y, _>(x, y, output, length, |a, b| a < b),
++        3 => pair::<X, Y, _>(x, y, output, length, |a, b| a <= b),
++        4 => pair::<X, Y, _>(x, y, output, length, |a, b| a > b),
++        _ => pair::<X, Y, _>(x, y, output, length, |a, b| a >= b),
++    }
++}
++
++unsafe fn scalar_operator<const MODERN: bool>(
++    op: c_int,
++    x: *const f32,
++    rhs: ComparedElement,
++    output: *mut c_int,
++    length: usize,
++) -> bool {
++    if rhs.rank == 0 {
++        let s = rhs.value;
++        match op {
++            0 => scalar::<MODERN, _>(x, output, length, |v, r| r == 0 && v == s),
++            1 => scalar::<MODERN, _>(x, output, length, |v, r| r != 0 || v != s),
++            2 => scalar::<MODERN, _>(x, output, length, |v, r| r == 0 && v < s),
++            3 => scalar::<MODERN, _>(x, output, length, |v, r| r == 0 && v <= s),
++            4 => scalar::<MODERN, _>(x, output, length, |v, r| r != 0 || v > s),
++            _ => scalar::<MODERN, _>(x, output, length, |v, r| r != 0 || v >= s),
++        }
++    } else {
++        let s = rhs.rank;
++        match op {
++            0 => scalar::<MODERN, _>(x, output, length, |_, r| r == s),
++            1 => scalar::<MODERN, _>(x, output, length, |_, r| r != s),
++            2 => scalar::<MODERN, _>(x, output, length, |_, r| r < s),
++            3 => scalar::<MODERN, _>(x, output, length, |_, r| r <= s),
++            4 => scalar::<MODERN, _>(x, output, length, |_, r| r > s),
++            _ => scalar::<MODERN, _>(x, output, length, |_, r| r >= s),
++        }
++    }
++}
++
++pub(super) unsafe fn compare(
++    op: c_int,
++    x: CompareOperandView,
++    y: Option<CompareOperandView>,
++    rhs: ComparedElement,
++    output: *mut c_int,
++    length: usize,
++) -> Option<bool> {
++    let CompareStorage::Float(x_version) = x.storage else {
++        return None;
++    };
++    if x.temporal != 0 || x.native_owner != 0 || !(0..=5).contains(&op) {
++        return None;
++    }
++    let xp = x.values as *const f32;
++    let xm = tagged_missing_version(x_version);
++    match y {
++        Some(y) => {
++            let CompareStorage::Float(y_version) = y.storage else {
++                return None;
++            };
++            if y.temporal != 0 || y.native_owner != 0 {
++                return None;
++            }
++            let yp = y.values as *const f32;
++            Some(match (xm, tagged_missing_version(y_version)) {
++                (true, true) => pair_operator::<true, true>(op, xp, yp, output, length),
++                (true, false) => pair_operator::<true, false>(op, xp, yp, output, length),
++                (false, true) => pair_operator::<false, true>(op, xp, yp, output, length),
++                (false, false) => pair_operator::<false, false>(op, xp, yp, output, length),
++            })
++        }
++        None => Some(if xm {
++            scalar_operator::<true>(op, xp, rhs, output, length)
++        } else {
++            scalar_operator::<false>(op, xp, rhs, output, length)
++        }),
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::{compare_decoded, compare_operand_element};
++    use dta_tools::{classify_float_missing_bits_for_version, FormatVersion};
++
++    fn bits() -> Vec<u32> {
++        let mut result = vec![
++            0, 0x80000000, 1, 0x80000001, 0x007fffff, 0x807fffff, 0x3f800000, 0xbf800000,
++            0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc00000, 0xffc00000, 0x7fffffff,
++            0xffffffff,
++        ];
++        result.extend((DOT - STEP)..=(DOT + 27 * STEP));
++        let mut seed = 0x71843a21_u32;
++        for _ in 0..10000 {
++            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
++            result.push(seed);
++        }
++        result
++    }
++    fn view(values: &[f32], version: FormatVersion) -> CompareOperandView {
++        CompareOperandView {
++            values: values.as_ptr() as usize,
++            storage: CompareStorage::Float(version),
++            temporal: 0,
++            native_owner: 0,
++        }
++    }
++    #[test]
++    fn exact_float_ranks_match_import_classification() {
++        for bits in bits() {
++            for (version, actual) in [
++                (FormatVersion::V119, rank::<true>(bits)),
++                (FormatVersion::V111, rank::<false>(bits)),
++            ] {
++                let expected = classify_float_missing_bits_for_version(bits, version)
++                    .map_or(0, |tag| tag.offset() + 1);
++                assert_eq!(actual, expected, "{bits:08x} {version:?}");
++            }
++        }
++    }
++    #[test]
++    fn float_pairs_match_decoded_order_for_all_encoding_pairs() {
++        for xv in [FormatVersion::V111, FormatVersion::V119] {
++            for yv in [FormatVersion::V111, FormatVersion::V119] {
++                let input: Vec<f32> = bits().into_iter().map(f32::from_bits).collect();
++                let mut x = Vec::new();
++                let mut y = Vec::new();
++                for (index, &a) in input.iter().enumerate() {
++                    let b = input[(index * 173 + 47) % input.len()];
++                    if unsafe {
++                        compare_operand_element(view(&[a], xv), 0).is_some()
++                            && compare_operand_element(view(&[b], yv), 0).is_some()
++                    } {
++                        x.push(a);
++                        y.push(b);
++                    }
++                }
++                let left = view(&x, xv);
++                let right = view(&y, yv);
++                for op in 0..=5 {
++                    let expected: Vec<c_int> = (0..x.len())
++                        .map(|i| unsafe {
++                            compare_decoded(
++                                op,
++                                compare_operand_element(left, i).unwrap(),
++                                compare_operand_element(right, i).unwrap(),
++                            )
++                        })
++                        .collect();
++                    let mut actual = vec![0; x.len()];
++                    assert_eq!(
++                        unsafe {
++                            compare(
++                                op,
++                                left,
++                                Some(right),
++                                ComparedElement { rank: 0, value: 0. },
++                                actual.as_mut_ptr(),
++                                x.len(),
++                            )
++                        },
++                        Some(true)
++                    );
++                    assert_eq!(actual, expected);
++                }
++            }
++        }
++    }
++    #[test]
++    fn float_scalars_preserve_double_precision_and_missing_ranks() {
++        for version in [FormatVersion::V111, FormatVersion::V119] {
++            let values: Vec<f32> = bits()
++                .into_iter()
++                .map(f32::from_bits)
++                .filter(|v| unsafe { compare_operand_element(view(&[*v], version), 0).is_some() })
++                .collect();
++            let input = view(&values, version);
++            let scalars = [
++                -f64::INFINITY,
++                -f64::MAX,
++                -0.0,
++                0.0,
++                f64::from_bits(1),
++                1.0 - f64::EPSILON,
++                1.0 + f64::EPSILON,
++                1.01,
++                f64::MAX,
++                f64::INFINITY,
++            ];
++            let mut rhs: Vec<ComparedElement> = scalars
++                .into_iter()
++                .map(|value| ComparedElement { rank: 0, value })
++                .collect();
++            rhs.extend((1..=27).map(|rank| ComparedElement { rank, value: 0. }));
++            for scalar in rhs {
++                for op in 0..=5 {
++                    let expected: Vec<c_int> = (0..values.len())
++                        .map(|i| unsafe {
++                            compare_decoded(op, compare_operand_element(input, i).unwrap(), scalar)
++                        })
++                        .collect();
++                    let mut actual = vec![0; values.len()];
++                    assert_eq!(
++                        unsafe {
++                            compare(op, input, None, scalar, actual.as_mut_ptr(), values.len())
++                        },
++                        Some(true)
++                    );
++                    assert_eq!(actual, expected);
++                }
++            }
++        }
++    }
++    #[test]
++    fn noncanonical_nans_and_temporal_values_keep_fallback() {
++        for bits in [0x7fc00000, 0xffc00000] {
++            let x = [f32::from_bits(bits)];
++            let mut output = [0];
++            let mut input = view(&x, FormatVersion::V119);
++            assert_eq!(
++                unsafe {
++                    compare(
++                        2,
++                        input,
++                        None,
++                        ComparedElement { rank: 0, value: 1. },
++                        output.as_mut_ptr(),
++                        1,
++                    )
++                },
++                Some(false)
++            );
++            input.temporal = 1;
++            assert_eq!(
++                unsafe {
++                    compare(
++                        2,
++                        input,
++                        None,
++                        ComparedElement { rank: 0, value: 1. },
++                        output.as_mut_ptr(),
++                        1,
++                    )
++                },
++                None
++            );
++        }
++    }
++}
+diff --git a/r-package/dtatools/src/rust/src/lib.rs b/r-package/dtatools/src/rust/src/lib.rs
+index 7d16f167..0663b243 100644
+--- a/r-package/dtatools/src/rust/src/lib.rs
++++ b/r-package/dtatools/src/rust/src/lib.rs
+@@ -26,6 +26,7 @@ use dta_tools::{
+ };
+ 
+ mod arrow_ffi;
++mod float_compare;
+ mod native_pressure;
+ mod owned_numeric;
+ 
+@@ -792,7 +793,9 @@ unsafe fn compare_numeric_range(
+         }
+         let x_view = x.contiguous(x_values);
+         let destination = output.add(first);
+-        let done = match compare_raw_int(op, x_view, y_view, scalar, destination, count) {
++        let fast = compare_raw_int(op, x_view, y_view, scalar, destination, count)
++            .or_else(|| float_compare::compare(op, x_view, y_view, scalar, destination, count));
++        let done = match fast {
+             Some(done) => done,
+             None if y_view.is_none() && matches!(x_view.storage, CompareStorage::Double) => {
+                 compare_raw_double_scalar(op, x_values.cast(), scalar, destination, count)
+@@ -1230,7 +1233,10 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
+             return false;
+         }
+         if x.native_owner == 0 && y.is_none_or(|view| view.native_owner == 0) {
+-            if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
++            if let Some(done) = unsafe {
++                compare_raw_int(op, x, y, scalar, output, length)
++                    .or_else(|| float_compare::compare(op, x, y, scalar, output, length))
++            } {
+                 return done;
+             }
+         }
+diff --git a/r-package/dtatools/tests/testthat/test-dta-compare-native.R b/r-package/dtatools/tests/testthat/test-dta-compare-native.R
+index 33a4f5f8..65826c42 100644
+--- a/r-package/dtatools/tests/testthat/test-dta-compare-native.R
++++ b/r-package/dtatools/tests/testthat/test-dta-compare-native.R
+@@ -207,3 +207,245 @@ test_that("fallback-owned errors survive the native fast path", {
+     expect_error(value == NaN, "noncanonical NaN")
+     expect_error(value == dta_byte(c(1, 2)), class = "vctrs_error")
+ })
++
++.float_comparison_reference <- function(op, x, y) {
++    # Ordinary decoded doubles give an independent lexicographic oracle. The
++    # missing inspector here reads R's double payloads, never compact floats.
++    parts <- function(value) {
++        rank <- integer(length(value))
++        rank[is.na(value)] <- 1L
++        tags <- missing_tag(value)
++        tagged <- !is.na(tags)
++        rank[tagged] <- match(tags[tagged], letters) + 1L
++        value[rank > 0L] <- 0
++        list(rank = rank, value = value)
++    }
++    a <- parts(x)
++    b <- parts(y)
++    equal <- a$rank == b$rank & a$value == b$value
++    less <- a$rank < b$rank | (a$rank == b$rank & a$value < b$value)
++    greater <- a$rank > b$rank | (a$rank == b$rank & a$value > b$value)
++    switch(op, "==" = equal, "!=" = !equal, "<" = less,
++           "<=" = less | equal, ">" = greater, ">=" = greater | equal)
++}
++
++.float_comparison_expect <- function(x, y, plain_x, plain_y) {
++    for (op in c("==", "!=", "<", "<=", ">", ">=")) {
++        expected <- .float_comparison_reference(op, plain_x, plain_y)
++        expect_identical(dtatools:::.dta_compare_native(op, x, y), expected, info = op)
++        expect_identical(getExportedValue("base", op)(x, y), expected, info = op)
++    }
++}
++
++.float_comparison_freeze <- function(value, rows) {
++    .Call(C_dtatools_owned_numeric_freeze, value, rows)
++}
++
++.float_comparison_fixture <- function(bits, display_format = NULL) {
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    for (index in seq_along(bits)) {
++        raw <- as.raw(floor(bits[[index]] / 256^(0:3)) %% 256)
++        patch_numeric_fixture_row(path, index - 1L, list(x_float = raw))
++    }
++    if (!is.null(display_format)) {
++        bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
++        start <- grepRaw(charToRaw("<formats>"), bytes, fixed = TRUE, all = TRUE)
++        end <- grepRaw(charToRaw("</formats>"), bytes, fixed = TRUE, all = TRUE)
++        stopifnot(length(start) == 1L, length(end) == 1L)
++        start <- start + nchar("<formats>")
++        width <- (end - start) / length(.numeric_missing_fixture_widths)
++        stopifnot(width == trunc(width), nchar(display_format) < width)
++        # x_float is the fifth column in the shared missing-value fixture.
++        location <- start + 4L * width
++        bytes[location + seq_len(width) - 1L] <-
++            c(charToRaw(display_format), raw(width - nchar(display_format)))
++        writeBin(bytes, path)
++    }
++    path
++}
++
++.float_comparison_read <- function(path, count, compact = TRUE, column = "x_float") {
++    result <- read_dta(path, col_select = tidyselect::all_of(column), n_max = count,
++                       use_numeric_altrep = compact)[[column]]
++    if (compact) result else as.double(result)
++}
++
++test_that("float comparisons preserve all missing ranks and signed-zero ties", {
++    plain <- c(-5, -0, 0, 5, NA_real_, tagged_missing(letters))
++    other <- rev(plain)
++    for (retained in c(FALSE, TRUE)) {
++        x <- dta_float(plain)
++        y <- dta_float(other)
++        if (retained) {
++            x <- .float_comparison_freeze(x, 3L)
++            y <- .float_comparison_freeze(y, 7L)
++        }
++        .float_comparison_expect(x, y, plain, other)
++        .float_comparison_expect(y, x, other, plain)
++        for (scalar in c(-0, 0, NA_real_, tagged_missing(letters))) {
++            .float_comparison_expect(x, scalar, plain, scalar)
++            .float_comparison_expect(scalar, x, scalar, plain)
++        }
++        expect_identical(as.double(x), plain)
++        expect_identical(as.double(y), other)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++    }
++})
++
++test_that("float scalar comparisons preserve double precision at float boundaries", {
++    plain <- c(1, 1 + 2^-23, -1, -1 - 2^-23, 2^24, 2^24 + 2,
++               2^-149, -2^-149, -0, 0, NA_real_, tagged_missing("z"))
++    scalars <- c(1 + 2^-24, 1 + 2^-25, -1 - 2^-24, 2^24 + 1,
++                 2^-150, -2^-150, -Inf, Inf)
++    for (x in list(dta_float(plain), .float_comparison_freeze(dta_float(plain), 5L))) {
++        for (scalar in scalars) {
++            .float_comparison_expect(x, scalar, plain, scalar)
++            .float_comparison_expect(scalar, x, scalar, plain)
++        }
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        expect_identical(as.double(x), plain)
++    }
++})
++
++test_that("float comparison spans cross unequal retained chunks in serial and auto modes", {
++    size <- 600007L
++    plain <- rep_len(c(-5, -0, 0, 5, NA_real_, tagged_missing(letters)), size)
++    other <- rep_len(c(tagged_missing(rev(letters)), NA_real_, 5, 0, -0, -5), size)
++    x <- .float_comparison_freeze(dta_float(plain), 8191L)
++    y <- .float_comparison_freeze(dta_float(other), 16385L)
++    before <- .Call(C_dtatools_owned_numeric_info, x)[["compatibility_bytes"]]
++    previous <- options(dtatools.threads = 1L)
++    on.exit(options(previous), add = TRUE)
++    for (threads in c(1L, 0L)) {
++        options(dtatools.threads = threads)
++        .float_comparison_expect(x, y, plain, other)
++        .float_comparison_expect(x, 0.5, plain, 0.5)
++    }
++    expect_identical(.Call(C_dtatools_owned_numeric_info, x)[["compatibility_bytes"]], before)
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++    expect_identical(as.double(x), plain)
++    expect_identical(as.double(y), other)
++})
++
++test_that("modern float imports retain tag gaps high values and infinity ordering", {
++    bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff,
++              0x7f000000, 0x7f000001, 0x7f0007ff, 0x7f000800,
++              0x7f00d000, 0x7f00d001, 0x7f00d800,
++              0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000)
++    left_path <- .float_comparison_fixture(bits)
++    right_path <- .float_comparison_fixture(rev(bits))
++    on.exit(unlink(c(left_path, right_path)), add = TRUE)
++    source <- .float_comparison_read(left_path, length(bits))
++    partner <- .float_comparison_read(right_path, length(bits))
++    plain <- .float_comparison_read(left_path, length(bits), FALSE)
++    other <- .float_comparison_read(right_path, length(bits), FALSE)
++    for (retained in c(FALSE, TRUE)) {
++        x <- if (retained) .float_comparison_freeze(source, 3L) else source
++        y <- if (retained) .float_comparison_freeze(partner, 5L) else partner
++        .float_comparison_expect(x, y, plain, other)
++        for (scalar in c(0, Inf, -Inf, NA_real_, tagged_missing("a"), tagged_missing("z")))
++            .float_comparison_expect(x, scalar, plain, scalar)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++        expect_identical(as.double(x), plain)
++        expect_identical(as.double(y), other)
++    }
++})
++
++test_that("invalid float NaNs decline pair and scalar comparisons before fallback errors", {
++    for (bits in c(0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001)) {
++        path <- .float_comparison_fixture(c(0x3f800000, bits, 0x7f000800))
++        source <- .float_comparison_read(path, 3L)
++        unlink(path)
++        other <- dta_float(c(1, 2, tagged_missing("a")))
++        for (x in list(source, .float_comparison_freeze(source, 1L))) {
++            for (op in c("==", "!=", "<", "<=", ">", ">=")) {
++                operation <- getExportedValue("base", op)
++                expect_null(dtatools:::.dta_compare_native(op, x, other))
++                expect_null(dtatools:::.dta_compare_native(op, other, x))
++                expect_null(dtatools:::.dta_compare_native(op, x, 1))
++                expect_error(operation(x, other), "noncanonical NaN")
++                expect_error(operation(other, x), "noncanonical NaN")
++                expect_error(operation(x, 1), "noncanonical NaN")
++            }
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(other))
++        }
++    }
++})
++
++test_that("temporal float comparisons use decoded equality after rounding collapse", {
++    bits <- c(0, 1, 0x80000001, 0x3f800000, 0x3f800001,
++              0x7f000000, 0x7f000800, 0x7f00d000)
++    permutation <- c(2L, 3L, 1L, 5L, 4L, 8L, 6L, 7L)
++    for (format in c("%td", "%tc")) {
++        left_path <- .float_comparison_fixture(bits, format)
++        right_path <- .float_comparison_fixture(bits[permutation], format)
++        source <- .float_comparison_read(left_path, length(bits))
++        partner <- .float_comparison_read(right_path, length(bits))
++        plain <- .float_comparison_read(left_path, length(bits), FALSE)
++        other <- .float_comparison_read(right_path, length(bits), FALSE)
++        unlink(c(left_path, right_path))
++        expect_true(inherits(source, "dta_temporal"))
++        # Three different physical floats become the same R date/datetime.
++        expect_identical(plain[1:3], rep(plain[[1L]], 3L))
++        for (retained in c(FALSE, TRUE)) {
++            x <- if (retained) .float_comparison_freeze(source, 3L) else source
++            y <- if (retained) .float_comparison_freeze(partner, 5L) else partner
++            .float_comparison_expect(x, y, plain, other)
++            .float_comparison_expect(x, plain[[1L]], plain, plain[[1L]])
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++        }
++    }
++})
++
++test_that("legacy float comparisons retain version-specific missing domains", {
++    for (version in c(105L, 108L, 110L, 111L)) {
++        path <- fixture(paste0("synthetic_v", version, ".dta"))
++        source <- .float_comparison_read(path, 4L, column = "f")
++        plain <- .float_comparison_read(path, 4L, FALSE, "f")
++        other <- rev(plain)
++        modern <- dta_float(other)
++        for (x in list(source, .float_comparison_freeze(source, 1L))) {
++            .float_comparison_expect(x, modern, plain, other)
++            .float_comparison_expect(modern, x, other, plain)
++            .float_comparison_expect(x, tagged_missing("a"), plain, tagged_missing("a"))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        }
++    }
++
++    original <- readBin(fixture("synthetic_v111.dta"), "raw",
++                        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++                writeBin(-123456L, raw(), size = 4L, endian = "little"),
++                writeBin(1.5, raw(), size = 4L, endian = "little"),
++                writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    # Identical raw bits have different meanings under legacy and modern rules.
++    bits <- c(0x7f000001, 0x7f000800, 0x7f00d001, 0x7f800000)
++    legacy_path <- tempfile(fileext = ".dta")
++    modern_path <- .float_comparison_fixture(bits)
++    on.exit(unlink(c(legacy_path, modern_path)), add = TRUE)
++    for (row in seq_along(bits)) {
++        location <- start + (row - 1L) * 25L + 7L
++        original[location + 0:3] <- as.raw(floor(bits[[row]] / 256^(0:3)) %% 256)
++    }
++    writeBin(original, legacy_path)
++    legacy <- .float_comparison_read(legacy_path, 4L, column = "f")
++    modern <- .float_comparison_read(modern_path, 4L)
++    old_plain <- .float_comparison_read(legacy_path, 4L, FALSE, "f")
++    new_plain <- .float_comparison_read(modern_path, 4L, FALSE)
++    expect_identical(old_plain, rep(NA_real_, 4L))
++    for (retained in c(FALSE, TRUE)) {
++        x <- if (retained) .float_comparison_freeze(legacy, 1L) else legacy
++        y <- if (retained) .float_comparison_freeze(modern, 3L) else modern
++        .float_comparison_expect(x, y, old_plain, new_plain)
++        .float_comparison_expect(y, x, new_plain, old_plain)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++    }
++})
+diff --git a/r-package/dtatools/tests/testthat/test-egen-groups.R b/r-package/dtatools/tests/testthat/test-egen-groups.R
+index cda12d1f..91576a95 100644
+--- a/r-package/dtatools/tests/testthat/test-egen-groups.R
++++ b/r-package/dtatools/tests/testthat/test-egen-groups.R
+@@ -160,3 +160,211 @@ test_that("computed NaN group labels use the normalized system missing", {
+     egen(data, g = dta_group_id(x / x, missing = TRUE, label = TRUE))
+     expect_identical(attr(data$g, "labels"), c("." = 1))
+ })
++
++test_that("known numeric grouping prepares each value once before sorting", {
++    values <- as.double((seq_len(10000L) * 13L) %% 97L - 48L)
++    expected <- as.double(match(values, sort(unique(values))))
++    first <- match(sort(unique(values)), values)
++    for (constructor in list(identity, dta_byte, dta_int, dta_long, dta_float, dta_double)) {
++        source <- constructor(values)
++        inputs <- list(source)
++        if (dtatools:::.is_unmaterialized_numeric_altrep(source)) {
++            inputs <- c(inputs, list(.Call(C_dtatools_owned_numeric_freeze, source, 7L)))
++        }
++        for (input in inputs) {
++            compact <- dtatools:::.is_unmaterialized_numeric_altrep(input)
++            .Call(C_dtatools_egen_group_stats, TRUE)
++            plan <- .Call(C_dtatools_egen_group, list(input), FALSE, FALSE)
++            counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++            expect_identical(as.double(plan$codes), expected)
++            expect_identical(plan$first, first)
++            expect_identical(counts[["scalar_values"]], 0)
++            expect_identical(counts[["prepared_values"]], as.double(length(values)))
++            expect_identical(counts[["prepared_bytes"]], 8 * length(values))
++            expect_identical(as.double(input), values)
++            expect_identical(dtatools:::.is_unmaterialized_numeric_altrep(input), compact)
++        }
++    }
++})
++
++test_that("prepared numeric keys preserve missing ranks zero ties and extreme doubles", {
++    values <- c(-.Machine$double.xmax / 2, -1, -0, 0,
++                .Machine$double.xmin * .Machine$double.eps, 1,
++                .Machine$double.xmax / 2, NA_real_, tagged_missing(letters))
++    expected <- as.double(c(1, 2, 3, 3, 4:33))
++    permutation <- c(length(values):1L, seq_along(values), 4L, 3L)
++    for (constructor in list(identity, dta_double)) {
++        input <- constructor(values[permutation])
++        expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected[permutation])
++        observed <- expected[permutation]
++        observed[is.na(values[permutation])] <- NA_real_
++        expect_identical(as.double(dta_group_id(input)), observed)
++        tags <- as.double(!duplicated(expected[permutation]))
++        expect_identical(as.double(dta_group_tag(input, missing = TRUE)), tags)
++    }
++    pattern <- c(3, -2, 0, -0, NA_real_, tagged_missing(letters))
++    ranks <- as.double(c(3, 1, 2, 2, 4:30))
++    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
++        for (size in c(0L, 1L, 31L, 1023L, 1025L)) {
++            input <- .Call(C_dtatools_owned_numeric_freeze,
++                           constructor(rep_len(pattern, size)), 7L)
++            # Smaller samples renumber only ranks actually present.
++            expected <- as.double(match(rep_len(ranks, size), sort(unique(rep_len(ranks, size)))))
++            expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected)
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
++        }
++    }
++})
++
++test_that("prepared multiple numeric keys retain stable first rows and row-major errors", {
++    left <- c(2, 1, 1, 2, 1, NA, tagged_missing("a"), 1)
++    right <- c(0, 2, 1, 0, 1, 0, 0, NA)
++    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
++                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right), 5L))
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    plan <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(plan$codes), c(4, 2, 1, 4, 1, 5, 6, 3))
++    expect_identical(plan$first, c(3L, 2L, 8L, 1L, 6L, 7L))
++    expect_identical(counts[["prepared_values"]], 16)
++    expect_identical(counts[["prepared_bytes"]], 128)
++    expect_identical(counts[["scalar_values"]], 0)
++    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
++    expect_error(dta_group_id(c(1, NaN), c(1e308, 0)), "Stata double storage")
++    expect_error(dta_group_id(c(1, 1e308), c(NaN, 0)), "NaN|infinities")
++    for (allow in c(FALSE, TRUE)) {
++        for (invalid in list(Inf, -Inf, tagged_nan_for_test("A"), 1e308)) {
++            expect_error(.Call(C_dtatools_egen_group, list(c(1, invalid)), TRUE, allow),
++                         "NaN|infinities|Stata double storage")
++        }
++    }
++    expect_error(.Call(C_dtatools_egen_group, list(c(1, NaN)), TRUE, FALSE), "NaN")
++    normalized <- .Call(C_dtatools_egen_group, list(c(NaN, 1, NA_real_)), TRUE, TRUE)
++    expect_identical(as.double(normalized$codes), c(2, 1, 2))
++    expect_identical(normalized$first, c(2L, 1L))
++})
++
++test_that("foreign grouping keys preserve callbacks and decline preparation as a whole", {
++    events <- character()
++    first <- .Call(C_dtatools_callback_integer_after, c(2L, 1L, 2L),
++                   function() events <<- c(events, "first-row-two"), 1L)
++    second <- .Call(C_dtatools_callback_double, c(0, 0, 0),
++                    function() events <<- c(events, "second-row-one"), TRUE)
++    compact <- .Call(C_dtatools_owned_numeric_freeze, dta_int(c(1, 1, 1)), 1L)
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(first, compact, second), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), c(2, 1, 2))
++    expect_identical(events, c("second-row-one", "first-row-two"))
++    expect_identical(counts[["prepared_values"]], 0)
++    expect_identical(counts[["prepared_bytes"]], 0)
++    expect_gt(counts[["scalar_values"]], 9)
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact))
++
++    # The foreign key changes a known key on its first comparison, after the
++    # admission scan. Preparing only the known column would miss this write.
++    changed <- dta_double(c(2, 1, 2))
++    pointer <- .Call(C_dtatools_owned_pointer, changed, TRUE)
++    foreign <- .Call(C_dtatools_callback_integer_after, c(0L, 0L, 0L),
++                     function() .Call(C_dtatools_owned_pointer_write, pointer, 1L, 0), 3L)
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(foreign, changed), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), c(1, 2, 3))
++    expect_identical(as.double(changed), c(0, 1, 2))
++    expect_identical(counts[["prepared_values"]], 0)
++
++    # A class callback remains on the original scalar path and may materialize
++    # a compact public handle while its captured bytes remain in use.
++    classes <- .Call(C_dtatools_callback_character, class(compact), function() NULL)
++    attr(compact, "class") <- classes
++    calls <- 0L
++    .Call(C_dtatools_arm_callback_character, classes, function() {
++        calls <<- calls + 1L
++        .force_altrep_materialization(compact)
++        gc()
++    })
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, list(compact), TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), rep(1, 3))
++    expect_identical(calls, 1L)
++    expect_identical(counts[["prepared_values"]], 0)
++})
++
++test_that("prepared keys survive collection and temporal and legacy decoding", {
++    for (version in c(105L, 108L, 110L, 111L)) {
++        data <- read_dta(fixture(paste0("synthetic_v", version, ".dta")), output = "tibble")
++        for (source in data) {
++            if (!dtatools:::.is_unmaterialized_numeric_altrep(source)) next
++            plain <- readBin(writeBin(as.double(source), raw(), size = 8L),
++                             double(), length(source), size = 8L)
++            expect_identical(as.double(dta_group_id(source, missing = TRUE)),
++                             as.double(dta_group_id(plain, missing = TRUE)))
++            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source))
++        }
++    }
++    columns <- list(dta_int(c(2, 1, 2, NA)), dta_float(c(0, 0, 0, 1)))
++    collect <- function() {
++        previous <- gctorture(TRUE)
++        on.exit(gctorture(previous))
++        .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    }
++    plan <- collect()
++    expect_identical(as.double(plan$codes), c(2, 1, 2, 3))
++    expect_identical(plan$first, c(2L, 1L, 4L))
++    dates <- structure(c(-3652, -3653, -3652, NA_real_), class = "Date")
++    times <- structure(c(-315619199, -315619200, -315619199, NA_real_),
++                       class = c("POSIXct", "POSIXt"))
++    for (input in list(dates, times)) {
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
++        expect_identical(as.double(result$codes), c(2, 1, 2, 3))
++        expect_identical(result$first, c(2L, 1L, 4L))
++    }
++})
++
++
++test_that("prepared compact IEEE NaNs obey the existing calculation scope", {
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    on.exit(unlink(path), add = TRUE)
++    patch_numeric_fixture_row(path, 0L, list(x_float = as.raw(c(1, 0, 192, 127))))
++    patch_numeric_fixture_row(path, 1L, list(x_float = as.raw(c(1, 0, 192, 255))))
++    patch_numeric_fixture_row(path, 2L, list(x_float = as.raw(c(0, 0, 128, 63))))
++    source <- read_dta(path, col_select = "x_float", n_max = 3L)$x_float
++    for (input in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 1L))) {
++        expect_error(.Call(C_dtatools_egen_group, list(input), TRUE, FALSE), "NaN")
++        .Call(C_dtatools_egen_group_stats, TRUE)
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, TRUE)
++        counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++        expect_identical(as.double(result$codes), c(2, 2, 1))
++        expect_identical(result$first, c(3L, 1L))
++        expect_identical(counts[["prepared_values"]], 3)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
++    }
++})
++
++test_that("bounded numeric grouping tiles preserve multicolumn order and errors", {
++    rows <- seq_len(10003L)
++    left <- as.double((rows * 13L) %% 7L)
++    right <- as.double(rows %% 11L)
++    expected <- left * 11 + right + 1
++    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
++                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right / 8), 1021L))
++    .Call(C_dtatools_egen_group_stats, TRUE)
++    result <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
++    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
++    expect_identical(as.double(result$codes), expected)
++    expect_identical(result$first, match(as.double(1:77), expected))
++    expect_identical(counts[["prepared_values"]], 2 * length(rows))
++    expect_identical(counts[["scalar_values"]], 0)
++    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
++    # The earlier error remains in the second column even when the later error
++    # starts a new decode tile.
++    expect_error(dta_group_id(c(rep(0, 4096), NaN),
++                             c(rep(0, 4095), 1e308, 0)), "Stata double storage")
++    for (input in list(c(2L, 1L, NA_integer_, 2L), c(TRUE, FALSE, NA, TRUE))) {
++        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
++        expect_identical(as.double(result$codes), c(2, 1, 3, 2))
++        expect_identical(result$first, c(2L, 1L, 3L))
++    }
++})
+diff --git a/r-package/dtatools/tools/native-test-manifest.json b/r-package/dtatools/tools/native-test-manifest.json
+index 4f1e685a..6bd3edef 100644
+--- a/r-package/dtatools/tools/native-test-manifest.json
++++ b/r-package/dtatools/tools/native-test-manifest.json
+@@ -13664,7 +13664,7 @@
+         },
+         {
+           "path": "tests/testthat/test-dta-compare-native.R",
+-          "sha256": "de340d4f47395bc96bf17b0720152e3523bc23889e4d9b0b139396988cb1cead"
++          "sha256": "264b51be6b45070e03e1f5b1a17fa95f033c98740e3f850a393e148a32ddf090"
+         },
+         {
+           "path": "tests/testthat/test-dta-identical.R",
+@@ -14291,6 +14291,62 @@
+           "min_pass": 2,
+           "warnings": 0
+         },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "float comparisons preserve all missing ranks and signed-zero ties",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1448,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "float scalar comparisons preserve double precision at float boundaries",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 388,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "float comparison spans cross unequal retained chunks in serial and auto modes",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 53,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "modern float imports retain tag gaps high values and infinity ordering",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 176,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "invalid float NaNs decline pair and scalar comparisons before fallback errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 304,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "temporal float comparisons use decoded equality after rounding collapse",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 108,
++          "warnings": 0
++        },
++        {
++          "file": "test-dta-compare-native.R",
++          "test": "legacy float comparisons retain version-specific missing domains",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 350,
++          "warnings": 0
++        },
+         {
+           "file": "test-dta-identical.R",
+           "test": "dta_identical compares numeric values across storage and bare vectors",
+@@ -14832,7 +14888,7 @@
+         },
+         {
+           "path": "tests/testthat/test-egen-groups.R",
+-          "sha256": "df0e83c2f2e81f9dce911dea145346e74791183c349d4b7887dc7e605457b689"
++          "sha256": "9856ed3c843cf755d26d91b3d7c74269ab460430a280c8d48f671547a10ad22c"
+         },
+         {
+           "path": "tests/testthat/test-egen-stata-fixture.R",
+@@ -15300,6 +15356,62 @@
+           "min_pass": 1,
+           "warnings": 0
+         },
++        {
++          "file": "test-egen-groups.R",
++          "test": "known numeric grouping prepares each value once before sorting",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 70,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared numeric keys preserve missing ranks zero ties and extreme doubles",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 46,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared multiple numeric keys retain stable first rows and row-major errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 19,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "foreign grouping keys preserve callbacks and decline preparation as a whole",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 12,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared keys survive collection and temporal and legacy decoding",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 38,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "prepared compact IEEE NaNs obey the existing calculation scope",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 10,
++          "warnings": 0
++        },
++        {
++          "file": "test-egen-groups.R",
++          "test": "bounded numeric grouping tiles preserve multicolumn order and errors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 10,
++          "warnings": 0
++        },
+         {
+           "file": "test-egen-stata-fixture.R",
+           "test": "numeric egen values match the Stata 18 differential fixture",

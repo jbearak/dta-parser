@@ -634,6 +634,30 @@ DTATOOLS_INTERNAL SEXP C_dtatools_deep_copy_value(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_contents(SEXP value);
 
 /* R-side helpers called by Rust. */
+/* Immutable Arrow views borrowed only for the duration of the caught C call.
+   Typed Arrow arrays already validate offsets, UTF-8 and buffer bounds. */
+typedef struct {
+    const unsigned char *values;
+    const void *offsets;
+    const unsigned char *validity;
+    size_t length;
+    size_t validity_offset;
+    int offset_width;
+} dtatools_arrow_string_chunk;
+
+#if UINTPTR_MAX == UINT64_MAX
+_Static_assert(offsetof(dtatools_arrow_string_chunk, length) == 24,
+               "Arrow string chunk length offset must match Rust");
+_Static_assert(offsetof(dtatools_arrow_string_chunk, offset_width) == 40,
+               "Arrow string chunk offset width must match Rust");
+_Static_assert(sizeof(dtatools_arrow_string_chunk) == 48,
+               "Arrow string chunk size must match Rust");
+#endif
+
+/* 1 success; 2 interrupted; 3 string too long; 0 other caught R failure. */
+DTATOOLS_INTERNAL int dtatools_fill_arrow_strings(
+    SEXP vector, const dtatools_arrow_string_chunk *chunks, size_t chunk_count
+);
 DTATOOLS_INTERNAL int dtatools_make_dictstring(
     void *data, size_t value_count, int *transferred, SEXP *result
 );

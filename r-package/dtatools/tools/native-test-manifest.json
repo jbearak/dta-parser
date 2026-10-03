@@ -244,6 +244,10 @@
           "sha256": "b0bcae38fdb14840a34cf0a2fb63980c0e7ccf1008cffd11eeabec0e7936939e"
         },
         {
+          "path": "tests/testthat/test-arrow-nullable-strings.R",
+          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
+        },
+        {
           "path": "tests/testthat/test-read-dta.R",
           "sha256": "b4c6fc365567cefbdfec15c1da86f8b9bc93033d67745d4ce23239ead0ef12ec"
         },
@@ -791,6 +795,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow strings preserve sliced validity and unequal chunks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow strings keep their output rooted during collection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow string allocation errors clean up before the next read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow read cancellation remains an interrupt",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -1627,6 +1663,12 @@
           "minimum": 1,
           "maximum": 1,
           "delay": 0.05
+        },
+        {
+          "id": "nullable-arrow-read-signal",
+          "minimum": 1,
+          "maximum": 1,
+          "delay": 0.01
         }
       ]
     },
@@ -16935,6 +16977,16 @@
           "min_pass_before_skip": 0,
           "skip_message": "Reason: On Windows",
           "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow read cancellation remains an interrupt",
+          "occurrence": 1,
+          "skip": "require",
+          "reason": "Windows",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: On Windows",
+          "warnings": 0
         }
       ],
       "children": [
@@ -16955,6 +17007,12 @@
         {
           "family": "io",
           "id": "arrow-write-signal",
+          "minimum": 0,
+          "maximum": 0
+        },
+        {
+          "family": "io",
+          "id": "nullable-arrow-read-signal",
           "minimum": 0,
           "maximum": 0
         }
