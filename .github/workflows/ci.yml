@@ -111,6 +111,8 @@ jobs:
           python3 benchmarks/arrow-memory-pressure/test-run.py
           python3 benchmarks/compact-materialization/test-run.py
           python3 -O benchmarks/compact-materialization/test-run.py
+          python3 benchmarks/compact-decode/test-run.py
+          python3 -O benchmarks/compact-decode/test-run.py
           python3 benchmarks/prepared-grouping/test-run.py
           python3 benchmarks/nullable-arrow-strings/test-run.py
           python3 -O benchmarks/nullable-arrow-strings/test-run.py

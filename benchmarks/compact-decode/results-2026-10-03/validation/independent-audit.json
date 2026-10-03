@@ -1,0 +1,243 @@
+{
+  "aggregate_cpu_range": [
+    0.15,
+    0.207999999999999
+  ],
+  "artifacts": {
+    "completion.json": "428c5f13b1b1242d8d43c438974697e8d84a4d6508f6795f2aca85fe9a92fdb1",
+    "intervals.csv": "e9067a165797e00cca314ae960b58db62bd824ef72478d3652a4ff05a30216f9",
+    "protocol.json": "0162f6b8e960f91d1f8b1a00c02a05a69081e40aee465db005164f537a7eda68",
+    "provenance-after.json": "069d17a3f80223160e44e07c798288fff11620d043f0ef3b302622c070acd09f",
+    "provenance-before.json": "1db503e062452d62ef608c8e8800e01a416ac8b4b1b57b4d9cc30896e54b99f3",
+    "raw.csv": "eebaaf777b65ecf95dfee1a0c653a69e557b3e31422109bb7d7b10e9a600f17d",
+    "source.patch": "9be98cebddc86bf3f6a5ff640488a66f2408d37a567df76a4ec8679e6d339638",
+    "summary.csv": "2b3f163fc40a02b942de48a1455668b11746050db866c2a984248052b8193d84"
+  },
+  "audit": "Independent artifact recomputation; no R, builds or measurements",
+  "case_speedups": [
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.125383189562995",
+      "cpu_speedup": "3.1157270029673496",
+      "density": "dense",
+      "wall_speedup": "3.134328358208955",
+      "width": "byte"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.030825254253404",
+      "cpu_speedup": "2.0300300300300362",
+      "density": "none",
+      "wall_speedup": "2.0184722915626554",
+      "width": "byte"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.7554112554112677",
+      "cpu_speedup": "3.7987012987013107",
+      "density": "sparse",
+      "wall_speedup": "3.821932681867535",
+      "width": "byte"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.074668667166792",
+      "cpu_speedup": "3.069565217391305",
+      "density": "dense",
+      "wall_speedup": "3.0697674418604652",
+      "width": "byte"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "2.094444444444444",
+      "cpu_speedup": "2.094444444444444",
+      "density": "none",
+      "wall_speedup": "2.0833961316252134",
+      "width": "byte"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.6300357440404096",
+      "cpu_speedup": "3.7927350427350426",
+      "density": "sparse",
+      "wall_speedup": "3.7806176783812315",
+      "width": "byte"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.6118279569892113",
+      "cpu_speedup": "2.546121593291427",
+      "density": "dense",
+      "wall_speedup": "2.578556263269591",
+      "width": "float"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.5526283240569736",
+      "cpu_speedup": "2.545259545259637",
+      "density": "none",
+      "wall_speedup": "2.5540599218411066",
+      "width": "float"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.6238672011154103",
+      "cpu_speedup": "3.6039603960397035",
+      "density": "sparse",
+      "wall_speedup": "3.6179401993355103",
+      "width": "float"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.133565621370538",
+      "cpu_speedup": "3.243243243243262",
+      "density": "dense",
+      "wall_speedup": "3.2265861027190814",
+      "width": "float"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.5946196660481786",
+      "cpu_speedup": "3.582835970724097",
+      "density": "none",
+      "wall_speedup": "3.6294781070322513",
+      "width": "float"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "4.201974365098308",
+      "cpu_speedup": "4.252365930599357",
+      "density": "sparse",
+      "wall_speedup": "4.225000000000093",
+      "width": "float"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.1052667578659188",
+      "cpu_speedup": "3.131964809384155",
+      "density": "dense",
+      "wall_speedup": "3.0869565217391304",
+      "width": "int"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.3815144478844172",
+      "cpu_speedup": "2.387737478411046",
+      "density": "none",
+      "wall_speedup": "2.3644578313253017",
+      "width": "int"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.4735372154727107",
+      "cpu_speedup": "3.4843581445523304",
+      "density": "sparse",
+      "wall_speedup": "3.4843581445523077",
+      "width": "int"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.5734463276836053",
+      "cpu_speedup": "3.6337325349301617",
+      "density": "dense",
+      "wall_speedup": "3.6117764471057674",
+      "width": "int"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.426377217553656",
+      "cpu_speedup": "3.440214957456294",
+      "density": "none",
+      "wall_speedup": "3.4619197836863025",
+      "width": "int"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "4.314671482628141",
+      "cpu_speedup": "4.314754098360658",
+      "density": "sparse",
+      "wall_speedup": "4.364097363083178",
+      "width": "int"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.780936705072614",
+      "cpu_speedup": "2.779797979798013",
+      "density": "dense",
+      "wall_speedup": "2.8057259713701175",
+      "width": "long"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "2.7674993651175455",
+      "cpu_speedup": "2.7640163098878525",
+      "density": "none",
+      "wall_speedup": "2.7217171717171715",
+      "width": "long"
+    },
+    {
+      "backing": "constructed",
+      "cpu_paired_median_speedup": "3.7951167728238633",
+      "cpu_speedup": "3.758909853249499",
+      "density": "sparse",
+      "wall_speedup": "3.7823343848580446",
+      "width": "long"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.0193548387096776",
+      "cpu_speedup": "3.0766773162939396",
+      "density": "dense",
+      "wall_speedup": "3.0771704180064603",
+      "width": "long"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "3.914110429447842",
+      "cpu_speedup": "3.9471384884228904",
+      "density": "none",
+      "wall_speedup": "3.963298727884207",
+      "width": "long"
+    },
+    {
+      "backing": "retained",
+      "cpu_paired_median_speedup": "4.795597784568269",
+      "cpu_speedup": "4.771367521367526",
+      "density": "sparse",
+      "wall_speedup": "4.844696969697059",
+      "width": "long"
+    }
+  ],
+  "caveats": [
+    "Aliased first DATAPTR materialization only; no ingestion or ordinary-double parity claim.",
+    "Rprofmem logged bytes and Vcells high-water overlap and are not process RSS.",
+    "Current large binaries are not rehashed in this lightweight audit; captured inventories agree."
+  ],
+  "checks": [
+    "worker/raw and worker/interval identity",
+    "complete matrix, density permutations, backing/build balance",
+    "every interval sum/range/count and CPU/wall/GC/memory median",
+    "every speedup and paired ratio",
+    "all zero-copy/ownership/value/density observations",
+    "before/after package/probe/runtime/controller equality",
+    "original named build receipts, actual execution runtime and current controllers",
+    "completion artifact hashes"
+  ],
+  "cpu_batch_range": [
+    0.00199999999999889,
+    0.072
+  ],
+  "cpu_speedup_range": [
+    2.0300300300300362,
+    4.771367521367526
+  ],
+  "intervals": 2431,
+  "observations": 288,
+  "summary_rows": 24,
+  "wall_batch_range": [
+    0.00199999999999889,
+    0.071
+  ],
+  "zero_cpu_batches": 0,
+  "zero_wall_batches": 0
+}

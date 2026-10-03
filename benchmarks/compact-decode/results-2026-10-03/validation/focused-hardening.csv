@@ -1,0 +1,66 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arithmetic-payload-lifetime.R","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0
+"test-native-decode-kernels.R","compact decode tiles preserve temporal values and every missing payload",432,0,FALSE,FALSE,0
+"test-native-decode-kernels.R","compact decode keeps modern float gaps infinities and NaN payloads",72,0,FALSE,FALSE,0
+"test-native-decode-kernels.R","compact decode retains legacy integer and float missing domains",177,0,FALSE,FALSE,0
+"test-numeric-materialization.R","shared compact materialization decodes without copying compact bytes",320,0,FALSE,FALSE,0
+"test-numeric-materialization.R","allocation finalizers can alias materialize or patch compact inputs",96,0,FALSE,FALSE,0
+"test-numeric-materialization.R","ordinary writable pointer dispatch also avoids a compact detour",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","private materialization does not consume stale missing-count proofs",32,0,FALSE,FALSE,0
+"test-numeric-materialization.R","failed materialization preserves compact state and finalizer aliases",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","unwinding materialization restores a private compact write claim",5,0,FALSE,FALSE,0
+"test-numeric-materialization.R","materialization roots survive collection at every allocation",6,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums preserve cancellation across interrupt blocks and chunks",60,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","live Arrow storage does not force collection on each small read",23,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","R-backed owners and retained handle forks add no native allocation debt",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0

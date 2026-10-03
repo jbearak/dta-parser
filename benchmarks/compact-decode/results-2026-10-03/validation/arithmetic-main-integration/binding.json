@@ -1,0 +1,19 @@
+{
+  "clean_build_receipt_sha256": "0cea767b2ba2c241318bf50fc346efd238d4fe49a694ef0d24d1d8d8b1fc4154",
+  "conflict_resolution": "Native test manifest only; preserve all blocks from both sides and refresh the shared lifetime test source hash. No runtime conflict.",
+  "errors": 0,
+  "existing_warning": "test-owned-columns: Unknown or uninitialised column: missing",
+  "failed": 0,
+  "focused_assertions": 48023,
+  "focused_blocks": 154,
+  "merged_main_commit": "857b0422b1622877bbd561548d09e7e2719058b7",
+  "previous_pr_head": "63e40d728e9431d8ba0c1ccf5f35977c75cb9866",
+  "production_files_unchanged_from_previous_pr_head": {
+    "src/numeric-decode.h": "e7a73018b19ca5dc2221ceca167c07d65d6eb43aa8269215bab5abc0e2af578a",
+    "src/numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "skipped": 0,
+  "source_commit": "c8f7e54900aebd3c888801546be2204113524c1c",
+  "timing_attribution": "The previously published measured source remains unchanged; this is later current-main integration qualification, not a new timing run.",
+  "warnings": 1
+}
