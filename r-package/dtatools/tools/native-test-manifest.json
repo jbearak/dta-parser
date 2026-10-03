@@ -1819,7 +1819,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "6ffbac7c95844915bc80714574c3ce2ca830a07e3edfed79e14ab2fc6fe67493"
+          "sha256": "de8a98ca546a6c5045fc4f326ce39f08269d0933c71d68327020096a3f41c91c"
         }
       ],
       "blocks": [
@@ -4601,6 +4601,14 @@
           "skip": "forbid",
           "min_pass": 841,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "long float all missing facts preserve output bits and cache mutation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6133,7 +6141,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "d5a4abae63aafba07a458513a554eca3a5d4ed85a4d902c99e14f5d4a3d19805"
+          "sha256": "4e699964ad262d4245ca3e8aad826b3c1b7ed73a87b92ac2ce108ae71693859c"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7735,6 +7743,17 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 28,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "long float all missing facts retain captured counts through reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 120,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

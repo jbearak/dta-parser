@@ -830,3 +830,36 @@ test_that("long float block addition retains imported exceptions after ordinary 
         }
     }
 })
+test_that("long float all missing facts preserve output bits and cache mutation", {
+    .arithmetic_parity_enable()
+    n <- 32769L
+    tags <- rep(c(NA_real_, tagged_missing(letters)), length.out = n)
+    long_values <- rep(c(16777217, -16777217, 0, 1, -1), length.out = n)
+    float_values <- rep(c(0.5, -0.5, -0, 2^-149, -2^-149), length.out = n)
+    expected_bytes <- writeBin(rep(NA_real_, n), raw(), 8L, endian = "little")
+    for (missing_source in c("long", "float")) {
+        for (chunks in list(c(0L, 0L), c(7L, 11L), c(8191L, 16385L))) {
+            x <- .arithmetic_parity_source("long", if (missing_source == "long") tags else long_values,
+                if (chunks[[1L]]) chunks[[1L]] else NULL)
+            y <- .arithmetic_parity_source("float", if (missing_source == "float") tags else float_values,
+                if (chunks[[2L]]) chunks[[2L]] else NULL)
+            source_bytes <- lapply(list(x, y), .arithmetic_parity_bytes)
+            for (reverse in c(FALSE, TRUE)) {
+                info <- paste("all missing long float", missing_source, chunks, reverse)
+                before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+                result <- if (reverse) y + x else x + y
+                after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+                expect_identical(after - before, 1, info = info)
+                expect_identical(dta_storage_type(result), "double", info = info)
+                expect_identical(.arithmetic_parity_bytes(result), expected_bytes, info = info)
+                expect_true(anyNA(result), info = info)
+                cleared <- dibble(x = result)
+                replace_values(cleared, x = 0, where = seq_len(n))
+                expect_identical(as.double(cleared$x), rep(0, n), info = info)
+                expect_false(anyNA(cleared$x), info = info)
+                expect_identical(.arithmetic_parity_bytes(result), expected_bytes, info = info)
+                expect_identical(lapply(list(x, y), .arithmetic_parity_bytes), source_bytes, info = info)
+            }
+        }
+    }
+})
