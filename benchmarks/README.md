@@ -82,6 +82,12 @@ sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
 faster and matches typed/ordinary-double throughput within the measured spread.
 It reports the additional eight-byte-per-row-per-key cache cost explicitly.
 
+The [nullable Arrow string follow-up](nullable-arrow-strings/results-2026-10-02.md)
+moves nullable character construction into one caught C call per column.
+Across 504 fresh-process observations, nullable read CPU improves by 1.08 to
+1.42 times and read-plus-full-consumption CPU by 1.08 to 1.32 times. It preserves
+the eager nullable result and reports the deferred dictionary costs separately.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

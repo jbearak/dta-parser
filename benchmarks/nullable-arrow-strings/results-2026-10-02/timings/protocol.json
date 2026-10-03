@@ -1,0 +1,17 @@
+{
+  "cache": "No reference RDS or expected strings are loaded before timings. Filesystem cache is uncontrolled; these are fresh R-process/string-cache observations, not cold disk measurements.",
+  "cases_per_build_round": 42,
+  "correctness": "Full values, NA and empty positions, original public encoding flags, metadata, and complete traversal output checked against independent saved source after timings. Stable hashes are required across all builds/threads/workflows/rounds.",
+  "input": "250000 rows, 4 UTF-8 columns; randomized 32-level or unique strings; zero/one/251 nulls per column. A finite four-double fixture is common control. Uncompressed checksummed files, verify=TRUE, threads=1 and automatic.",
+  "limits": "One host and one fixture geometry. Representation counts are diagnostic, not a requirement to make nullable ALTREP columns. No process-RSS claim.",
+  "order": "All six zero/one/sparse permutations over six rounds; rotate workflow order, alternate thread/cardinality order and finite-control position. Alternate build order with paired candidate.",
+  "phase": "measure",
+  "rounds": 6,
+  "timing": "Single first-read intervals, not calibrated repeated reads. Includes public output allocation and automatic GC. Package loading, explicit preceding GC, all fixture generation and complete post-timing validation are excluded. Every raw CPU/wall/GC interval is retained; aggregate medians do not improve individual timer granularity.",
+  "variants": [
+    "baseline",
+    "candidate"
+  ],
+  "workers": "One fresh R process and one public read per case.",
+  "workflows": "Independent read-return, read plus first scalar per column, and read plus first full nchar(bytes)/is.na traversal. Full mode separately times a second traversal before reference loading."
+}
