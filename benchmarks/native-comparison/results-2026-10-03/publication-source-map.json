@@ -279,6 +279,41 @@
     "published_sha256": "2d6be91ed9a8dc371723c8f1e4fb4a9da75fda4e259ebe3972609e6ffcec897c",
     "source": "independent-audits/density-audit.py"
   },
+  "final-conformance/00check.log": {
+    "original_sha256": "435ed8ce5f064ca81c2c88b8b1feb3c1697ccd04242eaa6058e3dcb43a97f0ad",
+    "published_sha256": "b9c093cc3eaca4b3681505c0333dca249c87cd65e489764f33d1480afd0874bc",
+    "source": "private-evidence/adaptive-conformance-preserved/dtatools.Rcheck/00check.log"
+  },
+  "final-conformance/adaptive-conformance-command.json": {
+    "original_sha256": "ec2a081c0fdfe01cc00baae07741539ad586cf585475f8c1cd099e85d527a0a5",
+    "published_sha256": "ec2a081c0fdfe01cc00baae07741539ad586cf585475f8c1cd099e85d527a0a5",
+    "source": "private-evidence/adaptive-conformance-command.json"
+  },
+  "final-conformance/adaptive-conformance-gate.sh": {
+    "original_sha256": "404f6d31539231612fbb9ae3a95e03cdaaed80ede067b9c760c9ec8d9c95212c",
+    "published_sha256": "2e2711e61841db56b66ac2c20a90b21e255c05b4d32a73e77743d9aaa4aaf6a3",
+    "source": "private-evidence/adaptive-conformance-gate.sh"
+  },
+  "final-conformance/adaptive-conformance.json": {
+    "original_sha256": "99f87b775e4bddcf275e8b1930a1a099cc9b86363267c62c02a5f511f76229e3",
+    "published_sha256": "99f87b775e4bddcf275e8b1930a1a099cc9b86363267c62c02a5f511f76229e3",
+    "source": "private-evidence/adaptive-conformance.json"
+  },
+  "final-conformance/adaptive-conformance.log": {
+    "original_sha256": "39b5181c449ea3f29245adb555198352df6dbe851622b9a74284bdb5658b0401",
+    "published_sha256": "070f4f052031d8a50f5012428f685556d03ed1716e85661b8d2e791f36e595d7",
+    "source": "private-evidence/adaptive-conformance.log"
+  },
+  "final-conformance/tests/testthat.Rout": {
+    "original_sha256": "81756af17db7927f8de55af0384e7a65dfdc0103e5abb3f3fd3b3e2ed5ccc169",
+    "published_sha256": "81756af17db7927f8de55af0384e7a65dfdc0103e5abb3f3fd3b3e2ed5ccc169",
+    "source": "private-evidence/adaptive-conformance-preserved/dtatools.Rcheck/tests/testthat.Rout"
+  },
+  "final-conformance/validate-conformance-archive.py": {
+    "original_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+    "published_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+    "source": "source-validator/validate-conformance-archive.py"
+  },
   "final-stages/audits/density-adaptive-audit.json": {
     "original_sha256": "d7ccf1495d323024ce5b3a44bd0b014c525ca4ae28705415f0a85f5a8985ce24",
     "published_sha256": "d7ccf1495d323024ce5b3a44bd0b014c525ca4ae28705415f0a85f5a8985ce24",
@@ -1518,6 +1553,16 @@
     "original_sha256": "9ede6cac308e6ac66d084a50b6ad452c639f7007465db52969c2d623db5d8c53",
     "published_sha256": "9ede6cac308e6ac66d084a50b6ad452c639f7007465db52969c2d623db5d8c53",
     "source": "metadata-diagnostic/reproduce.py"
+  },
+  "qualification-protocol-errata.json": {
+    "original_sha256": "dd35dcec9486a82178396497a24ab58a39493dfdff623462a711cf534c1df546",
+    "published_sha256": "dd35dcec9486a82178396497a24ab58a39493dfdff623462a711cf534c1df546",
+    "source": "private-evidence/qualification-protocol-errata.json"
+  },
+  "review-controller-tests.log": {
+    "original_sha256": "408c14f9c197509c9cac20d0c88c8df3d4f91354936c525e0e8a3476b4eaa041",
+    "published_sha256": "408c14f9c197509c9cac20d0c88c8df3d4f91354936c525e0e8a3476b4eaa041",
+    "source": "private-evidence/review-controller-tests.log"
   },
   "timings/float-direct-paired/01-baseline.csv": {
     "original_sha256": "6ce9a2bf8fe25ce5b7c37d4e86cf040dfbbe044cce655ac40e5919d9c1ed530d",

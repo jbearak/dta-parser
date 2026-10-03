@@ -61,6 +61,20 @@ class RuntimeIdentity(unittest.TestCase):
                 run.execution_runtime(launcher)
 
 
+class ArchiveReplayTools(unittest.TestCase):
+    def test_missing_tools_fail_explicitly(self):
+        spec = importlib.util.spec_from_file_location(
+            'archive_replay', Path(__file__).with_name('check-archive.py'))
+        replay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(replay)
+        for paths in [(None, '/Rscript'), ('/R', None), (None, None)]:
+            with patch.object(replay.shutil, 'which', side_effect=paths):
+                with self.assertRaisesRegex(RuntimeError, 'both be available'):
+                    replay.find_r_tools()
+        with patch.object(replay.shutil, 'which', side_effect=['/R', '/Rscript']):
+            self.assertEqual(replay.find_r_tools(), ('/R', '/Rscript'))
+
+
 class Protocol(unittest.TestCase):
     def setUp(self):
         self.rows = observations()

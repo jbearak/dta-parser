@@ -30,3 +30,13 @@ number, output CSV and the final argument `qualify`. The controller rejects
 incomplete case matrices, unbalanced representation permutations, inconsistent
 full hashes or source state, and invalid timing intervals. Timing is evidence
 for review, never a CI performance threshold.
+
+`check-archive.py --archive PATH --binding PATH --output DIRECTORY` preserves
+an unchanged R CMD check of the historical metadata-diagnostic archive. Its
+binding JSON supplies `archive_sha256` and `source_inventory`, as recorded in
+that diagnostic. This
+maintained replay tool checks both R launchers explicitly. The version under
+`results-2026-10-03/metadata-diagnostic/` is an immutable snapshot of the actual
+historical invocation and remains tied to its original controller hash.
+The published qualification-protocol errata correct the original no-clock
+order descriptions without changing their recorded observations or hashes.
