@@ -1,0 +1,32 @@
+{
+  "hypothesis": "Normalize exact missing input lanes by ORing a quiet-NaN exponent into raw 32-bit lanes before widening",
+  "outcome": "Intended mechanism survives compilation; performance unmeasured",
+  "build_base": "24fe430d",
+  "mapped_branch": {
+    "source_kind": 3,
+    "right_kind": 7,
+    "operator": 42,
+    "output_kind": 3,
+    "dispatch": [
+      "0x6a934",
+      "0x6ab64",
+      "0x6b704",
+      "0x6c6dc",
+      "0x76ac0",
+      "0x812f0",
+      "0x98dbc"
+    ],
+    "loop_start": "0xda258",
+    "loop_end": "0xda390",
+    "rows_per_iteration": 8,
+    "normalization": "0xda2a4..0xda2b0 AND/OR in 32-bit lanes before fcvtl at 0xda2b4; no source-mask ushll/shl/cmlt sequence"
+  },
+  "limits": "Static disassembly of the installed candidate, not performance attribution. Output validity/count/magnitude/fit work remains.",
+  "sha256": {
+    "baseline_source": "be552b3ce706299681a3e2fa0acebec9ea9f2366cb8482aa707a0b8ea782942a",
+    "masked_source": "1e3db7f9514eab22b1bade3eb6a5c2f703469b63f3a0caeaa2d499e98795f300",
+    "masked_receipt": "de4d9ffd1ab7b672c143685077848117ced501461e9172edadf2c92bfe41cff0",
+    "masked_patch": "f7ee501c53c263777b116d18f9cb6e73983de3fca62b90755af8e96365015242",
+    "masked_disassembly": "309eb78a263c95c81e7104c2e4fa08bf39c8396f4d034f1c5e8ba13383e9a27d"
+  }
+}

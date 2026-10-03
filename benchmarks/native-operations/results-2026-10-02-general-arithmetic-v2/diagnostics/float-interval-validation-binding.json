@@ -1,0 +1,21 @@
+{
+  "build_receipt_sha256": "46158145b9b6b4a1f52991aeb154ff3883d4433006ea30607975b76128fc6ed2",
+  "current_commit": "d02e46bca0bc63cb7b387db7536aeba0bec8e178",
+  "observations_sha256": "d351b43fdd044446aa7bbc6802660f74d8a3ca1590968a088892182566f8c8b1",
+  "post_build_test_patch_sha256": "23d72b1a6c3bd621752ecf3aab22d4bf10fa5222cbf32e40b129eae1da33780a",
+  "runner_sha256": "a311b7bb58b84565f08c89b5cb0f82b67d558cb867619aa88d65c9dcc02221eb",
+  "runtime_source_files_equal": 188,
+  "scope": "Focused tests run against clean2892b106 installed runtime; later test-only coverage adds nonzero anchors. No full-suite result for the float interval runtime is claimed yet.",
+  "test_files": {
+    "test-arithmetic-payload-lifetime.R": "4c8ab060ede49cc7bc766690db8549204b26a5ca4f64288e2d87b0476a9ba138",
+    "test-native-arithmetic-kernels.R": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52",
+    "test-native-arithmetic-parity.R": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
+  },
+  "totals": {
+    "error": 0,
+    "failed": 0,
+    "passed": 40107,
+    "skipped": 0,
+    "warning": 0
+  }
+}

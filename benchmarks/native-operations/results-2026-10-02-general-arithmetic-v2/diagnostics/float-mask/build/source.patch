@@ -1,0 +1,19 @@
+--- a/r-package/dtatools/src/numeric-arithmetic-general.h
++++ b/r-package/dtatools/src/numeric-arithmetic-general.h
+@@ -89,7 +89,15 @@
+ ) {
+     float value;
+     memcpy(&value, raw + index * sizeof(value), sizeof(value));
+-    return arithmetic_float_missing(value, &source->policy) ? NA_REAL : (double) value;
++    /* Arithmetic discards input missing tags. Set a quiet-NaN exponent in
++       each missing 32-bit lane before widening; observed bits are unchanged.
++       Bitwise normalization keeps this mask in the source storage width. */
++    uint32_t bits;
++    memcpy(&bits, &value, sizeof(bits));
++    uint32_t missing = 0U - (uint32_t) arithmetic_float_missing(value, &source->policy);
++    bits |= missing & UINT32_C(0x7fc00000);
++    memcpy(&value, &bits, sizeof(value));
++    return (double) value;
+ }
+ 
+ static inline double arithmetic_general_load_observed_float(

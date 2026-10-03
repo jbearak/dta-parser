@@ -105,6 +105,15 @@ typedef struct {
 static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand,
                                 SEXP claims, int slot) {
     operand->length = XLENGTH(value);
+    if (owned_real(value) && R_altrep_data2(value) == R_NilValue) {
+        /* Ordinary owned operands can also supply a storage-fit proof.
+           Their established read-view marker makes every supported write
+           detach while this exact allocation is being consumed. Root both
+           handle and record before marking it; no allocation intervenes. */
+        SET_VECTOR_ELT(claims, 4 + slot, value);
+        SET_VECTOR_ELT(claims, 5 + slot, R_altrep_data1(value));
+        R_set_altrep_data2(value, R_BaseEnv);
+    }
     SEXP root = PROTECT(numeric_missing_mask_capture(value, &operand->storage));
     if (root != R_NilValue) {
         if (!numeric_payload_retained(&operand->storage)) {
@@ -123,6 +132,10 @@ static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand,
             value, &operand->storage, NULL, NULL, REALSXP
         };
     } else {
+        /* Plain R vectors are borrowed under R's ordinary sharing rules.
+           Previously retained native writable pointers are not an ownership
+           boundary this reader can control; tracked owned writes use the
+           temporary read-view claim above. */
         UNPROTECT(1);
         root = PROTECT(numeric_payload_root(value));
         operand->reader = numeric_reader_create(value, operand->length);
@@ -609,6 +622,7 @@ static SEXP arithmetic_adopt_backing(SEXP backing, R_xlen_t length,
 
 #include "numeric-arithmetic-scale.h"
 #include "numeric-arithmetic-integer.h"
+#include "numeric-arithmetic-general.h"
 
 typedef struct {
     SEXP x;
@@ -622,6 +636,17 @@ typedef struct {
 
 static void arithmetic_release_claims(void *raw) {
     arithmetic_result_context *context = raw;
+    for (int slot = 6; slot >= 4; slot -= 2) {
+        SEXP value = VECTOR_ELT(context->claims, slot);
+        if (value != R_NilValue &&
+            R_altrep_data1(value) == VECTOR_ELT(context->claims, slot + 1) &&
+            R_altrep_data2(value) == R_BaseEnv) {
+            /* A reentrant write may already have detached the handle. Real
+               aliases mark the backing shared independently; leave that
+               permanent ownership fact intact when releasing this read. */
+            R_set_altrep_data2(value, R_NilValue);
+        }
+    }
     for (int slot = 2; slot >= 0; slot -= 2) {
         SEXP external = VECTOR_ELT(context->claims, slot);
         if (external != R_NilValue &&
@@ -646,6 +671,9 @@ static SEXP arithmetic_result_body(void *raw) {
         &left, &right, length, operation, minimum, result_kind);
     if (specialized == NULL)
         specialized = arithmetic_integer_result(
+            &left, &right, length, operation, minimum, result_kind);
+    if (specialized == NULL)
+        specialized = arithmetic_general_result(
             &left, &right, length, operation, minimum, result_kind);
     if (specialized != NULL) {
         UNPROTECT(2);
@@ -676,7 +704,7 @@ static SEXP arithmetic_result_body(void *raw) {
 
 static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
                               int operation, int minimum, int *result_kind) {
-    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 4));
+    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 8));
     arithmetic_result_context context = {
         x, y, claims, length, operation, minimum, result_kind
     };
@@ -699,10 +727,6 @@ static SEXP numeric_arithmetic_extension(
     if ((operation != '+' && operation != '-' &&
          operation != '*' && operation != '/') ||
         operator[1] != '\0') return R_NilValue;
-    double scalar;
-    if ((operation == '+' || operation == '-') &&
-        (scalar_finite_value(x, &scalar) || scalar_finite_value(y, &scalar)))
-        return R_NilValue;
     int x_kind, y_kind;
     if (!arithmetic_operand_kind(x, &x_kind) ||
         !arithmetic_operand_kind(y, &y_kind) ||

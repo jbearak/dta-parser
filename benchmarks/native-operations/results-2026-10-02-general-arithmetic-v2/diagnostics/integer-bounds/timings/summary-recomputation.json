@@ -1,0 +1,30 @@
+{
+  "cpu_interval_seconds": [
+    0.0980000000000008,
+    0.183
+  ],
+  "median_and_ratio_checks_passed": true,
+  "original_gate_failures": [
+    {
+      "compact_typed_ratio": "1.6168447374403219",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_typed_ratio": "2.3357963875205257",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    }
+  ],
+  "raw_sha256": "20805eddb0fbf6f325553db8110fc629d10355a8724884d0168c1d0c229d44f6",
+  "rows": 432,
+  "scope": "read-only median and ratio recomputation; independent full artifact audit requested separately",
+  "summary_rows": 24,
+  "summary_sha256": "eff9f5e76e870564358d5906057f0ba6fa4c169a001009b7f5d73b1c06f4e4bd",
+  "wall_interval_seconds": [
+    0.0980000000000008,
+    0.182
+  ]
+}

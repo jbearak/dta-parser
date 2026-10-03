@@ -1,0 +1,29 @@
+{
+  "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+  "R_version": "R version 4.6.1 (2026-06-24)",
+  "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+  "builds": {
+    "acceptance-baseline": {
+      "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "base_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+      "receipt_sha256": "87074597f1f85b1261e04f19220e44b67b3fff6894ed9938eecec19f1b0fb08e"
+    },
+    "acceptance-candidate": {
+      "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "base_commit": "48c2243f96a8db760d48cdfba2d586719de394ed",
+      "receipt_sha256": "2a65e3a0cd130913dea14e66fd96548ee5c02dcf4826e409b1a3012ff60c2cf3"
+    },
+    "float-mask-prototype": {
+      "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "base_commit": "24fe430d1cb8010db3c8e06619489a5482b14d88",
+      "receipt_sha256": "de4d9ffd1ab7b672c143685077848117ced501461e9172edadf2c92bfe41cff0"
+    },
+    "float-nan-prototype": {
+      "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "base_commit": "24fe430d1cb8010db3c8e06619489a5482b14d88",
+      "receipt_sha256": "53a900db22c1bdc83f089b2fde2e08779ad3e3ce8021fbf001da259ac29ac6c0"
+    }
+  },
+  "recorded_utc": "2026-10-03T00:27:53.722694+00:00",
+  "scope": "Explicitly post-run supplement after the masked-OR diagnostic, not before/after worker observation. It confirms the currently resolved exact launcher selects the recorded build runtime; it cannot retrospectively prove launcher/runtime stability during prior measurements."
+}
