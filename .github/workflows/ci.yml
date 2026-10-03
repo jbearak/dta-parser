@@ -103,6 +103,15 @@ jobs:
           retained_poll_probe_dir=$(mktemp -d)
           trap 'rm -rf "$retained_poll_probe_dir"' EXIT
           python3 -O benchmarks/retained-arithmetic-polling/work-count.py --require-proved --output "$retained_poll_probe_dir/result"
+      - name: Verify compact float domain work bounds
+        run: |
+          canonical_probe_dir=$(mktemp -d)
+          trap 'rm -rf "$canonical_probe_dir"' EXIT
+          python3 -O benchmarks/compact-float-domain/work-count.py --require-proved --output "$canonical_probe_dir/result"
+          python3 benchmarks/compact-float-domain/strict/test-run.py
+          python3 -O benchmarks/compact-float-domain/strict/test-run.py
+          python3 benchmarks/compact-float-domain/unknown/test-run.py
+          python3 -O benchmarks/compact-float-domain/unknown/test-run.py
       - name: Test reader benchmark verification
         run: |
           python3 -m unittest discover -s benchmarks/reader-refresh -p 'test_*.py'
