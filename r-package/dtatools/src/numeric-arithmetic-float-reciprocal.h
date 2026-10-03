@@ -65,6 +65,34 @@ static int arithmetic_float_reciprocal_ordinary_block(
     return minimum >= threshold && maximum < UINT32_C(0x7f000000);
 }
 
+/* Exact input policy allows a mixed block to reuse the same quotient bound.
+   Invalid lanes use an anchor already proved for both signs and output kind. */
+static int arithmetic_float_reciprocal_prepare_block(
+    const unsigned char *raw, size_t start, size_t count,
+    const arithmetic_general_source *column, uint32_t threshold,
+    float *prepared, unsigned char *missing, unsigned *missing_count
+) {
+    uint32_t minimum = UINT32_MAX;
+    unsigned invalid_count = 0;
+    for (size_t offset = 0; offset < count; offset++) {
+        uint32_t bits;
+        memcpy(&bits, raw + (start + offset) * sizeof(bits), sizeof(bits));
+        float source;
+        memcpy(&source, &bits, sizeof(source));
+        uint32_t magnitude = bits & UINT32_C(0x7fffffff);
+        unsigned invalid = (unsigned) arithmetic_float_missing(source, &column->policy) |
+            (unsigned) (magnitude == 0);
+        missing[offset] = (unsigned char) invalid;
+        invalid_count += invalid;
+        bits = invalid ? UINT32_C(0x7effffff) : bits;
+        memcpy(prepared + offset, &bits, sizeof(bits));
+        magnitude = bits & UINT32_C(0x7fffffff);
+        minimum = magnitude < minimum ? magnitude : minimum;
+    }
+    *missing_count = invalid_count;
+    return minimum >= threshold;
+}
+
 static int arithmetic_float_reciprocal_write(
     const arithmetic_float_reciprocal_proof *proof, R_xlen_t length,
     arithmetic_general_output *output
@@ -84,7 +112,7 @@ static int arithmetic_float_reciprocal_write(
         const unsigned char *raw = numeric_read_span(data, start, count, &count);
         uint64_t maximum_magnitude = 0;
         unsigned missing_count = 0;
-#define RECIPROCAL_FLOAT_LOOP(TYPE, TARGET, LOAD, NARROW, MISSING)            \
+#define RECIPROCAL_FLOAT_LOOP(TYPE, TARGET, LOAD, NARROW, MISSING, PREPARED)            \
         do {                                                               \
             TYPE *restrict target = (TARGET) + start;                      \
             unsigned failed_blocks = 0;                                   \
@@ -92,14 +120,31 @@ static int arithmetic_float_reciprocal_write(
                 size_t take = count - block;                               \
                 if (take > 64) take = 64;                                  \
                 size_t end = block + take;                                 \
-                if (arithmetic_float_reciprocal_ordinary_block(             \
-                        raw, block, take, threshold)) {                    \
+                float prepared[64];                                       \
+                unsigned char missing[64];                                \
+                unsigned block_missing = 0;                               \
+                int proved = PREPARED                                     \
+                    ? arithmetic_float_reciprocal_prepare_block(           \
+                        raw, block, take, column, threshold,                \
+                        prepared, missing, &block_missing)                 \
+                    : arithmetic_float_reciprocal_ordinary_block(          \
+                        raw, block, take, threshold);                      \
+                if (proved) {                                             \
                     failed_blocks = 0;                                    \
-                    for (size_t i = block; i < end; i++) {                 \
-                        float source;                                     \
-                        memcpy(&source, raw + i * sizeof(source), sizeof(source)); \
-                        target[i] = (TYPE) (scalar / (double) source);      \
+                    if (PREPARED && block_missing == take) {              \
+                        for (size_t i = block; i < end; i++)              \
+                            target[i] = (TYPE) (MISSING);                   \
+                    } else {                                              \
+                        for (size_t i = block; i < end; i++) {            \
+                            float source;                                 \
+                            if (PREPARED) source = prepared[i - block];    \
+                            else memcpy(&source, raw + i * sizeof(source), sizeof(source)); \
+                            double quotient = scalar / (double) source;   \
+                            target[i] = PREPARED && missing[i - block]     \
+                                ? (TYPE) (MISSING) : (TYPE) quotient;       \
+                        }                                                 \
                     }                                                     \
+                    missing_count += block_missing;                       \
                     block = end;                                          \
                     continue;                                             \
                 }                                                         \
@@ -125,17 +170,17 @@ static int arithmetic_float_reciprocal_write(
                 block = end;                                              \
             }                                                              \
         } while (0)
-#define RECIPROCAL_FLOAT_TARGETS(LOAD)                                      \
+#define RECIPROCAL_FLOAT_TARGETS(LOAD, PREPARED)                                      \
         if (output->kind == NUMERIC_FLOAT) {                                \
             RECIPROCAL_FLOAT_LOOP(float, (float *) (void *) output->raw,    \
-                LOAD, 1, 0x1p127f);                                       \
+                LOAD, 1, 0x1p127f, PREPARED);                                       \
         } else {                                                           \
-            RECIPROCAL_FLOAT_LOOP(double, output->real, LOAD, 0, NA_REAL);  \
+            RECIPROCAL_FLOAT_LOOP(double, output->real, LOAD, 0, NA_REAL, PREPARED);  \
         }
         if (all_observed) {
-            RECIPROCAL_FLOAT_TARGETS(arithmetic_general_load_observed_float);
+            RECIPROCAL_FLOAT_TARGETS(arithmetic_general_load_observed_float, 0);
         } else {
-            RECIPROCAL_FLOAT_TARGETS(arithmetic_general_load_float);
+            RECIPROCAL_FLOAT_TARGETS(arithmetic_general_load_float, 1);
         }
 #undef RECIPROCAL_FLOAT_TARGETS
 #undef RECIPROCAL_FLOAT_LOOP
