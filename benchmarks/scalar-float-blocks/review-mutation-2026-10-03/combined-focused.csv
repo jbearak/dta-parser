@@ -1,0 +1,21 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-native-arithmetic-parity.R","a final or boundary value promotes every earlier scalar result",640,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","column promotion crosses independently chunked operands",360,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","missing codes and negative limits do not hide the final promotion",248,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","fractional and large results choose storage for the complete column",225,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer division by powers of two inspects the complete column",740,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float power-of-two scaling preserves subnormals and zero signs",280,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer preflight preserves missing-only storage and bounded scalars",405,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer products choose long or float without losing signed zero",75,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","power-of-two arithmetic preserves legacy storage decoding",480,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float scaling promotes just beyond the binary32 cutoff",484,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","early long promotion still counts missing rows in later chunks",58,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","general arithmetic keeps mixed physical sources and scalar directions exact",10304,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","general preflight and float promotion retain later missing rows and earlier precision",184,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","general integer scalar bounds preserve floating storage and missing counts",5496,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","general arithmetic includes imported physical signed minima and legacy reserved observations",3376,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","floating scalar results reject unsafe endpoint proofs",320,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float scalar interval proofs retain zero signs and exact missing counts",2292,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float scalar fit intervals include exactly their binary32 boundary neighbors",1848,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","scalar block proofs preserve ordinary tails and late whole-column promotion",1566,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","scalar block proofs preserve imported exceptions after ordinary spans",2061,0,FALSE,FALSE,0
