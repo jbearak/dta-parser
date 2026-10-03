@@ -1,0 +1,80 @@
+{
+  "artifact_sha256": {
+    "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "numeric-arithmetic-float-reciprocal.h": "215a7920d29c79f0a787a093de171096f2c0164749ac1e235abb8f7d262713c7",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "112fe0147dbdef2567037a7118ef17812ffc7854f0d8c3f049c7dde327c496f2",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "production-common.h": "1a8e56d450276b60b41224eefef4dce780942f035031aaad870a58f5f0c1d948",
+    "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "work-count": "e7eeee6902bdb4e4108d5d1d8e33a6eae3caac2d328d9036ba1299a2851c9a25",
+    "work-count.csv": "3b2504106a2838780cdd2630f6a5f7ba0a0f6943a7a55483e257d16c199e719b",
+    "work-count.log": "5ddd6d3753175464eb6e3ddc7724c395eb97d1ba83aaed8b1a03c1c5565c05b7"
+  },
+  "command": [
+    "/usr/bin/cc",
+    "-std=gnu23",
+    "-O2",
+    "-g",
+    "-fPIC",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "<design>/candidate-release-v1",
+    "<design>/release-probe-source/work-count.c",
+    "-lm",
+    "-o",
+    "<design>/candidate-release-v1/work-count"
+  ],
+  "commit": "f219bf72bbc882cc4c090ded870470ab9c5e2099",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "controller_sha256": "c1f33e143a820c9558faa6285ab96c7b49fbe65a8f79f3b84cbdea6fee29e7f6",
+  "exit_code": 0,
+  "matrix_cases": 1484,
+  "probe_sha256": "e133acc01680cb646aa8d5ef03a794f041e72de521c2f2588df4ae70b3bff9e9",
+  "requested_commit": "f219bf72bbc882cc4c090ded870470ab9c5e2099",
+  "require_proved": true,
+  "rounding_witnesses": [
+    [
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "8388608"
+    ],
+    [
+      "2",
+      "4194304"
+    ],
+    [
+      "3",
+      "12582912"
+    ]
+  ],
+  "scope": "Release-flag actual float reciprocal result/preflight/producer headers, no FENV_ACCESS pragma and no strict-rounding compiler override. Allocation, scalar R reader and retained-span boundaries mocked. Independent raw encoding/result oracle and all four rounding modes. No timing, R dispatch, floating exception-state, or ownership proof. General-loop counters alone cannot certify future producer work.",
+  "semantic_failures": 0,
+  "source_before_after_equal": true,
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_sha256": {
+    "numeric-arithmetic-float-reciprocal.h": "c1984ffcde73941a8e96c8a2c7a187ce0b07f5c9018a7a5aae76b1151be8c628",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "b73bca33826eb551e44eb604d3e93d9704f47bb7bbbcf4081cc6a9b21f86b74d",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "status": "PASS",
+  "work_failures": 0,
+  "working_tree_status": " M r-package/dtatools/tools/native-test-manifest.json\n"
+}

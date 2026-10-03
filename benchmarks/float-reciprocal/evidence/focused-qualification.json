@@ -1,0 +1,47 @@
+{
+  "arithmetic_runtime_unchanged_after_build": true,
+  "build_receipt_sha256": "0f37122701bc6f292e48c7a2b755bf3df328bdc67f9466f314154cba8279606c",
+  "codegen": {
+    "command_sha256": "6474bf3d0fc48c0cd97f87a5337ad0c062f538a1ea19771fa6d416a2f15e4a1d",
+    "installed_disassembly_sha256": "ba4a515edac17b65c93f34320451755ba1bd65dfb24d985acd5c340a360ea5ba",
+    "object_disassembly_sha256": "cb4145c97960fe47a2cca932220c7b84a595ba57e8a72d06cfcb3e9ac1460f4c",
+    "object_sha256": "e4702733bb6da2e6d356a41b2daee9dd039d2291c4ac9ce2c25a9c5d6107e507",
+    "observations": [
+      "Release -O2 binary search has two signed binary64 divisions, with denominator negation between them.",
+      "The proof reduction and ordinary and exact writers vectorize on this compiler.",
+      "No cross-compiler or exception-flag trace guarantee is claimed."
+    ],
+    "remarks_sha256": "cf4b759f8170790588e6aa6a9fcf302d6e7aa340b6320c341e004594b8d86ba2"
+  },
+  "focused": {
+    "baseline": {
+      "assertions": 32173,
+      "blocks": 31,
+      "csv_sha256": "d51cfafbbfbbcf389b179f89e2ee64f4d12b46f00267e35d719807cd935bc5fc",
+      "log_sha256": "79595cdbf6875d29f5c4338913696bcf25326bb4fc19038465d1db264a453d45"
+    },
+    "candidate": {
+      "assertions": 32173,
+      "blocks": 31,
+      "csv_sha256": "d51cfafbbfbbcf389b179f89e2ee64f4d12b46f00267e35d719807cd935bc5fc",
+      "log_sha256": "79595cdbf6875d29f5c4338913696bcf25326bb4fc19038465d1db264a453d45"
+    }
+  },
+  "focused_controller_sha256": "1c3c1e7486ea8c7ce52377ff8be31abd86d5e8db7a3b113c817ab9efed168fd5",
+  "installed_dll_sha256": "d9164ef51109d0dc82810cb12e5cf064604a6196ced62539dd53c1e33e4e2cd7",
+  "runtime_source_commit": "f219bf72bbc882cc4c090ded870470ab9c5e2099",
+  "scope": "Focused correctness and static code generation only. No timing, full suite or archive conformance claim. Test sources are final committed worktree tests loaded against immutable installed baseline and candidate libraries. Initial test-oracle failures remain preserved.",
+  "status": "PASS",
+  "structural_records": {
+    "baseline-red-v1": "c5d84bfdc69faa00e802c9e7b882432e2fa9797339d6b5f87f1ac4b9eeb1f108",
+    "baseline-semantic-v1": "588be1d94a4e1cb3bae22d35b81aef8b003cdb7b4c81c7c108ad9a948141a371",
+    "candidate-release-v1": "7926bae0ced7ca7473eb3d9a9ebea4e8a1ea1ecfc7b41969743bb320745f687c",
+    "candidate-structural-v1": "5092fb28c0279a935cd30ac502b643cd610034bc53b212bc41371ed854e085c8"
+  },
+  "test_files": {
+    "tests/testthat/test-arithmetic-payload-lifetime.R": "c7e63eda9a3400ae81f433069a54b14cc827b854ee2e8acaa378fe84e2c49664",
+    "tests/testthat/test-native-arithmetic-parity.R": "ac94bda62ae61881c173e7df9e22e1b79532b3015b5575ea78ca6ffb36cfc9e0",
+    "tools/native-test-manifest.json": "475b7bf47a279619dde992be3d201550b5ef302222869a9b54513ea3913adb58"
+  },
+  "test_source_commit": "50e448283231cde1432fa6b30d5d3f6bd0441618"
+}

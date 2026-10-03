@@ -1,0 +1,86 @@
+Original installed-producer.txt, lines 218-252
+  18b3ac:      	ldr	x24, [x8, #0x8]
+  18b3b0:      	cbz	x24, 0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b3b4:      	ldr	w9, [x24, #0x10]
+  18b3b8:      	cmp	w9, #0x3
+  18b3bc:      	b.ne	0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b3c0:      	ldr	w9, [x24, #0x14]
+  18b3c4:      	cbnz	w9, 0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b3c8:      	ldr	x8, [x8, #0x70]
+  18b3cc:      	cmp	x8, x20
+  18b3d0:      	b.ne	0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b3d4:      	ldr	x8, [x24, #0x20]
+  18b3d8:      	str	x8, [sp, #0x88]
+  18b3dc:      	cmp	x8, x20
+  18b3e0:      	b.hi	0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b3e4:      	ldr	d14, [x23, #0x20]
+  18b3e8:      	mov	x8, #0xffffe0000000     ; =281474439839744
+  18b3ec:      	movk	x8, #0x47df, lsl #48
+  18b3f0:      	fmov	d0, x8
+  18b3f4:      	fdiv	d0, d14, d0
+  18b3f8:      	fabs	d0, d0
+  18b3fc:      	fmov	x8, d0
+  18b400:      	lsr	x8, x8, #53
+  18b404:      	cmp	x8, #0x3fe
+  18b408:      	b.hi	0x18b430 <_arithmetic_general_produce+0x3d0>
+  18b40c:      	mov	x8, #0xffffe0000000     ; =281474439839744
+  18b410:      	movk	x8, #0xc7df, lsl #48
+  18b414:      	fmov	d1, x8
+  18b418:      	fdiv	d1, d14, d1
+  18b41c:      	fabs	d1, d1
+  18b420:      	fmov	x8, d1
+  18b424:      	lsr	x8, x8, #53
+  18b428:      	cmp	x8, #0x3fe
+  18b42c:      	b.ls	0x192178 <_arithmetic_general_produce+0x7118>
+  18b430:      	ldr	w4, [x19]
+  18b434:      	sub	w8, w21, #0x2c
+
+Original installed-producer.txt, lines 7248-7294
+  192184:      	movk	x8, #0x47df, lsl #48
+  192188:      	fmov	d2, x8
+  19218c:      	fcmp	d0, d2
+  192190:      	fmov	d0, x8
+  192194:      	fccmp	d1, d0, #0x2, ls
+  192198:      	b.hi	0x18b430 <_arithmetic_general_produce+0x3d0>
+  19219c:      	mov	w12, #0x1               ; =1
+  1921a0:      	mov	w25, #0x7effffff        ; =2130706431
+  1921a4:      	mov	x8, #0xffffe0000000     ; =281474439839744
+  1921a8:      	movk	x8, #0x47df, lsl #48
+  1921ac:      	mov	w9, #0x7effffff         ; =2130706431
+  1921b0:      	b	0x1921c8 <_arithmetic_general_produce+0x7168>
+  1921b4:      	add	w12, w10, #0x1
+  1921b8:      	mov	x10, x9
+  1921bc:      	mov	x9, x10
+  1921c0:      	cmp	w12, w10
+  1921c4:      	b.hs	0x192234 <_arithmetic_general_produce+0x71d4>
+  1921c8:      	sub	w10, w9, w12
+  1921cc:      	add	w10, w12, w10, lsr #1
+  1921d0:      	fmov	s0, w10
+  1921d4:      	fcvt	d1, s0
+  1921d8:      	fdiv	d0, d14, d1
+  1921dc:      	fabs	d0, d0
+  1921e0:      	fmov	x11, d0
+  1921e4:      	lsr	x11, x11, #53
+  1921e8:      	cmp	x11, #0x3fe
+  1921ec:      	b.hi	0x1921b4 <_arithmetic_general_produce+0x7154>
+  1921f0:      	fneg	d1, d1
+  1921f4:      	fdiv	d1, d14, d1
+  1921f8:      	fabs	d1, d1
+  1921fc:      	fmov	x11, d1
+  192200:      	lsr	x11, x11, #53
+  192204:      	cmp	w26, #0x4
+  192208:      	b.eq	0x192228 <_arithmetic_general_produce+0x71c8>
+  19220c:      	cmp	x11, #0x3fe
+  192210:      	b.hi	0x192228 <_arithmetic_general_produce+0x71c8>
+  192214:      	fmov	d2, x8
+  192218:      	fcmp	d0, d2
+  19221c:      	fccmp	d1, d2, #0x2, ls
+  192220:      	b.hi	0x1921b4 <_arithmetic_general_produce+0x7154>
+  192224:      	b	0x1921bc <_arithmetic_general_produce+0x715c>
+  192228:      	cmp	x11, #0x3ff
+  19222c:      	b.lo	0x1921bc <_arithmetic_general_produce+0x715c>
+  192230:      	b	0x1921b4 <_arithmetic_general_produce+0x7154>
+  192234:      	str	w12, [sp, #0x50]
+  192238:      	mov	x23, #0x0               ; =0
+  19223c:      	mov	x27, #-0x1fffffff       ; =-536870911
+

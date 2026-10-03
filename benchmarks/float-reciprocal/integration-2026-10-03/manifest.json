@@ -1,0 +1,10 @@
+{
+  "bind-integration.py": "1b2ae57b845abb7d5f128ab3e734521a9a993877d97ceb8887a1e1f0bf322ba1",
+  "integration-binding.json": "fa25f9d3cbc67cb6d2d6554217f77b86ee95d6b79424bdfc0c017cce1e8b4c8f",
+  "integration-focused.R": "d9737870bf9ebc03912994c7e0d681a5c7152e11828b831683f3ed3960ae14c8",
+  "integration-focused.csv": "062f96a535b54af29a478b6c957470e788701e2f08ff86664d1ad4d0680523b9",
+  "integration-focused.log": "8400b41e4fe1893a3e1125fd91862b4589e9d3b29ce23169e1c2d1efbf93d86c",
+  "integration-manifest.log": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+  "publish-integration.py": "7e729993504f187a75e3875717eba37a1e483298c00d580d0573f9f6262b097d",
+  "source-map.json": "c0f29005310f404e55be9e2573e3ed349481fec465cfdb63216c1d30d374e034"
+}
