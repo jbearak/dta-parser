@@ -396,6 +396,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_inject_reference_write_interrupt",
      (DL_FUNC) &C_dtatools_inject_reference_write_interrupt, 1},
+    {"C_dtatools_test_arrow_strings_interrupt",
+     (DL_FUNC) &C_dtatools_test_arrow_strings_interrupt, 1},
     {"C_dtatools_mutation_rows",
      (DL_FUNC) &C_dtatools_mutation_rows, 2},
     {"C_dtatools_filter_start", (DL_FUNC) &C_dtatools_filter_start, 1},

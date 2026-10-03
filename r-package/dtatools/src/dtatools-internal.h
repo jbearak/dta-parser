@@ -658,6 +658,7 @@ _Static_assert(sizeof(dtatools_arrow_string_chunk) == 48,
 DTATOOLS_INTERNAL int dtatools_fill_arrow_strings(
     SEXP vector, const dtatools_arrow_string_chunk *chunks, size_t chunk_count
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_test_arrow_strings_interrupt(SEXP enabled);
 DTATOOLS_INTERNAL int dtatools_make_dictstring(
     void *data, size_t value_count, int *transferred, SEXP *result
 );

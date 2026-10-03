@@ -245,7 +245,7 @@
         },
         {
           "path": "tests/testthat/test-arrow-nullable-strings.R",
-          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
+          "sha256": "b2d4533c6175d6d9458308c2c6fcfcf5f65f6b9dcfba8053137a6feb60f66292"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -826,7 +826,7 @@
           "test": "nullable Arrow read cancellation remains an interrupt",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 3,
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -1663,12 +1663,6 @@
           "minimum": 1,
           "maximum": 1,
           "delay": 0.05
-        },
-        {
-          "id": "nullable-arrow-read-signal",
-          "minimum": 1,
-          "maximum": 1,
-          "delay": 0.01
         }
       ]
     },
@@ -17075,16 +17069,6 @@
           "min_pass_before_skip": 0,
           "skip_message": "Reason: On Windows",
           "warnings": 0
-        },
-        {
-          "file": "test-arrow-nullable-strings.R",
-          "test": "nullable Arrow read cancellation remains an interrupt",
-          "occurrence": 1,
-          "skip": "require",
-          "reason": "Windows",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: On Windows",
-          "warnings": 0
         }
       ],
       "children": [
@@ -17105,12 +17089,6 @@
         {
           "family": "io",
           "id": "arrow-write-signal",
-          "minimum": 0,
-          "maximum": 0
-        },
-        {
-          "family": "io",
-          "id": "nullable-arrow-read-signal",
           "minimum": 0,
           "maximum": 0
         }
