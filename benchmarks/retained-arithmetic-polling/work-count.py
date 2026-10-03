@@ -52,6 +52,7 @@ def main():
     parser.add_argument('--commit',default=DEFAULT_COMMIT)
     parser.add_argument('--require-proved',action='store_true')
     args=parser.parse_args();root=args.root.resolve();src=root/'r-package/dtatools/src'
+    found=shutil.which('cc');require(found is not None,'C compiler cc is unavailable')
     if args.commit is None:
         env={key:value for key,value in os.environ.items() if not key.startswith('GIT_')}
         args.commit=subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD'],cwd=root,env=env,text=True).strip()
@@ -86,7 +87,7 @@ def main():
     long=long_path.read_text()
     long=replace_once(long,'        start += count;', '        probe_complete_span(start, count);\n        start += count;')
     long_path.write_text(long)
-    compiler=Path(shutil.which('cc')).resolve();compiler_before=sha(compiler)
+    compiler=Path(found).resolve();compiler_before=sha(compiler)
     executable=output/'work-count'
     command=[str(compiler),'-std=c11','-O1','-Wall','-Wextra','-Werror','-Wno-unused-function',
         '-I',str(output),str(HERE/'work-count.c'),'-lm','-o',str(executable)]

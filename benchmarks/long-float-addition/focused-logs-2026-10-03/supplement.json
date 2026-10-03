@@ -1,0 +1,72 @@
+{
+  "logs": [
+    {
+      "blocks": 32,
+      "completion": "focused/baseline-focused-v1/completion.json",
+      "log": "baseline-focused-v1.log",
+      "original_completion_sha256": "a6e1e1a6aaa22450980a8f4a8b04859c797442664a936b80dbed32b760ef1e55",
+      "original_log_sha256": "1e0ebe42b983d5b343992cbfb20c0d3c7cb1b5ebe81751ea9d5d728192aa3c48",
+      "passed": 32994,
+      "published_completion_sha256": "a6e1e1a6aaa22450980a8f4a8b04859c797442664a936b80dbed32b760ef1e55",
+      "published_log_sha256": "1e0ebe42b983d5b343992cbfb20c0d3c7cb1b5ebe81751ea9d5d728192aa3c48",
+      "source_commit": "7003eba901671797ee91fffc97f08e28a1f7f515",
+      "test_source_head": "8bfeeb72ee6323d84b02f21442ebb31b06e9a773",
+      "transformation": "none: fixed labels and numeric counts only"
+    },
+    {
+      "blocks": 32,
+      "completion": "focused/candidate-focused-v1/completion.json",
+      "log": "candidate-focused-v1.log",
+      "original_completion_sha256": "d1f4bc6603ef292375a823e370311b311d18da0faca858aa2cf5d69fc283bdf5",
+      "original_log_sha256": "1e0ebe42b983d5b343992cbfb20c0d3c7cb1b5ebe81751ea9d5d728192aa3c48",
+      "passed": 32994,
+      "published_completion_sha256": "d1f4bc6603ef292375a823e370311b311d18da0faca858aa2cf5d69fc283bdf5",
+      "published_log_sha256": "1e0ebe42b983d5b343992cbfb20c0d3c7cb1b5ebe81751ea9d5d728192aa3c48",
+      "source_commit": "387227cdb8a174feccb24e5f52745177c5af3f95",
+      "test_source_head": "387227cdb8a174feccb24e5f52745177c5af3f95",
+      "transformation": "none: fixed labels and numeric counts only"
+    },
+    {
+      "blocks": 34,
+      "completion": "focused/all-missing-baseline-focused-v1/completion.json",
+      "log": "all-missing-baseline-focused-v1.log",
+      "original_completion_sha256": "3dbbf64388360b18ed0f4d0899e7e2798981fd89aa5b154e51eca5808316915c",
+      "original_log_sha256": "5dc5c37a5021fc50113c7353ac2464f91e743bc363651c33422b499a9a9fd591",
+      "passed": 33210,
+      "published_completion_sha256": "3dbbf64388360b18ed0f4d0899e7e2798981fd89aa5b154e51eca5808316915c",
+      "published_log_sha256": "5dc5c37a5021fc50113c7353ac2464f91e743bc363651c33422b499a9a9fd591",
+      "source_commit": "387227cdb8a174feccb24e5f52745177c5af3f95",
+      "test_source_head": "254edb0770d04777870f920034f97798d8ec1e92",
+      "transformation": "none: fixed labels and numeric counts only"
+    },
+    {
+      "blocks": 34,
+      "completion": "focused/all-missing-candidate-focused-v1/completion.json",
+      "log": "all-missing-candidate-focused-v1.log",
+      "original_completion_sha256": "90ddf31ffb302c9bcc73dda2c12a0a0c542b91f39f0f5ddf9c32cb306ab13020",
+      "original_log_sha256": "5dc5c37a5021fc50113c7353ac2464f91e743bc363651c33422b499a9a9fd591",
+      "passed": 33210,
+      "published_completion_sha256": "90ddf31ffb302c9bcc73dda2c12a0a0c542b91f39f0f5ddf9c32cb306ab13020",
+      "published_log_sha256": "5dc5c37a5021fc50113c7353ac2464f91e743bc363651c33422b499a9a9fd591",
+      "source_commit": "3de25ecca674a3ffed3618223a011f499383bd57",
+      "test_source_head": "3de25ecca674a3ffed3618223a011f499383bd57",
+      "transformation": "none: fixed labels and numeric counts only"
+    },
+    {
+      "blocks": 37,
+      "completion": "focused/publication-focused-v1/completion.json",
+      "log": "publication-focused-v1.log",
+      "original_completion_sha256": "0012a5e09f997e96abfd7fc424d9df0054b882cf5a166892d1eca51ba8d796da",
+      "original_log_sha256": "04e915413d4a3bd441fbb7ede9636bd052fe1b85421af96401ba3d663c0f6137",
+      "passed": 34288,
+      "published_completion_sha256": "0012a5e09f997e96abfd7fc424d9df0054b882cf5a166892d1eca51ba8d796da",
+      "published_log_sha256": "04e915413d4a3bd441fbb7ede9636bd052fe1b85421af96401ba3d663c0f6137",
+      "source_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+      "test_source_head": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+      "transformation": "none: fixed labels and numeric counts only"
+    }
+  ],
+  "original_publication_manifest_sha256": "4539e41a5ade7025a5804795ba9f87d33ff684813292cf88942de5f5a98ef374",
+  "original_source_map_sha256": "82ad22ef602b139452a4dcf7b5dd17b98ecad703a75026c14f68b897774c01be",
+  "scope": "Additive publication of five omitted historical focused logs. Original completions, manifests, source maps, observations and scripts remain unchanged. No new tests or timing results."
+}

@@ -1,0 +1,207 @@
+--- a/src/rust/src/owned_numeric.rs
++++ b/src/rust/src/owned_numeric.rs
+@@ -43,6 +43,9 @@
+ 
+ pub(crate) struct Owner {
+     chunks: Vec<Chunk>,
++    // Nonzero only when every nonfinal chunk has this many rows and the
++    // final chunk is no longer. This describes row geometry, not addresses.
++    uniform_rows: usize,
+     width: usize,
+     length: usize,
+     native_bytes: usize,
+@@ -126,6 +129,15 @@
+ }
+ 
+ impl Owner {
++    // Callers first establish that index is within this immutable owner.
++    fn chunk_index(&self, index: usize) -> usize {
++        if self.uniform_rows != 0 {
++            index / self.uniform_rows
++        } else {
++            self.chunks.partition_point(|chunk| chunk.end <= index)
++        }
++    }
++
+     fn region(&self, start: usize, requested: usize) -> Option<(*const u8, usize)> {
+         if start > self.length {
+             return None;
+@@ -133,7 +145,7 @@
+         if requested == 0 || start == self.length {
+             return Some((ptr::null(), 0));
+         }
+-        let index = self.chunks.partition_point(|chunk| chunk.end <= start);
++        let index = self.chunk_index(start);
+         let chunk = self.chunks.get(index)?;
+         let first = if index == 0 {
+             0
+@@ -318,6 +330,9 @@
+     let mut length = 0usize;
+     let mut native_bytes = 0usize;
+     let mut missing_count = 0usize;
++    let mut uniform_rows = 0usize;
++    let mut previous_rows = 0usize;
++    let mut regular = true;
+     for array in arrays {
+         length = length
+             .checked_add(array.len())
+@@ -374,6 +389,14 @@
+         if buffer.len() != array.len() * width(kind) {
+             return Err("owned compact Arrow buffer has the wrong length".to_owned());
+         }
++        // A new nonempty chunk proves the previous one was not the tail.
++        // Establish the fact during construction, without another scan.
++        if uniform_rows == 0 {
++            uniform_rows = array.len();
++        } else if previous_rows != uniform_rows || array.len() > uniform_rows {
++            regular = false;
++        }
++        previous_rows = array.len();
+         // Capacity measures the retained allocation, including sliced-away
+         // bytes. Deduplicate shared slices within this column. Separate owners
+         // may charge one shared allocation twice; diagnostics document this.
+@@ -396,6 +419,7 @@
+     Ok(PreparedOwnedNumeric::new(
+         Owner {
+             chunks,
++            uniform_rows: if regular { uniform_rows } else { 0 },
+             width: width(kind),
+             length,
+             native_bytes,
+@@ -442,6 +466,8 @@
+             Box::into_raw(Box::new(descriptor(
+                 Owner {
+                     chunks,
++                    // This constructor generates the row boundaries itself.
++                    uniform_rows: if length == 0 { 0 } else { chunk_rows },
+                     width: width(kind),
+                     length,
+                     native_bytes: 0,
+@@ -519,7 +545,7 @@
+     if requested == 0 || start == owner.length {
+         return 1;
+     }
+-    let index = owner.chunks.partition_point(|chunk| chunk.end <= start);
++    let index = owner.chunk_index(start);
+     let Some(chunk) = owner.chunks.get(index) else {
+         return 0;
+     };
+@@ -563,7 +589,7 @@
+     if index >= owner.length {
+         return 0;
+     }
+-    let chunk_index = owner.chunks.partition_point(|chunk| chunk.end <= index);
++    let chunk_index = owner.chunk_index(index);
+     let Some(chunk) = owner.chunks.get(chunk_index) else {
+         return 0;
+     };
+@@ -670,6 +696,109 @@
+         } else {
+             assert_eq!(status, 1);
+             Some((values.cast(), start, end))
++        }
++    }
++
++    #[test]
++    fn chunk_geometry_preserves_sliced_buffers_and_irregular_tails() {
++        let whole = Int16Array::from((0..80_i16).collect::<Vec<_>>());
++        let cases: &[(&[usize], usize)] = &[
++            (&[], 0),
++            (&[0, 0], 0),
++            (&[7], 7),
++            (&[7, 7, 7], 7),
++            (&[7, 7, 3], 7),
++            (&[0, 7, 0, 7, 0, 3, 0], 7),
++            (&[3, 7, 7], 0),
++            (&[7, 3, 7], 0),
++            (&[7, 7, 8], 0),
++        ];
++        for &(lengths, expected_uniform) in cases {
++            let mut arrays: Vec<ArrayRef> = Vec::new();
++            let mut expected = Vec::new();
++            let mut rows = 0;
++            for (position, &length) in lengths.iter().enumerate() {
++                let offset = [40, 2, 20][position % 3];
++                arrays.push(Arc::new(whole.slice(offset, length)));
++                if length != 0 {
++                    let pointer = whole.values().as_ptr().wrapping_add(offset).cast::<u8>();
++                    expected.push((rows, rows + length, pointer));
++                    rows += length;
++                }
++            }
++            let data = prepare_from_arrow(
++                &arrays,
++                NumericKind::Int,
++                TemporalKind::None,
++                FormatVersion::V118,
++                rows,
++                || false,
++            )
++            .unwrap()
++            .into_descriptor();
++            let owner = unsafe { &*data.native_owner.cast::<Owner>() };
++            assert_eq!(owner.uniform_rows, expected_uniform, "{lengths:?}");
++            drop(arrays);
++            for index in (0..rows).rev().chain((0..rows).step_by(3)) {
++                let &(start, end, pointer) = expected
++                    .iter()
++                    .find(|&&(a, b, _)| a <= index && index < b)
++                    .unwrap();
++                assert_eq!(
++                    unsafe { scalar_span(&data, index) },
++                    Some((pointer, start, end))
++                );
++                assert_eq!(
++                    owner.region(index, usize::MAX),
++                    Some((pointer.wrapping_add((index - start) * 2), end - index))
++                );
++            }
++            assert_eq!(owner.region(rows, usize::MAX), Some((ptr::null(), 0)));
++            assert_eq!(owner.region(rows + 1, 0), None);
++            assert!(unsafe { scalar_span(&data, rows) }.is_none());
++        }
++    }
++
++    #[test]
++    fn uniform_lookup_preserves_owner_and_descriptor_bounds() {
++        let bytes = [0_u8; 17];
++        for chunk_rows in [1, 7, 19, usize::MAX] {
++            let descriptor = unsafe {
++                dtatools_owned_numeric_from_raw(
++                    bytes.as_ptr(),
++                    bytes.len(),
++                    chunk_rows,
++                    NumericKind::Byte as c_int,
++                    0,
++                    118,
++                    0,
++                )
++            };
++            assert!(!descriptor.is_null());
++            let mut data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
++            let owner = unsafe { &*data.native_owner.cast::<Owner>() };
++            assert_eq!(owner.uniform_rows, chunk_rows);
++            data.length = 5;
++            assert!(unsafe { scalar_span(&data, 5) }.is_none());
++            // Bulk owner regions retain their existing owner-length contract.
++            let (mut pointer, mut count) = (ptr::null(), 0);
++            assert_eq!(
++                unsafe {
++                    dtatools_owned_numeric_region(
++                        (&*data as *const NumericData).cast(),
++                        16,
++                        usize::MAX,
++                        &mut pointer,
++                        &mut count,
++                    )
++                },
++                1
++            );
++            assert_eq!(
++                (pointer.cast::<u8>(), count),
++                (bytes.as_ptr().wrapping_add(16), 1)
++            );
++            assert_eq!(owner.region(usize::MAX, 1), None);
+         }
+     }
+ 

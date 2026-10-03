@@ -16,6 +16,7 @@ use arrow_buffer::{Buffer, ScalarBuffer};
 
 use crate::{FormatVersion, NumericData, NumericKind, TemporalKind};
 
+thread_local! { static CHUNK_SEARCH_COMPARISONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 static LIVE_NATIVE_BYTES: AtomicUsize = AtomicUsize::new(0);
 static LIVE_OWNERS: AtomicUsize = AtomicUsize::new(0);
 static MEMORY_PRESSURE: crate::native_pressure::NativeMemoryPressure =
@@ -134,7 +135,7 @@ impl Owner {
         if self.uniform_rows != 0 {
             index / self.uniform_rows
         } else {
-            self.chunks.partition_point(|chunk| chunk.end <= index)
+            self.chunks.partition_point(|chunk| { CHUNK_SEARCH_COMPARISONS.with(|count| count.set(count.get() + 1)); chunk.end <= index })
         }
     }
 
@@ -1242,3 +1243,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "retained_span_probe.rs"]
+mod retained_span_probe;
