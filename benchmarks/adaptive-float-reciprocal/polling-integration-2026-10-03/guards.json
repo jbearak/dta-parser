@@ -1,0 +1,48 @@
+[
+  {
+    "command": [
+      "python3",
+      "scripts/test_native_manifest.py"
+    ],
+    "cwd": "<PRIVATE_TMP>/dta-float-reciprocal-adaptive",
+    "exit_code": 0,
+    "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426",
+    "log": "test_native_manifest.log",
+    "log_sha256": "fc23540c8545d4075fe2f0420accd022e74e5566176c3bd4c597964ff02c2e14"
+  },
+  {
+    "command": [
+      "python3",
+      "-O",
+      "scripts/test_native_manifest.py"
+    ],
+    "cwd": "<PRIVATE_TMP>/dta-float-reciprocal-adaptive",
+    "exit_code": 0,
+    "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426",
+    "log": "test_native_manifest-optimized.log",
+    "log_sha256": "35649ccb7621214ac024bd31428022d326fb76b6926043ad7d6527b41cd3c0f8"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/test_arithmetic_dependencies.py"
+    ],
+    "cwd": "<PRIVATE_TMP>/dta-float-reciprocal-adaptive",
+    "exit_code": 0,
+    "script_sha256": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866",
+    "log": "test_arithmetic_dependencies.log",
+    "log_sha256": "1321b6d5836fb9224d3a94490e291ea66a509975207830b8fbd5e933f654ff59"
+  },
+  {
+    "command": [
+      "python3",
+      "-O",
+      "scripts/test_arithmetic_dependencies.py"
+    ],
+    "cwd": "<PRIVATE_TMP>/dta-float-reciprocal-adaptive",
+    "exit_code": 0,
+    "script_sha256": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866",
+    "log": "test_arithmetic_dependencies-optimized.log",
+    "log_sha256": "2dfc170002601b21a0b375399597d66ac00db574b5b6176cbcf62f5836fbcf36"
+  }
+]
