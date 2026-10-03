@@ -1,0 +1,16 @@
+{
+  "before_after_equal": true,
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "<evidence>/full-suite.R",
+    "<evidence>/candidate-final-v1/library",
+    "<evidence>/candidate-final-v1/source/tests/testthat",
+    "<evidence>/full-suite.csv"
+  ],
+  "cwd": "<repository>",
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T15:20:16.830924+00:00",
+  "scope": "Full installed R correctness suite; no timing benchmark.",
+  "started_utc": "2026-10-03T15:07:52.319323+00:00"
+}
