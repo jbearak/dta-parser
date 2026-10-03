@@ -892,7 +892,9 @@ test_that("long float all missing facts preserve output bits and cache mutation"
                 before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
                 result <- if (reverse) y + x else x + y
                 after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
-                expect_identical(after - before, 1, info = info)
+                expect_identical(after - before,
+                    if (.dtatools_numeric_entry_expected("scalar")) 1 else 0,
+                    info = info)
                 expect_identical(dta_storage_type(result), "double", info = info)
                 expect_identical(.arithmetic_parity_bytes(result), expected_bytes, info = info)
                 expect_true(anyNA(result), info = info)
