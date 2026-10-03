@@ -2671,16 +2671,19 @@ SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
 SEXP C_dtatools_owned_numeric_info(SEXP value) {
     numeric_data *data = unmaterialized_numeric_read_storage(value);
     int retained = data != NULL && numeric_payload_retained(data);
-    const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes"};
-    SEXP result = PROTECT(Rf_allocVector(REALSXP, 6));
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 6));
+    const char *labels[] = {"owned", "rows", "chunks", "native_bytes", "live_owners", "compatibility_bytes",
+                           "gc_attempts", "allocation_debt"};
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, 8));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 8));
     REAL(result)[0] = retained;
     REAL(result)[1] = data == NULL ? 0 : (double) data->length;
     REAL(result)[2] = retained ? (double) dtatools_owned_numeric_chunks(data) : 0;
     REAL(result)[3] = (double) dtatools_owned_numeric_live_bytes();
     REAL(result)[4] = (double) dtatools_owned_numeric_live_owners();
     REAL(result)[5] = owned_numeric_compatibility_bytes;
-    for (int i = 0; i < 6; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
+    REAL(result)[6] = (double) dtatools_owned_numeric_gc_attempts();
+    REAL(result)[7] = (double) dtatools_owned_numeric_allocation_debt();
+    for (int i = 0; i < 8; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
     Rf_setAttrib(result, R_NamesSymbol, names);
     UNPROTECT(2);
     return result;

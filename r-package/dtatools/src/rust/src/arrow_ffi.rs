@@ -3567,13 +3567,13 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
-        let charged = crate::owned_numeric::dtatools_owned_numeric_live_bytes();
-        if charged > 64 * 1024 * 1024 {
+        crate::owned_numeric::collect_native_pressure(|| {
             check_interrupt()?;
             if crate::dtatools_owned_numeric_gc() == 0 {
                 return Err("R could not collect unused owned numeric buffers".to_owned());
             }
-        }
+            Ok(())
+        })?;
         let snapshot = required_arrow_snapshot(snapshot)?;
         let projection = if all_columns != 0 {
             None
