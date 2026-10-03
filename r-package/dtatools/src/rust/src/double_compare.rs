@@ -17,7 +17,7 @@ fn missing_key(bits: u64, is_missing: bool) -> (u32, bool) {
     )
 }
 
-unsafe fn pair<F: Fn(f64, f64) -> bool, M: Fn(u32, u32) -> bool>(
+unsafe fn pair_exact<F: Fn(f64, f64) -> bool, M: Fn(u32, u32) -> bool>(
     x: *const f64,
     y: *const f64,
     output: *mut c_int,
@@ -41,6 +41,67 @@ unsafe fn pair<F: Fn(f64, f64) -> bool, M: Fn(u32, u32) -> bool>(
         // it occurs after a previous invalid payload.
         let result = (observed(a, b) & !either_missing) | (missing(ar, br) & either_missing);
         output.add(index).write(c_int::from(result));
+    }
+    valid
+}
+
+/// The maximum absolute bit pattern proves that every value is observed.
+/// Infinities are valid observed doubles; only larger magnitudes are NaNs.
+/// This check makes no claim about other blocks or the rest of the column.
+#[inline(always)]
+unsafe fn ordinary_block(x: *const f64, y: *const f64, length: usize) -> bool {
+    let mut maximum = 0_u64;
+    for index in 0..length {
+        let a = x.add(index).read_unaligned().to_bits() & 0x7fff_ffff_ffff_ffff;
+        let b = y.add(index).read_unaligned().to_bits() & 0x7fff_ffff_ffff_ffff;
+        maximum = maximum.max(a).max(b);
+    }
+    maximum <= 0x7ff0_0000_0000_0000
+}
+
+unsafe fn pair<F: Fn(f64, f64) -> bool, M: Fn(u32, u32) -> bool>(
+    x: *const f64,
+    y: *const f64,
+    output: *mut c_int,
+    length: usize,
+    observed: F,
+    missing: M,
+) -> bool {
+    let mut valid = true;
+    let mut start = 0;
+    let mut failed_blocks = 0;
+    while start < length {
+        let count = (length - start).min(64);
+        let xp = x.add(start);
+        let yp = y.add(start);
+        let target = output.add(start);
+        if ordinary_block(xp, yp, count) {
+            failed_blocks = 0;
+            for index in 0..count {
+                target.add(index).write(c_int::from(observed(
+                    xp.add(index).read_unaligned(),
+                    yp.add(index).read_unaligned(),
+                )));
+            }
+        } else {
+            valid &= pair_exact(xp, yp, target, count, &observed, &missing);
+            failed_blocks += 1;
+            if failed_blocks == 4 {
+                start += count;
+                // Stop spending proof work on this span. The exact loop
+                // validates every remaining row; this is not a domain fact.
+                return valid
+                    & pair_exact(
+                        x.add(start),
+                        y.add(start),
+                        output.add(start),
+                        length - start,
+                        &observed,
+                        &missing,
+                    );
+            }
+        }
+        start += count;
     }
     valid
 }
@@ -126,6 +187,60 @@ mod tests {
                             },
                             Some(false)
                         );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn block_proofs_and_dense_switch_preserve_all_comparisons() {
+        for length in [0, 1, 2, 63, 64, 65, 127, 128, 129, 255, 256, 257, 320, 1025] {
+            for dense_prefix in [0, 64, 192, 256, 320] {
+                let observed = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, 1.5, -2.5];
+                let mut x: Vec<_> = (0..length).map(|i| observed[i % observed.len()]).collect();
+                let y: Vec<_> = (0..length)
+                    .map(|i| observed[(i + 2) % observed.len()])
+                    .collect();
+                for (index, value) in x.iter_mut().take(dense_prefix).enumerate() {
+                    let tag = if index % 27 == 0 {
+                        0
+                    } else {
+                        b'a' + (index % 27 - 1) as u8
+                    };
+                    *value = f64::from_bits(DOUBLE_TAGGED_NA_LAYOUT | (u64::from(tag) << 32));
+                }
+                for op in 0..=5 {
+                    let mut output = vec![0; length];
+                    assert_eq!(
+                        unsafe {
+                            compare(op, view(&x), Some(view(&y)), output.as_mut_ptr(), length)
+                        },
+                        Some(true)
+                    );
+                    for (index, actual) in output.iter().enumerate() {
+                        let expected = unsafe {
+                            compare_decoded(
+                                op,
+                                compare_operand_element(view(&x), index).unwrap(),
+                                compare_operand_element(view(&y), index).unwrap(),
+                            )
+                        };
+                        assert_eq!(
+                            *actual, expected,
+                            "length={length}, prefix={dense_prefix}, op={op}, index={index}"
+                        );
+                    }
+                    if length != 0 {
+                        let saved = x[length - 1];
+                        x[length - 1] = f64::from_bits(0x7ff8_0000_0000_0000);
+                        assert_eq!(
+                            unsafe {
+                                compare(op, view(&x), Some(view(&y)), output.as_mut_ptr(), length)
+                            },
+                            Some(false)
+                        );
+                        x[length - 1] = saved;
                     }
                 }
             }
