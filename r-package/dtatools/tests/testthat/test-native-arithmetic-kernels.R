@@ -383,11 +383,12 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
             # A vector of ones declines the scalar scaling route. Exercise
             # that route explicitly, including provisional float overflow
             # that must be recomputed in double after whole-column promotion.
-            expect_scaled <- function(op, left, right, left_values, right_values) {
+            expect_scaled <- function(op, left, right, left_values, right_values,
+                                      minimum = "float") {
                 .Call(C_dtatools_numeric_entry_stats, TRUE)
                 actual <- getExportedValue("base", op)(left, right)
                 .native_arithmetic_expect_entry()
-                expected <- .native_arithmetic_reference(op, left_values, right_values, "float")
+                expected <- .native_arithmetic_reference(op, left_values, right_values, minimum)
                 .native_arithmetic_expect(actual, expected)
                 expected_missing <- is.na(as.double(expected))
                 expect_identical(is.na(actual), expected_missing)
@@ -417,7 +418,36 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
                     expect_scaled(op, scalar, x, scalar, plain)
                 }
             }
-            expect_scaled("+", x, x, plain, plain)
+            for (op in c("+", "-", "*", "/")) {
+                expect_scaled(op, x, x, plain, plain)
+            }
+            # Raw imported maxima remain available here, unlike a constructor
+            # that normalizes values outside Stata's observed float range.
+            # Their products and quotients by the smallest subnormal exercise
+            # the full physical bounds used to prove binary64 results safe.
+            tiny <- dta_float(rep(2^-149, count))
+            expect_scaled("/", x, tiny, plain, rep(2^-149, count))
+            expect_scaled("/", tiny, x, rep(2^-149, count), plain)
+            # Distinct physical widths use the compact pair producer. Keep
+            # the full binary64 byte comparison: negative and zero numerators
+            # divided by observed +/-Inf must retain the zero sign, whereas
+            # legacy +Inf, NaNs and reserved codes propagate system missing.
+            for (kind in c("int", "long")) {
+                constructor <- get(paste0("dta_", kind))
+                minimum <- dtatools:::.dta_promote("float", kind)
+                for (values in list(rep(-1, count), rep(0, count),
+                    rep(c(-2, 0, 2, NA_real_, tagged_missing(c("a", "z"))),
+                        length.out = count))) {
+                    y <- .Call(C_dtatools_owned_numeric_freeze, constructor(values), 5L)
+                    y_before <- writeBin(as.double(y), raw(), size = 8L)
+                    for (op in c("+", "-", "*", "/")) {
+                        expect_scaled(op, x, y, plain, values, minimum)
+                        expect_scaled(op, y, x, values, plain, minimum)
+                    }
+                    expect_identical(writeBin(as.double(y), raw(), size = 8L), y_before)
+                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+                }
+            }
             expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
         }
@@ -454,4 +484,35 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
         writeBin(bytes, legacy)
         compare(legacy, "f", length(batch))
     }
+})
+
+test_that("compact pair promotion recomputes earlier chunks and counts missing unions", {
+    .native_arithmetic_enable()
+    values <- rep(c(1 + 2^-23, -0, 0, 2, NA_real_, tagged_missing(letters)),
+                  length.out = 131L)
+    values[[131L]] <- 1e38
+    x <- .Call(C_dtatools_owned_numeric_freeze, dta_float(values), 7L)
+    y_values <- rep(c(3, 2, -2, NA_real_, tagged_missing(rev(letters))),
+                    length.out = length(values))
+    y_values[[131L]] <- 2
+    y <- .Call(C_dtatools_owned_numeric_freeze, dta_int(y_values), 11L)
+    before <- lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L))
+    .Call(C_dtatools_numeric_entry_stats, TRUE)
+    actual <- x * y
+    .native_arithmetic_expect_entry()
+    expected <- .native_arithmetic_reference("*", x, y, "float")
+    expect_identical(dta_storage_type(actual), "double")
+    .native_arithmetic_expect(actual, expected)
+    # The first exact product differs from its once-rounded float value.
+    # Late promotion must discard that provisional rounding in every chunk.
+    expect_identical(as.double(actual)[[1L]], (1 + 2^-23) * 3)
+    expect_false(identical(as.double(actual)[[1L]], as.double(dta_float((1 + 2^-23) * 3))))
+    missing <- is.na(as.double(expected))
+    expect_identical(is.na(actual), missing)
+    result <- dibble(x = actual)
+    replace_values(result, x = 0, where = which(missing))
+    expect_false(anyNA(result$x))
+    expect_identical(lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L)), before)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
 })

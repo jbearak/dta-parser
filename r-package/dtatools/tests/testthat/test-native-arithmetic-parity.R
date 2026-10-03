@@ -425,7 +425,7 @@ test_that("general integer scalar bounds preserve floating storage and missing c
     }
 })
 
-test_that("general integer scalar proof includes imported physical signed minima", {
+test_that("general arithmetic includes imported physical signed minima and legacy reserved observations", {
     .arithmetic_parity_enable()
     modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     legacy <- tempfile(fileext = ".dta")
@@ -442,6 +442,11 @@ test_that("general integer scalar proof includes imported physical signed minima
     start <- grepRaw(prefix, bytes, fixed = TRUE, all = TRUE)
     expect_length(start, 1L)
     bytes[start + 0:6] <- unlist(minimum_bits, use.names = FALSE)
+    # Legacy integer storage reserves only its maximum signed value. These
+    # modern extended-missing codes remain observed in this input layout.
+    bytes[start + 25L + 0:6] <- c(as.raw(126),
+        writeBin(32766L, raw(), size = 2L, endian = "little"),
+        writeBin(2147483646L, raw(), size = 4L, endian = "little"))
     writeBin(bytes, legacy)
     for (version in c("modern", "legacy")) {
         path <- if (version == "modern") modern else legacy
@@ -453,6 +458,9 @@ test_that("general integer scalar proof includes imported physical signed minima
             kind <- dta_storage_type(source)
             expect_identical(as.double(source), as.double(eager[[names[[index]]]]))
             expect_identical(as.double(source)[[1L]], -c(128, 32768, 2147483648)[[index]])
+            if (version == "legacy") {
+                expect_identical(as.double(source)[[2L]], c(126, 32766, 2147483646)[[index]])
+            }
             # The legacy byte fixture has value-label metadata, which correctly
             # declines this admission route. Preserve its bytes and encoding
             # while selecting the ordinary compact arithmetic contract.
@@ -465,6 +473,15 @@ test_that("general integer scalar proof includes imported physical signed minima
                         .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
                         .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
                     }
+                }
+                partner <- .Call(C_dtatools_owned_numeric_freeze,
+                    dta_float(rep(c(1.5, -0, 0, 2^-149, NA_real_, tagged_missing("z")),
+                                  length.out = length(x))), 5L)
+                minimum <- dtatools:::.dta_promote(kind, "float")
+                for (op in c("+", "-", "*", "/")) {
+                    info <- paste(version, kind, "physical compact pair", op)
+                    .arithmetic_parity_expect(op, x, partner, minimum, NULL, info)
+                    .arithmetic_parity_expect(op, partner, x, minimum, NULL, info)
                 }
             }
         }
