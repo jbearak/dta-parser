@@ -30,6 +30,22 @@ typedef struct {
     size_t missing_count;
 } arithmetic_general_output;
 
+/* The caller proves every result missing from captured native facts. This
+   writer only fills a fresh binary64 destination whose missing count starts
+   at zero; it never inspects sources. */
+static void arithmetic_general_fill_missing_double(
+    R_xlen_t length, arithmetic_general_output *output
+) {
+    for (size_t start = 0; start < (size_t) length;) {
+        R_CheckUserInterrupt();
+        size_t count = (size_t) length - start;
+        if (count > 16384) count = 16384;
+        for (size_t i = 0; i < count; i++) output->real[start + i] = NA_REAL;
+        output->missing_count += count;
+        start += count;
+    }
+}
+
 static int arithmetic_general_source_create(
     const arithmetic_operand *operand, arithmetic_general_source *source
 ) {
