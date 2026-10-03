@@ -1,0 +1,16 @@
+{
+  "artifacts": {
+    "intervals.csv": "e9067a165797e00cca314ae960b58db62bd824ef72478d3652a4ff05a30216f9",
+    "protocol.json": "0162f6b8e960f91d1f8b1a00c02a05a69081e40aee465db005164f537a7eda68",
+    "raw.csv": "eebaaf777b65ecf95dfee1a0c653a69e557b3e31422109bb7d7b10e9a600f17d",
+    "source.patch": "9be98cebddc86bf3f6a5ff640488a66f2408d37a567df76a4ec8679e6d339638",
+    "summary.csv": "2b3f163fc40a02b942de48a1455668b11746050db866c2a984248052b8193d84"
+  },
+  "exact_results": true,
+  "first_materialization_only": true,
+  "observations": 288,
+  "phase": "timing",
+  "provenance_unchanged": true,
+  "rounds": 6,
+  "source_unchanged": true
+}

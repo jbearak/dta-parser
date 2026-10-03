@@ -1,0 +1,8 @@
+"id","filename","profile","route","n","columns","batch_rows","actual_batches","retained","expected_na_per_column"
+"payload_f64","double.arrow",TRUE,"PayloadDouble",2000000,8,65536,31,FALSE,28
+"semantic_f64","double.arrow",FALSE,"SemanticDouble",2000000,8,65536,31,FALSE,28
+"integer_i32","integer.arrow",TRUE,"Integer",2000000,8,65536,31,FALSE,0
+"nullable_f64","nullable-double.arrow",TRUE,"SemanticDouble",2000000,8,65536,31,FALSE,32
+"nullable_i32","nullable-integer.arrow",TRUE,"Integer",2000000,8,65536,31,FALSE,32
+"widen_f32","widen-float.arrow",TRUE,"SemanticDouble",2000000,8,65536,31,FALSE,0
+"compact_i16","compact-int.arrow",TRUE,"ProfiledCompact",2000000,8,65536,31,TRUE,32

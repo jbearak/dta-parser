@@ -1,0 +1,26 @@
+{
+  "artifacts": {
+    "fill_integer.asm": {
+      "sha256": "464081b2024f3964e4181869009d45418017358f9924ba3c7142674d05ae4e8a",
+      "symbol": "__RNvNtCs69X5pnBqK1V_10dtatools_r9arrow_ffi12fill_integer"
+    },
+    "fill_payload_double.asm": {
+      "sha256": "60e45a126610c91bcc458a02d717fa8babd728927976dc70bee20ef8b91d1d2d",
+      "symbol": "__RNvNtCs69X5pnBqK1V_10dtatools_r9arrow_ffi19fill_payload_double"
+    },
+    "fill_semantic_double.asm": {
+      "sha256": "69a76f14555bd069327c4a385cc06690326b83c3cec106c2a6450ebdf86f442b",
+      "symbol": "__RNvNtCs69X5pnBqK1V_10dtatools_r9arrow_ffi20fill_semantic_double"
+    },
+    "indirect-symbols.txt": {
+      "sha256": "aec98d88aede12c10fd1e59e23ec640e432a6f1e9382dbeacd37bad27aaf15e7"
+    }
+  },
+  "build_receipt_sha256": "67cdfe447c37082a4fcc268ae8deb3121965c7a968d41f77e8ba65d22bef2faa",
+  "library_sha256": "940366d84016503dc6483485563afaa74080da9bcb74849f9850477d12e0bdd2",
+  "memcpy_stub": "0x000000000067fab8",
+  "objdump_sha256": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+  "objdump_version": "Apple LLVM version 21.0.0\n  Optimized build.\n\n\n  Registered Targets:\n    aarch64    - AArch64 (little endian)\n    aarch64_32 - AArch64 (little endian ILP32)\n    aarch64_be - AArch64 (big endian)\n    arm        - ARM\n    arm64      - ARM64 (little endian)\n    arm64_32   - ARM64 (little endian ILP32)\n    armeb      - ARM (big endian)\n    thumb      - Thumb\n    thumbeb    - Thumb (big endian)\n    x86        - 32-bit X86: Pentium-Pro and above\n    x86-64     - 64-bit X86: EM64T and AMD64\n",
+  "source_commit": "9ee3916ca078cb46f49f932b7cbb3ded70a6a99f",
+  "source_sha256": "1c5483830ca2e51064195cdbe13b1fae7bc7cb814e16776562b75ae215271ffa"
+}

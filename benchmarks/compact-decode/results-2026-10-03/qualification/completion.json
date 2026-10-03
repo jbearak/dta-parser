@@ -1,0 +1,14 @@
+{
+  "artifacts": {
+    "protocol.json": "6f2cc4bb1916d887a3f2d0fe9d69896b815e84986ecb6e12fbb09ad825261794",
+    "raw.csv": "4068dc7d9c18a35daaad734d5757902b562e2df675a51c0d2a8a9f9f00639351",
+    "source.patch": "9be98cebddc86bf3f6a5ff640488a66f2408d37a567df76a4ec8679e6d339638"
+  },
+  "exact_results": true,
+  "first_materialization_only": true,
+  "observations": 48,
+  "phase": "qualification",
+  "provenance_unchanged": true,
+  "rounds": 1,
+  "source_unchanged": true
+}
