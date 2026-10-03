@@ -1,0 +1,66 @@
+{
+  "assertion_floor": 96,
+  "focused": {
+    "after_original_sha256": "04766d7d87676dbf3e3514bf5e904dbef36f57dfd98d5528cbbb3a6650a11474",
+    "before_original_sha256": "04766d7d87676dbf3e3514bf5e904dbef36f57dfd98d5528cbbb3a6650a11474",
+    "blocks": 37,
+    "completion_original_sha256": "e880410bf465c1da79533e1dc3a1f9b962df5ebfcf6a6efc59ae0dd977212c5c",
+    "csv_original_sha256": "0643a84c127f9d8fda8ff7f6ad572cc619b3cdc7123d8ae5171a811a27f289f0",
+    "error": 0,
+    "failed": 0,
+    "passed": 34288,
+    "skipped": 0,
+    "warning": 0
+  },
+  "guards": [
+    {
+      "command": [
+        "python3",
+        "scripts/test_native_manifest.py"
+      ],
+      "exit_code": 0,
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.006s\n\nOK\n",
+      "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426"
+    },
+    {
+      "command": [
+        "python3",
+        "-O",
+        "scripts/test_native_manifest.py"
+      ],
+      "exit_code": 0,
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.006s\n\nOK\n",
+      "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426"
+    }
+  ],
+  "manifest_sha256": "9a4e165edbf860eb8b1538ed6cc941252cfca0f415593adcae619ebd05c0f940",
+  "observed_CI_failures": [
+    {
+      "error": false,
+      "failed": 12,
+      "lane": "release floors",
+      "original_csv_sha256": "a2540ddca928ce4295704a6377b5da09af26a4bccb2cb88a2d371c45d6ac84f0",
+      "passed": 84,
+      "warning": 0
+    },
+    {
+      "error": false,
+      "failed": 12,
+      "lane": "4.6.0 floors",
+      "original_csv_sha256": "050e8f25c0b4579561e0e86916e811c8886ca817ddf5a718209099bd8ebc3b59",
+      "passed": 84,
+      "warning": 0
+    }
+  ],
+  "package_delta": [
+    "r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R",
+    "r-package/dtatools/tools/native-test-manifest.json"
+  ],
+  "package_patch_sha256": "c8238b91a164ab8b42e2298546bb8bbb23e3bbc82e6496aab30a50e14d22bc6a",
+  "prior_publication_head": "96ba731f32c2f8dac505a153feff770bc61c4161",
+  "qualified_runtime_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "runtime_unchanged": true,
+  "scope": "Test-only profile admission correction and manifest hash refresh. Existing independent profile oracle requires native entry on supported profiles and fallback entry count zero elsewhere; semantic/cache/source checks and96-assertion floor unchanged. Focused local qualification uses unchanged958082 runtime. Actual unsupported-profile rerun is delegated to final-head CI. Historical archive and timing records remain unchanged.",
+  "status": "PASS",
+  "test_sha256": "a16ec32d34ba21a1412b2ada1ecaf8b18359da204af1af7988b0e7f9edc0114b"
+}

@@ -1,0 +1,15 @@
+{
+  "cases_per_build_round": 18,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "Original exactly representable float grid at1024/2048/4096/16384 ordinary rows and1m none/sparse997/prefix256/random exact50%/all27tags.",
+  "interval": "No clocks or calibration, one recorded call after a primer.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "native": "Default public size policy remains2048. After a primer, every counted call below2048 has zero native scalar entries; at/above2048 every typed/compact call has one.",
+  "operations": "Public1.01/x, default size admission2048. Compact-float target and typed-double unchanged control. Requested threads1.",
+  "oracle": "Full input/rank/result/missing/metadata hashes; independent binary64 division followed by binary32 output rounding for compact. Explicit invalid/missing normalization. Full result storage and missing mask; clear every oracle-missing row after clocks/counters, verify complete cleared bytes/anyNAfalse and unchanged original result/source. Source state/metadata/values unchanged. Result hashes match only within a representation across builds.",
+  "order": "Fresh R process per build/round; paired build order alternates. Rotate nine size/pattern strata and reverse even rounds; each representation occupies both positions equally. Stratum positions are not exactly balanced.",
+  "phase": "qualify",
+  "rounds": 1,
+  "scope": "Private dense reciprocal decision screen. Accepted float baseline f219 versus dense candidate2a89. Only the float reciprocal runtime header changes; later regression tests/manifest are separately qualified. No full archive or broad acceptance claim. Plain modern storage only; no retained/reader/temporal or arbitrary import throughput claim."
+}

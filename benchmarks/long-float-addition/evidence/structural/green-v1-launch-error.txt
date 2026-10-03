@@ -1,0 +1,1 @@
+The first green launch supplied an incorrect full source commit after the correct abbreviated254edb07 commit was recorded. Immutable Git source validation rejected it before compilation or test execution. No qualification result exists in this directory. The corrected full pin is254edb0770d04777870f920034f97798d8ec1e92; the fresh green-v2 run records that source.
