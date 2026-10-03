@@ -24,6 +24,18 @@
       "bytes": 73107,
       "sha256": "18de674d159d202abba9eb7a400f260d83ca3adfe6cdc7fd845641c1660e183c"
     },
+    "builds/integration/build-receipt.json": {
+      "bytes": 99710,
+      "sha256": "f0c43e45550c5fd4ecdf5505d4840091e39bcdc12754dc45a111670f236acd05"
+    },
+    "builds/integration/build.log": {
+      "bytes": 23854,
+      "sha256": "25b5d3df9b758754cd16194f8625a6acc05756656e5714b669aa2182d5146461"
+    },
+    "builds/integration/input-record.json": {
+      "bytes": 73258,
+      "sha256": "ae0966856af2068f23f2c04a04829bd7e4e1a767ed4e072d40557e5a31e26b55"
+    },
     "builds/shared-probe/build.log": {
       "bytes": 783,
       "sha256": "cb798d3ac167b85a355b95af55f1e2a09ed526f4262827862c1647e37101ff23"
@@ -89,8 +101,8 @@
       "sha256": "793db222a6231eeb50e5d12081666bd9ce1da1c9f578cfa5c5d9c2bde1d5f171"
     },
     "publication-source-map.json": {
-      "bytes": 24743,
-      "sha256": "717cc93cdcd028e746b7bd3db3eb0fe6d637cb90dbb5563fb61bd784141b74ce"
+      "bytes": 28260,
+      "sha256": "abe0f57619cfc877bf07cf29a72c3d077907ba3ef522504990334f19776f909c"
     },
     "timings/01-baseline.csv": {
       "bytes": 13072,
@@ -272,6 +284,22 @@
       "bytes": 14527,
       "sha256": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
     },
+    "validation/conformance-integration-v1.log": {
+      "bytes": 20218,
+      "sha256": "4e3d34c13a2b5966341f728f11c90abfa77c19723ad4639117231b5b1142126c"
+    },
+    "validation/conformance-source-binding.json": {
+      "bytes": 37043,
+      "sha256": "6e79fbcaaa25d00a16be44d57e2f5a35943847946e8d15955fa1a811a6faaa29"
+    },
+    "validation/controller-tests-current.log": {
+      "bytes": 104,
+      "sha256": "e11bbb630c1a6ea91f4322ac92d7ce2a6c043ad84d3e41ecf0d0f5a73e9c9fd0"
+    },
+    "validation/controller-tests-optimized-current.log": {
+      "bytes": 104,
+      "sha256": "35e173770e8b2ae664bb6a561f29ed51afa8d5f7cc9761dbdfa594317be439b2"
+    },
     "validation/execution-runtime-supplement.json": {
       "bytes": 989,
       "sha256": "b6508948f69f2bc9fd70cc3bbcbc731e01d877867cba0368a9349637bb6ace4d"
@@ -303,6 +331,26 @@
     "validation/independent-audit.py": {
       "bytes": 9010,
       "sha256": "303fe65bb4099c5136f1eecb458a387ace64ddb8e6daf962ec07d61d2611e40c"
+    },
+    "validation/integration-binding.json": {
+      "bytes": 1166,
+      "sha256": "67a419665256529e0e081aa0fb1c3ac5a58579a3fac64c0171eafa52ce34e9b2"
+    },
+    "validation/integration-focused.R": {
+      "bytes": 821,
+      "sha256": "803d27402c6fdd06fd9da306c1c7077538cdc6493256925f84380b401da33753"
+    },
+    "validation/integration-focused.csv": {
+      "bytes": 13614,
+      "sha256": "73bba1a761beb6fa003eed5eb8f7b729617dde09eeb48c56fb267b17e0310c90"
+    },
+    "validation/integration-focused.log": {
+      "bytes": 8149,
+      "sha256": "cfadbe5f83e3661281a1154e3b2b04d9946338784d7cb44fce141acfa0727cf6"
+    },
+    "validation/integration-package.patch": {
+      "bytes": 16991,
+      "sha256": "1d786facf9772e107c140d2853cd236363d5c13e2dda2be51d229ce4e41bc2c1"
     },
     "validation/manifest-refresh.log": {
       "bytes": 844,
@@ -345,8 +393,8 @@
       "sha256": "17bc47bc0f6dd6d22843b931a23ff99cf88b4297e7a7cfc9503ebaf93a9738a5"
     },
     "validation/source-binding.json": {
-      "bytes": 1674,
-      "sha256": "1243008a740214d3b5184fa680727115c6a11d308f7686782f4605e02c534272"
+      "bytes": 1757,
+      "sha256": "a7d2b73845686ab62066e23a529d62e05f67ae668414c7f5850f119660035bd8"
     }
   },
   "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."
