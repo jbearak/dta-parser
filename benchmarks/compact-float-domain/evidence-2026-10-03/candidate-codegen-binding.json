@@ -1,0 +1,29 @@
+{
+  "build_receipt_sha256": "d13edbec2cf73b22b1a952e725397bb099df5047042666872a7f3b13754656ac",
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+    "-tvV",
+    "<evidence>/candidate-final-v1/library/dtatools/libs/dtatools.so"
+  ],
+  "commit": "452ac7232ef6e47c398bcd22c7bb2800b55932c3",
+  "controller_sha256": "940cfff66dbfe3aaca1b55e685e895d797a06d13a8e9cd4f5f9b194189de8488",
+  "cwd": "<evidence>",
+  "disassembler_sha256": "61ff2c63cf68eeeadf9c4700dadb8271740ff4960f98500f30db82b31521c0de",
+  "dll_sha256": "9a8ba1f623ca925e8ba851319cf66e929b4346bac96651848083f2bf6ed999f4",
+  "output_sha256": "582294d885c84666df642d0034029fe4559d6f4a7d9bd30a2b56904c82d898ad",
+  "recorder_sha256": "4952593f71dcdfe25c428e9ad62efe980e56f6fa8d7cb6e55b9280fee8fb282d",
+  "scope": "Fresh installed-DLL extraction with complete source/build inventory verification and immutable relevant source checks; no timing inference.",
+  "source": {
+    "src/numeric-arithmetic-float-reciprocal.h": "c1984ffcde73941a8e96c8a2c7a187ce0b07f5c9018a7a5aae76b1151be8c628",
+    "src/numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "src/numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "src/numeric-arithmetic-integer-reciprocal.h": "4f463e9bbbcf2131ba32017b74874d918d390a91d95cade16a14ae2886059837",
+    "src/numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "src/numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "src/numeric-arithmetic-pair-long-float.h": "7673daf3eeba0f64702c3b90c73136aecbb830eecf0d08e25917aaa2980d731b",
+    "src/numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "src/numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "src/numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21"
+  },
+  "status": "PASS"
+}

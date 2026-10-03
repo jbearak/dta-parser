@@ -1,0 +1,53 @@
+{
+  "R_home": "/opt/homebrew/Cellar/r/4.6.1/lib/R",
+  "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+  "R_version": "R version 4.6.1 (2026-06-24)",
+  "files": {
+    "none.dta": "d509266092f87ceb92419cf1ca392a188e41dbdbc54a45e36906db6016884481",
+    "random_half.dta": "c50033256313c08b528880b6b88048f6747d9b987486299322749aafecd01af1",
+    "sparse.dta": "5be2d1b1e6421862626c17517bcb74497ae41e82c14fdff46c7a92cb58a9eda5"
+  },
+  "format_version": 118,
+  "package_dll_sha256": "dc70a125cb7dab042d6851fdd475c8c84b5bcabb966c9cf70e9360b64f5c8fd7",
+  "patterns": {
+    "none": {
+      "bytes": 8001835,
+      "float_missing": 0,
+      "input_hash": "a14aa2e7502522bc6f7a20ed6eb915ed5cbd00f1b693584be87d045c4886d9c2",
+      "long_missing": 0,
+      "overlap": 0,
+      "rank_hash": "6506614505e113daab08b3f894ca46d4d61867c7b007c413b47a669abe8aae67",
+      "storage": [
+        "long",
+        "float"
+      ]
+    },
+    "random_half": {
+      "bytes": 8001835,
+      "float_missing": 500000,
+      "input_hash": "0255e8887a716d034be7669d560a7fd9b116fbe65c46d8a909983b83a691e4fa",
+      "long_missing": 500000,
+      "overlap": 249733,
+      "rank_hash": "26cbfefcf547e3633cbd97def5ddfd0de6d2c7ac9789d4b68a99c5186854e965",
+      "storage": [
+        "long",
+        "float"
+      ]
+    },
+    "sparse": {
+      "bytes": 8001835,
+      "float_missing": 1010,
+      "input_hash": "4066814bd388210574bb38f9b6a1dbef93bc3cdc830645e9f927242cb598734f",
+      "long_missing": 1003,
+      "overlap": 2,
+      "rank_hash": "4ee9e9230bedc5d507a2aedf33257d2da8e24130611e789708dc00614b265914",
+      "storage": [
+        "long",
+        "float"
+      ]
+    }
+  },
+  "prepare_sha256": "69e3a13292bd7abb0b3b290c667d6da54caf405b5c594bf84b10943cd71d6008",
+  "rows": 1000000,
+  "scope": "One immutable fixture set for both libraries. Setup and readback verification are outside all benchmark clocks."
+}

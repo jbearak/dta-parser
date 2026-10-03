@@ -1,0 +1,67 @@
+{
+  "artifacts": {
+    "full-suite-after.json": "b29d2af3da5e70ee550d0c1d192a4ef0b35b05be560701b8da34b4164911d616",
+    "full-suite-before.json": "b29d2af3da5e70ee550d0c1d192a4ef0b35b05be560701b8da34b4164911d616",
+    "full-suite-command.json": "13a657492eaf751d28e5ccd42131584f2ea68fb6fb44ba84a1bed382be02a5e0",
+    "full-suite.R": "9ef9c277906efa5b4b35b1d8a5bd8e9bd1b3471b2fecd99c30d199bcc6f8c150",
+    "full-suite.csv": "0c9a5eddabfade15514638600a4bcfad65f171eb16b3fbca63718640bfa57f29",
+    "full-suite.log": "d493a7e275d0b89d6ecb1430c0351514c6075aa0e84a3f975d9f876fc868d7b1",
+    "run-full-suite.py": "1b052eda0339056dd4b6b9e8d3e9b8394e4de1696a6fb5d9e5fbe72c551c3854"
+  },
+  "assertions": 106731,
+  "blocks": 1823,
+  "errors": 0,
+  "failed": 0,
+  "new_lifecycle_blocks": [
+    {
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-arithmetic-payload-lifetime.R",
+      "passed": "64",
+      "skipped": "FALSE",
+      "test": "canonical float addition uses captured domain facts across reentry",
+      "warning": "0"
+    },
+    {
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-compact-float-domain.R",
+      "passed": "7",
+      "skipped": "FALSE",
+      "test": "strict float constructors establish an allocation domain proof",
+      "warning": "0"
+    },
+    {
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-compact-float-domain.R",
+      "passed": "11",
+      "skipped": "FALSE",
+      "test": "compact domain proofs follow retained bytes and writable invalidation",
+      "warning": "0"
+    },
+    {
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-compact-float-domain.R",
+      "passed": "207",
+      "skipped": "FALSE",
+      "test": "imports and restored compact payloads do not assert strict domains",
+      "warning": "0"
+    },
+    {
+      "error": "FALSE",
+      "failed": "0",
+      "file": "test-compact-float-domain.R",
+      "passed": "25",
+      "skipped": "FALSE",
+      "test": "freeze validates captured bytes across reentry and releases failed claims",
+      "warning": "0"
+    }
+  ],
+  "scope": "Complete installed suite on the exact clean452 package; runtime and full inventories were bound before and after. Required archive conformance is reserved for the eventual combined publication tree.",
+  "skips": 0,
+  "source_commit": "452ac7232ef6e47c398bcd22c7bb2800b55932c3",
+  "status": "PASS",
+  "warnings": 7
+}

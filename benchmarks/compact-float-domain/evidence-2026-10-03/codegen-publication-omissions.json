@@ -1,0 +1,14 @@
+[
+  {
+    "binding": "candidate-codegen-binding.json",
+    "full_disassembly_sha256": "582294d885c84666df642d0034029fe4559d6f4a7d9bd30a2b56904c82d898ad",
+    "installed_dll_sha256": "9a8ba1f623ca925e8ba851319cf66e929b4346bac96651848083f2bf6ed999f4",
+    "scope": "Original installed DLL and complete disassembly remain private; fresh extraction and independent replay are recorded by these bound receipts."
+  },
+  {
+    "binding": "candidate-fallback-codegen-binding.json",
+    "full_disassembly_sha256": "0f17d69bdacb91978103e99bdad82a6c8021361e5d5bfa8e289c00285ded309b",
+    "installed_dll_sha256": "ce5c40138aaca881bdce0674b4a3ac3ce44b2b67d56a949d26815250d7f2fdd0",
+    "scope": "Original installed DLL and complete disassembly remain private; fresh extraction and independent replay are recorded by these bound receipts."
+  }
+]

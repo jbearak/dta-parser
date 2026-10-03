@@ -22,3 +22,7 @@ Public lifetime and mutation behavior is checked by the package tests. Timing
 results and historical scripts belong in the dated evidence report. Redacted
 historical scripts may require path and literal restoration and are not the
 maintained commands in this directory.
+
+[Measured stages and qualification](results-2026-10-03.md),
+[final combined acceptance](final-acceptance-2026-10-03/README.md), and
+[architectural findings](architecture-report-2026-10-03.md).

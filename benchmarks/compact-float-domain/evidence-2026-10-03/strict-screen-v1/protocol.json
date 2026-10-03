@@ -1,0 +1,16 @@
+{
+  "cases_per_build_round": 58,
+  "domain": "Read-only descriptor diagnostic must be absent for exact213ce baseline and present for the candidate. Constructed compact FLOAT inputs must have the strict-domain fact only in the candidate; both before/after states are bound. Typed and bare controls carry no compact fact.",
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million rows. Original long grid (13*i)%10001-5000 and float grid ((19*i)%1001-500)/8. Sparse long rows13+997*j and float rows19+991*j; independent seeded exact50% input masks; float-only prefix/suffix256; plain alltags in both inputs. All27 ranks cycle where present; union and overlap are recorded.",
+  "interval": "Repeated public calls include result allocation and automatic GC. Construction, explicit GC, calibration, hashing and qualification excluded; >=50ms CPU calibration then target300ms retained CPU intervals.",
+  "limits": "One host, one million rows, constructed modern canonical missing values and addition only. Random masks are independent per input, so output missing density is their recorded union, not50%. No reader, temporal, imported-format or universal parity claim. Bare controls have less storage policy. Short chunks intentionally stress span/proof overhead; typed/bare inputs are not chunked.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "native": "Actual scalar entry counter must equal every retained timed call for both typed builds; zero for bare R. A preceding public primer call settles lazy admission before the counted qualification call.",
+  "operations": "Public long+float and float+long, with exact binary64 results. Compact inputs use plain, retained8191/16385, and short7/11 layouts. Typed-double and missing-free bare controls remain plain ordinary double storage in every panel, repeated to detect within-panel drift. Requested threads1.",
+  "oracle": "Full paired input/rank/result/missing/metadata hashes; independent binary64 sum with oracle input-missing union normalized to systemNA. Exact double storage and unchanged source state/ownership. Outside clocks and entry counts, clear every expected missing through public replacement and recheck full cleared/original results and sources. Value/rank/result hashes agree across equivalent layouts, orders and representations; metadata is stable percase.",
+  "order": "Fresh R process per build/round; alternate paired build order. Rotate layouts and patterns with even-round reversals. Reverse operand order on even rounds. Explicit rotations/reversals are checked, without claiming exhaustive pattern permutations. Two representations alternate; three-representation missing-free cases use all six permutations.",
+  "phase": "measure",
+  "rounds": 6
+}

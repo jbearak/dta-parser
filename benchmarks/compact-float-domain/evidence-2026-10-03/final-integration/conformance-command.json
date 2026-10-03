@@ -1,0 +1,22 @@
+{
+  "command": [
+    "sh",
+    "<evidence>/final-integration/conformance-gate.sh"
+  ],
+  "commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "controller_sha256": "0ec685fe2891028dfc10fa8b72ce0e8cd14828ce89b652e9dc4931b7ce066364",
+  "cwd": "<evidence>/final-integration/conformance-export",
+  "environment": {
+    "CARGO_TARGET_DIR": "<private-work>/dta-native-comparison-followup/target",
+    "DTA_REQUIRE_R_CONFORMANCE": "1",
+    "R_ENVIRON_USER": "/dev/null",
+    "R_PROFILE_USER": "/dev/null"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T17:02:04.600263+00:00",
+  "only_wrapper_change": "Preserve temporary source archive and complete check outputs before original cleanup.",
+  "original_script_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "started_utc": "2026-10-03T16:50:24.827928+00:00",
+  "validator_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+  "wrapper_sha256": "0339a8835083dae01b2b81afa4d0391613bcafa9489d95d1a2aa8343b5d2c948"
+}

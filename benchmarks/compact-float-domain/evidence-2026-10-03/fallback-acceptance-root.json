@@ -1,0 +1,52 @@
+{
+  "basis": "Dense strict-domain inputs improve while the rejected whole-span ordinary/prefix routing costs are removed. Preserve ordinary proofs and existing bounded fallback. No universal parity or zero-regression claim.",
+  "decision": "ACCEPT_WITH_DISCLOSED_TRADEOFFS",
+  "dense": {
+    "candidate_typed_cpu_ratio": [
+      1.07,
+      1.258
+    ],
+    "direct_speedup": [
+      1.338,
+      1.641
+    ],
+    "paired_speedup": [
+      1.335,
+      1.56
+    ],
+    "paired_typed_normalized_cost": [
+      0.683,
+      0.726
+    ]
+  },
+  "evidence_sha256": {
+    "fallback-control-normalization-root.json": "990d940e1036aed260a02250ead5612fcc9ddabb8e173a4c03b4e59c8fe2b838",
+    "reader-fallback-codegen-independent-review.json": "17906d1f08fdf2c37c90ec5289729dbc917f648a8e3bcb2bc8db200e725e76c3",
+    "strict-fallback-independent-audit-root.json": "475381eab60274d50420cf39300db7af3507e1ae6c943e3563dcbd14d00ab40d",
+    "strict-fallback-screen-v1-independent-statistics.json": "b97d33c507f511d621bacdac14780392c470ef90bb03aed1a2a980df5de6f7e7",
+    "unknown-fallback-independent-audit-root.json": "42babfaf764942298758cd712122adb62b749e9be07558e16b0f23b3fbd2c9d9",
+    "unknown-fallback-screen-v1-independent-statistics.json": "2ab67a1f9f0bf779d1a67192f4d399da2fb7ef5b80e706bd30ce905dbcead6ef"
+  },
+  "next": "Combine with accepted polling, locator and adaptive reciprocal; qualify exact combined source/archive; run original34 final acceptance once.",
+  "ordinary_plain": {
+    "candidate_typed_cpu_ratio": [
+      0.979,
+      0.981
+    ],
+    "direct_speedup": [
+      0.986,
+      1.028
+    ]
+  },
+  "scope": "Isolated canonical-domain consumer, not final combined runtime or reader throughput. Both840 measured and140 untimed observations independently audited.",
+  "source_commits": {
+    "baseline": "213ceeee5a0f7953bf0f13316e2207a766dcbb24",
+    "candidate": "19f573720b4897a4f742bad0cebba22ce17d9a88"
+  },
+  "tradeoffs": [
+    "Retained suffix256 long_float direct0.961 paired0.972, normalizedcost1.0672 and5/6 slower rounds.",
+    "Short none float_long direct0.961, normalizedcost1.0515 and6/6 slower rounds.",
+    "UNKNOWN random_half float_long normalizedcost1.0349,4/6 slower rounds; UNKNOWN sparse long_float direct0.938 paired0.935 but normalizedcost0.995.",
+    "Typed controls vary0.898-1.167x. All-tag fill is unchanged; observed1.144-1.193x direct speedups are not attributed to the fact."
+  ]
+}

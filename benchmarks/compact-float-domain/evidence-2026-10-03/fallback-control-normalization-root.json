@@ -1,0 +1,494 @@
+{
+  "input_sha256": {
+    "strict-fallback-screen-v1/raw.csv": "9927aa1fa72b67750fe3c523f0211a47aa60082295564dc53d8a15fe789889af",
+    "unknown-fallback-screen-v1/raw.csv": "69938b70dd7139c5825603b8072c7aaf22ba0dd6b8dc2995c52014a4e91c08b6"
+  },
+  "panels": {
+    "strict": [
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9836776198672852,
+        "operation": "float_long",
+        "pattern": "all_tags",
+        "round_costs": [
+          1.0451212343873735,
+          1.1122745898904085,
+          1.2013742601974595,
+          0.7927988936534293,
+          0.9222340053471969,
+          0.8539125236678408
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9983171142005693,
+        "operation": "long_float",
+        "pattern": "all_tags",
+        "round_costs": [
+          1.0869106156260173,
+          0.9928533451806072,
+          0.7634153215602015,
+          0.9364106112917717,
+          1.1444868074505588,
+          1.0037808832205315
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9819981768006689,
+        "operation": "float_long",
+        "pattern": "none",
+        "round_costs": [
+          0.9805866503683395,
+          0.9834097032329985,
+          1.1861403118360512,
+          1.1017989107544297,
+          0.922450175313353,
+          0.9470309614228902
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9964728471470744,
+        "operation": "long_float",
+        "pattern": "none",
+        "round_costs": [
+          0.9963077336197637,
+          0.9878490011534893,
+          0.9966379606743851,
+          0.9695722525068431,
+          1.0199160970826224,
+          1.106080859202715
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.996874970238304,
+        "operation": "float_long",
+        "pattern": "prefix256",
+        "round_costs": [
+          0.9932922448427192,
+          1.1840186784868092,
+          1.0004576956338886,
+          0.7734811490504726,
+          0.7839824265852485,
+          1.007039034776904
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 1.014764468597154,
+        "operation": "long_float",
+        "pattern": "prefix256",
+        "round_costs": [
+          1.0030629278108985,
+          1.0947758482208099,
+          0.9926256883864262,
+          0.8309318789754622,
+          1.0264660093834095,
+          1.141044075557637
+        ],
+        "slower_rounds": 4
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.6825368817149653,
+        "operation": "float_long",
+        "pattern": "random_half",
+        "round_costs": [
+          0.6650434491767336,
+          0.733570367696229,
+          0.7426509361964255,
+          0.700030314253197,
+          0.6086580117366372,
+          0.629583355750698
+        ],
+        "slower_rounds": 0
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.6883671952260704,
+        "operation": "long_float",
+        "pattern": "random_half",
+        "round_costs": [
+          0.7340469540727825,
+          0.5463727344546639,
+          0.6938978325856258,
+          0.779646893432765,
+          0.682836557866515,
+          0.5507360990575143
+        ],
+        "slower_rounds": 0
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9747373271551031,
+        "operation": "float_long",
+        "pattern": "sparse",
+        "round_costs": [
+          0.9076914767507662,
+          0.7227868078314521,
+          0.9624259837885298,
+          1.0710044916314783,
+          0.9870486705216763,
+          1.0208027142425182
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9409228413527244,
+        "operation": "long_float",
+        "pattern": "sparse",
+        "round_costs": [
+          0.9370723700048436,
+          1.254815811665342,
+          0.9392711999082733,
+          0.9319245279839138,
+          0.9425744827971756,
+          0.9728357314731713
+        ],
+        "slower_rounds": 1
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 1.0295077554994392,
+        "operation": "float_long",
+        "pattern": "suffix256",
+        "round_costs": [
+          1.0060041567383482,
+          1.0530113542605302,
+          1.083850347394473,
+          0.928249780304994,
+          1.2013476841520083,
+          0.9411385076382113
+        ],
+        "slower_rounds": 4
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9363206579516932,
+        "operation": "long_float",
+        "pattern": "suffix256",
+        "round_costs": [
+          1.0088969717014658,
+          1.0055813413669246,
+          0.9133305407069348,
+          0.9347103388468598,
+          0.8795662252683439,
+          0.9379309770565264
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9624374650720975,
+        "operation": "float_long",
+        "pattern": "none",
+        "round_costs": [
+          0.9958648556807759,
+          0.9276213719356623,
+          0.8551641478126282,
+          1.108832271257824,
+          0.9290100744634192,
+          1.3797975219673109
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 1.0153940288253223,
+        "operation": "long_float",
+        "pattern": "none",
+        "round_costs": [
+          1.0230891882327355,
+          0.9871319928826267,
+          1.0076988694179088,
+          0.8316566042801562,
+          1.1213330170437024,
+          1.1346070343030823
+        ],
+        "slower_rounds": 4
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9817327544873986,
+        "operation": "float_long",
+        "pattern": "prefix256",
+        "round_costs": [
+          0.9465408805031572,
+          0.9136788901647325,
+          1.0281959558905664,
+          1.0384719188344669,
+          0.8959920429419097,
+          1.01692462847164
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9479181342511281,
+        "operation": "long_float",
+        "pattern": "prefix256",
+        "round_costs": [
+          0.9404282429346413,
+          0.7511925078932332,
+          0.9936032966109742,
+          0.955408025567615,
+          1.0644311848949934,
+          0.9275199538870444
+        ],
+        "slower_rounds": 1
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.725760133767661,
+        "operation": "float_long",
+        "pattern": "random_half",
+        "round_costs": [
+          0.7020891539432733,
+          0.7820770079380986,
+          0.7494311135920487,
+          0.6869963983183395,
+          0.6867173267598013,
+          0.8153819871400282
+        ],
+        "slower_rounds": 0
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.6908798478847222,
+        "operation": "long_float",
+        "pattern": "random_half",
+        "round_costs": [
+          0.6284080107818925,
+          0.6130382460307519,
+          0.6752536023290657,
+          0.8088328297571297,
+          0.7310694200233956,
+          0.7065060934403788
+        ],
+        "slower_rounds": 0
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9515537614881053,
+        "operation": "float_long",
+        "pattern": "sparse",
+        "round_costs": [
+          1.0015098651139926,
+          0.9230985778297207,
+          0.827640205989016,
+          1.0209389062869798,
+          0.8074910584742069,
+          0.9800089451464898
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9510257290033588,
+        "operation": "long_float",
+        "pattern": "sparse",
+        "round_costs": [
+          0.9272463808230271,
+          0.9441720578146593,
+          0.9209117246231603,
+          0.9578794001920584,
+          1.0042686008492394,
+          1.1100603289496451
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 0.9609413108240934,
+        "operation": "float_long",
+        "pattern": "suffix256",
+        "round_costs": [
+          0.9706661039286518,
+          0.9482859451551351,
+          0.9512165177195349,
+          1.1308480677562303,
+          0.8506015591724287,
+          1.1544370698131758
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "retained",
+        "normalized_cost": 1.0671920932432277,
+        "operation": "long_float",
+        "pattern": "suffix256",
+        "round_costs": [
+          1.0720179738562126,
+          0.8192795110346289,
+          1.177813269750803,
+          1.0036444157401674,
+          1.1587819565237718,
+          1.0623662126302427
+        ],
+        "slower_rounds": 5
+      },
+      {
+        "layout": "short",
+        "normalized_cost": 1.0515494634455322,
+        "operation": "float_long",
+        "pattern": "none",
+        "round_costs": [
+          1.0252324831278807,
+          1.0504925636832296,
+          1.0008312549447678,
+          1.0619250251153134,
+          1.055290617669115,
+          1.052606363207835
+        ],
+        "slower_rounds": 6
+      },
+      {
+        "layout": "short",
+        "normalized_cost": 1.0195602328865485,
+        "operation": "long_float",
+        "pattern": "none",
+        "round_costs": [
+          1.1250737001804976,
+          0.8892445021299612,
+          0.9837179081148705,
+          1.0547542975669892,
+          1.1028732880811123,
+          0.984366168206108
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "short",
+        "normalized_cost": 1.0001219219909576,
+        "operation": "float_long",
+        "pattern": "sparse",
+        "round_costs": [
+          1.1621505483256351,
+          0.9839386978068255,
+          1.0163051461750896,
+          0.913346893983178,
+          0.934772358869091,
+          1.0581546863030373
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "short",
+        "normalized_cost": 1.0230016804280506,
+        "operation": "long_float",
+        "pattern": "sparse",
+        "round_costs": [
+          1.1274518080765403,
+          0.9737288811314717,
+          1.0722744797246293,
+          1.1528641044629202,
+          0.9402755089191712,
+          0.937130842624294
+        ],
+        "slower_rounds": 3
+      }
+    ],
+    "unknown": [
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9962608867547581,
+        "operation": "float_long",
+        "pattern": "none",
+        "round_costs": [
+          1.0584872389755386,
+          1.0165830052599636,
+          0.8495147718509111,
+          0.9759387682495526,
+          0.864592647273872,
+          1.1901415415487153
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9354165339402827,
+        "operation": "long_float",
+        "pattern": "none",
+        "round_costs": [
+          1.19886995901687,
+          1.2877491056984969,
+          0.8051608279429945,
+          0.9327356124329556,
+          0.777410706441807,
+          0.9380974554476099
+        ],
+        "slower_rounds": 2
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 1.0348712855969695,
+        "operation": "float_long",
+        "pattern": "random_half",
+        "round_costs": [
+          1.0290981885742976,
+          0.9482910698856675,
+          0.7177340277004336,
+          1.0406443826196412,
+          1.140630740494178,
+          1.1067072597750485
+        ],
+        "slower_rounds": 4
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9252563810779504,
+        "operation": "long_float",
+        "pattern": "random_half",
+        "round_costs": [
+          0.9867902547786982,
+          0.8883361326128147,
+          0.9062428860918458,
+          0.9282955157213453,
+          0.9222172464345556,
+          1.0727408028415633
+        ],
+        "slower_rounds": 1
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9949744260643396,
+        "operation": "float_long",
+        "pattern": "sparse",
+        "round_costs": [
+          0.9487547134855562,
+          0.9839867935986265,
+          1.0702643972716892,
+          0.9008739477756444,
+          1.0059620585300526,
+          1.2320323000531757
+        ],
+        "slower_rounds": 3
+      },
+      {
+        "layout": "plain",
+        "normalized_cost": 0.9952239227111319,
+        "operation": "long_float",
+        "pattern": "sparse",
+        "round_costs": [
+          0.9608188769069919,
+          0.9958247884335604,
+          0.9946230569887035,
+          0.9605845699672019,
+          1.0005676238702708,
+          1.2965597517782963
+        ],
+        "slower_rounds": 2
+      }
+    ]
+  },
+  "scope": "Descriptive per-round compact candidate/baseline costs normalized by matched typed controls. Not a significance test.",
+  "status": "PASS"
+}

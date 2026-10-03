@@ -1,0 +1,16 @@
+{
+  "cases_per_build_round": 12,
+  "domain": "Exact 213ce baseline lacks the domain getter; candidate must expose it but report UNKNOWN for every imported compact FLOAT and plain typed control. Inputs come from the same bound public-read fixtures; full hashes also match independently regenerated grids/ranks.",
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million rows. Original long grid (13*i)%10001-5000 and float grid ((19*i)%1001-500)/8. Ordinary, sparse long rows 13+997*j and float rows 19+991*j, and independent seeded exact 50% input masks. All 27 ranks cycle where present; union and overlap are recorded. Both builds read the same immutable modern DTA fixtures.",
+  "interval": "No clocks or calibration: one recorded call after primer and before full verification.",
+  "limits": "One host, one million rows, modern DTA-reader inputs containing canonical values and addition only. Import/setup are outside clocks. This control panel does not time decoding and does not admit imports to the new fact. Random masks are independent per input, so output missing density is their recorded union, not 50%. No temporal, noncanonical-import, legacy-format or universal parity claim.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "native": "Actual scalar entry counter must equal every retained timed call for both typed builds; zero for bare R. A preceding public primer call settles lazy admission before the counted qualification call.",
+  "operations": "Public long+float and float+long, with exact binary64 results. Compact inputs come from read_dta; typed-double controls use independently regenerated values and ordinary double storage. Both layouts are contiguous. Requested threads 1.",
+  "oracle": "Full paired input/rank/result/missing/metadata hashes; independent binary64 sum with oracle input-missing union normalized to systemNA. Exact double storage and unchanged source state/ownership. Outside clocks and entry counts, clear every expected missing through public replacement and recheck full cleared/original results and sources. Value/rank/result hashes agree across equivalent layouts, orders and representations; metadata is stable percase.",
+  "order": "Fresh R process per build/round; alternate paired build order. Rotate the three patterns with even-round reversals, covering their six permutations. Reverse operand order on even rounds. Compact and typed representations alternate positions evenly.",
+  "phase": "qualify",
+  "rounds": 1
+}

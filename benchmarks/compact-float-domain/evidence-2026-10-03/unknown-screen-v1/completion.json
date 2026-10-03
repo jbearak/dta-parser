@@ -1,0 +1,27 @@
+{
+  "artifacts": {
+    "01-baseline.csv": "22f46331c9229f83fe49edff76c671fb34a138d6b4cf2ec3314fc647ce0232db",
+    "01-candidate.csv": "706506d3f1a53fbd890a92dde9dea00191e394fad7caf66db2a9459c7ab8496c",
+    "02-baseline.csv": "e951898978e69044a87a6125e19f03470d64ca405d03953ed0b1ff1aa24b32ec",
+    "02-candidate.csv": "664585bb3ea98e4be4b7a096940c3c1a3e74727938e60a6f3735baf142f85f7a",
+    "03-baseline.csv": "b3ff230f51679f391e1c92ee8d28b06b85344b528fe9ce464280f9515dfbf274",
+    "03-candidate.csv": "3826181041ab0ae5fb8d2a972cad3f47a75e4de859efaaf98f720423ddefd2c0",
+    "04-baseline.csv": "59a7d45b1bf06c0968e9d5dbb096c93a0dc8a2a4a4199d0f7fa5ad27bc3ddc66",
+    "04-candidate.csv": "3de5d05c4ae86edb23709558c45e995826e96fdac6783bf57832d34e398caec1",
+    "05-baseline.csv": "a6cc30fadb17064b2d19f6ac052393a1d40f5467beff0946a16457a0a2dc88ed",
+    "05-candidate.csv": "36e1c5e15b56e83ac0c0b2beb1d4e606aa52506e0f89081c1da1746c2ed8665d",
+    "06-baseline.csv": "f82636e3b3a2f6d8edfe9b2666ddd4c1cc16c3739a4d1f11f6a9f9a1f5b09261",
+    "06-candidate.csv": "b7bdcf36147134db89ade1cce6299bed5c298e6b770335b045f93658dc7044bc",
+    "protocol.json": "628fa4db5893bb1dd9489779de9b5014613e672e66d8e3c592ad62581cbfaf2c",
+    "provenance-after.json": "03a592bc367b8c133f88af324d70a038f5c00d5478872ccca0e55497f1662b0d",
+    "provenance-before.json": "03a592bc367b8c133f88af324d70a038f5c00d5478872ccca0e55497f1662b0d",
+    "raw.csv": "78cec8829e1a67411c2d62af0a2ab552850d26d2332b02f34f23474b9c512ea5",
+    "source.patch": "a711e14fa7f225c6ace1ff681e2d6bd066d7276a6f0c63fd20fe967ce7118b0f",
+    "summary.csv": "64cfbc7394de0c52bf177a37b776325766d4dba5021782a71c66514bfe785125"
+  },
+  "exact_results": true,
+  "observations": 144,
+  "phase": "measure",
+  "provenance_unchanged": true,
+  "rounds": 6
+}
