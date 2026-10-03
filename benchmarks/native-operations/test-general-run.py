@@ -65,6 +65,14 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 RUN.validate_round(rows, 1, 'candidate')
 
+    def test_missing_rscript_has_clear_error(self):
+        with mock.patch('sys.argv', ['general-run.py', '--baseline', 'baseline',
+                    '--candidate', 'candidate', '--output', 'output']), \
+             mock.patch.object(RUN.shutil, 'which', return_value=None):
+            with self.assertRaisesRegex(RuntimeError, 'Rscript was not found on PATH'):
+                RUN.main()
+
+
     def execute(self, corruption=None):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -72,15 +80,26 @@ class EvidenceTests(unittest.TestCase):
         output = root / 'output'
         calls = []
         receipts = []
+        launcher = root / 'Rscript'
+        launcher.write_text('test launcher')
+        runtimes = []
+
+        def runtime(rscript):
+            self.assertEqual(rscript, launcher.resolve())
+            runtimes.append(rscript)
+            changed = corruption == 'initial_runtime' or (corruption == 'runtime' and len(runtimes) > 1)
+            return dict(Rscript_launcher_sha256='launcher',
+                        R_runtime_sha256='changed' if changed else 'runtime')
 
         def inventory(build, variant):
             receipts.append(variant)
-            result = {'source': {}, 'installed': {'dll': 'verified'}, 'receipt': {'base_commit': variant}}
+            result = {'source': {}, 'installed': {'dll': 'verified'}, 'receipt': {'base_commit': variant, 'toolchain': {'R_runtime_sha256': 'runtime'}}}
             if corruption == 'receipt' and len(receipts) > 2:
                 result['installed']['dll'] = 'changed'
             return result
 
         def worker(command, **kwargs):
+            self.assertEqual(command[0], str(launcher.resolve()))
             calls.append(command)
             rows = observations(int(command[4]))
             if corruption == 'result' and command[6] == 'candidate':
@@ -97,6 +116,8 @@ class EvidenceTests(unittest.TestCase):
         with mock.patch('sys.argv', ['general-run.py', '--baseline', str(root/'baseline'),
                     '--candidate', str(root/'candidate'), '--output', str(output)]), \
              mock.patch.object(RUN.RECORDS, 'inventory', side_effect=inventory), \
+             mock.patch.object(RUN.shutil, 'which', return_value=str(launcher)), \
+             mock.patch.object(RUN, 'worker_runtime', side_effect=runtime), \
              mock.patch.object(RUN.subprocess, 'check_output', return_value='R test\n'), \
              mock.patch.object(RUN.subprocess, 'run', side_effect=worker), \
              mock.patch.object(RUN.platform, 'platform', return_value='test platform'), \
@@ -110,10 +131,10 @@ class EvidenceTests(unittest.TestCase):
                 result = json.loads((output/'completion.json').read_text())
                 self.assertEqual(result['observations'], 1224)
                 self.assertTrue(result['provenance_unchanged'])
-        self.assertEqual(len(calls), 12)
+        self.assertEqual(len(calls), 0 if corruption == 'initial_runtime' else 12)
 
     def test_controller_rejects_changed_build_result_and_unbalanced_rounds(self):
-        for corruption in (None, 'receipt', 'result', 'unbalanced'):
+        for corruption in (None, 'receipt', 'result', 'unbalanced', 'runtime', 'initial_runtime'):
             with self.subTest(corruption=corruption):
                 self.execute(corruption)
 

@@ -10,6 +10,7 @@ import json
 import math
 from pathlib import Path
 import platform
+import shutil
 import statistics
 import subprocess
 
@@ -37,6 +38,15 @@ def require(condition, message):
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def worker_runtime(rscript):
+    # Query the exact launcher used for workers: R on PATH may refer to a
+    # different installation. Compare its runtime with both build receipts.
+    r_home = Path(subprocess.check_output(
+        [str(rscript), '--vanilla', '-e', 'cat(R.home())'], text=True).strip())
+    return dict(Rscript_launcher_sha256=sha(rscript),
+                R_runtime_sha256=sha(r_home / 'bin/exec/R'))
 
 
 def write_json(path, value):
@@ -84,13 +94,19 @@ def main():
     parser.add_argument('--rounds', default=6, type=int)
     args = parser.parse_args()
     require(args.rounds >= 6 and args.rounds % 6 == 0, 'Rounds must be a positive multiple of six')
+    found = shutil.which('Rscript')
+    require(found is not None, 'Rscript was not found on PATH')
+    rscript = Path(found).resolve(strict=True)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     worker = HERE / 'general-worker.R'
     controllers = {p.name: sha(p) for p in (Path(__file__).resolve(), worker, HERE / 'run.py')}
     before = {name: RECORDS.inventory(build, name) for name, build in builds.items()}
-    write_json(output / 'provenance-before.json', dict(builds=before, controllers=controllers,
+    runtime_before = worker_runtime(rscript)
+    require({before[name]['receipt']['toolchain']['R_runtime_sha256'] for name in builds} ==
+            {runtime_before['R_runtime_sha256']}, 'Worker runtime differs from package build runtime')
+    write_json(output / 'provenance-before.json', dict(builds=before, controllers=controllers, runtime=runtime_before,
         platform=platform.platform(), machine=platform.machine(),
         R=subprocess.check_output(['R', '--version'], text=True).splitlines()[0]))
     patch = []
@@ -118,7 +134,7 @@ def main():
         for variant in order:
             result = output / f'{round_number:02}-{variant}.csv'
             with (output / f'{round_number:02}-{variant}.log').open('w') as log:
-                subprocess.run(['Rscript', '--vanilla', str(worker), str(builds[variant] / 'library'),
+                subprocess.run([str(rscript), '--vanilla', str(worker), str(builds[variant] / 'library'),
                     str(round_number), str(result), variant, 'measure'], stdout=log,
                     stderr=subprocess.STDOUT, check=True)
             with result.open(newline='') as stream:
@@ -127,9 +143,11 @@ def main():
             rows.extend(dict(variant=variant, **row) for row in batch)
             print(f'Completed round {round_number}: {variant}, {len(batch)} observations', flush=True)
     after = {name: RECORDS.inventory(build, name) for name, build in builds.items()}
+    runtime_after = worker_runtime(rscript)
     controllers_after = {p.name: sha(p) for p in (Path(__file__).resolve(), worker, HERE / 'run.py')}
-    write_json(output / 'provenance-after.json', dict(builds=after, controllers=controllers_after))
-    require(before == after and controllers == controllers_after, 'Build or controller changed during measurement')
+    write_json(output / 'provenance-after.json', dict(builds=after, controllers=controllers_after, runtime=runtime_after))
+    require(before == after and controllers == controllers_after and runtime_before == runtime_after,
+            'Build, worker runtime or controller changed during measurement')
     grouped = {}
     for row in rows:
         grouped.setdefault(tuple(row[k] for k in FIELDS), []).append(row)
@@ -168,7 +186,7 @@ def main():
     write_csv(output / 'summary.csv', summary)
     write_json(output / 'completion.json', dict(observations=len(rows), rounds=args.rounds,
         exact_results=True, missing_cache_matches=True, source_state_unchanged=True,
-        provenance_unchanged=True, source_patch_sha256=sha(output / 'source.patch')))
+        provenance_unchanged=True, worker_runtime_unchanged=True, source_patch_sha256=sha(output / 'source.patch')))
     print(f'Complete: {len(rows)} qualified observations', flush=True)
 
 
