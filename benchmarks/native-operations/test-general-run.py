@@ -68,6 +68,7 @@ class EvidenceTests(unittest.TestCase):
     def test_missing_rscript_has_clear_error(self):
         with mock.patch('sys.argv', ['general-run.py', '--baseline', 'baseline',
                     '--candidate', 'candidate', '--output', 'output']), \
+             mock.patch.object(RUN.platform, 'system', return_value='Linux'), \
              mock.patch.object(RUN.shutil, 'which', return_value=None):
             with self.assertRaisesRegex(RuntimeError, 'Rscript was not found on PATH'):
                 RUN.main()
@@ -89,6 +90,15 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(query.call_args_list, [
                 mock.call([str(launcher), '--vanilla', '-e', 'cat(R.home())'], text=True),
                 mock.call([str(launcher), '--vanilla', '-e', 'cat(R.version.string)'], text=True)])
+
+    def test_windows_is_rejected_before_runtime_queries(self):
+        with mock.patch('sys.argv', ['general-run.py', '--baseline', 'baseline',
+                    '--candidate', 'candidate', '--output', 'output']), \
+             mock.patch.object(RUN.platform, 'system', return_value='Windows'), \
+             mock.patch.object(RUN.subprocess, 'check_output',
+                               side_effect=AssertionError('Unexpected runtime query')):
+            with self.assertRaisesRegex(RuntimeError, 'Windows is not supported'):
+                RUN.main()
 
 
     def execute(self, corruption=None):
@@ -141,6 +151,7 @@ class EvidenceTests(unittest.TestCase):
              mock.patch.object(RUN.subprocess, 'check_output',
                                side_effect=AssertionError('Unbound version query')), \
              mock.patch.object(RUN.subprocess, 'run', side_effect=worker), \
+             mock.patch.object(RUN.platform, 'system', return_value='Linux'), \
              mock.patch.object(RUN.platform, 'platform', return_value='test platform'), \
              redirect_stdout(io.StringIO()):
             if corruption:

@@ -97,6 +97,8 @@ def main():
     parser.add_argument('--rounds', default=6, type=int)
     args = parser.parse_args()
     require(args.rounds >= 6 and args.rounds % 6 == 0, 'Rounds must be a positive multiple of six')
+    require(platform.system() != 'Windows',
+            'This benchmark requires the Unix R runtime layout; Windows is not supported')
     found = shutil.which('Rscript')
     require(found is not None, 'Rscript was not found on PATH')
     rscript = Path(found).resolve(strict=True)
