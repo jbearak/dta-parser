@@ -1,0 +1,118 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arrow-nullable-strings.R","nullable Arrow strings preserve sliced validity and unequal chunks",24,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow strings keep their output rooted during collection",4,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow string allocation errors clean up before the next read",3,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow read cancellation remains an interrupt",3,0,FALSE,FALSE,0
+"test-arrow.R","legacy Arrow numeric metadata reads into current DTA classes",6,0,FALSE,FALSE,0
+"test-arrow.R","standard R columns round-trip with full fidelity",10,0,FALSE,FALSE,0
+"test-arrow.R","Arrow field names are not restricted to Stata syntax",2,0,FALSE,FALSE,0
+"test-arrow.R","empty data and default POSIXct timezones round-trip",6,0,FALSE,FALSE,0
+"test-arrow.R","compression variants round-trip identically",3,0,FALSE,FALSE,0
+"test-arrow.R","profiled Stata columns keep raw missing storage bit-exactly",20,0,FALSE,FALSE,0
+"test-arrow.R","profiled columns read back as compact ALTREP by default",3,0,FALSE,FALSE,0
+"test-arrow.R","string columns without missing values defer through ALTREP",7,0,FALSE,FALSE,0
+"test-arrow.R","multithreaded Arrow reads match single-threaded reads",3,0,FALSE,FALSE,0
+"test-arrow.R","multithreaded Arrow writes match single-threaded writes",2,0,FALSE,FALSE,0
+"test-arrow.R","Arrow string writes preserve Unicode and missing values across regions",105,0,FALSE,FALSE,0
+"test-arrow.R","Arrow string writes retain owned and ephemeral values through collection",5,0,FALSE,FALSE,0
+"test-arrow.R","native Arrow write cancellation remains an interrupt",2,0,FALSE,FALSE,0
+"test-arrow.R","checksum-free writes round trip without verification",4,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow validates threads",4,0,FALSE,FALSE,0
+"test-arrow.R","read_arrow validates threads",4,0,FALSE,FALSE,0
+"test-arrow.R","deferred string columns are written without materializing",5,0,FALSE,FALSE,0
+"test-arrow.R","owned Stata strings are writable and signable",4,0,FALSE,FALSE,0
+"test-arrow.R","compact ALTREP columns are written without materializing",5,0,FALSE,FALSE,0
+"test-arrow.R","compact datetime timezone adjustment matches eager writing",5,0,FALSE,FALSE,0
+"test-arrow.R","a DTA fixture survives a semantic Arrow round-trip",26,0,FALSE,FALSE,0
+"test-arrow.R","legacy integer tails and value-label codes survive Arrow",25,0,FALSE,FALSE,0
+"test-arrow.R","tagged NaN payloads on bare doubles survive bit-exactly",2,0,FALSE,FALSE,0
+"test-arrow.R","byte-encoded strings are rejected instead of replaced",6,0,FALSE,FALSE,0
+"test-arrow.R","byte-encoded Stata metadata is rejected instead of serialized",12,0,FALSE,FALSE,0
+"test-arrow.R","haven labelled doubles round-trip with their labels",4,0,FALSE,FALSE,0
+"test-arrow.R","label-free haven labelled doubles retain their class",4,0,FALSE,FALSE,0
+"test-arrow.R","temporal classes and empty value-label tables round-trip",14,0,FALSE,FALSE,0
+"test-arrow.R","profiled storage uses its materialized R type for selection",2,0,FALSE,FALSE,0
+"test-arrow.R","declared Stata storage overrides mismatched compact backing",3,0,FALSE,FALSE,0
+"test-arrow.R","invalid NaNs in Stata storage become system missing",3,0,FALSE,FALSE,0
+"test-arrow.R","value labels on profiled columns round-trip",2,0,FALSE,FALSE,0
+"test-arrow.R","integer-coded value labels work in Arrow and datasig",6,0,FALSE,FALSE,0
+"test-arrow.R","display formats round-trip on profiled columns",1,0,FALSE,FALSE,0
+"test-arrow.R","column projection, skip, and n_max select the requested window",8,0,FALSE,FALSE,0
+"test-arrow.R","zero-row selections preserve factor levels",6,0,FALSE,FALSE,0
+"test-arrow.R","corrupted buffers fail checksum verification by default",3,0,FALSE,FALSE,0
+"test-arrow.R","newer profile versions are a hard error with an escape hatch",4,0,FALSE,FALSE,0
+"test-arrow.R","profile = FALSE reads raw storage arrays without Stata semantics",3,0,FALSE,FALSE,0
+"test-arrow.R","unsupported columns are an error naming the column",4,0,FALSE,FALSE,0
+"test-arrow.R","write validation failures leave existing destinations unchanged",2,0,FALSE,FALSE,0
+"test-arrow.R","extensionless output paths gain .arrow with a warning",3,0,FALSE,FALSE,0
+"test-arrow.R","non-Arrow input is rejected by name",1,0,FALSE,FALSE,0
+"test-arrow.R","unrepresentable values in declared storage warn and count",3,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow reports attributes the profile drops",3,0,FALSE,FALSE,0
+"test-arrow.R","Arrow owned-attribute allowlists share the metadata registry",2,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow reports custom row metadata the profile drops",5,0,FALSE,FALSE,0
+"test-arrow.R","dta_merge accepts .arrow paths in either position",12,0,FALSE,FALSE,0
+"test-arrow.R","the arrow package is an independent oracle for written files",5,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow files never acquire Stata semantics",5,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow ordered dictionaries remain ordered factors",2,0,FALSE,FALSE,0
+"test-arrow.R","NA-valued factor levels survive profiled and plain Arrow",4,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow dictionaries cannot create duplicate factor levels",1,0,FALSE,FALSE,0
+"test-arrow.R","plain Int32 selection predicates match the returned R type",3,0,FALSE,FALSE,0
+"test-arrow.R","plain UInt16 columns use R integer storage",3,0,FALSE,FALSE,0
+"test-arrow.R","profiled UInt16 columns retain projected shared value labels",12,0,FALSE,FALSE,0
+"test-arrow.R","Arrow selection parses profile metadata only for predicates",6,0,FALSE,FALSE,0
+"test-arrow.R","predicate and datasig projections validate every field document",3,0,FALSE,FALSE,0
+"test-arrow.R","Arrow selection and decoding share one file snapshot",2,0,FALSE,FALSE,0
+"test-arrow.R","wide Arrow integers are rejected instead of rounded",6,0,FALSE,FALSE,0
+"test-arrow.R","wide Arrow temporal counts are rejected instead of rounded",4,0,FALSE,FALSE,0
+"test-arrow.R","declared strings take the same default format as save_dta",4,0,FALSE,FALSE,0
+"test-arrow.R","reader attribute reuse keeps column edits and subsequent reads independent",81,0,FALSE,FALSE,0
+"test-arrow.R","reader attribute values remain rooted during collection",16,0,FALSE,FALSE,0
+"test-arrow.R","readers preserve formats beyond the shared scalar cache limit",6,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums preserve cancellation across interrupt blocks and chunks",60,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","live Arrow storage does not force collection on each small read",23,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","R-backed owners and retained handle forks add no native allocation debt",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0

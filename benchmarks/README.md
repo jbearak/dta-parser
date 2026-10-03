@@ -119,6 +119,13 @@ Across 504 fresh-process observations, nullable read CPU improves by 1.08 to
 1.42 times and read-plus-full-consumption CPU by 1.08 to 1.32 times. It preserves
 the eager nullable result and reports the deferred dictionary costs separately.
 
+The [compatible Arrow numeric transfer follow-up](arrow-compatible-copy/results-2026-10-03.md)
+copies no-null Float64 and Int32 chunks into independent R vectors in bulk.
+Across 336 fresh-process observations, affected read-return CPU improves by
+1.05–1.34× and read-plus-full-consumption CPU by 1.03–1.11×. Nullable, widening
+and retained compact controls, requested thread settings, GC and timer limits
+are reported separately.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

@@ -1,0 +1,324 @@
+--- a/src/rust/src/arrow_ffi.rs
++++ b/src/rust/src/arrow_ffi.rs
+@@ -2270,6 +2270,41 @@
+     Ok(())
+ }
+ 
++/// Fill physically compatible primitive chunks into an independent R vector.
++/// The existing ColumnFill contract keeps the Arrow arrays alive and gives
++/// this worker an aligned output buffer with room for every selected row.
++/// Null-bearing chunks retain their route's scalar value policy.
++unsafe fn fill_compatible_primitive<T: ArrowPrimitiveType>(
++    column: &ArrowReadColumn,
++    output: *mut T::Native,
++    mut nullable_value: impl FnMut(&PrimitiveArray<T>, usize) -> T::Native,
++) -> Result<(), String> {
++    let mut row = 0usize;
++    for chunk in &column.chunks {
++        let typed = chunk
++            .as_any()
++            .downcast_ref::<PrimitiveArray<T>>()
++            .ok_or_else(|| chunk_error(&column.name))?;
++        // Empty R vectors may provide sentinel pointers. Skip even a zero-
++        // length raw copy and its destination pointer arithmetic.
++        if typed.is_empty() {
++            continue;
++        }
++        if typed.null_count() == 0 {
++            // values() already includes the selected ScalarBuffer offset.
++            // The R destination was allocated independently before workers.
++            ptr::copy_nonoverlapping(typed.values().as_ptr(), output.add(row), typed.len());
++            row += typed.len();
++        } else {
++            for index in 0..typed.len() {
++                *output.add(row) = nullable_value(typed, index);
++                row += 1;
++            }
++        }
++    }
++    Ok(())
++}
++
+ /// How one Arrow column becomes an R vector. The shape drives all three
+ /// phases of a read: the R storage the main thread allocates, the pure
+ /// conversion that may run on a worker thread, and the ALTREP wrapping and
+@@ -2645,14 +2680,15 @@
+ 
+ unsafe fn fill_semantic_double(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+     match column.data_type {
+-        DataType::Float64 => for_each_value::<Float64Array>(column, |row, values, index| {
+-            *output.add(row) = if values.is_null(index) {
+-                R_NaReal
+-            } else {
+-                values.value(index)
+-            };
+-            Ok(())
+-        }),
++        DataType::Float64 => {
++            fill_compatible_primitive::<Float64Type>(column, output, |values, index| {
++                if values.is_null(index) {
++                    R_NaReal
++                } else {
++                    values.value(index)
++                }
++            })
++        }
+         DataType::Float32 => for_each_value::<Float32Array>(column, |row, values, index| {
+             *output.add(row) = if values.is_null(index) {
+                 R_NaReal
+@@ -2729,14 +2765,15 @@
+ 
+ unsafe fn fill_integer(column: &ArrowReadColumn, output: *mut c_int) -> Result<(), String> {
+     match column.data_type {
+-        DataType::Int32 => for_each_value::<Int32Array>(column, |row, values, index| {
+-            *output.add(row) = if values.is_null(index) {
+-                R_NaInt
+-            } else {
+-                values.value(index)
+-            };
+-            Ok(())
+-        }),
++        DataType::Int32 => {
++            fill_compatible_primitive::<Int32Type>(column, output, |values, index| {
++                if values.is_null(index) {
++                    R_NaInt
++                } else {
++                    values.value(index)
++                }
++            })
++        }
+         DataType::Int8 => for_each_value::<Int8Array>(column, |row, values, index| {
+             *output.add(row) = if values.is_null(index) {
+                 R_NaInt
+@@ -2798,10 +2835,9 @@
+ }
+ 
+ unsafe fn fill_payload_double(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+-    for_each_value::<Float64Array>(column, |row, values, index| {
++    fill_compatible_primitive::<Float64Type>(column, output, |values, index| {
+         // Bit-exact: tagged NAs and NaN payloads pass through unchanged.
+-        *output.add(row) = values.value(index);
+-        Ok(())
++        values.value(index)
+     })
+ }
+ 
+@@ -4086,6 +4122,218 @@
+     #[export_name = "R_NaReal"]
+     static TEST_R_NA_REAL: f64 = f64::from_bits(0x7ff0_0000_0000_07a2);
+ 
++    fn primitive_column(data_type: DataType, chunks: Vec<ArrayRef>) -> ArrowReadColumn {
++        ArrowReadColumn {
++            name: "number".to_owned(),
++            data_type,
++            nullable: true,
++            dictionary_ordered: false,
++            field: None,
++            chunks,
++        }
++    }
++
++    #[test]
++    fn compatible_double_fills_preserve_every_bit_across_sliced_chunks() {
++        let mut bits = vec![
++            0,
++            1,
++            1 << 63,
++            f64::MAX.to_bits(),
++            f64::MIN.to_bits(),
++            f64::MIN_POSITIVE.to_bits(),
++            f64::INFINITY.to_bits(),
++            f64::NEG_INFINITY.to_bits(),
++            0x7ff0_0000_0000_0001,
++            0x7ff8_1234_5678_abcd,
++            0xfff8_abcd_1234_5678,
++        ];
++        bits.extend(
++            (0..27).map(|rank| r_missing(MissingTag::from_offset(rank).unwrap()).to_bits()),
++        );
++        let mut padded = vec![13.0, 17.0];
++        padded.extend(bits.iter().copied().map(f64::from_bits));
++        padded.push(19.0);
++        let source: ArrayRef = Arc::new(Float64Array::from(padded));
++        let column = primitive_column(
++            DataType::Float64,
++            vec![
++                source.slice(2, 7),
++                source.slice(0, 0),
++                source.slice(9, 1),
++                source.slice(10, bits.len() - 8),
++            ],
++        );
++        let poison = 0x7ff8_dead_beef_0001;
++        let fills: [unsafe fn(&ArrowReadColumn, *mut f64) -> Result<(), String>; 2] =
++            [fill_semantic_double, fill_payload_double];
++        for fill in fills {
++            let mut output = vec![f64::from_bits(poison); bits.len() + 2];
++            unsafe { fill(&column, output.as_mut_ptr().add(1)).unwrap() };
++            assert_eq!(output[0].to_bits(), poison);
++            assert_eq!(output[bits.len() + 1].to_bits(), poison);
++            assert_eq!(
++                output[1..bits.len() + 1]
++                    .iter()
++                    .map(|x| x.to_bits())
++                    .collect::<Vec<_>>(),
++                bits
++            );
++            output[1] = 123.0;
++            let original = source.as_any().downcast_ref::<Float64Array>().unwrap();
++            assert_eq!(
++                original.values()[2..bits.len() + 2]
++                    .iter()
++                    .map(|x| x.to_bits())
++                    .collect::<Vec<_>>(),
++                bits
++            );
++        }
++    }
++
++    #[test]
++    fn compatible_double_fills_keep_nullable_and_payload_policies() {
++        let bits = [
++            0,
++            1,
++            2,
++            (1u64 << 63),
++            0x7ff8_1111_2222_3333,
++            5,
++            6,
++            7,
++            0xfff8_4444_5555_6666,
++            9,
++            10,
++            11,
++        ];
++        let valid = vec![
++            true, true, true, true, false, true, true, true, false, true, true, true,
++        ];
++        let source: ArrayRef = Arc::new(Float64Array::new(
++            ScalarBuffer::from(bits.map(f64::from_bits).to_vec()),
++            Some(arrow_buffer::NullBuffer::from(valid.clone())),
++        ));
++        let column = primitive_column(
++            DataType::Float64,
++            vec![
++                source.slice(3, 4),
++                source.slice(0, 0),
++                source.slice(7, 3),
++                source.slice(10, 2),
++            ],
++        );
++        let mut semantic = vec![0.0; 9];
++        let mut payload = vec![0.0; 9];
++        unsafe {
++            fill_semantic_double(&column, semantic.as_mut_ptr()).unwrap();
++            fill_payload_double(&column, payload.as_mut_ptr()).unwrap();
++        }
++        let expected: Vec<_> = (3..12)
++            .map(|index| {
++                if valid[index] {
++                    bits[index]
++                } else {
++                    TEST_R_NA_REAL.to_bits()
++                }
++            })
++            .collect();
++        assert_eq!(
++            semantic.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++            expected
++        );
++        // Public payload profiles reject nulls before this fill. Preserve the
++        // existing pure fill's physical-value fallback rather than changing it.
++        assert_eq!(
++            payload.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++            bits[3..]
++        );
++        let mut visited = 0;
++        unsafe {
++            fill_compatible_primitive::<Float64Type>(
++                &column,
++                payload.as_mut_ptr(),
++                |values, index| {
++                    visited += 1;
++                    values.value(index)
++                },
++            )
++            .unwrap();
++        }
++        // The last slice has an all-valid bitmap and copies without visiting
++        // the scalar policy. The two null-bearing slices have seven rows.
++        assert_eq!(visited, 7);
++    }
++
++    #[test]
++    fn compatible_integer_fill_preserves_slices_nulls_and_destination_bounds() {
++        let values = vec![99, i32::MIN, i32::MAX, i32::MIN + 1, -7, 0, 123, 6, 7, 8, 9];
++        let source: ArrayRef = Arc::new(Int32Array::new(
++            ScalarBuffer::from(values.clone()),
++            Some(arrow_buffer::NullBuffer::from(vec![
++                true, false, true, true, true, true, false, true, true, true, true,
++            ])),
++        ));
++        let column = primitive_column(
++            DataType::Int32,
++            vec![
++                source.slice(1, 3),
++                source.slice(0, 0),
++                source.slice(4, 4),
++                source.slice(8, 2),
++            ],
++        );
++        assert!(!int32_contains_r_na_sentinel(&column).unwrap());
++        let mut output = vec![12345; 11];
++        unsafe { fill_integer(&column, output.as_mut_ptr().add(1)).unwrap() };
++        assert_eq!(output[0], 12345);
++        assert_eq!(output[10], 12345);
++        let mut expected = values[1..10].to_vec();
++        expected[5] = i32::MIN;
++        assert_eq!(&output[1..10], expected);
++        output[2] = 77;
++        assert_eq!(
++            source
++                .as_any()
++                .downcast_ref::<Int32Array>()
++                .unwrap()
++                .values()
++                .as_ref(),
++            values
++        );
++        for observed in [vec![i32::MIN, 7], vec![7, i32::MIN]] {
++            let column =
++                primitive_column(DataType::Int32, vec![Arc::new(Int32Array::from(observed))]);
++            assert!(int32_contains_r_na_sentinel(&column).unwrap());
++        }
++    }
++
++    #[test]
++    fn compatible_fill_skips_empty_destinations_but_checks_empty_chunk_types() {
++        for chunks in [
++            vec![],
++            vec![Arc::new(Float64Array::from(Vec::<f64>::new())) as ArrayRef],
++        ] {
++            let column = primitive_column(DataType::Float64, chunks);
++            unsafe {
++                fill_semantic_double(&column, ptr::null_mut()).unwrap();
++                fill_payload_double(&column, ptr::null_mut()).unwrap();
++            }
++        }
++        let integer = primitive_column(
++            DataType::Int32,
++            vec![Arc::new(Int32Array::from(Vec::<i32>::new()))],
++        );
++        unsafe { fill_integer(&integer, ptr::null_mut()).unwrap() };
++        let wrong = primitive_column(
++            DataType::Int32,
++            vec![Arc::new(Float64Array::from(Vec::<f64>::new()))],
++        );
++        assert!(unsafe { fill_integer(&wrong, ptr::null_mut()) }
++            .unwrap_err()
++            .contains("unexpected Arrow type"));
++    }
++
+     #[test]
+     fn automatic_reader_threads_use_available_cpus_and_honor_explicit_limits() {
+         let available = thread::available_parallelism().map_or(1, usize::from);
