@@ -6,7 +6,10 @@ to a private temporary header and receives explicit counters at existing work
 sites; the source hashes and modified temporary text are retained in evidence.
 """
 import argparse
+from collections import Counter
+import csv
 import hashlib
+import io
 import json
 import shutil
 import subprocess
@@ -15,6 +18,26 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SRC = ROOT / 'r-package/dtatools/src'
+
+def expected_cases():
+    cases = [(1000000, kind, pattern, (1.01).hex(), 0, 0)
+             for kind in range(3) for pattern in range(2)]
+    cases += [(length, 1, 2, (1.0).hex(), 0, 0)
+              for length in (16383, 16384, 16385, 1000000)]
+    scalars = [0.0, -0.0, 1.01, -1.01, float.fromhex('0x1.fffffep126'),
+               -float.fromhex('0x1.fffffep126'), float.fromhex('0x1p127'),
+               float.fromhex('0x1.fffffffffffffp1022'), float.fromhex('0x1.fffffffffffffp1023')]
+    cases += [(128, kind, 3, scalar.hex(), legacy, 7)
+              for kind in range(3) for legacy in range(2) for scalar in scalars]
+    return Counter(cases)
+
+def validate_case_matrix(text):
+    rows = list(csv.DictReader(io.StringIO(text)))
+    actual = Counter((int(row['length']), int(row['kind']), int(row['pattern']),
+                      float.fromhex(row['scalar']).hex(), int(row['legacy']), int(row['chunk']))
+                     for row in rows)
+    if len(rows) != 64 or actual != expected_cases():
+        raise RuntimeError('Incomplete, duplicated or changed 64-case reciprocal matrix')
 
 def function(text, name):
     start = text.index('static ', text.index(name + '(') - 30)
@@ -76,6 +99,7 @@ def main():
         text=True, capture_output=True)
     (args.output / 'work-count.csv').write_text(run.stdout)
     (args.output / 'work-count.log').write_text(run.stderr)
+    validate_case_matrix(run.stdout)
     patch = subprocess.check_output(['git', 'diff', 'HEAD', '--binary', '--', 'r-package/dtatools/src'], cwd=ROOT)
     (args.output / 'source.patch').write_bytes(patch)
     record = {'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
