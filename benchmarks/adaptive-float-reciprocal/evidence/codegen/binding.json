@@ -1,0 +1,50 @@
+{
+  "actual_build_command": "clang -std=gnu23 -I\"/opt/homebrew/Cellar/r/4.6.1/lib/R/include\" -DNDEBUG   -I/opt/homebrew/opt/gettext/include -I/opt/homebrew/opt/readline/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/include -I/opt/homebrew/include -DTBB_INTERFACE_NEW=1    -fPIC  -g -O2  -c numeric-payload.c -o numeric-payload.o",
+  "artifact_sha256": {
+    "built-object-producer.txt": "9529bd1518b7f0491c54d45d4fccbf9abba08b2cb7fd6895c592d6ece9526a36",
+    "installed-producer.txt": "f9b5fd8c8315052a106b7d35a7118e012c4058a6b00c95ad6ec8c6d105b17a65",
+    "remarks.log": "ed71da932607ce317f33b273e38cfd8d175228d94a09714862aca34752082a93",
+    "remarks.o": "979c8c35f44d19ebf16d83d92024d1f4f35afe3d320c67e4c116c55fcd482b77"
+  },
+  "build_receipt_sha256": "e932d7f6b608a050bb1d046118b9f3f50b24f14ce70b181920541b2c0aa29bec",
+  "built_object_sha256": "979c8c35f44d19ebf16d83d92024d1f4f35afe3d320c67e4c116c55fcd482b77",
+  "consumed_numeric_source_sha256": {
+    "numeric-arithmetic-float-reciprocal.h": "66213d78674a75d2cae0b3d8ba43a5fa3493c36ada1551801d4201975a3b0d6b",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "b73bca33826eb551e44eb604d3e93d9704f47bb7bbbcf4081cc6a9b21f86b74d",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-decode.h": "e7a73018b19ca5dc2221ceca167c07d65d6eb43aa8269215bab5abc0e2af578a",
+    "numeric-match.c": "5e43b224e34ad7831e2f765005f04227b4fe16c3a60d6da2664c62a8c880ceb2",
+    "numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "cwd": "<measured-work>/candidate-v3/build/src",
+  "installed_dll_sha256": "c25e76cdb94fdfd7f2c1b456466f6316839f29af69600f37e65072753671504f",
+  "remark_command": [
+    "/usr/bin/clang",
+    "-std=gnu23",
+    "-I/opt/homebrew/Cellar/r/4.6.1/lib/R/include",
+    "-DNDEBUG",
+    "-I/opt/homebrew/opt/gettext/include",
+    "-I/opt/homebrew/opt/readline/include",
+    "-I/opt/homebrew/opt/xz/include",
+    "-I/opt/homebrew/include",
+    "-I/opt/homebrew/include",
+    "-DTBB_INTERFACE_NEW=1",
+    "-fPIC",
+    "-g",
+    "-O2",
+    "-c",
+    "numeric-payload.c",
+    "-o",
+    "<measured-work>/codegen-v3/remarks.o",
+    "-Rpass=loop-vectorize",
+    "-Rpass-missed=loop-vectorize",
+    "-Rpass-analysis=loop-vectorize"
+  ],
+  "scope": "Release -O2 actual installed DLL/object disassembly plus separate same-flags remark compilation. No instrumentation or timing. No cross-compiler guarantee.",
+  "source_commit": "2ec57f24a14a646ae67fd2e0af4fb8ef1c549f52"
+}

@@ -1,0 +1,37 @@
+{
+  "binder_sha256": "bc2d8d8d60ca491dc8cb02aa2d9dd823d2ec510ca84c52de3c50bcfce4f3953e",
+  "candidate_build_receipt_sha256": "e932d7f6b608a050bb1d046118b9f3f50b24f14ce70b181920541b2c0aa29bec",
+  "codegen_binding_sha256": "b65e3fc76aa188e3737090e450064b801e198168aac095dca3886b768647a4f4",
+  "exact_source_sha256": {
+    "r-package/dtatools/src/numeric-arithmetic-float-reciprocal.h": "66213d78674a75d2cae0b3d8ba43a5fa3493c36ada1551801d4201975a3b0d6b",
+    "r-package/dtatools/tests/testthat/test-arithmetic-payload-lifetime.R": "376e36f59a5513687985cafdf91a3a13e7748c6572abd0c40f33190e0f965e01",
+    "r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R": "a31152894bd9adf59fdbb6d80029b0e75d5cb69fe65ded507f72182a95e70cd9",
+    "r-package/dtatools/tools/native-test-manifest.json": "e402a70260ad5ba2a6de14546ea018dcaf541adc8edf12ccb7abc761d5d590aa"
+  },
+  "focused": {
+    "baseline": {
+      "assertions": 36009,
+      "blocks": 34,
+      "csv_sha256": "1f4cbbf0b41fd6e71093fd95c6602183a84e75fad372cd1a07e0e2a97c636e0f",
+      "log_sha256": "b478367c2f69aa926fb9071cd6955b08783e64f39c176c39e53a6af70cd6be99",
+      "new_blocks": {
+        "adaptive reciprocal proofs recover ordinary tails after dense spans": 1036,
+        "all missing reciprocal proofs retain captured counts through reentry": 100
+      }
+    },
+    "candidate": {
+      "assertions": 36009,
+      "blocks": 34,
+      "csv_sha256": "1f4cbbf0b41fd6e71093fd95c6602183a84e75fad372cd1a07e0e2a97c636e0f",
+      "log_sha256": "b478367c2f69aa926fb9071cd6955b08783e64f39c176c39e53a6af70cd6be99",
+      "new_blocks": {
+        "adaptive reciprocal proofs recover ordinary tails after dense spans": 1036,
+        "all missing reciprocal proofs retain captured counts through reentry": 100
+      }
+    }
+  },
+  "qualification_completion_sha256": "fa563050a939655183e296db3d1980856a060e6386b87cd64943b6e962d33551",
+  "scope": "Post-run binding of existing focused results and exact current committed test source. Baseline f219 and candidate2ec57 executed the same final test source. No full-suite, packaged archive or timing claim. Full build/runtime inventories are separately retained in no-clock provenance and will be checked again by the timing controller.",
+  "source_commit": "2ec57f24a14a646ae67fd2e0af4fb8ef1c549f52",
+  "structural_receipt_sha256": "d4454f685992ed681351dcaed83b2918c4a4363a4871c2a395de698d4c656949"
+}
