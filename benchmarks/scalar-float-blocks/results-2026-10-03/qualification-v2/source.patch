@@ -1,0 +1,231 @@
+--- a/src/numeric-arithmetic-float-scalar.h
++++ b/src/numeric-arithmetic-float-scalar.h
+@@ -100,6 +100,30 @@
+     return 1;
+ }
+ 
++/* This local proof excludes encoded missings, all IEEE non-finite values
++   and conservative high-magnitude imports. Widen the actual maximum and
++   existing binary32 fit endpoints exactly; do not round a new cutoff. */
++static int arithmetic_float_scalar_ordinary_block(
++    const unsigned char *raw, size_t start, size_t count,
++    const arithmetic_float_scalar_proof *proof, int check_fit
++) {
++    uint32_t maximum = 0;
++    for (size_t i = start; i < start + count; i++) {
++        uint32_t bits;
++        memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));
++        bits &= UINT32_C(0x7fffffff);
++        maximum = bits > maximum ? bits : maximum;
++    }
++    if (maximum >= UINT32_C(0x7f000000)) return 0;
++    if (check_fit) {
++        float magnitude;
++        memcpy(&magnitude, &maximum, sizeof(magnitude));
++        return -(double) magnitude >= (double) proof->lower &&
++            (double) magnitude <= (double) proof->upper;
++    }
++    return 1;
++}
++
+ static int arithmetic_float_scalar_write(
+     const arithmetic_float_scalar_proof *proof, R_xlen_t length,
+     arithmetic_general_output *output
+@@ -108,6 +132,12 @@
+     const int legacy = data->format_version <= 111;
+     const int all_observed = data->missing_count == 0;
+     const double scalar = proof->scalar;
++    /* The proof is immutable during this write. Snapshot its lane constants
++       so stores through target cannot look like updates to the proof itself.
++       Double destinations do not initialize or use the float-fit bounds. */
++    const float lower = proof->check_fit ? proof->lower : 0.0f;
++    const float upper = proof->check_fit ? proof->upper : 0.0f;
++    const uint32_t anchor = proof->anchor;
+     /* arithmetic_capture protects this exact descriptor and its backing.
+        Finite inputs were proved valid; only observed IEEE infinities add
+        missing results. Legacy +Inf is included in the inherited count. */
+@@ -121,7 +151,27 @@
+ #define GENERAL_PROVED_FLOAT_LOOP(TYPE, TARGET, EXPR, MISSING, FIT, NARROW, INVALID, OBSERVED, INF_MASK, INF_VALUE) \
+         do {                                                               \
+             TYPE *restrict target = (TARGET) + start;                      \
+-            for (size_t i = 0; i < count; i++) {                            \
++            unsigned failed_blocks = 0;                                   \
++            for (size_t block = 0; block < count;) {                       \
++                size_t take = count - block;                               \
++                if (take > 64) take = 64;                                  \
++                size_t end = block + take;                                 \
++                if (arithmetic_float_scalar_ordinary_block(                \
++                        raw, block, take, proof, FIT)) {                  \
++                    failed_blocks = 0;                                    \
++                    for (size_t i = block; i < end; i++) {                 \
++                        float source;                                     \
++                        memcpy(&source, raw + i * sizeof(source), sizeof(source)); \
++                        double value = (double) source;                    \
++                        target[i] = (TYPE) (EXPR);                         \
++                    }                                                     \
++                    block = end;                                          \
++                    continue;                                             \
++                }                                                         \
++                /* Each captured span is at most 16,384 rows. Bound failed \
++                   proofs within it, then retry in the next span. */       \
++                if (++failed_blocks == 4) end = count;                     \
++                for (size_t i = block; i < end; i++) {                     \
+                 uint32_t bits;                                             \
+                 memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));        \
+                 const uint32_t bits_original = bits;                       \
+@@ -131,13 +181,13 @@
+                 float source;                                              \
+                 memcpy(&source, &bits, sizeof(source));                    \
+                 int fit = !(FIT) ||                                        \
+-                    (source >= proof->lower && source <= proof->upper);    \
++                    (source >= lower && source <= upper);                  \
+                 promote |= (unsigned) (!invalid && !fit);                 \
+                 if (NARROW) {                                              \
+                     /* Substitute finite, proved-safe input before the     \
+                        double operation and narrowing conversion. */      \
+                     uint32_t replace = 0U - (uint32_t) (invalid || !fit);  \
+-                    bits = (bits & ~replace) | (proof->anchor & replace); \
++                    bits = (bits & ~replace) | (anchor & replace);         \
+                     memcpy(&source, &bits, sizeof(source));                \
+                 }                                                          \
+                 double value = (double) source;                            \
+@@ -145,6 +195,8 @@
+                 target[i] = invalid ? (TYPE) (MISSING) : result;           \
+                 missing_count += (unsigned)                              \
+                     ((bits_original & (INF_MASK)) == (INF_VALUE));        \
++                }                                                         \
++                block = end;                                              \
+             }                                                              \
+         } while (0)
+ #define GENERAL_PROVED_FLOAT_TARGETS(EXPR, INVALID, OBSERVED, INF_MASK, INF_VALUE) \
+--- a/tests/testthat/test-native-arithmetic-parity.R
++++ b/tests/testthat/test-native-arithmetic-parity.R
+@@ -608,3 +608,94 @@
+         }
+     }
+ })
++
++test_that("scalar block proofs preserve ordinary tails and late whole-column promotion", {
++    .arithmetic_parity_enable()
++    n <- 32769L
++    cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
++        list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
++        list("+", 2e38), list("-", -2e38))
++    for (late in c(FALSE, TRUE)) {
++        values <- rep(c(1.5, -0, 0, 2^-149, -2^-149, -1.5), length.out = n)
++        values[seq_len(256L)] <- rep(c(NA_real_, tagged_missing(letters)), length.out = 256L)
++        if (late) values[[n]] <- (2^24 - 1) * 2^103
++        for (chunk in list(NULL, 63L, 16385L)) {
++            x <- .arithmetic_parity_source("float", values, chunk)
++            for (case in cases) {
++                op <- case[[1L]]; scalar <- case[[2L]]
++                info <- paste("scalar block", op, scalar, late, chunk)
++                for (reverse in c(FALSE, TRUE)) {
++                    actual <- if (reverse)
++                        .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
++                    else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
++                    missing <- is.na(as.double(actual))
++                    expect_identical(is.na(actual), missing, info = info)
++                    expect_identical(anyNA(actual), any(missing), info = info)
++                }
++                # Declared double output bypasses float-fit/narrowing checks.
++                operation <- getExportedValue("base", op)
++                reference <- operation(as.double(x), scalar)
++                reference[is.na(as.double(x))] <- NA_real_
++                expected <- dtatools:::.dta_computed(reference, "double")
++                actual <- operation(x, dta_double(scalar))
++                expect_identical(dta_storage_type(actual), "double", info = info)
++                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected), info = info)
++                expect_identical(is.na(actual), is.na(as.double(expected)), info = info)
++            }
++        }
++    }
++})
++
++test_that("scalar block proofs preserve imported exceptions after ordinary spans", {
++    .arithmetic_parity_enable()
++    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    legacy <- tempfile(fileext = ".dta")
++    withr::defer(unlink(c(modern, legacy)))
++    original <- readBin(fixture("synthetic_v111.dta"), "raw",
++        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++        writeBin(-123456L, raw(), size = 4L, endian = "little"),
++        writeBin(1.5, raw(), size = 4L, endian = "little"),
++        writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff, 0x7f000000,
++        0x7f000001, 0x7f000800, 0x7f00d000, 0x7f7fffff, 0xff7fffff,
++        0x7f800000, 0xff800000, 0x7fc00000, 0xffc00000)
++    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
++    for (batch in split(bits, ceiling(seq_along(bits) / 3L))) {
++        batch <- c(0x3fc00000, batch) # Ordinary fractional prefix for promotion.
++        bytes <- original
++        for (index in seq_along(batch)) {
++            patch_numeric_fixture_row(modern, index - 1L,
++                list(x_float = raw_bits(batch[[index]])))
++            location <- start + (index - 1L) * 25L + 7L
++            bytes[location + 0:3] <- raw_bits(batch[[index]])
++        }
++        writeBin(bytes, legacy)
++        for (version in c("modern", "legacy")) {
++            path <- if (version == "modern") modern else legacy
++            column <- if (version == "modern") "x_float" else "f"
++            small <- read_dta(path, col_select = tidyselect::all_of(column), n_max = length(batch))[[column]]
++            rows <- c(rep(1L, 32769L), seq.int(2L, length(batch)))
++            gathered <- .Call(C_dtatools_gather_numeric, small, NULL, rows, NULL)
++            source <- dtatools:::.dta_merge_restore_gathered(gathered, small)
++            expect_identical(.arithmetic_parity_bytes(source),
++                writeBin(as.double(small)[rows], raw(), size = 8L, endian = "little"))
++            for (chunk in list(NULL, 8191L)) {
++                x <- if (is.null(chunk)) source else .Call(C_dtatools_owned_numeric_freeze, source, chunk)
++                for (case in list(list("+", 0.1), list("-", 1e38), list("*", 1.01), list("/", -3.25))) {
++                    op <- case[[1L]]; scalar <- case[[2L]]
++                    info <- paste("scalar imported block", version, op, scalar, chunk)
++                    for (reverse in c(FALSE, TRUE)) {
++                        actual <- if (reverse)
++                            .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
++                        else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
++                        expect_identical(is.na(actual), is.na(as.double(actual)), info = info)
++                        expect_identical(anyNA(actual), any(is.na(as.double(actual))), info = info)
++                    }
++                }
++            }
++        }
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -1825,7 +1825,7 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "a18ae6d309ea91b970c3fc416670bed2a1cf9afe59cd30c17ff37e14237d6d62"
++          "sha256": "77b3b060411196f85b48a7d45b8b6906043d7436224ef7c87950fae1280dae4d"
+         }
+       ],
+       "blocks": [
+@@ -4574,6 +4574,22 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 3376,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "scalar block proofs preserve ordinary tails and late whole-column promotion",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1458,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "scalar block proofs preserve imported exceptions after ordinary spans",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1931,
+           "warnings": 0
+         }
+       ],

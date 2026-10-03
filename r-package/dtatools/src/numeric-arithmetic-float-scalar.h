@@ -100,6 +100,30 @@ static int arithmetic_float_scalar_prove(
     return 1;
 }
 
+/* This local proof excludes encoded missings, all IEEE non-finite values
+   and conservative high-magnitude imports. Widen the actual maximum and
+   existing binary32 fit endpoints exactly; do not round a new cutoff. */
+static int arithmetic_float_scalar_ordinary_block(
+    const unsigned char *raw, size_t start, size_t count,
+    const arithmetic_float_scalar_proof *proof, int check_fit
+) {
+    uint32_t maximum = 0;
+    for (size_t i = start; i < start + count; i++) {
+        uint32_t bits;
+        memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));
+        bits &= UINT32_C(0x7fffffff);
+        maximum = bits > maximum ? bits : maximum;
+    }
+    if (maximum >= UINT32_C(0x7f000000)) return 0;
+    if (check_fit) {
+        float magnitude;
+        memcpy(&magnitude, &maximum, sizeof(magnitude));
+        return -(double) magnitude >= (double) proof->lower &&
+            (double) magnitude <= (double) proof->upper;
+    }
+    return 1;
+}
+
 static int arithmetic_float_scalar_write(
     const arithmetic_float_scalar_proof *proof, R_xlen_t length,
     arithmetic_general_output *output
@@ -108,6 +132,12 @@ static int arithmetic_float_scalar_write(
     const int legacy = data->format_version <= 111;
     const int all_observed = data->missing_count == 0;
     const double scalar = proof->scalar;
+    /* The proof is immutable during this write. Snapshot its lane constants
+       so stores through target cannot look like updates to the proof itself.
+       Double destinations do not initialize or use the float-fit bounds. */
+    const float lower = proof->check_fit ? proof->lower : 0.0f;
+    const float upper = proof->check_fit ? proof->upper : 0.0f;
+    const uint32_t anchor = proof->anchor;
     /* arithmetic_capture protects this exact descriptor and its backing.
        Finite inputs were proved valid; only observed IEEE infinities add
        missing results. Legacy +Inf is included in the inherited count. */
@@ -121,7 +151,27 @@ static int arithmetic_float_scalar_write(
 #define GENERAL_PROVED_FLOAT_LOOP(TYPE, TARGET, EXPR, MISSING, FIT, NARROW, INVALID, OBSERVED, INF_MASK, INF_VALUE) \
         do {                                                               \
             TYPE *restrict target = (TARGET) + start;                      \
-            for (size_t i = 0; i < count; i++) {                            \
+            unsigned failed_blocks = 0;                                   \
+            for (size_t block = 0; block < count;) {                       \
+                size_t take = count - block;                               \
+                if (take > 64) take = 64;                                  \
+                size_t end = block + take;                                 \
+                if (arithmetic_float_scalar_ordinary_block(                \
+                        raw, block, take, proof, FIT)) {                  \
+                    failed_blocks = 0;                                    \
+                    for (size_t i = block; i < end; i++) {                 \
+                        float source;                                     \
+                        memcpy(&source, raw + i * sizeof(source), sizeof(source)); \
+                        double value = (double) source;                    \
+                        target[i] = (TYPE) (EXPR);                         \
+                    }                                                     \
+                    block = end;                                          \
+                    continue;                                             \
+                }                                                         \
+                /* Each captured span is at most 16,384 rows. Bound failed \
+                   proofs within it, then retry in the next span. */       \
+                if (++failed_blocks == 4) end = count;                     \
+                for (size_t i = block; i < end; i++) {                     \
                 uint32_t bits;                                             \
                 memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));        \
                 const uint32_t bits_original = bits;                       \
@@ -131,13 +181,13 @@ static int arithmetic_float_scalar_write(
                 float source;                                              \
                 memcpy(&source, &bits, sizeof(source));                    \
                 int fit = !(FIT) ||                                        \
-                    (source >= proof->lower && source <= proof->upper);    \
+                    (source >= lower && source <= upper);                  \
                 promote |= (unsigned) (!invalid && !fit);                 \
                 if (NARROW) {                                              \
                     /* Substitute finite, proved-safe input before the     \
                        double operation and narrowing conversion. */      \
                     uint32_t replace = 0U - (uint32_t) (invalid || !fit);  \
-                    bits = (bits & ~replace) | (proof->anchor & replace); \
+                    bits = (bits & ~replace) | (anchor & replace);         \
                     memcpy(&source, &bits, sizeof(source));                \
                 }                                                          \
                 double value = (double) source;                            \
@@ -145,6 +195,8 @@ static int arithmetic_float_scalar_write(
                 target[i] = invalid ? (TYPE) (MISSING) : result;           \
                 missing_count += (unsigned)                              \
                     ((bits_original & (INF_MASK)) == (INF_VALUE));        \
+                }                                                         \
+                block = end;                                              \
             }                                                              \
         } while (0)
 #define GENERAL_PROVED_FLOAT_TARGETS(EXPR, INVALID, OBSERVED, INF_MASK, INF_VALUE) \

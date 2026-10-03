@@ -1,0 +1,41 @@
+  1a1114:      	add	w1, w1, #0x1
+  1a1118:      	cmp	w1, #0x4
+  1a111c:      	csel	x15, x11, x15, eq
+  1a1120:      	cmp	x16, x15
+  1a1124:      	b.hs	0x1a0fb8 <_arithmetic_float_scalar_write+0x788>
+  1a1128:      	ldr	w17, [x21, #0x28]
+  1a112c:      	b	0x1a1188 <_arithmetic_float_scalar_write+0x958>
+  1a1130:      	ldr	s1, [x21, #0x24]
+  1a1134:      	fcmp	s1, s0
+  1a1138:      	cset	w4, lt
+  1a113c:      	eor	w5, w3, #0x1
+  1a1140:      	and	w5, w5, w4
+  1a1144:      	orr	w4, w3, w4
+  1a1148:      	tst	w4, #0x1
+  1a114c:      	csel	w4, w17, w2, ne
+  1a1150:      	fmov	s0, w4
+  1a1154:      	fcvt	d0, s0
+  1a1158:      	fadd	d0, d11, d0
+  1a115c:      	fcvt	s0, d0
+  1a1160:      	cmp	w3, #0x0
+  1a1164:      	fcsel	s0, s8, s0, ne
+  1a1168:      	str	s0, [x10, x16, lsl #2]
+  1a116c:      	orr	w9, w9, w5
+  1a1170:      	and	w2, w2, #0x7fffffff
+  1a1174:      	cmp	w2, w26
+  1a1178:      	cinc	w8, w8, eq
+  1a117c:      	add	x16, x16, #0x1
+  1a1180:      	cmp	x15, x16
+  1a1184:      	b.eq	0x1a0fb8 <_arithmetic_float_scalar_write+0x788>
+  1a1188:      	ldr	w2, [x0, x16, lsl #2]
+  1a118c:      	add	w3, w2, w24
+  1a1190:      	ror	w3, w3, #0xb
+  1a1194:      	bics	wzr, w26, w2
+  1a1198:      	ccmp	w3, #0x1b, #0x0, ne
+  1a119c:      	cset	w3, lo
+  1a11a0:      	fmov	s0, w2
+  1a11a4:      	ldr	s1, [x21, #0x20]
+  1a11a8:      	fcmp	s1, s0
+  1a11ac:      	b.ls	0x1a1130 <_arithmetic_float_scalar_write+0x900>
+  1a11b0:      	mov	w4, #0x1                ; =1
+  1a11b4:      	b	0x1a113c <_arithmetic_float_scalar_write+0x90c>

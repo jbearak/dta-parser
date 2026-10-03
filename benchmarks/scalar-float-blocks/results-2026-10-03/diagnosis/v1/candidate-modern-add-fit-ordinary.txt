@@ -1,0 +1,85 @@
+  1a11b8:      	cmp	x16, x15
+  1a11bc:      	b.hs	0x1a0fb4 <_arithmetic_float_scalar_write+0x784>
+  1a11c0:      	mov	x3, x16
+  1a11c4:      	cmp	x2, #0x4
+  1a11c8:      	b.lo	0x1a12d8 <_arithmetic_float_scalar_write+0xaa8>
+  1a11cc:      	mov	x3, x16
+  1a11d0:      	cmp	x12, #0x40
+  1a11d4:      	b.lo	0x1a12d8 <_arithmetic_float_scalar_write+0xaa8>
+  1a11d8:      	cmp	x2, #0x10
+  1a11dc:      	b.hs	0x1a11e8 <_arithmetic_float_scalar_write+0x9b8>
+  1a11e0:      	mov	x1, #0x0                ; =0
+  1a11e4:      	b	0x1a1284 <_arithmetic_float_scalar_write+0xa54>
+  1a11e8:      	and	x1, x17, #0x70
+  1a11ec:      	lsl	x3, x16, #2
+  1a11f0:      	add	x2, x13, x3
+  1a11f4:      	add	x3, x14, x3
+  1a11f8:      	mov	x4, x1
+  1a11fc:      	ldp	q0, q1, [x2, #-0x20]
+  1a1200:      	ldp	q2, q3, [x2], #0x40
+  1a1204:      	fcvtl	v4.2d, v0.2s
+  1a1208:      	fcvtl2	v0.2d, v0.4s
+  1a120c:      	fcvtl	v5.2d, v1.2s
+  1a1210:      	fcvtl2	v1.2d, v1.4s
+  1a1214:      	fcvtl	v6.2d, v2.2s
+  1a1218:      	fcvtl2	v2.2d, v2.4s
+  1a121c:      	fcvtl	v7.2d, v3.2s
+  1a1220:      	fcvtl2	v3.2d, v3.4s
+  1a1224:      	fadd.2d	v0, v12, v0
+  1a1228:      	fadd.2d	v4, v12, v4
+  1a122c:      	fadd.2d	v1, v12, v1
+  1a1230:      	fadd.2d	v5, v12, v5
+  1a1234:      	fadd.2d	v2, v12, v2
+  1a1238:      	fadd.2d	v6, v12, v6
+  1a123c:      	fadd.2d	v3, v12, v3
+  1a1240:      	fadd.2d	v7, v12, v7
+  1a1244:      	fcvtn	v4.2s, v4.2d
+  1a1248:      	fcvtn2	v4.4s, v0.2d
+  1a124c:      	fcvtn	v0.2s, v5.2d
+  1a1250:      	fcvtn2	v0.4s, v1.2d
+  1a1254:      	fcvtn	v1.2s, v6.2d
+  1a1258:      	fcvtn2	v1.4s, v2.2d
+  1a125c:      	fcvtn	v2.2s, v7.2d
+  1a1260:      	stp	q4, q0, [x3, #-0x20]
+  1a1264:      	fcvtn2	v2.4s, v3.2d
+  1a1268:      	stp	q1, q2, [x3], #0x40
+  1a126c:      	subs	x4, x4, #0x10
+  1a1270:      	b.ne	0x1a11fc <_arithmetic_float_scalar_write+0x9cc>
+  1a1274:      	cmp	x17, x1
+  1a1278:      	b.eq	0x1a0fb4 <_arithmetic_float_scalar_write+0x784>
+  1a127c:      	tst	x17, #0xc
+  1a1280:      	b.eq	0x1a12d4 <_arithmetic_float_scalar_write+0xaa4>
+  1a1284:      	and	x2, x17, #0x7c
+  1a1288:      	add	x3, x16, x2
+  1a128c:      	sub	x4, x1, x2
+  1a1290:      	add	x1, x16, x1
+  1a1294:      	lsl	x5, x1, #2
+  1a1298:      	add	x1, x10, x5
+  1a129c:      	add	x5, x0, x5
+  1a12a0:      	ldr	q0, [x5], #0x10
+  1a12a4:      	fcvtl	v1.2d, v0.2s
+  1a12a8:      	fcvtl2	v0.2d, v0.4s
+  1a12ac:      	fadd.2d	v0, v12, v0
+  1a12b0:      	fadd.2d	v1, v12, v1
+  1a12b4:      	fcvtn	v1.2s, v1.2d
+  1a12b8:      	fcvtn2	v1.4s, v0.2d
+  1a12bc:      	str	q1, [x1], #0x10
+  1a12c0:      	adds	x4, x4, #0x4
+  1a12c4:      	b.ne	0x1a12a0 <_arithmetic_float_scalar_write+0xa70>
+  1a12c8:      	cmp	x17, x2
+  1a12cc:      	b.eq	0x1a0fb4 <_arithmetic_float_scalar_write+0x784>
+  1a12d0:      	b	0x1a12d8 <_arithmetic_float_scalar_write+0xaa8>
+  1a12d4:      	add	x3, x16, x1
+  1a12d8:      	add	x16, x16, x17
+  1a12dc:      	sub	x16, x16, x3
+  1a12e0:      	lsl	x1, x3, #2
+  1a12e4:      	add	x17, x10, x1
+  1a12e8:      	add	x1, x0, x1
+  1a12ec:      	ldr	s0, [x1], #0x4
+  1a12f0:      	fcvt	d0, s0
+  1a12f4:      	fadd	d0, d11, d0
+  1a12f8:      	fcvt	s0, d0
+  1a12fc:      	str	s0, [x17], #0x4
+  1a1300:      	subs	x16, x16, #0x1
+  1a1304:      	b.ne	0x1a12ec <_arithmetic_float_scalar_write+0xabc>
+  1a1308:      	b	0x1a0fb4 <_arithmetic_float_scalar_write+0x784>

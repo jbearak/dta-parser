@@ -103,6 +103,10 @@ jobs:
           python3 benchmarks/native-operations/test-compact-pair-evidence.py
           python3 -O benchmarks/native-operations/test-compact-pair-evidence.py
           python3 benchmarks/native-operations/verify-compact-pair-evidence.py
+          python3 benchmarks/scalar-float-blocks/test-kernel.py
+          python3 -O benchmarks/scalar-float-blocks/test-kernel.py
+          python3 benchmarks/scalar-float-blocks/test-run.py
+          python3 -O benchmarks/scalar-float-blocks/test-run.py
           python3 benchmarks/float-comparison/test-run.py
           python3 benchmarks/native-comparison/test-run.py
           python3 benchmarks/float-bounded-comparison/test-run.py

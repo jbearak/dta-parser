@@ -1825,7 +1825,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "a18ae6d309ea91b970c3fc416670bed2a1cf9afe59cd30c17ff37e14237d6d62"
+          "sha256": "77b3b060411196f85b48a7d45b8b6906043d7436224ef7c87950fae1280dae4d"
         }
       ],
       "blocks": [
@@ -4574,6 +4574,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3376,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "scalar block proofs preserve ordinary tails and late whole-column promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1458,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "scalar block proofs preserve imported exceptions after ordinary spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1931,
           "warnings": 0
         }
       ],

@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "runtime_source_commit": "2e512880b15ea5ef8d56c65a4916af3ad71fb928",
+  "actual_classifier_calls": 16384,
+  "rows": 1000000,
+  "missing_prefix": 256,
+  "scope": "Actual production writer included by a standalone fixture with mocked storage/R boundaries. This is an execution-work regression, not a throughput or SIMD test.",
+  "sha256": {
+    "test_source": "fe536a882ed28118ba9ebb50c15e9fee4332598f81709f39442780a9105d8474",
+    "runner": "3fdc71463b94ee6dc1a3abe1d0b1137611f994baed743dfedeb0af69a9ce7472",
+    "production_header": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "log": "af20f54b2f9c50edbda3386cdd279a69a3dbac3770d8482a18804a9a390b7db0",
+    "optimized_python_log": "af20f54b2f9c50edbda3386cdd279a69a3dbac3770d8482a18804a9a390b7db0"
+  }
+}

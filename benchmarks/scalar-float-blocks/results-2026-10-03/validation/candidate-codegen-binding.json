@@ -1,0 +1,25 @@
+{
+  "commit": "9520f1105eb2556333642b9f591a6d3c9cf89bdc",
+  "source_header_sha256": "0b55c0c7a538cd76db5848189dbd8b5f2a5d692995a94750e8316ecaec170509",
+  "installed_dll_sha256": "0f0427467ccd40fd97c90f4a2c48fd157974b4cac3c3cfbdc8e57186d6d4377a",
+  "build_receipt_sha256": "e54577683cc7a399901d4594e736f1898392e53147ed6f04fd9cc77e71ac9bb2",
+  "disassembler_command": [
+    "xcrun",
+    "llvm-objdump",
+    "--disassemble-symbols=_arithmetic_float_scalar_write",
+    "--no-show-raw-insn",
+    "<installed_dll>"
+  ],
+  "disassembler_path": "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+  "disassembly_sha256": "f0f1b225092151448cad26e80c00de7798af5679a2e43e338d39268ecb3daede",
+  "excerpt_sha256": "b00c667f5f549b2000f832a45885ccf4a6505b3e755a92aad557a45752e96462",
+  "observations": [
+    "The ordinary-block maximum emits umax.4s and umaxv.4s.",
+    "The representative addition loop widens float lanes, performs fadd.2d, narrows and stores, with no per-lane missing classifier in that loop.",
+    "The scalar remains binary64; this does not replace it with a rounded binary32 scalar."
+  ],
+  "limitations": [
+    "Static emitted-code evidence identifies mechanisms, not timing contributions.",
+    "The baseline scalar writer was inlined and has no same-named emitted symbol; no whole-function equivalence or size comparison is claimed."
+  ]
+}

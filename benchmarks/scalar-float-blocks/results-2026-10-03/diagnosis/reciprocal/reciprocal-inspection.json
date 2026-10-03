@@ -1,0 +1,31 @@
+{
+  "scope": "Read-only inspection of previously recorded clean f689 assembly; no new package build, emitted-code regeneration, runtime counters or timing. Identical current header bytes do not prove unchanged whole-call code layout or a performance attribution.",
+  "disassembly_sha256": "d10b1b4370deacb2132e80cb6ce0c266bd64166c8d40392621358455e9bcd0ec",
+  "prior_binding_sha256": "df4cc2a05ce79875d387b569401a00241855ef4cc8a6fdda4c6e1aa05e473c7f",
+  "current_headers": {
+    "src/numeric-arithmetic-general.h": "8f53ce8e99ef7c0b012270746de3415578685f7a1b8c9f982303e6248c77ffa4",
+    "src/numeric-arithmetic-float-scalar.h": "7370bb080c77b0a9a449d4b676b6c055869603d981e5888e67f5d9895fcf14dc",
+    "src/numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21"
+  },
+  "excerpts": {
+    "integer-loop": {
+      "start": "0xbced8",
+      "end": "0xbcff0",
+      "sha256": "6256a52a466896f7949dd469ad08dda55ba9f09d453717e2331b0146c10b83f8",
+      "lines": 71
+    },
+    "float-missing-loop": {
+      "start": "0xd9a5c",
+      "end": "0xd9b94",
+      "sha256": "fb40367f5a8330295f88f1b870c65087d5a99cdc1843b6abec8f6c73a507c887",
+      "lines": 79
+    },
+    "integer-preflight": {
+      "start": "0x80020",
+      "end": "0x80064",
+      "sha256": "c2c75b1f38ae99edd1640300fe4127e5fbf181ef79b7bd2939848dc3283563ba",
+      "lines": 18
+    }
+  },
+  "notes_sha256": "c8a441859dc31a09c329e0e69587f2bef84f190bf2b566e1f6f8999571aab4d4"
+}

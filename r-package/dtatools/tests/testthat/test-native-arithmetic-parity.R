@@ -608,3 +608,94 @@ test_that("float scalar fit intervals include exactly their binary32 boundary ne
         }
     }
 })
+
+test_that("scalar block proofs preserve ordinary tails and late whole-column promotion", {
+    .arithmetic_parity_enable()
+    n <- 32769L
+    cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
+        list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
+        list("+", 2e38), list("-", -2e38))
+    for (late in c(FALSE, TRUE)) {
+        values <- rep(c(1.5, -0, 0, 2^-149, -2^-149, -1.5), length.out = n)
+        values[seq_len(256L)] <- rep(c(NA_real_, tagged_missing(letters)), length.out = 256L)
+        if (late) values[[n]] <- (2^24 - 1) * 2^103
+        for (chunk in list(NULL, 63L, 16385L)) {
+            x <- .arithmetic_parity_source("float", values, chunk)
+            for (case in cases) {
+                op <- case[[1L]]; scalar <- case[[2L]]
+                info <- paste("scalar block", op, scalar, late, chunk)
+                for (reverse in c(FALSE, TRUE)) {
+                    actual <- if (reverse)
+                        .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
+                    else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
+                    missing <- is.na(as.double(actual))
+                    expect_identical(is.na(actual), missing, info = info)
+                    expect_identical(anyNA(actual), any(missing), info = info)
+                }
+                # Declared double output bypasses float-fit/narrowing checks.
+                operation <- getExportedValue("base", op)
+                reference <- operation(as.double(x), scalar)
+                reference[is.na(as.double(x))] <- NA_real_
+                expected <- dtatools:::.dta_computed(reference, "double")
+                actual <- operation(x, dta_double(scalar))
+                expect_identical(dta_storage_type(actual), "double", info = info)
+                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected), info = info)
+                expect_identical(is.na(actual), is.na(as.double(expected)), info = info)
+            }
+        }
+    }
+})
+
+test_that("scalar block proofs preserve imported exceptions after ordinary spans", {
+    .arithmetic_parity_enable()
+    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    legacy <- tempfile(fileext = ".dta")
+    withr::defer(unlink(c(modern, legacy)))
+    original <- readBin(fixture("synthetic_v111.dta"), "raw",
+        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
+    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
+        writeBin(-123456L, raw(), size = 4L, endian = "little"),
+        writeBin(1.5, raw(), size = 4L, endian = "little"),
+        writeBin(-2.25, raw(), size = 8L, endian = "little"))
+    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
+    expect_length(start, 1L)
+    bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff, 0x7f000000,
+        0x7f000001, 0x7f000800, 0x7f00d000, 0x7f7fffff, 0xff7fffff,
+        0x7f800000, 0xff800000, 0x7fc00000, 0xffc00000)
+    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
+    for (batch in split(bits, ceiling(seq_along(bits) / 3L))) {
+        batch <- c(0x3fc00000, batch) # Ordinary fractional prefix for promotion.
+        bytes <- original
+        for (index in seq_along(batch)) {
+            patch_numeric_fixture_row(modern, index - 1L,
+                list(x_float = raw_bits(batch[[index]])))
+            location <- start + (index - 1L) * 25L + 7L
+            bytes[location + 0:3] <- raw_bits(batch[[index]])
+        }
+        writeBin(bytes, legacy)
+        for (version in c("modern", "legacy")) {
+            path <- if (version == "modern") modern else legacy
+            column <- if (version == "modern") "x_float" else "f"
+            small <- read_dta(path, col_select = tidyselect::all_of(column), n_max = length(batch))[[column]]
+            rows <- c(rep(1L, 32769L), seq.int(2L, length(batch)))
+            gathered <- .Call(C_dtatools_gather_numeric, small, NULL, rows, NULL)
+            source <- dtatools:::.dta_merge_restore_gathered(gathered, small)
+            expect_identical(.arithmetic_parity_bytes(source),
+                writeBin(as.double(small)[rows], raw(), size = 8L, endian = "little"))
+            for (chunk in list(NULL, 8191L)) {
+                x <- if (is.null(chunk)) source else .Call(C_dtatools_owned_numeric_freeze, source, chunk)
+                for (case in list(list("+", 0.1), list("-", 1e38), list("*", 1.01), list("/", -3.25))) {
+                    op <- case[[1L]]; scalar <- case[[2L]]
+                    info <- paste("scalar imported block", version, op, scalar, chunk)
+                    for (reverse in c(FALSE, TRUE)) {
+                        actual <- if (reverse)
+                            .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
+                        else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
+                        expect_identical(is.na(actual), is.na(as.double(actual)), info = info)
+                        expect_identical(anyNA(actual), any(is.na(as.double(actual))), info = info)
+                    }
+                }
+            }
+        }
+    }
+})

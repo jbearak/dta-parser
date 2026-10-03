@@ -1,0 +1,20 @@
+{
+  "baseline-modern-add-fit": {
+    "low": "0x1958bc",
+    "high_exclusive": "0x195b5c",
+    "lines": 168,
+    "sha256": "958abd9372615c536e21e4bbc2661c11c513613be68782eed962a1a7107d79c6"
+  },
+  "candidate-modern-add-fit-exact": {
+    "low": "0x1a1114",
+    "high_exclusive": "0x1a11b8",
+    "lines": 41,
+    "sha256": "b6d6796e7d412a1dc2a05fd7ab404bad82e40b689d218ad73e622a6c9f852b27"
+  },
+  "candidate-modern-add-fit-ordinary": {
+    "low": "0x1a11b8",
+    "high_exclusive": "0x1a130c",
+    "lines": 85,
+    "sha256": "83ea0f46c98563f8c5e6fe09a2b41b71cf04bb16cfd343db0b104eeef3047e5c"
+  }
+}
