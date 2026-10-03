@@ -50,7 +50,7 @@ static void arithmetic_integer_reciprocal_write(
                 memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
                 unsigned observed = (OBSERVED) || source < missing_minimum; \
                 unsigned zero = source == 0;                              \
-                unsigned invalid = !observed | zero;                      \
+                unsigned invalid = (!observed) | zero;                    \
                 double denominator = invalid ? 1.0 : (double) source;     \
                 TARGET result = (TARGET) (scalar / denominator);          \
                 target[i] = invalid ? (TARGET) (MISSING) : result;        \
