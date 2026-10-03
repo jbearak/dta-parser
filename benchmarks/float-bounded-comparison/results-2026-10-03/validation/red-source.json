@@ -1,0 +1,17 @@
+{
+  "commit": "4838d73a075db54390c5ef8d8e091139cb302590",
+  "status": "",
+  "source_sha256": "598976b84646c56b09fc47ee7939ec47f2b10b2b54c683209d8e2fd6153e4b3d",
+  "command": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "r-package/dtatools/src/rust/Cargo.toml",
+    "--locked",
+    "a_dense_prefix_does_not_keep_the_ordinary_float_tail_on_the_exact_path",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/private/tmp/dta-float-bounded-fallback",
+  "CARGO_TARGET_DIR": "/private/tmp/dta-native-comparison-followup/target"
+}

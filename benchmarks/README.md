@@ -82,6 +82,12 @@ Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls belo
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
 
+The [bounded compact-float comparison follow-up](float-bounded-comparison/results-2026-10-03.md)
+limits how long a failed ordinary-block proof selects exact classification.
+A 256-row missing prefix on a million-row plain compact pair improves by
+3.17 to 3.24 times CPU. The 768-observation comparison includes retained spans,
+dense and ordinary controls, and the measured smaller regressions.
+
 The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
 prepares numeric order keys once instead of decoding and validating them during
 sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×

@@ -1,0 +1,9 @@
+   Compiling dtatools-r v0.11.2 (/private/tmp/dta-float-bounded-fallback/r-package/dtatools/src/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running unittests src/lib.rs (/private/tmp/dta-native-comparison-followup/target/debug/deps/dtatools_r-f44cf17692cf9335)
+
+running 1 test
+test float_compare::tests::a_dense_prefix_does_not_keep_the_ordinary_float_tail_on_the_exact_path ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 60 filtered out; finished in 0.03s
+

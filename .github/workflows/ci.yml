@@ -101,6 +101,12 @@ jobs:
           python3 benchmarks/native-operations/test-run.py
           python3 benchmarks/float-comparison/test-run.py
           python3 benchmarks/native-comparison/test-run.py
+          python3 benchmarks/float-bounded-comparison/test-run.py
+          python3 -O benchmarks/float-bounded-comparison/test-run.py
+          python3 benchmarks/decoded-double-comparison/density/test-run.py
+          python3 -O benchmarks/decoded-double-comparison/density/test-run.py
+          python3 benchmarks/decoded-double-comparison/patterns/test-run.py
+          python3 -O benchmarks/decoded-double-comparison/patterns/test-run.py
           python3 benchmarks/arrow-memory-pressure/test-run.py
           python3 benchmarks/prepared-grouping/test-run.py
           python3 benchmarks/r-corpus-roundtrip/test-verify-extra-cache.py
