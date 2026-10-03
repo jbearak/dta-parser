@@ -92,6 +92,45 @@ static void arithmetic_long_float_add_exact(
     }
 }
 
+/* This loader is selected only from a captured strict-domain descriptor.
+   Every stored value is finite; positive high values are exactly the27 tags. */
+#define LONG_FLOAT_CANONICAL_LOAD(NAME, MISSING)                            \
+    static inline arithmetic_pair_value arithmetic_pair_load_##NAME(       \
+        const unsigned char *raw, size_t index,                            \
+        const arithmetic_pair_policy *policy                              \
+    ) {                                                                    \
+        (void) policy;                                                     \
+        float value;                                                       \
+        memcpy(&value, raw + index * sizeof(value), sizeof(value));         \
+        return (arithmetic_pair_value) {                                  \
+            (double) value, (unsigned) (MISSING), 0,                        \
+            (unsigned) (value == 0), value                                 \
+        };                                                                 \
+    }
+LONG_FLOAT_CANONICAL_LOAD(canonical_float, value >= 0x1p127f)
+LONG_FLOAT_CANONICAL_LOAD(canonical_observed_float, 0)
+#undef LONG_FLOAT_CANONICAL_LOAD
+
+static void arithmetic_long_float_add_canonical(
+    const unsigned char *x_raw, const unsigned char *y_raw,
+    arithmetic_pair_policy x_policy, arithmetic_pair_policy y_policy,
+    size_t start, size_t count, int observed, arithmetic_general_output *output
+) {
+    if (x_policy.kind == NUMERIC_LONG) {
+        if (observed) {
+            ARITHMETIC_PAIR_LOOP(long, canonical_observed_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
+        } else {
+            ARITHMETIC_PAIR_LOOP(long, canonical_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
+        }
+    } else {
+        if (observed) {
+            ARITHMETIC_PAIR_LOOP(canonical_observed_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
+        } else {
+            ARITHMETIC_PAIR_LOOP(canonical_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
+        }
+    }
+}
+
 static int arithmetic_long_float_add_write(
     const arithmetic_general_source *left, const arithmetic_general_source *right,
     R_xlen_t length, arithmetic_general_output *output
@@ -107,6 +146,9 @@ static int arithmetic_long_float_add_write(
     const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
     const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
     const int reverse = x_policy.kind != NUMERIC_LONG;
+    const numeric_data *float_data = reverse ? left->operand->reader.storage : right->operand->reader.storage;
+    const int canonical = numeric_strict_modern_float(float_data);
+    const int observed = float_data->missing_count == 0;
     const int32_t missing_minimum = reverse ? y_policy.missing_minimum : x_policy.missing_minimum;
     for (size_t start = 0; start < (size_t) length;) {
         R_CheckUserInterrupt();
@@ -114,6 +156,10 @@ static int arithmetic_long_float_add_write(
         if (count > 16384) count = 16384;
         const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
         const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
+        if (canonical) {
+            arithmetic_long_float_add_canonical(x_raw, y_raw, x_policy, y_policy,
+                start, count, observed, output);
+        } else {
         unsigned failures = 0;
         for (size_t offset = 0; offset < count;) {
             size_t block = count - offset;
@@ -137,6 +183,7 @@ static int arithmetic_long_float_add_write(
                     x_policy, y_policy, start + offset, count - offset, output);
                 break;
             }
+        }
         }
         /* The exact fallback is bounded by this captured span. A dense prefix
            cannot suppress proofs in the rest of a whole contiguous column. */

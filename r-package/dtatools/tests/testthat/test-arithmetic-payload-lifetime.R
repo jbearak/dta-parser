@@ -408,3 +408,47 @@ test_that("long float all missing facts retain captured counts through reentry",
         }
     }
 })
+
+test_that("canonical float addition uses captured domain facts across reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    n <- 16385L
+    xv <- rep(c(1, NA_real_, 16777217), length.out = n)
+    yv <- rep(c(tagged_missing("z"), -2^-149, 0.125), length.out = n)
+    expected <- xv + yv
+    expected[is.na(xv) | is.na(yv)] <- NA_real_
+    expected_bytes <- writeBin(expected, raw(), size = 8L)
+    for (retained in c(FALSE, TRUE)) for (reverse in c(FALSE, TRUE)) {
+        for (action in c("patch", "materialize")) {
+            x <- dta_long(xv)
+            y <- dta_float(yv)
+            if (retained) {
+                x <- .Call(C_dtatools_owned_numeric_freeze, x, 8191L)
+                y <- .Call(C_dtatools_owned_numeric_freeze, y, 16385L)
+            }
+            expect_true(.Call(C_dtatools_numeric_domain_info, y))
+            fired <- 0L
+            .arithmetic_lifetime_arm(function(key) {
+                fired <<- fired + 1L
+                if (action == "patch") .Call(C_dtatools_patch_vector, y, n, 7)
+                else .force_altrep_materialization(y)
+            })
+            result <- if (reverse) y + x else x + y
+            expect_identical(fired, 1L)
+            expect_identical(writeBin(as.double(result), raw(), size = 8L), expected_bytes)
+            expect_false(.Call(C_dtatools_numeric_domain_info, y))
+            changed <- yv
+            if (action == "patch") changed[[n]] <- 7
+            expect_identical(writeBin(as.double(y), raw(), size = 8L),
+                writeBin(changed, raw(), size = 8L))
+            data <- dibble(value = result)
+            replace_values(data, value = 7, where = which(is.na(expected)))
+            cleared <- expected
+            cleared[is.na(cleared)] <- 7
+            expect_false(anyNA(data$value))
+            expect_identical(writeBin(as.double(data$value), raw(), size = 8L),
+                writeBin(cleared, raw(), size = 8L))
+            expect_identical(writeBin(as.double(result), raw(), size = 8L), expected_bytes)
+        }
+    }
+})

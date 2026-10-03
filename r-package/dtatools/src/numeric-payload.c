@@ -5017,6 +5017,9 @@ SEXP C_dtatools_construct_numeric(
         UNPROTECT(1);
         Rf_error("could not allocate compact Stata numeric storage");
     }
+    /* Both encoding passes validate the strict observed range and exact tags. */
+    if (kind == NUMERIC_FLOAT && temporal == 0)
+        ((numeric_data *) data)->domain_flags = NUMERIC_DOMAIN_STRICT_MODERN_FLOAT;
     SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     SEXP result = PROTECT(R_new_altrep(
