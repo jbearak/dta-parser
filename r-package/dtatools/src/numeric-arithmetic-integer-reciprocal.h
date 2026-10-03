@@ -32,7 +32,9 @@ static void arithmetic_integer_reciprocal_write(
     const int all_observed = data->missing_count == 0;
     /* The existing arithmetic_capture claim protects these bytes and their
        cached missing count through allocation, interrupts and publication.
-       Observed zero denominators are disjoint from inherited missing codes. */
+       Zero is observed in every admitted integer layout: all modern and
+       legacy reserved codes are positive. Zero denominators are therefore
+       disjoint from inherited missing codes, without another classification. */
     output->missing_count = data->missing_count;
     for (size_t start = 0; start < (size_t) length;) {
         R_CheckUserInterrupt();
@@ -52,7 +54,7 @@ static void arithmetic_integer_reciprocal_write(
                 double denominator = invalid ? 1.0 : (double) source;     \
                 TARGET result = (TARGET) (scalar / denominator);          \
                 target[i] = invalid ? (TARGET) (MISSING) : result;        \
-                zero_count += observed & zero;                            \
+                zero_count += zero;                                       \
             }                                                              \
         } while (0)
 #define INTEGER_RECIPROCAL_TARGET(SOURCE, OBSERVED)                         \

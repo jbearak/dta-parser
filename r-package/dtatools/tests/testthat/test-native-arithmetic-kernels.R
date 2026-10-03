@@ -731,5 +731,16 @@ test_that("integer reciprocal bounds preserve storage zero signs and missing cac
             .native_arithmetic_expect(1 / x, .native_arithmetic_reference("/", 1, x, kind))
             expect_identical(dta_storage_type(1 / x), if (kind == "long") "double" else "float")
         }
+        # This scalar fails the whole-domain float proof. Early quotients fit
+        # float, but the final denominator requires double. Recompute every
+        # original quotient instead of widening an earlier rounded result.
+        values <- rep(3, 16385L)
+        values[[length(values)]] <- 1
+        scalar <- 2^127 * (1 + 2^-30)
+        x <- constructor(values)
+        actual <- scalar / x
+        .native_arithmetic_expect(actual, .native_arithmetic_reference("/", scalar, x, kind))
+        expect_identical(dta_storage_type(actual), "double")
+        expect_identical(as.double(actual)[[1L]], scalar / 3)
     }
 })
