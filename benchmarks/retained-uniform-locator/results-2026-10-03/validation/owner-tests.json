@@ -1,0 +1,11 @@
+{
+  "binary_sha256": "bc62043568eee2c18c71241f0ae768859901d4727d89710a94a418c0ea5df15c",
+  "command": [
+    "<work>/rust-target/debug/deps/dtatools_r-080458e0095143b4",
+    "owned_numeric::tests",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "log_sha256": "d7ff437870debaea6aee3833618792b15eed339101485e6fef115959041ee147",
+  "source_commit": "1b1d3770a84353efd14a62a64dabecedfcdf2380"
+}

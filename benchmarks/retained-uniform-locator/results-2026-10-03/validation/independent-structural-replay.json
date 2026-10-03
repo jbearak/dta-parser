@@ -1,0 +1,22 @@
+{
+  "scope": "Independent read-only replay of all preserved artifact/instrumented-source hashes, original committed source hashes, current controller/compiler/C-receipt bindings, and18-to12 C/Rust geometry joins. No compilation, execution, timing or current-binary claim; compiled binary hashes remain historical receipts.",
+  "stages": [
+    {
+      "checks": 11367,
+      "commit": "e1b0278b1403b4d8fc2d9a2dfc0c4ddaa7cde3a2",
+      "compiler": "/opt/homebrew/Cellar/rust/1.98.1/bin/rustc",
+      "receipt_sha256": "b141a158630970fb471fd05540da962f23f5a956163661861bcee14a3c0e1775",
+      "stage": "baseline-red-final",
+      "work_failures": 10
+    },
+    {
+      "checks": 11367,
+      "commit": "1b1d3770a84353efd14a62a64dabecedfcdf2380",
+      "compiler": "/opt/homebrew/Cellar/rust/1.98.1/bin/rustc",
+      "receipt_sha256": "e9ea252383b9dd775a49a35a868537af14f935e9595cc66acc0d8e9933168e98",
+      "stage": "candidate-green-final",
+      "work_failures": 0
+    }
+  ],
+  "status": "PASS"
+}

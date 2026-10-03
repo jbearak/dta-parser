@@ -1,0 +1,140 @@
+
+<baseline-build>/library/dtatools/libs/dtatools.so:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+00000000005737b0 <_dtatools_owned_numeric_region>:
+  5737b0: aa0003e8     	mov	x8, x0
+  5737b4: 52800000     	mov	w0, #0x0                ; =0
+  5737b8: b4000168     	cbz	x8, 0x5737e4 <_dtatools_owned_numeric_region+0x34>
+  5737bc: b4000143     	cbz	x3, 0x5737e4 <_dtatools_owned_numeric_region+0x34>
+  5737c0: b4000124     	cbz	x4, 0x5737e4 <_dtatools_owned_numeric_region+0x34>
+  5737c4: f900007f     	str	xzr, [x3]
+  5737c8: f900009f     	str	xzr, [x4]
+  5737cc: f9401508     	ldr	x8, [x8, #0x28]
+  5737d0: b4000088     	cbz	x8, 0x5737e0 <_dtatools_owned_numeric_region+0x30>
+  5737d4: f9401109     	ldr	x9, [x8, #0x20]
+  5737d8: eb09003f     	cmp	x1, x9
+  5737dc: 54000069     	b.ls	0x5737e8 <_dtatools_owned_numeric_region+0x38>
+  5737e0: 52800000     	mov	w0, #0x0                ; =0
+  5737e4: d65f03c0     	ret
+  5737e8: 52800020     	mov	w0, #0x1                ; =1
+  5737ec: b4ffffc2     	cbz	x2, 0x5737e4 <_dtatools_owned_numeric_region+0x34>
+  5737f0: eb09003f     	cmp	x1, x9
+  5737f4: 54ffff80     	b.eq	0x5737e4 <_dtatools_owned_numeric_region+0x34>
+  5737f8: f940090a     	ldr	x10, [x8, #0x10]
+  5737fc: b4ffff2a     	cbz	x10, 0x5737e0 <_dtatools_owned_numeric_region+0x30>
+  573800: f9400509     	ldr	x9, [x8, #0x8]
+  573804: f100055f     	cmp	x10, #0x1
+  573808: 54000061     	b.ne	0x573814 <_dtatools_owned_numeric_region+0x64>
+  57380c: d280000b     	mov	x11, #0x0               ; =0
+  573810: 1400000c     	b	0x573840 <_dtatools_owned_numeric_region+0x90>
+  573814: d280000b     	mov	x11, #0x0               ; =0
+  573818: aa0a03ec     	mov	x12, x10
+  57381c: d341fd8d     	lsr	x13, x12, #1
+  573820: 8b0b01ae     	add	x14, x13, x11
+  573824: 8b0e152f     	add	x15, x9, x14, lsl #5
+  573828: f9400def     	ldr	x15, [x15, #0x18]
+  57382c: eb0101ff     	cmp	x15, x1
+  573830: 9a8e816b     	csel	x11, x11, x14, hi
+  573834: cb0d018c     	sub	x12, x12, x13
+  573838: f100059f     	cmp	x12, #0x1
+  57383c: 54ffff08     	b.hi	0x57381c <_dtatools_owned_numeric_region+0x6c>
+  573840: 8b0b152c     	add	x12, x9, x11, lsl #5
+  573844: f9400d8c     	ldr	x12, [x12, #0x18]
+  573848: eb01019f     	cmp	x12, x1
+  57384c: 9a8b856b     	cinc	x11, x11, ls
+  573850: eb0a017f     	cmp	x11, x10
+  573854: 54fffc62     	b.hs	0x5737e0 <_dtatools_owned_numeric_region+0x30>
+  573858: 8b0b1529     	add	x9, x9, x11, lsl #5
+  57385c: b400006b     	cbz	x11, 0x573868 <_dtatools_owned_numeric_region+0xb8>
+  573860: f85f812a     	ldur	x10, [x9, #-0x8]
+  573864: 14000002     	b	0x57386c <_dtatools_owned_numeric_region+0xbc>
+  573868: d280000a     	mov	x10, #0x0               ; =0
+  57386c: f940012b     	ldr	x11, [x9]
+  573870: f940052b     	ldr	x11, [x9, #0x8]
+  573874: cb0a002a     	sub	x10, x1, x10
+  573878: f9400d08     	ldr	x8, [x8, #0x18]
+  57387c: 9b0a2d08     	madd	x8, x8, x10, x11
+  573880: f9000068     	str	x8, [x3]
+  573884: f9400d28     	ldr	x8, [x9, #0x18]
+  573888: cb010108     	sub	x8, x8, x1
+  57388c: eb02011f     	cmp	x8, x2
+  573890: 9a823108     	csel	x8, x8, x2, lo
+  573894: f9000088     	str	x8, [x4]
+  573898: 52800020     	mov	w0, #0x1                ; =1
+  57389c: d65f03c0     	ret
+
+00000000005738a0 <_dtatools_owned_numeric_scalar_span>:
+  5738a0: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+  5738a4: 910003fd     	mov	x29, sp
+  5738a8: aa0003e8     	mov	x8, x0
+  5738ac: 52800000     	mov	w0, #0x0                ; =0
+  5738b0: b4000328     	cbz	x8, 0x573914 <_dtatools_owned_numeric_scalar_span+0x74>
+  5738b4: b4000302     	cbz	x2, 0x573914 <_dtatools_owned_numeric_scalar_span+0x74>
+  5738b8: b40002e3     	cbz	x3, 0x573914 <_dtatools_owned_numeric_scalar_span+0x74>
+  5738bc: b40002c4     	cbz	x4, 0x573914 <_dtatools_owned_numeric_scalar_span+0x74>
+  5738c0: f900005f     	str	xzr, [x2]
+  5738c4: f900007f     	str	xzr, [x3]
+  5738c8: f900009f     	str	xzr, [x4]
+  5738cc: f9401509     	ldr	x9, [x8, #0x28]
+  5738d0: b4000209     	cbz	x9, 0x573910 <_dtatools_owned_numeric_scalar_span+0x70>
+  5738d4: f9400508     	ldr	x8, [x8, #0x8]
+  5738d8: eb08003f     	cmp	x1, x8
+  5738dc: 540001a2     	b.hs	0x573910 <_dtatools_owned_numeric_scalar_span+0x70>
+  5738e0: f9401128     	ldr	x8, [x9, #0x20]
+  5738e4: eb08003f     	cmp	x1, x8
+  5738e8: 54000142     	b.hs	0x573910 <_dtatools_owned_numeric_scalar_span+0x70>
+  5738ec: a940a928     	ldp	x8, x10, [x9, #0x8]
+  5738f0: b40000aa     	cbz	x10, 0x573904 <_dtatools_owned_numeric_scalar_span+0x64>
+  5738f4: f100055f     	cmp	x10, #0x1
+  5738f8: 54000121     	b.ne	0x57391c <_dtatools_owned_numeric_scalar_span+0x7c>
+  5738fc: d280000b     	mov	x11, #0x0               ; =0
+  573900: 14000012     	b	0x573948 <_dtatools_owned_numeric_scalar_span+0xa8>
+  573904: aa0a03eb     	mov	x11, x10
+  573908: eb0a015f     	cmp	x10, x10
+  57390c: 540002a3     	b.lo	0x573960 <_dtatools_owned_numeric_scalar_span+0xc0>
+  573910: 52800000     	mov	w0, #0x0                ; =0
+  573914: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+  573918: d65f03c0     	ret
+  57391c: d280000b     	mov	x11, #0x0               ; =0
+  573920: aa0a03ec     	mov	x12, x10
+  573924: d341fd8d     	lsr	x13, x12, #1
+  573928: 8b0b01ae     	add	x14, x13, x11
+  57392c: 8b0e150f     	add	x15, x8, x14, lsl #5
+  573930: f9400def     	ldr	x15, [x15, #0x18]
+  573934: eb0101ff     	cmp	x15, x1
+  573938: 9a8e816b     	csel	x11, x11, x14, hi
+  57393c: cb0d018c     	sub	x12, x12, x13
+  573940: f100059f     	cmp	x12, #0x1
+  573944: 54ffff08     	b.hi	0x573924 <_dtatools_owned_numeric_scalar_span+0x84>
+  573948: 8b0b150c     	add	x12, x8, x11, lsl #5
+  57394c: f9400d8c     	ldr	x12, [x12, #0x18]
+  573950: eb01019f     	cmp	x12, x1
+  573954: 9a8b856b     	cinc	x11, x11, ls
+  573958: eb0a017f     	cmp	x11, x10
+  57395c: 54fffda2     	b.hs	0x573910 <_dtatools_owned_numeric_scalar_span+0x70>
+  573960: 8b0b1508     	add	x8, x8, x11, lsl #5
+  573964: f940010a     	ldr	x10, [x8]
+  573968: f940050a     	ldr	x10, [x8, #0x8]
+  57396c: f900004a     	str	x10, [x2]
+  573970: b400012b     	cbz	x11, 0x573994 <_dtatools_owned_numeric_scalar_span+0xf4>
+  573974: d1000560     	sub	x0, x11, #0x1
+  573978: f9400921     	ldr	x1, [x9, #0x10]
+  57397c: eb01001f     	cmp	x0, x1
+  573980: 54000162     	b.hs	0x5739ac <_dtatools_owned_numeric_scalar_span+0x10c>
+  573984: f9400529     	ldr	x9, [x9, #0x8]
+  573988: 8b001529     	add	x9, x9, x0, lsl #5
+  57398c: f9400d29     	ldr	x9, [x9, #0x18]
+  573990: 14000002     	b	0x573998 <_dtatools_owned_numeric_scalar_span+0xf8>
+  573994: d2800009     	mov	x9, #0x0                ; =0
+  573998: f9000069     	str	x9, [x3]
+  57399c: f9400d08     	ldr	x8, [x8, #0x18]
+  5739a0: f9000088     	str	x8, [x4]
+  5739a4: 52800020     	mov	w0, #0x1                ; =1
+  5739a8: 17ffffdb     	b	0x573914 <_dtatools_owned_numeric_scalar_span+0x74>
+  5739ac: 90001582     	adrp	x2, 0x823000 <_anon.fd2502b91b4d02d953d43f766c2ce557.17>
+  5739b0: 91166042     	add	x2, x2, #0x598
+  5739b4: 94055756     	bl	0x6c970c <__RNvNtCsedRpiqSkYaQ_4core9panicking18panic_bounds_check>
+  5739b8: d4200020     	brk	#0x1
+  5739bc: 9405579d     	bl	0x6c9830 <__RNvNtCsedRpiqSkYaQ_4core9panicking19panic_cannot_unwind>
