@@ -515,6 +515,7 @@ test_that("float scalar interval proofs retain zero signs and exact missing coun
         list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
         list("/", .Machine$double.xmin * .Machine$double.eps),
         list("/", .Machine$double.xmax), list("+", 1e39), list("-", -1e39),
+        list("+", 2e38), list("-", -2e38),
         list("*", 1e307), list("+", 1e307))
     for (values in list(observed, c(observed, missing), missing)) {
         for (chunk in list(NULL, 7L)) {
@@ -558,7 +559,7 @@ test_that("float scalar fit intervals include exactly their binary32 boundary ne
         nearby <- nearby[nearby >= 0 & nearby <= 0x7f7fffff]
         unique(c(nearby, nearby + 0x80000000))
     }
-    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -1e39, 1e39, 1e-30)) {
+    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -2e38, 2e38, -1e39, 1e39, 1e-30)) {
         for (op in c("+", "-", "*", "/")) {
             for (reverse in c(FALSE, TRUE)) {
                 estimates <- switch(op,
