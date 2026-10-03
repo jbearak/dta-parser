@@ -72,6 +72,24 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Rscript was not found on PATH'):
                 RUN.main()
 
+    def test_runtime_version_uses_the_exact_worker_launcher(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            launcher = root / 'worker-Rscript'
+            launcher.write_bytes(b'launcher')
+            runtime = root / 'R-home/bin/exec/R'
+            runtime.parent.mkdir(parents=True)
+            runtime.write_bytes(b'runtime')
+            with mock.patch.object(RUN.subprocess, 'check_output',
+                    side_effect=[str(root / 'R-home') + '\n', 'R worker version\n']) as query:
+                observed = RUN.worker_runtime(launcher)
+            self.assertEqual(observed['R_version'], 'R worker version')
+            self.assertEqual(observed['Rscript_launcher_sha256'], RUN.sha(launcher))
+            self.assertEqual(observed['R_runtime_sha256'], RUN.sha(runtime))
+            self.assertEqual(query.call_args_list, [
+                mock.call([str(launcher), '--vanilla', '-e', 'cat(R.home())'], text=True),
+                mock.call([str(launcher), '--vanilla', '-e', 'cat(R.version.string)'], text=True)])
+
 
     def execute(self, corruption=None):
         temporary = tempfile.TemporaryDirectory()
@@ -89,7 +107,9 @@ class EvidenceTests(unittest.TestCase):
             runtimes.append(rscript)
             changed = corruption == 'initial_runtime' or (corruption == 'runtime' and len(runtimes) > 1)
             return dict(Rscript_launcher_sha256='launcher',
-                        R_runtime_sha256='changed' if changed else 'runtime')
+                        R_runtime_sha256='changed' if changed else 'runtime',
+                        R_version='changed' if corruption == 'runtime_version' and len(runtimes) > 1
+                                  else 'R worker version')
 
         def inventory(build, variant):
             receipts.append(variant)
@@ -118,7 +138,8 @@ class EvidenceTests(unittest.TestCase):
              mock.patch.object(RUN.RECORDS, 'inventory', side_effect=inventory), \
              mock.patch.object(RUN.shutil, 'which', return_value=str(launcher)), \
              mock.patch.object(RUN, 'worker_runtime', side_effect=runtime), \
-             mock.patch.object(RUN.subprocess, 'check_output', return_value='R test\n'), \
+             mock.patch.object(RUN.subprocess, 'check_output',
+                               side_effect=AssertionError('Unbound version query')), \
              mock.patch.object(RUN.subprocess, 'run', side_effect=worker), \
              mock.patch.object(RUN.platform, 'platform', return_value='test platform'), \
              redirect_stdout(io.StringIO()):
@@ -134,7 +155,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(len(calls), 0 if corruption == 'initial_runtime' else 12)
 
     def test_controller_rejects_changed_build_result_and_unbalanced_rounds(self):
-        for corruption in (None, 'receipt', 'result', 'unbalanced', 'runtime', 'initial_runtime'):
+        for corruption in (None, 'receipt', 'result', 'unbalanced', 'runtime', 'runtime_version',
+                           'initial_runtime'):
             with self.subTest(corruption=corruption):
                 self.execute(corruption)
 
