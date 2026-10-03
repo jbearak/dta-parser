@@ -1,0 +1,20 @@
+  kind shared private_before rows redundant_compact_bytes compact_payload_bytes
+  byte  FALSE           TRUE 3000                       0                  3000
+  byte   TRUE          FALSE 3000                    3000                  3000
+   int  FALSE           TRUE 3000                       0                  6000
+   int   TRUE          FALSE 3000                    6000                  6000
+  long  FALSE           TRUE 3000                       0                 12000
+  long   TRUE          FALSE 3000                   12000                 12000
+ float  FALSE           TRUE 3000                       0                 12000
+ float   TRUE          FALSE 3000                   12000                 12000
+ expected_copy_bytes
+                   0
+                   0
+                   0
+                   0
+                   0
+                   0
+                   0
+                   0
+Error: all(result$redundant_compact_bytes == result$expected_copy_bytes) is not TRUE
+Execution halted

@@ -1,0 +1,15 @@
+{
+  "alias_independent": true,
+  "artifacts": {
+    "intervals.csv": "a4f4a252c9e623925fd7071dd7761178d6adf23a28aeb3c6ae30d3468df890c6",
+    "protocol.json": "ee264537a08499a7e9e785a1c67de3437cc924d16bbc3eb2c0991b39859fe0f6",
+    "raw.csv": "96e066ddfb597ede9fb01a0affce22f87cf7a93c5463227af876e833999ccecc",
+    "source.patch": "1c0e9de61ef83b0ca6f2eb87d779633eb613fc8de0d3100ec77e37c0166f5425",
+    "summary.csv": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
+  },
+  "exact_results": true,
+  "first_materialization_only": true,
+  "observations": 384,
+  "provenance_unchanged": true,
+  "rounds": 6
+}

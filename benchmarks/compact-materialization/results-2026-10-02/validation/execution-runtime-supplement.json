@@ -1,0 +1,18 @@
+{
+  "R_HOME_before_query": null,
+  "R_home": "/opt/homebrew/Cellar/r/4.6.1/lib/R",
+  "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+  "Rscript": "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+  "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "-e",
+    "cat(normalizePath(R.home(), mustWork=TRUE))"
+  ],
+  "completion_sha256": "68ffa804c5427cd7864450ecbb7082063d951f9c3cc888dfa9f194a976b0055b",
+  "matches_both_clean_build_runtimes": true,
+  "matches_timing_runtime": true,
+  "provenance_before_sha256": "ccfe5ca894f49efd148e04e2769845809db3c56aedbb0f0770e1fd3280e12be5",
+  "scope": "Post-run query of R.home() through the exact unchanged Rscript launcher used by all timing workers; confirms its execution runtime matches both clean build receipts and the timing runtime binding. No materialization timing collected."
+}
