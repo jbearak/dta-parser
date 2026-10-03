@@ -1,0 +1,13 @@
+{
+  "Rust_tests": 53,
+  "candidate_library_sha256": "d248efc1831ffb70701a3fbfc1d1ff063235294472d9c6cf9360c82314865994",
+  "conformance": "PASS; existing3warnings2notes; source-archive bytes bound separately",
+  "controller_commit": "dabcc400",
+  "controller_tests": "10 pass normally and with -O",
+  "focused_R_assertions": 3060,
+  "package_sources_frozen": true,
+  "runtime_commit": "6f95ab2c57b8239fe279d40007d745792243fac4",
+  "scope": "No performance claim yet. Required source-archive conformance covers full R suite; focused library tests cover comparison behavior. Retained scheduling also affects explicit thread requests, matching existing plain-float policy.",
+  "untimed_cases_each_build": 36,
+  "untimed_outputs_identical": true
+}

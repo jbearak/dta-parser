@@ -1,0 +1,326 @@
+{
+  "artifacts": {
+    "completion.json": "93f08a5fe807f4b0c1c33b5872ef468d252e11b49db9d2b2dc77253eab9ef588",
+    "protocol.json": "b5f825a2ac712211a0ab272009c788434997451ffa60ead7e1024eb4c37299d9",
+    "provenance-after.json": "0b35b4ab1ee5d448dae909556d4a7a65f99a6e40f1af0d4def92e6d06dcaeae8",
+    "provenance-before.json": "0b35b4ab1ee5d448dae909556d4a7a65f99a6e40f1af0d4def92e6d06dcaeae8",
+    "raw.csv": "9228d8ec3f51d4ce1465b31c0877682be84557d89d35a2c35599a4067fc30878",
+    "source.patch": "8f0faffad5952d2dff811dcd9bffd7ea6a681e52dff05c5a8c4cb52e45a6155c",
+    "summary.csv": "ddc7150121ef4d4fbea3afe1ad6bb4eaa2dd3155e20992170bab37516975913a"
+  },
+  "audit": "Independent read-only artifact recomputation; no R/build/timing jobs",
+  "baseline_candidate_tradeoff": [
+    {
+      "bare_cpu_ratio": 1.000915711496091,
+      "compact_cpu_speedup": 2.6722877526853126,
+      "compact_wall_ratio": 0.37614827880542306,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 0.9964833319593112,
+      "typed_double_wall_ratio": 1.0035150362990413
+    },
+    {
+      "bare_cpu_ratio": 1.00414666759416,
+      "compact_cpu_speedup": 0.9881391914335016,
+      "compact_wall_ratio": 1.0130677426338903,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 0.9965057661119697,
+      "typed_double_wall_ratio": 1.0018795192147416
+    },
+    {
+      "bare_cpu_ratio": 1.0007767173102045,
+      "compact_cpu_speedup": 2.5913100346939504,
+      "compact_wall_ratio": 0.38477797093659527,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "0",
+      "typed_double_cpu_speedup": 0.9912472502959946,
+      "typed_double_wall_ratio": 1.0077529500284257
+    },
+    {
+      "bare_cpu_ratio": 1.0008991322784595,
+      "compact_cpu_speedup": 2.269477783991362,
+      "compact_wall_ratio": 0.43831964083942193,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 0.9945384889522402,
+      "typed_double_wall_ratio": 1.0049504950495052
+    },
+    {
+      "bare_cpu_ratio": 1.0050296600859987,
+      "compact_cpu_speedup": 0.9971158438677848,
+      "compact_wall_ratio": 1.0038001753209056,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "0",
+      "typed_double_cpu_speedup": 0.9950331125827799,
+      "typed_double_wall_ratio": 1.0066555740432563
+    },
+    {
+      "bare_cpu_ratio": 1.0000000000000067,
+      "compact_cpu_speedup": 2.275170000491842,
+      "compact_wall_ratio": 0.43859110140943774,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "0",
+      "typed_double_cpu_speedup": 1.001980361390303,
+      "typed_double_wall_ratio": 0.994265547498995
+    },
+    {
+      "bare_cpu_ratio": 0.9993920762711128,
+      "compact_cpu_speedup": 2.399664024212973,
+      "compact_wall_ratio": 0.41652602117112475,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 0.992316372038042,
+      "typed_double_wall_ratio": 1.0081238913160844
+    },
+    {
+      "bare_cpu_ratio": 1.0066997206917114,
+      "compact_cpu_speedup": 1.001320968899625,
+      "compact_wall_ratio": 0.9985288665562728,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 0.9932443536287467,
+      "typed_double_wall_ratio": 1.0052012528737504
+    },
+    {
+      "bare_cpu_ratio": 0.9983388704318937,
+      "compact_cpu_speedup": 2.4974616729328947,
+      "compact_wall_ratio": 0.40192917012094914,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "1",
+      "typed_double_cpu_speedup": 1.011733803879052,
+      "typed_double_wall_ratio": 0.9871034856693369
+    },
+    {
+      "bare_cpu_ratio": 1.0320238786834675,
+      "compact_cpu_speedup": 2.2219612639423323,
+      "compact_wall_ratio": 0.45005842465501045,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 0.9920173194579748,
+      "typed_double_wall_ratio": 1.011412682504188
+    },
+    {
+      "bare_cpu_ratio": 1.004049573254635,
+      "compact_cpu_speedup": 1.0253905949612905,
+      "compact_wall_ratio": 0.9737363217292295,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "1",
+      "typed_double_cpu_speedup": 1.0222828629346654,
+      "typed_double_wall_ratio": 0.9777238823044923
+    },
+    {
+      "bare_cpu_ratio": 1.0034997575586941,
+      "compact_cpu_speedup": 2.1679599070712308,
+      "compact_wall_ratio": 0.4619116032100356,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "1",
+      "typed_double_cpu_speedup": 1.0163509057314384,
+      "typed_double_wall_ratio": 0.9840191387559791
+    }
+  ],
+  "candidate_max_compact_typed_cpu": 1.1082835399121742,
+  "candidate_max_missing_free_compact_bare_cpu": 0.4135628754871619,
+  "candidate_thread_tradeoff": [
+    {
+      "auto_compact_typed_cpu": 0.4626888383515937,
+      "auto_cpu_ms": 0.1690698515190128,
+      "auto_wall_ms": 0.16966432356143654,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "serial_cpu_ms": 0.1958217669090108,
+      "serial_wall_ms": 0.1958217669090108
+    },
+    {
+      "auto_compact_typed_cpu": 1.0989879441164212,
+      "auto_cpu_ms": 0.28010377391053587,
+      "auto_wall_ms": 0.2803984262950823,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "serial_cpu_ms": 0.29324925206580493,
+      "serial_wall_ms": 0.29320464654797607
+    },
+    {
+      "auto_compact_typed_cpu": 0.4763615735521987,
+      "auto_cpu_ms": 0.17377200738529017,
+      "auto_wall_ms": 0.17355680681997607,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "serial_cpu_ms": 0.18234522876055362,
+      "serial_wall_ms": 0.18266780940571492
+    },
+    {
+      "auto_compact_typed_cpu": 0.48677378469222793,
+      "auto_cpu_ms": 0.1979546724415067,
+      "auto_wall_ms": 0.19757094258732152,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "serial_cpu_ms": 0.2043551912568306,
+      "serial_wall_ms": 0.20402185792349758
+    },
+    {
+      "auto_compact_typed_cpu": 0.9801385596637442,
+      "auto_cpu_ms": 0.27767527675276893,
+      "auto_wall_ms": 0.2776752767527694,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "serial_cpu_ms": 0.28428774026546233,
+      "serial_wall_ms": 0.28428774026546233
+    },
+    {
+      "auto_compact_typed_cpu": 0.48363651785916245,
+      "auto_cpu_ms": 0.19791802212101417,
+      "auto_wall_ms": 0.1973659956342463,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "serial_cpu_ms": 0.20860109289617487,
+      "serial_wall_ms": 0.2086931836650667
+    }
+  ],
+  "caveats": [
+    "Native qualification proves eligibility, not a per-timed-call entry counter.",
+    "Missing-bearing ordinary R has different NA propagation semantics.",
+    "Retained constructor adapter uses one fixed mismatched chunk geometry; no reader/decompression workload."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete case matrix and all six permutations",
+    "every CPU/wall median and ratio",
+    "full result/source/metadata hashes and unchanged state",
+    "separate native eligibility",
+    "same-contract representation agreement",
+    "before/after full binding and exact Rscript execution/build runtime equality",
+    "current controller hashes, source patch and completion ratio bindings",
+    "named prior direct-float and maximum-block clean receipts match recorded before/after evidence"
+  ],
+  "cpu_interval_range": [
+    0.232,
+    0.334
+  ],
+  "observations": 432,
+  "paired_speedups": [
+    {
+      "maximum": 2.833367644535919,
+      "median": 2.5913227677784967,
+      "minimum": 2.57258469556977,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "0"
+    },
+    {
+      "maximum": 2.889586550008589,
+      "median": 2.6600527117215034,
+      "minimum": 2.4987832576249267,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "0"
+    },
+    {
+      "maximum": 1.0002703164566795,
+      "median": 0.9906728552664451,
+      "minimum": 0.9493670886075949,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "0"
+    },
+    {
+      "maximum": 2.332136658898192,
+      "median": 2.2759469976848443,
+      "minimum": 2.1619566743087004,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "0"
+    },
+    {
+      "maximum": 2.3067742097592916,
+      "median": 2.2807254829693284,
+      "minimum": 2.139931258533836,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "0"
+    },
+    {
+      "maximum": 1.0132890365448504,
+      "median": 0.9958109865254736,
+      "minimum": 0.9446966035155588,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "0"
+    },
+    {
+      "maximum": 2.6656716417910444,
+      "median": 2.548515331862002,
+      "minimum": 2.432903458538117,
+      "missing": "FALSE",
+      "operation": "pair_equal",
+      "threads": "1"
+    },
+    {
+      "maximum": 2.697011790215477,
+      "median": 2.379800607965163,
+      "minimum": 2.325823326596124,
+      "missing": "FALSE",
+      "operation": "pair_less",
+      "threads": "1"
+    },
+    {
+      "maximum": 1.0198339316146343,
+      "median": 1.0007213311186465,
+      "minimum": 0.9936908517350158,
+      "missing": "FALSE",
+      "operation": "scalar_less",
+      "threads": "1"
+    },
+    {
+      "maximum": 2.306569160884533,
+      "median": 2.210667541836675,
+      "minimum": 2.16037646164084,
+      "missing": "TRUE",
+      "operation": "pair_equal",
+      "threads": "1"
+    },
+    {
+      "maximum": 2.3064676616915425,
+      "median": 2.2741028973421518,
+      "minimum": 2.1501922468430283,
+      "missing": "TRUE",
+      "operation": "pair_less",
+      "threads": "1"
+    },
+    {
+      "maximum": 1.0795880669981315,
+      "median": 1.0025541627850385,
+      "minimum": 0.9555555555555556,
+      "missing": "TRUE",
+      "operation": "scalar_less",
+      "threads": "1"
+    }
+  ],
+  "summary_rows": 12,
+  "verified_named_builds": {
+    "baseline": {
+      "base_commit": "e36e50c23dfbb39eabc94cf4252ec29f3db3d5eb",
+      "path": "<private-evidence>/float-direct-prototype"
+    },
+    "candidate": {
+      "base_commit": "deaa84e794a587cdc507cb9456f25b42dd03eb6c",
+      "path": "<private-evidence>/float-block-max-prototype"
+    }
+  },
+  "wall_interval_range": [
+    0.231999999999999,
+    0.333
+  ]
+}

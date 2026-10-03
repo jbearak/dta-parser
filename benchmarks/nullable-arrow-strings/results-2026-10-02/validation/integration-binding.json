@@ -1,0 +1,16 @@
+{
+  "combined_build_commit": "e5091034b8b69a69ad439d96f43cd5a2a0078232",
+  "focused": {
+    "assertions": 10509,
+    "blocks": 206,
+    "warnings": 1
+  },
+  "incorporated_main": "6e00be97b19dec5a7b488d1b05bbe11a4d2042d5",
+  "measured_commit": "20a0daa1c492258017b970b551b78cce46db5637",
+  "scope": "Timings, full installed suite and required conformance use measured 20a0daa1. The clean e5091034 build includes merged comparison and grouping changes and passed focused Arrow/ownership/comparison/grouping checks. The three nullable runtime files are identical.",
+  "unchanged_nullable_implementation": {
+    "r-package/dtatools/src/dtatools-internal.h": "33c6503e7a57cbc09e35fadfab066b7d0bdc82441da1eb9f04df956c8e073b48",
+    "r-package/dtatools/src/r-bridge.c": "b5dc6c56d4763feee062f257938776d41ade83f85e54cd0a707d2c7908f7a80c",
+    "r-package/dtatools/src/rust/src/arrow_ffi.rs": "d96b81996d8ac5187feefecdd3c1052d5e87e44551aaa7059b48733cf170a0a9"
+  }
+}

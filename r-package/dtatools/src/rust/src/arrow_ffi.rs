@@ -2875,38 +2875,103 @@ fn fill_dict_strings(
     Ok(data)
 }
 
-/// Eager string materialization for columns holding `NA_character_`. Main
-/// thread only: it creates CHARSXPs, so it may poll interrupts.
+/// Borrowed views of immutable, already validated Arrow string arrays. Nothing
+/// here owns storage; the input column must outlive the caught C fill call.
+#[repr(C)]
+struct RArrowStringChunk {
+    values: *const u8,
+    offsets: *const c_void,
+    validity: *const u8,
+    length: usize,
+    validity_offset: usize,
+    offset_width: c_int,
+}
+
+extern "C" {
+    fn dtatools_fill_arrow_strings(
+        vector: Sexp,
+        chunks: *const RArrowStringChunk,
+        chunk_count: usize,
+    ) -> c_int;
+}
+
+fn string_chunk_views(
+    column: &ArrowReadColumn,
+    row_count: usize,
+) -> Result<Vec<RArrowStringChunk>, String> {
+    if !matches!(column.data_type, DataType::Utf8 | DataType::LargeUtf8) {
+        return Err(chunk_error(&column.name));
+    }
+    let mut chunks = Vec::new();
+    chunks
+        .try_reserve_exact(column.chunks.len())
+        .map_err(|_| "could not track Arrow string chunks".to_owned())?;
+    let mut rows = 0_usize;
+    for chunk in &column.chunks {
+        rows = rows
+            .checked_add(chunk.len())
+            .filter(|&rows| rows <= row_count)
+            .ok_or_else(|| "Arrow string chunks have an inconsistent row count".to_owned())?;
+        let (values, offsets, offset_width) = match column.data_type {
+            DataType::Utf8 => {
+                let array = chunk
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or_else(|| chunk_error(&column.name))?;
+                (
+                    array.value_data().as_ptr(),
+                    array.value_offsets().as_ptr().cast(),
+                    4,
+                )
+            }
+            DataType::LargeUtf8 => {
+                let array = chunk
+                    .as_any()
+                    .downcast_ref::<arrow_array::LargeStringArray>()
+                    .ok_or_else(|| chunk_error(&column.name))?;
+                (
+                    array.value_data().as_ptr(),
+                    array.value_offsets().as_ptr().cast(),
+                    8,
+                )
+            }
+            _ => return Err(chunk_error(&column.name)),
+        };
+        let (validity, validity_offset) = match chunk.nulls() {
+            Some(nulls) if nulls.null_count() != 0 => (nulls.validity().as_ptr(), nulls.offset()),
+            _ => (ptr::null(), 0),
+        };
+        chunks.push(RArrowStringChunk {
+            values,
+            offsets,
+            validity,
+            length: chunk.len(),
+            validity_offset,
+            offset_width,
+        });
+    }
+    if rows != row_count {
+        return Err("Arrow string chunks have an inconsistent row count".to_owned());
+    }
+    Ok(chunks)
+}
+
+/// Eager string materialization for columns holding `NA_character_`. One caught
+/// C loop keeps every allocating R frame off the Rust stack, rather than
+/// establishing a new R_ToplevelExec boundary for every non-null value.
 unsafe fn character_vector(
     column: &ArrowReadColumn,
     row_count: usize,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
+    let chunks = string_chunk_views(column, row_count)?;
     let vector = guard.alloc(STRSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    match column.data_type {
-        DataType::Utf8 => for_each_value::<StringArray>(column, |row, values, index| {
-            poll_interrupt(row)?;
-            if values.is_null(index) {
-                SET_STRING_ELT(vector, row as RLen, R_NaString);
-            } else {
-                SET_STRING_ELT(vector, row as RLen, r_char(values.value(index))?);
-            }
-            Ok(())
-        })?,
-        DataType::LargeUtf8 => {
-            for_each_value::<arrow_array::LargeStringArray>(column, |row, values, index| {
-                poll_interrupt(row)?;
-                if values.is_null(index) {
-                    SET_STRING_ELT(vector, row as RLen, R_NaString);
-                } else {
-                    SET_STRING_ELT(vector, row as RLen, r_char(values.value(index))?);
-                }
-                Ok(())
-            })?
-        }
-        _ => return Err(chunk_error(&column.name)),
+    match dtatools_fill_arrow_strings(vector, chunks.as_ptr(), chunks.len()) {
+        1 => Ok(vector),
+        2 => Err("Arrow read interrupted".to_owned()),
+        3 => Err("R string is too long".to_owned()),
+        _ => Err("R could not allocate a character value".to_owned()),
     }
-    Ok(vector)
 }
 
 fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<Option<String>>, String> {
@@ -3909,6 +3974,146 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn string_column(data_type: DataType, chunks: Vec<ArrayRef>) -> ArrowReadColumn {
+        ArrowReadColumn {
+            name: "text".to_owned(),
+            data_type,
+            nullable: true,
+            dictionary_ordered: false,
+            field: None,
+            chunks,
+        }
+    }
+
+    // Decode only the exported C view, so slice offsets and validity offsets
+    // cannot accidentally be hidden by the Arrow value accessor in the test.
+    unsafe fn view_strings(view: &RArrowStringChunk) -> Vec<Option<String>> {
+        (0..view.length)
+            .map(|index| {
+                let bit = view.validity_offset + index;
+                if !view.validity.is_null()
+                    && (*view.validity.add(bit >> 3) & (1 << (bit & 7))) == 0
+                {
+                    return None;
+                }
+                let (start, end) = match view.offset_width {
+                    4 => {
+                        let offsets = view.offsets.cast::<i32>();
+                        (
+                            *offsets.add(index) as usize,
+                            *offsets.add(index + 1) as usize,
+                        )
+                    }
+                    8 => {
+                        let offsets = view.offsets.cast::<i64>();
+                        (
+                            *offsets.add(index) as usize,
+                            *offsets.add(index + 1) as usize,
+                        )
+                    }
+                    _ => panic!("invalid offset width"),
+                };
+                Some(
+                    String::from_utf8(
+                        std::slice::from_raw_parts(view.values.add(start), end - start).to_vec(),
+                    )
+                    .unwrap(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn arrow_string_views_match_c_layout() {
+        if std::mem::size_of::<usize>() == 8 {
+            assert_eq!(std::mem::size_of::<RArrowStringChunk>(), 48);
+            assert_eq!(std::mem::offset_of!(RArrowStringChunk, length), 24);
+            assert_eq!(std::mem::offset_of!(RArrowStringChunk, offset_width), 40);
+        }
+    }
+
+    #[test]
+    fn arrow_string_views_preserve_sliced_offsets_validity_and_empty_chunks() {
+        let values = vec![
+            Some("prefix"),
+            None,
+            Some("skipped"),
+            Some("東京"),
+            None,
+            Some(""),
+            Some("café"),
+            None,
+            Some("later"),
+            None,
+            Some("end"),
+        ];
+        for large in [false, true] {
+            let source: ArrayRef = if large {
+                Arc::new(arrow_array::LargeStringArray::from(values.clone()))
+            } else {
+                Arc::new(StringArray::from(values.clone()))
+            };
+            let column = string_column(
+                if large {
+                    DataType::LargeUtf8
+                } else {
+                    DataType::Utf8
+                },
+                vec![source.slice(3, 5), source.slice(0, 0), source.slice(9, 2)],
+            );
+            let views = string_chunk_views(&column, 7).unwrap();
+            assert_eq!(views.len(), 3);
+            assert_eq!(views[0].validity_offset, 3);
+            assert_eq!(views[2].validity_offset, 9);
+            assert_eq!(views[0].offset_width, if large { 8 } else { 4 });
+            let actual: Vec<_> = views
+                .iter()
+                .flat_map(|view| unsafe { view_strings(view) })
+                .collect();
+            let expected: Vec<_> = [
+                Some("東京"),
+                None,
+                Some(""),
+                Some("café"),
+                None,
+                None,
+                Some("end"),
+            ]
+            .into_iter()
+            .map(|value| value.map(str::to_owned))
+            .collect();
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn arrow_string_views_handle_all_valid_all_null_and_bad_geometry() {
+        let column = string_column(
+            DataType::Utf8,
+            vec![
+                Arc::new(StringArray::from(vec![Some(""), Some("one")])),
+                Arc::new(StringArray::from(vec![None::<&str>, None])),
+            ],
+        );
+        let views = string_chunk_views(&column, 4).unwrap();
+        assert!(views[0].validity.is_null());
+        assert!(!views[1].validity.is_null());
+        assert_eq!(unsafe { view_strings(&views[1]) }, vec![None, None]);
+        assert!(string_chunk_views(&column, 3).is_err());
+        assert!(string_chunk_views(&column, 5).is_err());
+        assert!(string_chunk_views(&string_column(DataType::Int32, vec![]), 0).is_err());
+        assert!(string_chunk_views(
+            &string_column(DataType::Utf8, vec![Arc::new(Int32Array::from(vec![1])),]),
+            1
+        )
+        .is_err());
+        assert!(
+            string_chunk_views(&string_column(DataType::LargeUtf8, vec![]), 0)
+                .unwrap()
+                .is_empty()
+        );
+    }
 
     // The pure fill dispatcher references R's missing-value constants. Supply
     // their fixed values for Rust tests, which do not initialize the R runtime.

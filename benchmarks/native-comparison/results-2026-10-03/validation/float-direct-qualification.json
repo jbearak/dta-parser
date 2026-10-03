@@ -1,0 +1,19 @@
+{
+  "runtime_commit": "e36e50c2",
+  "Rust_tests": 54,
+  "focused_R_assertions": 3060,
+  "untimed_cases": 36,
+  "independent_review": "execution_architecture; no findings",
+  "hypothesis": "Use native IEEE comparisons for observed f32 pairs and rank correction only for missing codes, avoiding ordered-key normalization. No new cached fact or ownership assumptions.",
+  "comparison_reference": "candidate-v1/source @6f95ab2c",
+  "measurements": "pending; no speed claim",
+  "artifact_sha256": {
+    "float-direct-build.log": "5b5fbac29dedc45ad9349eac22b22da3ea054c3647ec133b1db7238318cc3618",
+    "float-direct-rust.log": "73a3f48d5e9e177b208f9603c63cdf1c32cb511cfed4b89459c02281b6242a0a",
+    "float-direct-focused.log": "043d521f9d9d2775d448c839f4dd667fe2c13add2142c1cce8f7ce175d1e041a",
+    "float-direct-focused.csv": "ce86019f0d982c94eccb139b02d638772f3645feefc30415135ea9de42d3506f",
+    "float-direct-qualification.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
+    "float-direct-qualification.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee",
+    "float-direct-prototype/build-receipt.json": "03e1aaa82fb5f411710402bc9bba9d4c3e2528623a989939b3c2877e66297a93"
+  }
+}

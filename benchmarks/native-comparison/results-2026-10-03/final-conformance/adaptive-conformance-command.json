@@ -1,0 +1,6 @@
+{
+  "source_commit": "e265f737",
+  "gate_original_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "gate_retention_sha256": "404f6d31539231612fbb9ae3a95e03cdaaed80ede067b9c760c9ec8d9c95212c",
+  "only_gate_change": "Retain the complete temporary check directory at process exit before normal cleanup. Build, validation, check and test commands are unchanged."
+}
