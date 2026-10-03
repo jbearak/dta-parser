@@ -258,3 +258,33 @@ test_that("owned arithmetic read claims survive nesting and release on unwind", 
     expect_identical(as.double(y)[[1L]], 1000)
     expect_identical(as.double(alias), rep(1, 128L))
 })
+
+test_that("integer reciprocal inherits the captured missing count during reentrant writes", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    for (kind in c("byte", "int", "long")) {
+        for (replacement in list(0, 2, NA_real_)) {
+            values <- rep(c(NA_real_, 0, 1, -1, 3, tagged_missing("z")), length.out = 128L)
+            x <- get(paste0("dta_", kind))(values)
+            quotients <- 1.01 / values
+            quotients[is.na(values)] <- NA_real_
+            expected <- dtatools:::.dta_computed(quotients, kind)
+            fired <- 0L
+            .arithmetic_lifetime_arm(function(key) {
+                fired <<- fired + 1L
+                .Call(C_dtatools_patch_vector, x, 1L, replacement)
+            })
+            actual <- 1.01 / x
+            expect_identical(fired, 1L)
+            expect_identical(as.double(x)[[1L]], replacement)
+            expect_identical(dta_storage_type(actual), dta_storage_type(expected))
+            expect_identical(writeBin(as.double(actual), raw(), size = 8L),
+                             writeBin(as.double(expected), raw(), size = 8L))
+            missing <- is.na(as.double(expected))
+            expect_identical(is.na(actual), missing)
+            result <- dibble(x = actual)
+            replace_values(result, x = 0, where = which(missing))
+            expect_false(anyNA(result$x))
+        }
+    }
+})

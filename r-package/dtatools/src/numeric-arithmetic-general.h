@@ -389,6 +389,7 @@ static void arithmetic_general_integer_scalar_write(
     output->missing_count = data->missing_count;
 }
 
+#include "numeric-arithmetic-integer-reciprocal.h"
 #include "numeric-arithmetic-float-scalar.h"
 #include "numeric-arithmetic-pair.h"
 #include "numeric-arithmetic-pair-float.h"
@@ -400,6 +401,10 @@ static int arithmetic_general_produce(
     const arithmetic_general_source *column;
     double scalar;
     int reverse;
+    if (arithmetic_integer_reciprocal_proved(left, right, length, operation, output->kind)) {
+        arithmetic_integer_reciprocal_write(right, left->scalar, length, output);
+        return output->kind;
+    }
     if (arithmetic_general_integer_scalar_proved(
             left, right, length, operation, output->kind, &column, &scalar, &reverse)) {
         arithmetic_general_integer_scalar_write(
