@@ -86,8 +86,8 @@ def main():
         '            general_rows[phase]++;                              \\\n            double xv = arithmetic_general_load_##X')
     general = replace_once(general, '        return (double) value >= source->policy.minimum',
         '        integer_loads[phase]++;                                    \\\n        return (double) value >= source->policy.minimum')
-    general = replace_once(general, '                if ((MODE) == NUMERIC_FLOAT) {',
-        '                if ((MODE) == NUMERIC_FLOAT) {                   \\\n                    fit_rows++;')
+    general = replace_once(general, '                if ((int) (MODE) == NUMERIC_FLOAT) {',
+        '                if ((int) (MODE) == NUMERIC_FLOAT) {                   \\\n                    fit_rows++;')
     general_path.write_text(general)
     executable = args.output / 'work-count'
     compiler = Path(shutil.which('cc')).resolve()
@@ -99,6 +99,8 @@ def main():
         text=True, capture_output=True)
     (args.output / 'work-count.csv').write_text(run.stdout)
     (args.output / 'work-count.log').write_text(run.stderr)
+    print(run.stdout, end='')
+    print(run.stderr, end='')
     validate_case_matrix(run.stdout)
     patch = subprocess.check_output(['git', 'diff', 'HEAD', '--binary', '--', 'r-package/dtatools/src'], cwd=ROOT)
     (args.output / 'source.patch').write_bytes(patch)
@@ -114,8 +116,6 @@ def main():
             for p in args.output.iterdir() if p.is_file() and p.name != 'receipt.json'},
         'scope': 'Actual general result/preflight/producer headers; allocation, R reader and retained-span boundaries mocked. No timing or ownership proof.'}
     (args.output / 'receipt.json').write_text(json.dumps(record, indent=2) + '\n')
-    print(run.stdout, end='')
-    print(run.stderr, end='')
     raise SystemExit(run.returncode)
 
 if __name__ == '__main__':
