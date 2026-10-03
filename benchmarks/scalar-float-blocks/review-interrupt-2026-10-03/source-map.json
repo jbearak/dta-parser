@@ -1,0 +1,37 @@
+{
+  "bind-and-publish.py": {
+    "original_sha256": "3dec274b8c1ab10176b554f8ba9a80f25ba9c035161369d18b7f41f94e307b5c",
+    "published_sha256": "c71f95efabbbf517e32e3578fb0b42e45d9f88b961e6aff6b31c8591536dccb8",
+    "source": "<nullable-interrupt-evidence>/bind-and-publish.py"
+  },
+  "binding.json": {
+    "original_sha256": "b4739c268c217273511afb8fb76ae21bcf970e876b27529cf26b28f2b73b8322",
+    "published_sha256": "b4739c268c217273511afb8fb76ae21bcf970e876b27529cf26b28f2b73b8322",
+    "source": "<nullable-interrupt-evidence>/binding.json"
+  },
+  "failed-ci-console.log": {
+    "original_sha256": "98a8af9fb2943aad9e1c03e74b4ccc4cf649c5fb256e0b95560fad7e46d28514",
+    "published_sha256": "98a8af9fb2943aad9e1c03e74b4ccc4cf649c5fb256e0b95560fad7e46d28514",
+    "source": "<scalar-block-evidence>/pr-298-macos-native-artifact/native-check/evidence/native/console.log"
+  },
+  "focused.R": {
+    "original_sha256": "1fc5bfa8c6d71838c94c8a0d5ba7b37f29d322b69a7a7c66296da7e4da3a7e1f",
+    "published_sha256": "1fc5bfa8c6d71838c94c8a0d5ba7b37f29d322b69a7a7c66296da7e4da3a7e1f",
+    "source": "<nullable-interrupt-evidence>/focused.R"
+  },
+  "focused.csv": {
+    "original_sha256": "8c2a0b9e34d1e6dd335141f979276993e06edab79e062b4476cdb7df018aa1a7",
+    "published_sha256": "8c2a0b9e34d1e6dd335141f979276993e06edab79e062b4476cdb7df018aa1a7",
+    "source": "<nullable-interrupt-evidence>/focused.csv"
+  },
+  "focused.log": {
+    "original_sha256": "5f167cfba02fdd6d158a49cf7017301e758dbb3214ab00172e6d5343f62560be",
+    "published_sha256": "5f167cfba02fdd6d158a49cf7017301e758dbb3214ab00172e6d5343f62560be",
+    "source": "<nullable-interrupt-evidence>/focused.log"
+  },
+  "manifest-guards.log": {
+    "original_sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "published_sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "source": "<nullable-interrupt-evidence>/manifest-guards.log"
+  }
+}
