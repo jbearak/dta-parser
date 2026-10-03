@@ -1,0 +1,17 @@
+{
+  "checked_at_utc": "2026-10-03T00:15:07.256941+00:00",
+  "controller_delta": "review-controller.patch",
+  "controller_sha256": "3718a3a91e251198a6eedef275b8ad30f96e037c9f8216db5cccc555fab0b2bc",
+  "controller_tests": "10 pass normally and with -O",
+  "execution": {
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "Rscript_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "measured_controller_commit": "f703badb",
+  "missing_Rscript_exit_code": 2,
+  "missing_Rscript_message": "Rscript was not found on PATH",
+  "output_directory_not_created": true,
+  "queried_runtime_matches_before_and_after_measurement_hashes": true,
+  "runtime_query": "Resolved Rscript --vanilla -e cat(R.home())",
+  "scope": "Post-measurement review checks; does not replace contemporaneous timing provenance."
+}

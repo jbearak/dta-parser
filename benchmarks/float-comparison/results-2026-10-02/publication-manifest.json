@@ -12,7 +12,7 @@
   "builds/prototype/build-receipt.json": "6226ca2f3303d9d925541f3521b5845102042460f95335f40594b37358c21177",
   "builds/prototype/build.log": "fc028c17390f1fa8140bcd55c0b51fc8d32749f91eef60571444c25e56626b15",
   "builds/prototype/input-record.json": "86cb3ab4590a85c2700c091038eb093e0080610080375edffa3ed6e4db0fd219",
-  "publication-source-map.json": "4b0eaeb61576a79f549d608e5ec7a2775acf73a99928d41d9c951bdb8692cf5a",
+  "publication-source-map.json": "e5c289ae167bebb0930c7f1231ecbb45b3d5002472e26936bf8787cd830a5e75",
   "timings/01-baseline.csv": "a4f7f1b25a754182ef4dd3bbaa4e05c76eefb8c26db3a9d8b45703db672bc018",
   "timings/01-baseline.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
   "timings/01-candidate.csv": "771d88febade1fa9726196f60fd6a629c7e7cda86abcde8de127049e76d275b3",
@@ -63,6 +63,9 @@
   "validation/qualification-baseline-v1.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
   "validation/qualification-v1.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee",
   "validation/qualification-v1.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
+  "validation/review-checks.json": "d280f65bad99188c1df178ebbf1a1ea06e29ed110c5805d4aff9c5e8ada41a52",
+  "validation/review-controller-tests.log": "5e19dd9a88c7d9c78d363b17f31f5bd1fa8e9a7bfa011667a0726603a231cb58",
+  "validation/review-controller.patch": "dd9f82f465936524647d82ddb50db08bf748e1bd486d3c0a593cf314c5d827c6",
   "validation/rust-tests-prototype.log": "280ff3fcf5596ee6cf9dde7b8e434cb9e6a302b943bfbf810d6ab5b131bcface",
   "validation/source-binding.json": "68df6dd6179cafc8a829a09f46c226655299df37c398a2fe21aa79e248a3fd55"
 }

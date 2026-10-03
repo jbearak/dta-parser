@@ -309,6 +309,21 @@
     "published_sha256": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
     "source": "qualification-v1.log"
   },
+  "validation/review-checks.json": {
+    "original_sha256": "d280f65bad99188c1df178ebbf1a1ea06e29ed110c5805d4aff9c5e8ada41a52",
+    "published_sha256": "d280f65bad99188c1df178ebbf1a1ea06e29ed110c5805d4aff9c5e8ada41a52",
+    "source": "review-checks.json"
+  },
+  "validation/review-controller-tests.log": {
+    "original_sha256": "5e19dd9a88c7d9c78d363b17f31f5bd1fa8e9a7bfa011667a0726603a231cb58",
+    "published_sha256": "5e19dd9a88c7d9c78d363b17f31f5bd1fa8e9a7bfa011667a0726603a231cb58",
+    "source": "review-controller-tests.log"
+  },
+  "validation/review-controller.patch": {
+    "original_sha256": "dd9f82f465936524647d82ddb50db08bf748e1bd486d3c0a593cf314c5d827c6",
+    "published_sha256": "dd9f82f465936524647d82ddb50db08bf748e1bd486d3c0a593cf314c5d827c6",
+    "source": "review-controller.patch"
+  },
   "validation/rust-tests-prototype.log": {
     "original_sha256": "d5888a471ea5076858a6c9051685d98d1cf45e5aeccca190ff0684aa9aa097fe",
     "published_sha256": "280ff3fcf5596ee6cf9dde7b8e434cb9e6a302b943bfbf810d6ab5b131bcface",

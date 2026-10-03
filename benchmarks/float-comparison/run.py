@@ -141,11 +141,14 @@ def main():
     args = parser.parse_args()
     if args.rounds < 6 or args.rounds % 6:
         parser.error('Rounds must be a positive multiple of six')
+    found = shutil.which('Rscript')
+    if found is None:
+        parser.error('Rscript was not found on PATH')
+    rscript = Path(found).resolve(strict=True)
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     worker = HERE / 'worker.R'
-    rscript = Path(shutil.which('Rscript')).resolve(strict=True)
 
     def execution_runtime():
         home = Path(subprocess.check_output(['R', 'RHOME'], text=True).strip())
