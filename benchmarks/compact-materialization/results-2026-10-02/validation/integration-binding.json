@@ -1,0 +1,22 @@
+{
+  "files": {
+    "integration-focused.R": "803d27402c6fdd06fd9da306c1c7077538cdc6493256925f84380b401da33753",
+    "integration-focused.csv": "73bba1a761beb6fa003eed5eb8f7b729617dde09eeb48c56fb267b17e0310c90",
+    "integration-focused.log": "cfadbe5f83e3661281a1154e3b2b04d9946338784d7cb44fce141acfa0727cf6"
+  },
+  "installed_dll_sha256": "15e4184fefef159fe925fc0d85d0aed0e19c65d36ec58a2b7447f8f267e04626",
+  "integration_commit": "104417f9dd191fc41c0e25e2e7b1397c16cc7a2a",
+  "main_integrated": "895dd204d1e90b058461063ba37573214aeda0fa",
+  "materializer_and_regression_identical": true,
+  "measured_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0",
+  "receipt_sha256": "f0c43e45550c5fd4ecdf5505d4840091e39bcdc12754dc45a111670f236acd05",
+  "scope": "Clean main integration build from exact Git-exported package sources. Installed materialization, owned-column, owned-buffer and arithmetic-lifetime tests; the single owned-columns missing-column warning is existing. The full measured suite remains separately attributed to 586b887b.",
+  "suite": {
+    "blocks": 117,
+    "error": 0,
+    "failed": 0,
+    "passed": 7359,
+    "skipped": 0,
+    "warning": 1
+  }
+}

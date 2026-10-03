@@ -2694,7 +2694,12 @@ SEXP C_dtatools_force_altrep_materialization(SEXP value) {
         !(TYPEOF(value) == REALSXP || TYPEOF(value) == STRSXP)) {
         Rf_error("internal materialization probe requires an ALTREP vector");
     }
-    (void) DATAPTR_RO(value);
+    /* The exact native method remains callable outside R's Dataptr guard so
+       the materialization checkpoint can exercise real allocation finalizers.
+       Foreign providers and metadata proxies keep their ordinary dispatch. */
+    if (R_altrep_inherits(value, dtatools_numeric_class))
+        (void) numeric_dataptr(value, FALSE);
+    else (void) DATAPTR_RO(value);
 
     return value;
 }
