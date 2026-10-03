@@ -13742,7 +13742,7 @@
         },
         {
           "path": "tests/testthat/test-dta-compare-native.R",
-          "sha256": "264b51be6b45070e03e1f5b1a17fa95f033c98740e3f850a393e148a32ddf090"
+          "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
         },
         {
           "path": "tests/testthat/test-dta-identical.R",
@@ -14423,6 +14423,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 350,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "double pair kernels preserve every missing rank and IEEE comparisons",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "double pair kernels retain native decline and public NaN errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 72,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "double temporal pairs compare their already decoded values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "float kernels combine retained and plain operands in either order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
           "warnings": 0
         },
         {

@@ -70,6 +70,11 @@ The 432-observation constructed-column matrix reaches double-control throughput
 with exact missing-code and scalar-precision semantics. Retained-column
 throughput remains a separate question.
 
+The [retained-float and decoded-double comparison follow-up](native-comparison/results-2026-10-03.md)
+measures direct double-pair kernels, retained scheduling and vectorized float
+block comparisons. It reports ordinary/sparse parity, dense-missing guards,
+the scheduling CPU/elapsed-time tradeoff and rejected per-row shortcuts.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below

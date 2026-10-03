@@ -1,0 +1,7 @@
+{
+  "source_commit": "94e70987",
+  "runtime_commit": "c21a79b3",
+  "gate_original_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "gate_retention_sha256": "10ae2c8da56ea7f2fede34dfe8fda6f431a9d9e757f3e90c1f79c492fa0bb894",
+  "only_gate_change": "Copy the completed R source archive before normal validation and check; all gate commands unchanged."
+}

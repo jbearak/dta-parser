@@ -1,0 +1,323 @@
+Tracing function ".dta_read_is_na" in package "namespace:dtatools"
+Untracing function ".dta_read_is_na" in package "namespace:dtatools"
+
+Tracing function "is.na" in package "base"
+Untracing function "is.na" in package "base"
+Tracing function "vec_recycle_common" in package "namespace:vctrs"
+Untracing function "vec_recycle_common" in package "namespace:vctrs"
+Tracing function "length" in package "base"
+Untracing function "length" in package "base"
+Tracing function "list" in package "base"
+Untracing function "list" in package "base"
+Tracing function "withCallingHandlers" in package "base"
+Untracing function "withCallingHandlers" in package "base"
+Tracing function "parent.frame" in package "base"
+Untracing function "parent.frame" in package "base"
+Tracing function "list2" in package "namespace:rlang"
+Untracing function "list2" in package "namespace:rlang"
+New names:
+* `x` -> `x...1`
+* `x` -> `x...2`
+New names:
+* `x` -> `x...1`
+* `x` -> `x...2`
+Ignoring extra `y` columns: value
+Tracing function "utf8ToInt" in package "base"
+Untracing function "utf8ToInt" in package "base"
+Tracing function ".declared_dta_storage" in package
+"namespace:dtatools"
+Untracing function ".declared_dta_storage" in package
+"namespace:dtatools"
+Tracing function ".dta_promote" in package "namespace:dtatools"
+Untracing function ".dta_promote" in package "namespace:dtatools"
+Tracing function ".dta_common_ptype" in package "namespace:dtatools"
+Untracing function ".dta_common_ptype" in package
+"namespace:dtatools"
+Tracing function ".dta_ptype" in package "namespace:dtatools"
+Untracing function ".dta_ptype" in package "namespace:dtatools"
+Tracing function ".reconcile_dta_metadata" in package
+"namespace:dtatools"
+Untracing function ".reconcile_dta_metadata" in package
+"namespace:dtatools"
+Tracing function ".restore_dta_metadata" in package
+"namespace:dtatools"
+Untracing function ".restore_dta_metadata" in package
+"namespace:dtatools"
+Tracing function ".dta_classes_from" in package "namespace:dtatools"
+Untracing function ".dta_classes_from" in package
+"namespace:dtatools"
+Tracing function ".dta_combine_value_labels" in package
+"namespace:dtatools"
+Untracing function ".dta_combine_value_labels" in package
+"namespace:dtatools"
+Tracing function ".reconcile_dta_metadata_attributes" in package
+"namespace:dtatools"
+Untracing function ".reconcile_dta_metadata_attributes" in package
+"namespace:dtatools"
+Tracing function ".apply_haven_labelled_class" in package
+"namespace:dtatools"
+Untracing function ".apply_haven_labelled_class" in package
+"namespace:dtatools"
+Tracing function ".dta_snapshot" in package "namespace:dtatools"
+Untracing function ".dta_snapshot" in package "namespace:dtatools"
+Tracing function ".cast_to_dta" in package "namespace:dtatools"
+Untracing function ".cast_to_dta" in package "namespace:dtatools"
+Tracing function ".compact_dta_storage_matches" in package
+"namespace:dtatools"
+Untracing function ".compact_dta_storage_matches" in package
+"namespace:dtatools"
+Tracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Untracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Tracing function ".metadata_copy" in package "namespace:dtatools"
+Untracing function ".metadata_copy" in package "namespace:dtatools"
+Tracing function ".repair_data_table_container" in package
+"namespace:dtatools"
+Untracing function ".repair_data_table_container" in package
+"namespace:dtatools"
+Tracing function ".dta_storage_class" in package "namespace:dtatools"
+Untracing function ".dta_storage_class" in package
+"namespace:dtatools"
+Tracing function ".tab_missing_codes" in package "namespace:dtatools"
+Untracing function ".tab_missing_codes" in package
+"namespace:dtatools"
+Tracing function ".encode_dta_temporal" in package
+"namespace:dtatools"
+Untracing function ".encode_dta_temporal" in package
+"namespace:dtatools"
+Tracing function ".invalid_dta_observed" in package
+"namespace:dtatools"
+Untracing function ".invalid_dta_observed" in package
+"namespace:dtatools"
+Tracing function "double" in package "namespace:base"
+Untracing function "double" in package "namespace:base"
+Tracing function "is.factor" in package "namespace:base"
+Untracing function "is.factor" in package "namespace:base"
+Tracing function "paste0" in package "namespace:base"
+Untracing function "paste0" in package "namespace:base"
+Tracing function "NextMethod" in package "namespace:base"
+Untracing function "NextMethod" in package "namespace:base"
+Tracing function "environment" in package "namespace:base"
+Untracing function "environment" in package "namespace:base"
+Tracing function "names_repair_missing" in package "namespace:vctrs"
+Untracing function "names_repair_missing" in package
+"namespace:vctrs"
+Tracing function "check_dots_empty0" in package "namespace:rlang"
+Untracing function "check_dots_empty0" in package "namespace:rlang"
+Tracing function "current_env" in package "namespace:rlang"
+Untracing function "current_env" in package "namespace:rlang"
+Tracing function "list_unchop" in package "namespace:vctrs"
+Untracing function "list_unchop" in package "namespace:vctrs"
+Tracing function "list_unchop" in package "namespace:vctrs"
+Untracing function "list_unchop" in package "namespace:vctrs"
+Tracing function "::" in package "base"
+Untracing function "::" in package "base"
+Tracing function "::" in package "base"
+Untracing function "::" in package "base"
+Registered S3 method overwritten by 'labelled':
+  method                from    
+  recode.haven_labelled dtatools
+New names:
+* `v` -> `v...1`
+* `v` -> `v...2`
+New names:
+* `v` -> `v...1`
+* `v` -> `v...2`
+Tracing function ".generate_value" in package "namespace:dtatools"
+Tracing function ".generate_attributes" in package
+"namespace:dtatools"
+Untracing function ".generate_value" in package "namespace:dtatools"
+Untracing function ".generate_attributes" in package
+"namespace:dtatools"
+Tracing function "intersect" in package "base"
+Untracing function "intersect" in package "base"
+Tracing function "startsWith" in package "base"
+Untracing function "startsWith" in package "base"
+Tracing function "setdiff" in package "base"
+Untracing function "setdiff" in package "base"
+Tracing function "unique" in package "base"
+Untracing function "unique" in package "base"
+Tracing function ".data_columns" in package "namespace:dtatools"
+Tracing function ".capture_dibble_nested" in package
+"namespace:dtatools"
+Tracing function ".metadata_copy" in package "namespace:dtatools"
+Tracing function "new_weakref" in package "namespace:rlang"
+Tracing function ".capture_dibble_nested" in package
+"namespace:dtatools"
+Tracing function ".begin_dibble_result" in package
+"namespace:dtatools"
+Untracing function ".begin_dibble_result" in package
+"namespace:dtatools"
+Tracing function ".new_dibble_expression_mask" in package
+"namespace:dtatools"
+Untracing function ".new_dibble_expression_mask" in package
+"namespace:dtatools"
+Tracing function "new.env" in package "base"
+Untracing function "new.env" in package "base"
+Tracing function "makeActiveBinding" in package "base"
+Untracing function "makeActiveBinding" in package "base"
+Tracing function "read" in package "dtatools"
+Untracing function "read" in package "dtatools"
+Tracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Tracing function "names" in package "base"
+Untracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Untracing function "names" in package "base"
+Tracing function "environment" in package "base"
+Untracing function "environment" in package "base"
+Tracing function "class" in package "base"
+Untracing function "class" in package "base"
+Tracing function "class" in package "base"
+Untracing function "class" in package "base"
+Tracing function "class" in package "base"
+Untracing function "class" in package "base"
+Tracing function "class" in package "base"
+Untracing function "class" in package "base"
+Tracing function ".generate_attributes" in package
+"namespace:dtatools"
+Tracing function "is.null" in package "base"
+Untracing function ".generate_attributes" in package
+"namespace:dtatools"
+Untracing function "is.null" in package "base"
+Tracing function ".generate_attributes" in package
+"namespace:dtatools"
+Tracing function "length" in package "base"
+Untracing function ".generate_attributes" in package
+"namespace:dtatools"
+Untracing function "length" in package "base"
+Tracing function ".generate_attributes" in package
+"namespace:dtatools"
+Tracing function "names" in package "base"
+Untracing function ".generate_attributes" in package
+"namespace:dtatools"
+Untracing function "names" in package "base"
+Tracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Tracing function "is.null" in package "base"
+Untracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Untracing function "is.null" in package "base"
+Tracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Tracing function "length" in package "base"
+Untracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Untracing function "length" in package "base"
+Tracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Tracing function "names" in package "base"
+Untracing function ".dta_attribute_plan" in package
+"namespace:dtatools"
+Untracing function "names" in package "base"
+variable `z` was byte now int
+Tracing function "*" in package "base"
+Untracing function "*" in package "base"
+Tracing function "/" in package "base"
+Untracing function "/" in package "base"
+Tracing function "vec_recycle_common" in package "namespace:vctrs"
+Untracing function "vec_recycle_common" in package "namespace:vctrs"
+Tracing function "NextMethod" in package "base"
+Untracing function "NextMethod" in package "base"
+Tracing function ".dta_storage_holds" in package "namespace:dtatools"
+Untracing function ".dta_storage_holds" in package
+"namespace:dtatools"
+Tracing function ".generate_attributes" in package
+"namespace:dtatools"
+Untracing function ".generate_attributes" in package
+"namespace:dtatools"
+Tracing function ".dta_read_is_na" in package "namespace:dtatools"
+Untracing function ".dta_read_is_na" in package "namespace:dtatools"
+Tracing function ".collapse_missing" in package "namespace:dtatools"
+Untracing function ".collapse_missing" in package
+"namespace:dtatools"
+Tracing function ".dta_computed" in package "namespace:dtatools"
+Untracing function ".dta_computed" in package "namespace:dtatools"
+Tracing function ".tab_missing_codes" in package "namespace:dtatools"
+Untracing function ".tab_missing_codes" in package
+"namespace:dtatools"
+Tracing function ".encode_dta_temporal" in package
+"namespace:dtatools"
+Untracing function ".encode_dta_temporal" in package
+"namespace:dtatools"
+Tracing function ".dta_storage_candidates" in package
+"namespace:dtatools"
+Untracing function ".dta_storage_candidates" in package
+"namespace:dtatools"
+Tracing function ".invalid_dta_observed" in package
+"namespace:dtatools"
+Untracing function ".invalid_dta_observed" in package
+"namespace:dtatools"
+Tracing function ".construct_dta_numeric_trusted" in package
+"namespace:dtatools"
+Untracing function ".construct_dta_numeric_trusted" in package
+"namespace:dtatools"
+Tracing function ".metadata_copy" in package "namespace:dtatools"
+Untracing function ".metadata_copy" in package "namespace:dtatools"
+Tracing function ".repair_data_table_container" in package
+"namespace:dtatools"
+Untracing function ".repair_data_table_container" in package
+"namespace:dtatools"
+Tracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Untracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Tracing function ".dta_storage_holds" in package "namespace:dtatools"
+Untracing function ".dta_storage_holds" in package
+"namespace:dtatools"
+Tracing function "is.primitive" in package "base"
+Untracing function "is.primitive" in package "base"
+Tracing function "environment" in package "base"
+Untracing function "environment" in package "base"
+Tracing function "is.null" in package "base"
+Untracing function "is.null" in package "base"
+Tracing function "isTRUE" in package "base"
+Untracing function "isTRUE" in package "base"
+Tracing function "identical" in package "base"
+Untracing function "identical" in package "base"
+Tracing function "isTRUE" in package "base"
+Untracing function "isTRUE" in package "base"
+Tracing function ".tab_missing_codes" in package "namespace:dtatools"
+Untracing function ".tab_missing_codes" in package
+"namespace:dtatools"
+Tracing function ".dta_arith_base" in package "namespace:dtatools"
+Untracing function ".dta_arith_base" in package "namespace:dtatools"
+Tracing function ".dta_computed" in package "namespace:dtatools"
+Untracing function ".dta_computed" in package "namespace:dtatools"
+Tracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Untracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Tracing function ".dta_storage_holds" in package "namespace:dtatools"
+Untracing function ".dta_storage_holds" in package
+"namespace:dtatools"
+Tracing function ".dta_arith_base" in package "namespace:dtatools"
+Untracing function ".dta_arith_base" in package "namespace:dtatools"
+Tracing function ".dta_computed" in package "namespace:dtatools"
+Untracing function ".dta_computed" in package "namespace:dtatools"
+Tracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Untracing function ".construct_dta_numeric" in package
+"namespace:dtatools"
+Tracing function ".dta_storage_holds" in package "namespace:dtatools"
+Untracing function ".dta_storage_holds" in package
+"namespace:dtatools"
+Tracing function "enc2utf8" in package "base"
+Tracing function ".arrow_reject_bytes" in package
+"namespace:dtatools"
+Untracing function ".arrow_reject_bytes" in package
+"namespace:dtatools"
+Untracing function "enc2utf8" in package "base"
+variable `x` was byte now double
+variable `x` was byte now int
+Tracing function "as.integer" in package "base"
+Untracing function "as.integer" in package "base"
+Tracing function "as.logical" in package "base"
+Untracing function "as.logical" in package "base"
+Tracing function "is.na" in package "base"
+Untracing function "is.na" in package "base"
+Tracing function "utf8ToInt" in package "base"
+Untracing function "utf8ToInt" in package "base"
+ passed  failed   error skipped warning 
+  54479       0       0       0       7 

@@ -1,0 +1,8 @@
+.libPaths(c('<private-evidence>/float-threshold-prototype/library', .libPaths()))
+library(dtatools)
+library(testthat)
+results <- testthat::test_dir('<private-evidence>/float-threshold-prototype/source/tests/testthat', package='dtatools', load_package='installed', reporter='silent', stop_on_failure=FALSE)
+frame <- as.data.frame(results)
+write.csv(frame[c('file','test','passed','failed','error','skipped','warning')], '<private-evidence>/float-threshold-full.csv', row.names=FALSE)
+print(colSums(frame[c('passed','failed','error','skipped','warning')]))
+stopifnot(!any(frame$failed), !any(frame$error), !any(frame$skipped))
