@@ -245,7 +245,7 @@
         },
         {
           "path": "tests/testthat/test-arrow-nullable-strings.R",
-          "sha256": "0419ce3d0f000599ea54f440a207d7c01bf4a46ec4dcc14ebaa44bfeaef18e68"
+          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -826,7 +826,7 @@
           "test": "nullable Arrow read cancellation remains an interrupt",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 2,
+          "min_pass": 3,
           "warnings": 0
         },
         {

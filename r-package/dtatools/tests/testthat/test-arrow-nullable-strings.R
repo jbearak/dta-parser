@@ -28,15 +28,24 @@ test_that("nullable Arrow strings preserve sliced validity and unequal chunks", 
 })
 
 test_that("nullable Arrow strings keep their output rooted during collection", {
-    text <- c(NA_character_, "", "caf\u00e9-\u6771\u4eac", "\U0001f30d", "last")
+    nonce <- basename(tempfile())
+    make_text <- function() c(NA_character_, "", paste0(nonce,
+        c("-caf\u00e9-\u6771\u4eac", "-\U0001f30d", "-last")))
+    text <- make_text()
     data <- tibble::tibble(text = text, reverse = rev(text))
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data, path)
+    # Drop source CHARSXPs before the read, so this exercises allocation in
+    # the fill loop as well as collection during vector/attribute allocation.
+    rm(text, data)
+    gc(full = TRUE)
     on.exit(gctorture(FALSE), add = TRUE)
     gctorture(TRUE)
     actual <- read_arrow(path, threads = 1L, output = "tibble")
     gctorture(FALSE)
+    text <- make_text()
+    data <- tibble::tibble(text = text, reverse = rev(text))
     expect_identical(Encoding(actual$text), Encoding(text))
     expect_identical(actual, data)
     actual$text[[3L]] <- "changed"
@@ -82,8 +91,10 @@ test_that("nullable Arrow read cancellation remains an interrupt", {
         } else native_fork_signal(request, 0.01, tools::SIGINT)
     }, silent = TRUE)
     collected <- NULL
+    completed <- FALSE
     condition <- tryCatch({
         read_arrow(path, threads = 1L, verify = FALSE)
+        completed <- TRUE
         collected <- parallel::mccollect(signal)
         NULL
     }, condition = identity)
@@ -91,6 +102,7 @@ test_that("nullable Arrow read cancellation remains an interrupt", {
         suppressWarnings(parallel::mccollect(signal)), condition = identity)
     if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
     expect_s3_class(condition, "interrupt")
+    expect_false(completed)
     gc()
     expect_identical(read_arrow(path, n_max = 8L, verify = FALSE, output = "tibble"),
                      data[seq_len(8L), ])
