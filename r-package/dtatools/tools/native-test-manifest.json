@@ -1821,7 +1821,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "22966619755527264b9baf68a8378cae0b1f8ed5c11c6c72adbe7ab796f26981"
+          "sha256": "714774f0cd179d227d47051c58976d952bff52c07424fa60a0be0ad545d1bb02"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
@@ -4433,6 +4433,14 @@
           "warnings": 0
         },
         {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "integer reciprocal bounds preserve storage zero signs and missing caches",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 819,
+          "warnings": 0
+        },
+        {
           "file": "test-native-arithmetic-parity.R",
           "test": "a final or boundary value promotes every earlier scalar result",
           "occurrence": 1,
@@ -6123,7 +6131,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "4c8ab060ede49cc7bc766690db8549204b26a5ca4f64288e2d87b0476a9ba138"
+          "sha256": "c0d33380198c0520101b58e4f48c2653314d29602cb1d67371006862457d0091"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7718,6 +7726,14 @@
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "integer reciprocal inherits the captured missing count during reentrant writes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
         }
       ],
       "children": [],
