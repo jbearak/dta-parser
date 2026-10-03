@@ -1,0 +1,16 @@
+{
+  "artifacts": {
+    "01-baseline.csv": "af3fe22e82e73c6f910ee80fd4f94368b0eccd518dffbac15c0476a10816aa46",
+    "01-candidate.csv": "af3fe22e82e73c6f910ee80fd4f94368b0eccd518dffbac15c0476a10816aa46",
+    "protocol.json": "03f60e29fc7312603401ad8b60d62111e13a992f6bc11e8fa5b20c6da19965e6",
+    "provenance-after.json": "37799e3f6e57256a9c8d45cba39e22f362bdc6b070ae9e4b909625795b320f02",
+    "provenance-before.json": "37799e3f6e57256a9c8d45cba39e22f362bdc6b070ae9e4b909625795b320f02",
+    "raw.csv": "c65ab36d4c6df67fc07fa1a19d087756a33994071537b4f8adb4a249946c25ce",
+    "source.patch": "ee6ced33677db13dfeb4d1093d0ce77d0edddf60c7c3d39ef537a9969e384d17"
+  },
+  "exact_results": true,
+  "observations": 116,
+  "phase": "qualify",
+  "provenance_unchanged": true,
+  "rounds": 1
+}

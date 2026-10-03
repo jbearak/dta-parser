@@ -1016,3 +1016,44 @@ test_that("adaptive reciprocal proofs recover ordinary tails after dense spans",
         expect_identical(.arithmetic_parity_bytes(x), original)
     }
 })
+
+test_that("retained long float addition preserves poll-boundary outputs", {
+    .arithmetic_parity_enable()
+    for (n in c(16383L, 16384L, 16385L)) {
+        for (pattern in c("ordinary", "missing")) {
+            values_x <- rep(c(16777217, -16777217, 0), length.out = n)
+            values_y <- rep(c(0.5, -0.5, -0), length.out = n)
+            if (pattern == "missing") {
+                missing_x <- unique(c(7L, 16383L, min(n, 16385L)))
+                missing_y <- unique(c(11L, min(n, 16384L), min(n, 16385L)))
+                values_x[missing_x] <- rep(c(NA_real_, tagged_missing("a")),
+                    length.out = length(missing_x))
+                values_y[missing_y] <- rep(c(tagged_missing("z"), NA_real_),
+                    length.out = length(missing_y))
+            }
+            for (chunks in list(c(7L, 11L), c(8191L, 16385L))) {
+                x <- .arithmetic_parity_source("long", values_x, chunks[[1L]])
+                y <- .arithmetic_parity_source("float", values_y, chunks[[2L]])
+                for (reverse in c(FALSE, TRUE)) {
+                    info <- paste("retained polling", n, pattern, chunks, reverse)
+                    actual <- if (reverse)
+                        .arithmetic_parity_expect("+", y, x, "double", "double", info)
+                    else .arithmetic_parity_expect("+", x, y, "double", "double", info)
+                    expected_missing <- is.na(values_x) | is.na(values_y)
+                    expect_identical(is.na(actual), expected_missing, info = info)
+                    expect_identical(anyNA(actual), any(expected_missing), info = info)
+                    before <- .arithmetic_parity_bytes(actual)
+                    cleared_values <- as.double(actual)
+                    cleared_values[expected_missing] <- 0
+                    cleared <- dibble(x = actual)
+                    if (any(expected_missing))
+                        replace_values(cleared, x = 0, where = which(expected_missing))
+                    expect_false(anyNA(cleared$x), info = info)
+                    expect_identical(.arithmetic_parity_bytes(cleared$x),
+                        writeBin(cleared_values, raw(), 8L, endian = "little"), info = info)
+                    expect_identical(.arithmetic_parity_bytes(actual), before, info = info)
+                }
+            }
+        }
+    }
+})
