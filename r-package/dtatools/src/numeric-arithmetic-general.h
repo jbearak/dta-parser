@@ -410,6 +410,8 @@ static int arithmetic_general_produce(
     if (arithmetic_float_scalar_prove(
             left, right, length, operation, output->kind, &float_proof))
         return arithmetic_float_scalar_write(&float_proof, length, output);
+    if (arithmetic_long_float_add_admitted(left, right, length, operation, output->kind))
+        return arithmetic_long_float_add_write(left, right, length, output);
     if (arithmetic_pair_float_admitted(
             left, right, length, operation, output->kind))
         return arithmetic_pair_float_write(left, right, length, operation, output);
