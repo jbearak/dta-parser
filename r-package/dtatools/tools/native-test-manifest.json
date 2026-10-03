@@ -1825,7 +1825,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "645d7045b0c89209ad5f6e7bff2fdda8f675337192261c3f9d8108cea70d1893"
+          "sha256": "72b2e07600f5c4eaa16cb0d361a58f6eb15422ac1fa7ff080d79af967657bdb6"
         }
       ],
       "blocks": [
@@ -4615,6 +4615,14 @@
           "skip": "forbid",
           "min_pass": 96,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "retained long float addition preserves poll-boundary outputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 480,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6147,7 +6155,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "4e699964ad262d4245ca3e8aad826b3c1b7ed73a87b92ac2ce108ae71693859c"
+          "sha256": "8e13292ca7ad5625eb3f5a7e04972bcbd9385c171bfb0e4aa2b86efa9cdc07d2"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7760,6 +7768,17 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 120,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "tiny retained pair spans preserve captured sources across reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 36,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

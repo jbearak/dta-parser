@@ -348,3 +348,49 @@ test_that("long float all missing facts retain captured counts through reentry",
         }
     }
 })
+
+test_that("tiny retained pair spans preserve captured sources across reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    n <- 16385L
+    for (action in c("patch", "materialize")) for (reverse in c(FALSE, TRUE)) {
+        x <- .Call(C_dtatools_owned_numeric_freeze, dta_long(rep(16777217, n)), 7L)
+        values <- rep(0.5, n)
+        values[c(7L, 11L, 16384L)] <- NA_real_
+        y <- .Call(C_dtatools_owned_numeric_freeze, dta_float(values), 11L)
+        expected <- rep(16777217.5, n)
+        expected[is.na(values)] <- NA_real_
+        fired <- 0L
+        .arithmetic_lifetime_arm(function(key) {
+            fired <<- fired + 1L
+            if (action == "patch") {
+                .Call(C_dtatools_patch_vector, x, n, NA_real_)
+                .Call(C_dtatools_patch_vector, y, 7L, 0.5)
+            } else {
+                .force_altrep_materialization(x)
+                .force_altrep_materialization(y)
+            }
+        })
+        result <- if (reverse) y + x else x + y
+        expect_identical(fired, 1L)
+        expect_identical(dta_storage_type(result), "double")
+        expect_identical(writeBin(as.double(result), raw(), 8L),
+            writeBin(expected, raw(), 8L))
+        expect_identical(is.na(result), is.na(expected))
+        original_result <- writeBin(as.double(result), raw(), 8L)
+        cleared <- dibble(x = result)
+        replace_values(cleared, x = 0, where = which(is.na(expected)))
+        expected[is.na(expected)] <- 0
+        expect_false(anyNA(cleared$x))
+        expect_identical(writeBin(as.double(cleared$x), raw(), 8L),
+            writeBin(expected, raw(), 8L))
+        expect_identical(writeBin(as.double(result), raw(), 8L), original_result)
+        if (action == "patch") {
+            expect_true(is.na(as.double(x)[[n]]))
+            expect_identical(as.double(y)[[7L]], 0.5)
+        } else {
+            expect_true(.Call(C_dtatools_is_materialized_numeric_altrep, x))
+            expect_true(.Call(C_dtatools_is_materialized_numeric_altrep, y))
+        }
+    }
+})
