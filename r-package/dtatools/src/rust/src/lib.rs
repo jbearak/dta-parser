@@ -1234,6 +1234,14 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         if scalar.rank == 0 && scalar.value.is_nan() {
             return false;
         }
+        if (x.native_owner != 0 || y.is_some_and(|view| view.native_owner != 0))
+            && float_compare::supports(x, y)
+        {
+            // These typed loops use the same serial policy as plain floats.
+            // Creating workers for cheap comparisons spends more total CPU;
+            // retained spans use the same inner loop without copying bytes.
+            return unsafe { compare_numeric_range(op, x, y, scalar, output, 0, length) };
+        }
         if x.native_owner == 0 && y.is_none_or(|view| view.native_owner == 0) {
             if let Some(done) = unsafe {
                 compare_raw_int(op, x, y, scalar, output, length)

@@ -374,6 +374,19 @@ test_that("float comparison spans cross unequal retained chunks in serial and au
     expect_identical(as.double(y), other)
 })
 
+test_that("float kernels combine retained and plain operands in either order", {
+    plain <- rep_len(c(-5, -0, 0, 5, NA_real_, tagged_missing(letters)), 17003L)
+    other <- rev(plain)
+    x <- .float_comparison_freeze(dta_float(plain), 257L)
+    y <- dta_float(other)
+    previous <- options(dtatools.threads = 0L)
+    on.exit(options(previous), add = TRUE)
+    .float_comparison_expect(x, y, plain, other)
+    .float_comparison_expect(y, x, other, plain)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+})
+
 test_that("modern float imports retain tag gaps high values and infinity ordering", {
     bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff,
               0x7f000000, 0x7f000001, 0x7f0007ff, 0x7f000800,

@@ -7,6 +7,13 @@ use std::ffi::c_int;
 const DOT: u32 = 0x7f00_0000;
 const STEP: u32 = 0x800;
 
+/// The same typed kernel can read plain buffers and retained float spans.
+pub(super) fn supports(x: CompareOperandView, y: Option<CompareOperandView>) -> bool {
+    x.temporal == 0
+        && matches!(x.storage, CompareStorage::Float(_))
+        && y.is_none_or(|y| y.temporal == 0 && matches!(y.storage, CompareStorage::Float(_)))
+}
+
 #[inline(always)]
 fn rank<const MODERN: bool>(bits: u32) -> u8 {
     if MODERN {
@@ -135,7 +142,7 @@ pub(super) unsafe fn compare(
     let CompareStorage::Float(x_version) = x.storage else {
         return None;
     };
-    if x.temporal != 0 || x.native_owner != 0 || !(0..=5).contains(&op) {
+    if !supports(x, y) || x.native_owner != 0 || !(0..=5).contains(&op) {
         return None;
     }
     let xp = x.values as *const f32;
