@@ -1819,7 +1819,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "28453026fc63c60dd06acb870cc0355c3c4a114c1144777de5e12b3a6a7cd4c8"
+          "sha256": "5f5bcf75a2407e3c84333ff78b30aaf12ad585a52ff1813ef1ef723ca75d774c"
         }
       ],
       "blocks": [
@@ -4593,6 +4593,14 @@
           "skip": "forbid",
           "min_pass": 2061,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float reciprocal block proofs preserve zero exceptions and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 756,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6125,7 +6133,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "c0d33380198c0520101b58e4f48c2653314d29602cb1d67371006862457d0091"
+          "sha256": "04a9c655c10a6f31f97163cd4000da98af66a4cf146f09cd2b659b90da3d8bec"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7728,6 +7736,17 @@
           "skip": "forbid",
           "min_pass": 54,
           "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "float reciprocal proofs retain captured bytes and missing counts during reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 30,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
         }
       ],
       "children": [],
