@@ -18,6 +18,8 @@ use crate::{FormatVersion, NumericData, NumericKind, TemporalKind};
 
 static LIVE_NATIVE_BYTES: AtomicUsize = AtomicUsize::new(0);
 static LIVE_OWNERS: AtomicUsize = AtomicUsize::new(0);
+static MEMORY_PRESSURE: crate::native_pressure::NativeMemoryPressure =
+    crate::native_pressure::NativeMemoryPressure::new();
 
 enum Storage {
     Arrow(Buffer),
@@ -261,6 +263,7 @@ impl PreparedOwnedNumeric {
         missing_count: usize,
     ) -> Self {
         LIVE_NATIVE_BYTES.fetch_add(owner.native_bytes, Ordering::Relaxed);
+        MEMORY_PRESSURE.allocated(owner.native_bytes);
         LIVE_OWNERS.fetch_add(1, Ordering::Relaxed);
         Self {
             owner: Arc::new(owner),
@@ -582,6 +585,22 @@ pub extern "C" fn dtatools_owned_numeric_live_bytes() -> usize {
 #[no_mangle]
 pub extern "C" fn dtatools_owned_numeric_live_owners() -> usize {
     LIVE_OWNERS.load(Ordering::Relaxed)
+}
+
+pub(crate) fn collect_native_pressure<E>(
+    collect: impl FnOnce() -> Result<(), E>,
+) -> Result<bool, E> {
+    MEMORY_PRESSURE.collect_if_needed(dtatools_owned_numeric_live_bytes(), collect)
+}
+
+#[no_mangle]
+pub extern "C" fn dtatools_owned_numeric_gc_attempts() -> usize {
+    MEMORY_PRESSURE.attempts()
+}
+
+#[no_mangle]
+pub extern "C" fn dtatools_owned_numeric_allocation_debt() -> usize {
+    MEMORY_PRESSURE.debt()
 }
 
 #[no_mangle]

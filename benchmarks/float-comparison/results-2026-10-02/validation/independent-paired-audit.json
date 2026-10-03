@@ -1,0 +1,36 @@
+{
+  "observations": 432,
+  "unique_expected_matrix": true,
+  "raw_matches_workers": true,
+  "all_summaries_recomputed": true,
+  "source_commit_bindings": true,
+  "controllers_unchanged": true,
+  "balanced_six_permutations": true,
+  "cpu_interval_range": [
+    0.250999999999999,
+    0.34
+  ],
+  "wall_interval_range": [
+    0.0760000000000005,
+    0.34
+  ],
+  "compact_speedup_range": [
+    4.678584730011459,
+    7.095114392489216
+  ],
+  "max_compact_typed": 1.0538715750483476,
+  "max_missing_free_compact_bare": 0.8854587674821585,
+  "source_commits": {
+    "baseline": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+    "candidate": "69422ba58fc5c21a6b0ab1d390550432d479f25f"
+  },
+  "limits": [
+    "One-host warm repeated operations; automatic GC/output allocation included.",
+    "Missing-bearing bare R has different NA-propagating comparison semantics.",
+    "Only constructed million-row floats in timings; retained/imported/temporal cases are correctness coverage.",
+    "Native admission is separately qualified; no per-call timed kernel counter.",
+    "Ratios are ratios of six-round medians; no confidence interval or universal parity claim.",
+    "Automatic pair comparisons use different scheduling after optimization: CPU speedup does not imply proportional wall speedup."
+  ],
+  "live_clean_build_receipts_verified": true
+}

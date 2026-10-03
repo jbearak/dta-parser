@@ -1,0 +1,21 @@
+args <- commandArgs(TRUE)
+stopifnot(length(args)==2L)
+.libPaths(c(normalizePath(args[[1L]]),.libPaths()))
+suppressPackageStartupMessages(library(dtatools))
+root <- normalizePath(args[[2L]])
+held <- read_arrow(file.path(root,'retained-65.arrow'),threads=1L)
+expected <- readRDS(file.path(root,'tiny-reference.rds'))
+warm <- read_arrow(file.path(root,'tiny-double.arrow'),threads=1L)
+stopifnot(identical(writeBin(as.double(warm$x),raw(),8L),writeBin(expected,raw(),8L)))
+invisible(gc())
+prior <- gcinfo(TRUE)
+trace <- tryCatch(capture.output({
+    for (i in seq_len(5L)) result <- read_arrow(file.path(root,'tiny-double.arrow'),threads=1L)
+},type='message'),finally=gcinfo(prior))
+collections <- sum(grepl('^Garbage collection ',trace))
+stopifnot(identical(writeBin(as.double(result$x),raw(),8L),writeBin(expected,raw(),8L)),
+          .Call(dtatools:::C_dtatools_owned_numeric_info,held$x)[['native_bytes']]==65*1024^2,
+          as.double(sum(held$x))==nrow(held)*7)
+cat('Forced-collection reproduction:',collections,'collections across 5 tiny reads\n')
+if(collections>1L) stop('Repeated collections despite unchanged live native storage')
+cat('PASS: retained live storage does not force repeated collection\n')

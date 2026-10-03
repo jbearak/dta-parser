@@ -1,0 +1,9 @@
+rehashed files: 1
+blocks added: 7, removed: 0, counts changed: 0
+  added:   test-dta-compare-native.R :: float comparisons preserve all missing ranks and signed-zero ties
+  added:   test-dta-compare-native.R :: float scalar comparisons preserve double precision at float boundaries
+  added:   test-dta-compare-native.R :: float comparison spans cross unequal retained chunks in serial and auto modes
+  added:   test-dta-compare-native.R :: modern float imports retain tag gaps high values and infinity ordering
+  added:   test-dta-compare-native.R :: invalid float NaNs decline pair and scalar comparisons before fallback errors
+  added:   test-dta-compare-native.R :: temporal float comparisons use decoded equality after rounding collapse
+  added:   test-dta-compare-native.R :: legacy float comparisons retain version-specific missing domains

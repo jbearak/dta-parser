@@ -1,0 +1,12 @@
+{
+  "R": "R version 4.6.1 (2026-06-24) -- \"Happy Hop\"",
+  "cases_per_build_round": 36,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "interval": "Repeated public comparisons, output allocation and automatic GC included. Construction, explicit GC, calibration, separate native qualification and full value/metadata/state hashing excluded.",
+  "limits": "One host; warm million-row constructed float columns. Missing-bearing bare R retains NA propagation and has a different contract. Threads 0 means automatic scheduling. No claim for readers, temporal inputs, arbitrary imported bytes or retained throughput.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "order": "Alternate build order in fresh R processes; rotate and reverse representations across six rounds. Fixed case order.",
+  "repetitions": "At least 50 ms calibration; fixed count targets 300 ms retained CPU interval.",
+  "rounds": 6
+}
