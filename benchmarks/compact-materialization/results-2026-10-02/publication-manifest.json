@@ -125,8 +125,8 @@
       "sha256": "793db222a6231eeb50e5d12081666bd9ce1da1c9f578cfa5c5d9c2bde1d5f171"
     },
     "publication-source-map.json": {
-      "bytes": 34631,
-      "sha256": "fbff6632e856a6e7643091737e0e6c4a2b2c499ae6862b9b6cb5b9bfd7b38376"
+      "bytes": 35239,
+      "sha256": "91f6e04cff9ba6bfe9c37d0e763e4b52a89eba032c7e5abaf171aff4e1e2574f"
     },
     "timings/01-baseline.csv": {
       "bytes": 13072,
@@ -308,6 +308,10 @@
       "bytes": 14527,
       "sha256": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
     },
+    "validation/archive-checker-tests.log": {
+      "bytes": 105,
+      "sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8"
+    },
     "validation/combined-controller-tests.log": {
       "bytes": 315,
       "sha256": "d03e6ffa7b68a712ac5c0a8d526f5dc8d744f35ce38b61e3e391d14279a78ae5"
@@ -333,8 +337,8 @@
       "sha256": "9dc929a4a19c99af8551066c27b479d7cf07a83bcb6539166e734197dceef042"
     },
     "validation/conformance-integration-v2.json": {
-      "bytes": 37920,
-      "sha256": "c6eb657734997649ea9137a627f67baa12984edccefce15c7e5cdf5dc4bc20b1"
+      "bytes": 38015,
+      "sha256": "802db36bb1c3bf3f665224a9fe1ea79059a4b73834837eb97c267d6d15ddb48f"
     },
     "validation/conformance-integration-v2.log": {
       "bytes": 22688,
@@ -476,9 +480,13 @@
       "bytes": 2173,
       "sha256": "cdad1adb15db116d50e11d46301b02e23498c1c60c30dccd313e0bce28df75fa"
     },
+    "validation/test-validate-conformance-archive.py": {
+      "bytes": 5429,
+      "sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a"
+    },
     "validation/validate-conformance-archive.py": {
-      "bytes": 2136,
-      "sha256": "18ef05469d17f40fbaa3fe86613057f981668ee408fc980a99130a9805b22718"
+      "bytes": 3204,
+      "sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b"
     }
   },
   "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."

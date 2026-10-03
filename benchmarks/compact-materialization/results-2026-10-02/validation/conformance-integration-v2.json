@@ -23,6 +23,8 @@
     "src/dta-tools/tests/value_labels.rs",
     "src/dta-tools/tests/write.rs"
   ],
+  "exact_packaged_source_inventory": true,
+  "repository_environment_overrides_removed": true,
   "required_conformance_passed": true,
   "source_archive_sha256": "7ecd0903da848b13744181e448edbc6df9df86a919e5f80500ba415e41ad7c1b",
   "source_commit": "ccc53395cb870a343077945445dc836c071b95fc",
