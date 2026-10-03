@@ -98,6 +98,11 @@ jobs:
           reciprocal_probe_output=$(mktemp -d)
           trap 'rm -rf "$reciprocal_probe_output"' EXIT
           python3 benchmarks/integer-reciprocal/work-count.py --require-proved --output "$reciprocal_probe_output"
+      - name: Verify retained arithmetic interrupt cadence
+        run: |
+          retained_poll_probe_dir=$(mktemp -d)
+          trap 'rm -rf "$retained_poll_probe_dir"' EXIT
+          python3 -O benchmarks/retained-arithmetic-polling/work-count.py --require-proved --output "$retained_poll_probe_dir/result"
       - name: Test reader benchmark verification
         run: |
           python3 -m unittest discover -s benchmarks/reader-refresh -p 'test_*.py'
