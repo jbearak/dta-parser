@@ -65,12 +65,15 @@ def main():
         data = path.read_bytes()
         sources[path.name] = hashlib.sha256(data).hexdigest()
         (args.output / path.name).write_bytes(data)
+    internal = (SRC / 'dtatools-internal.h').read_text()
+    sources['dtatools-internal.h'] = hashlib.sha256(internal.encode()).hexdigest()
     payload = (SRC / 'numeric-payload.c').read_text()
     sources['numeric-payload.c'] = hashlib.sha256(payload.encode()).hexdigest()
     arithmetic = (SRC / 'numeric-arithmetic.h').read_text()
     policy_start = arithmetic.index('typedef struct {\n    double minimum;')
     policy_end = arithmetic.index('/* Missing-bearing same-width', policy_start)
     common = arithmetic[policy_start:policy_end]
+    common += '\n' + function(internal, 'numeric_strict_modern_float')
     common += '\n' + function(payload, 'numeric_float_observed_limit')
     common += '\n' + function(payload, 'scalar_arithmetic_result_valid').replace(
         'scalar_arithmetic_result_valid', 'uncounted_result_valid')
