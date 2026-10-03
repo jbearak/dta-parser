@@ -1819,7 +1819,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "a16ec32d34ba21a1412b2ada1ecaf8b18359da204af1af7988b0e7f9edc0114b"
+          "sha256": "b91fa81cb6894e4e55fb86ea8202892142ff28bebec87f3cd462bde2191cb452"
         }
       ],
       "blocks": [
@@ -4625,6 +4625,22 @@
           "skip": "forbid",
           "min_pass": 96,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "dense reciprocal input masks preserve cache counts and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2700,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "adaptive reciprocal proofs recover ordinary tails after dense spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1036,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6157,7 +6173,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "8bc4e03794a4bb9b49ff7b3eb16fe6a5ab8c4d76c481848e34c5c8b7818a6e27"
+          "sha256": "be7e10655128e637a0ff2c7401fa0e173e309f691e309abe42c36a362c992f1d"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7792,6 +7808,17 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 120,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "all missing reciprocal proofs retain captured counts through reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 100,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
