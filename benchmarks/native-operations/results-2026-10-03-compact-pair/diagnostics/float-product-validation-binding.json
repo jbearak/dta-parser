@@ -1,0 +1,75 @@
+{
+  "runtime_commit": "54d2913069391c8d00d1079590194ab7d022b681",
+  "current_head": "102d4123d5512553d7c46bce85add62d2b5c99c0",
+  "prototype_receipt_sha256": "dd157f1f0cd231e365e4b8af5b21ff2764431f8d4fc93026c77432e4bb0bc5be",
+  "current_source_difference_from_prototype": [
+    "tools/native-test-manifest.json"
+  ],
+  "current_manifest_sha256": "82a60b54bc058d9b70e0e28bd20bacbbd3fbac344a0e085bbf51df99f0150ce4",
+  "variants": {
+    "baseline": {
+      "focused_totals": {
+        "passed": 51818,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "warning": 0
+      },
+      "focused_sha256": "f65888341a224d16747e41b53cd749dfb7fb5c13f756287cc68d555975ecbd40",
+      "original_acceptance_qualified_cases": 102,
+      "qualification_sha256": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137"
+    },
+    "candidate": {
+      "focused_totals": {
+        "passed": 51818,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "warning": 0
+      },
+      "focused_sha256": "f65888341a224d16747e41b53cd749dfb7fb5c13f756287cc68d555975ecbd40",
+      "original_acceptance_qualified_cases": 102,
+      "qualification_sha256": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137"
+    }
+  },
+  "scope": "Source-equivalence binding and untimed original-case qualification; refreshed manifest is the only current package difference from the captured build.",
+  "full_suite": {
+    "totals": {
+      "passed": 96418,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "warning": 7
+    },
+    "blocks": 1780,
+    "results_sha256": "59a9759f44d1586a0c76d6d1b66598288d82e3e639a4b85e4b55026a28089b6d",
+    "runner_sha256": "b9e66b281ead118e20473b29ca573bea302ac909b05b68375abb4a59eb3124ed",
+    "warnings": [
+      {
+        "file": "test-dibble.R",
+        "test": "gen and := accept factors as mutate does",
+        "count": "1"
+      },
+      {
+        "file": "test-dibble.R",
+        "test": "logical replacement storage through dplyr",
+        "count": "1"
+      },
+      {
+        "file": "test-dibble.R",
+        "test": "copying replacement isolates vectors and preserves grouping",
+        "count": "2"
+      },
+      {
+        "file": "test-dibble.R",
+        "test": "copying replacement and regrouping through dplyr",
+        "count": "2"
+      },
+      {
+        "file": "test-owned-columns.R",
+        "test": "reading a column with $ or [[ leaves its handle private for the next write",
+        "count": "1"
+      }
+    ]
+  }
+}
