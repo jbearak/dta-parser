@@ -28,6 +28,73 @@ fn rank<const MODERN: bool>(bits: u32) -> u8 {
     }
 }
 
+#[inline(always)]
+unsafe fn pair_exact<
+    const X_MODERN: bool,
+    const Y_MODERN: bool,
+    F: Fn(f32, f32) -> bool,
+    M: Fn(u8, u8) -> bool,
+>(
+    x: *const f32,
+    y: *const f32,
+    output: *mut c_int,
+    length: usize,
+    observed: &F,
+    missing: &M,
+) -> bool {
+    let mut valid = true;
+    for index in 0..length {
+        let a = x.add(index).read_unaligned();
+        let b = y.add(index).read_unaligned();
+        let ar = rank::<X_MODERN>(a.to_bits());
+        let br = rank::<Y_MODERN>(b.to_bits());
+        valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
+        let result = if ar | br == 0 {
+            observed(a, b)
+        } else {
+            missing(ar, br)
+        };
+        output.add(index).write(c_int::from(result));
+    }
+    valid
+}
+
+#[inline(always)]
+unsafe fn pair_block<
+    const X_MODERN: bool,
+    const Y_MODERN: bool,
+    F: Fn(f32, f32) -> bool,
+    M: Fn(u8, u8) -> bool,
+>(
+    x: *const f32,
+    y: *const f32,
+    output: *mut c_int,
+    length: usize,
+    observed: &F,
+    missing: &M,
+) -> bool {
+    // Prove a whole bounded block ordinary before selecting its loop. A
+    // per-row branch defeats vectorization and is expensive for mixed tags.
+    // The ordered tests exclude NaNs and all release-specific missing codes;
+    // high permissive imports still use the exact vectorizable classifier.
+    let mut ordinary = true;
+    for index in 0..length {
+        ordinary &= (x.add(index).read_unaligned() < f32::from_bits(DOT))
+            & (y.add(index).read_unaligned() < f32::from_bits(DOT));
+    }
+    if ordinary {
+        for index in 0..length {
+            output.add(index).write(c_int::from(observed(
+                x.add(index).read_unaligned(),
+                y.add(index).read_unaligned(),
+            )));
+        }
+        true
+    } else {
+        pair_exact::<X_MODERN, Y_MODERN, _, _>(x, y, output, length, observed, missing)
+    }
+}
+
 unsafe fn pair<
     const X_MODERN: bool,
     const Y_MODERN: bool,
@@ -41,27 +108,29 @@ unsafe fn pair<
     observed: F,
     missing: M,
 ) -> bool {
+    const BLOCK: usize = 64;
+    let mut start = 0;
     let mut valid = true;
-    for index in 0..length {
-        let a = x.add(index).read_unaligned();
-        let b = y.add(index).read_unaligned();
-        // No release reserves a missing code below DOT. The ordered tests
-        // also exclude NaNs, so ordinary values need neither rank decoding
-        // nor a separate validity check. High permissive imports keep the
-        // exact classifier below rather than becoming threshold-missing.
-        let result = if (a < f32::from_bits(DOT)) & (b < f32::from_bits(DOT)) {
-            observed(a, b)
-        } else {
-            let ar = rank::<X_MODERN>(a.to_bits());
-            let br = rank::<Y_MODERN>(b.to_bits());
-            valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
-            if ar | br == 0 {
-                observed(a, b)
-            } else {
-                missing(ar, br)
-            }
-        };
-        output.add(index).write(c_int::from(result));
+    while length - start >= BLOCK {
+        valid &= pair_block::<X_MODERN, Y_MODERN, _, _>(
+            x.add(start),
+            y.add(start),
+            output.add(start),
+            BLOCK,
+            &observed,
+            &missing,
+        );
+        start += BLOCK;
+    }
+    if start < length {
+        valid &= pair_block::<X_MODERN, Y_MODERN, _, _>(
+            x.add(start),
+            y.add(start),
+            output.add(start),
+            length - start,
+            &observed,
+            &missing,
+        );
     }
     valid
 }
@@ -302,6 +371,70 @@ mod tests {
                             assert_eq!(valid, Some(decoded.is_some()));
                             if let Some((a, b)) = decoded {
                                 assert_eq!(output[0], compare_decoded(op, a, b));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn float_pair_blocks_preserve_boundaries_and_invalid_fallback() {
+        let edges = [
+            -0.0,
+            f32::from_bits(DOT - 1),
+            f32::from_bits(DOT),
+            f32::from_bits(DOT + STEP),
+            f32::from_bits(DOT + 26 * STEP),
+            f32::from_bits(DOT + 1),
+            f32::MAX,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NAN,
+            f32::from_bits(0xffc00001),
+        ];
+        for length in [0_usize, 1, 15, 16, 17, 63, 64, 65, 127, 128, 129] {
+            let mut positions = vec![0, length / 2, length.saturating_sub(1), 63, 64, 65];
+            positions.sort_unstable();
+            positions.dedup();
+            for position in positions {
+                for edge in edges {
+                    let mut x: Vec<f32> = (0..length).map(|i| (i % 7) as f32 / 8.).collect();
+                    let mut y: Vec<f32> = (0..length).map(|i| (i % 3) as f32 / 8.).collect();
+                    if position < length {
+                        x[position] = edge;
+                        y[(position + 1) % length] = f32::from_bits(DOT + 3 * STEP);
+                    }
+                    for xv in [FormatVersion::V111, FormatVersion::V119] {
+                        for yv in [FormatVersion::V111, FormatVersion::V119] {
+                            let left = view(&x, xv);
+                            let right = view(&y, yv);
+                            for op in 0..=5 {
+                                let expected: Option<Vec<c_int>> = (0..length)
+                                    .map(|i| unsafe {
+                                        compare_operand_element(left, i)
+                                            .zip(compare_operand_element(right, i))
+                                            .map(|(a, b)| compare_decoded(op, a, b))
+                                    })
+                                    .collect();
+                                let mut output = vec![-19; length + 2];
+                                let valid = unsafe {
+                                    compare(
+                                        op,
+                                        left,
+                                        Some(right),
+                                        ComparedElement { rank: 0, value: 0. },
+                                        output.as_mut_ptr().add(1),
+                                        length,
+                                    )
+                                };
+                                assert_eq!(valid, Some(expected.is_some()));
+                                if let Some(expected) = expected {
+                                    assert_eq!(&output[1..length + 1], expected.as_slice());
+                                }
+                                assert_eq!(output[0], -19);
+                                assert_eq!(output[length + 1], -19);
                             }
                         }
                     }
