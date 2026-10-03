@@ -1,0 +1,18 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-dta-compare-native.R","native scalar comparisons match Stata total order",24,0,FALSE,FALSE,0
+"test-dta-compare-native.R","native comparisons keep every missing code distinct and ordered",24,0,FALSE,FALSE,0
+"test-dta-compare-native.R","narrow storage understands constants it cannot represent",6,0,FALSE,FALSE,0
+"test-dta-compare-native.R","scalar-on-the-left comparisons flip correctly",6,0,FALSE,FALSE,0
+"test-dta-compare-native.R","compact-versus-compact comparisons agree elementwise",3,0,FALSE,FALSE,0
+"test-dta-compare-native.R","comparisons never materialize compact operands",2,0,FALSE,FALSE,0
+"test-dta-compare-native.R","the native kernel is engaged for compact storage",5,0,FALSE,FALSE,0
+"test-dta-compare-native.R","decoded double vectors compare natively with full semantics",10,0,FALSE,FALSE,0
+"test-dta-compare-native.R","multi-threaded comparisons match single-threaded results",3,0,FALSE,FALSE,0
+"test-dta-compare-native.R","fallback-owned errors survive the native fast path",2,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float comparisons preserve all missing ranks and signed-zero ties",1448,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float scalar comparisons preserve double precision at float boundaries",388,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float comparison spans cross unequal retained chunks in serial and auto modes",53,0,FALSE,FALSE,0
+"test-dta-compare-native.R","modern float imports retain tag gaps high values and infinity ordering",176,0,FALSE,FALSE,0
+"test-dta-compare-native.R","invalid float NaNs decline pair and scalar comparisons before fallback errors",304,0,FALSE,FALSE,0
+"test-dta-compare-native.R","temporal float comparisons use decoded equality after rounding collapse",108,0,FALSE,FALSE,0
+"test-dta-compare-native.R","legacy float comparisons retain version-specific missing domains",350,0,FALSE,FALSE,0

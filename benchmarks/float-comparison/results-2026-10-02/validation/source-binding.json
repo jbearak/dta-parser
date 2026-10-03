@@ -1,0 +1,10 @@
+{
+  "baseline_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+  "later_integration": "See integration-binding.json and integration-package.patch for main895dd204 integration. Comparison module and comparison regression source are identical; clean combined-build focused qualification is separate.",
+  "limits": "Warm million-row constructed float columns on one host. Direct-native eligibility is separately qualified; the public operators are timed. Retained/legacy/noncanonical/temporal cases have correctness coverage but no throughput claim. Missing-bearing bare R uses a different contract.",
+  "measured_candidate_commit": "69422ba58fc5c21a6b0ab1d390550432d479f25f",
+  "package_sources_unchanged_before_main_integration": true,
+  "runtime_sources_identical_to_rust_test_build": true,
+  "rust_test_build_commit": "36e82ef7402b73433d564e54bfd5c1786c663f4b",
+  "validation": "Full R suite and focused tests use the same clean candidate-v1 library as timing. Rust bridge tests use candidate-prototype, whose complete src/ inventory matches candidate-v1. Required conformance rebuilds the same package sources into a source archive and runs R CMD check. The exact timed controller and source changes are retained by commits and hash inventories."
+}

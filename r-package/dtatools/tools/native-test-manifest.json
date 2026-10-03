@@ -13622,7 +13622,7 @@
         },
         {
           "path": "tests/testthat/test-dta-compare-native.R",
-          "sha256": "de340d4f47395bc96bf17b0720152e3523bc23889e4d9b0b139396988cb1cead"
+          "sha256": "264b51be6b45070e03e1f5b1a17fa95f033c98740e3f850a393e148a32ddf090"
         },
         {
           "path": "tests/testthat/test-dta-identical.R",
@@ -14247,6 +14247,62 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "float comparisons preserve all missing ranks and signed-zero ties",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1448,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "float scalar comparisons preserve double precision at float boundaries",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 388,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "float comparison spans cross unequal retained chunks in serial and auto modes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 53,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "modern float imports retain tag gaps high values and infinity ordering",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 176,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "invalid float NaNs decline pair and scalar comparisons before fallback errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 304,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "temporal float comparisons use decoded equality after rounding collapse",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 108,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-compare-native.R",
+          "test": "legacy float comparisons retain version-specific missing domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 350,
           "warnings": 0
         },
         {
