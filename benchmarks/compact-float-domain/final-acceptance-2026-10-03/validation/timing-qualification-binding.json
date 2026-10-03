@@ -1,0 +1,6 @@
+{
+  "preflight_sha256": "14158430859805dd3afe8580363fb2c0b9cfb1d9d51aecf847cec86501ea8ce9",
+  "scope": "Completed timing uses the same build, controller and runtime identities as completed untimed qualification. Independent result/statistical audit follows separately.",
+  "status": "PASS",
+  "timing_completion_sha256": "161f67b64f613b9c3b801d43a4b3131f018a9b5d0229ecb1a8108722cbb876cc"
+}

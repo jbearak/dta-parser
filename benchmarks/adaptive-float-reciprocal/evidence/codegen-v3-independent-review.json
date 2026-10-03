@@ -1,0 +1,19 @@
+{
+  "binding_sha256": "b65e3fc76aa188e3737090e450064b801e198168aac095dca3886b768647a4f4",
+  "build_receipt_sha256": "e932d7f6b608a050bb1d046118b9f3f50b24f14ce70b181920541b2c0aa29bec",
+  "built_object_sha256": "979c8c35f44d19ebf16d83d92024d1f4f35afe3d320c67e4c116c55fcd482b77",
+  "checks": [
+    "current installed DLL equals clean receipt and codegen record",
+    "current built object and all saved artifacts equal record",
+    "consumed numeric files equal immutable Git blobs",
+    "actual release compile command equals build log",
+    "remark command differs only in output/compiler absolute path and diagnostic flags",
+    "both preparation loops report width16 vectorization"
+  ],
+  "installed_dll_sha256": "c25e76cdb94fdfd7f2c1b456466f6316839f29af69600f37e65072753671504f",
+  "scope": "Post-run independent hash/source/flags replay. No recompilation, R execution or fresh disassembly; no timing inference. Original record does not bind disassembler/clang executable hashes.",
+  "source_commit": "2ec57f24a14a646ae67fd2e0af4fb8ef1c549f52",
+  "status": "PASS",
+  "verified_artifacts": 4,
+  "verified_numeric_source_files": 11
+}

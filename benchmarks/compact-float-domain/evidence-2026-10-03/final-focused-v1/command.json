@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "<evidence>/focused.R",
+    "<evidence>/final-combined-build/library",
+    "<final_repository>/r-package/dtatools/tests/testthat",
+    "<evidence>/final-focused-v1/focused.csv"
+  ],
+  "cwd": "<final_repository>",
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T16:54:08.496733+00:00",
+  "scope": "Public focused correctness with full external test-tree and installed-runtime binding; no performance measurement.",
+  "started_utc": "2026-10-03T16:53:17.378571+00:00"
+}

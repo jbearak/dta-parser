@@ -1,0 +1,185 @@
+{
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "scripts/test_native_manifest.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-00.log",
+      "log_sha256": "322e9bec5d6bbde47d6476008f309469c1e42048ed96320a3bae52af8811e27a",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "scripts/test_native_manifest.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-01.log",
+      "log_sha256": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "scripts/test_arithmetic_dependencies.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-02.log",
+      "log_sha256": "6ed034471655811f8e45f3b6e7c4886431ea984f1a69519e2116adefdc1734dd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "scripts/test_arithmetic_dependencies.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-03.log",
+      "log_sha256": "4e70127055e5c46295db82122a0ab018f60fd181ebfe2b405d36defaf52d820e",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/integer-reciprocal/test-work-count.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-04.log",
+      "log_sha256": "d10ffbd9f0faa72cd6837063279524e199b59fbc3d035051302a1e8dbc4b36ad",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/integer-reciprocal/test-work-count.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-05.log",
+      "log_sha256": "d10ffbd9f0faa72cd6837063279524e199b59fbc3d035051302a1e8dbc4b36ad",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/long-float-addition/test-work-count.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-06.log",
+      "log_sha256": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/long-float-addition/test-work-count.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-07.log",
+      "log_sha256": "8511476ade8de90f5517cc722fe4e78a712af4c32884f34c51335fc83e873772",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/long-float-addition/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-08.log",
+      "log_sha256": "93ec25967db281cc40ef2f0ede5cca446cf01c2a06a969955aca7b7ab3cbacc0",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/long-float-addition/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-09.log",
+      "log_sha256": "186591c8809b65fbf227ec29a7a80eff5e01d2914443a1927e1e72d68723abff",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/compact-float-domain/strict/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-10.log",
+      "log_sha256": "02e3271ec381b263ff19076e9d156344dd6442b273aaa72f8a5e59fcf48f4e20",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/compact-float-domain/strict/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-11.log",
+      "log_sha256": "2f0738092e68336b47649e55bc5e19d4759b74b60c3a2adc286bf22d2c5a5754",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/compact-float-domain/unknown/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-12.log",
+      "log_sha256": "eccb296f0b722a2fb19fba47f02ed739ad4f1cd3bdb24b0208dd71cc7b5e6868",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/compact-float-domain/unknown/test-run.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-13.log",
+      "log_sha256": "92cd6f9e491f82eebb1173ffacb902a43be31b24b25dc6719a210906371fb795",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/scalar-float-blocks/test-kernel.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-14.log",
+      "log_sha256": "af20f54b2f9c50edbda3386cdd279a69a3dbac3770d8482a18804a9a390b7db0",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/scalar-float-blocks/test-kernel.py"
+      ],
+      "cwd": "<final_repository>",
+      "log": "guard-15.log",
+      "log_sha256": "af20f54b2f9c50edbda3386cdd279a69a3dbac3770d8482a18804a9a390b7db0",
+      "returncode": 0
+    }
+  ],
+  "files": {
+    "benchmarks/compact-float-domain/strict/test-run.py": "71a507cad185a0b5372c8c5b5817942b5f85288aacf27bfc078a7caa591101ed",
+    "benchmarks/compact-float-domain/unknown/test-run.py": "e0d1b0ed2dc7dea1cb227ad51aca0c4639ec7069d340d0f2ffc79b8ab6478a70",
+    "benchmarks/integer-reciprocal/test-work-count.py": "f0fae09419c95cdbb4528e4d2258ae5aa14225948ea5fe9a8b714765551ae15c",
+    "benchmarks/long-float-addition/test-run.py": "c4a90294edbba1983daeee56a0b82905aa700459e4eb0accc00cadb4921d7489",
+    "benchmarks/long-float-addition/test-work-count.py": "da4c6447826174c87a86d5f47ca2fc66b68c79ca0bce4881127805ff8d12f692",
+    "benchmarks/scalar-float-blocks/test-kernel.py": "3fdc71463b94ee6dc1a3abe1d0b1137611f994baed743dfedeb0af69a9ce7472",
+    "scripts/test_arithmetic_dependencies.py": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866",
+    "scripts/test_native_manifest.py": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426"
+  },
+  "runner_sha256": "dccca8c31ad939c57c50cf80dfde7b291aad8ed0e3d5f3b19f7584ad48afb7c9",
+  "source_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "status": "PASS"
+}

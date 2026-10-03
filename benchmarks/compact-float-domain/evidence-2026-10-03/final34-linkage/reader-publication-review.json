@@ -1,0 +1,48 @@
+{
+  "all_description_statistics_and_table_recomputed": true,
+  "audit_replay_byte_identical": true,
+  "auditor_sha256": "aeda8ca13265927f97670c8aaba04b5b95220f2bb9c59b5719c24c6e1d2d0574",
+  "controller_delta": "Only exact candidate pin, prose and transitive-recorder dependency declaration; original measurement flow unchanged.",
+  "counts": {
+    "ordinary": {
+      "at_most_1_10": 14,
+      "at_most_1_50": 28,
+      "range": [
+        0.7777414295748223,
+        1.915342244544094
+      ]
+    },
+    "typed_double": {
+      "at_most_1_10": 23,
+      "at_most_1_50": 31,
+      "range": [
+        0.7685683295951697,
+        1.5445612810119667
+      ]
+    }
+  },
+  "description_cases": 34,
+  "description_sha256": "b5f74f21b121cf746c51903745e252216769ea9892ba15575f0903f33ccccc8c",
+  "direct_identity_values_and_hashes_removed": true,
+  "full_current_source_installed_runtime_replay": true,
+  "measurement_worker_unchanged": true,
+  "observations": 1224,
+  "original_audit_sha256": "1cc533a03bd0e468654db9d27c4385906f75fcc9bfd7e4c614d4c2a1e5111869",
+  "original_public_hash_mapping_verified": true,
+  "original_whole_artifact_hashes_preserved": true,
+  "public_manifest_sha256": "e467a9607c896f393b842f05606169c0a464edd318192c181ea00377f4f6a345",
+  "public_source_map_sha256": "dc81185f0276fbff2216a11fa0cb5ffe0e2cec052f4a0c0e542c303d72a7d7b1",
+  "publication_replay_byte_identical": true,
+  "published_artifacts": 69,
+  "publisher_sha256": "46a12f7eb28b37bdcd874eb0291e7840ef25e8b9d905a3f05e3aa2192386fa15",
+  "qualification_observations": 204,
+  "reviewer_script_sha256": "84585bef904fa88f152c916ffea915af07bcc205bc65e8e856c55ada9c3d3330",
+  "scope": "No new measurement. Replayed reviewed audit with only its output destination redirected through an AST assignment; original auditor bytes and evidence unchanged. Full current inventories/runtime, matrix/orders/semantics/counts, medians and description statistics rechecked. Public bundle reproduced independently and checked for private paths/direct identity values and digests. Package conformance remains separately bound by final integration.",
+  "source_commits": {
+    "baseline": "7003eba901671797ee91fffc97f08e28a1f7f515",
+    "candidate": "3eadb244253fb817d5773b01b11cb36c284f3a1d"
+  },
+  "source_map_entries": 66,
+  "status": "PASS",
+  "summary_rows": 68
+}

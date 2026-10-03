@@ -1,0 +1,19 @@
+{
+  "artifacts": {
+    "after.json": "bc4dd88cb0f79d61511d43631c6f7e6c0e4ec06adfe6ed3d5dbe1c860bf82c38",
+    "before.json": "bc4dd88cb0f79d61511d43631c6f7e6c0e4ec06adfe6ed3d5dbe1c860bf82c38",
+    "command.json": "16a772091cf7e6fd465f443809be07e41eb244db0e83ef0b7e7cdefc7d60dbd6",
+    "full-suite.csv": "d63fe7a5d1faba7abb010e269f4c4765ff219e08aa76130e6807ae521bddb567",
+    "full-suite.log": "dff4b6d64cb8d8d92f35d6eed62ab2d513504ba7c8d940e03080392f5fdacb62"
+  },
+  "before_after_equal": true,
+  "blocks": 1812,
+  "manifest_complete": true,
+  "source_commit": "387227cdb8a174feccb24e5f52745177c5af3f95",
+  "status": "PASS",
+  "totals": {
+    "failed": 0,
+    "passed": 104302,
+    "warning": 7
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/long-float-addition/test-run.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-01.log",
+      "log_sha256": "ebcdfe25f6926e21fcedf35187c8151264b8387e1e174cb5fe2205fb7a21755e",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/long-float-addition/test-run.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-02.log",
+      "log_sha256": "992669421ab4a90e4dc1b7b52d73d5d61c3518a59586510f8174fcd0d9e06051",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "benchmarks/long-float-addition/test-work-count.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-03.log",
+      "log_sha256": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "benchmarks/long-float-addition/test-work-count.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-04.log",
+      "log_sha256": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "scripts/test_native_manifest.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-05.log",
+      "log_sha256": "9ec9e3c52e7908b746c625587944c7e1eb71f90fc834fbb4527d510523684dd2",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "scripts/test_native_manifest.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-06.log",
+      "log_sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "scripts/test_arithmetic_dependencies.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-07.log",
+      "log_sha256": "cbf0054a7b922908843a620138ba48fe142dd241b598b0008dfc782e82a5958c",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "scripts/test_arithmetic_dependencies.py"
+      ],
+      "cwd": "<private-tmp>/dta-long-float-addition",
+      "log": "guard-08.log",
+      "log_sha256": "ff1fdaa7f7b011880e9cf5c61d0e51f0466d712f3ad1dc5e6ec9c7aa9fc2a728",
+      "returncode": 0
+    }
+  ],
+  "files": {
+    "benchmarks/long-float-addition/test-run.py": "c4a90294edbba1983daeee56a0b82905aa700459e4eb0accc00cadb4921d7489",
+    "benchmarks/long-float-addition/test-work-count.py": "da4c6447826174c87a86d5f47ca2fc66b68c79ca0bce4881127805ff8d12f692",
+    "scripts/test_arithmetic_dependencies.py": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866",
+    "scripts/test_native_manifest.py": "117d81a6a832617f497564b8eb7d80868abbdc17db9af7d22d0940907d940044"
+  },
+  "runner_sha256": "7ce86b2727d825fbd3b5f524bfda51a75e9d1d4b1c54a3e64f986f46c41e80bc",
+  "source_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "status": "PASS"
+}

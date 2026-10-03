@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "<private-tmp>/dta-long-float-add-audit/full-suite.R",
+    "<private-tmp>/dta-long-float-add-audit/candidate-v1/library",
+    "<private-tmp>/dta-long-float-add-audit/candidate-v1/source/tests/testthat",
+    "<private-tmp>/dta-long-float-add-audit/candidate-full-v1/full-suite.csv"
+  ],
+  "cwd": "<private-tmp>/dta-long-float-add-audit/candidate-v1/source",
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T11:00:45.025064+00:00",
+  "scope": "Full installed R correctness; warnings retained and checked against manifest; no timing benchmark.",
+  "started_utc": "2026-10-03T10:48:08.895930+00:00"
+}

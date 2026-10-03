@@ -1,0 +1,31 @@
+{
+  "candidate_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "runs": [
+    {
+      "command": [
+        "python3",
+        "<evidence>/acceptance-controller/test-general-run.py"
+      ],
+      "exit_code": 0,
+      "summary": "Ran 7 tests in 0.653s; OK",
+      "tests": 7
+    },
+    {
+      "command": [
+        "python3",
+        "-O",
+        "<evidence>/acceptance-controller/test-general-run.py"
+      ],
+      "exit_code": 0,
+      "summary": "Ran 7 tests in 0.664s; OK",
+      "tests": 7
+    }
+  ],
+  "scope": "Controller unit guards, captured from completed exec sessions71011 and35271. This is not a timing or package-conformance result.",
+  "source_sha256": {
+    "acceptance-controller/general-run.py": "64de603e200b6d4d4eb35deccfc830075055f863c634ed6711c4b625d395b8bb",
+    "acceptance-controller/general-worker.R": "b9871e9e73cccc4a74771545d26fb0c5e3d72aa4fb8c96f08fec521332a44c4e",
+    "acceptance-controller/test-general-run.py": "691520bc575d130479a7f975b9cce2eacd29e5bd458636c64774ce422f2f08d6"
+  },
+  "status": "PASS"
+}

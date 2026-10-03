@@ -1,0 +1,20 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "r-package/dtatools/src/rust/Cargo.toml",
+    "--locked"
+  ],
+  "cwd": "<final_repository>",
+  "environment": {
+    "CARGO_TARGET_DIR": "<private-work>/dta-native-comparison-followup/target"
+  },
+  "failed": 0,
+  "ignored": 0,
+  "log_sha256": "b0a87202419b988a563c5371cb65e80ec74e50d1396b6e61fd7574aa4b47ee76",
+  "passed": 71,
+  "scope": "Post-run launch supplement records the actual completed command and source commit; log counts are rechecked. Not a contemporaneous compiler/runtime inventory.",
+  "source_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "status": "PASS"
+}

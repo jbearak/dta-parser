@@ -1,0 +1,28 @@
+{
+  "artifacts": {
+    "candidate-codegen-binding.json": "ad3bf6e978008fafdac5ce7e0ded16766945f7acaf908ce747e1f958f37655fd",
+    "release-remarks-v1/binding.json": "c02a285818100a815db2c71a9b067eb972ac72889929098ba81622c1f1cc027e",
+    "review-codegen-reader.py": "12cf1ee19bdeb3ff793c377d1c8cff027dd21de583ed18b63bf548f26167becb"
+  },
+  "build_receipt_sha256": "d13edbec2cf73b22b1a952e725397bb099df5047042666872a7f3b13754656ac",
+  "canonical_vectorized_lines": [
+    121,
+    123,
+    127,
+    129
+  ],
+  "commit": "452ac7232ef6e47c398bcd22c7bb2800b55932c3",
+  "consumed_sources": 60,
+  "representative_installed_loop": "0x195680-0x1957b0",
+  "scope": "Independent current binding replay and representative installed SIMD inspection; no cross-compiler or timing claim.",
+  "source_headers": 10,
+  "status": "PASS",
+  "unknown_fallback_vectorized_lines": [
+    77,
+    79,
+    81,
+    86,
+    88,
+    90
+  ]
+}

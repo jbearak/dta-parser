@@ -1,0 +1,23 @@
+{
+  "bind.py": "4a63f1649c61cb0ba28801078962b48fe21effd57153863f41d7fefe03a0cb88",
+  "binding.json": "0caa4c2e73294395f8ccfb397903653c1de0cedca191ec3c24957dd3f4bebe75",
+  "build/build-receipt.json": "75f385ff62ecdc5e5011056c8adf681c4f8c973d8ce95de8aedc4be912ca1075",
+  "build/input-record.json": "e74818bed3b3cc43c6951f439b3c47ada858d1b3d987010e6150a4dd747462d3",
+  "focused-command.json": "0f7250cb6e5e83de4f1b7fd0cd0b88ade4196cf61fd1242aa431631713d1753c",
+  "focused-completion.json": "f5f38e4a891a66f7b485ac2bf1920ad1cc9451c4b29fe11f6c53272e4d32e31c",
+  "focused-source.R": "1c3c1e7486ea8c7ce52377ff8be31abd86d5e8db7a3b113c817ab9efed168fd5",
+  "focused.csv": "e9f48b040a70a7c22868110e0cc87667563f6a401a372ec1d66b037adadc0883",
+  "focused.log": "37fa13070a5167750a3d0622b6184ae0aefce029df39667bda191e4d9a5a3093",
+  "guards.json": "338fd6392beeb606436d8df57c16c0c23b4e588cc87ae110fe8195368722f2e2",
+  "publication-source-map.json": "7aa7874024ec6cf11cac892280ab059295a59e72f45e7750fc0ffaf130ce2bd3",
+  "publish.py": "dc2a771c985d52f16af7a96c1fe482c2842114a998063519ba0a3049bcf06d35",
+  "run-focused.py": "1f9513c0c6722bda84b44ef13e19792d9f886eaa423ebdd681c285a3b6ba7fb1",
+  "run-guards.py": "6ed7019ab6ac851c4d4743a7243675060f3da969414e9909bddcf209426f0d20",
+  "structural/receipt.json": "89b4e3302d4504590e172637f47927f2a57db1887739539b329baf4e13f33e78",
+  "structural/work-count.csv": "9ab3b5cd34531a1ed2924acb460031c3f7375b8f605ca82f61ee13fe650af789",
+  "structural/work-count.log": "c98ec2ff376413b003ffcc9aa5fd44f9408016b6856bc302e3126dfaab0e16a1",
+  "test_arithmetic_dependencies-optimized.log": "2dfc170002601b21a0b375399597d66ac00db574b5b6176cbcf62f5836fbcf36",
+  "test_arithmetic_dependencies.log": "1321b6d5836fb9224d3a94490e291ea66a509975207830b8fbd5e933f654ff59",
+  "test_native_manifest-optimized.log": "35649ccb7621214ac024bd31428022d326fb76b6926043ad7d6527b41cd3c0f8",
+  "test_native_manifest.log": "fc23540c8545d4075fe2f0420accd022e74e5566176c3bd4c597964ff02c2e14"
+}

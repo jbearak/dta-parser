@@ -1,0 +1,18 @@
+{
+  "cases_per_build": 102,
+  "exact_results_and_missing_caches": true,
+  "input_sha256": {
+    "<evidence>/acceptance-baseline-qualification.csv": "d84f68da9f7fdc1d22c406720366e1e116c74a595688e6f9d324ff98a1f3acf0",
+    "<evidence>/acceptance-baseline-qualification.log": "e2e6c86c3b21cf90f30780d10f646b3efd03edaffebca3bb1b11717f823cac73",
+    "<evidence>/acceptance-candidate-qualification.csv": "d84f68da9f7fdc1d22c406720366e1e116c74a595688e6f9d324ff98a1f3acf0",
+    "<evidence>/acceptance-candidate-qualification.log": "e2e6c86c3b21cf90f30780d10f646b3efd03edaffebca3bb1b11717f823cac73",
+    "<evidence>/acceptance-qualification-after.json": "87988f6a9011c6b5e8ae06a67afb3d6dd080fb09cf3398778d9a4bc79940f01b",
+    "<evidence>/acceptance-qualification-before.json": "87988f6a9011c6b5e8ae06a67afb3d6dd080fb09cf3398778d9a4bc79940f01b"
+  },
+  "native_routes_checked_in_both_builds": true,
+  "provenance_unchanged": true,
+  "scope": "Untimed acceptance qualification only; no performance measurements.",
+  "source_state_unchanged": true,
+  "status": "PASS",
+  "total": 204
+}

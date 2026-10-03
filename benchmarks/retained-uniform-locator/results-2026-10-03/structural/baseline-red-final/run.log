@@ -1,0 +1,18 @@
+
+running 1 test
+test owned_numeric::retained_span_probe::retained_span_work_probe ... FAILED
+
+failures:
+
+failures:
+    owned_numeric::retained_span_probe::retained_span_work_probe
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 68 filtered out; finished in 0.52s
+
+retained span probe: 11367 API checks passed, 10 uniform search-work failures
+
+thread 'owned_numeric::retained_span_probe::retained_span_work_probe' (20969913) panicked at src/retained_span_probe.rs:142:9:
+assertion `left == right` failed: uniform lookup still performs binary-search comparisons
+  left: 10
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
