@@ -1,0 +1,31 @@
+{
+  "assembly_sha256": "a3df20a81d3570cacad92a4ec53b0ef124146a97e315103f4225971d5e098fcc",
+  "base_commit": "2892b106411463d3357126a215697dc15d58d820",
+  "benchmark_qualification_cases": 102,
+  "build_receipt_sha256": "46158145b9b6b4a1f52991aeb154ff3883d4433006ea30607975b76128fc6ed2",
+  "focused_assertions": 39467,
+  "focused_observations_sha256": "85b62b91495e407b2411cf3b93f24aaf05f01e8e4ef311c7d735c897a0f2b0c2",
+  "installed_library_sha256": "9fb871d161af58418fcd7a4c46a91fafec9ff60174e18493ae8c642ec18771f1",
+  "modern_missing_float_times_scalar_to_float": {
+    "caveat": "compiler packs some Boolean masks to 16 bits and re-expands them; instruction shape is not a timing result",
+    "dispatch": [
+      "0x188298",
+      "0x18ef40",
+      "0x18f138",
+      "0x18f75c",
+      "0x1906d0",
+      "0x1916cc",
+      "0x195944"
+    ],
+    "observed_mechanism": "32-bit input fit and invalid masks, finite anchor selected with bsl before fcvtl, binary64 operation and one final float narrowing, input infinity count and promotion reductions; no binary64 output validity or magnitude reduction",
+    "rows_per_iteration": 16,
+    "simd_loop": [
+      "0x19598c",
+      "0x195b98"
+    ]
+  },
+  "qualification_sha256": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137",
+  "schema_version": 1,
+  "scope": "compiler mechanism and untimed qualification; no performance claim",
+  "source_sha256": "7370bb080c77b0a9a449d4b676b6c055869603d981e5888e67f5d9895fcf14dc"
+}

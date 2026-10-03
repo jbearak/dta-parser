@@ -1,0 +1,19 @@
+{
+  "base_commit": "cf72cd8efb318d9d9851f5a51f8e947fd3b158db",
+  "build_receipt_sha256": "27d934ba82e251043ce1d4cca1ecc3404b6ec7c170c251ce12e722b65819544d",
+  "conformance_log_sha256": "a464243efe6fa7dd73191730918b6f622127beb3333f81cb07e030ff75b8d7b6",
+  "manifest_blocks_observed": 1778,
+  "observations_sha256": "c87258cdec6bc01680640fe959819b9058fde78ba5ce019f737063f8bdcb3dbd",
+  "runner_sha256": "b9e66b281ead118e20473b29ca573bea302ac909b05b68375abb4a59eb3124ed",
+  "schema_version": 1,
+  "scope": "Post-validation source and manifest check; no new tests or timing. Full suite used installed clean candidate; every manifest block observed in the present-dependency suite.",
+  "source_files_matched": 465,
+  "test_log_sha256": "89f5c71b6752147a275873c2fd9c8f5977e94d76539ed873dc30653df2f542e6",
+  "totals": {
+    "error": 0,
+    "failed": 0,
+    "passed": 84707,
+    "skipped": 0,
+    "warning": 7
+  }
+}

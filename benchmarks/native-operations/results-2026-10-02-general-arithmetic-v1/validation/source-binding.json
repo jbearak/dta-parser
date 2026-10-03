@@ -1,0 +1,20 @@
+{
+  "candidate_commit": "48c2243f96a8db760d48cdfba2d586719de394ed",
+  "candidate_dll_sha256": "65fc18454704c3bab15b3448d30da2b1a4a869e69189b36b8d0533c64a424195",
+  "candidate_receipt_sha256": "2a65e3a0cd130913dea14e66fd96548ee5c02dcf4826e409b1a3012ff60c2cf3",
+  "full_suite": {
+    "error": 0,
+    "failed": 0,
+    "log_sha256": "479a2649d621b5129b3964f23c9377647cd1afd8d18a042c8e33f459a584179e",
+    "observations_sha256": "c132608dea593057f3b45225633d19595b05aa607536138354a7aad5e6265f33",
+    "passed": 64804,
+    "skipped": 0,
+    "warning": 7
+  },
+  "interpretation": "Intermediate candidate; five of the eight original cases still exceed the local 1.5x typed-double CPU target. No universal parity claim.",
+  "qualification": {
+    "cases_per_build": 102,
+    "values_storage_missing_source": true
+  },
+  "source_equals_measured_candidate": true
+}
