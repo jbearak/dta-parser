@@ -1,0 +1,16 @@
+{
+  "commit": "0218faeaa388fdf01676a4b0438359b0745cf52d",
+  "command": [
+    "sh",
+    "/private/tmp/dta-double-pair-mask-evidence/integration-conformance-gate.sh"
+  ],
+  "cwd": "/private/tmp/dta-double-pair-mask-evidence/integration-export",
+  "environment": {
+    "DTA_REQUIRE_R_CONFORMANCE": "1",
+    "R_ENVIRON_USER": "/dev/null",
+    "R_PROFILE_USER": "/dev/null"
+  },
+  "original_script_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "wrapper_sha256": "5c58a387bc396479d8253742ac3b461513dbf03b50a97ad097abf797853acf45",
+  "only_wrapper_change": "Preserve temporary source archive and check outputs before the original cleanup."
+}

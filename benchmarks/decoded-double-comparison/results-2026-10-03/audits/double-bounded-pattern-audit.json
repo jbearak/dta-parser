@@ -1,0 +1,118 @@
+{
+  "artifacts": {
+    "completion.json": "4fd48f44dd3d70dcd28e32e9a00fd53807d5ef636c36ba9b5cc0d31d903064d8",
+    "protocol.json": "4c596e78c5bda91e0388232650a3cd8dde0540b3d9bd3b02f0b719bd9b401553",
+    "provenance-after.json": "0d110fcf35473a3b5a6b568e2bc3f32c26739e01adcc939f7310739d106f1efb",
+    "provenance-before.json": "0d110fcf35473a3b5a6b568e2bc3f32c26739e01adcc939f7310739d106f1efb",
+    "raw.csv": "0191bd845b08ef4c1c6ac0b7a22c91aaad9f32f42497490ec4bb2d015a1e87b2",
+    "source.patch": "3c010978c6299596d26abe63a401cd7ba2c1d9eb51703bf071623cec258eb522",
+    "summary.csv": "781a0d9c451b461beaeda1f16fb8d32448fe9b5985415ebb345218272624ea7b"
+  },
+  "audit": "Independent artifact recomputation; no R/build/timing jobs",
+  "caveats": [
+    "Native eligibility is not a per-timed-call entry counter.",
+    "Patterns differ in missing counts and run lengths; cross-pattern ratios do not isolate branch prediction.",
+    "Constructed modern retained float inputs, threads1 and fixed mismatched chunk geometry only.",
+    "Current full named source/installed/compiler/DLL inventories independently reverified in the authorized setup window."
+  ],
+  "checks": [
+    "full case matrix and worker/raw identity",
+    "six pattern permutations and balanced representation/build/operation orders",
+    "full result/input/rank/metadata hashes and unchanged source states",
+    "missing marginals/joint rates and native eligibility",
+    "equivalent representation oracle",
+    "every CPU/wall median, speedup, paired speedup and typed ratio",
+    "before/after bindings, original clean receipts, current controllers and exact execution runtime",
+    "identically bound prior qualification and every completion artifact hash",
+    "current full named source/installed/compiler/DLL inventories and single-module source delta"
+  ],
+  "cpu_interval_range": [
+    0.225,
+    0.331
+  ],
+  "joint_missing_by_pattern": {
+    "alternating64": 500032,
+    "dense_prefix256": 256,
+    "dense_suffix256": 256
+  },
+  "observations": 144,
+  "ratios": [
+    {
+      "candidate_compact_typed_cpu": "0.5536502038886738",
+      "compact_cpu_paired_median_speedup": "0.9847426877620298",
+      "compact_cpu_speedup": "0.9884392323440973",
+      "compact_wall_speedup": "0.9852627335623251",
+      "operation": "pair_less",
+      "pattern": "dense_prefix256",
+      "typed_double_cpu_paired_median_speedup": "1.1952450491487074",
+      "typed_double_cpu_speedup": "1.2059681571035077",
+      "typed_double_wall_paired_median_speedup": "1.194860406798581",
+      "typed_double_wall_speedup": "1.209806040101912"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.5425198322138887",
+      "compact_cpu_paired_median_speedup": "0.9875408609279781",
+      "compact_cpu_speedup": "1.0149527194452377",
+      "compact_wall_speedup": "1.0149527194452377",
+      "operation": "pair_equal",
+      "pattern": "dense_prefix256",
+      "typed_double_cpu_paired_median_speedup": "1.2114624301539056",
+      "typed_double_cpu_speedup": "1.2135748086600542",
+      "typed_double_wall_paired_median_speedup": "1.2133211117903668",
+      "typed_double_wall_speedup": "1.215719619818899"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.5645721928035059",
+      "compact_cpu_paired_median_speedup": "0.9984140346145013",
+      "compact_cpu_speedup": "0.9925861159938162",
+      "compact_wall_speedup": "0.9941296729580528",
+      "operation": "pair_less",
+      "pattern": "dense_suffix256",
+      "typed_double_cpu_paired_median_speedup": "1.2519593085234608",
+      "typed_double_cpu_speedup": "1.2812105105744966",
+      "typed_double_wall_paired_median_speedup": "1.2499276810251079",
+      "typed_double_wall_speedup": "1.279125955335519"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.5548414801993548",
+      "compact_cpu_paired_median_speedup": "0.9934206185054288",
+      "compact_cpu_speedup": "1.0105257749972825",
+      "compact_wall_speedup": "1.0091339672290383",
+      "operation": "pair_equal",
+      "pattern": "dense_suffix256",
+      "typed_double_cpu_paired_median_speedup": "1.2243041794115221",
+      "typed_double_cpu_speedup": "1.256483372426114",
+      "typed_double_wall_paired_median_speedup": "1.2222847810634088",
+      "typed_double_wall_speedup": "1.2524838623354948"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.7392317919365617",
+      "compact_cpu_paired_median_speedup": "1.0042649170256086",
+      "compact_cpu_speedup": "1.0220707095750465",
+      "compact_wall_speedup": "1.018747060716319",
+      "operation": "pair_less",
+      "pattern": "alternating64",
+      "typed_double_cpu_paired_median_speedup": "1.5147078128628988",
+      "typed_double_cpu_speedup": "1.4968637177497288",
+      "typed_double_wall_paired_median_speedup": "1.5147161721775393",
+      "typed_double_wall_speedup": "1.4968702184473428"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.7458174308607827",
+      "compact_cpu_paired_median_speedup": "0.9992177591817479",
+      "compact_cpu_speedup": "1.0235413839891452",
+      "compact_wall_speedup": "1.0235413839891436",
+      "operation": "pair_equal",
+      "pattern": "alternating64",
+      "typed_double_cpu_paired_median_speedup": "1.494449464990082",
+      "typed_double_cpu_speedup": "1.4995101366403234",
+      "typed_double_wall_paired_median_speedup": "1.4944820730125228",
+      "typed_double_wall_speedup": "1.5015195850103447"
+    }
+  ],
+  "summary_rows": 6,
+  "wall_interval_range": [
+    0.225,
+    0.331
+  ]
+}

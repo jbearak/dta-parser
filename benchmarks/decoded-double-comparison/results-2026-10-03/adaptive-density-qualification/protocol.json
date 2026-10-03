@@ -1,0 +1,13 @@
+{
+  "cases_per_build_round": 12,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million retained float values, X spans8191 and Y spans16385; matching typed-double controls. Independently sampled exact50% missing per input, same contiguous first-half missing in both inputs, or100% missing. All27 missing ranks present in each column. Finite values are exactly binary32-representable. Fixed documented RNG seeds.",
+  "interval": "No clocks or calibration. One recorded comparison repetition, preceded by public-result and native-eligibility checks, with complete result/input validation.",
+  "limits": "One host, fixed warm constructed span geometry, modern canonical missing codes, threads1 only. The randomized/clustered cases have different joint missing rates; this is not an isolated branch-prediction experiment. Native eligibility is not a per-timed-call entry counter. No arbitrary import, temporal, reader or universal density claim.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "oracle": "Full independent integer-rank logical oracle; complete input/result/rank/metadata hashes and retained states before/after; separate native eligibility qualification.",
+  "order": "One qualification round: baseline then candidate, each in a fresh R process. Random-half, clustered-half, all-tags; less then equal. Less uses typed-double then compact; equal uses compact then typed-double.",
+  "phase": "qualify",
+  "rounds": 1
+}

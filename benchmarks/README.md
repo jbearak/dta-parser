@@ -75,6 +75,12 @@ measures direct double-pair kernels, retained scheduling and vectorized float
 block comparisons. It reports ordinary/sparse parity, dense-missing guards,
 the scheduling CPU/elapsed-time tradeoff and rejected per-row shortcuts.
 
+The [decoded-double dense-missing follow-up](decoded-double-comparison/results-2026-10-03.md)
+removes per-row missing branches and bounds adaptive fallback windows. Its
+720-observation matrix improves random dense missing comparisons by 7.34 to
+7.79 times and missing-free comparisons by 1.24 to 1.30 times, with rejected
+prototypes and unchanged compact controls retained.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below
