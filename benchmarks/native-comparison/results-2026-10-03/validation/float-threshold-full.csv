@@ -1,0 +1,1774 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-altrep-scalar-arithmetic.R","compact Stata numerics use the typed scalar producer",20,0,FALSE,FALSE,0
+"test-altrep-scalar-arithmetic.R","compact scalar promotion and missing values match the R route",6,0,FALSE,FALSE,0
+"test-altrep-scalar-arithmetic.R","bounded integer scalar arithmetic preserves compact storage and promotes at limits",19,0,FALSE,FALSE,0
+"test-altrep-scalar-arithmetic.R","compact float arithmetic promotes past the Stata observed limit",6,0,FALSE,FALSE,0
+"test-altrep-scalar-arithmetic.R","compact scalar overflow becomes missing without promoting storage",72,0,FALSE,FALSE,0
+"test-altrep-scalar-arithmetic.R","compact helper admission checks live executable traces after warming",4,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0
+"test-arrow.R","legacy Arrow numeric metadata reads into current DTA classes",6,0,FALSE,FALSE,0
+"test-arrow.R","standard R columns round-trip with full fidelity",10,0,FALSE,FALSE,0
+"test-arrow.R","Arrow field names are not restricted to Stata syntax",2,0,FALSE,FALSE,0
+"test-arrow.R","empty data and default POSIXct timezones round-trip",6,0,FALSE,FALSE,0
+"test-arrow.R","compression variants round-trip identically",3,0,FALSE,FALSE,0
+"test-arrow.R","profiled Stata columns keep raw missing storage bit-exactly",20,0,FALSE,FALSE,0
+"test-arrow.R","profiled columns read back as compact ALTREP by default",3,0,FALSE,FALSE,0
+"test-arrow.R","string columns without missing values defer through ALTREP",7,0,FALSE,FALSE,0
+"test-arrow.R","multithreaded Arrow reads match single-threaded reads",3,0,FALSE,FALSE,0
+"test-arrow.R","multithreaded Arrow writes match single-threaded writes",2,0,FALSE,FALSE,0
+"test-arrow.R","Arrow string writes preserve Unicode and missing values across regions",105,0,FALSE,FALSE,0
+"test-arrow.R","Arrow string writes retain owned and ephemeral values through collection",5,0,FALSE,FALSE,0
+"test-arrow.R","native Arrow write cancellation remains an interrupt",2,0,FALSE,FALSE,0
+"test-arrow.R","checksum-free writes round trip without verification",4,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow validates threads",4,0,FALSE,FALSE,0
+"test-arrow.R","read_arrow validates threads",4,0,FALSE,FALSE,0
+"test-arrow.R","deferred string columns are written without materializing",5,0,FALSE,FALSE,0
+"test-arrow.R","owned Stata strings are writable and signable",4,0,FALSE,FALSE,0
+"test-arrow.R","compact ALTREP columns are written without materializing",5,0,FALSE,FALSE,0
+"test-arrow.R","compact datetime timezone adjustment matches eager writing",5,0,FALSE,FALSE,0
+"test-arrow.R","a DTA fixture survives a semantic Arrow round-trip",26,0,FALSE,FALSE,0
+"test-arrow.R","legacy integer tails and value-label codes survive Arrow",25,0,FALSE,FALSE,0
+"test-arrow.R","tagged NaN payloads on bare doubles survive bit-exactly",2,0,FALSE,FALSE,0
+"test-arrow.R","byte-encoded strings are rejected instead of replaced",6,0,FALSE,FALSE,0
+"test-arrow.R","byte-encoded Stata metadata is rejected instead of serialized",12,0,FALSE,FALSE,0
+"test-arrow.R","haven labelled doubles round-trip with their labels",4,0,FALSE,FALSE,0
+"test-arrow.R","label-free haven labelled doubles retain their class",4,0,FALSE,FALSE,0
+"test-arrow.R","temporal classes and empty value-label tables round-trip",14,0,FALSE,FALSE,0
+"test-arrow.R","profiled storage uses its materialized R type for selection",2,0,FALSE,FALSE,0
+"test-arrow.R","declared Stata storage overrides mismatched compact backing",3,0,FALSE,FALSE,0
+"test-arrow.R","invalid NaNs in Stata storage become system missing",3,0,FALSE,FALSE,0
+"test-arrow.R","value labels on profiled columns round-trip",2,0,FALSE,FALSE,0
+"test-arrow.R","integer-coded value labels work in Arrow and datasig",6,0,FALSE,FALSE,0
+"test-arrow.R","display formats round-trip on profiled columns",1,0,FALSE,FALSE,0
+"test-arrow.R","column projection, skip, and n_max select the requested window",8,0,FALSE,FALSE,0
+"test-arrow.R","zero-row selections preserve factor levels",6,0,FALSE,FALSE,0
+"test-arrow.R","corrupted buffers fail checksum verification by default",3,0,FALSE,FALSE,0
+"test-arrow.R","newer profile versions are a hard error with an escape hatch",4,0,FALSE,FALSE,0
+"test-arrow.R","profile = FALSE reads raw storage arrays without Stata semantics",3,0,FALSE,FALSE,0
+"test-arrow.R","unsupported columns are an error naming the column",4,0,FALSE,FALSE,0
+"test-arrow.R","write validation failures leave existing destinations unchanged",2,0,FALSE,FALSE,0
+"test-arrow.R","extensionless output paths gain .arrow with a warning",3,0,FALSE,FALSE,0
+"test-arrow.R","non-Arrow input is rejected by name",1,0,FALSE,FALSE,0
+"test-arrow.R","unrepresentable values in declared storage warn and count",3,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow reports attributes the profile drops",3,0,FALSE,FALSE,0
+"test-arrow.R","Arrow owned-attribute allowlists share the metadata registry",2,0,FALSE,FALSE,0
+"test-arrow.R","save_arrow reports custom row metadata the profile drops",5,0,FALSE,FALSE,0
+"test-arrow.R","dta_merge accepts .arrow paths in either position",12,0,FALSE,FALSE,0
+"test-arrow.R","the arrow package is an independent oracle for written files",5,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow files never acquire Stata semantics",5,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow ordered dictionaries remain ordered factors",2,0,FALSE,FALSE,0
+"test-arrow.R","NA-valued factor levels survive profiled and plain Arrow",4,0,FALSE,FALSE,0
+"test-arrow.R","plain Arrow dictionaries cannot create duplicate factor levels",1,0,FALSE,FALSE,0
+"test-arrow.R","plain Int32 selection predicates match the returned R type",3,0,FALSE,FALSE,0
+"test-arrow.R","plain UInt16 columns use R integer storage",3,0,FALSE,FALSE,0
+"test-arrow.R","profiled UInt16 columns retain projected shared value labels",12,0,FALSE,FALSE,0
+"test-arrow.R","Arrow selection parses profile metadata only for predicates",6,0,FALSE,FALSE,0
+"test-arrow.R","predicate and datasig projections validate every field document",3,0,FALSE,FALSE,0
+"test-arrow.R","Arrow selection and decoding share one file snapshot",2,0,FALSE,FALSE,0
+"test-arrow.R","wide Arrow integers are rejected instead of rounded",6,0,FALSE,FALSE,0
+"test-arrow.R","wide Arrow temporal counts are rejected instead of rounded",4,0,FALSE,FALSE,0
+"test-arrow.R","declared strings take the same default format as save_dta",4,0,FALSE,FALSE,0
+"test-arrow.R","reader attribute reuse keeps column edits and subsequent reads independent",81,0,FALSE,FALSE,0
+"test-arrow.R","reader attribute values remain rooted during collection",16,0,FALSE,FALSE,0
+"test-arrow.R","readers preserve formats beyond the shared scalar cache limit",6,0,FALSE,FALSE,0
+"test-auto-grow.R","automatic growth defaults to 1024 spare slots and isolates old tables",18,0,FALSE,FALSE,0
+"test-auto-grow.R","functions return their grown local target while spare capacity shares identity",8,0,FALSE,FALSE,0
+"test-auto-grow.R","strict and invalid growth options reject callbacks before preparation",32,0,FALSE,FALSE,0
+"test-auto-grow.R","growth respects spare overrides and leaves nongrowth preparation strict",7,0,FALSE,FALSE,0
+"test-auto-grow.R","captured generation targets and getter arguments run exactly once",13,0,FALSE,FALSE,0
+"test-auto-grow.R","growth never overwrites a target changed by a callback",8,0,FALSE,FALSE,0
+"test-auto-grow.R","bracket growth preflights every new name and publishes sequential commits",10,0,FALSE,FALSE,0
+"test-auto-grow.R","egen and grouped generation evaluate on the rebuilt table",8,0,FALSE,FALSE,0
+"test-auto-grow.R","implicit publication never forces changed lazy or active bindings",9,0,FALSE,FALSE,0
+"test-auto-grow.R","bracket literals rebind while computed targets return without replay",11,0,FALSE,FALSE,0
+"test-auto-grow.R","metadata and forwarded functions preserve explicit result assignment",7,0,FALSE,FALSE,0
+"test-auto-grow.R","automatic growth never rescues an ordinary container",12,0,FALSE,FALSE,0
+"test-auto-grow.R","unsupported lazy target lookups are left to the original call",10,0,FALSE,FALSE,0
+"test-auto-grow.R","bracket destinations are captured before assignment-name callbacks",21,0,FALSE,FALSE,0
+"test-auto-grow.R","whole assignment injection retains function-local bare targets",8,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped native brackets preserve attributed arithmetic literals",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped native mutations preserve dots in grouping keys",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","bracket expressions are captured before row and grouping callbacks",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped native brackets isolate later caller literal changes",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","native brackets publish unfamiliar columns and preserve ordinary fallback",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","bracket fallback retains a completed RHS after a source write",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","grouped bracket late shaping traces preserve the uncommitted prefix",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","generated native siblings have independent mutable metadata",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","pending bracket generation does not repeat reference marker callbacks",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","native bracket replacement preserves complete target attributes",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","native brackets honor debug and debugonce on public helpers",1,0,FALSE,FALSE,0
+"test-bracket-native-admission.R","native mutation guards do not read user database bindings",1,0,FALSE,FALSE,0
+"test-canonical-nested-callbacks.R","metadata filtering retains nested environment tracer errors before generation",13,0,FALSE,FALSE,0
+"test-canonical-nested-callbacks.R","grouped assembly retains snapshot attribute tracer errors before publication",7,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook reports assigned tables as structured data",12,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook selection, ordering, and print limits are deterministic",7,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook diagnoses table problems and malformed sharing",5,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook diagnoses missing value-label names as malformed",4,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook diagnoses malformed registry entries",4,0,FALSE,FALSE,0
+"test-codebooks.R","labelbook detail restores the normal report",4,0,FALSE,FALSE,0
+"test-codebooks.R","codebook classifies and summarizes numeric and string variables",10,0,FALSE,FALSE,0
+"test-codebooks.R","codebook handles string variables containing only Stata missing values",3,0,FALSE,FALSE,0
+"test-codebooks.R","codebook selections and where use report semantics",8,0,FALSE,FALSE,0
+"test-codebooks.R","codebook distinguishes duplicate names by position",3,0,FALSE,FALSE,0
+"test-codebooks.R","codebook detects duplicate rows under Stata missing identity",2,0,FALSE,FALSE,0
+"test-codebooks.R","codebook returns Stata-style missingness relationships",3,0,FALSE,FALSE,0
+"test-codebooks.R","codebook retains diagnostics and bounds row evidence",10,0,FALSE,FALSE,0
+"test-codebooks.R","codebook compact mode enforces Stata option combinations",7,0,FALSE,FALSE,0
+"test-codebooks.R","codebooks accept DTA and Arrow paths",6,0,FALSE,FALSE,0
+"test-codebooks.R","codebook reports declared string storage and a wide declaration",8,0,FALSE,FALSE,0
+"test-column-typing.R","the container mapping types a value with no prior column",36,0,FALSE,FALSE,0
+"test-column-typing.R","a stale string declaration is retyped from the values",7,0,FALSE,FALSE,0
+"test-column-typing.R","compact reader columns stay compact through typing",3,0,FALSE,FALSE,0
+"test-column-typing.R","promotion widens to the narrowest storage that holds the values",28,0,FALSE,FALSE,0
+"test-column-typing.R","promotion keeps a fitting storage and the prior's metadata",9,0,FALSE,FALSE,0
+"test-column-typing.R","promotion's other rules: logicals, declared storage, kind changes",10,0,FALSE,FALSE,0
+"test-column-typing.R","the dispatcher types a fresh column and promotes a replaced one",2,0,FALSE,FALSE,0
+"test-column-typing.R","Stata string text and the declaration accessor are one rule each",6,0,FALSE,FALSE,0
+"test-column-typing.R","the one-pass string check answers missing, width, and encoding",15,0,FALSE,FALSE,0
+"test-column-typing.R","a result column with a holding declaration is copied natively",5,0,FALSE,FALSE,0
+"test-combiner-attribute-isolation.R","grouped mutation keeps returned numeric attributes independent",56,0,FALSE,FALSE,0
+"test-combiner-attribute-isolation.R","grouped generation keeps returned numeric attributes independent",56,0,FALSE,FALSE,0
+"test-combiner-stack-callbacks.R","double assembly retains the C dispatch stack callbacks",12,0,FALSE,FALSE,0
+"test-combiner-stack-callbacks.R","grouped generation preserves errors in C dispatch stack callbacks",14,0,FALSE,FALSE,0
+"test-combiner-stack-callbacks.R","double assembly settles delayed C dispatch stack dependencies",6,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","arithmetic respects a minimum promise replaced by a payload callback",3,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","computed minimum expressions retain callback order and errors",7,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","compact arithmetic helpers honor a wider minimum storage",40,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","native minimum admission follows the actual source through promises",5,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","minimum admission respects the promise getter environment",4,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","native minimum admission leaves active policy and source bindings unread",4,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","minimum getter bindings stay lazy until the original evaluation",8,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","arithmetic settles captured operator and minimum promises without changing expressions",12,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","computed results settle captured temporal and minimum promise chains",8,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","public numeric operations retain the original computed helper call signature",32,0,FALSE,FALSE,0
+"test-computed-minimum-admission.R","public arithmetic retains the original arithmetic helper call signature",16,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar debugger stops follow native admission or public fallback",12,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar kernel uses actual settled operands and isolates its result",18,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar arithmetic keeps operands settled before a source callback",3,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed storage is chosen for the complete result",27,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed double preserves missing bits and normalizes undefined values",4,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed results retain evaluation order and independent values",8,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed policies retain exact temporal validation and getter callbacks",6,0,FALSE,FALSE,0
+"test-computed-numeric.R","native classification declines traced predicates",3,0,FALSE,FALSE,0
+"test-computed-numeric.R","getter admission does not read foreign literals",4,0,FALSE,FALSE,0
+"test-computed-numeric.R","foreign result reads precede delayed policy evaluation without replay",2,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed output owns its values without exposing the source pointer",3,0,FALSE,FALSE,0
+"test-computed-numeric.R","double scalar arithmetic agrees bit for bit with the general path",168,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar admission preserves delayed operator and recycling order",4,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar admission keeps traced recycling and getter calls",2,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed arithmetic retains executable primitive tracers",6,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar fallback reads classed recycled arguments only once per use",2,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar native decline does not touch a foreign operand",2,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar arithmetic runs operand names methods before admission",3,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar arithmetic preserves nested recycling and warning callbacks",6,0,FALSE,FALSE,0
+"test-computed-numeric.R","scalar arithmetic retains the final classed names assignment",3,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed arithmetic declines replaced primitive predicates",6,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed arithmetic retains machine limit values and methods",5,0,FALSE,FALSE,0
+"test-computed-numeric.R","computed machine limit admission never reads foreign metadata",23,0,FALSE,FALSE,0
+"test-copy-data.R","copy_data preserves dibble identity and independent reference writes",11,0,FALSE,FALSE,0
+"test-copy-data.R","copied dibbles share explicit metadata writes with aliases, including zero rows",26,0,FALSE,FALSE,0
+"test-copy-data.R","copy_data rejects ordinary containers and leaves them unchanged",9,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","read_dta selects a compact-preserving output container",7,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","reader output validation never silently falls back",2,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","data-table output uses the reader name-repair contract",1,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","save_arrow restores tibble and data-table provenance",7,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","a data.table is never a mutation target",13,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","edge-shaped data-table output containers keep their dimensions",2,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","writers and read-only operations do not mutate data tables",6,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","dta_merge follows x or an explicit output container",6,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","dataset metadata never marks a data.table with the frame class",3,0,FALSE,FALSE,0
+"test-data-table-compatibility.R","dataset metadata setters keep data.table output ordinary",3,0,FALSE,FALSE,0
+"test-datasig.R","datasig is container-independent and shaped as rows:columns:digest",8,0,FALSE,FALSE,0
+"test-datasig.R","datasig detects changes Stata's datasignature misses",3,0,FALSE,FALSE,0
+"test-datasig.R","datasig covers names, storage types, labels, and metadata",9,0,FALSE,FALSE,0
+"test-datasig.R","datasig recomputes from current content",3,0,FALSE,FALSE,0
+"test-datasig.R","datasig validates its inputs",4,0,FALSE,FALSE,0
+"test-datasig.R","datasig recognizes Arrow URLs with fragments",3,0,FALSE,FALSE,0
+"test-datasig.R","datasig agrees between serial and parallel hashing",1,0,FALSE,FALSE,0
+"test-datasig.R","readers record the disk signature as a datasig attribute",18,0,FALSE,FALSE,0
+"test-delayed-dependency-settlement.R","numeric shortcuts preserve delayed dependency binding settlement",177,0,FALSE,FALSE,0
+"test-delayed-dependency-settlement.R","delayed function dependencies retain later numeric results and errors",44,0,FALSE,FALSE,0
+"test-delayed-dependency-settlement.R","delayed public machine limits settle before later numeric calls",8,0,FALSE,FALSE,0
+"test-delayed-dependency-settlement.R","delayed minimum getters settle through the original minimum promise",3,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B01 rows verbs preserve ordering and explicit key policies",35,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B02 rows match common keys without widening destination storage",11,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B03 column modification preserves grouping and typed replacements",49,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B04 rows honor public RHS brackets before assignment",26,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B05 inherited column modification reaches custom reconstruction",9,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B06 base binding retains row alignment recycling and argument order",24,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B07 base binding selects the first applicable method",14,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B08 base binding results isolate later payload and label writes",42,0,FALSE,FALSE,0
+"test-dibble-bindings.R","B12 dplyr row and column results isolate later payload and label writes",120,0,FALSE,FALSE,0
+"test-dibble-bracket.R","one := creates a missing column and overwrites an existing one",9,0,FALSE,FALSE,0
+"test-dibble-bracket.R","i selects rows as a logical, positions, or nothing",8,0,FALSE,FALSE,0
+"test-dibble-bracket.R","bracket assignments chain",4,0,FALSE,FALSE,0
+"test-dibble-bracket.R","several assignments apply left to right",5,0,FALSE,FALSE,0
+"test-dibble-bracket.R","each assignment in j commits or fails on its own",10,0,FALSE,FALSE,0
+"test-dibble-bracket.R","rows are selected once before any assignment writes",4,0,FALSE,FALSE,0
+"test-dibble-bracket.R","the target name takes .(), !!, strings, and string vectors",16,0,FALSE,FALSE,0
+"test-dibble-bracket.R","by, bysort, and grouped dibbles follow Stata's order",17,0,FALSE,FALSE,0
+"test-dibble-bracket.R","by and bysort need a := in j",3,0,FALSE,FALSE,0
+"test-dibble-bracket.R","the shadow check fires in i and in values",5,0,FALSE,FALSE,0
+"test-dibble-bracket.R","a compact target stays compact after a bracket replacement",10,0,FALSE,FALSE,0
+"test-dibble-bracket.R","brackets without := subset the current contents into a dibble",15,0,FALSE,FALSE,0
+"test-dibble-bracket.R","plain containers do not gain bracket assignment",11,0,FALSE,FALSE,0
+"test-dibble-bracket.R","the next top-level print after a bracket assignment is skipped",3,0,FALSE,FALSE,0
+"test-dibble-bracket.R","the autoprint skip does not outlive its top-level statement",7,0,FALSE,FALSE,0
+"test-dibble-bracket.R","each prepared bracket assignment reaches aliases before the next expression",30,0,FALSE,FALSE,0
+"test-dibble-bracket.R","bracket assignments keep the supplied object when bindings change",9,0,FALSE,FALSE,0
+"test-dibble-bracket.R","an injected := recheck rejects a target whose dibble class was stripped after dispatch",3,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C01 grouped callbacks receive ordered keys and .keep uses TRUE only",24,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C02 plain and rowwise group_modify invoke one whole-table callback",6,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C03 zero groups still invoke the callback once on prototypes",5,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C04 nesting distinguishes no dots whole input from grouped list-of chunks",17,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C05 computed nesting keys use sequential Stata typing",8,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C06 nested foreign writes cannot reach scalar constants or either source",4,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C07 nested frame capture retains containers, prototypes and reference objects",11,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C08 callback return capture happens before later callbacks mutate the same table",2,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C09 callback data and fun arguments are forwarded without helper collisions",2,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C10 nested publication validates dibbles, reuses siblings and rejects cycles",7,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C20 native nested capture reuses siblings",2,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C11 callbacks observe a fixed source generation across groups",4,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C12 a zero-group prototype callback can produce padded key rows",9,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C13 opaque pairlists and classed list slots retain representation",3,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C14 grouped chunks drop table metadata while whole-input nesting retains it",8,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C15 plain and rowwise callback return policies preserve reference identity",18,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C16 nesting preserves key policy, empty prototypes and unforced grouped dots",40,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C17 repeated nesting does not retain per-call address history",5,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C18 nesting allocation scales with the number of groups",16,0,FALSE,FALSE,0
+"test-dibble-callbacks.R","S7-C19 nested capture preserves physical sibling identities after GC",9,0,FALSE,FALSE,0
+"test-dibble-class.R","dibble class is public identity independently of reference ownership",13,0,FALSE,FALSE,0
+"test-dibble-class.R","ordinary containers are never mutation targets and never gain dibble identity",27,0,FALSE,FALSE,0
+"test-dibble-class.R","grouping and metadata classes follow dibble identity",48,0,FALSE,FALSE,0
+"test-dibble-class.R","grouping and metadata class identity through dplyr",66,0,FALSE,FALSE,0
+"test-dibble-class.R","serialized dibbles keep identity and assigned upgrade isolates aliases",25,0,FALSE,FALSE,0
+"test-dibble-class.R","serialized dibble upgrade through dplyr",30,0,FALSE,FALSE,0
+"test-dibble-class.R","class snapshots and display dispatch preserve compact source columns",19,0,FALSE,FALSE,0
+"test-dibble-class.R","class-preserving replacement and structural helpers retain alias contracts",8,0,FALSE,FALSE,0
+"test-dibble-class.R","grouped restoration preserves memberships and later write isolation",17,0,FALSE,FALSE,0
+"test-dibble-class.R","bracket replacement retains a caller-local grouping method",6,0,FALSE,FALSE,0
+"test-dibble-columns.R","direct column selectors match typed tibble selections",199,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors preserve dataset metadata",228,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors retain established tibble row-name policies",175,0,FALSE,FALSE,0
+"test-dibble-columns.R","direct selectors retain grouped and rowwise policies",271,0,FALSE,FALSE,0
+"test-dibble-columns.R","shadowing every omitted grouping key clears the grouping attribute",12,0,FALSE,FALSE,0
+"test-dibble-columns.R","selector expressions run once in their captured environment",6,0,FALSE,FALSE,0
+"test-dibble-columns.R","column results isolate later writes in both directions and duplicated slots",40,0,FALSE,FALSE,0
+"test-dibble-columns.R","borrowed and stale strings are checked on every column result",20,0,FALSE,FALSE,0
+"test-dibble-columns.R","string validation counts current UTF-8 bytes",7,0,FALSE,FALSE,0
+"test-dibble-columns.R","isolated string results preserve encodings and complete metadata",68,0,FALSE,FALSE,0
+"test-dibble-columns.R","column results preserve metadata, compact columns and legacy recognition",7,0,FALSE,FALSE,0
+"test-dibble-columns.R","selectors retain automatic row-name bookkeeping and rename policy",9,0,FALSE,FALSE,0
+"test-dibble-expressions.R","the helper adapter compares numeric version components",5,0,FALSE,FALSE,0
+"test-dibble-expressions.R","the core evaluator accepts ordinary quosures without whole verbs",3,0,FALSE,FALSE,0
+"test-dibble-expressions.R","qualified and aliased helpers see original group rows and keys",9,0,FALSE,FALSE,0
+"test-dibble-expressions.R","pick expansion and arbitrary fallback preserve selection rules",6,0,FALSE,FALSE,0
+"test-dibble-expressions.R","across expansion counts and side effects follow real dplyr",15,0,FALSE,FALSE,0
+"test-dibble-expressions.R","across fallback supports dots unpacking and logical helpers",6,0,FALSE,FALSE,0
+"test-dibble-expressions.R","nested verbs and failures restore every helper context binding",23,0,FALSE,FALSE,0
+"test-dibble-expressions.R","captures retain earlier values while deferred column resolution expires",11,0,FALSE,FALSE,0
+"test-dibble-expressions.R","mask snapshots survive explicit writes inside arbitrary helpers",4,0,FALSE,FALSE,0
+"test-dibble-expressions.R","foreign callback values are captured before the next group",2,0,FALSE,FALSE,0
+"test-dibble-expressions.R","empty groups and empty rowwise list prototypes remain observable",15,0,FALSE,FALSE,0
+"test-dibble-expressions.R","placement keep and transmute retain their separate column order",9,0,FALSE,FALSE,0
+"test-dibble-expressions.R","computed grouping ignores old partitions and owns its metadata",10,0,FALSE,FALSE,0
+"test-dibble-expressions.R","duplicate unpacked names and grouped warning aggregation retain their contracts",5,0,FALSE,FALSE,0
+"test-dibble-expressions.R","persistent grouping keys cannot be removed by mutation",5,0,FALSE,FALSE,0
+"test-dibble-expressions.R","symbol results preserve attributes and rowwise frame columns remain frames",4,0,FALSE,FALSE,0
+"test-dibble-expressions.R","diagnostics identify the actual expression entry point",6,0,FALSE,FALSE,0
+"test-dibble-expressions.R","within-call captures keep their original generation and group",12,0,FALSE,FALSE,0
+"test-dibble-expressions.R","removed and re-added column generations retain values and expire",8,0,FALSE,FALSE,0
+"test-dibble-expressions.R","expired capture masks release source payloads on success and failure",20,0,FALSE,FALSE,0
+"test-dibble-expressions.R","initial mask generations support later appends and repeated cleanup",9,0,FALSE,FALSE,0
+"test-dibble-expressions.R","an initially empty expression mask can append generations",6,0,FALSE,FALSE,0
+"test-dibble-expressions.R","ungroup preserves raw row names on an already ungrouped dibble",3,0,FALSE,FALSE,0
+"test-dibble-expressions.R","expired column promises retain repeated-resolution warnings",5,0,FALSE,FALSE,0
+"test-dibble-expressions.R","mutate preserves existing group order until a key changes",6,0,FALSE,FALSE,0
+"test-dibble-group-validation.R","character group validation preserves equality and owned backing",13,0,FALSE,FALSE,0
+"test-dibble-group-validation.R","group validation retains declaration errors and foreign length fallback",6,0,FALSE,FALSE,0
+"test-dibble-group-validation.R","ordinary character group validation avoids full key expansion allocations",2,0,FALSE,FALSE,0
+"test-dibble-group-validation.R","encoding normalization preserves later foreign-write isolation",36,0,FALSE,FALSE,0
+"test-dibble-group-validation.R","bytes-encoded group attributes retain their existing error boundary",12,0,FALSE,FALSE,0
+"test-dibble-joins.R","J01 direct joins preserve duplicate expansion and unmatched order",19,0,FALSE,FALSE,0
+"test-dibble-joins.R","J07 join arguments keep public forcing and nesting names",20,0,FALSE,FALSE,0
+"test-dibble-joins.R","J08 foreign join conversion runs once and preserves its conditions",68,0,FALSE,FALSE,0
+"test-dibble-joins.R","J09 nested join writes preserve sources siblings and scalar constants",1,0,FALSE,FALSE,0
+"test-dibble-joins.R","J02 named outer keys coalesce and string padding remains typed",12,0,FALSE,FALSE,0
+"test-dibble-joins.R","J03 typed join keys distinguish every Stata missing payload",50,0,FALSE,FALSE,0
+"test-dibble-joins.R","J04 interval and rolling joins honor pair predicates and filters",4,0,FALSE,FALSE,0
+"test-dibble-joins.R","J05 default warnings and explicit relationship policies stay distinct",6,0,FALSE,FALSE,0
+"test-dibble-joins.R","J06 joined flat payload and labels remain isolated after later writes",91,0,FALSE,FALSE,0
+"test-dibble-joins.R","J10 custom join keys retain public common-type cast and matching proxy dispatch",22,0,FALSE,FALSE,0
+"test-dibble-joins.R","J11 ordinary frames join as copies and are never mutation targets",14,0,FALSE,FALSE,0
+"test-dibble-print.R","dibble printing names its container and declared storage",20,0,FALSE,FALSE,0
+"test-dibble-print.R","declared string labels cover constructed generated and imported columns",10,0,FALSE,FALSE,0
+"test-dibble-print.R","temporal labels show storage and meaning in dibbles and tibbles",13,0,FALSE,FALSE,0
+"test-dibble-print.R","metadata wrappers preserve string storage labels and cell formatting",11,0,FALSE,FALSE,0
+"test-dibble-print.R","metadata setters leave declared string types visible",96,0,FALSE,FALSE,0
+"test-dibble-print.R","display snapshots retain grouping and empty dimensions",11,0,FALSE,FALSE,0
+"test-dibble-print.R","narrow output and row slicing retain omitted string declarations",16,0,FALSE,FALSE,0
+"test-dibble-print.R","ordinary containers keep their usual display and reject by-reference helpers",8,0,FALSE,FALSE,0
+"test-dibble-print.R","printing preserves cells metadata aliases and compact backing",11,0,FALSE,FALSE,0
+"test-dibble-print.R","Stata numerics format and print missing values as Stata spells them",32,0,FALSE,FALSE,0
+"test-dibble-print.R","a value-labelled column annotates its cells and the option turns it off",45,0,FALSE,FALSE,0
+"test-dibble-result-history.R","H01 construction and reserve do not retain address history",8,0,FALSE,FALSE,0
+"test-dibble-result-history.R","H03 selectors do not retain address history",8,0,FALSE,FALSE,0
+"test-dibble-result-history.R","H02 atomic nested capture preserves copies and opaque identities",11,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F01 filter_out complements the completed TRUE-only conjunction",8,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F02 predicates validate type, size, names and dynamic dots",22,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F03 filter and slice dots share a group-local temporary frame",8,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F04 persistent grouping and .by retain distinct row-order policies",20,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F05 empty groups execute the witnessed synthetic and real callbacks",80,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F06 top-level if helpers retain factory and predicate context order",10,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F07 aliases and arbitrary helpers use the active group context",5,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F08 filter reduction avoids repeated full-size logical temporaries",4,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F09 native reduction preserves predicate attributes and later evaluation",13,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F10 private filter reduction rejects invalid inputs and expires",19,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F11 reduction state and owned predicates survive forced collection",4,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F12 errors and R interrupts expire active masks before a later filter",8,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F13 fresh ungrouped filtering avoids materializing group locations",7,0,FALSE,FALSE,0
+"test-dibble-row-filter.R","S6-F14 contiguous reduction validates payloads and retains TRUE-only inversion",26,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L06 row conditions preserve warning timing and error families",9,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L01 every row verb preserves metadata and symmetric later-write isolation",240,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L02 forced captures survive while late column resolution expires",42,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L03 nested row verbs restore outer context after success and error",12,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L04 plain frames are never mutation targets and keep their container policy",48,0,FALSE,FALSE,0
+"test-dibble-row-lifetime.R","S6-L05 foreign data.table input cannot mutate a gathered dibble result",12,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O01 arrange keys are independent and see original ungrouped columns",10,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O02 arrange flattens pick/across keys and applies stable directions",5,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O03 arrange uses explicit C collation and validates locale",4,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O04 arrange supports optional ICU collation",1,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-D01 distinct types each computed key before a dependent key",7,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-D02 distinct keeps first rows and only prepends missing group keys",7,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-D03 distinct handles list keys and zero-column row counts",5,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-D04 computed grouping keys rebuild before subsequent group operations",7,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-D05 caller symbols are typed while data columns retain precedence",7,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O07 arrange expands pick before each independent key",2,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O05 typed ordering and equality retain tagged missing identity",15,0,FALSE,FALSE,0
+"test-dibble-row-order.R","S6-O06 legacy collation and nested proxy directions retain stable locations",16,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S01 slice validates dots before combining signs and dropping indices",16,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S02 slice preserves empty group keys only when policy requires it",8,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S03 head and tail apply group-sized signed n and prop arithmetic",16,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S04 helper controls are caller constants with by spelling",34,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S05 min and max retain rank order, ties and exact key size",19,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S06 sample validates weights before zero selection without drawing RNG",12,0,FALSE,FALSE,0
+"test-dibble-row-slice.R","S6-S07 seeded sampling matches the ordinary typed-frame oracle and RNG state",16,0,FALSE,FALSE,0
+"test-dibble-rows.R","read brackets combine column predicates and ordered selections",10,0,FALSE,FALSE,0
+"test-dibble-rows.R","read predicates distinguish columns, caller values, and lone indices",9,0,FALSE,FALSE,0
+"test-dibble-rows.R","dot selections contain column names rather than computations",12,0,FALSE,FALSE,0
+"test-dibble-rows.R","read syntax retains metadata wrapper forcing and notes",10,0,FALSE,FALSE,0
+"test-dibble-rows.R","read predicates preserve missing empty and drop policies",11,0,FALSE,FALSE,0
+"test-dibble-rows.R","grouped read predicates evaluate over the complete table",24,0,FALSE,FALSE,0
+"test-dibble-rows.R","read predicate results preserve metadata and later write isolation",20,0,FALSE,FALSE,0
+"test-dibble-rows.R","escaped read masks protect unread owned and compact columns",84,0,FALSE,FALSE,0
+"test-dibble-rows.R","bracket row plans preserve tibble call shapes and index policies",143,0,FALSE,FALSE,0
+"test-dibble-rows.R","bracket subscript calls are evaluated once in their established order",5,0,FALSE,FALSE,0
+"test-dibble-rows.R","group metadata rebuild matches sorted factor expansion",60,0,FALSE,FALSE,0
+"test-dibble-rows.R","group validation preserves empty keys and equality casting",46,0,FALSE,FALSE,0
+"test-dibble-rows.R","group partitions reject repeated rows and retain rowwise order",4,0,FALSE,FALSE,0
+"test-dibble-rows.R","row entry points retain their grouped and rowwise policies",80,0,FALSE,FALSE,0
+"test-dibble-rows.R","grouped and rowwise entry policies through dplyr",144,0,FALSE,FALSE,0
+"test-dibble-rows.R","padding is typed before rebuilding grouped string keys",8,0,FALSE,FALSE,0
+"test-dibble-rows.R","typed string padding row hooks through dplyr",9,0,FALSE,FALSE,0
+"test-dibble-rows.R","row results preserve metadata and symmetric later-write isolation",51,0,FALSE,FALSE,0
+"test-dibble-rows.R","row metadata and later-write isolation through dplyr",68,0,FALSE,FALSE,0
+"test-dibble-rows.R","direct reconstruction isolates and validates unknown columns",6,0,FALSE,FALSE,0
+"test-dibble-rows.R","unknown column reconstruction through dplyr",6,0,FALSE,FALSE,0
+"test-dibble-rows.R","bracket planning never executes language-valued indices",29,0,FALSE,FALSE,0
+"test-dibble-rows.R","drop and unused-argument validation follows each bracket container",26,0,FALSE,FALSE,0
+"test-dibble-rows.R","bracket container argument validation through dplyr",26,0,FALSE,FALSE,0
+"test-dibble-rows.R","row gather and reconstruction isolate aliases and foreign columns",14,0,FALSE,FALSE,0
+"test-dibble-rows.R","row gather and unknown foreign columns through dplyr",20,0,FALSE,FALSE,0
+"test-dibble-rows.R","serialized grouping works without loading the dplyr namespace",10,0,FALSE,FALSE,0
+"test-dibble-rows.R","the dplyr row hook keeps vctrs row-name repair",6,0,FALSE,FALSE,0
+"test-dibble-rows.R","group rebuild honors the legacy locale compatibility option",3,0,FALSE,FALSE,0
+"test-dibble-rows.R","legacy ambient locale comparison through dplyr",3,0,FALSE,FALSE,0
+"test-dibble-rows.R","bracket planning does not introduce named-argument warnings",3,0,FALSE,FALSE,0
+"test-dibble-rows.R","metadata subscript forcing precedes container argument validation",12,0,FALSE,FALSE,0
+"test-dibble-rows.R","row results retain automatic versus explicit row-name bookkeeping",8,0,FALSE,FALSE,0
+"test-dibble-rows.R","row-name bookkeeping through dplyr",20,0,FALSE,FALSE,0
+"test-dibble-rows.R","the row helper retains its shell's raw row-name policy",18,0,FALSE,FALSE,0
+"test-dibble-rows.R","row helpers never mark a plain container as a mutation target",12,0,FALSE,FALSE,0
+"test-dibble-rows.R","native legacy string grouping follows the current base collation",1,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S01 summary expressions run in dot then group order with dependent typing",7,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S02 across siblings finish before any sibling enters the summary mask",3,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S03 summary size validation waits for later dots and retains repeated chunks",5,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S04 all NULL skips installation and does not erase earlier summaries",4,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S05 packed and unpacked zero-column frames have distinct size rules",6,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S06 reframe defers horizontal recycling until all dots finish",6,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S07 summary helper context retains original group rows after shortening",3,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S08 reframe unboxes rowwise lists and always returns ungrouped output",5,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S09 summary grouping policies distinguish plain grouped and rowwise input",11,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S10 summary drops arbitrary table attributes and keeps column metadata",4,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S11 nested mask bindings isolate expression writes from source and earlier results",5,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S12 summaries retain fresh masks and reset helper context after errors",5,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S13 bare replacement references promote only after dependent dots",10,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S14 current group keys omit drop policy across summary, mutation and filter masks",30,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S15 summary errors retain the trigger or named incompatible groups",20,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S16 tagged payloads survive common typing and dependent summaries",6,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S17 zero-group prototypes retain their observed contexts and size rules",76,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S18 nested calls expire inner columns but restore dynamic helpers",24,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S19 reframe reuse follows final group sizes and isolates nested captures",12,0,FALSE,FALSE,0
+"test-dibble-summary.R","S7-S20 unchanged reframe chunks avoid extra restoration callbacks",5,0,FALSE,FALSE,0
+"test-dibble.R","dibble() builds a tibble that carries reference state",17,0,FALSE,FALSE,0
+"test-dibble.R","is_dibble distinguishes dibbles from other reference frames",11,0,FALSE,FALSE,0
+"test-dibble.R","as_dibble converts frames, tibbles, and data tables",15,0,FALSE,FALSE,0
+"test-dibble.R","as_dibble copies a data table without its runtime state",16,0,FALSE,FALSE,0
+"test-dibble.R","dibble construction keeps compact columns unmaterialized",17,0,FALSE,FALSE,0
+"test-dibble.R","grouping keeps a dibble a dibble",21,0,FALSE,FALSE,0
+"test-dibble.R","readers, save_arrow, and dta_merge take the dibble container",31,0,FALSE,FALSE,0
+"test-dibble.R","a file recording an unknown container still reads",5,0,FALSE,FALSE,0
+"test-dibble.R","unknown stored containers fall back to a tibble",5,0,FALSE,FALSE,0
+"test-dibble.R","dataset metadata setters keep a dibble's bracket dispatch",12,0,FALSE,FALSE,0
+"test-dibble.R","slice_dta_rows accepts the default read container",7,0,FALSE,FALSE,0
+"test-dibble.R","dataset-scoped metadata setters return the same dibble",6,0,FALSE,FALSE,0
+"test-dibble.R","slicing a grouped dibble keeps dataset metadata",5,0,FALSE,FALSE,0
+"test-dibble.R","slice_dta_rows keeps a grouped dibble's grouping",7,0,FALSE,FALSE,0
+"test-dibble.R","gen() and a new := column take Stata's generate default",17,0,FALSE,FALSE,0
+"test-dibble.R","generate container defaults through dplyr",18,0,FALSE,FALSE,0
+"test-dibble.R","mutate and transmute type new columns by the container mapping",42,0,FALSE,FALSE,0
+"test-dibble.R","mutate keeps untouched compact columns compact",5,0,FALSE,FALSE,0
+"test-dibble.R","a dibble is closed under dataset operations",13,0,FALSE,FALSE,0
+"test-dibble.R","dataset closure through dplyr",24,0,FALSE,FALSE,0
+"test-dibble.R","replacement operators type their columns and keep the dibble",9,0,FALSE,FALSE,0
+"test-dibble.R","logical columns stay logical in a dibble",6,0,FALSE,FALSE,0
+"test-dibble.R","logical columns through dplyr",7,0,FALSE,FALSE,0
+"test-dibble.R","Arrow strings enter a dibble compact with an inferred width",10,0,FALSE,FALSE,0
+"test-dibble.R","Stata numerics coerce to integer and logical and add to dates",6,0,FALSE,FALSE,0
+"test-dibble.R","bracket assignment and partial replacement promote storage",26,0,FALSE,FALSE,0
+"test-dibble.R","gen and := accept factors as mutate does",10,0,FALSE,FALSE,1
+"test-dibble.R","computed distinct and group_by type columns as mutate does",8,0,FALSE,FALSE,0
+"test-dibble.R","a logical overwriting a Stata numeric keeps its storage",4,0,FALSE,FALSE,0
+"test-dibble.R","logical replacement storage through dplyr",8,0,FALSE,FALSE,1
+"test-dibble.R","overwriting a typed column with an untypable one passes through",2,0,FALSE,FALSE,0
+"test-dibble.R","untypable replacements through dplyr",4,0,FALSE,FALSE,0
+"test-dibble.R","reframe, group_modify, and nest_by return dibbles",12,0,FALSE,FALSE,0
+"test-dibble.R","a := value with declared storage widens the column to it",21,0,FALSE,FALSE,0
+"test-dibble.R","grouped and rowwise row verbs return dibbles",15,0,FALSE,FALSE,0
+"test-dibble.R","difftime arithmetic with Stata numerics works",1,0,FALSE,FALSE,0
+"test-dibble.R","difftime arithmetic through dplyr",4,0,FALSE,FALSE,0
+"test-dibble.R","a stale string declaration is redone on entering a dibble",10,0,FALSE,FALSE,0
+"test-dibble.R","stale string declaration repair through dplyr",14,0,FALSE,FALSE,0
+"test-dibble.R","a derived dibble owns its columns",18,0,FALSE,FALSE,0
+"test-dibble.R","derived result ownership through dplyr",48,0,FALSE,FALSE,0
+"test-dibble.R","a dta_string column padded with NA is retyped on closure",13,0,FALSE,FALSE,0
+"test-dibble.R","subsetting keeps compact dictionary strings compact",28,0,FALSE,FALSE,0
+"test-dibble.R","compact dictionary subsetting through dplyr",30,0,FALSE,FALSE,0
+"test-dibble.R","generated columns reach consumers that read the column list",14,0,FALSE,FALSE,0
+"test-dibble.R","generated column consumers through dplyr",19,0,FALSE,FALSE,0
+"test-dibble.R","column binding isolates every input, not only the first",12,0,FALSE,FALSE,0
+"test-dibble.R","multi-input binding isolation through dplyr",29,0,FALSE,FALSE,0
+"test-dibble.R","data-masking verbs type each result as it enters the mask",12,0,FALSE,FALSE,0
+"test-dibble.R","mask typing keeps dplyr's names, arguments, and messages",14,0,FALSE,FALSE,0
+"test-dibble.R","grouped gen() keeps a factor's levels, not its label",3,0,FALSE,FALSE,0
+"test-dibble.R","ordinary replacement stays local while explicit metadata reaches callers",28,0,FALSE,FALSE,0
+"test-dibble.R","ordinary replacement and explicit metadata through dplyr",29,0,FALSE,FALSE,0
+"test-dibble.R","copying replacement isolates vectors and preserves grouping",30,0,FALSE,FALSE,2
+"test-dibble.R","copying replacement and regrouping through dplyr",32,0,FALSE,FALSE,2
+"test-dibble.R","serialized dibbles retain typing and closure",11,0,FALSE,FALSE,0
+"test-dibble.R","serialized dibble closure through dplyr",13,0,FALSE,FALSE,0
+"test-dibble.R","across results are typed before later mask expressions",10,0,FALSE,FALSE,0
+"test-dibble.R","caller-backed symbols are typed on entry to the data mask",7,0,FALSE,FALSE,0
+"test-dibble.R","unnamed computations use their natural names in the mask",11,0,FALSE,FALSE,0
+"test-dibble.R","mask promotion sees prior clauses' storage and metadata",9,0,FALSE,FALSE,0
+"test-dibble.R","mask warning labels leave caller-binding messages unchanged",12,0,FALSE,FALSE,0
+"test-double-combine.R","double combination preserves bytes, order and independent backing",14,0,FALSE,FALSE,0
+"test-double-combine.R","double combination declines unsupported shapes before foreign reads",15,0,FALSE,FALSE,0
+"test-double-combine.R","strict combination leaves invalid-value diagnostics to vctrs",12,0,FALSE,FALSE,0
+"test-double-combine.R","combination preserves registered vctrs callbacks without speculative calls",24,0,FALSE,FALSE,0
+"test-double-combine.R","combination retains active and delayed global pair-method lookup",8,0,FALSE,FALSE,0
+"test-double-combine.R","combination calls a replaced external combiner once on fallback",4,0,FALSE,FALSE,0
+"test-double-combine.R","combination retains strict-validator trace callbacks",7,0,FALSE,FALSE,0
+"test-double-combine.R","combination retains registered character methods used by metadata",6,0,FALSE,FALSE,0
+"test-double-combine.R","real grouped generation uses one combination payload",4,0,FALSE,FALSE,0
+"test-double-combine.R","real grouped dplyr mutation uses one combination payload",4,0,FALSE,FALSE,0
+"test-double-combine.R","combination respects reachable prototype and finalise methods",40,0,FALSE,FALSE,0
+"test-double-combine.R","combination respects names, dimensions and name assignment methods",75,0,FALSE,FALSE,0
+"test-double-combine.R","combination retains the namespace numeric coercion method",5,0,FALSE,FALSE,0
+"test-double-combine.R","fresh public grouped generation preserves typed results without test-only warming",2,0,FALSE,FALSE,0
+"test-double-combine.R","fresh grouped dplyr calls preserve typed results without test-only warming",3,0,FALSE,FALSE,0
+"test-double-combine.R","ordinary canonical sources copy once and unsupported profiles decline",7,0,FALSE,FALSE,0
+"test-double-combine.R","disabled combination profiles retain public fallback and isolation",16,0,FALSE,FALSE,0
+"test-double-combine.R","combination fallback preserves public generation error attribution",5,0,FALSE,FALSE,0
+"test-double-combine.R","combination fallback preserves public dplyr error attribution",3,0,FALSE,FALSE,0
+"test-double-combine.R","combination fallback preserves expressions and resolves operands once",11,0,FALSE,FALSE,0
+"test-double-combine.R","combination retains executable callbacks throughout its successful helper graph",168,0,FALSE,FALSE,0
+"test-double-combine.R","compilation changes cannot hide callbacks below package combination helpers",4,0,FALSE,FALSE,0
+"test-double-combine.R","ordinary external helper compiler forms preserve callback admission",2,0,FALSE,FALSE,0
+"test-double-combine.R","combination adds no predicate callbacks before its original fallback calls",12,0,FALSE,FALSE,0
+"test-double-combine.R","combination callbacks run before unresolved operand promises",4,0,FALSE,FALSE,0
+"test-double-combine.R","replaced combiners receive the original lazy argument expressions",4,0,FALSE,FALSE,0
+"test-double-combine.R","indexed combination reads active rows once after combiner entry",3,0,FALSE,FALSE,0
+"test-double-combine.R","interpreted public combination preserves mask row callback order",2,0,FALSE,FALSE,0
+"test-double-combine.R","public combination callbacks retain the original caller frame",1,0,FALSE,FALSE,0
+"test-double-combine.R","native combination reuses ordinary assignment targets safely",30,0,FALSE,FALSE,0
+"test-double-combine.R","public indexed combination admits five expressions in one run frame",6,0,FALSE,FALSE,0
+"test-double-combine.R","combination namespace admission leaves active exports untouched",5,0,FALSE,FALSE,0
+"test-double-combine.R","indexed admission never forces unfamiliar operand bindings",11,0,FALSE,FALSE,0
+"test-double-combine.R","production namespace tracing retains values and the original caller",8,0,FALSE,FALSE,0
+"test-double-combine.R","public combination settles piece promises before later metadata callbacks",1,0,FALSE,FALSE,0
+"test-double-combine.R","successful combination settles original forwarded operands",2,0,FALSE,FALSE,0
+"test-dplyr-optional.R","unsupported dplyr registration warns once without touching methods",8,0,FALSE,FALSE,0
+"test-dplyr-optional.R","native namespace loading and recoding leave dplyr unloaded",9,0,FALSE,FALSE,0
+"test-dplyr-optional.R","namespace profile setup preserves generation and traced fallbacks",3,0,FALSE,FALSE,0
+"test-dplyr-optional.R","optional method hooks and registry ownership survive real reloads",8,0,FALSE,FALSE,0
+"test-dplyr-optional.R","failed optional registration restores slots and preserves unrelated hooks",3,0,FALSE,FALSE,0
+"test-dplyr-optional.R","labelled load and unload restore only live prior methods",4,0,FALSE,FALSE,0
+"test-dplyr-optional.R","labelled attachment warns once only when it masks dtatools",8,0,FALSE,FALSE,0
+"test-dta-append.R","the result is the union of variables in first-appearance order",3,0,FALSE,FALSE,0
+"test-dta-append.R","duplicate source columns survive planning until name repair",10,0,FALSE,FALSE,0
+"test-dta-append.R","a source missing a variable contributes missing values",2,0,FALSE,FALSE,0
+"test-dta-append.R","string storage and format widen to the widest contributor",2,0,FALSE,FALSE,0
+"test-dta-append.R","numeric storage promotes along the Stata lattice",2,0,FALSE,FALSE,0
+"test-dta-append.R","promotion clears the int ceiling into long",2,0,FALSE,FALSE,0
+"test-dta-append.R","the numeric result keeps compact unmaterialized storage",2,0,FALSE,FALSE,0
+"test-dta-append.R","the missing fill for an absent numeric stays compact",2,0,FALSE,FALSE,0
+"test-dta-append.R","a missing temporal contribution preserves the Stata type",6,0,FALSE,FALSE,0
+"test-dta-append.R","the combined row count cannot exceed R's frame limit",1,0,FALSE,FALSE,0
+"test-dta-append.R","force fills a string/numeric conflict with missing values",6,0,FALSE,FALSE,0
+"test-dta-append.R","force = FALSE makes a storage conflict an error",1,0,FALSE,FALSE,0
+"test-dta-append.R","variable labels come from the first contributor",2,0,FALSE,FALSE,0
+"test-dta-append.R","formats come from the first contributor after promotion",2,0,FALSE,FALSE,0
+"test-dta-append.R","the first source to define a value-label table owns it",7,0,FALSE,FALSE,0
+"test-dta-append.R","a variable takes the owning definition of its table name",11,0,FALSE,FALSE,0
+"test-dta-append.R","unnamed labels define a table named after the variable",7,0,FALSE,FALSE,0
+"test-dta-append.R","value-label ownership survives a file round trip",3,0,FALSE,FALSE,0
+"test-dta-append.R","a widened string format takes the new width and keeps its flag",16,0,FALSE,FALSE,0
+"test-dta-append.R","a string format is kept when storage does not widen",6,0,FALSE,FALSE,0
+"test-dta-append.R","logical placeholders do not clear temporal structure",4,0,FALSE,FALSE,0
+"test-dta-append.R","a logical first contributor retains its user metadata",7,0,FALSE,FALSE,0
+"test-dta-append.R","a variable label survives a missing-fill contribution",2,0,FALSE,FALSE,0
+"test-dta-append.R",".dta and .arrow paths append like in-memory frames",10,0,FALSE,FALSE,0
+"test-dta-append.R","mixed memory and file sources dispatch per element",2,0,FALSE,FALSE,0
+"test-dta-append.R","dataset notes follow the requested policy",3,0,FALSE,FALSE,0
+"test-dta-append.R","the output container is honoured",3,0,FALSE,FALSE,0
+"test-dta-append.R","a single source is returned unchanged in shape",2,0,FALSE,FALSE,0
+"test-dta-append.R","invalid input is rejected",4,0,FALSE,FALSE,0
+"test-dta-append.R","appending in either order stacks the rows in source order",3,0,FALSE,FALSE,0
+"test-dta-append.R","a wrapped and a bare Stata string column append together",2,0,FALSE,FALSE,0
+"test-dta-append.R","a buffered column is written in place, not duplicated",4,0,FALSE,FALSE,0
+"test-dta-append.R","a buffered column keeps values that do not fit the buffer",3,0,FALSE,FALSE,0
+"test-dta-append.R","an undeclared numeric widens a declared Stata prototype",6,0,FALSE,FALSE,0
+"test-dta-append.R","widening an undeclared numeric preserves variable metadata",5,0,FALSE,FALSE,0
+"test-dta-append.R","values outside Stata double storage obey force",3,0,FALSE,FALSE,0
+"test-dta-append.R","a character source holding NA obeys force like the pieces path",3,0,FALSE,FALSE,0
+"test-dta-append.R","append name repair preserves implicit label-table identity",23,0,FALSE,FALSE,0
+"test-dta-append.R","append gives blank implicit label names a stable repaired identity",10,0,FALSE,FALSE,0
+"test-dta-attribute-plan.R","canonical attribute plans preserve storage classes and result names",7,0,FALSE,FALSE,0
+"test-dta-attribute-plan.R","attribute plans retain metadata order and unknown-attribute warnings",2,0,FALSE,FALSE,0
+"test-dta-attribute-plan.R","attribute plans do not read foreign or classed source names",4,0,FALSE,FALSE,0
+"test-dta-compare-native.R","native scalar comparisons match Stata total order",24,0,FALSE,FALSE,0
+"test-dta-compare-native.R","native comparisons keep every missing code distinct and ordered",24,0,FALSE,FALSE,0
+"test-dta-compare-native.R","narrow storage understands constants it cannot represent",6,0,FALSE,FALSE,0
+"test-dta-compare-native.R","scalar-on-the-left comparisons flip correctly",6,0,FALSE,FALSE,0
+"test-dta-compare-native.R","compact-versus-compact comparisons agree elementwise",3,0,FALSE,FALSE,0
+"test-dta-compare-native.R","comparisons never materialize compact operands",2,0,FALSE,FALSE,0
+"test-dta-compare-native.R","the native kernel is engaged for compact storage",5,0,FALSE,FALSE,0
+"test-dta-compare-native.R","decoded double vectors compare natively with full semantics",10,0,FALSE,FALSE,0
+"test-dta-compare-native.R","multi-threaded comparisons match single-threaded results",3,0,FALSE,FALSE,0
+"test-dta-compare-native.R","fallback-owned errors survive the native fast path",2,0,FALSE,FALSE,0
+"test-dta-compare-native.R","double pair kernels preserve every missing rank and IEEE comparisons",26,0,FALSE,FALSE,0
+"test-dta-compare-native.R","double pair kernels retain native decline and public NaN errors",72,0,FALSE,FALSE,0
+"test-dta-compare-native.R","double temporal pairs compare their already decoded values",24,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float comparisons preserve all missing ranks and signed-zero ties",1448,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float scalar comparisons preserve double precision at float boundaries",388,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float comparison spans cross unequal retained chunks in serial and auto modes",53,0,FALSE,FALSE,0
+"test-dta-compare-native.R","float kernels combine retained and plain operands in either order",26,0,FALSE,FALSE,0
+"test-dta-compare-native.R","modern float imports retain tag gaps high values and infinity ordering",176,0,FALSE,FALSE,0
+"test-dta-compare-native.R","invalid float NaNs decline pair and scalar comparisons before fallback errors",304,0,FALSE,FALSE,0
+"test-dta-compare-native.R","temporal float comparisons use decoded equality after rounding collapse",108,0,FALSE,FALSE,0
+"test-dta-compare-native.R","legacy float comparisons retain version-specific missing domains",350,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical compares numeric values across storage and bare vectors",32,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical distinguishes every Stata missing code",55,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical compares strings exactly",3,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical keeps date and datetime identity domains separate",5,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical returns false for incompatible kinds",2,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical handles empty vectors and NULL without recycling",6,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical ignores names, classes, and variable metadata",2,0,FALSE,FALSE,0
+"test-dta-identical.R","dta_identical rejects noncanonical NaN payloads",3,0,FALSE,FALSE,0
+"test-dta-match.R","matching distinguishes every Stata missing identity",3,0,FALSE,FALSE,0
+"test-dta-match.R","matching retains names and rejects noncanonical NaNs",5,0,FALSE,FALSE,0
+"test-dta-match.R","base matching interoperates with bare vectors",8,0,FALSE,FALSE,0
+"test-dta-match.R","base matching supports Stata-backed dates and datetimes",6,0,FALSE,FALSE,0
+"test-dta-match.R","matching and sets support owned Stata strings",6,0,FALSE,FALSE,0
+"test-dta-match.R","union accepts bare tagged missings on either side",1,0,FALSE,FALSE,0
+"test-dta-match.R","union widens losslessly for bare numeric operands in either order",4,0,FALSE,FALSE,0
+"test-dta-match.R","union widens Stata-backed dates with bare dates in either order",10,0,FALSE,FALSE,0
+"test-dta-match.R","union widens Stata-backed datetimes with bare datetimes in either order",12,0,FALSE,FALSE,0
+"test-dta-match.R","matching rejects incompatible kinds",2,0,FALSE,FALSE,0
+"test-dta-match.R","date and datetime operands keep separate identity domains",3,0,FALSE,FALSE,0
+"test-dta-match.R","set operations use stable Stata identity",10,0,FALSE,FALSE,0
+"test-dta-match.R","set operations follow base NULL behavior",6,0,FALSE,FALSE,0
+"test-dta-match.R","set operations retain left metadata where promised",4,0,FALSE,FALSE,0
+"test-dta-match.R","union reconciles metadata left-first with one warning",14,0,FALSE,FALSE,0
+"test-dta-match.R","union chooses the first compatible display format",2,0,FALSE,FALSE,0
+"test-dta-match.R","temporal union reconciles variable metadata left-first",4,0,FALSE,FALSE,0
+"test-dta-match.R","base matching transforms two Stata-backed operands",2,0,FALSE,FALSE,0
+"test-dta-merge.R","1:1 merges match keys under Stata missing-code identity",11,0,FALSE,FALSE,0
+"test-dta-merge.R","compact gathers retain exact missing counts",6,0,FALSE,FALSE,0
+"test-dta-merge.R","each of the 27 Stata missing codes matches only itself",4,0,FALSE,FALSE,0
+"test-dta-merge.R","NaN key values are rejected with a Stata remedy",2,0,FALSE,FALSE,0
+"test-dta-merge.R","character missing keys require Stata's empty string",3,0,FALSE,FALSE,0
+"test-dta-merge.R","key columns coalesce storage and metadata",10,0,FALSE,FALSE,0
+"test-dta-merge.R","ordinary coalesced columns use y's label when x has none",4,0,FALSE,FALSE,0
+"test-dta-merge.R","coalesced variables reconcile notes and characteristics x first",6,0,FALSE,FALSE,0
+"test-dta-merge.R","explicit empty metadata falls back without a conflict warning",3,0,FALSE,FALSE,0
+"test-dta-merge.R","coalesced metadata scanning stays width-linear",1,0,FALSE,FALSE,0
+"test-dta-merge.R","coalesced variables with matching metadata merge silently",3,0,FALSE,FALSE,0
+"test-dta-merge.R","overlapping non-key variables follow the master-wins rule",5,0,FALSE,FALSE,0
+"test-dta-merge.R","compact variables retain values across merge partitions",16,0,FALSE,FALSE,0
+"test-dta-merge.R","Stata doubles retain values and metadata across merge partitions",11,0,FALSE,FALSE,0
+"test-dta-merge.R","compact variables keep legacy observed encodings",2,0,FALSE,FALSE,0
+"test-dta-merge.R","compact coalescing handles legacy and modern missing layouts",3,0,FALSE,FALSE,0
+"test-dta-merge.R","merge relationships are validated with explicit diagnostics",10,0,FALSE,FALSE,0
+"test-dta-merge.R","keep filters match results and assert validates them",10,0,FALSE,FALSE,0
+"test-dta-merge.R","inputs and by keys are validated",9,0,FALSE,FALSE,0
+"test-dta-merge.R","zero-row inputs merge cleanly",7,0,FALSE,FALSE,0
+"test-dta-merge.R","temporal keys merge with promoted storage",5,0,FALSE,FALSE,0
+"test-dta-merge.R","dataset notes append master then using with stable numbering",4,0,FALSE,FALSE,0
+"test-dta-merge.R","dataset-note merge preserves one side and renumbers using notes",7,0,FALSE,FALSE,0
+"test-dta-merge.R","dataset-note merge rejects Stata note-number exhaustion",1,0,FALSE,FALSE,0
+"test-dta-merge.R","base, tibble, and data.table inputs merge identically",87,0,FALSE,FALSE,0
+"test-dta-merge.R","plain keyed data.tables retain their values, aliases, and keys",10,0,FALSE,FALSE,0
+"test-dta-merge.R","master and using accept DTA file paths in any combination",11,0,FALSE,FALSE,0
+"test-dta-merge.R","every x and y source combination merges identically",76,0,FALSE,FALSE,0
+"test-dta-merge.R","Arrow URLs with query strings dispatch to read_arrow",2,0,FALSE,FALSE,0
+"test-dta-merge.R","multiple keys match jointly under missing-code identity",2,0,FALSE,FALSE,0
+"test-dta-merge.R","unmatched rows fill string columns with the empty string",4,0,FALSE,FALSE,0
+"test-dta-metadata.R","note accessors preserve gaps, empty text, scope, and stable renumbering",10,0,FALSE,FALSE,0
+"test-dta-metadata.R","characteristic accessors preserve order, Unicode, and empty values",7,0,FALSE,FALSE,0
+"test-dta-metadata.R","metadata accessors reject malformed and reserved input atomically",20,0,FALSE,FALSE,0
+"test-dta-metadata.R","base and tibble subsetting preserve Stata metadata",52,0,FALSE,FALSE,0
+"test-dta-metadata.R","vctrs preserves metadata on supported plain vector types",65,0,FALSE,FALSE,0
+"test-dta-metadata.R","dplyr recode treats metadata vector markers as transparent",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","metadata vector markers remain writable",11,0,FALSE,FALSE,0
+"test-dta-metadata.R","Arrow writes labelled numeric vectors with Stata metadata",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","wide subsets restore only metadata-bearing variables",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","writers reject manually attached over-limit metadata safely",5,0,FALSE,FALSE,0
+"test-dta-metadata.R","legacy decoded metadata survives R access and Arrow round trips",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","native metadata envelopes validate counts before allocation",3,0,FALSE,FALSE,0
+"test-dta-metadata.R","empty write metadata uses one native sentinel at high column counts",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","Arrow retains `_dta` variable metadata that DTA cannot represent",5,0,FALSE,FALSE,0
+"test-dta-metadata.R","DTA and Arrow round trips retain dataset and projected variable metadata",21,0,FALSE,FALSE,0
+"test-dta-metadata.R","metadata helpers edit dibbles through function parameters and aliases",303,0,FALSE,FALSE,0
+"test-dta-metadata.R","metadata helpers keep copy semantics on vectors",2,0,FALSE,FALSE,0
+"test-dta-metadata.R","failed dibble metadata edits leave all bindings unchanged",6,0,FALSE,FALSE,0
+"test-dta-metadata.R","dibble metadata edits preserve other scopes and grouping",12,0,FALSE,FALSE,0
+"test-dta-numeric-summary.R","numeric summaries match base R for every Stata storage",120,0,FALSE,FALSE,0
+"test-dta-numeric-summary.R","numeric summaries forward rounding and quantile arguments",47,0,FALSE,FALSE,0
+"test-dta-numeric-summary.R","summaries work on typed columns and whole dibbles",2,0,FALSE,FALSE,0
+"test-dta-numeric.R","storage constructors create declared compact vectors",25,0,FALSE,FALSE,0
+"test-dta-numeric.R","size allocation creates system-missing compact vectors",12,0,FALSE,FALSE,0
+"test-dta-numeric.R","constructors enforce Stata ranges and precision rules",13,0,FALSE,FALSE,0
+"test-dta-numeric.R","constructors preserve Stata extended missing codes",5,0,FALSE,FALSE,0
+"test-dta-numeric.R","Stata numeric comparisons use missing-code identity and order",7,0,FALSE,FALSE,0
+"test-dta-numeric.R","Stata numeric comparisons return empty results for empty operands",4,0,FALSE,FALSE,0
+"test-dta-numeric.R","Stata numeric ordering retains and ranks missing codes",9,0,FALSE,FALSE,0
+"test-dta-numeric.R","vctrs identity distinguishes Stata missing codes",10,0,FALSE,FALSE,0
+"test-dta-numeric.R","identity operations reject noncanonical NaN payloads",4,0,FALSE,FALSE,0
+"test-dta-numeric.R","Stata temporal vectors use numeric missing identity",4,0,FALSE,FALSE,0
+"test-dta-numeric.R","native construction rejects unsupported tagged missing payloads",2,0,FALSE,FALSE,0
+"test-dta-numeric.R","storage inspection does not materialize imported columns",3,0,FALSE,FALSE,0
+"test-dta-numeric.R","serialization preserves compact numeric backing",4,0,FALSE,FALSE,0
+"test-dta-numeric.R","saveRDS preserves compact numeric backing",3,0,FALSE,FALSE,0
+"test-dta-numeric.R","serialization preserves writable materialized values",4,0,FALSE,FALSE,0
+"test-dta-numeric.R","stored public coercions are isolated from reference mutation",3,0,FALSE,FALSE,0
+"test-dta-numeric.R","stored vctrs proxies are isolated from reference mutation",2,0,FALSE,FALSE,0
+"test-dta-numeric.R","data-frame coercion preserves vector and explicit row names",5,0,FALSE,FALSE,0
+"test-dta-numeric.R","lazy public snapshots release stripped source attributes",3,0,FALSE,FALSE,0
+"test-dta-numeric.R","base subsetting and duplication preserve compact backing",5,0,FALSE,FALSE,0
+"test-dta-numeric.R","vctrs proxy slicing preserves compact backing",12,0,FALSE,FALSE,0
+"test-dta-numeric.R","vctrs restoration distinguishes storage and temporal encoding",8,0,FALSE,FALSE,0
+"test-dta-numeric.R","legacy compact widths preserve system missing encoding",16,0,FALSE,FALSE,0
+"test-dta-numeric.R","narrow dates validate and encode in Stata source units",15,0,FALSE,FALSE,0
+"test-dta-numeric.R","narrow temporal storage through dplyr",18,0,FALSE,FALSE,0
+"test-dta-numeric.R","temporal summaries, concatenation, and recodes retain storage",14,0,FALSE,FALSE,0
+"test-dta-numeric.R","temporal label reconciliation through dplyr",16,0,FALSE,FALSE,0
+"test-dta-numeric.R","temporal common operations reject mixed kinds",9,0,FALSE,FALSE,0
+"test-dta-numeric.R","empty temporal extrema retain base infinity behavior",6,0,FALSE,FALSE,0
+"test-dta-numeric.R","common types follow the Stata storage promotion lattice",25,0,FALSE,FALSE,0
+"test-dta-numeric.R","bare vectors meet declared storage at their own mapping",14,0,FALSE,FALSE,0
+"test-dta-numeric.R","casts into declared storage are strict and preserve missing tags",6,0,FALSE,FALSE,0
+"test-dta-numeric.R","assignment and vctrs recodes re-encode compact storage",10,0,FALSE,FALSE,0
+"test-dta-numeric.R","compact numeric conditional storage through dplyr",17,0,FALSE,FALSE,0
+"test-dta-numeric.R","base right and full merges can append native Stata keys",10,0,FALSE,FALSE,0
+"test-dta-numeric.R","base full merges promote native Stata temporal keys",5,0,FALSE,FALSE,0
+"test-dta-numeric.R","extension promotes declared inputs without weakening assignment",10,0,FALSE,FALSE,0
+"test-dta-numeric.R","dplyr joins preserve compatible Stata key information",9,0,FALSE,FALSE,0
+"test-dta-numeric.R","value labels compose with declared storage classes",7,0,FALSE,FALSE,0
+"test-dta-numeric.R","common types reconcile value and variable labels",15,0,FALSE,FALSE,0
+"test-dta-numeric.R","common type label reconciliation through dplyr",19,0,FALSE,FALSE,0
+"test-dta-numeric.R","common types reconcile notes and characteristics left first",6,0,FALSE,FALSE,0
+"test-dta-numeric.R","arithmetic promotes from operand storage according to result values",16,0,FALSE,FALSE,0
+"test-dta-numeric.R","arithmetic collapses tags and returns bare logical comparisons",7,0,FALSE,FALSE,0
+"test-dta-numeric.R","missing operands yield system missing whatever their tag",15,0,FALSE,FALSE,0
+"test-dta-numeric.R","rounding keeps a missing tag and other math functions drop it",30,0,FALSE,FALSE,0
+"test-dta-numeric.R","computed results preserve Stata construction semantics",27,0,FALSE,FALSE,0
+"test-dta-numeric.R","Complex group members use value-dependent storage",7,0,FALSE,FALSE,0
+"test-dta-numeric.R","math and summary generics use value-dependent storage",13,0,FALSE,FALSE,0
+"test-dta-numeric.R","Summary generics accept bare numeric and logical arguments",6,0,FALSE,FALSE,0
+"test-dta-numeric.R","base ifelse strips declared storage as documented",2,0,FALSE,FALSE,0
+"test-dta-numeric.R","undefined Stata arithmetic becomes system missing",4,0,FALSE,FALSE,0
+"test-dta-string-metadata-coercion.R","a wrapped Stata string has a common type with a bare one",4,0,FALSE,FALSE,0
+"test-dta-string-metadata-coercion.R","vec_c() combines wrapped and bare Stata strings either way",4,0,FALSE,FALSE,0
+"test-dta-string-metadata-coercion.R","c() combines wrapped and bare Stata strings",2,0,FALSE,FALSE,0
+"test-dta-string-metadata-coercion.R","combining keeps the variable label and dataset-level notes",3,0,FALSE,FALSE,0
+"test-dta-string-metadata-coercion.R","casting works in both directions",5,0,FALSE,FALSE,0
+"test-dta-string.R","dta_string infers UTF-8 byte storage and validates declarations",5,0,FALSE,FALSE,0
+"test-dta-string.R","dta_storage_type reports declared string storage",5,0,FALSE,FALSE,0
+"test-dta-string.R","Stata strings restore metadata through slicing and conversion",10,0,FALSE,FALSE,0
+"test-dta-string.R","Stata string concatenation widens and replacement stays strict",12,0,FALSE,FALSE,0
+"test-dta-string.R","common type with bare character can hold values chosen later",3,0,FALSE,FALSE,0
+"test-dta-string.R","Stata string sorting preserves metadata and rejects partial sorting",5,0,FALSE,FALSE,0
+"test-dta-string.R","Stata restoration drops unknown attributes once",6,0,FALSE,FALSE,0
+"test-dta-string.R","Stata string subset and restore padding use empty missing strings",48,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block summaries agree with ordinary values across compact chunks",672,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen row blocks preserve column order and all-missing policy",31,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks keep one ordered double accumulator across boundaries",14,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block extrema preserve all missing ranks and signed-zero ties",28,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block calculations keep legacy numeric missing domains",128,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks preserve Stata temporal conversion order and strip metadata",16,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block admission preserves foreign row-major callback order",3,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block validation retains NaN policy and unsupported-tag rejection",18,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks normalize compact IEEE NaNs only in calculation scope",10,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen scalar fallback retains foreign class callbacks and captured storage",3,0,FALSE,FALSE,0
+"test-egen-command.R","egen, gen and := agree without filters and distinguish filtered inputs",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen reuses target capture and formula conventions",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen calls actual functions and supports namespace qualification",8,0,FALSE,FALSE,0
+"test-egen-command.R","egen type, placement and row positions validate before mutation",11,0,FALSE,FALSE,0
+"test-egen-command.R","egen uses Stata key identity and does not reorder for by",3,0,FALSE,FALSE,0
+"test-egen-command.R","egen stages bysort and commits only after success",8,0,FALSE,FALSE,0
+"test-egen-command.R","egen shares gen()'s group plan: factor keys, empty dplyr groups, zero rows",7,0,FALSE,FALSE,0
+"test-egen-command.R","egen grouped inputs supply groups and counters describe the sample",5,0,FALSE,FALSE,0
+"test-egen-command.R","egen tag fills excluded rows with zero and forces byte",10,0,FALSE,FALSE,0
+"test-egen-command.R","egen does not evaluate values separately for each admitted row",2,0,FALSE,FALSE,0
+"test-egen-command.R","egen validates source NaN and normalizes arithmetic NaN",29,0,FALSE,FALSE,0
+"test-egen-command.R","egen handles empty samples without inventing observations",4,0,FALSE,FALSE,0
+"test-egen-command.R","egen preserves aliases and copy isolation through pipelines",4,0,FALSE,FALSE,0
+"test-egen-command.R","egen rejects containers that are not dibbles",5,0,FALSE,FALSE,0
+"test-egen-command.R","egen grouped calculations leave compact source columns untouched",6,0,FALSE,FALSE,0
+"test-egen-command.R","egen calculations read private views, so a retained column cannot alias the dataset",6,0,FALSE,FALSE,0
+"test-egen-command.R","egen growth rebuilds its view on the new table and keeps aliases on the old one",6,0,FALSE,FALSE,0
+"test-egen-groups.R","group IDs sort mixed keys and tags select first eligible rows",7,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys preserve every missing identity and signed zero",4,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys compare mixed encodings by their UTF-8 text",4,0,FALSE,FALSE,0
+"test-egen-groups.R","cached group text remains rooted through GC without materializing sources",4,0,FALSE,FALSE,0
+"test-egen-groups.R","group inputs and options are checked without changing sources",23,0,FALSE,FALSE,0
+"test-egen-groups.R","autotype uses Stata integer storage thresholds",7,0,FALSE,FALSE,0
+"test-egen-groups.R","group labels own mappings and truncate Unicode components",8,0,FALSE,FALSE,0
+"test-egen-groups.R","group metadata survives DTA and Arrow round trips",14,0,FALSE,FALSE,0
+"test-egen-groups.R","group keys use encoded temporal values",5,0,FALSE,FALSE,0
+"test-egen-groups.R","computed NaN group labels use the normalized system missing",1,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","numeric egen values match the Stata 18 differential fixture",56,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group identifiers and tags match the Stata 18 fixture",8,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group labels match Stata numeric formatting and Unicode truncation",3,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","egen commands reproduce source call shapes and Stata storage",15,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","egen accumulation follows Stata double precision and input order",24,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","group numeric labels match Stata fixed and exponential formatting",2,0,FALSE,FALSE,0
+"test-egen-stata-fixture.R","Unicode descriptions follow the measured group width contract",8,0,FALSE,FALSE,0
+"test-egen-values.R","numeric summaries apply Stata missing rules without rounding",21,0,FALSE,FALSE,0
+"test-egen-values.R","row calculations accept columns and preserve all-missing rules",8,0,FALSE,FALSE,0
+"test-egen-values.R","numeric calculations validate input classes, shapes, and options",33,0,FALSE,FALSE,0
+"test-egen-values.R","calculations discard metadata and use encoded temporal numbers",10,0,FALSE,FALSE,0
+"test-egen-values.R","datetime calculations use the package epoch conversion order",4,0,FALSE,FALSE,0
+"test-egen-values.R","numeric calculations leave compact inputs unmaterialized",8,0,FALSE,FALSE,0
+"test-egen-values.R","Arrow numeric calculations preserve compact input storage",6,0,FALSE,FALSE,0
+"test-egen-values.R","egen calculation scope normalizes only ordinary NaN payloads",3,0,FALSE,FALSE,0
+"test-egen-values.R","numeric value functions compose with grouped dibble assignment",5,0,FALSE,FALSE,0
+"test-explicit-metadata.R","table metadata setters reject plain containers before any update",33,0,FALSE,FALSE,0
+"test-explicit-metadata.R","all table metadata setters reach aliases and function callers",21,0,FALSE,FALSE,0
+"test-explicit-metadata.R","format setters support literal and runtime target forms",10,0,FALSE,FALSE,0
+"test-explicit-metadata.R","singular vector formats accept positional or named values without mutation",36,0,FALSE,FALSE,0
+"test-explicit-metadata.R","plural vector formats require one explicitly supplied value",30,0,FALSE,FALSE,0
+"test-explicit-metadata.R","table labels preserve container classes alongside notes and characteristics",16,0,FALSE,FALSE,0
+"test-explicit-metadata.R","table metadata commits repair markers left by base attribute copies",27,0,FALSE,FALSE,0
+"test-explicit-metadata.R","metadata bundles restore downstream runtime column metadata atomically",12,0,FALSE,FALSE,0
+"test-explicit-metadata.R","failed metadata bundles and plural formats leave all state unchanged",26,0,FALSE,FALSE,0
+"test-explicit-metadata.R","declared empty label tables reject nonnumeric targets atomically",15,0,FALSE,FALSE,0
+"test-explicit-metadata.R","metadata bundles preserve complete raw value-label mappings",11,0,FALSE,FALSE,0
+"test-explicit-metadata.R","metadata setters isolate copied and serialized bookkeeping both ways",66,0,FALSE,FALSE,0
+"test-explicit-metadata.R","metadata edits preserve compact storage and capacity",9,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels has an ordinary factor interface",4,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels controls unused levels, display, and ordering",4,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels does not invent non-Stata missing tags",2,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels applies Stata missing-value semantics",7,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels supports unlabelled numeric vectors",3,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels converts Date and POSIXct label codes",3,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels matches base factor numeric ordering",2,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels validates its vector and metadata boundary",11,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor_from_labels warns for nonportable label metadata",2,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor conversion and tabulation share compact-source semantics",5,0,FALSE,FALSE,0
+"test-factor-from-labels.R","factor conversion handles every compact numeric missing width",15,0,FALSE,FALSE,0
+"test-factor-from-labels.R","compact non-Stata float NaNs follow ordinary missing semantics",5,0,FALSE,FALSE,0
+"test-folded-return-mutation.R","returned folded constants retain fresh numeric execution comparison",20,0,FALSE,FALSE,0
+"test-generation-metadata.R","generation metadata shortcut admits only ordinary canonical doubles",22,0,FALSE,FALSE,0
+"test-generation-metadata.R","generation metadata admission does not read foreign attributes",14,0,FALSE,FALSE,0
+"test-generation-metadata.R","generated canonical values retain helper callbacks and independent storage",9,0,FALSE,FALSE,0
+"test-generation-metadata.R","generated canonical metadata retains executable base helper tracers",9,0,FALSE,FALSE,0
+"test-generation-metadata.R","canonical metadata retains nested unique callbacks and character methods",6,0,FALSE,FALSE,0
+"test-generation-metadata.R","metadata admission leaves active and delayed helpers untouched",12,0,FALSE,FALSE,0
+"test-generation-metadata.R","unsupported metadata profiles retain ordinary filtering",5,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped native mutations preserve S4 grouping key dispatch",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped native mutate honors local double arithmetic methods",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","native mutate preserves reserved evaluation symbols with colliding columns",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped native mutate honors configured column capacity",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","native brackets preserve reserved source symbol evaluation",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","plain and owned double keys admit grouped reference creation",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double mutate preserves complete values metadata and aliases",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","double key plans preserve first appearance metadata and late writes",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double operations preserve public equality and arithmetic traces",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double brackets retain completed values across foreign writes",1,0,FALSE,FALSE,0
+"test-grouped-double-admission.R","grouped double brackets normalize values outside Stata storage range",1,0,FALSE,FALSE,0
+"test-grouped-gen-native-admission.R","grouped native gen publishes and declines after a staged source change",3,0,FALSE,FALSE,0
+"test-grouped-gen-native-admission.R","native generation preserves Stata double range normalization",1,0,FALSE,FALSE,0
+"test-grouped-native-lifecycle.R","dplyr reload disables all stale grouped native guards",1,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture duplicate checks preserve width limits and full name comparisons",110,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture declines duplicate names introduced after R validation",44,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture keeps ASCII encoding and name length boundaries",86,0,FALSE,FALSE,0
+"test-initial-capture-names.R","initial capture leaves deferred foreign name reads on the fallback route",13,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture publishes wide owned and compact columns and declines narrow inputs early",72,0,FALSE,FALSE,0
+"test-initial-capture.R","bounded-width fallback matches the original R capture loop",42,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture preserves unknown operand forcing and original errors",18,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture retains replaced and executable traced helper callbacks",24,0,FALSE,FALSE,0
+"test-initial-capture.R","bounded-width fallback retains current helper callbacks",10,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture qualifies executing constructors after recompilation and self-untracing",17,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture isolates public results and retained generation registries",12,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture retains roots under forced GC and independent reentrant finalizers",9,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture leaves genuine database lookups on the original forcing path",29,0,FALSE,FALSE,0
+"test-initial-capture.R","initial capture expected profiles remain independent of public source literal mutation",20,0,FALSE,FALSE,0
+"test-input-sources.R","plain local paths retain the direct path fast path",2,0,FALSE,FALSE,0
+"test-input-sources.R","first local reads avoid source-adapter dependency loading",16,0,FALSE,FALSE,0
+"test-input-sources.R","local source detection preserves content and caller ownership",42,0,FALSE,FALSE,0
+"test-input-sources.R","compressed Arrow content retains source-adapter handling",12,0,FALSE,FALSE,0
+"test-input-sources.R","implicit read extensions retain file_ext semantics",12,0,FALSE,FALSE,0
+"test-input-sources.R","local readers ignore global filesystem helpers",6,0,FALSE,FALSE,0
+"test-input-sources.R","extensionless local reads resolve to the matching .dta file",3,0,FALSE,FALSE,0
+"test-input-sources.R","caller-supplied datasource paths are never deleted",4,0,FALSE,FALSE,0
+"test-input-sources.R","temporary sources are cleaned automatically after reads and errors",12,0,FALSE,FALSE,0
+"test-input-sources.R","temporary sources are cleaned when an interrupt unwinds the read",2,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing classifies Stata and R missing values",3,0,FALSE,FALSE,0
+"test-is-missing.R","is_mi is an exported alias for is_missing",2,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing uses rowwise any with size-one recycling",6,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing handles zero-length vectors and names",4,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing supports semantic atomic classes",4,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing treats Stata metadata markers as transparent",3,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing rejects containers and unsupported classes",10,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing preserves tagged payloads and does not mutate attributes",5,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing inspects compact DTA numerics without materializing",3,0,FALSE,FALSE,0
+"test-is-missing.R","compact non-Stata float NaNs match eager R missing semantics",4,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing matches compact and eager Arrow numerics",2,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing leaves dictionary-string caches untouched",9,0,FALSE,FALSE,0
+"test-is-missing.R","is_missing works in bare and stored data-mask expressions",2,0,FALSE,FALSE,0
+"test-is-missing.R","fertility-surveys egen total expressions translate exactly",3,0,FALSE,FALSE,0
+"test-keep-drop.R","keep_vars keeps physical order and resolves generated columns",6,0,FALSE,FALSE,0
+"test-keep-drop.R","drop_vars removes physical and generated columns",7,0,FALSE,FALSE,0
+"test-keep-drop.R","structural mutation does not alter shared names vectors",3,0,FALSE,FALSE,0
+"test-keep-drop.R","same-size selection materializes generated columns",4,0,FALSE,FALSE,0
+"test-keep-drop.R","ALTREP data-frame wrappers support structural mutation",3,0,FALSE,FALSE,0
+"test-keep-drop.R","selection errors are atomic",28,0,FALSE,FALSE,0
+"test-keep-drop.R","strict name selection supports ranges, c, and all_of",2,0,FALSE,FALSE,0
+"test-keep-drop.R","multiple ranges resolve together",1,0,FALSE,FALSE,0
+"test-keep-drop.R","all_of snapshots promises as character names before selection",6,0,FALSE,FALSE,0
+"test-keep-drop.R","validated keep-all is a structural no-op",2,0,FALSE,FALSE,0
+"test-keep-drop.R","structural mutation uses values installed by repl",4,0,FALSE,FALSE,0
+"test-keep-drop.R","surviving columns keep Stata values and metadata",5,0,FALSE,FALSE,0
+"test-keep-drop.R","keep and drop support zero-row and zero-column results",4,0,FALSE,FALSE,0
+"test-keep-drop.R","later reference mutations see a consistent overlay",7,0,FALSE,FALSE,0
+"test-keep-drop.R","keep_vars and drop_vars reject plain containers",9,0,FALSE,FALSE,0
+"test-label-dual-shape.R","the accessors keep their vector and whole-data-frame shapes",4,0,FALSE,FALSE,0
+"test-label-dual-shape.R","the accessors read one column in the (data, variable) shape",10,0,FALSE,FALSE,0
+"test-label-dual-shape.R","a symbol names the column literally, not a caller variable",2,0,FALSE,FALSE,0
+"test-label-dual-shape.R","asking for an absent column names it in the error",2,0,FALSE,FALSE,0
+"test-label-dual-shape.R","a variable argument requires a data frame",2,0,FALSE,FALSE,0
+"test-label-dual-shape.R","set_var_label accepts a bare vector and a label",2,0,FALSE,FALSE,0
+"test-label-dual-shape.R","set_var_label still rejects other non-data-frame calls",2,0,FALSE,FALSE,0
+"test-label-dual-shape.R","set_var_labels accepts the positional (data, variable) shape",5,0,FALSE,FALSE,0
+"test-label-dual-shape.R","set_val_labels accepts the positional (data, variable) shape",5,0,FALSE,FALSE,0
+"test-label-dual-shape.R","the positional labels argument evaluates in the caller",1,0,FALSE,FALSE,0
+"test-label-dual-shape.R","every pre-existing setter convention still works",12,0,FALSE,FALSE,0
+"test-label-dual-shape.R","dots forwarded from a wrapper keep the tagged path",1,0,FALSE,FALSE,0
+"test-label-dual-shape.R","dots forwarded from a wrapper keep the positional shape",1,0,FALSE,FALSE,0
+"test-label-dual-shape.R","a computed first argument still errors as before",4,0,FALSE,FALSE,0
+"test-label-dual-shape.R","the positional shape validates the column and the labels",2,0,FALSE,FALSE,0
+"test-label-metadata.R","var_label returns a vector's variable label",1,0,FALSE,FALSE,0
+"test-label-metadata.R","val_labels returns a vector's value-label table",1,0,FALSE,FALSE,0
+"test-label-metadata.R","dataset_label returns a data frame's dataset label",1,0,FALSE,FALSE,0
+"test-label-metadata.R","data-frame getters retain names and NULL entries",1,0,FALSE,FALSE,0
+"test-label-metadata.R","var_label replacement preserves vector values and attributes",1,0,FALSE,FALSE,0
+"test-label-metadata.R","dataset_label replacement sets and removes dataset metadata",1,0,FALSE,FALSE,0
+"test-label-metadata.R","replacement syntax follows R copy semantics",11,0,FALSE,FALSE,0
+"test-label-metadata.R","label replacement isolates metadata and later value writes",4,0,FALSE,FALSE,0
+"test-label-metadata.R","dataset-label replacement detaches a dibble from its aliases",7,0,FALSE,FALSE,0
+"test-label-metadata.R","var_label replacement updates named columns and can clear all",1,0,FALSE,FALSE,0
+"test-label-metadata.R","set_var_labels combines named dots and .labels",1,0,FALSE,FALSE,0
+"test-label-metadata.R","set_var_labels supports vector pipelines",1,0,FALSE,FALSE,0
+"test-label-metadata.R","bulk variable-label limits produce one complete portability warning",1,0,FALSE,FALSE,0
+"test-label-metadata.R","variable-label setters keep imported numeric storage compact",1,0,FALSE,FALSE,0
+"test-label-metadata.R","val_labels replacement labels ordinary numeric vectors in place",1,0,FALSE,FALSE,0
+"test-label-metadata.R","val_labels replacement updates named columns and can clear all",1,0,FALSE,FALSE,0
+"test-label-metadata.R","set_val_labels combines named dots and .labels",1,0,FALSE,FALSE,0
+"test-label-metadata.R","set_val_labels supports vector pipelines",1,0,FALSE,FALSE,0
+"test-label-metadata.R","bulk value-label limits produce one complete portability warning",1,0,FALSE,FALSE,0
+"test-label-metadata.R","Stata 19 metadata boundaries do not warn",2,0,FALSE,FALSE,0
+"test-label-metadata.R","value-label codes cover Stata long boundaries and extended missings",1,0,FALSE,FALSE,0
+"test-label-metadata.R","value-label setters reject codes outside Stata's label domain",1,0,FALSE,FALSE,0
+"test-label-metadata.R","empty value-label text is discarded and duplicate text is allowed",1,0,FALSE,FALSE,0
+"test-label-metadata.R","value-label setters preserve Date and POSIXct classes",1,0,FALSE,FALSE,0
+"test-label-metadata.R","removing value labels retains unrelated numeric classes",1,0,FALSE,FALSE,0
+"test-label-metadata.R","value-label setters keep imported numeric storage compact",1,0,FALSE,FALSE,0
+"test-label-metadata.R","repeated metadata setters keep numeric backing unmaterialized",1,0,FALSE,FALSE,0
+"test-label-metadata.R","aggregate operations keep metadata proxies unmaterialized",1,0,FALSE,FALSE,0
+"test-label-metadata.R","compactness probe detects materialized metadata proxies",1,0,FALSE,FALSE,0
+"test-label-metadata.R","metadata proxies preserve copy-on-write in both directions",1,0,FALSE,FALSE,0
+"test-label-metadata.R","tab consumes value labels created by dtatools helpers",1,0,FALSE,FALSE,0
+"test-label-metadata.R","bulk setters reject ambiguous column updates atomically",1,0,FALSE,FALSE,0
+"test-label-metadata.R","table label setters reject plain containers before any update",18,0,FALSE,FALSE,0
+"test-label-metadata.R","whole-table label clearing handles duplicated column names",1,0,FALSE,FALSE,0
+"test-label-metadata.R","value labels can only be attached to numeric Stata variables",3,0,FALSE,FALSE,0
+"test-label-metadata.R","value-label tables must be numeric vectors",1,0,FALSE,FALSE,0
+"test-label-metadata.R","label helpers reject non-vector reference objects",1,0,FALSE,FALSE,0
+"test-label-metadata.R","bulk value-label setters normalize each table once",1,0,FALSE,FALSE,0
+"test-label-metadata.R","dibble set functions mutate by reference",6,0,FALSE,FALSE,0
+"test-label-metadata.R","label setters still return the dibble for pipeline use",2,0,FALSE,FALSE,0
+"test-label-metadata.R","copy_data isolates a dibble from later label setters",2,0,FALSE,FALSE,0
+"test-label-metadata.R","vector label setters keep copy semantics",2,0,FALSE,FALSE,0
+"test-label-metadata.R","set_var_label requires one unquoted existing column",3,0,FALSE,FALSE,0
+"test-label-metadata.R","set_var_label labels a generated reference column",2,0,FALSE,FALSE,0
+"test-label-metadata.R","val_labels returns a Stata numeric that compares and prints as Stata",20,0,FALSE,FALSE,0
+"test-label-metadata.R","a label table Stata could not hold is returned as haven stores it",5,0,FALSE,FALSE,0
+"test-label-metadata.R","a table remembers its codes' type so setting it back is exact",25,0,FALSE,FALSE,0
+"test-label-metadata.R","val_label and val_code look up one direction of a table",53,0,FALSE,FALSE,0
+"test-mask-bindings.R","native bindings capture fixed generations names and groups",7,0,FALSE,FALSE,0
+"test-mask-bindings.R","interpreted public masks retain executable names callbacks",2,0,FALSE,FALSE,0
+"test-mask-bindings.R","native binding admission declines unsupported containers and names",15,0,FALSE,FALSE,0
+"test-mask-bindings.R","native binding admission never invokes unknown constructor bindings",13,0,FALSE,FALSE,0
+"test-mask-bindings.R","binding construction retains traced constructors without admission callbacks",4,0,FALSE,FALSE,0
+"test-mask-bindings.R","binding fallback retains encoded-name diagnostics",2,0,FALSE,FALSE,0
+"test-mask-bindings.R","non-ASCII binding names retain the original reader path",3,0,FALSE,FALSE,0
+"test-mask-bindings.R","changed constructors run before the fallback group promise is forced",4,0,FALSE,FALSE,0
+"test-mask-bindings.R","long ASCII names retain the original symbol-conversion diagnostics",2,0,FALSE,FALSE,0
+"test-mask-bindings.R","foreign names run before a declined binding attempt forces its group",3,0,FALSE,FALSE,0
+"test-mask-bindings.R","binding admission leaves unfamiliar promises and state fields untouched",10,0,FALSE,FALSE,0
+"test-mask-bindings.R","binding admission accepts settled IDs and settles successful default IDs",5,0,FALSE,FALSE,0
+"test-mask-bindings.R","foreign initial names cannot interrupt mask expiration",5,0,FALSE,FALSE,0
+"test-mask-bindings.R","mask registries keep captured names after an input rename by reference",5,0,FALSE,FALSE,0
+"test-mask-bindings.R","initial capture records the column names actually consumed",10,0,FALSE,FALSE,0
+"test-mask-bindings.R","mutation can retain initial column names across caller renames",4,0,FALSE,FALSE,0
+"test-mask-bindings.R","public masks preserve executable nested constructor callbacks",8,0,FALSE,FALSE,0
+"test-mask-bindings.R","public masks preserve callbacks exposed by standard wrapper recompilation",4,0,FALSE,FALSE,0
+"test-mask-bindings.R","binding admission checks actual factory code without invoking it",11,0,FALSE,FALSE,0
+"test-mask-bindings.R","public masks retain executable changes to their actual local factory",2,0,FALSE,FALSE,0
+"test-mask-bindings.R","canonical masks admit their actual local binding factory",9,0,FALSE,FALSE,0
+"test-mask-bindings.R","public mask admission does not add environment callbacks",2,0,FALSE,FALSE,0
+"test-mask-bindings.R","public masks add no predicates when their enclosing helper is interpreted",12,0,FALSE,FALSE,0
+"test-mask-bindings.R","production mask status commits only to an absent local result binding",12,0,FALSE,FALSE,0
+"test-mask-bindings.R","public masks retain history and values bookkeeping callbacks",12,0,FALSE,FALSE,0
+"test-mask-bindings.R","public mask constructors see the original forced group argument",3,0,FALSE,FALSE,0
+"test-mask-bindings.R","successful nonempty native masks settle only their default group promise",20,0,FALSE,FALSE,0
+"test-mask-bindings.R","empty and declined native masks leave group promises untouched",15,0,FALSE,FALSE,0
+"test-mask-bindings.R","public mask constructors see the original final loop name",4,0,FALSE,FALSE,0
+"test-mask-bindings.R","native masks preserve loop names and decline unsafe name bindings",56,0,FALSE,FALSE,0
+"test-mask-reader-callbacks.R","mask readers retain argument expressions for executable tracers",1,0,FALSE,FALSE,0
+"test-mask-reader-callbacks.R","public masks retain reader replacement after binding construction",2,0,FALSE,FALSE,0
+"test-metadata-dependency-settlement.R","metadata and combination settle every reached delayed primitive binding",82,0,FALSE,FALSE,0
+"test-metadata-dependency-settlement.R","settled metadata dependencies retain later public function results",6,0,FALSE,FALSE,0
+"test-metadata-dependency-settlement.R","public generation retains delayed metadata errors before publication",21,0,FALSE,FALSE,0
+"test-metadata-execution-profile.R","metadata execution probe detects the active evaluator",5,0,FALSE,FALSE,0
+"test-metadata-execution-profile.R","metadata shape admission adds no executable names callbacks",2,0,FALSE,FALSE,0
+"test-metadata-execution-profile.R","metadata shape admission retains positive and nonforcing cases",9,0,FALSE,FALSE,0
+"test-metadata-execution-profile.R","metadata admission preserves environment callbacks",4,0,FALSE,FALSE,0
+"test-metadata-execution-profile.R","metadata shortcuts retain callbacks after supported closure transformations",40,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","generated metadata keeps lazy source forcing after subset callbacks",3,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","attribute planning keeps active source reads after original callbacks",4,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","metadata class callbacks retain the original unknown attribute local",4,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","ordinary metadata filtering preserves values and diagnostic caller bindings",17,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","self untracing attribute plans retain executable callbacks and generation errors",6,0,FALSE,FALSE,0
+"test-metadata-source-admission.R","prototype forcing retains active unknown assignments and completed plan locals",8,0,FALSE,FALSE,0
+"test-mutate-data.R","reference mutation exports one coherent API",9,0,FALSE,FALSE,0
+"test-mutate-data.R","by-reference mutation rejects containers that are not dibbles",21,0,FALSE,FALSE,0
+"test-mutate-data.R","matrix columns use dataset row sizes",7,0,FALSE,FALSE,0
+"test-mutate-data.R","targets are bare names and support tidy injection",10,0,FALSE,FALSE,0
+"test-mutate-data.R","data masks, formulas, and alias calls use the right environments",9,0,FALSE,FALSE,0
+"test-mutate-data.R","values and selection see the unchanged dataset",8,0,FALSE,FALSE,0
+"test-mutate-data.R","where has documented logical and position semantics",32,0,FALSE,FALSE,0
+"test-mutate-data.R","full-dataset values are gathered by selected row",7,0,FALSE,FALSE,0
+"test-mutate-data.R","metadata-bearing numerics remain valid row positions",2,0,FALSE,FALSE,0
+"test-mutate-data.R","compact selected positions use one native patch plan",4,0,FALSE,FALSE,0
+"test-mutate-data.R","excluded full-dataset values do not affect validation",8,0,FALSE,FALSE,0
+"test-mutate-data.R","native mutation writers reject untrusted row plans",7,0,FALSE,FALSE,0
+"test-mutate-data.R","validation errors leave the dataset unchanged",16,0,FALSE,FALSE,0
+"test-mutate-data.R","gen rejects unsupported classed numeric results atomically",6,0,FALSE,FALSE,0
+"test-mutate-data.R","evaluation interrupts leave the dataset unchanged",4,0,FALSE,FALSE,0
+"test-mutate-data.R","native write interrupts roll back values and compact state",64,0,FALSE,FALSE,0
+"test-mutate-data.R","native generation interrupts leave reference state unchanged",67,0,FALSE,FALSE,0
+"test-mutate-data.R","POSIX interrupts reach an active native generation checkpoint",67,0,FALSE,FALSE,0
+"test-mutate-data.R","POSIX generation checkpoints tolerate a full child stderr pipe",67,0,FALSE,FALSE,0
+"test-mutate-data.R","generation interrupt controls disarm after validation errors",6,0,FALSE,FALSE,0
+"test-mutate-data.R","generic ALTREP detachment interrupts before installation",6,0,FALSE,FALSE,0
+"test-mutate-data.R","compact replacement patches every storage without materializing",36,0,FALSE,FALSE,0
+"test-mutate-data.R","compact validation is strict and atomic",14,0,FALSE,FALSE,0
+"test-mutate-data.R","compact replacement updates the missing-value cache",12,0,FALSE,FALSE,0
+"test-mutate-data.R","DTA-loaded compact and temporal columns use native patching",8,0,FALSE,FALSE,0
+"test-mutate-data.R","legacy compact columns reject scalar extended missing values",2,0,FALSE,FALSE,0
+"test-mutate-data.R","ordinary, materialized, temporal, and character columns mutate",10,0,FALSE,FALSE,0
+"test-mutate-data.R","base numeric ALTREP columns remain internally consistent",16,0,FALSE,FALSE,0
+"test-mutate-data.R","gen appends one variable with Stata missing and storage rules",54,0,FALSE,FALSE,0
+"test-mutate-data.R","gen keeps what types a value and leaves variable metadata behind",12,0,FALSE,FALSE,0
+"test-mutate-data.R","gen and a new := column copy a column's values, not its metadata",48,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped gen drops each group's metadata before gathering",6,0,FALSE,FALSE,0
+"test-mutate-data.R","gen handles zero rows and evaluates before insertion",4,0,FALSE,FALSE,0
+"test-mutate-data.R","repeated gen appends ordered reference-state bindings",4,0,FALSE,FALSE,0
+"test-mutate-data.R","copy_data isolates every mutable column backing",25,0,FALSE,FALSE,0
+"test-mutate-data.R","subsets, metadata proxies, and serialized data stay isolated",7,0,FALSE,FALSE,0
+"test-mutate-data.R","detached metadata payloads do not retain former proxy owners",2,0,FALSE,FALSE,0
+"test-mutate-data.R","downstream metadata proxies revoke exclusive patch ownership",3,0,FALSE,FALSE,0
+"test-mutate-data.R","metadata copies remain isolated from later source patches",37,0,FALSE,FALSE,0
+"test-mutate-data.R","writable access detaches shared materialized payloads",4,0,FALSE,FALSE,0
+"test-mutate-data.R","is_missing masks preserve dictionary-string caches and aliases",12,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized metadata-proxy copies remain independent",4,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized metadata proxies release former sources",4,0,FALSE,FALSE,0
+"test-mutate-data.R","copy_data keeps Arrow dictionary strings independent and compact",2,0,FALSE,FALSE,0
+"test-mutate-data.R","generated variables participate in package writes",7,0,FALSE,FALSE,0
+"test-mutate-data.R","a dibble preserves base and tibble access semantics",21,0,FALSE,FALSE,0
+"test-mutate-data.R","dibble consumers through dplyr",35,0,FALSE,FALSE,0
+"test-mutate-data.R","explicit replacement isolates separate tables sharing target vectors",3,0,FALSE,FALSE,0
+"test-mutate-data.R","rowwise inputs fail before reference mutation",5,0,FALSE,FALSE,0
+"test-mutate-data.R",".n and .N describe the whole dataset without groups",6,0,FALSE,FALSE,0
+"test-mutate-data.R","by evaluates where and values within each group",8,0,FALSE,FALSE,0
+"test-mutate-data.R","by accepts every column-name spelling",11,0,FALSE,FALSE,0
+"test-mutate-data.R","groups follow Stata's by order, not data.table's",4,0,FALSE,FALSE,0
+"test-mutate-data.R","per-group value sizes must be 1, the selection, or .N",7,0,FALSE,FALSE,0
+"test-mutate-data.R","missing values in a by column form their own groups",4,0,FALSE,FALSE,0
+"test-mutate-data.R","bysort sorts by reference and then groups",13,0,FALSE,FALSE,0
+"test-mutate-data.R","bysort is written with the assignment, so a failed one leaves the order",71,0,FALSE,FALSE,0
+"test-mutate-data.R","by and bysort are exclusive and reject a grouped input",7,0,FALSE,FALSE,0
+"test-mutate-data.R","a grouped tibble supplies the assignment groups",10,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped native assignment consumers through dplyr",11,0,FALSE,FALSE,0
+"test-mutate-data.R","compact targets stay compact under by",13,0,FALSE,FALSE,0
+"test-mutate-data.R","the shadow check still fires inside grouped expressions",6,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped gen keeps string storage and drops value attributes",4,0,FALSE,FALSE,0
+"test-mutate-data.R","ordinary assignments and metadata helpers materialize current state",12,0,FALSE,FALSE,0
+"test-mutate-data.R","sparse compact replacement and generation keep existing payloads",6,0,FALSE,FALSE,0
+"test-mutate-data.R","plain-expression evaluation matches tidy-eval semantics",10,0,FALSE,FALSE,0
+"test-mutate-data.R","plain expressions evaluate against reference-state columns",3,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized compact replacements retain Stata semantics",28,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized compact replacement keeps fallback errors atomic",8,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement matches the general path",20,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement handles full-row values",3,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement handles empty and full matches",3,0,FALSE,FALSE,0
+"test-mutate-data.R","fused replacement preserves recycling errors and shared data",5,0,FALSE,FALSE,0
+"test-mutate-data.R","threaded fused replacement matches the general path",2,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison evaluates scalar operands once",3,0,FALSE,FALSE,0
+"test-mutate-data.R","a fused patch that writes never evaluates its comparison rows",3,0,FALSE,FALSE,0
+"test-mutate-data.R","a declined fused patch resolves the same rows as the plain path",6,0,FALSE,FALSE,0
+"test-mutate-data.R","fused row-value errors roll back before the fallback error",4,0,FALSE,FALSE,0
+"test-mutate-data.R","targets and values arrive as one tagged pair",20,0,FALSE,FALSE,0
+"test-mutate-data.R","tagged pairs reach dibble and compact targets",7,0,FALSE,FALSE,0
+"test-mutate-data.R","mutation dots must be one target pair and at most one where",15,0,FALSE,FALSE,0
+"test-mutate-data.R","a symbol bound as both column and object is an error",29,0,FALSE,FALSE,0
+"test-mutate-data.R","replacing a grouping column rebuilds the dplyr groups",7,0,FALSE,FALSE,0
+"test-mutate-data.R","native regrouping consumers through dplyr",9,0,FALSE,FALSE,0
+"test-mutate-data.R","an aliased grouping column is regrouped after replacement",3,0,FALSE,FALSE,0
+"test-mutate-data.R","aliased key regrouping consumers through dplyr",4,0,FALSE,FALSE,0
+"test-mutate-data.R","row counters mask a column named .n or .N",4,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` widens typed columns and reports the storage change",21,0,FALSE,FALSE,0
+"test-mutate-data.R","float replacement preserves precision unless promotion is disabled",6,0,FALSE,FALSE,0
+"test-mutate-data.R","byte replacement preserves the R double or rejects it unchanged",7,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` reports nothing when the storage does not change",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` widens a string target to the smallest fitting width",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotes nothing when no rows are selected",3,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotes the whole column when some rows are selected",3,0,FALSE,FALSE,0
+"test-mutate-data.R","`promote = FALSE` keeps the target at its declared storage",5,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotion keeps variable metadata",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`:=` promotes silently, unlike `repl()`",2,0,FALSE,FALSE,0
+"test-mutate-data.R","promotion never narrows the integers a column can hold",6,0,FALSE,FALSE,0
+"test-mutate-data.R","unselected replacement groups do not contribute value types",9,0,FALSE,FALSE,0
+"test-mutate-data.R","strict grouped zero-selection replacement is a no-op",24,0,FALSE,FALSE,0
+"test-mutate-data.R","gen inserts the new column before or after an anchor",26,0,FALSE,FALSE,0
+"test-mutate-data.R","a placed generated column keeps compact storage and its alias",11,0,FALSE,FALSE,0
+"test-mutate-data.R","placement follows an anchor moved or removed while values evaluate",12,0,FALSE,FALSE,0
+"test-mutate-data.R","placement follows the anchor after column construction callbacks",5,0,FALSE,FALSE,0
+"test-mutate-data.R","placed generation retains columns added during construction",6,0,FALSE,FALSE,0
+"test-mutate-data.R","placed generation refuses an anchor removed during construction",3,0,FALSE,FALSE,0
+"test-mutation-containers.R","every mutation helper rejects plain containers before evaluating arguments",276,0,FALSE,FALSE,0
+"test-mutation-containers.R","explicit helper boundaries reject dibble subclasses before evaluating updates",74,0,FALSE,FALSE,0
+"test-mutation-containers.R","a data.table carrying the dibble classes is rejected before any write",5,0,FALSE,FALSE,0
+"test-mutation-containers.R","explicit conversion removes custom container classes in isolation",32,0,FALSE,FALSE,0
+"test-mutation-containers.R","a dibble preserves existing column classes and true aliases",11,0,FALSE,FALSE,0
+"test-mutation-containers.R","grouped and rowwise metadata writes preserve grouping",32,0,FALSE,FALSE,0
+"test-mutation-containers.R","malformed frames and grouping fail before metadata evaluation",12,0,FALSE,FALSE,0
+"test-mutation-containers.R","dropping the last column keeps the dibble's public empty shape",7,0,FALSE,FALSE,0
+"test-mutation-containers.R","ordinary dibble brackets keep omitted-column forms",22,0,FALSE,FALSE,0
+"test-mutation-containers.R","duplicate grouped keys cannot split a logical group",7,0,FALSE,FALSE,0
+"test-mutation-containers.R","grouping validation ignores label wrappers on keys and identifiers",7,0,FALSE,FALSE,0
+"test-mutation-containers.R","group row positions follow physical order before using dot-n",4,0,FALSE,FALSE,0
+"test-mutation-containers.R","rowwise grouping frames reject ambiguous or inconsistent columns",12,0,FALSE,FALSE,0
+"test-mutation-fast.R","native scalar inspection accepts literals and settled bindings only",17,0,FALSE,FALSE,0
+"test-mutation-fast.R","scalar argument inspection preserves R dots lookup",13,0,FALSE,FALSE,0
+"test-mutation-fast.R","native scalar declines preserve diagnostics and unsupported inputs",21,0,FALSE,FALSE,0
+"test-mutation-fast.R","scalar writes reuse private storage and isolate shared results",45,0,FALSE,FALSE,0
+"test-mutation-fast.R","scalar storage policy distinguishes fixed rounding and promotion",10,0,FALSE,FALSE,0
+"test-mutation-fast.R","speculative scalar replacement leaves retained backing intact",28,0,FALSE,FALSE,0
+"test-mutation-fast.R","direct generation retains storage defaults and one bracket selection",18,0,FALSE,FALSE,0
+"test-mutation-fast.R","fast shape preserves wide and malformed table checks",6,0,FALSE,FALSE,0
+"test-mutation-fast.R","native generation declines accepted attributed storage options safely",14,0,FALSE,FALSE,0
+"test-mutation-fast.R","growth warning handlers run before direct generation reads bindings",4,0,FALSE,FALSE,0
+"test-mutation-fast.R","invalid generation defaults still fail before appending a scalar",15,0,FALSE,FALSE,0
+"test-mutation-fast.R","promote callbacks cannot change a declined scalar assignment",10,0,FALSE,FALSE,0
+"test-mutation-fast.R","native promote inspection declines active and attributed flags",8,0,FALSE,FALSE,0
+"test-mutation-fast.R","scalar mutation reads database arguments only at ordinary evaluation",27,0,FALSE,FALSE,0
+"test-name-strings.R","a runtime string names the target through `!!`",5,0,FALSE,FALSE,0
+"test-name-strings.R","a string literal names the target",2,0,FALSE,FALSE,0
+"test-name-strings.R","an unquoted string reads as a name, not a caller variable",2,0,FALSE,FALSE,0
+"test-name-strings.R","a column named like the caller variable is not selected",4,0,FALSE,FALSE,0
+"test-name-strings.R","empty, missing, and non-scalar strings are rejected",9,0,FALSE,FALSE,0
+"test-name-strings.R","a string target keeps the existence checks",2,0,FALSE,FALSE,0
+"test-name-strings.R","invalid non-string targets still error as before",4,0,FALSE,FALSE,0
+"test-name-strings.R","existing unquoted forms are untouched",3,0,FALSE,FALSE,0
+"test-name-strings.R","the `.data` pronoun reaches a runtime name in values and where",3,0,FALSE,FALSE,0
+"test-name-strings.R","the `.data` pronoun does not name a target",1,0,FALSE,FALSE,0
+"test-name-strings.R","the downstream call shapes work without inject or sym",3,0,FALSE,FALSE,0
+"test-name-strings.R","`set_var_label()` accepts a runtime string name",5,0,FALSE,FALSE,0
+"test-name-strings.R","a string target leaves a compact column unmaterialized",3,0,FALSE,FALSE,0
+"test-name-strings.R","`.()` names the target and reads columns at run time",3,0,FALSE,FALSE,0
+"test-name-strings.R","`.()` rejects invalid runtime names",5,0,FALSE,FALSE,0
+"test-name-strings.R","`set_var_label()` accepts a `.()` runtime name",1,0,FALSE,FALSE,0
+"test-name-strings.R","`.()` tags name columns in the plural label setters",3,0,FALSE,FALSE,0
+"test-name-strings.R","`.()` tags coexist with splices and `:=` names",7,0,FALSE,FALSE,0
+"test-name-strings.R","`.()` tags keep a spliced value's own frame and reject empties",4,0,FALSE,FALSE,0
+"test-name-strings.R","forwarded dots keep their own frames alongside a `.()` tag",3,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact arithmetic agrees with the ordinary public calculation",1500,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact arithmetic promotes the complete result and collapses invalid values",31,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic keeps recycling names and unsupported input behavior",38,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic crosses retained chunks without changing source storage",180,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic keeps primitive and recycling callbacks",10,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","public scalar and column arithmetic enter the native producer",16,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","imported DTA and Arrow columns enter native arithmetic with display metadata",78,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic retains storage-specific names methods",12,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","observed compact span arithmetic crosses distinct chunk boundaries",72,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","legacy observed integer codes promote into modern arithmetic storage",14,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","specialized arithmetic keeps aliased inputs scalar directions and promotion",300,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps all codes across scalar and column shapes",328,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps each operand's legacy missing encoding",256,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","float span arithmetic matches eager IEEE and reserved-code decoding",2777,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","a final or boundary value promotes every earlier scalar result",640,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","column promotion crosses independently chunked operands",360,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","missing codes and negative limits do not hide the final promotion",248,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","fractional and large results choose storage for the complete column",225,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer division by powers of two inspects the complete column",740,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float power-of-two scaling preserves subnormals and zero signs",280,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer preflight preserves missing-only storage and bounded scalars",405,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","integer products choose long or float without losing signed zero",75,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","power-of-two arithmetic preserves legacy storage decoding",480,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","float scaling promotes just beyond the binary32 cutoff",484,0,FALSE,FALSE,0
+"test-native-arithmetic-parity.R","early long promotion still counts missing rows in later chunks",58,0,FALSE,FALSE,0
+"test-native-control-callbacks.R","native entry conditions do not add executable if callbacks",15,0,FALSE,FALSE,0
+"test-native-control-callbacks.R","original helper if callbacks still retain their errors",6,0,FALSE,FALSE,0
+"test-native-control-callbacks.R","labelled generation keeps the original fallback evaluator callbacks",24,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","native missing kernels preserve all codes across compact spans",144,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","anyNA uses live values after compact materialization and mutation",70,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","anyNA respects a replacement primitive in its fallback binding",10,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","anyNA fallback does not force recursive before its replacement",3,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","missing kernels retain ordinary NA and noncanonical NaN policy",5,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","compact tag inspectors preserve names and dimensions without labels",20,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","compact missing kernels preserve legacy observed and missing domains",160,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","compact float IEEE NaNs are missing without becoming tagged values",12,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","tag-selection callbacks may materialize the compact source",12,0,FALSE,FALSE,0
+"test-native-missing-kernels.R","anyNA compact counts follow live mutation views",12,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching preserves cross-width first matches and missing codes",112,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching preserves scalar nomatch conversion and errors",20,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching preserves temporal identity domains",4,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching traverses retained chunks without materializing sources",48,0,FALSE,FALSE,0
+"test-native-numeric-match.R","later matching callbacks cannot change prepared earlier identities",3,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching retains foreign conversion dispatch",2,0,FALSE,FALSE,0
+"test-native-numeric-match.R","matching rejects invalid numeric conversion results and keeps error calls",5,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric matching keeps exact finite double identities",2,0,FALSE,FALSE,0
+"test-native-numeric-match.R","numeric identity and sets share matching identity and stable order",10,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","mean and range preserve compact storage and base precision",52,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","mean and range keep fallback arguments and empty policies",13,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","range preserves NULL operands and nonempty all-missing silence",15,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","fused summary moments match the previous weighted calculation",96,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","fused scans cross retained chunks and retain the input backing",32,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","foreign summary providers retain the previous read path",4,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","summary na.rm promises retain input capture order",6,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","unchanged base summary dispatch admits native scans",2,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","summary admission leaves executable na.rm promises untouched",10,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","classed na.rm cannot change the already selected mean method",2,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","registered bare mean methods precede na.rm evaluation",12,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","mean declines active and delayed S3 bindings without reading them",2,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","mean honors replaced and traced generic and default bindings",4,0,FALSE,FALSE,0
+"test-native-summary-kernels.R","range honors replaced and traced default implementations",3,0,FALSE,FALSE,0
+"test-numeric-bytecode-altrep.R","compiled helper identity does not execute ALTREP bytecode constants",17,0,FALSE,FALSE,0
+"test-numeric-decoration-callbacks.R","numeric decoration preserves replacement helper arguments and frames",9,0,FALSE,FALSE,0
+"test-numeric-decoration-callbacks.R","numeric decoration retains downstream primitive callback observations",36,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","numeric decoration preserves registered and lexical names setter callbacks",90,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","computed decoration preserves compact storage names setter callbacks",16,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","names repair callbacks retain the original numeric decoration frame",6,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","numeric decoration guards retain positive unnamed production admission",7,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","names decoration guards leave explicit kernel contracts unchanged",3,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","names decoration guards leave active and delayed method lookup to the R fallback",18,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","ordinary names wrapper compiler forms retain unnamed native admission",12,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","numeric decoration retains executable NextMethod callbacks",6,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","synthetic constructor entries leave unresolved names locals untouched",2,0,FALSE,FALSE,0
+"test-numeric-decoration-profile.R","synthetic numeric entries decline without invoking local names methods",15,0,FALSE,FALSE,0
+"test-numeric-eager-inputs.R","strict construction retains custom conversion local reads",4,0,FALSE,FALSE,0
+"test-numeric-eager-inputs.R","scalar admission leaves active operands to original recycling",17,0,FALSE,FALSE,0
+"test-numeric-eager-inputs.R","recycling errors precede active numeric operand errors",3,0,FALSE,FALSE,0
+"test-numeric-eager-inputs.R","computed numeric admission preserves conversion local callbacks",4,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","canonical numeric production calls publish through the entry counters",20,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","scalar literals and reductions retain the small numeric fallback",6,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","numeric entry results retain visible public and helper returns",15,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","named numeric production results retain fallback names and values",12,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","unknown numeric entry promises stay on the original forcing path",15,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","custom numeric conversions retain their callbacks without entry publication",7,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","custom scalar readers retain their callbacks without entry publication",4,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","actual constructor callback frames retain unsafe native result bindings",18,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","scalar input names getters retain their original calls before arithmetic",10,0,FALSE,FALSE,0
+"test-numeric-entry-admission.R","numeric entry success settles original ancestor promises and expressions",23,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","constructor input forcing retains callbacks on later local assignments",2,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","constructor conversion preserves all original local assignment callbacks",9,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","constructor conversion retains the original completed caller frame",3,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","scalar data callbacks retain all original local assignment callbacks",5,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","self restoring scalar callbacks retain their later local assignments",3,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","self restoring scalar callbacks retain the original completed caller frame",4,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","computed conversion preserves all original local assignment callbacks",7,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","constructor conversion does not introduce a plain double local assignment",4,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","self untracing storage checks retain locals for later public mutations",5,0,FALSE,FALSE,0
+"test-numeric-entry-callbacks.R","self untracing metadata generation retains locals for later public generation",5,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric kernel diagnostics retain canonical compiled route contracts",6,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric routes preserve executable skipped-helper callbacks",104,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric admission adds no environment callbacks",5,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","scalar profile rejects changed standard compiled wrapper code",3,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","scalar recycling preserves functions reached by ordinary recompilation",4,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric admission adds no predicates to interpreted helpers",3,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","owned strict construction retains its reached isTRUE callback",4,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric entry rejects synthetic callers without touching result slots",12,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","native admissions add no callbacks to replaced .Call bindings",24,0,FALSE,FALSE,0
+"test-numeric-helper-profile.R","numeric entry aliases leave synthetic production wrappers unadmitted",11,0,FALSE,FALSE,0
+"test-numeric-s4-policies.R","bare S4 numeric policies retain constructor and temporal errors",22,0,FALSE,FALSE,0
+"test-numeric-s4-policies.R","bare S4 storage policies retain computed scalar and holds fallback results",14,0,FALSE,FALSE,0
+"test-numeric-secondary-inputs.R","numeric secondary inputs keep custom database reads on the original path",50,0,FALSE,FALSE,0
+"test-numeric-secondary-inputs.R","numeric argument admission preserves forwarded dots values and policies",18,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size boundaries retain small fallback and large native publication",117,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size preflight leaves unknown operands and foreign readers untouched",60,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size preflight does not treat dots references as ordinary bindings",4,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size preflight rejects custom forwarded environments before lookup",8,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size preflight leaves genuine database operands to the original read",121,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","small numeric fallback settles forwarded operand promises",16,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","large numeric routes retain executable helper callbacks after size admission",20,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","size admission does not replace changed or self-untracing executing closures",56,0,FALSE,FALSE,0
+"test-numeric-size-policy.R","numeric size peeks retain their roots under GC and reentrant finalizers",7,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars moves selected columns to the front",3,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars permutes a dibble by reference",4,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars leaves an unchanged order alone",1,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars moves generated columns alongside physical ones",5,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars keeps compact columns unmaterialized",3,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars permutes a structural reference state",2,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars rejects absent and empty selections",2,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars renames by reference",6,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars accepts a permutation of existing names",2,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars renames generated columns and keeps them writable",4,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars keeps compact columns and metadata",3,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars rejects malformed replacements",5,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars replaces every name through .names",6,0,FALSE,FALSE,0
+"test-order-rename-vars.R","rename_vars rejects a malformed .names",4,0,FALSE,FALSE,0
+"test-order-rename-vars.R","order_vars and rename_vars reject plain containers",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","validated discrete batches retain vctrs and base gather behavior",20,0,FALSE,FALSE,0
+"test-owned-atoms.R","discrete gather declines whole callback or metadata fallback batches",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","mixed gather fallbacks retain cross-column callback order",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned record reads follow each replacement allocation through GC",36,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor integer exports use an isolated ordinary deep copy",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","public logical subsets are fresh ordinary values and batch results stay owned",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary atom handles share flat backing with independent attributes",23,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary atom backing through dplyr",103,0,FALSE,FALSE,0
+"test-owned-atoms.R","native owned string copies and renaming reuse validation facts",16,0,FALSE,FALSE,0
+"test-owned-atoms.R","unchanged owned string selectors reuse validation facts",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","string facts distinguish subset bounds from exact maxima",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","missingness-only string validation is included in scan counters",5,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign index callbacks cannot propagate facts from a changed source",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","writable pointers isolate all atom types and remain unsafe to share",24,0,FALSE,FALSE,0
+"test-owned-atoms.R","Set_elt and retained writable strings invalidate missingness and width facts",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign data.table atoms are captured at constructors and callback ingress",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign atom ingress through dplyr",60,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned atom serialization restores values without live ownership records",80,0,FALSE,FALSE,0
+"test-owned-atoms.R","serialized atom recapture through dplyr",80,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary base copies and explicit atom writes preserve both alias contracts",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary and explicit atom aliases through dplyr",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned atomic native patches stage fully and keep prior state on interruption",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","generation and atomic staging root detached integer row payload",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy vector patches root detached integer row payloads",19,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy foreign rows finish callbacks before numeric readers are retained",20,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy journaling and writes use captured operands without later callbacks",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy dictionary targets validate state after declared-width callbacks",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy compact targets reject materialization during operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-atoms.R","generation rejects live rows moved out of bounds by value callbacks",3,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor ownership preserves existing replacement restrictions and levels",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor replacement and levels through dplyr",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","public atom exports and source mutations remain symmetrically isolated",79,0,FALSE,FALSE,0
+"test-owned-atoms.R","public atom export isolation through dplyr",131,0,FALSE,FALSE,0
+"test-owned-atoms.R","dictionary read pins survive callback materialization in subsets and atom patches",11,0,FALSE,FALSE,0
+"test-owned-atoms.R","DTA and Arrow writer pointers survive later metadata callbacks",22,0,FALSE,FALSE,0
+"test-owned-atoms.R","DTA planning retains already UTF-8 owned strings without a payload copy",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","writer specifications isolate initially private strings from public callback writes",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow readers adopt fresh logical and factor allocations",12,0,FALSE,FALSE,0
+"test-owned-atoms.R","fresh unnamed string construction keeps its first write private",36,0,FALSE,FALSE,0
+"test-owned-atoms.R","constructing from an owned string preserves real aliases in both directions",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","internal string construction captures before forcing metadata promises",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","named string construction preserves replacement dispatch and escaped aliases",5,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned width scans preserve encoded bytes and missingness",12,0,FALSE,FALSE,0
+"test-owned-atoms.R","large string constructors and restoration retain owned facts",51,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned string metadata leaves names replacement dispatch to R",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","string metadata declines compact storage without changing its source",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","large string construction captures borrowed values before removing metadata",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","string construction validates values captured after declaration callbacks",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow UTF-8 readiness reads current owned strings and retains conversion fallbacks",7,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow UTF-8 preflight retains its original fallback when base conversion is traced",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","table atom exports retain isolation under each explicit write API",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","table atom export isolation through dplyr",36,0,FALSE,FALSE,0
+"test-owned-columns.R","bounded generation shape checks retain wide and encoded fallbacks",15,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape checks decline foreign length callbacks",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape validation never invokes foreign class callbacks",4,0,FALSE,FALSE,0
+"test-owned-columns.R","attributed env members retain ordinary evaluation without eligibility callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","journaled append restores shape and metadata after errors and interrupts",288,0,FALSE,FALSE,0
+"test-owned-columns.R","classed column names retain R validation dispatch",4,0,FALSE,FALSE,0
+"test-owned-columns.R","private append reuses names without a collection or prior names read",128,0,FALSE,FALSE,0
+"test-owned-columns.R","generation preserves saved names, attributes and shallow table copies",14,0,FALSE,FALSE,0
+"test-owned-columns.R","generation protects shallow table names before any public names read",9,0,FALSE,FALSE,0
+"test-owned-columns.R","generation checks physical rows again after argument capture",3,0,FALSE,FALSE,0
+"test-owned-columns.R","captured mutation masks preserve unread columns and lexical lookup",210,0,FALSE,FALSE,0
+"test-owned-columns.R","direct reads retain shadow checks and dynamic env subscripts",2,0,FALSE,FALSE,0
+"test-owned-columns.R","plain table staging guards aliases introduced by row callbacks",9,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary private string writes retain sparse allocation and snapshot isolation",5,0,FALSE,FALSE,0
+"test-owned-columns.R","promotion checks revalidate rows changed by a value callback",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generic table transactions reject callback target replacement",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native promotion fits preserve ranges, precision and selected values",114,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion scans retain finite limits and exceptional values",540,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion preserves attributes and foreign reader callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","grouped proxy callbacks retain isolated Date inputs",4,0,FALSE,FALSE,0
+"test-owned-columns.R","owned subsetting roots the payload across foreign index callbacks",3,0,FALSE,FALSE,0
+"test-owned-columns.R","compact subsetting retains storage across index materialization callbacks",24,0,FALSE,FALSE,0
+"test-owned-columns.R","native readers cannot export aliases after the effective write guard",20,0,FALSE,FALSE,0
+"test-owned-columns.R","failed fused writes retain sharing introduced by an operand callback",41,0,FALSE,FALSE,0
+"test-owned-columns.R","direct owned writes retain callback forks after an interrupt",9,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized partial writes roll back completed writes and original state",11,0,FALSE,FALSE,0
+"test-owned-columns.R","plain doubles capture once and preserve private sparse backing afterwards",22,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized full replacement copies new values without reading old payloads",20,0,FALSE,FALSE,0
+"test-owned-columns.R","native-generated private numeric writes stage new bytes without copying old values",50,0,FALSE,FALSE,0
+"test-owned-columns.R","full numeric replacement protects borrowed aliases without copying their old payload",20,0,FALSE,FALSE,0
+"test-owned-columns.R","validation never exposes an internal read handle to R methods",6,0,FALSE,FALSE,0
+"test-owned-columns.R","custom classes on owned handles use conservative shape validation",6,0,FALSE,FALSE,0
+"test-owned-columns.R","comparison callbacks cannot retain a view changed by the patch",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native comparison decline isolates handles before R fallback errors",6,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary doubles are captured once and column results fork backing",3,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary double result backing through dplyr",7,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary dictionary cast prototypes do not decode target values",5,0,FALSE,FALSE,0
+"test-owned-columns.R","plain integer and logical cast prototypes need no target payload",4,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign integer prototypes and full replacements skip old payload reads",17,0,FALSE,FALSE,0
+"test-owned-columns.R","capture preserves identical owned columns within one physical table",8,0,FALSE,FALSE,0
+"test-owned-columns.R","public writable and retained pointers cannot change another fork",6,0,FALSE,FALSE,0
+"test-owned-columns.R","public column exports isolate later ordinary and explicit writes",28,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress and data table exports preserve both write directions",21,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress through dplyr",42,0,FALSE,FALSE,0
+"test-owned-columns.R","read pointers and ordinary aggregates retain safe backing forks",8,0,FALSE,FALSE,0
+"test-owned-columns.R","owned doubles preserve metadata and ordinary serialized values",8,0,FALSE,FALSE,0
+"test-owned-columns.R","reading a column with $ or [[ leaves its handle private for the next write",9,0,FALSE,FALSE,1
+"test-owned-columns.R","a sparse write into a dictionary-backed Stata string allocates only its result",4,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging commits finite boundary bytes",90,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging canonicalizes missing bytes and isolates metadata",22,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging preserves validation priority and failed targets",100,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains scalar selected and foreign readers",26,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains temporal encoded range checks",7,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles preserve boundary bytes and independent payloads",105,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles report the first invalid value across block boundaries",96,0,FALSE,FALSE,0
+"test-owned-finite-double.R","scalar arithmetic certifies only its exact untouched double backing",21,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums preserve cancellation across interrupt blocks and chunks",60,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","live Arrow storage does not force collection on each small read",23,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","R-backed owners and retained handle forks add no native allocation debt",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0
+"test-owned-reads.R","owned integer and logical exports preserve base values and argument evaluation",28,0,FALSE,FALSE,0
+"test-owned-reads.R","integer warnings can rewrite and collect the original source safely",4,0,FALSE,FALSE,0
+"test-owned-reads.R","owned public read helpers retain traced base callbacks",3,0,FALSE,FALSE,0
+"test-owned-reads.R","owned coercions and range snapshots stay separate from writable pointers",14,0,FALSE,FALSE,0
+"test-owned-reads.R","owned range keeps ordinary summary behavior across missing and empty inputs",42,0,FALSE,FALSE,0
+"test-owned-reads.R","owned constructor validation agrees with ordinary detailed validation",18,0,FALSE,FALSE,0
+"test-owned-reads.R","owned missing masks keep names dimensions classes and foreign callbacks",6,0,FALSE,FALSE,0
+"test-plain-native-admission.R","native mutations preserve S4 table methods and their errors",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","native mutations preserve attribute-free S4 arithmetic dispatch",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain double generation uses the guarded native route",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","owned generation preserves custom source arithmetic dispatch",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain double mutate preserves frozen columns on its native route",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain replacement and bracket operations use native admission",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native operations retain ordinary values metadata and aliases",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native mutate freezes each source at its ordered copy",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain whole-column scalar replacement avoids general resolution",4,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain native admission preserves traced public arithmetic",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain bracket generation retains the RHS across source writes",1,0,FALSE,FALSE,0
+"test-plain-native-admission.R","plain bracket generation honors numeric limits changed between assignments",16,0,FALSE,FALSE,0
+"test-plain-native-admission.R","native mutate retains ordinary isolation and explicit foreign-write copies",1,0,FALSE,FALSE,0
+"test-print-summarize.R","summarize prints Stata's ordinary and weighted tables",3,0,FALSE,FALSE,0
+"test-print-summarize.R","summarize detail matches Stata's four-extreme layout",2,0,FALSE,FALSE,0
+"test-print-summarize.R","summary display observes labels, separators and stored formats",5,0,FALSE,FALSE,0
+"test-print-summarize.R","factor displays retain native stubs and empty-cell flags",5,0,FALSE,FALSE,0
+"test-print-summarize.R","meanonly is silent and data frames retain group keys",8,0,FALSE,FALSE,0
+"test-print-summarize.R","group headings distinguish extended missing keys",2,0,FALSE,FALSE,0
+"test-print-summarize.R","summary format uses calendar dates only for location statistics",8,0,FALSE,FALSE,0
+"test-print-summarize.R","factor wrapping keeps native leading and final label lines",2,0,FALSE,FALSE,0
+"test-print-summarize.R","stored numeric formats follow summarize's normalization",9,0,FALSE,FALSE,0
+"test-print-summarize.R","calendar pictures match Stata's documented tokens and padding",11,0,FALSE,FALSE,0
+"test-print-summarize.R","datetime/C prints leap seconds and truncates fractions",7,0,FALSE,FALSE,0
+"test-print-summarize.R","missing calendars use native numeric fallback and unknown pictures fail",3,0,FALSE,FALSE,0
+"test-print-summarize.R","business-calendar omit rules match native Stata calendars",5,0,FALSE,FALSE,0
+"test-print-summarize.R","general formats retain small values and drop commas before precision",7,0,FALSE,FALSE,0
+"test-print-summarize.R","calendar formats use numeric fallback outside years 0100 through 9999",9,0,FALSE,FALSE,0
+"test-print-summarize.R","left-aligned calendar formats preserve date pictures and padding",4,0,FALSE,FALSE,0
+"test-print-summarize.R","numeric format families preserve Stata's halfway rounding",7,0,FALSE,FALSE,0
+"test-print-summarize.R","observation counts switch from commas to integers to exponentials",11,0,FALSE,FALSE,0
+"test-print-summarize.R","weight totals use their own precision and detailed comma format",4,0,FALSE,FALSE,0
+"test-print-summarize.R","unavailable counts and totals remain printable after weight overflow",9,0,FALSE,FALSE,0
+"test-raven-nse.R","the [subset] table names exported dibble constructors",7,0,FALSE,FALSE,0
+"test-raven-nse.R","every declared function is exported by the package",31,0,FALSE,FALSE,0
+"test-raven-nse.R","the declaration file still carries the expected policy",61,0,FALSE,FALSE,0
+"test-raven-nse.R","declared formals match the function signatures",30,0,FALSE,FALSE,0
+"test-raven-nse.R","captured arguments name real formals",30,0,FALSE,FALSE,0
+"test-read-dta.R","read_dta extends the haven-compatible public signature",10,0,FALSE,FALSE,0
+"test-read-dta.R","numeric ALTREP can be disabled explicitly or by option",8,0,FALSE,FALSE,0
+"test-read-dta.R","dtatools recognizes every Stata numeric missing code",620,0,FALSE,FALSE,0
+"test-read-dta.R","base R recoding preserves tags with complete predicates",200,0,FALSE,FALSE,0
+"test-read-dta.R","both recode interfaces preserve every Stata missing code",160,0,FALSE,FALSE,0
+"test-read-dta.R","Stata missing code recode interfaces through dplyr",380,0,FALSE,FALSE,0
+"test-read-dta.R","dplyr recode keeps its ordinary numeric behavior",10,0,FALSE,FALSE,0
+"test-read-dta.R","tag detection distinguishes R missing payloads",18,0,FALSE,FALSE,0
+"test-read-dta.R","all tagged missing payloads through dplyr",23,0,FALSE,FALSE,0
+"test-read-dta.R","dtatools recode retains the familiar vector interface",31,0,FALSE,FALSE,0
+"test-read-dta.R","parallel decoding is identical across supported releases",15,0,FALSE,FALSE,0
+"test-read-dta.R","internal metadata projection is bounded and preserves attributes",19,0,FALSE,FALSE,0
+"test-read-dta.R","an empty projection retains the selected row count",3,0,FALSE,FALSE,0
+"test-read-dta.R","the largest exact skip is deterministic",3,0,FALSE,FALSE,0
+"test-read-dta.R","typed predicates and duplicate selections are deterministic",6,0,FALSE,FALSE,0
+"test-read-dta.R","native materialization survives forced garbage collection",4,0,FALSE,FALSE,0
+"test-read-dta.R","native strings serialize and preserve copy-on-modify semantics",10,0,FALSE,FALSE,0
+"test-read-dta.R","native numerics use width-aware storage with R value semantics",1349,0,FALSE,FALSE,0
+"test-read-dta.R","explicit encodings apply consistently to strL text",4,0,FALSE,FALSE,0
+"test-read-dta.R","explicit UTF-8 replaces malformed sequences",3,0,FALSE,FALSE,0
+"test-read-dta.R","argument and native parse failures are ordinary R errors",19,0,FALSE,FALSE,0
+"test-read-dta.R","unsafe row-window coercions fail before parsing",16,0,FALSE,FALSE,0
+"test-read-dta.R","parallel compact byte batches preserve serial values and missingness",72,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct reader dibbles preserve the general constructor's semantics",256,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct reader tibbles preserve repaired names metadata and compact columns",76,0,FALSE,FALSE,0
+"test-reader-dibble.R","reader columns are independent of tibble row-name configuration",34,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct readers retain name repair and empty projection rules",16,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct reader ownership survives exports writes and file removal",20,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct Arrow dibbles normalize ordinary R columns and retain metadata",16,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct Arrow dibbles repair declarations that do not fit the values",6,0,FALSE,FALSE,0
+"test-reader-dibble.R","direct DTA dibbles widen strings expanded by decoding",4,0,FALSE,FALSE,0
+"test-reader-dta-experiments.R","DTA default fills retain every storage width and missing code",144,0,FALSE,FALSE,0
+"test-reader-dta-experiments.R","DTA defaults preserve projected legacy and strL reads",63,0,FALSE,FALSE,0
+"test-reader-dta-experiments.R","DTA default ring completes multiple blocks with ordered strings",5,0,FALSE,FALSE,0
+"test-reader-dta-experiments.R","DTA double fills preserve numeric and temporal values across row windows",81,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared DTA metadata and observations retain one file identity",5,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared DTA reads consume once and close idempotently",14,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared DTA closes before raw, gzip and connection source cleanup",36,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared selection preserves selector warnings and errors",7,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","an interrupted selector closes prepared DTA before source cleanup",3,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","full DTA reads reuse decode plans without selection metadata discovery",28,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared selections preserve legacy, wide, empty and labelled reads",336,0,FALSE,FALSE,0
+"test-reader-dta-prepared.R","prepared proxies and renaming preserve collector labels",6,0,FALSE,FALSE,0
+"test-reader-experiments.R","Arrow reads preserve numeric values across representations and projected windows",96,0,FALSE,FALSE,0
+"test-reader-experiments.R","Arrow reads preserve ordinary columns alongside owned numeric storage",16,0,FALSE,FALSE,0
+"test-recode-core.R","owned character recoding retains named replacement rules",11,0,FALSE,FALSE,0
+"test-recode-core.R","owned character validation keeps lengths types classes and empty templates",10,0,FALSE,FALSE,0
+"test-recode-core.R","factor recoding changes levels in source order and retains factor metadata",14,0,FALSE,FALSE,0
+"test-recode-core.R","factor replacement sizes are level counts including empty observations",7,0,FALSE,FALSE,0
+"test-recode-core.R","character and factor argument forcing follows the legacy order",5,0,FALSE,FALSE,0
+"test-recode-core.R","ordinary unsupported types fail without forcing replacements",7,0,FALSE,FALSE,0
+"test-recode-core.R","metadata wrappers retain their three transparent attributes",10,0,FALSE,FALSE,0
+"test-recode-core.R","character-backed Haven input terminates with ordinary character output",2,0,FALSE,FALSE,0
+"test-recode-core.R","other character subclasses retain their coercion before replacements",3,0,FALSE,FALSE,0
+"test-recode-core.R","custom methods retain S3 context and inherited NextMethod",5,0,FALSE,FALSE,0
+"test-recode-core.R","the public numeric path retains all missing tags without optional dispatch",8,0,FALSE,FALSE,0
+"test-recode-interop.R","registered recode methods retain continuation context",4,0,FALSE,FALSE,0
+"test-recode-interop.R","optional generic and public numeric recoding keep distinct policies",4,0,FALSE,FALSE,0
+"test-recode-interop.R","foreign registrations preserve registry precedence and function identity",4,0,FALSE,FALSE,0
+"test-recode-interop.R","actual Haven character input works through both public interfaces",2,0,FALSE,FALSE,0
+"test-recode-interop.R","package-visible recode methods precede same-slot foreign registrations",5,0,FALSE,FALSE,0
+"test-recode-interop.R","foreign methods retain the real generic environment and dynamic continuation",3,0,FALSE,FALSE,0
+"test-reference-copy.R","replacement isolates unchanged columns and caller bindings",35,0,FALSE,FALSE,0
+"test-reference-copy.R","explicit helpers isolate distinct tables while preserving table and slot aliases",6,0,FALSE,FALSE,0
+"test-reference-copy.R","explicit helpers reject ordinary containers without touching them",15,0,FALSE,FALSE,0
+"test-reference-copy.R","base copies read physical columns and never rewrite source bookkeeping",24,0,FALSE,FALSE,0
+"test-reference-copy.R","assigned repair isolates serialized copies and restores growth aliases",22,0,FALSE,FALSE,0
+"test-reference-copy.R","preparation and ordinary metadata replacement preserve within-table aliases",29,0,FALSE,FALSE,0
+"test-reference-copy.R","promotion replaces its named column without promoting other slots",6,0,FALSE,FALSE,0
+"test-reference-copy.R","ordinary duplication of compact metadata wrappers keeps both sides compact",9,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native replacement admits an unfamiliar column and preserves public fallback",4,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native constant replacement stages a buffer for shared owned targets",1,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native replacement preserves R dots evaluation errors",1,0,FALSE,FALSE,0
+"test-repl-native-admission.R","native generation honors public methods on canonical double sources",1,0,FALSE,FALSE,0
+"test-reserve-columns.R","public capacity separates type, preparation, and spare slots",57,0,FALSE,FALSE,0
+"test-reserve-columns.R","preparation preserves the dibble and isolates column values",20,0,FALSE,FALSE,0
+"test-reserve-columns.R","explicit helpers reject plain containers before evaluating their arguments",33,0,FALSE,FALSE,0
+"test-reserve-columns.R","capacity exhaustion fails before writes and assigned repair isolates aliases",21,0,FALSE,FALSE,0
+"test-reserve-columns.R","capacity contract is identical for all target expressions",90,0,FALSE,FALSE,0
+"test-reserve-columns.R","getters run once and RHS target changes cannot redirect writes",63,0,FALSE,FALSE,0
+"test-reserve-columns.R","growth rejects row selection and sorting before they run",16,0,FALSE,FALSE,0
+"test-reserve-columns.R","multi-assignment preflights all new names before its first write",25,0,FALSE,FALSE,0
+"test-reserve-columns.R","same-size writes need no spare capacity but shrinking needs preparation",29,0,FALSE,FALSE,0
+"test-reserve-columns.R","copying, subsetting, and serialization have assigned preparation paths",64,0,FALSE,FALSE,0
+"test-reserve-columns.R","zero-column tables can reserve and consume their first slot",12,0,FALSE,FALSE,0
+"test-reserve-columns.R","prepared physical columns remain visible to direct consumers",12,0,FALSE,FALSE,0
+"test-reserve-columns.R","prepared physical column consumers through dplyr",14,0,FALSE,FALSE,0
+"test-reserve-columns.R","assigned repair preserves identical column slots without sharing another table",4,0,FALSE,FALSE,0
+"test-reserve-columns.R","rename of an unprepared dibble accepts a computed names selection",2,0,FALSE,FALSE,0
+"test-reserve-columns.R","unprepared keep-all is a validated no-op and invalid selectors keep their diagnostics",8,0,FALSE,FALSE,0
+"test-reserve-columns.R","an unsupported loaded data.table version is rejected before mutation",4,0,FALSE,FALSE,0
+"test-save-dta.R","save_dta writes a typed release-118 dataset and returns its input invisibly",8,0,FALSE,FALSE,0
+"test-save-dta.R","dataset labels over 80 characters leave destinations unchanged",2,0,FALSE,FALSE,0
+"test-save-dta.R","unsupported target versions leave destinations unchanged",4,0,FALSE,FALSE,0
+"test-save-dta.R","Stata 18 rejects release-119-width datasets",2,0,FALSE,FALSE,0
+"test-save-dta.R","bare logical columns write as Stata bytes",3,0,FALSE,FALSE,0
+"test-save-dta.R","compact reader storage and materialized fallbacks write identically",10,0,FALSE,FALSE,0
+"test-save-dta.R","compact datetimes preserve millisecond integer storage",7,0,FALSE,FALSE,0
+"test-save-dta.R","malformed compact numerics follow materialized write semantics",8,0,FALSE,FALSE,0
+"test-save-dta.R","legacy compact numerics widen around modern missing ranges",10,0,FALSE,FALSE,0
+"test-save-dta.R","character missing values become empty strings and long values use strL",5,0,FALSE,FALSE,0
+"test-save-dta.R","fixed strings retain declared storage through Arrow",9,0,FALSE,FALSE,0
+"test-save-dta.R","multiple strL columns write interleaved observations",7,0,FALSE,FALSE,0
+"test-save-dta.R","ordered and unordered factors become labelled long integers",8,0,FALSE,FALSE,0
+"test-save-dta.R","R system-missing payload variants remain system missing",4,0,FALSE,FALSE,0
+"test-save-dta.R","unrepresentable numerics become system missing in one aggregated warning",9,0,FALSE,FALSE,0
+"test-save-dta.R","Date and POSIXct columns use Stata epochs and both timezone modes",11,0,FALSE,FALSE,0
+"test-save-dta.R","timezone adjustment retains invalid datetimes for native warnings",4,0,FALSE,FALSE,0
+"test-save-dta.R","timezone adjustment retains extreme finite datetimes for native warnings",6,0,FALSE,FALSE,0
+"test-save-dta.R","value labels and ordered dataset notes round-trip",3,0,FALSE,FALSE,0
+"test-save-dta.R","empty value-label text from source metadata round-trips",3,0,FALSE,FALSE,0
+"test-save-dta.R","an attached empty value-label table round-trips",3,0,FALSE,FALSE,0
+"test-save-dta.R","duplicate value-label keys from source metadata round-trip stably",7,0,FALSE,FALSE,0
+"test-save-dta.R","value-label text limits count UTF-8 bytes before touching the destination",2,0,FALSE,FALSE,0
+"test-save-dta.R","warnings promoted to errors leave an existing destination unchanged",2,0,FALSE,FALSE,0
+"test-save-dta.R","native temporary DTA files are private on Unix",2,0,FALSE,FALSE,0
+"test-save-dta.R","writes preserve existing Unix destination permissions",2,0,FALSE,FALSE,0
+"test-save-dta.R","new Unix destinations use normal creation permissions",2,0,FALSE,FALSE,0
+"test-save-dta.R","existing FIFO destinations are rejected without replacement",4,0,FALSE,FALSE,0
+"test-save-dta.R","extensionless output appends .dta with one classed warning",4,0,FALSE,FALSE,0
+"test-save-dta.R","unsupported columns are reported together with their classes",3,0,FALSE,FALSE,0
+"test-save-dta.R","dependency-free haven_labelled-compatible vectors are supported",3,0,FALSE,FALSE,0
+"test-save-dta.R","Stata reserved variable names are rejected",78,0,FALSE,FALSE,0
+"test-save-dta.R","zero-row data frames with columns are supported",3,0,FALSE,FALSE,0
+"test-save-dta.R","malformed and storage-incompatible explicit display formats fail",30,0,FALSE,FALSE,0
+"test-save-dta.R","documented numeric display formats are preserved",2,0,FALSE,FALSE,0
+"test-save-dta.R","documented string and temporal display formats are preserved",2,0,FALSE,FALSE,0
+"test-save-dta.R","generic ALTSTRING columns are materialized before native writing",6,0,FALSE,FALSE,0
+"test-save-dta.R","generic ALTSTRING metadata stays rooted through native writing",5,0,FALSE,FALSE,0
+"test-save-dta.R","numeric Stata calendar formats that remain numeric are preserved",4,0,FALSE,FALSE,0
+"test-save-dta.R","mixed ordinary strings retain row order and numeric replacement warnings",28,0,FALSE,FALSE,0
+"test-save-dta.R","mixed fixed-string failures keep row-major error order and destination",4,0,FALSE,FALSE,0
+"test-save-dta.R","ordinary integer Stata-reserved values are replacements in both write routes",10,0,FALSE,FALSE,0
+"test-save-dta.R","ordinary integer writes observe preceding row callbacks at the read point",8,0,FALSE,FALSE,0
+"test-scalar-cache-constant-mutation.R","scalar admission rechecks in-place compiled helper constants",13,0,FALSE,FALSE,0
+"test-scalar-export-admission.R","scalar admission preserves executable recycling export callbacks",9,0,FALSE,FALSE,0
+"test-scalar-export-admission.R","scalar admission follows a recycling export redirected to a function",5,0,FALSE,FALSE,0
+"test-scalar-export-admission.R","scalar native admission does not inspect the unused list2 export",3,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values is exported with the documented signature",2,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values writes by reference by name or position",12,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values keeps the declared storage and refuses what it cannot hold",11,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values checks its arguments before writing",17,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values evaluates its arguments before reading the table",17,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values settles a value that runs code when it is read",32,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values creates a missing column only when asked",23,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values works on grouped dibbles and refuses rowwise ones",7,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values matches repl(promote = FALSE) on every storage",20,0,FALSE,FALSE,0
+"test-set-dta-values.R","set_dta_values detaches a column shared with another table",4,0,FALSE,FALSE,0
+"test-set-dta-values.R","a set_dta_values loop allocates nothing proportional to the table",4,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows matches imported Stata column slicing",15,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows preserves every numeric storage and missing tag",12,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows preserves temporal and ordinary columns",5,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows handles named and empty columns",5,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows slices ordinary data.tables",24,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows validates its container and locations",4,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","slice_dta_rows rejects data.table subclasses",1,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows permutes a dibble without generated columns",5,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows rejects plain containers",6,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows permutes reference-state columns",6,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows permutes a physically complete generated table",5,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows validates its container",2,0,FALSE,FALSE,0
+"test-slice-dta-rows.R","reorder_dta_rows validates permutations",5,0,FALSE,FALSE,0
+"test-strict-double.R","strict double construction preserves bits names and rejection policy",9,0,FALSE,FALSE,0
+"test-strict-double.R","strict double native admission never reads foreign or attributed inputs",11,0,FALSE,FALSE,0
+"test-strict-double.R","strict double output retains independent handles and backing rules",11,0,FALSE,FALSE,0
+"test-strict-double.R","double fit keeps delayed policy and unsupported-tag fallback",5,0,FALSE,FALSE,0
+"test-strict-double.R","strict double admission respects replaced and traced predicates",3,0,FALSE,FALSE,0
+"test-strict-double.R","strict double checks retain machine limit values and methods",5,0,FALSE,FALSE,0
+"test-strict-double.R","storage fit preserves lazy replacement callback and error order",6,0,FALSE,FALSE,0
+"test-strict-double.R","synthetic double fit entries decline without forcing arguments",11,0,FALSE,FALSE,0
+"test-strict-double.R","successful double fit settles forwarded value and storage promises",12,0,FALSE,FALSE,0
+"test-summarize-stata.R","summarize scalars and weight validation match native Stata",7806,0,FALSE,FALSE,0
+"test-summarize-stata.R","detail extremes use original rows with frequency weights",4,0,FALSE,FALSE,0
+"test-summarize-stata.R","native percentile boundary tolerance preserves weight intervals",19,0,FALSE,FALSE,0
+"test-summarize-stata.R","overflowing weight totals preserve native unavailable statistics",30,0,FALSE,FALSE,0
+"test-summarize-stata.R","empty and string summaries preserve native last-variable r()",12,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize resolves Stata variable lists in dataset order",9,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize preserves literal names containing Stata punctuation",4,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize bounds numlists before expanding any range",18,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize numlist increments follow native endpoint direction",19,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize includes every default factor level and retains labels",26,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize interactions use per-variable missingness and full factorial order",13,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize marks explicit bases and omissions as native Stata does",25,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize time operators respect panels, time gaps, and the full source",16,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize normalizes omitted continuous interactions and repeated terms",22,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize resolves repeated factor omission declarations",11,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize carries sequential interaction omissions into equivalent terms",14,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize merges omitted cells within equivalent factor terms",6,0,FALSE,FALSE,0
+"test-summarize-varlist.R","summarize supports temporal scales, fractional deltas and lagged factors",7,0,FALSE,FALSE,0
+"test-summarize.R","summ is exported without masking dplyr summary functions",2,0,FALSE,FALSE,0
+"test-summarize.R","summ accepts vector and data-frame calls",13,0,FALSE,FALSE,0
+"test-summarize.R","where and rows select each group's calculation sample",9,0,FALSE,FALSE,0
+"test-summarize.R","summary grouping preserves Stata missing identities and dplyr groups",10,0,FALSE,FALSE,0
+"test-summarize.R","summary temporals contribute Stata codes and missing values are excluded",7,0,FALSE,FALSE,0
+"test-summarize.R","summary flags, empty samples, and quiet results are validated",18,0,FALSE,FALSE,0
+"test-summarize.R","factor summaries retain hidden results and expand levels within groups",8,0,FALSE,FALSE,0
+"test-summarize.R","summaries accept haven-compatible columns and evaluate vectors once",3,0,FALSE,FALSE,0
+"test-tab-association.R","association measures match Stata's stored results and printed lines",235,0,FALSE,FALSE,0
+"test-tab-association.R","weighted association accepts fweights and rejects other weights",29,0,FALSE,FALSE,0
+"test-tab-association.R","unused levels and empty tables do not create association tests",4,0,FALSE,FALSE,0
+"test-tab-association.R","ordinal errors remain stable for large frequency counts",5,0,FALSE,FALSE,0
+"test-tab-features.R","Stata selections and weights agree",21,0,FALSE,FALSE,0
+"test-tab-features.R","joint samples, subpop categories and indicators follow native rules",13,0,FALSE,FALSE,0
+"test-tab-features.R","by groups evaluate sample and weights within each group",7,0,FALSE,FALSE,0
+"test-tab-features.R","new tabulate options reject invalid requests before returning results",17,0,FALSE,FALSE,0
+"test-tab-grouped.R","grouped tabulation headers replay native by-prefix output",20,0,FALSE,FALSE,0
+"test-tab-grouped.R","by headers preserve group order and distinguish empty and unlabelled keys",3,0,FALSE,FALSE,0
+"test-tab-indicators.R","generated indicator labels match Stata's metadata",3,0,FALSE,FALSE,0
+"test-tab-multiple.R","tab1 tab2 and tabi print identically to native Stata",12,0,FALSE,FALSE,0
+"test-tab-multiple.R","multiple table forwarding preserves selection and option environments",13,0,FALSE,FALSE,0
+"test-tab-multiple.R","immediate frequencies retain compact data even for large totals",18,0,FALSE,FALSE,0
+"test-tab-multiple.R","multiple tabulation evaluates its data source only once",4,0,FALSE,FALSE,0
+"test-tab-multiple.R","immediate matrix labels are presentation labels with numeric stored rows",4,0,FALSE,FALSE,0
+"test-tab-presentation.R","presentation options replay Stata's output",56,0,FALSE,FALSE,0
+"test-tab-presentation.R","nofreq without cell statistics is silent and keeps the counts",6,0,FALSE,FALSE,0
+"test-tab-presentation.R","fractional weighted frequencies survive data-frame conversion",3,0,FALSE,FALSE,0
+"test-tab-presentation.R","empty nofreq output follows native one- and two-way behavior",5,0,FALSE,FALSE,0
+"test-tab-presentation.R","replacing counts or labels cannot retain stale tabulation results",18,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","tab prints every tabulate case of the Stata log identically",126,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","the do-file and the log carry the same tabulate commands",1,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","a dta_tab is a table with a presentation record",44,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","tab checks its Stata options the way Stata checks them",12,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","three or more variables are an R extension without a Stata layout",5,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","empty strings and NA are one string missing",10,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","printing survives categories Stata cannot produce",12,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","the layout measures display width, not characters",10,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","the console width option drives the printed panels",1,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","sort keeps a table with one category or none",7,0,FALSE,FALSE,0
+"test-tab-stata-parity.R","duplicate labels print as Stata but table names retain unique codes",2,0,FALSE,FALSE,0
+"test-tab-summary.R","summary tables reproduce native Stata's printed statistics and layouts",67,0,FALSE,FALSE,0
+"test-tab-summary.R","summary cells and margins retain native weighted moments",15,0,FALSE,FALSE,0
+"test-tab-summary.R","summary options and sample validation follow the summary command",11,0,FALSE,FALSE,0
+"test-tab-summary.R","grouped summary tables evaluate samples and weights inside each group",11,0,FALSE,FALSE,0
+"test-tab-summary.R","editing summary cells drops the saved display and marginal moments",16,0,FALSE,FALSE,0
+"test-tab-summary.R","binding and transforming summaries cannot retain the original moments",12,0,FALSE,FALSE,0
+"test-tab-summary.R","dplyr operations on summaries drop the original moments",6,0,FALSE,FALSE,0
+"test-tab.R","tab is exported and wraps ordinary table objects",12,0,FALSE,FALSE,0
+"test-tab.R","tab supports data frames and pipes",8,0,FALSE,FALSE,0
+"test-tab.R","tabulation pipes through dplyr",10,0,FALSE,FALSE,0
+"test-tab.R","labelled temporal vectors match Stata codes and format fallbacks",2,0,FALSE,FALSE,0
+"test-tab.R","missing modes distinguish every numeric payload",8,0,FALSE,FALSE,0
+"test-tab.R","labels apply to observed and missing values without adding levels",4,0,FALSE,FALSE,0
+"test-tab.R","cross-tabs handle labelled and ordinary vectors in either order",3,0,FALSE,FALSE,0
+"test-tab.R","tab preserves source values and metadata",1,0,FALSE,FALSE,0
+"test-tab.R","tab handles imported labelled ALTREP columns",8,0,FALSE,FALSE,0
+"test-tab.R","imported labelled tabulation through dplyr",10,0,FALSE,FALSE,0
+"test-tab.R","tab distinguishes all missing codes read by dtatools",10,0,FALSE,FALSE,0
+"test-tab.R","tab validates its arguments",6,0,FALSE,FALSE,0
+"test-tagged-missing.R","tagged_missing creates canonical Stata extended missings",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","missing_tag inspects imported missing codes without materializing",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","is_tagged_missing matches one or more tags without materializing",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","tagged-missing inspectors reject nonnumeric vectors",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","tag arguments reject values outside Stata's extended missings",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","inspectors preserve shape but not source metadata",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","inspectors reject noncanonical NaN payloads",1,0,FALSE,FALSE,0
+"test-tagged-missing.R","extended missing constants match the tagged missing constructor",3,0,FALSE,FALSE,0
+"test-ungrouped-dplyr-native-admission.R","ungrouped native mutate isolates five outputs and honors public fallback",5,0,FALSE,FALSE,0
+"test-value-label-table-names.R","DTA reads retain nondefault table names across releases",4,0,FALSE,FALSE,0
+"test-value-label-table-names.R","shared DTA tables survive projection and emit one table record",7,0,FALSE,FALSE,0
+"test-value-label-table-names.R","the variable matching a shared table name still retains identity",3,0,FALSE,FALSE,0
+"test-value-label-table-names.R","DTA and Arrow round trips preserve table identity",5,0,FALSE,FALSE,0
+"test-value-label-table-names.R","conflicting names warn once and fall back without harming other tables",18,0,FALSE,FALSE,0
+"test-value-label-table-names.R","explicit and implicit name collisions share or fall back safely",16,0,FALSE,FALSE,0
+"test-value-label-table-names.R","fallback names are checked for secondary collisions",14,0,FALSE,FALSE,0
+"test-value-label-table-names.R","mapping order participates in shared-name comparison",2,0,FALSE,FALSE,0
+"test-value-label-table-names.R","different tagged missing codes conflict even with identical text",6,0,FALSE,FALSE,0
+"test-value-label-table-names.R","shared write mappings use one prepared vector",8,0,FALSE,FALSE,0
+"test-value-label-table-names.R","shared tables never hide malformed later claimants",6,0,FALSE,FALSE,0
+"test-value-label-table-names.R","empty mappings are usable and missing mappings are malformed",8,0,FALSE,FALSE,0
+"test-value-label-table-names.R","malformed table names fail before touching destinations",4,0,FALSE,FALSE,0
+"test-value-label-table-names.R","conflict warning handlers run before output starts",4,0,FALSE,FALSE,0
+"test-value-label-table-names.R","metadata operations preserve or clear table identity deliberately",11,0,FALSE,FALSE,0
+"test-value-label-table-names.R","renaming R columns does not rename preserved tables",2,0,FALSE,FALSE,0
+"test-variable-names.R","resolve_var_name resolves exact names and unique abbreviations",3,0,FALSE,FALSE,0
+"test-variable-names.R","resolve_var_name reports absent and ambiguous references",5,0,FALSE,FALSE,0
+"test-variable-names.R","confirm_var returns logical results and errors by default",6,0,FALSE,FALSE,0
+"test-variable-names.R","variable names are read from each supported container",8,0,FALSE,FALSE,0
+"test-variable-names.R","resolution observes current names without modifying data",4,0,FALSE,FALSE,0
+"test-variable-names.R","zero-column data has no resolvable variables",2,0,FALSE,FALSE,0
+"test-variable-names.R","missing column names do not become prefix candidates",2,0,FALSE,FALSE,0
+"test-variable-names.R","variable-name helpers validate their arguments",15,0,FALSE,FALSE,0
+"test-write-column.R","the ladder names every kind both writers know",16,0,FALSE,FALSE,0
+"test-write-column.R","a Stata declaration classifies before the R type",3,0,FALSE,FALSE,0
+"test-write-column.R","columns no writer exports are NA",11,0,FALSE,FALSE,0
+"test-write-column.R","save_dta refuses only the kinds a DTA file cannot hold",4,0,FALSE,FALSE,0
+"test-write-column.R","both writers export a Stata declaration on any numeric R type",6,0,FALSE,FALSE,0
+"test-write-column.R","a declared integer with haven classes exports through Arrow",4,0,FALSE,FALSE,0
+"test-write-column.R","a calendar or duration class on a non-numeric payload is unsupported everywhere",14,0,FALSE,FALSE,0
+"test-write-column.R","a table datasig signs is a table save_dta saves",2,0,FALSE,FALSE,0
+"test-write-column.R","both writers name a malformed Stata declaration",12,0,FALSE,FALSE,0
+"test-write-column.R","the shared string declaration reports storage and width",3,0,FALSE,FALSE,0
+"test-write-column.R","the shared default format follows storage and calendar",5,0,FALSE,FALSE,0

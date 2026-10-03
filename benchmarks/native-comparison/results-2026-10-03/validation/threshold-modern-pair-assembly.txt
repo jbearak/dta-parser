@@ -1,0 +1,324 @@
+
+<private-evidence>/float-threshold-prototype/library/dtatools/libs/dtatools.so:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+00000000003cfa68 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_>:
+  3cfa68: 7100041f     	cmp	w0, #0x1
+  3cfa6c: 5400074d     	b.le	0x3cfb54 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0xec>
+  3cfa70: 7100081f     	cmp	w0, #0x2
+  3cfa74: 54000dc0     	b.eq	0x3cfc2c <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x1c4>
+  3cfa78: 71000c1f     	cmp	w0, #0x3
+  3cfa7c: 540013e0     	b.eq	0x3cfcf8 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x290>
+  3cfa80: 7100101f     	cmp	w0, #0x4
+  3cfa84: 54002061     	b.ne	0x3cfe90 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x428>
+  3cfa88: 52800028     	mov	w8, #0x1                ; =1
+  3cfa8c: b4002664     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfa90: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfa94: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfa98: 14000022     	b	0x3cfb20 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0xb8>
+  3cfa9c: 0b09016c     	add	w12, w11, w9
+  3cfaa0: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfaa4: 1a9f87ec     	cset	w12, ls
+  3cfaa8: 7200297f     	tst	w11, #0x7ff
+  3cfaac: 1a9f17ed     	cset	w13, eq
+  3cfab0: 6a0d018c     	ands	w12, w12, w13
+  3cfab4: 530b7d6b     	lsr	w11, w11, #11
+  3cfab8: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfabc: 0b09014d     	add	w13, w10, w9
+  3cfac0: 1200294e     	and	w14, w10, #0x7ff
+  3cfac4: 530b7d4a     	lsr	w10, w10, #11
+  3cfac8: 1e212020     	fcmp	s1, s1
+  3cfacc: 1a9f67ef     	cset	w15, vc
+  3cfad0: 2a0c01ec     	orr	w12, w15, w12
+  3cfad4: 1e222040     	fcmp	s2, s2
+  3cfad8: 1a9f67ef     	cset	w15, vc
+  3cfadc: 0a0c01ef     	and	w15, w15, w12
+  3cfae0: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfae4: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfae8: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfaec: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfaf0: 0a0c0108     	and	w8, w8, w12
+  3cfaf4: 2a0b014c     	orr	w12, w10, w11
+  3cfaf8: 12001d6b     	and	w11, w11, #0xff
+  3cfafc: 6b2a017f     	cmp	w11, w10, uxtb
+  3cfb00: 1a9f97ea     	cset	w10, hi
+  3cfb04: 1e222020     	fcmp	s1, s2
+  3cfb08: 1a9fd7eb     	cset	w11, gt
+  3cfb0c: 72001d9f     	tst	w12, #0xff
+  3cfb10: 1a8b114a     	csel	w10, w10, w11, ne
+  3cfb14: b800446a     	str	w10, [x3], #0x4
+  3cfb18: f1000484     	subs	x4, x4, #0x1
+  3cfb1c: 540021e0     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfb20: b840442b     	ldr	w11, [x1], #0x4
+  3cfb24: 1e270161     	fmov	s1, w11
+  3cfb28: b840444a     	ldr	w10, [x2], #0x4
+  3cfb2c: 1e270142     	fmov	s2, w10
+  3cfb30: 1e202020     	fcmp	s1, s0
+  3cfb34: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cfb38: 54fffb25     	b.pl	0x3cfa9c <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x34>
+  3cfb3c: 1e222020     	fcmp	s1, s2
+  3cfb40: 1a9fd7ea     	cset	w10, gt
+  3cfb44: b800446a     	str	w10, [x3], #0x4
+  3cfb48: f1000484     	subs	x4, x4, #0x1
+  3cfb4c: 54fffea1     	b.ne	0x3cfb20 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0xb8>
+  3cfb50: 14000102     	b	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfb54: 34001380     	cbz	w0, 0x3cfdc4 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x35c>
+  3cfb58: 7100041f     	cmp	w0, #0x1
+  3cfb5c: 540019a1     	b.ne	0x3cfe90 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x428>
+  3cfb60: 52800028     	mov	w8, #0x1                ; =1
+  3cfb64: b4001fa4     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfb68: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfb6c: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfb70: 14000006     	b	0x3cfb88 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x120>
+  3cfb74: 1e222020     	fcmp	s1, s2
+  3cfb78: 1a9f07ea     	cset	w10, ne
+  3cfb7c: b800446a     	str	w10, [x3], #0x4
+  3cfb80: f1000484     	subs	x4, x4, #0x1
+  3cfb84: 54001ea0     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfb88: b840442b     	ldr	w11, [x1], #0x4
+  3cfb8c: 1e270161     	fmov	s1, w11
+  3cfb90: b840444a     	ldr	w10, [x2], #0x4
+  3cfb94: 1e270142     	fmov	s2, w10
+  3cfb98: 1e202020     	fcmp	s1, s0
+  3cfb9c: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cfba0: 54fffea4     	b.mi	0x3cfb74 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x10c>
+  3cfba4: 0b09016c     	add	w12, w11, w9
+  3cfba8: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfbac: 1a9f87ec     	cset	w12, ls
+  3cfbb0: 7200297f     	tst	w11, #0x7ff
+  3cfbb4: 1a9f17ed     	cset	w13, eq
+  3cfbb8: 6a0d018c     	ands	w12, w12, w13
+  3cfbbc: 530b7d6b     	lsr	w11, w11, #11
+  3cfbc0: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfbc4: 0b09014d     	add	w13, w10, w9
+  3cfbc8: 1200294e     	and	w14, w10, #0x7ff
+  3cfbcc: 530b7d4a     	lsr	w10, w10, #11
+  3cfbd0: 1e212020     	fcmp	s1, s1
+  3cfbd4: 1a9f67ef     	cset	w15, vc
+  3cfbd8: 2a0c01ec     	orr	w12, w15, w12
+  3cfbdc: 1e222040     	fcmp	s2, s2
+  3cfbe0: 1a9f67ef     	cset	w15, vc
+  3cfbe4: 0a0c01ef     	and	w15, w15, w12
+  3cfbe8: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfbec: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfbf0: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfbf4: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfbf8: 0a0c0108     	and	w8, w8, w12
+  3cfbfc: 2a0b014c     	orr	w12, w10, w11
+  3cfc00: 12001d6b     	and	w11, w11, #0xff
+  3cfc04: 6b2a017f     	cmp	w11, w10, uxtb
+  3cfc08: 1a9f07ea     	cset	w10, ne
+  3cfc0c: 1e222020     	fcmp	s1, s2
+  3cfc10: 1a9f07eb     	cset	w11, ne
+  3cfc14: 72001d9f     	tst	w12, #0xff
+  3cfc18: 1a8b114a     	csel	w10, w10, w11, ne
+  3cfc1c: b800446a     	str	w10, [x3], #0x4
+  3cfc20: f1000484     	subs	x4, x4, #0x1
+  3cfc24: 54fffb21     	b.ne	0x3cfb88 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x120>
+  3cfc28: 140000cc     	b	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfc2c: 52800028     	mov	w8, #0x1                ; =1
+  3cfc30: b4001944     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfc34: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfc38: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfc3c: 14000022     	b	0x3cfcc4 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x25c>
+  3cfc40: 0b09016c     	add	w12, w11, w9
+  3cfc44: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfc48: 1a9f87ec     	cset	w12, ls
+  3cfc4c: 7200297f     	tst	w11, #0x7ff
+  3cfc50: 1a9f17ed     	cset	w13, eq
+  3cfc54: 6a0d018c     	ands	w12, w12, w13
+  3cfc58: 530b7d6b     	lsr	w11, w11, #11
+  3cfc5c: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfc60: 0b09014d     	add	w13, w10, w9
+  3cfc64: 1200294e     	and	w14, w10, #0x7ff
+  3cfc68: 530b7d4a     	lsr	w10, w10, #11
+  3cfc6c: 1e212020     	fcmp	s1, s1
+  3cfc70: 1a9f67ef     	cset	w15, vc
+  3cfc74: 2a0c01ec     	orr	w12, w15, w12
+  3cfc78: 1e222040     	fcmp	s2, s2
+  3cfc7c: 1a9f67ef     	cset	w15, vc
+  3cfc80: 0a0c01ef     	and	w15, w15, w12
+  3cfc84: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfc88: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfc8c: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfc90: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfc94: 0a0c0108     	and	w8, w8, w12
+  3cfc98: 2a0b014c     	orr	w12, w10, w11
+  3cfc9c: 12001d6b     	and	w11, w11, #0xff
+  3cfca0: 6b2a017f     	cmp	w11, w10, uxtb
+  3cfca4: 1a9f27ea     	cset	w10, lo
+  3cfca8: 1e222020     	fcmp	s1, s2
+  3cfcac: 1a9f57eb     	cset	w11, mi
+  3cfcb0: 72001d9f     	tst	w12, #0xff
+  3cfcb4: 1a8b114a     	csel	w10, w10, w11, ne
+  3cfcb8: b800446a     	str	w10, [x3], #0x4
+  3cfcbc: f1000484     	subs	x4, x4, #0x1
+  3cfcc0: 540014c0     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfcc4: b840442b     	ldr	w11, [x1], #0x4
+  3cfcc8: 1e270161     	fmov	s1, w11
+  3cfccc: b840444a     	ldr	w10, [x2], #0x4
+  3cfcd0: 1e270142     	fmov	s2, w10
+  3cfcd4: 1e202020     	fcmp	s1, s0
+  3cfcd8: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cfcdc: 54fffb25     	b.pl	0x3cfc40 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x1d8>
+  3cfce0: 1e222020     	fcmp	s1, s2
+  3cfce4: 1a9f57ea     	cset	w10, mi
+  3cfce8: b800446a     	str	w10, [x3], #0x4
+  3cfcec: f1000484     	subs	x4, x4, #0x1
+  3cfcf0: 54fffea1     	b.ne	0x3cfcc4 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x25c>
+  3cfcf4: 14000099     	b	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfcf8: 52800028     	mov	w8, #0x1                ; =1
+  3cfcfc: b40012e4     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfd00: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfd04: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfd08: 14000022     	b	0x3cfd90 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x328>
+  3cfd0c: 0b09016c     	add	w12, w11, w9
+  3cfd10: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfd14: 1a9f87ec     	cset	w12, ls
+  3cfd18: 7200297f     	tst	w11, #0x7ff
+  3cfd1c: 1a9f17ed     	cset	w13, eq
+  3cfd20: 6a0d018c     	ands	w12, w12, w13
+  3cfd24: 530b7d6b     	lsr	w11, w11, #11
+  3cfd28: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfd2c: 0b09014d     	add	w13, w10, w9
+  3cfd30: 1200294e     	and	w14, w10, #0x7ff
+  3cfd34: 530b7d4a     	lsr	w10, w10, #11
+  3cfd38: 1e212020     	fcmp	s1, s1
+  3cfd3c: 1a9f67ef     	cset	w15, vc
+  3cfd40: 2a0c01ec     	orr	w12, w15, w12
+  3cfd44: 1e222040     	fcmp	s2, s2
+  3cfd48: 1a9f67ef     	cset	w15, vc
+  3cfd4c: 0a0c01ef     	and	w15, w15, w12
+  3cfd50: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfd54: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfd58: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfd5c: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfd60: 0a0c0108     	and	w8, w8, w12
+  3cfd64: 2a0b014c     	orr	w12, w10, w11
+  3cfd68: 12001d6b     	and	w11, w11, #0xff
+  3cfd6c: 6b2a017f     	cmp	w11, w10, uxtb
+  3cfd70: 1a9f87ea     	cset	w10, ls
+  3cfd74: 1e222020     	fcmp	s1, s2
+  3cfd78: 1a9f87eb     	cset	w11, ls
+  3cfd7c: 72001d9f     	tst	w12, #0xff
+  3cfd80: 1a8b114a     	csel	w10, w10, w11, ne
+  3cfd84: b800446a     	str	w10, [x3], #0x4
+  3cfd88: f1000484     	subs	x4, x4, #0x1
+  3cfd8c: 54000e60     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfd90: b840442b     	ldr	w11, [x1], #0x4
+  3cfd94: 1e270161     	fmov	s1, w11
+  3cfd98: b840444a     	ldr	w10, [x2], #0x4
+  3cfd9c: 1e270142     	fmov	s2, w10
+  3cfda0: 1e202020     	fcmp	s1, s0
+  3cfda4: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cfda8: 54fffb25     	b.pl	0x3cfd0c <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x2a4>
+  3cfdac: 1e222020     	fcmp	s1, s2
+  3cfdb0: 1a9f87ea     	cset	w10, ls
+  3cfdb4: b800446a     	str	w10, [x3], #0x4
+  3cfdb8: f1000484     	subs	x4, x4, #0x1
+  3cfdbc: 54fffea1     	b.ne	0x3cfd90 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x328>
+  3cfdc0: 14000066     	b	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfdc4: 52800028     	mov	w8, #0x1                ; =1
+  3cfdc8: b4000c84     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfdcc: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfdd0: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfdd4: 14000022     	b	0x3cfe5c <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x3f4>
+  3cfdd8: 0b09016c     	add	w12, w11, w9
+  3cfddc: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfde0: 1a9f87ec     	cset	w12, ls
+  3cfde4: 7200297f     	tst	w11, #0x7ff
+  3cfde8: 1a9f17ed     	cset	w13, eq
+  3cfdec: 6a0d018c     	ands	w12, w12, w13
+  3cfdf0: 530b7d6b     	lsr	w11, w11, #11
+  3cfdf4: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfdf8: 0b09014d     	add	w13, w10, w9
+  3cfdfc: 1200294e     	and	w14, w10, #0x7ff
+  3cfe00: 530b7d4a     	lsr	w10, w10, #11
+  3cfe04: 1e212020     	fcmp	s1, s1
+  3cfe08: 1a9f67ef     	cset	w15, vc
+  3cfe0c: 2a0c01ec     	orr	w12, w15, w12
+  3cfe10: 1e222040     	fcmp	s2, s2
+  3cfe14: 1a9f67ef     	cset	w15, vc
+  3cfe18: 0a0c01ef     	and	w15, w15, w12
+  3cfe1c: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfe20: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfe24: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfe28: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfe2c: 0a0c0108     	and	w8, w8, w12
+  3cfe30: 2a0b014c     	orr	w12, w10, w11
+  3cfe34: 12001d6b     	and	w11, w11, #0xff
+  3cfe38: 6b2a017f     	cmp	w11, w10, uxtb
+  3cfe3c: 1a9f17ea     	cset	w10, eq
+  3cfe40: 1e222020     	fcmp	s1, s2
+  3cfe44: 1a9f17eb     	cset	w11, eq
+  3cfe48: 72001d9f     	tst	w12, #0xff
+  3cfe4c: 1a8b114a     	csel	w10, w10, w11, ne
+  3cfe50: b800446a     	str	w10, [x3], #0x4
+  3cfe54: f1000484     	subs	x4, x4, #0x1
+  3cfe58: 54000800     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfe5c: b840442b     	ldr	w11, [x1], #0x4
+  3cfe60: 1e270161     	fmov	s1, w11
+  3cfe64: b840444a     	ldr	w10, [x2], #0x4
+  3cfe68: 1e270142     	fmov	s2, w10
+  3cfe6c: 1e202020     	fcmp	s1, s0
+  3cfe70: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cfe74: 54fffb25     	b.pl	0x3cfdd8 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x370>
+  3cfe78: 1e222020     	fcmp	s1, s2
+  3cfe7c: 1a9f17ea     	cset	w10, eq
+  3cfe80: b800446a     	str	w10, [x3], #0x4
+  3cfe84: f1000484     	subs	x4, x4, #0x1
+  3cfe88: 54fffea1     	b.ne	0x3cfe5c <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x3f4>
+  3cfe8c: 14000033     	b	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfe90: 52800028     	mov	w8, #0x1                ; =1
+  3cfe94: b4000624     	cbz	x4, 0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cfe98: 52b02009     	mov	w9, #-0x7f000000        ; =-2130706432
+  3cfe9c: 0f0367e0     	movi.2s	v0, #0x7f, lsl #24
+  3cfea0: 14000022     	b	0x3cff28 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4c0>
+  3cfea4: 0b09016c     	add	w12, w11, w9
+  3cfea8: 7140359f     	cmp	w12, #0xd, lsl #12      ; =0xd000
+  3cfeac: 1a9f87ec     	cset	w12, ls
+  3cfeb0: 7200297f     	tst	w11, #0x7ff
+  3cfeb4: 1a9f17ed     	cset	w13, eq
+  3cfeb8: 6a0d018c     	ands	w12, w12, w13
+  3cfebc: 530b7d6b     	lsr	w11, w11, #11
+  3cfec0: 1a8b07eb     	csinc	w11, wzr, w11, eq
+  3cfec4: 0b09014d     	add	w13, w10, w9
+  3cfec8: 1200294e     	and	w14, w10, #0x7ff
+  3cfecc: 530b7d4a     	lsr	w10, w10, #11
+  3cfed0: 1e212020     	fcmp	s1, s1
+  3cfed4: 1a9f67ef     	cset	w15, vc
+  3cfed8: 2a0c01ec     	orr	w12, w15, w12
+  3cfedc: 1e222040     	fcmp	s2, s2
+  3cfee0: 1a9f67ef     	cset	w15, vc
+  3cfee4: 0a0c01ef     	and	w15, w15, w12
+  3cfee8: 714035bf     	cmp	w13, #0xd, lsl #12      ; =0xd000
+  3cfeec: 7a4099c0     	ccmp	w14, #0x0, #0x0, ls
+  3cfef0: 1a8f018c     	csel	w12, w12, w15, eq
+  3cfef4: 1a8a17ea     	csinc	w10, wzr, w10, ne
+  3cfef8: 0a0c0108     	and	w8, w8, w12
+  3cfefc: 2a0b014c     	orr	w12, w10, w11
+  3cff00: 12001d6b     	and	w11, w11, #0xff
+  3cff04: 6b2a017f     	cmp	w11, w10, uxtb
+  3cff08: 1a9f37ea     	cset	w10, hs
+  3cff0c: 1e222020     	fcmp	s1, s2
+  3cff10: 1a9fb7eb     	cset	w11, ge
+  3cff14: 72001d9f     	tst	w12, #0xff
+  3cff18: 1a8b114a     	csel	w10, w10, w11, ne
+  3cff1c: b800446a     	str	w10, [x3], #0x4
+  3cff20: f1000484     	subs	x4, x4, #0x1
+  3cff24: 540001a0     	b.eq	0x3cff58 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4f0>
+  3cff28: b840442b     	ldr	w11, [x1], #0x4
+  3cff2c: 1e270161     	fmov	s1, w11
+  3cff30: b840444a     	ldr	w10, [x2], #0x4
+  3cff34: 1e270142     	fmov	s2, w10
+  3cff38: 1e202020     	fcmp	s1, s0
+  3cff3c: 1e204440     	fccmp	s2, s0, #0x0, mi
+  3cff40: 54fffb25     	b.pl	0x3cfea4 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x43c>
+  3cff44: 1e222020     	fcmp	s1, s2
+  3cff48: 1a9fb7ea     	cset	w10, ge
+  3cff4c: b800446a     	str	w10, [x3], #0x4
+  3cff50: f1000484     	subs	x4, x4, #0x1
+  3cff54: 54fffea1     	b.ne	0x3cff28 <__RINvNtCs8BN0tja5lAg_10dtatools_r13float_compare13pair_operatorKb1_KBZ_EB4_+0x4c0>
+  3cff58: 12000100     	and	w0, w8, #0x1
+  3cff5c: d65f03c0     	ret
