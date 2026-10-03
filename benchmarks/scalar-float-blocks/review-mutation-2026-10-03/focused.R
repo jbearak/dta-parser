@@ -1,0 +1,8 @@
+args <- commandArgs(TRUE)
+.libPaths(c(args[[1]], .libPaths()))
+library(dtatools)
+r <- testthat::test_dir(args[[2]], package="dtatools", load_package="installed", filter="native-arithmetic-parity", reporter="silent", stop_on_failure=FALSE)
+f <- as.data.frame(r)
+write.csv(f[,c("file","test","passed","failed","error","skipped","warning")],args[[3]],row.names=FALSE)
+cat("PASS",sum(f$passed),"FAIL",sum(f$failed),"ERROR",sum(f$error),"SKIP",sum(f$skipped),"WARN",sum(f$warning),"\n")
+if(any(f$failed | f$error | f$skipped)) quit(status=1)

@@ -1,0 +1,13 @@
+{
+  "files": {
+    "bind-and-publish.py": "c71f95efabbbf517e32e3578fb0b42e45d9f88b961e6aff6b31c8591536dccb8",
+    "binding.json": "b4739c268c217273511afb8fb76ae21bcf970e876b27529cf26b28f2b73b8322",
+    "failed-ci-console.log": "98a8af9fb2943aad9e1c03e74b4ccc4cf649c5fb256e0b95560fad7e46d28514",
+    "focused.R": "1fc5bfa8c6d71838c94c8a0d5ba7b37f29d322b69a7a7c66296da7e4da3a7e1f",
+    "focused.csv": "8c2a0b9e34d1e6dd335141f979276993e06edab79e062b4476cdb7df018aa1a7",
+    "focused.log": "5f167cfba02fdd6d158a49cf7017301e758dbb3214ab00172e6d5343f62560be",
+    "manifest-guards.log": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "source-map.json": "8a26d60bb328b195fd4337f208e8adbfa9aa25181a823d19151f7349cd685719"
+  },
+  "scope": "Separate targeted test-fix evidence. Original hashes bind private records; this manifest and source map bind redacted publication copies. Historical205 artifacts are unchanged."
+}

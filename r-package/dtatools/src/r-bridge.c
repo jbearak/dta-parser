@@ -109,12 +109,25 @@ int dtatools_make_char(
     return ok;
 }
 
+/* Private one-shot test control. The callback consumes its local copy at an
+   existing interrupt checkpoint after partial fill. */
+static int arrow_strings_test_interrupt = 0;
+
+SEXP C_dtatools_test_arrow_strings_interrupt(SEXP enabled) {
+    int value = Rf_asLogical(enabled);
+    if (value == NA_LOGICAL) Rf_error("invalid Arrow string interrupt test state");
+    int previous = arrow_strings_test_interrupt;
+    arrow_strings_test_interrupt = value;
+    return Rf_ScalarLogical(previous);
+}
+
 typedef struct {
     SEXP vector;
     const dtatools_arrow_string_chunk *chunks;
     size_t chunk_count;
     int checking_interrupt;
     int status;
+    int test_interrupt;
 } arrow_strings_context;
 
 static void fill_arrow_strings_call(void *payload) {
@@ -133,6 +146,11 @@ static void fill_arrow_strings_call(void *payload) {
             for (size_t index = 0; index < chunk->length; index++, row++) { \
                 if ((row & 16383) == 0) {                                  \
                     context->checking_interrupt = 1;                      \
+                    if (context->test_interrupt && row != 0) {            \
+                        context->test_interrupt = 0;                       \
+                        Rf_onintr();                                       \
+                        Rf_error("Arrow string test interrupt returned"); \
+                    }                                                      \
                     R_CheckUserInterrupt();                               \
                     context->checking_interrupt = 0;                      \
                 }                                                          \
@@ -167,7 +185,10 @@ int dtatools_fill_arrow_strings(
 ) {
     if (vector == NULL || TYPEOF(vector) != STRSXP || ALTREP(vector) ||
         (chunk_count != 0 && chunks == NULL)) return 0;
-    arrow_strings_context context = {vector, chunks, chunk_count, 0, 0};
+    arrow_strings_context context = {
+        vector, chunks, chunk_count, 0, 0, arrow_strings_test_interrupt
+    };
+    arrow_strings_test_interrupt = 0;
     int ok = R_ToplevelExec(fill_arrow_strings_call, &context);
     if (!ok) return context.checking_interrupt ? 2 : 0;
     return context.status;

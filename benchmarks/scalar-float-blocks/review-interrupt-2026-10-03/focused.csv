@@ -1,0 +1,5 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arrow-nullable-strings.R","nullable Arrow strings preserve sliced validity and unequal chunks",24,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow strings keep their output rooted during collection",4,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow string allocation errors clean up before the next read",3,0,FALSE,FALSE,0
+"test-arrow-nullable-strings.R","nullable Arrow read cancellation remains an interrupt",5,0,FALSE,FALSE,0

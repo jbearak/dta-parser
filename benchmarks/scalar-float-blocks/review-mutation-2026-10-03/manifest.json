@@ -1,0 +1,15 @@
+{
+  "files": {
+    "bind.py": "bdbff1f1c1b69498b50bdda08c81a70124e903775e462e33fb05bc40a56b5a1b",
+    "binding.json": "6061e422f68c1160dbe7d9c4e2a651bb3c30ca40026b6720bfbd330dfa7559c9",
+    "combined-focused.csv": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "combined-focused.log": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "focused.R": "c9b79c4b1306bc49b29689b8dc678a9d284c3e78fb8ec55d78e3db0b404968a6",
+    "manifest-refresh.log": "bfef9f303e820930f7336c07cb387c81fa2f2c3fa0caa75c978e078723f05ceb",
+    "manifest-tests.log": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "measured-focused.csv": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "measured-focused.log": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "source-map.json": "29f62c5d9f15d469b888ebe27ab50e8490c7b443574b0cfa210f189a03ed9e63"
+  },
+  "scope": "Test-only review follow-up. Original full-suite, conformance and timing records retain their original source identities. This directory binds redacted post-run focused evidence, not a new performance or full-conformance run. Historical scripts require private path restoration."
+}

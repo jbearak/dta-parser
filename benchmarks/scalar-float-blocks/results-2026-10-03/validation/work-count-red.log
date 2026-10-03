@@ -1,0 +1,9 @@
+Actual scalar writer classified 1000000 of 1000000 rows after a 256-row missing prefix
+Traceback (most recent call last):
+  File "<scalar-block-checkout>/benchmarks/scalar-float-blocks/test-kernel.py", line 17, in <module>
+    subprocess.run([str(executable)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/var/folders/hf/sy5zn59d1xlgx1bcbsjbmy540000gn/T/float-scalar-kernel-rmsqt67j/test-kernel']' returned non-zero exit status 1.

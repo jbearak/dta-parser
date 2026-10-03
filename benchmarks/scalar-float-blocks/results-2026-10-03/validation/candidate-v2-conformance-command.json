@@ -1,0 +1,16 @@
+{
+  "commit": "2e512880b15ea5ef8d56c65a4916af3ad71fb928",
+  "command": [
+    "sh",
+    "<scalar-block-evidence>/candidate-v2-conformance-gate.sh"
+  ],
+  "cwd": "<scalar-block-evidence>/candidate-v2-export",
+  "environment": {
+    "DTA_REQUIRE_R_CONFORMANCE": "1",
+    "R_ENVIRON_USER": "/dev/null",
+    "R_PROFILE_USER": "/dev/null"
+  },
+  "original_script_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "wrapper_sha256": "c6be259d97dd5cc7430eacc873a89ca7ff4c0cf289b0f1a8980e6e17c5032f5a",
+  "only_wrapper_change": "Preserve temporary source archive and check outputs before original cleanup."
+}

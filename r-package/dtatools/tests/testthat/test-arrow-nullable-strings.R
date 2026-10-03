@@ -73,37 +73,27 @@ test_that("nullable Arrow string allocation errors clean up before the next read
 })
 
 test_that("nullable Arrow read cancellation remains an interrupt", {
-    skip_on_os("windows")
-    text <- sprintf("nullable-%08d-\u00e9", seq_len(1000000L))
+    text <- sprintf("nullable-%08d-\u00e9", seq_len(2L * 16384L + 37L))
     text[c(1L, length(text))] <- NA_character_
     data <- tibble::tibble(text = text)
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data, path, compression = "uncompressed", checksums = FALSE)
-    parent <- Sys.getpid()
-    loadNamespace("parallel")
-    request <- if (is.null(getOption("dtatools.native.context"))) NULL else
-        native_fork_request("nullable-arrow-read-signal")
-    signal <- parallel::mcparallel({
-        if (is.null(request)) {
-            Sys.sleep(0.01)
-            tools::pskill(parent, tools::SIGINT)
-        } else native_fork_signal(request, 0.01, tools::SIGINT)
-    }, silent = TRUE)
-    collected <- NULL
+    # A delayed fork can signal only after a fast read has returned. Inject
+    # at the actual caught C callback's existing checkpoint after 16,384
+    # filled rows, so this tests partial-fill cleanup and interrupt type.
+    prior <- .Call(C_dtatools_test_arrow_strings_interrupt, TRUE)
+    on.exit(.Call(C_dtatools_test_arrow_strings_interrupt, prior), add = TRUE)
+    expect_false(prior)
     completed <- FALSE
     condition <- tryCatch({
         read_arrow(path, threads = 1L, verify = FALSE)
         completed <- TRUE
-        collected <- parallel::mccollect(signal)
         NULL
     }, condition = identity)
-    if (is.null(collected)) collected <- tryCatch(
-        suppressWarnings(parallel::mccollect(signal)), condition = identity)
-    if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
     expect_s3_class(condition, "interrupt")
     expect_false(completed)
+    expect_false(.Call(C_dtatools_test_arrow_strings_interrupt, FALSE))
     gc()
-    expect_identical(read_arrow(path, n_max = 8L, verify = FALSE, output = "tibble"),
-                     data[seq_len(8L), ])
+    expect_identical(read_arrow(path, verify = FALSE, output = "tibble"), data)
 })

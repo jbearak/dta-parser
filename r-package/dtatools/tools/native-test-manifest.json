@@ -245,7 +245,7 @@
         },
         {
           "path": "tests/testthat/test-arrow-nullable-strings.R",
-          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
+          "sha256": "b2d4533c6175d6d9458308c2c6fcfcf5f65f6b9dcfba8053137a6feb60f66292"
         },
         {
           "path": "tests/testthat/test-read-dta.R",
@@ -826,7 +826,7 @@
           "test": "nullable Arrow read cancellation remains an interrupt",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 3,
+          "min_pass": 5,
           "warnings": 0
         },
         {
@@ -1663,12 +1663,6 @@
           "minimum": 1,
           "maximum": 1,
           "delay": 0.05
-        },
-        {
-          "id": "nullable-arrow-read-signal",
-          "minimum": 1,
-          "maximum": 1,
-          "delay": 0.01
         }
       ]
     },
@@ -1825,7 +1819,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "a18ae6d309ea91b970c3fc416670bed2a1cf9afe59cd30c17ff37e14237d6d62"
+          "sha256": "28453026fc63c60dd06acb870cc0355c3c4a114c1144777de5e12b3a6a7cd4c8"
         }
       ],
       "blocks": [
@@ -4574,6 +4568,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3376,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "scalar block proofs preserve ordinary tails and late whole-column promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1566,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "scalar block proofs preserve imported exceptions after ordinary spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2061,
           "warnings": 0
         }
       ],
@@ -17087,16 +17097,6 @@
           "min_pass_before_skip": 0,
           "skip_message": "Reason: On Windows",
           "warnings": 0
-        },
-        {
-          "file": "test-arrow-nullable-strings.R",
-          "test": "nullable Arrow read cancellation remains an interrupt",
-          "occurrence": 1,
-          "skip": "require",
-          "reason": "Windows",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: On Windows",
-          "warnings": 0
         }
       ],
       "children": [
@@ -17117,12 +17117,6 @@
         {
           "family": "io",
           "id": "arrow-write-signal",
-          "minimum": 0,
-          "maximum": 0
-        },
-        {
-          "family": "io",
-          "id": "nullable-arrow-read-signal",
           "minimum": 0,
           "maximum": 0
         }

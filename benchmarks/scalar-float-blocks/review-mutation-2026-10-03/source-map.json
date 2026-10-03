@@ -1,0 +1,47 @@
+{
+  "bind.py": {
+    "original_sha256": "ffa3c3092972f6a9c01885ca231a192734219dc55bf7c90caf8f5771462a8711",
+    "published_sha256": "bdbff1f1c1b69498b50bdda08c81a70124e903775e462e33fb05bc40a56b5a1b",
+    "source": "<scalar-block-evidence>/bind-review-mutation.py"
+  },
+  "binding.json": {
+    "original_sha256": "cbbf8a216c18959a6758a09727a305d87fb7650b3f0a9e99913a0f4d7dac494c",
+    "published_sha256": "6061e422f68c1160dbe7d9c4e2a651bb3c30ca40026b6720bfbd330dfa7559c9",
+    "source": "<scalar-block-evidence>/review-mutation-binding.json"
+  },
+  "combined-focused.csv": {
+    "original_sha256": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "published_sha256": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "source": "<scalar-block-evidence>/review-mutation-combined-focused.csv"
+  },
+  "combined-focused.log": {
+    "original_sha256": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "published_sha256": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "source": "<scalar-block-evidence>/review-mutation-combined-focused.log"
+  },
+  "focused.R": {
+    "original_sha256": "c9b79c4b1306bc49b29689b8dc678a9d284c3e78fb8ec55d78e3db0b404968a6",
+    "published_sha256": "c9b79c4b1306bc49b29689b8dc678a9d284c3e78fb8ec55d78e3db0b404968a6",
+    "source": "<scalar-block-evidence>/focused.R"
+  },
+  "manifest-refresh.log": {
+    "original_sha256": "bfef9f303e820930f7336c07cb387c81fa2f2c3fa0caa75c978e078723f05ceb",
+    "published_sha256": "bfef9f303e820930f7336c07cb387c81fa2f2c3fa0caa75c978e078723f05ceb",
+    "source": "<scalar-block-evidence>/review-mutation-manifest-refresh.log"
+  },
+  "manifest-tests.log": {
+    "original_sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "published_sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "source": "<scalar-block-evidence>/review-mutation-manifest-tests.log"
+  },
+  "measured-focused.csv": {
+    "original_sha256": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "published_sha256": "70ab0ccf088b94d1e9fdeb6b1224a1b57ed45ad01a53c55dea1bb2e0ac43eb89",
+    "source": "<scalar-block-evidence>/review-mutation-focused.csv"
+  },
+  "measured-focused.log": {
+    "original_sha256": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "published_sha256": "d00c8cb155406f89feccacf5b5d9ec66ed37686a58942a8c2ca7fe724c58a576",
+    "source": "<scalar-block-evidence>/review-mutation-focused.log"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "actual_worker_runtime_rechecked": true,
+  "audit_script_sha256": "4da0569d16128c878238278bbf4ea150b5f6d9e5943b257fdf211de5da962f7d",
+  "cases_per_build_round": 60,
+  "commits": {
+    "baseline": "dbcf75cbfe589b5ac2a78166d1e436faa7bbb896",
+    "candidate": "2e512880b15ea5ef8d56c65a4916af3ad71fb928"
+  },
+  "controller_sha256": {
+    "build_recorder": "1d0bd275759ffeec5625b7e985957666d2d46f22fbf94134d803d1844d06c534",
+    "build_recorder_parent": "f8781db4b8d43e825b405b748b0cd956338658fdfc73f1a16985773e574489f0",
+    "build_validation": "4952593f71dcdfe25c428e9ad62efe980e56f6fa8d7cb6e55b9280fee8fb282d",
+    "controller": "e16355a85fc67f122d6622754a81c01be1b222630bd4d29de81e1d2689e820ff",
+    "protocol_tests": "0abaae173273ff8916234aef65eac0dc12751a1674852494026c06c247660a50",
+    "validation": "3491ac87ce014e8c7cb247dca8a53775e5cbde3394f8b4db06f2b7a5f0d16e86",
+    "worker": "744f452c6b93943f2600af003fd7713ff72082f096792559be9e3b5de3ec83ce"
+  },
+  "counts_independently_checked": {
+    "all_tags": 1000000,
+    "clustered_half": 500000,
+    "none": 0,
+    "prefix256": 256,
+    "random_half": 500000,
+    "sparse": 1003,
+    "suffix256": 256
+  },
+  "cpu_intervals": [
+    0.214,
+    0.368
+  ],
+  "current_full_build_inventories_verified": true,
+  "input_sha256": {
+    "01-baseline.csv": "81af8d088fdc6af82f155d3e18aea5785226e901b9299126b3972b5ddf9afba7",
+    "01-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "01-candidate.csv": "8caef5a79eabb6b39b2e87948debab205815ca7b07db2484050f87d43eed2488",
+    "01-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "02-baseline.csv": "00dc6c36e37466b734abe30570d3157252c92203b62d61aedc2b07490f00eef2",
+    "02-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "02-candidate.csv": "3508b4973194b1967582cd6c8ff91c47c7fdb7b2b44a04c58b4240a00008f638",
+    "02-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "03-baseline.csv": "027ffc1158111dad499f3baef3b54130554531a96728ddeacb54f638b4ed2d60",
+    "03-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "03-candidate.csv": "23d0fe8f07575e6c8acf51c29613ddce69223d2a6c59059c6895544d4d10ebe6",
+    "03-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "04-baseline.csv": "ccfa175df37ac44b6050de9f7960749530c1db45a8f4da797b3484c8f0b8a34f",
+    "04-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "04-candidate.csv": "feb3009e8a6f8ffa958c68a97ab94412714cdbe4180c6465ad09e388b0f1007e",
+    "04-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "05-baseline.csv": "71be75ed27835e1caac8f23c39e8d93cc0f1e6ede0ec4c826d1c8236062cefd3",
+    "05-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "05-candidate.csv": "2418ffe382574442ec17ec6237f5c2cc2dda74a150b826b9261f83395ab0c851",
+    "05-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "06-baseline.csv": "4b649acf4874c8ffe1d5db84d0dff3a51b6727ff899caf820a5d52bfe71d3bdc",
+    "06-baseline.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "06-candidate.csv": "11aa33fa711f41a72c67b305f3d473b5aab6f16a2d9ec2003dd03bf2538fb500",
+    "06-candidate.log": "547629a8a309e04ec6fa36c855c23d5967ad2ed97e722554031c0289c073bc26",
+    "completion.json": "ea25f73c8bcdecddbc6a817c1c224673fc5019c8b4b1bfd84e26e317609997a8",
+    "protocol.json": "1477d53fa00ad7638c33129da7d6f415d43dc6fc3b33fb15cd8a223fbefff11b",
+    "provenance-after.json": "9f1c5c6bee1e8e3e96cb2f71090258855018e6dd6b2b4448f0d55197cb3118e7",
+    "provenance-before.json": "9f1c5c6bee1e8e3e96cb2f71090258855018e6dd6b2b4448f0d55197cb3118e7",
+    "raw.csv": "8c51f869b037634851d92a3a4fed5e78bdcacbf6b2c21994538d3d54bb576a5a",
+    "source.patch": "b349313b198f84a5bd9ce68059bb3185143604cbae456841a591cba0244ad24b",
+    "summary.csv": "f6530d1ca09b32df9059f870bc51b1dc4b0d3b6f3aa9609ddf1c6afd2b116706"
+  },
+  "rows": 720,
+  "scope": "Read-only saved measurement audit and current source/library/runtime identity replay; no measurements or fresh numerical operations. Binary64/float oracle, tag collapse, width-specific results and ordering were independently source-reviewed.",
+  "status": "PASS",
+  "summary_rows": 28,
+  "wall_intervals": [
+    0.214,
+    0.367
+  ]
+}

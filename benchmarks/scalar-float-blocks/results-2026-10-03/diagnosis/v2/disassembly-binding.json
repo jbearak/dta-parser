@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+    "--disassemble-symbols=_arithmetic_float_scalar_write",
+    "--no-show-raw-insn",
+    "<scalar-block-evidence>/exception-codegen-v2/candidate-remarks.o"
+  ],
+  "object_sha256": "5e5c0182755c577ecdc14c727ff9470848b788b62eeab15f79ff6b3a030af330",
+  "disassembly_sha256": "8fdfda71de7a8f26d5b4433b1d2d7bcef4652263b7eba4c65fe5ea6067a8f793"
+}

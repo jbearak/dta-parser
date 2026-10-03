@@ -1,0 +1,200 @@
+  17bba4:      	add	w16, w16, #0x1
+  17bba8:      	cmp	w16, #0x4
+  17bbac:      	csel	x15, x11, x15, eq
+  17bbb0:      	subs	x1, x15, x17
+  17bbb4:      	b.ls	0x17ba48 <_arithmetic_float_scalar_write+0xccc>
+  17bbb8:      	cmp	x1, #0x4
+  17bbbc:      	b.lo	0x17bc14 <_arithmetic_float_scalar_write+0xe98>
+  17bbc0:      	cmp	x12, #0x40
+  17bbc4:      	movi.4s	v28, #0x1b
+  17bbc8:      	b.lo	0x17bc0c <_arithmetic_float_scalar_write+0xe90>
+  17bbcc:      	cmp	x1, #0x10
+  17bbd0:      	b.hs	0x17bc1c <_arithmetic_float_scalar_write+0xea0>
+  17bbd4:      	mov	x2, #0x0                ; =0
+  17bbd8:      	b	0x17bec4 <_arithmetic_float_scalar_write+0x1148>
+  17bbdc:      	cmp	x17, x15
+  17bbe0:      	b.hs	0x17ba44 <_arithmetic_float_scalar_write+0xcc8>
+  17bbe4:      	mov	x3, x17
+  17bbe8:      	cmp	x2, #0x4
+  17bbec:      	b.lo	0x17c10c <_arithmetic_float_scalar_write+0x1390>
+  17bbf0:      	mov	x3, x17
+  17bbf4:      	cmp	x12, #0x40
+  17bbf8:      	b.lo	0x17c10c <_arithmetic_float_scalar_write+0x1390>
+  17bbfc:      	cmp	x2, #0x10
+  17bc00:      	b.hs	0x17bfa0 <_arithmetic_float_scalar_write+0x1224>
+  17bc04:      	mov	x16, #0x0               ; =0
+  17bc08:      	b	0x17c03c <_arithmetic_float_scalar_write+0x12c0>
+  17bc0c:      	mov	x3, x17
+  17bc10:      	b	0x17c090 <_arithmetic_float_scalar_write+0x1314>
+  17bc14:      	mov	x3, x17
+  17bc18:      	b	0x17c090 <_arithmetic_float_scalar_write+0x1314>
+  17bc1c:      	and	x2, x1, #0xfffffffffffffff0
+  17bc20:      	movi.2d	v2, #0000000000000000
+  17bc24:      	movi.2d	v3, #0000000000000000
+  17bc28:      	mov.s	v3[0], w9
+  17bc2c:      	movi.2d	v1, #0000000000000000
+  17bc30:      	mov.s	v1[0], w8
+  17bc34:      	lsl	x9, x17, #2
+  17bc38:      	add	x8, x13, x9
+  17bc3c:      	add	x9, x14, x9
+  17bc40:      	mov	x3, x2
+  17bc44:      	movi.2d	v7, #0000000000000000
+  17bc48:      	movi.2d	v16, #0000000000000000
+  17bc4c:      	movi.2d	v4, #0000000000000000
+  17bc50:      	movi.2d	v5, #0000000000000000
+  17bc54:      	movi.2d	v6, #0000000000000000
+  17bc58:      	movi.4s	v13, #0x81, lsl #24
+  17bc5c:      	movi.4s	v12, #0x1
+  17bc60:      	ldp	q20, q18, [x8, #-0x20]
+  17bc64:      	add.4s	v21, v20, v13
+  17bc68:      	ldp	q19, q17, [x8]
+  17bc6c:      	add.4s	v22, v18, v13
+  17bc70:      	add.4s	v23, v19, v13
+  17bc74:      	add.4s	v24, v17, v13
+  17bc78:      	shl.4s	v25, v21, #0x15
+  17bc7c:      	shl.4s	v26, v22, #0x15
+  17bc80:      	usra.4s	v25, v21, #0xb
+  17bc84:      	usra.4s	v26, v22, #0xb
+  17bc88:      	shl.4s	v21, v23, #0x15
+  17bc8c:      	usra.4s	v21, v23, #0xb
+  17bc90:      	shl.4s	v22, v24, #0x15
+  17bc94:      	usra.4s	v22, v24, #0xb
+  17bc98:      	cmhi.4s	v23, v28, v25
+  17bc9c:      	cmhi.4s	v24, v28, v26
+  17bca0:      	cmhi.4s	v25, v28, v21
+  17bca4:      	and.16b	v21, v20, v0
+  17bca8:      	and.16b	v26, v18, v0
+  17bcac:      	and.16b	v27, v19, v0
+  17bcb0:      	cmhi.4s	v28, v28, v22
+  17bcb4:      	and.16b	v22, v17, v0
+  17bcb8:      	cmeq.4s	v21, v21, v0
+  17bcbc:      	cmeq.4s	v26, v26, v0
+  17bcc0:      	cmeq.4s	v27, v27, v0
+  17bcc4:      	cmeq.4s	v29, v22, v0
+  17bcc8:      	orr.16b	v21, v21, v23
+  17bccc:      	orr.16b	v22, v26, v24
+  17bcd0:      	orr.16b	v23, v27, v25
+  17bcd4:      	fcmge.4s	v24, v20, v15
+  17bcd8:      	mvn.16b	v25, v24
+  17bcdc:      	fcmge.4s	v26, v18, v15
+  17bce0:      	orr.16b	v24, v29, v28
+  17bce4:      	mvn.16b	v26, v26
+  17bce8:      	fcmge.4s	v27, v19, v15
+  17bcec:      	mvn.16b	v27, v27
+  17bcf0:      	fcmge.4s	v28, v17, v15
+  17bcf4:      	mvn.16b	v28, v28
+  17bcf8:      	xtn.4h	v29, v21
+  17bcfc:      	fcmge.4s	v30, v10, v20
+  17bd00:      	fcmge.4s	v31, v10, v18
+  17bd04:      	orn.16b	v25, v25, v30
+  17bd08:      	fcmge.4s	v30, v10, v19
+  17bd0c:      	orn.16b	v26, v26, v31
+  17bd10:      	xtn.4h	v31, v22
+  17bd14:      	orn.16b	v27, v27, v30
+  17bd18:      	fcmge.4s	v30, v10, v17
+  17bd1c:      	xtn.4h	v25, v25
+  17bd20:      	xtn.4h	v26, v26
+  17bd24:      	orn.16b	v28, v28, v30
+  17bd28:      	bic.8b	v30, v25, v29
+  17bd2c:      	ushll.4s	v30, v30, #0x0
+  17bd30:      	and.16b	v30, v30, v12
+  17bd34:      	orr.16b	v3, v3, v30
+  17bd38:      	bic.8b	v30, v26, v31
+  17bd3c:      	ushll.4s	v30, v30, #0x0
+  17bd40:      	and.16b	v30, v30, v12
+  17bd44:      	orr.16b	v2, v2, v30
+  17bd48:      	orr.8b	v25, v29, v25
+  17bd4c:      	xtn.4h	v29, v23
+  17bd50:      	xtn.4h	v27, v27
+  17bd54:      	orr.8b	v26, v31, v26
+  17bd58:      	movi.4s	v31, #0x7f, lsl #24
+  17bd5c:      	bic.8b	v30, v27, v29
+  17bd60:      	orr.8b	v27, v29, v27
+  17bd64:      	xtn.4h	v29, v24
+  17bd68:      	xtn.4h	v28, v28
+  17bd6c:      	ushll.4s	v30, v30, #0x0
+  17bd70:      	and.16b	v30, v30, v12
+  17bd74:      	orr.16b	v7, v7, v30
+  17bd78:      	bic.8b	v30, v28, v29
+  17bd7c:      	orr.8b	v28, v29, v28
+  17bd80:      	ushll.4s	v29, v30, #0x0
+  17bd84:      	sshll.4s	v25, v25, #0x0
+  17bd88:      	sshll.4s	v26, v26, #0x0
+  17bd8c:      	and.16b	v29, v29, v12
+  17bd90:      	sshll.4s	v27, v27, #0x0
+  17bd94:      	sshll.4s	v28, v28, #0x0
+  17bd98:      	bsl.16b	v25, v9, v20
+  17bd9c:      	bsl.16b	v26, v9, v18
+  17bda0:      	bsl.16b	v27, v9, v19
+  17bda4:      	orr.16b	v16, v16, v29
+  17bda8:      	bsl.16b	v28, v9, v17
+  17bdac:      	fcvtl	v29.2d, v25.2s
+  17bdb0:      	fcvtl2	v25.2d, v25.4s
+  17bdb4:      	fadd.2d	v25, v14, v25
+  17bdb8:      	fadd.2d	v29, v14, v29
+  17bdbc:      	fcvtn	v29.2s, v29.2d
+  17bdc0:      	fcvtn2	v29.4s, v25.2d
+  17bdc4:      	fcvtl	v25.2d, v26.2s
+  17bdc8:      	fcvtl2	v26.2d, v26.4s
+  17bdcc:      	fadd.2d	v26, v14, v26
+  17bdd0:      	fadd.2d	v25, v14, v25
+  17bdd4:      	fcvtn	v25.2s, v25.2d
+  17bdd8:      	fcvtn2	v25.4s, v26.2d
+  17bddc:      	fcvtl	v26.2d, v27.2s
+  17bde0:      	fcvtl2	v27.2d, v27.4s
+  17bde4:      	fadd.2d	v27, v14, v27
+  17bde8:      	fadd.2d	v26, v14, v26
+  17bdec:      	fcvtn	v26.2s, v26.2d
+  17bdf0:      	fcvtn2	v26.4s, v27.2d
+  17bdf4:      	fcvtl	v27.2d, v28.2s
+  17bdf8:      	fcvtl2	v28.2d, v28.4s
+  17bdfc:      	fadd.2d	v28, v14, v28
+  17be00:      	fadd.2d	v27, v14, v27
+  17be04:      	fcvtn	v27.2s, v27.2d
+  17be08:      	fcvtn2	v27.4s, v28.2d
+  17be0c:      	bsl.16b	v21, v31, v29
+  17be10:      	movi.4s	v28, #0x1b
+  17be14:      	bsl.16b	v22, v31, v25
+  17be18:      	bsl.16b	v23, v31, v26
+  17be1c:      	bsl.16b	v24, v31, v27
+  17be20:      	stp	q21, q22, [x9, #-0x20]
+  17be24:      	bic.4s	v20, #0x80, lsl #24
+  17be28:      	cmeq.4s	v20, v20, v0
+  17be2c:      	sub.4s	v1, v1, v20
+  17be30:      	bic.4s	v18, #0x80, lsl #24
+  17be34:      	cmeq.4s	v18, v18, v0
+  17be38:      	sub.4s	v4, v4, v18
+  17be3c:      	bic.4s	v19, #0x80, lsl #24
+  17be40:      	cmeq.4s	v18, v19, v0
+  17be44:      	sub.4s	v5, v5, v18
+  17be48:      	stp	q23, q24, [x9], #0x40
+  17be4c:      	bic.4s	v17, #0x80, lsl #24
+  17be50:      	cmeq.4s	v17, v17, v0
+  17be54:      	sub.4s	v6, v6, v17
+  17be58:      	add	x8, x8, #0x40
+  17be5c:      	subs	x3, x3, #0x10
+  17be60:      	b.ne	0x17bc60 <_arithmetic_float_scalar_write+0xee4>
+  17be64:      	orr.16b	v2, v2, v3
+  17be68:      	orr.16b	v2, v7, v2
+  17be6c:      	orr.16b	v2, v16, v2
+  17be70:      	ext.16b	v3, v2, v2, #0x8
+  17be74:      	orr.8b	v2, v2, v3
+  17be78:      	fmov	x8, d2
+  17be7c:      	lsr	x9, x8, #32
+  17be80:      	orr	w9, w8, w9
+  17be84:      	add.4s	v1, v4, v1
+  17be88:      	add.4s	v2, v6, v5
+  17be8c:      	add.4s	v1, v2, v1
+  17be90:      	addv.4s	s1, v1
+  17be94:      	fmov	w8, s1
+  17be98:      	cmp	x1, x2
+  17be9c:      	b.ne	0x17beb0 <_arithmetic_float_scalar_write+0x1134>
+  17bea0:      	movi.4s	v17, #0x1
+  17bea4:      	movi.4s	v12, #0x81, lsl #24
+  17bea8:      	ldp	q13, q18, [sp, #0x50]
+  17beac:      	b	0x17ba48 <_arithmetic_float_scalar_write+0xccc>
+  17beb0:      	tst	x1, #0xc
+  17beb4:      	movi.4s	v17, #0x1
+  17beb8:      	movi.4s	v12, #0x81, lsl #24
+  17bebc:      	ldp	q13, q18, [sp, #0x50]
+  17bec0:      	b.eq	0x17c08c <_arithmetic_float_scalar_write+0x1310>

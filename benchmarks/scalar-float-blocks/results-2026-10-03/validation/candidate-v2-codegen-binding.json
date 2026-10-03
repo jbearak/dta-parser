@@ -1,0 +1,29 @@
+{
+  "commit": "2e512880b15ea5ef8d56c65a4916af3ad71fb928",
+  "source_header_sha256": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+  "installed_dll_sha256": "6634cca73d0e728f0f1235875bc2e850514af89cb41b17672c312f304916f75b",
+  "build_receipt_sha256": "c849bacb39698448cd977058b2585c5720edcb06d6e57a50060fc8145def912e",
+  "disassembler_command": [
+    "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+    "--disassemble-symbols=_arithmetic_float_scalar_write",
+    "--no-show-raw-insn",
+    "<scalar-block-evidence>/candidate-v2/library/dtatools/libs/dtatools.so"
+  ],
+  "disassembler_path": "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+  "disassembler_sha256": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+  "disassembly_sha256": "2eb6bb3f44becd3abf4acfe0e4d2cf20cab605e7dd07348d3137181ca7c8abe7",
+  "symbol_begin": "0x1a0830",
+  "exception_excerpt_begin": "0x1a1658",
+  "exception_excerpt_end_exclusive": "0x1a1978",
+  "exception_excerpt_sha256": "92aaf0db3f8b3607f5dbf52475b4d10add8fe4a9362ce017ac8bfb3d6255a81c",
+  "observations": [
+    "The previously scalar modern missing-bearing float/add/fit route now contains four-lane exact source classification and fit comparisons, finite-anchor selects, binary64 fadd.2d with widening/narrowing, and vector missing/promotion reductions.",
+    "The only source implementation change against rejected9520 is the immutable conditional lower/upper and anchor snapshots, already bound in exception-codegen-v2/source.patch."
+  ],
+  "limits": [
+    "Static installed-DLL evidence establishes restored SIMD, not timing recovery.",
+    "The private compiler diagnostic reported cost-model refusal before the change, rather than illegal alias dependence."
+  ],
+  "exception_excerpt_matches_diagnostic_object_relative_instructions": true,
+  "diagnostic_object_binding_sha256": "757a30164e92db681e43e364681e29b1503f59e311e60755647ce8b053f0a045"
+}

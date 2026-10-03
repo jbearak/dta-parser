@@ -1,0 +1,42 @@
+{
+  "status": "ACCEPTED",
+  "candidate_commit": "2e512880b15ea5ef8d56c65a4916af3ad71fb928",
+  "baseline_commit": "dbcf75cbfe589b5ac2a78166d1e436faa7bbb896",
+  "decided_utc": "2026-10-03T08:37:38.948189+00:00",
+  "independent_audits": {
+    "<independent-audit>/scalar-block-v2-screen-audit.json": "2cbedab4435f19c6a11db80f86739fa521d057f5fc887e3e6bfb1ab3d1db1289",
+    "<independent-audit>/final-scalar-block-arithmetic-audit.json": "e8b66faf2c9790be9289832733ae9c2dffda4d6ccce7d95dec4a93c36e65c050"
+  },
+  "reason": "Final 720 removes the rejected dense regression while improving ordinary, sparse, clustered, prefix and suffix scalar workloads. Original 1,224 confirms all eight original diagnostic cases meet the unchanged 1.5x target, with eight changed float-scalar cases 1.744\u20132.034x faster and 0.796\u20130.984x typed. Exact semantics and full qualification pass.",
+  "original_gate": {
+    "threshold_compact_typed_cpu": 1.5,
+    "cases": 8,
+    "passed": 8
+  },
+  "remaining_gaps": {
+    "targeted_dense_compact_typed_cpu": [
+      1.822,
+      1.9
+    ],
+    "full34_over_1_5": 5,
+    "full34_compact_typed_cpu": [
+      0.774,
+      2.27
+    ],
+    "scope": "Four reciprocal cases and sparse long + float remain above 1.5x. No universal ordinary-double parity claim."
+  },
+  "unchanged_control_outliers": {
+    "missing_int_plus_double": {
+      "direct_speedup": 1.104,
+      "paired_speedup": 1.056,
+      "attributed": false
+    },
+    "no_missing_float_plus_double": {
+      "direct_speedup": 0.965,
+      "paired_speedup": 0.994,
+      "attributed": false
+    }
+  },
+  "rejected_candidate_retained": "9520f1105eb2556333642b9f591a6d3c9cf89bdc",
+  "stage_gains_not_multiplied": true
+}

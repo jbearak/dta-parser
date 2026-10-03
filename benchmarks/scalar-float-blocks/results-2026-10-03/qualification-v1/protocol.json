@@ -1,0 +1,15 @@
+{
+  "cases_per_build_round": 60,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million plain contiguous float values, exactly representable in binary32. Seven patterns: none, sparse grid997, random exact50%, first50%, prefix256, suffix256, alltags. All27 canonical missing ranks cycle where present.",
+  "interval": "No clocks or calibration: one recorded call after primer and before full verification.",
+  "limits": "One host, one million rows, modern canonical missing values, plain input only. No reader throughput, retained-layout throughput, temporal, arbitrary import, reverse-division or universal parity claim. Different patterns do not isolate branch prediction. Bare R has less storage policy.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "native": "Actual scalar entry counter must equal every retained timed call for both typed builds; zero for bare R. A preceding public primer call settles lazy admission before the counted qualification call.",
+  "operations": "Public x+0.1, x-0.1, x*1.01 and x/1.01. Compact-float and typed-double controls for every pattern; bare R only without missing values. Requested threads1.",
+  "oracle": "Full input/rank/result/missing/metadata hashes, independent binary64 arithmetic then binary32 output rounding for compact, exact result storage/missing caches and unchanged source/native ownership. Typed and bare binary64 results intentionally differ from compact float-rounded results. Metadata stability is per case.",
+  "order": "Fresh R process per build/round; alternate paired build order. Rotate seven patterns and reverse on even rounds, not exhaustive permutations or equal pattern-position counts. Reverse four-operation order on even rounds. Two-representation orders alternate; no-missing three-representation cases use all six permutations.",
+  "phase": "qualify",
+  "rounds": 1
+}
