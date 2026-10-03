@@ -1,0 +1,9 @@
+{
+  "status": "REJECTED",
+  "candidate_commit": "9520f1105eb2556333642b9f591a6d3c9cf89bdc",
+  "baseline_commit": "dbcf75cbfe589b5ac2a78166d1e436faa7bbb896",
+  "observations": 720,
+  "independent_audit": "<independent-audit>/scalar-block-screen-audit.json",
+  "reason": "Random half-missing and all-missing cases take approximately56\u201360%more CPU, despite ordinary/sparse gains. Candidate cannot ship asis.",
+  "mechanism_under_investigation": "Candidate exact fallback loop emits scalar instructions; compare baseline and compiler vectorization diagnostics before selecting fix."
+}

@@ -1,0 +1,15 @@
+{
+  "status": "PASS_STATIC_CODEGEN_ONLY",
+  "remarks": {
+    "Vectorized": 180,
+    "VectorMixedPrecision": 80
+  },
+  "modern_missing_float_add_fit_dispatch": "0x17af54 -> 0x17ba54 -> failed proof at 0x17bba4 -> exact SIMD loop0x17bc60",
+  "exact_simd_loop_begin": "0x17bc60",
+  "exact_simd_loop_backedge": "0x17be60",
+  "excerpt_sha256": "c714f483125c6699346eef8919829509f357b90fa13a64a6cbb31d358fe01002",
+  "source_delta_sha256": "8faf7abddf1f3d6519c5584195107de2946b0a66d4b14a487b407e6052d67cc5",
+  "compilation_binding_sha256": "7d89138de25e8ff2c3beff1f995b5ef8adf82c523768c80bda7483f720afcc70",
+  "disassembly_binding_sha256": "757a30164e92db681e43e364681e29b1503f59e311e60755647ce8b053f0a045",
+  "limits": "Private object, original production flags plus diagnostic reporting; not a clean package DLL or measurement. The single source delta removes all 20 cost-model refusals and restores SIMD exact specializations, without claiming timing recovery."
+}

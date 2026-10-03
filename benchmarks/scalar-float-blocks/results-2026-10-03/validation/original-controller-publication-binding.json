@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "measured_before_after_sha256": {
+    "general-run.py": "63eb3f9bceee47fa979da2a8721494d9a3e70f69b071d8a11e5f0b1897123fd9",
+    "general-worker.R": "d628f94931ca845102fc27aa431a387c43d6344361ffa080e22b81c245a6329e"
+  },
+  "publication_validation_test_sha256": "936c479c9f4f6d7e6d011256e8a2ad63338aab52c8af86da4f2c0a21640ca2a4",
+  "scope": "Controller and worker hashes equal the completed before/after measurement receipts. The test snapshot is separately frozen at publication; it was not a measured controller dependency."
+}

@@ -1,5 +1,11 @@
 # Scalar float block comparison
 
+[Measured results and rejected prototype](results-2026-10-03.md) include the
+720-observation targeted screen, the original 1,224-observation arithmetic
+panel and their independent audits. The evidence directory contains redacted
+historical snapshots; their private paths must be restored for replay.
+Maintained controllers and regression tests are the files in this directory.
+
 This screen measures public `x + 0.1`, `x - 0.1`, `x * 1.01` and `x / 1.01`
 on one million plain compact-float values. Typed doubles provide controls for
 every pattern; bare R doubles are included only without missing values.

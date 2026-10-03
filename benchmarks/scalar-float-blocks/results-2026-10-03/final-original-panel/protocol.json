@@ -1,0 +1,13 @@
+{
+  "baseline_commit": "dbcf75cbfe589b5ac2a78166d1e436faa7bbb896",
+  "candidate_commit": "2e512880b15ea5ef8d56c65a4916af3ad71fb928",
+  "cases_per_build_round": 102,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, storage, source hashes and source states.",
+  "experiment": "Scalar block proofs against accepted compact-pair arithmetic; both builds must use native kernels. Worker candidate label enables the same route gate for both roles; comparison roles remain baseline/candidate.",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}

@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "source_commit": "9520f1105eb2556333642b9f591a6d3c9cf89bdc",
+  "reviewer": "independent reader architecture agent",
+  "scope": [
+    "Conservative magnitude/range proof and original binary64 scalar precision",
+    "Captured-span bound, ownership/read claims and interrupts",
+    "Inherited missing counts and newly observed infinity normalization",
+    "Whole-column promotion and original-input recomputation",
+    "Appended semantic boundary/import/retained-span tests",
+    "Source/DLL/disassembly excerpt binding and limited static code-generation claims"
+  ],
+  "findings": [],
+  "input_sha256": {
+    "source_header": "0b55c0c7a538cd76db5848189dbd8b5f2a5d692995a94750e8316ecaec170509",
+    "parity_tests": "77b3b060411196f85b48a7d45b8b6906043d7436224ef7c87950fae1280dae4d",
+    "codegen_binding": "9ec3493f2da37bef1d0c74719b1694596bed082d231418387ecfdb1a7ce5f1e6",
+    "codegen_excerpt": "b00c667f5f549b2000f832a45885ccf4a6505b3e755a92aad557a45752e96462"
+  }
+}

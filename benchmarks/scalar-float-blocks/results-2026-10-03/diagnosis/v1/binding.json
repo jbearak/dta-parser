@@ -1,0 +1,42 @@
+{
+  "created_utc": "2026-10-03T07:38:37.682838+00:00",
+  "disassembler": "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+  "disassembler_sha256": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+  "scope": "Fresh exact-symbol disassembly of the receipt-bound installed DLLs. Baseline writer is inlined in general producer; candidate has its own symbol. No performance timings or package modifications.",
+  "builds": {
+    "baseline": {
+      "build": "<arithmetic-evidence>/integration-candidate",
+      "commit": "dbcf75cbfe589b5ac2a78166d1e436faa7bbb896",
+      "variant": "candidate",
+      "receipt_sha256": "eccfd561ca3dd6ad362860ccf609a1a497fdbf831209fdb0cb358c9bbd7af155",
+      "dll_sha256": "150b21222be7c5f8ee2c7505b04e066a5fd9d49510ef83433c8a903cf3a6522a",
+      "source_header_sha256": "7370bb080c77b0a9a449d4b676b6c055869603d981e5888e67f5d9895fcf14dc",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+        "--disassemble-symbols=_arithmetic_general_produce",
+        "--no-show-raw-insn",
+        "<arithmetic-evidence>/integration-candidate/library/dtatools/libs/dtatools.so"
+      ],
+      "disassembly": "<scalar-block-evidence>/exception-codegen-v1/baseline.txt",
+      "disassembly_sha256": "eb61a0d522169ebdbb7a95ac4d05575014bf3b9d06b272c7586b2738a9aca330",
+      "instruction_lines": 36842
+    },
+    "candidate": {
+      "build": "<scalar-block-evidence>/candidate-v1",
+      "commit": "9520f1105eb2556333642b9f591a6d3c9cf89bdc",
+      "variant": "baseline",
+      "receipt_sha256": "e54577683cc7a399901d4594e736f1898392e53147ed6f04fd9cc77e71ac9bb2",
+      "dll_sha256": "0f0427467ccd40fd97c90f4a2c48fd157974b4cac3c3cfbdc8e57186d6d4377a",
+      "source_header_sha256": "0b55c0c7a538cd76db5848189dbd8b5f2a5d692995a94750e8316ecaec170509",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+        "--disassemble-symbols=_arithmetic_float_scalar_write",
+        "--no-show-raw-insn",
+        "<scalar-block-evidence>/candidate-v1/library/dtatools/libs/dtatools.so"
+      ],
+      "disassembly": "<scalar-block-evidence>/exception-codegen-v1/candidate.txt",
+      "disassembly_sha256": "f0f1b225092151448cad26e80c00de7798af5679a2e43e338d39268ecb3daede",
+      "instruction_lines": 17873
+    }
+  }
+}
