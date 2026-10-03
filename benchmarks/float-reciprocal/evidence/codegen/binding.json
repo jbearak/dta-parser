@@ -1,0 +1,40 @@
+{
+  "excerpts": {
+    "installed-producer.txt": {
+      "sha256": "9cbbe3cb2bc2683ce4592406a4b6b0bcedf08b2712a4b3fd4f1b7e03de14cf76",
+      "source_line_ranges": [
+        [
+          218,
+          252
+        ],
+        [
+          7248,
+          7294
+        ]
+      ]
+    },
+    "producer.txt": {
+      "sha256": "27646463d7395a8a83ccf54dd82699fd4f62e5465f0f466dd8ab9a645dd0753b",
+      "source_line_ranges": [
+        [
+          218,
+          252
+        ],
+        [
+          7248,
+          7294
+        ]
+      ]
+    },
+    "remarks.txt": {
+      "selection": "Every line mentioning numeric-arithmetic-float-reciprocal.h",
+      "sha256": "23a785a6c1a416f2c614c427f6fdafc3e98bf6a8a830cfc47af5f38f603a306f"
+    }
+  },
+  "originals": {
+    "installed-producer.txt": "ba4a515edac17b65c93f34320451755ba1bd65dfb24d985acd5c340a360ea5ba",
+    "producer.txt": "cb4145c97960fe47a2cca932220c7b84a595ba57e8a72d06cfcb3e9ac1460f4c",
+    "remarks.log": "cf4b759f8170790588e6aa6a9fcf302d6e7aa340b6320c341e004594b8d86ba2"
+  },
+  "scope": "Post-run line extraction from previously bound release object and installed DLL disassemblies; no new compilation or measurement."
+}

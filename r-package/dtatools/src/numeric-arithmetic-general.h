@@ -391,6 +391,7 @@ static void arithmetic_general_integer_scalar_write(
 
 #include "numeric-arithmetic-integer-reciprocal.h"
 #include "numeric-arithmetic-float-scalar.h"
+#include "numeric-arithmetic-float-reciprocal.h"
 #include "numeric-arithmetic-pair.h"
 #include "numeric-arithmetic-pair-float.h"
 
@@ -415,6 +416,10 @@ static int arithmetic_general_produce(
     if (arithmetic_float_scalar_prove(
             left, right, length, operation, output->kind, &float_proof))
         return arithmetic_float_scalar_write(&float_proof, length, output);
+    arithmetic_float_reciprocal_proof reciprocal_proof;
+    if (arithmetic_float_reciprocal_prove(
+            left, right, length, operation, output->kind, &reciprocal_proof))
+        return arithmetic_float_reciprocal_write(&reciprocal_proof, length, output);
     if (arithmetic_pair_float_admitted(
             left, right, length, operation, output->kind))
         return arithmetic_pair_float_write(left, right, length, operation, output);
