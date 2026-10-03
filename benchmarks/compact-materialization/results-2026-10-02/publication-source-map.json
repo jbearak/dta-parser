@@ -384,6 +384,36 @@
     "published_sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4",
     "source": "<private-evidence>/archive-checker-tests.log"
   },
+  "validation/arithmetic-main-integration/binding.json": {
+    "original_sha256": "4355d38706f4ae6eb000eeec4d2c738e9ad3ec1f683ea1f3b4a7c1313c58fbf7",
+    "published_sha256": "4355d38706f4ae6eb000eeec4d2c738e9ad3ec1f683ea1f3b4a7c1313c58fbf7",
+    "source": "<arithmetic-main-integration>/binding.json"
+  },
+  "validation/arithmetic-main-integration/build-receipt.json": {
+    "original_sha256": "b265941f698217f9fafac544adce5576768e47a3e89ea170d21b9f1c7c436fd4",
+    "published_sha256": "b265941f698217f9fafac544adce5576768e47a3e89ea170d21b9f1c7c436fd4",
+    "source": "<arithmetic-main-integration>/build-receipt.json"
+  },
+  "validation/arithmetic-main-integration/focused.R": {
+    "original_sha256": "0eae034577b2100de20ed2034a11cad86f9cc83890732d83f145a1dd5b07825e",
+    "published_sha256": "0eae034577b2100de20ed2034a11cad86f9cc83890732d83f145a1dd5b07825e",
+    "source": "<arithmetic-main-integration>/focused.R"
+  },
+  "validation/arithmetic-main-integration/focused.csv": {
+    "original_sha256": "d2cbbd630d150f42f695ad489ec71f47e6a2f589af616c5d0d1e7b5e79b6a2c7",
+    "published_sha256": "d2cbbd630d150f42f695ad489ec71f47e6a2f589af616c5d0d1e7b5e79b6a2c7",
+    "source": "<arithmetic-main-integration>/focused.csv"
+  },
+  "validation/arithmetic-main-integration/focused.log": {
+    "original_sha256": "09aa0a42140146438078455b1f7af72f18e2d45e2fbeffe1e7d5b818aafca2dc",
+    "published_sha256": "09aa0a42140146438078455b1f7af72f18e2d45e2fbeffe1e7d5b818aafca2dc",
+    "source": "<arithmetic-main-integration>/focused.log"
+  },
+  "validation/arithmetic-main-integration/manifest-tests.log": {
+    "original_sha256": "eb8c88bdf6d7bffd457b38469078be30b7e97db745e82c5f24162939bad78be2",
+    "published_sha256": "eb8c88bdf6d7bffd457b38469078be30b7e97db745e82c5f24162939bad78be2",
+    "source": "<arithmetic-main-integration>/manifest-tests.log"
+  },
   "validation/combined-controller-tests.log": {
     "original_sha256": "d03e6ffa7b68a712ac5c0a8d526f5dc8d744f35ce38b61e3e391d14279a78ae5",
     "published_sha256": "d03e6ffa7b68a712ac5c0a8d526f5dc8d744f35ce38b61e3e391d14279a78ae5",
