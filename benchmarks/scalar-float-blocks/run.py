@@ -16,7 +16,7 @@ from core import cases, require, validate_all, validate_round, summarize
 
 HERE = Path(__file__).resolve().parent
 COMMITS = {'baseline': 'dbcf75cbfe589b5ac2a78166d1e436faa7bbb896',
-           'candidate': '9520f1105eb2556333642b9f591a6d3c9cf89bdc'}
+           'candidate': '2e512880b15ea5ef8d56c65a4916af3ad71fb928'}
 
 
 def digest(path):
