@@ -1,0 +1,16 @@
+{
+  "artifacts": {
+    "binding-after.json": "85a18758814dafe75b7b634ff28b10f40acb919de311f5ce9fb2a09b706f5068",
+    "binding-before.json": "965f639f894e62ebca896f5a4d776edb92cc4750a8f7d5372c4355b7b735a517",
+    "protocol.json": "73e02a509d952d8eb89b9d7e9bd29a1fcd1733355bc1618044632e86f04ec18e",
+    "raw.csv": "7b2acc45257d704b0393ae78693061de1791d1aff6e17701432a401ea3adad93",
+    "summary.csv": "7b016591e90963f0c7d827106ae574f4d26df7b3347559bb2a295248c85472ad"
+  },
+  "bindings_unchanged": true,
+  "full_results_exact": true,
+  "observations": 504,
+  "phase": "measure",
+  "raw_encoding_exact": true,
+  "rounds": 6,
+  "timings_collected": true
+}
