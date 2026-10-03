@@ -71,10 +71,9 @@ with exact missing-code and scalar-precision semantics. Retained-column
 throughput remains a separate question.
 
 The [retained-float and decoded-double comparison follow-up](native-comparison/results-2026-10-03.md)
-separately measures direct double-pair kernels, retained scheduling, direct
-float comparisons and a missing-threshold shortcut. It records the scheduling
-CPU/elapsed-time tradeoff and the outstanding dense-input and conformance
-qualification alongside the measured sparse-input gains.
+measures direct double-pair kernels, retained scheduling and vectorized float
+block comparisons. It reports ordinary/sparse parity, dense-missing guards,
+the scheduling CPU/elapsed-time tradeoff and rejected per-row shortcuts.
 
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.

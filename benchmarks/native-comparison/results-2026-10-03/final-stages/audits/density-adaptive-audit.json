@@ -1,0 +1,99 @@
+{
+  "artifacts": {
+    "completion.json": "bb3843368327ee7149badd1a2909dedc2cbae1ce8dd3a26de5aae2e3446288fc",
+    "protocol.json": "ebc182d0e5ac51f87b65f6b2751b31a0c3ba5c65ad869bda34a6351e9c51e8f2",
+    "provenance-after.json": "31630569ff6ebc718e1fdb89de6cd9b8a7f84a05788262df1eb2f2931d57a605",
+    "provenance-before.json": "31630569ff6ebc718e1fdb89de6cd9b8a7f84a05788262df1eb2f2931d57a605",
+    "raw.csv": "53d75d0fb90e2964ec9f4eaec9e4b8aef72397c156f7cfecd72b7104ae44fa47",
+    "source.patch": "e7037551cb1db6fae1bc1bb127a77770cec36986006a81b351dc3268ebde090c",
+    "summary.csv": "98417fec103ea42b2d3cdb25ac31f6f798750f954e82be7eba221f10c50aa34d"
+  },
+  "audit": "Independent artifact recomputation; no R/build/timing jobs",
+  "caveats": [
+    "Native eligibility is not a per-timed-call entry counter.",
+    "Randomized and clustered cases have different joint missing rates.",
+    "Constructed modern retained float inputs, threads1 and fixed mismatched chunk geometry only.",
+    "Current large binaries were not rehashed in this independent lightweight audit; recorded inventories agree."
+  ],
+  "checks": [
+    "full case matrix and worker/raw identity",
+    "six density permutations and balanced representation/build/operation orders",
+    "full result/input/rank/metadata hashes and unchanged source states",
+    "missing marginals/joint rates and native eligibility",
+    "equivalent representation oracle",
+    "every CPU/wall median, speedup, paired speedup and typed ratio",
+    "before/after bindings, original clean receipts, current controllers and exact execution runtime",
+    "identically bound prior qualification and every completion artifact hash"
+  ],
+  "cpu_interval_range": [
+    0.239,
+    0.324
+  ],
+  "joint_missing_by_density": {
+    "all_tags": 1000000,
+    "clustered_half": 500000,
+    "random_half": 749863
+  },
+  "observations": 144,
+  "ratios": [
+    {
+      "candidate_compact_typed_cpu": "0.08130048871466021",
+      "compact_cpu_paired_median_speedup": "0.9835433757381207",
+      "compact_cpu_speedup": "0.9935114240353421",
+      "compact_wall_speedup": "0.9920102788279774",
+      "density": "random_half",
+      "operation": "pair_less",
+      "typed_double_cpu_speedup": "0.9965829547510339"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.07766044114176075",
+      "compact_cpu_paired_median_speedup": "0.9875985498041706",
+      "compact_cpu_speedup": "1.0066955647295455",
+      "compact_wall_speedup": "1.006695564729544",
+      "density": "random_half",
+      "operation": "pair_equal",
+      "typed_double_cpu_speedup": "0.9919136036377432"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.3683247269774678",
+      "compact_cpu_paired_median_speedup": "1.4278427024826175",
+      "compact_cpu_speedup": "1.4288757491101003",
+      "compact_wall_speedup": "1.424335614009687",
+      "density": "clustered_half",
+      "operation": "pair_less",
+      "typed_double_cpu_speedup": "0.998874526372719"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.34946044051683056",
+      "compact_cpu_paired_median_speedup": "1.4563637144397492",
+      "compact_cpu_speedup": "1.4779654140326686",
+      "compact_wall_speedup": "1.4805099526378565",
+      "density": "clustered_half",
+      "operation": "pair_equal",
+      "typed_double_cpu_speedup": "1.0072384908294263"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.3254272796102719",
+      "compact_cpu_paired_median_speedup": "0.9901313660777842",
+      "compact_cpu_speedup": "0.9938110261102269",
+      "compact_wall_speedup": "0.9958943413538203",
+      "density": "all_tags",
+      "operation": "pair_less",
+      "typed_double_cpu_speedup": "0.9967281684018461"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.33089507162061155",
+      "compact_cpu_paired_median_speedup": "0.987163868102649",
+      "compact_cpu_speedup": "0.9770344640695713",
+      "compact_wall_speedup": "0.9754239088878928",
+      "density": "all_tags",
+      "operation": "pair_equal",
+      "typed_double_cpu_speedup": "0.9958861644410768"
+    }
+  ],
+  "summary_rows": 6,
+  "wall_interval_range": [
+    0.238,
+    0.323
+  ]
+}

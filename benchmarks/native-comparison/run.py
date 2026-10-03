@@ -134,6 +134,21 @@ def summarize(rows):
     return summary
 
 
+def execution_runtime(rscript):
+    # The source builder records the Unix R executable layout. Be explicit
+    # about that benchmark scope before querying a worker runtime.
+    if os.name == 'nt':
+        raise RuntimeError('This benchmark requires the Unix R executable layout')
+    details = subprocess.check_output(
+        [str(rscript), '--vanilla', '-e', 'cat(R.home(), "\\n", R.version.string, sep="")'],
+        text=True).splitlines()
+    if len(details) != 2:
+        raise RuntimeError('Unexpected Rscript runtime identity')
+    runtime = Path(details[0]) / 'bin' / 'exec' / 'R'
+    return {'R_runtime_sha256': digest(runtime), 'Rscript_sha256': digest(rscript),
+            'R_version': details[1]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline', type=Path, required=True)
@@ -152,10 +167,6 @@ def main():
     builds = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     worker = HERE / 'worker.R'
 
-    def execution_runtime():
-        home = Path(subprocess.check_output([str(rscript), '--vanilla', '-e', 'cat(R.home())'], text=True).strip())
-        runtime = home / 'bin' / 'exec' / 'R'
-        return {'R_runtime_sha256': digest(runtime), 'Rscript_sha256': digest(rscript)}
 
     controllers = {'comparison_controller': Path(__file__).resolve(), 'worker': worker,
                    'build_validation': HERE.parent / 'native-operations' / 'run.py',
@@ -163,7 +174,7 @@ def main():
 
     def binding():
         return {'builds': {variant: inventory(build, variant) for variant, build in builds.items()},
-                'execution': execution_runtime(),
+                'execution': execution_runtime(rscript),
                 'controllers': {name: digest(path) for name, path in controllers.items()}}
 
     before = binding()
@@ -183,7 +194,7 @@ def main():
     write_json(out / 'protocol.json', {
         'rounds': args.rounds, 'cases_per_build_round': len(CASES),
         'host': platform.platform(), 'machine': platform.machine(), 'logical_cpus': os.cpu_count(),
-        'R': subprocess.check_output(['R', '--version'], text=True).splitlines()[0],
+        'R': before['execution']['R_version'],
         'order': 'Alternate build order in fresh R processes; rotate and reverse representations across six rounds. Fixed case order.',
         'interval': 'Repeated public comparisons, output allocation and automatic GC included. Construction, explicit GC, calibration, separate native qualification and full value/metadata/state hashing excluded.',
         'repetitions': 'At least 50 ms calibration; fixed count targets 300 ms retained CPU interval.',

@@ -15,7 +15,9 @@ Build both revisions with `benchmarks/r-file-readers/build-snapshot.py` into
 separate private directories. The `baseline` and `candidate` arguments identify
 experiment roles; each original receipt retains its actual build variant.
 The controller validates clean source inventories, installed libraries and the
-actual Rscript runtime before and after all workers. Run without concurrent
+actual Rscript runtime and version before and after all workers. The benchmark
+builder uses the Unix R executable layout; this controller explicitly rejects
+Windows. This restriction concerns the benchmark, not package support. Run without concurrent
 local tests, builds or other benchmarks:
 
 ```sh
