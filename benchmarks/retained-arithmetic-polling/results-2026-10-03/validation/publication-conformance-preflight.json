@@ -1,0 +1,8 @@
+{
+  "clean_package_export_sha256": "8002ef1807c008f4d0abcfc2f7d7c6939c5be0308341bfe3fa31b069c664bd81",
+  "commit": "58630e9914129b3f54197d7ac3207b75e8c10fe8",
+  "retained_gate_sha256": "bd0d5c3d2113bf8dcfcc90c1fb76bae6c8dad9bae3e2e0b06c677700c3abcf90",
+  "retainer_sha256": "e1cfbf9a0dbd3ea1ed94ce13d049cebed77d7ffe9f97a2237f66e505b386c4e4",
+  "scope": "Required conformance commands unchanged; cleanup additionally preserves checked source archive and text logs.",
+  "source_gate_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758"
+}
