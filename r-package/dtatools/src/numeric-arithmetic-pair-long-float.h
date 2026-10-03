@@ -108,18 +108,19 @@ static int arithmetic_long_float_add_write(
     const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
     const int reverse = x_policy.kind != NUMERIC_LONG;
     const int32_t missing_minimum = reverse ? y_policy.missing_minimum : x_policy.missing_minimum;
-    size_t rows_until_interrupt = 0;
+    size_t completed_since_poll = 0;
+    R_CheckUserInterrupt();
     for (size_t start = 0; start < (size_t) length;) {
-        /* Poll by completed rows, including when small retained chunks split
-           a tile into many spans. Requests cannot cross the next poll boundary. */
-        if (rows_until_interrupt == 0) {
-            R_CheckUserInterrupt();
-            rows_until_interrupt = (size_t) length - start;
-            if (rows_until_interrupt > 16384) rows_until_interrupt = 16384;
-        }
-        size_t count = rows_until_interrupt;
+        size_t count = (size_t) length - start;
+        if (count > 16384) count = 16384;
         const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
         const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
+        /* Preserve complete native spans. Captured read claims keep these
+           pointers stable across the check before processing this span. */
+        if (count > 16384 - completed_since_poll) {
+            R_CheckUserInterrupt();
+            completed_since_poll = 0;
+        }
         unsigned failures = 0;
         for (size_t offset = 0; offset < count;) {
             size_t block = count - offset;
@@ -147,7 +148,7 @@ static int arithmetic_long_float_add_write(
         /* The exact fallback is bounded by this captured span. A dense prefix
            cannot suppress proofs in the rest of a whole contiguous column. */
         start += count;
-        rows_until_interrupt -= count;
+        completed_since_poll += count;
     }
     return NUMERIC_DOUBLE;
 }
