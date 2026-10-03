@@ -83,6 +83,12 @@ the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased input
 The report separates exact allocation savings from timing and states its high
 missing density, batch intervals and retained-owner controls.
 
+The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
+prepares numeric order keys once instead of decoding and validating them during
+sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
+faster and matches typed/ordinary-double throughput within the measured spread.
+It reports the additional eight-byte-per-row-per-key cache cost explicitly.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

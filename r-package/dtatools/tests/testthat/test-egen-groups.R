@@ -160,3 +160,211 @@ test_that("computed NaN group labels use the normalized system missing", {
     egen(data, g = dta_group_id(x / x, missing = TRUE, label = TRUE))
     expect_identical(attr(data$g, "labels"), c("." = 1))
 })
+
+test_that("known numeric grouping prepares each value once before sorting", {
+    values <- as.double((seq_len(10000L) * 13L) %% 97L - 48L)
+    expected <- as.double(match(values, sort(unique(values))))
+    first <- match(sort(unique(values)), values)
+    for (constructor in list(identity, dta_byte, dta_int, dta_long, dta_float, dta_double)) {
+        source <- constructor(values)
+        inputs <- list(source)
+        if (dtatools:::.is_unmaterialized_numeric_altrep(source)) {
+            inputs <- c(inputs, list(.Call(C_dtatools_owned_numeric_freeze, source, 7L)))
+        }
+        for (input in inputs) {
+            compact <- dtatools:::.is_unmaterialized_numeric_altrep(input)
+            .Call(C_dtatools_egen_group_stats, TRUE)
+            plan <- .Call(C_dtatools_egen_group, list(input), FALSE, FALSE)
+            counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+            expect_identical(as.double(plan$codes), expected)
+            expect_identical(plan$first, first)
+            expect_identical(counts[["scalar_values"]], 0)
+            expect_identical(counts[["prepared_values"]], as.double(length(values)))
+            expect_identical(counts[["prepared_bytes"]], 8 * length(values))
+            expect_identical(as.double(input), values)
+            expect_identical(dtatools:::.is_unmaterialized_numeric_altrep(input), compact)
+        }
+    }
+})
+
+test_that("prepared numeric keys preserve missing ranks zero ties and extreme doubles", {
+    values <- c(-.Machine$double.xmax / 2, -1, -0, 0,
+                .Machine$double.xmin * .Machine$double.eps, 1,
+                .Machine$double.xmax / 2, NA_real_, tagged_missing(letters))
+    expected <- as.double(c(1, 2, 3, 3, 4:33))
+    permutation <- c(length(values):1L, seq_along(values), 4L, 3L)
+    for (constructor in list(identity, dta_double)) {
+        input <- constructor(values[permutation])
+        expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected[permutation])
+        observed <- expected[permutation]
+        observed[is.na(values[permutation])] <- NA_real_
+        expect_identical(as.double(dta_group_id(input)), observed)
+        tags <- as.double(!duplicated(expected[permutation]))
+        expect_identical(as.double(dta_group_tag(input, missing = TRUE)), tags)
+    }
+    pattern <- c(3, -2, 0, -0, NA_real_, tagged_missing(letters))
+    ranks <- as.double(c(3, 1, 2, 2, 4:30))
+    for (constructor in list(dta_byte, dta_int, dta_long, dta_float)) {
+        for (size in c(0L, 1L, 31L, 1023L, 1025L)) {
+            input <- .Call(C_dtatools_owned_numeric_freeze,
+                           constructor(rep_len(pattern, size)), 7L)
+            # Smaller samples renumber only ranks actually present.
+            expected <- as.double(match(rep_len(ranks, size), sort(unique(rep_len(ranks, size)))))
+            expect_identical(as.double(dta_group_id(input, missing = TRUE)), expected)
+            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
+        }
+    }
+})
+
+test_that("prepared multiple numeric keys retain stable first rows and row-major errors", {
+    left <- c(2, 1, 1, 2, 1, NA, tagged_missing("a"), 1)
+    right <- c(0, 2, 1, 0, 1, 0, 0, NA)
+    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
+                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right), 5L))
+    .Call(C_dtatools_egen_group_stats, TRUE)
+    plan <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
+    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+    expect_identical(as.double(plan$codes), c(4, 2, 1, 4, 1, 5, 6, 3))
+    expect_identical(plan$first, c(3L, 2L, 8L, 1L, 6L, 7L))
+    expect_identical(counts[["prepared_values"]], 16)
+    expect_identical(counts[["prepared_bytes"]], 128)
+    expect_identical(counts[["scalar_values"]], 0)
+    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
+    expect_error(dta_group_id(c(1, NaN), c(1e308, 0)), "Stata double storage")
+    expect_error(dta_group_id(c(1, 1e308), c(NaN, 0)), "NaN|infinities")
+    for (allow in c(FALSE, TRUE)) {
+        for (invalid in list(Inf, -Inf, tagged_nan_for_test("A"), 1e308)) {
+            expect_error(.Call(C_dtatools_egen_group, list(c(1, invalid)), TRUE, allow),
+                         "NaN|infinities|Stata double storage")
+        }
+    }
+    expect_error(.Call(C_dtatools_egen_group, list(c(1, NaN)), TRUE, FALSE), "NaN")
+    normalized <- .Call(C_dtatools_egen_group, list(c(NaN, 1, NA_real_)), TRUE, TRUE)
+    expect_identical(as.double(normalized$codes), c(2, 1, 2))
+    expect_identical(normalized$first, c(2L, 1L))
+})
+
+test_that("foreign grouping keys preserve callbacks and decline preparation as a whole", {
+    events <- character()
+    first <- .Call(C_dtatools_callback_integer_after, c(2L, 1L, 2L),
+                   function() events <<- c(events, "first-row-two"), 1L)
+    second <- .Call(C_dtatools_callback_double, c(0, 0, 0),
+                    function() events <<- c(events, "second-row-one"), TRUE)
+    compact <- .Call(C_dtatools_owned_numeric_freeze, dta_int(c(1, 1, 1)), 1L)
+    .Call(C_dtatools_egen_group_stats, TRUE)
+    result <- .Call(C_dtatools_egen_group, list(first, compact, second), TRUE, FALSE)
+    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+    expect_identical(as.double(result$codes), c(2, 1, 2))
+    expect_identical(events, c("second-row-one", "first-row-two"))
+    expect_identical(counts[["prepared_values"]], 0)
+    expect_identical(counts[["prepared_bytes"]], 0)
+    expect_gt(counts[["scalar_values"]], 9)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact))
+
+    # The foreign key changes a known key on its first comparison, after the
+    # admission scan. Preparing only the known column would miss this write.
+    changed <- dta_double(c(2, 1, 2))
+    pointer <- .Call(C_dtatools_owned_pointer, changed, TRUE)
+    foreign <- .Call(C_dtatools_callback_integer_after, c(0L, 0L, 0L),
+                     function() .Call(C_dtatools_owned_pointer_write, pointer, 1L, 0), 3L)
+    .Call(C_dtatools_egen_group_stats, TRUE)
+    result <- .Call(C_dtatools_egen_group, list(foreign, changed), TRUE, FALSE)
+    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+    expect_identical(as.double(result$codes), c(1, 2, 3))
+    expect_identical(as.double(changed), c(0, 1, 2))
+    expect_identical(counts[["prepared_values"]], 0)
+
+    # A class callback remains on the original scalar path and may materialize
+    # a compact public handle while its captured bytes remain in use.
+    classes <- .Call(C_dtatools_callback_character, class(compact), function() NULL)
+    attr(compact, "class") <- classes
+    calls <- 0L
+    .Call(C_dtatools_arm_callback_character, classes, function() {
+        calls <<- calls + 1L
+        .force_altrep_materialization(compact)
+        gc()
+    })
+    .Call(C_dtatools_egen_group_stats, TRUE)
+    result <- .Call(C_dtatools_egen_group, list(compact), TRUE, FALSE)
+    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+    expect_identical(as.double(result$codes), rep(1, 3))
+    expect_identical(calls, 1L)
+    expect_identical(counts[["prepared_values"]], 0)
+})
+
+test_that("prepared keys survive collection and temporal and legacy decoding", {
+    for (version in c(105L, 108L, 110L, 111L)) {
+        data <- read_dta(fixture(paste0("synthetic_v", version, ".dta")), output = "tibble")
+        for (source in data) {
+            if (!dtatools:::.is_unmaterialized_numeric_altrep(source)) next
+            plain <- readBin(writeBin(as.double(source), raw(), size = 8L),
+                             double(), length(source), size = 8L)
+            expect_identical(as.double(dta_group_id(source, missing = TRUE)),
+                             as.double(dta_group_id(plain, missing = TRUE)))
+            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source))
+        }
+    }
+    columns <- list(dta_int(c(2, 1, 2, NA)), dta_float(c(0, 0, 0, 1)))
+    collect <- function() {
+        previous <- gctorture(TRUE)
+        on.exit(gctorture(previous))
+        .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
+    }
+    plan <- collect()
+    expect_identical(as.double(plan$codes), c(2, 1, 2, 3))
+    expect_identical(plan$first, c(2L, 1L, 4L))
+    dates <- structure(c(-3652, -3653, -3652, NA_real_), class = "Date")
+    times <- structure(c(-315619199, -315619200, -315619199, NA_real_),
+                       class = c("POSIXct", "POSIXt"))
+    for (input in list(dates, times)) {
+        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
+        expect_identical(as.double(result$codes), c(2, 1, 2, 3))
+        expect_identical(result$first, c(2L, 1L, 4L))
+    }
+})
+
+
+test_that("prepared compact IEEE NaNs obey the existing calculation scope", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    patch_numeric_fixture_row(path, 0L, list(x_float = as.raw(c(1, 0, 192, 127))))
+    patch_numeric_fixture_row(path, 1L, list(x_float = as.raw(c(1, 0, 192, 255))))
+    patch_numeric_fixture_row(path, 2L, list(x_float = as.raw(c(0, 0, 128, 63))))
+    source <- read_dta(path, col_select = "x_float", n_max = 3L)$x_float
+    for (input in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 1L))) {
+        expect_error(.Call(C_dtatools_egen_group, list(input), TRUE, FALSE), "NaN")
+        .Call(C_dtatools_egen_group_stats, TRUE)
+        result <- .Call(C_dtatools_egen_group, list(input), TRUE, TRUE)
+        counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+        expect_identical(as.double(result$codes), c(2, 2, 1))
+        expect_identical(result$first, c(3L, 1L))
+        expect_identical(counts[["prepared_values"]], 3)
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(input))
+    }
+})
+
+test_that("bounded numeric grouping tiles preserve multicolumn order and errors", {
+    rows <- seq_len(10003L)
+    left <- as.double((rows * 13L) %% 7L)
+    right <- as.double(rows %% 11L)
+    expected <- left * 11 + right + 1
+    columns <- list(.Call(C_dtatools_owned_numeric_freeze, dta_int(left), 3L),
+                    .Call(C_dtatools_owned_numeric_freeze, dta_float(right / 8), 1021L))
+    .Call(C_dtatools_egen_group_stats, TRUE)
+    result <- .Call(C_dtatools_egen_group, columns, TRUE, FALSE)
+    counts <- .Call(C_dtatools_egen_group_stats, FALSE)
+    expect_identical(as.double(result$codes), expected)
+    expect_identical(result$first, match(as.double(1:77), expected))
+    expect_identical(counts[["prepared_values"]], 2 * length(rows))
+    expect_identical(counts[["scalar_values"]], 0)
+    expect_true(all(vapply(columns, dtatools:::.is_unmaterialized_numeric_altrep, logical(1))))
+    # The earlier error remains in the second column even when the later error
+    # starts a new decode tile.
+    expect_error(dta_group_id(c(rep(0, 4096), NaN),
+                             c(rep(0, 4095), 1e308, 0)), "Stata double storage")
+    for (input in list(c(2L, 1L, NA_integer_, 2L), c(TRUE, FALSE, NA, TRUE))) {
+        result <- .Call(C_dtatools_egen_group, list(input), TRUE, FALSE)
+        expect_identical(as.double(result$codes), c(2, 1, 3, 2))
+        expect_identical(result$first, c(2L, 1L, 3L))
+    }
+})
