@@ -1,0 +1,61 @@
+{
+  "commit": "254edb0770d04777870f920034f97798d8ec1e92",
+  "root": "<private-tmp>/dta-long-float-add-blocks",
+  "source_sha256": {
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "50a1e567b98b0c39042c4e08187a47c030048ddd9813bc8198e32a94f80e6891",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair-long-float.h": "7e688cd582f3ab3a8926cdfb060459916abe97e719368439d10a60a0bae8ad12",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "source_before_after_equal": true,
+  "controller_sha256": "9501a48eb9d32583a88e10c4c7e9e1fd41d9d488bfcc1e9a6c444eb0d33aece9",
+  "probe_sha256": "d121c582c9acbf50c15b2edd798b3be485ef326637fc2fc2bb3c5029ad466b9f",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "command": [
+    "/usr/bin/cc",
+    "-std=c11",
+    "-O1",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "<private-tmp>/dta-long-float-add-audit/all-missing-green-v2",
+    "<private-tmp>/dta-long-float-add-audit/all-missing-probe/work-count.c",
+    "-lm",
+    "-o",
+    "<private-tmp>/dta-long-float-add-audit/all-missing-green-v2/work-count"
+  ],
+  "run_command": [
+    "<private-tmp>/dta-long-float-add-audit/all-missing-green-v2/work-count",
+    "require-proved"
+  ],
+  "cwd": "<private-tmp>/dta-long-float-add-audit/all-missing-green-v2",
+  "require_proved": true,
+  "exit_code": 0,
+  "cases": 162,
+  "semantic_failures": 0,
+  "work_failures": 0,
+  "artifact_sha256": {
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-arithmetic-pair.h": "cc6aac55ef452f1196f90248d36e4892af5440488644839f3cf90a2fb1bfff86",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "work-count": "d037e7c701c7a429093e881e1a471f57ca0d4c24a913795b34c35096ebb85c24",
+    "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "numeric-arithmetic-pair-long-float.h": "42e939ddc0067b434bfa155b8056c28cc15a85f42b072c1de49e959c4626f75e",
+    "numeric-arithmetic-general.h": "0cbc8724aeab11cc51baeb6659e6c34e792324173ee41fe31ccd416930cfd940",
+    "work-count.csv": "b3623f3122b3a7e8c2d1ad71323ef81f010d3875b0ee253089b1c0e04a74aa33",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "work-count.log": "3bd9c9409145a5cd46b80df562356f3575a56558535ac53751005ddb1558b176",
+    "production-common.h": "eb99691b95d0b471e198ebe5f22defa03051c1ebee4ab0973b1ed99a22b790b6",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620"
+  },
+  "scope": "Actual production result/preflight/pair-producer headers with counters in private copies. Independent bit/classification oracle. Mocked R allocation, span, interrupt and publication boundaries: no ownership/reentry, public missing-cache mutation, performance or compiler-codegen claim."
+}

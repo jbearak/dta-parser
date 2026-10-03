@@ -98,9 +98,20 @@ jobs:
           reciprocal_probe_output=$(mktemp -d)
           trap 'rm -rf "$reciprocal_probe_output"' EXIT
           python3 benchmarks/integer-reciprocal/work-count.py --require-proved --output "$reciprocal_probe_output"
+      - name: Verify retained arithmetic interrupt cadence
+        run: |
+          retained_poll_probe_dir=$(mktemp -d)
+          trap 'rm -rf "$retained_poll_probe_dir"' EXIT
+          python3 -O benchmarks/retained-arithmetic-polling/work-count.py --require-proved --output "$retained_poll_probe_dir/result"
       - name: Test reader benchmark verification
         run: |
           python3 -m unittest discover -s benchmarks/reader-refresh -p 'test_*.py'
+          python3 benchmarks/long-float-addition/test-run.py
+          python3 -O benchmarks/long-float-addition/test-run.py
+          python3 benchmarks/long-float-addition/test-work-count.py
+          python3 -O benchmarks/long-float-addition/test-work-count.py
+          long_float_probe_dir=$(mktemp -d)
+          python3 benchmarks/long-float-addition/work-count.py --output "$long_float_probe_dir/result" --require-proved
           python3 -m unittest discover -s benchmarks/dta-reader-performance -p 'test_*.py'
           python3 -m unittest discover -s benchmarks/reader-parity -p 'test_*.py'
           python3 -m unittest discover -s benchmarks/reader-corpus -p 'test_*.py'
