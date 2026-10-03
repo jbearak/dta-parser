@@ -65,8 +65,8 @@
       "sha256": "1d0bd275759ffeec5625b7e985957666d2d46f22fbf94134d803d1844d06c534"
     },
     "publication-source-map.json": {
-      "bytes": 368107,
-      "sha256": "6ddaaa316615a38543143b96e227c1ae7cfaa73c666efb17e7efc20b37e32a78"
+      "bytes": 368396,
+      "sha256": "4e6ed0a409421746741f90c80e7b248f9e7be83d3a3b6cf1ef38a1cf3b6115ed"
     },
     "qualification/01-01-baseline-finite-1-read.csv": {
       "bytes": 812,
@@ -4485,16 +4485,16 @@
       "sha256": "7b016591e90963f0c7d827106ae574f4d26df7b3347559bb2a295248c85472ad"
     },
     "validation/archive-checker-tests.log": {
-      "bytes": 105,
-      "sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8"
+      "bytes": 109,
+      "sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4"
     },
     "validation/conformance-v2-binding-validation.log": {
       "bytes": 76,
       "sha256": "04c08c9214cf411f7cfae7010313356750a95ed2eaf6f137a2bf62192ae51661"
     },
     "validation/conformance-v2.json": {
-      "bytes": 37909,
-      "sha256": "6a38e7fa5fe16465e92f5e8a695b71f33757d0c74639304a7b09300098d016a5"
+      "bytes": 38003,
+      "sha256": "ecb6280297d742112facbcfe0e66b7c17549616897eb1721b03238a9ad6a8f19"
     },
     "validation/conformance-v2.log": {
       "bytes": 24830,
@@ -4576,6 +4576,10 @@
       "bytes": 26004,
       "sha256": "b127001d92ebe79e93fec1284803094f9627fe7dba8d4a4edee5722a8a997d63"
     },
+    "validation/report-claim-check.json": {
+      "bytes": 1825,
+      "sha256": "b44125f2852d3dfc57e8ed3d7d879839c0a215514edc5e5402a0721f4cd74f1c"
+    },
     "validation/rust-all.log": {
       "bytes": 4635,
       "sha256": "798d87c0ed46b06552a2fda1a6464f924944cde49d3e1969f15f4b33d0d942e9"
@@ -4585,12 +4589,12 @@
       "sha256": "e3a16b07259ae58583001ab5f7197bd0f62d2bcfcaed2edb75c3917061d9601c"
     },
     "validation/test-validate-conformance-archive.py": {
-      "bytes": 5429,
-      "sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a"
+      "bytes": 6596,
+      "sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083"
     },
     "validation/validate-conformance-archive.py": {
-      "bytes": 3204,
-      "sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b"
+      "bytes": 5295,
+      "sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
     }
   },
   "scope": "Text evidence; empty worker logs and large fixture/library binaries are omitted. Every worker CSV is retained. Original and published hashes bind private-path substitutions."

@@ -5595,8 +5595,8 @@
     "source": "<private-evidence>/paired-v1/summary.csv"
   },
   "validation/archive-checker-tests.log": {
-    "original_sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8",
-    "published_sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8",
+    "original_sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4",
+    "published_sha256": "04c82974c782e97dcc07b9c5c6f8add774f7198a6fd8be29c4307913368cd7c4",
     "source": "<archive-validation>/archive-checker-tests.log"
   },
   "validation/conformance-v2-binding-validation.log": {
@@ -5605,8 +5605,8 @@
     "source": "<private-evidence>/conformance-v2-binding-validation.log"
   },
   "validation/conformance-v2.json": {
-    "original_sha256": "6a38e7fa5fe16465e92f5e8a695b71f33757d0c74639304a7b09300098d016a5",
-    "published_sha256": "6a38e7fa5fe16465e92f5e8a695b71f33757d0c74639304a7b09300098d016a5",
+    "original_sha256": "ecb6280297d742112facbcfe0e66b7c17549616897eb1721b03238a9ad6a8f19",
+    "published_sha256": "ecb6280297d742112facbcfe0e66b7c17549616897eb1721b03238a9ad6a8f19",
     "source": "<private-evidence>/conformance-v2.json"
   },
   "validation/conformance-v2.log": {
@@ -5709,19 +5709,24 @@
     "published_sha256": "b127001d92ebe79e93fec1284803094f9627fe7dba8d4a4edee5722a8a997d63",
     "source": "<private-evidence>/measured-package.patch"
   },
+  "validation/report-claim-check.json": {
+    "original_sha256": "b44125f2852d3dfc57e8ed3d7d879839c0a215514edc5e5402a0721f4cd74f1c",
+    "published_sha256": "b44125f2852d3dfc57e8ed3d7d879839c0a215514edc5e5402a0721f4cd74f1c",
+    "source": "<private-evidence>/report-claim-check.json"
+  },
   "validation/rust-all.log": {
     "original_sha256": "0c96f8c04db2de4bbdc5a16ad1d9a03b966e4888020859eba288ec28c689b175",
     "published_sha256": "798d87c0ed46b06552a2fda1a6464f924944cde49d3e1969f15f4b33d0d942e9",
     "source": "<private-evidence>/rust-all.log"
   },
   "validation/test-validate-conformance-archive.py": {
-    "original_sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a",
-    "published_sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a",
+    "original_sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083",
+    "published_sha256": "95f266dd47a06354640af6d9a5b613e3e543fb7fe6ca15d0f4cc523d36a8e083",
     "source": "<archive-validation>/test-validate-conformance-archive.py"
   },
   "validation/validate-conformance-archive.py": {
-    "original_sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b",
-    "published_sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b",
+    "original_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+    "published_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
     "source": "<archive-validation>/validate-conformance-archive.py"
   }
 }

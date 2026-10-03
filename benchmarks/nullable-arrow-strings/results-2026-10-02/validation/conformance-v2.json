@@ -1,6 +1,7 @@
 {
   "buildignore_sha256": "e83629afa88e670a76f857681177ec14f8ac8e238479213a77f443abda62cbaf",
   "checked_source_matches_clean_export": true,
+  "clean_export_matches_source_commit": true,
   "deliberately_excluded_by_buildignore": [
     "src/dta-tools/examples/bench.rs",
     "src/dta-tools/examples/typescript_arrow_fixtures.rs",
@@ -24,6 +25,7 @@
     "src/dta-tools/tests/write.rs"
   ],
   "exact_packaged_source_inventory": true,
+  "expected_hashes_from_committed_blobs": true,
   "repository_environment_overrides_removed": true,
   "required_conformance_passed": true,
   "source_archive_sha256": "dacb0d7e7b9a0548f769cb80912d47ffae442f813975d8461630f226bd6e1a2e",
