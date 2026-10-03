@@ -241,6 +241,51 @@ test_that("fallback-owned errors survive the native fast path", {
     .Call(C_dtatools_owned_numeric_freeze, value, rows)
 }
 
+test_that("double pair kernels preserve every missing rank and IEEE comparisons", {
+    values <- c(-Inf, -.Machine$double.xmax, -1, -0, 0,
+                .Machine$double.xmin, 1, .Machine$double.xmax, Inf,
+                NA_real_, tagged_missing(letters))
+    plain <- rep(values, each = length(values))
+    other <- rep(values, times = length(values))
+    # Permissive imported doubles may contain infinities and high finite values
+    # that the public storage constructor does not create.
+    x <- plain
+    y <- other
+    attributes(x) <- attributes(dta_double())
+    attributes(y) <- attributes(dta_double())
+    .float_comparison_expect(x, y, plain, other)
+    .float_comparison_expect(y, x, other, plain)
+    expect_identical(as.double(x), plain)
+    expect_identical(as.double(y), other)
+})
+
+test_that("double pair kernels retain native decline and public NaN errors", {
+    other <- dta_double(c(1, 2, tagged_missing("z")))
+    for (invalid in list(NaN, tagged_nan_for_test("?"), tagged_nan_for_test("A"))) {
+        x <- c(1, invalid, NA_real_)
+        attributes(x) <- attributes(dta_double())
+        for (op in c("==", "!=", "<", "<=", ">", ">=")) {
+            operation <- getExportedValue("base", op)
+            expect_null(dtatools:::.dta_compare_native(op, x, other))
+            expect_null(dtatools:::.dta_compare_native(op, other, x))
+            expect_error(operation(x, other), "noncanonical NaN")
+            expect_error(operation(other, x), "noncanonical NaN")
+        }
+    }
+})
+
+test_that("double temporal pairs compare their already decoded values", {
+    path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(path), add = TRUE)
+    prototype <- read_dta(path)$price
+    plain <- c(-0, 0, 1, 1 + 2^-52, NA_real_, tagged_missing(letters))
+    other <- rev(plain)
+    x <- dtatools:::.restore_dta_temporal(plain, prototype, "double")
+    y <- dtatools:::.restore_dta_temporal(other, prototype, "double")
+    .float_comparison_expect(x, y, plain, other)
+    .float_comparison_expect(y, x, other, plain)
+})
+
 .float_comparison_fixture <- function(bits, display_format = NULL) {
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     for (index in seq_along(bits)) {
