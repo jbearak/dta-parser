@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "artifact_sha256": "6159bd4eaa601f4b21d6a846ed99d98bb4432eb667032ce3db227aa67987a182",
+    "command": [
+      "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+      "--disassemble-symbols=_dtatools_owned_numeric_region,_dtatools_owned_numeric_scalar_span",
+      "<baseline-build>/library/dtatools/libs/dtatools.so"
+    ],
+    "inputs_sha256": {
+      "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+      "<baseline-build>/build-receipt.json": "62143d85a91abad42af25329581bc5fae97e88950e4d25f7ec4ac144da33b6ec",
+      "<baseline-build>/library/dtatools/libs/dtatools.so": "a103b7721e8e00a2e1c88be87b4c3f064fb5aa76cbed8968ab3a688fa578eca6",
+      "<baseline-build>/source/src/rust/src/owned_numeric.rs": "24b84f3e077e43b31b84e2e5decb9067669d1a8f01465eb81db15bd7f6b57443"
+    },
+    "source_commit": "e1b0278b1403b4d8fc2d9a2dfc0c4ddaa7cde3a2",
+    "udiv_count": 0
+  },
+  "candidate": {
+    "artifact_sha256": "bc55094b8b77fac5d8faa98fe5c44cdb8f8c893d43e43cedb3350ef3518dba63",
+    "command": [
+      "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+      "--disassemble-symbols=_dtatools_owned_numeric_region,_dtatools_owned_numeric_scalar_span",
+      "<work>/candidate-build/library/dtatools/libs/dtatools.so"
+    ],
+    "inputs_sha256": {
+      "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+      "<work>/candidate-build/build-receipt.json": "984d3c47fa4ad400a0a57ad9e60c63539dc641d160e4dfd30644f6453b32a310",
+      "<work>/candidate-build/library/dtatools/libs/dtatools.so": "2cc1a0c051ad9a75aba98e7939e4e950efad77938df87fde20489ede9e017388",
+      "<work>/candidate-build/source/src/rust/src/owned_numeric.rs": "b415a66850d2eed8324644dfbb0b5c05eeb9e0c884065e678897acf68f6a3c51"
+    },
+    "source_commit": "1b1d3770a84353efd14a62a64dabecedfcdf2380",
+    "udiv_count": 2
+  }
+}

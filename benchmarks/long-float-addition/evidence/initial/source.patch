@@ -1,0 +1,415 @@
+--- a/src/Makevars.rust
++++ b/src/Makevars.rust
+@@ -4,7 +4,8 @@
+ 
+ # R derives OBJECTS from every C source in this directory.
+ $(OBJECTS): dtatools-internal.h owned-columns.h row-filter.h mutation-write.h mutation-fast.h egen-values.h egen-groups.h
+-numeric-payload.o: numeric-arithmetic.h
++# Split arithmetic producers are included transitively by numeric-payload.c.
++numeric-payload.o: $(wildcard numeric-arithmetic*.h)
+ 
+ $(RUST_LIB):
+ 	CARGO_TARGET_DIR=$(RUST_TARGET_DIR) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml $(RUST_BUILD_TARGET) --release --locked --offline
+--- a/src/numeric-arithmetic-general.h
++++ b/src/numeric-arithmetic-general.h
+@@ -410,6 +410,8 @@
+     if (arithmetic_float_scalar_prove(
+             left, right, length, operation, output->kind, &float_proof))
+         return arithmetic_float_scalar_write(&float_proof, length, output);
++    if (arithmetic_long_float_add_admitted(left, right, length, operation, output->kind))
++        return arithmetic_long_float_add_write(left, right, length, output);
+     if (arithmetic_pair_float_admitted(
+             left, right, length, operation, output->kind))
+         return arithmetic_pair_float_write(left, right, length, operation, output);
+--- a/src/numeric-arithmetic-pair-long-float.h
++++ b/src/numeric-arithmetic-pair-long-float.h
+@@ -0,0 +1,139 @@
++/* Long/float addition retains its binary64 result. A bounded local proof can
++   exclude missing and nonfinite inputs without classifying every ordinary
++   output lane. Other operations and destinations keep their existing path. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_PAIR_LONG_FLOAT_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_PAIR_LONG_FLOAT_H
++
++static int arithmetic_long_float_add_admitted(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind
++) {
++    if (operation != '+' || kind != NUMERIC_DOUBLE ||
++        !arithmetic_pair_admitted(left, right, length, operation, kind)) return 0;
++    int x_kind = left->operand->reader.storage->kind;
++    int y_kind = right->operand->reader.storage->kind;
++    return (x_kind == NUMERIC_LONG && y_kind == NUMERIC_FLOAT) ||
++        (x_kind == NUMERIC_FLOAT && y_kind == NUMERIC_LONG);
++}
++
++static int arithmetic_long_float_add_ordinary(
++    const unsigned char *integer_raw, const unsigned char *float_raw,
++    size_t count, int32_t missing_minimum
++) {
++    int32_t integer_maximum = INT32_MIN;
++    uint32_t float_maximum = 0;
++    for (size_t i = 0; i < count; i++) {
++        int32_t integer;
++        uint32_t bits;
++        memcpy(&integer, integer_raw + 4 * i, sizeof(integer));
++        memcpy(&bits, float_raw + 4 * i, sizeof(bits));
++        bits &= UINT32_C(0x7fffffff);
++        integer_maximum = integer > integer_maximum ? integer : integer_maximum;
++        float_maximum = bits > float_maximum ? bits : float_maximum;
++    }
++    /* A signed maximum admits INT32_MIN. The conservative float magnitude
++       bound excludes both missing layouts, all NaNs and infinities. High
++       finite imports outside the proof remain valid in the exact fallback. */
++    return integer_maximum < missing_minimum && float_maximum < UINT32_C(0x7f000000);
++}
++
++static void arithmetic_long_float_add_observed(
++    const unsigned char *integer_raw, const unsigned char *float_raw,
++    size_t start, size_t count, int reverse, arithmetic_general_output *output
++) {
++    double *restrict target = output->real + start;
++    if (reverse) {
++        for (size_t i = 0; i < count; i++) {
++            int32_t integer;
++            float value;
++            memcpy(&integer, integer_raw + 4 * i, sizeof(integer));
++            memcpy(&value, float_raw + 4 * i, sizeof(value));
++            target[i] = (double) value + (double) integer;
++        }
++    } else {
++        for (size_t i = 0; i < count; i++) {
++            int32_t integer;
++            float value;
++            memcpy(&integer, integer_raw + 4 * i, sizeof(integer));
++            memcpy(&value, float_raw + 4 * i, sizeof(value));
++            target[i] = (double) integer + (double) value;
++        }
++    }
++    /* Every admitted lane is finite and observed, so this block contributes
++       zero missing outputs. Summing inherited counts would be wrong when
++       missing input positions overlap; exception blocks keep the exact union. */
++}
++
++static void arithmetic_long_float_add_exact(
++    const unsigned char *x_raw, const unsigned char *y_raw,
++    arithmetic_pair_policy x_policy, arithmetic_pair_policy y_policy,
++    size_t start, size_t count, arithmetic_general_output *output
++) {
++    /* Instantiate the existing exact writer, including modern/legacy imports,
++       missing union and the established binary64 expression. */
++    if (x_policy.kind == NUMERIC_LONG) {
++        switch (y_policy.kind) {
++        case NUMERIC_FLOAT:
++            ARITHMETIC_PAIR_LOOP(long, float, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        case ARITHMETIC_SOURCE_OBSERVED_FLOAT:
++            ARITHMETIC_PAIR_LOOP(long, observed_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        case ARITHMETIC_PAIR_LEGACY_FLOAT:
++            ARITHMETIC_PAIR_LOOP(long, legacy_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        }
++    } else {
++        switch (x_policy.kind) {
++        case NUMERIC_FLOAT:
++            ARITHMETIC_PAIR_LOOP(float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        case ARITHMETIC_SOURCE_OBSERVED_FLOAT:
++            ARITHMETIC_PAIR_LOOP(observed_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        case ARITHMETIC_PAIR_LEGACY_FLOAT:
++            ARITHMETIC_PAIR_LOOP(legacy_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL); break;
++        }
++    }
++}
++
++static int arithmetic_long_float_add_write(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, arithmetic_general_output *output
++) {
++    const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
++    const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
++    const int reverse = x_policy.kind != NUMERIC_LONG;
++    const int32_t missing_minimum = reverse ? y_policy.missing_minimum : x_policy.missing_minimum;
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
++        const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
++        unsigned failures = 0;
++        for (size_t offset = 0; offset < count;) {
++            size_t block = count - offset;
++            if (block > 64) block = 64;
++            const unsigned char *x = x_raw + 4 * offset;
++            const unsigned char *y = y_raw + 4 * offset;
++            const unsigned char *integer_raw = reverse ? y : x;
++            const unsigned char *float_raw = reverse ? x : y;
++            if (arithmetic_long_float_add_ordinary(integer_raw, float_raw, block, missing_minimum)) {
++                arithmetic_long_float_add_observed(integer_raw, float_raw,
++                    start + offset, block, reverse, output);
++                failures = 0;
++            } else {
++                arithmetic_long_float_add_exact(x, y, x_policy, y_policy,
++                    start + offset, block, output);
++                failures++;
++            }
++            offset += block;
++            if (failures == 4 && offset < count) {
++                arithmetic_long_float_add_exact(x_raw + 4 * offset, y_raw + 4 * offset,
++                    x_policy, y_policy, start + offset, count - offset, output);
++                break;
++            }
++        }
++        /* The exact fallback is bounded by this captured span. A dense prefix
++           cannot suppress proofs in the rest of a whole contiguous column. */
++        start += count;
++    }
++    return NUMERIC_DOUBLE;
++}
++#endif
+--- a/src/numeric-arithmetic-pair.h
++++ b/src/numeric-arithmetic-pair.h
+@@ -185,6 +185,8 @@
+     }
+     return output->kind;
+ }
++#include "numeric-arithmetic-pair-long-float.h"
++
+ #undef ARITHMETIC_PAIR_RIGHT
+ #undef ARITHMETIC_PAIR_OPERATORS
+ #undef ARITHMETIC_PAIR_TARGETS
+--- a/tests/testthat/test-arithmetic-payload-lifetime.R
++++ b/tests/testthat/test-arithmetic-payload-lifetime.R
+@@ -258,3 +258,49 @@
+     expect_identical(as.double(y)[[1L]], 1000)
+     expect_identical(as.double(alias), rep(1, 128L))
+ })
++
++test_that("long float block proofs retain captured inputs through reentry", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    n <- 32769L
++    for (retained in c(FALSE, TRUE)) for (action in c("patch", "materialize")) {
++        values <- rep(1.5, n)
++        values[seq_len(256L)] <- rep(c(NA_real_, tagged_missing(letters)), length.out = 256L)
++        x <- dta_long(rep(16777217, n))
++        y <- dta_float(values)
++        if (retained) {
++            x <- .Call(C_dtatools_owned_numeric_freeze, x, 8191L)
++            y <- .Call(C_dtatools_owned_numeric_freeze, y, 16385L)
++        }
++        expected <- rep(16777218.5, n)
++        expected[seq_len(256L)] <- NA_real_
++        fired <- 0L
++        .arithmetic_lifetime_arm(function(key) {
++            fired <<- fired + 1L
++            if (action == "patch") {
++                .Call(C_dtatools_patch_vector, x, n, NA_real_)
++                .Call(C_dtatools_patch_vector, y, n, 1e10)
++            } else {
++                .force_altrep_materialization(x)
++                .force_altrep_materialization(y)
++            }
++        })
++        before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++        result <- x + y
++        after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
++        expect_identical(after - before, 1)
++        expect_identical(fired, 1L)
++        gc()
++        expect_identical(dta_storage_type(result), "double")
++        expect_identical(writeBin(as.double(result), raw(), 8L), writeBin(expected, raw(), 8L))
++        cleared <- dibble(x = result)
++        replace_values(cleared, x = 0, where = seq_len(256L))
++        expected[seq_len(256L)] <- 0
++        expect_identical(as.double(cleared$x), expected)
++        expect_false(anyNA(cleared$x))
++        if (action == "patch") {
++            expect_true(is.na(as.double(x)[[n]]))
++            expect_identical(as.double(y)[[n]], 1e10)
++        }
++    }
++})
+--- a/tests/testthat/test-native-arithmetic-parity.R
++++ b/tests/testthat/test-native-arithmetic-parity.R
+@@ -699,3 +699,123 @@
+         }
+     }
+ })
++
++test_that("long float block addition preserves bits and exact missing unions", {
++    .arithmetic_parity_enable()
++    n <- 32769L
++    grid_x <- as.double((seq_len(n) * 13) %% 10001L - 5000L)
++    grid_y <- as.double((seq_len(n) * 19) %% 1001L - 500L) / 8
++    tags <- c(NA_real_, tagged_missing(letters))
++    for (pattern in c("ordinary", "sparse", "prefix", "suffix", "alternating", "all")) {
++        values_x <- grid_x
++        values_y <- grid_y
++        missing_x <- missing_y <- integer()
++        if (pattern == "sparse") {
++            missing_x <- seq.int(13L, n, by = 997L)
++            missing_y <- seq.int(19L, n, by = 991L)
++        } else if (pattern == "prefix") missing_y <- seq_len(256L)
++        else if (pattern == "suffix") missing_y <- seq.int(n - 255L, n)
++        else if (pattern == "alternating")
++            missing_x <- missing_y <- which(((seq_len(n) - 1L) %/% 64L) %% 2L == 0L)
++        else if (pattern == "all") missing_x <- missing_y <- seq_len(n)
++        values_x[missing_x] <- rep(tags, length.out = length(missing_x))
++        values_y[missing_y] <- rep(rev(tags), length.out = length(missing_y))
++        # Ordinary lanes include int32 values that cannot round through float,
++        # zero signs, and the least positive and negative binary32 subnormal.
++        ordinary <- setdiff(seq_len(n), union(missing_x, missing_y))
++        if (length(ordinary) >= 5L) {
++            values_x[ordinary[1:5]] <- c(16777217, -16777217, 0, 0, 0)
++            values_y[ordinary[1:5]] <- c(0.5, -0.5, -0, 2^-149, -2^-149)
++        }
++        for (chunks in list(c(0L, 0L), c(7L, 11L), c(8191L, 16385L))) {
++            x <- .arithmetic_parity_source("long", values_x, if (chunks[[1L]]) chunks[[1L]] else NULL)
++            y <- .arithmetic_parity_source("float", values_y, if (chunks[[2L]]) chunks[[2L]] else NULL)
++            before <- lapply(list(x, y), .arithmetic_parity_bytes)
++            values <- as.double(x) + as.double(y)
++            values[is.na(as.double(x)) | is.na(as.double(y))] <- NA_real_
++            expected <- dtatools:::.dta_computed(values, "double")
++            missing <- is.na(expected)
++            for (reverse in c(FALSE, TRUE)) {
++                info <- paste("long float blocks", pattern, chunks, reverse)
++                actual <- if (reverse)
++                    .arithmetic_parity_expect("+", y, x, "double", "double", info)
++                else .arithmetic_parity_expect("+", x, y, "double", "double", info)
++                expect_identical(is.na(actual), missing, info = info)
++                expect_identical(anyNA(actual), any(missing), info = info)
++                result <- dibble(x = actual)
++                if (any(missing)) replace_values(result, x = 0, where = which(missing))
++                cleared <- as.double(expected)
++                cleared[missing] <- 0
++                expect_identical(.arithmetic_parity_bytes(result$x), writeBin(cleared, raw(), 8L, endian = "little"), info = info)
++                expect_false(anyNA(result$x), info = info)
++                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected), info = info)
++            }
++            expect_identical(lapply(list(x, y), .arithmetic_parity_bytes), before)
++        }
++    }
++})
++
++test_that("long float block addition retains imported exceptions after ordinary spans", {
++    .arithmetic_parity_enable()
++    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    legacy <- tempfile(fileext = ".dta")
++    withr::defer(unlink(c(modern, legacy)))
++    original <- readBin(fixture("synthetic_v111.dta"), "raw",
++        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), 2L, endian = "little"), writeBin(-123456L, raw(), 4L, endian = "little"),
++                writeBin(1.5, raw(), 4L, endian = "little"), writeBin(-2.25, raw(), 8L, endian = "little"))
++    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
++    long_bits <- c(0x80000000, 0x01000001, 0x7fffffe4, 0x7fffffe5, 0x7ffffffe, 0x7fffffff)
++    float_bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff, 0xfeffffff,
++        0x7f000000, 0x7f000001, 0x7f000800, 0x7f00d000, 0x7f7fffff, 0xff7fffff,
++        0x7f800000, 0xff800000, 0x7fc00001, 0xffc00001)
++    for (batch in split(seq_along(float_bits), ceiling(seq_along(float_bits) / 3L))) {
++        xs <- c(0x01000001, long_bits[(batch - 1L) %% length(long_bits) + 1L])
++        ys <- c(0x3f000000, float_bits[batch])
++        bytes <- original
++        for (index in seq_along(xs)) {
++            patch_numeric_fixture_row(modern, index - 1L,
++                list(x_long = raw_bits(xs[[index]]), x_float = raw_bits(ys[[index]])))
++            location <- start + (index - 1L) * 25L
++            bytes[location + 3:6] <- raw_bits(xs[[index]])
++            bytes[location + 7:10] <- raw_bits(ys[[index]])
++        }
++        writeBin(bytes, legacy)
++        for (version in c("modern", "legacy")) {
++            path <- if (version == "modern") modern else legacy
++            columns <- if (version == "modern") c("x_long", "x_float") else c("l", "f")
++            source <- read_dta(path, col_select = tidyselect::all_of(columns), n_max = length(xs))
++            eager <- read_dta(path, col_select = tidyselect::all_of(columns), n_max = length(xs), use_numeric_altrep = FALSE)
++            for (index in seq_along(columns))
++                expect_identical(.arithmetic_parity_bytes(source[[columns[[index]]]]),
++                    .arithmetic_parity_bytes(eager[[columns[[index]]]]))
++            rows <- c(rep(1L, 32769L), seq.int(2L, length(xs)))
++            extended <- lapply(columns, function(column) {
++                small <- source[[column]]
++                kind <- dta_storage_type(small)
++                attributes(small) <- list(class = dtatools:::.dta_storage_class(kind), stata.storage = kind)
++                gathered <- .Call(C_dtatools_gather_numeric, small, NULL, rows, NULL)
++                dtatools:::.dta_merge_restore_gathered(gathered, small)
++            })
++            for (retained in c(FALSE, TRUE)) {
++                x <- if (retained) .Call(C_dtatools_owned_numeric_freeze, extended[[1L]], 8191L) else extended[[1L]]
++                y <- if (retained) .Call(C_dtatools_owned_numeric_freeze, extended[[2L]], 16385L) else extended[[2L]]
++                for (reverse in c(FALSE, TRUE)) {
++                    info <- paste("imported long float blocks", version, retained, reverse)
++                    actual <- if (reverse)
++                        .arithmetic_parity_expect("+", y, x, "double", "double", info)
++                    else .arithmetic_parity_expect("+", x, y, "double", "double", info)
++                    missing <- is.na(as.double(actual))
++                    result <- dibble(x = actual)
++                    if (any(missing)) replace_values(result, x = 0, where = which(missing))
++                    cleared <- as.double(actual)
++                    cleared[missing] <- 0
++                    expect_identical(.arithmetic_parity_bytes(result$x), writeBin(cleared, raw(), 8L, endian = "little"), info = info)
++                    expect_false(anyNA(result$x), info = info)
++                }
++            }
++        }
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -1825,7 +1825,7 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "77b3b060411196f85b48a7d45b8b6906043d7436224ef7c87950fae1280dae4d"
++          "sha256": "0656bd9c93daf510bc287598cc8baafabba67f37f74871c055445da5a655acac"
+         }
+       ],
+       "blocks": [
+@@ -4590,6 +4590,22 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 1931,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "long float block addition preserves bits and exact missing unions",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 738,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "long float block addition retains imported exceptions after ordinary spans",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 841,
+           "warnings": 0
+         }
+       ],
+@@ -6123,7 +6139,7 @@
+         },
+         {
+           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
+-          "sha256": "4c8ab060ede49cc7bc766690db8549204b26a5ca4f64288e2d87b0476a9ba138"
++          "sha256": "d5a4abae63aafba07a458513a554eca3a5d4ed85a4d902c99e14f5d4a3d19805"
+         },
+         {
+           "path": "tests/testthat/test-numeric-materialization.R",
+@@ -7714,6 +7730,17 @@
+           "occurrence": 1,
+           "skip": "allow",
+           "min_pass": 11,
++          "warnings": 0,
++          "min_pass_before_skip": 0,
++          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
++          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
++        },
++        {
++          "file": "test-arithmetic-payload-lifetime.R",
++          "test": "long float block proofs retain captured inputs through reentry",
++          "occurrence": 1,
++          "skip": "allow",
++          "min_pass": 28,
+           "warnings": 0,
+           "min_pass_before_skip": 0,
+           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

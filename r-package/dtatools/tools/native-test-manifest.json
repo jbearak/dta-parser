@@ -1819,7 +1819,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "5f5bcf75a2407e3c84333ff78b30aaf12ad585a52ff1813ef1ef723ca75d774c"
+          "sha256": "52029bd31f693d86f6b0fd7859c49b114dece11801471795f70b60232014ba45"
         }
       ],
       "blocks": [
@@ -4601,6 +4601,38 @@
           "skip": "forbid",
           "min_pass": 756,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "long float block addition preserves bits and exact missing unions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 738,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "long float block addition retains imported exceptions after ordinary spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 841,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "long float all missing facts preserve output bits and cache mutation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 96,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "retained long float addition preserves poll-boundary outputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 480,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6133,7 +6165,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "04a9c655c10a6f31f97163cd4000da98af66a4cf146f09cd2b659b90da3d8bec"
+          "sha256": "297fbed4d1a53ce089bad245dcf1faaec487995bed4b20873949749d75ea51e7"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7746,6 +7778,39 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 30,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "long float block proofs retain captured inputs through reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 28,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "long float all missing facts retain captured counts through reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 120,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "tiny retained pair spans preserve captured sources across reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 36,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

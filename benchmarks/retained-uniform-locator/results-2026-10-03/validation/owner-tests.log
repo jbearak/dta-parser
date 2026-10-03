@@ -1,0 +1,17 @@
+
+running 12 tests
+test owned_numeric::tests::chunk_geometry_preserves_sliced_buffers_and_irregular_tails ... ok
+test owned_numeric::tests::owned_byte_missing_counts_accumulate_across_full_spans_and_chunk_tails ... ok
+test owned_numeric::tests::owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release ... ok
+test owned_numeric::tests::owned_byte_missing_scan_remains_interruptible_between_bounded_spans ... ok
+test owned_numeric::tests::owned_float_missing_counts_preserve_nan_payloads_and_legacy_ranges ... ok
+test owned_numeric::tests::owned_int_missing_counts_cover_every_value_and_release_in_sliced_chunks ... ok
+test owned_numeric::tests::owned_long_missing_counts_cover_sentinels_and_signed_boundaries_for_every_release ... ok
+test owned_numeric::tests::scalar_spans_cover_raw_chunk_edges_for_every_storage_width ... ok
+test owned_numeric::tests::scalar_spans_reject_empty_plain_and_invalid_arguments ... ok
+test owned_numeric::tests::scalar_spans_return_whole_sliced_arrow_chunks_in_any_order ... ok
+test owned_numeric::tests::uniform_lookup_preserves_owner_and_descriptor_bounds ... ok
+test owned_numeric::tests::wider_owned_missing_scans_accumulate_spans_and_keep_cancellation_bounds ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.05s
+
