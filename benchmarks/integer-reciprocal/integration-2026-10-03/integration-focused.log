@@ -1,0 +1,9 @@
+Tracing function "*" in package "base"
+Untracing function "*" in package "base"
+Tracing function "/" in package "base"
+Untracing function "/" in package "base"
+Tracing function "vec_recycle_common" in package "namespace:vctrs"
+Untracing function "vec_recycle_common" in package "namespace:vctrs"
+ passed  failed   error skipped warning 
+  26205       0       0       0       0 
+Test blocks: 29 
