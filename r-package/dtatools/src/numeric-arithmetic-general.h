@@ -410,9 +410,9 @@ static int arithmetic_general_produce(
     if (arithmetic_float_scalar_prove(
             left, right, length, operation, output->kind, &float_proof))
         return arithmetic_float_scalar_write(&float_proof, length, output);
-    if (arithmetic_pair_float_multiply_admitted(
+    if (arithmetic_pair_float_admitted(
             left, right, length, operation, output->kind))
-        return arithmetic_pair_float_multiply_write(left, right, length, output);
+        return arithmetic_pair_float_write(left, right, length, operation, output);
     if (arithmetic_pair_admitted(left, right, length, operation, output->kind))
         return arithmetic_pair_write(left, right, length, operation, output);
     return arithmetic_general_run(left, right, length, operation, minimum, output);

@@ -579,3 +579,110 @@ test_that("rounded float multiplication limits retain exact binary64 storage dec
         }
     }
 })
+
+test_that("compact float sums preserve rounded binary64 fit and late promotion", {
+    .native_arithmetic_enable()
+    limit <- readBin(as.raw(c(255, 255, 255, 126)), "double", n = 1L,
+                     size = 4L, endian = "little")
+    # The storage contract uses the rounded binary64 expression. L + 1 is
+    # above L as a rational number, but binary64 rounds it back to L. A
+    # quarter float step remains above L in double while also rounding to L
+    # in float. The first must retain float and the second must promote.
+    expect_identical(limit + 1, limit)
+    expect_gt(limit + 2^101, limit)
+    expect_identical(readBin(writeBin(limit + 2^101, raw(), size = 4L),
+                            "double", n = 1L, size = 4L), limit)
+    witnesses <- list(
+        list(delta = 1, storage = "float", kinds = c("byte", "int", "float")),
+        list(delta = -1, storage = "float", kinds = c("byte", "int", "float")),
+        list(delta = 2^101, storage = "double", kinds = "float"),
+        list(delta = -2^101, storage = "float", kinds = "float"),
+        list(delta = 2^103, storage = "double", kinds = "float")
+    )
+    for (witness in witnesses) for (kind in witness$kinds) {
+        for (op in c("+", "-")) for (sign in c(-1, 1)) {
+            operation <- getExportedValue("base", op)
+            for (retained in c(FALSE, TRUE)) {
+                values <- rep(c(1 + 2^-23, -0, 0, NA_real_, tagged_missing(letters)),
+                              length.out = 131L)
+                values[[131L]] <- sign * limit
+                other <- rep(c(7, -2, 0, NA_real_, tagged_missing("z")),
+                             length.out = 131L)
+                other[[131L]] <- sign * witness$delta * if (op == "+") 1 else -1
+                x <- dta_float(values)
+                y <- get(paste0("dta_", kind))(other)
+                if (retained) {
+                    x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+                    y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
+                }
+                before <- lapply(list(x, y), function(value)
+                    writeBin(as.double(value), raw(), size = 8L))
+                for (reverse in c(FALSE, TRUE)) {
+                    pair <- if (reverse) list(y, x) else list(x, y)
+                    expected <- .native_arithmetic_reference(op, pair[[1L]], pair[[2L]], "float")
+                    expect_identical(dta_storage_type(expected), witness$storage)
+                    .Call(C_dtatools_numeric_entry_stats, TRUE)
+                    actual <- operation(pair[[1L]], pair[[2L]])
+                    .native_arithmetic_expect_entry()
+                    .native_arithmetic_expect(actual, expected)
+                    missing <- is.na(as.double(expected))
+                    expect_identical(is.na(actual), missing)
+                    result <- dibble(x = actual)
+                    replace_values(result, x = 0, where = which(missing))
+                    expect_false(anyNA(result$x))
+                    if (witness$storage == "double") {
+                        original <- if (reverse) operation(7, 1 + 2^-23) else
+                            operation(1 + 2^-23, 7)
+                        expect_identical(as.double(actual)[[1L]], original)
+                        expect_false(identical(original, as.double(dta_float(original))))
+                    }
+                }
+                expect_identical(lapply(list(x, y), function(value)
+                    writeBin(as.double(value), raw(), size = 8L)), before)
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+            }
+        }
+    }
+})
+
+test_that("compact float sums keep exponent-gap cancellation and zero bits", {
+    .native_arithmetic_enable()
+    pairs <- list()
+    for (exponent in c(-119, -1, 0, 126)) for (gap in c(28, 29, 30, 31, 52, 53, 54)) {
+        if (exponent - gap < -149) next
+        for (neighbor in c(1 - 2^-24, 1, 1 + 2^-23)) {
+            for (left_sign in c(-1, 1)) for (right_sign in c(-1, 1)) {
+                pairs[[length(pairs) + 1L]] <- c(left_sign * 2^exponent * neighbor,
+                                              right_sign * 2^(exponent - gap))
+            }
+        }
+    }
+    # Include exact cancellation, both zero signs, and adjacent subnormals.
+    for (value in c(0, -0, 2^-149, 2^-126 - 2^-149, 2^-126, 1)) {
+        pairs[[length(pairs) + 1L]] <- c(value, value)
+        pairs[[length(pairs) + 1L]] <- c(value, -value)
+    }
+    values <- do.call(rbind, pairs)
+    for (retained in c(FALSE, TRUE)) {
+        x <- dta_float(values[, 1L])
+        y <- dta_float(values[, 2L])
+        if (retained) {
+            x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+            y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
+        }
+        before <- lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L))
+        for (op in c("+", "-")) for (reverse in c(FALSE, TRUE)) {
+            pair <- if (reverse) list(y, x) else list(x, y)
+            .Call(C_dtatools_numeric_entry_stats, TRUE)
+            actual <- getExportedValue("base", op)(pair[[1L]], pair[[2L]])
+            .native_arithmetic_expect_entry()
+            .native_arithmetic_expect(actual,
+                .native_arithmetic_reference(op, pair[[1L]], pair[[2L]], "float"))
+        }
+        expect_identical(lapply(list(x, y), function(value)
+            writeBin(as.double(value), raw(), size = 8L)), before)
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+    }
+})
