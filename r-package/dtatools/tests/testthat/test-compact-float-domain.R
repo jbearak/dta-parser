@@ -4,7 +4,9 @@ test_that("strict float constructors establish an allocation domain proof", {
     expect_true(.Call(C_dtatools_numeric_domain_info, x))
     expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
     expect_false(.Call(C_dtatools_numeric_domain_info, dta_long(c(1, NA_real_))))
-    expect_false(.Call(C_dtatools_numeric_domain_info, as.double(x)))
+    # Removing the R class can retain the same compact bytes and their proof.
+    expect_true(.Call(C_dtatools_numeric_domain_info, as.double(x)))
+    expect_false(.Call(C_dtatools_numeric_domain_info, c(1, 2)))
     restored <- unserialize(serialize(x, NULL))
     expect_false(.Call(C_dtatools_numeric_domain_info, restored))
     expect_identical(writeBin(as.double(restored), raw(), size = 8L), before)

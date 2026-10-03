@@ -93,7 +93,7 @@ static void arithmetic_long_float_add_exact(
 }
 
 /* This loader is selected only from a captured strict-domain descriptor.
-   Every stored value is finite; positive high values are exactly the27 tags. */
+   Every stored value is finite; positive high values are exactly the 27 tags. */
 #define LONG_FLOAT_CANONICAL_LOAD(NAME, MISSING)                            \
     static inline arithmetic_pair_value arithmetic_pair_load_##NAME(       \
         const unsigned char *raw, size_t index,                            \
@@ -160,30 +160,30 @@ static int arithmetic_long_float_add_write(
             arithmetic_long_float_add_canonical(x_raw, y_raw, x_policy, y_policy,
                 start, count, observed, output);
         } else {
-        unsigned failures = 0;
-        for (size_t offset = 0; offset < count;) {
-            size_t block = count - offset;
-            if (block > 64) block = 64;
-            const unsigned char *x = x_raw + 4 * offset;
-            const unsigned char *y = y_raw + 4 * offset;
-            const unsigned char *integer_raw = reverse ? y : x;
-            const unsigned char *float_raw = reverse ? x : y;
-            if (arithmetic_long_float_add_ordinary(integer_raw, float_raw, block, missing_minimum)) {
-                arithmetic_long_float_add_observed(integer_raw, float_raw,
-                    start + offset, block, reverse, output);
-                failures = 0;
-            } else {
-                arithmetic_long_float_add_exact(x, y, x_policy, y_policy,
-                    start + offset, block, output);
-                failures++;
+            unsigned failures = 0;
+            for (size_t offset = 0; offset < count;) {
+                size_t block = count - offset;
+                if (block > 64) block = 64;
+                const unsigned char *x = x_raw + 4 * offset;
+                const unsigned char *y = y_raw + 4 * offset;
+                const unsigned char *integer_raw = reverse ? y : x;
+                const unsigned char *float_raw = reverse ? x : y;
+                if (arithmetic_long_float_add_ordinary(integer_raw, float_raw, block, missing_minimum)) {
+                    arithmetic_long_float_add_observed(integer_raw, float_raw,
+                        start + offset, block, reverse, output);
+                    failures = 0;
+                } else {
+                    arithmetic_long_float_add_exact(x, y, x_policy, y_policy,
+                        start + offset, block, output);
+                    failures++;
+                }
+                offset += block;
+                if (failures == 4 && offset < count) {
+                    arithmetic_long_float_add_exact(x_raw + 4 * offset, y_raw + 4 * offset,
+                        x_policy, y_policy, start + offset, count - offset, output);
+                    break;
+                }
             }
-            offset += block;
-            if (failures == 4 && offset < count) {
-                arithmetic_long_float_add_exact(x_raw + 4 * offset, y_raw + 4 * offset,
-                    x_policy, y_policy, start + offset, count - offset, output);
-                break;
-            }
-        }
         }
         /* The exact fallback is bounded by this captured span. A dense prefix
            cannot suppress proofs in the rest of a whole contiguous column. */
