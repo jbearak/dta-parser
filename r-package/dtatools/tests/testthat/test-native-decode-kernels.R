@@ -8,6 +8,10 @@
     expected_bits <- writeBin(expected, raw(), size = 8L, endian = "little")
     for (value in variants) {
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
+        # This reads the cached missing-count proof used by the selector.
+        # Generic NaNs legitimately keep that proof nonzero even without tags.
+        expect_identical(.decode_native("C_dtatools_numeric_any_na", value, FALSE),
+                         anyNA(expected))
         invisible(.decode_native("C_dtatools_force_altrep_materialization", value))
         expect_identical(writeBin(as.double(value), raw(), size = 8L, endian = "little"),
                          expected_bits)
@@ -49,7 +53,15 @@ test_that("compact decode keeps modern float gaps infinities and NaN payloads", 
         0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001, 0xffffffff))
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     on.exit(unlink(path), add = TRUE)
-    for (batch in split(bits, ceiling(seq_along(bits) / 27L))) {
+    # Keep NaNs separate: they legitimately make the cached count nonzero.
+    # The finite/Inf/gap-only span exercises missing-free vector widening.
+    no_missing <- c(0, 0x80000000, 0x00000001, 0x80000001,
+        0x7effffff, 0x7f000001, 0x7f0007ff, 0x7f00d001, 0x7f00d800,
+        0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000)
+    non_stata_nan <- c(0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001, 0xffffffff)
+    batches <- c(list(rep_len(no_missing, 27L), rep_len(non_stata_nan, 27L)),
+                 split(bits, ceiling(seq_along(bits) / 27L)))
+    for (batch in batches) {
         for (index in seq_along(batch))
             patch_numeric_fixture_row(path, index - 1L, list(x_float = raw_bits(batch[[index]])))
         source <- read_dta(path, col_select = "x_float", n_max = length(batch))$x_float
@@ -82,7 +94,10 @@ test_that("compact decode retains legacy integer and float missing domains", {
               0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001)
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
-    for (batch in split(bits, ceiling(seq_along(bits) / 4L))) {
+    batches <- c(list(c(0xff800000, 0x80000000, 0x00000001, 0x7effffff),
+                     c(0xffc00001, 0xff800001, 0xff800000, 0x80000000)),
+                 split(bits, ceiling(seq_along(bits) / 4L)))
+    for (batch in batches) {
         bytes <- original
         for (row in seq_along(batch)) {
             location <- start + (row - 1L) * 25L + 7L

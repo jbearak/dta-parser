@@ -5985,7 +5985,7 @@
         },
         {
           "path": "tests/testthat/test-native-decode-kernels.R",
-          "sha256": "65cc99f41aacceeeeb9571590c72decfd5d7467321e00e12cb8fb2dde3bddd4d"
+          "sha256": "5785c904d3adf207631744a55df8c197eccb5997272f426b4ad2e24f5d9defca"
         }
       ],
       "blocks": [
