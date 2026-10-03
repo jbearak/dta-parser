@@ -1,0 +1,12 @@
+{
+  "source_commit": "3de25ecca674a3ffed3618223a011f499383bd57",
+  "binding_sha256": "5e5a127b9ab8ac5717702d3a7aab8516ee241a7b623ef9cbf600cf7221cd1b50",
+  "extraction_sha256": "6a923f75f28e651495cc5b89dfe6a01172571298aab4c08cddbe9592a8112ec6",
+  "excerpt_sha256": "994c8d89bf8e0d862d1de3eff771a4bf73933e82f5c4462c9ae8c025abfba834",
+  "admission": "0x192144..0x192158 compares both captured counts to length",
+  "tile": "0x19218c interrupt,0x192194..0x192198 cap16,384",
+  "loads": "0x1921a4 output->real and0x1921a8 R_NaReal loaded once per tile",
+  "simd": "0x1921bc..0x1921dc broadcasts NA and writes8 doubles per iteration with two paired128-bit stores; scalar tail reuses d0 and pointer",
+  "count": "0x192170..0x192178 increments output missing count once per completed tile",
+  "scope": "Installed receipt-bound DLL inspection on this AppleClang/arm64 build. No per-lane output-pointer or NA global reload; no speculative source change or timing inference."
+}

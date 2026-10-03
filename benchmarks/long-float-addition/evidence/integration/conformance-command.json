@@ -1,0 +1,21 @@
+{
+  "commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "command": [
+    "sh",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance-gate.sh"
+  ],
+  "cwd": "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance-export",
+  "environment": {
+    "DTA_REQUIRE_R_CONFORMANCE": "1",
+    "R_ENVIRON_USER": "/dev/null",
+    "R_PROFILE_USER": "/dev/null",
+    "CARGO_TARGET_DIR": "<private-tmp>/dta-native-comparison-followup/target"
+  },
+  "original_script_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "wrapper_sha256": "25bc292335dd2405774bdaaf83e581f0373197e3f7d9dc3bd99e11dcdbea5185",
+  "validator_sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+  "only_wrapper_change": "Preserve temporary source archive and complete check outputs before original cleanup.",
+  "started_utc": "2026-10-03T12:35:59.640643+00:00",
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T12:47:34.994699+00:00"
+}

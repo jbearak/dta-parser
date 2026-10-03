@@ -1,0 +1,12 @@
+{
+  "status": "ACCEPTED",
+  "candidate_commit": "3de25ecca674a3ffed3618223a011f499383bd57",
+  "integration_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "reason": "Both696 matrices and independent audits pass. Ordinary and sparse CPU improves, all-missing fill removes all input work. Exact fallback1260 instructions are unchanged modulo recorded relocations. Parent accepted with unresolved retained-dense6.2% normalized residual, control shifts and short-span gap retained. No repeat timing to remove negative observations.",
+  "full_archive_assertions": 106417,
+  "archive_failures": 0,
+  "archive_skips": 0,
+  "archive_warnings": 7,
+  "focused_blocks": 37,
+  "focused_assertions": 34288
+}

@@ -1,0 +1,52 @@
+{
+  "archive_suite": {
+    "failed": 0,
+    "passed": 106417,
+    "skipped": 0,
+    "warnings": 7
+  },
+  "binder_sha256": "1a0f4a68bbac49659ed564d6c9ee5f7be6f98e6a8d6a47893897db8980e6c8b2",
+  "focused_assertions": 34288,
+  "focused_blocks": 37,
+  "guards": 8,
+  "input_sha256": {
+    "<private-tmp>/dta-long-float-add-audit/publication-build-v1/build-receipt.json": "297b48e496390992acf3791757b5b2ddd48ff821380044b66c18eaee6a02da9b",
+    "<private-tmp>/dta-long-float-add-audit/publication-build-v1/input-record.json": "8265e6ba74453e68fb0699dd189f1ae5f3570adba94262722270d78da89e3884",
+    "<private-tmp>/dta-long-float-add-audit/publication-build-v1/source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "<private-tmp>/dta-long-float-add-audit/publication-focused-v1/after.json": "0787c502a1aceaf7a17a1e420e72ffc29270c1feb3fe1e59791f0f1f39c7eb44",
+    "<private-tmp>/dta-long-float-add-audit/publication-focused-v1/before.json": "0787c502a1aceaf7a17a1e420e72ffc29270c1feb3fe1e59791f0f1f39c7eb44",
+    "<private-tmp>/dta-long-float-add-audit/publication-focused-v1/completion.json": "0012a5e09f997e96abfd7fc424d9df0054b882cf5a166892d1eca51ba8d796da",
+    "<private-tmp>/dta-long-float-add-audit/publication-focused-v1/focused.csv": "0643a84c127f9d8fda8ff7f6ad572cc619b3cdc7123d8ae5171a811a27f289f0",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance-command.json": "902d374c28dfe6991dcef039d51ce9d40e345af9c5caa00f24995a4cbc8700f4",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance-gate.sh": "25bc292335dd2405774bdaaf83e581f0373197e3f7d9dc3bd99e11dcdbea5185",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance-preserved/dtatools.Rcheck/tests/testthat.Rout": "6327a870eca7b6ceaf63419aabaee20658a4ade507d99e128fc237ebc52f6dd2",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance.json": "c4b26a075de817b9b59baf628123a9392dcf9f85612702fcd009692d0c111329",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/conformance.log": "3c050f1b431c747ba6225f493c97cbce983f8808ed2304a49be91d85978b8b9d",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-01.log": "ebcdfe25f6926e21fcedf35187c8151264b8387e1e174cb5fe2205fb7a21755e",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-02.log": "992669421ab4a90e4dc1b7b52d73d5d61c3518a59586510f8174fcd0d9e06051",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-03.log": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-04.log": "637ad693971420b70a01476cd5d51065ecc3c7af270c41cfe91899ec8c2db4bd",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-05.log": "9ec9e3c52e7908b746c625587944c7e1eb71f90fc834fbb4527d510523684dd2",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-06.log": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-07.log": "cbf0054a7b922908843a620138ba48fe142dd241b598b0008dfc782e82a5958c",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guard-08.log": "ff1fdaa7f7b011880e9cf5c61d0e51f0466d712f3ad1dc5e6ec9c7aa9fc2a728",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/guards.json": "91d47c5f2c7b3b197798f97830f3a2fab991ffc147af19279bd385d1fd68992b",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/run-guards.py": "7ce86b2727d825fbd3b5f524bfda51a75e9d1d4b1c54a3e64f986f46c41e80bc",
+    "<private-tmp>/dta-long-float-add-audit/publication-integration-v1/validate-conformance-archive.py": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144",
+    "<private-tmp>/dta-long-float-add-audit/publication-structural-v1/receipt.json": "091ffad8a1213e7c9d7084968a716d69aba79eaf7bc457cd04ca051b95cc62ec"
+  },
+  "integration_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "measured_commit": "3de25ecca674a3ffed3618223a011f499383bd57",
+  "package_delta": [
+    "r-package/dtatools/src/numeric-arithmetic-general.h",
+    "r-package/dtatools/src/numeric-arithmetic-pair-long-float.h",
+    "r-package/dtatools/src/numeric-arithmetic-pair.h",
+    "r-package/dtatools/tests/testthat/test-arithmetic-payload-lifetime.R",
+    "r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R",
+    "r-package/dtatools/tools/native-test-manifest.json"
+  ],
+  "parent_commit": "62fe0a17b3007e8359e75e9dcdb33c1e685bd64f",
+  "scope": "Clean integrated build, complete retained-archive testthat suite with zero skips, exact native-manifest source hashes, focused installed tests and current-header structural/protocol gates. The archive suite is not a separate per-family native-profile telemetry run. Measured3de performance bindings remain separate.",
+  "status": "PASS",
+  "structural_cases": 162
+}

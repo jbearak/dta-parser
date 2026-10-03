@@ -8,6 +8,9 @@ for the remainder of the captured span, at most 16,384 rows. A captured exact
 all-missing count on either source permits a canonical double-NA fill without
 reading either input. Existing capture and read-claim ownership rules apply.
 
+The [measured results and limits](results-2026-10-03.md) link this mechanism to
+the retained [public evidence](evidence/publication-manifest.json).
+
 `run.py`, `core.py`, `worker.R`, and `test-run.py` reproduce the final decision
 screen from supplied clean source-bound build directories. The exact historical
 source pins are in run.py. The corresponding raw records and source bindings
