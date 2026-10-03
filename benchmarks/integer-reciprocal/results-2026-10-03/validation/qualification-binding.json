@@ -1,0 +1,40 @@
+{
+  "build_receipt_sha256": "f411c360f42d185db3c73926806a859389110eb518103f470fd76784074920a8",
+  "commit": "3a02e6d13309441366a7a727fdc934f424ce66c6",
+  "full_suite": {
+    "blocks": 1811,
+    "totals": {
+      "error": 0,
+      "failed": 0,
+      "passed": 103568,
+      "skipped": 0,
+      "warning": 7
+    }
+  },
+  "input_sha256": {
+    "<work>/bind-qualification.py": "aa56218d0bf381d87b3bc3d613ed9268619dde1e5cc04ff14bfc3c8a695249bd",
+    "<work>/candidate-final-codegen-binding.json": "e9582b6fdf51b015ecbc11f4bee35dd844bb0a647514fec91a8255e0c9b4fe46",
+    "<work>/full-final.R": "efe64d8ab153b2e01019476cac0f24786d3fef8fb69019122069295e5142ed72",
+    "<work>/full-final.csv": "9fdb1d24bf7905c93dfc3fefb673b47cf5d541c41a75bd4074955f6fa9d70d6c",
+    "<work>/full-final.log": "c4c87d19c934230e1be9a8048bfe730244838e2c9dff8337a117ef3ad7dc038a",
+    "<work>/original-candidate-final-qualification.csv": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137",
+    "<work>/original-candidate-final-qualification.log": "e2e6c86c3b21cf90f30780d10f646b3efd03edaffebca3bb1b11717f823cac73",
+    "<work>/screen-qualification-completion.json": "c6b64589c8eb292dfbfd9ea8200171a1e0b1d2838c3b7f57ca7af9175698f0ef"
+  },
+  "scope": "Clean installed full suite, manifest, untimed screen, actual-header work counts and installed-DLL assembly. No performance or packaged-conformance claim.",
+  "screen_cases_per_build": 36,
+  "screen_qualification_sha256": "c6b64589c8eb292dfbfd9ea8200171a1e0b1d2838c3b7f57ca7af9175698f0ef",
+  "status": "PASS",
+  "structural_probes": {
+    "baseline-final-red": {
+      "exit_code": 1,
+      "receipt_sha256": "bfb3c28befed17e754b35eaa0b6ee86282fe41ff65a5881c4632d7b74bb18b0e",
+      "scope": "Actual general result/preflight/producer headers; allocation, R reader and retained-span boundaries mocked. No timing or ownership proof."
+    },
+    "candidate-final-counts": {
+      "exit_code": 0,
+      "receipt_sha256": "552c53215d32864306348e15f58aaa770ca7b56b3ca79d899f08190a618cfa3f",
+      "scope": "Actual general result/preflight/producer headers; allocation, R reader and retained-span boundaries mocked. No timing or ownership proof."
+    }
+  }
+}

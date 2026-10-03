@@ -1,0 +1,14 @@
+{
+  "baseline_commit": "7003eba901671797ee91fffc97f08e28a1f7f515",
+  "candidate_commit": "3a02e6d13309441366a7a727fdc934f424ce66c6",
+  "cases_per_build_round": 36,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, full typed result after clearing all oracle-missing rows through dibble/replace_values, storage, original result/source hashes and source states. Mutation is outside clocks and native-entry accounting; bare controls have no native cached count.",
+  "denominator": "For int16 and long, as.double((seq_len(1000000) * 13) %% 10001 - 5000), constructed at its stated physical width. Float controls divide this same grid by eight. Sparse missing positions are 13,1010,... at stride997.",
+  "experiment": "Integer reciprocal range proof: four int/long reverse-divide treatments and eight unchanged scalar controls",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}

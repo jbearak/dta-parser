@@ -1,0 +1,30 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arithmetic-payload-lifetime.R","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","general arithmetic preflight retains owned sources across reentrant writes",48,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","owned arithmetic read claims survive nesting and release on unwind",11,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","integer reciprocal inherits the captured missing count during reentrant writes",54,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact arithmetic agrees with the ordinary public calculation",1500,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact arithmetic promotes the complete result and collapses invalid values",31,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic keeps recycling names and unsupported input behavior",38,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","arithmetic crosses retained chunks without changing source storage",180,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic keeps primitive and recycling callbacks",10,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","public scalar and column arithmetic enter the native producer",16,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","imported DTA and Arrow columns enter native arithmetic with display metadata",78,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","extended arithmetic retains storage-specific names methods",12,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","observed compact span arithmetic crosses distinct chunk boundaries",72,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","legacy observed integer codes promote into modern arithmetic storage",14,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","specialized arithmetic keeps aliased inputs scalar directions and promotion",300,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps all codes across scalar and column shapes",328,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","missing span arithmetic keeps each operand's legacy missing encoding",256,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","float span arithmetic matches eager IEEE and reserved-code decoding",20561,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact pair promotion recomputes earlier chunks and counts missing unions",12,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","rounded float multiplication limits retain exact binary64 storage decisions",412,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact float sums preserve rounded binary64 fit and late promotion",1291,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","compact float sums keep exponent-gap cancellation and zero bits",38,0,FALSE,FALSE,0
+"test-native-arithmetic-kernels.R","integer reciprocal bounds preserve storage zero signs and missing caches",819,0,FALSE,FALSE,0

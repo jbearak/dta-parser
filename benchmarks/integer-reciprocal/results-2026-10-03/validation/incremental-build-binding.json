@@ -1,0 +1,33 @@
+{
+  "command": [
+    "/usr/bin/make",
+    "-f",
+    "/opt/homebrew/Cellar/r/4.6.1/lib/R/etc/Makeconf",
+    "-f",
+    "Makevars",
+    "R_HOME=/opt/homebrew/Cellar/r/4.6.1/lib/R",
+    "R_INCLUDE_DIR=/opt/homebrew/Cellar/r/4.6.1/lib/R/include",
+    "R_SHARE_DIR=/opt/homebrew/Cellar/r/4.6.1/lib/R/share",
+    "numeric-payload.o"
+  ],
+  "input_sha256": {
+    "<work>/candidate-final/build-receipt.json": "f411c360f42d185db3c73926806a859389110eb518103f470fd76784074920a8",
+    "<work>/dependency-green-optimized.log": "f273be5bbc99663e9adf2c4e013ddd5aa3553edbe28d7c83f63f52f3a32e5369",
+    "<work>/dependency-green.log": "7d6f3f2b0c75a7272e3e136f4ef3512eefcb357922e433d272431e599c2b9d6e",
+    "<work>/dependency-red.log": "710b704332357c1de8ff284a1282cc12aefdfd953235fe944d7aaab97927754b",
+    "<work>/incremental-after-query.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "<work>/incremental-compile.log": "5f2eee6789183c9a153bd5357fe0d133e69eefd5626d0a22dba441c7973b72d3",
+    "<work>/incremental-green-query.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "<work>/incremental-red.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "<work>/verify-incremental-build.py": "9c05d944e627236afaa44f9ce2ee40f12bca4bf394aa497a02bb24a8840feae7",
+    "<measured-repository>/r-package/dtatools/src/Makevars.rust": "f409ac812388d498f59fe46487924e39b7813a2ed718593fa74e75600a3ca743",
+    "<measured-repository>/scripts/test_arithmetic_dependencies.py": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866"
+  },
+  "make_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "new_makevars_sha256": "f409ac812388d498f59fe46487924e39b7813a2ed718593fa74e75600a3ca743",
+  "new_object_sha256": "504ad85148a062b1710ee7107b9d66b8a418714231c51530080cd36c38940c54",
+  "old_makevars_sha256": "14ab9d7d99124249f88364543132e105cb8dc3ce439feb2bd6d0e2c87015989f",
+  "old_object_sha256": "96ee1494628b4582a7b3febd0ae2ff486bcb37cae1e38968910ad38cadb8f1df",
+  "scope": "Private copied build directory only. All eight header dependencies exercise make invalidation in the maintained test; the new reciprocal header also triggers actual numeric-payload.c recompilation with R Makeconf. Measured source and installed DLLs remain unchanged.",
+  "status": "PASS"
+}
