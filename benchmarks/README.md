@@ -70,6 +70,13 @@ Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls belo
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
 
+The [compact materialization follow-up](compact-materialization/results-2026-10-02.md)
+removes a redundant compact copy before decoding aliased columns into doubles.
+Million-row byte/int/long/float inputs save 1/2/4/4 MB of temporary copying;
+the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased inputs.
+The report separates exact allocation savings from timing and states its high
+missing density, batch intervals and retained-owner controls.
+
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
 ENADID and WFS survey datasets, with both tibble and dibble outputs. Its 3,762

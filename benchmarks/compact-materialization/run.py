@@ -38,9 +38,12 @@ def require(condition, message):
 
 
 def runtime_binding():
-    r_home = Path(subprocess.check_output(['R', 'RHOME'], text=True).strip())
     rscript = shutil.which('Rscript')
     require(rscript is not None, 'Rscript is unavailable')
+    # Bind the runtime selected by the same launcher used for workers. R on
+    # PATH can belong to a different installation than Rscript.
+    r_home = Path(subprocess.check_output(
+        [rscript, '--vanilla', '-e', 'cat(R.home())'], text=True).strip())
     return dict(R_runtime_sha256=NATIVE.digest(r_home / 'bin/exec/R'),
                 Rscript_launcher_sha256=NATIVE.digest(Path(rscript)))
 

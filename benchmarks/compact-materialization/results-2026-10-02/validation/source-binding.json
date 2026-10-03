@@ -2,9 +2,11 @@
   "baseline_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
   "baseline_receipt_sha256": "6fb25eeae7bca5f7b97be2d630fad0c3dd88feefd069ff7101fbd245c3f30e25",
   "candidate_receipt_sha256": "048c3ee4ac9545667c113c74900a684f399fbabdb3d6375ff8c4fb45d0fa9ccf",
+  "later_integration": "Current main 895dd204 integrated at b2065977; the main integration and its subsequent qualification are separate from the published measurements. The live controller now queries R.home() through Rscript directly; the recorded f091db58 controller is preserved under controllers/ and its exact execution runtime is confirmed by the supplement.",
   "limits": "One host, missing density 27/32, fresh first materialization in preconstructed batches. Retained ownership comes from the freeze test adapter; this is not a reader/decompression benchmark. Rprofmem and Vcells observations overlap and are not RSS. Individual timed batches are 6\u201326 ms; aggregate medians do not imply sub-ms timer precision.",
   "measured_candidate_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0",
   "measured_controller_commit": "f091db58",
-  "package_sources_unchanged_after_runtime_commit": true,
+  "publication_commit": "9b83760ba1e9b62b88d189113af547a5e3bb97d5",
+  "publication_package_matches_measured_commit": true,
   "validation": "Full suite and both untimed benchmark qualifications use the clean recorded libraries. Focused ownership tests and the structural red/green diagnostic are development evidence; the clean full suite repeats their regression coverage. Every timing uses the same separately compiled ordinary DATAPTR_RO probe. The post-run exact-Rscript supplement confirms the unchanged timing launcher selects both build receipts' runtime."
 }

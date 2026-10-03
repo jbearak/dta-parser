@@ -9,7 +9,8 @@ toolchain and build log are bound by a receipt and checked again after the run.
 The matrix has 32 cases: 4,096 and 1,000,000 rows, byte/int/long/float storage,
 constructor and retained chunk backing, and private versus metadata-aliased
 handles. Every input contains exact finite values and all 27 Stata missing
-ranks. Retained columns come from the internal immutable-owner test adapter;
+ranks, repeating five observed values plus 27 missing ranks. This deliberately
+high missing density is stated in the results. Retained columns come from the internal immutable-owner test adapter;
 this experiment measures materialization, not Arrow ingestion.
 
 Each timed batch contains fresh independently constructed handles. Construction,

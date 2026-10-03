@@ -345,8 +345,8 @@
       "sha256": "17bc47bc0f6dd6d22843b931a23ff99cf88b4297e7a7cfc9503ebaf93a9738a5"
     },
     "validation/source-binding.json": {
-      "bytes": 1241,
-      "sha256": "d7a01f9ce8de1ed8e9c1a0bf29e2534212a097fef9dffd25d3a033045076d4bd"
+      "bytes": 1674,
+      "sha256": "1243008a740214d3b5184fa680727115c6a11d308f7686782f4605e02c534272"
     }
   },
   "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."
