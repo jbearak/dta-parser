@@ -1,0 +1,9 @@
+{
+  "main": "8e4e1cf957558d727a3b8b092df05d2f3dca2f8d",
+  "measured": "bb135c1f274e0ddb5d37d29fdccdcf34b09f83f2",
+  "changed_files_from_main": [
+    "r-package/dtatools/src/rust/src/double_compare.rs"
+  ],
+  "resolution": "Published main documentation/controllers retained; measured double_compare.rs retained byte for byte. All other tracked files equal actualmain.",
+  "kernel_blob": "56fef409cc5915d1d224eaccaf02ea5768921a47"
+}

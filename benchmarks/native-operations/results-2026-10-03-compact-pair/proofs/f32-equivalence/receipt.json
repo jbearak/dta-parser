@@ -1,0 +1,800 @@
+{
+  "scope": "Standalone semantic experiment only; no package source changes or performance measurements",
+  "source_head": "2ee72fdf34c910337decf017093a555a55ad1cf1",
+  "source_status": "",
+  "before": {
+    "<repo>/r-package/dtatools/src/numeric-payload.c": "aee000f33142c3d8720741b76d2fcf9b203061d319ba3b857e614689523f65bb",
+    "<work>/f32-equivalence/probe.c": "d2d68af93336d21e6f05f51a64a0b41d20785573293d74874315fd197c98d3bc",
+    "<work>/f32-equivalence/run.py": "0f0bc73842af1dab70ea23003ecf1113fe7a6fec0c04d325c756b0158cdb5a87",
+    "<work>/f32-equivalence/extracted-classifiers.h": "4bd48e3ce049f5c1e626ca1cd8ef9f951fb8d202286f9aa0ad937a5549d578c3",
+    "/usr/bin/clang": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a"
+  },
+  "after": {
+    "<repo>/r-package/dtatools/src/numeric-payload.c": "aee000f33142c3d8720741b76d2fcf9b203061d319ba3b857e614689523f65bb",
+    "<work>/f32-equivalence/probe.c": "d2d68af93336d21e6f05f51a64a0b41d20785573293d74874315fd197c98d3bc",
+    "<work>/f32-equivalence/run.py": "0f0bc73842af1dab70ea23003ecf1113fe7a6fec0c04d325c756b0158cdb5a87",
+    "<work>/f32-equivalence/extracted-classifiers.h": "4bd48e3ce049f5c1e626ca1cd8ef9f951fb8d202286f9aa0ad937a5549d578c3",
+    "/usr/bin/clang": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a"
+  },
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "functions": {
+    "byte_missing_offset": {
+      "sha256": "3ea7f37d5e369809bec6a2b0f09d846480c3210ece09ca271095c6ade2879145",
+      "text": "static int byte_missing_offset(int8_t value, int format_version) {\n    if (format_version <= 111) return value == 127 ? 0 : -1;\n    return value >= 101 && value <= 127 ? value - 101 : -1;\n}\n"
+    },
+    "int_missing_offset": {
+      "sha256": "2affd1c1f0f349eaea4aa3fb8bb753d389b262f0342524db87f561ceae3ab9ff",
+      "text": "static int int_missing_offset(int16_t value, int format_version) {\n    if (format_version <= 111) return value == 32767 ? 0 : -1;\n    return value >= 32741 && value <= 32767 ? value - 32741 : -1;\n}\n"
+    },
+    "float_missing_offset": {
+      "sha256": "e6fa58c6d59d492446ead80c85c0f36b5afd76a26af2ddcab67a4563b105691e",
+      "text": "static int float_missing_offset(float value, int format_version) {\n    uint32_t bits;\n    memcpy(&bits, &value, sizeof(bits));\n    if (format_version <= 111) {\n        return bits >= UINT32_C(0x7f000000) && bits < UINT32_C(0x80000000)\n            ? 0 : -1;\n    }\n    if (bits < UINT32_C(0x7f000000) || bits > UINT32_C(0x7f00d000)) {\n        return -1;\n    }\n    uint32_t delta = bits - UINT32_C(0x7f000000);\n    return delta % UINT32_C(0x00000800) == 0\n        ? (int) (delta / UINT32_C(0x00000800)) : -1;\n}\n"
+    }
+  },
+  "variants": [
+    {
+      "label": "optimized",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O2",
+        "-ffp-contract=off",
+        "-frounding-math",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "<work>/f32-equivalence/probe.c",
+        "-lm",
+        "-o",
+        "<work>/f32-equivalence/probe-optimized"
+      ],
+      "binary_sha256": "dd93194c4c8a8f0f715ece90730ec91be0d7fea2421ff6ba6e6b7e0f827c8219",
+      "result_sha256": "3483349d1c5f9f64012d7fc4d6e54feb68fefd264cc4a145510cad032da1a5f9",
+      "result": {
+        "checked": 36914944,
+        "equal_boundary": 366468,
+        "ambiguous_above": 225164,
+        "ambiguous_below": 134168,
+        "exact_boundary": 7136,
+        "strict_promotion": 12538521,
+        "checksum": "ec52269fa5ee2933",
+        "mismatches": 0,
+        "rounding_modes": 4,
+        "column_checks": 19,
+        "modes": [
+          {
+            "mode": 0,
+            "checked": 9228736,
+            "counts": [
+              44044,
+              44272,
+              1784,
+              3163204
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7cd79435",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffde000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 8388608,
+            "checked": 9228736,
+            "counts": [
+              45280,
+              44948,
+              1784,
+              3096872
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800003",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "fcd79435",
+                  "legacy": 0
+                },
+                "exact_product": "c7dfffffde000000",
+                "rounded_product": "feffffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 4194304,
+            "checked": 9228736,
+            "counts": [
+              45280,
+              44948,
+              1784,
+              3226673
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800003",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "fd3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "c7dfffffe4000000",
+                "rounded_product": "feffffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7cd79435",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffde000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 12582912,
+            "checked": 9228736,
+            "counts": [
+              90560,
+              0,
+              1784,
+              3051772
+            ],
+            "columns": 4,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 0,
+                "x": {
+                  "kind": 0,
+                  "integer": 0,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 0,
+                  "integer": 0,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "exact_product": "0000000000000000",
+                "rounded_product": "00000000"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "undefined-sanitizer",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O2",
+        "-ffp-contract=off",
+        "-frounding-math",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "<work>/f32-equivalence/probe.c",
+        "-lm",
+        "-o",
+        "<work>/f32-equivalence/probe-undefined-sanitizer"
+      ],
+      "binary_sha256": "590af958a59912621be95c502c91123cebd8590f5e1dc5cd974508ecba800367",
+      "result_sha256": "3483349d1c5f9f64012d7fc4d6e54feb68fefd264cc4a145510cad032da1a5f9",
+      "result": {
+        "checked": 36914944,
+        "equal_boundary": 366468,
+        "ambiguous_above": 225164,
+        "ambiguous_below": 134168,
+        "exact_boundary": 7136,
+        "strict_promotion": 12538521,
+        "checksum": "ec52269fa5ee2933",
+        "mismatches": 0,
+        "rounding_modes": 4,
+        "column_checks": 19,
+        "modes": [
+          {
+            "mode": 0,
+            "checked": 9228736,
+            "counts": [
+              44044,
+              44272,
+              1784,
+              3163204
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7cd79435",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffde000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 8388608,
+            "checked": 9228736,
+            "counts": [
+              45280,
+              44948,
+              1784,
+              3096872
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800003",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "fcd79435",
+                  "legacy": 0
+                },
+                "exact_product": "c7dfffffde000000",
+                "rounded_product": "feffffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 4194304,
+            "checked": 9228736,
+            "counts": [
+              45280,
+              44948,
+              1784,
+              3226673
+            ],
+            "columns": 5,
+            "rounding_positive": "3f800003",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "fd3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "c7dfffffe4000000",
+                "rounded_product": "feffffff"
+              },
+              {
+                "category": 1,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 19,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7cd79435",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffde000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          },
+          {
+            "mode": 12582912,
+            "checked": 9228736,
+            "counts": [
+              90560,
+              0,
+              1784,
+              3051772
+            ],
+            "columns": 4,
+            "rounding_positive": "3f800002",
+            "rounding_negative": "bf800002",
+            "witnesses": [
+              {
+                "category": 0,
+                "present": 1,
+                "x": {
+                  "kind": 1,
+                  "integer": 11,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7d3a2e8b",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe4000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 1,
+                "present": 0,
+                "x": {
+                  "kind": 0,
+                  "integer": 0,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 0,
+                  "integer": 0,
+                  "bits": "00000000",
+                  "legacy": 0
+                },
+                "exact_product": "0000000000000000",
+                "rounded_product": "00000000"
+              },
+              {
+                "category": 2,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f000000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "7f7fffff",
+                  "legacy": 0
+                },
+                "exact_product": "47dfffffe0000000",
+                "rounded_product": "7effffff"
+              },
+              {
+                "category": 3,
+                "present": 1,
+                "x": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "3f800000",
+                  "legacy": 0
+                },
+                "y": {
+                  "kind": 2,
+                  "integer": 0,
+                  "bits": "ff000000",
+                  "legacy": 0
+                },
+                "exact_product": "c7e0000000000000",
+                "rounded_product": "ff000000"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

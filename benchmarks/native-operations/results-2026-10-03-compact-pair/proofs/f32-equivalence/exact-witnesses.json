@@ -1,0 +1,98 @@
+{
+  "status": "PASS",
+  "method": "Python Fraction; no floating arithmetic",
+  "result_sha256": "3483349d1c5f9f64012d7fc4d6e54feb68fefd264cc4a145510cad032da1a5f9",
+  "script_sha256": "39190d0ed9c87522fc42214c8d48c0cc5ea69f024489a83e9b933c40ac5414b0",
+  "checks": [
+    {
+      "mode": 0,
+      "category": 0,
+      "exact_product": "170141174586915030134081493238961668096",
+      "absolute_difference_from_limit": "1267650600228229401496703205376"
+    },
+    {
+      "mode": 0,
+      "category": 1,
+      "exact_product": "170141172685439129791737390993906860032",
+      "absolute_difference_from_limit": "-633825300114114700748351602688"
+    },
+    {
+      "mode": 0,
+      "category": 2,
+      "exact_product": "170141173319264429905852091742258462720",
+      "absolute_difference_from_limit": "0"
+    },
+    {
+      "mode": 0,
+      "category": 3,
+      "exact_product": "-170141183460469231731687303715884105728",
+      "absolute_difference_from_limit": "10141204801825835211973625643008"
+    },
+    {
+      "mode": 8388608,
+      "category": 0,
+      "exact_product": "170141174586915030134081493238961668096",
+      "absolute_difference_from_limit": "1267650600228229401496703205376"
+    },
+    {
+      "mode": 8388608,
+      "category": 1,
+      "exact_product": "-170141172685439129791737390993906860032",
+      "absolute_difference_from_limit": "-633825300114114700748351602688"
+    },
+    {
+      "mode": 8388608,
+      "category": 2,
+      "exact_product": "170141173319264429905852091742258462720",
+      "absolute_difference_from_limit": "0"
+    },
+    {
+      "mode": 8388608,
+      "category": 3,
+      "exact_product": "-170141183460469231731687303715884105728",
+      "absolute_difference_from_limit": "10141204801825835211973625643008"
+    },
+    {
+      "mode": 4194304,
+      "category": 0,
+      "exact_product": "-170141174586915030134081493238961668096",
+      "absolute_difference_from_limit": "1267650600228229401496703205376"
+    },
+    {
+      "mode": 4194304,
+      "category": 1,
+      "exact_product": "170141172685439129791737390993906860032",
+      "absolute_difference_from_limit": "-633825300114114700748351602688"
+    },
+    {
+      "mode": 4194304,
+      "category": 2,
+      "exact_product": "170141173319264429905852091742258462720",
+      "absolute_difference_from_limit": "0"
+    },
+    {
+      "mode": 4194304,
+      "category": 3,
+      "exact_product": "-170141183460469231731687303715884105728",
+      "absolute_difference_from_limit": "10141204801825835211973625643008"
+    },
+    {
+      "mode": 12582912,
+      "category": 0,
+      "exact_product": "170141174586915030134081493238961668096",
+      "absolute_difference_from_limit": "1267650600228229401496703205376"
+    },
+    {
+      "mode": 12582912,
+      "category": 2,
+      "exact_product": "170141173319264429905852091742258462720",
+      "absolute_difference_from_limit": "0"
+    },
+    {
+      "mode": 12582912,
+      "category": 3,
+      "exact_product": "-170141183460469231731687303715884105728",
+      "absolute_difference_from_limit": "10141204801825835211973625643008"
+    }
+  ]
+}

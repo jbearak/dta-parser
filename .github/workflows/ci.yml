@@ -104,11 +104,22 @@ jobs:
           python3 -O benchmarks/scalar-float-blocks/test-kernel.py
           python3 benchmarks/scalar-float-blocks/test-run.py
           python3 -O benchmarks/scalar-float-blocks/test-run.py
+          python3 benchmarks/native-operations/test-compact-pair-evidence.py
+          python3 -O benchmarks/native-operations/test-compact-pair-evidence.py
+          python3 benchmarks/native-operations/verify-compact-pair-evidence.py
           python3 benchmarks/float-comparison/test-run.py
           python3 benchmarks/native-comparison/test-run.py
+          python3 benchmarks/float-bounded-comparison/test-run.py
+          python3 -O benchmarks/float-bounded-comparison/test-run.py
+          python3 benchmarks/decoded-double-comparison/density/test-run.py
+          python3 -O benchmarks/decoded-double-comparison/density/test-run.py
+          python3 benchmarks/decoded-double-comparison/patterns/test-run.py
+          python3 -O benchmarks/decoded-double-comparison/patterns/test-run.py
           python3 benchmarks/arrow-memory-pressure/test-run.py
           python3 benchmarks/compact-materialization/test-run.py
           python3 -O benchmarks/compact-materialization/test-run.py
+          python3 benchmarks/compact-decode/test-run.py
+          python3 -O benchmarks/compact-decode/test-run.py
           python3 benchmarks/prepared-grouping/test-run.py
           python3 benchmarks/nullable-arrow-strings/test-run.py
           python3 -O benchmarks/nullable-arrow-strings/test-run.py

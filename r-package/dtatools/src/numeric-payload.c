@@ -521,27 +521,6 @@ static const void *numeric_scalar_span(
         return numeric_##NAME##_decode(raw, data);                           \
     }                                                                        \
                                                                              \
-    static void numeric_##NAME##_region(                                      \
-        const numeric_data *data, size_t index, size_t length, double *output \
-    ) {                                                                       \
-        if (data->missing_count == 0) {                                       \
-            for (size_t offset = 0; offset < length; offset++) {              \
-                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
-                TYPE raw = numeric_##NAME##_raw_at(data, index + offset);     \
-                output[offset] = numeric_observed_value(                      \
-                    (double) raw, data->temporal                              \
-                );                                                            \
-            }                                                                 \
-        } else {                                                              \
-            for (size_t offset = 0; offset < length; offset++) {              \
-                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
-                output[offset] = numeric_##NAME##_value_at(                   \
-                    data, index + offset                                      \
-                );                                                            \
-            }                                                                 \
-        }                                                                     \
-    }                                                                         \
-                                                                              \
     static void numeric_##NAME##_extreme_accumulate(                          \
         const numeric_data *data, Rboolean na_rm, int minimum,               \
         double *accumulator, int *initialized                                \
@@ -1924,24 +1903,10 @@ SEXP C_dtatools_factorize_numeric(
     );
 }
 
+#include "numeric-decode.h"
+
 static void fill_span_doubles(const numeric_data *span, size_t offset, void *context) {
-    double *output = (double *) context + offset;
-    switch (span->kind) {
-    case NUMERIC_BYTE:
-        numeric_byte_region(span, 0, span->length, output);
-        return;
-    case NUMERIC_INT:
-        numeric_int_region(span, 0, span->length, output);
-        return;
-    case NUMERIC_LONG:
-        numeric_long_region(span, 0, span->length, output);
-        return;
-    case NUMERIC_FLOAT:
-        numeric_float_region(span, 0, span->length, output);
-        return;
-    default:
-        Rf_error("invalid dtatools numeric storage kind");
-    }
+    numeric_decode_plain_span(span, (double *) context + offset);
 }
 
 static void numeric_fill_region(

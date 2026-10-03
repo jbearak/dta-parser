@@ -75,11 +75,23 @@ measures direct double-pair kernels, retained scheduling and vectorized float
 block comparisons. It reports ordinary/sparse parity, dense-missing guards,
 the scheduling CPU/elapsed-time tradeoff and rejected per-row shortcuts.
 
+The [decoded-double dense-missing follow-up](decoded-double-comparison/results-2026-10-03.md)
+removes per-row missing branches and bounds adaptive fallback windows. Its
+720-observation matrix improves random dense missing comparisons by 7.34 to
+7.79 times and missing-free comparisons by 1.24 to 1.30 times, with rejected
+prototypes and unchanged compact controls retained.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
+
+The [bounded compact-float comparison follow-up](float-bounded-comparison/results-2026-10-03.md)
+limits how long a failed ordinary-block proof selects exact classification.
+A 256-row missing prefix on a million-row plain compact pair improves by
+3.17 to 3.24 times CPU. The 768-observation comparison includes retained spans,
+dense and ordinary controls, and the measured smaller regressions.
 
 The [compact materialization follow-up](compact-materialization/results-2026-10-02.md)
 removes a redundant compact copy before decoding aliased columns into doubles.
@@ -87,6 +99,13 @@ Million-row byte/int/long/float inputs save 1/2/4/4 MB of temporary copying;
 the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased inputs.
 The report separates exact allocation savings from timing and states its high
 missing density, batch intervals and retained-owner controls.
+
+The [compact decode follow-up](compact-decode/results-2026-10-03.md) moves
+interrupt polling and format/temporal selection outside typed decoding loops.
+Across missing-free, sparse and dense inputs, allocated first materialization
+improves by 2.03–4.77× CPU after the compact-copy removal. The report includes
+automatic GC, full bitwise checks and individual batch intervals; it does not
+claim ingestion speed or parity with an ordinary-double no-op.
 
 The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
 prepares numeric order keys once instead of decoding and validating them during

@@ -1,0 +1,14 @@
+{
+  "cases_per_build_round": 16,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million identical values per layout. Plain compact float spans and retained float spans8191/16385 are targets; contiguous typed-double pairs are unchanged runtime controls. Density panel: independent exact50% missing per input, same first-half missing, and100% missing. Pattern panel: matched first256/last256/alternating64-row missing runs. Ordinary panel: no missing and sparse independent997/991-row grids. All27 canonical missing ranks cycle forward in X/backward in Y where present; finite values are exactly binary32-representable.",
+  "interval": "Repeated public calls include output allocation and automatic GC. Construction, explicit GC, calibration, hashes and native checks excluded. Calibration>=50ms then target300ms aggregate CPU.",
+  "limits": "One host, warm constructed inputs, modern canonical missing codes, threads1, one retained chunk geometry. Plain compact targets and all typed-double controls reach full contiguous1m spans. Patterns differ in marginal/joint density and run lengths; cross-pattern ratios do not isolate branch prediction. Native eligibility is not a per-timed-call entry count. No reader/decompression, temporal, arbitrary import or universal speed claim.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "oracle": "Full independent integer-rank logical oracle; complete input/result/rank/metadata hashes and compact/materialized/retained/chunk states before/after. Identical values and ranks across layouts. Separate native eligibility check.",
+  "order": "Six complete permutations for each3-pattern panel; alternating2-pattern order in ordinary panel. Build, operation, layout and representation orders alternate; each layout/representation occupies each position three times. Fresh R process per build/round.",
+  "panel": "ordinary",
+  "phase": "measure",
+  "rounds": 6
+}

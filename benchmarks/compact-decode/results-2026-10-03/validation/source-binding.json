@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "bd78a06e4e4e88de355a9a518e573e364d9d3b07",
+  "conformance_verified_files": 344,
+  "focused_assertions": 5819,
+  "full_assertions": 55708,
+  "full_blocks": 1786,
+  "full_qualification_commit": "0da838e05cd0ba4c132a61cc60152d2b757c939e",
+  "full_warnings": 7,
+  "measured_candidate_commit": "83746313af9f0519f5769f32176c73d66d481435",
+  "production_files_unchanged": {
+    "r-package/dtatools/src/numeric-decode.h": "e7a73018b19ca5dc2221ceca167c07d65d6eb43aa8269215bab5abc0e2af578a",
+    "r-package/dtatools/src/numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "scope": "Timings use clean 83746313; clean 0da838e0 adds branch-proof regressions with identical production files. The parent evidence merge changes no package files. Both benchmark variant labels are independent of receipt variants."
+}

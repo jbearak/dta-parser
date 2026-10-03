@@ -1,72 +1,72 @@
 {
   "files": {
     "builds/baseline/build-receipt.json": {
-      "bytes": 99258,
-      "sha256": "6fb25eeae7bca5f7b97be2d630fad0c3dd88feefd069ff7101fbd245c3f30e25"
+      "bytes": 99148,
+      "sha256": "24db36f39e074ed8db1b8ccc05ad1be3c7b210deece5fb4b822d1a368091a4f2"
     },
     "builds/baseline/build.log": {
       "bytes": 23761,
       "sha256": "a5c7f0d3293971dc83abdfb394adeb3e7ce5ccee1d246ad9c7e242ea862985f5"
     },
     "builds/baseline/input-record.json": {
-      "bytes": 72927,
-      "sha256": "68f55c5c7ca2768e306ab25eabfc46b2e498d386134c398682e1e3cf10e43f8f"
+      "bytes": 72817,
+      "sha256": "060df2f15005acd61b1bb567bf357d17d61d1df4bf9ae29eba494dc45be1242d"
     },
     "builds/candidate/build-receipt.json": {
-      "bytes": 99559,
-      "sha256": "048c3ee4ac9545667c113c74900a684f399fbabdb3d6375ff8c4fb45d0fa9ccf"
+      "bytes": 99449,
+      "sha256": "dbda5ecfc7b55b988530cdc6eac5b084cca0c274f31539fc5689d590d61167b3"
     },
     "builds/candidate/build.log": {
       "bytes": 23792,
       "sha256": "a4ceba52300fdaebff9cf3d01aa9cf4c5e086a3d449d02e7824773d64eabcbaf"
     },
     "builds/candidate/input-record.json": {
-      "bytes": 73107,
-      "sha256": "18de674d159d202abba9eb7a400f260d83ca3adfe6cdc7fd845641c1660e183c"
+      "bytes": 72997,
+      "sha256": "76dd698e931cddaf02db2976367ad5cd7931a23fad73eaf5fc7338a4dfc8c8a2"
     },
     "builds/integration-v2/build-receipt.json": {
-      "bytes": 99857,
-      "sha256": "d972d4165499793f7a8f010aa0443406e9746f4416c04a8b2d6f1cb8eff33c9e"
+      "bytes": 99747,
+      "sha256": "27d192132e04dc303c4017dbf3971972443e9c64bca2e1df5868d6f8bcdb42e1"
     },
     "builds/integration-v2/build.log": {
       "bytes": 24598,
       "sha256": "291046ba2116d965bd9f553fbe199769bfa614c6831db9702a0dc9ba799e7578"
     },
     "builds/integration-v2/input-record.json": {
-      "bytes": 73405,
-      "sha256": "db73ecf36407193331ce38930fcb064c2897561cdfc0d071fa40f8f02442a950"
+      "bytes": 73295,
+      "sha256": "da93df67bda7b1615dd34e318f651265dcaa23adcddc701ca09d53659071f228"
     },
     "builds/integration-v3/build-receipt.json": {
-      "bytes": 99857,
-      "sha256": "66afb373dc97203896010e8dbe40cbb7448a33a3781ad692cf4c9b31d66d1ce9"
+      "bytes": 99747,
+      "sha256": "277811b44a8bf965d891d37dcaa5ed0103d104608db037022f547620a4a38145"
     },
     "builds/integration-v3/build.log": {
       "bytes": 24598,
       "sha256": "f13d3c017c433386f90b11198d2a697e7f75b8682dd0657136256d404d5ad648"
     },
     "builds/integration-v3/input-record.json": {
-      "bytes": 73405,
-      "sha256": "ab62091d0190bb84a3de7e63cc0d219f513a7d3e60ef9056d8ce7da200cade88"
+      "bytes": 73295,
+      "sha256": "b78b93d58372f653fc1dad5e7edf3d0fe075b40e22cb10212ad5731e2ee7762b"
     },
     "builds/integration/build-receipt.json": {
-      "bytes": 99710,
-      "sha256": "f0c43e45550c5fd4ecdf5505d4840091e39bcdc12754dc45a111670f236acd05"
+      "bytes": 99600,
+      "sha256": "c9ab7edddb7aa578adc6d1acb1457d553e40dd66616cecf25e6c33244f7a018c"
     },
     "builds/integration/build.log": {
       "bytes": 23854,
       "sha256": "25b5d3df9b758754cd16194f8625a6acc05756656e5714b669aa2182d5146461"
     },
     "builds/integration/input-record.json": {
-      "bytes": 73258,
-      "sha256": "ae0966856af2068f23f2c04a04829bd7e4e1a767ed4e072d40557e5a31e26b55"
+      "bytes": 73148,
+      "sha256": "39308062851a620151b87054208c59e1ebb2b9f934e424f101b48295053a9075"
     },
     "builds/shared-probe/build.log": {
       "bytes": 783,
       "sha256": "cb798d3ac167b85a355b95af55f1e2a09ed526f4262827862c1647e37101ff23"
     },
     "builds/shared-probe/input-record.json": {
-      "bytes": 3631,
-      "sha256": "6ec0da11232531b0b83af352cb0bbc6f6f0ce636a08edf154c0b694c1a41a72c"
+      "bytes": 3533,
+      "sha256": "cd40959b1709e4e68dc633e68ef24c8bf9fb52d12d7307debf59b780eb46625e"
     },
     "builds/shared-probe/materialization_probe.c": {
       "bytes": 2431,
@@ -126,7 +126,7 @@
     },
     "publication-source-map.json": {
       "bytes": 37089,
-      "sha256": "0dd13d8b7feebce40e8b70cd6d0fe6700a0fab425952d8ed98ff3e5532633d02"
+      "sha256": "aa1756dfc8e08a00908117abae80f9e33034a4fc172dee6b49e6352da5a97521"
     },
     "timings/01-baseline.csv": {
       "bytes": 13072,
@@ -289,12 +289,12 @@
       "sha256": "ee264537a08499a7e9e785a1c67de3437cc924d16bbc3eb2c0991b39859fe0f6"
     },
     "timings/provenance-after.json": {
-      "bytes": 374517,
-      "sha256": "1b7269d57049b27a336e0821df9bb0cbf08cb003d96b14a7de670a0f8556e580"
+      "bytes": 374297,
+      "sha256": "8dd7e513db2f8eb2e79cdead4f0add5dd12e5759e6465b329e4c7db2c41e86f5"
     },
     "timings/provenance-before.json": {
-      "bytes": 374668,
-      "sha256": "ccfe5ca894f49efd148e04e2769845809db3c56aedbb0f0770e1fd3280e12be5"
+      "bytes": 374448,
+      "sha256": "00932d4627fedf03287558ec655e5d6e27532918c648abcf512981ceea5b4530"
     },
     "timings/raw.csv": {
       "bytes": 147910,
@@ -317,8 +317,8 @@
       "sha256": "4355d38706f4ae6eb000eeec4d2c738e9ad3ec1f683ea1f3b4a7c1313c58fbf7"
     },
     "validation/arithmetic-main-integration/build-receipt.json": {
-      "bytes": 100172,
-      "sha256": "b265941f698217f9fafac544adce5576768e47a3e89ea170d21b9f1c7c436fd4"
+      "bytes": 100062,
+      "sha256": "53a47551c1961ed4a9d84d62b79bb91c0166afe5335a053099ca38dc9e15b8e1"
     },
     "validation/arithmetic-main-integration/focused.R": {
       "bytes": 929,
@@ -513,5 +513,5 @@
       "sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
     }
   },
-  "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."
+  "scope": "Text evidence only. Private paths and user-identity environment values are substituted; source map retains original and published hashes. Receipt hashes bind original build inputs and package/probe binaries, not redacted publication copies. Public LOGNAME/USER values and their direct per-field digests are redacted; whole historical receipt hashes and source-map original hashes still bind the original inputs, while published hashes bind the redacted copies."
 }

@@ -1,0 +1,25 @@
+{
+  "red_commit": "4838d73a075db54390c5ef8d8e091139cb302590",
+  "red_exit_code": 101,
+  "red_exact_rows": 1000000,
+  "green_exit_code": 0,
+  "red_log_sha256": "72513d66fffc6a73d47dc8a2eac24c639472e13e6e015c473046e468565e2302",
+  "green_log_sha256": "8d737d59b40f3e8a156850dae885e01caa5d27bc1002a38fbdc93bb426a54f0f",
+  "qualified_source_pending": false,
+  "boundary_source_sha256": "a5f017aa930ba0035e6f677edeb4dbff193f3faccb47461f3fc0501d1d9dba3d",
+  "green_commit": "847919ceb78bf08674fca9f9af02583449e590a6",
+  "green_source_sha256": "a5f017aa930ba0035e6f677edeb4dbff193f3faccb47461f3fc0501d1d9dba3d",
+  "full_rust_tests": 61,
+  "full_rust_exit_code": 0,
+  "full_rust_log_sha256": "d406b5ddbcd42b161d5c5bec4cd56679f50bf3157bfdec7665c28953a4b204c4",
+  "full_rust_command": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "r-package/dtatools/src/rust/Cargo.toml",
+    "--locked"
+  ],
+  "cargo_target_dir": "/private/tmp/dta-native-comparison-followup/target",
+  "format_check": "cargo fmt --manifest-path r-package/dtatools/src/rust/Cargo.toml -- --check",
+  "format_exit_code": 0
+}

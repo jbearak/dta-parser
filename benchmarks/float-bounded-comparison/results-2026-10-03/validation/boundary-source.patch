@@ -1,0 +1,74 @@
+diff --git a/r-package/dtatools/src/rust/src/float_compare.rs b/r-package/dtatools/src/rust/src/float_compare.rs
+index b1f02e22..36d38ef9 100644
+--- a/r-package/dtatools/src/rust/src/float_compare.rs
++++ b/r-package/dtatools/src/rust/src/float_compare.rs
+@@ -112,22 +112,27 @@ unsafe fn pair<
+             }
+         } else {
+             failed_blocks += 1;
+-            // Repeated failed proofs only choose the exact algorithm for the
+-            // rest of this span. They never establish a fact about later rows.
+-            // This bounds wasted scans on dense missing or unusual imports.
+-            if failed_blocks == 4 {
+-                return valid
+-                    & pair_exact::<X_MODERN, Y_MODERN, _, _>(
+-                        xp,
+-                        yp,
+-                        result,
+-                        length - start,
+-                        &observed,
+-                        &missing,
+-                    );
+-            }
+             valid &=
+                 pair_exact::<X_MODERN, Y_MODERN, _, _>(xp, yp, result, count, &observed, &missing);
++            if failed_blocks == 4 {
++                start += count;
++                // Bound the exact window after repeated failed proofs, then
++                // resume proofs so a short exceptional prefix cannot select
++                // exact decoding for an arbitrarily long ordinary tail.
++                // Every row retains validation; this is not a domain fact.
++                let exact_count = (length - start).min(16_384);
++                valid &= pair_exact::<X_MODERN, Y_MODERN, _, _>(
++                    x.add(start),
++                    y.add(start),
++                    output.add(start),
++                    exact_count,
++                    &observed,
++                    &missing,
++                );
++                start += exact_count;
++                failed_blocks = 0;
++                continue;
++            }
+         }
+         start += count;
+     }
+@@ -475,9 +480,25 @@ mod tests {
+ 
+     #[test]
+     fn float_pair_dense_switch_preserves_late_rows_and_invalidity() {
+-        for length in [255_usize, 256, 257, 320, 1025] {
++        for length in [
++            255_usize, 256, 257, 320, 1025, 16_639, 16_640, 16_641, 33_279, 33_280, 33_281,
++        ] {
+             for pattern in 0..3 {
+-                for invalid in [None, Some(1), Some(193), Some(length - 1)] {
++                let mut invalid_positions = vec![
++                    None,
++                    Some(1),
++                    Some(193),
++                    Some(16_639),
++                    Some(16_640),
++                    Some(16_641),
++                    Some(33_279),
++                    Some(33_280),
++                    Some(length - 1),
++                ];
++                invalid_positions.retain(|position| position.is_none_or(|i| i < length));
++                invalid_positions.sort_unstable();
++                invalid_positions.dedup();
++                for invalid in invalid_positions {
+                     let mut x: Vec<f32> = (0..length).map(|i| (i % 7) as f32 / 8.).collect();
+                     let mut y: Vec<f32> = (0..length).map(|i| (i % 3) as f32 / 8.).collect();
+                     for i in 0..length {

@@ -6122,6 +6122,10 @@
         {
           "path": "tests/testthat/test-numeric-materialization.R",
           "sha256": "cacb79602d61407aa61b62f07021456cd7cf5291eeb5bdcce55ac46d01e08332"
+        },
+        {
+          "path": "tests/testthat/test-native-decode-kernels.R",
+          "sha256": "5785c904d3adf207631744a55df8c197eccb5997272f426b4ad2e24f5d9defca"
         }
       ],
       "blocks": [
@@ -7661,6 +7665,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-decode-kernels.R",
+          "test": "compact decode tiles preserve temporal values and every missing payload",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 324,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-decode-kernels.R",
+          "test": "compact decode keeps modern float gaps infinities and NaN payloads",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 36,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-decode-kernels.R",
+          "test": "compact decode retains legacy integer and float missing domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 121,
           "warnings": 0
         },
         {

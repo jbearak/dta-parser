@@ -1,0 +1,120 @@
+{
+  "artifacts": {
+    "exact-witnesses.json": "1032b423673522b5d4ac33771b68c0e86421b5a0f477c5a65c3fad6420c84fcd",
+    "exact-witnesses.py": "39190d0ed9c87522fc42214c8d48c0cc5ea69f024489a83e9b933c40ac5414b0",
+    "probe.c": "d2d68af93336d21e6f05f51a64a0b41d20785573293d74874315fd197c98d3bc",
+    "proof.md": "5c8a0641f691a032795ed06f0260e51e3b1485b33e5fc3a42d6097d1d5033d85",
+    "receipt.json": "8299dd1b2743b7098e3adae12771a072eda7c23a71a02fa152f2202b5e9af100",
+    "run.py": "0f0bc73842af1dab70ea23003ecf1113fe7a6fec0c04d325c756b0158cdb5a87"
+  },
+  "checks": [
+    "current source/controller/compiler hashes",
+    "exact classifier extraction and clean Git source binding",
+    "optimized and sanitizer binary/result bindings and equality",
+    "per-mode coverage/counter sums and rounding witnesses",
+    "independent exact products, correct rounding, and boundary categories for every witness"
+  ],
+  "column_models": 19,
+  "compared_pairs_per_binary": 36914944,
+  "limits": [
+    "Not exhaustive float-pair enumeration.",
+    "No production dispatch, ownership, reentry, ABI or cross-platform qualification.",
+    "No floating exception-flag or performance equivalence claim.",
+    "This audit grants no new authorization or override of automatic review."
+  ],
+  "rational_witnesses": [
+    {
+      "category": 0,
+      "difference": "1267650600228229401496703205376",
+      "exact_product": "170141174586915030134081493238961668096",
+      "mode": 0
+    },
+    {
+      "category": 1,
+      "difference": "-633825300114114700748351602688",
+      "exact_product": "170141172685439129791737390993906860032",
+      "mode": 0
+    },
+    {
+      "category": 2,
+      "difference": "0",
+      "exact_product": "170141173319264429905852091742258462720",
+      "mode": 0
+    },
+    {
+      "category": 3,
+      "difference": "10141204801825835211973625643008",
+      "exact_product": "-170141183460469231731687303715884105728",
+      "mode": 0
+    },
+    {
+      "category": 0,
+      "difference": "1267650600228229401496703205376",
+      "exact_product": "170141174586915030134081493238961668096",
+      "mode": 1
+    },
+    {
+      "category": 1,
+      "difference": "-633825300114114700748351602688",
+      "exact_product": "-170141172685439129791737390993906860032",
+      "mode": 1
+    },
+    {
+      "category": 2,
+      "difference": "0",
+      "exact_product": "170141173319264429905852091742258462720",
+      "mode": 1
+    },
+    {
+      "category": 3,
+      "difference": "10141204801825835211973625643008",
+      "exact_product": "-170141183460469231731687303715884105728",
+      "mode": 1
+    },
+    {
+      "category": 0,
+      "difference": "1267650600228229401496703205376",
+      "exact_product": "-170141174586915030134081493238961668096",
+      "mode": 2
+    },
+    {
+      "category": 1,
+      "difference": "-633825300114114700748351602688",
+      "exact_product": "170141172685439129791737390993906860032",
+      "mode": 2
+    },
+    {
+      "category": 2,
+      "difference": "0",
+      "exact_product": "170141173319264429905852091742258462720",
+      "mode": 2
+    },
+    {
+      "category": 3,
+      "difference": "10141204801825835211973625643008",
+      "exact_product": "-170141183460469231731687303715884105728",
+      "mode": 2
+    },
+    {
+      "category": 0,
+      "difference": "1267650600228229401496703205376",
+      "exact_product": "170141174586915030134081493238961668096",
+      "mode": 3
+    },
+    {
+      "category": 2,
+      "difference": "0",
+      "exact_product": "170141173319264429905852091742258462720",
+      "mode": 3
+    },
+    {
+      "category": 3,
+      "difference": "10141204801825835211973625643008",
+      "exact_product": "-170141183460469231731687303715884105728",
+      "mode": 3
+    }
+  ],
+  "rounding_modes": 4,
+  "scope": "Read-only independent artifact and exact-rational audit; no compiler or probe rerun",
+  "status": "PASS"
+}

@@ -1,0 +1,5 @@
+{
+  "commit": "76b46d92b63862262ddfd7b88b4b58781b01309f",
+  "baseline": "e265f7375171c45ddeb5efdc3d7c978a615c132d",
+  "change": "Bounded 64-row non-NaN proof with direct ordinary comparisons; masked missing-rank comparison after four consecutive failed proofs. Scalar path unchanged."
+}
