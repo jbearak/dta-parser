@@ -108,6 +108,30 @@ class ArchiveBindingTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Non-regular packaged source: src/link.c', result.stderr)
 
+    def test_source_root_symlink_rejected(self):
+        for root in ('src', 'R', 'tests', 'tools'):
+            extra = tarfile.TarInfo('dtatools/' + root)
+            extra.type = tarfile.SYMTYPE
+            extra.linkname = 'elsewhere'
+            self.archive(extra=extra)
+            result = self.run_checker()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Non-regular packaged source: ' + root, result.stderr)
+
+    def test_mutated_export_and_matching_archive_rejected(self):
+        (self.package / 'R/read.R').write_bytes(b'changed after commit\n')
+        self.archive({**self.sources, 'R/read.R': b'changed after commit\n'})
+        result = self.run_checker()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Clean export differs from source commit: R/read.R', result.stderr)
+
+    def test_changed_buildignore_rejected(self):
+        (self.package / '.Rbuildignore').write_bytes(b'^src$\n')
+        self.archive()
+        result = self.run_checker()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Clean export differs from source commit: .Rbuildignore', result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()
