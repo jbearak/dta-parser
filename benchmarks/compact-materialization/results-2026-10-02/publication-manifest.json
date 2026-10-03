@@ -24,6 +24,30 @@
       "bytes": 73107,
       "sha256": "18de674d159d202abba9eb7a400f260d83ca3adfe6cdc7fd845641c1660e183c"
     },
+    "builds/integration-v2/build-receipt.json": {
+      "bytes": 99857,
+      "sha256": "d972d4165499793f7a8f010aa0443406e9746f4416c04a8b2d6f1cb8eff33c9e"
+    },
+    "builds/integration-v2/build.log": {
+      "bytes": 24598,
+      "sha256": "291046ba2116d965bd9f553fbe199769bfa614c6831db9702a0dc9ba799e7578"
+    },
+    "builds/integration-v2/input-record.json": {
+      "bytes": 73405,
+      "sha256": "db73ecf36407193331ce38930fcb064c2897561cdfc0d071fa40f8f02442a950"
+    },
+    "builds/integration-v3/build-receipt.json": {
+      "bytes": 99857,
+      "sha256": "66afb373dc97203896010e8dbe40cbb7448a33a3781ad692cf4c9b31d66d1ce9"
+    },
+    "builds/integration-v3/build.log": {
+      "bytes": 24598,
+      "sha256": "f13d3c017c433386f90b11198d2a697e7f75b8682dd0657136256d404d5ad648"
+    },
+    "builds/integration-v3/input-record.json": {
+      "bytes": 73405,
+      "sha256": "ab62091d0190bb84a3de7e63cc0d219f513a7d3e60ef9056d8ce7da200cade88"
+    },
     "builds/integration/build-receipt.json": {
       "bytes": 99710,
       "sha256": "f0c43e45550c5fd4ecdf5505d4840091e39bcdc12754dc45a111670f236acd05"
@@ -101,8 +125,8 @@
       "sha256": "793db222a6231eeb50e5d12081666bd9ce1da1c9f578cfa5c5d9c2bde1d5f171"
     },
     "publication-source-map.json": {
-      "bytes": 28260,
-      "sha256": "abe0f57619cfc877bf07cf29a72c3d077907ba3ef522504990334f19776f909c"
+      "bytes": 34631,
+      "sha256": "fbff6632e856a6e7643091737e0e6c4a2b2c499ae6862b9b6cb5b9bfd7b38376"
     },
     "timings/01-baseline.csv": {
       "bytes": 13072,
@@ -284,9 +308,37 @@
       "bytes": 14527,
       "sha256": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
     },
+    "validation/combined-controller-tests.log": {
+      "bytes": 315,
+      "sha256": "d03e6ffa7b68a712ac5c0a8d526f5dc8d744f35ce38b61e3e391d14279a78ae5"
+    },
+    "validation/combined-integration-binding.json": {
+      "bytes": 1221,
+      "sha256": "8bed9fe409ee6a22714d401db9f1bb4ed2a11a8593350eb6f3dae39765305403"
+    },
+    "validation/combined-manifest-tests.log": {
+      "bytes": 105,
+      "sha256": "b5985bb5d4095da848c1e4e38b9358c2d452a471f0f3fb2fd143db7544944125"
+    },
+    "validation/combined-package.patch": {
+      "bytes": 75937,
+      "sha256": "af64add2dab1a18cb6b755c615fe41bfa35c99f1d5308243e8c90d623635c445"
+    },
     "validation/conformance-integration-v1.log": {
       "bytes": 20218,
       "sha256": "4e3d34c13a2b5966341f728f11c90abfa77c19723ad4639117231b5b1142126c"
+    },
+    "validation/conformance-integration-v2-binding-validation.log": {
+      "bytes": 76,
+      "sha256": "9dc929a4a19c99af8551066c27b479d7cf07a83bcb6539166e734197dceef042"
+    },
+    "validation/conformance-integration-v2.json": {
+      "bytes": 37920,
+      "sha256": "c6eb657734997649ea9137a627f67baa12984edccefce15c7e5cdf5dc4bc20b1"
+    },
+    "validation/conformance-integration-v2.log": {
+      "bytes": 22688,
+      "sha256": "2b55579bdcf72140b007533b8d4bbbf04e6c5dcf306cdfd0e5ed6a35ca2c1699"
     },
     "validation/conformance-source-binding.json": {
       "bytes": 37043,
@@ -324,6 +376,10 @@
       "bytes": 713,
       "sha256": "c1731796821c5bbc505736a93f65f8fd110c88c93a444a7dac4133a147113a33"
     },
+    "validation/grouping-integration-package.patch": {
+      "bytes": 29979,
+      "sha256": "d4ea744c0d3576f5664d5c93716a5baaa128b145ae42f7144d0f572448bb4cce"
+    },
     "validation/independent-audit.json": {
       "bytes": 1864,
       "sha256": "311864c04d9a12d7d8c04deaa825ec2e50d38203e176460faba4e43f4055be46"
@@ -335,6 +391,30 @@
     "validation/integration-binding.json": {
       "bytes": 1166,
       "sha256": "67a419665256529e0e081aa0fb1c3ac5a58579a3fac64c0171eafa52ce34e9b2"
+    },
+    "validation/integration-focused-v2.R": {
+      "bytes": 840,
+      "sha256": "ee92d81dced40df8c1c634b258b39c64cb98ed2e64abf77b60d6d2233c832475"
+    },
+    "validation/integration-focused-v2.csv": {
+      "bytes": 15482,
+      "sha256": "f7f70d60139fd1f0d869820bfb8f3a0cd0906553558126596d43107bfefad942"
+    },
+    "validation/integration-focused-v2.log": {
+      "bytes": 11059,
+      "sha256": "8fa1ac4c22535b7dfac31418bb287346015c53647465bd700bc5d612600cf9c9"
+    },
+    "validation/integration-focused-v3.R": {
+      "bytes": 852,
+      "sha256": "d0e551768174243402bfe81b0111c141b887466d09de1914dc07758fd43a729c"
+    },
+    "validation/integration-focused-v3.csv": {
+      "bytes": 17243,
+      "sha256": "ba66930700502edc538f4596185ca41dd84fc93ba05152916494332d4f574ff6"
+    },
+    "validation/integration-focused-v3.log": {
+      "bytes": 11355,
+      "sha256": "bde40267325b330b51237fb9facbbaff9cb59ef0e962872e5e312f72278ac659"
     },
     "validation/integration-focused.R": {
       "bytes": 821,
@@ -393,8 +473,12 @@
       "sha256": "17bc47bc0f6dd6d22843b931a23ff99cf88b4297e7a7cfc9503ebaf93a9738a5"
     },
     "validation/source-binding.json": {
-      "bytes": 1757,
-      "sha256": "a7d2b73845686ab62066e23a529d62e05f67ae668414c7f5850f119660035bd8"
+      "bytes": 2173,
+      "sha256": "cdad1adb15db116d50e11d46301b02e23498c1c60c30dccd313e0bce28df75fa"
+    },
+    "validation/validate-conformance-archive.py": {
+      "bytes": 2136,
+      "sha256": "18ef05469d17f40fbaa3fe86613057f981668ee408fc980a99130a9805b22718"
     }
   },
   "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Package and probe binaries are bound by receipts but not published."
