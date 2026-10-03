@@ -61,8 +61,8 @@
       "sha256": "fc6bad07300dd31afa4dc05e4745163403323c8a5eb4b450eb3d3da23c7f790b"
     },
     "publication-source-map.json": {
-      "bytes": 25515,
-      "sha256": "3cfee10b99f6c0820331349a29ea814e6042f9d7ba67389bdb3ec4df3e7bba92"
+      "bytes": 27365,
+      "sha256": "5692e2a1d985ce5aaeda0b9e1e044b66a5250ad56984a66e32a69726fbbb9d03"
     },
     "qualification/completion.json": {
       "bytes": 472,
@@ -271,6 +271,30 @@
     "validation/archive-testthat.Rout": {
       "bytes": 14987,
       "sha256": "3a4fc1fc1dbdb25736d4585cfd9c09d732dfbe4e10778e0aaa33de8356e1fc5b"
+    },
+    "validation/arithmetic-main-integration/binding.json": {
+      "bytes": 1083,
+      "sha256": "27650f5ec41c38faed1df2fcbea8e8ef11f4790e71a86b0e3b5c4141b68a3b01"
+    },
+    "validation/arithmetic-main-integration/build-receipt.json": {
+      "bytes": 100595,
+      "sha256": "0cea767b2ba2c241318bf50fc346efd238d4fe49a694ef0d24d1d8d8b1fc4154"
+    },
+    "validation/arithmetic-main-integration/focused.R": {
+      "bytes": 929,
+      "sha256": "0eae034577b2100de20ed2034a11cad86f9cc83890732d83f145a1dd5b07825e"
+    },
+    "validation/arithmetic-main-integration/focused.csv": {
+      "bytes": 18187,
+      "sha256": "8baaffef708f474c896f49ce7010e7dd77ac9f4ef717f1587edf9aa4c48c3b41"
+    },
+    "validation/arithmetic-main-integration/focused.log": {
+      "bytes": 49165,
+      "sha256": "60c7d43b812f19836911a2fe5f323327a696392ad8e4152fa5d457ea5ba1f8e7"
+    },
+    "validation/arithmetic-main-integration/manifest-tests.log": {
+      "bytes": 105,
+      "sha256": "e586fc0f3bb2a05f4c80f07d1b4c6171e830592f6c7aaf70d4af3b0aa3ebd072"
     },
     "validation/assembly-baseline-excerpt.s": {
       "bytes": 10414,
