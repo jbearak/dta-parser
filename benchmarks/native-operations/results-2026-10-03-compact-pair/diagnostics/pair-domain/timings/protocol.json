@@ -1,0 +1,13 @@
+{
+  "baseline_commit": "cf72cd8efb318d9d9851f5a51f8e947fd3b158db",
+  "candidate_commit": "f729c488f936040bff5dc6458393aba14dc77374",
+  "cases_per_build_round": 36,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, storage, source hashes and source states.",
+  "experiment": "Compact physical-pair range proof; six mixed-pair cases and six unchanged scalar controls",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}

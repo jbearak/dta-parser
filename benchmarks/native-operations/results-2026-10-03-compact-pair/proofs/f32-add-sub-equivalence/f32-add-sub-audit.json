@@ -1,0 +1,30 @@
+{
+  "artifacts": {
+    "exact-witnesses.json": "c2f0f3c6d45ad2d89326e12bcc7abcfd19bdb4b2fcbcbdceb5e236c49e35fa22",
+    "exact-witnesses.py": "a10f0cb550aab64bfe1c5a9c05c6566cdeadb5492b6f49d325e5777cfb49fd11",
+    "probe.c": "ae746dbf1be42597b9588a16f44d9303de8fabc03abf8cfe2fd1f8f777d117aa",
+    "proof-draft.md": "cb823b043c49c95cf67a4a0fa874f5fec63a525a34a4b9a5cdb26bee46a794c7",
+    "receipt.json": "1cb15af0f8ca3566d310dcc6859e420f30ae8a53b59c0fdd0b1b99185fb5c0df",
+    "run.py": "b34289e24bde93b631324f0668ed4913ead171ecf20b3febe7d2ca46f50fc47c"
+  },
+  "checks": [
+    "current source/controller/compiler hashes and clean Git classifier source",
+    "exact classifier extraction",
+    "optimized/UBSan binary and full result identity",
+    "per-operation/per-mode counts and signed arithmetic rounding witnesses",
+    "independent rational direct and nested p53/p24 rounding by neighboring-representable intervals",
+    "binary64-first fit/promotion, exact zero signs and full encoded output bits for saved witnesses"
+  ],
+  "checksum": "4aeef62749debc9b",
+  "column_models": 38,
+  "limits": [
+    "Not exhaustive pair enumeration.",
+    "Producer and whole-column logic are standalone models, not integrated package paths.",
+    "No dispatch/ownership/reentry/ABI/cross-platform/floating-exception/performance claim."
+  ],
+  "operation_modes": 8,
+  "pairs_per_binary": 70004784,
+  "rational_witnesses": 814,
+  "scope": "Independent artifact and adjacent-representable-value rational audit; no compiler or probe rerun",
+  "status": "PASS"
+}

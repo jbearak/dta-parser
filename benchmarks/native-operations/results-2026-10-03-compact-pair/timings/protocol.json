@@ -1,0 +1,13 @@
+{
+  "baseline_commit": "8e4e1cf957558d727a3b8b092df05d2f3dca2f8d",
+  "candidate_commit": "af9f76e3eb3b0b0328ec6609ddb017d42edb3c9d",
+  "cases_per_build_round": 102,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, storage, source hashes and source states.",
+  "experiment": "Compact-pair follow-up against merged general arithmetic; both builds must use native kernels. Worker candidate label enables the same route gate for both roles; comparison roles remain baseline/candidate.",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}

@@ -1,0 +1,299 @@
+{
+  "all_case_bare_range": [
+    0.8368924205070645,
+    2.750379283589718
+  ],
+  "all_case_speedup_range": [
+    0.9960612691466082,
+    1.2219764018565922
+  ],
+  "all_case_typed_range": [
+    0.7557414596488534,
+    2.13761415875941
+  ],
+  "artifacts": {
+    "completion.json": "eba2d81e2ae8950a3c87b003a651de5dd329341622021bde4a1e2593f7c13099",
+    "protocol.json": "67c100ca312f94d789bee6317284d398434ddf2c54bd34d20e77f4d67db279e8",
+    "provenance-after.json": "d40de7b92e5c0333f829afbc5243ef87fd023dc9e75c32c2471de28d7b8931bf",
+    "provenance-before.json": "9f56e0a9b39e4d22e00fa08c6243ec4ab531020a53acc35f8aafe46d435b9edc",
+    "raw.csv": "41f0f42f6884ad673fb7c01f1da6d6e1ea6755ea43c94239e99e3f87a7c52815",
+    "source.patch": "24449c962db49d39d27e5b68ab673e8252fc2f2541f461fac00ce604215f6faf",
+    "summary.csv": "f1992cff838102182e8c96e4b06bc8e4e1825d1aa482e5f3bb3f9938155faac9"
+  },
+  "audit": "Independent artifact recomputation; no builds, R or timing jobs",
+  "baseline_commit": "cf72cd8efb318d9d9851f5a51f8e947fd3b158db",
+  "binary_controls": [
+    {
+      "compact_speedup": "0.9986209853167122",
+      "compact_typed_ratio": "1.1000673338369393",
+      "missing": "FALSE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.9981039195203206",
+      "compact_typed_ratio": "1.1051424102196545",
+      "missing": "TRUE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.9960612691466082",
+      "compact_typed_ratio": "0.7557414596488534",
+      "missing": "FALSE",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.0009153238030828",
+      "compact_typed_ratio": "0.7937920508748048",
+      "missing": "TRUE",
+      "width": "int"
+    }
+  ],
+  "candidate_commit": "f729c488f936040bff5dc6458393aba14dc77374",
+  "case_speedups": [
+    {
+      "compact_ordinary_ratio": "1.2248423598876652",
+      "compact_speedup": "0.9986209853167122",
+      "compact_typed_ratio": "1.1000673338369393",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.6361324670954815",
+      "compact_speedup": "1.0048813096492488",
+      "compact_typed_ratio": "1.4035946280349902",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.2216223652462026",
+      "compact_speedup": "0.9981039195203206",
+      "compact_typed_ratio": "1.1051424102196545",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.037229888049986",
+      "compact_speedup": "1.0",
+      "compact_typed_ratio": "1.8349708683593937",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.9442780686194043",
+      "compact_speedup": "1.1001143487020242",
+      "compact_typed_ratio": "1.6038617876722974",
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.9659769662819515",
+      "compact_speedup": "1.1046196403872788",
+      "compact_typed_ratio": "1.6481864938881856",
+      "missing": "FALSE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8368924205070645",
+      "compact_speedup": "0.9960612691466082",
+      "compact_typed_ratio": "0.7557414596488534",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.6380170610011335",
+      "compact_speedup": "1.2086516581876692",
+      "compact_typed_ratio": "2.13761415875941",
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.750379283589718",
+      "compact_speedup": "1.2219764018565922",
+      "compact_typed_ratio": "2.0450494774204055",
+      "missing": "TRUE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8896127202226616",
+      "compact_speedup": "1.0009153238030828",
+      "compact_typed_ratio": "0.7937920508748048",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.4834180249280813",
+      "compact_speedup": "1.111218842100601",
+      "compact_typed_ratio": "1.105602520071057",
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "compact_ordinary_ratio": "2.1642602642805935",
+      "compact_speedup": "1.0279745253258732",
+      "compact_typed_ratio": "1.7092875959867777",
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "caveats": [
+    "Calibration target is not the actual interval minimum.",
+    "Current large library binaries were not independently rehashed during the lightweight audit; their before/after inventories agree."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete matrix and all six permutations",
+    "result/storage/missing/source equality",
+    "native route and unchanged source states",
+    "every CPU median, speedup and paired/control ratio",
+    "before/after source/installed/controller equality and current controller hashes",
+    "completion/source-patch binding"
+  ],
+  "controls": [
+    {
+      "compact_speedup": "0.9986209853167122",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.0048813096492488",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.9981039195203206",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.0",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.9960612691466082",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.0009153238030828",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    }
+  ],
+  "cpu_interval_range": [
+    0.101,
+    0.186
+  ],
+  "observations": 432,
+  "paired_speedups": [
+    {
+      "median": 0.9986228843793736,
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "median": 1.0045898071322412,
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "median": 0.9999999999999933,
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "median": 1.0033557046979797,
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "median": 1.0992816395865346,
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "median": 1.1046441885814295,
+      "missing": "FALSE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "median": 0.9932983682983683,
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "median": 1.2086516581876614,
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "median": 1.2196531791907432,
+      "missing": "TRUE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "median": 0.9981986618630984,
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "median": 1.1065070867473255,
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "median": 1.0238203356668045,
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "runtime": {
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "R_version": "R version 4.6.1 (2026-06-24)",
+    "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "summary_rows": 24,
+  "target_cases": 6,
+  "target_speedup_range": [
+    1.0279745253258732,
+    1.2219764018565922
+  ],
+  "target_typed_range": [
+    1.105602520071057,
+    2.13761415875941
+  ],
+  "wall_interval_range": [
+    0.101000000000001,
+    0.185
+  ]
+}

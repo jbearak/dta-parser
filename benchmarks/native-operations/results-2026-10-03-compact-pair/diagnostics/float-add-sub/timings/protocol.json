@@ -1,0 +1,13 @@
+{
+  "baseline_commit": "54d2913069391c8d00d1079590194ab7d022b681",
+  "candidate_commit": "f689dab66b95fe870542f4699b2dc9c88c382920",
+  "cases_per_build_round": 54,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, storage, source hashes and source states.",
+  "experiment": "Equivalent compact float addition/subtraction; retain the complete eighteen-case multiplication-stage matrix as targets and controls",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}
