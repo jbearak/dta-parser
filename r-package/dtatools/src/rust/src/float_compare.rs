@@ -395,7 +395,8 @@ mod tests {
             f32::from_bits(0xffc00001),
         ];
         for length in [0_usize, 1, 15, 16, 17, 63, 64, 65, 127, 128, 129] {
-            let mut positions = vec![0, length / 2, length.saturating_sub(1), 63, 64, 65];
+            // The out-of-range position leaves full blocks and tails ordinary.
+            let mut positions = vec![length, 0, length / 2, length.saturating_sub(1), 63, 64, 65];
             positions.sort_unstable();
             positions.dedup();
             for position in positions {
