@@ -1,0 +1,15 @@
+{
+  "source_commit": "2b3dad20373d8b4a86c68fe2871e3442a66a2d50",
+  "qualified_integration_commit": "c5d5aebc5a70fde0bfa67816e1ab2e44bd812b92",
+  "parent_portability_commit": "e405bf0ea5f2d3e08cb283f3b680286b39fab0ed",
+  "package_files_changed_after_build": [
+    "r-package/dtatools/src/numeric-arithmetic-general.h",
+    "r-package/dtatools/src/numeric-arithmetic-integer-reciprocal.h"
+  ],
+  "change": "Explicit integer casts around cross-enum comparisons and parentheses around !observed before bitwise OR. Both preserve the original C expression semantics and silence GCC warnings in the strict structural probe.",
+  "source_sha256": {
+    "r-package/dtatools/src/numeric-arithmetic-general.h": "55d81d626561f76240f4ca5ec3d3b986ba6cb05d587df5a91bf56488f4c471d5",
+    "r-package/dtatools/src/numeric-arithmetic-integer-reciprocal.h": "4f463e9bbbcf2131ba32017b74874d918d390a91d95cade16a14ae2886059837"
+  },
+  "scope": "Post-build source-only portability correction. The historical integrated DLL and its58,433 tests did not contain this spelling change. Parent current-header structural64-case probe and normal/-O guards passed; no new full suite or timing is claimed."
+}

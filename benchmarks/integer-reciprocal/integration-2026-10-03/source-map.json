@@ -1,0 +1,27 @@
+[
+  {
+    "artifact": "integration-binding.json",
+    "published_sha256": "8877f1f3f23b84b91a0b42d458772a937883f1bc5da490c2f20d6bf423e61998",
+    "source_sha256": "f8df6f21d202143de756d58b2a2b83d33e537c1c4a8d968599f1e8eb29a366cf"
+  },
+  {
+    "artifact": "bind-integration.py",
+    "published_sha256": "73cf5f47c36eac15d0763c1a8bda8b28faace4e2a6590acf83f53021db3f5845",
+    "source_sha256": "464f40edeaa80ea55bed718a9bb22b1622c74bc5c35fc8363dff5ecc68934089"
+  },
+  {
+    "artifact": "integration-focused.R",
+    "published_sha256": "42c99e4737600d3079fd5d201266a1a95a24bcbb98df80f1ce57b6bf7519bb35",
+    "source_sha256": "42c99e4737600d3079fd5d201266a1a95a24bcbb98df80f1ce57b6bf7519bb35"
+  },
+  {
+    "artifact": "integration-focused.csv",
+    "published_sha256": "fdc25db7de9968b79b4e3466874f4b728cb0de4a9cd7c00c1295d3c56a9b3752",
+    "source_sha256": "fdc25db7de9968b79b4e3466874f4b728cb0de4a9cd7c00c1295d3c56a9b3752"
+  },
+  {
+    "artifact": "integration-focused.log",
+    "published_sha256": "2ae33e71692442979a6df6637213ba4917ea4a3bb267076c3befacc05236c2ae",
+    "source_sha256": "2ae33e71692442979a6df6637213ba4917ea4a3bb267076c3befacc05236c2ae"
+  }
+]

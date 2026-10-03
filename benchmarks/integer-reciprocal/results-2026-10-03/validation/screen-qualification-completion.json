@@ -1,0 +1,18 @@
+{
+  "cases_per_build": 36,
+  "exact_results_and_missing_caches": true,
+  "input_sha256": {
+    "<work>/screen-baseline-qualification.csv": "1a2ea474d929718763092195ac73118618511056f03fda668dd2f50d1ddd54ec",
+    "<work>/screen-baseline-qualification.log": "488cc51dc11d20175856c85d9c7b5b073d6c9674186f4805642e6c1c67170551",
+    "<work>/screen-candidate-qualification.csv": "1a2ea474d929718763092195ac73118618511056f03fda668dd2f50d1ddd54ec",
+    "<work>/screen-candidate-qualification.log": "488cc51dc11d20175856c85d9c7b5b073d6c9674186f4805642e6c1c67170551",
+    "<work>/screen-qualification-after.json": "ed5a502f7584da07e4f075f9689cccb0e36d849a73b6e0d3e17415f186f1c52b",
+    "<work>/screen-qualification-before.json": "ed5a502f7584da07e4f075f9689cccb0e36d849a73b6e0d3e17415f186f1c52b"
+  },
+  "native_routes_checked_in_both_builds": true,
+  "provenance_unchanged": true,
+  "scope": "Untimed screen qualification only; no performance measurements.",
+  "source_state_unchanged": true,
+  "status": "PASS",
+  "total": 72
+}

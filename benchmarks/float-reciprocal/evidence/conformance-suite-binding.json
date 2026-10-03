@@ -1,0 +1,24 @@
+{
+  "artifact_sha256": {
+    "bind-conformance-suite.py": "0d611954cc0212d7ed1ba505d3128bdf40b06041b9606c421fc2cbe08acccd2f",
+    "conformance-command.json": "3fd01d9700652d32436790f045da13dea30f35f8bdd6402a845c9540291d8b9b",
+    "conformance-gate.sh": "e6596262b4558a92801def9732f91ed652521c90dc3e0477d24afe568aa3c7e5",
+    "conformance-testthat.Rout": "2848144021798122a0f1c97e2ee785a94e4f240cf657b8d2fc813f20b64f1b87",
+    "conformance.json": "c0f8240cc3538587156006376b6c80d74bfb8d9e5ddaf427e4ae5aa68466628d",
+    "conformance.log": "36d0f1845533616ba8f75d049fa064a01ed4a1b8cf46e454eeb73a326207a37b",
+    "run-conformance.py": "930bd2fa59e280a5e182c5f056e06ffa5996bb7c32ca19db7b198d4bdcced9ce",
+    "validate-conformance-archive.py": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
+  },
+  "counts": {
+    "failed": 0,
+    "passed": 103481,
+    "skipped": 0,
+    "warnings": 7
+  },
+  "explicit_buildignore_exclusions": 20,
+  "packaged_source_files": 351,
+  "scope": "Post-run receipt binding the preserved full archived test output and original conformance command to its immutable archive validation; no new tests run. Two identical final summaries in testthat output represent one complete suite.",
+  "source_archive_sha256": "69c3ff57eee28340c08ffd4afc0f724a07fb0962c3aa0058ce3b0629b7924d04",
+  "source_commit": "50e448283231cde1432fa6b30d5d3f6bd0441618",
+  "status": "PASS"
+}

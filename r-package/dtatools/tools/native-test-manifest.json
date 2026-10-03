@@ -1815,11 +1815,11 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "22966619755527264b9baf68a8378cae0b1f8ed5c11c6c72adbe7ab796f26981"
+          "sha256": "714774f0cd179d227d47051c58976d952bff52c07424fa60a0be0ad545d1bb02"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "de8a98ca546a6c5045fc4f326ce39f08269d0933c71d68327020096a3f41c91c"
+          "sha256": "db7fdb3ae35f6b8009851641a5b37d96205a0f6ee7f13d9df29f4275e78a686a"
         }
       ],
       "blocks": [
@@ -4427,6 +4427,14 @@
           "warnings": 0
         },
         {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "integer reciprocal bounds preserve storage zero signs and missing caches",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 819,
+          "warnings": 0
+        },
+        {
           "file": "test-native-arithmetic-parity.R",
           "test": "a final or boundary value promotes every earlier scalar result",
           "occurrence": 1,
@@ -4584,6 +4592,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2061,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float reciprocal block proofs preserve zero exceptions and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 756,
           "warnings": 0
         },
         {
@@ -6141,7 +6157,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "4e699964ad262d4245ca3e8aad826b3c1b7ed73a87b92ac2ce108ae71693859c"
+          "sha256": "8bc4e03794a4bb9b49ff7b3eb16fe6a5ab8c4d76c481848e34c5c8b7818a6e27"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7732,6 +7748,25 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 11,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "integer reciprocal inherits the captured missing count during reentrant writes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "float reciprocal proofs retain captured bytes and missing counts during reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 30,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

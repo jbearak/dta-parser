@@ -1,0 +1,53 @@
+{
+  "artifact_sha256": {
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "9039b7d486448c1bf9154c156eedfff68c3a76124a8b741eee90ec715e2317db",
+    "numeric-arithmetic-integer-reciprocal.h": "c121fec819ff930ac706cd0278f72f61fc84a8a10a39e3301255a5678d188e3c",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "production-common.h": "1a8e56d450276b60b41224eefef4dce780942f035031aaad870a58f5f0c1d948",
+    "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "work-count": "9f521f9e23903d5058eb94ebe3978d57fb7910e0c69507a4f24c8efa0e9bf636",
+    "work-count.csv": "18af6ab734bc3b74221a25d800a949ed1fa6279e67adae2aed315a74aeb89b17",
+    "work-count.log": "b43583884d44c8417b5f988c3c50fe070459eaabef598d9d4839c356a582acf2"
+  },
+  "command": [
+    "/usr/bin/cc",
+    "-std=c11",
+    "-O1",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "<work>/candidate-final-counts",
+    "<measured-repository>/benchmarks/integer-reciprocal/work-count.c",
+    "-lm",
+    "-o",
+    "<work>/candidate-final-counts/work-count"
+  ],
+  "commit": "3a02e6d13309441366a7a727fdc934f424ce66c6",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "controller_sha256": "9363596c2d48e327cd37c6263878fadcd63bb0a92ee3927c0ec82322395a2c0f",
+  "exit_code": 0,
+  "probe_sha256": "8131b23d9654b19fb3dac2ddca2c667338cd2734ed45caf411437095011e6bf5",
+  "require_proved": true,
+  "scope": "Actual general result/preflight/producer headers; allocation, R reader and retained-span boundaries mocked. No timing or ownership proof.",
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_sha256": {
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "a3bed1cf604e79c19e97df89a2827fa23bd1a6bcbd3d1d083231d5b8639d6c34",
+    "numeric-arithmetic-integer-reciprocal.h": "c121fec819ff930ac706cd0278f72f61fc84a8a10a39e3301255a5678d188e3c",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-payload.c": "c83de848117dff96e298d6c418f98ce284f4d089b5d6c727a1603b9a10a220c3"
+  },
+  "working_tree_status": ""
+}

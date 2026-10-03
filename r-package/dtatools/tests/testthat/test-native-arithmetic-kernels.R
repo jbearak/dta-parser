@@ -686,3 +686,61 @@ test_that("compact float sums keep exponent-gap cancellation and zero bits", {
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
     }
 })
+
+test_that("integer reciprocal bounds preserve storage zero signs and missing caches", {
+    .native_arithmetic_enable()
+    float_limit <- (2^24 - 1) * 2^103
+    double_limit <- .Machine$double.xmax / 2
+    for (kind in c("byte", "int", "long")) {
+        constructor <- get(paste0("dta_", kind))
+        endpoints <- switch(kind, byte = c(-127, 100), int = c(-32767, 32740),
+                            long = c(-2147483647, 2147483620))
+        values <- rep(c(endpoints, -1, 0, 1, 3, NA_real_, tagged_missing(letters)),
+                      length.out = 257L)
+        scalars <- as.list(c(0, -0, 1.01, -1.01, float_limit, -float_limit,
+                            2^127, -2^127, double_limit, -double_limit,
+                            .Machine$double.xmax, NA_real_, NaN, Inf, -Inf))
+        # A typed scalar forces double output even when every quotient is an
+        # integer. This exercises signed zero in the new floating writer.
+        scalars <- c(scalars, lapply(c(0, -0, 1.01, -1.01, double_limit), dta_double),
+                     list(tagged_missing("z")))
+        for (retained in c(FALSE, TRUE)) {
+            x <- constructor(values)
+            if (retained) x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+            before <- writeBin(as.double(x), raw(), size = 8L)
+            for (scalar in scalars) {
+                minimum <- if (inherits(scalar, "dta_numeric")) "double" else kind
+                expected <- .native_arithmetic_reference("/", scalar, x, minimum)
+                .Call(C_dtatools_numeric_entry_stats, TRUE)
+                actual <- scalar / x
+                .native_arithmetic_expect_entry()
+                .native_arithmetic_expect(actual, expected)
+                missing <- is.na(as.double(expected))
+                expect_identical(is.na(actual), missing)
+                result <- dibble(x = actual)
+                replace_values(result, x = 0, where = which(missing))
+                expect_false(anyNA(result$x))
+            }
+            expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
+            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+        }
+        for (n in c(16383L, 16384L, 16385L)) {
+            values <- rep(1, n)
+            values[[n]] <- 3
+            x <- constructor(values)
+            .native_arithmetic_expect(1 / x, .native_arithmetic_reference("/", 1, x, kind))
+            expect_identical(dta_storage_type(1 / x), if (kind == "long") "double" else "float")
+        }
+        # This scalar fails the whole-domain float proof. Early quotients fit
+        # float, but the final denominator requires double. Recompute every
+        # original quotient instead of widening an earlier rounded result.
+        values <- rep(3, 16385L)
+        values[[length(values)]] <- 1
+        scalar <- 2^127 * (1 + 2^-30)
+        x <- constructor(values)
+        actual <- scalar / x
+        .native_arithmetic_expect(actual, .native_arithmetic_reference("/", scalar, x, kind))
+        expect_identical(dta_storage_type(actual), "double")
+        expect_identical(as.double(actual)[[1L]], scalar / 3)
+    }
+})

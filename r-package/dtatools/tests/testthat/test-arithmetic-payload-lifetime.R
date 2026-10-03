@@ -259,6 +259,66 @@ test_that("owned arithmetic read claims survive nesting and release on unwind", 
     expect_identical(as.double(alias), rep(1, 128L))
 })
 
+test_that("integer reciprocal inherits the captured missing count during reentrant writes", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    for (kind in c("byte", "int", "long")) {
+        for (replacement in list(0, 2, NA_real_)) {
+            values <- rep(c(NA_real_, 0, 1, -1, 3, tagged_missing("z")), length.out = 128L)
+            x <- get(paste0("dta_", kind))(values)
+            quotients <- 1.01 / values
+            quotients[is.na(values)] <- NA_real_
+            expected <- dtatools:::.dta_computed(quotients, kind)
+            fired <- 0L
+            .arithmetic_lifetime_arm(function(key) {
+                fired <<- fired + 1L
+                .Call(C_dtatools_patch_vector, x, 1L, replacement)
+            })
+            actual <- 1.01 / x
+            expect_identical(fired, 1L)
+            expect_identical(as.double(x)[[1L]], replacement)
+            expect_identical(dta_storage_type(actual), dta_storage_type(expected))
+            expect_identical(writeBin(as.double(actual), raw(), size = 8L),
+                             writeBin(as.double(expected), raw(), size = 8L))
+            missing <- is.na(as.double(expected))
+            expect_identical(is.na(actual), missing)
+            result <- dibble(x = actual)
+            replace_values(result, x = 0, where = which(missing))
+            expect_false(anyNA(result$x))
+        }
+    }
+})
+
+test_that("float reciprocal proofs retain captured bytes and missing counts during reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    for (chunk in list(NULL, 7L)) {
+        for (action in c("missing", "tiny", "materialize")) {
+            values <- rep(c(0.125, -0.125, 1.5, -1.5), length.out = 16385L)
+            x <- dta_float(values)
+            if (!is.null(chunk)) x <- .Call(C_dtatools_owned_numeric_freeze, x, chunk)
+            expected <- dtatools:::.dta_computed(1.01 / values, "float")
+            expected_bytes <- writeBin(as.double(expected), raw(), size = 8L)
+            fired <- 0L
+            .arithmetic_lifetime_arm(function(key) {
+                fired <<- fired + 1L
+                if (action == "materialize") .force_altrep_materialization(x)
+                else .Call(C_dtatools_patch_vector, x, 16385L,
+                    if (action == "missing") NA_real_ else 2^-149)
+            })
+            actual <- 1.01 / x
+            expect_identical(fired, 1L)
+            expect_identical(dta_storage_type(actual), "float")
+            expect_identical(writeBin(as.double(actual), raw(), size = 8L), expected_bytes)
+            expect_false(anyNA(actual))
+            if (action == "missing") expect_true(is.na(as.double(x)[[16385L]]))
+            if (action == "tiny") expect_identical(as.double(x)[[16385L]], 2^-149)
+            if (action == "materialize")
+                expect_true(.Call(C_dtatools_is_materialized_numeric_altrep, x))
+        }
+    }
+})
+
 test_that("long float block proofs retain captured inputs through reentry", {
     .arithmetic_lifetime_native()
     .arithmetic_lifetime_checkpoint_ready()

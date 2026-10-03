@@ -1,0 +1,28 @@
+{
+  "assembly_sha256": "24ce2dd07fa895ac1694e9beb74f37373c19627b79b8c784d7f839f36a70b67b",
+  "build_receipt_sha256": "f411c360f42d185db3c73926806a859389110eb518103f470fd76784074920a8",
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+    "--disassemble-symbols=_arithmetic_general_produce",
+    "<work>/candidate-final/library/dtatools/libs/dtatools.so"
+  ],
+  "commit": "3a02e6d13309441366a7a727fdc934f424ce66c6",
+  "controller_sha256": "daa3904987a6ef2166aca54831e96107786639e8b1ebdce08624422bfa23bba3",
+  "dll_sha256": "c0fcfcef67547f96490649236a352ff54c47cb8d14bc6fcfa4242cec194cfbde",
+  "excerpt_sha256": "71adcabd278aa573b0afb1d5fdf6773cf58a5dad916c47b0883fe3d10843feff",
+  "scope": "Exact installed ARM64 producer disassembly; inspected int16-to-float loop contains vector binary64 division, float narrowing and zero-mask counting. No timing or instruction-count performance attribution.",
+  "source_sha256": {
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "a3bed1cf604e79c19e97df89a2827fa23bd1a6bcbd3d1d083231d5b8639d6c34",
+    "numeric-arithmetic-integer-reciprocal.h": "c121fec819ff930ac706cd0278f72f61fc84a8a10a39e3301255a5678d188e3c",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e",
+    "numeric-arithmetic-pair.h": "2407eff6bfd3b1024b94d61b8c1b529d3939a8e090f7fe582be78d37af2b1962",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21"
+  },
+  "status": "PASS",
+  "tool": "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+  "tool_sha256": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e",
+  "tool_version": "Apple LLVM version 21.0.0\n  Optimized build.\n\n\n  Registered Targets:\n    aarch64    - AArch64 (little endian)\n    aarch64_32 - AArch64 (little endian ILP32)\n    aarch64_be - AArch64 (big endian)\n    arm        - ARM\n    arm64      - ARM64 (little endian)\n    arm64_32   - ARM64 (little endian ILP32)\n    armeb      - ARM (big endian)\n    thumb      - Thumb\n    thumbeb    - Thumb (big endian)\n    x86        - 32-bit X86: Pentium-Pro and above\n    x86-64     - 64-bit X86: EM64T and AMD64\n"
+}

@@ -181,8 +181,8 @@ static int arithmetic_general_result_kind(
    rounding and recalculates the complete result from the captured inputs. */
 #define GENERAL_PAIR_LOOP(X, Y, OP, TYPE, MODE, MISSING)                    \
     do {                                                                  \
-        TYPE *restrict target = (MODE) == ARITHMETIC_PREFLIGHT ? NULL :     \
-            (TYPE *) (void *) ((MODE) == NUMERIC_DOUBLE                    \
+        TYPE *restrict target = (int) (MODE) == ARITHMETIC_PREFLIGHT ? NULL : \
+            (TYPE *) (void *) ((int) (MODE) == NUMERIC_DOUBLE              \
                 ? (unsigned char *) output->real : output->raw);          \
         double minimum_value = output->minimum;                           \
         double maximum_value = output->maximum;                           \
@@ -198,7 +198,7 @@ static int arithmetic_general_result_kind(
             double value = xv OP yv;                                     \
             int valid = scalar_arithmetic_result_valid(value);           \
             double observed = valid ? value : 0.0;                       \
-            if ((MODE) == ARITHMETIC_PREFLIGHT) {                         \
+            if ((int) (MODE) == ARITHMETIC_PREFLIGHT) {                   \
                 minimum_value = observed < minimum_value                 \
                     ? observed : minimum_value;                          \
                 maximum_value = observed > maximum_value                 \
@@ -207,7 +207,7 @@ static int arithmetic_general_result_kind(
             } else {                                                      \
                 double storable = observed;                             \
                 missing_count += (unsigned) !valid;                      \
-                if ((MODE) == NUMERIC_FLOAT) {                           \
+                if ((int) (MODE) == NUMERIC_FLOAT) {                     \
                     uint64_t bits;                                       \
                     memcpy(&bits, &observed, sizeof(bits));              \
                     bits &= UINT64_C(0x7fffffffffffffff);                 \
@@ -405,7 +405,9 @@ static void arithmetic_general_integer_scalar_write(
     output->missing_count = data->missing_count;
 }
 
+#include "numeric-arithmetic-integer-reciprocal.h"
 #include "numeric-arithmetic-float-scalar.h"
+#include "numeric-arithmetic-float-reciprocal.h"
 #include "numeric-arithmetic-pair.h"
 #include "numeric-arithmetic-pair-float.h"
 
@@ -416,6 +418,10 @@ static int arithmetic_general_produce(
     const arithmetic_general_source *column;
     double scalar;
     int reverse;
+    if (arithmetic_integer_reciprocal_proved(left, right, length, operation, output->kind)) {
+        arithmetic_integer_reciprocal_write(right, left->scalar, length, output);
+        return output->kind;
+    }
     if (arithmetic_general_integer_scalar_proved(
             left, right, length, operation, output->kind, &column, &scalar, &reverse)) {
         arithmetic_general_integer_scalar_write(
@@ -428,6 +434,10 @@ static int arithmetic_general_produce(
         return arithmetic_float_scalar_write(&float_proof, length, output);
     if (arithmetic_long_float_add_admitted(left, right, length, operation, output->kind))
         return arithmetic_long_float_add_write(left, right, length, output);
+    arithmetic_float_reciprocal_proof reciprocal_proof;
+    if (arithmetic_float_reciprocal_prove(
+            left, right, length, operation, output->kind, &reciprocal_proof))
+        return arithmetic_float_reciprocal_write(&reciprocal_proof, length, output);
     if (arithmetic_pair_float_admitted(
             left, right, length, operation, output->kind))
         return arithmetic_pair_float_write(left, right, length, operation, output);
