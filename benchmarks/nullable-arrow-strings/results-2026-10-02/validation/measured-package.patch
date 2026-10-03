@@ -1,0 +1,634 @@
+diff --git a/r-package/dtatools/src/dtatools-internal.h b/r-package/dtatools/src/dtatools-internal.h
+index 13c6a315..15de70f3 100644
+--- a/r-package/dtatools/src/dtatools-internal.h
++++ b/r-package/dtatools/src/dtatools-internal.h
+@@ -633,6 +633,30 @@ DTATOOLS_INTERNAL SEXP C_dtatools_deep_copy_value(SEXP value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_reference_contents(SEXP value);
+ 
+ /* R-side helpers called by Rust. */
++/* Immutable Arrow views borrowed only for the duration of the caught C call.
++   Typed Arrow arrays already validate offsets, UTF-8 and buffer bounds. */
++typedef struct {
++    const unsigned char *values;
++    const void *offsets;
++    const unsigned char *validity;
++    size_t length;
++    size_t validity_offset;
++    int offset_width;
++} dtatools_arrow_string_chunk;
++
++#if UINTPTR_MAX == UINT64_MAX
++_Static_assert(offsetof(dtatools_arrow_string_chunk, length) == 24,
++               "Arrow string chunk length offset must match Rust");
++_Static_assert(offsetof(dtatools_arrow_string_chunk, offset_width) == 40,
++               "Arrow string chunk offset width must match Rust");
++_Static_assert(sizeof(dtatools_arrow_string_chunk) == 48,
++               "Arrow string chunk size must match Rust");
++#endif
++
++/* 1 success; 2 interrupted; 3 string too long; 0 other caught R failure. */
++DTATOOLS_INTERNAL int dtatools_fill_arrow_strings(
++    SEXP vector, const dtatools_arrow_string_chunk *chunks, size_t chunk_count
++);
+ DTATOOLS_INTERNAL int dtatools_make_dictstring(
+     void *data, size_t value_count, int *transferred, SEXP *result
+ );
+diff --git a/r-package/dtatools/src/r-bridge.c b/r-package/dtatools/src/r-bridge.c
+index b06148c9..d0b7210d 100644
+--- a/r-package/dtatools/src/r-bridge.c
++++ b/r-package/dtatools/src/r-bridge.c
+@@ -109,6 +109,70 @@ int dtatools_make_char(
+     return ok;
+ }
+ 
++typedef struct {
++    SEXP vector;
++    const dtatools_arrow_string_chunk *chunks;
++    size_t chunk_count;
++    int checking_interrupt;
++    int status;
++} arrow_strings_context;
++
++static void fill_arrow_strings_call(void *payload) {
++    arrow_strings_context *context = (arrow_strings_context *) payload;
++    size_t rows = (size_t) XLENGTH(context->vector);
++    size_t row = 0;
++    for (size_t chunk_index = 0; chunk_index < context->chunk_count; chunk_index++) {
++        const dtatools_arrow_string_chunk *chunk = context->chunks + chunk_index;
++        if (chunk->length > rows - row) return;
++        /* All allocating R frames stay inside this one R_ToplevelExec. Rust
++           holds the immutable Arrow owners and a preserved ordinary STRSXP
++           until the call returns, including errors and interrupt unwinding. */
++#define FILL_ARROW_STRING_CHUNK(OFFSET)                                      \
++        do {                                                               \
++            const OFFSET *offsets = (const OFFSET *) chunk->offsets;       \
++            for (size_t index = 0; index < chunk->length; index++, row++) { \
++                if ((row & 16383) == 0) {                                  \
++                    context->checking_interrupt = 1;                      \
++                    R_CheckUserInterrupt();                               \
++                    context->checking_interrupt = 0;                      \
++                }                                                          \
++                size_t bit = chunk->validity_offset + index;               \
++                if (chunk->validity != NULL &&                             \
++                    !(chunk->validity[bit >> 3] & (1u << (bit & 7)))) {     \
++                    SET_STRING_ELT(context->vector, (R_xlen_t) row, NA_STRING); \
++                } else {                                                   \
++                    size_t start = (size_t) offsets[index];                \
++                    size_t length = (size_t) offsets[index + 1] - start;   \
++                    if (length > INT_MAX) {                               \
++                        context->status = 3;                              \
++                        return;                                            \
++                    }                                                      \
++                    const char *bytes = length == 0 ? "" :                \
++                        (const char *) chunk->values + start;             \
++                    SET_STRING_ELT(context->vector, (R_xlen_t) row,        \
++                        Rf_mkCharLenCE(bytes, (int) length, CE_UTF8));      \
++                }                                                          \
++            }                                                              \
++        } while (0)
++        if (chunk->offset_width == 4) { FILL_ARROW_STRING_CHUNK(int32_t); }
++        else if (chunk->offset_width == 8) { FILL_ARROW_STRING_CHUNK(int64_t); }
++        else return;
++#undef FILL_ARROW_STRING_CHUNK
++    }
++    if (row == rows) context->status = 1;
++}
++
++int dtatools_fill_arrow_strings(
++    SEXP vector, const dtatools_arrow_string_chunk *chunks, size_t chunk_count
++) {
++    if (vector == NULL || TYPEOF(vector) != STRSXP || ALTREP(vector) ||
++        (chunk_count != 0 && chunks == NULL)) return 0;
++    arrow_strings_context context = {vector, chunks, chunk_count, 0, 0};
++    int ok = R_ToplevelExec(fill_arrow_strings_call, &context);
++    if (!ok) return context.checking_interrupt ? 2 : 0;
++    return context.status;
++}
++
+ typedef struct {
+     const char *name;
+     SEXP result;
+diff --git a/r-package/dtatools/src/rust/src/arrow_ffi.rs b/r-package/dtatools/src/rust/src/arrow_ffi.rs
+index 6ba24e3b..7c9238ff 100644
+--- a/r-package/dtatools/src/rust/src/arrow_ffi.rs
++++ b/r-package/dtatools/src/rust/src/arrow_ffi.rs
+@@ -2839,38 +2839,103 @@ fn fill_dict_strings(
+     Ok(data)
+ }
+ 
+-/// Eager string materialization for columns holding `NA_character_`. Main
+-/// thread only: it creates CHARSXPs, so it may poll interrupts.
++/// Borrowed views of immutable, already validated Arrow string arrays. Nothing
++/// here owns storage; the input column must outlive the caught C fill call.
++#[repr(C)]
++struct RArrowStringChunk {
++    values: *const u8,
++    offsets: *const c_void,
++    validity: *const u8,
++    length: usize,
++    validity_offset: usize,
++    offset_width: c_int,
++}
++
++extern "C" {
++    fn dtatools_fill_arrow_strings(
++        vector: Sexp,
++        chunks: *const RArrowStringChunk,
++        chunk_count: usize,
++    ) -> c_int;
++}
++
++fn string_chunk_views(
++    column: &ArrowReadColumn,
++    row_count: usize,
++) -> Result<Vec<RArrowStringChunk>, String> {
++    if !matches!(column.data_type, DataType::Utf8 | DataType::LargeUtf8) {
++        return Err(chunk_error(&column.name));
++    }
++    let mut chunks = Vec::new();
++    chunks
++        .try_reserve_exact(column.chunks.len())
++        .map_err(|_| "could not track Arrow string chunks".to_owned())?;
++    let mut rows = 0_usize;
++    for chunk in &column.chunks {
++        rows = rows
++            .checked_add(chunk.len())
++            .filter(|&rows| rows <= row_count)
++            .ok_or_else(|| "Arrow string chunks have an inconsistent row count".to_owned())?;
++        let (values, offsets, offset_width) = match column.data_type {
++            DataType::Utf8 => {
++                let array = chunk
++                    .as_any()
++                    .downcast_ref::<StringArray>()
++                    .ok_or_else(|| chunk_error(&column.name))?;
++                (
++                    array.value_data().as_ptr(),
++                    array.value_offsets().as_ptr().cast(),
++                    4,
++                )
++            }
++            DataType::LargeUtf8 => {
++                let array = chunk
++                    .as_any()
++                    .downcast_ref::<arrow_array::LargeStringArray>()
++                    .ok_or_else(|| chunk_error(&column.name))?;
++                (
++                    array.value_data().as_ptr(),
++                    array.value_offsets().as_ptr().cast(),
++                    8,
++                )
++            }
++            _ => return Err(chunk_error(&column.name)),
++        };
++        let (validity, validity_offset) = match chunk.nulls() {
++            Some(nulls) if nulls.null_count() != 0 => (nulls.validity().as_ptr(), nulls.offset()),
++            _ => (ptr::null(), 0),
++        };
++        chunks.push(RArrowStringChunk {
++            values,
++            offsets,
++            validity,
++            length: chunk.len(),
++            validity_offset,
++            offset_width,
++        });
++    }
++    if rows != row_count {
++        return Err("Arrow string chunks have an inconsistent row count".to_owned());
++    }
++    Ok(chunks)
++}
++
++/// Eager string materialization for columns holding `NA_character_`. One caught
++/// C loop keeps every allocating R frame off the Rust stack, rather than
++/// establishing a new R_ToplevelExec boundary for every non-null value.
+ unsafe fn character_vector(
+     column: &ArrowReadColumn,
+     row_count: usize,
+     guard: &mut ProtectGuard,
+ ) -> Result<Sexp, String> {
++    let chunks = string_chunk_views(column, row_count)?;
+     let vector = guard.alloc(STRSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
+-    match column.data_type {
+-        DataType::Utf8 => for_each_value::<StringArray>(column, |row, values, index| {
+-            poll_interrupt(row)?;
+-            if values.is_null(index) {
+-                SET_STRING_ELT(vector, row as RLen, R_NaString);
+-            } else {
+-                SET_STRING_ELT(vector, row as RLen, r_char(values.value(index))?);
+-            }
+-            Ok(())
+-        })?,
+-        DataType::LargeUtf8 => {
+-            for_each_value::<arrow_array::LargeStringArray>(column, |row, values, index| {
+-                poll_interrupt(row)?;
+-                if values.is_null(index) {
+-                    SET_STRING_ELT(vector, row as RLen, R_NaString);
+-                } else {
+-                    SET_STRING_ELT(vector, row as RLen, r_char(values.value(index))?);
+-                }
+-                Ok(())
+-            })?
+-        }
+-        _ => return Err(chunk_error(&column.name)),
++    match dtatools_fill_arrow_strings(vector, chunks.as_ptr(), chunks.len()) {
++        1 => Ok(vector),
++        2 => Err("Arrow read interrupted".to_owned()),
++        3 => Err("R string is too long".to_owned()),
++        _ => Err("R could not allocate a character value".to_owned()),
+     }
+-    Ok(vector)
+ }
+ 
+ fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<Option<String>>, String> {
+@@ -3874,6 +3939,146 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
+ mod tests {
+     use super::*;
+ 
++    fn string_column(data_type: DataType, chunks: Vec<ArrayRef>) -> ArrowReadColumn {
++        ArrowReadColumn {
++            name: "text".to_owned(),
++            data_type,
++            nullable: true,
++            dictionary_ordered: false,
++            field: None,
++            chunks,
++        }
++    }
++
++    // Decode only the exported C view, so slice offsets and validity offsets
++    // cannot accidentally be hidden by the Arrow value accessor in the test.
++    unsafe fn view_strings(view: &RArrowStringChunk) -> Vec<Option<String>> {
++        (0..view.length)
++            .map(|index| {
++                let bit = view.validity_offset + index;
++                if !view.validity.is_null()
++                    && (*view.validity.add(bit >> 3) & (1 << (bit & 7))) == 0
++                {
++                    return None;
++                }
++                let (start, end) = match view.offset_width {
++                    4 => {
++                        let offsets = view.offsets.cast::<i32>();
++                        (
++                            *offsets.add(index) as usize,
++                            *offsets.add(index + 1) as usize,
++                        )
++                    }
++                    8 => {
++                        let offsets = view.offsets.cast::<i64>();
++                        (
++                            *offsets.add(index) as usize,
++                            *offsets.add(index + 1) as usize,
++                        )
++                    }
++                    _ => panic!("invalid offset width"),
++                };
++                Some(
++                    String::from_utf8(
++                        std::slice::from_raw_parts(view.values.add(start), end - start).to_vec(),
++                    )
++                    .unwrap(),
++                )
++            })
++            .collect()
++    }
++
++    #[test]
++    fn arrow_string_views_match_c_layout() {
++        if std::mem::size_of::<usize>() == 8 {
++            assert_eq!(std::mem::size_of::<RArrowStringChunk>(), 48);
++            assert_eq!(std::mem::offset_of!(RArrowStringChunk, length), 24);
++            assert_eq!(std::mem::offset_of!(RArrowStringChunk, offset_width), 40);
++        }
++    }
++
++    #[test]
++    fn arrow_string_views_preserve_sliced_offsets_validity_and_empty_chunks() {
++        let values = vec![
++            Some("prefix"),
++            None,
++            Some("skipped"),
++            Some("東京"),
++            None,
++            Some(""),
++            Some("café"),
++            None,
++            Some("later"),
++            None,
++            Some("end"),
++        ];
++        for large in [false, true] {
++            let source: ArrayRef = if large {
++                Arc::new(arrow_array::LargeStringArray::from(values.clone()))
++            } else {
++                Arc::new(StringArray::from(values.clone()))
++            };
++            let column = string_column(
++                if large {
++                    DataType::LargeUtf8
++                } else {
++                    DataType::Utf8
++                },
++                vec![source.slice(3, 5), source.slice(0, 0), source.slice(9, 2)],
++            );
++            let views = string_chunk_views(&column, 7).unwrap();
++            assert_eq!(views.len(), 3);
++            assert_eq!(views[0].validity_offset, 3);
++            assert_eq!(views[2].validity_offset, 9);
++            assert_eq!(views[0].offset_width, if large { 8 } else { 4 });
++            let actual: Vec<_> = views
++                .iter()
++                .flat_map(|view| unsafe { view_strings(view) })
++                .collect();
++            let expected: Vec<_> = [
++                Some("東京"),
++                None,
++                Some(""),
++                Some("café"),
++                None,
++                None,
++                Some("end"),
++            ]
++            .into_iter()
++            .map(|value| value.map(str::to_owned))
++            .collect();
++            assert_eq!(actual, expected);
++        }
++    }
++
++    #[test]
++    fn arrow_string_views_handle_all_valid_all_null_and_bad_geometry() {
++        let column = string_column(
++            DataType::Utf8,
++            vec![
++                Arc::new(StringArray::from(vec![Some(""), Some("one")])),
++                Arc::new(StringArray::from(vec![None::<&str>, None])),
++            ],
++        );
++        let views = string_chunk_views(&column, 4).unwrap();
++        assert!(views[0].validity.is_null());
++        assert!(!views[1].validity.is_null());
++        assert_eq!(unsafe { view_strings(&views[1]) }, vec![None, None]);
++        assert!(string_chunk_views(&column, 3).is_err());
++        assert!(string_chunk_views(&column, 5).is_err());
++        assert!(string_chunk_views(&string_column(DataType::Int32, vec![]), 0).is_err());
++        assert!(string_chunk_views(
++            &string_column(DataType::Utf8, vec![Arc::new(Int32Array::from(vec![1])),]),
++            1
++        )
++        .is_err());
++        assert!(
++            string_chunk_views(&string_column(DataType::LargeUtf8, vec![]), 0)
++                .unwrap()
++                .is_empty()
++        );
++    }
++
+     // The pure fill dispatcher references R's missing-value constants. Supply
+     // their fixed values for Rust tests, which do not initialize the R runtime.
+     #[export_name = "R_NaInt"]
+diff --git a/r-package/dtatools/tests/testthat/test-arrow-nullable-strings.R b/r-package/dtatools/tests/testthat/test-arrow-nullable-strings.R
+new file mode 100644
+index 00000000..fbb5599a
+--- /dev/null
++++ b/r-package/dtatools/tests/testthat/test-arrow-nullable-strings.R
+@@ -0,0 +1,109 @@
++test_that("nullable Arrow strings preserve sliced validity and unequal chunks", {
++    count <- 2L * 65536L + 37L
++    text <- rep(c("", "plain", "caf\u00e9-\u6771\u4eac", "\U0001f30d"), length.out = count)
++    text[c(2L, 5L, 65535L, 65536L, 65537L, 65540L, count)] <- NA_character_
++    attr(text, "label") <- "Nullable UTF-8 text"
++    attr(text, "format.stata") <- "%24s"
++    data <- tibble::tibble(text = text, all_null = rep(NA_character_, count),
++                           present = rep(c("", "present"), length.out = count))
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(data, path, compression = "uncompressed")
++    for (threads in c(1L, 0L)) {
++        for (bounds in list(c(0L, count), c(3L, 65536L + 19L))) {
++            rows <- seq.int(bounds[[1L]] + 1L, length.out = bounds[[2L]])
++            actual <- read_arrow(path, skip = bounds[[1L]], n_max = bounds[[2L]],
++                                 threads = threads, output = "tibble")
++            expected <- data[rows, ]
++            # Inspect the returned encoding before a comparison can intern or
++            # normalize strings. NA and empty strings remain distinct.
++            expect_identical(Encoding(actual$text), Encoding(expected$text))
++            expect_identical(actual, expected)
++            expect_identical(which(is.na(actual$text)), which(is.na(expected$text)))
++            expect_identical(which(actual$text == ""), which(expected$text == ""))
++            expect_identical(attr(actual$text, "label"), "Nullable UTF-8 text")
++            expect_identical(attr(actual$text, "format.stata"), "%24s")
++        }
++    }
++})
++
++test_that("nullable Arrow strings keep their output rooted during collection", {
++    nonce <- basename(tempfile())
++    make_text <- function() c(NA_character_, "", paste0(nonce,
++        c("-caf\u00e9-\u6771\u4eac", "-\U0001f30d", "-last")))
++    text <- make_text()
++    data <- tibble::tibble(text = text, reverse = rev(text))
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(data, path)
++    # Drop source CHARSXPs before the read, so this exercises allocation in
++    # the fill loop as well as collection during vector/attribute allocation.
++    rm(text, data)
++    gc(full = TRUE)
++    on.exit(gctorture(FALSE), add = TRUE)
++    gctorture(TRUE)
++    actual <- read_arrow(path, threads = 1L, output = "tibble")
++    gctorture(FALSE)
++    text <- make_text()
++    data <- tibble::tibble(text = text, reverse = rev(text))
++    expect_identical(Encoding(actual$text), Encoding(text))
++    expect_identical(actual, data)
++    actual$text[[3L]] <- "changed"
++    expect_identical(actual$reverse, rev(text))
++    expect_identical(read_arrow(path, output = "tibble"), data)
++})
++
++test_that("nullable Arrow string allocation errors clean up before the next read", {
++    marker <- "nullable-arrow-embedded-nul-sentinel-04719"
++    data <- tibble::tibble(text = c(NA_character_, "before", marker, "after"))
++    path <- tempfile(fileext = ".arrow")
++    broken <- tempfile(fileext = ".arrow")
++    on.exit(unlink(c(path, broken)), add = TRUE)
++    save_arrow(data, path, compression = "uncompressed", checksums = FALSE)
++    bytes <- readBin(path, "raw", n = file.info(path)$size)
++    location <- grepRaw(charToRaw(marker), bytes, fixed = TRUE, all = TRUE)
++    expect_length(location, 1L)
++    bytes[[location[[1L]] + 8L]] <- as.raw(0L)
++    writeBin(bytes, broken)
++    # Embedded NUL is legal in Arrow UTF-8, but cannot become an R CHARSXP.
++    expect_error(read_arrow(broken, verify = FALSE),
++                 "R could not allocate a character value", fixed = TRUE)
++    gc()
++    expect_identical(read_arrow(path, verify = FALSE, output = "tibble"), data)
++})
++
++test_that("nullable Arrow read cancellation remains an interrupt", {
++    skip_on_os("windows")
++    text <- sprintf("nullable-%08d-\u00e9", seq_len(1000000L))
++    text[c(1L, length(text))] <- NA_character_
++    data <- tibble::tibble(text = text)
++    path <- tempfile(fileext = ".arrow")
++    on.exit(unlink(path), add = TRUE)
++    save_arrow(data, path, compression = "uncompressed", checksums = FALSE)
++    parent <- Sys.getpid()
++    loadNamespace("parallel")
++    request <- if (is.null(getOption("dtatools.native.context"))) NULL else
++        native_fork_request("nullable-arrow-read-signal")
++    signal <- parallel::mcparallel({
++        if (is.null(request)) {
++            Sys.sleep(0.01)
++            tools::pskill(parent, tools::SIGINT)
++        } else native_fork_signal(request, 0.01, tools::SIGINT)
++    }, silent = TRUE)
++    collected <- NULL
++    completed <- FALSE
++    condition <- tryCatch({
++        read_arrow(path, threads = 1L, verify = FALSE)
++        completed <- TRUE
++        collected <- parallel::mccollect(signal)
++        NULL
++    }, condition = identity)
++    if (is.null(collected)) collected <- tryCatch(
++        suppressWarnings(parallel::mccollect(signal)), condition = identity)
++    if (!is.null(request)) native_fork_finish(request, collected, signal$pid)
++    expect_s3_class(condition, "interrupt")
++    expect_false(completed)
++    gc()
++    expect_identical(read_arrow(path, n_max = 8L, verify = FALSE, output = "tibble"),
++                     data[seq_len(8L), ])
++})
+diff --git a/r-package/dtatools/tools/native-test-manifest.json b/r-package/dtatools/tools/native-test-manifest.json
+index f9763032..4f1e685a 100644
+--- a/r-package/dtatools/tools/native-test-manifest.json
++++ b/r-package/dtatools/tools/native-test-manifest.json
+@@ -243,6 +243,10 @@
+           "path": "tests/testthat/test-arrow.R",
+           "sha256": "b0bcae38fdb14840a34cf0a2fb63980c0e7ccf1008cffd11eeabec0e7936939e"
+         },
++        {
++          "path": "tests/testthat/test-arrow-nullable-strings.R",
++          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
++        },
+         {
+           "path": "tests/testthat/test-read-dta.R",
+           "sha256": "b4c6fc365567cefbdfec15c1da86f8b9bc93033d67745d4ce23239ead0ef12ec"
+@@ -793,6 +797,38 @@
+           "min_pass": 6,
+           "warnings": 0
+         },
++        {
++          "file": "test-arrow-nullable-strings.R",
++          "test": "nullable Arrow strings preserve sliced validity and unequal chunks",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 24,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow-nullable-strings.R",
++          "test": "nullable Arrow strings keep their output rooted during collection",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 4,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow-nullable-strings.R",
++          "test": "nullable Arrow string allocation errors clean up before the next read",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 3,
++          "warnings": 0
++        },
++        {
++          "file": "test-arrow-nullable-strings.R",
++          "test": "nullable Arrow read cancellation remains an interrupt",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 3,
++          "warnings": 0
++        },
+         {
+           "file": "test-input-sources.R",
+           "test": "plain local paths retain the direct path fast path",
+@@ -1627,6 +1663,12 @@
+           "minimum": 1,
+           "maximum": 1,
+           "delay": 0.05
++        },
++        {
++          "id": "nullable-arrow-read-signal",
++          "minimum": 1,
++          "maximum": 1,
++          "delay": 0.01
+         }
+       ]
+     },
+@@ -5973,7 +6015,7 @@
+         },
+         {
+           "path": "tests/testthat/test-owned-numeric-buffers.R",
+-          "sha256": "bdad22bbd7d373ebdb1fe0d1d59b9c478f5a1d2057b51a4da81c044f88792b39"
++          "sha256": "40d9f9bd72b63f76bd5ba619aa3bb6fa05b10ffec91dcfaa8812fa73795b8caa"
+         },
+         {
+           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
+@@ -7379,6 +7421,22 @@
+           "min_pass": 252,
+           "warnings": 0
+         },
++        {
++          "file": "test-owned-numeric-buffers.R",
++          "test": "live Arrow storage does not force collection on each small read",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 23,
++          "warnings": 0
++        },
++        {
++          "file": "test-owned-numeric-buffers.R",
++          "test": "R-backed owners and retained handle forks add no native allocation debt",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 4,
++          "warnings": 0
++        },
+         {
+           "file": "test-arithmetic-payload-lifetime.R",
+           "test": "arithmetic payloads survive collection and compact serialization",
+@@ -16687,6 +16745,16 @@
+           "min_pass_before_skip": 0,
+           "skip_message": "Reason: On Windows",
+           "warnings": 0
++        },
++        {
++          "file": "test-arrow-nullable-strings.R",
++          "test": "nullable Arrow read cancellation remains an interrupt",
++          "occurrence": 1,
++          "skip": "require",
++          "reason": "Windows",
++          "min_pass_before_skip": 0,
++          "skip_message": "Reason: On Windows",
++          "warnings": 0
+         }
+       ],
+       "children": [
+@@ -16709,6 +16777,12 @@
+           "id": "arrow-write-signal",
+           "minimum": 0,
+           "maximum": 0
++        },
++        {
++          "family": "io",
++          "id": "nullable-arrow-read-signal",
++          "minimum": 0,
++          "maximum": 0
+         }
+       ]
+     },

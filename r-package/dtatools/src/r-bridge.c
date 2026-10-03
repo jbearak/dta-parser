@@ -110,6 +110,70 @@ int dtatools_make_char(
 }
 
 typedef struct {
+    SEXP vector;
+    const dtatools_arrow_string_chunk *chunks;
+    size_t chunk_count;
+    int checking_interrupt;
+    int status;
+} arrow_strings_context;
+
+static void fill_arrow_strings_call(void *payload) {
+    arrow_strings_context *context = (arrow_strings_context *) payload;
+    size_t rows = (size_t) XLENGTH(context->vector);
+    size_t row = 0;
+    for (size_t chunk_index = 0; chunk_index < context->chunk_count; chunk_index++) {
+        const dtatools_arrow_string_chunk *chunk = context->chunks + chunk_index;
+        if (chunk->length > rows - row) return;
+        /* All allocating R frames stay inside this one R_ToplevelExec. Rust
+           holds the immutable Arrow owners and a preserved ordinary STRSXP
+           until the call returns, including errors and interrupt unwinding. */
+#define FILL_ARROW_STRING_CHUNK(OFFSET)                                      \
+        do {                                                               \
+            const OFFSET *offsets = (const OFFSET *) chunk->offsets;       \
+            for (size_t index = 0; index < chunk->length; index++, row++) { \
+                if ((row & 16383) == 0) {                                  \
+                    context->checking_interrupt = 1;                      \
+                    R_CheckUserInterrupt();                               \
+                    context->checking_interrupt = 0;                      \
+                }                                                          \
+                size_t bit = chunk->validity_offset + index;               \
+                if (chunk->validity != NULL &&                             \
+                    !(chunk->validity[bit >> 3] & (1u << (bit & 7)))) {     \
+                    SET_STRING_ELT(context->vector, (R_xlen_t) row, NA_STRING); \
+                } else {                                                   \
+                    size_t start = (size_t) offsets[index];                \
+                    size_t length = (size_t) offsets[index + 1] - start;   \
+                    if (length > INT_MAX) {                               \
+                        context->status = 3;                              \
+                        return;                                            \
+                    }                                                      \
+                    const char *bytes = length == 0 ? "" :                \
+                        (const char *) chunk->values + start;             \
+                    SET_STRING_ELT(context->vector, (R_xlen_t) row,        \
+                        Rf_mkCharLenCE(bytes, (int) length, CE_UTF8));      \
+                }                                                          \
+            }                                                              \
+        } while (0)
+        if (chunk->offset_width == 4) { FILL_ARROW_STRING_CHUNK(int32_t); }
+        else if (chunk->offset_width == 8) { FILL_ARROW_STRING_CHUNK(int64_t); }
+        else return;
+#undef FILL_ARROW_STRING_CHUNK
+    }
+    if (row == rows) context->status = 1;
+}
+
+int dtatools_fill_arrow_strings(
+    SEXP vector, const dtatools_arrow_string_chunk *chunks, size_t chunk_count
+) {
+    if (vector == NULL || TYPEOF(vector) != STRSXP || ALTREP(vector) ||
+        (chunk_count != 0 && chunks == NULL)) return 0;
+    arrow_strings_context context = {vector, chunks, chunk_count, 0, 0};
+    int ok = R_ToplevelExec(fill_arrow_strings_call, &context);
+    if (!ok) return context.checking_interrupt ? 2 : 0;
+    return context.status;
+}
+
+typedef struct {
     const char *name;
     SEXP result;
 } install_context;

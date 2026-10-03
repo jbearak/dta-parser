@@ -244,6 +244,10 @@
           "sha256": "b0bcae38fdb14840a34cf0a2fb63980c0e7ccf1008cffd11eeabec0e7936939e"
         },
         {
+          "path": "tests/testthat/test-arrow-nullable-strings.R",
+          "sha256": "f39371c1a4feef1634fc863822ebc089a055654452bfe7575fcf8fb3c076d636"
+        },
+        {
           "path": "tests/testthat/test-read-dta.R",
           "sha256": "b4c6fc365567cefbdfec15c1da86f8b9bc93033d67745d4ce23239ead0ef12ec"
         },
@@ -791,6 +795,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow strings preserve sliced validity and unequal chunks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow strings keep their output rooted during collection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow string allocation errors clean up before the next read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow read cancellation remains an interrupt",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -1627,6 +1663,12 @@
           "minimum": 1,
           "maximum": 1,
           "delay": 0.05
+        },
+        {
+          "id": "nullable-arrow-read-signal",
+          "minimum": 1,
+          "maximum": 1,
+          "delay": 0.01
         }
       ]
     },
@@ -1779,11 +1821,11 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "b310390e418ca6741eebd20263cacc13436557a3189d44e99a276c3017ea3ece"
+          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "518fc24c4ba5dfc6c2739d150da4682af4237b8efd1448b67d32d96927642c54"
+          "sha256": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
         }
       ],
       "blocks": [
@@ -4445,6 +4487,62 @@
           "skip": "forbid",
           "min_pass": 58,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general arithmetic keeps mixed physical sources and scalar directions exact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10304,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general preflight and float promotion retain later missing rows and earlier precision",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 184,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general integer scalar bounds preserve floating storage and missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5496,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general integer scalar proof includes imported physical signed minima",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1933,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "floating scalar results reject unsafe endpoint proofs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 320,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float scalar interval proofs retain zero signs and exact missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1988,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float scalar fit intervals include exactly their binary32 boundary neighbors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1512,
+          "warnings": 0
         }
       ],
       "children": [
@@ -5977,7 +6075,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "bcf7812944d90cc85d872b132b336324ef5d4c25b2b79965b125629be49b1575"
+          "sha256": "4c8ab060ede49cc7bc766690db8549204b26a5ca4f64288e2d87b0476a9ba138"
         }
       ],
       "blocks": [
@@ -7458,6 +7556,28 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 7,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "general arithmetic preflight retains owned sources across reentrant writes",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 48,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "owned arithmetic read claims survive nesting and release on unwind",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 11,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
@@ -16847,6 +16967,16 @@
           "min_pass_before_skip": 0,
           "skip_message": "Reason: On Windows",
           "warnings": 0
+        },
+        {
+          "file": "test-arrow-nullable-strings.R",
+          "test": "nullable Arrow read cancellation remains an interrupt",
+          "occurrence": 1,
+          "skip": "require",
+          "reason": "Windows",
+          "min_pass_before_skip": 0,
+          "skip_message": "Reason: On Windows",
+          "warnings": 0
         }
       ],
       "children": [
@@ -16867,6 +16997,12 @@
         {
           "family": "io",
           "id": "arrow-write-signal",
+          "minimum": 0,
+          "maximum": 0
+        },
+        {
+          "family": "io",
+          "id": "nullable-arrow-read-signal",
           "minimum": 0,
           "maximum": 0
         }

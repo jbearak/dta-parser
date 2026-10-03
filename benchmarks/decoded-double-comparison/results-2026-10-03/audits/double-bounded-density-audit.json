@@ -1,0 +1,118 @@
+{
+  "artifacts": {
+    "completion.json": "cb0eb38b344649c0e5785a8d153bd431cee1de6b452d64b07d6f5dd041505efa",
+    "protocol.json": "ebc182d0e5ac51f87b65f6b2751b31a0c3ba5c65ad869bda34a6351e9c51e8f2",
+    "provenance-after.json": "c0cbfd4ade1959975ca7d363e8a4745a2d8711616bbbecb8e11589deac638445",
+    "provenance-before.json": "c0cbfd4ade1959975ca7d363e8a4745a2d8711616bbbecb8e11589deac638445",
+    "raw.csv": "35446a01c7d7c55b9a1b6168817df7ffa286d36f543a1b5f69a76259508ae36c",
+    "source.patch": "3c010978c6299596d26abe63a401cd7ba2c1d9eb51703bf071623cec258eb522",
+    "summary.csv": "11aeb5e714daaafb019c7ed4a95d09796d26c43d43eea8b6d5b85cbde99ceb58"
+  },
+  "audit": "Independent artifact recomputation; no R/build/timing jobs",
+  "caveats": [
+    "Native eligibility is not a per-timed-call entry counter.",
+    "Randomized and clustered cases have different joint missing rates.",
+    "Constructed modern retained float inputs, threads1 and fixed mismatched chunk geometry only.",
+    "Current full named source/installed/compiler/DLL inventories independently reverified in the authorized setup window."
+  ],
+  "checks": [
+    "full case matrix and worker/raw identity",
+    "six density permutations and balanced representation/build/operation orders",
+    "full result/input/rank/metadata hashes and unchanged source states",
+    "missing marginals/joint rates and native eligibility",
+    "equivalent representation oracle",
+    "every CPU/wall median, speedup, paired speedup and typed ratio",
+    "before/after bindings, original clean receipts, current controllers and exact execution runtime",
+    "identically bound prior qualification and every completion artifact hash",
+    "current full named source/installed/compiler/DLL inventories and single-module source delta"
+  ],
+  "cpu_interval_range": [
+    0.239,
+    0.338
+  ],
+  "joint_missing_by_density": {
+    "all_tags": 1000000,
+    "clustered_half": 500000,
+    "random_half": 749863
+  },
+  "observations": 144,
+  "ratios": [
+    {
+      "candidate_compact_typed_cpu": "0.634568157946985",
+      "compact_cpu_paired_median_speedup": "0.9689099832679872",
+      "compact_cpu_speedup": "0.9622807301775543",
+      "compact_wall_speedup": "0.9606385219315726",
+      "density": "random_half",
+      "operation": "pair_less",
+      "typed_double_cpu_paired_median_speedup": "7.787561081029151",
+      "typed_double_cpu_speedup": "7.787561449471609",
+      "typed_double_wall_paired_median_speedup": "7.786061642844002",
+      "typed_double_wall_speedup": "7.774815849717985"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.5697034828839111",
+      "compact_cpu_paired_median_speedup": "1.003370241522921",
+      "compact_cpu_speedup": "1.0267111853088497",
+      "compact_wall_speedup": "1.0250124084794243",
+      "density": "random_half",
+      "operation": "pair_equal",
+      "typed_double_cpu_paired_median_speedup": "7.34879648497197",
+      "typed_double_cpu_speedup": "7.34132477077001",
+      "typed_double_wall_paired_median_speedup": "7.351967465522362",
+      "typed_double_wall_speedup": "7.341324770770021"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.6021766555760942",
+      "compact_cpu_paired_median_speedup": "1.0190211516114245",
+      "compact_cpu_speedup": "1.017596453317913",
+      "compact_wall_speedup": "1.017290141100188",
+      "density": "clustered_half",
+      "operation": "pair_less",
+      "typed_double_cpu_paired_median_speedup": "1.6752289244800513",
+      "typed_double_cpu_speedup": "1.6834826429862262",
+      "typed_double_wall_paired_median_speedup": "1.6668772537073138",
+      "typed_double_wall_speedup": "1.6751160433487395"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.5676731307746302",
+      "compact_cpu_paired_median_speedup": "1.0244433948762903",
+      "compact_cpu_speedup": "1.023952712083202",
+      "compact_wall_speedup": "1.0206391428263613",
+      "density": "clustered_half",
+      "operation": "pair_equal",
+      "typed_double_cpu_paired_median_speedup": "1.6105219989454567",
+      "typed_double_cpu_speedup": "1.6204843248861458",
+      "typed_double_wall_paired_median_speedup": "1.6137751600828063",
+      "typed_double_wall_speedup": "1.6204118380127637"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.6051418947419749",
+      "compact_cpu_paired_median_speedup": "1.001669156452817",
+      "compact_cpu_speedup": "1.0098412317702667",
+      "compact_wall_speedup": "1.0099233852175058",
+      "density": "all_tags",
+      "operation": "pair_less",
+      "typed_double_cpu_paired_median_speedup": "1.8471428729986896",
+      "typed_double_cpu_speedup": "1.8494661870778155",
+      "typed_double_wall_paired_median_speedup": "1.8506340713925051",
+      "typed_double_wall_speedup": "1.8458920583000624"
+    },
+    {
+      "candidate_compact_typed_cpu": "0.57353131891267",
+      "compact_cpu_paired_median_speedup": "1.0074726368159204",
+      "compact_cpu_speedup": "1.0074726368159204",
+      "compact_wall_speedup": "1.0058358208955225",
+      "density": "all_tags",
+      "operation": "pair_equal",
+      "typed_double_cpu_paired_median_speedup": "1.7793264355399154",
+      "typed_double_cpu_speedup": "1.7830969591533068",
+      "typed_double_wall_paired_median_speedup": "1.776374787087037",
+      "typed_double_wall_speedup": "1.7818630875015136"
+    }
+  ],
+  "summary_rows": 6,
+  "wall_interval_range": [
+    0.239,
+    0.338
+  ]
+}

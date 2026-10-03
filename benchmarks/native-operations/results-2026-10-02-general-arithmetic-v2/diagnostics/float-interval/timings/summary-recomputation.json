@@ -1,0 +1,24 @@
+{
+  "cpu_interval_seconds": [
+    0.0970000000000001,
+    0.183
+  ],
+  "median_and_ratio_checks_passed": true,
+  "original_gate_failures": [
+    {
+      "compact_typed_ratio": "1.9327445652173965",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    }
+  ],
+  "raw_sha256": "7368169f265ef3599e044b5ae912b6c447b04b1c0f900d62f52063927898d2ca",
+  "rows": 432,
+  "scope": "read-only median and ratio recomputation; independent full artifact audit requested separately",
+  "summary_rows": 24,
+  "summary_sha256": "ddb670bd6601bd470d493a455b47bb5a6c77f1f8156592cf56ae91ddcfc25321",
+  "wall_interval_seconds": [
+    0.0960000000000001,
+    0.183
+  ]
+}

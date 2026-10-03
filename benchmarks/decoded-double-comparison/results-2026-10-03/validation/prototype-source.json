@@ -1,0 +1,5 @@
+{
+  "commit": "764c6f511afe2e7058ef481407b8fe872a705f68",
+  "baseline": "e265f7375171c45ddeb5efdc3d7c978a615c132d",
+  "change": "Only double_compare.rs pair-local ordering keys and branchless validity/select; shared scalar rank unchanged."
+}

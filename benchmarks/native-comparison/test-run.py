@@ -4,6 +4,7 @@ import importlib.util
 import itertools
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('comparison_run', Path(__file__).with_name('run.py'))
 run = importlib.util.module_from_spec(spec)
@@ -29,6 +30,49 @@ def observations():
                     y_materialized_before='FALSE', y_materialized_after='FALSE',
                     native_qualified=str(representation != 'ordinary').upper()))
     return rows
+
+
+class RuntimeIdentity(unittest.TestCase):
+    def test_version_comes_from_the_worker_launcher(self):
+        launcher = Path('/selected/Rscript')
+        with patch.object(run.os, 'name', 'posix'), \
+             patch.object(run.subprocess, 'check_output', return_value='/selected/Rhome\nR selected-version\n') as query, \
+             patch.object(run, 'digest', side_effect=lambda path: str(path)):
+            result = run.execution_runtime(launcher)
+        self.assertEqual(query.call_args.args[0][0], str(launcher))
+        self.assertIn('R.version.string', query.call_args.args[0][-1])
+        self.assertEqual(result, {'R_runtime_sha256': '/selected/Rhome/bin/exec/R',
+                                 'Rscript_sha256': '/selected/Rscript',
+                                 'R_version': 'R selected-version'})
+
+    def test_windows_is_rejected_before_worker_query(self):
+        launcher = Path('/selected/Rscript')
+        with patch.object(run.os, 'name', 'nt'), \
+             patch.object(run.subprocess, 'check_output') as query:
+            with self.assertRaisesRegex(RuntimeError, 'Unix R executable layout'):
+                run.execution_runtime(launcher)
+        query.assert_not_called()
+
+    def test_malformed_worker_identity_is_rejected(self):
+        launcher = Path('/selected/Rscript')
+        with patch.object(run.os, 'name', 'posix'), \
+             patch.object(run.subprocess, 'check_output', return_value='/selected/Rhome\n'):
+            with self.assertRaisesRegex(RuntimeError, 'runtime identity'):
+                run.execution_runtime(launcher)
+
+
+class ArchiveReplayTools(unittest.TestCase):
+    def test_missing_tools_fail_explicitly(self):
+        spec = importlib.util.spec_from_file_location(
+            'archive_replay', Path(__file__).with_name('check-archive.py'))
+        replay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(replay)
+        for paths in [(None, '/Rscript'), ('/R', None), (None, None)]:
+            with patch.object(replay.shutil, 'which', side_effect=paths):
+                with self.assertRaisesRegex(RuntimeError, 'both be available'):
+                    replay.find_r_tools()
+        with patch.object(replay.shutil, 'which', side_effect=['/R', '/Rscript']):
+            self.assertEqual(replay.find_r_tools(), ('/R', '/Rscript'))
 
 
 class Protocol(unittest.TestCase):

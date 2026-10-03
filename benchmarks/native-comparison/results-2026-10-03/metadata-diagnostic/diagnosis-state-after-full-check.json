@@ -1,0 +1,85 @@
+{
+  "historical_failure": {
+    "expected": [
+      4,
+      3
+    ],
+    "observed": [
+      3,
+      3
+    ],
+    "helper": ".generate_attributes",
+    "wrapper": "is.null",
+    "root_cause": "unexplained"
+  },
+  "completed_reproductions": {
+    "archive-focused-original-v1": {
+      "exit_code": 0,
+      "source_before_after_equal": true,
+      "original_target_sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3",
+      "executed_target_sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3",
+      "instrument": "none",
+      "original_assertion_preserved": true
+    },
+    "archive-focused-stacks-v1": {
+      "exit_code": 0,
+      "source_before_after_equal": true,
+      "original_target_sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3",
+      "executed_target_sha256": "ce833609ed74d7669c93e4a0666af1a9cfa6a6bf082d4cefc1170ecf4f875ab0",
+      "instrument": "stacks",
+      "original_assertion_preserved": true
+    },
+    "archive-prefix-stacks-v1": {
+      "exit_code": 0,
+      "source_before_after_equal": true,
+      "original_target_sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3",
+      "executed_target_sha256": "ce833609ed74d7669c93e4a0666af1a9cfa6a6bf082d4cefc1170ecf4f875ab0",
+      "instrument": "stacks",
+      "original_assertion_preserved": true
+    }
+  },
+  "prefix_files": 69,
+  "captured_counts": {
+    ".generate_attributes": {
+      "expected": [
+        3,
+        3
+      ],
+      "observed": [
+        3,
+        3
+      ]
+    },
+    ".dta_attribute_plan": {
+      "expected": [
+        16,
+        15
+      ],
+      "observed": [
+        16,
+        15
+      ]
+    }
+  },
+  "caveats": [
+    "Stack capture allocates and can change garbage-collection timing.",
+    "Fresh focused and prefix passes do not explain or supersede the original full conformance failure.",
+    "The original check-installed library was removed; this is a preserved reconstruction from the exact original archive, not proof of byte-identical prior installation."
+  ],
+  "next": "No further metadata reruns solely to seek a passing result; investigate actual captured stacks if the unchanged assertion fails again.",
+  "complete_unchanged_archive_check": {
+    "exit_code": 0,
+    "failures": 0,
+    "warnings": 7,
+    "skips": 0,
+    "passed": 54479,
+    "archive_sha256": "9a5251a17eab437b7c7cf715e6c887da3eccc0427f10300d898ace7d1182b1e5",
+    "original_target_sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3",
+    "runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "before_after_binding_matches": true,
+    "retained_directory": "<metadata-diagnostic>/archive-full-check-v1",
+    "receipt_sha256": "d1df8bb27e2cd64b3a3e7792df38836a2b2ec38156595681e3f85d9e23362a26",
+    "test_output_sha256": "3502a849db24c2fc27a4719d30b3c04da7c1b970986a8faab7f8e20a1f2eac9f"
+  },
+  "conclusion": "The exact original archive now passes a complete unchanged R CMD check. The historical callback-count failure is an unexplained intermittent issue, not a diagnosed or fixed root cause. Original failure and all reproduction records remain retained."
+}
