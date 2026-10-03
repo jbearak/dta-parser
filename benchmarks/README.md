@@ -64,11 +64,23 @@ rounds put the measured multiply, divide and self-add operations at 0.58–1.13�
 typed-double CPU, with full result and storage checks. Bare-double ratios and
 the remaining float overhead are reported separately.
 
+The [direct float comparison follow-up](float-comparison/results-2026-10-02.md)
+compares scalar and pair comparisons across missing layouts and thread settings.
+The 432-observation constructed-column matrix reaches double-control throughput
+with exact missing-code and scalar-precision semantics. Retained-column
+throughput remains a separate question.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
+
+The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
+prepares numeric order keys once instead of decoding and validating them during
+sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
+faster and matches typed/ordinary-double throughput within the measured spread.
+It reports the additional eight-byte-per-row-per-key cache cost explicitly.
 
 The [full-cache reader rerun](reader-corpus/results-2026-10-01-full-cache/README.md)
 reports `read_dta()` for every regular DTA input in the DHS, MICS, NSFG,
