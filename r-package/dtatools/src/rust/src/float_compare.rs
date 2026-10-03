@@ -7,6 +7,11 @@ use std::ffi::c_int;
 const DOT: u32 = 0x7f00_0000;
 const STEP: u32 = 0x800;
 
+#[cfg(test)]
+std::thread_local! {
+    static PAIR_EXACT_ROWS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// The same typed kernel can read plain buffers and retained float spans.
 pub(super) fn supports(x: CompareOperandView, y: Option<CompareOperandView>) -> bool {
     x.temporal == 0
@@ -42,6 +47,8 @@ unsafe fn pair_exact<
     observed: &F,
     missing: &M,
 ) -> bool {
+    #[cfg(test)]
+    PAIR_EXACT_ROWS.with(|rows| rows.set(rows.get() + length));
     let mut valid = true;
     for index in 0..length {
         let a = x.add(index).read_unaligned();
@@ -435,6 +442,37 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn a_dense_prefix_does_not_keep_the_ordinary_float_tail_on_the_exact_path() {
+        let length = 1_000_000;
+        let prefix = 256;
+        let mut x = vec![1.0; length];
+        x[..prefix].fill(f32::from_bits(DOT));
+        let y = vec![2.0; length];
+        let mut output = vec![0; length];
+        PAIR_EXACT_ROWS.with(|rows| rows.set(0));
+        assert_eq!(
+            unsafe {
+                compare(
+                    2,
+                    view(&x, FormatVersion::V119),
+                    Some(view(&y, FormatVersion::V119)),
+                    ComparedElement { rank: 0, value: 0. },
+                    output.as_mut_ptr(),
+                    length,
+                )
+            },
+            Some(true)
+        );
+        assert!(output[..prefix].iter().all(|&value| value == 0));
+        assert!(output[prefix..].iter().all(|&value| value == 1));
+        // Measure actual exact-loop work, without imposing a noisy clock limit.
+        // A short exceptional prefix must not choose expensive decoding for
+        // almost the entire ordinary column.
+        let exact_rows = PAIR_EXACT_ROWS.with(|rows| rows.get());
+        assert!(exact_rows < length / 10, "{exact_rows} exact rows");
+    }
+
     #[test]
     fn float_pair_dense_switch_preserves_late_rows_and_invalidity() {
         for length in [255_usize, 256, 257, 320, 1025] {
