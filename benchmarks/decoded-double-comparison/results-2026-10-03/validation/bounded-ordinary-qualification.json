@@ -1,0 +1,11 @@
+{
+  "observations": 72,
+  "result": "PASS",
+  "clocked": false,
+  "repetitions_per_case": 1,
+  "worker_sha256": "5b5d3ec86168c8e72a8b918623435f71cae8dde369f899e756f03c1c8ea21798",
+  "artifacts": {
+    "adaptive-ordinary-baseline-qualification.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee",
+    "bounded-ordinary-candidate-qualification.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee"
+  }
+}

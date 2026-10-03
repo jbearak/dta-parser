@@ -1,0 +1,14 @@
+{
+  "observations": 72,
+  "result": "PASS",
+  "clocked": false,
+  "repetitions_per_case": 1,
+  "worker_sha256": "5b5d3ec86168c8e72a8b918623435f71cae8dde369f899e756f03c1c8ea21798",
+  "case_matrix": 36,
+  "artifacts": {
+    "ordinary-baseline-qualification.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b",
+    "ordinary-baseline-qualification.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee",
+    "ordinary-candidate-qualification.csv": "61cd772214c19b89e56833aa3d822d71726a18d87816ed8f3e1174d7398795ee",
+    "ordinary-candidate-qualification.log": "4f8b278bfb63f6be75c2830ef3193b637a126b8c833c3f4af6313a1012d5766b"
+  }
+}
