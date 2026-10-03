@@ -208,6 +208,7 @@ numeric_data *numeric_storage(SEXP value) {
         data = numeric_read_storage(value);
         UNPROTECT(1);
     }
+    data->domain_flags = 0;
     return data;
 }
 
@@ -345,6 +346,12 @@ SEXP numeric_base_source(SEXP value) {
 numeric_data *unmaterialized_numeric_read_storage(SEXP value) {
     SEXP source = numeric_base_source(value);
     return source == R_NilValue ? NULL : numeric_read_storage(source);
+}
+
+/* Read-only diagnostic. Compute before allocation can change the public handle. */
+SEXP C_dtatools_numeric_domain_info(SEXP value) {
+    int strict = numeric_strict_modern_float(unmaterialized_numeric_read_storage(value));
+    return Rf_ScalarLogical(strict);
 }
 
 /* Immutable span access, with a contiguous R-backed adapter. The source
@@ -1175,7 +1182,8 @@ DTATOOLS_LAYOUT_ASSERT(numeric_owner, offsetof(numeric_data, native_owner) == 40
 DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
 DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
 DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
+DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 72);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 80);
 DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
@@ -1226,6 +1234,9 @@ DTATOOLS_LAYOUT_ASSERT(arrow_table_values, offsetof(dtatools_arrow_value_label_t
 DTATOOLS_LAYOUT_ASSERT(arrow_table_texts, offsetof(dtatools_arrow_value_label_table, label_texts) == 16);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_count, offsetof(dtatools_arrow_value_label_table, label_count) == 24);
 DTATOOLS_LAYOUT_ASSERT(arrow_table_size, sizeof(dtatools_arrow_value_label_table) == 32);
+#elif UINTPTR_MAX == UINT32_MAX
+DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 40);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 44);
 #endif
 
 int write_string_utf8_status(SEXP value) {
@@ -2225,7 +2236,8 @@ static SEXP numeric_from_backing_managed(
         .values = RAW(backing), .length = length, .kind = kind,
         .temporal = temporal, .format_version = format_version,
         .missing_count = missing_count, .native_owner = NULL,
-        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0
+        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0,
+        .domain_flags = 0
     };
     memcpy(data, &initial, sizeof(initial));
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));

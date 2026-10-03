@@ -1,0 +1,11 @@
+test_that("strict float constructors establish an allocation domain proof", {
+    x <- dta_float(c(-2^-149, -0, 0, 2^-149, -3, 3, NA_real_, tagged_missing(letters)))
+    before <- writeBin(as.double(x), raw(), size = 8L)
+    expect_true(.Call(C_dtatools_numeric_domain_info, x))
+    expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
+    expect_false(.Call(C_dtatools_numeric_domain_info, dta_long(c(1, NA_real_))))
+    expect_false(.Call(C_dtatools_numeric_domain_info, as.double(x)))
+    restored <- unserialize(serialize(x, NULL))
+    expect_false(.Call(C_dtatools_numeric_domain_info, restored))
+    expect_identical(writeBin(as.double(restored), raw(), size = 8L), before)
+})

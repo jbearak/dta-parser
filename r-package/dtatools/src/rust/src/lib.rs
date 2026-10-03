@@ -246,7 +246,20 @@ struct NumericData {
     scalar_values: *const c_void,
     scalar_start: usize,
     scalar_end: usize,
+    // An allocation-specific proof; every generic/imported construction starts unknown.
+    domain_flags: u32,
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(NumericData, domain_flags) == 72);
+    assert!(std::mem::size_of::<NumericData>() == 80);
+};
+#[cfg(target_pointer_width = "32")]
+const _: () = {
+    assert!(std::mem::offset_of!(NumericData, domain_flags) == 40);
+    assert!(std::mem::size_of::<NumericData>() == 44);
+};
 
 impl Drop for NumericData {
     fn drop(&mut self) {
@@ -267,6 +280,7 @@ impl NumericData {
             scalar_values: ptr::null(),
             scalar_start: 0,
             scalar_end: 0,
+            domain_flags: 0,
         }
     }
 }
@@ -359,6 +373,7 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         scalar_values: ptr::null(),
         scalar_start: 0,
         scalar_end: 0,
+        domain_flags: 0,
     }))
     .cast::<c_void>()
 }

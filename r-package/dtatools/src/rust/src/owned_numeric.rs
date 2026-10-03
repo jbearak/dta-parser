@@ -286,6 +286,7 @@ impl PreparedOwnedNumeric {
             scalar_values: ptr::null(),
             scalar_start: 0,
             scalar_end: 0,
+            domain_flags: 0,
         }
     }
 }
@@ -485,6 +486,7 @@ pub unsafe extern "C" fn dtatools_owned_numeric_clone(data: *const c_void) -> *m
             scalar_values: ptr::null(),
             scalar_start: 0,
             scalar_end: 0,
+            domain_flags: source.domain_flags,
         });
         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
         result.native_owner = source.native_owner;
