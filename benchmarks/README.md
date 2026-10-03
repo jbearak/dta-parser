@@ -87,6 +87,12 @@ Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls belo
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
 
+The [bounded compact-float comparison follow-up](float-bounded-comparison/results-2026-10-03.md)
+limits how long a failed ordinary-block proof selects exact classification.
+A 256-row missing prefix on a million-row plain compact pair improves by
+3.17 to 3.24 times CPU. The 768-observation comparison includes retained spans,
+dense and ordinary controls, and the measured smaller regressions.
+
 The [compact materialization follow-up](compact-materialization/results-2026-10-02.md)
 removes a redundant compact copy before decoding aliased columns into doubles.
 Million-row byte/int/long/float inputs save 1/2/4/4 MB of temporary copying;
