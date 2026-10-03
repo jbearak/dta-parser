@@ -26,7 +26,7 @@
     },
     "LOGNAME": {
       "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
-      "value": "jmb"
+      "value": "<private>"
     },
     "PATH": {
       "sha256": "fbbc7a43901acf8a422d4dccf2a629acb480d6db17591fc6011b70686baaac43",
@@ -46,7 +46,7 @@
     },
     "USER": {
       "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
-      "value": "jmb"
+      "value": "<private>"
     }
   },
   "source_sha256": "cabec15c6fabe720e62204b345d605a9d87f68e7955a553407e9fbe0d7a92ba1",

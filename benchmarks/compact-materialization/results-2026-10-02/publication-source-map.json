@@ -81,7 +81,7 @@
   },
   "builds/shared-probe/input-record.json": {
     "original_sha256": "6ec0da11232531b0b83af352cb0bbc6f6f0ce636a08edf154c0b694c1a41a72c",
-    "published_sha256": "6ec0da11232531b0b83af352cb0bbc6f6f0ce636a08edf154c0b694c1a41a72c",
+    "published_sha256": "4156a1b84212c6411b116e8f1b9e2adb99316fcc5e53844763531559d8c9a3bb",
     "source": "<shared-probe-build>/input-record.json"
   },
   "builds/shared-probe/materialization_probe.c": {

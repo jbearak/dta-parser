@@ -49,8 +49,8 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "probe/input-record.json": {
-      "bytes": 3631,
-      "sha256": "6ec0da11232531b0b83af352cb0bbc6f6f0ce636a08edf154c0b694c1a41a72c"
+      "bytes": 3643,
+      "sha256": "4156a1b84212c6411b116e8f1b9e2adb99316fcc5e53844763531559d8c9a3bb"
     },
     "probe/materialization_probe.c": {
       "bytes": 2431,
@@ -62,7 +62,7 @@
     },
     "publication-source-map.json": {
       "bytes": 27365,
-      "sha256": "5692e2a1d985ce5aaeda0b9e1e044b66a5250ad56984a66e32a69726fbbb9d03"
+      "sha256": "46bf1e8d712bbcf2df02f1b8a10407ea8f65c5dbbcf764cfd4156685a08f7ad0"
     },
     "qualification/completion.json": {
       "bytes": 472,
@@ -381,5 +381,5 @@
       "sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
     }
   },
-  "scope": "Text evidence only. Private local paths are substituted; source map retains original and published hashes. Receipts bind package/probe binaries, which are not published."
+  "scope": "Text evidence only. Private paths and user-identity environment values are substituted; source map retains original and published hashes. Receipt hashes bind original build inputs and package/probe binaries, not redacted publication copies."
 }
