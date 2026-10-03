@@ -1,0 +1,35 @@
+{
+  "baseline": {
+    "installed_library": "<materialization-evidence>/candidate-integration-v3/library/dtatools/libs/dtatools.so",
+    "installed_library_sha256": "91a2ec10c61469b645787ab77b0ccfb50c23fabe73c81f299c5a3cdc340bb756",
+    "command": [
+      "otool",
+      "-tv",
+      "<materialization-evidence>/candidate-integration-v3/library/dtatools/libs/dtatools.so"
+    ],
+    "disassembly_sha256": "14aedd9173749142e52877845254dde455397378f7bbbeb7372a03efe7439200",
+    "excerpt_symbols": [
+      "_fill_span_doubles:"
+    ],
+    "excerpt_sha256": "34f7f7218a26a169f4e2e4211dc9407a51062387113d433ad06245a21611d45d",
+    "matches_timed_library_inventory": true
+  },
+  "candidate": {
+    "installed_library": "<decode-evidence>/candidate-v1/library/dtatools/libs/dtatools.so",
+    "installed_library_sha256": "b399a53163632f194124ab9540c6b931d07db856e710f3c8b265ca5d49e6ca57",
+    "command": [
+      "otool",
+      "-tv",
+      "<decode-evidence>/candidate-v1/library/dtatools/libs/dtatools.so"
+    ],
+    "disassembly_sha256": "62057cc2153eeda49cdb9afad0359b23198ed214f32849eb03a63bf2783b8f87",
+    "excerpt_symbols": [
+      "_fill_span_doubles:",
+      "_numeric_decode_byte_number_plain:",
+      "_numeric_decode_float_number_plain:",
+      "_numeric_decode_float_number_modern:"
+    ],
+    "excerpt_sha256": "372d34f67bc72636cebddc9e63b2e403f70137e3fa784c72b3dd4fe989c56028",
+    "matches_timed_library_inventory": true
+  }
+}

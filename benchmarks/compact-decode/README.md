@@ -50,5 +50,5 @@ Run `python3 benchmarks/compact-decode/test-run.py` and the same command with
 wrong missing densities, pre-materialized targets, input copies, changed values,
 nonfinite times, inconsistent interval sums, and unbalanced ordering.
 
-No performance result has been collected yet. Do not infer a gain from the
-generated assembly alone.
+The [October 3 paired result](results-2026-10-03.md) records the completed
+288-observation screen and its independent audit.

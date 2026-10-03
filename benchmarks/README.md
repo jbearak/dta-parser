@@ -83,6 +83,13 @@ the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased input
 The report separates exact allocation savings from timing and states its high
 missing density, batch intervals and retained-owner controls.
 
+The [compact decode follow-up](compact-decode/results-2026-10-03.md) moves
+interrupt polling and format/temporal selection outside typed decoding loops.
+Across missing-free, sparse and dense inputs, allocated first materialization
+improves by 2.03–4.77× CPU after the compact-copy removal. The report includes
+automatic GC, full bitwise checks and individual batch intervals; it does not
+claim ingestion speed or parity with an ordinary-double no-op.
+
 The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
 prepares numeric order keys once instead of decoding and validating them during
 sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×
