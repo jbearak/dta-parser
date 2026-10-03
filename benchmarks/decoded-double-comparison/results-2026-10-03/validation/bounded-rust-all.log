@@ -1,0 +1,68 @@
+   Compiling dtatools-r v0.11.2 (/private/tmp/dta-double-pair-masks/r-package/dtatools/src/rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.67s
+     Running unittests src/lib.rs (/private/tmp/dta-native-comparison-followup/target/debug/deps/dtatools_r-4bdf6e0e0d727d48)
+
+running 60 tests
+test arrow_ffi::tests::native_interrupts_and_large_string_offsets_are_classified ... ok
+test arrow_ffi::tests::automatic_reader_threads_use_available_cpus_and_honor_explicit_limits ... ok
+test arrow_ffi::tests::wide_integers_must_fit_exactly_in_r_doubles ... ok
+test arrow_ffi::tests::empty_zero_copy_arrays_ignore_ffi_sentinel_alignment ... ok
+test arrow_ffi::tests::temporal_counts_must_round_trip_through_r_doubles ... ok
+test arrow_ffi::tests::arrow_write_assembly_rejects_duplicate_value_label_table_names ... ok
+test arrow_ffi::tests::captured_string_offsets_are_checked_before_allocating_values ... ok
+test arrow_ffi::tests::observed_int32_minimum_is_widened_to_double ... ok
+test double_compare::tests::local_keys_accept_every_observed_tag_byte_and_only_canonical_nan_tags ... ok
+test arrow_ffi::tests::eager_legacy_tail_values_select_the_legacy_missing_layout ... ok
+test arrow_ffi::tests::duplicate_dictionary_values_cannot_become_factor_levels ... ok
+test double_compare::tests::unrecognized_nan_payloads_decline_either_operand ... ok
+test arrow_ffi::tests::captured_string_buffers_preserve_utf8_empty_and_null_values ... ok
+test arrow_ffi::tests::compact_float_fill_counts_generic_nan_as_missing ... ok
+test arrow_ffi::tests::invalid_profiled_nans_are_counted_as_replacements ... ok
+test arrow_ffi::tests::owned_fill_preserves_user_interrupts_between_scan_blocks ... ok
+test arrow_ffi::tests::owned_fill_peer_failure_is_not_a_user_interrupt ... ok
+test float_compare::tests::noncanonical_nans_and_temporal_values_keep_fallback ... ok
+test native_pressure::tests::allocation_debt_saturates_without_losing_retry_or_new_allocations ... ok
+test native_pressure::tests::both_live_storage_and_new_allocation_are_required ... ok
+test native_pressure::tests::failed_collections_restore_old_and_reentrant_allocation_debt ... ok
+test native_pressure::tests::finalizer_allocations_survive_success_and_nested_reads_do_not_collect ... ok
+test native_pressure::tests::live_buffers_do_not_force_repeated_collection ... ok
+test native_pressure::tests::unwinding_releases_the_attempt_and_restores_debt ... ok
+test owned_numeric::tests::owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release ... ok
+test owned_numeric::tests::owned_float_missing_counts_preserve_nan_payloads_and_legacy_ranges ... ok
+test owned_numeric::tests::scalar_spans_cover_raw_chunk_edges_for_every_storage_width ... ok
+test owned_numeric::tests::scalar_spans_reject_empty_plain_and_invalid_arguments ... ok
+test owned_numeric::tests::owned_long_missing_counts_cover_sentinels_and_signed_boundaries_for_every_release ... ok
+test owned_numeric::tests::scalar_spans_return_whole_sliced_arrow_chunks_in_any_order ... ok
+test double_compare::tests::invalid_nan_in_a_late_lane_declines_the_whole_pair ... ok
+test tests::callback_errors_preserve_r_condition_messages ... ok
+test tests::compact_byte_batch_matches_scalar_values_and_missing_counts ... ok
+test tests::compact_byte_batch_preserves_short_tails_and_accumulated_counts ... ok
+test tests::compact_byte_batch_validates_ranges_before_writing ... ok
+test tests::decoded_dta_milliseconds_snap_back_to_integer_storage ... ok
+test tests::dictionary_pin_survives_release_of_original_owner ... ok
+test tests::direct_r_missing_codes_match_r_system_na_payloads ... ok
+test float_compare::tests::float_pair_ieee_edges_and_missing_values_match_decoding ... ok
+test tests::eager_double_batches_validate_ranges_before_writing_and_decline_other_kinds ... ok
+test float_compare::tests::exact_float_ranks_match_import_classification ... ok
+test tests::ordinary_integer_longs_supply_raw_values_without_stata_tag_reinterpretation ... ok
+test tests::ordinary_integer_raw_values_decline_transforms_and_other_sources ... ok
+test tests::oversized_r_data_frames_are_rejected_before_decode ... ok
+test tests::selected_row_windows_are_clamped_before_decode ... ok
+test tests::temporal_formats_match_haven_prefix_rules ... ok
+test tests::eager_double_batches_preserve_scalar_bits_for_every_release_and_temporal_kind ... ok
+test owned_numeric::tests::owned_byte_missing_scan_remains_interruptible_between_bounded_spans ... ok
+test tests::compact_byte_batch_preserves_every_byte_in_each_gather_lane ... ok
+test double_compare::tests::pair_matches_decoded_order_across_ieee_values_and_every_missing_payload ... ok
+test owned_numeric::tests::owned_byte_missing_counts_accumulate_across_full_spans_and_chunk_tails ... ok
+test owned_numeric::tests::owned_int_missing_counts_cover_every_value_and_release_in_sliced_chunks ... ok
+test owned_numeric::tests::wider_owned_missing_scans_accumulate_spans_and_keep_cancellation_bounds ... ok
+test double_compare::tests::a_dense_prefix_does_not_keep_the_ordinary_tail_on_the_exact_path ... ok
+test tests::threaded_direct_observation_encoding_matches_the_serial_path ... ok
+test float_compare::tests::float_pair_dense_switch_preserves_late_rows_and_invalidity ... ok
+test float_compare::tests::float_pairs_match_decoded_order_for_all_encoding_pairs ... ok
+test float_compare::tests::float_pair_blocks_preserve_boundaries_and_invalid_fallback ... ok
+test double_compare::tests::block_proofs_and_dense_switch_preserve_all_comparisons ... ok
+test float_compare::tests::float_scalars_preserve_double_precision_and_missing_ranks ... ok
+
+test result: ok. 60 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.18s
+

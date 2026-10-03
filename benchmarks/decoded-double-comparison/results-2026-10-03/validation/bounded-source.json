@@ -1,0 +1,8 @@
+{
+  "commit": "bb135c1f274e0ddb5d37d29fdccdcf34b09f83f2",
+  "baseline": "e265f7375171c45ddeb5efdc3d7c978a615c132d",
+  "previous": "76b46d92b63862262ddfd7b88b4b58781b01309f",
+  "change": "After four failed 64-row proofs, validate at most16,384 rows exactly, then resume block proofs. Stops a small dense prefix selecting exact handling for the whole ordinary column.",
+  "regression_red": "Actual pair kernel exact closure called on all1,000,000 rows after256missing prefix; bounded policy must use it on under10% of rows.",
+  "rust_tests": 60
+}

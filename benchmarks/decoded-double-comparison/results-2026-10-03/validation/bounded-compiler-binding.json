@@ -1,0 +1,15 @@
+{
+  "source_commit": "bb135c1f274e0ddb5d37d29fdccdcf34b09f83f2",
+  "symbol": "__RNvNtCs1p0eNqJWtB_10dtatools_r14double_compare7compare",
+  "dll_sha256": "c7459dd02373acab7bbac772033c47e2de55bd57246d0dacf86eb8fd520de937",
+  "disassembly_sha256": "142d29bc24241a709d162f88463dd5dbecc0a6b3f3fc528d8afdade2ca93cfdb",
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/llvm-objdump",
+    "--macho",
+    "--disassemble",
+    "--dis-symname",
+    "__RNvNtCs1p0eNqJWtB_10dtatools_r14double_compare7compare",
+    "/private/tmp/dta-double-pair-mask-evidence/bounded-prototype/library/dtatools/libs/dtatools.so"
+  ],
+  "objdump_sha256": "1dcc1432db4d828cf8cd71a84cb8d9bf63a7ca80b5eeec711a9e5f13a3f5f98e"
+}

@@ -1,0 +1,18 @@
+{
+  "source_commit": "764c6f511afe2e7058ef481407b8fe872a705f68",
+  "symbol": "__RNvNtCs9x3DY0qh5pi_10dtatools_r14double_compare7compare:",
+  "lines": 1280,
+  "dll_sha256": "c2c1a4c543633a0d43bd92104bbe370ea245ee63b2ab695a35783c9765b3dce6",
+  "disassembly_sha256": "26f88cbc553e17568b8292aa900168140e46a2ef9575921f7dc783d968e4995a",
+  "less_loop": {
+    "start": "0x416d30",
+    "back_edge": "0x416ef0",
+    "rows_per_iteration": 8,
+    "instructions": 113,
+    "conditional_branches": [
+      "0000000000416ef0\tb.ne\t0x416d30"
+    ],
+    "body_sha256": "a90650d96c160acf691f9b613be44726c1c45642be68bfc4ab2749389a68774f",
+    "evidence": "Vector floating comparisons, mask validation and result stores; sole conditional branch is loop back edge. This is a code-generation observation, not a speed measurement."
+  }
+}

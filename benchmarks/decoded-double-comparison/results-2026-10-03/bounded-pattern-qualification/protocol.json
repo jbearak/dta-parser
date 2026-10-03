@@ -1,0 +1,13 @@
+{
+  "cases_per_build_round": 12,
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "One million values: retained float controls with X spans8191 and Y spans16385, and matching contiguous typed doubles. Both operands have the same missing positions: first256, last256, or alternating64-row missing/observed blocks beginning with missing (500032 missing rows). All27 missing ranks repeat forward in X and backward in Y; finite values are exactly binary32-representable.",
+  "interval": "No clocks or calibration. One recorded comparison repetition, preceded by public-result and native-eligibility checks, with complete result/input validation.",
+  "limits": "One host, fixed warm constructed span geometry, modern canonical missing codes, threads1 only. Patterns deliberately have different missing counts and run lengths; cross-pattern ratios are not an isolated branch-prediction or density experiment. Typed doubles reach the kernel as full contiguous million-row spans; only compact float controls have the stated retained chunks. Native eligibility is not a per-timed-call entry counter. No arbitrary import, temporal, reader or universal pattern claim.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "oracle": "Full independent integer-rank logical oracle; complete input/result/rank/metadata hashes and retained states before/after; separate native eligibility qualification.",
+  "order": "One qualification round: baseline then candidate, each in a fresh R process. Dense-prefix256, dense-suffix256, alternating64; less then equal. Less uses typed-double then compact; equal uses compact then typed-double.",
+  "phase": "qualify",
+  "rounds": 1
+}

@@ -1,0 +1,3737 @@
+/private/tmp/dta-double-pair-mask-evidence/adaptive-prototype/library/dtatools/libs/dtatools.so:
+(__TEXT,__text) section
+__RNvNtCsaffm5TcYKY7_10dtatools_r14double_compare7compare:
+  4299fc:	49 28 40 79	ldrh	w9, [x2, #0x14]
+  429a00:	e8 ff 9f 52	mov	w8, #0xffff
+  429a04:	3f 01 08 6b	cmp	w9, w8
+  429a08:	81 00 00 54	b.ne	0x429a18
+  429a0c:	48 00 80 52	mov	w8, #0x2
+  429a10:	e0 03 08 aa	mov	x0, x8
+  429a14:	c0 03 5f d6	ret
+  429a18:	48 00 80 52	mov	w8, #0x2
+  429a1c:	1f 14 00 71	cmp	w0, #0x5
+  429a20:	88 ff ff 54	b.hi	0x429a10
+  429a24:	4a 04 40 f9	ldr	x10, [x2, #0x8]
+  429a28:	2b 28 40 79	ldrh	w11, [x1, #0x14]
+  429a2c:	2c 04 40 f9	ldr	x12, [x1, #0x8]
+  429a30:	8a 01 0a aa	orr	x10, x12, x10
+  429a34:	3f 11 00 71	cmp	w9, #0x4
+  429a38:	60 09 44 7a	ccmp	w11, #0x4, #0x0, eq
+  429a3c:	40 09 40 fa	ccmp	x10, #0x0, #0x0, eq
+  429a40:	81 fe ff 54	b.ne	0x429a10
+  429a44:	ef 3b b7 6d	stp	d15, d14, [sp, #-0x90]!
+  429a48:	ed 33 01 6d	stp	d13, d12, [sp, #0x10]
+  429a4c:	eb 2b 02 6d	stp	d11, d10, [sp, #0x20]
+  429a50:	e9 23 03 6d	stp	d9, d8, [sp, #0x30]
+  429a54:	fc 6f 04 a9	stp	x28, x27, [sp, #0x40]
+  429a58:	fa 67 05 a9	stp	x26, x25, [sp, #0x50]
+  429a5c:	f8 5f 06 a9	stp	x24, x23, [sp, #0x60]
+  429a60:	f6 57 07 a9	stp	x22, x21, [sp, #0x70]
+  429a64:	f4 4f 08 a9	stp	x20, x19, [sp, #0x80]
+  429a68:	4a 00 40 f9	ldr	x10, [x2]
+  429a6c:	29 00 40 f9	ldr	x9, [x1]
+  429a70:	1f 04 00 71	cmp	w0, #0x1
+  429a74:	ed 32 00 54	b.le	0x42a0d0
+  429a78:	1f 08 00 71	cmp	w0, #0x2
+  429a7c:	c0 65 00 54	b.eq	0x42a734
+  429a80:	1f 0c 00 71	cmp	w0, #0x3
+  429a84:	00 97 00 54	b.eq	0x42ad64
+  429a88:	1f 10 00 71	cmp	w0, #0x4
+  429a8c:	41 fb 00 54	b.ne	0x42b9f4
+  429a90:	e4 2c 01 b4	cbz	x4, 0x42c02c
+  429a94:	0d 00 80 d2	mov	x13, #0x0
+  429a98:	05 00 80 52	mov	w5, #0x0
+  429a9c:	eb 1f c0 92	mov	x11, #-0xff00000001
+  429aa0:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  429aa4:	4c f4 80 d2	mov	x12, #0x7a2
+  429aa8:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  429aac:	20 04 00 0f	movi.2s	v0, #0x1
+  429ab0:	21 04 00 4f	movi.4s	v1, #0x1
+  429ab4:	2e 81 00 91	add	x14, x9, #0x20
+  429ab8:	4f 81 00 91	add	x15, x10, #0x20
+  429abc:	30 01 01 91	add	x16, x9, #0x40
+  429ac0:	51 01 01 91	add	x17, x10, #0x40
+  429ac4:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  429ac8:	60 80 00 91	add	x0, x3, #0x20
+  429acc:	28 00 80 52	mov	w8, #0x1
+  429ad0:	63 0d 08 4e	dup.2d	v3, x11
+  429ad4:	01 08 80 52	mov	w1, #0x40
+  429ad8:	84 0d 08 4e	dup.2d	v4, x12
+  429adc:	05 04 03 6f	mvni.4s	v5, #0x60
+  429ae0:	46 07 00 4f	movi.4s	v6, #0x1a
+  429ae4:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  429ae8:	e7 f8 e0 6e	fneg.2d	v7, v7
+  429aec:	05 00 00 14	b	0x429b00
+  429af0:	05 00 80 52	mov	w5, #0x0
+  429af4:	4d 00 0d 8b	add	x13, x2, x13
+  429af8:	bf 01 04 eb	cmp	x13, x4
+  429afc:	c2 4e 01 54	b.hs	0x42c4d4
+  429b00:	82 00 0d eb	subs	x2, x4, x13
+  429b04:	5f 00 01 f1	cmp	x2, #0x40
+  429b08:	42 30 81 9a	csel	x2, x2, x1, lo
+  429b0c:	95 00 0d eb	subs	x21, x4, x13
+  429b10:	00 ff ff 54	b.eq	0x429af0
+  429b14:	a6 f1 7d d3	lsl	x6, x13, #3
+  429b18:	bf 22 00 f1	cmp	x21, #0x8
+  429b1c:	82 00 00 54	b.hs	0x429b2c
+  429b20:	07 00 80 d2	mov	x7, #0x0
+  429b24:	16 00 80 d2	mov	x22, #0x0
+  429b28:	33 00 00 14	b	0x429bf4
+  429b2c:	47 0c 7d 92	and	x7, x2, #0x78
+  429b30:	d3 01 06 8b	add	x19, x14, x6
+  429b34:	f4 01 06 8b	add	x20, x15, x6
+  429b38:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  429b3c:	56 0c 7d 92	and	x22, x2, #0x78
+  429b40:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  429b44:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  429b48:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  429b4c:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  429b50:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  429b54:	94 1e 27 4e	and.16b	v20, v20, v7
+  429b58:	b5 1e 27 4e	and.16b	v21, v21, v7
+  429b5c:	d6 1e 27 4e	and.16b	v22, v22, v7
+  429b60:	f7 1e 27 4e	and.16b	v23, v23, v7
+  429b64:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  429b68:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  429b6c:	18 1f 27 4e	and.16b	v24, v24, v7
+  429b70:	39 1f 27 4e	and.16b	v25, v25, v7
+  429b74:	5a 1f 27 4e	and.16b	v26, v26, v7
+  429b78:	7b 1f 27 4e	and.16b	v27, v27, v7
+  429b7c:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  429b80:	90 1e bc 6e	bit.16b	v16, v20, v28
+  429b84:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  429b88:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  429b8c:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  429b90:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  429b94:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  429b98:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  429b9c:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  429ba0:	10 1f b4 6e	bit.16b	v16, v24, v20
+  429ba4:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  429ba8:	33 1f b4 6e	bit.16b	v19, v25, v20
+  429bac:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  429bb0:	52 1f b4 6e	bit.16b	v18, v26, v20
+  429bb4:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  429bb8:	71 1f b4 6e	bit.16b	v17, v27, v20
+  429bbc:	d6 22 00 f1	subs	x22, x22, #0x8
+  429bc0:	61 fc ff 54	b.ne	0x429b4c
+  429bc4:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  429bc8:	70 1e f4 6e	bif.16b	v16, v19, v20
+  429bcc:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  429bd0:	50 1e f3 6e	bif.16b	v16, v18, v19
+  429bd4:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  429bd8:	30 1e f2 6e	bif.16b	v16, v17, v18
+  429bdc:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  429be0:	12 36 f1 7e	cmhi	d18, d16, d17
+  429be4:	30 1e f2 2e	bif.8b	v16, v17, v18
+  429be8:	16 02 66 9e	fmov	x22, d16
+  429bec:	5f 00 07 eb	cmp	x2, x7
+  429bf0:	e0 01 00 54	b.eq	0x429c2c
+  429bf4:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  429bf8:	53 01 14 8b	add	x19, x10, x20
+  429bfc:	34 01 14 8b	add	x20, x9, x20
+  429c00:	47 00 07 cb	sub	x7, x2, x7
+  429c04:	97 86 40 f8	ldr	x23, [x20], #0x8
+  429c08:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  429c0c:	78 86 40 f8	ldr	x24, [x19], #0x8
+  429c10:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  429c14:	ff 02 16 eb	cmp	x23, x22
+  429c18:	f6 82 96 9a	csel	x22, x23, x22, hi
+  429c1c:	1f 03 16 eb	cmp	x24, x22
+  429c20:	16 83 96 9a	csel	x22, x24, x22, hi
+  429c24:	e7 04 00 f1	subs	x7, x7, #0x1
+  429c28:	e1 fe ff 54	b.ne	0x429c04
+  429c2c:	27 01 06 8b	add	x7, x9, x6
+  429c30:	54 01 06 8b	add	x20, x10, x6
+  429c34:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  429c38:	97 85 1e d1	sub	x23, x12, #0x7a1
+  429c3c:	df 02 17 eb	cmp	x22, x23
+  429c40:	82 02 00 54	b.hs	0x429c90
+  429c44:	bf 0a 00 f1	cmp	x21, #0x2
+  429c48:	22 09 00 54	b.hs	0x429d6c
+  429c4c:	05 00 80 d2	mov	x5, #0x0
+  429c50:	46 00 05 cb	sub	x6, x2, x5
+  429c54:	a7 f4 7e d3	lsl	x7, x5, #2
+  429c58:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  429c5c:	67 00 07 8b	add	x7, x3, x7
+  429c60:	a5 f0 7d d3	lsl	x5, x5, #3
+  429c64:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  429c68:	45 01 13 8b	add	x5, x10, x19
+  429c6c:	33 01 13 8b	add	x19, x9, x19
+  429c70:	70 86 40 fc	ldr	d16, [x19], #0x8
+  429c74:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  429c78:	00 22 71 1e	fcmp	d16, d17
+  429c7c:	f4 d7 9f 1a	cset	w20, gt
+  429c80:	f4 44 00 b8	str	w20, [x7], #0x4
+  429c84:	c6 04 00 f1	subs	x6, x6, #0x1
+  429c88:	41 ff ff 54	b.ne	0x429c70
+  429c8c:	99 ff ff 17	b	0x429af0
+  429c90:	bf 22 00 f1	cmp	x21, #0x8
+  429c94:	e2 08 00 54	b.hs	0x429db0
+  429c98:	06 00 80 d2	mov	x6, #0x0
+  429c9c:	35 00 80 52	mov	w21, #0x1
+  429ca0:	c7 f4 7e d3	lsl	x7, x6, #2
+  429ca4:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  429ca8:	67 00 07 8b	add	x7, x3, x7
+  429cac:	d3 f0 7d d3	lsl	x19, x6, #3
+  429cb0:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  429cb4:	53 01 14 8b	add	x19, x10, x20
+  429cb8:	34 01 14 8b	add	x20, x9, x20
+  429cbc:	46 00 06 cb	sub	x6, x2, x6
+  429cc0:	96 86 40 f8	ldr	x22, [x20], #0x8
+  429cc4:	d7 fe 60 d3	lsr	x23, x22, #32
+  429cc8:	d8 02 0b 8a	and	x24, x22, x11
+  429ccc:	d0 02 67 9e	fmov	d16, x22
+  429cd0:	76 86 40 f8	ldr	x22, [x19], #0x8
+  429cd4:	d9 fe 60 d3	lsr	x25, x22, #32
+  429cd8:	da 02 0b 8a	and	x26, x22, x11
+  429cdc:	d1 02 67 9e	fmov	d17, x22
+  429ce0:	f6 1e 00 72	ands	w22, w23, #0xff
+  429ce4:	f7 17 9f 1a	cset	w23, eq
+  429ce8:	db 86 01 51	sub	w27, w22, #0x61
+  429cec:	7f 6b 00 71	cmp	w27, #0x1a
+  429cf0:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  429cf4:	1f 03 0c eb	cmp	x24, x12
+  429cf8:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  429cfc:	38 1f 00 72	ands	w24, w25, #0xff
+  429d00:	f9 17 9f 1a	cset	w25, eq
+  429d04:	1b 87 01 51	sub	w27, w24, #0x61
+  429d08:	7f 6b 00 71	cmp	w27, #0x1a
+  429d0c:	39 27 9f 1a	csinc	w25, w25, wzr, hs
+  429d10:	5f 03 0c eb	cmp	x26, x12
+  429d14:	f9 13 99 1a	csel	w25, wzr, w25, ne
+  429d18:	20 22 71 1e	fcmp	d17, d17
+  429d1c:	fa 67 9f 1a	cset	w26, vc
+  429d20:	39 67 9f 1a	csinc	w25, w25, wzr, vs
+  429d24:	1f 03 16 6b	cmp	w24, w22
+  429d28:	56 27 9f 1a	csinc	w22, w26, wzr, hs
+  429d2c:	00 22 70 1e	fcmp	d16, d16
+  429d30:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  429d34:	f7 02 19 0a	and	w23, w23, w25
+  429d38:	b5 02 17 0a	and	w21, w21, w23
+  429d3c:	f6 73 96 1a	csel	w22, wzr, w22, vc
+  429d40:	00 22 71 1e	fcmp	d16, d17
+  429d44:	f7 d7 9f 1a	cset	w23, gt
+  429d48:	d6 62 97 1a	csel	w22, w22, w23, vs
+  429d4c:	f6 44 00 b8	str	w22, [x7], #0x4
+  429d50:	c6 04 00 f1	subs	x6, x6, #0x1
+  429d54:	61 fb ff 54	b.ne	0x429cc0
+  429d58:	08 01 15 0a	and	w8, w8, w21
+  429d5c:	a5 04 00 11	add	w5, w5, #0x1
+  429d60:	bf 10 00 71	cmp	w5, #0x4
+  429d64:	81 ec ff 54	b.ne	0x429af4
+  429d68:	62 09 00 14	b	0x42c2f0
+  429d6c:	05 00 80 d2	mov	x5, #0x0
+  429d70:	b6 01 02 8b	add	x22, x13, x2
+  429d74:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  429d78:	d6 f2 7d d3	lsl	x22, x22, #3
+  429d7c:	38 01 16 8b	add	x24, x9, x22
+  429d80:	56 01 16 8b	add	x22, x10, x22
+  429d84:	7f 02 16 eb	cmp	x19, x22
+  429d88:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  429d8c:	f4 27 9f 1a	cset	w20, lo
+  429d90:	ff 00 17 eb	cmp	x7, x23
+  429d94:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  429d98:	c3 f5 ff 54	b.lo	0x429c50
+  429d9c:	b4 f5 07 37	tbnz	w20, #0x0, 0x429c50
+  429da0:	bf 42 00 f1	cmp	x21, #0x10
+  429da4:	02 12 00 54	b.hs	0x429fe4
+  429da8:	05 00 80 d2	mov	x5, #0x0
+  429dac:	b5 00 00 14	b	0x42a080
+  429db0:	06 00 80 d2	mov	x6, #0x0
+  429db4:	b5 01 02 8b	add	x21, x13, x2
+  429db8:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  429dbc:	b5 f2 7d d3	lsl	x21, x21, #3
+  429dc0:	38 01 15 8b	add	x24, x9, x21
+  429dc4:	55 01 15 8b	add	x21, x10, x21
+  429dc8:	7f 02 15 eb	cmp	x19, x21
+  429dcc:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  429dd0:	f6 27 9f 1a	cset	w22, lo
+  429dd4:	ff 00 17 eb	cmp	x7, x23
+  429dd8:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  429ddc:	35 00 80 52	mov	w21, #0x1
+  429de0:	03 f6 ff 54	b.lo	0x429ca0
+  429de4:	f6 f5 07 37	tbnz	w22, #0x0, 0x429ca0
+  429de8:	46 0c 7d 92	and	x6, x2, #0x78
+  429dec:	30 e4 00 0f	movi.8b	v16, #0x1
+  429df0:	55 0c 7d 92	and	x21, x2, #0x78
+  429df4:	f1 48 41 ad	ldp	q17, q18, [x7, #0x20]
+  429df8:	53 e6 72 4e	fcmeq.2d	v19, v18, v18
+  429dfc:	34 e6 71 4e	fcmeq.2d	v20, v17, v17
+  429e00:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  429e04:	f4 54 40 ad	ldp	q20, q21, [x7]
+  429e08:	b6 e6 75 4e	fcmeq.2d	v22, v21, v21
+  429e0c:	97 e6 74 4e	fcmeq.2d	v23, v20, v20
+  429e10:	f6 1a 96 4e	uzp1.4s	v22, v23, v22
+  429e14:	d3 1a 53 4e	uzp1.8h	v19, v22, v19
+  429e18:	96 66 41 ad	ldp	q22, q25, [x20, #0x20]
+  429e1c:	37 e7 79 4e	fcmeq.2d	v23, v25, v25
+  429e20:	d8 e6 76 4e	fcmeq.2d	v24, v22, v22
+  429e24:	17 1b 97 4e	uzp1.4s	v23, v24, v23
+  429e28:	98 6a c2 ac	ldp	q24, q26, [x20], #0x40
+  429e2c:	5b e7 7a 4e	fcmeq.2d	v27, v26, v26
+  429e30:	1c e7 78 4e	fcmeq.2d	v28, v24, v24
+  429e34:	9b 1b 9b 4e	uzp1.4s	v27, v28, v27
+  429e38:	77 1b 57 4e	uzp1.8h	v23, v27, v23
+  429e3c:	3c 5a 92 4e	uzp2.4s	v28, v17, v18
+  429e40:	9b 5a 95 4e	uzp2.4s	v27, v20, v21
+  429e44:	7b 1f 22 4e	and.16b	v27, v27, v2
+  429e48:	9c 1f 22 4e	and.16b	v28, v28, v2
+  429e4c:	9d 1e 23 4e	and.16b	v29, v20, v3
+  429e50:	be 1e 23 4e	and.16b	v30, v21, v3
+  429e54:	3f 1e 23 4e	and.16b	v31, v17, v3
+  429e58:	48 1e 23 4e	and.16b	v8, v18, v3
+  429e5c:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  429e60:	ff 8f e4 6e	cmeq.2d	v31, v31, v4
+  429e64:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  429e68:	de 8f e4 6e	cmeq.2d	v30, v30, v4
+  429e6c:	bd 8f e4 6e	cmeq.2d	v29, v29, v4
+  429e70:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  429e74:	bd 1b 5f 4e	uzp1.8h	v29, v29, v31
+  429e78:	9e 9b a0 4e	cmeq.4s	v30, v28, #0
+  429e7c:	7f 9b a0 4e	cmeq.4s	v31, v27, #0
+  429e80:	fe 1b 5e 4e	uzp1.8h	v30, v31, v30
+  429e84:	7f 87 a5 4e	add.4s	v31, v27, v5
+  429e88:	88 87 a5 4e	add.4s	v8, v28, v5
+  429e8c:	c8 34 a8 6e	cmhi.4s	v8, v6, v8
+  429e90:	df 34 bf 6e	cmhi.4s	v31, v6, v31
+  429e94:	ff 1b 48 4e	uzp1.8h	v31, v31, v8
+  429e98:	de 1f bf 4e	orr.16b	v30, v30, v31
+  429e9c:	bd 1f 3e 4e	and.16b	v29, v29, v30
+  429ea0:	de 5a 99 4e	uzp2.4s	v30, v22, v25
+  429ea4:	1f 5b 9a 4e	uzp2.4s	v31, v24, v26
+  429ea8:	ff 1f 22 4e	and.16b	v31, v31, v2
+  429eac:	de 1f 22 4e	and.16b	v30, v30, v2
+  429eb0:	08 1f 23 4e	and.16b	v8, v24, v3
+  429eb4:	49 1f 23 4e	and.16b	v9, v26, v3
+  429eb8:	ca 1e 23 4e	and.16b	v10, v22, v3
+  429ebc:	2b 1f 23 4e	and.16b	v11, v25, v3
+  429ec0:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  429ec4:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  429ec8:	4a 19 8b 4e	uzp1.4s	v10, v10, v11
+  429ecc:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  429ed0:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  429ed4:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  429ed8:	08 19 4a 4e	uzp1.8h	v8, v8, v10
+  429edc:	c9 9b a0 4e	cmeq.4s	v9, v30, #0
+  429ee0:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  429ee4:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  429ee8:	ea 87 a5 4e	add.4s	v10, v31, v5
+  429eec:	cb 87 a5 4e	add.4s	v11, v30, v5
+  429ef0:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  429ef4:	ca 34 aa 6e	cmhi.4s	v10, v6, v10
+  429ef8:	4a 19 4b 4e	uzp1.8h	v10, v10, v11
+  429efc:	29 1d aa 4e	orr.16b	v9, v9, v10
+  429f00:	08 1d 29 4e	and.16b	v8, v8, v9
+  429f04:	49 e6 79 6e	fcmge.2d	v9, v18, v25
+  429f08:	2a e7 f2 6e	fcmgt.2d	v10, v25, v18
+  429f0c:	49 1d a9 4e	orr.16b	v9, v10, v9
+  429f10:	2a e6 76 6e	fcmge.2d	v10, v17, v22
+  429f14:	cb e6 f1 6e	fcmgt.2d	v11, v22, v17
+  429f18:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  429f1c:	49 19 89 4e	uzp1.4s	v9, v10, v9
+  429f20:	aa e6 7a 6e	fcmge.2d	v10, v21, v26
+  429f24:	4b e7 f5 6e	fcmgt.2d	v11, v26, v21
+  429f28:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  429f2c:	8b e6 78 6e	fcmge.2d	v11, v20, v24
+  429f30:	0c e7 f4 6e	fcmgt.2d	v12, v24, v20
+  429f34:	8b 1d ab 4e	orr.16b	v11, v12, v11
+  429f38:	7d 1e bd 4e	orr.16b	v29, v19, v29
+  429f3c:	e8 1e a8 4e	orr.16b	v8, v23, v8
+  429f40:	6a 19 8a 4e	uzp1.4s	v10, v11, v10
+  429f44:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  429f48:	2a 59 20 6e	mvn.16b	v10, v9
+  429f4c:	4a 29 21 0e	xtn.8b	v10, v10
+  429f50:	52 e6 f9 6e	fcmgt.2d	v18, v18, v25
+  429f54:	31 e6 f6 6e	fcmgt.2d	v17, v17, v22
+  429f58:	31 1a 92 4e	uzp1.4s	v17, v17, v18
+  429f5c:	b2 e6 fa 6e	fcmgt.2d	v18, v21, v26
+  429f60:	94 e6 f8 6e	fcmgt.2d	v20, v20, v24
+  429f64:	92 1a 92 4e	uzp1.4s	v18, v20, v18
+  429f68:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  429f6c:	31 2a 21 0e	xtn.8b	v17, v17
+  429f70:	92 37 be 6e	cmhi.4s	v18, v28, v30
+  429f74:	74 37 bf 6e	cmhi.4s	v20, v27, v31
+  429f78:	92 1a 52 4e	uzp1.8h	v18, v20, v18
+  429f7c:	f2 1e b2 4e	orr.16b	v18, v23, v18
+  429f80:	52 1e 73 4e	bic.16b	v18, v18, v19
+  429f84:	31 1e 6a 0e	bic.8b	v17, v17, v10
+  429f88:	52 1e 69 4e	bic.16b	v18, v18, v9
+  429f8c:	52 2a 21 0e	xtn.8b	v18, v18
+  429f90:	51 1e b1 0e	orr.8b	v17, v18, v17
+  429f94:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  429f98:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  429f9c:	52 1e 21 4e	and.16b	v18, v18, v1
+  429fa0:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  429fa4:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  429fa8:	31 1e 21 4e	and.16b	v17, v17, v1
+  429fac:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  429fb0:	b1 1f 28 4e	and.16b	v17, v29, v8
+  429fb4:	31 2a 21 0e	xtn.8b	v17, v17
+  429fb8:	e7 00 01 91	add	x7, x7, #0x40
+  429fbc:	10 1e 31 0e	and.8b	v16, v16, v17
+  429fc0:	b5 22 00 f1	subs	x21, x21, #0x8
+  429fc4:	81 f1 ff 54	b.ne	0x429df4
+  429fc8:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  429fcc:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  429fd0:	10 aa 31 2e	uminv.8b	b16, v16
+  429fd4:	15 02 26 1e	fmov	w21, s16
+  429fd8:	5f 00 06 eb	cmp	x2, x6
+  429fdc:	21 e6 ff 54	b.ne	0x429ca0
+  429fe0:	5e ff ff 17	b	0x429d58
+  429fe4:	47 08 7f 92	and	x7, x2, #0xe
+  429fe8:	45 08 7c 92	and	x5, x2, #0x70
+  429fec:	13 02 06 8b	add	x19, x16, x6
+  429ff0:	34 02 06 8b	add	x20, x17, x6
+  429ff4:	55 08 7c 92	and	x21, x2, #0x70
+  429ff8:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  429ffc:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42a000:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42a004:	74 56 40 ad	ldp	q20, q21, [x19]
+  42a008:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42a00c:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42a010:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42a014:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42a018:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42a01c:	31 e6 f9 6e	fcmgt.2d	v17, v17, v25
+  42a020:	10 e6 f8 6e	fcmgt.2d	v16, v16, v24
+  42a024:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42a028:	10 1e 21 4e	and.16b	v16, v16, v1
+  42a02c:	71 e6 fb 6e	fcmgt.2d	v17, v19, v27
+  42a030:	52 e6 fa 6e	fcmgt.2d	v18, v18, v26
+  42a034:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42a038:	31 1e 21 4e	and.16b	v17, v17, v1
+  42a03c:	b2 e6 fd 6e	fcmgt.2d	v18, v21, v29
+  42a040:	93 e6 fc 6e	fcmgt.2d	v19, v20, v28
+  42a044:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42a048:	52 1e 21 4e	and.16b	v18, v18, v1
+  42a04c:	f3 e6 ff 6e	fcmgt.2d	v19, v23, v31
+  42a050:	d4 e6 fe 6e	fcmgt.2d	v20, v22, v30
+  42a054:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42a058:	73 1e 21 4e	and.16b	v19, v19, v1
+  42a05c:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42a060:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42a064:	73 02 02 91	add	x19, x19, #0x80
+  42a068:	94 02 02 91	add	x20, x20, #0x80
+  42a06c:	b5 42 00 f1	subs	x21, x21, #0x10
+  42a070:	61 fc ff 54	b.ne	0x429ffc
+  42a074:	5f 00 05 eb	cmp	x2, x5
+  42a078:	c0 d3 ff 54	b.eq	0x429af0
+  42a07c:	a7 de ff b4	cbz	x7, 0x429c50
+  42a080:	f4 03 05 aa	mov	x20, x5
+  42a084:	45 14 7f 92	and	x5, x2, #0x7e
+  42a088:	87 02 05 cb	sub	x7, x20, x5
+  42a08c:	b3 f5 7e d3	lsl	x19, x13, #2
+  42a090:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42a094:	73 00 13 8b	add	x19, x3, x19
+  42a098:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42a09c:	46 01 14 8b	add	x6, x10, x20
+  42a0a0:	34 01 14 8b	add	x20, x9, x20
+  42a0a4:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42a0a8:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42a0ac:	10 e6 f1 6e	fcmgt.2d	v16, v16, v17
+  42a0b0:	10 2a a1 0e	xtn.2s	v16, v16
+  42a0b4:	10 1e 20 0e	and.8b	v16, v16, v0
+  42a0b8:	70 86 00 fc	str	d16, [x19], #0x8
+  42a0bc:	e7 08 00 b1	adds	x7, x7, #0x2
+  42a0c0:	21 ff ff 54	b.ne	0x42a0a4
+  42a0c4:	5f 00 05 eb	cmp	x2, x5
+  42a0c8:	40 d1 ff 54	b.eq	0x429af0
+  42a0cc:	e1 fe ff 17	b	0x429c50
+  42a0d0:	a0 96 00 34	cbz	w0, 0x42b3a4
+  42a0d4:	1f 04 00 71	cmp	w0, #0x1
+  42a0d8:	e1 c8 00 54	b.ne	0x42b9f4
+  42a0dc:	84 fa 00 b4	cbz	x4, 0x42c02c
+  42a0e0:	0d 00 80 d2	mov	x13, #0x0
+  42a0e4:	05 00 80 52	mov	w5, #0x0
+  42a0e8:	eb 1f c0 92	mov	x11, #-0xff00000001
+  42a0ec:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  42a0f0:	4c f4 80 d2	mov	x12, #0x7a2
+  42a0f4:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  42a0f8:	20 04 00 0f	movi.2s	v0, #0x1
+  42a0fc:	21 04 00 4f	movi.4s	v1, #0x1
+  42a100:	2e 81 00 91	add	x14, x9, #0x20
+  42a104:	4f 81 00 91	add	x15, x10, #0x20
+  42a108:	30 01 01 91	add	x16, x9, #0x40
+  42a10c:	51 01 01 91	add	x17, x10, #0x40
+  42a110:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  42a114:	60 80 00 91	add	x0, x3, #0x20
+  42a118:	28 00 80 52	mov	w8, #0x1
+  42a11c:	63 0d 08 4e	dup.2d	v3, x11
+  42a120:	01 08 80 52	mov	w1, #0x40
+  42a124:	84 0d 08 4e	dup.2d	v4, x12
+  42a128:	05 04 03 6f	mvni.4s	v5, #0x60
+  42a12c:	46 07 00 4f	movi.4s	v6, #0x1a
+  42a130:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  42a134:	e7 f8 e0 6e	fneg.2d	v7, v7
+  42a138:	05 00 00 14	b	0x42a14c
+  42a13c:	05 00 80 52	mov	w5, #0x0
+  42a140:	4d 00 0d 8b	add	x13, x2, x13
+  42a144:	bf 01 04 eb	cmp	x13, x4
+  42a148:	62 1c 01 54	b.hs	0x42c4d4
+  42a14c:	82 00 0d eb	subs	x2, x4, x13
+  42a150:	5f 00 01 f1	cmp	x2, #0x40
+  42a154:	42 30 81 9a	csel	x2, x2, x1, lo
+  42a158:	95 00 0d eb	subs	x21, x4, x13
+  42a15c:	00 ff ff 54	b.eq	0x42a13c
+  42a160:	a6 f1 7d d3	lsl	x6, x13, #3
+  42a164:	bf 22 00 f1	cmp	x21, #0x8
+  42a168:	82 00 00 54	b.hs	0x42a178
+  42a16c:	07 00 80 d2	mov	x7, #0x0
+  42a170:	16 00 80 d2	mov	x22, #0x0
+  42a174:	33 00 00 14	b	0x42a240
+  42a178:	47 0c 7d 92	and	x7, x2, #0x78
+  42a17c:	d3 01 06 8b	add	x19, x14, x6
+  42a180:	f4 01 06 8b	add	x20, x15, x6
+  42a184:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  42a188:	56 0c 7d 92	and	x22, x2, #0x78
+  42a18c:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  42a190:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  42a194:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  42a198:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  42a19c:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  42a1a0:	94 1e 27 4e	and.16b	v20, v20, v7
+  42a1a4:	b5 1e 27 4e	and.16b	v21, v21, v7
+  42a1a8:	d6 1e 27 4e	and.16b	v22, v22, v7
+  42a1ac:	f7 1e 27 4e	and.16b	v23, v23, v7
+  42a1b0:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  42a1b4:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  42a1b8:	18 1f 27 4e	and.16b	v24, v24, v7
+  42a1bc:	39 1f 27 4e	and.16b	v25, v25, v7
+  42a1c0:	5a 1f 27 4e	and.16b	v26, v26, v7
+  42a1c4:	7b 1f 27 4e	and.16b	v27, v27, v7
+  42a1c8:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  42a1cc:	90 1e bc 6e	bit.16b	v16, v20, v28
+  42a1d0:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  42a1d4:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  42a1d8:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  42a1dc:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  42a1e0:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  42a1e4:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  42a1e8:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  42a1ec:	10 1f b4 6e	bit.16b	v16, v24, v20
+  42a1f0:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  42a1f4:	33 1f b4 6e	bit.16b	v19, v25, v20
+  42a1f8:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  42a1fc:	52 1f b4 6e	bit.16b	v18, v26, v20
+  42a200:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  42a204:	71 1f b4 6e	bit.16b	v17, v27, v20
+  42a208:	d6 22 00 f1	subs	x22, x22, #0x8
+  42a20c:	61 fc ff 54	b.ne	0x42a198
+  42a210:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  42a214:	70 1e f4 6e	bif.16b	v16, v19, v20
+  42a218:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  42a21c:	50 1e f3 6e	bif.16b	v16, v18, v19
+  42a220:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  42a224:	30 1e f2 6e	bif.16b	v16, v17, v18
+  42a228:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  42a22c:	12 36 f1 7e	cmhi	d18, d16, d17
+  42a230:	30 1e f2 2e	bif.8b	v16, v17, v18
+  42a234:	16 02 66 9e	fmov	x22, d16
+  42a238:	5f 00 07 eb	cmp	x2, x7
+  42a23c:	e0 01 00 54	b.eq	0x42a278
+  42a240:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  42a244:	53 01 14 8b	add	x19, x10, x20
+  42a248:	34 01 14 8b	add	x20, x9, x20
+  42a24c:	47 00 07 cb	sub	x7, x2, x7
+  42a250:	97 86 40 f8	ldr	x23, [x20], #0x8
+  42a254:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  42a258:	78 86 40 f8	ldr	x24, [x19], #0x8
+  42a25c:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  42a260:	ff 02 16 eb	cmp	x23, x22
+  42a264:	f6 82 96 9a	csel	x22, x23, x22, hi
+  42a268:	1f 03 16 eb	cmp	x24, x22
+  42a26c:	16 83 96 9a	csel	x22, x24, x22, hi
+  42a270:	e7 04 00 f1	subs	x7, x7, #0x1
+  42a274:	e1 fe ff 54	b.ne	0x42a250
+  42a278:	27 01 06 8b	add	x7, x9, x6
+  42a27c:	54 01 06 8b	add	x20, x10, x6
+  42a280:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  42a284:	97 85 1e d1	sub	x23, x12, #0x7a1
+  42a288:	df 02 17 eb	cmp	x22, x23
+  42a28c:	82 02 00 54	b.hs	0x42a2dc
+  42a290:	bf 0a 00 f1	cmp	x21, #0x2
+  42a294:	22 09 00 54	b.hs	0x42a3b8
+  42a298:	05 00 80 d2	mov	x5, #0x0
+  42a29c:	46 00 05 cb	sub	x6, x2, x5
+  42a2a0:	a7 f4 7e d3	lsl	x7, x5, #2
+  42a2a4:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42a2a8:	67 00 07 8b	add	x7, x3, x7
+  42a2ac:	a5 f0 7d d3	lsl	x5, x5, #3
+  42a2b0:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  42a2b4:	45 01 13 8b	add	x5, x10, x19
+  42a2b8:	33 01 13 8b	add	x19, x9, x19
+  42a2bc:	70 86 40 fc	ldr	d16, [x19], #0x8
+  42a2c0:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  42a2c4:	00 22 71 1e	fcmp	d16, d17
+  42a2c8:	f4 07 9f 1a	cset	w20, ne
+  42a2cc:	f4 44 00 b8	str	w20, [x7], #0x4
+  42a2d0:	c6 04 00 f1	subs	x6, x6, #0x1
+  42a2d4:	41 ff ff 54	b.ne	0x42a2bc
+  42a2d8:	99 ff ff 17	b	0x42a13c
+  42a2dc:	bf 22 00 f1	cmp	x21, #0x8
+  42a2e0:	e2 08 00 54	b.hs	0x42a3fc
+  42a2e4:	06 00 80 d2	mov	x6, #0x0
+  42a2e8:	35 00 80 52	mov	w21, #0x1
+  42a2ec:	c7 f4 7e d3	lsl	x7, x6, #2
+  42a2f0:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42a2f4:	67 00 07 8b	add	x7, x3, x7
+  42a2f8:	d3 f0 7d d3	lsl	x19, x6, #3
+  42a2fc:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  42a300:	53 01 14 8b	add	x19, x10, x20
+  42a304:	34 01 14 8b	add	x20, x9, x20
+  42a308:	46 00 06 cb	sub	x6, x2, x6
+  42a30c:	96 86 40 f8	ldr	x22, [x20], #0x8
+  42a310:	d7 fe 60 d3	lsr	x23, x22, #32
+  42a314:	d8 02 0b 8a	and	x24, x22, x11
+  42a318:	d0 02 67 9e	fmov	d16, x22
+  42a31c:	76 86 40 f8	ldr	x22, [x19], #0x8
+  42a320:	d9 fe 60 d3	lsr	x25, x22, #32
+  42a324:	da 02 0b 8a	and	x26, x22, x11
+  42a328:	d1 02 67 9e	fmov	d17, x22
+  42a32c:	f6 1e 00 72	ands	w22, w23, #0xff
+  42a330:	f7 17 9f 1a	cset	w23, eq
+  42a334:	db 86 01 51	sub	w27, w22, #0x61
+  42a338:	7f 6b 00 71	cmp	w27, #0x1a
+  42a33c:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  42a340:	1f 03 0c eb	cmp	x24, x12
+  42a344:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  42a348:	38 1f 00 72	ands	w24, w25, #0xff
+  42a34c:	f9 17 9f 1a	cset	w25, eq
+  42a350:	1b 87 01 51	sub	w27, w24, #0x61
+  42a354:	7f 6b 00 71	cmp	w27, #0x1a
+  42a358:	39 27 9f 1a	csinc	w25, w25, wzr, hs
+  42a35c:	5f 03 0c eb	cmp	x26, x12
+  42a360:	f9 13 99 1a	csel	w25, wzr, w25, ne
+  42a364:	00 22 70 1e	fcmp	d16, d16
+  42a368:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  42a36c:	d6 62 9f 5a	csinv	w22, w22, wzr, vs
+  42a370:	20 22 71 1e	fcmp	d17, d17
+  42a374:	39 67 9f 1a	csinc	w25, w25, wzr, vs
+  42a378:	f7 02 19 0a	and	w23, w23, w25
+  42a37c:	b5 02 17 0a	and	w21, w21, w23
+  42a380:	17 63 9f 5a	csinv	w23, w24, wzr, vs
+  42a384:	df 02 17 6b	cmp	w22, w23
+  42a388:	f6 07 9f 1a	cset	w22, ne
+  42a38c:	00 22 71 1e	fcmp	d16, d17
+  42a390:	f7 07 9f 1a	cset	w23, ne
+  42a394:	d6 62 97 1a	csel	w22, w22, w23, vs
+  42a398:	f6 44 00 b8	str	w22, [x7], #0x4
+  42a39c:	c6 04 00 f1	subs	x6, x6, #0x1
+  42a3a0:	61 fb ff 54	b.ne	0x42a30c
+  42a3a4:	08 01 15 0a	and	w8, w8, w21
+  42a3a8:	a5 04 00 11	add	w5, w5, #0x1
+  42a3ac:	bf 10 00 71	cmp	w5, #0x4
+  42a3b0:	81 ec ff 54	b.ne	0x42a140
+  42a3b4:	09 08 00 14	b	0x42c3d8
+  42a3b8:	05 00 80 d2	mov	x5, #0x0
+  42a3bc:	b6 01 02 8b	add	x22, x13, x2
+  42a3c0:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  42a3c4:	d6 f2 7d d3	lsl	x22, x22, #3
+  42a3c8:	38 01 16 8b	add	x24, x9, x22
+  42a3cc:	56 01 16 8b	add	x22, x10, x22
+  42a3d0:	7f 02 16 eb	cmp	x19, x22
+  42a3d4:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42a3d8:	f4 27 9f 1a	cset	w20, lo
+  42a3dc:	ff 00 17 eb	cmp	x7, x23
+  42a3e0:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42a3e4:	c3 f5 ff 54	b.lo	0x42a29c
+  42a3e8:	b4 f5 07 37	tbnz	w20, #0x0, 0x42a29c
+  42a3ec:	bf 42 00 f1	cmp	x21, #0x10
+  42a3f0:	a2 12 00 54	b.hs	0x42a644
+  42a3f4:	05 00 80 d2	mov	x5, #0x0
+  42a3f8:	ba 00 00 14	b	0x42a6e0
+  42a3fc:	06 00 80 d2	mov	x6, #0x0
+  42a400:	b5 01 02 8b	add	x21, x13, x2
+  42a404:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  42a408:	b5 f2 7d d3	lsl	x21, x21, #3
+  42a40c:	38 01 15 8b	add	x24, x9, x21
+  42a410:	55 01 15 8b	add	x21, x10, x21
+  42a414:	7f 02 15 eb	cmp	x19, x21
+  42a418:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42a41c:	f6 27 9f 1a	cset	w22, lo
+  42a420:	ff 00 17 eb	cmp	x7, x23
+  42a424:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42a428:	35 00 80 52	mov	w21, #0x1
+  42a42c:	03 f6 ff 54	b.lo	0x42a2ec
+  42a430:	f6 f5 07 37	tbnz	w22, #0x0, 0x42a2ec
+  42a434:	46 0c 7d 92	and	x6, x2, #0x78
+  42a438:	30 e4 00 0f	movi.8b	v16, #0x1
+  42a43c:	55 0c 7d 92	and	x21, x2, #0x78
+  42a440:	f2 4c 41 ad	ldp	q18, q19, [x7, #0x20]
+  42a444:	71 e6 73 4e	fcmeq.2d	v17, v19, v19
+  42a448:	54 e6 72 4e	fcmeq.2d	v20, v18, v18
+  42a44c:	91 1a 91 4e	uzp1.4s	v17, v20, v17
+  42a450:	f5 58 40 ad	ldp	q21, q22, [x7]
+  42a454:	d4 e6 76 4e	fcmeq.2d	v20, v22, v22
+  42a458:	b7 e6 75 4e	fcmeq.2d	v23, v21, v21
+  42a45c:	f4 1a 94 4e	uzp1.4s	v20, v23, v20
+  42a460:	9f 1a 51 4e	uzp1.8h	v31, v20, v17
+  42a464:	99 6e 41 ad	ldp	q25, q27, [x20, #0x20]
+  42a468:	77 e7 7b 4e	fcmeq.2d	v23, v27, v27
+  42a46c:	38 e7 79 4e	fcmeq.2d	v24, v25, v25
+  42a470:	17 1b 97 4e	uzp1.4s	v23, v24, v23
+  42a474:	9a 72 40 ad	ldp	q26, q28, [x20]
+  42a478:	98 e7 7c 4e	fcmeq.2d	v24, v28, v28
+  42a47c:	5d e7 7a 4e	fcmeq.2d	v29, v26, v26
+  42a480:	b8 1b 98 4e	uzp1.4s	v24, v29, v24
+  42a484:	08 1b 57 4e	uzp1.8h	v8, v24, v23
+  42a488:	5e 5a 93 4e	uzp2.4s	v30, v18, v19
+  42a48c:	bd 5a 96 4e	uzp2.4s	v29, v21, v22
+  42a490:	bd 1f 22 4e	and.16b	v29, v29, v2
+  42a494:	de 1f 22 4e	and.16b	v30, v30, v2
+  42a498:	a9 1e 23 4e	and.16b	v9, v21, v3
+  42a49c:	ca 1e 23 4e	and.16b	v10, v22, v3
+  42a4a0:	4b 1e 23 4e	and.16b	v11, v18, v3
+  42a4a4:	6c 1e 23 4e	and.16b	v12, v19, v3
+  42a4a8:	8c 8d e4 6e	cmeq.2d	v12, v12, v4
+  42a4ac:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42a4b0:	6b 19 8c 4e	uzp1.4s	v11, v11, v12
+  42a4b4:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  42a4b8:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42a4bc:	29 19 8a 4e	uzp1.4s	v9, v9, v10
+  42a4c0:	29 19 4b 4e	uzp1.8h	v9, v9, v11
+  42a4c4:	ca 9b a0 4e	cmeq.4s	v10, v30, #0
+  42a4c8:	ab 9b a0 4e	cmeq.4s	v11, v29, #0
+  42a4cc:	6a 19 4a 4e	uzp1.8h	v10, v11, v10
+  42a4d0:	ab 87 a5 4e	add.4s	v11, v29, v5
+  42a4d4:	cc 87 a5 4e	add.4s	v12, v30, v5
+  42a4d8:	cc 34 ac 6e	cmhi.4s	v12, v6, v12
+  42a4dc:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  42a4e0:	6b 19 4c 4e	uzp1.8h	v11, v11, v12
+  42a4e4:	4a 1d ab 4e	orr.16b	v10, v10, v11
+  42a4e8:	29 1d 2a 4e	and.16b	v9, v9, v10
+  42a4ec:	ff 1f a9 4e	orr.16b	v31, v31, v9
+  42a4f0:	29 5b 9b 4e	uzp2.4s	v9, v25, v27
+  42a4f4:	4a 5b 9c 4e	uzp2.4s	v10, v26, v28
+  42a4f8:	4a 1d 22 4e	and.16b	v10, v10, v2
+  42a4fc:	29 1d 22 4e	and.16b	v9, v9, v2
+  42a500:	4b 1f 23 4e	and.16b	v11, v26, v3
+  42a504:	8c 1f 23 4e	and.16b	v12, v28, v3
+  42a508:	2d 1f 23 4e	and.16b	v13, v25, v3
+  42a50c:	6e 1f 23 4e	and.16b	v14, v27, v3
+  42a510:	ce 8d e4 6e	cmeq.2d	v14, v14, v4
+  42a514:	ad 8d e4 6e	cmeq.2d	v13, v13, v4
+  42a518:	ad 19 8e 4e	uzp1.4s	v13, v13, v14
+  42a51c:	8c 8d e4 6e	cmeq.2d	v12, v12, v4
+  42a520:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42a524:	6b 19 8c 4e	uzp1.4s	v11, v11, v12
+  42a528:	6b 19 4d 4e	uzp1.8h	v11, v11, v13
+  42a52c:	2c 99 a0 4e	cmeq.4s	v12, v9, #0
+  42a530:	4d 99 a0 4e	cmeq.4s	v13, v10, #0
+  42a534:	ac 19 4c 4e	uzp1.8h	v12, v13, v12
+  42a538:	4d 85 a5 4e	add.4s	v13, v10, v5
+  42a53c:	2e 85 a5 4e	add.4s	v14, v9, v5
+  42a540:	ce 34 ae 6e	cmhi.4s	v14, v6, v14
+  42a544:	cd 34 ad 6e	cmhi.4s	v13, v6, v13
+  42a548:	ad 19 4e 4e	uzp1.8h	v13, v13, v14
+  42a54c:	8c 1d ad 4e	orr.16b	v12, v12, v13
+  42a550:	6b 1d 2c 4e	and.16b	v11, v11, v12
+  42a554:	08 1d ab 4e	orr.16b	v8, v8, v11
+  42a558:	6b e6 7b 6e	fcmge.2d	v11, v19, v27
+  42a55c:	6c e7 f3 6e	fcmgt.2d	v12, v27, v19
+  42a560:	8b 1d ab 4e	orr.16b	v11, v12, v11
+  42a564:	4c e6 79 6e	fcmge.2d	v12, v18, v25
+  42a568:	2d e7 f2 6e	fcmgt.2d	v13, v25, v18
+  42a56c:	ac 1d ac 4e	orr.16b	v12, v13, v12
+  42a570:	8b 19 8b 4e	uzp1.4s	v11, v12, v11
+  42a574:	cc e6 7c 6e	fcmge.2d	v12, v22, v28
+  42a578:	8d e7 f6 6e	fcmgt.2d	v13, v28, v22
+  42a57c:	ac 1d ac 4e	orr.16b	v12, v13, v12
+  42a580:	ad e6 7a 6e	fcmge.2d	v13, v21, v26
+  42a584:	4e e7 f5 6e	fcmgt.2d	v14, v26, v21
+  42a588:	cd 1d ad 4e	orr.16b	v13, v14, v13
+  42a58c:	ac 19 8c 4e	uzp1.4s	v12, v13, v12
+  42a590:	8b 19 4b 4e	uzp1.8h	v11, v12, v11
+  42a594:	6c 59 20 6e	mvn.16b	v12, v11
+  42a598:	8c 29 21 0e	xtn.8b	v12, v12
+  42a59c:	73 e6 7b 4e	fcmeq.2d	v19, v19, v27
+  42a5a0:	52 e6 79 4e	fcmeq.2d	v18, v18, v25
+  42a5a4:	52 1a 93 4e	uzp1.4s	v18, v18, v19
+  42a5a8:	d3 e6 7c 4e	fcmeq.2d	v19, v22, v28
+  42a5ac:	b5 e6 7a 4e	fcmeq.2d	v21, v21, v26
+  42a5b0:	b3 1a 93 4e	uzp1.4s	v19, v21, v19
+  42a5b4:	72 1a 52 4e	uzp1.8h	v18, v19, v18
+  42a5b8:	52 5a 20 6e	mvn.16b	v18, v18
+  42a5bc:	52 2a 21 0e	xtn.8b	v18, v18
+  42a5c0:	93 1e bd 4e	orr.16b	v19, v20, v29
+  42a5c4:	31 1e be 4e	orr.16b	v17, v17, v30
+  42a5c8:	14 1f aa 4e	orr.16b	v20, v24, v10
+  42a5cc:	f5 1e a9 4e	orr.16b	v21, v23, v9
+  42a5d0:	31 8e b5 6e	cmeq.4s	v17, v17, v21
+  42a5d4:	73 8e b4 6e	cmeq.4s	v19, v19, v20
+  42a5d8:	71 1a 51 4e	uzp1.8h	v17, v19, v17
+  42a5dc:	31 5a 20 6e	mvn.16b	v17, v17
+  42a5e0:	31 1e 6b 4e	bic.16b	v17, v17, v11
+  42a5e4:	31 2a 21 0e	xtn.8b	v17, v17
+  42a5e8:	52 1e 6c 0e	bic.8b	v18, v18, v12
+  42a5ec:	31 1e b2 0e	orr.8b	v17, v17, v18
+  42a5f0:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  42a5f4:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  42a5f8:	52 1e 21 4e	and.16b	v18, v18, v1
+  42a5fc:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  42a600:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  42a604:	31 1e 21 4e	and.16b	v17, v17, v1
+  42a608:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  42a60c:	f1 1f 28 4e	and.16b	v17, v31, v8
+  42a610:	94 02 01 91	add	x20, x20, #0x40
+  42a614:	31 2a 21 0e	xtn.8b	v17, v17
+  42a618:	e7 00 01 91	add	x7, x7, #0x40
+  42a61c:	10 1e 31 0e	and.8b	v16, v16, v17
+  42a620:	b5 22 00 f1	subs	x21, x21, #0x8
+  42a624:	e1 f0 ff 54	b.ne	0x42a440
+  42a628:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  42a62c:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  42a630:	10 aa 31 2e	uminv.8b	b16, v16
+  42a634:	15 02 26 1e	fmov	w21, s16
+  42a638:	5f 00 06 eb	cmp	x2, x6
+  42a63c:	81 e5 ff 54	b.ne	0x42a2ec
+  42a640:	59 ff ff 17	b	0x42a3a4
+  42a644:	47 08 7f 92	and	x7, x2, #0xe
+  42a648:	45 08 7c 92	and	x5, x2, #0x70
+  42a64c:	13 02 06 8b	add	x19, x16, x6
+  42a650:	34 02 06 8b	add	x20, x17, x6
+  42a654:	55 08 7c 92	and	x21, x2, #0x70
+  42a658:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  42a65c:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42a660:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42a664:	74 56 40 ad	ldp	q20, q21, [x19]
+  42a668:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42a66c:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42a670:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42a674:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42a678:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42a67c:	31 e6 79 4e	fcmeq.2d	v17, v17, v25
+  42a680:	10 e6 78 4e	fcmeq.2d	v16, v16, v24
+  42a684:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42a688:	30 1c 70 4e	bic.16b	v16, v1, v16
+  42a68c:	71 e6 7b 4e	fcmeq.2d	v17, v19, v27
+  42a690:	52 e6 7a 4e	fcmeq.2d	v18, v18, v26
+  42a694:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42a698:	31 1c 71 4e	bic.16b	v17, v1, v17
+  42a69c:	b2 e6 7d 4e	fcmeq.2d	v18, v21, v29
+  42a6a0:	93 e6 7c 4e	fcmeq.2d	v19, v20, v28
+  42a6a4:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42a6a8:	32 1c 72 4e	bic.16b	v18, v1, v18
+  42a6ac:	f3 e6 7f 4e	fcmeq.2d	v19, v23, v31
+  42a6b0:	d4 e6 7e 4e	fcmeq.2d	v20, v22, v30
+  42a6b4:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42a6b8:	33 1c 73 4e	bic.16b	v19, v1, v19
+  42a6bc:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42a6c0:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42a6c4:	73 02 02 91	add	x19, x19, #0x80
+  42a6c8:	94 02 02 91	add	x20, x20, #0x80
+  42a6cc:	b5 42 00 f1	subs	x21, x21, #0x10
+  42a6d0:	61 fc ff 54	b.ne	0x42a65c
+  42a6d4:	5f 00 05 eb	cmp	x2, x5
+  42a6d8:	20 d3 ff 54	b.eq	0x42a13c
+  42a6dc:	07 de ff b4	cbz	x7, 0x42a29c
+  42a6e0:	f4 03 05 aa	mov	x20, x5
+  42a6e4:	45 14 7f 92	and	x5, x2, #0x7e
+  42a6e8:	87 02 05 cb	sub	x7, x20, x5
+  42a6ec:	b3 f5 7e d3	lsl	x19, x13, #2
+  42a6f0:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42a6f4:	73 00 13 8b	add	x19, x3, x19
+  42a6f8:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42a6fc:	46 01 14 8b	add	x6, x10, x20
+  42a700:	34 01 14 8b	add	x20, x9, x20
+  42a704:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42a708:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42a70c:	10 e6 71 4e	fcmeq.2d	v16, v16, v17
+  42a710:	10 5a 20 6e	mvn.16b	v16, v16
+  42a714:	10 2a a1 0e	xtn.2s	v16, v16
+  42a718:	10 1e 20 0e	and.8b	v16, v16, v0
+  42a71c:	70 86 00 fc	str	d16, [x19], #0x8
+  42a720:	e7 08 00 b1	adds	x7, x7, #0x2
+  42a724:	01 ff ff 54	b.ne	0x42a704
+  42a728:	5f 00 05 eb	cmp	x2, x5
+  42a72c:	80 d0 ff 54	b.eq	0x42a13c
+  42a730:	db fe ff 17	b	0x42a29c
+  42a734:	c4 c7 00 b4	cbz	x4, 0x42c02c
+  42a738:	0d 00 80 d2	mov	x13, #0x0
+  42a73c:	05 00 80 52	mov	w5, #0x0
+  42a740:	eb 1f c0 92	mov	x11, #-0xff00000001
+  42a744:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  42a748:	4c f4 80 d2	mov	x12, #0x7a2
+  42a74c:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  42a750:	20 04 00 0f	movi.2s	v0, #0x1
+  42a754:	21 04 00 4f	movi.4s	v1, #0x1
+  42a758:	2e 81 00 91	add	x14, x9, #0x20
+  42a75c:	4f 81 00 91	add	x15, x10, #0x20
+  42a760:	30 01 01 91	add	x16, x9, #0x40
+  42a764:	51 01 01 91	add	x17, x10, #0x40
+  42a768:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  42a76c:	60 80 00 91	add	x0, x3, #0x20
+  42a770:	28 00 80 52	mov	w8, #0x1
+  42a774:	63 0d 08 4e	dup.2d	v3, x11
+  42a778:	01 08 80 52	mov	w1, #0x40
+  42a77c:	84 0d 08 4e	dup.2d	v4, x12
+  42a780:	05 04 03 6f	mvni.4s	v5, #0x60
+  42a784:	46 07 00 4f	movi.4s	v6, #0x1a
+  42a788:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  42a78c:	e7 f8 e0 6e	fneg.2d	v7, v7
+  42a790:	05 00 00 14	b	0x42a7a4
+  42a794:	05 00 80 52	mov	w5, #0x0
+  42a798:	4d 00 0d 8b	add	x13, x2, x13
+  42a79c:	bf 01 04 eb	cmp	x13, x4
+  42a7a0:	a2 e9 00 54	b.hs	0x42c4d4
+  42a7a4:	82 00 0d eb	subs	x2, x4, x13
+  42a7a8:	5f 00 01 f1	cmp	x2, #0x40
+  42a7ac:	42 30 81 9a	csel	x2, x2, x1, lo
+  42a7b0:	95 00 0d eb	subs	x21, x4, x13
+  42a7b4:	00 ff ff 54	b.eq	0x42a794
+  42a7b8:	a6 f1 7d d3	lsl	x6, x13, #3
+  42a7bc:	bf 22 00 f1	cmp	x21, #0x8
+  42a7c0:	82 00 00 54	b.hs	0x42a7d0
+  42a7c4:	07 00 80 d2	mov	x7, #0x0
+  42a7c8:	16 00 80 d2	mov	x22, #0x0
+  42a7cc:	33 00 00 14	b	0x42a898
+  42a7d0:	47 0c 7d 92	and	x7, x2, #0x78
+  42a7d4:	d3 01 06 8b	add	x19, x14, x6
+  42a7d8:	f4 01 06 8b	add	x20, x15, x6
+  42a7dc:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  42a7e0:	56 0c 7d 92	and	x22, x2, #0x78
+  42a7e4:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  42a7e8:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  42a7ec:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  42a7f0:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  42a7f4:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  42a7f8:	94 1e 27 4e	and.16b	v20, v20, v7
+  42a7fc:	b5 1e 27 4e	and.16b	v21, v21, v7
+  42a800:	d6 1e 27 4e	and.16b	v22, v22, v7
+  42a804:	f7 1e 27 4e	and.16b	v23, v23, v7
+  42a808:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  42a80c:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  42a810:	18 1f 27 4e	and.16b	v24, v24, v7
+  42a814:	39 1f 27 4e	and.16b	v25, v25, v7
+  42a818:	5a 1f 27 4e	and.16b	v26, v26, v7
+  42a81c:	7b 1f 27 4e	and.16b	v27, v27, v7
+  42a820:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  42a824:	90 1e bc 6e	bit.16b	v16, v20, v28
+  42a828:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  42a82c:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  42a830:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  42a834:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  42a838:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  42a83c:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  42a840:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  42a844:	10 1f b4 6e	bit.16b	v16, v24, v20
+  42a848:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  42a84c:	33 1f b4 6e	bit.16b	v19, v25, v20
+  42a850:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  42a854:	52 1f b4 6e	bit.16b	v18, v26, v20
+  42a858:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  42a85c:	71 1f b4 6e	bit.16b	v17, v27, v20
+  42a860:	d6 22 00 f1	subs	x22, x22, #0x8
+  42a864:	61 fc ff 54	b.ne	0x42a7f0
+  42a868:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  42a86c:	70 1e f4 6e	bif.16b	v16, v19, v20
+  42a870:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  42a874:	50 1e f3 6e	bif.16b	v16, v18, v19
+  42a878:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  42a87c:	30 1e f2 6e	bif.16b	v16, v17, v18
+  42a880:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  42a884:	12 36 f1 7e	cmhi	d18, d16, d17
+  42a888:	30 1e f2 2e	bif.8b	v16, v17, v18
+  42a88c:	16 02 66 9e	fmov	x22, d16
+  42a890:	5f 00 07 eb	cmp	x2, x7
+  42a894:	e0 01 00 54	b.eq	0x42a8d0
+  42a898:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  42a89c:	53 01 14 8b	add	x19, x10, x20
+  42a8a0:	34 01 14 8b	add	x20, x9, x20
+  42a8a4:	47 00 07 cb	sub	x7, x2, x7
+  42a8a8:	97 86 40 f8	ldr	x23, [x20], #0x8
+  42a8ac:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  42a8b0:	78 86 40 f8	ldr	x24, [x19], #0x8
+  42a8b4:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  42a8b8:	ff 02 16 eb	cmp	x23, x22
+  42a8bc:	f6 82 96 9a	csel	x22, x23, x22, hi
+  42a8c0:	1f 03 16 eb	cmp	x24, x22
+  42a8c4:	16 83 96 9a	csel	x22, x24, x22, hi
+  42a8c8:	e7 04 00 f1	subs	x7, x7, #0x1
+  42a8cc:	e1 fe ff 54	b.ne	0x42a8a8
+  42a8d0:	27 01 06 8b	add	x7, x9, x6
+  42a8d4:	54 01 06 8b	add	x20, x10, x6
+  42a8d8:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  42a8dc:	97 85 1e d1	sub	x23, x12, #0x7a1
+  42a8e0:	df 02 17 eb	cmp	x22, x23
+  42a8e4:	82 02 00 54	b.hs	0x42a934
+  42a8e8:	bf 0a 00 f1	cmp	x21, #0x2
+  42a8ec:	22 09 00 54	b.hs	0x42aa10
+  42a8f0:	05 00 80 d2	mov	x5, #0x0
+  42a8f4:	46 00 05 cb	sub	x6, x2, x5
+  42a8f8:	a7 f4 7e d3	lsl	x7, x5, #2
+  42a8fc:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42a900:	67 00 07 8b	add	x7, x3, x7
+  42a904:	a5 f0 7d d3	lsl	x5, x5, #3
+  42a908:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  42a90c:	45 01 13 8b	add	x5, x10, x19
+  42a910:	33 01 13 8b	add	x19, x9, x19
+  42a914:	70 86 40 fc	ldr	d16, [x19], #0x8
+  42a918:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  42a91c:	00 22 71 1e	fcmp	d16, d17
+  42a920:	f4 57 9f 1a	cset	w20, mi
+  42a924:	f4 44 00 b8	str	w20, [x7], #0x4
+  42a928:	c6 04 00 f1	subs	x6, x6, #0x1
+  42a92c:	41 ff ff 54	b.ne	0x42a914
+  42a930:	99 ff ff 17	b	0x42a794
+  42a934:	bf 22 00 f1	cmp	x21, #0x8
+  42a938:	e2 08 00 54	b.hs	0x42aa54
+  42a93c:	06 00 80 d2	mov	x6, #0x0
+  42a940:	35 00 80 52	mov	w21, #0x1
+  42a944:	c7 f4 7e d3	lsl	x7, x6, #2
+  42a948:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42a94c:	67 00 07 8b	add	x7, x3, x7
+  42a950:	d3 f0 7d d3	lsl	x19, x6, #3
+  42a954:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  42a958:	53 01 14 8b	add	x19, x10, x20
+  42a95c:	34 01 14 8b	add	x20, x9, x20
+  42a960:	46 00 06 cb	sub	x6, x2, x6
+  42a964:	96 86 40 f8	ldr	x22, [x20], #0x8
+  42a968:	d7 fe 60 d3	lsr	x23, x22, #32
+  42a96c:	d8 02 0b 8a	and	x24, x22, x11
+  42a970:	d0 02 67 9e	fmov	d16, x22
+  42a974:	76 86 40 f8	ldr	x22, [x19], #0x8
+  42a978:	d9 fe 60 d3	lsr	x25, x22, #32
+  42a97c:	da 02 0b 8a	and	x26, x22, x11
+  42a980:	d1 02 67 9e	fmov	d17, x22
+  42a984:	f6 1e 00 72	ands	w22, w23, #0xff
+  42a988:	f7 17 9f 1a	cset	w23, eq
+  42a98c:	db 86 01 51	sub	w27, w22, #0x61
+  42a990:	7f 6b 00 71	cmp	w27, #0x1a
+  42a994:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  42a998:	1f 03 0c eb	cmp	x24, x12
+  42a99c:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  42a9a0:	00 22 70 1e	fcmp	d16, d16
+  42a9a4:	f8 67 9f 1a	cset	w24, vc
+  42a9a8:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  42a9ac:	39 1f 00 72	ands	w25, w25, #0xff
+  42a9b0:	fb 17 9f 1a	cset	w27, eq
+  42a9b4:	3c 87 01 51	sub	w28, w25, #0x61
+  42a9b8:	9f 6b 00 71	cmp	w28, #0x1a
+  42a9bc:	7b 27 9f 1a	csinc	w27, w27, wzr, hs
+  42a9c0:	5f 03 0c eb	cmp	x26, x12
+  42a9c4:	fa 13 9b 1a	csel	w26, wzr, w27, ne
+  42a9c8:	df 02 19 6b	cmp	w22, w25
+  42a9cc:	16 27 9f 1a	csinc	w22, w24, wzr, hs
+  42a9d0:	20 22 71 1e	fcmp	d17, d17
+  42a9d4:	58 67 9f 1a	csinc	w24, w26, wzr, vs
+  42a9d8:	f7 02 18 0a	and	w23, w23, w24
+  42a9dc:	b5 02 17 0a	and	w21, w21, w23
+  42a9e0:	f6 73 96 1a	csel	w22, wzr, w22, vc
+  42a9e4:	00 22 71 1e	fcmp	d16, d17
+  42a9e8:	f7 57 9f 1a	cset	w23, mi
+  42a9ec:	d6 62 97 1a	csel	w22, w22, w23, vs
+  42a9f0:	f6 44 00 b8	str	w22, [x7], #0x4
+  42a9f4:	c6 04 00 f1	subs	x6, x6, #0x1
+  42a9f8:	61 fb ff 54	b.ne	0x42a964
+  42a9fc:	08 01 15 0a	and	w8, w8, w21
+  42aa00:	a5 04 00 11	add	w5, w5, #0x1
+  42aa04:	bf 10 00 71	cmp	w5, #0x4
+  42aa08:	81 ec ff 54	b.ne	0x42a798
+  42aa0c:	8a 05 00 14	b	0x42c034
+  42aa10:	05 00 80 d2	mov	x5, #0x0
+  42aa14:	b6 01 02 8b	add	x22, x13, x2
+  42aa18:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  42aa1c:	d6 f2 7d d3	lsl	x22, x22, #3
+  42aa20:	38 01 16 8b	add	x24, x9, x22
+  42aa24:	56 01 16 8b	add	x22, x10, x22
+  42aa28:	7f 02 16 eb	cmp	x19, x22
+  42aa2c:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42aa30:	f4 27 9f 1a	cset	w20, lo
+  42aa34:	ff 00 17 eb	cmp	x7, x23
+  42aa38:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42aa3c:	c3 f5 ff 54	b.lo	0x42a8f4
+  42aa40:	b4 f5 07 37	tbnz	w20, #0x0, 0x42a8f4
+  42aa44:	bf 42 00 f1	cmp	x21, #0x10
+  42aa48:	82 11 00 54	b.hs	0x42ac78
+  42aa4c:	05 00 80 d2	mov	x5, #0x0
+  42aa50:	b1 00 00 14	b	0x42ad14
+  42aa54:	06 00 80 d2	mov	x6, #0x0
+  42aa58:	b5 01 02 8b	add	x21, x13, x2
+  42aa5c:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  42aa60:	b5 f2 7d d3	lsl	x21, x21, #3
+  42aa64:	38 01 15 8b	add	x24, x9, x21
+  42aa68:	55 01 15 8b	add	x21, x10, x21
+  42aa6c:	7f 02 15 eb	cmp	x19, x21
+  42aa70:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42aa74:	f6 27 9f 1a	cset	w22, lo
+  42aa78:	ff 00 17 eb	cmp	x7, x23
+  42aa7c:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42aa80:	35 00 80 52	mov	w21, #0x1
+  42aa84:	03 f6 ff 54	b.lo	0x42a944
+  42aa88:	f6 f5 07 37	tbnz	w22, #0x0, 0x42a944
+  42aa8c:	46 0c 7d 92	and	x6, x2, #0x78
+  42aa90:	30 e4 00 0f	movi.8b	v16, #0x1
+  42aa94:	55 0c 7d 92	and	x21, x2, #0x78
+  42aa98:	f2 50 41 ad	ldp	q18, q20, [x7, #0x20]
+  42aa9c:	91 e6 74 4e	fcmeq.2d	v17, v20, v20
+  42aaa0:	53 e6 72 4e	fcmeq.2d	v19, v18, v18
+  42aaa4:	71 1a 91 4e	uzp1.4s	v17, v19, v17
+  42aaa8:	f3 58 40 ad	ldp	q19, q22, [x7]
+  42aaac:	d5 e6 76 4e	fcmeq.2d	v21, v22, v22
+  42aab0:	77 e6 73 4e	fcmeq.2d	v23, v19, v19
+  42aab4:	f5 1a 95 4e	uzp1.4s	v21, v23, v21
+  42aab8:	b1 1a 51 4e	uzp1.8h	v17, v21, v17
+  42aabc:	9b 76 41 ad	ldp	q27, q29, [x20, #0x20]
+  42aac0:	b5 e7 7d 4e	fcmeq.2d	v21, v29, v29
+  42aac4:	77 e7 7b 4e	fcmeq.2d	v23, v27, v27
+  42aac8:	f5 1a 95 4e	uzp1.4s	v21, v23, v21
+  42aacc:	99 72 c2 ac	ldp	q25, q28, [x20], #0x40
+  42aad0:	97 e7 7c 4e	fcmeq.2d	v23, v28, v28
+  42aad4:	38 e7 79 4e	fcmeq.2d	v24, v25, v25
+  42aad8:	17 1b 97 4e	uzp1.4s	v23, v24, v23
+  42aadc:	f5 1a 55 4e	uzp1.8h	v21, v23, v21
+  42aae0:	58 5a 94 4e	uzp2.4s	v24, v18, v20
+  42aae4:	77 5a 96 4e	uzp2.4s	v23, v19, v22
+  42aae8:	f7 1e 22 4e	and.16b	v23, v23, v2
+  42aaec:	18 1f 22 4e	and.16b	v24, v24, v2
+  42aaf0:	7a 1e 23 4e	and.16b	v26, v19, v3
+  42aaf4:	de 1e 23 4e	and.16b	v30, v22, v3
+  42aaf8:	5f 1e 23 4e	and.16b	v31, v18, v3
+  42aafc:	88 1e 23 4e	and.16b	v8, v20, v3
+  42ab00:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42ab04:	ff 8f e4 6e	cmeq.2d	v31, v31, v4
+  42ab08:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  42ab0c:	de 8f e4 6e	cmeq.2d	v30, v30, v4
+  42ab10:	5a 8f e4 6e	cmeq.2d	v26, v26, v4
+  42ab14:	5a 1b 9e 4e	uzp1.4s	v26, v26, v30
+  42ab18:	5a 1b 5f 4e	uzp1.8h	v26, v26, v31
+  42ab1c:	1e 9b a0 4e	cmeq.4s	v30, v24, #0
+  42ab20:	ff 9a a0 4e	cmeq.4s	v31, v23, #0
+  42ab24:	fe 1b 5e 4e	uzp1.8h	v30, v31, v30
+  42ab28:	ff 86 a5 4e	add.4s	v31, v23, v5
+  42ab2c:	08 87 a5 4e	add.4s	v8, v24, v5
+  42ab30:	c8 34 a8 6e	cmhi.4s	v8, v6, v8
+  42ab34:	df 34 bf 6e	cmhi.4s	v31, v6, v31
+  42ab38:	ff 1b 48 4e	uzp1.8h	v31, v31, v8
+  42ab3c:	de 1f bf 4e	orr.16b	v30, v30, v31
+  42ab40:	5a 1f 3e 4e	and.16b	v26, v26, v30
+  42ab44:	3a 1e ba 4e	orr.16b	v26, v17, v26
+  42ab48:	7e 5b 9d 4e	uzp2.4s	v30, v27, v29
+  42ab4c:	3f 5b 9c 4e	uzp2.4s	v31, v25, v28
+  42ab50:	ff 1f 22 4e	and.16b	v31, v31, v2
+  42ab54:	de 1f 22 4e	and.16b	v30, v30, v2
+  42ab58:	28 1f 23 4e	and.16b	v8, v25, v3
+  42ab5c:	89 1f 23 4e	and.16b	v9, v28, v3
+  42ab60:	6a 1f 23 4e	and.16b	v10, v27, v3
+  42ab64:	ab 1f 23 4e	and.16b	v11, v29, v3
+  42ab68:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42ab6c:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  42ab70:	4a 19 8b 4e	uzp1.4s	v10, v10, v11
+  42ab74:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42ab78:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42ab7c:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42ab80:	08 19 4a 4e	uzp1.8h	v8, v8, v10
+  42ab84:	c9 9b a0 4e	cmeq.4s	v9, v30, #0
+  42ab88:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  42ab8c:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42ab90:	ea 87 a5 4e	add.4s	v10, v31, v5
+  42ab94:	cb 87 a5 4e	add.4s	v11, v30, v5
+  42ab98:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  42ab9c:	ca 34 aa 6e	cmhi.4s	v10, v6, v10
+  42aba0:	4a 19 4b 4e	uzp1.8h	v10, v10, v11
+  42aba4:	29 1d aa 4e	orr.16b	v9, v9, v10
+  42aba8:	08 1d 29 4e	and.16b	v8, v8, v9
+  42abac:	a8 1e a8 4e	orr.16b	v8, v21, v8
+  42abb0:	89 e6 7d 6e	fcmge.2d	v9, v20, v29
+  42abb4:	b4 e7 f4 6e	fcmgt.2d	v20, v29, v20
+  42abb8:	9d 1e a9 4e	orr.16b	v29, v20, v9
+  42abbc:	49 e6 7b 6e	fcmge.2d	v9, v18, v27
+  42abc0:	72 e7 f2 6e	fcmgt.2d	v18, v27, v18
+  42abc4:	5b 1e a9 4e	orr.16b	v27, v18, v9
+  42abc8:	7b 1b 9d 4e	uzp1.4s	v27, v27, v29
+  42abcc:	dd e6 7c 6e	fcmge.2d	v29, v22, v28
+  42abd0:	96 e7 f6 6e	fcmgt.2d	v22, v28, v22
+  42abd4:	dc 1e bd 4e	orr.16b	v28, v22, v29
+  42abd8:	7d e6 79 6e	fcmge.2d	v29, v19, v25
+  42abdc:	33 e7 f3 6e	fcmgt.2d	v19, v25, v19
+  42abe0:	79 1e bd 4e	orr.16b	v25, v19, v29
+  42abe4:	39 1b 9c 4e	uzp1.4s	v25, v25, v28
+  42abe8:	39 1b 5b 4e	uzp1.8h	v25, v25, v27
+  42abec:	3b 5b 20 6e	mvn.16b	v27, v25
+  42abf0:	7b 2b 21 0e	xtn.8b	v27, v27
+  42abf4:	52 1a 94 4e	uzp1.4s	v18, v18, v20
+  42abf8:	73 1a 96 4e	uzp1.4s	v19, v19, v22
+  42abfc:	72 1a 52 4e	uzp1.8h	v18, v19, v18
+  42ac00:	52 2a 21 0e	xtn.8b	v18, v18
+  42ac04:	d3 37 b8 6e	cmhi.4s	v19, v30, v24
+  42ac08:	f4 37 b7 6e	cmhi.4s	v20, v31, v23
+  42ac0c:	93 1a 53 4e	uzp1.8h	v19, v20, v19
+  42ac10:	31 1e b3 4e	orr.16b	v17, v17, v19
+  42ac14:	31 1e 75 4e	bic.16b	v17, v17, v21
+  42ac18:	52 1e 7b 0e	bic.8b	v18, v18, v27
+  42ac1c:	31 1e 79 4e	bic.16b	v17, v17, v25
+  42ac20:	31 2a 21 0e	xtn.8b	v17, v17
+  42ac24:	31 1e b2 0e	orr.8b	v17, v17, v18
+  42ac28:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  42ac2c:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  42ac30:	52 1e 21 4e	and.16b	v18, v18, v1
+  42ac34:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  42ac38:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  42ac3c:	31 1e 21 4e	and.16b	v17, v17, v1
+  42ac40:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  42ac44:	51 1f 28 4e	and.16b	v17, v26, v8
+  42ac48:	31 2a 21 0e	xtn.8b	v17, v17
+  42ac4c:	e7 00 01 91	add	x7, x7, #0x40
+  42ac50:	10 1e 31 0e	and.8b	v16, v16, v17
+  42ac54:	b5 22 00 f1	subs	x21, x21, #0x8
+  42ac58:	01 f2 ff 54	b.ne	0x42aa98
+  42ac5c:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  42ac60:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  42ac64:	10 aa 31 2e	uminv.8b	b16, v16
+  42ac68:	15 02 26 1e	fmov	w21, s16
+  42ac6c:	5f 00 06 eb	cmp	x2, x6
+  42ac70:	a1 e6 ff 54	b.ne	0x42a944
+  42ac74:	62 ff ff 17	b	0x42a9fc
+  42ac78:	47 08 7f 92	and	x7, x2, #0xe
+  42ac7c:	45 08 7c 92	and	x5, x2, #0x70
+  42ac80:	13 02 06 8b	add	x19, x16, x6
+  42ac84:	34 02 06 8b	add	x20, x17, x6
+  42ac88:	55 08 7c 92	and	x21, x2, #0x70
+  42ac8c:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  42ac90:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42ac94:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42ac98:	74 56 40 ad	ldp	q20, q21, [x19]
+  42ac9c:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42aca0:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42aca4:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42aca8:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42acac:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42acb0:	31 e7 f1 6e	fcmgt.2d	v17, v25, v17
+  42acb4:	10 e7 f0 6e	fcmgt.2d	v16, v24, v16
+  42acb8:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42acbc:	10 1e 21 4e	and.16b	v16, v16, v1
+  42acc0:	71 e7 f3 6e	fcmgt.2d	v17, v27, v19
+  42acc4:	52 e7 f2 6e	fcmgt.2d	v18, v26, v18
+  42acc8:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42accc:	31 1e 21 4e	and.16b	v17, v17, v1
+  42acd0:	b2 e7 f5 6e	fcmgt.2d	v18, v29, v21
+  42acd4:	93 e7 f4 6e	fcmgt.2d	v19, v28, v20
+  42acd8:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42acdc:	52 1e 21 4e	and.16b	v18, v18, v1
+  42ace0:	f3 e7 f7 6e	fcmgt.2d	v19, v31, v23
+  42ace4:	d4 e7 f6 6e	fcmgt.2d	v20, v30, v22
+  42ace8:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42acec:	73 1e 21 4e	and.16b	v19, v19, v1
+  42acf0:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42acf4:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42acf8:	73 02 02 91	add	x19, x19, #0x80
+  42acfc:	94 02 02 91	add	x20, x20, #0x80
+  42ad00:	b5 42 00 f1	subs	x21, x21, #0x10
+  42ad04:	61 fc ff 54	b.ne	0x42ac90
+  42ad08:	5f 00 05 eb	cmp	x2, x5
+  42ad0c:	40 d4 ff 54	b.eq	0x42a794
+  42ad10:	27 df ff b4	cbz	x7, 0x42a8f4
+  42ad14:	f4 03 05 aa	mov	x20, x5
+  42ad18:	45 14 7f 92	and	x5, x2, #0x7e
+  42ad1c:	87 02 05 cb	sub	x7, x20, x5
+  42ad20:	b3 f5 7e d3	lsl	x19, x13, #2
+  42ad24:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42ad28:	73 00 13 8b	add	x19, x3, x19
+  42ad2c:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42ad30:	46 01 14 8b	add	x6, x10, x20
+  42ad34:	34 01 14 8b	add	x20, x9, x20
+  42ad38:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42ad3c:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42ad40:	30 e6 f0 6e	fcmgt.2d	v16, v17, v16
+  42ad44:	10 2a a1 0e	xtn.2s	v16, v16
+  42ad48:	10 1e 20 0e	and.8b	v16, v16, v0
+  42ad4c:	70 86 00 fc	str	d16, [x19], #0x8
+  42ad50:	e7 08 00 b1	adds	x7, x7, #0x2
+  42ad54:	21 ff ff 54	b.ne	0x42ad38
+  42ad58:	5f 00 05 eb	cmp	x2, x5
+  42ad5c:	c0 d1 ff 54	b.eq	0x42a794
+  42ad60:	e5 fe ff 17	b	0x42a8f4
+  42ad64:	44 96 00 b4	cbz	x4, 0x42c02c
+  42ad68:	0d 00 80 d2	mov	x13, #0x0
+  42ad6c:	05 00 80 52	mov	w5, #0x0
+  42ad70:	eb 1f c0 92	mov	x11, #-0xff00000001
+  42ad74:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  42ad78:	4c f4 80 d2	mov	x12, #0x7a2
+  42ad7c:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  42ad80:	20 04 00 0f	movi.2s	v0, #0x1
+  42ad84:	21 04 00 4f	movi.4s	v1, #0x1
+  42ad88:	2e 81 00 91	add	x14, x9, #0x20
+  42ad8c:	4f 81 00 91	add	x15, x10, #0x20
+  42ad90:	30 01 01 91	add	x16, x9, #0x40
+  42ad94:	51 01 01 91	add	x17, x10, #0x40
+  42ad98:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  42ad9c:	60 80 00 91	add	x0, x3, #0x20
+  42ada0:	28 00 80 52	mov	w8, #0x1
+  42ada4:	63 0d 08 4e	dup.2d	v3, x11
+  42ada8:	01 08 80 52	mov	w1, #0x40
+  42adac:	84 0d 08 4e	dup.2d	v4, x12
+  42adb0:	05 04 03 6f	mvni.4s	v5, #0x60
+  42adb4:	46 07 00 4f	movi.4s	v6, #0x1a
+  42adb8:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  42adbc:	e7 f8 e0 6e	fneg.2d	v7, v7
+  42adc0:	05 00 00 14	b	0x42add4
+  42adc4:	05 00 80 52	mov	w5, #0x0
+  42adc8:	4d 00 0d 8b	add	x13, x2, x13
+  42adcc:	bf 01 04 eb	cmp	x13, x4
+  42add0:	22 b8 00 54	b.hs	0x42c4d4
+  42add4:	82 00 0d eb	subs	x2, x4, x13
+  42add8:	5f 00 01 f1	cmp	x2, #0x40
+  42addc:	42 30 81 9a	csel	x2, x2, x1, lo
+  42ade0:	95 00 0d eb	subs	x21, x4, x13
+  42ade4:	00 ff ff 54	b.eq	0x42adc4
+  42ade8:	a6 f1 7d d3	lsl	x6, x13, #3
+  42adec:	bf 22 00 f1	cmp	x21, #0x8
+  42adf0:	82 00 00 54	b.hs	0x42ae00
+  42adf4:	07 00 80 d2	mov	x7, #0x0
+  42adf8:	16 00 80 d2	mov	x22, #0x0
+  42adfc:	33 00 00 14	b	0x42aec8
+  42ae00:	47 0c 7d 92	and	x7, x2, #0x78
+  42ae04:	d3 01 06 8b	add	x19, x14, x6
+  42ae08:	f4 01 06 8b	add	x20, x15, x6
+  42ae0c:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  42ae10:	56 0c 7d 92	and	x22, x2, #0x78
+  42ae14:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  42ae18:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  42ae1c:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  42ae20:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  42ae24:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  42ae28:	94 1e 27 4e	and.16b	v20, v20, v7
+  42ae2c:	b5 1e 27 4e	and.16b	v21, v21, v7
+  42ae30:	d6 1e 27 4e	and.16b	v22, v22, v7
+  42ae34:	f7 1e 27 4e	and.16b	v23, v23, v7
+  42ae38:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  42ae3c:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  42ae40:	18 1f 27 4e	and.16b	v24, v24, v7
+  42ae44:	39 1f 27 4e	and.16b	v25, v25, v7
+  42ae48:	5a 1f 27 4e	and.16b	v26, v26, v7
+  42ae4c:	7b 1f 27 4e	and.16b	v27, v27, v7
+  42ae50:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  42ae54:	90 1e bc 6e	bit.16b	v16, v20, v28
+  42ae58:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  42ae5c:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  42ae60:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  42ae64:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  42ae68:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  42ae6c:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  42ae70:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  42ae74:	10 1f b4 6e	bit.16b	v16, v24, v20
+  42ae78:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  42ae7c:	33 1f b4 6e	bit.16b	v19, v25, v20
+  42ae80:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  42ae84:	52 1f b4 6e	bit.16b	v18, v26, v20
+  42ae88:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  42ae8c:	71 1f b4 6e	bit.16b	v17, v27, v20
+  42ae90:	d6 22 00 f1	subs	x22, x22, #0x8
+  42ae94:	61 fc ff 54	b.ne	0x42ae20
+  42ae98:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  42ae9c:	70 1e f4 6e	bif.16b	v16, v19, v20
+  42aea0:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  42aea4:	50 1e f3 6e	bif.16b	v16, v18, v19
+  42aea8:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  42aeac:	30 1e f2 6e	bif.16b	v16, v17, v18
+  42aeb0:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  42aeb4:	12 36 f1 7e	cmhi	d18, d16, d17
+  42aeb8:	30 1e f2 2e	bif.8b	v16, v17, v18
+  42aebc:	16 02 66 9e	fmov	x22, d16
+  42aec0:	5f 00 07 eb	cmp	x2, x7
+  42aec4:	e0 01 00 54	b.eq	0x42af00
+  42aec8:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  42aecc:	53 01 14 8b	add	x19, x10, x20
+  42aed0:	34 01 14 8b	add	x20, x9, x20
+  42aed4:	47 00 07 cb	sub	x7, x2, x7
+  42aed8:	97 86 40 f8	ldr	x23, [x20], #0x8
+  42aedc:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  42aee0:	78 86 40 f8	ldr	x24, [x19], #0x8
+  42aee4:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  42aee8:	ff 02 16 eb	cmp	x23, x22
+  42aeec:	f6 82 96 9a	csel	x22, x23, x22, hi
+  42aef0:	1f 03 16 eb	cmp	x24, x22
+  42aef4:	16 83 96 9a	csel	x22, x24, x22, hi
+  42aef8:	e7 04 00 f1	subs	x7, x7, #0x1
+  42aefc:	e1 fe ff 54	b.ne	0x42aed8
+  42af00:	27 01 06 8b	add	x7, x9, x6
+  42af04:	54 01 06 8b	add	x20, x10, x6
+  42af08:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  42af0c:	97 85 1e d1	sub	x23, x12, #0x7a1
+  42af10:	df 02 17 eb	cmp	x22, x23
+  42af14:	82 02 00 54	b.hs	0x42af64
+  42af18:	bf 0a 00 f1	cmp	x21, #0x2
+  42af1c:	22 09 00 54	b.hs	0x42b040
+  42af20:	05 00 80 d2	mov	x5, #0x0
+  42af24:	46 00 05 cb	sub	x6, x2, x5
+  42af28:	a7 f4 7e d3	lsl	x7, x5, #2
+  42af2c:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42af30:	67 00 07 8b	add	x7, x3, x7
+  42af34:	a5 f0 7d d3	lsl	x5, x5, #3
+  42af38:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  42af3c:	45 01 13 8b	add	x5, x10, x19
+  42af40:	33 01 13 8b	add	x19, x9, x19
+  42af44:	70 86 40 fc	ldr	d16, [x19], #0x8
+  42af48:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  42af4c:	00 22 71 1e	fcmp	d16, d17
+  42af50:	f4 87 9f 1a	cset	w20, ls
+  42af54:	f4 44 00 b8	str	w20, [x7], #0x4
+  42af58:	c6 04 00 f1	subs	x6, x6, #0x1
+  42af5c:	41 ff ff 54	b.ne	0x42af44
+  42af60:	99 ff ff 17	b	0x42adc4
+  42af64:	bf 22 00 f1	cmp	x21, #0x8
+  42af68:	e2 08 00 54	b.hs	0x42b084
+  42af6c:	06 00 80 d2	mov	x6, #0x0
+  42af70:	35 00 80 52	mov	w21, #0x1
+  42af74:	c7 f4 7e d3	lsl	x7, x6, #2
+  42af78:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42af7c:	67 00 07 8b	add	x7, x3, x7
+  42af80:	d3 f0 7d d3	lsl	x19, x6, #3
+  42af84:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  42af88:	53 01 14 8b	add	x19, x10, x20
+  42af8c:	34 01 14 8b	add	x20, x9, x20
+  42af90:	46 00 06 cb	sub	x6, x2, x6
+  42af94:	96 86 40 f8	ldr	x22, [x20], #0x8
+  42af98:	d7 fe 60 d3	lsr	x23, x22, #32
+  42af9c:	d8 02 0b 8a	and	x24, x22, x11
+  42afa0:	d0 02 67 9e	fmov	d16, x22
+  42afa4:	76 86 40 f8	ldr	x22, [x19], #0x8
+  42afa8:	d9 fe 60 d3	lsr	x25, x22, #32
+  42afac:	da 02 0b 8a	and	x26, x22, x11
+  42afb0:	d1 02 67 9e	fmov	d17, x22
+  42afb4:	f6 1e 00 72	ands	w22, w23, #0xff
+  42afb8:	f7 17 9f 1a	cset	w23, eq
+  42afbc:	db 86 01 51	sub	w27, w22, #0x61
+  42afc0:	7f 6b 00 71	cmp	w27, #0x1a
+  42afc4:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  42afc8:	1f 03 0c eb	cmp	x24, x12
+  42afcc:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  42afd0:	38 1f 00 72	ands	w24, w25, #0xff
+  42afd4:	f9 17 9f 1a	cset	w25, eq
+  42afd8:	1b 87 01 51	sub	w27, w24, #0x61
+  42afdc:	7f 6b 00 71	cmp	w27, #0x1a
+  42afe0:	39 27 9f 1a	csinc	w25, w25, wzr, hs
+  42afe4:	5f 03 0c eb	cmp	x26, x12
+  42afe8:	f9 13 99 1a	csel	w25, wzr, w25, ne
+  42afec:	20 22 71 1e	fcmp	d17, d17
+  42aff0:	fa 77 9f 1a	cset	w26, vs
+  42aff4:	39 67 9f 1a	csinc	w25, w25, wzr, vs
+  42aff8:	1f 03 16 6b	cmp	w24, w22
+  42affc:	f6 33 9a 1a	csel	w22, wzr, w26, lo
+  42b000:	00 22 70 1e	fcmp	d16, d16
+  42b004:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  42b008:	f7 02 19 0a	and	w23, w23, w25
+  42b00c:	b5 02 17 0a	and	w21, w21, w23
+  42b010:	d6 66 9f 1a	csinc	w22, w22, wzr, vs
+  42b014:	00 22 71 1e	fcmp	d16, d17
+  42b018:	f7 87 9f 1a	cset	w23, ls
+  42b01c:	d6 62 97 1a	csel	w22, w22, w23, vs
+  42b020:	f6 44 00 b8	str	w22, [x7], #0x4
+  42b024:	c6 04 00 f1	subs	x6, x6, #0x1
+  42b028:	61 fb ff 54	b.ne	0x42af94
+  42b02c:	08 01 15 0a	and	w8, w8, w21
+  42b030:	a5 04 00 11	add	w5, w5, #0x1
+  42b034:	bf 10 00 71	cmp	w5, #0x4
+  42b038:	81 ec ff 54	b.ne	0x42adc8
+  42b03c:	38 04 00 14	b	0x42c11c
+  42b040:	05 00 80 d2	mov	x5, #0x0
+  42b044:	b6 01 02 8b	add	x22, x13, x2
+  42b048:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  42b04c:	d6 f2 7d d3	lsl	x22, x22, #3
+  42b050:	38 01 16 8b	add	x24, x9, x22
+  42b054:	56 01 16 8b	add	x22, x10, x22
+  42b058:	7f 02 16 eb	cmp	x19, x22
+  42b05c:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42b060:	f4 27 9f 1a	cset	w20, lo
+  42b064:	ff 00 17 eb	cmp	x7, x23
+  42b068:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42b06c:	c3 f5 ff 54	b.lo	0x42af24
+  42b070:	b4 f5 07 37	tbnz	w20, #0x0, 0x42af24
+  42b074:	bf 42 00 f1	cmp	x21, #0x10
+  42b078:	02 12 00 54	b.hs	0x42b2b8
+  42b07c:	05 00 80 d2	mov	x5, #0x0
+  42b080:	b5 00 00 14	b	0x42b354
+  42b084:	06 00 80 d2	mov	x6, #0x0
+  42b088:	b5 01 02 8b	add	x21, x13, x2
+  42b08c:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  42b090:	b5 f2 7d d3	lsl	x21, x21, #3
+  42b094:	38 01 15 8b	add	x24, x9, x21
+  42b098:	55 01 15 8b	add	x21, x10, x21
+  42b09c:	7f 02 15 eb	cmp	x19, x21
+  42b0a0:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42b0a4:	f6 27 9f 1a	cset	w22, lo
+  42b0a8:	ff 00 17 eb	cmp	x7, x23
+  42b0ac:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42b0b0:	35 00 80 52	mov	w21, #0x1
+  42b0b4:	03 f6 ff 54	b.lo	0x42af74
+  42b0b8:	f6 f5 07 37	tbnz	w22, #0x0, 0x42af74
+  42b0bc:	46 0c 7d 92	and	x6, x2, #0x78
+  42b0c0:	30 e4 00 0f	movi.8b	v16, #0x1
+  42b0c4:	55 0c 7d 92	and	x21, x2, #0x78
+  42b0c8:	f1 48 41 ad	ldp	q17, q18, [x7, #0x20]
+  42b0cc:	53 e6 72 4e	fcmeq.2d	v19, v18, v18
+  42b0d0:	34 e6 71 4e	fcmeq.2d	v20, v17, v17
+  42b0d4:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42b0d8:	f4 54 40 ad	ldp	q20, q21, [x7]
+  42b0dc:	b6 e6 75 4e	fcmeq.2d	v22, v21, v21
+  42b0e0:	97 e6 74 4e	fcmeq.2d	v23, v20, v20
+  42b0e4:	f6 1a 96 4e	uzp1.4s	v22, v23, v22
+  42b0e8:	d3 1a 53 4e	uzp1.8h	v19, v22, v19
+  42b0ec:	96 66 41 ad	ldp	q22, q25, [x20, #0x20]
+  42b0f0:	37 e7 79 4e	fcmeq.2d	v23, v25, v25
+  42b0f4:	d8 e6 76 4e	fcmeq.2d	v24, v22, v22
+  42b0f8:	17 1b 97 4e	uzp1.4s	v23, v24, v23
+  42b0fc:	98 6a c2 ac	ldp	q24, q26, [x20], #0x40
+  42b100:	5b e7 7a 4e	fcmeq.2d	v27, v26, v26
+  42b104:	1c e7 78 4e	fcmeq.2d	v28, v24, v24
+  42b108:	9b 1b 9b 4e	uzp1.4s	v27, v28, v27
+  42b10c:	77 1b 57 4e	uzp1.8h	v23, v27, v23
+  42b110:	3c 5a 92 4e	uzp2.4s	v28, v17, v18
+  42b114:	9b 5a 95 4e	uzp2.4s	v27, v20, v21
+  42b118:	7b 1f 22 4e	and.16b	v27, v27, v2
+  42b11c:	9c 1f 22 4e	and.16b	v28, v28, v2
+  42b120:	9d 1e 23 4e	and.16b	v29, v20, v3
+  42b124:	be 1e 23 4e	and.16b	v30, v21, v3
+  42b128:	3f 1e 23 4e	and.16b	v31, v17, v3
+  42b12c:	48 1e 23 4e	and.16b	v8, v18, v3
+  42b130:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42b134:	ff 8f e4 6e	cmeq.2d	v31, v31, v4
+  42b138:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  42b13c:	de 8f e4 6e	cmeq.2d	v30, v30, v4
+  42b140:	bd 8f e4 6e	cmeq.2d	v29, v29, v4
+  42b144:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42b148:	bd 1b 5f 4e	uzp1.8h	v29, v29, v31
+  42b14c:	9e 9b a0 4e	cmeq.4s	v30, v28, #0
+  42b150:	7f 9b a0 4e	cmeq.4s	v31, v27, #0
+  42b154:	fe 1b 5e 4e	uzp1.8h	v30, v31, v30
+  42b158:	7f 87 a5 4e	add.4s	v31, v27, v5
+  42b15c:	88 87 a5 4e	add.4s	v8, v28, v5
+  42b160:	c8 34 a8 6e	cmhi.4s	v8, v6, v8
+  42b164:	df 34 bf 6e	cmhi.4s	v31, v6, v31
+  42b168:	ff 1b 48 4e	uzp1.8h	v31, v31, v8
+  42b16c:	de 1f bf 4e	orr.16b	v30, v30, v31
+  42b170:	bd 1f 3e 4e	and.16b	v29, v29, v30
+  42b174:	de 5a 99 4e	uzp2.4s	v30, v22, v25
+  42b178:	1f 5b 9a 4e	uzp2.4s	v31, v24, v26
+  42b17c:	ff 1f 22 4e	and.16b	v31, v31, v2
+  42b180:	de 1f 22 4e	and.16b	v30, v30, v2
+  42b184:	08 1f 23 4e	and.16b	v8, v24, v3
+  42b188:	49 1f 23 4e	and.16b	v9, v26, v3
+  42b18c:	ca 1e 23 4e	and.16b	v10, v22, v3
+  42b190:	2b 1f 23 4e	and.16b	v11, v25, v3
+  42b194:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42b198:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  42b19c:	4a 19 8b 4e	uzp1.4s	v10, v10, v11
+  42b1a0:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42b1a4:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42b1a8:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42b1ac:	08 19 4a 4e	uzp1.8h	v8, v8, v10
+  42b1b0:	c9 9b a0 4e	cmeq.4s	v9, v30, #0
+  42b1b4:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  42b1b8:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42b1bc:	ea 87 a5 4e	add.4s	v10, v31, v5
+  42b1c0:	cb 87 a5 4e	add.4s	v11, v30, v5
+  42b1c4:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  42b1c8:	ca 34 aa 6e	cmhi.4s	v10, v6, v10
+  42b1cc:	4a 19 4b 4e	uzp1.8h	v10, v10, v11
+  42b1d0:	29 1d aa 4e	orr.16b	v9, v9, v10
+  42b1d4:	08 1d 29 4e	and.16b	v8, v8, v9
+  42b1d8:	49 e6 79 6e	fcmge.2d	v9, v18, v25
+  42b1dc:	2a e7 f2 6e	fcmgt.2d	v10, v25, v18
+  42b1e0:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42b1e4:	2a e6 76 6e	fcmge.2d	v10, v17, v22
+  42b1e8:	cb e6 f1 6e	fcmgt.2d	v11, v22, v17
+  42b1ec:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42b1f0:	49 19 89 4e	uzp1.4s	v9, v10, v9
+  42b1f4:	aa e6 7a 6e	fcmge.2d	v10, v21, v26
+  42b1f8:	4b e7 f5 6e	fcmgt.2d	v11, v26, v21
+  42b1fc:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42b200:	8b e6 78 6e	fcmge.2d	v11, v20, v24
+  42b204:	0c e7 f4 6e	fcmgt.2d	v12, v24, v20
+  42b208:	8b 1d ab 4e	orr.16b	v11, v12, v11
+  42b20c:	7d 1e bd 4e	orr.16b	v29, v19, v29
+  42b210:	e8 1e a8 4e	orr.16b	v8, v23, v8
+  42b214:	6a 19 8a 4e	uzp1.4s	v10, v11, v10
+  42b218:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42b21c:	2a 59 20 6e	mvn.16b	v10, v9
+  42b220:	4a 29 21 0e	xtn.8b	v10, v10
+  42b224:	32 e7 72 6e	fcmge.2d	v18, v25, v18
+  42b228:	d1 e6 71 6e	fcmge.2d	v17, v22, v17
+  42b22c:	31 1a 92 4e	uzp1.4s	v17, v17, v18
+  42b230:	52 e7 75 6e	fcmge.2d	v18, v26, v21
+  42b234:	14 e7 74 6e	fcmge.2d	v20, v24, v20
+  42b238:	92 1a 92 4e	uzp1.4s	v18, v20, v18
+  42b23c:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  42b240:	31 2a 21 0e	xtn.8b	v17, v17
+  42b244:	d2 3f bc 6e	cmhs.4s	v18, v30, v28
+  42b248:	f4 3f bb 6e	cmhs.4s	v20, v31, v27
+  42b24c:	92 1a 52 4e	uzp1.8h	v18, v20, v18
+  42b250:	52 1e 77 4e	bic.16b	v18, v18, v23
+  42b254:	72 1e b2 4e	orr.16b	v18, v19, v18
+  42b258:	31 1e 6a 0e	bic.8b	v17, v17, v10
+  42b25c:	52 1e 69 4e	bic.16b	v18, v18, v9
+  42b260:	52 2a 21 0e	xtn.8b	v18, v18
+  42b264:	51 1e b1 0e	orr.8b	v17, v18, v17
+  42b268:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  42b26c:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  42b270:	52 1e 21 4e	and.16b	v18, v18, v1
+  42b274:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  42b278:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  42b27c:	31 1e 21 4e	and.16b	v17, v17, v1
+  42b280:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  42b284:	b1 1f 28 4e	and.16b	v17, v29, v8
+  42b288:	31 2a 21 0e	xtn.8b	v17, v17
+  42b28c:	e7 00 01 91	add	x7, x7, #0x40
+  42b290:	10 1e 31 0e	and.8b	v16, v16, v17
+  42b294:	b5 22 00 f1	subs	x21, x21, #0x8
+  42b298:	81 f1 ff 54	b.ne	0x42b0c8
+  42b29c:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  42b2a0:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  42b2a4:	10 aa 31 2e	uminv.8b	b16, v16
+  42b2a8:	15 02 26 1e	fmov	w21, s16
+  42b2ac:	5f 00 06 eb	cmp	x2, x6
+  42b2b0:	21 e6 ff 54	b.ne	0x42af74
+  42b2b4:	5e ff ff 17	b	0x42b02c
+  42b2b8:	47 08 7f 92	and	x7, x2, #0xe
+  42b2bc:	45 08 7c 92	and	x5, x2, #0x70
+  42b2c0:	13 02 06 8b	add	x19, x16, x6
+  42b2c4:	34 02 06 8b	add	x20, x17, x6
+  42b2c8:	55 08 7c 92	and	x21, x2, #0x70
+  42b2cc:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  42b2d0:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42b2d4:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42b2d8:	74 56 40 ad	ldp	q20, q21, [x19]
+  42b2dc:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42b2e0:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42b2e4:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42b2e8:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42b2ec:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42b2f0:	31 e7 71 6e	fcmge.2d	v17, v25, v17
+  42b2f4:	10 e7 70 6e	fcmge.2d	v16, v24, v16
+  42b2f8:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42b2fc:	10 1e 21 4e	and.16b	v16, v16, v1
+  42b300:	71 e7 73 6e	fcmge.2d	v17, v27, v19
+  42b304:	52 e7 72 6e	fcmge.2d	v18, v26, v18
+  42b308:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42b30c:	31 1e 21 4e	and.16b	v17, v17, v1
+  42b310:	b2 e7 75 6e	fcmge.2d	v18, v29, v21
+  42b314:	93 e7 74 6e	fcmge.2d	v19, v28, v20
+  42b318:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42b31c:	52 1e 21 4e	and.16b	v18, v18, v1
+  42b320:	f3 e7 77 6e	fcmge.2d	v19, v31, v23
+  42b324:	d4 e7 76 6e	fcmge.2d	v20, v30, v22
+  42b328:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42b32c:	73 1e 21 4e	and.16b	v19, v19, v1
+  42b330:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42b334:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42b338:	73 02 02 91	add	x19, x19, #0x80
+  42b33c:	94 02 02 91	add	x20, x20, #0x80
+  42b340:	b5 42 00 f1	subs	x21, x21, #0x10
+  42b344:	61 fc ff 54	b.ne	0x42b2d0
+  42b348:	5f 00 05 eb	cmp	x2, x5
+  42b34c:	c0 d3 ff 54	b.eq	0x42adc4
+  42b350:	a7 de ff b4	cbz	x7, 0x42af24
+  42b354:	f4 03 05 aa	mov	x20, x5
+  42b358:	45 14 7f 92	and	x5, x2, #0x7e
+  42b35c:	87 02 05 cb	sub	x7, x20, x5
+  42b360:	b3 f5 7e d3	lsl	x19, x13, #2
+  42b364:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42b368:	73 00 13 8b	add	x19, x3, x19
+  42b36c:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42b370:	46 01 14 8b	add	x6, x10, x20
+  42b374:	34 01 14 8b	add	x20, x9, x20
+  42b378:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42b37c:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42b380:	30 e6 70 6e	fcmge.2d	v16, v17, v16
+  42b384:	10 2a a1 0e	xtn.2s	v16, v16
+  42b388:	10 1e 20 0e	and.8b	v16, v16, v0
+  42b38c:	70 86 00 fc	str	d16, [x19], #0x8
+  42b390:	e7 08 00 b1	adds	x7, x7, #0x2
+  42b394:	21 ff ff 54	b.ne	0x42b378
+  42b398:	5f 00 05 eb	cmp	x2, x5
+  42b39c:	40 d1 ff 54	b.eq	0x42adc4
+  42b3a0:	e1 fe ff 17	b	0x42af24
+  42b3a4:	44 64 00 b4	cbz	x4, 0x42c02c
+  42b3a8:	0d 00 80 d2	mov	x13, #0x0
+  42b3ac:	05 00 80 52	mov	w5, #0x0
+  42b3b0:	eb 1f c0 92	mov	x11, #-0xff00000001
+  42b3b4:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  42b3b8:	4c f4 80 d2	mov	x12, #0x7a2
+  42b3bc:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  42b3c0:	20 04 00 0f	movi.2s	v0, #0x1
+  42b3c4:	21 04 00 4f	movi.4s	v1, #0x1
+  42b3c8:	2e 81 00 91	add	x14, x9, #0x20
+  42b3cc:	4f 81 00 91	add	x15, x10, #0x20
+  42b3d0:	30 01 01 91	add	x16, x9, #0x40
+  42b3d4:	51 01 01 91	add	x17, x10, #0x40
+  42b3d8:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  42b3dc:	60 80 00 91	add	x0, x3, #0x20
+  42b3e0:	28 00 80 52	mov	w8, #0x1
+  42b3e4:	63 0d 08 4e	dup.2d	v3, x11
+  42b3e8:	01 08 80 52	mov	w1, #0x40
+  42b3ec:	84 0d 08 4e	dup.2d	v4, x12
+  42b3f0:	05 04 03 6f	mvni.4s	v5, #0x60
+  42b3f4:	46 07 00 4f	movi.4s	v6, #0x1a
+  42b3f8:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  42b3fc:	e7 f8 e0 6e	fneg.2d	v7, v7
+  42b400:	05 00 00 14	b	0x42b414
+  42b404:	05 00 80 52	mov	w5, #0x0
+  42b408:	4d 00 0d 8b	add	x13, x2, x13
+  42b40c:	bf 01 04 eb	cmp	x13, x4
+  42b410:	22 86 00 54	b.hs	0x42c4d4
+  42b414:	82 00 0d eb	subs	x2, x4, x13
+  42b418:	5f 00 01 f1	cmp	x2, #0x40
+  42b41c:	42 30 81 9a	csel	x2, x2, x1, lo
+  42b420:	95 00 0d eb	subs	x21, x4, x13
+  42b424:	00 ff ff 54	b.eq	0x42b404
+  42b428:	a6 f1 7d d3	lsl	x6, x13, #3
+  42b42c:	bf 22 00 f1	cmp	x21, #0x8
+  42b430:	82 00 00 54	b.hs	0x42b440
+  42b434:	07 00 80 d2	mov	x7, #0x0
+  42b438:	16 00 80 d2	mov	x22, #0x0
+  42b43c:	33 00 00 14	b	0x42b508
+  42b440:	47 0c 7d 92	and	x7, x2, #0x78
+  42b444:	d3 01 06 8b	add	x19, x14, x6
+  42b448:	f4 01 06 8b	add	x20, x15, x6
+  42b44c:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  42b450:	56 0c 7d 92	and	x22, x2, #0x78
+  42b454:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  42b458:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  42b45c:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  42b460:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  42b464:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  42b468:	94 1e 27 4e	and.16b	v20, v20, v7
+  42b46c:	b5 1e 27 4e	and.16b	v21, v21, v7
+  42b470:	d6 1e 27 4e	and.16b	v22, v22, v7
+  42b474:	f7 1e 27 4e	and.16b	v23, v23, v7
+  42b478:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  42b47c:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  42b480:	18 1f 27 4e	and.16b	v24, v24, v7
+  42b484:	39 1f 27 4e	and.16b	v25, v25, v7
+  42b488:	5a 1f 27 4e	and.16b	v26, v26, v7
+  42b48c:	7b 1f 27 4e	and.16b	v27, v27, v7
+  42b490:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  42b494:	90 1e bc 6e	bit.16b	v16, v20, v28
+  42b498:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  42b49c:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  42b4a0:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  42b4a4:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  42b4a8:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  42b4ac:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  42b4b0:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  42b4b4:	10 1f b4 6e	bit.16b	v16, v24, v20
+  42b4b8:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  42b4bc:	33 1f b4 6e	bit.16b	v19, v25, v20
+  42b4c0:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  42b4c4:	52 1f b4 6e	bit.16b	v18, v26, v20
+  42b4c8:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  42b4cc:	71 1f b4 6e	bit.16b	v17, v27, v20
+  42b4d0:	d6 22 00 f1	subs	x22, x22, #0x8
+  42b4d4:	61 fc ff 54	b.ne	0x42b460
+  42b4d8:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  42b4dc:	70 1e f4 6e	bif.16b	v16, v19, v20
+  42b4e0:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  42b4e4:	50 1e f3 6e	bif.16b	v16, v18, v19
+  42b4e8:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  42b4ec:	30 1e f2 6e	bif.16b	v16, v17, v18
+  42b4f0:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  42b4f4:	12 36 f1 7e	cmhi	d18, d16, d17
+  42b4f8:	30 1e f2 2e	bif.8b	v16, v17, v18
+  42b4fc:	16 02 66 9e	fmov	x22, d16
+  42b500:	5f 00 07 eb	cmp	x2, x7
+  42b504:	e0 01 00 54	b.eq	0x42b540
+  42b508:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  42b50c:	53 01 14 8b	add	x19, x10, x20
+  42b510:	34 01 14 8b	add	x20, x9, x20
+  42b514:	47 00 07 cb	sub	x7, x2, x7
+  42b518:	97 86 40 f8	ldr	x23, [x20], #0x8
+  42b51c:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  42b520:	78 86 40 f8	ldr	x24, [x19], #0x8
+  42b524:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  42b528:	ff 02 16 eb	cmp	x23, x22
+  42b52c:	f6 82 96 9a	csel	x22, x23, x22, hi
+  42b530:	1f 03 16 eb	cmp	x24, x22
+  42b534:	16 83 96 9a	csel	x22, x24, x22, hi
+  42b538:	e7 04 00 f1	subs	x7, x7, #0x1
+  42b53c:	e1 fe ff 54	b.ne	0x42b518
+  42b540:	27 01 06 8b	add	x7, x9, x6
+  42b544:	54 01 06 8b	add	x20, x10, x6
+  42b548:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  42b54c:	97 85 1e d1	sub	x23, x12, #0x7a1
+  42b550:	df 02 17 eb	cmp	x22, x23
+  42b554:	82 02 00 54	b.hs	0x42b5a4
+  42b558:	bf 0a 00 f1	cmp	x21, #0x2
+  42b55c:	42 09 00 54	b.hs	0x42b684
+  42b560:	05 00 80 d2	mov	x5, #0x0
+  42b564:	46 00 05 cb	sub	x6, x2, x5
+  42b568:	a7 f4 7e d3	lsl	x7, x5, #2
+  42b56c:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42b570:	67 00 07 8b	add	x7, x3, x7
+  42b574:	a5 f0 7d d3	lsl	x5, x5, #3
+  42b578:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  42b57c:	45 01 13 8b	add	x5, x10, x19
+  42b580:	33 01 13 8b	add	x19, x9, x19
+  42b584:	70 86 40 fc	ldr	d16, [x19], #0x8
+  42b588:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  42b58c:	00 22 71 1e	fcmp	d16, d17
+  42b590:	f4 17 9f 1a	cset	w20, eq
+  42b594:	f4 44 00 b8	str	w20, [x7], #0x4
+  42b598:	c6 04 00 f1	subs	x6, x6, #0x1
+  42b59c:	41 ff ff 54	b.ne	0x42b584
+  42b5a0:	99 ff ff 17	b	0x42b404
+  42b5a4:	bf 22 00 f1	cmp	x21, #0x8
+  42b5a8:	02 09 00 54	b.hs	0x42b6c8
+  42b5ac:	06 00 80 d2	mov	x6, #0x0
+  42b5b0:	35 00 80 52	mov	w21, #0x1
+  42b5b4:	c7 f4 7e d3	lsl	x7, x6, #2
+  42b5b8:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42b5bc:	67 00 07 8b	add	x7, x3, x7
+  42b5c0:	d3 f0 7d d3	lsl	x19, x6, #3
+  42b5c4:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  42b5c8:	53 01 14 8b	add	x19, x10, x20
+  42b5cc:	34 01 14 8b	add	x20, x9, x20
+  42b5d0:	46 00 06 cb	sub	x6, x2, x6
+  42b5d4:	96 86 40 f8	ldr	x22, [x20], #0x8
+  42b5d8:	d7 fe 60 d3	lsr	x23, x22, #32
+  42b5dc:	d8 02 0b 8a	and	x24, x22, x11
+  42b5e0:	d0 02 67 9e	fmov	d16, x22
+  42b5e4:	76 86 40 f8	ldr	x22, [x19], #0x8
+  42b5e8:	d9 fe 60 d3	lsr	x25, x22, #32
+  42b5ec:	da 02 0b 8a	and	x26, x22, x11
+  42b5f0:	d1 02 67 9e	fmov	d17, x22
+  42b5f4:	f6 1e 00 72	ands	w22, w23, #0xff
+  42b5f8:	f7 17 9f 1a	cset	w23, eq
+  42b5fc:	db 86 01 51	sub	w27, w22, #0x61
+  42b600:	7f 6b 00 71	cmp	w27, #0x1a
+  42b604:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  42b608:	1f 03 0c eb	cmp	x24, x12
+  42b60c:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  42b610:	38 1f 00 72	ands	w24, w25, #0xff
+  42b614:	f9 17 9f 1a	cset	w25, eq
+  42b618:	1b 87 01 51	sub	w27, w24, #0x61
+  42b61c:	7f 6b 00 71	cmp	w27, #0x1a
+  42b620:	39 27 9f 1a	csinc	w25, w25, wzr, hs
+  42b624:	5f 03 0c eb	cmp	x26, x12
+  42b628:	f9 13 99 1a	csel	w25, wzr, w25, ne
+  42b62c:	20 22 71 1e	fcmp	d17, d17
+  42b630:	fa 67 9f 1a	cset	w26, vc
+  42b634:	fb 77 9f 1a	cset	w27, vs
+  42b638:	39 67 9f 1a	csinc	w25, w25, wzr, vs
+  42b63c:	1f 03 16 6b	cmp	w24, w22
+  42b640:	f6 13 9b 1a	csel	w22, wzr, w27, ne
+  42b644:	00 22 70 1e	fcmp	d16, d16
+  42b648:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  42b64c:	f7 02 19 0a	and	w23, w23, w25
+  42b650:	b5 02 17 0a	and	w21, w21, w23
+  42b654:	56 73 96 1a	csel	w22, w26, w22, vc
+  42b658:	00 22 71 1e	fcmp	d16, d17
+  42b65c:	f7 17 9f 1a	cset	w23, eq
+  42b660:	d6 62 97 1a	csel	w22, w22, w23, vs
+  42b664:	f6 44 00 b8	str	w22, [x7], #0x4
+  42b668:	c6 04 00 f1	subs	x6, x6, #0x1
+  42b66c:	41 fb ff 54	b.ne	0x42b5d4
+  42b670:	08 01 15 0a	and	w8, w8, w21
+  42b674:	a5 04 00 11	add	w5, w5, #0x1
+  42b678:	bf 10 00 71	cmp	w5, #0x4
+  42b67c:	61 ec ff 54	b.ne	0x42b408
+  42b680:	e1 02 00 14	b	0x42c204
+  42b684:	05 00 80 d2	mov	x5, #0x0
+  42b688:	b6 01 02 8b	add	x22, x13, x2
+  42b68c:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  42b690:	d6 f2 7d d3	lsl	x22, x22, #3
+  42b694:	38 01 16 8b	add	x24, x9, x22
+  42b698:	56 01 16 8b	add	x22, x10, x22
+  42b69c:	7f 02 16 eb	cmp	x19, x22
+  42b6a0:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42b6a4:	f4 27 9f 1a	cset	w20, lo
+  42b6a8:	ff 00 17 eb	cmp	x7, x23
+  42b6ac:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42b6b0:	a3 f5 ff 54	b.lo	0x42b564
+  42b6b4:	94 f5 07 37	tbnz	w20, #0x0, 0x42b564
+  42b6b8:	bf 42 00 f1	cmp	x21, #0x10
+  42b6bc:	62 12 00 54	b.hs	0x42b908
+  42b6c0:	05 00 80 d2	mov	x5, #0x0
+  42b6c4:	b8 00 00 14	b	0x42b9a4
+  42b6c8:	06 00 80 d2	mov	x6, #0x0
+  42b6cc:	b5 01 02 8b	add	x21, x13, x2
+  42b6d0:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  42b6d4:	b5 f2 7d d3	lsl	x21, x21, #3
+  42b6d8:	38 01 15 8b	add	x24, x9, x21
+  42b6dc:	55 01 15 8b	add	x21, x10, x21
+  42b6e0:	7f 02 15 eb	cmp	x19, x21
+  42b6e4:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42b6e8:	f6 27 9f 1a	cset	w22, lo
+  42b6ec:	ff 00 17 eb	cmp	x7, x23
+  42b6f0:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42b6f4:	35 00 80 52	mov	w21, #0x1
+  42b6f8:	e3 f5 ff 54	b.lo	0x42b5b4
+  42b6fc:	d6 f5 07 37	tbnz	w22, #0x0, 0x42b5b4
+  42b700:	46 0c 7d 92	and	x6, x2, #0x78
+  42b704:	30 e4 00 0f	movi.8b	v16, #0x1
+  42b708:	55 0c 7d 92	and	x21, x2, #0x78
+  42b70c:	f1 4c 41 ad	ldp	q17, q19, [x7, #0x20]
+  42b710:	72 e6 73 4e	fcmeq.2d	v18, v19, v19
+  42b714:	34 e6 71 4e	fcmeq.2d	v20, v17, v17
+  42b718:	92 1a 92 4e	uzp1.4s	v18, v20, v18
+  42b71c:	f4 54 40 ad	ldp	q20, q21, [x7]
+  42b720:	b6 e6 75 4e	fcmeq.2d	v22, v21, v21
+  42b724:	97 e6 74 4e	fcmeq.2d	v23, v20, v20
+  42b728:	f6 1a 96 4e	uzp1.4s	v22, v23, v22
+  42b72c:	d2 1a 52 4e	uzp1.8h	v18, v22, v18
+  42b730:	97 62 41 ad	ldp	q23, q24, [x20, #0x20]
+  42b734:	16 e7 78 4e	fcmeq.2d	v22, v24, v24
+  42b738:	f9 e6 77 4e	fcmeq.2d	v25, v23, v23
+  42b73c:	36 1b 96 4e	uzp1.4s	v22, v25, v22
+  42b740:	99 6a 40 ad	ldp	q25, q26, [x20]
+  42b744:	5b e7 7a 4e	fcmeq.2d	v27, v26, v26
+  42b748:	3c e7 79 4e	fcmeq.2d	v28, v25, v25
+  42b74c:	9b 1b 9b 4e	uzp1.4s	v27, v28, v27
+  42b750:	76 1b 56 4e	uzp1.8h	v22, v27, v22
+  42b754:	3c 5a 93 4e	uzp2.4s	v28, v17, v19
+  42b758:	9b 5a 95 4e	uzp2.4s	v27, v20, v21
+  42b75c:	7b 1f 22 4e	and.16b	v27, v27, v2
+  42b760:	9c 1f 22 4e	and.16b	v28, v28, v2
+  42b764:	9d 1e 23 4e	and.16b	v29, v20, v3
+  42b768:	be 1e 23 4e	and.16b	v30, v21, v3
+  42b76c:	3f 1e 23 4e	and.16b	v31, v17, v3
+  42b770:	68 1e 23 4e	and.16b	v8, v19, v3
+  42b774:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42b778:	ff 8f e4 6e	cmeq.2d	v31, v31, v4
+  42b77c:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  42b780:	de 8f e4 6e	cmeq.2d	v30, v30, v4
+  42b784:	bd 8f e4 6e	cmeq.2d	v29, v29, v4
+  42b788:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42b78c:	bd 1b 5f 4e	uzp1.8h	v29, v29, v31
+  42b790:	9e 9b a0 4e	cmeq.4s	v30, v28, #0
+  42b794:	7f 9b a0 4e	cmeq.4s	v31, v27, #0
+  42b798:	fe 1b 5e 4e	uzp1.8h	v30, v31, v30
+  42b79c:	7f 87 a5 4e	add.4s	v31, v27, v5
+  42b7a0:	88 87 a5 4e	add.4s	v8, v28, v5
+  42b7a4:	c8 34 a8 6e	cmhi.4s	v8, v6, v8
+  42b7a8:	df 34 bf 6e	cmhi.4s	v31, v6, v31
+  42b7ac:	ff 1b 48 4e	uzp1.8h	v31, v31, v8
+  42b7b0:	de 1f bf 4e	orr.16b	v30, v30, v31
+  42b7b4:	bd 1f 3e 4e	and.16b	v29, v29, v30
+  42b7b8:	fe 5a 98 4e	uzp2.4s	v30, v23, v24
+  42b7bc:	3f 5b 9a 4e	uzp2.4s	v31, v25, v26
+  42b7c0:	ff 1f 22 4e	and.16b	v31, v31, v2
+  42b7c4:	de 1f 22 4e	and.16b	v30, v30, v2
+  42b7c8:	28 1f 23 4e	and.16b	v8, v25, v3
+  42b7cc:	49 1f 23 4e	and.16b	v9, v26, v3
+  42b7d0:	ea 1e 23 4e	and.16b	v10, v23, v3
+  42b7d4:	0b 1f 23 4e	and.16b	v11, v24, v3
+  42b7d8:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42b7dc:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  42b7e0:	4a 19 8b 4e	uzp1.4s	v10, v10, v11
+  42b7e4:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42b7e8:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42b7ec:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42b7f0:	08 19 4a 4e	uzp1.8h	v8, v8, v10
+  42b7f4:	c9 9b a0 4e	cmeq.4s	v9, v30, #0
+  42b7f8:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  42b7fc:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42b800:	ea 87 a5 4e	add.4s	v10, v31, v5
+  42b804:	cb 87 a5 4e	add.4s	v11, v30, v5
+  42b808:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  42b80c:	ca 34 aa 6e	cmhi.4s	v10, v6, v10
+  42b810:	4a 19 4b 4e	uzp1.8h	v10, v10, v11
+  42b814:	29 1d aa 4e	orr.16b	v9, v9, v10
+  42b818:	08 1d 29 4e	and.16b	v8, v8, v9
+  42b81c:	69 e6 78 6e	fcmge.2d	v9, v19, v24
+  42b820:	0a e7 f3 6e	fcmgt.2d	v10, v24, v19
+  42b824:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42b828:	2a e6 77 6e	fcmge.2d	v10, v17, v23
+  42b82c:	eb e6 f1 6e	fcmgt.2d	v11, v23, v17
+  42b830:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42b834:	49 19 89 4e	uzp1.4s	v9, v10, v9
+  42b838:	aa e6 7a 6e	fcmge.2d	v10, v21, v26
+  42b83c:	4b e7 f5 6e	fcmgt.2d	v11, v26, v21
+  42b840:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42b844:	8b e6 79 6e	fcmge.2d	v11, v20, v25
+  42b848:	2c e7 f4 6e	fcmgt.2d	v12, v25, v20
+  42b84c:	8b 1d ab 4e	orr.16b	v11, v12, v11
+  42b850:	4c 2a 21 0e	xtn.8b	v12, v18
+  42b854:	5d 1e bd 4e	orr.16b	v29, v18, v29
+  42b858:	c8 1e a8 4e	orr.16b	v8, v22, v8
+  42b85c:	6a 19 8a 4e	uzp1.4s	v10, v11, v10
+  42b860:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42b864:	29 59 20 6e	mvn.16b	v9, v9
+  42b868:	29 29 21 0e	xtn.8b	v9, v9
+  42b86c:	73 e6 78 4e	fcmeq.2d	v19, v19, v24
+  42b870:	31 e6 77 4e	fcmeq.2d	v17, v17, v23
+  42b874:	31 1a 93 4e	uzp1.4s	v17, v17, v19
+  42b878:	b3 e6 7a 4e	fcmeq.2d	v19, v21, v26
+  42b87c:	94 e6 79 4e	fcmeq.2d	v20, v20, v25
+  42b880:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42b884:	71 1a 51 4e	uzp1.8h	v17, v19, v17
+  42b888:	31 2a 21 0e	xtn.8b	v17, v17
+  42b88c:	d3 8f bc 6e	cmeq.4s	v19, v30, v28
+  42b890:	f4 8f bb 6e	cmeq.4s	v20, v31, v27
+  42b894:	93 1a 53 4e	uzp1.8h	v19, v20, v19
+  42b898:	73 1e 76 4e	bic.16b	v19, v19, v22
+  42b89c:	73 2a 21 0e	xtn.8b	v19, v19
+  42b8a0:	73 1e 6c 0e	bic.8b	v19, v19, v12
+  42b8a4:	d2 1e 32 4e	and.16b	v18, v22, v18
+  42b8a8:	52 2a 21 0e	xtn.8b	v18, v18
+  42b8ac:	52 1e b3 0e	orr.8b	v18, v18, v19
+  42b8b0:	51 1e a9 2e	bit.8b	v17, v18, v9
+  42b8b4:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  42b8b8:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  42b8bc:	52 1e 21 4e	and.16b	v18, v18, v1
+  42b8c0:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  42b8c4:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  42b8c8:	31 1e 21 4e	and.16b	v17, v17, v1
+  42b8cc:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  42b8d0:	b1 1f 28 4e	and.16b	v17, v29, v8
+  42b8d4:	94 02 01 91	add	x20, x20, #0x40
+  42b8d8:	31 2a 21 0e	xtn.8b	v17, v17
+  42b8dc:	e7 00 01 91	add	x7, x7, #0x40
+  42b8e0:	10 1e 31 0e	and.8b	v16, v16, v17
+  42b8e4:	b5 22 00 f1	subs	x21, x21, #0x8
+  42b8e8:	21 f1 ff 54	b.ne	0x42b70c
+  42b8ec:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  42b8f0:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  42b8f4:	10 aa 31 2e	uminv.8b	b16, v16
+  42b8f8:	15 02 26 1e	fmov	w21, s16
+  42b8fc:	5f 00 06 eb	cmp	x2, x6
+  42b900:	a1 e5 ff 54	b.ne	0x42b5b4
+  42b904:	5b ff ff 17	b	0x42b670
+  42b908:	47 08 7f 92	and	x7, x2, #0xe
+  42b90c:	45 08 7c 92	and	x5, x2, #0x70
+  42b910:	13 02 06 8b	add	x19, x16, x6
+  42b914:	34 02 06 8b	add	x20, x17, x6
+  42b918:	55 08 7c 92	and	x21, x2, #0x70
+  42b91c:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  42b920:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42b924:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42b928:	74 56 40 ad	ldp	q20, q21, [x19]
+  42b92c:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42b930:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42b934:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42b938:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42b93c:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42b940:	31 e6 79 4e	fcmeq.2d	v17, v17, v25
+  42b944:	10 e6 78 4e	fcmeq.2d	v16, v16, v24
+  42b948:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42b94c:	10 1e 21 4e	and.16b	v16, v16, v1
+  42b950:	71 e6 7b 4e	fcmeq.2d	v17, v19, v27
+  42b954:	52 e6 7a 4e	fcmeq.2d	v18, v18, v26
+  42b958:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42b95c:	31 1e 21 4e	and.16b	v17, v17, v1
+  42b960:	b2 e6 7d 4e	fcmeq.2d	v18, v21, v29
+  42b964:	93 e6 7c 4e	fcmeq.2d	v19, v20, v28
+  42b968:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42b96c:	52 1e 21 4e	and.16b	v18, v18, v1
+  42b970:	f3 e6 7f 4e	fcmeq.2d	v19, v23, v31
+  42b974:	d4 e6 7e 4e	fcmeq.2d	v20, v22, v30
+  42b978:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42b97c:	73 1e 21 4e	and.16b	v19, v19, v1
+  42b980:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42b984:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42b988:	73 02 02 91	add	x19, x19, #0x80
+  42b98c:	94 02 02 91	add	x20, x20, #0x80
+  42b990:	b5 42 00 f1	subs	x21, x21, #0x10
+  42b994:	61 fc ff 54	b.ne	0x42b920
+  42b998:	5f 00 05 eb	cmp	x2, x5
+  42b99c:	40 d3 ff 54	b.eq	0x42b404
+  42b9a0:	27 de ff b4	cbz	x7, 0x42b564
+  42b9a4:	f4 03 05 aa	mov	x20, x5
+  42b9a8:	45 14 7f 92	and	x5, x2, #0x7e
+  42b9ac:	87 02 05 cb	sub	x7, x20, x5
+  42b9b0:	b3 f5 7e d3	lsl	x19, x13, #2
+  42b9b4:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42b9b8:	73 00 13 8b	add	x19, x3, x19
+  42b9bc:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42b9c0:	46 01 14 8b	add	x6, x10, x20
+  42b9c4:	34 01 14 8b	add	x20, x9, x20
+  42b9c8:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42b9cc:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42b9d0:	10 e6 71 4e	fcmeq.2d	v16, v16, v17
+  42b9d4:	10 2a a1 0e	xtn.2s	v16, v16
+  42b9d8:	10 1e 20 0e	and.8b	v16, v16, v0
+  42b9dc:	70 86 00 fc	str	d16, [x19], #0x8
+  42b9e0:	e7 08 00 b1	adds	x7, x7, #0x2
+  42b9e4:	21 ff ff 54	b.ne	0x42b9c8
+  42b9e8:	5f 00 05 eb	cmp	x2, x5
+  42b9ec:	c0 d0 ff 54	b.eq	0x42b404
+  42b9f0:	dd fe ff 17	b	0x42b564
+  42b9f4:	c4 31 00 b4	cbz	x4, 0x42c02c
+  42b9f8:	0d 00 80 d2	mov	x13, #0x0
+  42b9fc:	05 00 80 52	mov	w5, #0x0
+  42ba00:	eb 1f c0 92	mov	x11, #-0xff00000001
+  42ba04:	eb fe ef f2	movk	x11, #0x7ff7, lsl #48
+  42ba08:	4c f4 80 d2	mov	x12, #0x7a2
+  42ba0c:	0c fe ef f2	movk	x12, #0x7ff0, lsl #48
+  42ba10:	20 04 00 0f	movi.2s	v0, #0x1
+  42ba14:	21 04 00 4f	movi.4s	v1, #0x1
+  42ba18:	2e 81 00 91	add	x14, x9, #0x20
+  42ba1c:	4f 81 00 91	add	x15, x10, #0x20
+  42ba20:	30 01 01 91	add	x16, x9, #0x40
+  42ba24:	51 01 01 91	add	x17, x10, #0x40
+  42ba28:	22 e6 00 6f	movi.2d	v2, #0x0000ff000000ff
+  42ba2c:	60 80 00 91	add	x0, x3, #0x20
+  42ba30:	28 00 80 52	mov	w8, #0x1
+  42ba34:	63 0d 08 4e	dup.2d	v3, x11
+  42ba38:	01 08 80 52	mov	w1, #0x40
+  42ba3c:	84 0d 08 4e	dup.2d	v4, x12
+  42ba40:	05 04 03 6f	mvni.4s	v5, #0x60
+  42ba44:	46 07 00 4f	movi.4s	v6, #0x1a
+  42ba48:	e7 e7 07 6f	movi.2d	v7, #0xffffffffffffffff
+  42ba4c:	e7 f8 e0 6e	fneg.2d	v7, v7
+  42ba50:	05 00 00 14	b	0x42ba64
+  42ba54:	05 00 80 52	mov	w5, #0x0
+  42ba58:	4d 00 0d 8b	add	x13, x2, x13
+  42ba5c:	bf 01 04 eb	cmp	x13, x4
+  42ba60:	a2 53 00 54	b.hs	0x42c4d4
+  42ba64:	82 00 0d eb	subs	x2, x4, x13
+  42ba68:	5f 00 01 f1	cmp	x2, #0x40
+  42ba6c:	42 30 81 9a	csel	x2, x2, x1, lo
+  42ba70:	95 00 0d eb	subs	x21, x4, x13
+  42ba74:	00 ff ff 54	b.eq	0x42ba54
+  42ba78:	a6 f1 7d d3	lsl	x6, x13, #3
+  42ba7c:	bf 22 00 f1	cmp	x21, #0x8
+  42ba80:	82 00 00 54	b.hs	0x42ba90
+  42ba84:	07 00 80 d2	mov	x7, #0x0
+  42ba88:	16 00 80 d2	mov	x22, #0x0
+  42ba8c:	33 00 00 14	b	0x42bb58
+  42ba90:	47 0c 7d 92	and	x7, x2, #0x78
+  42ba94:	d3 01 06 8b	add	x19, x14, x6
+  42ba98:	f4 01 06 8b	add	x20, x15, x6
+  42ba9c:	10 e4 00 6f	movi.2d	v16, #0000000000000000
+  42baa0:	56 0c 7d 92	and	x22, x2, #0x78
+  42baa4:	13 e4 00 6f	movi.2d	v19, #0000000000000000
+  42baa8:	12 e4 00 6f	movi.2d	v18, #0000000000000000
+  42baac:	11 e4 00 6f	movi.2d	v17, #0000000000000000
+  42bab0:	74 56 7f ad	ldp	q20, q21, [x19, #-0x20]
+  42bab4:	76 5e c2 ac	ldp	q22, q23, [x19], #0x40
+  42bab8:	94 1e 27 4e	and.16b	v20, v20, v7
+  42babc:	b5 1e 27 4e	and.16b	v21, v21, v7
+  42bac0:	d6 1e 27 4e	and.16b	v22, v22, v7
+  42bac4:	f7 1e 27 4e	and.16b	v23, v23, v7
+  42bac8:	98 66 7f ad	ldp	q24, q25, [x20, #-0x20]
+  42bacc:	9a 6e c2 ac	ldp	q26, q27, [x20], #0x40
+  42bad0:	18 1f 27 4e	and.16b	v24, v24, v7
+  42bad4:	39 1f 27 4e	and.16b	v25, v25, v7
+  42bad8:	5a 1f 27 4e	and.16b	v26, v26, v7
+  42badc:	7b 1f 27 4e	and.16b	v27, v27, v7
+  42bae0:	9c 36 f0 6e	cmhi.2d	v28, v20, v16
+  42bae4:	90 1e bc 6e	bit.16b	v16, v20, v28
+  42bae8:	b4 36 f3 6e	cmhi.2d	v20, v21, v19
+  42baec:	b3 1e b4 6e	bit.16b	v19, v21, v20
+  42baf0:	d4 36 f2 6e	cmhi.2d	v20, v22, v18
+  42baf4:	d2 1e b4 6e	bit.16b	v18, v22, v20
+  42baf8:	f4 36 f1 6e	cmhi.2d	v20, v23, v17
+  42bafc:	f1 1e b4 6e	bit.16b	v17, v23, v20
+  42bb00:	14 37 f0 6e	cmhi.2d	v20, v24, v16
+  42bb04:	10 1f b4 6e	bit.16b	v16, v24, v20
+  42bb08:	34 37 f3 6e	cmhi.2d	v20, v25, v19
+  42bb0c:	33 1f b4 6e	bit.16b	v19, v25, v20
+  42bb10:	54 37 f2 6e	cmhi.2d	v20, v26, v18
+  42bb14:	52 1f b4 6e	bit.16b	v18, v26, v20
+  42bb18:	74 37 f1 6e	cmhi.2d	v20, v27, v17
+  42bb1c:	71 1f b4 6e	bit.16b	v17, v27, v20
+  42bb20:	d6 22 00 f1	subs	x22, x22, #0x8
+  42bb24:	61 fc ff 54	b.ne	0x42bab0
+  42bb28:	14 36 f3 6e	cmhi.2d	v20, v16, v19
+  42bb2c:	70 1e f4 6e	bif.16b	v16, v19, v20
+  42bb30:	13 36 f2 6e	cmhi.2d	v19, v16, v18
+  42bb34:	50 1e f3 6e	bif.16b	v16, v18, v19
+  42bb38:	12 36 f1 6e	cmhi.2d	v18, v16, v17
+  42bb3c:	30 1e f2 6e	bif.16b	v16, v17, v18
+  42bb40:	11 42 10 6e	ext.16b	v17, v16, v16, #0x8
+  42bb44:	12 36 f1 7e	cmhi	d18, d16, d17
+  42bb48:	30 1e f2 2e	bif.8b	v16, v17, v18
+  42bb4c:	16 02 66 9e	fmov	x22, d16
+  42bb50:	5f 00 07 eb	cmp	x2, x7
+  42bb54:	e0 01 00 54	b.eq	0x42bb90
+  42bb58:	d4 0c 07 8b	add	x20, x6, x7, lsl #3
+  42bb5c:	53 01 14 8b	add	x19, x10, x20
+  42bb60:	34 01 14 8b	add	x20, x9, x20
+  42bb64:	47 00 07 cb	sub	x7, x2, x7
+  42bb68:	97 86 40 f8	ldr	x23, [x20], #0x8
+  42bb6c:	f7 fa 40 92	and	x23, x23, #0x7fffffffffffffff
+  42bb70:	78 86 40 f8	ldr	x24, [x19], #0x8
+  42bb74:	18 fb 40 92	and	x24, x24, #0x7fffffffffffffff
+  42bb78:	ff 02 16 eb	cmp	x23, x22
+  42bb7c:	f6 82 96 9a	csel	x22, x23, x22, hi
+  42bb80:	1f 03 16 eb	cmp	x24, x22
+  42bb84:	16 83 96 9a	csel	x22, x24, x22, hi
+  42bb88:	e7 04 00 f1	subs	x7, x7, #0x1
+  42bb8c:	e1 fe ff 54	b.ne	0x42bb68
+  42bb90:	27 01 06 8b	add	x7, x9, x6
+  42bb94:	54 01 06 8b	add	x20, x10, x6
+  42bb98:	73 08 0d 8b	add	x19, x3, x13, lsl #2
+  42bb9c:	97 85 1e d1	sub	x23, x12, #0x7a1
+  42bba0:	df 02 17 eb	cmp	x22, x23
+  42bba4:	82 02 00 54	b.hs	0x42bbf4
+  42bba8:	bf 0a 00 f1	cmp	x21, #0x2
+  42bbac:	22 09 00 54	b.hs	0x42bcd0
+  42bbb0:	05 00 80 d2	mov	x5, #0x0
+  42bbb4:	46 00 05 cb	sub	x6, x2, x5
+  42bbb8:	a7 f4 7e d3	lsl	x7, x5, #2
+  42bbbc:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42bbc0:	67 00 07 8b	add	x7, x3, x7
+  42bbc4:	a5 f0 7d d3	lsl	x5, x5, #3
+  42bbc8:	b3 0c 0d 8b	add	x19, x5, x13, lsl #3
+  42bbcc:	45 01 13 8b	add	x5, x10, x19
+  42bbd0:	33 01 13 8b	add	x19, x9, x19
+  42bbd4:	70 86 40 fc	ldr	d16, [x19], #0x8
+  42bbd8:	b1 84 40 fc	ldr	d17, [x5], #0x8
+  42bbdc:	00 22 71 1e	fcmp	d16, d17
+  42bbe0:	f4 b7 9f 1a	cset	w20, ge
+  42bbe4:	f4 44 00 b8	str	w20, [x7], #0x4
+  42bbe8:	c6 04 00 f1	subs	x6, x6, #0x1
+  42bbec:	41 ff ff 54	b.ne	0x42bbd4
+  42bbf0:	99 ff ff 17	b	0x42ba54
+  42bbf4:	bf 22 00 f1	cmp	x21, #0x8
+  42bbf8:	e2 08 00 54	b.hs	0x42bd14
+  42bbfc:	06 00 80 d2	mov	x6, #0x0
+  42bc00:	35 00 80 52	mov	w21, #0x1
+  42bc04:	c7 f4 7e d3	lsl	x7, x6, #2
+  42bc08:	e7 08 0d 8b	add	x7, x7, x13, lsl #2
+  42bc0c:	67 00 07 8b	add	x7, x3, x7
+  42bc10:	d3 f0 7d d3	lsl	x19, x6, #3
+  42bc14:	74 0e 0d 8b	add	x20, x19, x13, lsl #3
+  42bc18:	53 01 14 8b	add	x19, x10, x20
+  42bc1c:	34 01 14 8b	add	x20, x9, x20
+  42bc20:	46 00 06 cb	sub	x6, x2, x6
+  42bc24:	96 86 40 f8	ldr	x22, [x20], #0x8
+  42bc28:	d7 fe 60 d3	lsr	x23, x22, #32
+  42bc2c:	d8 02 0b 8a	and	x24, x22, x11
+  42bc30:	d0 02 67 9e	fmov	d16, x22
+  42bc34:	76 86 40 f8	ldr	x22, [x19], #0x8
+  42bc38:	d9 fe 60 d3	lsr	x25, x22, #32
+  42bc3c:	da 02 0b 8a	and	x26, x22, x11
+  42bc40:	d1 02 67 9e	fmov	d17, x22
+  42bc44:	f6 1e 00 72	ands	w22, w23, #0xff
+  42bc48:	f7 17 9f 1a	cset	w23, eq
+  42bc4c:	db 86 01 51	sub	w27, w22, #0x61
+  42bc50:	7f 6b 00 71	cmp	w27, #0x1a
+  42bc54:	f7 26 9f 1a	csinc	w23, w23, wzr, hs
+  42bc58:	1f 03 0c eb	cmp	x24, x12
+  42bc5c:	f7 13 97 1a	csel	w23, wzr, w23, ne
+  42bc60:	38 1f 00 72	ands	w24, w25, #0xff
+  42bc64:	f9 17 9f 1a	cset	w25, eq
+  42bc68:	1b 87 01 51	sub	w27, w24, #0x61
+  42bc6c:	7f 6b 00 71	cmp	w27, #0x1a
+  42bc70:	39 27 9f 1a	csinc	w25, w25, wzr, hs
+  42bc74:	5f 03 0c eb	cmp	x26, x12
+  42bc78:	f9 13 99 1a	csel	w25, wzr, w25, ne
+  42bc7c:	20 22 71 1e	fcmp	d17, d17
+  42bc80:	fa 67 9f 1a	cset	w26, vc
+  42bc84:	39 67 9f 1a	csinc	w25, w25, wzr, vs
+  42bc88:	1f 03 16 6b	cmp	w24, w22
+  42bc8c:	56 87 9f 1a	csinc	w22, w26, wzr, hi
+  42bc90:	00 22 70 1e	fcmp	d16, d16
+  42bc94:	f7 66 9f 1a	csinc	w23, w23, wzr, vs
+  42bc98:	f7 02 19 0a	and	w23, w23, w25
+  42bc9c:	b5 02 17 0a	and	w21, w21, w23
+  42bca0:	56 73 96 1a	csel	w22, w26, w22, vc
+  42bca4:	00 22 71 1e	fcmp	d16, d17
+  42bca8:	f7 b7 9f 1a	cset	w23, ge
+  42bcac:	d6 62 97 1a	csel	w22, w22, w23, vs
+  42bcb0:	f6 44 00 b8	str	w22, [x7], #0x4
+  42bcb4:	c6 04 00 f1	subs	x6, x6, #0x1
+  42bcb8:	61 fb ff 54	b.ne	0x42bc24
+  42bcbc:	08 01 15 0a	and	w8, w8, w21
+  42bcc0:	a5 04 00 11	add	w5, w5, #0x1
+  42bcc4:	bf 10 00 71	cmp	w5, #0x4
+  42bcc8:	81 ec ff 54	b.ne	0x42ba58
+  42bccc:	fd 01 00 14	b	0x42c4c0
+  42bcd0:	05 00 80 d2	mov	x5, #0x0
+  42bcd4:	b6 01 02 8b	add	x22, x13, x2
+  42bcd8:	77 08 16 8b	add	x23, x3, x22, lsl #2
+  42bcdc:	d6 f2 7d d3	lsl	x22, x22, #3
+  42bce0:	38 01 16 8b	add	x24, x9, x22
+  42bce4:	56 01 16 8b	add	x22, x10, x22
+  42bce8:	7f 02 16 eb	cmp	x19, x22
+  42bcec:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42bcf0:	f4 27 9f 1a	cset	w20, lo
+  42bcf4:	ff 00 17 eb	cmp	x7, x23
+  42bcf8:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42bcfc:	c3 f5 ff 54	b.lo	0x42bbb4
+  42bd00:	b4 f5 07 37	tbnz	w20, #0x0, 0x42bbb4
+  42bd04:	bf 42 00 f1	cmp	x21, #0x10
+  42bd08:	c2 11 00 54	b.hs	0x42bf40
+  42bd0c:	05 00 80 d2	mov	x5, #0x0
+  42bd10:	b3 00 00 14	b	0x42bfdc
+  42bd14:	06 00 80 d2	mov	x6, #0x0
+  42bd18:	b5 01 02 8b	add	x21, x13, x2
+  42bd1c:	77 08 15 8b	add	x23, x3, x21, lsl #2
+  42bd20:	b5 f2 7d d3	lsl	x21, x21, #3
+  42bd24:	38 01 15 8b	add	x24, x9, x21
+  42bd28:	55 01 15 8b	add	x21, x10, x21
+  42bd2c:	7f 02 15 eb	cmp	x19, x21
+  42bd30:	82 32 57 fa	ccmp	x20, x23, #0x2, lo
+  42bd34:	f6 27 9f 1a	cset	w22, lo
+  42bd38:	ff 00 17 eb	cmp	x7, x23
+  42bd3c:	62 32 58 fa	ccmp	x19, x24, #0x2, lo
+  42bd40:	35 00 80 52	mov	w21, #0x1
+  42bd44:	03 f6 ff 54	b.lo	0x42bc04
+  42bd48:	f6 f5 07 37	tbnz	w22, #0x0, 0x42bc04
+  42bd4c:	46 0c 7d 92	and	x6, x2, #0x78
+  42bd50:	30 e4 00 0f	movi.8b	v16, #0x1
+  42bd54:	55 0c 7d 92	and	x21, x2, #0x78
+  42bd58:	f3 58 41 ad	ldp	q19, q22, [x7, #0x20]
+  42bd5c:	d1 e6 76 4e	fcmeq.2d	v17, v22, v22
+  42bd60:	72 e6 73 4e	fcmeq.2d	v18, v19, v19
+  42bd64:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42bd68:	f4 5c 40 ad	ldp	q20, q23, [x7]
+  42bd6c:	f2 e6 77 4e	fcmeq.2d	v18, v23, v23
+  42bd70:	95 e6 74 4e	fcmeq.2d	v21, v20, v20
+  42bd74:	b2 1a 92 4e	uzp1.4s	v18, v21, v18
+  42bd78:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  42bd7c:	32 2a 21 0e	xtn.8b	v18, v17
+  42bd80:	9c 7a 41 ad	ldp	q28, q30, [x20, #0x20]
+  42bd84:	d5 e7 7e 4e	fcmeq.2d	v21, v30, v30
+  42bd88:	98 e7 7c 4e	fcmeq.2d	v24, v28, v28
+  42bd8c:	15 1b 95 4e	uzp1.4s	v21, v24, v21
+  42bd90:	9a 76 c2 ac	ldp	q26, q29, [x20], #0x40
+  42bd94:	b8 e7 7d 4e	fcmeq.2d	v24, v29, v29
+  42bd98:	59 e7 7a 4e	fcmeq.2d	v25, v26, v26
+  42bd9c:	38 1b 98 4e	uzp1.4s	v24, v25, v24
+  42bda0:	15 1b 55 4e	uzp1.8h	v21, v24, v21
+  42bda4:	79 5a 96 4e	uzp2.4s	v25, v19, v22
+  42bda8:	98 5a 97 4e	uzp2.4s	v24, v20, v23
+  42bdac:	18 1f 22 4e	and.16b	v24, v24, v2
+  42bdb0:	39 1f 22 4e	and.16b	v25, v25, v2
+  42bdb4:	9b 1e 23 4e	and.16b	v27, v20, v3
+  42bdb8:	ff 1e 23 4e	and.16b	v31, v23, v3
+  42bdbc:	68 1e 23 4e	and.16b	v8, v19, v3
+  42bdc0:	c9 1e 23 4e	and.16b	v9, v22, v3
+  42bdc4:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42bdc8:	08 8d e4 6e	cmeq.2d	v8, v8, v4
+  42bdcc:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42bdd0:	ff 8f e4 6e	cmeq.2d	v31, v31, v4
+  42bdd4:	7b 8f e4 6e	cmeq.2d	v27, v27, v4
+  42bdd8:	7b 1b 9f 4e	uzp1.4s	v27, v27, v31
+  42bddc:	7b 1b 48 4e	uzp1.8h	v27, v27, v8
+  42bde0:	3f 9b a0 4e	cmeq.4s	v31, v25, #0
+  42bde4:	08 9b a0 4e	cmeq.4s	v8, v24, #0
+  42bde8:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42bdec:	08 87 a5 4e	add.4s	v8, v24, v5
+  42bdf0:	29 87 a5 4e	add.4s	v9, v25, v5
+  42bdf4:	c9 34 a9 6e	cmhi.4s	v9, v6, v9
+  42bdf8:	c8 34 a8 6e	cmhi.4s	v8, v6, v8
+  42bdfc:	08 19 49 4e	uzp1.8h	v8, v8, v9
+  42be00:	ff 1f a8 4e	orr.16b	v31, v31, v8
+  42be04:	7b 1f 3f 4e	and.16b	v27, v27, v31
+  42be08:	3b 1e bb 4e	orr.16b	v27, v17, v27
+  42be0c:	9f 5b 9e 4e	uzp2.4s	v31, v28, v30
+  42be10:	48 5b 9d 4e	uzp2.4s	v8, v26, v29
+  42be14:	08 1d 22 4e	and.16b	v8, v8, v2
+  42be18:	ff 1f 22 4e	and.16b	v31, v31, v2
+  42be1c:	49 1f 23 4e	and.16b	v9, v26, v3
+  42be20:	aa 1f 23 4e	and.16b	v10, v29, v3
+  42be24:	8b 1f 23 4e	and.16b	v11, v28, v3
+  42be28:	cc 1f 23 4e	and.16b	v12, v30, v3
+  42be2c:	8c 8d e4 6e	cmeq.2d	v12, v12, v4
+  42be30:	6b 8d e4 6e	cmeq.2d	v11, v11, v4
+  42be34:	6b 19 8c 4e	uzp1.4s	v11, v11, v12
+  42be38:	4a 8d e4 6e	cmeq.2d	v10, v10, v4
+  42be3c:	29 8d e4 6e	cmeq.2d	v9, v9, v4
+  42be40:	29 19 8a 4e	uzp1.4s	v9, v9, v10
+  42be44:	29 19 4b 4e	uzp1.8h	v9, v9, v11
+  42be48:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  42be4c:	0b 99 a0 4e	cmeq.4s	v11, v8, #0
+  42be50:	6a 19 4a 4e	uzp1.8h	v10, v11, v10
+  42be54:	0b 85 a5 4e	add.4s	v11, v8, v5
+  42be58:	ec 87 a5 4e	add.4s	v12, v31, v5
+  42be5c:	cc 34 ac 6e	cmhi.4s	v12, v6, v12
+  42be60:	cb 34 ab 6e	cmhi.4s	v11, v6, v11
+  42be64:	6b 19 4c 4e	uzp1.8h	v11, v11, v12
+  42be68:	4a 1d ab 4e	orr.16b	v10, v10, v11
+  42be6c:	29 1d 2a 4e	and.16b	v9, v9, v10
+  42be70:	a9 1e a9 4e	orr.16b	v9, v21, v9
+  42be74:	ca e7 f6 6e	fcmgt.2d	v10, v30, v22
+  42be78:	d6 e6 7e 6e	fcmge.2d	v22, v22, v30
+  42be7c:	5e 1d b6 4e	orr.16b	v30, v10, v22
+  42be80:	8a e7 f3 6e	fcmgt.2d	v10, v28, v19
+  42be84:	73 e6 7c 6e	fcmge.2d	v19, v19, v28
+  42be88:	5c 1d b3 4e	orr.16b	v28, v10, v19
+  42be8c:	9c 1b 9e 4e	uzp1.4s	v28, v28, v30
+  42be90:	be e7 f7 6e	fcmgt.2d	v30, v29, v23
+  42be94:	f7 e6 7d 6e	fcmge.2d	v23, v23, v29
+  42be98:	dd 1f b7 4e	orr.16b	v29, v30, v23
+  42be9c:	5e e7 f4 6e	fcmgt.2d	v30, v26, v20
+  42bea0:	94 e6 7a 6e	fcmge.2d	v20, v20, v26
+  42bea4:	da 1f b4 4e	orr.16b	v26, v30, v20
+  42bea8:	5a 1b 9d 4e	uzp1.4s	v26, v26, v29
+  42beac:	5a 1b 5c 4e	uzp1.8h	v26, v26, v28
+  42beb0:	5a 5b 20 6e	mvn.16b	v26, v26
+  42beb4:	5a 2b 21 0e	xtn.8b	v26, v26
+  42beb8:	73 1a 96 4e	uzp1.4s	v19, v19, v22
+  42bebc:	94 1a 97 4e	uzp1.4s	v20, v20, v23
+  42bec0:	93 1a 53 4e	uzp1.8h	v19, v20, v19
+  42bec4:	73 2a 21 0e	xtn.8b	v19, v19
+  42bec8:	34 3f bf 6e	cmhs.4s	v20, v25, v31
+  42becc:	16 3f a8 6e	cmhs.4s	v22, v24, v8
+  42bed0:	d4 1a 54 4e	uzp1.8h	v20, v22, v20
+  42bed4:	b4 1e b4 4e	orr.16b	v20, v21, v20
+  42bed8:	94 2a 21 0e	xtn.8b	v20, v20
+  42bedc:	92 1e 72 0e	bic.8b	v18, v20, v18
+  42bee0:	b1 1e 31 4e	and.16b	v17, v21, v17
+  42bee4:	31 2a 21 0e	xtn.8b	v17, v17
+  42bee8:	31 1e b2 0e	orr.8b	v17, v17, v18
+  42beec:	71 1e fa 2e	bif.8b	v17, v19, v26
+  42bef0:	32 3a 00 0e	zip1.8b	v18, v17, v0
+  42bef4:	52 a6 10 2f	ushll.4s	v18, v18, #0x0
+  42bef8:	52 1e 21 4e	and.16b	v18, v18, v1
+  42befc:	31 7a 00 0e	zip2.8b	v17, v17, v0
+  42bf00:	31 a6 10 2f	ushll.4s	v17, v17, #0x0
+  42bf04:	31 1e 21 4e	and.16b	v17, v17, v1
+  42bf08:	72 46 81 ac	stp	q18, q17, [x19], #0x20
+  42bf0c:	71 1f 29 4e	and.16b	v17, v27, v9
+  42bf10:	31 2a 21 0e	xtn.8b	v17, v17
+  42bf14:	e7 00 01 91	add	x7, x7, #0x40
+  42bf18:	10 1e 31 0e	and.8b	v16, v16, v17
+  42bf1c:	b5 22 00 f1	subs	x21, x21, #0x8
+  42bf20:	c1 f1 ff 54	b.ne	0x42bd58
+  42bf24:	10 56 0f 0f	shl.8b	v16, v16, #0x7
+  42bf28:	10 aa 20 0e	cmlt.8b	v16, v16, #0
+  42bf2c:	10 aa 31 2e	uminv.8b	b16, v16
+  42bf30:	15 02 26 1e	fmov	w21, s16
+  42bf34:	5f 00 06 eb	cmp	x2, x6
+  42bf38:	61 e6 ff 54	b.ne	0x42bc04
+  42bf3c:	60 ff ff 17	b	0x42bcbc
+  42bf40:	47 08 7f 92	and	x7, x2, #0xe
+  42bf44:	45 08 7c 92	and	x5, x2, #0x70
+  42bf48:	13 02 06 8b	add	x19, x16, x6
+  42bf4c:	34 02 06 8b	add	x20, x17, x6
+  42bf50:	55 08 7c 92	and	x21, x2, #0x70
+  42bf54:	16 08 0d 8b	add	x22, x0, x13, lsl #2
+  42bf58:	70 46 7e ad	ldp	q16, q17, [x19, #-0x40]
+  42bf5c:	72 4e 7f ad	ldp	q18, q19, [x19, #-0x20]
+  42bf60:	74 56 40 ad	ldp	q20, q21, [x19]
+  42bf64:	76 5e 41 ad	ldp	q22, q23, [x19, #0x20]
+  42bf68:	98 66 7e ad	ldp	q24, q25, [x20, #-0x40]
+  42bf6c:	9a 6e 7f ad	ldp	q26, q27, [x20, #-0x20]
+  42bf70:	9c 76 40 ad	ldp	q28, q29, [x20]
+  42bf74:	9e 7e 41 ad	ldp	q30, q31, [x20, #0x20]
+  42bf78:	31 e6 79 6e	fcmge.2d	v17, v17, v25
+  42bf7c:	10 e6 78 6e	fcmge.2d	v16, v16, v24
+  42bf80:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42bf84:	10 1e 21 4e	and.16b	v16, v16, v1
+  42bf88:	71 e6 7b 6e	fcmge.2d	v17, v19, v27
+  42bf8c:	52 e6 7a 6e	fcmge.2d	v18, v18, v26
+  42bf90:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42bf94:	31 1e 21 4e	and.16b	v17, v17, v1
+  42bf98:	b2 e6 7d 6e	fcmge.2d	v18, v21, v29
+  42bf9c:	93 e6 7c 6e	fcmge.2d	v19, v20, v28
+  42bfa0:	72 1a 92 4e	uzp1.4s	v18, v19, v18
+  42bfa4:	52 1e 21 4e	and.16b	v18, v18, v1
+  42bfa8:	f3 e6 7f 6e	fcmge.2d	v19, v23, v31
+  42bfac:	d4 e6 7e 6e	fcmge.2d	v20, v22, v30
+  42bfb0:	93 1a 93 4e	uzp1.4s	v19, v20, v19
+  42bfb4:	73 1e 21 4e	and.16b	v19, v19, v1
+  42bfb8:	d0 46 3f ad	stp	q16, q17, [x22, #-0x20]
+  42bfbc:	d2 4e 82 ac	stp	q18, q19, [x22], #0x40
+  42bfc0:	73 02 02 91	add	x19, x19, #0x80
+  42bfc4:	94 02 02 91	add	x20, x20, #0x80
+  42bfc8:	b5 42 00 f1	subs	x21, x21, #0x10
+  42bfcc:	61 fc ff 54	b.ne	0x42bf58
+  42bfd0:	5f 00 05 eb	cmp	x2, x5
+  42bfd4:	00 d4 ff 54	b.eq	0x42ba54
+  42bfd8:	e7 de ff b4	cbz	x7, 0x42bbb4
+  42bfdc:	f4 03 05 aa	mov	x20, x5
+  42bfe0:	45 14 7f 92	and	x5, x2, #0x7e
+  42bfe4:	87 02 05 cb	sub	x7, x20, x5
+  42bfe8:	b3 f5 7e d3	lsl	x19, x13, #2
+  42bfec:	73 0a 14 8b	add	x19, x19, x20, lsl #2
+  42bff0:	73 00 13 8b	add	x19, x3, x19
+  42bff4:	d4 0c 14 8b	add	x20, x6, x20, lsl #3
+  42bff8:	46 01 14 8b	add	x6, x10, x20
+  42bffc:	34 01 14 8b	add	x20, x9, x20
+  42c000:	90 06 c1 3c	ldr	q16, [x20], #0x10
+  42c004:	d1 04 c1 3c	ldr	q17, [x6], #0x10
+  42c008:	10 e6 71 6e	fcmge.2d	v16, v16, v17
+  42c00c:	10 2a a1 0e	xtn.2s	v16, v16
+  42c010:	10 1e 20 0e	and.8b	v16, v16, v0
+  42c014:	70 86 00 fc	str	d16, [x19], #0x8
+  42c018:	e7 08 00 b1	adds	x7, x7, #0x2
+  42c01c:	21 ff ff 54	b.ne	0x42c000
+  42c020:	5f 00 05 eb	cmp	x2, x5
+  42c024:	80 d1 ff 54	b.eq	0x42ba54
+  42c028:	e3 fe ff 17	b	0x42bbb4
+  42c02c:	28 00 80 52	mov	w8, #0x1
+  42c030:	29 01 00 14	b	0x42c4d4
+  42c034:	51 00 0d 8b	add	x17, x2, x13
+  42c038:	9f 00 11 eb	cmp	x4, x17
+  42c03c:	80 24 00 54	b.eq	0x42c4cc
+  42c040:	ad 01 02 8b	add	x13, x13, x2
+  42c044:	8f 00 0d cb	sub	x15, x4, x13
+  42c048:	ff 21 00 f1	cmp	x15, #0x8
+  42c04c:	82 2c 00 54	b.hs	0x42c5dc
+  42c050:	0e 00 80 d2	mov	x14, #0x0
+  42c054:	21 00 80 52	mov	w1, #0x1
+  42c058:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c05c:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c060:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c064:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c068:	4a 01 10 8b	add	x10, x10, x16
+  42c06c:	4a 01 11 8b	add	x10, x10, x17
+  42c070:	29 01 10 8b	add	x9, x9, x16
+  42c074:	29 01 11 8b	add	x9, x9, x17
+  42c078:	8e 00 0e cb	sub	x14, x4, x14
+  42c07c:	cd 01 0d cb	sub	x13, x14, x13
+  42c080:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c084:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c088:	d1 01 0b 8a	and	x17, x14, x11
+  42c08c:	c0 01 67 9e	fmov	d0, x14
+  42c090:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c094:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c098:	c2 01 0b 8a	and	x2, x14, x11
+  42c09c:	c1 01 67 9e	fmov	d1, x14
+  42c0a0:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c0a4:	f0 17 9f 1a	cset	w16, eq
+  42c0a8:	c3 85 01 51	sub	w3, w14, #0x61
+  42c0ac:	7f 68 00 71	cmp	w3, #0x1a
+  42c0b0:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c0b4:	3f 02 0c eb	cmp	x17, x12
+  42c0b8:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c0bc:	00 20 60 1e	fcmp	d0, d0
+  42c0c0:	f1 67 9f 1a	cset	w17, vc
+  42c0c4:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c0c8:	00 1c 00 72	ands	w0, w0, #0xff
+  42c0cc:	e3 17 9f 1a	cset	w3, eq
+  42c0d0:	04 84 01 51	sub	w4, w0, #0x61
+  42c0d4:	9f 68 00 71	cmp	w4, #0x1a
+  42c0d8:	63 24 9f 1a	csinc	w3, w3, wzr, hs
+  42c0dc:	5f 00 0c eb	cmp	x2, x12
+  42c0e0:	e2 13 83 1a	csel	w2, wzr, w3, ne
+  42c0e4:	df 01 00 6b	cmp	w14, w0
+  42c0e8:	2e 26 9f 1a	csinc	w14, w17, wzr, hs
+  42c0ec:	20 20 61 1e	fcmp	d1, d1
+  42c0f0:	51 64 9f 1a	csinc	w17, w2, wzr, vs
+  42c0f4:	10 02 11 0a	and	w16, w16, w17
+  42c0f8:	21 00 10 0a	and	w1, w1, w16
+  42c0fc:	ee 73 8e 1a	csel	w14, wzr, w14, vc
+  42c100:	00 20 61 1e	fcmp	d0, d1
+  42c104:	f0 57 9f 1a	cset	w16, mi
+  42c108:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c10c:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c110:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c114:	61 fb ff 54	b.ne	0x42c080
+  42c118:	ee 00 00 14	b	0x42c4d0
+  42c11c:	51 00 0d 8b	add	x17, x2, x13
+  42c120:	9f 00 11 eb	cmp	x4, x17
+  42c124:	40 1d 00 54	b.eq	0x42c4cc
+  42c128:	ad 01 02 8b	add	x13, x13, x2
+  42c12c:	8f 00 0d cb	sub	x15, x4, x13
+  42c130:	ff 21 00 f1	cmp	x15, #0x8
+  42c134:	02 38 00 54	b.hs	0x42c834
+  42c138:	0e 00 80 d2	mov	x14, #0x0
+  42c13c:	21 00 80 52	mov	w1, #0x1
+  42c140:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c144:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c148:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c14c:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c150:	4a 01 10 8b	add	x10, x10, x16
+  42c154:	4a 01 11 8b	add	x10, x10, x17
+  42c158:	29 01 10 8b	add	x9, x9, x16
+  42c15c:	29 01 11 8b	add	x9, x9, x17
+  42c160:	8e 00 0e cb	sub	x14, x4, x14
+  42c164:	cd 01 0d cb	sub	x13, x14, x13
+  42c168:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c16c:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c170:	d1 01 0b 8a	and	x17, x14, x11
+  42c174:	c0 01 67 9e	fmov	d0, x14
+  42c178:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c17c:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c180:	c2 01 0b 8a	and	x2, x14, x11
+  42c184:	c1 01 67 9e	fmov	d1, x14
+  42c188:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c18c:	f0 17 9f 1a	cset	w16, eq
+  42c190:	c3 85 01 51	sub	w3, w14, #0x61
+  42c194:	7f 68 00 71	cmp	w3, #0x1a
+  42c198:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c19c:	3f 02 0c eb	cmp	x17, x12
+  42c1a0:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c1a4:	11 1c 00 72	ands	w17, w0, #0xff
+  42c1a8:	e0 17 9f 1a	cset	w0, eq
+  42c1ac:	23 86 01 51	sub	w3, w17, #0x61
+  42c1b0:	7f 68 00 71	cmp	w3, #0x1a
+  42c1b4:	00 24 9f 1a	csinc	w0, w0, wzr, hs
+  42c1b8:	5f 00 0c eb	cmp	x2, x12
+  42c1bc:	e0 13 80 1a	csel	w0, wzr, w0, ne
+  42c1c0:	20 20 61 1e	fcmp	d1, d1
+  42c1c4:	e2 77 9f 1a	cset	w2, vs
+  42c1c8:	00 64 9f 1a	csinc	w0, w0, wzr, vs
+  42c1cc:	3f 02 0e 6b	cmp	w17, w14
+  42c1d0:	ee 33 82 1a	csel	w14, wzr, w2, lo
+  42c1d4:	00 20 60 1e	fcmp	d0, d0
+  42c1d8:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c1dc:	10 02 00 0a	and	w16, w16, w0
+  42c1e0:	21 00 10 0a	and	w1, w1, w16
+  42c1e4:	ce 65 9f 1a	csinc	w14, w14, wzr, vs
+  42c1e8:	00 20 61 1e	fcmp	d0, d1
+  42c1ec:	f0 87 9f 1a	cset	w16, ls
+  42c1f0:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c1f4:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c1f8:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c1fc:	61 fb ff 54	b.ne	0x42c168
+  42c200:	b4 00 00 14	b	0x42c4d0
+  42c204:	51 00 0d 8b	add	x17, x2, x13
+  42c208:	9f 00 11 eb	cmp	x4, x17
+  42c20c:	00 16 00 54	b.eq	0x42c4cc
+  42c210:	ad 01 02 8b	add	x13, x13, x2
+  42c214:	8f 00 0d cb	sub	x15, x4, x13
+  42c218:	ff 21 00 f1	cmp	x15, #0x8
+  42c21c:	02 44 00 54	b.hs	0x42ca9c
+  42c220:	0e 00 80 d2	mov	x14, #0x0
+  42c224:	21 00 80 52	mov	w1, #0x1
+  42c228:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c22c:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c230:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c234:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c238:	4a 01 10 8b	add	x10, x10, x16
+  42c23c:	4a 01 11 8b	add	x10, x10, x17
+  42c240:	29 01 10 8b	add	x9, x9, x16
+  42c244:	29 01 11 8b	add	x9, x9, x17
+  42c248:	8e 00 0e cb	sub	x14, x4, x14
+  42c24c:	cd 01 0d cb	sub	x13, x14, x13
+  42c250:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c254:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c258:	d1 01 0b 8a	and	x17, x14, x11
+  42c25c:	c0 01 67 9e	fmov	d0, x14
+  42c260:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c264:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c268:	c2 01 0b 8a	and	x2, x14, x11
+  42c26c:	c1 01 67 9e	fmov	d1, x14
+  42c270:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c274:	f0 17 9f 1a	cset	w16, eq
+  42c278:	c3 85 01 51	sub	w3, w14, #0x61
+  42c27c:	7f 68 00 71	cmp	w3, #0x1a
+  42c280:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c284:	3f 02 0c eb	cmp	x17, x12
+  42c288:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c28c:	11 1c 00 72	ands	w17, w0, #0xff
+  42c290:	e0 17 9f 1a	cset	w0, eq
+  42c294:	23 86 01 51	sub	w3, w17, #0x61
+  42c298:	7f 68 00 71	cmp	w3, #0x1a
+  42c29c:	00 24 9f 1a	csinc	w0, w0, wzr, hs
+  42c2a0:	5f 00 0c eb	cmp	x2, x12
+  42c2a4:	e0 13 80 1a	csel	w0, wzr, w0, ne
+  42c2a8:	20 20 61 1e	fcmp	d1, d1
+  42c2ac:	e2 67 9f 1a	cset	w2, vc
+  42c2b0:	e3 77 9f 1a	cset	w3, vs
+  42c2b4:	00 64 9f 1a	csinc	w0, w0, wzr, vs
+  42c2b8:	3f 02 0e 6b	cmp	w17, w14
+  42c2bc:	ee 13 83 1a	csel	w14, wzr, w3, ne
+  42c2c0:	00 20 60 1e	fcmp	d0, d0
+  42c2c4:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c2c8:	10 02 00 0a	and	w16, w16, w0
+  42c2cc:	21 00 10 0a	and	w1, w1, w16
+  42c2d0:	4e 70 8e 1a	csel	w14, w2, w14, vc
+  42c2d4:	00 20 61 1e	fcmp	d0, d1
+  42c2d8:	f0 17 9f 1a	cset	w16, eq
+  42c2dc:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c2e0:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c2e4:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c2e8:	41 fb ff 54	b.ne	0x42c250
+  42c2ec:	79 00 00 14	b	0x42c4d0
+  42c2f0:	51 00 0d 8b	add	x17, x2, x13
+  42c2f4:	9f 00 11 eb	cmp	x4, x17
+  42c2f8:	a0 0e 00 54	b.eq	0x42c4cc
+  42c2fc:	ad 01 02 8b	add	x13, x13, x2
+  42c300:	8f 00 0d cb	sub	x15, x4, x13
+  42c304:	ff 21 00 f1	cmp	x15, #0x8
+  42c308:	42 50 00 54	b.hs	0x42cd10
+  42c30c:	0e 00 80 d2	mov	x14, #0x0
+  42c310:	21 00 80 52	mov	w1, #0x1
+  42c314:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c318:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c31c:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c320:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c324:	4a 01 10 8b	add	x10, x10, x16
+  42c328:	4a 01 11 8b	add	x10, x10, x17
+  42c32c:	29 01 10 8b	add	x9, x9, x16
+  42c330:	29 01 11 8b	add	x9, x9, x17
+  42c334:	8e 00 0e cb	sub	x14, x4, x14
+  42c338:	cd 01 0d cb	sub	x13, x14, x13
+  42c33c:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c340:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c344:	d1 01 0b 8a	and	x17, x14, x11
+  42c348:	c0 01 67 9e	fmov	d0, x14
+  42c34c:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c350:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c354:	c2 01 0b 8a	and	x2, x14, x11
+  42c358:	c1 01 67 9e	fmov	d1, x14
+  42c35c:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c360:	f0 17 9f 1a	cset	w16, eq
+  42c364:	c3 85 01 51	sub	w3, w14, #0x61
+  42c368:	7f 68 00 71	cmp	w3, #0x1a
+  42c36c:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c370:	3f 02 0c eb	cmp	x17, x12
+  42c374:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c378:	11 1c 00 72	ands	w17, w0, #0xff
+  42c37c:	e0 17 9f 1a	cset	w0, eq
+  42c380:	23 86 01 51	sub	w3, w17, #0x61
+  42c384:	7f 68 00 71	cmp	w3, #0x1a
+  42c388:	00 24 9f 1a	csinc	w0, w0, wzr, hs
+  42c38c:	5f 00 0c eb	cmp	x2, x12
+  42c390:	e0 13 80 1a	csel	w0, wzr, w0, ne
+  42c394:	20 20 61 1e	fcmp	d1, d1
+  42c398:	e2 67 9f 1a	cset	w2, vc
+  42c39c:	00 64 9f 1a	csinc	w0, w0, wzr, vs
+  42c3a0:	3f 02 0e 6b	cmp	w17, w14
+  42c3a4:	4e 24 9f 1a	csinc	w14, w2, wzr, hs
+  42c3a8:	00 20 60 1e	fcmp	d0, d0
+  42c3ac:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c3b0:	10 02 00 0a	and	w16, w16, w0
+  42c3b4:	21 00 10 0a	and	w1, w1, w16
+  42c3b8:	ee 73 8e 1a	csel	w14, wzr, w14, vc
+  42c3bc:	00 20 61 1e	fcmp	d0, d1
+  42c3c0:	f0 d7 9f 1a	cset	w16, gt
+  42c3c4:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c3c8:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c3cc:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c3d0:	61 fb ff 54	b.ne	0x42c33c
+  42c3d4:	3f 00 00 14	b	0x42c4d0
+  42c3d8:	51 00 0d 8b	add	x17, x2, x13
+  42c3dc:	9f 00 11 eb	cmp	x4, x17
+  42c3e0:	60 07 00 54	b.eq	0x42c4cc
+  42c3e4:	ad 01 02 8b	add	x13, x13, x2
+  42c3e8:	8f 00 0d cb	sub	x15, x4, x13
+  42c3ec:	ff 21 00 f1	cmp	x15, #0x8
+  42c3f0:	42 5c 00 54	b.hs	0x42cf78
+  42c3f4:	0e 00 80 d2	mov	x14, #0x0
+  42c3f8:	21 00 80 52	mov	w1, #0x1
+  42c3fc:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c400:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c404:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c408:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c40c:	4a 01 10 8b	add	x10, x10, x16
+  42c410:	4a 01 11 8b	add	x10, x10, x17
+  42c414:	29 01 10 8b	add	x9, x9, x16
+  42c418:	29 01 11 8b	add	x9, x9, x17
+  42c41c:	8e 00 0e cb	sub	x14, x4, x14
+  42c420:	cd 01 0d cb	sub	x13, x14, x13
+  42c424:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c428:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c42c:	d1 01 0b 8a	and	x17, x14, x11
+  42c430:	c0 01 67 9e	fmov	d0, x14
+  42c434:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c438:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c43c:	c2 01 0b 8a	and	x2, x14, x11
+  42c440:	c1 01 67 9e	fmov	d1, x14
+  42c444:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c448:	f0 17 9f 1a	cset	w16, eq
+  42c44c:	c3 85 01 51	sub	w3, w14, #0x61
+  42c450:	7f 68 00 71	cmp	w3, #0x1a
+  42c454:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c458:	3f 02 0c eb	cmp	x17, x12
+  42c45c:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c460:	11 1c 00 72	ands	w17, w0, #0xff
+  42c464:	e0 17 9f 1a	cset	w0, eq
+  42c468:	23 86 01 51	sub	w3, w17, #0x61
+  42c46c:	7f 68 00 71	cmp	w3, #0x1a
+  42c470:	00 24 9f 1a	csinc	w0, w0, wzr, hs
+  42c474:	5f 00 0c eb	cmp	x2, x12
+  42c478:	e0 13 80 1a	csel	w0, wzr, w0, ne
+  42c47c:	00 20 60 1e	fcmp	d0, d0
+  42c480:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c484:	ce 61 9f 5a	csinv	w14, w14, wzr, vs
+  42c488:	20 20 61 1e	fcmp	d1, d1
+  42c48c:	00 64 9f 1a	csinc	w0, w0, wzr, vs
+  42c490:	10 02 00 0a	and	w16, w16, w0
+  42c494:	21 00 10 0a	and	w1, w1, w16
+  42c498:	30 62 9f 5a	csinv	w16, w17, wzr, vs
+  42c49c:	df 01 10 6b	cmp	w14, w16
+  42c4a0:	ee 07 9f 1a	cset	w14, ne
+  42c4a4:	00 20 61 1e	fcmp	d0, d1
+  42c4a8:	f0 07 9f 1a	cset	w16, ne
+  42c4ac:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c4b0:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c4b4:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c4b8:	61 fb ff 54	b.ne	0x42c424
+  42c4bc:	05 00 00 14	b	0x42c4d0
+  42c4c0:	51 00 0d 8b	add	x17, x2, x13
+  42c4c4:	9f 00 11 eb	cmp	x4, x17
+  42c4c8:	c1 01 00 54	b.ne	0x42c500
+  42c4cc:	21 00 80 52	mov	w1, #0x1
+  42c4d0:	08 01 01 0a	and	w8, w8, w1
+  42c4d4:	00 01 00 12	and	w0, w8, #0x1
+  42c4d8:	f4 4f 48 a9	ldp	x20, x19, [sp, #0x80]
+  42c4dc:	f6 57 47 a9	ldp	x22, x21, [sp, #0x70]
+  42c4e0:	f8 5f 46 a9	ldp	x24, x23, [sp, #0x60]
+  42c4e4:	fa 67 45 a9	ldp	x26, x25, [sp, #0x50]
+  42c4e8:	fc 6f 44 a9	ldp	x28, x27, [sp, #0x40]
+  42c4ec:	e9 23 43 6d	ldp	d9, d8, [sp, #0x30]
+  42c4f0:	eb 2b 42 6d	ldp	d11, d10, [sp, #0x20]
+  42c4f4:	ed 33 41 6d	ldp	d13, d12, [sp, #0x10]
+  42c4f8:	ef 3b c9 6c	ldp	d15, d14, [sp], #0x90
+  42c4fc:	c0 03 5f d6	ret
+  42c500:	ad 01 02 8b	add	x13, x13, x2
+  42c504:	8f 00 0d cb	sub	x15, x4, x13
+  42c508:	ff 21 00 f1	cmp	x15, #0x8
+  42c50c:	42 67 00 54	b.hs	0x42d1f4
+  42c510:	0e 00 80 d2	mov	x14, #0x0
+  42c514:	21 00 80 52	mov	w1, #0x1
+  42c518:	6f 08 0e 8b	add	x15, x3, x14, lsl #2
+  42c51c:	ef 09 0d 8b	add	x15, x15, x13, lsl #2
+  42c520:	d0 f1 7d d3	lsl	x16, x14, #3
+  42c524:	b1 f1 7d d3	lsl	x17, x13, #3
+  42c528:	4a 01 10 8b	add	x10, x10, x16
+  42c52c:	4a 01 11 8b	add	x10, x10, x17
+  42c530:	29 01 10 8b	add	x9, x9, x16
+  42c534:	29 01 11 8b	add	x9, x9, x17
+  42c538:	8e 00 0e cb	sub	x14, x4, x14
+  42c53c:	cd 01 0d cb	sub	x13, x14, x13
+  42c540:	2e 85 40 f8	ldr	x14, [x9], #0x8
+  42c544:	d0 fd 60 d3	lsr	x16, x14, #32
+  42c548:	d1 01 0b 8a	and	x17, x14, x11
+  42c54c:	c0 01 67 9e	fmov	d0, x14
+  42c550:	4e 85 40 f8	ldr	x14, [x10], #0x8
+  42c554:	c0 fd 60 d3	lsr	x0, x14, #32
+  42c558:	c2 01 0b 8a	and	x2, x14, x11
+  42c55c:	c1 01 67 9e	fmov	d1, x14
+  42c560:	0e 1e 00 72	ands	w14, w16, #0xff
+  42c564:	f0 17 9f 1a	cset	w16, eq
+  42c568:	c3 85 01 51	sub	w3, w14, #0x61
+  42c56c:	7f 68 00 71	cmp	w3, #0x1a
+  42c570:	10 26 9f 1a	csinc	w16, w16, wzr, hs
+  42c574:	3f 02 0c eb	cmp	x17, x12
+  42c578:	f0 13 90 1a	csel	w16, wzr, w16, ne
+  42c57c:	11 1c 00 72	ands	w17, w0, #0xff
+  42c580:	e0 17 9f 1a	cset	w0, eq
+  42c584:	23 86 01 51	sub	w3, w17, #0x61
+  42c588:	7f 68 00 71	cmp	w3, #0x1a
+  42c58c:	00 24 9f 1a	csinc	w0, w0, wzr, hs
+  42c590:	5f 00 0c eb	cmp	x2, x12
+  42c594:	e0 13 80 1a	csel	w0, wzr, w0, ne
+  42c598:	20 20 61 1e	fcmp	d1, d1
+  42c59c:	e2 67 9f 1a	cset	w2, vc
+  42c5a0:	00 64 9f 1a	csinc	w0, w0, wzr, vs
+  42c5a4:	3f 02 0e 6b	cmp	w17, w14
+  42c5a8:	4e 84 9f 1a	csinc	w14, w2, wzr, hi
+  42c5ac:	00 20 60 1e	fcmp	d0, d0
+  42c5b0:	10 66 9f 1a	csinc	w16, w16, wzr, vs
+  42c5b4:	10 02 00 0a	and	w16, w16, w0
+  42c5b8:	21 00 10 0a	and	w1, w1, w16
+  42c5bc:	4e 70 8e 1a	csel	w14, w2, w14, vc
+  42c5c0:	00 20 61 1e	fcmp	d0, d1
+  42c5c4:	f0 b7 9f 1a	cset	w16, ge
+  42c5c8:	ce 61 90 1a	csel	w14, w14, w16, vs
+  42c5cc:	ee 45 00 b8	str	w14, [x15], #0x4
+  42c5d0:	ad 05 00 f1	subs	x13, x13, #0x1
+  42c5d4:	61 fb ff 54	b.ne	0x42c540
+  42c5d8:	be ff ff 17	b	0x42c4d0
+  42c5dc:	0e 00 80 d2	mov	x14, #0x0
+  42c5e0:	20 f2 7d d3	lsl	x0, x17, #3
+  42c5e4:	50 01 00 8b	add	x16, x10, x0
+  42c5e8:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42c5ec:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42c5f0:	85 f0 7d d3	lsl	x5, x4, #3
+  42c5f4:	42 01 05 8b	add	x2, x10, x5
+  42c5f8:	3f 02 02 eb	cmp	x17, x2
+  42c5fc:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42c600:	e2 27 9f 1a	cset	w2, lo
+  42c604:	20 01 00 8b	add	x0, x9, x0
+  42c608:	1f 00 01 eb	cmp	x0, x1
+  42c60c:	21 01 05 8b	add	x1, x9, x5
+  42c610:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42c614:	21 00 80 52	mov	w1, #0x1
+  42c618:	03 d2 ff 54	b.lo	0x42c058
+  42c61c:	e2 d1 07 37	tbnz	w2, #0x0, 0x42c058
+  42c620:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42c624:	20 e4 00 0f	movi.8b	v0, #0x1
+  42c628:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42c62c:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42c630:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42c634:	22 0c 08 4e	dup.2d	v2, x1
+  42c638:	41 f4 80 d2	mov	x1, #0x7a2
+  42c63c:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42c640:	23 0c 08 4e	dup.2d	v3, x1
+  42c644:	04 04 03 6f	mvni.4s	v4, #0x60
+  42c648:	45 07 00 4f	movi.4s	v5, #0x1a
+  42c64c:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42c650:	26 04 00 4f	movi.4s	v6, #0x1
+  42c654:	10 48 41 ad	ldp	q16, q18, [x0, #0x20]
+  42c658:	47 e6 72 4e	fcmeq.2d	v7, v18, v18
+  42c65c:	11 e6 70 4e	fcmeq.2d	v17, v16, v16
+  42c660:	27 1a 87 4e	uzp1.4s	v7, v17, v7
+  42c664:	11 50 40 ad	ldp	q17, q20, [x0]
+  42c668:	93 e6 74 4e	fcmeq.2d	v19, v20, v20
+  42c66c:	35 e6 71 4e	fcmeq.2d	v21, v17, v17
+  42c670:	b3 1a 93 4e	uzp1.4s	v19, v21, v19
+  42c674:	67 1a 47 4e	uzp1.8h	v7, v19, v7
+  42c678:	19 6e 41 ad	ldp	q25, q27, [x16, #0x20]
+  42c67c:	73 e7 7b 4e	fcmeq.2d	v19, v27, v27
+  42c680:	35 e7 79 4e	fcmeq.2d	v21, v25, v25
+  42c684:	b3 1a 93 4e	uzp1.4s	v19, v21, v19
+  42c688:	17 6a c2 ac	ldp	q23, q26, [x16], #0x40
+  42c68c:	55 e7 7a 4e	fcmeq.2d	v21, v26, v26
+  42c690:	f6 e6 77 4e	fcmeq.2d	v22, v23, v23
+  42c694:	d5 1a 95 4e	uzp1.4s	v21, v22, v21
+  42c698:	b3 1a 53 4e	uzp1.8h	v19, v21, v19
+  42c69c:	16 5a 92 4e	uzp2.4s	v22, v16, v18
+  42c6a0:	35 5a 94 4e	uzp2.4s	v21, v17, v20
+  42c6a4:	b5 1e 21 4e	and.16b	v21, v21, v1
+  42c6a8:	d6 1e 21 4e	and.16b	v22, v22, v1
+  42c6ac:	38 1e 22 4e	and.16b	v24, v17, v2
+  42c6b0:	9c 1e 22 4e	and.16b	v28, v20, v2
+  42c6b4:	1d 1e 22 4e	and.16b	v29, v16, v2
+  42c6b8:	5e 1e 22 4e	and.16b	v30, v18, v2
+  42c6bc:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42c6c0:	bd 8f e3 6e	cmeq.2d	v29, v29, v3
+  42c6c4:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42c6c8:	9c 8f e3 6e	cmeq.2d	v28, v28, v3
+  42c6cc:	18 8f e3 6e	cmeq.2d	v24, v24, v3
+  42c6d0:	18 1b 9c 4e	uzp1.4s	v24, v24, v28
+  42c6d4:	18 1b 5d 4e	uzp1.8h	v24, v24, v29
+  42c6d8:	dc 9a a0 4e	cmeq.4s	v28, v22, #0
+  42c6dc:	bd 9a a0 4e	cmeq.4s	v29, v21, #0
+  42c6e0:	bc 1b 5c 4e	uzp1.8h	v28, v29, v28
+  42c6e4:	bd 86 a4 4e	add.4s	v29, v21, v4
+  42c6e8:	de 86 a4 4e	add.4s	v30, v22, v4
+  42c6ec:	be 34 be 6e	cmhi.4s	v30, v5, v30
+  42c6f0:	bd 34 bd 6e	cmhi.4s	v29, v5, v29
+  42c6f4:	bd 1b 5e 4e	uzp1.8h	v29, v29, v30
+  42c6f8:	9c 1f bd 4e	orr.16b	v28, v28, v29
+  42c6fc:	18 1f 3c 4e	and.16b	v24, v24, v28
+  42c700:	f8 1c b8 4e	orr.16b	v24, v7, v24
+  42c704:	3c 5b 9b 4e	uzp2.4s	v28, v25, v27
+  42c708:	fd 5a 9a 4e	uzp2.4s	v29, v23, v26
+  42c70c:	bd 1f 21 4e	and.16b	v29, v29, v1
+  42c710:	9c 1f 21 4e	and.16b	v28, v28, v1
+  42c714:	fe 1e 22 4e	and.16b	v30, v23, v2
+  42c718:	5f 1f 22 4e	and.16b	v31, v26, v2
+  42c71c:	28 1f 22 4e	and.16b	v8, v25, v2
+  42c720:	69 1f 22 4e	and.16b	v9, v27, v2
+  42c724:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42c728:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42c72c:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42c730:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42c734:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42c738:	de 1b 9f 4e	uzp1.4s	v30, v30, v31
+  42c73c:	de 1b 48 4e	uzp1.8h	v30, v30, v8
+  42c740:	9f 9b a0 4e	cmeq.4s	v31, v28, #0
+  42c744:	a8 9b a0 4e	cmeq.4s	v8, v29, #0
+  42c748:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42c74c:	a8 87 a4 4e	add.4s	v8, v29, v4
+  42c750:	89 87 a4 4e	add.4s	v9, v28, v4
+  42c754:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42c758:	a8 34 a8 6e	cmhi.4s	v8, v5, v8
+  42c75c:	08 19 49 4e	uzp1.8h	v8, v8, v9
+  42c760:	ff 1f a8 4e	orr.16b	v31, v31, v8
+  42c764:	de 1f 3f 4e	and.16b	v30, v30, v31
+  42c768:	7e 1e be 4e	orr.16b	v30, v19, v30
+  42c76c:	5f e6 7b 6e	fcmge.2d	v31, v18, v27
+  42c770:	72 e7 f2 6e	fcmgt.2d	v18, v27, v18
+  42c774:	5b 1e bf 4e	orr.16b	v27, v18, v31
+  42c778:	1f e6 79 6e	fcmge.2d	v31, v16, v25
+  42c77c:	30 e7 f0 6e	fcmgt.2d	v16, v25, v16
+  42c780:	19 1e bf 4e	orr.16b	v25, v16, v31
+  42c784:	39 1b 9b 4e	uzp1.4s	v25, v25, v27
+  42c788:	9b e6 7a 6e	fcmge.2d	v27, v20, v26
+  42c78c:	54 e7 f4 6e	fcmgt.2d	v20, v26, v20
+  42c790:	9a 1e bb 4e	orr.16b	v26, v20, v27
+  42c794:	3b e6 77 6e	fcmge.2d	v27, v17, v23
+  42c798:	f1 e6 f1 6e	fcmgt.2d	v17, v23, v17
+  42c79c:	37 1e bb 4e	orr.16b	v23, v17, v27
+  42c7a0:	f7 1a 9a 4e	uzp1.4s	v23, v23, v26
+  42c7a4:	f7 1a 59 4e	uzp1.8h	v23, v23, v25
+  42c7a8:	f9 5a 20 6e	mvn.16b	v25, v23
+  42c7ac:	39 2b 21 0e	xtn.8b	v25, v25
+  42c7b0:	10 1a 92 4e	uzp1.4s	v16, v16, v18
+  42c7b4:	31 1a 94 4e	uzp1.4s	v17, v17, v20
+  42c7b8:	30 1a 50 4e	uzp1.8h	v16, v17, v16
+  42c7bc:	10 2a 21 0e	xtn.8b	v16, v16
+  42c7c0:	91 37 b6 6e	cmhi.4s	v17, v28, v22
+  42c7c4:	b2 37 b5 6e	cmhi.4s	v18, v29, v21
+  42c7c8:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  42c7cc:	e7 1c b1 4e	orr.16b	v7, v7, v17
+  42c7d0:	e7 1c 73 4e	bic.16b	v7, v7, v19
+  42c7d4:	10 1e 79 0e	bic.8b	v16, v16, v25
+  42c7d8:	e7 1c 77 4e	bic.16b	v7, v7, v23
+  42c7dc:	e7 28 21 0e	xtn.8b	v7, v7
+  42c7e0:	e7 1c b0 0e	orr.8b	v7, v7, v16
+  42c7e4:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42c7e8:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42c7ec:	10 1e 26 4e	and.16b	v16, v16, v6
+  42c7f0:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42c7f4:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42c7f8:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42c7fc:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42c800:	07 1f 3e 4e	and.16b	v7, v24, v30
+  42c804:	e7 28 21 0e	xtn.8b	v7, v7
+  42c808:	00 00 01 91	add	x0, x0, #0x40
+  42c80c:	00 1c 27 0e	and.8b	v0, v0, v7
+  42c810:	21 20 00 f1	subs	x1, x1, #0x8
+  42c814:	01 f2 ff 54	b.ne	0x42c654
+  42c818:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42c81c:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42c820:	00 a8 31 2e	uminv.8b	b0, v0
+  42c824:	01 00 26 1e	fmov	w1, s0
+  42c828:	ff 01 0e eb	cmp	x15, x14
+  42c82c:	61 c1 ff 54	b.ne	0x42c058
+  42c830:	28 ff ff 17	b	0x42c4d0
+  42c834:	0e 00 80 d2	mov	x14, #0x0
+  42c838:	20 f2 7d d3	lsl	x0, x17, #3
+  42c83c:	50 01 00 8b	add	x16, x10, x0
+  42c840:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42c844:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42c848:	85 f0 7d d3	lsl	x5, x4, #3
+  42c84c:	42 01 05 8b	add	x2, x10, x5
+  42c850:	3f 02 02 eb	cmp	x17, x2
+  42c854:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42c858:	e2 27 9f 1a	cset	w2, lo
+  42c85c:	20 01 00 8b	add	x0, x9, x0
+  42c860:	1f 00 01 eb	cmp	x0, x1
+  42c864:	21 01 05 8b	add	x1, x9, x5
+  42c868:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42c86c:	21 00 80 52	mov	w1, #0x1
+  42c870:	83 c6 ff 54	b.lo	0x42c140
+  42c874:	62 c6 07 37	tbnz	w2, #0x0, 0x42c140
+  42c878:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42c87c:	20 e4 00 0f	movi.8b	v0, #0x1
+  42c880:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42c884:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42c888:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42c88c:	22 0c 08 4e	dup.2d	v2, x1
+  42c890:	41 f4 80 d2	mov	x1, #0x7a2
+  42c894:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42c898:	23 0c 08 4e	dup.2d	v3, x1
+  42c89c:	04 04 03 6f	mvni.4s	v4, #0x60
+  42c8a0:	45 07 00 4f	movi.4s	v5, #0x1a
+  42c8a4:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42c8a8:	26 04 00 4f	movi.4s	v6, #0x1
+  42c8ac:	07 40 41 ad	ldp	q7, q16, [x0, #0x20]
+  42c8b0:	11 e6 70 4e	fcmeq.2d	v17, v16, v16
+  42c8b4:	f2 e4 67 4e	fcmeq.2d	v18, v7, v7
+  42c8b8:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42c8bc:	12 4c 40 ad	ldp	q18, q19, [x0]
+  42c8c0:	74 e6 73 4e	fcmeq.2d	v20, v19, v19
+  42c8c4:	55 e6 72 4e	fcmeq.2d	v21, v18, v18
+  42c8c8:	b4 1a 94 4e	uzp1.4s	v20, v21, v20
+  42c8cc:	91 1a 51 4e	uzp1.8h	v17, v20, v17
+  42c8d0:	14 5e 41 ad	ldp	q20, q23, [x16, #0x20]
+  42c8d4:	f5 e6 77 4e	fcmeq.2d	v21, v23, v23
+  42c8d8:	96 e6 74 4e	fcmeq.2d	v22, v20, v20
+  42c8dc:	d5 1a 95 4e	uzp1.4s	v21, v22, v21
+  42c8e0:	16 62 c2 ac	ldp	q22, q24, [x16], #0x40
+  42c8e4:	19 e7 78 4e	fcmeq.2d	v25, v24, v24
+  42c8e8:	da e6 76 4e	fcmeq.2d	v26, v22, v22
+  42c8ec:	59 1b 99 4e	uzp1.4s	v25, v26, v25
+  42c8f0:	35 1b 55 4e	uzp1.8h	v21, v25, v21
+  42c8f4:	fa 58 90 4e	uzp2.4s	v26, v7, v16
+  42c8f8:	59 5a 93 4e	uzp2.4s	v25, v18, v19
+  42c8fc:	39 1f 21 4e	and.16b	v25, v25, v1
+  42c900:	5a 1f 21 4e	and.16b	v26, v26, v1
+  42c904:	5b 1e 22 4e	and.16b	v27, v18, v2
+  42c908:	7c 1e 22 4e	and.16b	v28, v19, v2
+  42c90c:	fd 1c 22 4e	and.16b	v29, v7, v2
+  42c910:	1e 1e 22 4e	and.16b	v30, v16, v2
+  42c914:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42c918:	bd 8f e3 6e	cmeq.2d	v29, v29, v3
+  42c91c:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42c920:	9c 8f e3 6e	cmeq.2d	v28, v28, v3
+  42c924:	7b 8f e3 6e	cmeq.2d	v27, v27, v3
+  42c928:	7b 1b 9c 4e	uzp1.4s	v27, v27, v28
+  42c92c:	7b 1b 5d 4e	uzp1.8h	v27, v27, v29
+  42c930:	5c 9b a0 4e	cmeq.4s	v28, v26, #0
+  42c934:	3d 9b a0 4e	cmeq.4s	v29, v25, #0
+  42c938:	bc 1b 5c 4e	uzp1.8h	v28, v29, v28
+  42c93c:	3d 87 a4 4e	add.4s	v29, v25, v4
+  42c940:	5e 87 a4 4e	add.4s	v30, v26, v4
+  42c944:	be 34 be 6e	cmhi.4s	v30, v5, v30
+  42c948:	bd 34 bd 6e	cmhi.4s	v29, v5, v29
+  42c94c:	bd 1b 5e 4e	uzp1.8h	v29, v29, v30
+  42c950:	9c 1f bd 4e	orr.16b	v28, v28, v29
+  42c954:	7b 1f 3c 4e	and.16b	v27, v27, v28
+  42c958:	9c 5a 97 4e	uzp2.4s	v28, v20, v23
+  42c95c:	dd 5a 98 4e	uzp2.4s	v29, v22, v24
+  42c960:	bd 1f 21 4e	and.16b	v29, v29, v1
+  42c964:	9c 1f 21 4e	and.16b	v28, v28, v1
+  42c968:	de 1e 22 4e	and.16b	v30, v22, v2
+  42c96c:	1f 1f 22 4e	and.16b	v31, v24, v2
+  42c970:	88 1e 22 4e	and.16b	v8, v20, v2
+  42c974:	e9 1e 22 4e	and.16b	v9, v23, v2
+  42c978:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42c97c:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42c980:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42c984:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42c988:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42c98c:	de 1b 9f 4e	uzp1.4s	v30, v30, v31
+  42c990:	de 1b 48 4e	uzp1.8h	v30, v30, v8
+  42c994:	9f 9b a0 4e	cmeq.4s	v31, v28, #0
+  42c998:	a8 9b a0 4e	cmeq.4s	v8, v29, #0
+  42c99c:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42c9a0:	a8 87 a4 4e	add.4s	v8, v29, v4
+  42c9a4:	89 87 a4 4e	add.4s	v9, v28, v4
+  42c9a8:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42c9ac:	a8 34 a8 6e	cmhi.4s	v8, v5, v8
+  42c9b0:	08 19 49 4e	uzp1.8h	v8, v8, v9
+  42c9b4:	ff 1f a8 4e	orr.16b	v31, v31, v8
+  42c9b8:	de 1f 3f 4e	and.16b	v30, v30, v31
+  42c9bc:	1f e6 77 6e	fcmge.2d	v31, v16, v23
+  42c9c0:	e8 e6 f0 6e	fcmgt.2d	v8, v23, v16
+  42c9c4:	1f 1d bf 4e	orr.16b	v31, v8, v31
+  42c9c8:	e8 e4 74 6e	fcmge.2d	v8, v7, v20
+  42c9cc:	89 e6 e7 6e	fcmgt.2d	v9, v20, v7
+  42c9d0:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42c9d4:	1f 19 9f 4e	uzp1.4s	v31, v8, v31
+  42c9d8:	68 e6 78 6e	fcmge.2d	v8, v19, v24
+  42c9dc:	09 e7 f3 6e	fcmgt.2d	v9, v24, v19
+  42c9e0:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42c9e4:	49 e6 76 6e	fcmge.2d	v9, v18, v22
+  42c9e8:	ca e6 f2 6e	fcmgt.2d	v10, v22, v18
+  42c9ec:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42c9f0:	3b 1e bb 4e	orr.16b	v27, v17, v27
+  42c9f4:	be 1e be 4e	orr.16b	v30, v21, v30
+  42c9f8:	28 19 88 4e	uzp1.4s	v8, v9, v8
+  42c9fc:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42ca00:	e8 5b 20 6e	mvn.16b	v8, v31
+  42ca04:	08 29 21 0e	xtn.8b	v8, v8
+  42ca08:	f0 e6 70 6e	fcmge.2d	v16, v23, v16
+  42ca0c:	87 e6 67 6e	fcmge.2d	v7, v20, v7
+  42ca10:	e7 18 90 4e	uzp1.4s	v7, v7, v16
+  42ca14:	10 e7 73 6e	fcmge.2d	v16, v24, v19
+  42ca18:	d2 e6 72 6e	fcmge.2d	v18, v22, v18
+  42ca1c:	50 1a 90 4e	uzp1.4s	v16, v18, v16
+  42ca20:	07 1a 47 4e	uzp1.8h	v7, v16, v7
+  42ca24:	e7 28 21 0e	xtn.8b	v7, v7
+  42ca28:	90 3f ba 6e	cmhs.4s	v16, v28, v26
+  42ca2c:	b2 3f b9 6e	cmhs.4s	v18, v29, v25
+  42ca30:	50 1a 50 4e	uzp1.8h	v16, v18, v16
+  42ca34:	10 1e 75 4e	bic.16b	v16, v16, v21
+  42ca38:	30 1e b0 4e	orr.16b	v16, v17, v16
+  42ca3c:	e7 1c 68 0e	bic.8b	v7, v7, v8
+  42ca40:	10 1e 7f 4e	bic.16b	v16, v16, v31
+  42ca44:	10 2a 21 0e	xtn.8b	v16, v16
+  42ca48:	07 1e a7 0e	orr.8b	v7, v16, v7
+  42ca4c:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42ca50:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42ca54:	10 1e 26 4e	and.16b	v16, v16, v6
+  42ca58:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42ca5c:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42ca60:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42ca64:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42ca68:	67 1f 3e 4e	and.16b	v7, v27, v30
+  42ca6c:	e7 28 21 0e	xtn.8b	v7, v7
+  42ca70:	00 00 01 91	add	x0, x0, #0x40
+  42ca74:	00 1c 27 0e	and.8b	v0, v0, v7
+  42ca78:	21 20 00 f1	subs	x1, x1, #0x8
+  42ca7c:	81 f1 ff 54	b.ne	0x42c8ac
+  42ca80:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42ca84:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42ca88:	00 a8 31 2e	uminv.8b	b0, v0
+  42ca8c:	01 00 26 1e	fmov	w1, s0
+  42ca90:	ff 01 0e eb	cmp	x15, x14
+  42ca94:	61 b5 ff 54	b.ne	0x42c140
+  42ca98:	8e fe ff 17	b	0x42c4d0
+  42ca9c:	0e 00 80 d2	mov	x14, #0x0
+  42caa0:	20 f2 7d d3	lsl	x0, x17, #3
+  42caa4:	50 01 00 8b	add	x16, x10, x0
+  42caa8:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42caac:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42cab0:	85 f0 7d d3	lsl	x5, x4, #3
+  42cab4:	42 01 05 8b	add	x2, x10, x5
+  42cab8:	3f 02 02 eb	cmp	x17, x2
+  42cabc:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42cac0:	e2 27 9f 1a	cset	w2, lo
+  42cac4:	20 01 00 8b	add	x0, x9, x0
+  42cac8:	1f 00 01 eb	cmp	x0, x1
+  42cacc:	21 01 05 8b	add	x1, x9, x5
+  42cad0:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42cad4:	21 00 80 52	mov	w1, #0x1
+  42cad8:	83 ba ff 54	b.lo	0x42c228
+  42cadc:	62 ba 07 37	tbnz	w2, #0x0, 0x42c228
+  42cae0:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42cae4:	20 e4 00 0f	movi.8b	v0, #0x1
+  42cae8:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42caec:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42caf0:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42caf4:	22 0c 08 4e	dup.2d	v2, x1
+  42caf8:	41 f4 80 d2	mov	x1, #0x7a2
+  42cafc:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42cb00:	23 0c 08 4e	dup.2d	v3, x1
+  42cb04:	04 04 03 6f	mvni.4s	v4, #0x60
+  42cb08:	45 07 00 4f	movi.4s	v5, #0x1a
+  42cb0c:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42cb10:	26 04 00 4f	movi.4s	v6, #0x1
+  42cb14:	07 44 41 ad	ldp	q7, q17, [x0, #0x20]
+  42cb18:	30 e6 71 4e	fcmeq.2d	v16, v17, v17
+  42cb1c:	f2 e4 67 4e	fcmeq.2d	v18, v7, v7
+  42cb20:	50 1a 90 4e	uzp1.4s	v16, v18, v16
+  42cb24:	12 4c 40 ad	ldp	q18, q19, [x0]
+  42cb28:	74 e6 73 4e	fcmeq.2d	v20, v19, v19
+  42cb2c:	55 e6 72 4e	fcmeq.2d	v21, v18, v18
+  42cb30:	b4 1a 94 4e	uzp1.4s	v20, v21, v20
+  42cb34:	90 1a 50 4e	uzp1.8h	v16, v20, v16
+  42cb38:	15 5a 41 ad	ldp	q21, q22, [x16, #0x20]
+  42cb3c:	d4 e6 76 4e	fcmeq.2d	v20, v22, v22
+  42cb40:	b7 e6 75 4e	fcmeq.2d	v23, v21, v21
+  42cb44:	f4 1a 94 4e	uzp1.4s	v20, v23, v20
+  42cb48:	17 62 40 ad	ldp	q23, q24, [x16]
+  42cb4c:	19 e7 78 4e	fcmeq.2d	v25, v24, v24
+  42cb50:	fa e6 77 4e	fcmeq.2d	v26, v23, v23
+  42cb54:	59 1b 99 4e	uzp1.4s	v25, v26, v25
+  42cb58:	34 1b 54 4e	uzp1.8h	v20, v25, v20
+  42cb5c:	fa 58 91 4e	uzp2.4s	v26, v7, v17
+  42cb60:	59 5a 93 4e	uzp2.4s	v25, v18, v19
+  42cb64:	39 1f 21 4e	and.16b	v25, v25, v1
+  42cb68:	5a 1f 21 4e	and.16b	v26, v26, v1
+  42cb6c:	5b 1e 22 4e	and.16b	v27, v18, v2
+  42cb70:	7c 1e 22 4e	and.16b	v28, v19, v2
+  42cb74:	fd 1c 22 4e	and.16b	v29, v7, v2
+  42cb78:	3e 1e 22 4e	and.16b	v30, v17, v2
+  42cb7c:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42cb80:	bd 8f e3 6e	cmeq.2d	v29, v29, v3
+  42cb84:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42cb88:	9c 8f e3 6e	cmeq.2d	v28, v28, v3
+  42cb8c:	7b 8f e3 6e	cmeq.2d	v27, v27, v3
+  42cb90:	7b 1b 9c 4e	uzp1.4s	v27, v27, v28
+  42cb94:	7b 1b 5d 4e	uzp1.8h	v27, v27, v29
+  42cb98:	5c 9b a0 4e	cmeq.4s	v28, v26, #0
+  42cb9c:	3d 9b a0 4e	cmeq.4s	v29, v25, #0
+  42cba0:	bc 1b 5c 4e	uzp1.8h	v28, v29, v28
+  42cba4:	3d 87 a4 4e	add.4s	v29, v25, v4
+  42cba8:	5e 87 a4 4e	add.4s	v30, v26, v4
+  42cbac:	be 34 be 6e	cmhi.4s	v30, v5, v30
+  42cbb0:	bd 34 bd 6e	cmhi.4s	v29, v5, v29
+  42cbb4:	bd 1b 5e 4e	uzp1.8h	v29, v29, v30
+  42cbb8:	9c 1f bd 4e	orr.16b	v28, v28, v29
+  42cbbc:	7b 1f 3c 4e	and.16b	v27, v27, v28
+  42cbc0:	bc 5a 96 4e	uzp2.4s	v28, v21, v22
+  42cbc4:	fd 5a 98 4e	uzp2.4s	v29, v23, v24
+  42cbc8:	bd 1f 21 4e	and.16b	v29, v29, v1
+  42cbcc:	9c 1f 21 4e	and.16b	v28, v28, v1
+  42cbd0:	fe 1e 22 4e	and.16b	v30, v23, v2
+  42cbd4:	1f 1f 22 4e	and.16b	v31, v24, v2
+  42cbd8:	a8 1e 22 4e	and.16b	v8, v21, v2
+  42cbdc:	c9 1e 22 4e	and.16b	v9, v22, v2
+  42cbe0:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42cbe4:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42cbe8:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42cbec:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42cbf0:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42cbf4:	de 1b 9f 4e	uzp1.4s	v30, v30, v31
+  42cbf8:	de 1b 48 4e	uzp1.8h	v30, v30, v8
+  42cbfc:	9f 9b a0 4e	cmeq.4s	v31, v28, #0
+  42cc00:	a8 9b a0 4e	cmeq.4s	v8, v29, #0
+  42cc04:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42cc08:	a8 87 a4 4e	add.4s	v8, v29, v4
+  42cc0c:	89 87 a4 4e	add.4s	v9, v28, v4
+  42cc10:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42cc14:	a8 34 a8 6e	cmhi.4s	v8, v5, v8
+  42cc18:	08 19 49 4e	uzp1.8h	v8, v8, v9
+  42cc1c:	ff 1f a8 4e	orr.16b	v31, v31, v8
+  42cc20:	de 1f 3f 4e	and.16b	v30, v30, v31
+  42cc24:	3f e6 76 6e	fcmge.2d	v31, v17, v22
+  42cc28:	c8 e6 f1 6e	fcmgt.2d	v8, v22, v17
+  42cc2c:	1f 1d bf 4e	orr.16b	v31, v8, v31
+  42cc30:	e8 e4 75 6e	fcmge.2d	v8, v7, v21
+  42cc34:	a9 e6 e7 6e	fcmgt.2d	v9, v21, v7
+  42cc38:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42cc3c:	1f 19 9f 4e	uzp1.4s	v31, v8, v31
+  42cc40:	68 e6 78 6e	fcmge.2d	v8, v19, v24
+  42cc44:	09 e7 f3 6e	fcmgt.2d	v9, v24, v19
+  42cc48:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42cc4c:	49 e6 77 6e	fcmge.2d	v9, v18, v23
+  42cc50:	ea e6 f2 6e	fcmgt.2d	v10, v23, v18
+  42cc54:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42cc58:	0a 2a 21 0e	xtn.8b	v10, v16
+  42cc5c:	1b 1e bb 4e	orr.16b	v27, v16, v27
+  42cc60:	9e 1e be 4e	orr.16b	v30, v20, v30
+  42cc64:	28 19 88 4e	uzp1.4s	v8, v9, v8
+  42cc68:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42cc6c:	ff 5b 20 6e	mvn.16b	v31, v31
+  42cc70:	ff 2b 21 0e	xtn.8b	v31, v31
+  42cc74:	31 e6 76 4e	fcmeq.2d	v17, v17, v22
+  42cc78:	e7 e4 75 4e	fcmeq.2d	v7, v7, v21
+  42cc7c:	e7 18 91 4e	uzp1.4s	v7, v7, v17
+  42cc80:	71 e6 78 4e	fcmeq.2d	v17, v19, v24
+  42cc84:	52 e6 77 4e	fcmeq.2d	v18, v18, v23
+  42cc88:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42cc8c:	27 1a 47 4e	uzp1.8h	v7, v17, v7
+  42cc90:	e7 28 21 0e	xtn.8b	v7, v7
+  42cc94:	91 8f ba 6e	cmeq.4s	v17, v28, v26
+  42cc98:	b2 8f b9 6e	cmeq.4s	v18, v29, v25
+  42cc9c:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  42cca0:	31 1e 74 4e	bic.16b	v17, v17, v20
+  42cca4:	31 2a 21 0e	xtn.8b	v17, v17
+  42cca8:	31 1e 6a 0e	bic.8b	v17, v17, v10
+  42ccac:	90 1e 30 4e	and.16b	v16, v20, v16
+  42ccb0:	10 2a 21 0e	xtn.8b	v16, v16
+  42ccb4:	10 1e b1 0e	orr.8b	v16, v16, v17
+  42ccb8:	07 1e bf 2e	bit.8b	v7, v16, v31
+  42ccbc:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42ccc0:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42ccc4:	10 1e 26 4e	and.16b	v16, v16, v6
+  42ccc8:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42cccc:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42ccd0:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42ccd4:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42ccd8:	67 1f 3e 4e	and.16b	v7, v27, v30
+  42ccdc:	10 02 01 91	add	x16, x16, #0x40
+  42cce0:	e7 28 21 0e	xtn.8b	v7, v7
+  42cce4:	00 00 01 91	add	x0, x0, #0x40
+  42cce8:	00 1c 27 0e	and.8b	v0, v0, v7
+  42ccec:	21 20 00 f1	subs	x1, x1, #0x8
+  42ccf0:	21 f1 ff 54	b.ne	0x42cb14
+  42ccf4:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42ccf8:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42ccfc:	00 a8 31 2e	uminv.8b	b0, v0
+  42cd00:	01 00 26 1e	fmov	w1, s0
+  42cd04:	ff 01 0e eb	cmp	x15, x14
+  42cd08:	01 a9 ff 54	b.ne	0x42c228
+  42cd0c:	f1 fd ff 17	b	0x42c4d0
+  42cd10:	0e 00 80 d2	mov	x14, #0x0
+  42cd14:	20 f2 7d d3	lsl	x0, x17, #3
+  42cd18:	50 01 00 8b	add	x16, x10, x0
+  42cd1c:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42cd20:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42cd24:	85 f0 7d d3	lsl	x5, x4, #3
+  42cd28:	42 01 05 8b	add	x2, x10, x5
+  42cd2c:	3f 02 02 eb	cmp	x17, x2
+  42cd30:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42cd34:	e2 27 9f 1a	cset	w2, lo
+  42cd38:	20 01 00 8b	add	x0, x9, x0
+  42cd3c:	1f 00 01 eb	cmp	x0, x1
+  42cd40:	21 01 05 8b	add	x1, x9, x5
+  42cd44:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42cd48:	21 00 80 52	mov	w1, #0x1
+  42cd4c:	43 ae ff 54	b.lo	0x42c314
+  42cd50:	22 ae 07 37	tbnz	w2, #0x0, 0x42c314
+  42cd54:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42cd58:	20 e4 00 0f	movi.8b	v0, #0x1
+  42cd5c:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42cd60:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42cd64:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42cd68:	22 0c 08 4e	dup.2d	v2, x1
+  42cd6c:	41 f4 80 d2	mov	x1, #0x7a2
+  42cd70:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42cd74:	23 0c 08 4e	dup.2d	v3, x1
+  42cd78:	04 04 03 6f	mvni.4s	v4, #0x60
+  42cd7c:	45 07 00 4f	movi.4s	v5, #0x1a
+  42cd80:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42cd84:	26 04 00 4f	movi.4s	v6, #0x1
+  42cd88:	07 40 41 ad	ldp	q7, q16, [x0, #0x20]
+  42cd8c:	11 e6 70 4e	fcmeq.2d	v17, v16, v16
+  42cd90:	f2 e4 67 4e	fcmeq.2d	v18, v7, v7
+  42cd94:	51 1a 91 4e	uzp1.4s	v17, v18, v17
+  42cd98:	12 4c 40 ad	ldp	q18, q19, [x0]
+  42cd9c:	74 e6 73 4e	fcmeq.2d	v20, v19, v19
+  42cda0:	55 e6 72 4e	fcmeq.2d	v21, v18, v18
+  42cda4:	b4 1a 94 4e	uzp1.4s	v20, v21, v20
+  42cda8:	91 1a 51 4e	uzp1.8h	v17, v20, v17
+  42cdac:	14 5e 41 ad	ldp	q20, q23, [x16, #0x20]
+  42cdb0:	f5 e6 77 4e	fcmeq.2d	v21, v23, v23
+  42cdb4:	96 e6 74 4e	fcmeq.2d	v22, v20, v20
+  42cdb8:	d5 1a 95 4e	uzp1.4s	v21, v22, v21
+  42cdbc:	16 62 c2 ac	ldp	q22, q24, [x16], #0x40
+  42cdc0:	19 e7 78 4e	fcmeq.2d	v25, v24, v24
+  42cdc4:	da e6 76 4e	fcmeq.2d	v26, v22, v22
+  42cdc8:	59 1b 99 4e	uzp1.4s	v25, v26, v25
+  42cdcc:	35 1b 55 4e	uzp1.8h	v21, v25, v21
+  42cdd0:	fa 58 90 4e	uzp2.4s	v26, v7, v16
+  42cdd4:	59 5a 93 4e	uzp2.4s	v25, v18, v19
+  42cdd8:	39 1f 21 4e	and.16b	v25, v25, v1
+  42cddc:	5a 1f 21 4e	and.16b	v26, v26, v1
+  42cde0:	5b 1e 22 4e	and.16b	v27, v18, v2
+  42cde4:	7c 1e 22 4e	and.16b	v28, v19, v2
+  42cde8:	fd 1c 22 4e	and.16b	v29, v7, v2
+  42cdec:	1e 1e 22 4e	and.16b	v30, v16, v2
+  42cdf0:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42cdf4:	bd 8f e3 6e	cmeq.2d	v29, v29, v3
+  42cdf8:	bd 1b 9e 4e	uzp1.4s	v29, v29, v30
+  42cdfc:	9c 8f e3 6e	cmeq.2d	v28, v28, v3
+  42ce00:	7b 8f e3 6e	cmeq.2d	v27, v27, v3
+  42ce04:	7b 1b 9c 4e	uzp1.4s	v27, v27, v28
+  42ce08:	7b 1b 5d 4e	uzp1.8h	v27, v27, v29
+  42ce0c:	5c 9b a0 4e	cmeq.4s	v28, v26, #0
+  42ce10:	3d 9b a0 4e	cmeq.4s	v29, v25, #0
+  42ce14:	bc 1b 5c 4e	uzp1.8h	v28, v29, v28
+  42ce18:	3d 87 a4 4e	add.4s	v29, v25, v4
+  42ce1c:	5e 87 a4 4e	add.4s	v30, v26, v4
+  42ce20:	be 34 be 6e	cmhi.4s	v30, v5, v30
+  42ce24:	bd 34 bd 6e	cmhi.4s	v29, v5, v29
+  42ce28:	bd 1b 5e 4e	uzp1.8h	v29, v29, v30
+  42ce2c:	9c 1f bd 4e	orr.16b	v28, v28, v29
+  42ce30:	7b 1f 3c 4e	and.16b	v27, v27, v28
+  42ce34:	9c 5a 97 4e	uzp2.4s	v28, v20, v23
+  42ce38:	dd 5a 98 4e	uzp2.4s	v29, v22, v24
+  42ce3c:	bd 1f 21 4e	and.16b	v29, v29, v1
+  42ce40:	9c 1f 21 4e	and.16b	v28, v28, v1
+  42ce44:	de 1e 22 4e	and.16b	v30, v22, v2
+  42ce48:	1f 1f 22 4e	and.16b	v31, v24, v2
+  42ce4c:	88 1e 22 4e	and.16b	v8, v20, v2
+  42ce50:	e9 1e 22 4e	and.16b	v9, v23, v2
+  42ce54:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42ce58:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42ce5c:	08 19 89 4e	uzp1.4s	v8, v8, v9
+  42ce60:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42ce64:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42ce68:	de 1b 9f 4e	uzp1.4s	v30, v30, v31
+  42ce6c:	de 1b 48 4e	uzp1.8h	v30, v30, v8
+  42ce70:	9f 9b a0 4e	cmeq.4s	v31, v28, #0
+  42ce74:	a8 9b a0 4e	cmeq.4s	v8, v29, #0
+  42ce78:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42ce7c:	a8 87 a4 4e	add.4s	v8, v29, v4
+  42ce80:	89 87 a4 4e	add.4s	v9, v28, v4
+  42ce84:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42ce88:	a8 34 a8 6e	cmhi.4s	v8, v5, v8
+  42ce8c:	08 19 49 4e	uzp1.8h	v8, v8, v9
+  42ce90:	ff 1f a8 4e	orr.16b	v31, v31, v8
+  42ce94:	de 1f 3f 4e	and.16b	v30, v30, v31
+  42ce98:	1f e6 77 6e	fcmge.2d	v31, v16, v23
+  42ce9c:	e8 e6 f0 6e	fcmgt.2d	v8, v23, v16
+  42cea0:	1f 1d bf 4e	orr.16b	v31, v8, v31
+  42cea4:	e8 e4 74 6e	fcmge.2d	v8, v7, v20
+  42cea8:	89 e6 e7 6e	fcmgt.2d	v9, v20, v7
+  42ceac:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42ceb0:	1f 19 9f 4e	uzp1.4s	v31, v8, v31
+  42ceb4:	68 e6 78 6e	fcmge.2d	v8, v19, v24
+  42ceb8:	09 e7 f3 6e	fcmgt.2d	v9, v24, v19
+  42cebc:	28 1d a8 4e	orr.16b	v8, v9, v8
+  42cec0:	49 e6 76 6e	fcmge.2d	v9, v18, v22
+  42cec4:	ca e6 f2 6e	fcmgt.2d	v10, v22, v18
+  42cec8:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42cecc:	3b 1e bb 4e	orr.16b	v27, v17, v27
+  42ced0:	be 1e be 4e	orr.16b	v30, v21, v30
+  42ced4:	28 19 88 4e	uzp1.4s	v8, v9, v8
+  42ced8:	1f 19 5f 4e	uzp1.8h	v31, v8, v31
+  42cedc:	e8 5b 20 6e	mvn.16b	v8, v31
+  42cee0:	08 29 21 0e	xtn.8b	v8, v8
+  42cee4:	10 e6 f7 6e	fcmgt.2d	v16, v16, v23
+  42cee8:	e7 e4 f4 6e	fcmgt.2d	v7, v7, v20
+  42ceec:	e7 18 90 4e	uzp1.4s	v7, v7, v16
+  42cef0:	70 e6 f8 6e	fcmgt.2d	v16, v19, v24
+  42cef4:	52 e6 f6 6e	fcmgt.2d	v18, v18, v22
+  42cef8:	50 1a 90 4e	uzp1.4s	v16, v18, v16
+  42cefc:	07 1a 47 4e	uzp1.8h	v7, v16, v7
+  42cf00:	e7 28 21 0e	xtn.8b	v7, v7
+  42cf04:	50 37 bc 6e	cmhi.4s	v16, v26, v28
+  42cf08:	32 37 bd 6e	cmhi.4s	v18, v25, v29
+  42cf0c:	50 1a 50 4e	uzp1.8h	v16, v18, v16
+  42cf10:	b0 1e b0 4e	orr.16b	v16, v21, v16
+  42cf14:	10 1e 71 4e	bic.16b	v16, v16, v17
+  42cf18:	e7 1c 68 0e	bic.8b	v7, v7, v8
+  42cf1c:	10 1e 7f 4e	bic.16b	v16, v16, v31
+  42cf20:	10 2a 21 0e	xtn.8b	v16, v16
+  42cf24:	07 1e a7 0e	orr.8b	v7, v16, v7
+  42cf28:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42cf2c:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42cf30:	10 1e 26 4e	and.16b	v16, v16, v6
+  42cf34:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42cf38:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42cf3c:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42cf40:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42cf44:	67 1f 3e 4e	and.16b	v7, v27, v30
+  42cf48:	e7 28 21 0e	xtn.8b	v7, v7
+  42cf4c:	00 00 01 91	add	x0, x0, #0x40
+  42cf50:	00 1c 27 0e	and.8b	v0, v0, v7
+  42cf54:	21 20 00 f1	subs	x1, x1, #0x8
+  42cf58:	81 f1 ff 54	b.ne	0x42cd88
+  42cf5c:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42cf60:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42cf64:	00 a8 31 2e	uminv.8b	b0, v0
+  42cf68:	01 00 26 1e	fmov	w1, s0
+  42cf6c:	ff 01 0e eb	cmp	x15, x14
+  42cf70:	21 9d ff 54	b.ne	0x42c314
+  42cf74:	57 fd ff 17	b	0x42c4d0
+  42cf78:	0e 00 80 d2	mov	x14, #0x0
+  42cf7c:	20 f2 7d d3	lsl	x0, x17, #3
+  42cf80:	50 01 00 8b	add	x16, x10, x0
+  42cf84:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42cf88:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42cf8c:	85 f0 7d d3	lsl	x5, x4, #3
+  42cf90:	42 01 05 8b	add	x2, x10, x5
+  42cf94:	3f 02 02 eb	cmp	x17, x2
+  42cf98:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42cf9c:	e2 27 9f 1a	cset	w2, lo
+  42cfa0:	20 01 00 8b	add	x0, x9, x0
+  42cfa4:	1f 00 01 eb	cmp	x0, x1
+  42cfa8:	21 01 05 8b	add	x1, x9, x5
+  42cfac:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42cfb0:	21 00 80 52	mov	w1, #0x1
+  42cfb4:	43 a2 ff 54	b.lo	0x42c3fc
+  42cfb8:	22 a2 07 37	tbnz	w2, #0x0, 0x42c3fc
+  42cfbc:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42cfc0:	20 e4 00 0f	movi.8b	v0, #0x1
+  42cfc4:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42cfc8:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42cfcc:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42cfd0:	22 0c 08 4e	dup.2d	v2, x1
+  42cfd4:	41 f4 80 d2	mov	x1, #0x7a2
+  42cfd8:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42cfdc:	23 0c 08 4e	dup.2d	v3, x1
+  42cfe0:	04 04 03 6f	mvni.4s	v4, #0x60
+  42cfe4:	45 07 00 4f	movi.4s	v5, #0x1a
+  42cfe8:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42cfec:	26 04 00 4f	movi.4s	v6, #0x1
+  42cff0:	10 44 41 ad	ldp	q16, q17, [x0, #0x20]
+  42cff4:	27 e6 71 4e	fcmeq.2d	v7, v17, v17
+  42cff8:	12 e6 70 4e	fcmeq.2d	v18, v16, v16
+  42cffc:	47 1a 87 4e	uzp1.4s	v7, v18, v7
+  42d000:	13 50 40 ad	ldp	q19, q20, [x0]
+  42d004:	92 e6 74 4e	fcmeq.2d	v18, v20, v20
+  42d008:	75 e6 73 4e	fcmeq.2d	v21, v19, v19
+  42d00c:	b2 1a 92 4e	uzp1.4s	v18, v21, v18
+  42d010:	5d 1a 47 4e	uzp1.8h	v29, v18, v7
+  42d014:	17 66 41 ad	ldp	q23, q25, [x16, #0x20]
+  42d018:	35 e7 79 4e	fcmeq.2d	v21, v25, v25
+  42d01c:	f6 e6 77 4e	fcmeq.2d	v22, v23, v23
+  42d020:	d5 1a 95 4e	uzp1.4s	v21, v22, v21
+  42d024:	18 6a 40 ad	ldp	q24, q26, [x16]
+  42d028:	56 e7 7a 4e	fcmeq.2d	v22, v26, v26
+  42d02c:	1b e7 78 4e	fcmeq.2d	v27, v24, v24
+  42d030:	76 1b 96 4e	uzp1.4s	v22, v27, v22
+  42d034:	de 1a 55 4e	uzp1.8h	v30, v22, v21
+  42d038:	1c 5a 91 4e	uzp2.4s	v28, v16, v17
+  42d03c:	7b 5a 94 4e	uzp2.4s	v27, v19, v20
+  42d040:	7b 1f 21 4e	and.16b	v27, v27, v1
+  42d044:	9c 1f 21 4e	and.16b	v28, v28, v1
+  42d048:	7f 1e 22 4e	and.16b	v31, v19, v2
+  42d04c:	88 1e 22 4e	and.16b	v8, v20, v2
+  42d050:	09 1e 22 4e	and.16b	v9, v16, v2
+  42d054:	2a 1e 22 4e	and.16b	v10, v17, v2
+  42d058:	4a 8d e3 6e	cmeq.2d	v10, v10, v3
+  42d05c:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42d060:	29 19 8a 4e	uzp1.4s	v9, v9, v10
+  42d064:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42d068:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42d06c:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  42d070:	ff 1b 49 4e	uzp1.8h	v31, v31, v9
+  42d074:	88 9b a0 4e	cmeq.4s	v8, v28, #0
+  42d078:	69 9b a0 4e	cmeq.4s	v9, v27, #0
+  42d07c:	28 19 48 4e	uzp1.8h	v8, v9, v8
+  42d080:	69 87 a4 4e	add.4s	v9, v27, v4
+  42d084:	8a 87 a4 4e	add.4s	v10, v28, v4
+  42d088:	aa 34 aa 6e	cmhi.4s	v10, v5, v10
+  42d08c:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42d090:	29 19 4a 4e	uzp1.8h	v9, v9, v10
+  42d094:	08 1d a9 4e	orr.16b	v8, v8, v9
+  42d098:	ff 1f 28 4e	and.16b	v31, v31, v8
+  42d09c:	bd 1f bf 4e	orr.16b	v29, v29, v31
+  42d0a0:	ff 5a 99 4e	uzp2.4s	v31, v23, v25
+  42d0a4:	08 5b 9a 4e	uzp2.4s	v8, v24, v26
+  42d0a8:	08 1d 21 4e	and.16b	v8, v8, v1
+  42d0ac:	ff 1f 21 4e	and.16b	v31, v31, v1
+  42d0b0:	09 1f 22 4e	and.16b	v9, v24, v2
+  42d0b4:	4a 1f 22 4e	and.16b	v10, v26, v2
+  42d0b8:	eb 1e 22 4e	and.16b	v11, v23, v2
+  42d0bc:	2c 1f 22 4e	and.16b	v12, v25, v2
+  42d0c0:	8c 8d e3 6e	cmeq.2d	v12, v12, v3
+  42d0c4:	6b 8d e3 6e	cmeq.2d	v11, v11, v3
+  42d0c8:	6b 19 8c 4e	uzp1.4s	v11, v11, v12
+  42d0cc:	4a 8d e3 6e	cmeq.2d	v10, v10, v3
+  42d0d0:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42d0d4:	29 19 8a 4e	uzp1.4s	v9, v9, v10
+  42d0d8:	29 19 4b 4e	uzp1.8h	v9, v9, v11
+  42d0dc:	ea 9b a0 4e	cmeq.4s	v10, v31, #0
+  42d0e0:	0b 99 a0 4e	cmeq.4s	v11, v8, #0
+  42d0e4:	6a 19 4a 4e	uzp1.8h	v10, v11, v10
+  42d0e8:	0b 85 a4 4e	add.4s	v11, v8, v4
+  42d0ec:	ec 87 a4 4e	add.4s	v12, v31, v4
+  42d0f0:	ac 34 ac 6e	cmhi.4s	v12, v5, v12
+  42d0f4:	ab 34 ab 6e	cmhi.4s	v11, v5, v11
+  42d0f8:	6b 19 4c 4e	uzp1.8h	v11, v11, v12
+  42d0fc:	4a 1d ab 4e	orr.16b	v10, v10, v11
+  42d100:	29 1d 2a 4e	and.16b	v9, v9, v10
+  42d104:	de 1f a9 4e	orr.16b	v30, v30, v9
+  42d108:	29 e6 79 6e	fcmge.2d	v9, v17, v25
+  42d10c:	2a e7 f1 6e	fcmgt.2d	v10, v25, v17
+  42d110:	49 1d a9 4e	orr.16b	v9, v10, v9
+  42d114:	0a e6 77 6e	fcmge.2d	v10, v16, v23
+  42d118:	eb e6 f0 6e	fcmgt.2d	v11, v23, v16
+  42d11c:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42d120:	49 19 89 4e	uzp1.4s	v9, v10, v9
+  42d124:	8a e6 7a 6e	fcmge.2d	v10, v20, v26
+  42d128:	4b e7 f4 6e	fcmgt.2d	v11, v26, v20
+  42d12c:	6a 1d aa 4e	orr.16b	v10, v11, v10
+  42d130:	6b e6 78 6e	fcmge.2d	v11, v19, v24
+  42d134:	0c e7 f3 6e	fcmgt.2d	v12, v24, v19
+  42d138:	8b 1d ab 4e	orr.16b	v11, v12, v11
+  42d13c:	6a 19 8a 4e	uzp1.4s	v10, v11, v10
+  42d140:	49 19 49 4e	uzp1.8h	v9, v10, v9
+  42d144:	2a 59 20 6e	mvn.16b	v10, v9
+  42d148:	4a 29 21 0e	xtn.8b	v10, v10
+  42d14c:	31 e6 79 4e	fcmeq.2d	v17, v17, v25
+  42d150:	10 e6 77 4e	fcmeq.2d	v16, v16, v23
+  42d154:	10 1a 91 4e	uzp1.4s	v16, v16, v17
+  42d158:	91 e6 7a 4e	fcmeq.2d	v17, v20, v26
+  42d15c:	73 e6 78 4e	fcmeq.2d	v19, v19, v24
+  42d160:	71 1a 91 4e	uzp1.4s	v17, v19, v17
+  42d164:	30 1a 50 4e	uzp1.8h	v16, v17, v16
+  42d168:	10 5a 20 6e	mvn.16b	v16, v16
+  42d16c:	10 2a 21 0e	xtn.8b	v16, v16
+  42d170:	51 1e bb 4e	orr.16b	v17, v18, v27
+  42d174:	e7 1c bc 4e	orr.16b	v7, v7, v28
+  42d178:	d2 1e a8 4e	orr.16b	v18, v22, v8
+  42d17c:	b3 1e bf 4e	orr.16b	v19, v21, v31
+  42d180:	e7 8c b3 6e	cmeq.4s	v7, v7, v19
+  42d184:	31 8e b2 6e	cmeq.4s	v17, v17, v18
+  42d188:	27 1a 47 4e	uzp1.8h	v7, v17, v7
+  42d18c:	e7 58 20 6e	mvn.16b	v7, v7
+  42d190:	e7 1c 69 4e	bic.16b	v7, v7, v9
+  42d194:	e7 28 21 0e	xtn.8b	v7, v7
+  42d198:	10 1e 6a 0e	bic.8b	v16, v16, v10
+  42d19c:	e7 1c b0 0e	orr.8b	v7, v7, v16
+  42d1a0:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42d1a4:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42d1a8:	10 1e 26 4e	and.16b	v16, v16, v6
+  42d1ac:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42d1b0:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42d1b4:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42d1b8:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42d1bc:	a7 1f 3e 4e	and.16b	v7, v29, v30
+  42d1c0:	10 02 01 91	add	x16, x16, #0x40
+  42d1c4:	e7 28 21 0e	xtn.8b	v7, v7
+  42d1c8:	00 00 01 91	add	x0, x0, #0x40
+  42d1cc:	00 1c 27 0e	and.8b	v0, v0, v7
+  42d1d0:	21 20 00 f1	subs	x1, x1, #0x8
+  42d1d4:	e1 f0 ff 54	b.ne	0x42cff0
+  42d1d8:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42d1dc:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42d1e0:	00 a8 31 2e	uminv.8b	b0, v0
+  42d1e4:	01 00 26 1e	fmov	w1, s0
+  42d1e8:	ff 01 0e eb	cmp	x15, x14
+  42d1ec:	81 90 ff 54	b.ne	0x42c3fc
+  42d1f0:	b8 fc ff 17	b	0x42c4d0
+  42d1f4:	0e 00 80 d2	mov	x14, #0x0
+  42d1f8:	20 f2 7d d3	lsl	x0, x17, #3
+  42d1fc:	50 01 00 8b	add	x16, x10, x0
+  42d200:	71 08 11 8b	add	x17, x3, x17, lsl #2
+  42d204:	61 08 04 8b	add	x1, x3, x4, lsl #2
+  42d208:	85 f0 7d d3	lsl	x5, x4, #3
+  42d20c:	42 01 05 8b	add	x2, x10, x5
+  42d210:	3f 02 02 eb	cmp	x17, x2
+  42d214:	02 32 41 fa	ccmp	x16, x1, #0x2, lo
+  42d218:	e2 27 9f 1a	cset	w2, lo
+  42d21c:	20 01 00 8b	add	x0, x9, x0
+  42d220:	1f 00 01 eb	cmp	x0, x1
+  42d224:	21 01 05 8b	add	x1, x9, x5
+  42d228:	22 32 41 fa	ccmp	x17, x1, #0x2, lo
+  42d22c:	21 00 80 52	mov	w1, #0x1
+  42d230:	43 97 ff 54	b.lo	0x42c518
+  42d234:	22 97 07 37	tbnz	w2, #0x0, 0x42c518
+  42d238:	ee f1 7d 92	and	x14, x15, #0xfffffffffffffff8
+  42d23c:	20 e4 00 0f	movi.8b	v0, #0x1
+  42d240:	21 e6 00 6f	movi.2d	v1, #0x0000ff000000ff
+  42d244:	e1 1f c0 92	mov	x1, #-0xff00000001
+  42d248:	e1 fe ef f2	movk	x1, #0x7ff7, lsl #48
+  42d24c:	22 0c 08 4e	dup.2d	v2, x1
+  42d250:	41 f4 80 d2	mov	x1, #0x7a2
+  42d254:	01 fe ef f2	movk	x1, #0x7ff0, lsl #48
+  42d258:	23 0c 08 4e	dup.2d	v3, x1
+  42d25c:	04 04 03 6f	mvni.4s	v4, #0x60
+  42d260:	45 07 00 4f	movi.4s	v5, #0x1a
+  42d264:	e1 f1 7d 92	and	x1, x15, #0xfffffffffffffff8
+  42d268:	26 04 00 4f	movi.4s	v6, #0x1
+  42d26c:	11 50 41 ad	ldp	q17, q20, [x0, #0x20]
+  42d270:	87 e6 74 4e	fcmeq.2d	v7, v20, v20
+  42d274:	30 e6 71 4e	fcmeq.2d	v16, v17, v17
+  42d278:	07 1a 87 4e	uzp1.4s	v7, v16, v7
+  42d27c:	12 54 40 ad	ldp	q18, q21, [x0]
+  42d280:	b0 e6 75 4e	fcmeq.2d	v16, v21, v21
+  42d284:	53 e6 72 4e	fcmeq.2d	v19, v18, v18
+  42d288:	70 1a 90 4e	uzp1.4s	v16, v19, v16
+  42d28c:	07 1a 47 4e	uzp1.8h	v7, v16, v7
+  42d290:	f0 28 21 0e	xtn.8b	v16, v7
+  42d294:	1a 72 41 ad	ldp	q26, q28, [x16, #0x20]
+  42d298:	93 e7 7c 4e	fcmeq.2d	v19, v28, v28
+  42d29c:	56 e7 7a 4e	fcmeq.2d	v22, v26, v26
+  42d2a0:	d3 1a 93 4e	uzp1.4s	v19, v22, v19
+  42d2a4:	18 6e c2 ac	ldp	q24, q27, [x16], #0x40
+  42d2a8:	76 e7 7b 4e	fcmeq.2d	v22, v27, v27
+  42d2ac:	17 e7 78 4e	fcmeq.2d	v23, v24, v24
+  42d2b0:	f6 1a 96 4e	uzp1.4s	v22, v23, v22
+  42d2b4:	d3 1a 53 4e	uzp1.8h	v19, v22, v19
+  42d2b8:	37 5a 94 4e	uzp2.4s	v23, v17, v20
+  42d2bc:	56 5a 95 4e	uzp2.4s	v22, v18, v21
+  42d2c0:	d6 1e 21 4e	and.16b	v22, v22, v1
+  42d2c4:	f7 1e 21 4e	and.16b	v23, v23, v1
+  42d2c8:	59 1e 22 4e	and.16b	v25, v18, v2
+  42d2cc:	bd 1e 22 4e	and.16b	v29, v21, v2
+  42d2d0:	3e 1e 22 4e	and.16b	v30, v17, v2
+  42d2d4:	9f 1e 22 4e	and.16b	v31, v20, v2
+  42d2d8:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42d2dc:	de 8f e3 6e	cmeq.2d	v30, v30, v3
+  42d2e0:	de 1b 9f 4e	uzp1.4s	v30, v30, v31
+  42d2e4:	bd 8f e3 6e	cmeq.2d	v29, v29, v3
+  42d2e8:	39 8f e3 6e	cmeq.2d	v25, v25, v3
+  42d2ec:	39 1b 9d 4e	uzp1.4s	v25, v25, v29
+  42d2f0:	39 1b 5e 4e	uzp1.8h	v25, v25, v30
+  42d2f4:	fd 9a a0 4e	cmeq.4s	v29, v23, #0
+  42d2f8:	de 9a a0 4e	cmeq.4s	v30, v22, #0
+  42d2fc:	dd 1b 5d 4e	uzp1.8h	v29, v30, v29
+  42d300:	de 86 a4 4e	add.4s	v30, v22, v4
+  42d304:	ff 86 a4 4e	add.4s	v31, v23, v4
+  42d308:	bf 34 bf 6e	cmhi.4s	v31, v5, v31
+  42d30c:	be 34 be 6e	cmhi.4s	v30, v5, v30
+  42d310:	de 1b 5f 4e	uzp1.8h	v30, v30, v31
+  42d314:	bd 1f be 4e	orr.16b	v29, v29, v30
+  42d318:	39 1f 3d 4e	and.16b	v25, v25, v29
+  42d31c:	f9 1c b9 4e	orr.16b	v25, v7, v25
+  42d320:	5d 5b 9c 4e	uzp2.4s	v29, v26, v28
+  42d324:	1e 5b 9b 4e	uzp2.4s	v30, v24, v27
+  42d328:	de 1f 21 4e	and.16b	v30, v30, v1
+  42d32c:	bd 1f 21 4e	and.16b	v29, v29, v1
+  42d330:	1f 1f 22 4e	and.16b	v31, v24, v2
+  42d334:	68 1f 22 4e	and.16b	v8, v27, v2
+  42d338:	49 1f 22 4e	and.16b	v9, v26, v2
+  42d33c:	8a 1f 22 4e	and.16b	v10, v28, v2
+  42d340:	4a 8d e3 6e	cmeq.2d	v10, v10, v3
+  42d344:	29 8d e3 6e	cmeq.2d	v9, v9, v3
+  42d348:	29 19 8a 4e	uzp1.4s	v9, v9, v10
+  42d34c:	08 8d e3 6e	cmeq.2d	v8, v8, v3
+  42d350:	ff 8f e3 6e	cmeq.2d	v31, v31, v3
+  42d354:	ff 1b 88 4e	uzp1.4s	v31, v31, v8
+  42d358:	ff 1b 49 4e	uzp1.8h	v31, v31, v9
+  42d35c:	a8 9b a0 4e	cmeq.4s	v8, v29, #0
+  42d360:	c9 9b a0 4e	cmeq.4s	v9, v30, #0
+  42d364:	28 19 48 4e	uzp1.8h	v8, v9, v8
+  42d368:	c9 87 a4 4e	add.4s	v9, v30, v4
+  42d36c:	aa 87 a4 4e	add.4s	v10, v29, v4
+  42d370:	aa 34 aa 6e	cmhi.4s	v10, v5, v10
+  42d374:	a9 34 a9 6e	cmhi.4s	v9, v5, v9
+  42d378:	29 19 4a 4e	uzp1.8h	v9, v9, v10
+  42d37c:	08 1d a9 4e	orr.16b	v8, v8, v9
+  42d380:	ff 1f 28 4e	and.16b	v31, v31, v8
+  42d384:	7f 1e bf 4e	orr.16b	v31, v19, v31
+  42d388:	88 e7 f4 6e	fcmgt.2d	v8, v28, v20
+  42d38c:	94 e6 7c 6e	fcmge.2d	v20, v20, v28
+  42d390:	1c 1d b4 4e	orr.16b	v28, v8, v20
+  42d394:	48 e7 f1 6e	fcmgt.2d	v8, v26, v17
+  42d398:	31 e6 7a 6e	fcmge.2d	v17, v17, v26
+  42d39c:	1a 1d b1 4e	orr.16b	v26, v8, v17
+  42d3a0:	5a 1b 9c 4e	uzp1.4s	v26, v26, v28
+  42d3a4:	7c e7 f5 6e	fcmgt.2d	v28, v27, v21
+  42d3a8:	b5 e6 7b 6e	fcmge.2d	v21, v21, v27
+  42d3ac:	9b 1f b5 4e	orr.16b	v27, v28, v21
+  42d3b0:	1c e7 f2 6e	fcmgt.2d	v28, v24, v18
+  42d3b4:	52 e6 78 6e	fcmge.2d	v18, v18, v24
+  42d3b8:	98 1f b2 4e	orr.16b	v24, v28, v18
+  42d3bc:	18 1b 9b 4e	uzp1.4s	v24, v24, v27
+  42d3c0:	18 1b 5a 4e	uzp1.8h	v24, v24, v26
+  42d3c4:	18 5b 20 6e	mvn.16b	v24, v24
+  42d3c8:	18 2b 21 0e	xtn.8b	v24, v24
+  42d3cc:	31 1a 94 4e	uzp1.4s	v17, v17, v20
+  42d3d0:	52 1a 95 4e	uzp1.4s	v18, v18, v21
+  42d3d4:	51 1a 51 4e	uzp1.8h	v17, v18, v17
+  42d3d8:	31 2a 21 0e	xtn.8b	v17, v17
+  42d3dc:	f2 3e bd 6e	cmhs.4s	v18, v23, v29
+  42d3e0:	d4 3e be 6e	cmhs.4s	v20, v22, v30
+  42d3e4:	92 1a 52 4e	uzp1.8h	v18, v20, v18
+  42d3e8:	72 1e b2 4e	orr.16b	v18, v19, v18
+  42d3ec:	52 2a 21 0e	xtn.8b	v18, v18
+  42d3f0:	50 1e 70 0e	bic.8b	v16, v18, v16
+  42d3f4:	67 1e 27 4e	and.16b	v7, v19, v7
+  42d3f8:	e7 28 21 0e	xtn.8b	v7, v7
+  42d3fc:	e7 1c b0 0e	orr.8b	v7, v7, v16
+  42d400:	27 1e f8 2e	bif.8b	v7, v17, v24
+  42d404:	f0 38 00 0e	zip1.8b	v16, v7, v0
+  42d408:	10 a6 10 2f	ushll.4s	v16, v16, #0x0
+  42d40c:	10 1e 26 4e	and.16b	v16, v16, v6
+  42d410:	e7 78 00 0e	zip2.8b	v7, v7, v0
+  42d414:	e7 a4 10 2f	ushll.4s	v7, v7, #0x0
+  42d418:	e7 1c 26 4e	and.16b	v7, v7, v6
+  42d41c:	30 1e 81 ac	stp	q16, q7, [x17], #0x20
+  42d420:	27 1f 3f 4e	and.16b	v7, v25, v31
+  42d424:	e7 28 21 0e	xtn.8b	v7, v7
+  42d428:	00 00 01 91	add	x0, x0, #0x40
+  42d42c:	00 1c 27 0e	and.8b	v0, v0, v7
+  42d430:	21 20 00 f1	subs	x1, x1, #0x8
+  42d434:	c1 f1 ff 54	b.ne	0x42d26c
+  42d438:	00 54 0f 0f	shl.8b	v0, v0, #0x7
+  42d43c:	00 a8 20 0e	cmlt.8b	v0, v0, #0
+  42d440:	00 a8 31 2e	uminv.8b	b0, v0
+  42d444:	01 00 26 1e	fmov	w1, s0
+  42d448:	ff 01 0e eb	cmp	x15, x14
+  42d44c:	61 86 ff 54	b.ne	0x42c518
+  42d450:	20 fc ff 17	b	0x42c4d0

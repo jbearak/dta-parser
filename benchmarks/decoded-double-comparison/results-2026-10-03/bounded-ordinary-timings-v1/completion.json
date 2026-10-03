@@ -1,0 +1,8 @@
+{
+  "candidate_max_compact_typed_cpu": 1.1113085600549266,
+  "candidate_max_missing_free_compact_bare_cpu": 0.4068059995278475,
+  "exact_results": true,
+  "observations": 432,
+  "provenance_unchanged": true,
+  "source_patch_sha256": "3c010978c6299596d26abe63a401cd7ba2c1d9eb51703bf071623cec258eb522"
+}
