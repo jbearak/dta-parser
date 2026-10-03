@@ -28,6 +28,18 @@
       "bytes": 73256,
       "sha256": "d4b8c08eb672a2f41f46d59e3ee8a57888bc646b5bcd62a60ea43b1550b1d334"
     },
+    "builds/integration/build-receipt.json": {
+      "bytes": 99853,
+      "sha256": "5d1b3d64aea16f1875db2f14e6747088a0e29d2ef6de12cf2dde56edfce290e0"
+    },
+    "builds/integration/build.log": {
+      "bytes": 24598,
+      "sha256": "07fb12eaca4147e7c2f9a58dad6acc90c16b5d6bdc7f78d6d265692d9be97706"
+    },
+    "builds/integration/input-record.json": {
+      "bytes": 73402,
+      "sha256": "4e6113e37d820a209a19cd7f624018fb2915e254154a125d82bfac1596e64077"
+    },
     "controllers/io-optimization/record-builds.py": {
       "bytes": 14443,
       "sha256": "f8781db4b8d43e825b405b748b0cd956338658fdfc73f1a16985773e574489f0"
@@ -53,8 +65,8 @@
       "sha256": "1d0bd275759ffeec5625b7e985957666d2d46f22fbf94134d803d1844d06c534"
     },
     "publication-source-map.json": {
-      "bytes": 364215,
-      "sha256": "1ab29c3f1c45b5d77785950ed14e285d55587edb066130f26948dbf234d29b85"
+      "bytes": 368107,
+      "sha256": "6ddaaa316615a38543143b96e227c1ae7cfaa73c666efb17e7efc20b37e32a78"
     },
     "qualification/01-01-baseline-finite-1-read.csv": {
       "bytes": 812,
@@ -4472,13 +4484,17 @@
       "bytes": 18328,
       "sha256": "7b016591e90963f0c7d827106ae574f4d26df7b3347559bb2a295248c85472ad"
     },
+    "validation/archive-checker-tests.log": {
+      "bytes": 105,
+      "sha256": "edc7f942903553bbc8e52d46e3fd32d2147bb055381ca7023ecd75cc789ee7a8"
+    },
     "validation/conformance-v2-binding-validation.log": {
       "bytes": 76,
       "sha256": "04c08c9214cf411f7cfae7010313356750a95ed2eaf6f137a2bf62192ae51661"
     },
     "validation/conformance-v2.json": {
-      "bytes": 37782,
-      "sha256": "ded6956338ea8faea3a82bee299245cc63af92743ae49e3b4f54bc2e4cf7ff7c"
+      "bytes": 37909,
+      "sha256": "6a38e7fa5fe16465e92f5e8a695b71f33757d0c74639304a7b09300098d016a5"
     },
     "validation/conformance-v2.log": {
       "bytes": 24830,
@@ -4520,6 +4536,34 @@
       "bytes": 8614,
       "sha256": "e281790ac04afba50a7c555627cf49f2cee48929d32c379e5d674e5e71e7b5e4"
     },
+    "validation/integration-binding.json": {
+      "bytes": 956,
+      "sha256": "b157e6f14afedaacbd10264584becd19671c91a9becb8daaf00517678385efad"
+    },
+    "validation/integration-controller-tests.log": {
+      "bytes": 212,
+      "sha256": "35be208ae2dbf2efe4687542dff93c339bb5fe42e45809d56fb261cc906da109"
+    },
+    "validation/integration-focused.R": {
+      "bytes": 921,
+      "sha256": "d009672766604a0d7ca2da06fafec505927c81dad824d890abd212154cf6729a"
+    },
+    "validation/integration-focused.csv": {
+      "bytes": 21861,
+      "sha256": "2c7e958b939f246e3cb066fa2c4dc18aaf04aaadb8e3f97e6bc56f638de978b8"
+    },
+    "validation/integration-focused.log": {
+      "bytes": 11517,
+      "sha256": "2b38acee44dd064e9ecb1ca97d815969a76dadeffe3442015beadddf6776ca00"
+    },
+    "validation/integration-manifest-tests.log": {
+      "bytes": 105,
+      "sha256": "0d6653413f55f7cf64dbfab59b6b29c640ade8e63585414ab2a44a0892a5ed0a"
+    },
+    "validation/integration-package.patch": {
+      "bytes": 59525,
+      "sha256": "c30cfe0188ac98d0c6ad482e11affdf1384455e0e7ceccefe82a05663a6ba73d"
+    },
     "validation/manifest-refresh.log": {
       "bytes": 65,
       "sha256": "bfef9f303e820930f7336c07cb387c81fa2f2c3fa0caa75c978e078723f05ceb"
@@ -4537,8 +4581,16 @@
       "sha256": "798d87c0ed46b06552a2fda1a6464f924944cde49d3e1969f15f4b33d0d942e9"
     },
     "validation/source-binding.json": {
-      "bytes": 599,
-      "sha256": "3165523235ccf6a070bd95825de8dce4ca1547f860f203c7f9498657faa7c3a3"
+      "bytes": 837,
+      "sha256": "e3a16b07259ae58583001ab5f7197bd0f62d2bcfcaed2edb75c3917061d9601c"
+    },
+    "validation/test-validate-conformance-archive.py": {
+      "bytes": 5429,
+      "sha256": "ac61936c27fa261aad224f9698b1ab7570c63040c5d3df783892aaea36d4c22a"
+    },
+    "validation/validate-conformance-archive.py": {
+      "bytes": 3204,
+      "sha256": "e2b0657ffcfe7962733b3addd7d1eeeead94254a0a31d5d4299cc8a368d87e8b"
     }
   },
   "scope": "Text evidence; empty worker logs and large fixture/library binaries are omitted. Every worker CSV is retained. Original and published hashes bind private-path substitutions."

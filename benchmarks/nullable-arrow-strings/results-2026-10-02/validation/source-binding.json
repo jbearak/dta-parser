@@ -1,5 +1,11 @@
 {
   "baseline_commit": "ab64f0e4982e0cef0e6b2e1bbda1aa08f11ada74",
+  "combined_integration": {
+    "commit": "e5091034b8b69a69ad439d96f43cd5a2a0078232",
+    "focused_assertions": 10509,
+    "full_conformance_commit": "20a0daa1c492258017b970b551b78cce46db5637",
+    "nullable_runtime_unchanged": true
+  },
   "conformance_packaged_files": 341,
   "conformance_source_matches_clean_export": true,
   "full_suite": {
