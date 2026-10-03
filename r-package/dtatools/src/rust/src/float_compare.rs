@@ -28,39 +28,34 @@ fn rank<const MODERN: bool>(bits: u32) -> u8 {
     }
 }
 
-#[inline(always)]
-fn ordered_key<const MODERN: bool>(value: f32) -> (u32, bool) {
-    let bits = value.to_bits();
-    let missing = rank::<MODERN>(bits);
-    // Observed infinities and permissive high finite imports precede missing
-    // values too. Their IEEE order keys end at 0xff800000, below these slots.
-    let normalized = if value == 0.0 { 0 } else { bits };
-    let observed = if normalized & 0x8000_0000 != 0 {
-        !normalized
-    } else {
-        normalized ^ 0x8000_0000
-    };
-    let key = if missing != 0 {
-        u32::MAX - 27 + u32::from(missing)
-    } else {
-        observed
-    };
-    (key, missing != 0 || !value.is_nan())
-}
-
-unsafe fn pair<const X_MODERN: bool, const Y_MODERN: bool, F: Fn(u32, u32) -> bool>(
+unsafe fn pair<
+    const X_MODERN: bool,
+    const Y_MODERN: bool,
+    F: Fn(f32, f32) -> bool,
+    M: Fn(u8, u8) -> bool,
+>(
     x: *const f32,
     y: *const f32,
     output: *mut c_int,
     length: usize,
-    compare: F,
+    observed: F,
+    missing: M,
 ) -> bool {
     let mut valid = true;
     for index in 0..length {
-        let (a, av) = ordered_key::<X_MODERN>(x.add(index).read_unaligned());
-        let (b, bv) = ordered_key::<Y_MODERN>(y.add(index).read_unaligned());
-        valid &= av & bv;
-        output.add(index).write(c_int::from(compare(a, b)));
+        let a = x.add(index).read_unaligned();
+        let b = y.add(index).read_unaligned();
+        let ar = rank::<X_MODERN>(a.to_bits());
+        let br = rank::<Y_MODERN>(b.to_bits());
+        valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
+        // IEEE comparison already handles signed zero and infinities. Only
+        // Stata missing values need a different order, above all observations.
+        let result = if ar | br == 0 {
+            observed(a, b)
+        } else {
+            missing(ar, br)
+        };
+        output.add(index).write(c_int::from(result));
     }
     valid
 }
@@ -92,12 +87,12 @@ unsafe fn pair_operator<const X: bool, const Y: bool>(
     length: usize,
 ) -> bool {
     match op {
-        0 => pair::<X, Y, _>(x, y, output, length, |a, b| a == b),
-        1 => pair::<X, Y, _>(x, y, output, length, |a, b| a != b),
-        2 => pair::<X, Y, _>(x, y, output, length, |a, b| a < b),
-        3 => pair::<X, Y, _>(x, y, output, length, |a, b| a <= b),
-        4 => pair::<X, Y, _>(x, y, output, length, |a, b| a > b),
-        _ => pair::<X, Y, _>(x, y, output, length, |a, b| a >= b),
+        0 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a == b, |a, b| a == b),
+        1 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a != b, |a, b| a != b),
+        2 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a < b, |a, b| a < b),
+        3 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a <= b, |a, b| a <= b),
+        4 => pair::<X, Y, _, _>(x, y, output, length, |a, b| a > b, |a, b| a > b),
+        _ => pair::<X, Y, _, _>(x, y, output, length, |a, b| a >= b, |a, b| a >= b),
     }
 }
 
@@ -256,6 +251,54 @@ mod tests {
                         Some(true)
                     );
                     assert_eq!(actual, expected);
+                }
+            }
+        }
+    }
+    #[test]
+    fn float_pair_ieee_edges_and_missing_values_match_decoding() {
+        let mut values = vec![
+            0.0,
+            -0.0,
+            f32::MIN,
+            f32::MAX,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::from_bits(DOT - 1),
+            f32::from_bits(DOT + 1),
+            f32::NAN,
+            f32::from_bits(0xffc00001),
+        ];
+        values.extend((0..27).map(|tag| f32::from_bits(DOT + tag * STEP)));
+        for xv in [FormatVersion::V111, FormatVersion::V119] {
+            for yv in [FormatVersion::V111, FormatVersion::V119] {
+                for &a in &values {
+                    for &b in &values {
+                        let x = [a];
+                        let y = [b];
+                        let left = view(&x, xv);
+                        let right = view(&y, yv);
+                        let decoded = unsafe {
+                            compare_operand_element(left, 0).zip(compare_operand_element(right, 0))
+                        };
+                        for op in 0..=5 {
+                            let mut output = [0];
+                            let valid = unsafe {
+                                compare(
+                                    op,
+                                    left,
+                                    Some(right),
+                                    ComparedElement { rank: 0, value: 0. },
+                                    output.as_mut_ptr(),
+                                    1,
+                                )
+                            };
+                            assert_eq!(valid, Some(decoded.is_some()));
+                            if let Some((a, b)) = decoded {
+                                assert_eq!(output[0], compare_decoded(op, a, b));
+                            }
+                        }
+                    }
                 }
             }
         }
