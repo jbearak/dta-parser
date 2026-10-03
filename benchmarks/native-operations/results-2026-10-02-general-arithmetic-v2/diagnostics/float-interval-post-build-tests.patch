@@ -1,0 +1,68 @@
+diff --git a/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R b/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R
+index 0629c932..a7400cf5 100644
+--- a/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R
++++ b/r-package/dtatools/tests/testthat/test-native-arithmetic-parity.R
+@@ -515,6 +515,7 @@ test_that("float scalar interval proofs retain zero signs and exact missing coun
+         list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
+         list("/", .Machine$double.xmin * .Machine$double.eps),
+         list("/", .Machine$double.xmax), list("+", 1e39), list("-", -1e39),
++        list("+", 2e38), list("-", -2e38),
+         list("*", 1e307), list("+", 1e307))
+     for (values in list(observed, c(observed, missing), missing)) {
+         for (chunk in list(NULL, 7L)) {
+@@ -558,7 +559,7 @@ test_that("float scalar fit intervals include exactly their binary32 boundary ne
+         nearby <- nearby[nearby >= 0 & nearby <= 0x7f7fffff]
+         unique(c(nearby, nearby + 0x80000000))
+     }
+-    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -1e39, 1e39, 1e-30)) {
++    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -2e38, 2e38, -1e39, 1e39, 1e-30)) {
+         for (op in c("+", "-", "*", "/")) {
+             for (reverse in c(FALSE, TRUE)) {
+                 estimates <- switch(op,
+diff --git a/r-package/dtatools/tools/native-test-manifest.json b/r-package/dtatools/tools/native-test-manifest.json
+index 33541eeb..2b5c2421 100644
+--- a/r-package/dtatools/tools/native-test-manifest.json
++++ b/r-package/dtatools/tools/native-test-manifest.json
+@@ -1779,11 +1779,11 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-kernels.R",
+-          "sha256": "1a06a14a1636ff3d1b43aeffcd1ee03c4540fb307a655e513e3137667c34b24d"
++          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "6f92206d8f64e96d8583dd8576c6e9377f87fb6b5689c55bb7abfe6dcae0f9e6"
++          "sha256": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
+         }
+       ],
+       "blocks": [
+@@ -4480,10 +4480,26 @@
+         },
+         {
+           "file": "test-native-arithmetic-parity.R",
+-          "test": "floating integer scalar results reject unsafe endpoint proofs",
++          "test": "floating scalar results reject unsafe endpoint proofs",
+           "occurrence": 1,
+           "skip": "forbid",
+-          "min_pass": 240,
++          "min_pass": 320,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "float scalar interval proofs retain zero signs and exact missing counts",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1988,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "float scalar fit intervals include exactly their binary32 boundary neighbors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1512,
+           "warnings": 0
+         }
+       ],

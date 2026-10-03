@@ -1,0 +1,17 @@
+{
+  "base_commit": "04ca4b2f24e81f39193220fa082df4330665318d",
+  "build_receipt_sha256": "d3be91b4b00534dc95f63c4107a666e8b88705bf61658d7989035453a11bad69",
+  "manifest_blocks_observed": 1767,
+  "observations_sha256": "da98bfc8c903bc0ecc4adb397b450795659ef17f24a5ca7937ae3e7855339f3e",
+  "schema_version": 1,
+  "scope": "post-validation source and manifest check; no new tests or timing",
+  "source_files_matched": 349,
+  "test_log_sha256": "f2737207212fb527483995b5e69daddff1e9d691184804604c512cb789c95520",
+  "totals": {
+    "error": 0,
+    "failed": 0,
+    "passed": 72473,
+    "skipped": 0,
+    "warning": 7
+  }
+}

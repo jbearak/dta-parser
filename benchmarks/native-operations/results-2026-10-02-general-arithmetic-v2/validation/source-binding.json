@@ -1,0 +1,17 @@
+{
+  "baseline_commit": "460db463669336ea7a79aa52f797b7bd5baf5bdb",
+  "candidate_commit": "cf72cd8efb318d9d9851f5a51f8e947fd3b158db",
+  "candidate_dll_sha256": "a78ac19a1fbb2e83b5bc84371a4d0808f99327efc42e0a2369c55029b5d2a8f4",
+  "candidate_receipt_sha256": "27d934ba82e251043ce1d4cca1ecc3404b6ec7c170c251ce12e722b65819544d",
+  "full_suite": {
+    "error": 0,
+    "failed": 0,
+    "passed": 84707,
+    "skipped": 0,
+    "warning": 7
+  },
+  "full_suite_observations_sha256": "c87258cdec6bc01680640fe959819b9058fde78ba5ce019f737063f8bdcb3dbd",
+  "interpretation": "Report all 34 operations and remaining typed/bare-double gaps. Intermediate diagnostic gains do not establish universal parity.",
+  "qualification_cases_per_build": 102,
+  "source_equals_measured_candidate": true
+}

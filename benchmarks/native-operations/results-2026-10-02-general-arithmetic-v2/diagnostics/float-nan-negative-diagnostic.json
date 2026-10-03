@@ -1,0 +1,47 @@
+{
+  "hypothesis": "Select float NaN before widening so the exact missing mask remains 32-bit in SIMD",
+  "outcome": "Falsified at generated-code stage; no performance measurements taken",
+  "build_base": "24fe430d",
+  "qualification": {
+    "assertions_passed": 23058,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "warnings": 0,
+    "diagnostic_cases": 36
+  },
+  "mapped_branch": {
+    "source_kind": 3,
+    "right_kind": 7,
+    "operator": 42,
+    "output_kind": 3,
+    "dispatch": [
+      "0x6a914",
+      "0x6ab4c",
+      "0x6b70c",
+      "0x6c718",
+      "0x76d0c",
+      "0x817fc",
+      "0x99814"
+    ],
+    "loop_start": "0xd9e78",
+    "loop_end": "0xd9fe8",
+    "rows_per_iteration": 8,
+    "retained_mask_widening": [
+      "ushll.2d",
+      "shl.2d #0x3f",
+      "cmlt.2d",
+      "bif/bsl.16b"
+    ]
+  },
+  "limits": "Static disassembly of the exact installed candidate only. No runtime cost attribution is inferred from instruction count. The attempted representation change did not survive compiler optimization.",
+  "sha256": {
+    "baseline_source": "be552b3ce706299681a3e2fa0acebec9ea9f2366cb8482aa707a0b8ea782942a",
+    "select_source": "ee2b05a029206e7abe1b9b867ef7b36338966042fbbc1f39af239df5b76b0ca7",
+    "select_receipt": "53a900db22c1bdc83f089b2fde2e08779ad3e3ce8021fbf001da259ac29ac6c0",
+    "select_patch": "ca94cad6e5878d2268bfd9a4345ee96521a9af669944a0a45555d291ca4ef715",
+    "select_disassembly": "486149cd5ecc90874b59100f234e3f81deab913b6b86dc173c7ad53a588fbba8",
+    "focused": "2ae7acca5ca8f9adaeada2cc355daf50251ea2f440634058a75aeec733d55ccd",
+    "qualification": "8b5b0deea40d1e0387c0c6ceeb7c857167674db6b8f9338287f768d4b8be4b23"
+  }
+}
