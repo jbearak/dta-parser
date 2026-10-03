@@ -86,3 +86,53 @@ system missing values, matching uses self-lookup, and summaries are unweighted
 and use default options. Tag-rich data, nonmatching lookups, detailed
 summaries, row maxima and other untimed operations need separate throughput
 measurements.
+
+## General arithmetic
+
+The general arithmetic worker uses constructed million-row columns and preserves
+the diagnostic `x * 1.01` and compact-plus-typed-double cases for int and float,
+with and without missing values. It adds scalar addition and subtraction,
+reverse subtraction and division, mixed int/float addition and multiplication,
+and long/float addition. `x * 2` remains a control for the previous kernel.
+Each build has 102 observations per round across compact, typed-double and bare
+double inputs. Six balanced rounds produce 1,224 observations.
+
+The general controller and source builder currently require the Unix R runtime
+layout used on macOS and Linux; the general controller rejects Windows before
+launching workers. This benchmark limitation does not change the package's
+supported platforms.
+
+Use the same clean-build steps above, then run with other CPU workloads stopped:
+
+```sh
+python3 benchmarks/native-operations/general-run.py \
+  --baseline /private/tmp/native-ops-baseline \
+  --candidate /private/tmp/native-ops-candidate \
+  --output /private/tmp/general-arithmetic-results --rounds 6
+```
+
+This matrix needs no file fixtures. Its independent oracle applies Stata's
+invalid-result normalization, storage promotion and final float rounding to
+ordinary binary64 arithmetic. Every measured result is checked in full, together
+with its missing mask, missing cache, storage and unchanged sources. Retained
+chunks, noncanonical imports, all missing tags and extreme floating values are
+covered by the package correctness tests, not by this throughput matrix.
+
+To qualify the worker without recording timings:
+
+```sh
+Rscript --vanilla benchmarks/native-operations/general-worker.R \
+  /private/tmp/native-ops-candidate/library 1 \
+  /private/tmp/general-arithmetic-qualification.csv candidate qualify
+```
+
+Run `python3 benchmarks/native-operations/test-general-run.py` to check rejection
+of incomplete matrices, invalid timings, changed results/source states/build
+receipts, missing native dispatch and unbalanced observation orders. These tests
+also pass under `python3 -O`; acceptance checks do not depend on Python assertions.
+
+The [final general arithmetic acceptance](results-2026-10-02-general-arithmetic-v2.md)
+reports all 34 cases, including the remaining gaps. The maintained general
+controller resolves the exact Rscript used for workers, hashes that launcher
+and its R runtime before and after the run, and requires the runtime to match
+both clean-build receipts.
