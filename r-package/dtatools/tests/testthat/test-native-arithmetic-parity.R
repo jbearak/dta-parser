@@ -742,3 +742,60 @@ test_that("float reciprocal block proofs preserve zero exceptions and late promo
         }
     }
 })
+
+# Source-only draft; append after the dense runtime is qualified structurally.
+test_that("dense reciprocal input masks preserve cache counts and late promotion", {
+    .arithmetic_parity_enable()
+    tags <- c(NA_real_, tagged_missing(letters))
+    for (n in c(63L, 64L, 65L, 16383L, 16384L, 16385L)) {
+        for (pattern in c("half", "all", "late")) {
+            values <- rep(c(0.125, -0.125, 0, -0), length.out = n)
+            missing <- if (pattern == "all") seq_len(n) else
+                which((as.double(seq_len(n) - 1L) * 104729) %% n < floor(n / 2))
+            values[missing] <- rep(tags, length.out = length(missing))
+            if (pattern == "late") values[[n]] <- 2^-149
+            for (chunk in list(NULL, 7L)) {
+                for (scalar in list(1.01, -1.01, 0, -0, dta_double(1.01))) {
+                    x <- .arithmetic_parity_source("float", values, chunk)
+                    source_bytes <- .arithmetic_parity_bytes(x)
+                    minimum <- if (inherits(scalar, "dta_double")) "double" else "float"
+                    info <- paste("dense reciprocal", n, pattern, chunk, as.double(scalar))
+                    if (minimum == "double") {
+                        # The shared helper requires every typed input to be
+                        # compact; this explicitly DOUBLE scalar is not.
+                        decoded <- as.double(x)
+                        reference <- as.double(scalar) / decoded
+                        reference[is.na(decoded)] <- NA_real_
+                        expected_result <- dtatools:::.dta_computed(reference, "double")
+                        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x), info = info)
+                        .Call(C_dtatools_numeric_entry_stats, TRUE)
+                        result <- scalar / x
+                        calls <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+                        expect_identical(calls, if (.dtatools_numeric_entry_expected("scalar")) 1 else 0,
+                            info = info)
+                        expect_identical(dta_storage_type(result), "double", info = info)
+                        expect_identical(.arithmetic_parity_bytes(result),
+                            .arithmetic_parity_bytes(expected_result), info = info)
+                        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x), info = info)
+                    } else {
+                        result <- .arithmetic_parity_expect("/", scalar, x, minimum, NULL, info)
+                    }
+                    original_bytes <- .arithmetic_parity_bytes(result)
+                    expected <- as.double(result)
+                    result_missing <- is.na(expected)
+                    expect_identical(is.na(result), result_missing, info = info)
+                    expect_identical(anyNA(result), any(result_missing), info = info)
+                    cleared <- dibble(x = result)
+                    if (any(result_missing))
+                        replace_values(cleared, x = 0, where = which(result_missing))
+                    expected[result_missing] <- 0
+                    expect_false(anyNA(cleared$x), info = info)
+                    expect_identical(.arithmetic_parity_bytes(cleared$x),
+                        writeBin(expected, raw(), 8L, endian = "little"), info = info)
+                    expect_identical(.arithmetic_parity_bytes(result), original_bytes, info = info)
+                    expect_identical(.arithmetic_parity_bytes(x), source_bytes, info = info)
+                }
+            }
+        }
+    }
+})

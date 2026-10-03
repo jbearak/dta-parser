@@ -1825,7 +1825,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "ac94bda62ae61881c173e7df9e22e1b79532b3015b5575ea78ca6ffb36cfc9e0"
+          "sha256": "676eb9e7e788c3c284b503468f0ca710c6fe2dbec61d52bae6360d7578d9bea3"
         }
       ],
       "blocks": [
@@ -4598,6 +4598,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 756,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "dense reciprocal input masks preserve cache counts and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2700,
           "warnings": 0
         }
       ],

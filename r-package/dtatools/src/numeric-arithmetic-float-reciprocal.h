@@ -85,7 +85,7 @@ static int arithmetic_float_reciprocal_prepare_block(
         missing[offset] = (unsigned char) invalid;
         invalid_count += invalid;
         bits = invalid ? UINT32_C(0x7effffff) : bits;
-        memcpy(prepared + offset, &bits, sizeof(bits));
+        prepared[offset] = invalid ? 0x1.fffffep126f : source;
         magnitude = bits & UINT32_C(0x7fffffff);
         minimum = magnitude < minimum ? magnitude : minimum;
     }
