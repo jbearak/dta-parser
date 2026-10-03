@@ -185,6 +185,8 @@ static int arithmetic_pair_write(
     }
     return output->kind;
 }
+#include "numeric-arithmetic-pair-long-float.h"
+
 #undef ARITHMETIC_PAIR_RIGHT
 #undef ARITHMETIC_PAIR_OPERATORS
 #undef ARITHMETIC_PAIR_TARGETS

@@ -1,0 +1,38 @@
+{
+  "controller_sha256": "75bc40bf3595f7d385f516a3e53f1b2cce7fc6198d299a57f02abf55bc1da756",
+  "equal_instruction_count": 1260,
+  "inputs": {
+    "final": {
+      "binding_sha256": "5e5a127b9ab8ac5717702d3a7aab8516ee241a7b623ef9cbf600cf7221cd1b50",
+      "commit": "3de25ecca674a3ffed3618223a011f499383bd57",
+      "dll_sha256": "1ac44b2707eb6f69c85acf25d6bac85ea667e401fc643f7e44899af7b4d88b25",
+      "dump_sha256": "6a923f75f28e651495cc5b89dfe6a01172571298aab4c08cddbe9592a8112ec6",
+      "facts": {
+        "end": "0x1f5c14",
+        "instructions": 1260,
+        "internal_branch_targets": 88,
+        "page_references": 11,
+        "start": "0x1f4864",
+        "vector_adds": 48,
+        "vector_loads": 23
+      }
+    },
+    "previous": {
+      "binding_sha256": "49c05b673a99e2ece56a32f047697502a24fa72a8ddea526f515f3b9d6083491",
+      "commit": "387227cdb8a174feccb24e5f52745177c5af3f95",
+      "dll_sha256": "67175ebc6de96953d217832d09adb529f508ebd580753d214f3e2580347270c0",
+      "dump_sha256": "42bac5afce57f482fc19b68df9d297b925c70ffce2ac70ac81e6ae5b5e32e437",
+      "facts": {
+        "end": "0x1f6108",
+        "instructions": 1260,
+        "internal_branch_targets": 88,
+        "page_references": 11,
+        "start": "0x1f4d58",
+        "vector_adds": 48,
+        "vector_loads": 23
+      }
+    }
+  },
+  "scope": "Exact helper instruction text comparison only. Internal branch targets become function-relative; ADRP compares its resolved absolute target page. Registers, other operands, comments and all other instructions remain exact. Existing fresh DLL-extraction bindings and both current DLL/build receipt hashes are rechecked. Caller layout, surrounding instructions and performance are not proved equal.",
+  "status": "PASS"
+}
