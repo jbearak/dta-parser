@@ -1,0 +1,15 @@
+# Private original-panel integer reciprocal acceptance
+
+This restores the exact original combined7003 general-worker operation selection and input formulas. It retains the independently reviewed 432-screen controller's exact source/runtime/build bindings, both-build native-entry requirements and new typed-result missing-count mutation qualification. No package code changes here.
+
+There are 34 width/missing/operation cases, three representations, two builds and six rounds: 102 worker records per build/round and 1,224 retained observations. Int16 and float each run the original seven general operations; int16 adds mixed float addition/multiplication; long runs only the original long+float addition. Thus the two int16 reciprocal cases are treatments, while the other 32 cases are unchanged runtime controls for this producer change. The separate 432-case screen covers long reciprocal; it is not silently added to or substituted into this original panel.
+
+The x input is `as.double((seq_len(1000000) * 13) %% 10001 - 5000)`, divided by eight only for float. The y input is `as.double((seq_len(1000000) * 19) %% 1001 - 500)/8`. Sparse missing starts at row 13 with stride 997 in x and row 19 with stride 991 in y. Native typed values use the original independent Stata normalization/storage/promotion/float-rounding oracle. Bare results use ordinary R arithmetic, including its own Inf/NaN behavior.
+
+Every typed retained result is qualified after the clocks and native-entry counter deltas: clear all oracle-missing rows through a dibble alias and `replace_values`, compare the complete cleared bits, require `anyNA(FALSE)`, and recheck the original result and both input hashes/states. No-missing results still receive complete-bit/anyNA checks. Ordinary controls have no native cached count and record no mutation probe. `mutation_checked` and `cleared_sha256` are enforced by the controller and compared across builds/rounds. This supplements value checks with a cached-count check; it is not inside the timed operation.
+
+Warmup, explicit GC, calibration, hashing and mutation qualification are outside retained intervals. Result allocation and automatic GC remain inside. Original 25 ms calibration minimum and 150 ms target are unchanged; actual intervals remain recorded. Build order alternates; case order is fixed; the original rotate/reverse formula balances all six representation orders.
+
+Exact logical baseline is `7003eba901671797ee91fffc97f08e28a1f7f515` at `<baseline-build>`. Exact candidate is `3a02e6d13309441366a7a727fdc934f424ce66c6` at `<work>/candidate-final`. Both actual receipts retain variant `baseline`. The source-bound recorder is the unchanged maintained file in the frozen combined7003 checkout. These absolute paths are private historical dependencies.
+
+This restored panel is source-only until the owning agent reviews it, runs the normal/-O guards and both 102-case untimed qualifications, and the parent explicitly releases a quiet timing window. The author has not run this controller or worker.

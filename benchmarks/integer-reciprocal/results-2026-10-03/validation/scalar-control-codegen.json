@@ -1,0 +1,157 @@
+{
+  "bindings": {
+    "baseline": {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+        "-tvV",
+        "-p",
+        "_arithmetic_float_scalar_write",
+        "<baseline-build>/library/dtatools/libs/dtatools.so"
+      ],
+      "commit": "7003eba901671797ee91fffc97f08e28a1f7f515",
+      "dll_sha256": "1153729ce7c7f3ef7988f1aa453b3af13fad92cbaf379938417ac4f28a3d5324",
+      "extracted_writer_sha256": "8a9871f508e3cfae5b917660daac3f31f8460b55a0ccab865aa3a042b56b0248",
+      "full_disassembler_output_sha256": "71c683d3a3d4aaefe1d6d4720893714316c09f560ade1124b6c92f5a483c145f",
+      "header_sha256": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+      "instructions": 22144,
+      "receipt_sha256": "aeab6af9cb3b45a878ca0e4940b55e81f6c40f651467d49ba9a2e067dc5446e3"
+    },
+    "candidate": {
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+        "-tvV",
+        "-p",
+        "_arithmetic_float_scalar_write",
+        "<work>/candidate-final/library/dtatools/libs/dtatools.so"
+      ],
+      "commit": "3a02e6d13309441366a7a727fdc934f424ce66c6",
+      "dll_sha256": "c0fcfcef67547f96490649236a352ff54c47cb8d14bc6fcfa4242cec194cfbde",
+      "extracted_writer_sha256": "62cf0318b8dd6a5bd10735ffd5c3eaa497a15d62936592a18194f606a8d85918",
+      "full_disassembler_output_sha256": "c1a5b798213993e68ebc5c2b70b6ca85e6810c0335186f32e51b6fbc645a1d55",
+      "header_sha256": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+      "instructions": 22144,
+      "receipt_sha256": "f411c360f42d185db3c73926806a859389110eb518103f470fd76784074920a8"
+    }
+  },
+  "controls": [
+    {
+      "missing": "FALSE",
+      "paired_median": 0.9476404545826207,
+      "ratio_of_medians": 0.948847303151636,
+      "rounds": [
+        {
+          "baseline_seconds": 0.00023679999999999998,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.0002412140575079872,
+          "round": 1,
+          "speedup": 0.9817006622516556
+        },
+        {
+          "baseline_seconds": 0.00023482428115015653,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.00023802163833075733,
+          "round": 2,
+          "speedup": 0.9865669474295538
+        },
+        {
+          "baseline_seconds": 0.00023801652892561982,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.0002644628099173554,
+          "round": 3,
+          "speedup": 0.8999999999999999
+        },
+        {
+          "baseline_seconds": 0.00023801916932907508,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.00023679999999999998,
+          "round": 4,
+          "speedup": 1.0051485191261618
+        },
+        {
+          "baseline_seconds": 0.00023679999999999998,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.0002591999999999984,
+          "round": 5,
+          "speedup": 0.9135802469135859
+        },
+        {
+          "baseline_seconds": 0.00023801652892561982,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.000263578274760385,
+          "round": 6,
+          "speedup": 0.9030202854996188
+        }
+      ]
+    },
+    {
+      "missing": "TRUE",
+      "paired_median": 0.9761283542186072,
+      "ratio_of_medians": 0.9728306935083503,
+      "rounds": [
+        {
+          "baseline_seconds": 0.0002699275362318786,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.000272552783109403,
+          "round": 1,
+          "speedup": 0.9903679322310547
+        },
+        {
+          "baseline_seconds": 0.00027355072463768114,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.0002821497120921305,
+          "round": 2,
+          "speedup": 0.9695233165730059
+        },
+        {
+          "baseline_seconds": 0.0002717391304347826,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.0002821497120921305,
+          "round": 3,
+          "speedup": 0.9631026323572908
+        },
+        {
+          "baseline_seconds": 0.00029850746268656717,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.00027199999999999734,
+          "round": 4,
+          "speedup": 1.0974539069359195
+        },
+        {
+          "baseline_seconds": 0.00027238805970149254,
+          "candidate_build_position": 2,
+          "candidate_seconds": 0.00027717391304347825,
+          "round": 5,
+          "speedup": 0.9827333918642084
+        },
+        {
+          "baseline_seconds": 0.00027173913043478624,
+          "candidate_build_position": 1,
+          "candidate_seconds": 0.000285447761194028,
+          "round": 6,
+          "speedup": 0.951974992895728
+        }
+      ]
+    }
+  ],
+  "other_differences": [],
+  "raw_sha256": "839669311396bf7dc4def8e5307733ac19d8057b00c7ff28c3d450dcc2946711",
+  "relocations": [
+    {
+      "baseline": "adrp x22, 1634",
+      "candidate": "adrp x22, 1632",
+      "index": 43,
+      "symbol": "_R_NaReal"
+    },
+    {
+      "baseline": "bl 0x6d8140",
+      "candidate": "bl 0x6da1d8",
+      "index": 64,
+      "symbol": "_R_CheckUserInterrupt"
+    }
+  ],
+  "scope": "Full emitted float-scalar writer only. This does not cover dispatch, allocation history, addresses, cache effects or the whole public operation, and does not identify the timing cause.",
+  "script_sha256": "ad95fc7e0ee8c58170e57c7445669ac154031799bc47764354816e6f06ed74bd",
+  "status": "IDENTICAL_AFTER_VERIFIED_RELOCATIONS",
+  "tool": "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+  "tool_sha256": "61ff2c63cf68eeeadf9c4700dadb8271740ff4960f98500f30db82b31521c0de"
+}
