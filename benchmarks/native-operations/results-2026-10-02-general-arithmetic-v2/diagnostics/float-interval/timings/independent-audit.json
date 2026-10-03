@@ -1,0 +1,145 @@
+{
+  "artifacts": {
+    "completion.json": "9a83905c1b742d9a40f06d2472237df3e62fb4c4590cef8479963a6ee491af7f",
+    "protocol.json": "e5ee7d7b447e339d1286297e7b10b121ac6f4830380dfef16c073ec0af7253dd",
+    "provenance-after.json": "e38069ce3b993cfaf67443f1a946cec548997bee7b7b3a3e9646f9402ce124d6",
+    "provenance-before.json": "6b1393a1e445270c2c561c53da885e2d70a8a90ffc64763852630f414021e761",
+    "raw.csv": "7368169f265ef3599e044b5ae912b6c447b04b1c0f900d62f52063927898d2ca",
+    "source.patch": "817ff8c77cebf4905918bff23303b5a2d0c8e9ad5425fbb11453eff471874332",
+    "summary.csv": "ddb670bd6601bd470d493a455b47bb5a6c77f1f8156592cf56ae91ddcfc25321"
+  },
+  "audit": "Independent artifact recomputation; no builds, R or timing jobs",
+  "case_speedups": [
+    {
+      "compact_ordinary_ratio": "1.168175478302072",
+      "compact_speedup": "1.0",
+      "compact_typed_ratio": "0.926605504587162",
+      "missing": "FALSE",
+      "operation": "pair_compact_double",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.2722402312715047",
+      "compact_speedup": "1.0030694462207554",
+      "compact_typed_ratio": "1.1429184782717732",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.57420506137527",
+      "compact_speedup": "1.1307152918273033",
+      "compact_typed_ratio": "1.391847432912949",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.6994020665547738",
+      "compact_speedup": "0.9801239093152895",
+      "compact_typed_ratio": "1.447941854191418",
+      "missing": "TRUE",
+      "operation": "pair_compact_double",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.293542833217328",
+      "compact_speedup": "1.003367003367017",
+      "compact_typed_ratio": "1.2058181351142996",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.143053079138656",
+      "compact_speedup": "1.1896551724137852",
+      "compact_typed_ratio": "1.9327445652173965",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.5980173820731367",
+      "compact_speedup": "1.0000578512396663",
+      "compact_typed_ratio": "1.267713538376438",
+      "missing": "FALSE",
+      "operation": "pair_compact_double",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8357751626201191",
+      "compact_speedup": "1.0006697679665606",
+      "compact_typed_ratio": "0.749547064923024",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.9664572173095038",
+      "compact_speedup": "1.002513732708459",
+      "compact_typed_ratio": "0.9115130963142268",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.437940167367036",
+      "compact_speedup": "1.087517761880583",
+      "compact_typed_ratio": "1.1762564336380519",
+      "missing": "TRUE",
+      "operation": "pair_compact_double",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.931276075242775",
+      "compact_speedup": "1.000789439430054",
+      "compact_typed_ratio": "0.794070209783987",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.0828334787728737",
+      "compact_speedup": "0.993072115912807",
+      "compact_typed_ratio": "0.9657298489771179",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "int"
+    }
+  ],
+  "caveats": [
+    "Calibration target is not the actual interval minimum.",
+    "Current large library binaries were not independently rehashed during the lightweight audit; their before/after inventories agree."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete matrix and all six permutations",
+    "result/storage/missing/source equality",
+    "native route and unchanged source states",
+    "every CPU median, speedup and paired/control ratio",
+    "before/after source/installed/controller equality and current controller hashes",
+    "completion/source-patch binding"
+  ],
+  "cpu_interval_range": [
+    0.0970000000000001,
+    0.183
+  ],
+  "observations": 432,
+  "original_gate_red_cases": [
+    {
+      "compact_typed_ratio": "1.9327445652173965",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    }
+  ],
+  "runtime": {
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "summary_rows": 24,
+  "wall_interval_range": [
+    0.0960000000000001,
+    0.183
+  ]
+}

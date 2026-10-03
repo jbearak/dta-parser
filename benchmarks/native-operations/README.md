@@ -125,3 +125,9 @@ Run `python3 benchmarks/native-operations/test-general-run.py` to check rejectio
 of incomplete matrices, invalid timings, changed results/source states/build
 receipts, missing native dispatch and unbalanced observation orders. These tests
 also pass under `python3 -O`; acceptance checks do not depend on Python assertions.
+
+The [final general arithmetic acceptance](results-2026-10-02-general-arithmetic-v2.md)
+reports all 34 cases, including the remaining gaps. The maintained general
+controller resolves the exact Rscript used for workers, hashes that launcher
+and its R runtime before and after the run, and requires the runtime to match
+both clean-build receipts.

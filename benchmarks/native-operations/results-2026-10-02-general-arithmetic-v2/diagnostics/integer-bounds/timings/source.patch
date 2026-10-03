@@ -1,0 +1,322 @@
+--- a/src/numeric-arithmetic-general.h
++++ b/src/numeric-arithmetic-general.h
+@@ -282,6 +282,129 @@
+ #undef GENERAL_PAIR_TARGETS
+ #undef GENERAL_PAIR_LOOP
+ 
++/* Bounds cover every physical signed integer, including legacy-observed
++   lower endpoints and reserved codes. For a finite scalar these monotone
++   operations can therefore prove the floating destination for the complete
++   column before writing. The caller's arithmetic_capture claim protects the
++   same descriptor's bytes and missing count through allocation and writing. */
++static int arithmetic_general_integer_scalar_proved(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind,
++    const arithmetic_general_source **column, double *scalar, int *reverse
++) {
++    if ((kind != NUMERIC_FLOAT && kind != NUMERIC_DOUBLE) || length <= 1) return 0;
++    if (right->kind == ARITHMETIC_SOURCE_SCALAR) {
++        *column = left;
++        *scalar = right->scalar;
++        *reverse = 0;
++    } else if (left->kind == ARITHMETIC_SOURCE_SCALAR && operation != '/') {
++        *column = right;
++        *scalar = left->scalar;
++        *reverse = 1;
++    } else return 0;
++    const numeric_data *data = (*column)->operand->reader.storage;
++    if (data == NULL || data->temporal != 0 || data->kind < NUMERIC_BYTE || data->kind > NUMERIC_LONG ||
++        (*column)->operand->length != length || data->missing_count > (size_t) length ||
++        !R_FINITE(*scalar) || (operation == '/' && *scalar == 0)) return 0;
++    double low = data->kind == NUMERIC_BYTE ? INT8_MIN :
++        data->kind == NUMERIC_INT ? INT16_MIN : INT32_MIN;
++    double high = data->kind == NUMERIC_BYTE ? INT8_MAX :
++        data->kind == NUMERIC_INT ? INT16_MAX : INT32_MAX;
++    switch (operation) {
++    case '+': low = low + *scalar; high = high + *scalar; break;
++    case '-':
++        if (*reverse) { low = *scalar - low; high = *scalar - high; }
++        else { low = low - *scalar; high = high - *scalar; }
++        break;
++    case '*': low = low * *scalar; high = high * *scalar; break;
++    case '/': low = low / *scalar; high = high / *scalar; break;
++    default: return 0;
++    }
++    if (!scalar_arithmetic_result_valid(low) ||
++        !scalar_arithmetic_result_valid(high)) return 0;
++    return kind == NUMERIC_DOUBLE ||
++        (fabs(low) <= numeric_float_observed_limit() &&
++         fabs(high) <= numeric_float_observed_limit());
++}
++
++static void arithmetic_general_integer_scalar_write(
++    const arithmetic_general_source *column, double scalar, int reverse,
++    R_xlen_t length, int operation, arithmetic_general_output *output
++) {
++    const numeric_data *data = column->operand->reader.storage;
++    const int32_t missing_minimum = (int32_t) column->policy.minimum;
++    const int all_observed = data->missing_count == 0;
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *raw = numeric_read_span(data, start, count, &count);
++#define GENERAL_PROVED_INTEGER_LOOP(SOURCE, TARGET, DEST, EXPR, MISSING, OBSERVED) \
++        do {                                                               \
++            TARGET *restrict target = (DEST) + start;                      \
++            for (size_t i = 0; i < count; i++) {                            \
++                SOURCE source;                                             \
++                memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
++                double value = (double) source;                            \
++                TARGET result = (TARGET) (EXPR);                           \
++                target[i] = (OBSERVED) || source < missing_minimum          \
++                    ? result : (TARGET) (MISSING);                         \
++            }                                                              \
++        } while (0)
++#define GENERAL_PROVED_INTEGER_TARGET(SOURCE, EXPR, OBSERVED)               \
++        if (output->kind == NUMERIC_FLOAT) {                                \
++            GENERAL_PROVED_INTEGER_LOOP(SOURCE, float,                      \
++                (float *) (void *) output->raw, EXPR, 0x1p127f, OBSERVED);  \
++        } else {                                                           \
++            GENERAL_PROVED_INTEGER_LOOP(SOURCE, double,                    \
++                output->real, EXPR, NA_REAL, OBSERVED);                    \
++        }
++#define GENERAL_PROVED_INTEGER_OPERATORS(SOURCE, OBSERVED)                  \
++        switch (operation) {                                               \
++        case '+': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value + scalar, OBSERVED); break; \
++        case '-':                                                          \
++            if (reverse) {                                                 \
++                GENERAL_PROVED_INTEGER_TARGET(SOURCE, scalar - value, OBSERVED); \
++            } else {                                                       \
++                GENERAL_PROVED_INTEGER_TARGET(SOURCE, value - scalar, OBSERVED); \
++            }                                                              \
++            break;                                                         \
++        case '*': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value * scalar, OBSERVED); break; \
++        case '/': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value / scalar, OBSERVED); break; \
++        }
++#define GENERAL_PROVED_INTEGER_WIDTHS(OBSERVED)                             \
++        switch (data->kind) {                                               \
++        case NUMERIC_BYTE: GENERAL_PROVED_INTEGER_OPERATORS(int8_t, OBSERVED); break; \
++        case NUMERIC_INT: GENERAL_PROVED_INTEGER_OPERATORS(int16_t, OBSERVED); break; \
++        case NUMERIC_LONG: GENERAL_PROVED_INTEGER_OPERATORS(int32_t, OBSERVED); break; \
++        }
++        if (all_observed) { GENERAL_PROVED_INTEGER_WIDTHS(1); }
++        else { GENERAL_PROVED_INTEGER_WIDTHS(0); }
++#undef GENERAL_PROVED_INTEGER_WIDTHS
++#undef GENERAL_PROVED_INTEGER_OPERATORS
++#undef GENERAL_PROVED_INTEGER_TARGET
++#undef GENERAL_PROVED_INTEGER_LOOP
++        start += count;
++    }
++    output->missing_count = data->missing_count;
++}
++
++static int arithmetic_general_produce(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int minimum, arithmetic_general_output *output
++) {
++    const arithmetic_general_source *column;
++    double scalar;
++    int reverse;
++    if (arithmetic_general_integer_scalar_proved(
++            left, right, length, operation, output->kind, &column, &scalar, &reverse)) {
++        arithmetic_general_integer_scalar_write(
++            column, scalar, reverse, length, operation, output);
++        return output->kind;
++    }
++    return arithmetic_general_run(left, right, length, operation, minimum, output);
++}
++
+ static SEXP arithmetic_general_result(
+     const arithmetic_operand *left, const arithmetic_operand *right,
+     R_xlen_t length, int operation, int minimum, int *result_kind
+@@ -304,12 +427,12 @@
+         .raw = kind == NUMERIC_DOUBLE ? NULL : RAW(backing),
+         .real = kind == NUMERIC_DOUBLE ? REAL(backing) : NULL
+     };
+-    int promoted = arithmetic_general_run(&x, &y, length, operation, minimum, &output);
++    int promoted = arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
+     if (promoted != kind) {
+         kind = promoted;
+         REPROTECT(backing = arithmetic_backing(length, kind), backing_index);
+         output = (arithmetic_general_output) {.kind = kind, .real = REAL(backing)};
+-        arithmetic_general_run(&x, &y, length, operation, minimum, &output);
++        arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
+     }
+     SEXP result = PROTECT(arithmetic_adopt_backing(backing, length, kind, output.missing_count));
+     *result_kind = kind;
+--- a/tests/testthat/test-native-arithmetic-parity.R
++++ b/tests/testthat/test-native-arithmetic-parity.R
+@@ -379,3 +379,130 @@
+             paste("general float promotion discards rounded prefix", position))
+     }
+ })
++
++test_that("general integer scalar bounds preserve floating storage and missing counts", {
++    .arithmetic_parity_enable()
++    low <- c(byte = -127, int = -32767, long = -2147483647)
++    high <- c(byte = 100, int = 32740, long = 2147483620)
++    physical_magnitude <- c(byte = 128, int = 32768, long = 2147483648)
++    float_limit <- (2^24 - 1) * 2^103
++    double_limit <- (2^53 - 1) * 2^970
++    missing <- c(NA_real_, tagged_missing(letters))
++    for (kind in names(low)) {
++        observed <- c(low[[kind]], -1, 0, 1, high[[kind]])
++        cutoff <- float_limit / physical_magnitude[[kind]]
++        cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
++            list("*", -0), list("*", 0), list("/", -3.25),
++            list("/", .Machine$double.xmin * .Machine$double.eps),
++            list("/", .Machine$double.xmax),
++            list("*", cutoff * (1 - 2^-50)), list("*", cutoff * (1 + 2^-50)),
++            list("*", -double_limit / physical_magnitude[[kind]]),
++            list("*", double_limit / physical_magnitude[[kind]] * (1 + 2^-50)))
++        for (values in list(observed, c(observed, missing), missing)) {
++            for (chunk in list(NULL, 7L)) {
++                x <- .arithmetic_parity_source(kind, values, chunk)
++                for (case in cases) {
++                    op <- case[[1L]]; scalar <- case[[2L]]
++                    for (reverse in c(FALSE, TRUE)) {
++                        info <- paste(kind, op, scalar, "reverse", reverse, "chunk", chunk)
++                        actual <- if (reverse)
++                            .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
++                        else .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
++                        expected_missing <- is.na(as.double(actual))
++                        expect_identical(is.na(actual), expected_missing, info = info)
++                        expect_identical(anyNA(actual), any(expected_missing), info = info)
++                        if (any(expected_missing)) {
++                            # Correct values alone cannot expose an excessive
++                            # cached count. Clear every actual missing lane.
++                            result <- dibble(x = actual)
++                            replace_values(result, x = 0, where = which(expected_missing))
++                            expect_false(anyNA(result$x), info = info)
++                        }
++                    }
++                }
++            }
++        }
++    }
++})
++
++test_that("general integer scalar proof includes imported physical signed minima", {
++    .arithmetic_parity_enable()
++    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    legacy <- tempfile(fileext = ".dta")
++    withr::defer(unlink(c(modern, legacy)))
++    minimum_bits <- list(x_byte = as.raw(0x80), x_int = as.raw(c(0, 0x80)),
++                         x_long = as.raw(c(0, 0, 0, 0x80)))
++    patch_numeric_fixture_row(modern, 0L, minimum_bits)
++    bytes <- readBin(fixture("synthetic_v111.dta"), "raw",
++                     n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++                writeBin(-123456L, raw(), size = 4L, endian = "little"),
++                writeBin(1.5, raw(), size = 4L, endian = "little"),
++                writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, bytes, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    bytes[start + 0:6] <- unlist(minimum_bits, use.names = FALSE)
++    writeBin(bytes, legacy)
++    for (version in c("modern", "legacy")) {
++        path <- if (version == "modern") modern else legacy
++        names <- if (version == "modern") c("x_byte", "x_int", "x_long") else c("b", "i", "l")
++        imported <- read_dta(path, col_select = tidyselect::all_of(names))
++        eager <- read_dta(path, col_select = tidyselect::all_of(names), use_numeric_altrep = FALSE)
++        for (index in seq_along(names)) {
++            source <- imported[[names[[index]]]]
++            kind <- dta_storage_type(source)
++            expect_identical(as.double(source), as.double(eager[[names[[index]]]]))
++            expect_identical(as.double(source)[[1L]], -c(128, 32768, 2147483648)[[index]])
++            # The legacy byte fixture has value-label metadata, which correctly
++            # declines this admission route. Preserve its bytes and encoding
++            # while selecting the ordinary compact arithmetic contract.
++            attributes(source) <- list(class = dtatools:::.dta_storage_class(kind),
++                                       stata.storage = kind)
++            for (x in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 3L))) {
++                for (scalar in c(1.01, -3.25)) {
++                    for (op in c("+", "-", "*", "/")) {
++                        info <- paste(version, kind, "signed physical minimum", op, scalar)
++                        .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
++                        .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
++                    }
++                }
++            }
++        }
++    }
++})
++
++test_that("floating integer scalar results reject unsafe endpoint proofs", {
++    .arithmetic_parity_enable()
++    for (kind in c("byte", "int", "long")) {
++        x <- .arithmetic_parity_source(kind, c(-100, -1, 0, 1, 100, NA_real_, tagged_missing("z")), 3L)
++        source <- .arithmetic_parity_bytes(x)
++        for (scalar in c(1.01, 1e307, -1e307,
++                         .Machine$double.xmin * .Machine$double.eps,
++                         -.Machine$double.xmin * .Machine$double.eps)) {
++            # Declared double storage exercises the proof even when every
++            # nonzero result overflows and the bare-scalar result could stay
++            # in integer storage. New invalid results must increase its count.
++            y <- dta_double(scalar)
++            for (op in c("*", "/")) {
++                operation <- getExportedValue("base", op)
++                values <- operation(as.double(x), scalar)
++                values[is.na(as.double(x))] <- NA_real_
++                expected <- dtatools:::.dta_computed(values, "double")
++                .Call(C_dtatools_numeric_entry_stats, TRUE)
++                actual <- operation(x, y)
++                expect_identical(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]],
++                    if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
++                expect_identical(dta_storage_type(actual), "double")
++                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected))
++                missing <- is.na(as.double(expected))
++                expect_identical(is.na(actual), missing)
++                expect_identical(anyNA(actual), any(missing))
++                result <- dibble(x = actual)
++                replace_values(result, x = 0, where = which(missing))
++                expect_false(anyNA(result$x))
++                expect_identical(.arithmetic_parity_bytes(x), source)
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++            }
++        }
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -1783,7 +1783,7 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "e8186de15fb4efdbf2ae787a6163d0dfc2bfbb21e1f45ad0f8c7d78456a6e34f"
++          "sha256": "6f92206d8f64e96d8583dd8576c6e9377f87fb6b5689c55bb7abfe6dcae0f9e6"
+         }
+       ],
+       "blocks": [
+@@ -4460,6 +4460,30 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 184,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general integer scalar bounds preserve floating storage and missing counts",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 5496,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general integer scalar proof includes imported physical signed minima",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1933,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "floating integer scalar results reject unsafe endpoint proofs",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 240,
+           "warnings": 0
+         }
+       ],

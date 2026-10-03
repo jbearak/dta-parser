@@ -1,0 +1,368 @@
+{
+  "all_case_bare_range": [
+    0.8541634262424718,
+    3.0681098830970446
+  ],
+  "all_case_speedup_range": [
+    0.9963752427845063,
+    27.171357615893953
+  ],
+  "all_case_typed_range": [
+    0.7451612317997999,
+    2.7663144580294063
+  ],
+  "artifacts": {
+    "completion.json": "e4ec71d5eb5108968c6de6b0282546ae15b5ed7c3af792ab159fac0e92ee66c2",
+    "protocol.json": "fa645f8638bd7f884548eb21f5eb2cde6aaece0f63bdf35c58096823dfcafcea",
+    "provenance-after.json": "ddb598b60f5f777ef81914cd04f264a335eeffa2e86db0441cf6b5b4726933d7",
+    "provenance-before.json": "d3a885b5438ee1c09feecc2469dbb7d73668606352bb3c679fa9bd6500cc12a2",
+    "raw.csv": "2f7f00a22e35ba294ad2ab7d4cae735e43689c0a19422fc10f81203c2434818d",
+    "source.patch": "aa5836593452caf37bd37d66cc4df3cea2b16d11d7aac69c828f993a8b190947",
+    "summary.csv": "2f38fdac764ed70f3e7bf4a349e05d61290d52f19d068a342a386fd603375552"
+  },
+  "audit": "Independent artifact recomputation; no builds, R or timing jobs",
+  "baseline_commit": "460db463669336ea7a79aa52f797b7bd5baf5bdb",
+  "binary_controls": [
+    {
+      "compact_speedup": "0.9966772350998191",
+      "compact_typed_ratio": "1.1037220136774448",
+      "missing": "FALSE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.0004381176741108",
+      "compact_typed_ratio": "1.100951532317071",
+      "missing": "TRUE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.9963752427845063",
+      "compact_typed_ratio": "0.7451612317997999",
+      "missing": "FALSE",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.000119046102481",
+      "compact_typed_ratio": "0.8876199804235256",
+      "missing": "TRUE",
+      "width": "int"
+    }
+  ],
+  "candidate_commit": "cf72cd8efb318d9d9851f5a51f8e947fd3b158db",
+  "case_speedups": [
+    {
+      "compact_ordinary_ratio": "1.6397155302875015",
+      "compact_speedup": "2.2934378789632013",
+      "compact_typed_ratio": "1.5349954642313806",
+      "missing": "FALSE",
+      "operation": "add_scalar",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.1463524373972016",
+      "compact_speedup": "4.52366490142286",
+      "compact_typed_ratio": "0.9044733596972387",
+      "missing": "FALSE",
+      "operation": "pair_compact_double",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.082563179714818",
+      "compact_speedup": "1.2789323676205444",
+      "compact_typed_ratio": "1.6503773359403533",
+      "missing": "FALSE",
+      "operation": "reverse_divide",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.6495932883743454",
+      "compact_speedup": "2.3631352282514753",
+      "compact_typed_ratio": "1.4704627720301215",
+      "missing": "FALSE",
+      "operation": "reverse_subtract",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.2294858451150512",
+      "compact_speedup": "0.9966772350998191",
+      "compact_typed_ratio": "1.1037220136774448",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.5840182661394826",
+      "compact_speedup": "1.8612774044871574",
+      "compact_typed_ratio": "1.541994835608002",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.6236406951665028",
+      "compact_speedup": "2.3905145413870303",
+      "compact_typed_ratio": "1.4031251798088138",
+      "missing": "FALSE",
+      "operation": "subtract_scalar",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.2070531506972273",
+      "compact_speedup": "5.615234013068405",
+      "compact_typed_ratio": "1.922997652448691",
+      "missing": "TRUE",
+      "operation": "add_scalar",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.8452637398783502",
+      "compact_speedup": "3.1186282661545945",
+      "compact_typed_ratio": "1.4615289589313294",
+      "missing": "TRUE",
+      "operation": "pair_compact_double",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.78382786521024",
+      "compact_speedup": "1.239589270185788",
+      "compact_typed_ratio": "2.2295046144198527",
+      "missing": "TRUE",
+      "operation": "reverse_divide",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.0403523659704965",
+      "compact_speedup": "5.5010984796600955",
+      "compact_typed_ratio": "1.9971261321743643",
+      "missing": "TRUE",
+      "operation": "reverse_subtract",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.3324821795152362",
+      "compact_speedup": "1.0004381176741108",
+      "compact_typed_ratio": "1.100951532317071",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.0472090739309756",
+      "compact_speedup": "1.8582202111613997",
+      "compact_typed_ratio": "2.007871878393038",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.2450723464789215",
+      "compact_speedup": "5.676745439729331",
+      "compact_typed_ratio": "1.8305010474113803",
+      "missing": "TRUE",
+      "operation": "subtract_scalar",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "0.9892640780546123",
+      "compact_speedup": "17.97412722653568",
+      "compact_typed_ratio": "0.8749094867306272",
+      "missing": "FALSE",
+      "operation": "add_scalar",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.3627408586351404",
+      "compact_speedup": "2.9888346883469037",
+      "compact_typed_ratio": "1.8517833716802496",
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.2958631314676",
+      "compact_speedup": "2.9573258741371475",
+      "compact_typed_ratio": "1.976909553240766",
+      "missing": "FALSE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.5805139965449109",
+      "compact_speedup": "3.0062189849423797",
+      "compact_typed_ratio": "1.2686980609418321",
+      "missing": "FALSE",
+      "operation": "pair_compact_double",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.596867633419622",
+      "compact_speedup": "2.245163396790101",
+      "compact_typed_ratio": "2.0706977666570476",
+      "missing": "FALSE",
+      "operation": "reverse_divide",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.9864661580486116",
+      "compact_speedup": "17.928976901672513",
+      "compact_typed_ratio": "0.8809515117796866",
+      "missing": "FALSE",
+      "operation": "reverse_subtract",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8541634262424718",
+      "compact_speedup": "0.9963752427845063",
+      "compact_typed_ratio": "0.7451612317997999",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.9760793358096557",
+      "compact_speedup": "5.855757518513272",
+      "compact_typed_ratio": "0.8609717860740008",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.0652699995080714",
+      "compact_speedup": "20.04883736559141",
+      "compact_typed_ratio": "0.8717965198384515",
+      "missing": "FALSE",
+      "operation": "subtract_scalar",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.0922752653685444",
+      "compact_speedup": "26.112140249192784",
+      "compact_typed_ratio": "1.0621980225125875",
+      "missing": "TRUE",
+      "operation": "add_scalar",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "3.0589543937708363",
+      "compact_speedup": "2.1382868757259215",
+      "compact_typed_ratio": "2.7374733411612557",
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "3.0681098830970446",
+      "compact_speedup": "2.1219512195121952",
+      "compact_typed_ratio": "2.7663144580294063",
+      "missing": "TRUE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.4968359745759094",
+      "compact_speedup": "3.3535509899932587",
+      "compact_typed_ratio": "1.3053132785866781",
+      "missing": "TRUE",
+      "operation": "pair_compact_double",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.596249341137975",
+      "compact_speedup": "2.8206215841423",
+      "compact_typed_ratio": "2.284964279347856",
+      "missing": "TRUE",
+      "operation": "reverse_divide",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.1337499925937022",
+      "compact_speedup": "26.182317460317627",
+      "compact_typed_ratio": "1.0175129051871166",
+      "missing": "TRUE",
+      "operation": "reverse_subtract",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.9008001888818885",
+      "compact_speedup": "1.000119046102481",
+      "compact_typed_ratio": "0.8876199804235256",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.0861865056461217",
+      "compact_speedup": "6.057504439042628",
+      "compact_typed_ratio": "1.0639668338053814",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.0945138039211204",
+      "compact_speedup": "27.171357615893953",
+      "compact_typed_ratio": "1.075155871885991",
+      "missing": "TRUE",
+      "operation": "subtract_scalar",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.5434232560150403",
+      "compact_speedup": "2.8945652242651896",
+      "compact_typed_ratio": "1.3545711192566945",
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "compact_ordinary_ratio": "2.046105229571517",
+      "compact_speedup": "2.118018115896194",
+      "compact_typed_ratio": "1.7365558654714495",
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "caveats": [
+    "Calibration target is not the actual interval minimum.",
+    "Current large library binaries were not independently rehashed during the lightweight audit; their before/after inventories agree."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete matrix and all six permutations",
+    "result/storage/missing/source equality",
+    "native route and unchanged source states",
+    "every CPU median, speedup and paired/control ratio",
+    "before/after source/installed/controller equality and current controller hashes",
+    "completion/source-patch binding"
+  ],
+  "cpu_interval_range": [
+    0.100000000000001,
+    0.188000000000002
+  ],
+  "observations": 1224,
+  "original_gate_cases": 8,
+  "original_gate_red_cases": [
+    {
+      "compact_typed_ratio": "1.541994835608002",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_typed_ratio": "2.007871878393038",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    }
+  ],
+  "runtime": {
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "summary_rows": 68,
+  "wall_interval_range": [
+    0.0999999999999979,
+    0.188000000000002
+  ]
+}

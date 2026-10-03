@@ -1,0 +1,10 @@
+{
+  "exact_results": true,
+  "missing_cache_matches": true,
+  "observations": 1224,
+  "provenance_unchanged": true,
+  "rounds": 6,
+  "source_patch_sha256": "aa5836593452caf37bd37d66cc4df3cea2b16d11d7aac69c828f993a8b190947",
+  "source_state_unchanged": true,
+  "worker_runtime_unchanged": true
+}
