@@ -99,6 +99,7 @@ jobs:
           python3 benchmarks/r-file-readers/test-run.py
           python3 benchmarks/r-file-readers/test-builds.py
           python3 benchmarks/native-operations/test-run.py
+          python3 benchmarks/float-comparison/test-run.py
           python3 benchmarks/arrow-memory-pressure/test-run.py
           python3 benchmarks/compact-materialization/test-run.py
           python3 -O benchmarks/compact-materialization/test-run.py

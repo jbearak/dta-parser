@@ -64,6 +64,12 @@ rounds put the measured multiply, divide and self-add operations at 0.58–1.13�
 typed-double CPU, with full result and storage checks. Bare-double ratios and
 the remaining float overhead are reported separately.
 
+The [direct float comparison follow-up](float-comparison/results-2026-10-02.md)
+compares scalar and pair comparisons across missing layouts and thread settings.
+The 432-observation constructed-column matrix reaches double-control throughput
+with exact missing-code and scalar-precision semantics. Retained-column
+throughput remains a separate question.
+
 The [Arrow collection-pressure follow-up](arrow-memory-pressure/results-2026-10-02.md)
 removes repeated full collections caused by unchanged live native buffers.
 Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls below
