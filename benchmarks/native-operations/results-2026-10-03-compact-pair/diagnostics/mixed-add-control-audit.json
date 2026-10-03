@@ -1,0 +1,2442 @@
+{
+  "status": "PASS",
+  "scope": "Entire arithmetic_pair_write instruction body, relocation-aware; paired control values only",
+  "limits": "Identical instructions apart from verified relocations do not exclude address, cache, allocation-history or run-order effects and do not identify the cause of timing variation.",
+  "instruction_count_each": 61188,
+  "relocation_differences": [
+    {
+      "index": 131,
+      "old_address": "0x19b6f8",
+      "new_address": "0x1a107c",
+      "symbol": "_R_CheckUserInterrupt",
+      "old": "bl\t0x6ad7d0 ; symbol stub for: _R_CheckUserInterrupt",
+      "new": "bl\t0x6b3154 ; symbol stub for: _R_CheckUserInterrupt"
+    },
+    {
+      "index": 7626,
+      "old_address": "0x1a2c14",
+      "new_address": "0x1a8598",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1590 ; 0x7d8000",
+      "new": "adrp\tx17, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7664,
+      "old_address": "0x1a2cac",
+      "new_address": "0x1a8630",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1590 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7706,
+      "old_address": "0x1a2d54",
+      "new_address": "0x1a86d8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1590 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7748,
+      "old_address": "0x1a2dfc",
+      "new_address": "0x1a8780",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1590 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7800,
+      "old_address": "0x1a2ecc",
+      "new_address": "0x1a8850",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1590 ; 0x7d8000",
+      "new": "adrp\tx17, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7832,
+      "old_address": "0x1a2f4c",
+      "new_address": "0x1a88d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1590 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7876,
+      "old_address": "0x1a2ffc",
+      "new_address": "0x1a8980",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1590 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7915,
+      "old_address": "0x1a3098",
+      "new_address": "0x1a8a1c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7965,
+      "old_address": "0x1a3160",
+      "new_address": "0x1a8ae4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1589 ; 0x7d8000",
+      "new": "adrp\tx1, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 7998,
+      "old_address": "0x1a31e4",
+      "new_address": "0x1a8b68",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8040,
+      "old_address": "0x1a328c",
+      "new_address": "0x1a8c10",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8081,
+      "old_address": "0x1a3330",
+      "new_address": "0x1a8cb4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8133,
+      "old_address": "0x1a3400",
+      "new_address": "0x1a8d84",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1589 ; 0x7d8000",
+      "new": "adrp\tx1, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8166,
+      "old_address": "0x1a3484",
+      "new_address": "0x1a8e08",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8208,
+      "old_address": "0x1a352c",
+      "new_address": "0x1a8eb0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8249,
+      "old_address": "0x1a35d0",
+      "new_address": "0x1a8f54",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1592 ; 0x7e0000"
+    },
+    {
+      "index": 8300,
+      "old_address": "0x1a369c",
+      "new_address": "0x1a9020",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1589 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8332,
+      "old_address": "0x1a371c",
+      "new_address": "0x1a90a0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1589 ; 0x7d8000",
+      "new": "adrp\tx1, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8375,
+      "old_address": "0x1a37c8",
+      "new_address": "0x1a914c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8415,
+      "old_address": "0x1a3868",
+      "new_address": "0x1a91ec",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8464,
+      "old_address": "0x1a392c",
+      "new_address": "0x1a92b0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1589 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8497,
+      "old_address": "0x1a39b0",
+      "new_address": "0x1a9334",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8536,
+      "old_address": "0x1a3a4c",
+      "new_address": "0x1a93d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8580,
+      "old_address": "0x1a3afc",
+      "new_address": "0x1a9480",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1589 ; 0x7d8000",
+      "new": "adrp\tx23, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8628,
+      "old_address": "0x1a3bbc",
+      "new_address": "0x1a9540",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1589 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8660,
+      "old_address": "0x1a3c3c",
+      "new_address": "0x1a95c0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1589 ; 0x7d8000",
+      "new": "adrp\tx1, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8705,
+      "old_address": "0x1a3cf0",
+      "new_address": "0x1a9674",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8742,
+      "old_address": "0x1a3d84",
+      "new_address": "0x1a9708",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1589 ; 0x7d8000",
+      "new": "adrp\tx21, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8789,
+      "old_address": "0x1a3e40",
+      "new_address": "0x1a97c4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1589 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8821,
+      "old_address": "0x1a3ec0",
+      "new_address": "0x1a9844",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1589 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8862,
+      "old_address": "0x1a3f64",
+      "new_address": "0x1a98e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1589 ; 0x7d8000",
+      "new": "adrp\tx1, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8902,
+      "old_address": "0x1a4004",
+      "new_address": "0x1a9988",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1588 ; 0x7d8000",
+      "new": "adrp\tx21, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8949,
+      "old_address": "0x1a40c0",
+      "new_address": "0x1a9a44",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 8982,
+      "old_address": "0x1a4144",
+      "new_address": "0x1a9ac8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9024,
+      "old_address": "0x1a41ec",
+      "new_address": "0x1a9b70",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9056,
+      "old_address": "0x1a426c",
+      "new_address": "0x1a9bf0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1588 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9089,
+      "old_address": "0x1a42f0",
+      "new_address": "0x1a9c74",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1588 ; 0x7d8000",
+      "new": "adrp\tx16, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9122,
+      "old_address": "0x1a4374",
+      "new_address": "0x1a9cf8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9169,
+      "old_address": "0x1a4430",
+      "new_address": "0x1a9db4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1588 ; 0x7d8000",
+      "new": "adrp\tx21, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9210,
+      "old_address": "0x1a44d4",
+      "new_address": "0x1a9e58",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9253,
+      "old_address": "0x1a4580",
+      "new_address": "0x1a9f04",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9286,
+      "old_address": "0x1a4604",
+      "new_address": "0x1a9f88",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1591 ; 0x7e0000"
+    },
+    {
+      "index": 9330,
+      "old_address": "0x1a46b4",
+      "new_address": "0x1aa038",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9361,
+      "old_address": "0x1a4730",
+      "new_address": "0x1aa0b4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1588 ; 0x7d8000",
+      "new": "adrp\tx16, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9396,
+      "old_address": "0x1a47bc",
+      "new_address": "0x1aa140",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1588 ; 0x7d8000",
+      "new": "adrp\tx1, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9433,
+      "old_address": "0x1a4850",
+      "new_address": "0x1aa1d4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9480,
+      "old_address": "0x1a490c",
+      "new_address": "0x1aa290",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9518,
+      "old_address": "0x1a49a4",
+      "new_address": "0x1aa328",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9560,
+      "old_address": "0x1a4a4c",
+      "new_address": "0x1aa3d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9592,
+      "old_address": "0x1a4acc",
+      "new_address": "0x1aa450",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1588 ; 0x7d8000",
+      "new": "adrp\tx1, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9635,
+      "old_address": "0x1a4b78",
+      "new_address": "0x1aa4fc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9675,
+      "old_address": "0x1a4c18",
+      "new_address": "0x1aa59c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1588 ; 0x7d8000",
+      "new": "adrp\tx21, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9724,
+      "old_address": "0x1a4cdc",
+      "new_address": "0x1aa660",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9757,
+      "old_address": "0x1a4d60",
+      "new_address": "0x1aa6e4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9796,
+      "old_address": "0x1a4dfc",
+      "new_address": "0x1aa780",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1588 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9839,
+      "old_address": "0x1a4ea8",
+      "new_address": "0x1aa82c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1588 ; 0x7d8000",
+      "new": "adrp\tx23, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9887,
+      "old_address": "0x1a4f68",
+      "new_address": "0x1aa8ec",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1588 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9919,
+      "old_address": "0x1a4fe8",
+      "new_address": "0x1aa96c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1588 ; 0x7d8000",
+      "new": "adrp\tx1, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 9962,
+      "old_address": "0x1a5094",
+      "new_address": "0x1aaa18",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10002,
+      "old_address": "0x1a5134",
+      "new_address": "0x1aaab8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1587 ; 0x7d8000",
+      "new": "adrp\tx21, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10051,
+      "old_address": "0x1a51f8",
+      "new_address": "0x1aab7c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10084,
+      "old_address": "0x1a527c",
+      "new_address": "0x1aac00",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10123,
+      "old_address": "0x1a5318",
+      "new_address": "0x1aac9c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10166,
+      "old_address": "0x1a53c4",
+      "new_address": "0x1aad48",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1587 ; 0x7d8000",
+      "new": "adrp\tx23, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10214,
+      "old_address": "0x1a5484",
+      "new_address": "0x1aae08",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10247,
+      "old_address": "0x1a5508",
+      "new_address": "0x1aae8c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10289,
+      "old_address": "0x1a55b0",
+      "new_address": "0x1aaf34",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10321,
+      "old_address": "0x1a5630",
+      "new_address": "0x1aafb4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1590 ; 0x7e0000"
+    },
+    {
+      "index": 10354,
+      "old_address": "0x1a56b4",
+      "new_address": "0x1ab038",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10387,
+      "old_address": "0x1a5738",
+      "new_address": "0x1ab0bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10434,
+      "old_address": "0x1a57f4",
+      "new_address": "0x1ab178",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1587 ; 0x7d8000",
+      "new": "adrp\tx21, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10475,
+      "old_address": "0x1a5898",
+      "new_address": "0x1ab21c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10518,
+      "old_address": "0x1a5944",
+      "new_address": "0x1ab2c8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10553,
+      "old_address": "0x1a59d0",
+      "new_address": "0x1ab354",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10595,
+      "old_address": "0x1a5a78",
+      "new_address": "0x1ab3fc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10627,
+      "old_address": "0x1a5af8",
+      "new_address": "0x1ab47c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10660,
+      "old_address": "0x1a5b7c",
+      "new_address": "0x1ab500",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10694,
+      "old_address": "0x1a5c04",
+      "new_address": "0x1ab588",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10741,
+      "old_address": "0x1a5cc0",
+      "new_address": "0x1ab644",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1587 ; 0x7d8000",
+      "new": "adrp\tx21, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10782,
+      "old_address": "0x1a5d64",
+      "new_address": "0x1ab6e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10824,
+      "old_address": "0x1a5e0c",
+      "new_address": "0x1ab790",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1587 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10857,
+      "old_address": "0x1a5e90",
+      "new_address": "0x1ab814",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10897,
+      "old_address": "0x1a5f30",
+      "new_address": "0x1ab8b4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1587 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10937,
+      "old_address": "0x1a5fd0",
+      "new_address": "0x1ab954",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1587 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 10982,
+      "old_address": "0x1a6084",
+      "new_address": "0x1aba08",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11014,
+      "old_address": "0x1a6104",
+      "new_address": "0x1aba88",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11056,
+      "old_address": "0x1a61ac",
+      "new_address": "0x1abb30",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11086,
+      "old_address": "0x1a6224",
+      "new_address": "0x1abba8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11138,
+      "old_address": "0x1a62f4",
+      "new_address": "0x1abc78",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1586 ; 0x7d8000",
+      "new": "adrp\tx16, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11169,
+      "old_address": "0x1a6370",
+      "new_address": "0x1abcf4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11204,
+      "old_address": "0x1a63fc",
+      "new_address": "0x1abd80",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11243,
+      "old_address": "0x1a6498",
+      "new_address": "0x1abe1c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11284,
+      "old_address": "0x1a653c",
+      "new_address": "0x1abec0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1586 ; 0x7d8000",
+      "new": "adrp\tx16, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11317,
+      "old_address": "0x1a65c0",
+      "new_address": "0x1abf44",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11355,
+      "old_address": "0x1a6658",
+      "new_address": "0x1abfdc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1589 ; 0x7e0000"
+    },
+    {
+      "index": 11389,
+      "old_address": "0x1a66e0",
+      "new_address": "0x1ac064",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11433,
+      "old_address": "0x1a6790",
+      "new_address": "0x1ac114",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1586 ; 0x7d8000",
+      "new": "adrp\tx16, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11463,
+      "old_address": "0x1a6808",
+      "new_address": "0x1ac18c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11499,
+      "old_address": "0x1a6898",
+      "new_address": "0x1ac21c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11535,
+      "old_address": "0x1a6928",
+      "new_address": "0x1ac2ac",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11575,
+      "old_address": "0x1a69c8",
+      "new_address": "0x1ac34c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1586 ; 0x7d8000",
+      "new": "adrp\tx16, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11607,
+      "old_address": "0x1a6a48",
+      "new_address": "0x1ac3cc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11648,
+      "old_address": "0x1a6aec",
+      "new_address": "0x1ac470",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11686,
+      "old_address": "0x1a6b84",
+      "new_address": "0x1ac508",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11729,
+      "old_address": "0x1a6c30",
+      "new_address": "0x1ac5b4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11762,
+      "old_address": "0x1a6cb4",
+      "new_address": "0x1ac638",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11802,
+      "old_address": "0x1a6d54",
+      "new_address": "0x1ac6d8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11842,
+      "old_address": "0x1a6df4",
+      "new_address": "0x1ac778",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1586 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11887,
+      "old_address": "0x1a6ea8",
+      "new_address": "0x1ac82c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1586 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11920,
+      "old_address": "0x1a6f2c",
+      "new_address": "0x1ac8b0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 11960,
+      "old_address": "0x1a6fcc",
+      "new_address": "0x1ac950",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1586 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12000,
+      "old_address": "0x1a706c",
+      "new_address": "0x1ac9f0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12047,
+      "old_address": "0x1a7128",
+      "new_address": "0x1acaac",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12080,
+      "old_address": "0x1a71ac",
+      "new_address": "0x1acb30",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1585 ; 0x7d8000",
+      "new": "adrp\tx16, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12113,
+      "old_address": "0x1a7230",
+      "new_address": "0x1acbb4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1585 ; 0x7d8000",
+      "new": "adrp\tx16, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12145,
+      "old_address": "0x1a72b0",
+      "new_address": "0x1acc34",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12182,
+      "old_address": "0x1a7344",
+      "new_address": "0x1accc8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12214,
+      "old_address": "0x1a73c4",
+      "new_address": "0x1acd48",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1585 ; 0x7d8000",
+      "new": "adrp\tx16, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12249,
+      "old_address": "0x1a7450",
+      "new_address": "0x1acdd4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1585 ; 0x7d8000",
+      "new": "adrp\tx1, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12286,
+      "old_address": "0x1a74e4",
+      "new_address": "0x1ace68",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12325,
+      "old_address": "0x1a7580",
+      "new_address": "0x1acf04",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12356,
+      "old_address": "0x1a75fc",
+      "new_address": "0x1acf80",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1588 ; 0x7e0000"
+    },
+    {
+      "index": 12391,
+      "old_address": "0x1a7688",
+      "new_address": "0x1ad00c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12430,
+      "old_address": "0x1a7724",
+      "new_address": "0x1ad0a8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1585 ; 0x7d8000",
+      "new": "adrp\tx1, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12471,
+      "old_address": "0x1a77c8",
+      "new_address": "0x1ad14c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12504,
+      "old_address": "0x1a784c",
+      "new_address": "0x1ad1d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12542,
+      "old_address": "0x1a78e4",
+      "new_address": "0x1ad268",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12576,
+      "old_address": "0x1a796c",
+      "new_address": "0x1ad2f0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12620,
+      "old_address": "0x1a7a1c",
+      "new_address": "0x1ad3a0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12651,
+      "old_address": "0x1a7a98",
+      "new_address": "0x1ad41c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12686,
+      "old_address": "0x1a7b24",
+      "new_address": "0x1ad4a8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12725,
+      "old_address": "0x1a7bc0",
+      "new_address": "0x1ad544",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1585 ; 0x7d8000",
+      "new": "adrp\tx1, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12766,
+      "old_address": "0x1a7c64",
+      "new_address": "0x1ad5e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12799,
+      "old_address": "0x1a7ce8",
+      "new_address": "0x1ad66c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12837,
+      "old_address": "0x1a7d80",
+      "new_address": "0x1ad704",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12871,
+      "old_address": "0x1a7e08",
+      "new_address": "0x1ad78c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12916,
+      "old_address": "0x1a7ebc",
+      "new_address": "0x1ad840",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1585 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12949,
+      "old_address": "0x1a7f40",
+      "new_address": "0x1ad8c4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 12982,
+      "old_address": "0x1a7fc4",
+      "new_address": "0x1ad948",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1585 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 13014,
+      "old_address": "0x1a8044",
+      "new_address": "0x1ad9c8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1584 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 13051,
+      "old_address": "0x1a80d8",
+      "new_address": "0x1ada5c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1584 ; 0x7d8000",
+      "new": "adrp\tx2, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 13084,
+      "old_address": "0x1a815c",
+      "new_address": "0x1adae0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1584 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 13117,
+      "old_address": "0x1a81e0",
+      "new_address": "0x1adb64",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1584 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 13149,
+      "old_address": "0x1a8260",
+      "new_address": "0x1adbe4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1584 ; 0x7d8000",
+      "new": "adrp\tx17, 1587 ; 0x7e0000"
+    },
+    {
+      "index": 14473,
+      "old_address": "0x1a9710",
+      "new_address": "0x1af094",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1583 ; 0x7d8000",
+      "new": "adrp\tx2, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14503,
+      "old_address": "0x1a9788",
+      "new_address": "0x1af10c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1583 ; 0x7d8000",
+      "new": "adrp\tx21, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14534,
+      "old_address": "0x1a9804",
+      "new_address": "0x1af188",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1583 ; 0x7d8000",
+      "new": "adrp\tx21, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14648,
+      "old_address": "0x1a99cc",
+      "new_address": "0x1af350",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1583 ; 0x7d8000",
+      "new": "adrp\tx17, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14677,
+      "old_address": "0x1a9a40",
+      "new_address": "0x1af3c4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1583 ; 0x7d8000",
+      "new": "adrp\tx2, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14708,
+      "old_address": "0x1a9abc",
+      "new_address": "0x1af440",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1583 ; 0x7d8000",
+      "new": "adrp\tx2, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 14739,
+      "old_address": "0x1a9b38",
+      "new_address": "0x1af4bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1583 ; 0x7d8000",
+      "new": "adrp\tx2, 1585 ; 0x7e0000"
+    },
+    {
+      "index": 16061,
+      "old_address": "0x1aafe0",
+      "new_address": "0x1b0964",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1582 ; 0x7d8000",
+      "new": "adrp\tx1, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16088,
+      "old_address": "0x1ab04c",
+      "new_address": "0x1b09d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1581 ; 0x7d8000",
+      "new": "adrp\tx2, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16116,
+      "old_address": "0x1ab0bc",
+      "new_address": "0x1b0a40",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1581 ; 0x7d8000",
+      "new": "adrp\tx21, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16145,
+      "old_address": "0x1ab130",
+      "new_address": "0x1b0ab4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1581 ; 0x7d8000",
+      "new": "adrp\tx21, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16260,
+      "old_address": "0x1ab2fc",
+      "new_address": "0x1b0c80",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1581 ; 0x7d8000",
+      "new": "adrp\tx1, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16287,
+      "old_address": "0x1ab368",
+      "new_address": "0x1b0cec",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1581 ; 0x7d8000",
+      "new": "adrp\tx2, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16315,
+      "old_address": "0x1ab3d8",
+      "new_address": "0x1b0d5c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1581 ; 0x7d8000",
+      "new": "adrp\tx21, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 16344,
+      "old_address": "0x1ab44c",
+      "new_address": "0x1b0dd0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1581 ; 0x7d8000",
+      "new": "adrp\tx21, 1584 ; 0x7e0000"
+    },
+    {
+      "index": 18747,
+      "old_address": "0x1ad9d8",
+      "new_address": "0x1b335c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1579 ; 0x7d8000",
+      "new": "adrp\tx16, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 18778,
+      "old_address": "0x1ada54",
+      "new_address": "0x1b33d8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1579 ; 0x7d8000",
+      "new": "adrp\tx1, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 18809,
+      "old_address": "0x1adad0",
+      "new_address": "0x1b3454",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1579 ; 0x7d8000",
+      "new": "adrp\tx2, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 18841,
+      "old_address": "0x1adb50",
+      "new_address": "0x1b34d4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1579 ; 0x7d8000",
+      "new": "adrp\tx21, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 18954,
+      "old_address": "0x1add14",
+      "new_address": "0x1b3698",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1579 ; 0x7d8000",
+      "new": "adrp\tx16, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 18984,
+      "old_address": "0x1add8c",
+      "new_address": "0x1b3710",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1579 ; 0x7d8000",
+      "new": "adrp\tx2, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19016,
+      "old_address": "0x1ade0c",
+      "new_address": "0x1b3790",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1579 ; 0x7d8000",
+      "new": "adrp\tx2, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19122,
+      "old_address": "0x1adfb4",
+      "new_address": "0x1b3938",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1579 ; 0x7d8000",
+      "new": "adrp\tx23, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19237,
+      "old_address": "0x1ae180",
+      "new_address": "0x1b3b04",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1578 ; 0x7d8000",
+      "new": "adrp\tx16, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19267,
+      "old_address": "0x1ae1f8",
+      "new_address": "0x1b3b7c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1578 ; 0x7d8000",
+      "new": "adrp\tx1, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19375,
+      "old_address": "0x1ae3a8",
+      "new_address": "0x1b3d2c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1578 ; 0x7d8000",
+      "new": "adrp\tx2, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19407,
+      "old_address": "0x1ae428",
+      "new_address": "0x1b3dac",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1578 ; 0x7d8000",
+      "new": "adrp\tx21, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19520,
+      "old_address": "0x1ae5ec",
+      "new_address": "0x1b3f70",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1578 ; 0x7d8000",
+      "new": "adrp\tx16, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19550,
+      "old_address": "0x1ae664",
+      "new_address": "0x1b3fe8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1578 ; 0x7d8000",
+      "new": "adrp\tx2, 1581 ; 0x7e0000"
+    },
+    {
+      "index": 19583,
+      "old_address": "0x1ae6e8",
+      "new_address": "0x1b406c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1578 ; 0x7d8000",
+      "new": "adrp\tx1, 1580 ; 0x7e0000"
+    },
+    {
+      "index": 19689,
+      "old_address": "0x1ae890",
+      "new_address": "0x1b4214",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1578 ; 0x7d8000",
+      "new": "adrp\tx21, 1580 ; 0x7e0000"
+    },
+    {
+      "index": 24253,
+      "old_address": "0x1b2fe0",
+      "new_address": "0x1b8964",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1574 ; 0x7d8000",
+      "new": "adrp\tx17, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24283,
+      "old_address": "0x1b3058",
+      "new_address": "0x1b89dc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24315,
+      "old_address": "0x1b30d8",
+      "new_address": "0x1b8a5c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1573 ; 0x7d8000",
+      "new": "adrp\tx17, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24346,
+      "old_address": "0x1b3154",
+      "new_address": "0x1b8ad8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1573 ; 0x7d8000",
+      "new": "adrp\tx16, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24376,
+      "old_address": "0x1b31cc",
+      "new_address": "0x1b8b50",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1573 ; 0x7d8000",
+      "new": "adrp\tx16, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24407,
+      "old_address": "0x1b3248",
+      "new_address": "0x1b8bcc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24512,
+      "old_address": "0x1b33ec",
+      "new_address": "0x1b8d70",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1573 ; 0x7d8000",
+      "new": "adrp\tx21, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24545,
+      "old_address": "0x1b3470",
+      "new_address": "0x1b8df4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24648,
+      "old_address": "0x1b360c",
+      "new_address": "0x1b8f90",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1573 ; 0x7d8000",
+      "new": "adrp\tx17, 1576 ; 0x7e0000"
+    },
+    {
+      "index": 24678,
+      "old_address": "0x1b3684",
+      "new_address": "0x1b9008",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24709,
+      "old_address": "0x1b3700",
+      "new_address": "0x1b9084",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1573 ; 0x7d8000",
+      "new": "adrp\tx17, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24740,
+      "old_address": "0x1b377c",
+      "new_address": "0x1b9100",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1573 ; 0x7d8000",
+      "new": "adrp\tx16, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24770,
+      "old_address": "0x1b37f4",
+      "new_address": "0x1b9178",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1573 ; 0x7d8000",
+      "new": "adrp\tx1, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24803,
+      "old_address": "0x1b3878",
+      "new_address": "0x1b91fc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24908,
+      "old_address": "0x1b3a1c",
+      "new_address": "0x1b93a0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 24941,
+      "old_address": "0x1b3aa0",
+      "new_address": "0x1b9424",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25044,
+      "old_address": "0x1b3c3c",
+      "new_address": "0x1b95c0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1573 ; 0x7d8000",
+      "new": "adrp\tx17, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25074,
+      "old_address": "0x1b3cb4",
+      "new_address": "0x1b9638",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1573 ; 0x7d8000",
+      "new": "adrp\tx1, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25104,
+      "old_address": "0x1b3d2c",
+      "new_address": "0x1b96b0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25134,
+      "old_address": "0x1b3da4",
+      "new_address": "0x1b9728",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1573 ; 0x7d8000",
+      "new": "adrp\tx21, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25246,
+      "old_address": "0x1b3f64",
+      "new_address": "0x1b98e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1573 ; 0x7d8000",
+      "new": "adrp\tx17, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25275,
+      "old_address": "0x1b3fd8",
+      "new_address": "0x1b995c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1573 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25306,
+      "old_address": "0x1b4054",
+      "new_address": "0x1b99d8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1572 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25411,
+      "old_address": "0x1b41f8",
+      "new_address": "0x1b9b7c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1572 ; 0x7d8000",
+      "new": "adrp\tx23, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25527,
+      "old_address": "0x1b43c8",
+      "new_address": "0x1b9d4c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1572 ; 0x7d8000",
+      "new": "adrp\tx17, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25557,
+      "old_address": "0x1b4440",
+      "new_address": "0x1b9dc4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1572 ; 0x7d8000",
+      "new": "adrp\tx1, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25587,
+      "old_address": "0x1b44b8",
+      "new_address": "0x1b9e3c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1572 ; 0x7d8000",
+      "new": "adrp\tx2, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25617,
+      "old_address": "0x1b4530",
+      "new_address": "0x1b9eb4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1572 ; 0x7d8000",
+      "new": "adrp\tx21, 1575 ; 0x7e0000"
+    },
+    {
+      "index": 25729,
+      "old_address": "0x1b46f0",
+      "new_address": "0x1ba074",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1572 ; 0x7d8000",
+      "new": "adrp\tx17, 1574 ; 0x7e0000"
+    },
+    {
+      "index": 25758,
+      "old_address": "0x1b4764",
+      "new_address": "0x1ba0e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1572 ; 0x7d8000",
+      "new": "adrp\tx2, 1574 ; 0x7e0000"
+    },
+    {
+      "index": 25789,
+      "old_address": "0x1b47e0",
+      "new_address": "0x1ba164",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1572 ; 0x7d8000",
+      "new": "adrp\tx2, 1574 ; 0x7e0000"
+    },
+    {
+      "index": 25894,
+      "old_address": "0x1b4984",
+      "new_address": "0x1ba308",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx23, 1572 ; 0x7d8000",
+      "new": "adrp\tx23, 1574 ; 0x7e0000"
+    },
+    {
+      "index": 28136,
+      "old_address": "0x1b6c8c",
+      "new_address": "0x1bc610",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1570 ; 0x7d8000",
+      "new": "adrp\tx1, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28165,
+      "old_address": "0x1b6d00",
+      "new_address": "0x1bc684",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1570 ; 0x7d8000",
+      "new": "adrp\tx2, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28195,
+      "old_address": "0x1b6d78",
+      "new_address": "0x1bc6fc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1570 ; 0x7d8000",
+      "new": "adrp\tx1, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28224,
+      "old_address": "0x1b6dec",
+      "new_address": "0x1bc770",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1570 ; 0x7d8000",
+      "new": "adrp\tx17, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28253,
+      "old_address": "0x1b6e60",
+      "new_address": "0x1bc7e4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1570 ; 0x7d8000",
+      "new": "adrp\tx17, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28283,
+      "old_address": "0x1b6ed8",
+      "new_address": "0x1bc85c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1570 ; 0x7d8000",
+      "new": "adrp\tx2, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28387,
+      "old_address": "0x1b7078",
+      "new_address": "0x1bc9fc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1569 ; 0x7d8000",
+      "new": "adrp\tx21, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28418,
+      "old_address": "0x1b70f4",
+      "new_address": "0x1bca78",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1569 ; 0x7d8000",
+      "new": "adrp\tx2, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28520,
+      "old_address": "0x1b728c",
+      "new_address": "0x1bcc10",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1569 ; 0x7d8000",
+      "new": "adrp\tx1, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28549,
+      "old_address": "0x1b7300",
+      "new_address": "0x1bcc84",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1569 ; 0x7d8000",
+      "new": "adrp\tx2, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28579,
+      "old_address": "0x1b7378",
+      "new_address": "0x1bccfc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1569 ; 0x7d8000",
+      "new": "adrp\tx1, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28608,
+      "old_address": "0x1b73ec",
+      "new_address": "0x1bcd70",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1569 ; 0x7d8000",
+      "new": "adrp\tx17, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28637,
+      "old_address": "0x1b7460",
+      "new_address": "0x1bcde4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1569 ; 0x7d8000",
+      "new": "adrp\tx17, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28667,
+      "old_address": "0x1b74d8",
+      "new_address": "0x1bce5c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1569 ; 0x7d8000",
+      "new": "adrp\tx2, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28771,
+      "old_address": "0x1b7678",
+      "new_address": "0x1bcffc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx21, 1569 ; 0x7d8000",
+      "new": "adrp\tx21, 1572 ; 0x7e0000"
+    },
+    {
+      "index": 28802,
+      "old_address": "0x1b76f4",
+      "new_address": "0x1bd078",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1569 ; 0x7d8000",
+      "new": "adrp\tx2, 1571 ; 0x7e0000"
+    },
+    {
+      "index": 29910,
+      "old_address": "0x1b8844",
+      "new_address": "0x1be1c8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1568 ; 0x7d8000",
+      "new": "adrp\tx17, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 29939,
+      "old_address": "0x1b88b8",
+      "new_address": "0x1be23c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1568 ; 0x7d8000",
+      "new": "adrp\tx1, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 29970,
+      "old_address": "0x1b8934",
+      "new_address": "0x1be2b8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1568 ; 0x7d8000",
+      "new": "adrp\tx1, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 30069,
+      "old_address": "0x1b8ac0",
+      "new_address": "0x1be444",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1568 ; 0x7d8000",
+      "new": "adrp\tx2, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 30174,
+      "old_address": "0x1b8c64",
+      "new_address": "0x1be5e8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1568 ; 0x7d8000",
+      "new": "adrp\tx17, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 30203,
+      "old_address": "0x1b8cd8",
+      "new_address": "0x1be65c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1568 ; 0x7d8000",
+      "new": "adrp\tx1, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 30306,
+      "old_address": "0x1b8e74",
+      "new_address": "0x1be7f8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1568 ; 0x7d8000",
+      "new": "adrp\tx1, 1570 ; 0x7e0000"
+    },
+    {
+      "index": 33474,
+      "old_address": "0x1bbff4",
+      "new_address": "0x1c1978",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1565 ; 0x7d8000",
+      "new": "adrp\tx16, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33505,
+      "old_address": "0x1bc070",
+      "new_address": "0x1c19f4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33533,
+      "old_address": "0x1bc0e0",
+      "new_address": "0x1c1a64",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33565,
+      "old_address": "0x1bc160",
+      "new_address": "0x1c1ae4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1564 ; 0x7d8000",
+      "new": "adrp\tx1, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33661,
+      "old_address": "0x1bc2e0",
+      "new_address": "0x1c1c64",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1564 ; 0x7d8000",
+      "new": "adrp\tx16, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33691,
+      "old_address": "0x1bc358",
+      "new_address": "0x1c1cdc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33723,
+      "old_address": "0x1bc3d8",
+      "new_address": "0x1c1d5c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33752,
+      "old_address": "0x1bc44c",
+      "new_address": "0x1c1dd0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33850,
+      "old_address": "0x1bc5d4",
+      "new_address": "0x1c1f58",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1564 ; 0x7d8000",
+      "new": "adrp\tx16, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33880,
+      "old_address": "0x1bc64c",
+      "new_address": "0x1c1fd0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1567 ; 0x7e0000"
+    },
+    {
+      "index": 33908,
+      "old_address": "0x1bc6bc",
+      "new_address": "0x1c2040",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 33940,
+      "old_address": "0x1bc73c",
+      "new_address": "0x1c20c0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1564 ; 0x7d8000",
+      "new": "adrp\tx1, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34036,
+      "old_address": "0x1bc8bc",
+      "new_address": "0x1c2240",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1564 ; 0x7d8000",
+      "new": "adrp\tx16, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34066,
+      "old_address": "0x1bc934",
+      "new_address": "0x1c22b8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34099,
+      "old_address": "0x1bc9b8",
+      "new_address": "0x1c233c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34131,
+      "old_address": "0x1bca38",
+      "new_address": "0x1c23bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34230,
+      "old_address": "0x1bcbc4",
+      "new_address": "0x1c2548",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34259,
+      "old_address": "0x1bcc38",
+      "new_address": "0x1c25bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1564 ; 0x7d8000",
+      "new": "adrp\tx1, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34289,
+      "old_address": "0x1bccb0",
+      "new_address": "0x1c2634",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1564 ; 0x7d8000",
+      "new": "adrp\tx1, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34387,
+      "old_address": "0x1bce38",
+      "new_address": "0x1c27bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1564 ; 0x7d8000",
+      "new": "adrp\tx2, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34491,
+      "old_address": "0x1bcfd8",
+      "new_address": "0x1c295c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1564 ; 0x7d8000",
+      "new": "adrp\tx17, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34520,
+      "old_address": "0x1bd04c",
+      "new_address": "0x1c29d0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1563 ; 0x7d8000",
+      "new": "adrp\tx1, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34550,
+      "old_address": "0x1bd0c4",
+      "new_address": "0x1c2a48",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1563 ; 0x7d8000",
+      "new": "adrp\tx1, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 34648,
+      "old_address": "0x1bd24c",
+      "new_address": "0x1c2bd0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1563 ; 0x7d8000",
+      "new": "adrp\tx2, 1566 ; 0x7e0000"
+    },
+    {
+      "index": 37618,
+      "old_address": "0x1c00b4",
+      "new_address": "0x1c5a38",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37649,
+      "old_address": "0x1c0130",
+      "new_address": "0x1c5ab4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1560 ; 0x7d8000",
+      "new": "adrp\tx16, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37679,
+      "old_address": "0x1c01a8",
+      "new_address": "0x1c5b2c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1560 ; 0x7d8000",
+      "new": "adrp\tx16, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37710,
+      "old_address": "0x1c0224",
+      "new_address": "0x1c5ba8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37739,
+      "old_address": "0x1c0298",
+      "new_address": "0x1c5c1c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37770,
+      "old_address": "0x1c0314",
+      "new_address": "0x1c5c98",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx16, 1560 ; 0x7d8000",
+      "new": "adrp\tx16, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37800,
+      "old_address": "0x1c038c",
+      "new_address": "0x1c5d10",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1560 ; 0x7d8000",
+      "new": "adrp\tx1, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37833,
+      "old_address": "0x1c0410",
+      "new_address": "0x1c5d94",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37864,
+      "old_address": "0x1c048c",
+      "new_address": "0x1c5e10",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37894,
+      "old_address": "0x1c0504",
+      "new_address": "0x1c5e88",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37922,
+      "old_address": "0x1c0574",
+      "new_address": "0x1c5ef8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 37952,
+      "old_address": "0x1c05ec",
+      "new_address": "0x1c5f70",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1560 ; 0x7d8000",
+      "new": "adrp\tx1, 1563 ; 0x7e0000"
+    },
+    {
+      "index": 38047,
+      "old_address": "0x1c0768",
+      "new_address": "0x1c60ec",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38076,
+      "old_address": "0x1c07dc",
+      "new_address": "0x1c6160",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38107,
+      "old_address": "0x1c0858",
+      "new_address": "0x1c61dc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38136,
+      "old_address": "0x1c08cc",
+      "new_address": "0x1c6250",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38233,
+      "old_address": "0x1c0a50",
+      "new_address": "0x1c63d4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38263,
+      "old_address": "0x1c0ac8",
+      "new_address": "0x1c644c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38291,
+      "old_address": "0x1c0b38",
+      "new_address": "0x1c64bc",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38321,
+      "old_address": "0x1c0bb0",
+      "new_address": "0x1c6534",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx1, 1560 ; 0x7d8000",
+      "new": "adrp\tx1, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38416,
+      "old_address": "0x1c0d2c",
+      "new_address": "0x1c66b0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38445,
+      "old_address": "0x1c0da0",
+      "new_address": "0x1c6724",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38476,
+      "old_address": "0x1c0e1c",
+      "new_address": "0x1c67a0",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1560 ; 0x7d8000",
+      "new": "adrp\tx17, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 38505,
+      "old_address": "0x1c0e90",
+      "new_address": "0x1c6814",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1560 ; 0x7d8000",
+      "new": "adrp\tx2, 1562 ; 0x7e0000"
+    },
+    {
+      "index": 39501,
+      "old_address": "0x1c1e20",
+      "new_address": "0x1c77a4",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1559 ; 0x7d8000",
+      "new": "adrp\tx2, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39530,
+      "old_address": "0x1c1e94",
+      "new_address": "0x1c7818",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1559 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39559,
+      "old_address": "0x1c1f08",
+      "new_address": "0x1c788c",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1559 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39589,
+      "old_address": "0x1c1f80",
+      "new_address": "0x1c7904",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1559 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39618,
+      "old_address": "0x1c1ff4",
+      "new_address": "0x1c7978",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx2, 1559 ; 0x7d8000",
+      "new": "adrp\tx2, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39647,
+      "old_address": "0x1c2068",
+      "new_address": "0x1c79ec",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1558 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39676,
+      "old_address": "0x1c20dc",
+      "new_address": "0x1c7a60",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1558 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    },
+    {
+      "index": 39706,
+      "old_address": "0x1c2154",
+      "new_address": "0x1c7ad8",
+      "symbol": "_R_NaReal",
+      "old": "adrp\tx17, 1558 ; 0x7d8000",
+      "new": "adrp\tx17, 1561 ; 0x7e0000"
+    }
+  ],
+  "symbol_counts": {
+    "_R_NaReal": 286,
+    "_R_CheckUserInterrupt": 1
+  },
+  "controls": [
+    {
+      "width": "int",
+      "operation": "mixed_add",
+      "rounds": [
+        {
+          "round": 1,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0007156398104265402,
+          "candidate_seconds_per_call": 0.0007990196078431372,
+          "paired_speedup": 0.8956473701043817,
+          "baseline_cpu_interval": 0.151,
+          "candidate_cpu_interval": 0.163
+        },
+        {
+          "round": 2,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0007777777777777826,
+          "candidate_seconds_per_call": 0.0007342995169082125,
+          "paired_speedup": 1.059210526315796,
+          "baseline_cpu_interval": 0.161000000000001,
+          "candidate_cpu_interval": 0.152
+        },
+        {
+          "round": 3,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0007391304347826039,
+          "candidate_seconds_per_call": 0.0007751196172248756,
+          "paired_speedup": 0.9535695115405257,
+          "baseline_cpu_interval": 0.152999999999999,
+          "candidate_cpu_interval": 0.161999999999999
+        },
+        {
+          "round": 4,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0007109004739336445,
+          "candidate_seconds_per_call": 0.0007149758454106328,
+          "paired_speedup": 0.994299987190969,
+          "baseline_cpu_interval": 0.149999999999999,
+          "candidate_cpu_interval": 0.148000000000001
+        },
+        {
+          "round": 5,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0007109004739336493,
+          "candidate_seconds_per_call": 0.0007772511848341232,
+          "paired_speedup": 0.9146341463414633,
+          "baseline_cpu_interval": 0.15,
+          "candidate_cpu_interval": 0.164
+        },
+        {
+          "round": 6,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0007156398104265402,
+          "candidate_seconds_per_call": 0.0007156398104265356,
+          "paired_speedup": 1.0000000000000064,
+          "baseline_cpu_interval": 0.151,
+          "candidate_cpu_interval": 0.150999999999999
+        }
+      ],
+      "median_paired_speedup": 0.9739347493657473,
+      "ratio_of_cpu_medians": 0.9482320639025914
+    },
+    {
+      "width": "long",
+      "operation": "long_float_add",
+      "rounds": [
+        {
+          "round": 1,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0006014492753623153,
+          "candidate_seconds_per_call": 0.0005894736842105228,
+          "paired_speedup": 1.0203157349896481,
+          "baseline_cpu_interval": 0.165999999999999,
+          "candidate_cpu_interval": 0.167999999999999
+        },
+        {
+          "round": 2,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0005607142857142821,
+          "candidate_seconds_per_call": 0.000546428571428575,
+          "paired_speedup": 1.02614379084966,
+          "baseline_cpu_interval": 0.156999999999999,
+          "candidate_cpu_interval": 0.153000000000001
+        },
+        {
+          "round": 3,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0005333333333333439,
+          "candidate_seconds_per_call": 0.0005778546712802838,
+          "paired_speedup": 0.9229540918163743,
+          "baseline_cpu_interval": 0.152000000000003,
+          "candidate_cpu_interval": 0.167000000000002
+        },
+        {
+          "round": 4,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0005894736842105228,
+          "candidate_seconds_per_call": 0.0005333333333333368,
+          "paired_speedup": 1.1052631578947232,
+          "baseline_cpu_interval": 0.167999999999999,
+          "candidate_cpu_interval": 0.152000000000001
+        },
+        {
+          "round": 5,
+          "candidate_build_position": 2,
+          "baseline_seconds_per_call": 0.0005294117647058892,
+          "candidate_seconds_per_call": 0.0005298245614035193,
+          "paired_speedup": 0.9992208804051353,
+          "baseline_cpu_interval": 0.153000000000002,
+          "candidate_cpu_interval": 0.151000000000003
+        },
+        {
+          "round": 6,
+          "candidate_build_position": 1,
+          "baseline_seconds_per_call": 0.0005590551181102322,
+          "candidate_seconds_per_call": 0.0005321428571428607,
+          "paired_speedup": 1.0505733763145233,
+          "baseline_cpu_interval": 0.141999999999999,
+          "candidate_cpu_interval": 0.149000000000001
+        }
+      ],
+      "median_paired_speedup": 1.023229762919654,
+      "ratio_of_cpu_medians": 1.0370521490767208
+    }
+  ],
+  "input_sha256": {
+    "<work>/pair-prototype-disassembly.txt": "1b6f70804503589f4f2c0f0190b9e1de130efdc0dedebaa671a2624206b9ada0",
+    "<work>/float-product-otool-disassembly.txt": "84e8ab3305e149c415461660ed33715892bc79ffd238347fcbc23e28ebbb197e",
+    "<work>/pair-prototype/build-receipt.json": "7862487452265e8d28ee0719830208872ae72d5f7c62ec759290e227ddb58e90",
+    "<work>/float-product-prototype/build-receipt.json": "dd157f1f0cd231e365e4b8af5b21ff2764431f8d4fc93026c77432e4bb0bc5be",
+    "<work>/float-product-timings/raw.csv": "8b599b277aaa5f65cb0131e8868057d97aba0caa9cc56c7eedd5a066065c5bc5",
+    "<work>/mixed-add-control-audit.py": "6da479d315950689a69c4d15c8f11c7a39551cc448c771cd6bb2e55fbe14d8d8"
+  }
+}

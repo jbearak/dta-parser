@@ -1821,11 +1821,11 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
+          "sha256": "22966619755527264b9baf68a8378cae0b1f8ed5c11c6c72adbe7ab796f26981"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
+          "sha256": "a18ae6d309ea91b970c3fc416670bed2a1cf9afe59cd30c17ff37e14237d6d62"
         }
       ],
       "blocks": [
@@ -4401,6 +4401,38 @@
           "warnings": 0
         },
         {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact pair promotion recomputes earlier chunks and counts missing unions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "rounded float multiplication limits retain exact binary64 storage decisions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 412,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact float sums preserve rounded binary64 fit and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1291,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact float sums keep exponent-gap cancellation and zero bits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 38,
+          "warnings": 0
+        },
+        {
           "file": "test-native-arithmetic-parity.R",
           "test": "a final or boundary value promotes every earlier scalar result",
           "occurrence": 1,
@@ -4514,14 +4546,6 @@
         },
         {
           "file": "test-native-arithmetic-parity.R",
-          "test": "general integer scalar proof includes imported physical signed minima",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 1933,
-          "warnings": 0
-        },
-        {
-          "file": "test-native-arithmetic-parity.R",
           "test": "floating scalar results reject unsafe endpoint proofs",
           "occurrence": 1,
           "skip": "forbid",
@@ -4542,6 +4566,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 1512,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general arithmetic includes imported physical signed minima and legacy reserved observations",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3376,
           "warnings": 0
         }
       ],

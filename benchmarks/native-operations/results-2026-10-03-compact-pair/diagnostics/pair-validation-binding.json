@@ -1,0 +1,30 @@
+{
+  "prototype_receipt_sha256": "7862487452265e8d28ee0719830208872ae72d5f7c62ec759290e227ddb58e90",
+  "runtime_commit": "f729c488",
+  "test_manifest_commit": "2ee72fdf",
+  "current_source_difference_from_prototype": [
+    "tools/native-test-manifest.json"
+  ],
+  "current_manifest_sha256": "57babc627b91a12ce550d105b413db2125b4b4a5e2f09f57537c7fef03440e3b",
+  "test_runner_sha256": "a311b7bb58b84565f08c89b5cb0f82b67d558cb867619aa88d65c9dcc02221eb",
+  "variants": {
+    "baseline": {
+      "assertions": 51062,
+      "focused_sha256": "aae6b21d9dc18cf5edfb31a96145e2314ca9fc24536b3f6efe637a6d8a4e7559",
+      "qualification_rows": 36,
+      "qualification_sha256": "9a0944d2609cbd560facfb9f014ca5be84ec32d295d0b30d45fcf34d541620c2"
+    },
+    "prototype": {
+      "assertions": 51062,
+      "focused_sha256": "aae6b21d9dc18cf5edfb31a96145e2314ca9fc24536b3f6efe637a6d8a4e7559",
+      "qualification_rows": 36,
+      "qualification_sha256": "9a0944d2609cbd560facfb9f014ca5be84ec32d295d0b30d45fcf34d541620c2"
+    }
+  },
+  "controllers": {
+    "general-run.py": "4fcd75f8e5508bd80f071e8d57913bbd3ece614f50f811772e144e3b2970806e",
+    "general-worker.R": "e74ad0775ecc0d1b7e48080424d596d7eea604ea9f13cf78cae639a0e59e12bd",
+    "test-general-run.py": "e3610dffc74d52802710eb90fb97ead281e7afe0ba5584cc9e4dea305e0c2379"
+  },
+  "scope": "Untimed focused correctness and qualification; current source differs from captured prototype only by the manifest refreshed from these observations. Both benchmark builds remain immutable."
+}

@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "scope": "Fresh installed-binary disassembly binding for the entire compared producer body; no performance measurements",
+  "bindings": [
+    {
+      "build": "pair-prototype",
+      "build_receipt_sha256": "7862487452265e8d28ee0719830208872ae72d5f7c62ec759290e227ddb58e90",
+      "binary_sha256": "1d7f00c51134e07d0083798bc1f662bef30048dc0df539de0763e6f147b9e1ec",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+        "-tvV",
+        "<work>/pair-prototype/library/dtatools/libs/dtatools.so"
+      ],
+      "disassembler_sha256": "61ff2c63cf68eeeadf9c4700dadb8271740ff4960f98500f30db82b31521c0de",
+      "regenerated_sha256": "a031e44189f8962da31e6bf449068b5e7f49e3b8630ea590b97d66aa0269259b",
+      "recorded_sha256": "1b6f70804503589f4f2c0f0190b9e1de130efdc0dedebaa671a2624206b9ada0",
+      "verified_function": "arithmetic_pair_write",
+      "instruction_count": 61188
+    },
+    {
+      "build": "float-product-prototype",
+      "build_receipt_sha256": "dd157f1f0cd231e365e4b8af5b21ff2764431f8d4fc93026c77432e4bb0bc5be",
+      "binary_sha256": "86c38885333dbef368acdecf3fdfb263f77bedc020c87f734739df6b7089de43",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/llvm-otool",
+        "-tvV",
+        "<work>/float-product-prototype/library/dtatools/libs/dtatools.so"
+      ],
+      "disassembler_sha256": "61ff2c63cf68eeeadf9c4700dadb8271740ff4960f98500f30db82b31521c0de",
+      "regenerated_sha256": "84e8ab3305e149c415461660ed33715892bc79ffd238347fcbc23e28ebbb197e",
+      "recorded_sha256": "84e8ab3305e149c415461660ed33715892bc79ffd238347fcbc23e28ebbb197e",
+      "verified_function": "arithmetic_pair_write",
+      "instruction_count": 61188
+    }
+  ],
+  "script_sha256": "74ce59241146602b14d9229778be27cc2ee31327a1f03994cee42210ab527fe4",
+  "comparison_script_sha256": "6da479d315950689a69c4d15c8f11c7a39551cc448c771cd6bb2e55fbe14d8d8",
+  "comparison_receipt_sha256": "d4bfc2970ed0bf50b68dbc0d48f255886d157f1a3b38a75d2776b04decddeaff"
+}

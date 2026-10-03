@@ -136,3 +136,9 @@ reports all 34 cases, including the remaining gaps. The maintained general
 controller resolves the exact Rscript used for workers, hashes that launcher
 and its R runtime before and after the run, and requires the runtime to match
 both clean-build receipts.
+
+The [compact-pair arithmetic follow-up](results-2026-10-03-compact-pair.md)
+reports the full 34-case acceptance for direct float addition, subtraction and
+multiplication, its numerical proofs and the remaining scalar/division gaps.
+Its separate comparison requires native entry checks for both already-native
+builds and preserves the original controls and six balanced orders.

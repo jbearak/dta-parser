@@ -1,0 +1,432 @@
+{
+  "all_case_bare_range": [
+    0.8308891196510508,
+    2.78235614927194
+  ],
+  "all_case_speedup_range": [
+    0.9482320639025914,
+    1.9476586754845227
+  ],
+  "all_case_typed_range": [
+    0.7674910233476038,
+    2.3555593008729505
+  ],
+  "artifacts": {
+    "completion.json": "7604fa9ecaccd19272a9f8b55483bce53730e8ea5f77a01a061bc6c7cad17907",
+    "protocol.json": "3ac689dc48744cf5eab9974669f4fc55e715e3bf8ed175435cb0c6c40e15038d",
+    "provenance-after.json": "18dae872648ba8cab38a56aa7ca821b65300f4dedd395b37417f77fcc1abc7e9",
+    "provenance-before.json": "b0f2c00b1ec7a508f0b1c6870dfa9d6a9478583c5a1b3efe3667db0a425f1eb6",
+    "raw.csv": "8b599b277aaa5f65cb0131e8868057d97aba0caa9cc56c7eedd5a066065c5bc5",
+    "source.patch": "407b74cdaf194f140cb51197c5335d424d9b75fd38e8b6128beaad22e8904978",
+    "summary.csv": "7a2b27b0a01c5d38850520dbf4a9f18d2d7c1b9bf2de5b7cff5cde2de063fd7a"
+  },
+  "audit": "Independent artifact recomputation; no builds, R or timing jobs",
+  "baseline_commit": "f729c488f936040bff5dc6458393aba14dc77374",
+  "binary_controls": [
+    {
+      "compact_speedup": "0.9933333333333267",
+      "compact_typed_ratio": "1.1441771748879075",
+      "missing": "FALSE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.005305360906954",
+      "compact_typed_ratio": "1.1624654642621446",
+      "missing": "TRUE",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.995881449387113",
+      "compact_typed_ratio": "0.7674910233476038",
+      "missing": "FALSE",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.0065048197140265",
+      "compact_typed_ratio": "0.8091486849707299",
+      "missing": "TRUE",
+      "width": "int"
+    }
+  ],
+  "candidate_commit": "54d2913069391c8d00d1079590194ab7d022b681",
+  "case_speedups": [
+    {
+      "compact_ordinary_ratio": "0.9865122973113057",
+      "compact_speedup": "1.9476586754845227",
+      "compact_typed_ratio": "0.8695785256222331",
+      "missing": "FALSE",
+      "operation": "float_multiply",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.227675653060703",
+      "compact_speedup": "0.9933333333333267",
+      "compact_typed_ratio": "1.1441771748879075",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.5593073179475119",
+      "compact_speedup": "0.993603231290864",
+      "compact_typed_ratio": "1.4087956267006552",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.708883084295079",
+      "compact_speedup": "1.699745491052535",
+      "compact_typed_ratio": "1.4895000205077724",
+      "missing": "TRUE",
+      "operation": "float_multiply",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.2769948422554742",
+      "compact_speedup": "1.005305360906954",
+      "compact_typed_ratio": "1.1624654642621446",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "2.0580984906912914",
+      "compact_speedup": "1.00390854016025",
+      "compact_typed_ratio": "1.9609120521172703",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_ordinary_ratio": "1.9180029267409582",
+      "compact_speedup": "1.0076833606287166",
+      "compact_typed_ratio": "1.5715374979004535",
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.0838252468279705",
+      "compact_speedup": "1.0007522697795037",
+      "compact_typed_ratio": "1.757509421234424",
+      "missing": "FALSE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.2427547628034294",
+      "compact_speedup": "1.5461548489975943",
+      "compact_typed_ratio": "1.0182289462547638",
+      "missing": "FALSE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.9373634158303157",
+      "compact_speedup": "0.9938770911727809",
+      "compact_typed_ratio": "1.6681989697148558",
+      "missing": "FALSE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8308891196510508",
+      "compact_speedup": "0.995881449387113",
+      "compact_typed_ratio": "0.7674910233476038",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.78235614927194",
+      "compact_speedup": "0.9482320639025914",
+      "compact_typed_ratio": "2.3555593008729505",
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.5333702375623717",
+      "compact_speedup": "0.998395912391937",
+      "compact_typed_ratio": "2.239516626793329",
+      "missing": "TRUE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.7629267570531144",
+      "compact_speedup": "1.5171900014265458",
+      "compact_typed_ratio": "1.3540748691296611",
+      "missing": "TRUE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "2.534825502619304",
+      "compact_speedup": "0.9938542037555955",
+      "compact_typed_ratio": "2.149433186785352",
+      "missing": "TRUE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "0.8939090891358427",
+      "compact_speedup": "1.0065048197140265",
+      "compact_typed_ratio": "0.8091486849707299",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_ordinary_ratio": "1.4049220317417535",
+      "compact_speedup": "0.9966663603171655",
+      "compact_typed_ratio": "1.2178871080192872",
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "compact_ordinary_ratio": "1.9270087090883563",
+      "compact_speedup": "1.0370521490767208",
+      "compact_typed_ratio": "1.7197532324188067",
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "caveats": [
+    "Calibration target is not the actual interval minimum.",
+    "Current complete source/installed inventories, compiler/build records and named DLLs independently reverified in the authorized setup window; no R or timing jobs."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete matrix and all six permutations",
+    "result/storage/missing/source equality",
+    "native route and unchanged source states",
+    "every CPU median, speedup and paired/control ratio",
+    "before/after source/installed/controller equality and current controller hashes",
+    "completion/source-patch binding",
+    "current full named build/source/installed/DLL inventories"
+  ],
+  "controls": [
+    {
+      "compact_speedup": "0.9933333333333267",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "0.993603231290864",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.005305360906954",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.00390854016025",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_speedup": "1.0076833606287166",
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.0007522697795037",
+      "missing": "FALSE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.9938770911727809",
+      "missing": "FALSE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.995881449387113",
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.9482320639025914",
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.998395912391937",
+      "missing": "TRUE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.9938542037555955",
+      "missing": "TRUE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "1.0065048197140265",
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "compact_speedup": "0.9966663603171655",
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "compact_speedup": "1.0370521490767208",
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "cpu_interval_range": [
+    0.0510000000000007,
+    0.184
+  ],
+  "observations": 648,
+  "paired_speedups": [
+    {
+      "median": 1.9323097398669151,
+      "missing": "FALSE",
+      "operation": "float_multiply",
+      "width": "float"
+    },
+    {
+      "median": 1.001836374678273,
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "median": 1.0027568922305932,
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "median": 1.6917152268664992,
+      "missing": "TRUE",
+      "operation": "float_multiply",
+      "width": "float"
+    },
+    {
+      "median": 1.0015260498832437,
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "float"
+    },
+    {
+      "median": 0.9966051275102679,
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "median": 1.0009957412910935,
+      "missing": "FALSE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "median": 1.0041130232679536,
+      "missing": "FALSE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "median": 1.5492625433372984,
+      "missing": "FALSE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "median": 0.9906988810714625,
+      "missing": "FALSE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "median": 1.0032136718068805,
+      "missing": "FALSE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "median": 0.9739347493657473,
+      "missing": "TRUE",
+      "operation": "mixed_add",
+      "width": "int"
+    },
+    {
+      "median": 0.9934481977609493,
+      "missing": "TRUE",
+      "operation": "mixed_divide",
+      "width": "int"
+    },
+    {
+      "median": 1.5148352211298,
+      "missing": "TRUE",
+      "operation": "mixed_multiply",
+      "width": "int"
+    },
+    {
+      "median": 0.9938323575875847,
+      "missing": "TRUE",
+      "operation": "mixed_subtract",
+      "width": "int"
+    },
+    {
+      "median": 1.0006956418336408,
+      "missing": "TRUE",
+      "operation": "scale_binary",
+      "width": "int"
+    },
+    {
+      "median": 1.0012835621061384,
+      "missing": "FALSE",
+      "operation": "long_float_add",
+      "width": "long"
+    },
+    {
+      "median": 1.023229762919654,
+      "missing": "TRUE",
+      "operation": "long_float_add",
+      "width": "long"
+    }
+  ],
+  "runtime": {
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "R_version": "R version 4.6.1 (2026-06-24)",
+    "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f"
+  },
+  "summary_rows": 36,
+  "target_cases": 4,
+  "target_speedup_range": [
+    1.5171900014265458,
+    1.9476586754845227
+  ],
+  "target_typed_range": [
+    0.8695785256222331,
+    1.4895000205077724
+  ],
+  "wall_interval_range": [
+    0.0500000000000007,
+    0.184000000000001
+  ]
+}

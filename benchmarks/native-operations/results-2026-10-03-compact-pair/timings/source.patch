@@ -1,0 +1,723 @@
+--- a/src/numeric-arithmetic-general.h
++++ b/src/numeric-arithmetic-general.h
+@@ -390,6 +390,8 @@
+ }
+ 
+ #include "numeric-arithmetic-float-scalar.h"
++#include "numeric-arithmetic-pair.h"
++#include "numeric-arithmetic-pair-float.h"
+ 
+ static int arithmetic_general_produce(
+     const arithmetic_general_source *left, const arithmetic_general_source *right,
+@@ -408,6 +410,11 @@
+     if (arithmetic_float_scalar_prove(
+             left, right, length, operation, output->kind, &float_proof))
+         return arithmetic_float_scalar_write(&float_proof, length, output);
++    if (arithmetic_pair_float_admitted(
++            left, right, length, operation, output->kind))
++        return arithmetic_pair_float_write(left, right, length, operation, output);
++    if (arithmetic_pair_admitted(left, right, length, operation, output->kind))
++        return arithmetic_pair_write(left, right, length, operation, output);
+     return arithmetic_general_run(left, right, length, operation, minimum, output);
+ }
+ 
+--- a/src/numeric-arithmetic-pair-float.h
++++ b/src/numeric-arithmetic-pair-float.h
+@@ -0,0 +1,108 @@
++/* For byte/int16/float operands, binary32 +, - and * have the same final
++   rounding as the established binary64 expression then one float conversion.
++   A nonzero finite product has at most 48 significand bits and magnitude
++   between 2^-298 and 2^256, so its binary64 evaluation is exact. For sums and
++   differences, an exponent gap <= 29 also fits exactly in binary64. At larger
++   gaps the smaller operand plus binary64 rounding error is below the nearest
++   binary32 midpoint margin, including the smaller lower-binade spacing.
++   Directed rounding composes across the nested binary32/binary64 grids.
++   Long operands are excluded because their float conversion can lose bits.
++
++   Storage selection still follows the rounded binary64 expression, which
++   need not equal the exact rational sum at a large exponent gap. A rounded
++   magnitude strictly below/above the representable observed limit proves
++   float fit/double promotion respectively. Equality is ambiguous and reruns
++   the existing binary64 producer, including whole-column recomputation on
++   promotion. No rounded float result is widened into a promoted output. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_PAIR_FLOAT_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_PAIR_FLOAT_H
++
++static int arithmetic_pair_float_admitted(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind
++) {
++    if ((operation != '+' && operation != '-' && operation != '*') ||
++        kind != NUMERIC_FLOAT ||
++        !arithmetic_pair_admitted(left, right, length, operation, kind)) return 0;
++    int x_kind = left->operand->reader.storage->kind;
++    int y_kind = right->operand->reader.storage->kind;
++    return x_kind != NUMERIC_LONG && y_kind != NUMERIC_LONG &&
++        (x_kind == NUMERIC_FLOAT || y_kind == NUMERIC_FLOAT);
++}
++
++#define ARITHMETIC_PAIR_FLOAT_LOOP(X, Y, OP)                              \
++    do {                                                                 \
++        float *restrict target = (float *) (void *) output->raw + start;  \
++        unsigned missing_count = 0;                                     \
++        for (size_t i = 0; i < count; i++) {                             \
++            arithmetic_pair_value x = arithmetic_pair_load_##X(x_raw, i, &x_policy); \
++            arithmetic_pair_value y = arithmetic_pair_load_##Y(y_raw, i, &y_policy); \
++            unsigned invalid = x.missing | y.missing | x.infinite | y.infinite; \
++            float a = invalid ? 0.0f : x.float_value;                    \
++            float b = invalid ? 0.0f : y.float_value;                    \
++            float value = a OP b;                                       \
++            uint32_t bits;                                               \
++            memcpy(&bits, &value, sizeof(bits));                         \
++            bits &= UINT32_C(0x7fffffff);                               \
++            maximum = bits > maximum ? bits : maximum;                  \
++            missing_count += invalid;                                   \
++            target[i] = invalid ? 0x1p127f : value;                      \
++        }                                                                \
++        output->missing_count += missing_count;                         \
++    } while (0)
++
++#define ARITHMETIC_PAIR_FLOAT_RIGHT(X, OP)                               \
++    switch (y_policy.kind) {                                             \
++    case NUMERIC_BYTE: ARITHMETIC_PAIR_FLOAT_LOOP(X, byte, OP); break;    \
++    case NUMERIC_INT: ARITHMETIC_PAIR_FLOAT_LOOP(X, int, OP); break;      \
++    case NUMERIC_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, float, OP); break;  \
++    case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, observed_float, OP); break; \
++    case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, legacy_float, OP); break; \
++    }
++
++#define ARITHMETIC_PAIR_FLOAT_LEFT(OP)                                  \
++    switch (x_policy.kind) {                                             \
++    case NUMERIC_BYTE: ARITHMETIC_PAIR_FLOAT_RIGHT(byte, OP); break;     \
++    case NUMERIC_INT: ARITHMETIC_PAIR_FLOAT_RIGHT(int, OP); break;       \
++    case NUMERIC_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(float, OP); break;   \
++    case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(observed_float, OP); break; \
++    case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(legacy_float, OP); break; \
++    }
++
++static int arithmetic_pair_float_write(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, arithmetic_general_output *output
++) {
++    const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
++    const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
++    uint32_t maximum = 0;
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
++        const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
++        /* Instantiate each operation outside the row loop. Source layout,
++           missing semantics and whole-column promotion stay shared. */
++        switch (operation) {
++        case '+': ARITHMETIC_PAIR_FLOAT_LEFT(+); break;
++        case '-': ARITHMETIC_PAIR_FLOAT_LEFT(-); break;
++        case '*': ARITHMETIC_PAIR_FLOAT_LEFT(*); break;
++        }
++        start += count;
++    }
++    if (maximum > UINT32_C(0x7effffff)) return NUMERIC_DOUBLE;
++    if (maximum == UINT32_C(0x7effffff)) {
++        /* The float backing remains private. Discard provisional reductions
++           before the exact producer overwrites every lane and decides fit. */
++        output->missing_count = 0;
++        output->magnitude = 0;
++        return arithmetic_pair_write(left, right, length, operation, output);
++    }
++    return NUMERIC_FLOAT;
++}
++
++#undef ARITHMETIC_PAIR_FLOAT_LEFT
++#undef ARITHMETIC_PAIR_FLOAT_RIGHT
++#undef ARITHMETIC_PAIR_FLOAT_LOOP
++#endif
+--- a/src/numeric-arithmetic-pair.h
++++ b/src/numeric-arithmetic-pair.h
+@@ -0,0 +1,192 @@
++/* Two compact physical domains prove the binary64 result range. Finite
++   operands have magnitude below 2^128 and nonzero magnitude at least 2^-149:
++   sums, products and nonzero quotients stay below 2^277, far inside Stata's
++   observed double range. Keep exact input missing/IEEE facts in source width
++   instead of encoding them into NaNs and reclassifying the computed double. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_PAIR_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_PAIR_H
++
++enum { ARITHMETIC_PAIR_LEGACY_FLOAT = 8 };
++
++typedef struct {
++    int kind;
++    int32_t missing_minimum;
++} arithmetic_pair_policy;
++
++typedef struct {
++    double value;
++    unsigned missing;
++    unsigned infinite;
++    unsigned zero;
++    float float_value;
++} arithmetic_pair_value;
++
++static int arithmetic_pair_admitted(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind
++) {
++    if (length <= 1 || (kind != NUMERIC_FLOAT && kind != NUMERIC_DOUBLE) ||
++        (operation != '+' && operation != '-' && operation != '*' && operation != '/'))
++        return 0;
++    const arithmetic_general_source *sources[] = {left, right};
++    for (int i = 0; i < 2; i++) {
++        const arithmetic_operand *operand = sources[i]->operand;
++        const numeric_data *data = operand->reader.storage;
++        if (data == NULL || operand->length != length || data->temporal != 0 ||
++            data->kind < NUMERIC_BYTE || data->kind > NUMERIC_FLOAT)
++            return 0;
++    }
++    return 1;
++}
++
++static arithmetic_pair_policy arithmetic_pair_policy_for(
++    const arithmetic_general_source *source
++) {
++    const numeric_data *data = source->operand->reader.storage;
++    arithmetic_pair_policy policy = {
++        .kind = source->kind,
++        .missing_minimum = data->kind <= NUMERIC_LONG
++            ? arithmetic_integer_missing(data) : 0
++    };
++    if (data->kind == NUMERIC_FLOAT && data->missing_count != 0 &&
++        data->format_version <= 111) policy.kind = ARITHMETIC_PAIR_LEGACY_FLOAT;
++    return policy;
++}
++
++#define ARITHMETIC_PAIR_INTEGER_LOAD(NAME, TYPE)                            \
++    static inline arithmetic_pair_value arithmetic_pair_load_##NAME(        \
++        const unsigned char *raw, size_t index,                             \
++        const arithmetic_pair_policy *policy                               \
++    ) {                                                                     \
++        TYPE value;                                                         \
++        memcpy(&value, raw + index * sizeof(value), sizeof(value));          \
++        TYPE missing_minimum = (TYPE) policy->missing_minimum;              \
++        return (arithmetic_pair_value) {                                    \
++            (double) value, (unsigned) (value >= missing_minimum),           \
++            0, (unsigned) (value == 0), (float) value                        \
++        };                                                                  \
++    }
++ARITHMETIC_PAIR_INTEGER_LOAD(byte, int8_t)
++ARITHMETIC_PAIR_INTEGER_LOAD(int, int16_t)
++ARITHMETIC_PAIR_INTEGER_LOAD(long, int32_t)
++#undef ARITHMETIC_PAIR_INTEGER_LOAD
++
++#define ARITHMETIC_PAIR_FLOAT_LOAD(NAME, ENCODED_MISSING)                   \
++    static inline arithmetic_pair_value arithmetic_pair_load_##NAME(       \
++        const unsigned char *raw, size_t index,                            \
++        const arithmetic_pair_policy *policy                              \
++    ) {                                                                    \
++        (void) policy;                                                     \
++        uint32_t bits;                                                     \
++        memcpy(&bits, raw + index * sizeof(bits), sizeof(bits));           \
++        uint32_t magnitude = bits & UINT32_C(0x7fffffff);                  \
++        uint32_t offset = bits - UINT32_C(0x7f000000);                     \
++        (void) offset;                                                     \
++        float value;                                                       \
++        memcpy(&value, &bits, sizeof(value));                              \
++        return (arithmetic_pair_value) {                                  \
++            (double) value, (unsigned) ((ENCODED_MISSING) |                \
++                (magnitude > UINT32_C(0x7f800000))),                       \
++            (unsigned) (magnitude == UINT32_C(0x7f800000)),                \
++            (unsigned) (magnitude == 0), value                            \
++        };                                                                 \
++    }
++ARITHMETIC_PAIR_FLOAT_LOAD(float, ((offset >> 11) | (offset << 21)) <= 26U)
++ARITHMETIC_PAIR_FLOAT_LOAD(legacy_float, offset <= UINT32_C(0x00ffffff))
++ARITHMETIC_PAIR_FLOAT_LOAD(observed_float, 0)
++#undef ARITHMETIC_PAIR_FLOAT_LOAD
++
++/* Division preserves observed denominator infinities: finite / +/-Inf is
++   a valid signed zero. A numerator infinity is always invalid, and legacy
++   +Inf remains inherited missing even when it is the denominator. NaNs and
++   all encoded missings propagate for every operator. Float fit still uses
++   the exact binary64 expression, with a finite placeholder before narrowing. */
++#define ARITHMETIC_PAIR_LOOP(X, Y, OP, DIVIDE, TYPE, KIND, MISSING)         \
++    do {                                                                   \
++        TYPE *restrict target = (TYPE *) (void *) ((KIND) == NUMERIC_DOUBLE \
++            ? (unsigned char *) output->real : output->raw) + start;       \
++        uint64_t maximum_magnitude = output->magnitude;                    \
++        unsigned missing_count = 0;                                       \
++        double float_limit = numeric_float_observed_limit();               \
++        uint64_t float_limit_bits;                                        \
++        memcpy(&float_limit_bits, &float_limit, sizeof(float_limit_bits)); \
++        for (size_t i = 0; i < count; i++) {                               \
++            arithmetic_pair_value x = arithmetic_pair_load_##X(x_raw, i, &x_policy); \
++            arithmetic_pair_value y = arithmetic_pair_load_##Y(y_raw, i, &y_policy); \
++            unsigned invalid = x.missing | y.missing | x.infinite |       \
++                ((DIVIDE) ? y.zero : y.infinite);                         \
++            double value = x.value OP y.value;                            \
++            double observed = invalid ? 0.0 : value;                      \
++            double storable = observed;                                  \
++            missing_count += invalid;                                    \
++            if ((KIND) == NUMERIC_FLOAT) {                                \
++                uint64_t bits;                                            \
++                memcpy(&bits, &observed, sizeof(bits));                   \
++                bits &= UINT64_C(0x7fffffffffffffff);                     \
++                maximum_magnitude = bits > maximum_magnitude             \
++                    ? bits : maximum_magnitude;                          \
++                storable = bits <= float_limit_bits ? observed : 0;      \
++            }                                                              \
++            target[i] = invalid ? (TYPE) (MISSING) : (TYPE) storable;      \
++        }                                                                  \
++        output->magnitude = maximum_magnitude;                            \
++        output->missing_count += missing_count;                          \
++    } while (0)
++
++#define ARITHMETIC_PAIR_TARGETS(X, Y, OP, DIVIDE)                          \
++    if (output->kind == NUMERIC_FLOAT) {                                  \
++        ARITHMETIC_PAIR_LOOP(X, Y, OP, DIVIDE, float, NUMERIC_FLOAT, 0x1p127f); \
++    } else {                                                               \
++        ARITHMETIC_PAIR_LOOP(X, Y, OP, DIVIDE, double, NUMERIC_DOUBLE, NA_REAL); \
++    }
++#define ARITHMETIC_PAIR_OPERATORS(X, Y)                                   \
++    switch (operation) {                                                  \
++    case '+': ARITHMETIC_PAIR_TARGETS(X, Y, +, 0); break;                  \
++    case '-': ARITHMETIC_PAIR_TARGETS(X, Y, -, 0); break;                  \
++    case '*': ARITHMETIC_PAIR_TARGETS(X, Y, *, 0); break;                  \
++    case '/': ARITHMETIC_PAIR_TARGETS(X, Y, /, 1); break;                  \
++    }
++#define ARITHMETIC_PAIR_RIGHT(X)                                         \
++    switch (y_policy.kind) {                                              \
++    case NUMERIC_BYTE: ARITHMETIC_PAIR_OPERATORS(X, byte); break;          \
++    case NUMERIC_INT: ARITHMETIC_PAIR_OPERATORS(X, int); break;            \
++    case NUMERIC_LONG: ARITHMETIC_PAIR_OPERATORS(X, long); break;          \
++    case NUMERIC_FLOAT: ARITHMETIC_PAIR_OPERATORS(X, float); break;        \
++    case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_OPERATORS(X, observed_float); break; \
++    case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_OPERATORS(X, legacy_float); break; \
++    }
++
++static int arithmetic_pair_write(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, arithmetic_general_output *output
++) {
++    const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
++    const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
++        const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
++        switch (x_policy.kind) {
++        case NUMERIC_BYTE: ARITHMETIC_PAIR_RIGHT(byte); break;
++        case NUMERIC_INT: ARITHMETIC_PAIR_RIGHT(int); break;
++        case NUMERIC_LONG: ARITHMETIC_PAIR_RIGHT(long); break;
++        case NUMERIC_FLOAT: ARITHMETIC_PAIR_RIGHT(float); break;
++        case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_RIGHT(observed_float); break;
++        case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_RIGHT(legacy_float); break;
++        }
++        start += count;
++    }
++    if (output->kind == NUMERIC_FLOAT) {
++        double maximum;
++        memcpy(&maximum, &output->magnitude, sizeof(maximum));
++        if (maximum > numeric_float_observed_limit()) return NUMERIC_DOUBLE;
++    }
++    return output->kind;
++}
++#undef ARITHMETIC_PAIR_RIGHT
++#undef ARITHMETIC_PAIR_OPERATORS
++#undef ARITHMETIC_PAIR_TARGETS
++#undef ARITHMETIC_PAIR_LOOP
++#endif
+--- a/tests/testthat/test-native-arithmetic-kernels.R
++++ b/tests/testthat/test-native-arithmetic-kernels.R
+@@ -383,11 +383,12 @@
+             # A vector of ones declines the scalar scaling route. Exercise
+             # that route explicitly, including provisional float overflow
+             # that must be recomputed in double after whole-column promotion.
+-            expect_scaled <- function(op, left, right, left_values, right_values) {
++            expect_scaled <- function(op, left, right, left_values, right_values,
++                                      minimum = "float") {
+                 .Call(C_dtatools_numeric_entry_stats, TRUE)
+                 actual <- getExportedValue("base", op)(left, right)
+                 .native_arithmetic_expect_entry()
+-                expected <- .native_arithmetic_reference(op, left_values, right_values, "float")
++                expected <- .native_arithmetic_reference(op, left_values, right_values, minimum)
+                 .native_arithmetic_expect(actual, expected)
+                 expected_missing <- is.na(as.double(expected))
+                 expect_identical(is.na(actual), expected_missing)
+@@ -417,7 +418,39 @@
+                     expect_scaled(op, scalar, x, scalar, plain)
+                 }
+             }
+-            expect_scaled("+", x, x, plain, plain)
++            for (op in c("+", "-", "*", "/")) {
++                expect_scaled(op, x, x, plain, plain)
++            }
++            # Raw imported maxima remain available here, unlike a constructor
++            # that normalizes values outside Stata's observed float range.
++            # Their products and quotients by the smallest subnormal exercise
++            # the full physical bounds used to prove binary64 results safe.
++            tiny <- dta_float(rep(2^-149, count))
++            expect_scaled("/", x, tiny, plain, rep(2^-149, count))
++            expect_scaled("/", tiny, x, rep(2^-149, count), plain)
++            half <- dta_float(rep(0.5, count))
++            expect_scaled("*", x, half, plain, rep(0.5, count))
++            expect_scaled("*", half, x, rep(0.5, count), plain)
++            # Distinct physical widths use the compact pair producer. Keep
++            # the full binary64 byte comparison: negative and zero numerators
++            # divided by observed +/-Inf must retain the zero sign, whereas
++            # legacy +Inf, NaNs and reserved codes propagate system missing.
++            for (kind in c("int", "long")) {
++                constructor <- get(paste0("dta_", kind))
++                minimum <- dtatools:::.dta_promote("float", kind)
++                for (values in list(rep(-1, count), rep(0, count),
++                    rep(c(-2, 0, 2, NA_real_, tagged_missing(c("a", "z"))),
++                        length.out = count))) {
++                    y <- .Call(C_dtatools_owned_numeric_freeze, constructor(values), 5L)
++                    y_before <- writeBin(as.double(y), raw(), size = 8L)
++                    for (op in c("+", "-", "*", "/")) {
++                        expect_scaled(op, x, y, plain, values, minimum)
++                        expect_scaled(op, y, x, values, plain, minimum)
++                    }
++                    expect_identical(writeBin(as.double(y), raw(), size = 8L), y_before)
++                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++                }
++            }
+             expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
+             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+         }
+@@ -455,3 +488,201 @@
+         compare(legacy, "f", length(batch))
+     }
+ })
++
++test_that("compact pair promotion recomputes earlier chunks and counts missing unions", {
++    .native_arithmetic_enable()
++    values <- rep(c(1 + 2^-23, -0, 0, 2, NA_real_, tagged_missing(letters)),
++                  length.out = 131L)
++    values[[131L]] <- 1e38
++    x <- .Call(C_dtatools_owned_numeric_freeze, dta_float(values), 7L)
++    y_values <- rep(c(3, 2, -2, NA_real_, tagged_missing(rev(letters))),
++                    length.out = length(values))
++    y_values[[131L]] <- 2
++    y <- .Call(C_dtatools_owned_numeric_freeze, dta_int(y_values), 11L)
++    before <- lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L))
++    .Call(C_dtatools_numeric_entry_stats, TRUE)
++    actual <- x * y
++    .native_arithmetic_expect_entry()
++    expected <- .native_arithmetic_reference("*", x, y, "float")
++    expect_identical(dta_storage_type(actual), "double")
++    .native_arithmetic_expect(actual, expected)
++    # The first exact product differs from its once-rounded float value.
++    # Late promotion must discard that provisional rounding in every chunk.
++    expect_identical(as.double(actual)[[1L]], (1 + 2^-23) * 3)
++    expect_false(identical(as.double(actual)[[1L]], as.double(dta_float((1 + 2^-23) * 3))))
++    missing <- is.na(as.double(expected))
++    expect_identical(is.na(actual), missing)
++    result <- dibble(x = actual)
++    replace_values(result, x = 0, where = which(missing))
++    expect_false(anyNA(result$x))
++    expect_identical(lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L)), before)
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++})
++
++test_that("rounded float multiplication limits retain exact binary64 storage decisions", {
++    .native_arithmetic_enable()
++    from_bits <- function(bits) readBin(as.raw(floor(bits / 256^(0:3)) %% 256),
++                                       "double", n = 1L, size = 4L, endian = "little")
++    # Both products round to the largest observed float. The exact first
++    # product is above that limit, while the second is below it. A rounded
++    # equality alone must therefore never choose the storage type.
++    witnesses <- list(
++        list(value = from_bits(0x7d3a2e8b), multiplier = 11, storage = "double"),
++        list(value = from_bits(0x7cd79435), multiplier = 19, storage = "float")
++    )
++    limit <- from_bits(0x7effffff)
++    expect_gt(witnesses[[1L]]$value * 11, limit)
++    expect_lt(witnesses[[2L]]$value * 19, limit)
++    for (witness in witnesses) {
++        expect_identical(readBin(writeBin(witness$value * witness$multiplier,
++            raw(), size = 4L), "double", n = 1L, size = 4L), limit)
++        for (kind in c("byte", "int", "float")) {
++            for (sign in c(-1, 1)) {
++                for (retained in c(FALSE, TRUE)) {
++                    values <- rep(c(1 + 2^-23, -0, 0, NA_real_, tagged_missing(letters)),
++                                  length.out = 131L)
++                    values[[131L]] <- sign * witness$value
++                    multipliers <- rep(c(3, -2, 0, NA_real_, tagged_missing("z")),
++                                       length.out = 131L)
++                    multipliers[[131L]] <- witness$multiplier
++                    x <- dta_float(values)
++                    y <- get(paste0("dta_", kind))(multipliers)
++                    if (retained) {
++                        x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
++                        y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
++                    }
++                    before <- lapply(list(x, y), function(value)
++                        writeBin(as.double(value), raw(), size = 8L))
++                    expected <- .native_arithmetic_reference("*", x, y, "float")
++                    expect_identical(dta_storage_type(expected), witness$storage)
++                    for (reverse in c(FALSE, TRUE)) {
++                        .Call(C_dtatools_numeric_entry_stats, TRUE)
++                        actual <- if (reverse) y * x else x * y
++                        .native_arithmetic_expect_entry()
++                        .native_arithmetic_expect(actual, expected)
++                        missing <- is.na(as.double(expected))
++                        expect_identical(is.na(actual), missing)
++                        result <- dibble(x = actual)
++                        replace_values(result, x = 0, where = which(missing))
++                        expect_false(anyNA(result$x))
++                        if (witness$storage == "double") {
++                            expect_identical(as.double(actual)[[1L]], (1 + 2^-23) * 3)
++                        }
++                    }
++                    expect_identical(lapply(list(x, y), function(value)
++                        writeBin(as.double(value), raw(), size = 8L)), before)
++                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++                }
++            }
++        }
++    }
++})
++
++test_that("compact float sums preserve rounded binary64 fit and late promotion", {
++    .native_arithmetic_enable()
++    limit <- readBin(as.raw(c(255, 255, 255, 126)), "double", n = 1L,
++                     size = 4L, endian = "little")
++    # The storage contract uses the rounded binary64 expression. L + 1 is
++    # above L as a rational number, but binary64 rounds it back to L. A
++    # quarter float step remains above L in double while also rounding to L
++    # in float. The first must retain float and the second must promote.
++    expect_identical(limit + 1, limit)
++    expect_gt(limit + 2^101, limit)
++    expect_identical(readBin(writeBin(limit + 2^101, raw(), size = 4L),
++                            "double", n = 1L, size = 4L), limit)
++    witnesses <- list(
++        list(delta = 1, storage = "float", kinds = c("byte", "int", "float")),
++        list(delta = -1, storage = "float", kinds = c("byte", "int", "float")),
++        list(delta = 2^101, storage = "double", kinds = "float"),
++        list(delta = -2^101, storage = "float", kinds = "float"),
++        list(delta = 2^103, storage = "double", kinds = "float")
++    )
++    for (witness in witnesses) for (kind in witness$kinds) {
++        for (op in c("+", "-")) for (sign in c(-1, 1)) {
++            operation <- getExportedValue("base", op)
++            for (retained in c(FALSE, TRUE)) {
++                values <- rep(c(1 + 2^-23, -0, 0, NA_real_, tagged_missing(letters)),
++                              length.out = 131L)
++                values[[131L]] <- sign * limit
++                other <- rep(c(7, -2, 0, NA_real_, tagged_missing("z")),
++                             length.out = 131L)
++                other[[131L]] <- sign * witness$delta * if (op == "+") 1 else -1
++                x <- dta_float(values)
++                y <- get(paste0("dta_", kind))(other)
++                if (retained) {
++                    x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
++                    y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
++                }
++                before <- lapply(list(x, y), function(value)
++                    writeBin(as.double(value), raw(), size = 8L))
++                for (reverse in c(FALSE, TRUE)) {
++                    pair <- if (reverse) list(y, x) else list(x, y)
++                    expected <- .native_arithmetic_reference(op, pair[[1L]], pair[[2L]], "float")
++                    expect_identical(dta_storage_type(expected), witness$storage)
++                    .Call(C_dtatools_numeric_entry_stats, TRUE)
++                    actual <- operation(pair[[1L]], pair[[2L]])
++                    .native_arithmetic_expect_entry()
++                    .native_arithmetic_expect(actual, expected)
++                    missing <- is.na(as.double(expected))
++                    expect_identical(is.na(actual), missing)
++                    result <- dibble(x = actual)
++                    replace_values(result, x = 0, where = which(missing))
++                    expect_false(anyNA(result$x))
++                    if (witness$storage == "double") {
++                        original <- if (reverse) operation(7, 1 + 2^-23) else
++                            operation(1 + 2^-23, 7)
++                        expect_identical(as.double(actual)[[1L]], original)
++                        expect_false(identical(original, as.double(dta_float(original))))
++                    }
++                }
++                expect_identical(lapply(list(x, y), function(value)
++                    writeBin(as.double(value), raw(), size = 8L)), before)
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++            }
++        }
++    }
++})
++
++test_that("compact float sums keep exponent-gap cancellation and zero bits", {
++    .native_arithmetic_enable()
++    pairs <- list()
++    for (exponent in c(-119, -1, 0, 126)) for (gap in c(28, 29, 30, 31, 52, 53, 54)) {
++        if (exponent - gap < -149) next
++        for (neighbor in c(1 - 2^-24, 1, 1 + 2^-23)) {
++            for (left_sign in c(-1, 1)) for (right_sign in c(-1, 1)) {
++                pairs[[length(pairs) + 1L]] <- c(left_sign * 2^exponent * neighbor,
++                                              right_sign * 2^(exponent - gap))
++            }
++        }
++    }
++    # Include exact cancellation, both zero signs, and adjacent subnormals.
++    for (value in c(0, -0, 2^-149, 2^-126 - 2^-149, 2^-126, 1)) {
++        pairs[[length(pairs) + 1L]] <- c(value, value)
++        pairs[[length(pairs) + 1L]] <- c(value, -value)
++    }
++    values <- do.call(rbind, pairs)
++    for (retained in c(FALSE, TRUE)) {
++        x <- dta_float(values[, 1L])
++        y <- dta_float(values[, 2L])
++        if (retained) {
++            x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
++            y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
++        }
++        before <- lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L))
++        for (op in c("+", "-")) for (reverse in c(FALSE, TRUE)) {
++            pair <- if (reverse) list(y, x) else list(x, y)
++            .Call(C_dtatools_numeric_entry_stats, TRUE)
++            actual <- getExportedValue("base", op)(pair[[1L]], pair[[2L]])
++            .native_arithmetic_expect_entry()
++            .native_arithmetic_expect(actual,
++                .native_arithmetic_reference(op, pair[[1L]], pair[[2L]], "float"))
++        }
++        expect_identical(lapply(list(x, y), function(value)
++            writeBin(as.double(value), raw(), size = 8L)), before)
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
++    }
++})
+--- a/tests/testthat/test-native-arithmetic-parity.R
++++ b/tests/testthat/test-native-arithmetic-parity.R
+@@ -425,7 +425,7 @@
+     }
+ })
+ 
+-test_that("general integer scalar proof includes imported physical signed minima", {
++test_that("general arithmetic includes imported physical signed minima and legacy reserved observations", {
+     .arithmetic_parity_enable()
+     modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+     legacy <- tempfile(fileext = ".dta")
+@@ -442,6 +442,11 @@
+     start <- grepRaw(prefix, bytes, fixed = TRUE, all = TRUE)
+     expect_length(start, 1L)
+     bytes[start + 0:6] <- unlist(minimum_bits, use.names = FALSE)
++    # Legacy integer storage reserves only its maximum signed value. These
++    # modern extended-missing codes remain observed in this input layout.
++    bytes[start + 25L + 0:6] <- c(as.raw(126),
++        writeBin(32766L, raw(), size = 2L, endian = "little"),
++        writeBin(2147483646L, raw(), size = 4L, endian = "little"))
+     writeBin(bytes, legacy)
+     for (version in c("modern", "legacy")) {
+         path <- if (version == "modern") modern else legacy
+@@ -453,6 +458,9 @@
+             kind <- dta_storage_type(source)
+             expect_identical(as.double(source), as.double(eager[[names[[index]]]]))
+             expect_identical(as.double(source)[[1L]], -c(128, 32768, 2147483648)[[index]])
++            if (version == "legacy") {
++                expect_identical(as.double(source)[[2L]], c(126, 32766, 2147483646)[[index]])
++            }
+             # The legacy byte fixture has value-label metadata, which correctly
+             # declines this admission route. Preserve its bytes and encoding
+             # while selecting the ordinary compact arithmetic contract.
+@@ -465,6 +473,15 @@
+                         .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
+                         .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
+                     }
++                }
++                partner <- .Call(C_dtatools_owned_numeric_freeze,
++                    dta_float(rep(c(1.5, -0, 0, 2^-149, NA_real_, tagged_missing("z")),
++                                  length.out = length(x))), 5L)
++                minimum <- dtatools:::.dta_promote(kind, "float")
++                for (op in c("+", "-", "*", "/")) {
++                    info <- paste(version, kind, "physical compact pair", op)
++                    .arithmetic_parity_expect(op, x, partner, minimum, NULL, info)
++                    .arithmetic_parity_expect(op, partner, x, minimum, NULL, info)
+                 }
+             }
+         }
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -1821,11 +1821,11 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-kernels.R",
+-          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
++          "sha256": "22966619755527264b9baf68a8378cae0b1f8ed5c11c6c72adbe7ab796f26981"
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
++          "sha256": "a18ae6d309ea91b970c3fc416670bed2a1cf9afe59cd30c17ff37e14237d6d62"
+         }
+       ],
+       "blocks": [
+@@ -4401,6 +4401,38 @@
+           "warnings": 0
+         },
+         {
++          "file": "test-native-arithmetic-kernels.R",
++          "test": "compact pair promotion recomputes earlier chunks and counts missing unions",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 12,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-kernels.R",
++          "test": "rounded float multiplication limits retain exact binary64 storage decisions",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 412,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-kernels.R",
++          "test": "compact float sums preserve rounded binary64 fit and late promotion",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1291,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-kernels.R",
++          "test": "compact float sums keep exponent-gap cancellation and zero bits",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 38,
++          "warnings": 0
++        },
++        {
+           "file": "test-native-arithmetic-parity.R",
+           "test": "a final or boundary value promotes every earlier scalar result",
+           "occurrence": 1,
+@@ -4514,14 +4546,6 @@
+         },
+         {
+           "file": "test-native-arithmetic-parity.R",
+-          "test": "general integer scalar proof includes imported physical signed minima",
+-          "occurrence": 1,
+-          "skip": "forbid",
+-          "min_pass": 1933,
+-          "warnings": 0
+-        },
+-        {
+-          "file": "test-native-arithmetic-parity.R",
+           "test": "floating scalar results reject unsafe endpoint proofs",
+           "occurrence": 1,
+           "skip": "forbid",
+@@ -4542,6 +4566,14 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 1512,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general arithmetic includes imported physical signed minima and legacy reserved observations",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 3376,
+           "warnings": 0
+         }
+       ],
