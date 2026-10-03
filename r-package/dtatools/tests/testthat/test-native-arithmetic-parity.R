@@ -379,3 +379,130 @@ test_that("general preflight and float promotion retain later missing rows and e
             paste("general float promotion discards rounded prefix", position))
     }
 })
+
+test_that("general integer scalar bounds preserve floating storage and missing counts", {
+    .arithmetic_parity_enable()
+    low <- c(byte = -127, int = -32767, long = -2147483647)
+    high <- c(byte = 100, int = 32740, long = 2147483620)
+    physical_magnitude <- c(byte = 128, int = 32768, long = 2147483648)
+    float_limit <- (2^24 - 1) * 2^103
+    double_limit <- (2^53 - 1) * 2^970
+    missing <- c(NA_real_, tagged_missing(letters))
+    for (kind in names(low)) {
+        observed <- c(low[[kind]], -1, 0, 1, high[[kind]])
+        cutoff <- float_limit / physical_magnitude[[kind]]
+        cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
+            list("*", -0), list("*", 0), list("/", -3.25),
+            list("/", .Machine$double.xmin * .Machine$double.eps),
+            list("/", .Machine$double.xmax),
+            list("*", cutoff * (1 - 2^-50)), list("*", cutoff * (1 + 2^-50)),
+            list("*", -double_limit / physical_magnitude[[kind]]),
+            list("*", double_limit / physical_magnitude[[kind]] * (1 + 2^-50)))
+        for (values in list(observed, c(observed, missing), missing)) {
+            for (chunk in list(NULL, 7L)) {
+                x <- .arithmetic_parity_source(kind, values, chunk)
+                for (case in cases) {
+                    op <- case[[1L]]; scalar <- case[[2L]]
+                    for (reverse in c(FALSE, TRUE)) {
+                        info <- paste(kind, op, scalar, "reverse", reverse, "chunk", chunk)
+                        actual <- if (reverse)
+                            .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
+                        else .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
+                        expected_missing <- is.na(as.double(actual))
+                        expect_identical(is.na(actual), expected_missing, info = info)
+                        expect_identical(anyNA(actual), any(expected_missing), info = info)
+                        if (any(expected_missing)) {
+                            # Correct values alone cannot expose an excessive
+                            # cached count. Clear every actual missing lane.
+                            result <- dibble(x = actual)
+                            replace_values(result, x = 0, where = which(expected_missing))
+                            expect_false(anyNA(result$x), info = info)
+                        }
+                    }
+                }
+            }
+        }
+    }
+})
+
+test_that("general integer scalar proof includes imported physical signed minima", {
+    .arithmetic_parity_enable()
+    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    legacy <- tempfile(fileext = ".dta")
+    withr::defer(unlink(c(modern, legacy)))
+    minimum_bits <- list(x_byte = as.raw(0x80), x_int = as.raw(c(0, 0x80)),
+                         x_long = as.raw(c(0, 0, 0, 0x80)))
+    patch_numeric_fixture_row(modern, 0L, minimum_bits)
+    bytes <- readBin(fixture("synthetic_v111.dta"), "raw",
+                     n = file.info(fixture("synthetic_v111.dta"))[["size"]])
+    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
+                writeBin(-123456L, raw(), size = 4L, endian = "little"),
+                writeBin(1.5, raw(), size = 4L, endian = "little"),
+                writeBin(-2.25, raw(), size = 8L, endian = "little"))
+    start <- grepRaw(prefix, bytes, fixed = TRUE, all = TRUE)
+    expect_length(start, 1L)
+    bytes[start + 0:6] <- unlist(minimum_bits, use.names = FALSE)
+    writeBin(bytes, legacy)
+    for (version in c("modern", "legacy")) {
+        path <- if (version == "modern") modern else legacy
+        names <- if (version == "modern") c("x_byte", "x_int", "x_long") else c("b", "i", "l")
+        imported <- read_dta(path, col_select = tidyselect::all_of(names))
+        eager <- read_dta(path, col_select = tidyselect::all_of(names), use_numeric_altrep = FALSE)
+        for (index in seq_along(names)) {
+            source <- imported[[names[[index]]]]
+            kind <- dta_storage_type(source)
+            expect_identical(as.double(source), as.double(eager[[names[[index]]]]))
+            expect_identical(as.double(source)[[1L]], -c(128, 32768, 2147483648)[[index]])
+            # The legacy byte fixture has value-label metadata, which correctly
+            # declines this admission route. Preserve its bytes and encoding
+            # while selecting the ordinary compact arithmetic contract.
+            attributes(source) <- list(class = dtatools:::.dta_storage_class(kind),
+                                       stata.storage = kind)
+            for (x in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 3L))) {
+                for (scalar in c(1.01, -3.25)) {
+                    for (op in c("+", "-", "*", "/")) {
+                        info <- paste(version, kind, "signed physical minimum", op, scalar)
+                        .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
+                        .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
+                    }
+                }
+            }
+        }
+    }
+})
+
+test_that("floating integer scalar results reject unsafe endpoint proofs", {
+    .arithmetic_parity_enable()
+    for (kind in c("byte", "int", "long")) {
+        x <- .arithmetic_parity_source(kind, c(-100, -1, 0, 1, 100, NA_real_, tagged_missing("z")), 3L)
+        source <- .arithmetic_parity_bytes(x)
+        for (scalar in c(1.01, 1e307, -1e307,
+                         .Machine$double.xmin * .Machine$double.eps,
+                         -.Machine$double.xmin * .Machine$double.eps)) {
+            # Declared double storage exercises the proof even when every
+            # nonzero result overflows and the bare-scalar result could stay
+            # in integer storage. New invalid results must increase its count.
+            y <- dta_double(scalar)
+            for (op in c("*", "/")) {
+                operation <- getExportedValue("base", op)
+                values <- operation(as.double(x), scalar)
+                values[is.na(as.double(x))] <- NA_real_
+                expected <- dtatools:::.dta_computed(values, "double")
+                .Call(C_dtatools_numeric_entry_stats, TRUE)
+                actual <- operation(x, y)
+                expect_identical(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]],
+                    if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
+                expect_identical(dta_storage_type(actual), "double")
+                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected))
+                missing <- is.na(as.double(expected))
+                expect_identical(is.na(actual), missing)
+                expect_identical(anyNA(actual), any(missing))
+                result <- dibble(x = actual)
+                replace_values(result, x = 0, where = which(missing))
+                expect_false(anyNA(result$x))
+                expect_identical(.arithmetic_parity_bytes(x), source)
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+            }
+        }
+    }
+})

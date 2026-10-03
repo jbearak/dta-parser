@@ -282,6 +282,129 @@ static int arithmetic_general_run(
 #undef GENERAL_PAIR_TARGETS
 #undef GENERAL_PAIR_LOOP
 
+/* Bounds cover every physical signed integer, including legacy-observed
+   lower endpoints and reserved codes. For a finite scalar these monotone
+   operations can therefore prove the floating destination for the complete
+   column before writing. The caller's arithmetic_capture claim protects the
+   same descriptor's bytes and missing count through allocation and writing. */
+static int arithmetic_general_integer_scalar_proved(
+    const arithmetic_general_source *left, const arithmetic_general_source *right,
+    R_xlen_t length, int operation, int kind,
+    const arithmetic_general_source **column, double *scalar, int *reverse
+) {
+    if ((kind != NUMERIC_FLOAT && kind != NUMERIC_DOUBLE) || length <= 1) return 0;
+    if (right->kind == ARITHMETIC_SOURCE_SCALAR) {
+        *column = left;
+        *scalar = right->scalar;
+        *reverse = 0;
+    } else if (left->kind == ARITHMETIC_SOURCE_SCALAR && operation != '/') {
+        *column = right;
+        *scalar = left->scalar;
+        *reverse = 1;
+    } else return 0;
+    const numeric_data *data = (*column)->operand->reader.storage;
+    if (data == NULL || data->temporal != 0 || data->kind < NUMERIC_BYTE || data->kind > NUMERIC_LONG ||
+        (*column)->operand->length != length || data->missing_count > (size_t) length ||
+        !R_FINITE(*scalar) || (operation == '/' && *scalar == 0)) return 0;
+    double low = data->kind == NUMERIC_BYTE ? INT8_MIN :
+        data->kind == NUMERIC_INT ? INT16_MIN : INT32_MIN;
+    double high = data->kind == NUMERIC_BYTE ? INT8_MAX :
+        data->kind == NUMERIC_INT ? INT16_MAX : INT32_MAX;
+    switch (operation) {
+    case '+': low = low + *scalar; high = high + *scalar; break;
+    case '-':
+        if (*reverse) { low = *scalar - low; high = *scalar - high; }
+        else { low = low - *scalar; high = high - *scalar; }
+        break;
+    case '*': low = low * *scalar; high = high * *scalar; break;
+    case '/': low = low / *scalar; high = high / *scalar; break;
+    default: return 0;
+    }
+    if (!scalar_arithmetic_result_valid(low) ||
+        !scalar_arithmetic_result_valid(high)) return 0;
+    return kind == NUMERIC_DOUBLE ||
+        (fabs(low) <= numeric_float_observed_limit() &&
+         fabs(high) <= numeric_float_observed_limit());
+}
+
+static void arithmetic_general_integer_scalar_write(
+    const arithmetic_general_source *column, double scalar, int reverse,
+    R_xlen_t length, int operation, arithmetic_general_output *output
+) {
+    const numeric_data *data = column->operand->reader.storage;
+    const int32_t missing_minimum = (int32_t) column->policy.minimum;
+    const int all_observed = data->missing_count == 0;
+    for (size_t start = 0; start < (size_t) length;) {
+        R_CheckUserInterrupt();
+        size_t count = (size_t) length - start;
+        if (count > 16384) count = 16384;
+        const unsigned char *raw = numeric_read_span(data, start, count, &count);
+#define GENERAL_PROVED_INTEGER_LOOP(SOURCE, TARGET, DEST, EXPR, MISSING, OBSERVED) \
+        do {                                                               \
+            TARGET *restrict target = (DEST) + start;                      \
+            for (size_t i = 0; i < count; i++) {                            \
+                SOURCE source;                                             \
+                memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
+                double value = (double) source;                            \
+                TARGET result = (TARGET) (EXPR);                           \
+                target[i] = (OBSERVED) || source < missing_minimum          \
+                    ? result : (TARGET) (MISSING);                         \
+            }                                                              \
+        } while (0)
+#define GENERAL_PROVED_INTEGER_TARGET(SOURCE, EXPR, OBSERVED)               \
+        if (output->kind == NUMERIC_FLOAT) {                                \
+            GENERAL_PROVED_INTEGER_LOOP(SOURCE, float,                      \
+                (float *) (void *) output->raw, EXPR, 0x1p127f, OBSERVED);  \
+        } else {                                                           \
+            GENERAL_PROVED_INTEGER_LOOP(SOURCE, double,                    \
+                output->real, EXPR, NA_REAL, OBSERVED);                    \
+        }
+#define GENERAL_PROVED_INTEGER_OPERATORS(SOURCE, OBSERVED)                  \
+        switch (operation) {                                               \
+        case '+': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value + scalar, OBSERVED); break; \
+        case '-':                                                          \
+            if (reverse) {                                                 \
+                GENERAL_PROVED_INTEGER_TARGET(SOURCE, scalar - value, OBSERVED); \
+            } else {                                                       \
+                GENERAL_PROVED_INTEGER_TARGET(SOURCE, value - scalar, OBSERVED); \
+            }                                                              \
+            break;                                                         \
+        case '*': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value * scalar, OBSERVED); break; \
+        case '/': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value / scalar, OBSERVED); break; \
+        }
+#define GENERAL_PROVED_INTEGER_WIDTHS(OBSERVED)                             \
+        switch (data->kind) {                                               \
+        case NUMERIC_BYTE: GENERAL_PROVED_INTEGER_OPERATORS(int8_t, OBSERVED); break; \
+        case NUMERIC_INT: GENERAL_PROVED_INTEGER_OPERATORS(int16_t, OBSERVED); break; \
+        case NUMERIC_LONG: GENERAL_PROVED_INTEGER_OPERATORS(int32_t, OBSERVED); break; \
+        }
+        if (all_observed) { GENERAL_PROVED_INTEGER_WIDTHS(1); }
+        else { GENERAL_PROVED_INTEGER_WIDTHS(0); }
+#undef GENERAL_PROVED_INTEGER_WIDTHS
+#undef GENERAL_PROVED_INTEGER_OPERATORS
+#undef GENERAL_PROVED_INTEGER_TARGET
+#undef GENERAL_PROVED_INTEGER_LOOP
+        start += count;
+    }
+    output->missing_count = data->missing_count;
+}
+
+static int arithmetic_general_produce(
+    const arithmetic_general_source *left, const arithmetic_general_source *right,
+    R_xlen_t length, int operation, int minimum, arithmetic_general_output *output
+) {
+    const arithmetic_general_source *column;
+    double scalar;
+    int reverse;
+    if (arithmetic_general_integer_scalar_proved(
+            left, right, length, operation, output->kind, &column, &scalar, &reverse)) {
+        arithmetic_general_integer_scalar_write(
+            column, scalar, reverse, length, operation, output);
+        return output->kind;
+    }
+    return arithmetic_general_run(left, right, length, operation, minimum, output);
+}
+
 static SEXP arithmetic_general_result(
     const arithmetic_operand *left, const arithmetic_operand *right,
     R_xlen_t length, int operation, int minimum, int *result_kind
@@ -304,12 +427,12 @@ static SEXP arithmetic_general_result(
         .raw = kind == NUMERIC_DOUBLE ? NULL : RAW(backing),
         .real = kind == NUMERIC_DOUBLE ? REAL(backing) : NULL
     };
-    int promoted = arithmetic_general_run(&x, &y, length, operation, minimum, &output);
+    int promoted = arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
     if (promoted != kind) {
         kind = promoted;
         REPROTECT(backing = arithmetic_backing(length, kind), backing_index);
         output = (arithmetic_general_output) {.kind = kind, .real = REAL(backing)};
-        arithmetic_general_run(&x, &y, length, operation, minimum, &output);
+        arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
     }
     SEXP result = PROTECT(arithmetic_adopt_backing(backing, length, kind, output.missing_count));
     *result_kind = kind;

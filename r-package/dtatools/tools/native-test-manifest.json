@@ -1783,7 +1783,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "e8186de15fb4efdbf2ae787a6163d0dfc2bfbb21e1f45ad0f8c7d78456a6e34f"
+          "sha256": "6f92206d8f64e96d8583dd8576c6e9377f87fb6b5689c55bb7abfe6dcae0f9e6"
         }
       ],
       "blocks": [
@@ -4460,6 +4460,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 184,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general integer scalar bounds preserve floating storage and missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5496,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "general integer scalar proof includes imported physical signed minima",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1933,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "floating integer scalar results reject unsafe endpoint proofs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 240,
           "warnings": 0
         }
       ],
