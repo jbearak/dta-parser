@@ -1,0 +1,24 @@
+{
+  "comparison_integration_commit": "ccc53395cb870a343077945445dc836c071b95fc",
+  "conformance_scope": "Required native gates and R source-archive check at ccc53395. Grouping additions from main are subsequently qualified at bd78a06e by a clean build and focused grouping/comparison/ownership/materialization checks.",
+  "final_combined_package_commit": "bd78a06e4e4e88de355a9a518e573e364d9d3b07",
+  "focused_checks": {
+    "v2": {
+      "assertions": 10271,
+      "blocks": 134,
+      "warnings": 1
+    },
+    "v3": {
+      "assertions": 10553,
+      "blocks": 151,
+      "warnings": 1
+    }
+  },
+  "incorporated_main": "6e00be97b19dec5a7b488d1b05bbe11a4d2042d5",
+  "materialization_files_unchanged": {
+    "r-package/dtatools/src/numeric-payload.c": "82c44b1f1178151ab2db4399f6112afc0e996afbeadb3af19aa37bb32a29ec83",
+    "r-package/dtatools/tests/testthat/test-numeric-materialization.R": "cacb79602d61407aa61b62f07021456cd7cf5291eeb5bdcce55ac46d01e08332"
+  },
+  "performance_scope": "Timings remain bound to 586b887b. The complete combined package differs; the listed materialization implementation and regression files are identical.",
+  "timed_materialization_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0"
+}

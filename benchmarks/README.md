@@ -81,6 +81,13 @@ Eight-row reads with 65 MiB retained improve by 69.2–69.5× CPU; controls belo
 the pressure threshold remain essentially unchanged. This is a steady-state
 small-read result, with the repeated-large-read memory bound checked separately.
 
+The [compact materialization follow-up](compact-materialization/results-2026-10-02.md)
+removes a redundant compact copy before decoding aliased columns into doubles.
+Million-row byte/int/long/float inputs save 1/2/4/4 MB of temporary copying;
+the fixed ownership matrix improves by 1.03–1.18× CPU for those aliased inputs.
+The report separates exact allocation savings from timing and states its high
+missing density, batch intervals and retained-owner controls.
+
 The [numeric grouping follow-up](prepared-grouping/results-2026-10-02.md)
 prepares numeric order keys once instead of decoding and validating them during
 sorting. Across 20 constructed-input cases, compact grouping is 11.94–23.69×

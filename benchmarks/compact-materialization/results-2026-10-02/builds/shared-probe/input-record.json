@@ -1,0 +1,89 @@
+{
+  "command": [
+    "<R>",
+    "CMD",
+    "SHLIB",
+    "-o",
+    "materialization_probe.so",
+    "materialization_probe.c"
+  ],
+  "environment": {
+    "HOME": {
+      "sha256": "e6effb6cac1d3f7c87b3598b786c9fac9bc7c35527dc6c5c6e8e2afa89d1983c",
+      "value": "<private>"
+    },
+    "LANG": {
+      "sha256": "99fed2d548c2eb1022f4067f97fe838a2c3ea60ee0e0f53086788505c3ababad",
+      "value": "C.UTF-8"
+    },
+    "LC_ALL": {
+      "sha256": "99fed2d548c2eb1022f4067f97fe838a2c3ea60ee0e0f53086788505c3ababad",
+      "value": "C.UTF-8"
+    },
+    "LC_CTYPE": {
+      "sha256": "99fed2d548c2eb1022f4067f97fe838a2c3ea60ee0e0f53086788505c3ababad",
+      "value": "C.UTF-8"
+    },
+    "LOGNAME": {
+      "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+      "value": "jmb"
+    },
+    "PATH": {
+      "sha256": "fbbc7a43901acf8a422d4dccf2a629acb480d6db17591fc6011b70686baaac43",
+      "value": "<private>"
+    },
+    "R_ENVIRON_USER": {
+      "sha256": "fd5d32feb2d3562582258990ecfca9b88376957e512d5caac72ad89fc78d2df4",
+      "value": "/dev/null"
+    },
+    "R_PROFILE_USER": {
+      "sha256": "fd5d32feb2d3562582258990ecfca9b88376957e512d5caac72ad89fc78d2df4",
+      "value": "/dev/null"
+    },
+    "TMPDIR": {
+      "sha256": "114f2a5f2fe3af5b98c52b2139218786572fa3b5ea9990a39c6a02893f35f284",
+      "value": "<private>"
+    },
+    "USER": {
+      "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+      "value": "jmb"
+    }
+  },
+  "source_sha256": "cabec15c6fabe720e62204b345d605a9d87f68e7955a553407e9fbe0d7a92ba1",
+  "toolchain": {
+    "R": {
+      "launcher_sha256": "e22f791c1b2c9b87fafb1813a585a56221505e35d6d12221b09b5f49a00b0f40",
+      "version": {
+        "sha256": "f14e1e50d448384ff327fbd20004bba836af4665cd89894a2f17614abce9d233",
+        "value": "R version 4.6.1 (2026-06-24) -- \"Happy Hop\"\nCopyright (C) 2026 The R Foundation for Statistical Computing\nPlatform: aarch64-apple-darwin25.4.0\n\nR is free software and comes with ABSOLUTELY NO WARRANTY.\nYou are welcome to redistribute it under the terms of the\nGNU General Public License versions 2 or 3.\nFor more information about these matters see\nhttps://www.gnu.org/licenses/."
+      }
+    },
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "cargo": {
+      "launcher_sha256": "778478868dbfe74960e49329bb5813d2f5ba95c8bfb1f37cd626c62cb26a214a",
+      "version": {
+        "sha256": "20b5160c9dc1e9b672cc25cd1d0416bbba198e13205f1c3a7a692eeb25dbf9f0",
+        "value": "cargo 1.98.1 (797e8a9bc 2026-08-05) (Homebrew)"
+      }
+    },
+    "clang": {
+      "launcher_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+      "version": {
+        "sha256": "e80280d6353d0f9712680d725eb73e17d10bcb91361c93d340bbbb3e8d53a3b7",
+        "value": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin"
+      }
+    },
+    "external_config_sha256": {
+      "R_MAKEVARS_USER": "f0d2a0b1dd7ef25a6e3bba57a59b46b82312cbcc12214c593ec86c0a412b18ff",
+      "R_etc_Makeconf": "51a559c40041c73c0cd734e7f12ef7bc5b32e46673580b1105f4bb2ebf5ca945",
+      "R_etc_Renviron": "6047aa5642c92653aa97f676b3be42749622f50324ca48d41bfd235439cdf8e7"
+    },
+    "rustc": {
+      "launcher_sha256": "2814fb55fb9cfb3eef5848a8104d77e3de7fd95394661144a12ee90cd4405340",
+      "version": {
+        "sha256": "2c1f78b4dcdc2d16c65f098747d19f1e38a64c01faefa0126aa5eb667c3056a6",
+        "value": "rustc 1.98.1 (48a229cea 2026-09-01) (Homebrew)"
+      }
+    }
+  }
+}

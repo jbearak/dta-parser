@@ -2048,31 +2048,115 @@ R_xlen_t numeric_region(
     return (R_xlen_t) length;
 }
 
+/* One-use correctness checkpoint for allocation-time reentry. The preserved
+   token cannot run before capture; disarm before GC so nested materialization
+   follows the ordinary path. Normal calls never request collection here. */
+static int numeric_materialization_checkpoint = 0;
+static SEXP numeric_materialization_token = NULL;
+
+SEXP C_dtatools_test_materialization_checkpoint(SEXP mode, SEXP token) {
+    if (TYPEOF(mode) != INTSXP || ALTREP(mode) || ANY_ATTRIB(mode) ||
+        XLENGTH(mode) != 1 || INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
+        Rf_error("materialization checkpoint mode must be 0, 1, or 2");
+    if ((token != R_NilValue && TYPEOF(token) != ENVSXP) ||
+        (INTEGER(mode)[0] == 0 && token != R_NilValue))
+        Rf_error("materialization checkpoint token must be an environment or NULL");
+    int previous = numeric_materialization_checkpoint;
+    if (token != R_NilValue) R_PreserveObject(token);
+    if (numeric_materialization_token != NULL)
+        R_ReleaseObject(numeric_materialization_token);
+    numeric_materialization_token = token == R_NilValue ? NULL : token;
+    numeric_materialization_checkpoint = INTEGER(mode)[0];
+    return Rf_ScalarInteger(previous);
+}
+
+typedef struct {
+    SEXP value;
+    SEXP claims;
+    Rboolean writeable;
+} numeric_materialization_context;
+
+static void numeric_materialization_release_claim(void *raw) {
+    numeric_materialization_context *context = raw;
+    SEXP entry = VECTOR_ELT(context->claims, 0);
+    if (entry != R_NilValue && R_ExternalPtrTag(entry) == context->value)
+        R_SetExternalPtrTag(entry, VECTOR_ELT(context->claims, 1));
+    SET_VECTOR_ELT(context->claims, 0, R_NilValue);
+    SET_VECTOR_ELT(context->claims, 1, R_NilValue);
+}
+
+static SEXP numeric_materialization_body(void *raw) {
+    numeric_materialization_context *context = raw;
+    SEXP value = context->value;
+    for (;;) {
+        SEXP materialized = R_altrep_data2(value);
+        if (materialized != R_NilValue) {
+            return context->writeable
+                ? detach_shared_materialized_payload(value) : materialized;
+        }
+        SEXP entry = PROTECT(R_altrep_data1(value));
+        numeric_data captured;
+        /* Plain descriptors borrow rooted raw bytes. Retained capture has its
+           own descriptor and immutable owner, even if allocation callbacks
+           materialize or replace the public handle. */
+        PROTECT(numeric_missing_mask_capture(value, &captured));
+        if (!numeric_payload_retained(&captured) &&
+            R_ExternalPtrTag(entry) != value) {
+            /* The missing-count proof and bytes must describe one snapshot.
+               A reentrant write therefore detaches even a private payload.
+               A nested read leaves its outer claim in place. No allocation
+               separates plain capture, rooting this claim, and installing it. */
+            SET_VECTOR_ELT(context->claims, 0, entry);
+            SET_VECTOR_ELT(context->claims, 1, R_ExternalPtrTag(entry));
+            compact_payload_claim(entry, value);
+        }
+        SEXP state = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+        if (numeric_materialization_checkpoint != 0) {
+            int mode = numeric_materialization_checkpoint;
+            numeric_materialization_checkpoint = 0;
+            if (numeric_materialization_token != NULL) {
+                R_ReleaseObject(numeric_materialization_token);
+                numeric_materialization_token = NULL;
+            }
+            R_gc();
+            if (mode == 2) Rf_error("injected materialization checkpoint failure");
+        }
+        materialized = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) captured.length));
+        if (R_altrep_data1(value) != entry || R_altrep_data2(value) != R_NilValue) {
+            /* A callback committed a newer state. Consume that state on retry
+               instead of publishing a stale decode over the callback's write. */
+            numeric_materialization_release_claim(context);
+            UNPROTECT(4);
+            continue;
+        }
+        numeric_fill_region(&captured, 0, captured.length, REAL(materialized));
+        if (R_altrep_data1(value) != entry || R_altrep_data2(value) != R_NilValue) {
+            numeric_materialization_release_claim(context);
+            UNPROTECT(4);
+            continue;
+        }
+        /* The doubles have independent ownership. Moving this handle to an
+           empty private record preserves aliases of the old compact record
+           without first copying bytes that decoding only reads. */
+        numeric_materialization_release_claim(context);
+        int shared = compact_payload_is_shared(entry);
+        R_set_altrep_data1(value, state);
+        R_set_altrep_data2(value, materialized);
+        if (!shared) numeric_finalize(entry);
+        UNPROTECT(4);
+        return materialized;
+    }
+}
+
 static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
-    SEXP materialized = R_altrep_data2(value);
-    if (materialized != R_NilValue) {
-        return writeable
-            ? detach_shared_materialized_payload(value) : materialized;
-    }
-    numeric_data *data = numeric_read_storage(value);
-    if (numeric_payload_retained(data)) {
-        SEXP detached = PROTECT(numeric_handle_copy(value));
-        R_set_altrep_data1(value, R_altrep_data1(detached));
-        data = numeric_read_storage(value);
-        UNPROTECT(1);
-    } else if (compact_payload_is_shared(R_altrep_data1(value))) {
-        SEXP detached = PROTECT(numeric_compact_copy(data));
-        R_set_altrep_data1(value, R_altrep_data1(detached));
-        data = numeric_storage(value);
-        UNPROTECT(1);
-    }
-    materialized = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) data->length));
-    double *output = REAL(materialized);
-    numeric_fill_region(data, 0, data->length, output);
-    R_set_altrep_data2(value, materialized);
-    numeric_finalize(R_altrep_data1(value));
+    if (R_altrep_data2(value) != R_NilValue)
+        return writeable ? detach_shared_materialized_payload(value) : R_altrep_data2(value);
+    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 2));
+    numeric_materialization_context context = {value, claims, writeable};
+    SEXP result = R_ExecWithCleanup(numeric_materialization_body, &context,
+                                    numeric_materialization_release_claim, &context);
     UNPROTECT(1);
-    return materialized;
+    return result;
 }
 
 void *numeric_dataptr(SEXP value, Rboolean writeable) {

@@ -1,0 +1,19 @@
+{
+  "suite": {
+    "blocks": 1767,
+    "passed": 51968,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "warnings": 7
+  },
+  "runtime_source_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0",
+  "runtime_receipt_sha256": "048c3ee4ac9545667c113c74900a684f399fbabdb3d6375ff8c4fb45d0fa9ccf",
+  "installed_dll_sha256": "188d679237d58dc75552dafb662ac9f2c0959ab61463f949c13d91a8dd0b9e4e",
+  "files": {
+    "full.R": "c1731796821c5bbc505736a93f65f8fd110c88c93a444a7dac4133a147113a33",
+    "full-tests.csv": "5646a84d83ea0e3388116491707891dd66ebd55ecc8069d1a205595278917d56",
+    "full-tests.log": "e2d337173356498efa5f92fa876e397b129cccc05fd667c2b59723bb725133af"
+  },
+  "test_source": "Installed tests from the clean candidate library built from commit 586b887b, not the mutable worktree."
+}

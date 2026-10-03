@@ -1,0 +1,277 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arithmetic-payload-lifetime.R","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block summaries agree with ordinary values across compact chunks",672,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen row blocks preserve column order and all-missing policy",31,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks keep one ordered double accumulator across boundaries",14,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block extrema preserve all missing ranks and signed-zero ties",28,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block calculations keep legacy numeric missing domains",128,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks preserve Stata temporal conversion order and strip metadata",16,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block admission preserves foreign row-major callback order",3,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen block validation retains NaN policy and unsupported-tag rejection",18,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen blocks normalize compact IEEE NaNs only in calculation scope",10,0,FALSE,FALSE,0
+"test-egen-block-kernels.R","egen scalar fallback retains foreign class callbacks and captured storage",3,0,FALSE,FALSE,0
+"test-mutate-data.R","reference mutation exports one coherent API",9,0,FALSE,FALSE,0
+"test-mutate-data.R","by-reference mutation rejects containers that are not dibbles",21,0,FALSE,FALSE,0
+"test-mutate-data.R","matrix columns use dataset row sizes",7,0,FALSE,FALSE,0
+"test-mutate-data.R","targets are bare names and support tidy injection",10,0,FALSE,FALSE,0
+"test-mutate-data.R","data masks, formulas, and alias calls use the right environments",9,0,FALSE,FALSE,0
+"test-mutate-data.R","values and selection see the unchanged dataset",8,0,FALSE,FALSE,0
+"test-mutate-data.R","where has documented logical and position semantics",32,0,FALSE,FALSE,0
+"test-mutate-data.R","full-dataset values are gathered by selected row",7,0,FALSE,FALSE,0
+"test-mutate-data.R","metadata-bearing numerics remain valid row positions",2,0,FALSE,FALSE,0
+"test-mutate-data.R","compact selected positions use one native patch plan",4,0,FALSE,FALSE,0
+"test-mutate-data.R","excluded full-dataset values do not affect validation",8,0,FALSE,FALSE,0
+"test-mutate-data.R","native mutation writers reject untrusted row plans",7,0,FALSE,FALSE,0
+"test-mutate-data.R","validation errors leave the dataset unchanged",16,0,FALSE,FALSE,0
+"test-mutate-data.R","gen rejects unsupported classed numeric results atomically",6,0,FALSE,FALSE,0
+"test-mutate-data.R","evaluation interrupts leave the dataset unchanged",4,0,FALSE,FALSE,0
+"test-mutate-data.R","native write interrupts roll back values and compact state",64,0,FALSE,FALSE,0
+"test-mutate-data.R","native generation interrupts leave reference state unchanged",67,0,FALSE,FALSE,0
+"test-mutate-data.R","POSIX interrupts reach an active native generation checkpoint",67,0,FALSE,FALSE,0
+"test-mutate-data.R","POSIX generation checkpoints tolerate a full child stderr pipe",67,0,FALSE,FALSE,0
+"test-mutate-data.R","generation interrupt controls disarm after validation errors",6,0,FALSE,FALSE,0
+"test-mutate-data.R","generic ALTREP detachment interrupts before installation",6,0,FALSE,FALSE,0
+"test-mutate-data.R","compact replacement patches every storage without materializing",36,0,FALSE,FALSE,0
+"test-mutate-data.R","compact validation is strict and atomic",14,0,FALSE,FALSE,0
+"test-mutate-data.R","compact replacement updates the missing-value cache",12,0,FALSE,FALSE,0
+"test-mutate-data.R","DTA-loaded compact and temporal columns use native patching",8,0,FALSE,FALSE,0
+"test-mutate-data.R","legacy compact columns reject scalar extended missing values",2,0,FALSE,FALSE,0
+"test-mutate-data.R","ordinary, materialized, temporal, and character columns mutate",10,0,FALSE,FALSE,0
+"test-mutate-data.R","base numeric ALTREP columns remain internally consistent",16,0,FALSE,FALSE,0
+"test-mutate-data.R","gen appends one variable with Stata missing and storage rules",54,0,FALSE,FALSE,0
+"test-mutate-data.R","gen keeps what types a value and leaves variable metadata behind",12,0,FALSE,FALSE,0
+"test-mutate-data.R","gen and a new := column copy a column's values, not its metadata",48,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped gen drops each group's metadata before gathering",6,0,FALSE,FALSE,0
+"test-mutate-data.R","gen handles zero rows and evaluates before insertion",4,0,FALSE,FALSE,0
+"test-mutate-data.R","repeated gen appends ordered reference-state bindings",4,0,FALSE,FALSE,0
+"test-mutate-data.R","copy_data isolates every mutable column backing",25,0,FALSE,FALSE,0
+"test-mutate-data.R","subsets, metadata proxies, and serialized data stay isolated",7,0,FALSE,FALSE,0
+"test-mutate-data.R","detached metadata payloads do not retain former proxy owners",2,0,FALSE,FALSE,0
+"test-mutate-data.R","downstream metadata proxies revoke exclusive patch ownership",3,0,FALSE,FALSE,0
+"test-mutate-data.R","metadata copies remain isolated from later source patches",37,0,FALSE,FALSE,0
+"test-mutate-data.R","writable access detaches shared materialized payloads",4,0,FALSE,FALSE,0
+"test-mutate-data.R","is_missing masks preserve dictionary-string caches and aliases",12,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized metadata-proxy copies remain independent",4,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized metadata proxies release former sources",4,0,FALSE,FALSE,0
+"test-mutate-data.R","copy_data keeps Arrow dictionary strings independent and compact",2,0,FALSE,FALSE,0
+"test-mutate-data.R","generated variables participate in package writes",7,0,FALSE,FALSE,0
+"test-mutate-data.R","a dibble preserves base and tibble access semantics",21,0,FALSE,FALSE,0
+"test-mutate-data.R","dibble consumers through dplyr",35,0,FALSE,FALSE,0
+"test-mutate-data.R","explicit replacement isolates separate tables sharing target vectors",3,0,FALSE,FALSE,0
+"test-mutate-data.R","rowwise inputs fail before reference mutation",5,0,FALSE,FALSE,0
+"test-mutate-data.R",".n and .N describe the whole dataset without groups",6,0,FALSE,FALSE,0
+"test-mutate-data.R","by evaluates where and values within each group",8,0,FALSE,FALSE,0
+"test-mutate-data.R","by accepts every column-name spelling",11,0,FALSE,FALSE,0
+"test-mutate-data.R","groups follow Stata's by order, not data.table's",4,0,FALSE,FALSE,0
+"test-mutate-data.R","per-group value sizes must be 1, the selection, or .N",7,0,FALSE,FALSE,0
+"test-mutate-data.R","missing values in a by column form their own groups",4,0,FALSE,FALSE,0
+"test-mutate-data.R","bysort sorts by reference and then groups",13,0,FALSE,FALSE,0
+"test-mutate-data.R","bysort is written with the assignment, so a failed one leaves the order",71,0,FALSE,FALSE,0
+"test-mutate-data.R","by and bysort are exclusive and reject a grouped input",7,0,FALSE,FALSE,0
+"test-mutate-data.R","a grouped tibble supplies the assignment groups",10,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped native assignment consumers through dplyr",11,0,FALSE,FALSE,0
+"test-mutate-data.R","compact targets stay compact under by",13,0,FALSE,FALSE,0
+"test-mutate-data.R","the shadow check still fires inside grouped expressions",6,0,FALSE,FALSE,0
+"test-mutate-data.R","grouped gen keeps string storage and drops value attributes",4,0,FALSE,FALSE,0
+"test-mutate-data.R","ordinary assignments and metadata helpers materialize current state",12,0,FALSE,FALSE,0
+"test-mutate-data.R","sparse compact replacement and generation keep existing payloads",6,0,FALSE,FALSE,0
+"test-mutate-data.R","plain-expression evaluation matches tidy-eval semantics",10,0,FALSE,FALSE,0
+"test-mutate-data.R","plain expressions evaluate against reference-state columns",3,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized compact replacements retain Stata semantics",28,0,FALSE,FALSE,0
+"test-mutate-data.R","materialized compact replacement keeps fallback errors atomic",8,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement matches the general path",20,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement handles full-row values",3,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison replacement handles empty and full matches",3,0,FALSE,FALSE,0
+"test-mutate-data.R","fused replacement preserves recycling errors and shared data",5,0,FALSE,FALSE,0
+"test-mutate-data.R","threaded fused replacement matches the general path",2,0,FALSE,FALSE,0
+"test-mutate-data.R","fused comparison evaluates scalar operands once",3,0,FALSE,FALSE,0
+"test-mutate-data.R","a fused patch that writes never evaluates its comparison rows",3,0,FALSE,FALSE,0
+"test-mutate-data.R","a declined fused patch resolves the same rows as the plain path",6,0,FALSE,FALSE,0
+"test-mutate-data.R","fused row-value errors roll back before the fallback error",4,0,FALSE,FALSE,0
+"test-mutate-data.R","targets and values arrive as one tagged pair",20,0,FALSE,FALSE,0
+"test-mutate-data.R","tagged pairs reach dibble and compact targets",7,0,FALSE,FALSE,0
+"test-mutate-data.R","mutation dots must be one target pair and at most one where",15,0,FALSE,FALSE,0
+"test-mutate-data.R","a symbol bound as both column and object is an error",29,0,FALSE,FALSE,0
+"test-mutate-data.R","replacing a grouping column rebuilds the dplyr groups",7,0,FALSE,FALSE,0
+"test-mutate-data.R","native regrouping consumers through dplyr",9,0,FALSE,FALSE,0
+"test-mutate-data.R","an aliased grouping column is regrouped after replacement",3,0,FALSE,FALSE,0
+"test-mutate-data.R","aliased key regrouping consumers through dplyr",4,0,FALSE,FALSE,0
+"test-mutate-data.R","row counters mask a column named .n or .N",4,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` widens typed columns and reports the storage change",21,0,FALSE,FALSE,0
+"test-mutate-data.R","float replacement preserves precision unless promotion is disabled",6,0,FALSE,FALSE,0
+"test-mutate-data.R","byte replacement preserves the R double or rejects it unchanged",7,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` reports nothing when the storage does not change",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` widens a string target to the smallest fitting width",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotes nothing when no rows are selected",3,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotes the whole column when some rows are selected",3,0,FALSE,FALSE,0
+"test-mutate-data.R","`promote = FALSE` keeps the target at its declared storage",5,0,FALSE,FALSE,0
+"test-mutate-data.R","`repl()` promotion keeps variable metadata",2,0,FALSE,FALSE,0
+"test-mutate-data.R","`:=` promotes silently, unlike `repl()`",2,0,FALSE,FALSE,0
+"test-mutate-data.R","promotion never narrows the integers a column can hold",6,0,FALSE,FALSE,0
+"test-mutate-data.R","unselected replacement groups do not contribute value types",9,0,FALSE,FALSE,0
+"test-mutate-data.R","strict grouped zero-selection replacement is a no-op",24,0,FALSE,FALSE,0
+"test-mutate-data.R","gen inserts the new column before or after an anchor",26,0,FALSE,FALSE,0
+"test-mutate-data.R","a placed generated column keeps compact storage and its alias",11,0,FALSE,FALSE,0
+"test-mutate-data.R","placement follows an anchor moved or removed while values evaluate",12,0,FALSE,FALSE,0
+"test-mutate-data.R","placement follows the anchor after column construction callbacks",5,0,FALSE,FALSE,0
+"test-mutate-data.R","placed generation retains columns added during construction",6,0,FALSE,FALSE,0
+"test-mutate-data.R","placed generation refuses an anchor removed during construction",3,0,FALSE,FALSE,0
+"test-owned-atoms.R","validated discrete batches retain vctrs and base gather behavior",20,0,FALSE,FALSE,0
+"test-owned-atoms.R","discrete gather declines whole callback or metadata fallback batches",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","mixed gather fallbacks retain cross-column callback order",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned record reads follow each replacement allocation through GC",36,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor integer exports use an isolated ordinary deep copy",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","public logical subsets are fresh ordinary values and batch results stay owned",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary atom handles share flat backing with independent attributes",23,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary atom backing through dplyr",103,0,FALSE,FALSE,0
+"test-owned-atoms.R","native owned string copies and renaming reuse validation facts",16,0,FALSE,FALSE,0
+"test-owned-atoms.R","unchanged owned string selectors reuse validation facts",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","string facts distinguish subset bounds from exact maxima",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","missingness-only string validation is included in scan counters",5,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign index callbacks cannot propagate facts from a changed source",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","writable pointers isolate all atom types and remain unsafe to share",24,0,FALSE,FALSE,0
+"test-owned-atoms.R","Set_elt and retained writable strings invalidate missingness and width facts",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign data.table atoms are captured at constructors and callback ingress",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","foreign atom ingress through dplyr",60,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned atom serialization restores values without live ownership records",80,0,FALSE,FALSE,0
+"test-owned-atoms.R","serialized atom recapture through dplyr",80,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary base copies and explicit atom writes preserve both alias contracts",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","ordinary and explicit atom aliases through dplyr",21,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned atomic native patches stage fully and keep prior state on interruption",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","generation and atomic staging root detached integer row payload",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy vector patches root detached integer row payloads",19,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy foreign rows finish callbacks before numeric readers are retained",20,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy journaling and writes use captured operands without later callbacks",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy dictionary targets validate state after declared-width callbacks",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","legacy compact targets reject materialization during operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-atoms.R","generation rejects live rows moved out of bounds by value callbacks",3,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor ownership preserves existing replacement restrictions and levels",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","factor replacement and levels through dplyr",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","public atom exports and source mutations remain symmetrically isolated",79,0,FALSE,FALSE,0
+"test-owned-atoms.R","public atom export isolation through dplyr",131,0,FALSE,FALSE,0
+"test-owned-atoms.R","dictionary read pins survive callback materialization in subsets and atom patches",11,0,FALSE,FALSE,0
+"test-owned-atoms.R","DTA and Arrow writer pointers survive later metadata callbacks",22,0,FALSE,FALSE,0
+"test-owned-atoms.R","DTA planning retains already UTF-8 owned strings without a payload copy",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","writer specifications isolate initially private strings from public callback writes",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow readers adopt fresh logical and factor allocations",12,0,FALSE,FALSE,0
+"test-owned-atoms.R","fresh unnamed string construction keeps its first write private",36,0,FALSE,FALSE,0
+"test-owned-atoms.R","constructing from an owned string preserves real aliases in both directions",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","internal string construction captures before forcing metadata promises",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","named string construction preserves replacement dispatch and escaped aliases",5,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned width scans preserve encoded bytes and missingness",12,0,FALSE,FALSE,0
+"test-owned-atoms.R","large string constructors and restoration retain owned facts",51,0,FALSE,FALSE,0
+"test-owned-atoms.R","owned string metadata leaves names replacement dispatch to R",6,0,FALSE,FALSE,0
+"test-owned-atoms.R","string metadata declines compact storage without changing its source",9,0,FALSE,FALSE,0
+"test-owned-atoms.R","large string construction captures borrowed values before removing metadata",30,0,FALSE,FALSE,0
+"test-owned-atoms.R","string construction validates values captured after declaration callbacks",8,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow UTF-8 readiness reads current owned strings and retains conversion fallbacks",7,0,FALSE,FALSE,0
+"test-owned-atoms.R","Arrow UTF-8 preflight retains its original fallback when base conversion is traced",4,0,FALSE,FALSE,0
+"test-owned-atoms.R","table atom exports retain isolation under each explicit write API",18,0,FALSE,FALSE,0
+"test-owned-atoms.R","table atom export isolation through dplyr",36,0,FALSE,FALSE,0
+"test-owned-columns.R","bounded generation shape checks retain wide and encoded fallbacks",15,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape checks decline foreign length callbacks",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape validation never invokes foreign class callbacks",4,0,FALSE,FALSE,0
+"test-owned-columns.R","attributed env members retain ordinary evaluation without eligibility callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","journaled append restores shape and metadata after errors and interrupts",288,0,FALSE,FALSE,0
+"test-owned-columns.R","classed column names retain R validation dispatch",4,0,FALSE,FALSE,0
+"test-owned-columns.R","private append reuses names without a collection or prior names read",128,0,FALSE,FALSE,0
+"test-owned-columns.R","generation preserves saved names, attributes and shallow table copies",14,0,FALSE,FALSE,0
+"test-owned-columns.R","generation protects shallow table names before any public names read",9,0,FALSE,FALSE,0
+"test-owned-columns.R","generation checks physical rows again after argument capture",3,0,FALSE,FALSE,0
+"test-owned-columns.R","captured mutation masks preserve unread columns and lexical lookup",210,0,FALSE,FALSE,0
+"test-owned-columns.R","direct reads retain shadow checks and dynamic env subscripts",2,0,FALSE,FALSE,0
+"test-owned-columns.R","plain table staging guards aliases introduced by row callbacks",9,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary private string writes retain sparse allocation and snapshot isolation",5,0,FALSE,FALSE,0
+"test-owned-columns.R","promotion checks revalidate rows changed by a value callback",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generic table transactions reject callback target replacement",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native promotion fits preserve ranges, precision and selected values",114,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion scans retain finite limits and exceptional values",540,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion preserves attributes and foreign reader callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","grouped proxy callbacks retain isolated Date inputs",4,0,FALSE,FALSE,0
+"test-owned-columns.R","owned subsetting roots the payload across foreign index callbacks",3,0,FALSE,FALSE,0
+"test-owned-columns.R","compact subsetting retains storage across index materialization callbacks",24,0,FALSE,FALSE,0
+"test-owned-columns.R","native readers cannot export aliases after the effective write guard",20,0,FALSE,FALSE,0
+"test-owned-columns.R","failed fused writes retain sharing introduced by an operand callback",41,0,FALSE,FALSE,0
+"test-owned-columns.R","direct owned writes retain callback forks after an interrupt",9,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized partial writes roll back completed writes and original state",11,0,FALSE,FALSE,0
+"test-owned-columns.R","plain doubles capture once and preserve private sparse backing afterwards",22,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized full replacement copies new values without reading old payloads",20,0,FALSE,FALSE,0
+"test-owned-columns.R","native-generated private numeric writes stage new bytes without copying old values",50,0,FALSE,FALSE,0
+"test-owned-columns.R","full numeric replacement protects borrowed aliases without copying their old payload",20,0,FALSE,FALSE,0
+"test-owned-columns.R","validation never exposes an internal read handle to R methods",6,0,FALSE,FALSE,0
+"test-owned-columns.R","custom classes on owned handles use conservative shape validation",6,0,FALSE,FALSE,0
+"test-owned-columns.R","comparison callbacks cannot retain a view changed by the patch",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native comparison decline isolates handles before R fallback errors",6,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary doubles are captured once and column results fork backing",3,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary double result backing through dplyr",7,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary dictionary cast prototypes do not decode target values",5,0,FALSE,FALSE,0
+"test-owned-columns.R","plain integer and logical cast prototypes need no target payload",4,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign integer prototypes and full replacements skip old payload reads",17,0,FALSE,FALSE,0
+"test-owned-columns.R","capture preserves identical owned columns within one physical table",8,0,FALSE,FALSE,0
+"test-owned-columns.R","public writable and retained pointers cannot change another fork",6,0,FALSE,FALSE,0
+"test-owned-columns.R","public column exports isolate later ordinary and explicit writes",28,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress and data table exports preserve both write directions",21,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress through dplyr",42,0,FALSE,FALSE,0
+"test-owned-columns.R","read pointers and ordinary aggregates retain safe backing forks",8,0,FALSE,FALSE,0
+"test-owned-columns.R","owned doubles preserve metadata and ordinary serialized values",8,0,FALSE,FALSE,0
+"test-owned-columns.R","reading a column with $ or [[ leaves its handle private for the next write",9,0,FALSE,FALSE,1
+"test-owned-columns.R","a sparse write into a dictionary-backed Stata string allocates only its result",4,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging commits finite boundary bytes",90,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging canonicalizes missing bytes and isolates metadata",22,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging preserves validation priority and failed targets",100,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains scalar selected and foreign readers",26,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains temporal encoded range checks",7,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles preserve boundary bytes and independent payloads",105,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles report the first invalid value across block boundaries",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums preserve cancellation across interrupt blocks and chunks",60,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0
