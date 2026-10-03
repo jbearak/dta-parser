@@ -1,0 +1,1244 @@
+--- a/src/numeric-arithmetic-float-scalar.h
++++ b/src/numeric-arithmetic-float-scalar.h
+@@ -0,0 +1,196 @@
++/* A scalar operation is monotone over finite binary32 inputs. Prove its
++   binary64 range once, then express float fit in the input's storage width. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_FLOAT_SCALAR_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_FLOAT_SCALAR_H
++
++typedef struct {
++    const arithmetic_general_source *column;
++    double scalar;
++    int operation;
++    int reverse;
++    int increasing;
++    int check_fit;
++    float lower;
++    float upper;
++    uint32_t anchor;
++} arithmetic_float_scalar_proof;
++
++static double arithmetic_float_scalar_evaluate(
++    const arithmetic_float_scalar_proof *proof, float source
++) {
++    double value = (double) source;
++    switch (proof->operation) {
++    case '+': return value + proof->scalar;
++    case '-': return proof->reverse ? proof->scalar - value : value - proof->scalar;
++    case '*': return value * proof->scalar;
++    case '/': return value / proof->scalar;
++    }
++    return NA_REAL;
++}
++
++/* These keys place every finite encoding in numeric order, retaining both
++   zero encodings. No NaN or infinity lies between the two finite endpoints. */
++static float arithmetic_float_scalar_from_key(uint32_t key) {
++    uint32_t bits = key & UINT32_C(0x80000000)
++        ? key ^ UINT32_C(0x80000000) : ~key;
++    float value;
++    memcpy(&value, &bits, sizeof(value));
++    return value;
++}
++
++static uint32_t arithmetic_float_scalar_bound(
++    const arithmetic_float_scalar_proof *proof, int upper
++) {
++    uint32_t low = UINT32_C(0x00800000), high = UINT32_C(0xff800000);
++    const double limit = numeric_float_observed_limit();
++    while (low < high) {
++        uint32_t middle = low + (high - low) / 2;
++        double value = arithmetic_float_scalar_evaluate(
++            proof, arithmetic_float_scalar_from_key(middle));
++        int before = proof->increasing
++            ? (upper ? value <= limit : value < -limit)
++            : (upper ? value >= -limit : value > limit);
++        if (before) low = middle + 1;
++        else high = middle;
++    }
++    return low;
++}
++
++static int arithmetic_float_scalar_prove(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind, arithmetic_float_scalar_proof *proof
++) {
++    if ((kind != NUMERIC_FLOAT && kind != NUMERIC_DOUBLE) || length <= 1) return 0;
++    if (right->kind == ARITHMETIC_SOURCE_SCALAR) {
++        proof->column = left;
++        proof->scalar = right->scalar;
++        proof->reverse = 0;
++    } else if (left->kind == ARITHMETIC_SOURCE_SCALAR && operation != '/') {
++        proof->column = right;
++        proof->scalar = left->scalar;
++        proof->reverse = 1;
++    } else return 0;
++    const numeric_data *data = proof->column->operand->reader.storage;
++    if (data == NULL || data->temporal != 0 || data->kind != NUMERIC_FLOAT ||
++        proof->column->operand->length != length || data->missing_count > (size_t) length ||
++        !R_FINITE(proof->scalar) || (operation == '/' && proof->scalar == 0)) return 0;
++    proof->operation = operation;
++    double low = arithmetic_float_scalar_evaluate(proof, -FLT_MAX);
++    double high = arithmetic_float_scalar_evaluate(proof, FLT_MAX);
++    if (!scalar_arithmetic_result_valid(low) ||
++        !scalar_arithmetic_result_valid(high)) return 0;
++    proof->check_fit = 0;
++    proof->anchor = 0;
++    if (kind == NUMERIC_DOUBLE) return 1;
++    proof->lower = -FLT_MAX;
++    proof->upper = FLT_MAX;
++    if (fabs(low) <= numeric_float_observed_limit() &&
++        fabs(high) <= numeric_float_observed_limit()) return 1;
++    proof->increasing = low <= high;
++    uint32_t first = arithmetic_float_scalar_bound(proof, 0);
++    uint32_t after = arithmetic_float_scalar_bound(proof, 1);
++    /* Empty intervals use the general producer: an all-invalid result may
++       still fit float, so absence of finite fit alone cannot promote it. */
++    if (first >= after) return 0;
++    proof->lower = arithmetic_float_scalar_from_key(first);
++    proof->upper = arithmetic_float_scalar_from_key(after - 1);
++    float anchor = proof->lower <= 0 && proof->upper >= 0 ? 0 : proof->lower;
++    memcpy(&proof->anchor, &anchor, sizeof(anchor));
++    proof->check_fit = 1;
++    return 1;
++}
++
++static int arithmetic_float_scalar_write(
++    const arithmetic_float_scalar_proof *proof, R_xlen_t length,
++    arithmetic_general_output *output
++) {
++    const numeric_data *data = proof->column->operand->reader.storage;
++    const int legacy = data->format_version <= 111;
++    const int all_observed = data->missing_count == 0;
++    const double scalar = proof->scalar;
++    /* arithmetic_capture protects this exact descriptor and its backing.
++       Finite inputs were proved valid; only observed IEEE infinities add
++       missing results. Legacy +Inf is included in the inherited count. */
++    output->missing_count = data->missing_count;
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *raw = numeric_read_span(data, start, count, &count);
++        unsigned promote = 0, missing_count = 0;
++#define GENERAL_PROVED_FLOAT_LOOP(TYPE, TARGET, EXPR, MISSING, FIT, NARROW, INVALID, OBSERVED, INF_MASK, INF_VALUE) \
++        do {                                                               \
++            TYPE *restrict target = (TARGET) + start;                      \
++            for (size_t i = 0; i < count; i++) {                            \
++                uint32_t bits;                                             \
++                memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));        \
++                const uint32_t bits_original = bits;                       \
++                int invalid = (OBSERVED)                                   \
++                    ? (bits & UINT32_C(0x7fffffff)) >= UINT32_C(0x7f800000) \
++                    : INVALID(bits);                                       \
++                float source;                                              \
++                memcpy(&source, &bits, sizeof(source));                    \
++                int fit = !(FIT) ||                                        \
++                    (source >= proof->lower && source <= proof->upper);    \
++                promote |= (unsigned) (!invalid && !fit);                 \
++                if (NARROW) {                                              \
++                    /* Substitute finite, proved-safe input before the     \
++                       double operation and narrowing conversion. */      \
++                    uint32_t replace = 0U - (uint32_t) (invalid || !fit);  \
++                    bits = (bits & ~replace) | (proof->anchor & replace); \
++                    memcpy(&source, &bits, sizeof(source));                \
++                }                                                          \
++                double value = (double) source;                            \
++                TYPE result = (TYPE) (EXPR);                               \
++                target[i] = invalid ? (TYPE) (MISSING) : result;           \
++                missing_count += (unsigned)                              \
++                    ((bits_original & (INF_MASK)) == (INF_VALUE));        \
++            }                                                              \
++        } while (0)
++#define GENERAL_PROVED_FLOAT_TARGETS(EXPR, INVALID, OBSERVED, INF_MASK, INF_VALUE) \
++        if (output->kind == NUMERIC_FLOAT) {                                \
++            if (proof->check_fit) {                                        \
++                GENERAL_PROVED_FLOAT_LOOP(float, (float *) (void *) output->raw, EXPR, 0x1p127f, 1, 1, INVALID, OBSERVED, INF_MASK, INF_VALUE); \
++            } else {                                                       \
++                GENERAL_PROVED_FLOAT_LOOP(float, (float *) (void *) output->raw, EXPR, 0x1p127f, 0, 1, INVALID, OBSERVED, INF_MASK, INF_VALUE); \
++            }                                                              \
++        } else {                                                           \
++            GENERAL_PROVED_FLOAT_LOOP(double, output->real, EXPR, NA_REAL, 0, 0, INVALID, OBSERVED, INF_MASK, INF_VALUE); \
++        }
++#define GENERAL_PROVED_FLOAT_OPERATORS(INVALID, OBSERVED, INF_MASK, INF_VALUE) \
++        switch (proof->operation) {                                         \
++        case '+': GENERAL_PROVED_FLOAT_TARGETS(value + scalar, INVALID, OBSERVED, INF_MASK, INF_VALUE); break; \
++        case '-':                                                          \
++            if (proof->reverse) {                                           \
++                GENERAL_PROVED_FLOAT_TARGETS(scalar - value, INVALID, OBSERVED, INF_MASK, INF_VALUE); \
++            } else {                                                       \
++                GENERAL_PROVED_FLOAT_TARGETS(value - scalar, INVALID, OBSERVED, INF_MASK, INF_VALUE); \
++            }                                                              \
++            break;                                                         \
++        case '*': GENERAL_PROVED_FLOAT_TARGETS(value * scalar, INVALID, OBSERVED, INF_MASK, INF_VALUE); break; \
++        case '/': GENERAL_PROVED_FLOAT_TARGETS(value / scalar, INVALID, OBSERVED, INF_MASK, INF_VALUE); break; \
++        }
++#define GENERAL_PROVED_FLOAT_MISSING(INVALID, INF_MASK, INF_VALUE)          \
++        if (all_observed) {                                                 \
++            GENERAL_PROVED_FLOAT_OPERATORS(INVALID, 1, INF_MASK, INF_VALUE); \
++        } else {                                                           \
++            GENERAL_PROVED_FLOAT_OPERATORS(INVALID, 0, INF_MASK, INF_VALUE); \
++        }
++        if (legacy) {
++            GENERAL_PROVED_FLOAT_MISSING(arithmetic_scale_float_invalid_legacy,
++                UINT32_MAX, UINT32_C(0xff800000));
++        } else {
++            GENERAL_PROVED_FLOAT_MISSING(arithmetic_scale_float_invalid_modern,
++                UINT32_C(0x7fffffff), UINT32_C(0x7f800000));
++        }
++#undef GENERAL_PROVED_FLOAT_MISSING
++#undef GENERAL_PROVED_FLOAT_OPERATORS
++#undef GENERAL_PROVED_FLOAT_TARGETS
++#undef GENERAL_PROVED_FLOAT_LOOP
++        output->missing_count += missing_count;
++        if (promote) return NUMERIC_DOUBLE;
++        start += count;
++    }
++    return output->kind;
++}
++#endif
+--- a/src/numeric-arithmetic-general.h
++++ b/src/numeric-arithmetic-general.h
+@@ -0,0 +1,448 @@
++/* General arithmetic keeps each input in its physical storage until the
++   operation. Storage, missing layout, scalar shape, operator and destination
++   are dispatched outside the typed loop. No decoded value/code arrays cross
++   the producer boundary. */
++#ifndef DTATOOLS_NUMERIC_ARITHMETIC_GENERAL_H
++#define DTATOOLS_NUMERIC_ARITHMETIC_GENERAL_H
++
++enum {
++    ARITHMETIC_SOURCE_R_INTEGER = 5,
++    ARITHMETIC_SOURCE_OBSERVED_FLOAT = 6,
++    ARITHMETIC_SOURCE_SCALAR = 7,
++    ARITHMETIC_PREFLIGHT = 5
++};
++
++typedef struct {
++    const arithmetic_operand *operand;
++    arithmetic_missing_policy policy;
++    int kind;
++    double scalar;
++} arithmetic_general_source;
++
++typedef struct {
++    int kind;
++    unsigned char *raw;
++    double *real;
++    double minimum;
++    double maximum;
++    uint64_t magnitude;
++    unsigned fractional;
++    size_t missing_count;
++} arithmetic_general_output;
++
++static int arithmetic_general_source_create(
++    const arithmetic_operand *operand, arithmetic_general_source *source
++) {
++    source->operand = operand;
++    source->policy = arithmetic_missing_policy_for(operand->reader.storage);
++    source->scalar = 0;
++    if (operand->length == 1) {
++        int code;
++        numeric_reader_region(&operand->reader, 0, 1, &source->scalar, &code);
++        if (code >= 0) source->scalar = NA_REAL;
++        source->kind = ARITHMETIC_SOURCE_SCALAR;
++    } else if (operand->reader.storage != NULL) {
++        const numeric_data *data = operand->reader.storage;
++        source->kind = data->kind;
++        if (data->kind == NUMERIC_FLOAT && data->missing_count == 0)
++            source->kind = ARITHMETIC_SOURCE_OBSERVED_FLOAT;
++    } else if (operand->reader.real_values != NULL) {
++        source->kind = NUMERIC_DOUBLE;
++    } else if (operand->reader.integer_values != NULL) {
++        source->kind = ARITHMETIC_SOURCE_R_INTEGER;
++    } else {
++        return 0;
++    }
++    return 1;
++}
++
++static const unsigned char *arithmetic_general_span(
++    const arithmetic_general_source *source, size_t start, size_t *count
++) {
++    const numeric_reader *reader = &source->operand->reader;
++    if (source->kind == ARITHMETIC_SOURCE_SCALAR) return NULL;
++    if (reader->storage != NULL)
++        return numeric_read_span(reader->storage, start, *count, count);
++    if (reader->real_values != NULL)
++        return (const unsigned char *) (reader->real_values + start);
++    return (const unsigned char *) (reader->integer_values + start);
++}
++
++#define GENERAL_INTEGER_LOAD(NAME, TYPE)                                  \
++    static inline double arithmetic_general_load_##NAME(                  \
++        const unsigned char *raw, size_t index,                           \
++        const arithmetic_general_source *source                           \
++    ) {                                                                   \
++        TYPE value;                                                       \
++        memcpy(&value, raw + index * sizeof(value), sizeof(value));         \
++        return (double) value >= source->policy.minimum                   \
++            ? NA_REAL : (double) value;                                   \
++    }
++GENERAL_INTEGER_LOAD(byte, int8_t)
++GENERAL_INTEGER_LOAD(int, int16_t)
++GENERAL_INTEGER_LOAD(long, int32_t)
++#undef GENERAL_INTEGER_LOAD
++
++static inline double arithmetic_general_load_float(
++    const unsigned char *raw, size_t index,
++    const arithmetic_general_source *source
++) {
++    float value;
++    memcpy(&value, raw + index * sizeof(value), sizeof(value));
++    /* Arithmetic discards input missing tags. Set a quiet-NaN exponent in
++       each missing 32-bit lane before widening; observed bits are unchanged.
++       Bitwise normalization keeps this mask in the source storage width. */
++    uint32_t bits;
++    memcpy(&bits, &value, sizeof(bits));
++    uint32_t missing = 0U - (uint32_t) arithmetic_float_missing(value, &source->policy);
++    bits |= missing & UINT32_C(0x7fc00000);
++    memcpy(&value, &bits, sizeof(value));
++    return (double) value;
++}
++
++static inline double arithmetic_general_load_observed_float(
++    const unsigned char *raw, size_t index,
++    const arithmetic_general_source *source
++) {
++    (void) source;
++    float value;
++    memcpy(&value, raw + index * sizeof(value), sizeof(value));
++    return (double) value;
++}
++
++static inline double arithmetic_general_load_double(
++    const unsigned char *raw, size_t index,
++    const arithmetic_general_source *source
++) {
++    (void) source;
++    double value;
++    memcpy(&value, raw + index * sizeof(value), sizeof(value));
++    return value;
++}
++
++static inline double arithmetic_general_load_r_integer(
++    const unsigned char *raw, size_t index,
++    const arithmetic_general_source *source
++) {
++    (void) source;
++    int value;
++    memcpy(&value, raw + index * sizeof(value), sizeof(value));
++    return value == NA_INTEGER ? NA_REAL : (double) value;
++}
++
++static inline double arithmetic_general_load_scalar(
++    const unsigned char *raw, size_t index,
++    const arithmetic_general_source *source
++) {
++    (void) raw;
++    (void) index;
++    return source->scalar;
++}
++
++static int arithmetic_general_result_kind(
++    const arithmetic_general_output *output, int minimum
++) {
++    if (!output->fractional) {
++        if (minimum <= NUMERIC_BYTE && output->minimum >= -127 &&
++            output->maximum <= 100) return NUMERIC_BYTE;
++        if (minimum <= NUMERIC_INT && output->minimum >= -32767 &&
++            output->maximum <= 32740) return NUMERIC_INT;
++        if (minimum <= NUMERIC_LONG && output->minimum >= -2147483647.0 &&
++            output->maximum <= 2147483620.0) return NUMERIC_LONG;
++    }
++    if (minimum != NUMERIC_LONG &&
++        output->minimum >= -numeric_float_observed_limit() &&
++        output->maximum <= numeric_float_observed_limit()) return NUMERIC_FLOAT;
++    return NUMERIC_DOUBLE;
++}
++
++/* Floating output combines calculation, invalid-result normalization, missing
++   count and range proof. Integer destinations have already been proved safe;
++   select zero before conversion so missing values never invoke an invalid
++   floating-to-integer conversion. Float values outside the proved storage range
++   write a private zero placeholder, avoiding an out-of-range C conversion.
++   A float promotion discards all provisional
++   rounding and recalculates the complete result from the captured inputs. */
++#define GENERAL_PAIR_LOOP(X, Y, OP, TYPE, MODE, MISSING)                    \
++    do {                                                                  \
++        TYPE *restrict target = (MODE) == ARITHMETIC_PREFLIGHT ? NULL :     \
++            (TYPE *) (void *) ((MODE) == NUMERIC_DOUBLE                    \
++                ? (unsigned char *) output->real : output->raw);          \
++        double minimum_value = output->minimum;                           \
++        double maximum_value = output->maximum;                           \
++        uint64_t maximum_magnitude = output->magnitude;                   \
++        unsigned fractional = output->fractional;                        \
++        unsigned missing_count = 0;                                      \
++        double float_limit = numeric_float_observed_limit();              \
++        uint64_t float_limit_bits;                                        \
++        memcpy(&float_limit_bits, &float_limit, sizeof(float_limit_bits)); \
++        for (size_t i = 0; i < count; i++) {                              \
++            double xv = arithmetic_general_load_##X(x_raw, i, left);     \
++            double yv = arithmetic_general_load_##Y(y_raw, i, right);     \
++            double value = xv OP yv;                                     \
++            int valid = scalar_arithmetic_result_valid(value);           \
++            double observed = valid ? value : 0.0;                       \
++            if ((MODE) == ARITHMETIC_PREFLIGHT) {                         \
++                minimum_value = observed < minimum_value                 \
++                    ? observed : minimum_value;                          \
++                maximum_value = observed > maximum_value                 \
++                    ? observed : maximum_value;                          \
++                fractional |= observed != trunc(observed);              \
++            } else {                                                      \
++                double storable = observed;                             \
++                missing_count += (unsigned) !valid;                      \
++                if ((MODE) == NUMERIC_FLOAT) {                           \
++                    uint64_t bits;                                       \
++                    memcpy(&bits, &observed, sizeof(bits));              \
++                    bits &= UINT64_C(0x7fffffffffffffff);                 \
++                    maximum_magnitude = bits > maximum_magnitude         \
++                        ? bits : maximum_magnitude;                      \
++                    storable = bits <= float_limit_bits ? observed : 0;  \
++                }                                                         \
++                target[start + i] = valid ? (TYPE) storable : (TYPE) (MISSING); \
++            }                                                             \
++        }                                                                 \
++        output->minimum = minimum_value;                                 \
++        output->maximum = maximum_value;                                 \
++        output->magnitude = maximum_magnitude;                           \
++        output->fractional = fractional;                                 \
++        output->missing_count += missing_count;                          \
++    } while (0)
++
++#define GENERAL_PAIR_TARGETS(X, Y, OP)                                     \
++    switch (output->kind) {                                                \
++    case NUMERIC_BYTE: GENERAL_PAIR_LOOP(X, Y, OP, int8_t, NUMERIC_BYTE, 101); break; \
++    case NUMERIC_INT: GENERAL_PAIR_LOOP(X, Y, OP, int16_t, NUMERIC_INT, 32741); break; \
++    case NUMERIC_LONG: GENERAL_PAIR_LOOP(X, Y, OP, int32_t, NUMERIC_LONG, INT32_C(2147483621)); break; \
++    case NUMERIC_FLOAT: GENERAL_PAIR_LOOP(X, Y, OP, float, NUMERIC_FLOAT, 0x1p127f); break; \
++    case NUMERIC_DOUBLE: GENERAL_PAIR_LOOP(X, Y, OP, double, NUMERIC_DOUBLE, NA_REAL); break; \
++    case ARITHMETIC_PREFLIGHT: GENERAL_PAIR_LOOP(X, Y, OP, double, ARITHMETIC_PREFLIGHT, 0); break; \
++    }
++
++#define GENERAL_PAIR_OPERATORS(X, Y)                                      \
++    switch (operation) {                                                  \
++    case '+': GENERAL_PAIR_TARGETS(X, Y, +); break;                       \
++    case '-': GENERAL_PAIR_TARGETS(X, Y, -); break;                       \
++    case '*': GENERAL_PAIR_TARGETS(X, Y, *); break;                       \
++    case '/': GENERAL_PAIR_TARGETS(X, Y, /); break;                       \
++    }
++
++#define GENERAL_RIGHT(X)                                                  \
++    switch (right->kind) {                                                \
++    case NUMERIC_BYTE: GENERAL_PAIR_OPERATORS(X, byte); break;             \
++    case NUMERIC_INT: GENERAL_PAIR_OPERATORS(X, int); break;               \
++    case NUMERIC_LONG: GENERAL_PAIR_OPERATORS(X, long); break;             \
++    case NUMERIC_FLOAT: GENERAL_PAIR_OPERATORS(X, float); break;           \
++    case NUMERIC_DOUBLE: GENERAL_PAIR_OPERATORS(X, double); break;         \
++    case ARITHMETIC_SOURCE_R_INTEGER: GENERAL_PAIR_OPERATORS(X, r_integer); break; \
++    case ARITHMETIC_SOURCE_OBSERVED_FLOAT: GENERAL_PAIR_OPERATORS(X, observed_float); break; \
++    case ARITHMETIC_SOURCE_SCALAR: GENERAL_PAIR_OPERATORS(X, scalar); break; \
++    }
++
++static int arithmetic_general_run(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int minimum, arithmetic_general_output *output
++) {
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *x_raw = arithmetic_general_span(left, start, &count);
++        const unsigned char *y_raw = arithmetic_general_span(right, start, &count);
++        switch (left->kind) {
++        case NUMERIC_BYTE: GENERAL_RIGHT(byte); break;
++        case NUMERIC_INT: GENERAL_RIGHT(int); break;
++        case NUMERIC_LONG: GENERAL_RIGHT(long); break;
++        case NUMERIC_FLOAT: GENERAL_RIGHT(float); break;
++        case NUMERIC_DOUBLE: GENERAL_RIGHT(double); break;
++        case ARITHMETIC_SOURCE_R_INTEGER: GENERAL_RIGHT(r_integer); break;
++        case ARITHMETIC_SOURCE_OBSERVED_FLOAT: GENERAL_RIGHT(observed_float); break;
++        case ARITHMETIC_SOURCE_SCALAR: GENERAL_RIGHT(scalar); break;
++        }
++        if (output->kind == ARITHMETIC_PREFLIGHT) {
++            int kind = arithmetic_general_result_kind(output, minimum);
++            /* Once float or double is necessary no integer output can win.
++               The float writer will prove its complete range while writing. */
++            if (kind >= NUMERIC_FLOAT) return kind;
++        }
++        start += count;
++    }
++    if (output->kind == ARITHMETIC_PREFLIGHT)
++        return arithmetic_general_result_kind(output, minimum);
++    if (output->kind == NUMERIC_FLOAT) {
++        double maximum;
++        uint64_t bits = output->magnitude;
++        memcpy(&maximum, &bits, sizeof(maximum));
++        if (maximum > numeric_float_observed_limit()) return NUMERIC_DOUBLE;
++    }
++    return output->kind;
++}
++#undef GENERAL_RIGHT
++#undef GENERAL_PAIR_OPERATORS
++#undef GENERAL_PAIR_TARGETS
++#undef GENERAL_PAIR_LOOP
++
++/* Bounds cover every physical signed integer, including legacy-observed
++   lower endpoints and reserved codes. For a finite scalar these monotone
++   operations can therefore prove the floating destination for the complete
++   column before writing. The caller's arithmetic_capture claim protects the
++   same descriptor's bytes and missing count through allocation and writing. */
++static int arithmetic_general_integer_scalar_proved(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int kind,
++    const arithmetic_general_source **column, double *scalar, int *reverse
++) {
++    if ((kind != NUMERIC_FLOAT && kind != NUMERIC_DOUBLE) || length <= 1) return 0;
++    if (right->kind == ARITHMETIC_SOURCE_SCALAR) {
++        *column = left;
++        *scalar = right->scalar;
++        *reverse = 0;
++    } else if (left->kind == ARITHMETIC_SOURCE_SCALAR && operation != '/') {
++        *column = right;
++        *scalar = left->scalar;
++        *reverse = 1;
++    } else return 0;
++    const numeric_data *data = (*column)->operand->reader.storage;
++    if (data == NULL || data->temporal != 0 || data->kind < NUMERIC_BYTE || data->kind > NUMERIC_LONG ||
++        (*column)->operand->length != length || data->missing_count > (size_t) length ||
++        !R_FINITE(*scalar) || (operation == '/' && *scalar == 0)) return 0;
++    double low = data->kind == NUMERIC_BYTE ? INT8_MIN :
++        data->kind == NUMERIC_INT ? INT16_MIN : INT32_MIN;
++    double high = data->kind == NUMERIC_BYTE ? INT8_MAX :
++        data->kind == NUMERIC_INT ? INT16_MAX : INT32_MAX;
++    switch (operation) {
++    case '+': low = low + *scalar; high = high + *scalar; break;
++    case '-':
++        if (*reverse) { low = *scalar - low; high = *scalar - high; }
++        else { low = low - *scalar; high = high - *scalar; }
++        break;
++    case '*': low = low * *scalar; high = high * *scalar; break;
++    case '/': low = low / *scalar; high = high / *scalar; break;
++    default: return 0;
++    }
++    if (!scalar_arithmetic_result_valid(low) ||
++        !scalar_arithmetic_result_valid(high)) return 0;
++    return kind == NUMERIC_DOUBLE ||
++        (fabs(low) <= numeric_float_observed_limit() &&
++         fabs(high) <= numeric_float_observed_limit());
++}
++
++static void arithmetic_general_integer_scalar_write(
++    const arithmetic_general_source *column, double scalar, int reverse,
++    R_xlen_t length, int operation, arithmetic_general_output *output
++) {
++    const numeric_data *data = column->operand->reader.storage;
++    const int32_t missing_minimum = (int32_t) column->policy.minimum;
++    const int all_observed = data->missing_count == 0;
++    for (size_t start = 0; start < (size_t) length;) {
++        R_CheckUserInterrupt();
++        size_t count = (size_t) length - start;
++        if (count > 16384) count = 16384;
++        const unsigned char *raw = numeric_read_span(data, start, count, &count);
++#define GENERAL_PROVED_INTEGER_LOOP(SOURCE, TARGET, DEST, EXPR, MISSING, OBSERVED) \
++        do {                                                               \
++            TARGET *restrict target = (DEST) + start;                      \
++            for (size_t i = 0; i < count; i++) {                            \
++                SOURCE source;                                             \
++                memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
++                double value = (double) source;                            \
++                TARGET result = (TARGET) (EXPR);                           \
++                target[i] = (OBSERVED) || source < missing_minimum          \
++                    ? result : (TARGET) (MISSING);                         \
++            }                                                              \
++        } while (0)
++#define GENERAL_PROVED_INTEGER_TARGET(SOURCE, EXPR, OBSERVED)               \
++        if (output->kind == NUMERIC_FLOAT) {                                \
++            GENERAL_PROVED_INTEGER_LOOP(SOURCE, float,                      \
++                (float *) (void *) output->raw, EXPR, 0x1p127f, OBSERVED);  \
++        } else {                                                           \
++            GENERAL_PROVED_INTEGER_LOOP(SOURCE, double,                    \
++                output->real, EXPR, NA_REAL, OBSERVED);                    \
++        }
++#define GENERAL_PROVED_INTEGER_OPERATORS(SOURCE, OBSERVED)                  \
++        switch (operation) {                                               \
++        case '+': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value + scalar, OBSERVED); break; \
++        case '-':                                                          \
++            if (reverse) {                                                 \
++                GENERAL_PROVED_INTEGER_TARGET(SOURCE, scalar - value, OBSERVED); \
++            } else {                                                       \
++                GENERAL_PROVED_INTEGER_TARGET(SOURCE, value - scalar, OBSERVED); \
++            }                                                              \
++            break;                                                         \
++        case '*': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value * scalar, OBSERVED); break; \
++        case '/': GENERAL_PROVED_INTEGER_TARGET(SOURCE, value / scalar, OBSERVED); break; \
++        }
++#define GENERAL_PROVED_INTEGER_WIDTHS(OBSERVED)                             \
++        switch (data->kind) {                                               \
++        case NUMERIC_BYTE: GENERAL_PROVED_INTEGER_OPERATORS(int8_t, OBSERVED); break; \
++        case NUMERIC_INT: GENERAL_PROVED_INTEGER_OPERATORS(int16_t, OBSERVED); break; \
++        case NUMERIC_LONG: GENERAL_PROVED_INTEGER_OPERATORS(int32_t, OBSERVED); break; \
++        }
++        if (all_observed) { GENERAL_PROVED_INTEGER_WIDTHS(1); }
++        else { GENERAL_PROVED_INTEGER_WIDTHS(0); }
++#undef GENERAL_PROVED_INTEGER_WIDTHS
++#undef GENERAL_PROVED_INTEGER_OPERATORS
++#undef GENERAL_PROVED_INTEGER_TARGET
++#undef GENERAL_PROVED_INTEGER_LOOP
++        start += count;
++    }
++    output->missing_count = data->missing_count;
++}
++
++#include "numeric-arithmetic-float-scalar.h"
++
++static int arithmetic_general_produce(
++    const arithmetic_general_source *left, const arithmetic_general_source *right,
++    R_xlen_t length, int operation, int minimum, arithmetic_general_output *output
++) {
++    const arithmetic_general_source *column;
++    double scalar;
++    int reverse;
++    if (arithmetic_general_integer_scalar_proved(
++            left, right, length, operation, output->kind, &column, &scalar, &reverse)) {
++        arithmetic_general_integer_scalar_write(
++            column, scalar, reverse, length, operation, output);
++        return output->kind;
++    }
++    arithmetic_float_scalar_proof float_proof;
++    if (arithmetic_float_scalar_prove(
++            left, right, length, operation, output->kind, &float_proof))
++        return arithmetic_float_scalar_write(&float_proof, length, output);
++    return arithmetic_general_run(left, right, length, operation, minimum, output);
++}
++
++static SEXP arithmetic_general_result(
++    const arithmetic_operand *left, const arithmetic_operand *right,
++    R_xlen_t length, int operation, int minimum, int *result_kind
++) {
++    arithmetic_general_source x, y;
++    if (!arithmetic_general_source_create(left, &x) ||
++        !arithmetic_general_source_create(right, &y)) return NULL;
++    int kind = minimum;
++    if (minimum < NUMERIC_FLOAT) {
++        arithmetic_general_output preflight = {
++            .kind = ARITHMETIC_PREFLIGHT, .minimum = 0, .maximum = 0
++        };
++        kind = arithmetic_general_run(&x, &y, length, operation, minimum, &preflight);
++    }
++    PROTECT_INDEX backing_index;
++    SEXP backing;
++    PROTECT_WITH_INDEX(backing = arithmetic_backing(length, kind), &backing_index);
++    arithmetic_general_output output = {
++        .kind = kind,
++        .raw = kind == NUMERIC_DOUBLE ? NULL : RAW(backing),
++        .real = kind == NUMERIC_DOUBLE ? REAL(backing) : NULL
++    };
++    int promoted = arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
++    if (promoted != kind) {
++        kind = promoted;
++        REPROTECT(backing = arithmetic_backing(length, kind), backing_index);
++        output = (arithmetic_general_output) {.kind = kind, .real = REAL(backing)};
++        arithmetic_general_produce(&x, &y, length, operation, minimum, &output);
++    }
++    SEXP result = PROTECT(arithmetic_adopt_backing(backing, length, kind, output.missing_count));
++    *result_kind = kind;
++    UNPROTECT(2);
++    return result;
++}
++#endif
+--- a/src/numeric-arithmetic.h
++++ b/src/numeric-arithmetic.h
+@@ -105,6 +105,15 @@
+ static SEXP arithmetic_capture(SEXP value, arithmetic_operand *operand,
+                                 SEXP claims, int slot) {
+     operand->length = XLENGTH(value);
++    if (owned_real(value) && R_altrep_data2(value) == R_NilValue) {
++        /* Ordinary owned operands can also supply a storage-fit proof.
++           Their established read-view marker makes every supported write
++           detach while this exact allocation is being consumed. Root both
++           handle and record before marking it; no allocation intervenes. */
++        SET_VECTOR_ELT(claims, 4 + slot, value);
++        SET_VECTOR_ELT(claims, 5 + slot, R_altrep_data1(value));
++        R_set_altrep_data2(value, R_BaseEnv);
++    }
+     SEXP root = PROTECT(numeric_missing_mask_capture(value, &operand->storage));
+     if (root != R_NilValue) {
+         if (!numeric_payload_retained(&operand->storage)) {
+@@ -123,6 +132,10 @@
+             value, &operand->storage, NULL, NULL, REALSXP
+         };
+     } else {
++        /* Plain R vectors are borrowed under R's ordinary sharing rules.
++           Previously retained native writable pointers are not an ownership
++           boundary this reader can control; tracked owned writes use the
++           temporary read-view claim above. */
+         UNPROTECT(1);
+         root = PROTECT(numeric_payload_root(value));
+         operand->reader = numeric_reader_create(value, operand->length);
+@@ -609,6 +622,7 @@
+ 
+ #include "numeric-arithmetic-scale.h"
+ #include "numeric-arithmetic-integer.h"
++#include "numeric-arithmetic-general.h"
+ 
+ typedef struct {
+     SEXP x;
+@@ -622,6 +636,17 @@
+ 
+ static void arithmetic_release_claims(void *raw) {
+     arithmetic_result_context *context = raw;
++    for (int slot = 6; slot >= 4; slot -= 2) {
++        SEXP value = VECTOR_ELT(context->claims, slot);
++        if (value != R_NilValue &&
++            R_altrep_data1(value) == VECTOR_ELT(context->claims, slot + 1) &&
++            R_altrep_data2(value) == R_BaseEnv) {
++            /* A reentrant write may already have detached the handle. Real
++               aliases mark the backing shared independently; leave that
++               permanent ownership fact intact when releasing this read. */
++            R_set_altrep_data2(value, R_NilValue);
++        }
++    }
+     for (int slot = 2; slot >= 0; slot -= 2) {
+         SEXP external = VECTOR_ELT(context->claims, slot);
+         if (external != R_NilValue &&
+@@ -647,6 +672,9 @@
+     if (specialized == NULL)
+         specialized = arithmetic_integer_result(
+             &left, &right, length, operation, minimum, result_kind);
++    if (specialized == NULL)
++        specialized = arithmetic_general_result(
++            &left, &right, length, operation, minimum, result_kind);
+     if (specialized != NULL) {
+         UNPROTECT(2);
+         return specialized;
+@@ -676,7 +704,7 @@
+ 
+ static SEXP arithmetic_result(SEXP x, SEXP y, R_xlen_t length,
+                               int operation, int minimum, int *result_kind) {
+-    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 4));
++    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 8));
+     arithmetic_result_context context = {
+         x, y, claims, length, operation, minimum, result_kind
+     };
+@@ -699,10 +727,6 @@
+     if ((operation != '+' && operation != '-' &&
+          operation != '*' && operation != '/') ||
+         operator[1] != '\0') return R_NilValue;
+-    double scalar;
+-    if ((operation == '+' || operation == '-') &&
+-        (scalar_finite_value(x, &scalar) || scalar_finite_value(y, &scalar)))
+-        return R_NilValue;
+     int x_kind, y_kind;
+     if (!arithmetic_operand_kind(x, &x_kind) ||
+         !arithmetic_operand_kind(y, &y_kind) ||
+--- a/tests/testthat/test-arithmetic-payload-lifetime.R
++++ b/tests/testthat/test-arithmetic-payload-lifetime.R
+@@ -189,3 +189,72 @@
+     expect_identical(.Call(C_dtatools_test_arithmetic_checkpoint, 0L, NULL), 0L)
+     expect_identical(as.double(.arithmetic_lifetime_result(x)), c(2, 4))
+ })
++
++test_that("general arithmetic preflight retains owned sources across reentrant writes", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    for (typed in c(FALSE, TRUE)) {
++        for (scalar in c(FALSE, TRUE)) {
++            for (replacement in list(1000, NA_real_)) {
++                x <- dta_byte(rep(1, if (scalar) 1L else 128L))
++                y <- if (typed) dta_double(rep(1, 128L)) else
++                    .Call(C_dtatools_capture_column, rep(1, 128L))
++                fired <- 0L
++                .arithmetic_lifetime_arm(function(key) {
++                    fired <<- fired + 1L
++                    .Call(C_dtatools_patch_vector, y, 1L, replacement)
++                })
++                result <- x * y
++                expect_identical(fired, 1L)
++                expect_identical(as.double(result), rep(1, 128L))
++                expect_identical(dta_storage_type(result), if (typed) "double" else "byte")
++                expect_false(anyNA(result))
++                before <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
++                .Call(C_dtatools_patch_vector, y, 1L, 9)
++                after <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
++                expect_identical(after - before, 0)
++                expect_identical(as.double(y)[[1L]], 9)
++            }
++        }
++    }
++})
++
++test_that("owned arithmetic read claims survive nesting and release on unwind", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    for (fail in c(FALSE, TRUE)) {
++        x <- dta_byte(rep(1, 128L))
++        y <- .Call(C_dtatools_capture_column, rep(1, 128L))
++        if (fail) {
++            .Call(C_dtatools_test_arithmetic_checkpoint, 2L, NULL)
++            expect_error(x * y, "injected arithmetic checkpoint failure")
++        } else {
++            nested <- NULL
++            .arithmetic_lifetime_arm(function(key) {
++                nested <<- x * y
++                .Call(C_dtatools_patch_vector, y, 1L, 1000)
++            })
++            result <- x * y
++            expect_identical(as.double(nested), rep(1, 128L))
++            expect_identical(as.double(result), rep(1, 128L))
++            expect_identical(as.double(y)[[1L]], 1000)
++        }
++        before <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
++        .Call(C_dtatools_patch_vector, y, 1L, 9)
++        after <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
++        expect_identical(after - before, 0)
++        expect_identical(as.double(y)[[1L]], 9)
++    }
++    x <- dta_byte(rep(1, 128L))
++    y <- .Call(C_dtatools_capture_column, rep(1, 128L))
++    alias <- NULL
++    .arithmetic_lifetime_arm(function(key) {
++        alias <<- .Call(C_dtatools_metadata_copy, y)
++    })
++    result <- x * y
++    expect_identical(as.double(result), rep(1, 128L))
++    .Call(C_dtatools_patch_vector, y, 1L, 1000)
++    gc()
++    expect_identical(as.double(y)[[1L]], 1000)
++    expect_identical(as.double(alias), rep(1, 128L))
++})
+--- a/tests/testthat/test-native-arithmetic-kernels.R
++++ b/tests/testthat/test-native-arithmetic-kernels.R
+@@ -405,10 +405,17 @@
+                 expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+                 expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, x))
+             }
+-            for (scalar in c(-2, 2, -2^30, 2^30)) {
++            for (scalar in c(-2, 2, -2^30, 2^30, 1.01, -3.25, 1 / 3)) {
+                 expect_scaled("*", x, scalar, plain, scalar)
+                 expect_scaled("*", scalar, x, scalar, plain)
+                 expect_scaled("/", x, scalar, plain, scalar)
++                expect_scaled("/", scalar, x, scalar, plain)
++            }
++            for (scalar in c(0, -0, 0.1, -1e38, 1e39)) {
++                for (op in c("+", "-", "*")) {
++                    expect_scaled(op, x, scalar, plain, scalar)
++                    expect_scaled(op, scalar, x, scalar, plain)
++                }
+             }
+             expect_scaled("+", x, x, plain, plain)
+             expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
+--- a/tests/testthat/test-native-arithmetic-parity.R
++++ b/tests/testthat/test-native-arithmetic-parity.R
+@@ -301,3 +301,293 @@
+         }
+     }
+ })
++
++test_that("general arithmetic keeps mixed physical sources and scalar directions exact", {
++    .arithmetic_parity_enable()
++    check <- function(op, x, y, minimum, info) {
++        operation <- getExportedValue("base", op)
++        arguments <- vctrs::vec_recycle_common(as.double(x), as.double(y))
++        values <- suppressWarnings(operation(arguments[[1L]], arguments[[2L]]))
++        values[is.na(arguments[[1L]]) | is.na(arguments[[2L]])] <- NA_real_
++        expected <- dtatools:::.dta_computed(values, minimum)
++        before <- lapply(list(x, y), .arithmetic_parity_bytes)
++        .Call(C_dtatools_numeric_entry_stats, TRUE)
++        actual <- operation(x, y)
++        expect_identical(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]],
++            if (.dtatools_numeric_entry_expected("scalar")) 1 else 0, info = info)
++        expect_identical(dta_storage_type(actual), dta_storage_type(expected), info = info)
++        expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected), info = info)
++        expect_identical(is.na(actual), is.na(as.double(expected)), info = info)
++        expect_identical(anyNA(actual), anyNA(as.double(expected)), info = info)
++        for (i in 1:2) {
++            source <- list(x, y)[[i]]
++            expect_identical(.arithmetic_parity_bytes(source), before[[i]], info = info)
++            if (isTRUE(dta_storage_type(source) %in% c("byte", "int", "long", "float"))) {
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source), info = info)
++                expect_false(.Call(C_dtatools_is_materialized_numeric_altrep, source), info = info)
++            }
++        }
++    }
++    values <- rep(c(-3, -1, -0, 0, 1, 7, NA_real_, tagged_missing(c("a", "z"))), length.out = 35L)
++    for (kind in c("byte", "int", "long", "float")) {
++        for (chunk in list(NULL, 7L)) {
++            x <- .arithmetic_parity_source(kind, values, chunk)
++            for (other in c("byte", "int", "long", "float", "double", "bare", "integer", "logical")) {
++                y <- switch(other,
++                    bare = rev(values) / 3,
++                    integer = rep(c(NA_integer_, -2L, 0L, 1L, 3L), length.out = length(values)),
++                    logical = rep(c(NA, FALSE, TRUE), length.out = length(values)),
++                    double = dta_double(rev(values) / 3),
++                    .arithmetic_parity_source(other, rev(values), 11L))
++                minimum <- if (other %in% c("bare", "integer", "logical")) kind else
++                    dta_storage_type(vctrs::vec_ptype2(x, y))
++                for (op in c("+", "-", "*", "/")) {
++                    info <- paste(kind, other, op, "chunk", chunk)
++                    check(op, x, y, minimum, info)
++                    check(op, y, x, minimum, paste(info, "reverse"))
++                }
++            }
++            for (scalar in c(1.01, -3.25, 1 / 3, 1e30, -0, Inf, -Inf, NA_real_, tagged_missing("z"))) {
++                for (op in c("+", "-", "*", "/")) {
++                    info <- paste(kind, "general scalar", scalar, op, chunk)
++                    check(op, x, scalar, kind, info)
++                    check(op, scalar, x, kind, paste(info, "reverse"))
++                }
++            }
++        }
++    }
++})
++
++test_that("general preflight and float promotion retain later missing rows and earlier precision", {
++    .arithmetic_parity_enable()
++    for (kind in c("byte", "int", "long", "float")) {
++        values <- rep(c(-3, -1, -0, 0, 1, 3), length.out = 32769L)
++        values[c(16384L, 16385L, 32769L)] <- c(NA_real_, tagged_missing(c("a", "z")))
++        x <- .arithmetic_parity_source(kind, values, 16384L)
++        for (scalar in c(1.01, -3.25, 1 / 3)) {
++            actual <- .arithmetic_parity_expect("*", x, scalar, kind, NULL,
++                paste("general preflight missing tail", kind, scalar))
++            expect_identical(is.na(actual), is.na(values))
++            expect_true(anyNA(actual))
++        }
++    }
++    for (position in c(1L, 16384L, 16385L, 32769L)) {
++        values <- rep(c(0.1, -0.3, 1, -0, 0), length.out = 32769L)
++        values[[position]] <- 1e38
++        x <- .arithmetic_parity_source("float", values, 16384L)
++        .arithmetic_parity_expect("*", x, 1.9, "float", "double",
++            paste("general float promotion discards rounded prefix", position))
++    }
++})
++
++test_that("general integer scalar bounds preserve floating storage and missing counts", {
++    .arithmetic_parity_enable()
++    low <- c(byte = -127, int = -32767, long = -2147483647)
++    high <- c(byte = 100, int = 32740, long = 2147483620)
++    physical_magnitude <- c(byte = 128, int = 32768, long = 2147483648)
++    float_limit <- (2^24 - 1) * 2^103
++    double_limit <- (2^53 - 1) * 2^970
++    missing <- c(NA_real_, tagged_missing(letters))
++    for (kind in names(low)) {
++        observed <- c(low[[kind]], -1, 0, 1, high[[kind]])
++        cutoff <- float_limit / physical_magnitude[[kind]]
++        cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
++            list("*", -0), list("*", 0), list("/", -3.25),
++            list("/", .Machine$double.xmin * .Machine$double.eps),
++            list("/", .Machine$double.xmax),
++            list("*", cutoff * (1 - 2^-50)), list("*", cutoff * (1 + 2^-50)),
++            list("*", -double_limit / physical_magnitude[[kind]]),
++            list("*", double_limit / physical_magnitude[[kind]] * (1 + 2^-50)))
++        for (values in list(observed, c(observed, missing), missing)) {
++            for (chunk in list(NULL, 7L)) {
++                x <- .arithmetic_parity_source(kind, values, chunk)
++                for (case in cases) {
++                    op <- case[[1L]]; scalar <- case[[2L]]
++                    for (reverse in c(FALSE, TRUE)) {
++                        info <- paste(kind, op, scalar, "reverse", reverse, "chunk", chunk)
++                        actual <- if (reverse)
++                            .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
++                        else .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
++                        expected_missing <- is.na(as.double(actual))
++                        expect_identical(is.na(actual), expected_missing, info = info)
++                        expect_identical(anyNA(actual), any(expected_missing), info = info)
++                        if (any(expected_missing)) {
++                            # Correct values alone cannot expose an excessive
++                            # cached count. Clear every actual missing lane.
++                            result <- dibble(x = actual)
++                            replace_values(result, x = 0, where = which(expected_missing))
++                            expect_false(anyNA(result$x), info = info)
++                        }
++                    }
++                }
++            }
++        }
++    }
++})
++
++test_that("general integer scalar proof includes imported physical signed minima", {
++    .arithmetic_parity_enable()
++    modern <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    legacy <- tempfile(fileext = ".dta")
++    withr::defer(unlink(c(modern, legacy)))
++    minimum_bits <- list(x_byte = as.raw(0x80), x_int = as.raw(c(0, 0x80)),
++                         x_long = as.raw(c(0, 0, 0, 0x80)))
++    patch_numeric_fixture_row(modern, 0L, minimum_bits)
++    bytes <- readBin(fixture("synthetic_v111.dta"), "raw",
++                     n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++                writeBin(-123456L, raw(), size = 4L, endian = "little"),
++                writeBin(1.5, raw(), size = 4L, endian = "little"),
++                writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, bytes, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    bytes[start + 0:6] <- unlist(minimum_bits, use.names = FALSE)
++    writeBin(bytes, legacy)
++    for (version in c("modern", "legacy")) {
++        path <- if (version == "modern") modern else legacy
++        names <- if (version == "modern") c("x_byte", "x_int", "x_long") else c("b", "i", "l")
++        imported <- read_dta(path, col_select = tidyselect::all_of(names))
++        eager <- read_dta(path, col_select = tidyselect::all_of(names), use_numeric_altrep = FALSE)
++        for (index in seq_along(names)) {
++            source <- imported[[names[[index]]]]
++            kind <- dta_storage_type(source)
++            expect_identical(as.double(source), as.double(eager[[names[[index]]]]))
++            expect_identical(as.double(source)[[1L]], -c(128, 32768, 2147483648)[[index]])
++            # The legacy byte fixture has value-label metadata, which correctly
++            # declines this admission route. Preserve its bytes and encoding
++            # while selecting the ordinary compact arithmetic contract.
++            attributes(source) <- list(class = dtatools:::.dta_storage_class(kind),
++                                       stata.storage = kind)
++            for (x in list(source, .Call(C_dtatools_owned_numeric_freeze, source, 3L))) {
++                for (scalar in c(1.01, -3.25)) {
++                    for (op in c("+", "-", "*", "/")) {
++                        info <- paste(version, kind, "signed physical minimum", op, scalar)
++                        .arithmetic_parity_expect(op, x, scalar, kind, NULL, info)
++                        .arithmetic_parity_expect(op, scalar, x, kind, NULL, info)
++                    }
++                }
++            }
++        }
++    }
++})
++
++test_that("floating scalar results reject unsafe endpoint proofs", {
++    .arithmetic_parity_enable()
++    for (kind in c("byte", "int", "long", "float")) {
++        x <- .arithmetic_parity_source(kind, c(-100, -1, 0, 1, 100, NA_real_, tagged_missing("z")), 3L)
++        source <- .arithmetic_parity_bytes(x)
++        for (scalar in c(1.01, 1e307, -1e307,
++                         .Machine$double.xmin * .Machine$double.eps,
++                         -.Machine$double.xmin * .Machine$double.eps)) {
++            # Declared double storage exercises the proof even when every
++            # nonzero result overflows and the bare-scalar result could stay
++            # in integer storage. New invalid results must increase its count.
++            y <- dta_double(scalar)
++            for (op in c("*", "/")) {
++                operation <- getExportedValue("base", op)
++                values <- operation(as.double(x), scalar)
++                values[is.na(as.double(x))] <- NA_real_
++                expected <- dtatools:::.dta_computed(values, "double")
++                .Call(C_dtatools_numeric_entry_stats, TRUE)
++                actual <- operation(x, y)
++                expect_identical(.Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]],
++                    if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
++                expect_identical(dta_storage_type(actual), "double")
++                expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected))
++                missing <- is.na(as.double(expected))
++                expect_identical(is.na(actual), missing)
++                expect_identical(anyNA(actual), any(missing))
++                result <- dibble(x = actual)
++                replace_values(result, x = 0, where = which(missing))
++                expect_false(anyNA(result$x))
++                expect_identical(.arithmetic_parity_bytes(x), source)
++                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
++            }
++        }
++    }
++})
++
++test_that("float scalar interval proofs retain zero signs and exact missing counts", {
++    .arithmetic_parity_enable()
++    missing <- c(NA_real_, tagged_missing(letters))
++    observed <- c(-0, 0, -2^-149, 2^-149, -1, 1, -1e38, 1e38)
++    cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
++        list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
++        list("/", .Machine$double.xmin * .Machine$double.eps),
++        list("/", .Machine$double.xmax), list("+", 1e39), list("-", -1e39),
++        list("+", 2e38), list("-", -2e38),
++        list("*", 1e307), list("+", 1e307))
++    for (values in list(observed, c(observed, missing), missing)) {
++        for (chunk in list(NULL, 7L)) {
++            x <- .arithmetic_parity_source("float", values, chunk)
++            for (case in cases) {
++                for (reverse in c(FALSE, TRUE)) {
++                    op <- case[[1L]]; scalar <- case[[2L]]
++                    info <- paste("float interval", op, scalar, reverse, chunk)
++                    actual <- if (reverse)
++                        .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
++                    else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
++                    expected_missing <- is.na(as.double(actual))
++                    expect_identical(is.na(actual), expected_missing, info = info)
++                    expect_identical(anyNA(actual), any(expected_missing), info = info)
++                    if (any(expected_missing)) {
++                        result <- dibble(x = actual)
++                        replace_values(result, x = 0, where = which(expected_missing))
++                        expect_false(anyNA(result$x), info = info)
++                    }
++                }
++            }
++        }
++    }
++})
++
++test_that("float scalar fit intervals include exactly their binary32 boundary neighbors", {
++    .arithmetic_parity_enable()
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    withr::defer(unlink(path))
++    float_limit <- (2^24 - 1) * 2^103
++    physical_limit <- (2^24 - 1) * 2^104
++    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
++    # The oracle uses ordinary binary64 arithmetic and the established result
++    # policy. Generate neighbors from algebraic estimates, independently of
++    # the native search over ordered encodings; the estimates need not be exact.
++    neighbor_bits <- function(value) {
++        if (!is.finite(value) || abs(value) > physical_limit) return(numeric())
++        encoded <- readBin(writeBin(abs(value), raw(), size = 4L, endian = "little"),
++                           integer(), n = 1L, size = 4L, endian = "little")
++        nearby <- encoded + (-2:2)
++        nearby <- nearby[nearby >= 0 & nearby <= 0x7f7fffff]
++        unique(c(nearby, nearby + 0x80000000))
++    }
++    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -2e38, 2e38, -1e39, 1e39, 1e-30)) {
++        for (op in c("+", "-", "*", "/")) {
++            for (reverse in c(FALSE, TRUE)) {
++                estimates <- switch(op,
++                    "+" = c(-float_limit - scalar, float_limit - scalar),
++                    "-" = if (reverse) c(scalar - float_limit, scalar + float_limit)
++                          else c(-float_limit + scalar, float_limit + scalar),
++                    "*" = c(-float_limit / scalar, float_limit / scalar),
++                    "/" = if (reverse) c(-scalar / float_limit, scalar / float_limit)
++                          else c(-float_limit * scalar, float_limit * scalar))
++                bits <- unique(c(0, 0x80000000, 1, 0x80000001, 0x3ecccccd,
++                    0x7effffff, 0x7f000001, 0x7f7fffff, 0xff7fffff,
++                    unlist(lapply(estimates, neighbor_bits), use.names = FALSE)))
++                for (batch in split(bits, ceiling(seq_along(bits) / 27L))) {
++                    for (index in seq_along(batch))
++                        patch_numeric_fixture_row(path, index - 1L,
++                            list(x_float = raw_bits(batch[[index]])))
++                    compact <- read_dta(path, col_select = "x_float", n_max = length(batch))$x_float
++                    eager <- read_dta(path, col_select = "x_float", n_max = length(batch),
++                                      use_numeric_altrep = FALSE)$x_float
++                    expect_identical(as.double(compact), as.double(eager))
++                    for (x in list(compact, .Call(C_dtatools_owned_numeric_freeze, compact, 7L))) {
++                        info <- paste("imported float boundary", op, scalar, reverse)
++                        if (reverse)
++                            .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
++                        else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
++                    }
++                }
++            }
++        }
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -1779,11 +1779,11 @@
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-kernels.R",
+-          "sha256": "b310390e418ca6741eebd20263cacc13436557a3189d44e99a276c3017ea3ece"
++          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
+         },
+         {
+           "path": "tests/testthat/test-native-arithmetic-parity.R",
+-          "sha256": "518fc24c4ba5dfc6c2739d150da4682af4237b8efd1448b67d32d96927642c54"
++          "sha256": "1e6ab0fb15f6e31b83c838ec2a4510ad811e8fb2090356fd5c2bfa4783fd52c6"
+         }
+       ],
+       "blocks": [
+@@ -4444,6 +4444,62 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 58,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general arithmetic keeps mixed physical sources and scalar directions exact",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 10304,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general preflight and float promotion retain later missing rows and earlier precision",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 184,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general integer scalar bounds preserve floating storage and missing counts",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 5496,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "general integer scalar proof includes imported physical signed minima",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1933,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "floating scalar results reject unsafe endpoint proofs",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 320,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "float scalar interval proofs retain zero signs and exact missing counts",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1988,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-arithmetic-parity.R",
++          "test": "float scalar fit intervals include exactly their binary32 boundary neighbors",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 1512,
+           "warnings": 0
+         }
+       ],
+@@ -5977,7 +6033,7 @@
+         },
+         {
+           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
+-          "sha256": "bcf7812944d90cc85d872b132b336324ef5d4c25b2b79965b125629be49b1575"
++          "sha256": "4c8ab060ede49cc7bc766690db8549204b26a5ca4f64288e2d87b0476a9ba138"
+         }
+       ],
+       "blocks": [
+@@ -7458,6 +7514,28 @@
+           "occurrence": 1,
+           "skip": "allow",
+           "min_pass": 7,
++          "warnings": 0,
++          "min_pass_before_skip": 0,
++          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
++          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
++        },
++        {
++          "file": "test-arithmetic-payload-lifetime.R",
++          "test": "general arithmetic preflight retains owned sources across reentrant writes",
++          "occurrence": 1,
++          "skip": "allow",
++          "min_pass": 48,
++          "warnings": 0,
++          "min_pass_before_skip": 0,
++          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
++          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
++        },
++        {
++          "file": "test-arithmetic-payload-lifetime.R",
++          "test": "owned arithmetic read claims survive nesting and release on unwind",
++          "occurrence": 1,
++          "skip": "allow",
++          "min_pass": 11,
+           "warnings": 0,
+           "min_pass_before_skip": 0,
+           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

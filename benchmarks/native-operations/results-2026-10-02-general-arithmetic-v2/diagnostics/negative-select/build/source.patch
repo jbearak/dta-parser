@@ -1,0 +1,15 @@
+--- a/r-package/dtatools/src/numeric-arithmetic-general.h
++++ b/r-package/dtatools/src/numeric-arithmetic-general.h
+@@ -89,7 +89,11 @@
+ ) {
+     float value;
+     memcpy(&value, raw + index * sizeof(value), sizeof(value));
+-    return arithmetic_float_missing(value, &source->policy) ? NA_REAL : (double) value;
++    /* Arithmetic discards input missing tags and normalizes every invalid
++       result to system missing. Select a float NaN before widening so SIMD
++       readers can keep the missing mask at its original 32-bit width. */
++    float observed = arithmetic_float_missing(value, &source->policy) ? NAN : value;
++    return (double) observed;
+ }
+ 
+ static inline double arithmetic_general_load_observed_float(

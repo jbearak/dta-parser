@@ -15,7 +15,9 @@ Build both revisions with `benchmarks/r-file-readers/build-snapshot.py` into
 separate private directories. The `baseline` and `candidate` arguments identify
 experiment roles; each original receipt retains its actual build variant.
 The controller validates clean source inventories, installed libraries and the
-actual Rscript runtime before and after all workers. Run without concurrent
+actual Rscript runtime and version before and after all workers. The benchmark
+builder uses the Unix R executable layout; this controller explicitly rejects
+Windows. This restriction concerns the benchmark, not package support. Run without concurrent
 local tests, builds or other benchmarks:
 
 ```sh
@@ -28,3 +30,13 @@ number, output CSV and the final argument `qualify`. The controller rejects
 incomplete case matrices, unbalanced representation permutations, inconsistent
 full hashes or source state, and invalid timing intervals. Timing is evidence
 for review, never a CI performance threshold.
+
+`check-archive.py --archive PATH --binding PATH --output DIRECTORY` preserves
+an unchanged R CMD check of the historical metadata-diagnostic archive. Its
+binding JSON supplies `archive_sha256` and `source_inventory`, as recorded in
+that diagnostic. This
+maintained replay tool checks both R launchers explicitly. The version under
+`results-2026-10-03/metadata-diagnostic/` is an immutable snapshot of the actual
+historical invocation and remains tied to its original controller hash.
+The published qualification-protocol errata correct the original no-clock
+order descriptions without changing their recorded observations or hashes.

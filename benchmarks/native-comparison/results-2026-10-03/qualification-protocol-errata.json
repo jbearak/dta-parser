@@ -1,0 +1,714 @@
+{
+  "kind": "correction-to-descriptive-fields-only",
+  "original_records": "Preserved without rewriting source-bound evidence. Timing records and their six-round order are unaffected.",
+  "entries": [
+    {
+      "protocol": "dense-threshold/density-qualification-v1/protocol.json",
+      "original_protocol_sha256": "8c0693b1f6147ca0c87cd4c4b34a919649eeca8b19a8d53ffcec20ff720cf650",
+      "qualification_observations": 24,
+      "corrected_order": "One qualification round. Baseline then candidate in separate R processes. Density order random_half, clustered_half, all_tags; pair_less then pair_equal within each density. pair_less runs typed_double then compact; pair_equal runs compact then typed_double. This qualification does not establish six-round balancing.",
+      "corrected_interval": "Qualification branch, repetitions=1, recorded CPU and wall zero, no calibration or timed interval. Separate correctness and native eligibility calls also run without timing.",
+      "recorded_order": [
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        }
+      ]
+    },
+    {
+      "protocol": "final-stages/density-adaptive-qualification-v1/protocol.json",
+      "original_protocol_sha256": "8c0693b1f6147ca0c87cd4c4b34a919649eeca8b19a8d53ffcec20ff720cf650",
+      "qualification_observations": 24,
+      "corrected_order": "One qualification round. Baseline then candidate in separate R processes. Density order random_half, clustered_half, all_tags; pair_less then pair_equal within each density. pair_less runs typed_double then compact; pair_equal runs compact then typed_double. This qualification does not establish six-round balancing.",
+      "corrected_interval": "Qualification branch, repetitions=1, recorded CPU and wall zero, no calibration or timed interval. Separate correctness and native eligibility calls also run without timing.",
+      "recorded_order": [
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        }
+      ]
+    },
+    {
+      "protocol": "final-stages/density-double-qualification-v1/protocol.json",
+      "original_protocol_sha256": "8c0693b1f6147ca0c87cd4c4b34a919649eeca8b19a8d53ffcec20ff720cf650",
+      "qualification_observations": 24,
+      "corrected_order": "One qualification round. Baseline then candidate in separate R processes. Density order random_half, clustered_half, all_tags; pair_less then pair_equal within each density. pair_less runs typed_double then compact; pair_equal runs compact then typed_double. This qualification does not establish six-round balancing.",
+      "corrected_interval": "Qualification branch, repetitions=1, recorded CPU and wall zero, no calibration or timed interval. Separate correctness and native eligibility calls also run without timing.",
+      "recorded_order": [
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        }
+      ]
+    },
+    {
+      "protocol": "final-stages/density-max-qualification-v1/protocol.json",
+      "original_protocol_sha256": "8c0693b1f6147ca0c87cd4c4b34a919649eeca8b19a8d53ffcec20ff720cf650",
+      "qualification_observations": 24,
+      "corrected_order": "One qualification round. Baseline then candidate in separate R processes. Density order random_half, clustered_half, all_tags; pair_less then pair_equal within each density. pair_less runs typed_double then compact; pair_equal runs compact then typed_double. This qualification does not establish six-round balancing.",
+      "corrected_interval": "Qualification branch, repetitions=1, recorded CPU and wall zero, no calibration or timed interval. Separate correctness and native eligibility calls also run without timing.",
+      "recorded_order": [
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "baseline",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "random_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "clustered_half",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "typed_double",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_less",
+          "representation": "compact",
+          "position": "2"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "compact",
+          "position": "1"
+        },
+        {
+          "variant": "candidate",
+          "density": "all_tags",
+          "operation": "pair_equal",
+          "representation": "typed_double",
+          "position": "2"
+        }
+      ]
+    }
+  ]
+}

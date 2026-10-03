@@ -189,3 +189,72 @@ test_that("disarming an abandoned arithmetic checkpoint releases its token", {
     expect_identical(.Call(C_dtatools_test_arithmetic_checkpoint, 0L, NULL), 0L)
     expect_identical(as.double(.arithmetic_lifetime_result(x)), c(2, 4))
 })
+
+test_that("general arithmetic preflight retains owned sources across reentrant writes", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    for (typed in c(FALSE, TRUE)) {
+        for (scalar in c(FALSE, TRUE)) {
+            for (replacement in list(1000, NA_real_)) {
+                x <- dta_byte(rep(1, if (scalar) 1L else 128L))
+                y <- if (typed) dta_double(rep(1, 128L)) else
+                    .Call(C_dtatools_capture_column, rep(1, 128L))
+                fired <- 0L
+                .arithmetic_lifetime_arm(function(key) {
+                    fired <<- fired + 1L
+                    .Call(C_dtatools_patch_vector, y, 1L, replacement)
+                })
+                result <- x * y
+                expect_identical(fired, 1L)
+                expect_identical(as.double(result), rep(1, 128L))
+                expect_identical(dta_storage_type(result), if (typed) "double" else "byte")
+                expect_false(anyNA(result))
+                before <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
+                .Call(C_dtatools_patch_vector, y, 1L, 9)
+                after <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
+                expect_identical(after - before, 0)
+                expect_identical(as.double(y)[[1L]], 9)
+            }
+        }
+    }
+})
+
+test_that("owned arithmetic read claims survive nesting and release on unwind", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    for (fail in c(FALSE, TRUE)) {
+        x <- dta_byte(rep(1, 128L))
+        y <- .Call(C_dtatools_capture_column, rep(1, 128L))
+        if (fail) {
+            .Call(C_dtatools_test_arithmetic_checkpoint, 2L, NULL)
+            expect_error(x * y, "injected arithmetic checkpoint failure")
+        } else {
+            nested <- NULL
+            .arithmetic_lifetime_arm(function(key) {
+                nested <<- x * y
+                .Call(C_dtatools_patch_vector, y, 1L, 1000)
+            })
+            result <- x * y
+            expect_identical(as.double(nested), rep(1, 128L))
+            expect_identical(as.double(result), rep(1, 128L))
+            expect_identical(as.double(y)[[1L]], 1000)
+        }
+        before <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
+        .Call(C_dtatools_patch_vector, y, 1L, 9)
+        after <- .Call(C_dtatools_native_copy_stats, FALSE)[["mutation_target_copy"]]
+        expect_identical(after - before, 0)
+        expect_identical(as.double(y)[[1L]], 9)
+    }
+    x <- dta_byte(rep(1, 128L))
+    y <- .Call(C_dtatools_capture_column, rep(1, 128L))
+    alias <- NULL
+    .arithmetic_lifetime_arm(function(key) {
+        alias <<- .Call(C_dtatools_metadata_copy, y)
+    })
+    result <- x * y
+    expect_identical(as.double(result), rep(1, 128L))
+    .Call(C_dtatools_patch_vector, y, 1L, 1000)
+    gc()
+    expect_identical(as.double(y)[[1L]], 1000)
+    expect_identical(as.double(alias), rep(1, 128L))
+})

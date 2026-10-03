@@ -1,0 +1,31 @@
+--- a/src/rust/src/float_compare.rs
++++ b/src/rust/src/float_compare.rs
+@@ -45,15 +45,21 @@
+     for index in 0..length {
+         let a = x.add(index).read_unaligned();
+         let b = y.add(index).read_unaligned();
+-        let ar = rank::<X_MODERN>(a.to_bits());
+-        let br = rank::<Y_MODERN>(b.to_bits());
+-        valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
+-        // IEEE comparison already handles signed zero and infinities. Only
+-        // Stata missing values need a different order, above all observations.
+-        let result = if ar | br == 0 {
++        // No release reserves a missing code below DOT. The ordered tests
++        // also exclude NaNs, so ordinary values need neither rank decoding
++        // nor a separate validity check. High permissive imports keep the
++        // exact classifier below rather than becoming threshold-missing.
++        let result = if (a < f32::from_bits(DOT)) & (b < f32::from_bits(DOT)) {
+             observed(a, b)
+         } else {
+-            missing(ar, br)
++            let ar = rank::<X_MODERN>(a.to_bits());
++            let br = rank::<Y_MODERN>(b.to_bits());
++            valid &= (ar != 0 || !a.is_nan()) & (br != 0 || !b.is_nan());
++            if ar | br == 0 {
++                observed(a, b)
++            } else {
++                missing(ar, br)
++            }
+         };
+         output.add(index).write(c_int::from(result));
+     }

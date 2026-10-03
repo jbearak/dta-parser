@@ -1,0 +1,66 @@
+{
+  "artifacts": {
+    "completion.json": "3fd190caac16d561068128ce4b29de5f2970a5646b8be682f71bbf1d08294dc5",
+    "protocol.json": "388ef01eb401297d3a393be92cb3c141314d934034c2ef0707114c46751f9aae",
+    "provenance-after.json": "5426b288910b7da461bc28ed135d77df24af935553d0096c108fdeb539081375",
+    "provenance-before.json": "a63243945138783e1535a0994b2e4f8f516adf184ca2d3ce3871131fc6fc8649",
+    "raw.csv": "79bcdc148fe5aa686dc71b7f69d62322367d3028cb1276caba8b58682fe87e97",
+    "source.patch": "3f90308e5619e1e5540f8f67068a77ff4e4a3408df996e5ff870f779d48084d2",
+    "summary.csv": "5dda276b4a67c2fd1722e6a0ca545f1ca58fc5d55ea5bf0a5b3b18fb74fbd73a"
+  },
+  "audit": "Independent artifact recomputation; no builds, R or timing jobs",
+  "caveats": [
+    "Calibration target is not the actual interval minimum.",
+    "Execution Rscript/runtime were not contemporaneously snapshotted; any later verification is supplementary."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete matrix and all six permutations",
+    "result/storage/missing/source equality",
+    "native route and unchanged source states",
+    "every CPU median, speedup and paired/control ratio",
+    "before/after source/installed/controller equality and current controller hashes",
+    "completion/source-patch binding"
+  ],
+  "cpu_interval_range": [
+    0.0999999999999996,
+    0.183
+  ],
+  "observations": 432,
+  "original_gate_red_cases": [
+    {
+      "compact_typed_ratio": "1.6508246740333707",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_typed_ratio": "2.209537123330225",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "float"
+    },
+    {
+      "compact_typed_ratio": "1.9961399411328842",
+      "missing": "FALSE",
+      "operation": "scale_general",
+      "width": "int"
+    },
+    {
+      "compact_typed_ratio": "2.110812380433629",
+      "missing": "TRUE",
+      "operation": "scale_general",
+      "width": "int"
+    }
+  ],
+  "summary_rows": 24,
+  "targeted_float_missing_speedups": {
+    "pair_compact_double": 1.1983120204603663,
+    "scale_binary": 0.9994848385111966,
+    "scale_general": 1.128244766505636
+  },
+  "wall_interval_range": [
+    0.0999999999999979,
+    0.183
+  ]
+}

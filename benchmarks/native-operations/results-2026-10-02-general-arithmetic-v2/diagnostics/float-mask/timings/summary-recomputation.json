@@ -1,0 +1,20 @@
+{
+  "observations": 432,
+  "original_gate_failures": 4,
+  "original_gate_cases": 8,
+  "cpu_interval_seconds": [
+    0.0999999999999996,
+    0.183
+  ],
+  "checks": [
+    "All 24 per-representation CPU medians recomputed from 432 raw rows",
+    "Before/after source, installed and controller provenance unchanged"
+  ],
+  "sha256": {
+    "raw.csv": "79bcdc148fe5aa686dc71b7f69d62322367d3028cb1276caba8b58682fe87e97",
+    "summary.csv": "5dda276b4a67c2fd1722e6a0ca545f1ca58fc5d55ea5bf0a5b3b18fb74fbd73a",
+    "completion.json": "3fd190caac16d561068128ce4b29de5f2970a5646b8be682f71bbf1d08294dc5",
+    "protocol.json": "388ef01eb401297d3a393be92cb3c141314d934034c2ef0707114c46751f9aae",
+    "source.patch": "3f90308e5619e1e5540f8f67068a77ff4e4a3408df996e5ff870f779d48084d2"
+  }
+}
