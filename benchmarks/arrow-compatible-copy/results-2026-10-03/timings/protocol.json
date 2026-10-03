@@ -1,0 +1,30 @@
+{
+  "columns": 8,
+  "consumption": "Each column: sum(as.double(x),na.rm=TRUE) and complete is.na(x) vector. Full bitwise values, exact NA positions, types, metadata and compact state checked outside timing.",
+  "host": "macOS-26.7-arm64-arm-64bit-Mach-O",
+  "input": "Seven fixed route cases; uncompressed65536-row batches. Three changed routes and four unchanged nullable/widening/retained controls. Fixture creation is outside measurement.",
+  "limits": "One host and geometry; filesystem cache uncontrolled. No ingestion zero-copy, process RSS or universal reader parity claim. Route declarations follow captured fixture metadata and source dispatch; direct Rust regressions qualify null-free and nullable copy branches. No phase clocks or new counters are present in either acceptance build.",
+  "logical_cpus": 16,
+  "machine": "arm64",
+  "observations": 336,
+  "order": "All six target permutations; controls alternate before/after targets and reverse order. Thread/workflow order alternates; paired build order alternates and each case occupies both build positions three times.",
+  "phase": "measure",
+  "policy": "verify=TRUE. Generic input lacks private checksums; profile=FALSE ignores checksums and metadata. Compare builds within a route; cross-route timings are not isolated classifier or checksum estimates.",
+  "rounds": 6,
+  "route_declarations": {
+    "compact_i16": "ProfiledCompact",
+    "integer_i32": "Integer",
+    "nullable_f64": "SemanticDouble",
+    "nullable_i32": "Integer",
+    "payload_f64": "PayloadDouble",
+    "semantic_f64": "SemanticDouble",
+    "widen_f32": "SemanticDouble"
+  },
+  "rows": 2000000,
+  "source_commits": {
+    "baseline": "9e6977a426f56b50044bf6d62c108c2d1e3548ed",
+    "candidate": "9ee3916ca078cb46f49f932b7cbb3ded70a6a99f"
+  },
+  "timing": "One first-read interval per worker, automatic GC included. Package load, explicit preceding GC, fixtures and complete validation excluded. Retain every CPU/wall/GC interval; six medians do not improve interval resolution.",
+  "workers": "One public read per fresh R process, threads1/16, independent read-return and read-plus-first-full-consumption cases. Expected vectors load after timing."
+}

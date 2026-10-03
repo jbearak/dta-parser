@@ -1,0 +1,495 @@
+{
+  "payload_f64": {
+    "filename": "double.arrow",
+    "text": "x1: double not null\nx2: double not null\nx3: double not null\nx4: double not null\nx5: double not null\nx6: double not null\nx7: double not null\nx8: double not null\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "dtatools:dataset": "{\"version\":0,\"label\":\"compatible double payload\"}",
+      "dtatools:profile-version": "0"
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 1\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x2",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 2\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x3",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 3\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x4",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 4\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x5",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 5\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x6",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 6\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x7",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 7\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x8",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 8\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      }
+    ]
+  },
+  "semantic_f64": {
+    "filename": "double.arrow",
+    "text": "x1: double not null\nx2: double not null\nx3: double not null\nx4: double not null\nx5: double not null\nx6: double not null\nx7: double not null\nx8: double not null\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "dtatools:dataset": "{\"version\":0,\"label\":\"compatible double payload\"}",
+      "dtatools:profile-version": "0"
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 1\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x2",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 2\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x3",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 3\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x4",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 4\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x5",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 5\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x6",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 6\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x7",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 7\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      },
+      {
+        "name": "x8",
+        "type": "double",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"label\":\"Double 8\",\"missing\":\"payload\",\"r\":{\"class\":\"double\"}}"
+        }
+      }
+    ]
+  },
+  "integer_i32": {
+    "filename": "integer.arrow",
+    "text": "x1: int32\nx2: int32\nx3: int32\nx4: int32\nx5: int32\nx6: int32\nx7: int32\nx8: int32\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "dtatools:dataset": "{\"version\":0,\"label\":\"compatible integer\"}",
+      "dtatools:profile-version": "0"
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x2",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x3",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x4",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x5",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x6",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x7",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x8",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      }
+    ]
+  },
+  "nullable_f64": {
+    "filename": "nullable-double.arrow",
+    "text": "x1: double\nx2: double\nx3: double\nx4: double\nx5: double\nx6: double\nx7: double\nx8: double\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "r": {
+        "columns": {
+          "x1": null,
+          "x2": null,
+          "x3": null,
+          "x4": null,
+          "x5": null,
+          "x6": null,
+          "x7": null,
+          "x8": null
+        }
+      }
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x2",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x3",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x4",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x5",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x6",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x7",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x8",
+        "type": "double",
+        "nullable": true,
+        "metadata": null
+      }
+    ]
+  },
+  "nullable_i32": {
+    "filename": "nullable-integer.arrow",
+    "text": "x1: int32\nx2: int32\nx3: int32\nx4: int32\nx5: int32\nx6: int32\nx7: int32\nx8: int32\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "dtatools:dataset": "{\"version\":0,\"label\":\"nullable integer control\"}",
+      "dtatools:profile-version": "0"
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x2",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x3",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x4",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x5",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x6",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x7",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      },
+      {
+        "name": "x8",
+        "type": "int32",
+        "nullable": true,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"r\":{\"class\":\"integer\"}}"
+        }
+      }
+    ]
+  },
+  "widen_f32": {
+    "filename": "widen-float.arrow",
+    "text": "x1: float\nx2: float\nx3: float\nx4: float\nx5: float\nx6: float\nx7: float\nx8: float",
+    "metadata": {},
+    "fields": [
+      {
+        "name": "x1",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x2",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x3",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x4",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x5",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x6",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x7",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      },
+      {
+        "name": "x8",
+        "type": "float",
+        "nullable": true,
+        "metadata": null
+      }
+    ]
+  },
+  "compact_i16": {
+    "filename": "compact-int.arrow",
+    "text": "x1: int16 not null\nx2: int16 not null\nx3: int16 not null\nx4: int16 not null\nx5: int16 not null\nx6: int16 not null\nx7: int16 not null\nx8: int16 not null\n\nSee $metadata for additional Schema metadata",
+    "metadata": {
+      "dtatools:dataset": "{\"version\":0,\"label\":\"retained compact control\"}",
+      "dtatools:profile-version": "0"
+    },
+    "fields": [
+      {
+        "name": "x1",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x2",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x3",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x4",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x5",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x6",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x7",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      },
+      {
+        "name": "x8",
+        "type": "int16",
+        "nullable": false,
+        "metadata": {
+          "dtatools:field": "{\"version\":0,\"format\":\"%8.0g\",\"storage\":\"int\",\"missing\":\"sentinel\"}"
+        }
+      }
+    ]
+  }
+}
