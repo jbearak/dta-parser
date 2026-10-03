@@ -6181,7 +6181,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "e18f4e022e5f06690dcef6bba0c828ab5e387e4473e2f0327cdc3ad1b0b0f857"
+          "sha256": "50ce6268bad570f15698aff8b4da2ffee5d1960891189b387ecad946d68bba3c"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -6190,6 +6190,10 @@
         {
           "path": "tests/testthat/test-native-decode-kernels.R",
           "sha256": "5785c904d3adf207631744a55df8c197eccb5997272f426b4ad2e24f5d9defca"
+        },
+        {
+          "path": "tests/testthat/test-compact-float-domain.R",
+          "sha256": "806ed8f6ebff39814519a2995dd33f2e5392098cd6062d9200deffa121de33ad"
         }
       ],
       "blocks": [
@@ -7842,6 +7846,49 @@
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "canonical float addition uses captured domain facts across reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 64,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-compact-float-domain.R",
+          "test": "strict float constructors establish an allocation domain proof",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-float-domain.R",
+          "test": "compact domain proofs follow retained bytes and writable invalidation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-float-domain.R",
+          "test": "imports and restored compact payloads do not assert strict domains",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 207,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-float-domain.R",
+          "test": "freeze validates captured bytes across reentry and releases failed claims",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 25,
+          "warnings": 0
         }
       ],
       "children": [],

@@ -172,6 +172,7 @@ SEXP C_dtatools_probe_plan_key_change(SEXP key, SEXP change, SEXP replacement) {
         if (TYPEOF(replacement) != INTSXP || XLENGTH(replacement) != 1 ||
             INTEGER(replacement)[0] < 0)
             Rf_error("invalid scratch plan key extent");
+        numeric_read_storage(base)->domain_flags = 0;
         numeric_read_storage(base)->length = (size_t) INTEGER(replacement)[0];
     } else if (INTEGER(change)[0] == 1 && TYPEOF(replacement) == EXTPTRSXP) {
         R_set_altrep_data1(base, replacement);

@@ -36,7 +36,7 @@ def inventory(root,commit):
     require(re.fullmatch(r'[0-9a-f]{40}',commit) is not None,'Expected a full immutable source commit')
     git_env={key:value for key,value in os.environ.items() if not key.startswith('GIT_')}
     src=root/'r-package/dtatools/src'
-    paths=sorted(src.glob('numeric-arithmetic*.h'))+[src/'numeric-payload.c']
+    paths=sorted(src.glob('numeric-arithmetic*.h'))+[src/'numeric-payload.c',src/'dtatools-internal.h']
     result={}
     for path in paths:
         original=subprocess.check_output(['git','--no-replace-objects','show',commit+':r-package/dtatools/src/'+path.name],cwd=root,env=git_env)
@@ -65,6 +65,7 @@ def main():
     begin=arithmetic.index('typedef struct {\n    double minimum;')
     end=arithmetic.index('/* Missing-bearing same-width',begin)
     common=arithmetic[begin:end]
+    common+='\n'+function((src/'dtatools-internal.h').read_text(),'numeric_strict_modern_float')
     common+='\n'+function(arithmetic,'arithmetic_promoted_kind')
     common+='\n'+function(payload,'numeric_float_observed_limit')
     common+='\n'+function(payload,'scalar_arithmetic_result_valid').replace('scalar_arithmetic_result_valid','uncounted_result_valid')

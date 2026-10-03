@@ -298,6 +298,7 @@ impl PreparedOwnedNumeric {
             scalar_values: ptr::null(),
             scalar_start: 0,
             scalar_end: 0,
+            domain_flags: 0,
         }
     }
 }
@@ -511,6 +512,7 @@ pub unsafe extern "C" fn dtatools_owned_numeric_clone(data: *const c_void) -> *m
             scalar_values: ptr::null(),
             scalar_start: 0,
             scalar_end: 0,
+            domain_flags: source.domain_flags,
         });
         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
         result.native_owner = source.native_owner;
@@ -641,6 +643,38 @@ pub unsafe extern "C" fn dtatools_owned_numeric_chunks(data: *const c_void) -> u
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numeric_domain_defaults_unknown_and_clone_retains_same_owner_fact() {
+        let raw = [0_u8; 8];
+        let descriptor = unsafe {
+            dtatools_owned_numeric_from_raw(raw.as_ptr(), 2, 1,
+                NumericKind::Float as c_int, TemporalKind::None as c_int, 119, 0)
+        };
+        assert!(!descriptor.is_null());
+        let mut data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
+        assert_eq!(data.domain_flags, 0);
+        data.domain_flags = 1;
+        let copied = unsafe { dtatools_owned_numeric_clone((&*data as *const NumericData).cast()) };
+        assert!(!copied.is_null());
+        let copied = unsafe { Box::from_raw(copied.cast::<NumericData>()) };
+        assert_eq!(copied.domain_flags, 1);
+        assert_eq!(copied.native_owner, data.native_owner);
+        let imported = prepare_from_arrow(&[], NumericKind::Float, TemporalKind::None,
+            FormatVersion::V119, 0, || false).unwrap().into_descriptor();
+        assert_eq!(imported.domain_flags, 0);
+        let plain = NumericData::new(crate::RNumericData {
+            backing: ptr::null_mut(), values: ptr::null_mut(), length: 0,
+            kind: NumericKind::Float, temporal: TemporalKind::None,
+            format_version: FormatVersion::V119, missing_count: 0,
+        });
+        assert_eq!(plain.domain_flags, 0);
+        let allocated = unsafe { crate::dtatools_numeric_alloc(ptr::null_mut(), 0,
+            NumericKind::Float as c_int, TemporalKind::None as c_int, 0) };
+        assert!(!allocated.is_null());
+        let allocated = unsafe { Box::from_raw(allocated.cast::<NumericData>()) };
+        assert_eq!(allocated.domain_flags, 0);
+    }
 
     const RELEASES: [u16; 10] = [105, 108, 110, 111, 113, 114, 115, 117, 118, 119];
 

@@ -288,7 +288,17 @@ typedef struct {
     const void *scalar_values;
     size_t scalar_start;
     size_t scalar_end;
+    /* Zero means unknown. A proof describes these exact bytes, not an R class. */
+    uint32_t domain_flags;
 } numeric_data;
+
+enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
+
+static inline int numeric_strict_modern_float(const numeric_data *data) {
+    return data != NULL && data->kind == NUMERIC_FLOAT && data->temporal == 0 &&
+        data->format_version > 111 &&
+        (data->domain_flags & NUMERIC_DOMAIN_STRICT_MODERN_FLOAT) != 0;
+}
 
 /* A retained payload keeps its bytes behind the immutable Rust owner and is
    read span by span; a plain payload keeps them contiguous in values. Every
@@ -828,6 +838,8 @@ DTATOOLS_INTERNAL SEXP C_dtatools_numeric_storage_matches(
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_info(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_domain_info(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL SEXP C_dtatools_force_altrep_materialization(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_dictstring_altrep(
