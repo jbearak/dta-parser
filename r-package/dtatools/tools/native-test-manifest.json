@@ -1779,11 +1779,11 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "1a06a14a1636ff3d1b43aeffcd1ee03c4540fb307a655e513e3137667c34b24d"
+          "sha256": "298bb78b2824625b5e858cde06c10e466770d055e4fe78fa9e554735db8a0c52"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "6f92206d8f64e96d8583dd8576c6e9377f87fb6b5689c55bb7abfe6dcae0f9e6"
+          "sha256": "dfd9b089dd8b36dad3755e4a65e801cf3c6dbc36fdb7eeaf2af9a119a8b992d5"
         }
       ],
       "blocks": [
@@ -4480,10 +4480,26 @@
         },
         {
           "file": "test-native-arithmetic-parity.R",
-          "test": "floating integer scalar results reject unsafe endpoint proofs",
+          "test": "floating scalar results reject unsafe endpoint proofs",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 240,
+          "min_pass": 320,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float scalar interval proofs retain zero signs and exact missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1988,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "float scalar fit intervals include exactly their binary32 boundary neighbors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1512,
           "warnings": 0
         }
       ],
