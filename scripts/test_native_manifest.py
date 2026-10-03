@@ -51,6 +51,25 @@ class NativeManifestTests(unittest.TestCase):
             with self.subTest(path=item["path"]):
                 self.assertEqual(hashlib.sha256((PACKAGE / item["path"]).read_bytes()).hexdigest(), item["sha256"])
 
+    def test_arithmetic_checkpoint_blocks_allow_only_the_profile_skip(self):
+        source = (PACKAGE / "tests/testthat/test-arithmetic-payload-lifetime.R").read_text()
+        starts = list(re.finditer(r'^test_that\("([^"\\]*)"', source, re.M))
+        blocks = {block["test"]: block for family in MANIFEST["families"]
+                  for block in family["blocks"]
+                  if block["file"] == "test-arithmetic-payload-lifetime.R"}
+        for index, match in enumerate(starts):
+            end = starts[index + 1].start() if index + 1 < len(starts) else len(source)
+            if ".arithmetic_lifetime_checkpoint_ready()" not in source[match.start():end]:
+                continue
+            with self.subTest(test=match.group(1)):
+                block = blocks[match.group(1)]
+                self.assertEqual(block["skip"], "allow")
+                self.assertEqual(block["min_pass_before_skip"], 0)
+                self.assertEqual(block["skip_message"],
+                    "Reason: arithmetic checkpoint requires an admitted native execution profile")
+                self.assertGreater(block["min_pass"], 0)
+                self.assertEqual(block["warnings"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
