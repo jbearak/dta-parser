@@ -1779,7 +1779,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "7ddc524390fa7f4db7c6302cc0adb391d5ef2d21e77cee1b88ce00e17ba98203"
+          "sha256": "22966619755527264b9baf68a8378cae0b1f8ed5c11c6c72adbe7ab796f26981"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
@@ -4372,6 +4372,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 412,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact float sums preserve rounded binary64 fit and late promotion",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1291,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "compact float sums keep exponent-gap cancellation and zero bits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 38,
           "warnings": 0
         },
         {
