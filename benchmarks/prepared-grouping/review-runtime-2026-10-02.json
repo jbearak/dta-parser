@@ -1,0 +1,32 @@
+{
+  "Rscript_launcher_sha256": "6bd8b8412ef511087496292e1ec58ecc25a22e998e6bad88a6f16fa7f06b402f",
+  "builds": {
+    "baseline": {
+      "build_R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+      "receipt_sha256": "f8d0af3ca51ea9bfdd5d82d3dfd2f9d919faeabfaae0fb4f2e85bb87c78c0b4f"
+    },
+    "candidate": {
+      "build_R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+      "commit": "743c90000d4313a8f43c2c10ab4234deac4acf5c",
+      "receipt_sha256": "67fcdf353494d5d18af12640e2222d4776a8065f1f37094879cfb2fea8aa56bb"
+    }
+  },
+  "executing_R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+  "matches_both_build_runtime_hashes": true,
+  "matches_recorded_R_version_excluding_nickname": true,
+  "measured_provenance_before_sha256": "039a3848048c3f642e43007f621747d5f3e064647fd3a3bf41f863f86bb990b4",
+  "query_command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "-e",
+    "cat(normalizePath(R.home()), \"\\n\", R.version.string, \"\\n\", sep=\"\")"
+  ],
+  "query_stdout": [
+    "/opt/homebrew/Cellar/r/4.6.1/lib/R",
+    "R version 4.6.1 (2026-06-24)"
+  ],
+  "recorded_R_version": "R version 4.6.1 (2026-06-24) -- \"Happy Hop\"",
+  "recorded_utc": "2026-10-03T00:17:56.767171+00:00",
+  "scope": "Post-run inspection only. The measured controller did not snapshot Rscript or its executing runtime before/after workers. This supplement establishes the current runtime and does not prove historical execution-binary identity. Original timing receipts are unchanged."
+}

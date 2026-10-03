@@ -14878,7 +14878,7 @@
         },
         {
           "path": "tests/testthat/test-egen-groups.R",
-          "sha256": "df0e83c2f2e81f9dce911dea145346e74791183c349d4b7887dc7e605457b689"
+          "sha256": "9856ed3c843cf755d26d91b3d7c74269ab460430a280c8d48f671547a10ad22c"
         },
         {
           "path": "tests/testthat/test-egen-stata-fixture.R",
@@ -15344,6 +15344,62 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "known numeric grouping prepares each value once before sorting",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 70,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "prepared numeric keys preserve missing ranks zero ties and extreme doubles",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 46,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "prepared multiple numeric keys retain stable first rows and row-major errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "foreign grouping keys preserve callbacks and decline preparation as a whole",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "prepared keys survive collection and temporal and legacy decoding",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 38,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "prepared compact IEEE NaNs obey the existing calculation scope",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-groups.R",
+          "test": "bounded numeric grouping tiles preserve multicolumn order and errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
           "warnings": 0
         },
         {

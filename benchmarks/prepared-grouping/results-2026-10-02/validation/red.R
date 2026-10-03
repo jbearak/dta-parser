@@ -1,0 +1,10 @@
+.libPaths(c("<development>/library", .libPaths()))
+library(dtatools)
+n <- 10000L
+x <- dta_int(as.double((seq_len(n) * 13L) %% 997L))
+.Call(dtatools:::C_dtatools_egen_group_stats, TRUE)
+y <- dta_group_id(x)
+counts <- .Call(dtatools:::C_dtatools_egen_group_stats, FALSE)
+print(counts)
+stopifnot(identical(as.double(y), as.double(match(as.double(x), sort(unique(as.double(x)))))))
+stopifnot(counts[["scalar_values"]] + counts[["prepared_values"]] <= n)
