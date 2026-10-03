@@ -1,0 +1,34 @@
+{
+  "audit": "Independent read-only artifact recomputation; no builds or measurements",
+  "observations": 720,
+  "summary_rows": 60,
+  "checks": [
+    "worker/raw equality",
+    "complete unique matrix",
+    "all six representation orders",
+    "full semantic/source hashes across builds/rounds",
+    "exact route/memory counters",
+    "all per-call CPU/wall medians, memory medians and speedups",
+    "before/after source and installed inventory equality",
+    "current controller hashes",
+    "source patch completion binding"
+  ],
+  "cpu_interval_seconds": [
+    0.138999999999999,
+    1.357
+  ],
+  "speedup_range": [
+    2.391543108182332,
+    23.69221804998058
+  ],
+  "artifacts": {
+    "raw.csv": "10b4e4cf56f74601d60c0167041931bfc8b6853d415c3456ebf338aee5387a46",
+    "summary.csv": "ff395d037aa247ddbb188467fb490641aec03347846de15d68f491d6b4bcb392",
+    "protocol.json": "0ad47d2910d4e53304315b5cdff037e19f1264f50781e1047f7795cc011dba39",
+    "provenance-before.json": "039a3848048c3f642e43007f621747d5f3e064647fd3a3bf41f863f86bb990b4",
+    "provenance-after.json": "206555814efec206c22c06987c34433bbf63b19b5788e2cdeff779573ede7fc8",
+    "completion.json": "b41f3d4fb5c9e34d9099c9dd8ae095a5ee6129775b982af96c50423481b1af95",
+    "source.patch": "3a09578d611154378699425ace0d698865135a406b2c33e27379150323815749"
+  }
+}
+Ratio-table extension passed

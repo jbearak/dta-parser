@@ -1,0 +1,5 @@
+Development structural diagnostic, not a timing measurement.
+Instrumented original grouping: scalar_values=249092 for 10000 compact int rows; exact-value oracle passes; <=10000 decoded values assertion fails.
+Prepared grouping: scalar_values=0, prepared_values=10000, prepared_bytes=80000; exact-value and read-bound assertions pass.
+Command: Rscript --vanilla <development>/red.R
+The local development package reused the unchanged Rust archive and was rebuilt after each C change; clean source-bound acceptance builds are coordinated separately.

@@ -1,0 +1,8 @@
+.libPaths(c('<development>/library-region', .libPaths()))
+library(dtatools)
+library(testthat)
+results <- testthat::test_dir('<repo>/r-package/dtatools/tests/testthat', package='dtatools', load_package='installed', reporter='silent', stop_on_failure=FALSE)
+frame <- as.data.frame(results)
+write.csv(frame[c('file','test','passed','failed','error','skipped','warning')], '<development>/full-tests-region.csv', row.names=FALSE)
+print(colSums(frame[c('passed','failed','error','skipped','warning')]))
+stopifnot(!any(frame$failed), !any(frame$error), !any(frame$skipped))

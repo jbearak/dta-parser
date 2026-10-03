@@ -1,0 +1,12 @@
+{
+  "baseline_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+  "calibration": "At least 25 ms untimed calibration, fixed repetitions targeting 150 ms retained interval.",
+  "candidate_commit": "743c90000d4313a8f43c2c10ab4234deac4acf5c",
+  "cases_per_build": 60,
+  "inputs": "Deterministic constructed columns, system missing plus .a/.z. Sorted and random cases share the same samples. Compact sources use contiguous constructor storage.",
+  "interval": "Repeated public dta_group_id calls; dispatch, allocation, automatic GC included. Construction, oracle, explicit GC, qualification, calibration, hashes and memory diagnostic excluded.",
+  "limits": "One host, warm constructed operations, missing=TRUE, autotype=FALSE, label=FALSE. No reader timing, mixed string keys, foreign ALTREP, or process-peak claim.",
+  "memory": "Exact 8*n*k prepared-key payload plus separate single-call R Vcells high-water increase. The latter includes result/sort/scratch allocations, excludes node and external allocator memory, and is not process RSS.",
+  "order": "Alternate builds. Rotate and reverse three representations over six rounds. Fixed width/key/layout order.",
+  "rounds": 6
+}
