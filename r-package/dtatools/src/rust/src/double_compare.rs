@@ -88,17 +88,22 @@ unsafe fn pair<F: Fn(f64, f64) -> bool, M: Fn(u32, u32) -> bool>(
             failed_blocks += 1;
             if failed_blocks == 4 {
                 start += count;
-                // Stop spending proof work on this span. The exact loop
-                // validates every remaining row; this is not a domain fact.
-                return valid
-                    & pair_exact(
-                        x.add(start),
-                        y.add(start),
-                        output.add(start),
-                        length - start,
-                        &observed,
-                        &missing,
-                    );
+                // Amortize failed proofs over a bounded exact window. Resume
+                // proofs afterwards so a dense prefix does not determine the
+                // algorithm for an arbitrarily long ordinary tail. Every row
+                // still gets validated; this is not a domain fact.
+                let exact_count = (length - start).min(16_384);
+                valid &= pair_exact(
+                    x.add(start),
+                    y.add(start),
+                    output.add(start),
+                    exact_count,
+                    &observed,
+                    &missing,
+                );
+                start += exact_count;
+                failed_blocks = 0;
+                continue;
             }
         }
         start += count;
@@ -194,9 +199,46 @@ mod tests {
     }
 
     #[test]
+    fn a_dense_prefix_does_not_keep_the_ordinary_tail_on_the_exact_path() {
+        let length = 1_000_000;
+        let prefix = 256;
+        let mut x = vec![1.0; length];
+        x[..prefix].fill(f64::from_bits(DOUBLE_TAGGED_NA_LAYOUT));
+        let y = vec![2.0; length];
+        let mut output = vec![0; length];
+        let exact_rows = std::cell::Cell::new(0_usize);
+        assert!(unsafe {
+            pair(
+                x.as_ptr(),
+                y.as_ptr(),
+                output.as_mut_ptr(),
+                length,
+                |a, b| a < b,
+                |a, b| {
+                    exact_rows.set(exact_rows.get() + 1);
+                    a < b
+                },
+            )
+        });
+        assert!(output[..prefix].iter().all(|&value| value == 0));
+        assert!(output[prefix..].iter().all(|&value| value == 1));
+        // Count actual exact-loop work, without imposing a noisy clock limit.
+        // A small exceptional prefix must not select expensive decoding for
+        // almost the entire ordinary column.
+        assert!(
+            exact_rows.get() < length / 10,
+            "{} exact rows",
+            exact_rows.get()
+        );
+    }
+
+    #[test]
     fn block_proofs_and_dense_switch_preserve_all_comparisons() {
-        for length in [0, 1, 2, 63, 64, 65, 127, 128, 129, 255, 256, 257, 320, 1025] {
-            for dense_prefix in [0, 64, 192, 256, 320] {
+        for length in [
+            0, 1, 2, 63, 64, 65, 127, 128, 129, 255, 256, 257, 320, 1025, 16_383, 16_384, 16_385,
+            16_639, 16_640, 16_641, 33_279, 33_280, 33_281,
+        ] {
+            for dense_prefix in [0, 64, 192, 256, 320, 16_640, 33_280] {
                 let observed = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, 1.5, -2.5];
                 let mut x: Vec<_> = (0..length).map(|i| observed[i % observed.len()]).collect();
                 let y: Vec<_> = (0..length)
