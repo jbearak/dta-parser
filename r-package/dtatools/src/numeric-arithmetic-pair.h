@@ -18,6 +18,7 @@ typedef struct {
     unsigned missing;
     unsigned infinite;
     unsigned zero;
+    float float_value;
 } arithmetic_pair_value;
 
 static int arithmetic_pair_admitted(
@@ -62,7 +63,7 @@ static arithmetic_pair_policy arithmetic_pair_policy_for(
         TYPE missing_minimum = (TYPE) policy->missing_minimum;              \
         return (arithmetic_pair_value) {                                    \
             (double) value, (unsigned) (value >= missing_minimum),           \
-            0, (unsigned) (value == 0)                                      \
+            0, (unsigned) (value == 0), (float) value                        \
         };                                                                  \
     }
 ARITHMETIC_PAIR_INTEGER_LOAD(byte, int8_t)
@@ -87,7 +88,7 @@ ARITHMETIC_PAIR_INTEGER_LOAD(long, int32_t)
             (double) value, (unsigned) ((ENCODED_MISSING) |                \
                 (magnitude > UINT32_C(0x7f800000))),                       \
             (unsigned) (magnitude == UINT32_C(0x7f800000)),                \
-            (unsigned) (magnitude == 0)                                   \
+            (unsigned) (magnitude == 0), value                            \
         };                                                                 \
     }
 ARITHMETIC_PAIR_FLOAT_LOAD(float, ((offset >> 11) | (offset << 21)) <= 26U)

@@ -428,6 +428,9 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
             tiny <- dta_float(rep(2^-149, count))
             expect_scaled("/", x, tiny, plain, rep(2^-149, count))
             expect_scaled("/", tiny, x, rep(2^-149, count), plain)
+            half <- dta_float(rep(0.5, count))
+            expect_scaled("*", x, half, plain, rep(0.5, count))
+            expect_scaled("*", half, x, rep(0.5, count), plain)
             # Distinct physical widths use the compact pair producer. Keep
             # the full binary64 byte comparison: negative and zero numerators
             # divided by observed +/-Inf must retain the zero sign, whereas
@@ -515,4 +518,64 @@ test_that("compact pair promotion recomputes earlier chunks and counts missing u
     expect_identical(lapply(list(x, y), function(value) writeBin(as.double(value), raw(), size = 8L)), before)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+})
+
+test_that("rounded float multiplication limits retain exact binary64 storage decisions", {
+    .native_arithmetic_enable()
+    from_bits <- function(bits) readBin(as.raw(floor(bits / 256^(0:3)) %% 256),
+                                       "double", n = 1L, size = 4L, endian = "little")
+    # Both products round to the largest observed float. The exact first
+    # product is above that limit, while the second is below it. A rounded
+    # equality alone must therefore never choose the storage type.
+    witnesses <- list(
+        list(value = from_bits(0x7d3a2e8b), multiplier = 11, storage = "double"),
+        list(value = from_bits(0x7cd79435), multiplier = 19, storage = "float")
+    )
+    limit <- from_bits(0x7effffff)
+    expect_gt(witnesses[[1L]]$value * 11, limit)
+    expect_lt(witnesses[[2L]]$value * 19, limit)
+    for (witness in witnesses) {
+        expect_identical(readBin(writeBin(witness$value * witness$multiplier,
+            raw(), size = 4L), "double", n = 1L, size = 4L), limit)
+        for (kind in c("byte", "int", "float")) {
+            for (sign in c(-1, 1)) {
+                for (retained in c(FALSE, TRUE)) {
+                    values <- rep(c(1 + 2^-23, -0, 0, NA_real_, tagged_missing(letters)),
+                                  length.out = 131L)
+                    values[[131L]] <- sign * witness$value
+                    multipliers <- rep(c(3, -2, 0, NA_real_, tagged_missing("z")),
+                                       length.out = 131L)
+                    multipliers[[131L]] <- witness$multiplier
+                    x <- dta_float(values)
+                    y <- get(paste0("dta_", kind))(multipliers)
+                    if (retained) {
+                        x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+                        y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
+                    }
+                    before <- lapply(list(x, y), function(value)
+                        writeBin(as.double(value), raw(), size = 8L))
+                    expected <- .native_arithmetic_reference("*", x, y, "float")
+                    expect_identical(dta_storage_type(expected), witness$storage)
+                    for (reverse in c(FALSE, TRUE)) {
+                        .Call(C_dtatools_numeric_entry_stats, TRUE)
+                        actual <- if (reverse) y * x else x * y
+                        .native_arithmetic_expect_entry()
+                        .native_arithmetic_expect(actual, expected)
+                        missing <- is.na(as.double(expected))
+                        expect_identical(is.na(actual), missing)
+                        result <- dibble(x = actual)
+                        replace_values(result, x = 0, where = which(missing))
+                        expect_false(anyNA(result$x))
+                        if (witness$storage == "double") {
+                            expect_identical(as.double(actual)[[1L]], (1 + 2^-23) * 3)
+                        }
+                    }
+                    expect_identical(lapply(list(x, y), function(value)
+                        writeBin(as.double(value), raw(), size = 8L)), before)
+                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+                    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(y))
+                }
+            }
+        }
+    }
 })
