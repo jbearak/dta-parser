@@ -1,0 +1,291 @@
+--- a/src/numeric-decode.h
++++ b/src/numeric-decode.h
+@@ -0,0 +1,86 @@
++/* Decode a contiguous compact span under the caller's existing source
++   lifetime contract. Materialization holds its read claim and roots the bytes
++   across the bounded interrupt polls; ordinary regions retain their borrowed
++   reader contract.
++   No R callback, owner lookup, temporal dispatch, or format dispatch occurs
++   inside a typed tile. memcpy keeps unaligned retained/raw spans valid. */
++#ifndef DTATOOLS_NUMERIC_DECODE_H
++#define DTATOOLS_NUMERIC_DECODE_H
++
++typedef void (*numeric_decode_tile)(
++    const unsigned char *source, size_t length, double *output
++);
++
++#define NUMERIC_DECODE_UNCHANGED(value) (value)
++#define NUMERIC_DECODE_DATE(value) ((value) - 3653.0)
++#define NUMERIC_DECODE_DATETIME(value) ((value) / 1000.0 - 315619200.0)
++
++#define DEFINE_NUMERIC_DECODE_TILE(NAME, TYPE, SUFFIX, MISSING, FORMAT, TRANSFORM) \
++    static void numeric_decode_##NAME##_##SUFFIX(                              \
++        const unsigned char *source, size_t length, double *output             \
++    ) {                                                                        \
++        for (size_t index = 0; index < length; index++) {                       \
++            TYPE raw;                                                          \
++            memcpy(&raw, source + index * sizeof(raw), sizeof(raw));           \
++            int missing = MISSING ? NAME##_missing_offset(raw, FORMAT) : -1;   \
++            output[index] = missing >= 0 ? numeric_missing_value(missing)      \
++                : TRANSFORM((double) raw);                                     \
++        }                                                                      \
++    }
++
++#define DEFINE_NUMERIC_DECODE_TEMPORAL(NAME, TYPE, SUFFIX, TRANSFORM)          \
++    DEFINE_NUMERIC_DECODE_TILE(NAME, TYPE, SUFFIX##_plain, 0, 119, TRANSFORM)  \
++    DEFINE_NUMERIC_DECODE_TILE(NAME, TYPE, SUFFIX##_legacy, 1, 111, TRANSFORM) \
++    DEFINE_NUMERIC_DECODE_TILE(NAME, TYPE, SUFFIX##_modern, 1, 119, TRANSFORM)
++
++#define DEFINE_NUMERIC_DECODE_TYPE(NAME, TYPE)                                \
++    DEFINE_NUMERIC_DECODE_TEMPORAL(NAME, TYPE, number, NUMERIC_DECODE_UNCHANGED) \
++    DEFINE_NUMERIC_DECODE_TEMPORAL(NAME, TYPE, date, NUMERIC_DECODE_DATE)       \
++    DEFINE_NUMERIC_DECODE_TEMPORAL(NAME, TYPE, datetime, NUMERIC_DECODE_DATETIME)
++
++DEFINE_NUMERIC_DECODE_TYPE(byte, int8_t)
++DEFINE_NUMERIC_DECODE_TYPE(int, int16_t)
++DEFINE_NUMERIC_DECODE_TYPE(long, int32_t)
++DEFINE_NUMERIC_DECODE_TYPE(float, float)
++
++#undef DEFINE_NUMERIC_DECODE_TYPE
++#undef DEFINE_NUMERIC_DECODE_TEMPORAL
++#undef DEFINE_NUMERIC_DECODE_TILE
++#undef NUMERIC_DECODE_DATETIME
++#undef NUMERIC_DECODE_DATE
++#undef NUMERIC_DECODE_UNCHANGED
++
++#define NUMERIC_DECODE_TEMPORAL_TABLE(NAME, TEMPORAL)                          \
++    {numeric_decode_##NAME##_##TEMPORAL##_plain,                               \
++     numeric_decode_##NAME##_##TEMPORAL##_legacy,                              \
++     numeric_decode_##NAME##_##TEMPORAL##_modern}
++#define NUMERIC_DECODE_TYPE_TABLE(NAME)                                      \
++    {NUMERIC_DECODE_TEMPORAL_TABLE(NAME, number),                             \
++     NUMERIC_DECODE_TEMPORAL_TABLE(NAME, date),                               \
++     NUMERIC_DECODE_TEMPORAL_TABLE(NAME, datetime)}
++
++static void numeric_decode_plain_span(const numeric_data *span, double *output) {
++    static const numeric_decode_tile kernels[4][3][3] = {
++        NUMERIC_DECODE_TYPE_TABLE(byte), NUMERIC_DECODE_TYPE_TABLE(int),
++        NUMERIC_DECODE_TYPE_TABLE(long), NUMERIC_DECODE_TYPE_TABLE(float)
++    };
++    if (span->kind < NUMERIC_BYTE || span->kind > NUMERIC_FLOAT ||
++        numeric_payload_retained(span))
++        Rf_error("invalid compact numeric decode span");
++    int temporal = span->temporal == 1 ? 1 : span->temporal == 2 ? 2 : 0;
++    int format = span->missing_count == 0 ? 0 : span->format_version <= 111 ? 1 : 2;
++    numeric_decode_tile decode = kernels[span->kind][temporal][format];
++    size_t width = numeric_kind_width(span->kind);
++    const unsigned char *source = span->values;
++    for (size_t start = 0; start < span->length;) {
++        size_t count = span->length - start;
++        if (count > 16384) count = 16384;
++        R_CheckUserInterrupt();
++        decode(source + start * width, count, output + start);
++        start += count;
++    }
++}
++
++#undef NUMERIC_DECODE_TYPE_TABLE
++#undef NUMERIC_DECODE_TEMPORAL_TABLE
++#endif
+--- a/src/numeric-payload.c
++++ b/src/numeric-payload.c
+@@ -521,27 +521,6 @@
+         return numeric_##NAME##_decode(raw, data);                           \
+     }                                                                        \
+                                                                              \
+-    static void numeric_##NAME##_region(                                      \
+-        const numeric_data *data, size_t index, size_t length, double *output \
+-    ) {                                                                       \
+-        if (data->missing_count == 0) {                                       \
+-            for (size_t offset = 0; offset < length; offset++) {              \
+-                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
+-                TYPE raw = numeric_##NAME##_raw_at(data, index + offset);     \
+-                output[offset] = numeric_observed_value(                      \
+-                    (double) raw, data->temporal                              \
+-                );                                                            \
+-            }                                                                 \
+-        } else {                                                              \
+-            for (size_t offset = 0; offset < length; offset++) {              \
+-                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
+-                output[offset] = numeric_##NAME##_value_at(                   \
+-                    data, index + offset                                      \
+-                );                                                            \
+-            }                                                                 \
+-        }                                                                     \
+-    }                                                                         \
+-                                                                              \
+     static void numeric_##NAME##_extreme_accumulate(                          \
+         const numeric_data *data, Rboolean na_rm, int minimum,               \
+         double *accumulator, int *initialized                                \
+@@ -1924,24 +1903,10 @@
+     );
+ }
+ 
++#include "numeric-decode.h"
++
+ static void fill_span_doubles(const numeric_data *span, size_t offset, void *context) {
+-    double *output = (double *) context + offset;
+-    switch (span->kind) {
+-    case NUMERIC_BYTE:
+-        numeric_byte_region(span, 0, span->length, output);
+-        return;
+-    case NUMERIC_INT:
+-        numeric_int_region(span, 0, span->length, output);
+-        return;
+-    case NUMERIC_LONG:
+-        numeric_long_region(span, 0, span->length, output);
+-        return;
+-    case NUMERIC_FLOAT:
+-        numeric_float_region(span, 0, span->length, output);
+-        return;
+-    default:
+-        Rf_error("invalid dtatools numeric storage kind");
+-    }
++    numeric_decode_plain_span(span, (double *) context + offset);
+ }
+ 
+ static void numeric_fill_region(
+--- a/tests/testthat/test-native-decode-kernels.R
++++ b/tests/testthat/test-native-decode-kernels.R
+@@ -0,0 +1,97 @@
++.decode_native <- function(name, ...) {
++    .Call(get(name, asNamespace("dtatools")), ...)
++}
++
++.decode_expect <- function(source, expected, chunks = c(1L, 8191L)) {
++    variants <- c(list(source), lapply(chunks, function(chunk)
++        .decode_native("C_dtatools_owned_numeric_freeze", source, chunk)))
++    expected_bits <- writeBin(expected, raw(), size = 8L, endian = "little")
++    for (value in variants) {
++        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(value))
++        invisible(.decode_native("C_dtatools_force_altrep_materialization", value))
++        expect_identical(writeBin(as.double(value), raw(), size = 8L, endian = "little"),
++                         expected_bits)
++        expect_false(dtatools:::.is_unmaterialized_numeric_altrep(value))
++    }
++}
++
++test_that("compact decode tiles preserve temporal values and every missing payload", {
++    count <- 32771L
++    missing <- c(NA_real_, tagged_missing(letters))
++    for (storage in c("byte", "int", "long", "float")) {
++        for (temporal in 0:2) for (layout in c("none", "sparse", "dense")) {
++            seed <- if (temporal == 0L) {
++                if (storage == "float") c(-1.25, -0, 0, 0.5, 2^60) else c(-100, -1, 0, 1, 100)
++            } else if (temporal == 1L) {
++                -3653 + c(-1, 0, 1)
++            } else if (storage == "byte") {
++                -315619200
++            } else -315619200 + c(-1, 0, 1)
++            expected <- rep_len(seed, count)
++            if (layout == "sparse") {
++                # Cover both sides of each 16,384-row tile boundary.
++                positions <- unique(c(1L, seq.int(16372L, 16398L), 32768L, count))
++                expected[positions] <- rep_len(missing, length(positions))
++            } else if (layout == "dense") expected <- rep_len(c(seed, missing), count)
++            source <- dtatools:::.construct_dta_numeric(
++                expected, NULL, storage, temporal = temporal)
++            .decode_expect(source, expected, chunks = c(8191L, 32773L))
++        }
++    }
++})
++
++test_that("compact decode keeps modern float gaps infinities and NaN payloads", {
++    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
++    reserved <- 0x7f000000 + (0:26) * 0x800
++    bits <- unique(c(0, 0x80000000, 0x00000001, 0x80000001,
++        0x7effffff, as.vector(outer(reserved, c(-1, 0, 1), "+")),
++        0x7f00d800, 0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000,
++        0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001, 0xffffffff))
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    on.exit(unlink(path), add = TRUE)
++    for (batch in split(bits, ceiling(seq_along(bits) / 27L))) {
++        for (index in seq_along(batch))
++            patch_numeric_fixture_row(path, index - 1L, list(x_float = raw_bits(batch[[index]])))
++        source <- read_dta(path, col_select = "x_float", n_max = length(batch))$x_float
++        expected <- as.double(read_dta(path, col_select = "x_float", n_max = length(batch),
++                                       use_numeric_altrep = FALSE)$x_float)
++        .decode_expect(source, expected, chunks = c(1L, 7L))
++    }
++})
++
++test_that("compact decode retains legacy integer and float missing domains", {
++    for (version in c(105L, 108L, 110L, 111L)) {
++        path <- fixture(paste0("synthetic_v", version, ".dta"))
++        compact <- read_dta(path, output = "tibble")
++        eager <- read_dta(path, output = "tibble", use_numeric_altrep = FALSE)
++        for (name in names(compact)) {
++            if (dtatools:::.is_unmaterialized_numeric_altrep(compact[[name]]))
++                .decode_expect(compact[[name]], as.double(eager[[name]]), chunks = 1L)
++        }
++    }
++    original <- readBin(fixture("synthetic_v111.dta"), "raw",
++                        n = file.info(fixture("synthetic_v111.dta"))[["size"]])
++    prefix <- c(as.raw(1), writeBin(321L, raw(), size = 2L, endian = "little"),
++                writeBin(-123456L, raw(), size = 4L, endian = "little"),
++                writeBin(1.5, raw(), size = 4L, endian = "little"),
++                writeBin(-2.25, raw(), size = 8L, endian = "little"))
++    start <- grepRaw(prefix, original, fixed = TRUE, all = TRUE)
++    expect_length(start, 1L)
++    bits <- c(0, 0x80000000, 0x7effffff, 0x7f000000, 0x7f000001,
++              0x7f00d000, 0x7f7fffff, 0x7f800000, 0xff800000,
++              0x7fc00001, 0xffc00001, 0x7f800001, 0xff800001)
++    path <- tempfile(fileext = ".dta")
++    on.exit(unlink(path), add = TRUE)
++    for (batch in split(bits, ceiling(seq_along(bits) / 4L))) {
++        bytes <- original
++        for (row in seq_along(batch)) {
++            location <- start + (row - 1L) * 25L + 7L
++            bytes[location + 0:3] <- as.raw(floor(batch[[row]] / 256^(0:3)) %% 256)
++        }
++        writeBin(bytes, path)
++        source <- read_dta(path, col_select = "f", n_max = length(batch))$f
++        expected <- as.double(read_dta(path, col_select = "f", n_max = length(batch),
++                                       use_numeric_altrep = FALSE)$f)
++        .decode_expect(source, expected, chunks = 1L)
++    }
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -5982,6 +5982,10 @@
+         {
+           "path": "tests/testthat/test-numeric-materialization.R",
+           "sha256": "cacb79602d61407aa61b62f07021456cd7cf5291eeb5bdcce55ac46d01e08332"
++        },
++        {
++          "path": "tests/testthat/test-native-decode-kernels.R",
++          "sha256": "65cc99f41aacceeeeb9571590c72decfd5d7467321e00e12cb8fb2dde3bddd4d"
+         }
+       ],
+       "blocks": [
+@@ -7521,6 +7525,30 @@
+           "occurrence": 1,
+           "skip": "forbid",
+           "min_pass": 6,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-decode-kernels.R",
++          "test": "compact decode tiles preserve temporal values and every missing payload",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 324,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-decode-kernels.R",
++          "test": "compact decode keeps modern float gaps infinities and NaN payloads",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 36,
++          "warnings": 0
++        },
++        {
++          "file": "test-native-decode-kernels.R",
++          "test": "compact decode retains legacy integer and float missing domains",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 121,
+           "warnings": 0
+         }
+       ],

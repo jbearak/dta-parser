@@ -1,0 +1,41 @@
+{
+  "artifacts": {
+    "completion.json": "68ffa804c5427cd7864450ecbb7082063d951f9c3cc888dfa9f194a976b0055b",
+    "intervals.csv": "a4f4a252c9e623925fd7071dd7761178d6adf23a28aeb3c6ae30d3468df890c6",
+    "protocol.json": "ee264537a08499a7e9e785a1c67de3437cc924d16bbc3eb2c0991b39859fe0f6",
+    "provenance-after.json": "1b7269d57049b27a336e0821df9bb0cbf08cb003d96b14a7de670a0f8556e580",
+    "provenance-before.json": "ccfe5ca894f49efd148e04e2769845809db3c56aedbb0f0770e1fd3280e12be5",
+    "raw.csv": "96e066ddfb597ede9fb01a0affce22f87cf7a93c5463227af876e833999ccecc",
+    "source.patch": "1c0e9de61ef83b0ca6f2eb87d779633eb613fc8de0d3100ec77e37c0166f5425",
+    "summary.csv": "2b99f7e9dc8cf7be03800c1e34c5add7c67778aab2064497fde45f8264565275"
+  },
+  "audit": "Independent artifact recomputation only; no R, builds or measurements",
+  "caveats": [
+    "Fixtures repeat five observed values and all 27 missing ranks: 84.375% missing.",
+    "Rprofmem logged bytes, Vcells high-water, and copy bytes overlap; they cannot be added or called process RSS.",
+    "Execution Rscript-to-R-runtime equality is not established by the R RHOME query; separate post-run supplement is pending."
+  ],
+  "checks": [
+    "worker/raw equality",
+    "complete unique matrix and sharing balance",
+    "every interval sum/range/count",
+    "all CPU/wall/GC and memory medians, speedups",
+    "exact copy/compatibility bytes",
+    "source/result and ownership checks",
+    "before/after package/probe/runtime/controller equality",
+    "current controller hashes and completion artifact hashes"
+  ],
+  "cpu_batch_range": [
+    0.00599999999999312,
+    0.0259999999999998
+  ],
+  "intervals": 7753,
+  "million_aliased_constructed_cpu_speedup": [
+    1.0261437908496593,
+    1.175082192452956
+  ],
+  "observations": 384,
+  "summary_rows": 32,
+  "zero_cpu_batches": 0,
+  "zero_wall_batches": 0
+}

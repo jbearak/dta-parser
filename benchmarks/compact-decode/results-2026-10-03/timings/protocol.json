@@ -1,0 +1,12 @@
+{
+  "cases_per_build_round": 24,
+  "correctness": "Full source bits before each batch and full result bits for every fresh target afterward. State checks reject pre-materialized targets; independent mutation verifies the rooted source remains unchanged.",
+  "input": "One million rows; byte/int/long/float; constructed or retained 8191-row chunks. All timed handles alias one rooted compact source. No-null, 62 scattered missing values, or 843750 missing values with all 27 tags. The source stays compact and unchanged throughout.",
+  "interval": "One shared external DATAPTR_RO probe forces 32 fresh metadata handles per batch. Every handle allocates and decodes its own double result. Includes output allocation and automatic GC; source/handle construction, checks, explicit GC, profiling and destruction are excluded.",
+  "memory": "Separate single-call allocation profile and Vcells live/high-water deltas overlap; they are not RSS. Exact compact/compatibility copy counters must stay zero in both builds.",
+  "order": "Fresh process per build/round; alternate paired build order and backing positions. Six rounds cover all six missing-density permutations.",
+  "phase": "timing",
+  "repetitions": "32 outputs total 256000000 bytes plus at most 4000000 shared compact source bytes. Sum independent intervals until CPU and wall each reach 150 ms; every individual interval, including zero durations, is retained. This threshold does not improve timer resolution.",
+  "rounds": 6,
+  "scope": "Aliased first materialization only. Retained test adapters do not measure Arrow ingestion. No private-input, tiny-vector, temporal-throughput, or ordinary-double parity claim."
+}

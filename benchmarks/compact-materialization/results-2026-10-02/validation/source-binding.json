@@ -1,0 +1,19 @@
+{
+  "baseline_commit": "fd72c3448412b477dfb11e0cf4d26425d5c7a428",
+  "baseline_receipt_sha256": "6fb25eeae7bca5f7b97be2d630fad0c3dd88feefd069ff7101fbd245c3f30e25",
+  "candidate_receipt_sha256": "048c3ee4ac9545667c113c74900a684f399fbabdb3d6375ff8c4fb45d0fa9ccf",
+  "final_combined_integration": {
+    "commit": "bd78a06e4e4e88de355a9a518e573e364d9d3b07",
+    "conformance_commit": "ccc53395cb870a343077945445dc836c071b95fc",
+    "focused_assertions": 10553,
+    "materialization_implementation_unchanged": true,
+    "scope": "Full package sources differ through already merged collection, comparison, and grouping changes; timings retain their original source attribution."
+  },
+  "later_integration": "Main 895dd204 integrated and separately qualified at 104417f9 by a clean build, 7359 focused assertions, and the required source-archive conformance orchestrator. Materializer and materialization regression source are identical to measured 586b887b. The live controller now queries R.home() through Rscript directly; recorded f091db58 is preserved under controllers/ and its execution runtime is confirmed by the supplement.",
+  "limits": "One host, missing density 27/32, fresh first materialization in preconstructed batches. Retained ownership comes from the freeze test adapter; this is not a reader/decompression benchmark. Rprofmem and Vcells observations overlap and are not RSS. Individual timed batches are 6\u201326 ms; aggregate medians do not imply sub-ms timer precision.",
+  "measured_candidate_commit": "586b887b04136e388c5d7eaf0d5f0896b2c488c0",
+  "measured_controller_commit": "f091db58",
+  "publication_commit": "9b83760ba1e9b62b88d189113af547a5e3bb97d5",
+  "publication_package_matches_measured_commit": true,
+  "validation": "Full suite and both untimed benchmark qualifications use the clean recorded libraries. Focused ownership tests and the structural red/green diagnostic are development evidence; the clean full suite repeats their regression coverage. Every timing uses the same separately compiled ordinary DATAPTR_RO probe. The post-run exact-Rscript supplement confirms the unchanged timing launcher selects both build receipts' runtime."
+}

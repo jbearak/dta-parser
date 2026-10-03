@@ -1,0 +1,51 @@
+{
+  "binary_sha256": "349fbc663c6ed2f296f9802d82f80e3607b540737d8ff083de768a1b40a415a6",
+  "build_log_sha256": "cb798d3ac167b85a355b95af55f1e2a09ed526f4262827862c1647e37101ff23",
+  "builder_sha256": "3108e64143090a8f841e02556706c80e45eb0151d5735cb61c08650360b10d4f",
+  "exit_code": 0,
+  "input_record_sha256": "6ec0da11232531b0b83af352cb0bbc6f6f0ce636a08edf154c0b694c1a41a72c",
+  "private_record_sha256": "16406498a6bb3d1fd325a4f740cb2c58f9db5b575b44599f9c2427c193c76936",
+  "schema": 1,
+  "snapshot_artifacts": {
+    "builder": "4858f4f8d78bd1b7f56c513b2a88940d85bdb9e0a6ec385c3a2cb9f66b7efc77",
+    "existing_recorder_helpers": "f8781db4b8d43e825b405b748b0cd956338658fdfc73f1a16985773e574489f0",
+    "recorder": "1d0bd275759ffeec5625b7e985957666d2d46f22fbf94134d803d1844d06c534"
+  },
+  "source_sha256": "cabec15c6fabe720e62204b345d605a9d87f68e7955a553407e9fbe0d7a92ba1",
+  "toolchain": {
+    "R": {
+      "launcher_sha256": "e22f791c1b2c9b87fafb1813a585a56221505e35d6d12221b09b5f49a00b0f40",
+      "version": {
+        "sha256": "f14e1e50d448384ff327fbd20004bba836af4665cd89894a2f17614abce9d233",
+        "value": "R version 4.6.1 (2026-06-24) -- \"Happy Hop\"\nCopyright (C) 2026 The R Foundation for Statistical Computing\nPlatform: aarch64-apple-darwin25.4.0\n\nR is free software and comes with ABSOLUTELY NO WARRANTY.\nYou are welcome to redistribute it under the terms of the\nGNU General Public License versions 2 or 3.\nFor more information about these matters see\nhttps://www.gnu.org/licenses/."
+      }
+    },
+    "R_runtime_sha256": "a548d8126764a013e73c25438e39984adcfce5d8573cf0000d40a3a65502fc34",
+    "cargo": {
+      "launcher_sha256": "778478868dbfe74960e49329bb5813d2f5ba95c8bfb1f37cd626c62cb26a214a",
+      "version": {
+        "sha256": "20b5160c9dc1e9b672cc25cd1d0416bbba198e13205f1c3a7a692eeb25dbf9f0",
+        "value": "cargo 1.98.1 (797e8a9bc 2026-08-05) (Homebrew)"
+      }
+    },
+    "clang": {
+      "launcher_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+      "version": {
+        "sha256": "e80280d6353d0f9712680d725eb73e17d10bcb91361c93d340bbbb3e8d53a3b7",
+        "value": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin"
+      }
+    },
+    "external_config_sha256": {
+      "R_MAKEVARS_USER": "f0d2a0b1dd7ef25a6e3bba57a59b46b82312cbcc12214c593ec86c0a412b18ff",
+      "R_etc_Makeconf": "51a559c40041c73c0cd734e7f12ef7bc5b32e46673580b1105f4bb2ebf5ca945",
+      "R_etc_Renviron": "6047aa5642c92653aa97f676b3be42749622f50324ca48d41bfd235439cdf8e7"
+    },
+    "rustc": {
+      "launcher_sha256": "2814fb55fb9cfb3eef5848a8104d77e3de7fd95394661144a12ee90cd4405340",
+      "version": {
+        "sha256": "2c1f78b4dcdc2d16c65f098747d19f1e38a64c01faefa0126aa5eb667c3056a6",
+        "value": "rustc 1.98.1 (48a229cea 2026-09-01) (Homebrew)"
+      }
+    }
+  }
+}

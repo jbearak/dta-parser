@@ -1,0 +1,118 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-arithmetic-payload-lifetime.R","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0
+"test-arithmetic-payload-lifetime.R","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0
+"test-numeric-materialization.R","shared compact materialization decodes without copying compact bytes",320,0,FALSE,FALSE,0
+"test-numeric-materialization.R","allocation finalizers can alias materialize or patch compact inputs",96,0,FALSE,FALSE,0
+"test-numeric-materialization.R","ordinary writable pointer dispatch also avoids a compact detour",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","private materialization does not consume stale missing-count proofs",32,0,FALSE,FALSE,0
+"test-numeric-materialization.R","failed materialization preserves compact state and finalizer aliases",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","unwinding materialization restores a private compact write claim",5,0,FALSE,FALSE,0
+"test-numeric-materialization.R","materialization roots survive collection at every allocation",6,0,FALSE,FALSE,0
+"test-owned-columns.R","bounded generation shape checks retain wide and encoded fallbacks",15,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape checks decline foreign length callbacks",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generation shape validation never invokes foreign class callbacks",4,0,FALSE,FALSE,0
+"test-owned-columns.R","attributed env members retain ordinary evaluation without eligibility callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","journaled append restores shape and metadata after errors and interrupts",288,0,FALSE,FALSE,0
+"test-owned-columns.R","classed column names retain R validation dispatch",4,0,FALSE,FALSE,0
+"test-owned-columns.R","private append reuses names without a collection or prior names read",128,0,FALSE,FALSE,0
+"test-owned-columns.R","generation preserves saved names, attributes and shallow table copies",14,0,FALSE,FALSE,0
+"test-owned-columns.R","generation protects shallow table names before any public names read",9,0,FALSE,FALSE,0
+"test-owned-columns.R","generation checks physical rows again after argument capture",3,0,FALSE,FALSE,0
+"test-owned-columns.R","captured mutation masks preserve unread columns and lexical lookup",210,0,FALSE,FALSE,0
+"test-owned-columns.R","direct reads retain shadow checks and dynamic env subscripts",2,0,FALSE,FALSE,0
+"test-owned-columns.R","plain table staging guards aliases introduced by row callbacks",9,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary private string writes retain sparse allocation and snapshot isolation",5,0,FALSE,FALSE,0
+"test-owned-columns.R","promotion checks revalidate rows changed by a value callback",2,0,FALSE,FALSE,0
+"test-owned-columns.R","generic table transactions reject callback target replacement",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native promotion fits preserve ranges, precision and selected values",114,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion scans retain finite limits and exceptional values",540,0,FALSE,FALSE,0
+"test-owned-columns.R","double promotion preserves attributes and foreign reader callbacks",5,0,FALSE,FALSE,0
+"test-owned-columns.R","grouped proxy callbacks retain isolated Date inputs",4,0,FALSE,FALSE,0
+"test-owned-columns.R","owned subsetting roots the payload across foreign index callbacks",3,0,FALSE,FALSE,0
+"test-owned-columns.R","compact subsetting retains storage across index materialization callbacks",24,0,FALSE,FALSE,0
+"test-owned-columns.R","native readers cannot export aliases after the effective write guard",20,0,FALSE,FALSE,0
+"test-owned-columns.R","failed fused writes retain sharing introduced by an operand callback",41,0,FALSE,FALSE,0
+"test-owned-columns.R","direct owned writes retain callback forks after an interrupt",9,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized partial writes roll back completed writes and original state",11,0,FALSE,FALSE,0
+"test-owned-columns.R","plain doubles capture once and preserve private sparse backing afterwards",22,0,FALSE,FALSE,0
+"test-owned-columns.R","materialized full replacement copies new values without reading old payloads",20,0,FALSE,FALSE,0
+"test-owned-columns.R","native-generated private numeric writes stage new bytes without copying old values",50,0,FALSE,FALSE,0
+"test-owned-columns.R","full numeric replacement protects borrowed aliases without copying their old payload",20,0,FALSE,FALSE,0
+"test-owned-columns.R","validation never exposes an internal read handle to R methods",6,0,FALSE,FALSE,0
+"test-owned-columns.R","custom classes on owned handles use conservative shape validation",6,0,FALSE,FALSE,0
+"test-owned-columns.R","comparison callbacks cannot retain a view changed by the patch",2,0,FALSE,FALSE,0
+"test-owned-columns.R","native comparison decline isolates handles before R fallback errors",6,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary doubles are captured once and column results fork backing",3,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary double result backing through dplyr",7,0,FALSE,FALSE,0
+"test-owned-columns.R","ordinary dictionary cast prototypes do not decode target values",5,0,FALSE,FALSE,0
+"test-owned-columns.R","plain integer and logical cast prototypes need no target payload",4,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign integer prototypes and full replacements skip old payload reads",17,0,FALSE,FALSE,0
+"test-owned-columns.R","capture preserves identical owned columns within one physical table",8,0,FALSE,FALSE,0
+"test-owned-columns.R","public writable and retained pointers cannot change another fork",6,0,FALSE,FALSE,0
+"test-owned-columns.R","public column exports isolate later ordinary and explicit writes",28,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress and data table exports preserve both write directions",21,0,FALSE,FALSE,0
+"test-owned-columns.R","foreign double ingress through dplyr",42,0,FALSE,FALSE,0
+"test-owned-columns.R","read pointers and ordinary aggregates retain safe backing forks",8,0,FALSE,FALSE,0
+"test-owned-columns.R","owned doubles preserve metadata and ordinary serialized values",8,0,FALSE,FALSE,0
+"test-owned-columns.R","reading a column with $ or [[ leaves its handle private for the next write",9,0,FALSE,FALSE,1
+"test-owned-columns.R","a sparse write into a dictionary-backed Stata string allocates only its result",4,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging commits finite boundary bytes",90,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging canonicalizes missing bytes and isolates metadata",22,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging preserves validation priority and failed targets",100,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains scalar selected and foreign readers",26,0,FALSE,FALSE,0
+"test-owned-columns.R","numeric slot staging retains temporal encoded range checks",7,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles preserve boundary bytes and independent payloads",105,0,FALSE,FALSE,0
+"test-owned-columns.R","generated doubles report the first invalid value across block boundaries",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums preserve cancellation across interrupt blocks and chunks",60,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar retained reads cross chunks and survive independent handle writes",176,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","scalar Arrow reads retain native batches after source materialization and GC",50,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact regions preserve all missing codes and chunk edges",236,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable compact dates preserve conversion and serialization",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","immutable captures isolate writable pointers and explicit mutations",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","failed and interrupted owned-column mutations leave captured values intact",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","direct owned compact patches commit only after successful completion",16,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","patch alias checks preserve owned row selector backing",8,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact self-selection and independent selector copies patch correctly",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned row selectors survive replacement callbacks and collection",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow reads retain owned buffers independently of their source",48,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned allocation charges are released after final handles disappear",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel owned fills finish exact counts before publishing chunked columns",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","repeated owned reads collect unreachable native allocations",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","live Arrow storage does not force collection on each small read",23,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","R-backed owners and retained handle forks add no native allocation debt",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","comparisons and gathers read retained regions without compatibility copies",120,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","read roots survive foreign operand and gather callbacks",9,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations retain owned inputs across foreign element callbacks",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","row calculations and groups retain compact and proxy backing",192,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation read roots are released after callback errors and interrupts",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","calculation callbacks cannot change captured immutable input values",2,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","parallel comparison workers split mismatched owned chunk boundaries",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","writers and signatures retain modern and legacy compact sources",42,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","DTA writer pins owned sources while later callbacks materialize them",3,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","Arrow writer and signature pins survive later operand callbacks",10,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","legacy writer layout considers an observed conflict in a later chunk",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned sums keep one accumulator across cancelling float regions",61,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","owned extrema preserve signed zero and missing payload order across regions",108,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","retained captures and mutation views survive allocation GC",56,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","public copying and replacement preserve retained aliases under GC",7,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding preserves isolated compact captures",72,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","metadata scalar forwarding respects both materialized states",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","three-slot scalar views track live compact values and missing counts",36,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","native scalar forwarding does not inspect foreign class metadata",4,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks cover all tags tails and retained chunk boundaries",1632,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates merge columns without changing recycling or names",44,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks preserve shape class and materialized fallbacks",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks agree with eager decoding for legacy and modern floats",37,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks keep legacy integer missing domains",96,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates preserve foreign callbacks and short circuits",24,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing masks retain sources and live view facts across GC",32,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact missing predicates survive reentrant materialization finalizers",12,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact temporal missing predicates preserve converted values and all tags",20,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums match ordered ordinary sums across types and missing permutations",640,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums retain legacy integer domains and non-Stata float payloads",216,0,FALSE,FALSE,0
+"test-owned-numeric-buffers.R","compact sums apply date and datetime conversion before ordered accumulation",252,0,FALSE,FALSE,0

@@ -1,0 +1,8 @@
+"file","test","passed","failed","error","skipped","warning"
+"test-numeric-materialization.R","shared compact materialization decodes without copying compact bytes",320,0,FALSE,FALSE,0
+"test-numeric-materialization.R","allocation finalizers can alias materialize or patch compact inputs",96,0,FALSE,FALSE,0
+"test-numeric-materialization.R","ordinary writable pointer dispatch also avoids a compact detour",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","private materialization does not consume stale missing-count proofs",32,0,FALSE,FALSE,0
+"test-numeric-materialization.R","failed materialization preserves compact state and finalizer aliases",16,0,FALSE,FALSE,0
+"test-numeric-materialization.R","unwinding materialization restores a private compact write claim",5,0,FALSE,FALSE,0
+"test-numeric-materialization.R","materialization roots survive collection at every allocation",6,0,FALSE,FALSE,0
