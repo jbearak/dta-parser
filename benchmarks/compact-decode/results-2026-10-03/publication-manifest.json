@@ -1,56 +1,56 @@
 {
   "files": {
     "builds/baseline/build-receipt.json": {
-      "bytes": 99857,
-      "sha256": "66afb373dc97203896010e8dbe40cbb7448a33a3781ad692cf4c9b31d66d1ce9"
+      "bytes": 99747,
+      "sha256": "277811b44a8bf965d891d37dcaa5ed0103d104608db037022f547620a4a38145"
     },
     "builds/baseline/build.log": {
       "bytes": 24846,
       "sha256": "639d2f888b69f76a649d57a61ba6966b0d9d5f67b3b101553951a592f9ca509d"
     },
     "builds/baseline/input-record.json": {
-      "bytes": 73405,
-      "sha256": "ab62091d0190bb84a3de7e63cc0d219f513a7d3e60ef9056d8ce7da200cade88"
+      "bytes": 73295,
+      "sha256": "b78b93d58372f653fc1dad5e7edf3d0fe075b40e22cb10212ad5731e2ee7762b"
     },
     "builds/baseline/source.patch": {
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "builds/candidate/build-receipt.json": {
-      "bytes": 100279,
-      "sha256": "dffcb2753ab03bb40c503b993ee0cf6c82d26b4184b348986afaf31254402100"
+      "bytes": 100169,
+      "sha256": "279b7f8c9608b030cd5f991afc892cce89e8f6c36ccb69a6188591417716b02f"
     },
     "builds/candidate/build.log": {
       "bytes": 24195,
       "sha256": "b26cf195d3a3162e65a3477f169184ee613ba0bc98c23b4ba2385c121d35c518"
     },
     "builds/candidate/input-record.json": {
-      "bytes": 73708,
-      "sha256": "18dc9a6f757377dd3b9261aca40fe60ceeb0040fc10002d61f14978f19c90199"
+      "bytes": 73598,
+      "sha256": "fc68c0520c50e670f0ba860caac0d35303ca37ae02d8270818332f574f605bc7"
     },
     "builds/candidate/source.patch": {
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "builds/qualified/build-receipt.json": {
-      "bytes": 100279,
-      "sha256": "e2341a6cb0ee73095f7892cf6afd5320021500f25c43b836c05633c06ea2910c"
+      "bytes": 100169,
+      "sha256": "fda689da959ac82f178448a10754d92b220d9fb5151c749807c0573904d5f4ab"
     },
     "builds/qualified/build.log": {
       "bytes": 24195,
       "sha256": "fc64b82fa24f00125d5a005642df27bba87eac88f2c36b6381e192c762009dfd"
     },
     "builds/qualified/input-record.json": {
-      "bytes": 73708,
-      "sha256": "760212421f2a6622df5cac07c07dc1e8ca2549cb5b0bb99b7dea35811137d911"
+      "bytes": 73598,
+      "sha256": "9c90cb7784778eab10bc6d9c6cdbb3ecbe0c30cc8b75f68b63e53cb4bed760ec"
     },
     "builds/qualified/source.patch": {
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "probe/input-record.json": {
-      "bytes": 3643,
-      "sha256": "4156a1b84212c6411b116e8f1b9e2adb99316fcc5e53844763531559d8c9a3bb"
+      "bytes": 3533,
+      "sha256": "cd40959b1709e4e68dc633e68ef24c8bf9fb52d12d7307debf59b780eb46625e"
     },
     "probe/materialization_probe.c": {
       "bytes": 2431,
@@ -62,7 +62,7 @@
     },
     "publication-source-map.json": {
       "bytes": 27365,
-      "sha256": "46bf1e8d712bbcf2df02f1b8a10407ea8f65c5dbbcf764cfd4156685a08f7ad0"
+      "sha256": "b1c3a4895e18b802e7159a793541181e9babf447c2abddf7fb59315127075fac"
     },
     "qualification/completion.json": {
       "bytes": 472,
@@ -73,12 +73,12 @@
       "sha256": "6f2cc4bb1916d887a3f2d0fe9d69896b815e84986ecb6e12fbb09ad825261794"
     },
     "qualification/provenance-after.json": {
-      "bytes": 377109,
-      "sha256": "069d17a3f80223160e44e07c798288fff11620d043f0ef3b302622c070acd09f"
+      "bytes": 376889,
+      "sha256": "a259c6dc75ccc477776c64aae59d336f557383351225515da7560857f6311512"
     },
     "qualification/provenance-before.json": {
-      "bytes": 377182,
-      "sha256": "1db503e062452d62ef608c8e8800e01a416ac8b4b1b57b4d9cc30896e54b99f3"
+      "bytes": 376962,
+      "sha256": "35c767862418231e4b5c2d3701ea1b62100dc843e31b65dcf7f7006e70795101"
     },
     "qualification/raw.csv": {
       "bytes": 15721,
@@ -241,12 +241,12 @@
       "sha256": "0162f6b8e960f91d1f8b1a00c02a05a69081e40aee465db005164f537a7eda68"
     },
     "timings/provenance-after.json": {
-      "bytes": 377109,
-      "sha256": "069d17a3f80223160e44e07c798288fff11620d043f0ef3b302622c070acd09f"
+      "bytes": 376889,
+      "sha256": "a259c6dc75ccc477776c64aae59d336f557383351225515da7560857f6311512"
     },
     "timings/provenance-before.json": {
-      "bytes": 377182,
-      "sha256": "1db503e062452d62ef608c8e8800e01a416ac8b4b1b57b4d9cc30896e54b99f3"
+      "bytes": 376962,
+      "sha256": "35c767862418231e4b5c2d3701ea1b62100dc843e31b65dcf7f7006e70795101"
     },
     "timings/raw.csv": {
       "bytes": 115698,
@@ -277,8 +277,8 @@
       "sha256": "27650f5ec41c38faed1df2fcbea8e8ef11f4790e71a86b0e3b5c4141b68a3b01"
     },
     "validation/arithmetic-main-integration/build-receipt.json": {
-      "bytes": 100595,
-      "sha256": "0cea767b2ba2c241318bf50fc346efd238d4fe49a694ef0d24d1d8d8b1fc4154"
+      "bytes": 100485,
+      "sha256": "e04c90c49df232fe763438e4c28b4d81765c298aff48b40ebe709c5253114ca2"
     },
     "validation/arithmetic-main-integration/focused.R": {
       "bytes": 929,
@@ -381,5 +381,5 @@
       "sha256": "3a5dab98a2ca64d3b87b027f46e0aa3f0c1c382377829c64fc29a49b1b3c3144"
     }
   },
-  "scope": "Text evidence only. Private paths and user-identity environment values are substituted; source map retains original and published hashes. Receipt hashes bind original build inputs and package/probe binaries, not redacted publication copies."
+  "scope": "Text evidence only. Private paths and user-identity environment values are substituted; source map retains original and published hashes. Receipt hashes bind original build inputs and package/probe binaries, not redacted publication copies. Public LOGNAME/USER values and their direct per-field digests are redacted; whole historical receipt hashes and source-map original hashes still bind the original inputs, while published hashes bind the redacted copies."
 }
