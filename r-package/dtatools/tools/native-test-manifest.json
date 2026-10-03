@@ -1779,7 +1779,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-kernels.R",
-          "sha256": "37cab6ffbbce32ed933e35fd4dfdadec67953bb3e88a3a67e6b44501a040b733"
+          "sha256": "7ddc524390fa7f4db7c6302cc0adb391d5ef2d21e77cee1b88ce00e17ba98203"
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
@@ -4364,6 +4364,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-kernels.R",
+          "test": "rounded float multiplication limits retain exact binary64 storage decisions",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 412,
           "warnings": 0
         },
         {
