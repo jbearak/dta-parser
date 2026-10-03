@@ -411,6 +411,12 @@ test_that("float span arithmetic matches eager IEEE and reserved-code decoding",
                 expect_scaled("/", x, scalar, plain, scalar)
                 expect_scaled("/", scalar, x, scalar, plain)
             }
+            for (scalar in c(0, -0, 0.1, -1e38, 1e39)) {
+                for (op in c("+", "-", "*")) {
+                    expect_scaled(op, x, scalar, plain, scalar)
+                    expect_scaled(op, scalar, x, scalar, plain)
+                }
+            }
             expect_scaled("+", x, x, plain, plain)
             expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
             expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))

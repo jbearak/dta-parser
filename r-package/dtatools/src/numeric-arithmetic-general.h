@@ -389,6 +389,8 @@ static void arithmetic_general_integer_scalar_write(
     output->missing_count = data->missing_count;
 }
 
+#include "numeric-arithmetic-float-scalar.h"
+
 static int arithmetic_general_produce(
     const arithmetic_general_source *left, const arithmetic_general_source *right,
     R_xlen_t length, int operation, int minimum, arithmetic_general_output *output
@@ -402,6 +404,10 @@ static int arithmetic_general_produce(
             column, scalar, reverse, length, operation, output);
         return output->kind;
     }
+    arithmetic_float_scalar_proof float_proof;
+    if (arithmetic_float_scalar_prove(
+            left, right, length, operation, output->kind, &float_proof))
+        return arithmetic_float_scalar_write(&float_proof, length, output);
     return arithmetic_general_run(left, right, length, operation, minimum, output);
 }
 

@@ -471,9 +471,9 @@ test_that("general integer scalar proof includes imported physical signed minima
     }
 })
 
-test_that("floating integer scalar results reject unsafe endpoint proofs", {
+test_that("floating scalar results reject unsafe endpoint proofs", {
     .arithmetic_parity_enable()
-    for (kind in c("byte", "int", "long")) {
+    for (kind in c("byte", "int", "long", "float")) {
         x <- .arithmetic_parity_source(kind, c(-100, -1, 0, 1, 100, NA_real_, tagged_missing("z")), 3L)
         source <- .arithmetic_parity_bytes(x)
         for (scalar in c(1.01, 1e307, -1e307,
@@ -502,6 +502,90 @@ test_that("floating integer scalar results reject unsafe endpoint proofs", {
                 expect_false(anyNA(result$x))
                 expect_identical(.arithmetic_parity_bytes(x), source)
                 expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+            }
+        }
+    }
+})
+
+test_that("float scalar interval proofs retain zero signs and exact missing counts", {
+    .arithmetic_parity_enable()
+    missing <- c(NA_real_, tagged_missing(letters))
+    observed <- c(-0, 0, -2^-149, 2^-149, -1, 1, -1e38, 1e38)
+    cases <- list(list("+", 0.1), list("-", -0.1), list("*", 1.01),
+        list("*", -3.25), list("*", -0), list("*", 0), list("/", -3.25),
+        list("/", .Machine$double.xmin * .Machine$double.eps),
+        list("/", .Machine$double.xmax), list("+", 1e39), list("-", -1e39),
+        list("*", 1e307), list("+", 1e307))
+    for (values in list(observed, c(observed, missing), missing)) {
+        for (chunk in list(NULL, 7L)) {
+            x <- .arithmetic_parity_source("float", values, chunk)
+            for (case in cases) {
+                for (reverse in c(FALSE, TRUE)) {
+                    op <- case[[1L]]; scalar <- case[[2L]]
+                    info <- paste("float interval", op, scalar, reverse, chunk)
+                    actual <- if (reverse)
+                        .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
+                    else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
+                    expected_missing <- is.na(as.double(actual))
+                    expect_identical(is.na(actual), expected_missing, info = info)
+                    expect_identical(anyNA(actual), any(expected_missing), info = info)
+                    if (any(expected_missing)) {
+                        result <- dibble(x = actual)
+                        replace_values(result, x = 0, where = which(expected_missing))
+                        expect_false(anyNA(result$x), info = info)
+                    }
+                }
+            }
+        }
+    }
+})
+
+test_that("float scalar fit intervals include exactly their binary32 boundary neighbors", {
+    .arithmetic_parity_enable()
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    withr::defer(unlink(path))
+    float_limit <- (2^24 - 1) * 2^103
+    physical_limit <- (2^24 - 1) * 2^104
+    raw_bits <- function(value) as.raw(floor(value / 256^(0:3)) %% 256)
+    # The oracle uses ordinary binary64 arithmetic and the established result
+    # policy. Generate neighbors from algebraic estimates, independently of
+    # the native search over ordered encodings; the estimates need not be exact.
+    neighbor_bits <- function(value) {
+        if (!is.finite(value) || abs(value) > physical_limit) return(numeric())
+        encoded <- readBin(writeBin(abs(value), raw(), size = 4L, endian = "little"),
+                           integer(), n = 1L, size = 4L, endian = "little")
+        nearby <- encoded + (-2:2)
+        nearby <- nearby[nearby >= 0 & nearby <= 0x7f7fffff]
+        unique(c(nearby, nearby + 0x80000000))
+    }
+    for (scalar in c(1.01, -3.25, 0.1, -1e38, 1e38, -1e39, 1e39, 1e-30)) {
+        for (op in c("+", "-", "*", "/")) {
+            for (reverse in c(FALSE, TRUE)) {
+                estimates <- switch(op,
+                    "+" = c(-float_limit - scalar, float_limit - scalar),
+                    "-" = if (reverse) c(scalar - float_limit, scalar + float_limit)
+                          else c(-float_limit + scalar, float_limit + scalar),
+                    "*" = c(-float_limit / scalar, float_limit / scalar),
+                    "/" = if (reverse) c(-scalar / float_limit, scalar / float_limit)
+                          else c(-float_limit * scalar, float_limit * scalar))
+                bits <- unique(c(0, 0x80000000, 1, 0x80000001, 0x3ecccccd,
+                    0x7effffff, 0x7f000001, 0x7f7fffff, 0xff7fffff,
+                    unlist(lapply(estimates, neighbor_bits), use.names = FALSE)))
+                for (batch in split(bits, ceiling(seq_along(bits) / 27L))) {
+                    for (index in seq_along(batch))
+                        patch_numeric_fixture_row(path, index - 1L,
+                            list(x_float = raw_bits(batch[[index]])))
+                    compact <- read_dta(path, col_select = "x_float", n_max = length(batch))$x_float
+                    eager <- read_dta(path, col_select = "x_float", n_max = length(batch),
+                                      use_numeric_altrep = FALSE)$x_float
+                    expect_identical(as.double(compact), as.double(eager))
+                    for (x in list(compact, .Call(C_dtatools_owned_numeric_freeze, compact, 7L))) {
+                        info <- paste("imported float boundary", op, scalar, reverse)
+                        if (reverse)
+                            .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
+                        else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
+                    }
+                }
             }
         }
     }
