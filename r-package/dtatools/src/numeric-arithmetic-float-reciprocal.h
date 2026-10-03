@@ -7,6 +7,7 @@ typedef struct {
     const arithmetic_general_source *column;
     double scalar;
     uint32_t minimum_magnitude;
+    int all_missing;
 } arithmetic_float_reciprocal_proof;
 
 static int arithmetic_float_reciprocal_safe(
@@ -34,6 +35,13 @@ static int arithmetic_float_reciprocal_prove(
     if (data == NULL || data->kind != NUMERIC_FLOAT || data->temporal != 0 ||
         right->operand->length != length || data->missing_count > (size_t) length)
         return 0;
+    proof->column = right;
+    proof->scalar = left->scalar;
+    proof->minimum_magnitude = 0;
+    proof->all_missing = data->missing_count == (size_t) length;
+    /* Captured exact input counts prove every result missing independently
+       of its denominator encoding. No threshold or input read is needed. */
+    if (proof->all_missing) return 1;
     /* Encodings below 0x7f000000 are finite and observed in both formats.
        Search this conservative domain only; exceptional spans stay exact.
        Both signs matter under directed rounding. */
@@ -44,8 +52,6 @@ static int arithmetic_float_reciprocal_prove(
         if (arithmetic_float_reciprocal_safe(left->scalar, middle, kind)) high = middle;
         else low = middle + 1;
     }
-    proof->column = right;
-    proof->scalar = left->scalar;
     proof->minimum_magnitude = low;
     return 1;
 }
@@ -93,10 +99,33 @@ static int arithmetic_float_reciprocal_prepare_block(
     return minimum >= threshold;
 }
 
+/* The caller supplies fresh output with a zero missing count. */
+static int arithmetic_float_reciprocal_fill_missing(
+    R_xlen_t length, arithmetic_general_output *output
+) {
+    for (size_t start = 0; start < (size_t) length;) {
+        R_CheckUserInterrupt();
+        size_t count = (size_t) length - start;
+        if (count > 16384) count = 16384;
+        if (output->kind == NUMERIC_FLOAT) {
+            float *target = (float *) (void *) output->raw + start;
+            for (size_t i = 0; i < count; i++) target[i] = 0x1p127f;
+        } else {
+            double *target = output->real + start;
+            for (size_t i = 0; i < count; i++) target[i] = NA_REAL;
+        }
+        output->missing_count += count;
+        start += count;
+    }
+    return output->kind;
+}
+
 static int arithmetic_float_reciprocal_write(
     const arithmetic_float_reciprocal_proof *proof, R_xlen_t length,
     arithmetic_general_output *output
 ) {
+    if (proof->all_missing)
+        return arithmetic_float_reciprocal_fill_missing(length, output);
     const arithmetic_general_source *column = proof->column;
     const numeric_data *data = column->operand->reader.storage;
     const double scalar = proof->scalar;
@@ -116,6 +145,7 @@ static int arithmetic_float_reciprocal_write(
         do {                                                               \
             TYPE *restrict target = (TARGET) + start;                      \
             unsigned failed_blocks = 0;                                   \
+            unsigned ordinary_failures = 0;                               \
             for (size_t block = 0; block < count;) {                       \
                 size_t take = count - block;                               \
                 if (take > 64) take = 64;                                  \
@@ -123,27 +153,39 @@ static int arithmetic_float_reciprocal_write(
                 float prepared[64];                                       \
                 unsigned char missing[64];                                \
                 unsigned block_missing = 0;                               \
-                int proved = PREPARED                                     \
-                    ? arithmetic_float_reciprocal_prepare_block(           \
-                        raw, block, take, column, threshold,                \
-                        prepared, missing, &block_missing)                 \
-                    : arithmetic_float_reciprocal_ordinary_block(          \
+                /* Retry the ordinary proof at each captured span. */     \
+                int ordinary = !(PREPARED && ordinary_failures == 4) &&   \
+                    arithmetic_float_reciprocal_ordinary_block(            \
                         raw, block, take, threshold);                      \
+                int prepared_block = PREPARED && !ordinary;               \
+                int proved = ordinary;                                    \
+                if (PREPARED) {                                           \
+                    if (ordinary) ordinary_failures = 0;                  \
+                    else {                                                \
+                        if (ordinary_failures < 4) ordinary_failures++;    \
+                        proved = arithmetic_float_reciprocal_prepare_block( \
+                            raw, block, take, column, threshold,            \
+                            prepared, missing, &block_missing);            \
+                    }                                                     \
+                }                                                         \
                 if (proved) {                                             \
                     failed_blocks = 0;                                    \
-                    if (PREPARED && block_missing == take) {              \
-                        for (size_t i = block; i < end; i++)              \
+                    if (!prepared_block) {                                  \
+                        for (size_t i = block; i < end; i++) {              \
+                            float source;                                   \
+                            memcpy(&source, raw + i * sizeof(source), sizeof(source));\
+                            target[i] = (TYPE) (scalar / (double) source);  \
+                        }                                                   \
+                    } else if (block_missing == take) {                     \
+                        for (size_t i = block; i < end; i++)                \
                             target[i] = (TYPE) (MISSING);                   \
-                    } else {                                              \
-                        for (size_t i = block; i < end; i++) {            \
-                            float source;                                 \
-                            if (PREPARED) source = prepared[i - block];    \
-                            else memcpy(&source, raw + i * sizeof(source), sizeof(source)); \
-                            double quotient = scalar / (double) source;   \
-                            target[i] = PREPARED && missing[i - block]     \
+                    } else {                                                \
+                        for (size_t i = block; i < end; i++) {              \
+                            double quotient = scalar / (double) prepared[i - block];\
+                            target[i] = missing[i - block]                  \
                                 ? (TYPE) (MISSING) : (TYPE) quotient;       \
-                        }                                                 \
-                    }                                                     \
+                        }                                                   \
+                    }                                                       \
                     missing_count += block_missing;                       \
                     block = end;                                          \
                     continue;                                             \

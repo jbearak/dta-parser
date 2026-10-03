@@ -1825,7 +1825,7 @@
         },
         {
           "path": "tests/testthat/test-native-arithmetic-parity.R",
-          "sha256": "676eb9e7e788c3c284b503468f0ca710c6fe2dbec61d52bae6360d7578d9bea3"
+          "sha256": "a31152894bd9adf59fdbb6d80029b0e75d5cb69fe65ded507f72182a95e70cd9"
         }
       ],
       "blocks": [
@@ -4607,6 +4607,14 @@
           "skip": "forbid",
           "min_pass": 2700,
           "warnings": 0
+        },
+        {
+          "file": "test-native-arithmetic-parity.R",
+          "test": "adaptive reciprocal proofs recover ordinary tails after dense spans",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1036,
+          "warnings": 0
         }
       ],
       "children": [
@@ -6139,7 +6147,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
-          "sha256": "c7e63eda9a3400ae81f433069a54b14cc827b854ee2e8acaa378fe84e2c49664"
+          "sha256": "376e36f59a5513687985cafdf91a3a13e7748c6572abd0c40f33190e0f965e01"
         },
         {
           "path": "tests/testthat/test-numeric-materialization.R",
@@ -7741,6 +7749,17 @@
           "occurrence": 1,
           "skip": "allow",
           "min_pass": 30,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-arithmetic-payload-lifetime.R",
+          "test": "all missing reciprocal proofs retain captured counts through reentry",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 100,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",

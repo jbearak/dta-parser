@@ -287,3 +287,46 @@ test_that("float reciprocal proofs retain captured bytes and missing counts duri
         }
     }
 })
+
+test_that("all missing reciprocal proofs retain captured counts through reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    n <- 16385L
+    tags <- c(NA_real_, tagged_missing(letters))
+    for (chunk in list(NULL, 7L)) {
+        for (declared_double in c(FALSE, TRUE)) {
+            for (action in c("observed", "tiny", "materialize")) {
+                values <- rep(tags, length.out = n)
+                x <- dta_float(values)
+                if (!is.null(chunk)) x <- .Call(C_dtatools_owned_numeric_freeze, x, chunk)
+                scalar <- if (declared_double) dta_double(1.01) else 1.01
+                fired <- 0L
+                .arithmetic_lifetime_arm(function(key) {
+                    fired <<- fired + 1L
+                    if (action == "materialize") .force_altrep_materialization(x)
+                    else .Call(C_dtatools_patch_vector, x, n,
+                        if (action == "observed") 1 else 2^-149)
+                })
+                actual <- scalar / x
+                expect_identical(fired, 1L)
+                expect_identical(dta_storage_type(actual),
+                    if (declared_double) "double" else "float")
+                expected <- writeBin(rep(NA_real_, n), raw(), size = 8L)
+                expect_identical(writeBin(as.double(actual), raw(), size = 8L), expected)
+                expect_true(anyNA(actual))
+                if (action != "materialize")
+                    values[[n]] <- if (action == "observed") 1 else 2^-149
+                expect_identical(writeBin(as.double(x), raw(), size = 8L),
+                    writeBin(values, raw(), size = 8L))
+                if (action == "materialize")
+                    expect_true(.Call(C_dtatools_is_materialized_numeric_altrep, x))
+                data <- dibble(value = actual)
+                replace_values(data, value = 7, where = seq_len(n))
+                expect_false(anyNA(data$value))
+                expect_identical(writeBin(as.double(data$value), raw(), size = 8L),
+                    writeBin(rep(7, n), raw(), size = 8L))
+                expect_identical(writeBin(as.double(actual), raw(), size = 8L), expected)
+            }
+        }
+    }
+})
