@@ -710,3 +710,38 @@ test_that("scalar block proofs preserve imported exceptions after ordinary spans
         }
     }
 })
+test_that("float reciprocal block proofs preserve zero exceptions and late promotion", {
+    .arithmetic_parity_enable()
+    n <- 32769L
+    for (pattern in c("ordinary", "sparse", "prefix", "late")) {
+        values <- rep(c(0.125, -0.125, 1.5, -1.5), length.out = n)
+        if (pattern == "sparse") {
+            values[seq.int(13L, n, by = 997L)] <- NA_real_
+            values[c(16384L, 16385L)] <- c(0, -0)
+        }
+        if (pattern == "prefix")
+            values[seq_len(256L)] <- rep(c(NA_real_, tagged_missing(letters)), length.out = 256L)
+        if (pattern == "late") values[[n]] <- 2^-149
+        for (chunk in list(NULL, 7L, 16385L)) {
+            x <- .arithmetic_parity_source("float", values, chunk)
+            for (scalar in c(1.01, -1.01, 0, -0)) {
+                info <- paste("float reciprocal", pattern, scalar, chunk)
+                actual <- .arithmetic_parity_expect("/", scalar, x, "float", NULL, info)
+                missing <- is.na(as.double(actual))
+                expect_identical(is.na(actual), missing, info = info)
+                expect_identical(anyNA(actual), any(missing), info = info)
+                result <- dibble(x = actual)
+                replace_values(result, x = 0, where = which(missing))
+                expect_false(anyNA(result$x), info = info)
+            }
+            # Explicit double output preserves the original scalar precision
+            # and bypasses narrowing while using the same source claim.
+            scalar <- 1 + 2^-52
+            expected <- dtatools:::.dta_computed(scalar / as.double(x), "double")
+            actual <- dta_double(scalar) / x
+            expect_identical(dta_storage_type(actual), "double")
+            expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected))
+            expect_identical(is.na(actual), is.na(as.double(expected)))
+        }
+    }
+})
