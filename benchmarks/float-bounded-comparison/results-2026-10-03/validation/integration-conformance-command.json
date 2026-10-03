@@ -1,0 +1,21 @@
+{
+  "commit": "38f05322df0ee6f3930f556620ed6cce120f8c8f",
+  "command": [
+    "sh",
+    "/private/tmp/dta-float-bounded-evidence/integration-conformance-gate.sh"
+  ],
+  "cwd": "/private/tmp/dta-float-bounded-evidence/integration-export",
+  "repository": "/private/tmp/dta-float-bounded-fallback",
+  "environment": {
+    "DTA_REQUIRE_R_CONFORMANCE": "1",
+    "R_ENVIRON_USER": "/dev/null",
+    "R_PROFILE_USER": "/dev/null"
+  },
+  "original_script_sha256": "76c1667156e554d2731a28408ea45c551c49a13698593a47e7c6632f5802b758",
+  "wrapper_sha256": "ba49397a09a7b965d8d00cf61eccc15f4954a942f15858803d4dfe855c240f89",
+  "only_wrapper_change": "Preserve temporary source archive and check outputs before original cleanup.",
+  "measured_float_commit": "847919ceb78bf08674fca9f9af02583449e590a6",
+  "measured_float_sha256": "a5f017aa930ba0035e6f677edeb4dbff193f3faccb47461f3fc0501d1d9dba3d",
+  "integrated_main": "20ec12cebcce0afa6981c82a59686fa055975b6f",
+  "integrated_pr294": "63aa9e8f1a36fe077e683fbbea61c9166e356f1d"
+}

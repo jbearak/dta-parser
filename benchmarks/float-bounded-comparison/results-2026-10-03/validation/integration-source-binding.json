@@ -1,0 +1,28 @@
+{
+  "integration_commit": "38f05322df0ee6f3930f556620ed6cce120f8c8f",
+  "main_commit": "20ec12cebcce0afa6981c82a59686fa055975b6f",
+  "package_delta": {
+    "r-package/dtatools/src/rust/src/float_compare.rs": {
+      "measured_commit": "847919ceb78bf08674fca9f9af02583449e590a6",
+      "sha256": "a5f017aa930ba0035e6f677edeb4dbff193f3faccb47461f3fc0501d1d9dba3d",
+      "byte_identical": true
+    },
+    "r-package/dtatools/src/rust/src/double_compare.rs": {
+      "measured_commit": "bb135c1f274e0ddb5d37d29fdccdcf34b09f83f2",
+      "sha256": "a99adb3738345ca8e9eb0831fb73413192b953f04661a62248883bacfa77836a",
+      "byte_identical": true
+    }
+  },
+  "rust_tests": 64,
+  "manifest_tests": 7,
+  "controller_suites_normal_and_optimized": {
+    "float_bounded": 13,
+    "decoded_double_density": 12,
+    "decoded_double_patterns": 13
+  },
+  "logs": {
+    "integration-rust.log": "cd37b5f135762d9fc3cf94fefba643e9fff85180bc23987e0048f63058028597",
+    "integration-manifest-tests.log": "d5a4875b4579cd8d17f8638658e481f105ebc0103894fd6f33918fb7e91153a0",
+    "integration-controller-tests.json": "bc4a137a503be8709b2451267da4b0e400dc63956df644663c0757149bb9e004"
+  }
+}
