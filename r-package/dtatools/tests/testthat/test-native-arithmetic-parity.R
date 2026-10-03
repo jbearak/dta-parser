@@ -719,14 +719,22 @@ test_that("float reciprocal block proofs preserve zero exceptions and late promo
                 missing <- is.na(as.double(actual))
                 expect_identical(is.na(actual), missing, info = info)
                 expect_identical(anyNA(actual), any(missing), info = info)
+                original_bytes <- .arithmetic_parity_bytes(actual)
+                cleared <- as.double(actual)
+                cleared[missing] <- 0
                 result <- dibble(x = actual)
                 replace_values(result, x = 0, where = which(missing))
                 expect_false(anyNA(result$x), info = info)
+                expect_identical(.arithmetic_parity_bytes(result$x),
+                    writeBin(cleared, raw(), size = 8L, endian = "little"), info = info)
+                expect_identical(.arithmetic_parity_bytes(actual), original_bytes, info = info)
             }
             # Explicit double output preserves the original scalar precision
             # and bypasses narrowing while using the same source claim.
             scalar <- 1 + 2^-52
-            expected <- dtatools:::.dta_computed(scalar / as.double(x), "double")
+            reference <- scalar / as.double(x)
+            reference[is.na(as.double(x))] <- NA_real_
+            expected <- dtatools:::.dta_computed(reference, "double")
             actual <- dta_double(scalar) / x
             expect_identical(dta_storage_type(actual), "double")
             expect_identical(.arithmetic_parity_bytes(actual), .arithmetic_parity_bytes(expected))
