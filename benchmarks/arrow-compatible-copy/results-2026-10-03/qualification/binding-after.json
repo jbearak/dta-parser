@@ -36,7 +36,7 @@
             "value": "C.UTF-8"
           },
           "LOGNAME": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           },
           "PATH": {
@@ -56,7 +56,7 @@
             "value": "<private>"
           },
           "USER": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           }
         },
@@ -1328,7 +1328,7 @@
             "value": "C.UTF-8"
           },
           "LOGNAME": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           },
           "PATH": {
@@ -1348,7 +1348,7 @@
             "value": "<private>"
           },
           "USER": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           }
         },

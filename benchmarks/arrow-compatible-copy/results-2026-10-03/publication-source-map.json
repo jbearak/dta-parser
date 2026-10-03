@@ -1,7 +1,7 @@
 {
   "builds/baseline/build-receipt.json": {
     "original_sha256": "1b9592ab907031dc95bcd8e36caeedd654b66b25cf4d2e9e168c2f5e04cc98d3",
-    "published_sha256": "1b9592ab907031dc95bcd8e36caeedd654b66b25cf4d2e9e168c2f5e04cc98d3",
+    "published_sha256": "5a8bdfe9cfb70c54d4f3f322d88b8785aa0253620d060ff53cf4f11a02e94618",
     "source": "<baseline-integration-evidence>/combined-build/build-receipt.json"
   },
   "builds/baseline/build.log": {
@@ -11,7 +11,7 @@
   },
   "builds/baseline/input-record.json": {
     "original_sha256": "8c41fc96ddbb6194e763ddb5ddb2a79be2b906e9779a720060dad1044482c159",
-    "published_sha256": "8c41fc96ddbb6194e763ddb5ddb2a79be2b906e9779a720060dad1044482c159",
+    "published_sha256": "03bc7336692c58ad361994eece30beef487d4a53408e8ac60320790231f6a653",
     "source": "<baseline-integration-evidence>/combined-build/input-record.json"
   },
   "builds/baseline/source.patch": {
@@ -21,7 +21,7 @@
   },
   "builds/candidate/build-receipt.json": {
     "original_sha256": "67cdfe447c37082a4fcc268ae8deb3121965c7a968d41f77e8ba65d22bef2faa",
-    "published_sha256": "67cdfe447c37082a4fcc268ae8deb3121965c7a968d41f77e8ba65d22bef2faa",
+    "published_sha256": "728db3782c83fd95a799638b42a11a029755a21ab39dcf0d2b725a6d98a033ac",
     "source": "<compatible-copy-evidence>/candidate-v1/build-receipt.json"
   },
   "builds/candidate/build.log": {
@@ -31,7 +31,7 @@
   },
   "builds/candidate/input-record.json": {
     "original_sha256": "b14ae2026532baec6cf8e32cdde61f40b37e2883aec962f9cb76a2471c73e0d1",
-    "published_sha256": "b14ae2026532baec6cf8e32cdde61f40b37e2883aec962f9cb76a2471c73e0d1",
+    "published_sha256": "67c244f8cd5983375b5434e5c93dd47e821af10c165dab09864bde6458c9a4be",
     "source": "<compatible-copy-evidence>/candidate-v1/input-record.json"
   },
   "builds/candidate/source.patch": {
@@ -41,7 +41,7 @@
   },
   "builds/integration/build-receipt.json": {
     "original_sha256": "34f38335efb6a69941821922c00c85327724af57256d329c81df07aba492510c",
-    "published_sha256": "34f38335efb6a69941821922c00c85327724af57256d329c81df07aba492510c",
+    "published_sha256": "f702ff08ff0471458d3be23829c5641c983cdb8cd892f3d22d29a79e52366b92",
     "source": "<compatible-copy-evidence>/integration-build-v1/build-receipt.json"
   },
   "builds/integration/build.log": {
@@ -51,7 +51,7 @@
   },
   "builds/integration/input-record.json": {
     "original_sha256": "b532213937b5f70bd11ffa1c9590bb84324728ed4fab706d654b8c102814d93d",
-    "published_sha256": "b532213937b5f70bd11ffa1c9590bb84324728ed4fab706d654b8c102814d93d",
+    "published_sha256": "cdf163b4428bf899fe2de9133024589f6597b83006339bd85281b8c108fb896d",
     "source": "<compatible-copy-evidence>/integration-build-v1/input-record.json"
   },
   "builds/integration/source.patch": {
@@ -666,12 +666,12 @@
   },
   "qualification/binding-after.json": {
     "original_sha256": "c56aeff8e5069076d70550c5b9102013e4c280478021eb88a924c552793bf4cf",
-    "published_sha256": "6721c18f468db4348e40e5105a598c6cced7a3a83b092e622c6b81a61786b5ee",
+    "published_sha256": "581cf42c4a2cc8a77f28f8e38c3807acf42e9cbd6fd7a2c50e7e09aa2f175a96",
     "source": "<compatible-copy-evidence>/qualification-v2/binding-after.json"
   },
   "qualification/binding-before.json": {
     "original_sha256": "c56aeff8e5069076d70550c5b9102013e4c280478021eb88a924c552793bf4cf",
-    "published_sha256": "6721c18f468db4348e40e5105a598c6cced7a3a83b092e622c6b81a61786b5ee",
+    "published_sha256": "581cf42c4a2cc8a77f28f8e38c3807acf42e9cbd6fd7a2c50e7e09aa2f175a96",
     "source": "<compatible-copy-evidence>/qualification-v2/binding-before.json"
   },
   "qualification/completion.json": {
@@ -4056,12 +4056,12 @@
   },
   "timings/binding-after.json": {
     "original_sha256": "c56aeff8e5069076d70550c5b9102013e4c280478021eb88a924c552793bf4cf",
-    "published_sha256": "6721c18f468db4348e40e5105a598c6cced7a3a83b092e622c6b81a61786b5ee",
+    "published_sha256": "581cf42c4a2cc8a77f28f8e38c3807acf42e9cbd6fd7a2c50e7e09aa2f175a96",
     "source": "<compatible-copy-evidence>/paired-v1/binding-after.json"
   },
   "timings/binding-before.json": {
     "original_sha256": "c56aeff8e5069076d70550c5b9102013e4c280478021eb88a924c552793bf4cf",
-    "published_sha256": "6721c18f468db4348e40e5105a598c6cced7a3a83b092e622c6b81a61786b5ee",
+    "published_sha256": "581cf42c4a2cc8a77f28f8e38c3807acf42e9cbd6fd7a2c50e7e09aa2f175a96",
     "source": "<compatible-copy-evidence>/paired-v1/binding-before.json"
   },
   "timings/completion.json": {
