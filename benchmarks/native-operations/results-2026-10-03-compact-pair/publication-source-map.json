@@ -169,15 +169,15 @@
   },
   {
     "artifact": "timings/provenance-after.json",
-    "published_sha256": "e3cd41ae39d70e97b17acdecf7d3e58ba6cd60ecb544bab41303f21984f990b4",
+    "published_sha256": "d121689ab4da2fef042a19b567d517b05a1c2800fee29b46fb224718dce1a2c0",
     "source_sha256": "e3cd41ae39d70e97b17acdecf7d3e58ba6cd60ecb544bab41303f21984f990b4",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "timings/provenance-before.json",
-    "published_sha256": "1d449ed804463310f70c67dbee0dac8b6821eec20972b756443cbdae5d277461",
+    "published_sha256": "2c96083194274ea6e5ce6f576b098e7b8781e87450100c470f273cdb85b0787a",
     "source_sha256": "1d449ed804463310f70c67dbee0dac8b6821eec20972b756443cbdae5d277461",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "timings/raw.csv",
@@ -199,15 +199,15 @@
   },
   {
     "artifact": "builds/baseline/build-receipt.json",
-    "published_sha256": "79f7ba650d936a95e4301d74b99703d5bdce490b0debc8283ddb1f036b8544c4",
+    "published_sha256": "9d3f3c171830f3d08b9a4b149d403345b6fff96fcacf29c5d682f62f77bbd055",
     "source_sha256": "79f7ba650d936a95e4301d74b99703d5bdce490b0debc8283ddb1f036b8544c4",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "builds/baseline/input-record.json",
-    "published_sha256": "585804571aa12b399f1900db21cd2dc50249f703265c951020a0a4ecb7c5a184",
+    "published_sha256": "4b7a39da745e1a6a0a7e41ab3da42dede16486de62379585988effc092a5d4e3",
     "source_sha256": "585804571aa12b399f1900db21cd2dc50249f703265c951020a0a4ecb7c5a184",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "builds/baseline/source.patch",
@@ -223,15 +223,15 @@
   },
   {
     "artifact": "builds/candidate/build-receipt.json",
-    "published_sha256": "ecbb4b9fdd8bd6f21f7da68e0c105d5651c0aae37ad513c1c4e411f59f907468",
+    "published_sha256": "7f87db443faed4f66d432004eb114c8363790290f96dbfe295d0d85a605fedd9",
     "source_sha256": "ecbb4b9fdd8bd6f21f7da68e0c105d5651c0aae37ad513c1c4e411f59f907468",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "builds/candidate/input-record.json",
-    "published_sha256": "ec6cf2e5aa6f71a8ab321987a566f0ad52f0163bc8264f132a96c7633f19a0fa",
+    "published_sha256": "ce1b924c319b1cff10dd00297c00d3a9306a0f9eb15751b5c25c4c3f4e35f0a1",
     "source_sha256": "ec6cf2e5aa6f71a8ab321987a566f0ad52f0163bc8264f132a96c7633f19a0fa",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "builds/candidate/source.patch",
@@ -349,9 +349,9 @@
   },
   {
     "artifact": "validation/validation-binding.json",
-    "published_sha256": "d2aead3b12021c234164b613a9dae1b6670e6e2eb85092d4d797ac7c82a7f2c1",
+    "published_sha256": "ba02355f5685d52a67954284ae76a0115dba4445d1f0332a0cc6dc66e79f5a1b",
     "source_sha256": "11de5986caf758ab38b34cdae5e2573d3dc43ce7f447a5cd6f6920288894e5cb",
-    "transformation": "private path substitution"
+    "transformation": "private path substitution; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "validation/timing-controller.log",
@@ -361,15 +361,15 @@
   },
   {
     "artifact": "integration/build/build-receipt.json",
-    "published_sha256": "eccfd561ca3dd6ad362860ccf609a1a497fdbf831209fdb0cb358c9bbd7af155",
+    "published_sha256": "cfa56e41f6a8ef00d3c326de3485f9bbec8a974b8ab224645af8345fcb1e8b12",
     "source_sha256": "eccfd561ca3dd6ad362860ccf609a1a497fdbf831209fdb0cb358c9bbd7af155",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "integration/build/input-record.json",
-    "published_sha256": "80fcdd15d072c5bb8b449f6e173fb74ce97d339673dd4d22feabd78d53787bcb",
+    "published_sha256": "3ea50c6f7b9b9eeb248e91d351f23f91e8446bcf684579db7692552310f461ba",
     "source_sha256": "80fcdd15d072c5bb8b449f6e173fb74ce97d339673dd4d22feabd78d53787bcb",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "integration/build/source.patch",
@@ -385,9 +385,9 @@
   },
   {
     "artifact": "integration/validation/integration-binding.json",
-    "published_sha256": "4c1494c646e332c19c0e73c7174d43be3eac9c5771cf544f7c9399ec9508b907",
+    "published_sha256": "74c492735f8e08549fa6111764a8b9bdbd780e749eff1b1265e6f4ab2ab88ddc",
     "source_sha256": "378caa861968e0a64cd28c19b7a9b6fa7073aae1aa099c38caa9dd5862035e2e",
-    "transformation": "private path substitution"
+    "transformation": "private path substitution; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "integration/validation/bind-integration.py",
@@ -601,15 +601,15 @@
   },
   {
     "artifact": "diagnostics/pair-domain/timings/provenance-after.json",
-    "published_sha256": "d40de7b92e5c0333f829afbc5243ef87fd023dc9e75c32c2471de28d7b8931bf",
+    "published_sha256": "84fe122fc8c375d0df90bd0fef5a6b76ee07fb19d7703e4e8d7bb1ac7981f396",
     "source_sha256": "d40de7b92e5c0333f829afbc5243ef87fd023dc9e75c32c2471de28d7b8931bf",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/pair-domain/timings/provenance-before.json",
-    "published_sha256": "9f56e0a9b39e4d22e00fa08c6243ec4ab531020a53acc35f8aafe46d435b9edc",
+    "published_sha256": "39e3756a5dce1268d0bffa27b49fdc33bc07c22bd5afced4fcc13a1917e5a0fc",
     "source_sha256": "9f56e0a9b39e4d22e00fa08c6243ec4ab531020a53acc35f8aafe46d435b9edc",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/pair-domain/timings/raw.csv",
@@ -799,15 +799,15 @@
   },
   {
     "artifact": "diagnostics/float-product/timings/provenance-after.json",
-    "published_sha256": "18dae872648ba8cab38a56aa7ca821b65300f4dedd395b37417f77fcc1abc7e9",
+    "published_sha256": "ccc399aff8115c3aa452ef79040680e4ca0fc190bb39a4f42641f6988044e19a",
     "source_sha256": "18dae872648ba8cab38a56aa7ca821b65300f4dedd395b37417f77fcc1abc7e9",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-product/timings/provenance-before.json",
-    "published_sha256": "b0f2c00b1ec7a508f0b1c6870dfa9d6a9478583c5a1b3efe3667db0a425f1eb6",
+    "published_sha256": "85974581eca187adcd160eeed7a8490365dfe2f4caefa23e591cb16e4a82f739",
     "source_sha256": "b0f2c00b1ec7a508f0b1c6870dfa9d6a9478583c5a1b3efe3667db0a425f1eb6",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-product/timings/raw.csv",
@@ -985,15 +985,15 @@
   },
   {
     "artifact": "diagnostics/float-add-sub/timings/provenance-after.json",
-    "published_sha256": "1204896aea2c173a693e421238e8e0d3a712eacf952adb6c8b9446b5891b09fa",
+    "published_sha256": "dd659cc0482a4ce041e9ed957149a78f967852cf8a51fd5a198c2c23c6363586",
     "source_sha256": "1204896aea2c173a693e421238e8e0d3a712eacf952adb6c8b9446b5891b09fa",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-add-sub/timings/provenance-before.json",
-    "published_sha256": "bb98238732f26cf93a1ae5e504fd424555da5956d249d4c975a7c5e2ad50c4ae",
+    "published_sha256": "8d53afc48750b24208e4e8dad2929c34d829c3bc2f5bd6a21e9bef3b8d7a6ce8",
     "source_sha256": "bb98238732f26cf93a1ae5e504fd424555da5956d249d4c975a7c5e2ad50c4ae",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-add-sub/timings/raw.csv",
@@ -1069,15 +1069,15 @@
   },
   {
     "artifact": "diagnostics/pair-domain/build/build-receipt.json",
-    "published_sha256": "7862487452265e8d28ee0719830208872ae72d5f7c62ec759290e227ddb58e90",
+    "published_sha256": "987dd43e5f43463cdb14daf521a6897518da4e15209c801860707792ed1e1703",
     "source_sha256": "7862487452265e8d28ee0719830208872ae72d5f7c62ec759290e227ddb58e90",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/pair-domain/build/input-record.json",
-    "published_sha256": "f9b61123cc4530e554765c878b15248629aac0d172c5decc1d61019a15d3f031",
+    "published_sha256": "10c65e1bd8ab06fe515be3517c4c66904b5ea77d4ad1ce0326befccbd299bdae",
     "source_sha256": "f9b61123cc4530e554765c878b15248629aac0d172c5decc1d61019a15d3f031",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/pair-domain/build/source.patch",
@@ -1087,15 +1087,15 @@
   },
   {
     "artifact": "diagnostics/float-product/build/build-receipt.json",
-    "published_sha256": "dd157f1f0cd231e365e4b8af5b21ff2764431f8d4fc93026c77432e4bb0bc5be",
+    "published_sha256": "6122654944bd94d24c30ce8f43149c5b8b84cbb0c6431573c5732bc02616cfe3",
     "source_sha256": "dd157f1f0cd231e365e4b8af5b21ff2764431f8d4fc93026c77432e4bb0bc5be",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-product/build/input-record.json",
-    "published_sha256": "850ed18479f2a6846e675439a317cb0bbc07b46826a40390fe17a8b7f0a95b16",
+    "published_sha256": "984b017356de5969eb5484776e05ff1d2d16c669f96d9a4ae31e028c759720b1",
     "source_sha256": "850ed18479f2a6846e675439a317cb0bbc07b46826a40390fe17a8b7f0a95b16",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-product/build/source.patch",
@@ -1105,15 +1105,15 @@
   },
   {
     "artifact": "diagnostics/float-add-sub/build/build-receipt.json",
-    "published_sha256": "a0e716ed494836df269f3d73199ed49cf6f03a205276e87855a39547630cf36e",
+    "published_sha256": "6e8a8e923df788f5846cdad61bcc31dee6fbabfb5db580c6fbfaddec7b5b25e5",
     "source_sha256": "a0e716ed494836df269f3d73199ed49cf6f03a205276e87855a39547630cf36e",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-add-sub/build/input-record.json",
-    "published_sha256": "57b7bb825b45923753208ee59eaf9181e172ec2445df812ba6f5f9f0f3b837a6",
+    "published_sha256": "e20147878687b6c877a639a47606707d50331d35ee916bf6544f85f583a4fef0",
     "source_sha256": "57b7bb825b45923753208ee59eaf9181e172ec2445df812ba6f5f9f0f3b837a6",
-    "transformation": "none"
+    "transformation": "none; identity environment values and per-field hashes redacted"
   },
   {
     "artifact": "diagnostics/float-add-sub/build/source.patch",

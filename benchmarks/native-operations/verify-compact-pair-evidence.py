@@ -60,6 +60,19 @@ def receipt_source(inventory):
     return source
 
 
+def check_identity_metadata(value):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ('USER', 'LOGNAME') and isinstance(item, dict) and (
+                    'value' in item or 'sha256' in item):
+                require(item.get('value') == item.get('sha256') == '<private>',
+                        'Identity environment value or digest is public')
+            check_identity_metadata(item)
+    elif isinstance(value, list):
+        for item in value:
+            check_identity_metadata(item)
+
+
 def verify(archive=ARCHIVE):
     manifest = load(archive / 'publication-manifest.json')
     files = {str(path.relative_to(archive)) for path in archive.rglob('*') if path.is_file()}
@@ -67,6 +80,8 @@ def verify(archive=ARCHIVE):
             'Publication inventory changed')
     for name, digest in manifest.items():
         require(sha(archive / name) == digest, 'Artifact hash mismatch: ' + name)
+        if Path(name).suffix == '.json':
+            check_identity_metadata(load(archive / name))
     measured = load(archive / 'validation/validation-binding.json')
     integrated = load(archive / 'integration/validation/integration-binding.json')
     require(measured['status'] == integrated['status'] == 'PASS', 'Missing PASS binding')

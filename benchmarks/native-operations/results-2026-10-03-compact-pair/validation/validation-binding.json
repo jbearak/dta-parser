@@ -275,7 +275,7 @@
             "value": "C.UTF-8"
           },
           "LOGNAME": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           },
           "PATH": {
@@ -295,7 +295,7 @@
             "value": "<private>"
           },
           "USER": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           }
         },
@@ -2267,7 +2267,7 @@
             "value": "C.UTF-8"
           },
           "LOGNAME": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           },
           "PATH": {
@@ -2287,7 +2287,7 @@
             "value": "<private>"
           },
           "USER": {
-            "sha256": "c10057c53e31751c08f17b6213eb0fcabc1d59d3e0f3ed87038afa45571c3594",
+            "sha256": "<private>",
             "value": "<private>"
           }
         },
@@ -4004,6 +4004,11 @@
     }
   },
   "input_sha256": {
+    "<prior-arithmetic-work>/acceptance-v2-full-tests.R": "b9e66b281ead118e20473b29ca573bea302ac909b05b68375abb4a59eb3124ed",
+    "<repo>/benchmarks/native-operations/run.py": "4952593f71dcdfe25c428e9ad62efe980e56f6fa8d7cb6e55b9280fee8fb282d",
+    "<repo>/r-package/dtatools/tools/native-test-manifest.json": "2d3d52032f21117ee50401d1738f86b0b962f2e56392c2d306fedf17f6bf58fd",
+    "<repo>/scripts/refresh-r-native-manifest.py": "fca35ec242d3381d39fb1f3d6637430cd29125c201b5d9ec041ef7630e5353a4",
+    "<repo>/scripts/test_native_manifest.py": "117d81a6a832617f497564b8eb7d80868abbdc17db9af7d22d0940907d940044",
     "<work>/acceptance-baseline-qualification.csv": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137",
     "<work>/acceptance-candidate-qualification.csv": "f2513e84f3c19f8701611c96e416034ab9454db7a33bac318882e877494c6137",
     "<work>/acceptance-conformance.log": "21b381f1062082760560d9ce63a80b0bf7f08bc4ec890fe7f455258c8dd9cf14",
@@ -4015,12 +4020,7 @@
     "<work>/acceptance-full-tests.csv": "94f329e4a265492afe9d798a6178632f571ac7f4fdbbd46db8bf811012a22871",
     "<work>/acceptance-full-tests.log": "4fe50b8600acda0bd4a1761b9c16cff3ad8258b00ec4cf5830cfd1a65075cee0",
     "<work>/acceptance-native-manifest-tests.log": "86c967a00f06ad033ecab8fdfd48f0dfe4f7c54ecd2a5af426df39e10af79aa8",
-    "<work>/bind-final-qualification.py": "769ccdd4f03163a69285a483e6f3c80c398f39d8e9b1d2210532aefca509650d",
-    "<repo>/benchmarks/native-operations/run.py": "4952593f71dcdfe25c428e9ad62efe980e56f6fa8d7cb6e55b9280fee8fb282d",
-    "<repo>/r-package/dtatools/tools/native-test-manifest.json": "2d3d52032f21117ee50401d1738f86b0b962f2e56392c2d306fedf17f6bf58fd",
-    "<repo>/scripts/refresh-r-native-manifest.py": "fca35ec242d3381d39fb1f3d6637430cd29125c201b5d9ec041ef7630e5353a4",
-    "<repo>/scripts/test_native_manifest.py": "117d81a6a832617f497564b8eb7d80868abbdc17db9af7d22d0940907d940044",
-    "<prior-arithmetic-work>/acceptance-v2-full-tests.R": "b9e66b281ead118e20473b29ca573bea302ac909b05b68375abb4a59eb3124ed"
+    "<work>/bind-final-qualification.py": "769ccdd4f03163a69285a483e6f3c80c398f39d8e9b1d2210532aefca509650d"
   },
   "qualification": {
     "baseline": {

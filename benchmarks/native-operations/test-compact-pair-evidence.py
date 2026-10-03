@@ -62,6 +62,16 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Receipt/source inventory mismatch'):
             VERIFY.receipt_source(changed)
 
+    def test_identity_values_and_low_entropy_digests_are_private(self):
+        for name in ('USER', 'LOGNAME'):
+            valid = {'nested': [{name: {'value': '<private>', 'sha256': '<private>'}}]}
+            VERIFY.check_identity_metadata(valid)
+            for field in ('value', 'sha256'):
+                changed = copy.deepcopy(valid)
+                changed['nested'][0][name][field] = '1' * 64
+                with self.assertRaisesRegex(RuntimeError, 'Identity environment'):
+                    VERIFY.check_identity_metadata(changed)
+
 
 if __name__ == '__main__':
     unittest.main()
