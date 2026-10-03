@@ -96,6 +96,14 @@ static int arithmetic_long_float_add_write(
     const arithmetic_general_source *left, const arithmetic_general_source *right,
     R_xlen_t length, arithmetic_general_output *output
 ) {
+    /* Capture rooted both native descriptors and claimed mutable compact
+       backing before output allocation. These exact counts stay valid even
+       if a callback patches or materializes the public inputs. */
+    if (left->operand->reader.storage->missing_count == (size_t) length ||
+        right->operand->reader.storage->missing_count == (size_t) length) {
+        arithmetic_general_fill_missing_double(length, output);
+        return NUMERIC_DOUBLE;
+    }
     const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
     const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
     const int reverse = x_policy.kind != NUMERIC_LONG;
