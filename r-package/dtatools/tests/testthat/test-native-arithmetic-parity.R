@@ -631,6 +631,11 @@ test_that("scalar block proofs preserve ordinary tails and late whole-column pro
                     missing <- is.na(as.double(actual))
                     expect_identical(is.na(actual), missing, info = info)
                     expect_identical(anyNA(actual), any(missing), info = info)
+                    if (any(missing)) {
+                        result <- dibble(x = actual)
+                        replace_values(result, x = 0, where = which(missing))
+                        expect_false(anyNA(result$x), info = info)
+                    }
                 }
                 # Declared double output bypasses float-fit/narrowing checks.
                 operation <- getExportedValue("base", op)
@@ -691,8 +696,14 @@ test_that("scalar block proofs preserve imported exceptions after ordinary spans
                         actual <- if (reverse)
                             .arithmetic_parity_expect(op, scalar, x, "float", NULL, info)
                         else .arithmetic_parity_expect(op, x, scalar, "float", NULL, info)
-                        expect_identical(is.na(actual), is.na(as.double(actual)), info = info)
-                        expect_identical(anyNA(actual), any(is.na(as.double(actual))), info = info)
+                        missing <- is.na(as.double(actual))
+                        expect_identical(is.na(actual), missing, info = info)
+                        expect_identical(anyNA(actual), any(missing), info = info)
+                        if (any(missing)) {
+                            result <- dibble(x = actual)
+                            replace_values(result, x = 0, where = which(missing))
+                            expect_false(anyNA(result$x), info = info)
+                        }
                     }
                 }
             }
