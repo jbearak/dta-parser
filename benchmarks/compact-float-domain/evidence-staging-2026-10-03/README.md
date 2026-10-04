@@ -1,0 +1,9 @@
+# Partial evidence staging
+
+This is a partial copy of the frozen evidence in PR305 at commit `531600a2c451d42bfaaf42e8d7f69006c6af06af`. It stages 244 existing files in 28 complete directory groups at their original repository paths. Every copied file is byte-for-byte identical to its Git blob at that commit. This staging copy changes no package runtime, CI configuration, or package test.
+
+The full evidence bundle contains 413 files. This stage deliberately omits 169 of them, including the original top-level manifest, source map, reports, decisions and remaining validation groups. It is not a complete publication or an independently replayable acceptance package. No new benchmark, build, test or performance claim is made by this stage.
+
+The [subset inventory](subset-inventory.json) records the exact 244 paths, file modes, Git blob identifiers, SHA-256 hashes and group counts. It also binds the [full original manifest](https://github.com/jbearak/dta-parser/blob/531600a2c451d42bfaaf42e8d7f69006c6af06af/benchmarks/compact-float-domain/evidence-2026-10-03/publication-manifest.json) and [source map](https://github.com/jbearak/dta-parser/blob/531600a2c451d42bfaaf42e8d7f69006c6af06af/benchmarks/compact-float-domain/evidence-2026-10-03/publication-source-map.json) from the immutable commit. Those original metadata files are not rewritten or narrowed to describe this subset. This README and the subset inventory are new staging metadata outside the frozen bundle's manifest.
+
+The remaining files must be integrated unchanged with the final PR before treating the local bundle as complete. Historical scripts retain their published placeholder paths and may refer to omitted files; restoration and the complete bundle are required before replay. Original-versus-published artifact hashes keep their existing meanings. Copying these already-public bytes applies no further redaction or re-attribution.
