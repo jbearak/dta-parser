@@ -10,4 +10,6 @@ The exact executed dense controller is `dense/controller.py`, and the exact work
 
 `focused-tests-receipt.json` and `focused-tests.csv` record 65,745 assertions in 71 blocks, with zero failures, errors, warnings or skips. The exact portable runner is `../../focused-tests.R`. This was a focused six-file regression replay against the installed candidate, with no full archive or conformance rerun.
 
+The [local validation records](../../validation/probe-publication-source-map.json) also retain committed-source receipts and CSVs for 624 mixed-pair cases and 1,136 dense reciprocal cases, all passing semantic and work checks. Their commit is `1b58701c612c55c7c6f72a3fdb128bfdf473e60b`; its runtime header hashes match this measured DLL's build binding. The later publication-only correction preserves those headers.
+
 Private paths in recorded commands are replaced by `<repo>`, `<baseline-library>`, `<final-library>`, `<evidence>` and `<dense-evidence>`. `publication-source-map.json` records original and public hashes for retained artifacts. Restore local paths before replaying historical commands. DLLs, package trees, old evidence archives and private failed screens are not copied into this publication. Preliminary candidate1 and rejected clean-pair evidence remain separate directories.
