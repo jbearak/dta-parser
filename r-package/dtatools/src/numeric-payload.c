@@ -354,6 +354,28 @@ SEXP C_dtatools_numeric_domain_info(SEXP value) {
     return Rf_ScalarLogical(strict);
 }
 
+/* Test-only metadata snapshot. Never inspect the handle again after allocation. */
+SEXP C_dtatools_numeric_facts_info(SEXP value) {
+    const numeric_data *data = unmaterialized_numeric_read_storage(value);
+    uint32_t flags = data == NULL ? 0 : data->domain_flags;
+    uint32_t maximum = data == NULL ? 0 : data->float_max_magnitude_bound;
+    uint32_t minimum = data == NULL ? 0 : data->float_min_nonzero_magnitude_bound;
+    size_t zeros = data == NULL ? 0 : data->zero_count;
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, 4));
+    REAL(result)[0] = (double) flags;
+    REAL(result)[1] = (double) maximum;
+    REAL(result)[2] = (double) minimum;
+    REAL(result)[3] = (double) zeros;
+    const char *labels[] = {
+        "flags", "max_magnitude_bound", "min_nonzero_magnitude_bound", "zero_count"
+    };
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 4));
+    for (int i = 0; i < 4; i++) SET_STRING_ELT(names, i, Rf_mkChar(labels[i]));
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(2);
+    return result;
+}
+
 /* Immutable span access, with a contiguous R-backed adapter. The source
    descriptor and its owning handle must remain rooted across the call. */
 static const void *numeric_read_span(
@@ -389,6 +411,8 @@ void numeric_for_each_span(
         span.values = (unsigned char *) data->values +
             start * numeric_kind_width(data->kind);
         span.length = length;
+        if (start != 0 || length != data->length)
+            span.domain_flags &= ~NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
         visit(&span, 0, context);
         return;
     }
@@ -403,6 +427,8 @@ void numeric_for_each_span(
         );
         span.length = count;
         span.native_owner = NULL;
+        if (start + visited != 0 || count != data->length)
+            span.domain_flags &= ~NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
         visit(&span, visited, context);
         visited += count;
     }
@@ -1183,7 +1209,10 @@ DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_valu
 DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
 DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
 DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 72);
-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 80);
+DTATOOLS_LAYOUT_ASSERT(numeric_float_maximum, offsetof(numeric_data, float_max_magnitude_bound) == 76);
+DTATOOLS_LAYOUT_ASSERT(numeric_float_minimum, offsetof(numeric_data, float_min_nonzero_magnitude_bound) == 80);
+DTATOOLS_LAYOUT_ASSERT(numeric_zeros, offsetof(numeric_data, zero_count) == 88);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 96);
 DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
 DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
 DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
@@ -1236,7 +1265,10 @@ DTATOOLS_LAYOUT_ASSERT(arrow_table_count, offsetof(dtatools_arrow_value_label_ta
 DTATOOLS_LAYOUT_ASSERT(arrow_table_size, sizeof(dtatools_arrow_value_label_table) == 32);
 #elif UINTPTR_MAX == UINT32_MAX
 DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 40);
-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 44);
+DTATOOLS_LAYOUT_ASSERT(numeric_float_maximum, offsetof(numeric_data, float_max_magnitude_bound) == 44);
+DTATOOLS_LAYOUT_ASSERT(numeric_float_minimum, offsetof(numeric_data, float_min_nonzero_magnitude_bound) == 48);
+DTATOOLS_LAYOUT_ASSERT(numeric_zeros, offsetof(numeric_data, zero_count) == 52);
+DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 56);
 #endif
 
 int write_string_utf8_status(SEXP value) {
@@ -2237,7 +2269,8 @@ static SEXP numeric_from_backing_managed(
         .temporal = temporal, .format_version = format_version,
         .missing_count = missing_count, .native_owner = NULL,
         .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0,
-        .domain_flags = 0
+        .domain_flags = 0, .float_max_magnitude_bound = 0,
+        .float_min_nonzero_magnitude_bound = 0, .zero_count = 0
     };
     memcpy(data, &initial, sizeof(initial));
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
@@ -4990,6 +5023,9 @@ SEXP C_dtatools_construct_numeric(
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
     unsigned char *output = RAW(backing);
     size_t missing_count = 0;
+    size_t zero_count = 0;
+    uint32_t float_maximum_magnitude = 0;
+    uint32_t float_minimum_nonzero_magnitude = UINT32_MAX;
 
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -5007,6 +5043,19 @@ SEXP C_dtatools_construct_numeric(
             );
         } else {
             write_numeric_observed(output, index, kind, element);
+            if (temporal == 0) {
+                if (kind == NUMERIC_FLOAT) {
+                    /* Record the encoded value: binary32 narrowing can create zero. */
+                    uint32_t bits;
+                    memcpy(&bits, output + (size_t) index * sizeof(bits), sizeof(bits));
+                    uint32_t magnitude = bits & UINT32_C(0x7fffffff);
+                    if (magnitude > float_maximum_magnitude)
+                        float_maximum_magnitude = magnitude;
+                    if (magnitude == 0) zero_count++;
+                    else if (magnitude < float_minimum_nonzero_magnitude)
+                        float_minimum_nonzero_magnitude = magnitude;
+                } else if (element == 0.0) zero_count++;
+            }
         }
     }
 
@@ -5017,9 +5066,18 @@ SEXP C_dtatools_construct_numeric(
         UNPROTECT(1);
         Rf_error("could not allocate compact Stata numeric storage");
     }
-    /* Both encoding passes validate the strict observed range and exact tags. */
-    if (kind == NUMERIC_FLOAT && temporal == 0)
-        ((numeric_data *) data)->domain_flags = NUMERIC_DOMAIN_STRICT_MODERN_FLOAT;
+    /* Facts describe final encoded bytes, before publishing the descriptor. */
+    if (temporal == 0) {
+        numeric_data *storage = data;
+        storage->zero_count = zero_count;
+        storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+        if (kind == NUMERIC_FLOAT) {
+            storage->float_max_magnitude_bound = float_maximum_magnitude;
+            storage->float_min_nonzero_magnitude_bound = float_minimum_nonzero_magnitude;
+            storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+                NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+        }
+    }
     SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     SEXP result = PROTECT(R_new_altrep(

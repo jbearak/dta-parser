@@ -17,8 +17,11 @@ typedef struct {
     size_t missing_count, chunk_size;
     const unsigned char *raw;
     uint32_t domain_flags;
+    uint32_t float_max_magnitude_bound, float_min_nonzero_magnitude_bound;
+    size_t zero_count;
 } numeric_data;
-enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
+enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U,
+    NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN = 2U, NUMERIC_DOMAIN_ZERO_COUNT_KNOWN = 4U };
 typedef struct {
     const numeric_data *storage;
     const double *real_values;
@@ -99,7 +102,7 @@ static int run_case(size_t length, int kind, int pattern, double scalar,
     memset(integer_loads,0,sizeof integer_loads); memset(span_rows,0,sizeof span_rows);
     unsigned char *raw = malloc(length * width(kind));
     if (!raw) return 2;
-    numeric_data data = {kind,0,legacy ? 111 : 118,0,chunks,raw,0};
+    numeric_data data = {kind,0,legacy ? 111 : 118,0,chunks,raw,0,0,0,0};
     const int32_t missing_minimum = arithmetic_integer_missing(&data);
     size_t want_missing = 0;
     double minimum = 0, maximum = 0; unsigned fractional = 0;

@@ -74,6 +74,8 @@ def main():
     policy_end = arithmetic.index('/* Missing-bearing same-width', policy_start)
     common = arithmetic[policy_start:policy_end]
     common += '\n' + function(internal, 'numeric_strict_modern_float')
+    common += '\n' + function(internal, 'numeric_float_bounds_known')
+    common += '\n' + function(internal, 'numeric_zero_count_known')
     common += '\n' + function(payload, 'numeric_float_observed_limit')
     common += '\n' + function(payload, 'scalar_arithmetic_result_valid').replace(
         'scalar_arithmetic_result_valid', 'uncounted_result_valid')

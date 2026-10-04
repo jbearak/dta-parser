@@ -308,6 +308,7 @@ static void commit_numeric_bytes(numeric_slot_transaction *transaction, SEXP col
     } else {
         numeric_data staged_encoding = transaction->encoding;
         staged_encoding.values = transaction->staged;
+        staged_encoding.domain_flags = 0;
         for (R_xlen_t i = 0; i < transaction->count; i++) {
             size_t row = (size_t) transaction->positions[i];
             size_t from = transaction->scalar ? 0 : (size_t) i;

@@ -260,16 +260,21 @@ def build(root, work, scope):
                           compile_success_basis='Exact transcript invocation and successful make group; collector also requires normal manual Compilation record.'))
     immutable_archive(work)
     # Existing strict drivers compile original C against freshly derived headers.
-    for name in STRUCTURAL:
+    for name in (*STRUCTURAL, 'compact-float-facts'):
         folder = root / 'benchmarks' / name
         output = work / ('probe-' + name)
-        command = ['python3', str(folder / 'work-count.py'), '--output', str(output), '--require-proved']
-        if name != 'integer-reciprocal':
-            command += ['--root', str(root), '--commit', SOURCE]
+        facts = name == 'compact-float-facts'
+        if facts:
+            command = ['python3', str(folder / 'metadata-span.py'),
+                       '--root', str(root), '--output', str(output)]
+        else:
+            command = ['python3', str(folder / 'work-count.py'), '--output', str(output), '--require-proved']
+            if name != 'integer-reciprocal':
+                command += ['--root', str(root), '--commit', SOURCE]
         command_id, _ = record.run(name, command, root)
         receipt = json.loads((output / 'receipt.json').read_text())
         require(receipt['exit_code'] == 0, 'Existing structural driver failed')
-        original = folder / 'work-count.c'
+        original = folder / ('metadata-span.c' if facts else 'work-count.c')
         units.append(dict(path=str(original.relative_to(root)), sha256=sha(original), original_source=str(original),
                           command_id=command_id, cwd=receipt.get('cwd', str(root)), compiler_command=receipt['command'],
                           driver_receipt=str(output / 'receipt.json'), driver_receipt_sha256=sha(output / 'receipt.json')))

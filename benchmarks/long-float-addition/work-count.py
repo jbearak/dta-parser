@@ -113,6 +113,8 @@ def main():
     end=arithmetic.index('/* Missing-bearing same-width',begin)
     common=arithmetic[begin:end]
     common+='\n'+function((src/'dtatools-internal.h').read_text(),'numeric_strict_modern_float')
+    common+='\n'+function((src/'dtatools-internal.h').read_text(),'numeric_float_bounds_known')
+    common+='\n'+function((src/'dtatools-internal.h').read_text(),'numeric_zero_count_known')
     common+='\n'+function(arithmetic,'arithmetic_promoted_kind')
     common+='\n'+function(payload,'numeric_float_observed_limit')
     common+='\n'+function(payload,'scalar_arithmetic_result_valid').replace('scalar_arithmetic_result_valid','uncounted_result_valid')
