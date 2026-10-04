@@ -8071,7 +8071,16 @@
           "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "constructor-region-inputs",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     },
     {

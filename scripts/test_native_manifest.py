@@ -51,6 +51,17 @@ class NativeManifestTests(unittest.TestCase):
             with self.subTest(path=item["path"]):
                 self.assertEqual(hashlib.sha256((PACKAGE / item["path"]).read_bytes()).hexdigest(), item["sha256"])
 
+    def test_literal_child_requests_are_declared_in_their_family(self):
+        request = re.compile(r"\.dtatools_child_r(_bg)?\(\s*(['\"])([^'\"\n]+)\2")
+        for family in MANIFEST["families"]:
+            declared = {child["id"]: child["kind"] for child in family["children"]}
+            for item in family["files"]:
+                for match in request.finditer((PACKAGE / item["path"]).read_text()):
+                    kind = "r_bg" if match.group(1) else "r"
+                    with self.subTest(family=family["id"], path=item["path"], child=match.group(3)):
+                        self.assertEqual(declared.get(match.group(3)), kind,
+                                         "Installed runner rejects undeclared child id/kind")
+
     def test_arithmetic_checkpoint_blocks_allow_only_the_profile_skip(self):
         source = (PACKAGE / "tests/testthat/test-arithmetic-payload-lifetime.R").read_text()
         starts = list(re.finditer(r'^test_that\("([^"\\]*)"', source, re.M))
