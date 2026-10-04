@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "<evidence>/test-publish-canonical.py"
+      ],
+      "cwd": "<evidence>",
+      "exit_code": 0,
+      "log": "publisher-guards-normal.log",
+      "log_sha256": "afae4b31062ee74e07f3c0b1281ae5546eec16e0ba38cbbda9b5433ba14598aa",
+      "tests": 15
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-O",
+        "<evidence>/test-publish-canonical.py"
+      ],
+      "cwd": "<evidence>",
+      "exit_code": 0,
+      "log": "publisher-guards-optimized.log",
+      "log_sha256": "afae4b31062ee74e07f3c0b1281ae5546eec16e0ba38cbbda9b5433ba14598aa",
+      "tests": 15
+    }
+  ],
+  "scope": "Synthetic publication validation only; no package or performance tests.",
+  "source_sha256": {
+    "publish-canonical-draft.py": "39776f9745a7e673e8a8f55f6ab65f1597a9f4cb8e17970d0ad9624e7bc674fa",
+    "test-publish-canonical.py": "8eafc486c9969a553ca86c045e50e048dbbaa33d55cb487b62f6363eeee96f27"
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,26 @@
+{
+  "archive": {
+    "buildignore_exclusions": 20,
+    "failed": 0,
+    "passed": 111083,
+    "skipped": 0,
+    "source_archive_sha256": "b498093a7c52a21e6099ab77a95698ac9deeaa0d2530e08119b995246d7ce0db",
+    "source_files": 354,
+    "warnings": 7
+  },
+  "binder_sha256": "5eb474653fec303354e1962449ce7f3e7ae1f4fe20de57b09a742fa55431f779",
+  "byte_identical_integration_receipt": true,
+  "focused": {
+    "blocks": 47,
+    "error": 0,
+    "failed": 0,
+    "passed": 38954,
+    "skipped": 0,
+    "warnings": 0
+  },
+  "integration_binding_sha256": "cac859d7c15ec5e320c572f164e9d57f0229eba0b471e9b0bba79303c79d7568",
+  "replay_mode": "python3 -O",
+  "reviewed_scope": "Full binder source review, independent optimized-Python replay of component/source/build/focused/Rust/guard/structural/retained-archive validation. No tests or performance measurements rerun.",
+  "source_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "status": "PASS"
+}

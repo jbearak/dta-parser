@@ -1,0 +1,36 @@
+{
+  "baseline": "213ceeee5a0f7953bf0f13316e2207a766dcbb24",
+  "candidate": "452ac7232ef6e47c398bcd22c7bb2800b55932c3",
+  "decision": "REJECT_WHOLE_SPAN_BYPASS",
+  "evidence_sha256": {
+    "strict-independent-audit-root.json": "72e0f095d31e3090428d71e2c62ee31f8fd84f4d7f31aadd6d8237455f76902d",
+    "strict-screen-v1-independent-statistics.json": "8ee65710a3ec67c72c7982fbc6c793767b323d16c673098f409796c7da12fe9d",
+    "unknown-independent-audit-root.json": "8d495951d855c3a549f464d98b06f0b47fc92b7245a1be862342f2fa2587e2bc",
+    "unknown-screen-v1-independent-statistics.json": "37a185c071e96a04cf45d5cf75c948df648bb36ada8c83797d98908195449c67"
+  },
+  "followup_scope": "Same lifecycle/ABI. No new density threshold or changed UNKNOWN semantics. Actual-header red/green work gate must show ordinary proofs retained and classifier used only within bounded fallback.",
+  "independent_audits": "PASS: all696 strict and144 UNKNOWN observations; exact semantics, complete matrices/order/statistics and qualified build/runtime/controller bindings.",
+  "observations": {
+    "plain_none_direct_speedup": [
+      0.94,
+      0.952
+    ],
+    "plain_prefix_suffix_direct_speedup": [
+      0.84,
+      0.89
+    ],
+    "plain_random_half_compact_to_typed": [
+      1.18,
+      1.183
+    ],
+    "plain_random_half_direct_speedup": [
+      1.444,
+      1.456
+    ],
+    "unknown_direct_speedup": [
+      0.977,
+      0.999
+    ]
+  },
+  "reason": "Dense random-half inputs improve, but whole-span missing-mask loops regress ordinary and short-prefix/suffix workloads. Preserve ordinary proofs and apply the trusted classifier only inside existing exact fallback."
+}

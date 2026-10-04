@@ -908,3 +908,152 @@ test_that("long float all missing facts preserve output bits and cache mutation"
         }
     }
 })
+
+# Source-only draft; append after the dense runtime is qualified structurally.
+test_that("dense reciprocal input masks preserve cache counts and late promotion", {
+    .arithmetic_parity_enable()
+    tags <- c(NA_real_, tagged_missing(letters))
+    for (n in c(63L, 64L, 65L, 16383L, 16384L, 16385L)) {
+        for (pattern in c("half", "all", "late")) {
+            values <- rep(c(0.125, -0.125, 0, -0), length.out = n)
+            missing <- if (pattern == "all") seq_len(n) else
+                which((as.double(seq_len(n) - 1L) * 104729) %% n < floor(n / 2))
+            values[missing] <- rep(tags, length.out = length(missing))
+            if (pattern == "late") values[[n]] <- 2^-149
+            for (chunk in list(NULL, 7L)) {
+                for (scalar in list(1.01, -1.01, 0, -0, dta_double(1.01))) {
+                    x <- .arithmetic_parity_source("float", values, chunk)
+                    source_bytes <- .arithmetic_parity_bytes(x)
+                    minimum <- if (inherits(scalar, "dta_double")) "double" else "float"
+                    info <- paste("dense reciprocal", n, pattern, chunk, as.double(scalar))
+                    if (minimum == "double") {
+                        # The shared helper requires every typed input to be
+                        # compact; this explicitly DOUBLE scalar is not.
+                        decoded <- as.double(x)
+                        reference <- as.double(scalar) / decoded
+                        reference[is.na(decoded)] <- NA_real_
+                        expected_result <- dtatools:::.dta_computed(reference, "double")
+                        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x), info = info)
+                        .Call(C_dtatools_numeric_entry_stats, TRUE)
+                        result <- scalar / x
+                        calls <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+                        expect_identical(calls, if (.dtatools_numeric_entry_expected("scalar")) 1 else 0,
+                            info = info)
+                        expect_identical(dta_storage_type(result), "double", info = info)
+                        expect_identical(.arithmetic_parity_bytes(result),
+                            .arithmetic_parity_bytes(expected_result), info = info)
+                        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x), info = info)
+                    } else {
+                        result <- .arithmetic_parity_expect("/", scalar, x, minimum, NULL, info)
+                    }
+                    original_bytes <- .arithmetic_parity_bytes(result)
+                    expected <- as.double(result)
+                    result_missing <- is.na(expected)
+                    expect_identical(is.na(result), result_missing, info = info)
+                    expect_identical(anyNA(result), any(result_missing), info = info)
+                    cleared <- dibble(x = result)
+                    if (any(result_missing))
+                        replace_values(cleared, x = 0, where = which(result_missing))
+                    expected[result_missing] <- 0
+                    expect_false(anyNA(cleared$x), info = info)
+                    expect_identical(.arithmetic_parity_bytes(cleared$x),
+                        writeBin(expected, raw(), 8L, endian = "little"), info = info)
+                    expect_identical(.arithmetic_parity_bytes(result), original_bytes, info = info)
+                    expect_identical(.arithmetic_parity_bytes(x), source_bytes, info = info)
+                }
+            }
+        }
+    }
+})
+
+test_that("adaptive reciprocal proofs recover ordinary tails after dense spans", {
+    .arithmetic_parity_enable()
+    n <- 32769L
+    tags <- c(NA_real_, tagged_missing(letters))
+    for (prefix in c(256L, 16384L, 16385L, n)) {
+        values <- rep(c(0.125, -0.125), length.out = n)
+        values[seq_len(prefix)] <- rep(tags, length.out = prefix)
+        for (chunk in list(NULL, 7L, 16385L)) {
+            x <- .arithmetic_parity_source("float", values, chunk)
+            source_bytes <- .arithmetic_parity_bytes(x)
+            for (scalar in c(1.01, -1.01, 0, -0, 1e300, -1e300)) {
+                info <- paste("adaptive reciprocal", prefix, chunk, scalar)
+                actual <- .arithmetic_parity_expect("/", scalar, x, "float", NULL, info)
+                original <- .arithmetic_parity_bytes(actual)
+                missing <- is.na(as.double(actual))
+                cleared <- as.double(actual)
+                cleared[missing] <- 7
+                data <- dibble(value = actual)
+                replace_values(data, value = 7, where = which(missing))
+                expect_identical(.arithmetic_parity_bytes(data$value),
+                    writeBin(cleared, raw(), size = 8L, endian = "little"), info = info)
+                expect_false(anyNA(data$value), info = info)
+                expect_identical(.arithmetic_parity_bytes(actual), original, info = info)
+                expect_identical(.arithmetic_parity_bytes(x), source_bytes, info = info)
+            }
+        }
+    }
+    # Declared DOUBLE output exercises the distinct canonical fill writer.
+    for (scalar in c(1.01, -1e300, 0, -0)) {
+        x <- dta_float(rep(tags, length.out = 128L))
+        original <- .arithmetic_parity_bytes(x)
+        typed_scalar <- dta_double(scalar)
+        .Call(C_dtatools_numeric_entry_stats, TRUE)
+        actual <- typed_scalar / x
+        calls <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+        expect_identical(calls,
+            if (.dtatools_numeric_entry_expected("scalar")) 1 else 0)
+        expect_identical(dta_storage_type(actual), "double")
+        expect_identical(.arithmetic_parity_bytes(actual),
+            writeBin(rep(NA_real_, 128L), raw(), size = 8L, endian = "little"))
+        captured <- .arithmetic_parity_bytes(actual)
+        data <- dibble(value = actual)
+        replace_values(data, value = 7, where = seq_len(128L))
+        expect_identical(.arithmetic_parity_bytes(data$value),
+            writeBin(rep(7, 128L), raw(), size = 8L, endian = "little"))
+        expect_false(anyNA(data$value))
+        expect_identical(.arithmetic_parity_bytes(actual), captured)
+        expect_identical(.arithmetic_parity_bytes(x), original)
+    }
+})
+
+test_that("retained long float addition preserves poll-boundary outputs", {
+    .arithmetic_parity_enable()
+    for (n in c(16383L, 16384L, 16385L)) {
+        for (pattern in c("ordinary", "missing")) {
+            values_x <- rep(c(16777217, -16777217, 0), length.out = n)
+            values_y <- rep(c(0.5, -0.5, -0), length.out = n)
+            if (pattern == "missing") {
+                missing_x <- unique(c(7L, 16383L, min(n, 16385L)))
+                missing_y <- unique(c(11L, min(n, 16384L), min(n, 16385L)))
+                values_x[missing_x] <- rep(c(NA_real_, tagged_missing("a")),
+                    length.out = length(missing_x))
+                values_y[missing_y] <- rep(c(tagged_missing("z"), NA_real_),
+                    length.out = length(missing_y))
+            }
+            for (chunks in list(c(7L, 11L), c(8191L, 16385L))) {
+                x <- .arithmetic_parity_source("long", values_x, chunks[[1L]])
+                y <- .arithmetic_parity_source("float", values_y, chunks[[2L]])
+                for (reverse in c(FALSE, TRUE)) {
+                    info <- paste("retained polling", n, pattern, chunks, reverse)
+                    actual <- if (reverse)
+                        .arithmetic_parity_expect("+", y, x, "double", "double", info)
+                    else .arithmetic_parity_expect("+", x, y, "double", "double", info)
+                    expected_missing <- is.na(values_x) | is.na(values_y)
+                    expect_identical(is.na(actual), expected_missing, info = info)
+                    expect_identical(anyNA(actual), any(expected_missing), info = info)
+                    before <- .arithmetic_parity_bytes(actual)
+                    cleared_values <- as.double(actual)
+                    cleared_values[expected_missing] <- 0
+                    cleared <- dibble(x = actual)
+                    if (any(expected_missing))
+                        replace_values(cleared, x = 0, where = which(expected_missing))
+                    expect_false(anyNA(cleared$x), info = info)
+                    expect_identical(.arithmetic_parity_bytes(cleared$x),
+                        writeBin(cleared_values, raw(), 8L, endian = "little"), info = info)
+                    expect_identical(.arithmetic_parity_bytes(actual), before, info = info)
+                }
+            }
+        }
+    }
+})

@@ -2639,29 +2639,115 @@ SEXP C_dtatools_numeric_storage_matches(
     );
 }
 
-/* Test-only R-backed adapter. Copy first: the source may already have escaped
-   through a writable compact consumer. The new raw allocation is immutable. */
-SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
-    numeric_data *source = unmaterialized_numeric_read_storage(value);
-    double chunk_rows_double = Rf_asReal(chunk_rows_value);
-    if (source == NULL || !R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
-        chunk_rows_double != trunc(chunk_rows_double) || chunk_rows_double > (double) R_XLEN_T_MAX) {
-        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
+/* One-use test-adapter checkpoint, after capture and before copying bytes. */
+static int numeric_freeze_checkpoint = 0;
+static SEXP numeric_freeze_checkpoint_token = NULL;
+
+SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token) {
+    if (TYPEOF(mode) != INTSXP || ALTREP(mode) || ANY_ATTRIB(mode) ||
+        XLENGTH(mode) != 1 || INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
+        Rf_error("numeric freeze checkpoint mode must be 0, 1, or 2");
+    if ((token != R_NilValue && TYPEOF(token) != ENVSXP) ||
+        (INTEGER(mode)[0] == 0 && token != R_NilValue))
+        Rf_error("numeric freeze checkpoint token must be an environment or NULL");
+    int previous = numeric_freeze_checkpoint;
+    if (token != R_NilValue) R_PreserveObject(token);
+    if (numeric_freeze_checkpoint_token != NULL)
+        R_ReleaseObject(numeric_freeze_checkpoint_token);
+    numeric_freeze_checkpoint_token = token == R_NilValue ? NULL : token;
+    numeric_freeze_checkpoint = INTEGER(mode)[0];
+    return Rf_ScalarInteger(previous);
+}
+
+typedef struct {
+    SEXP value;
+    SEXP claims;
+    numeric_data storage;
+    size_t chunk_rows;
+} numeric_freeze_context;
+
+static void numeric_freeze_cleanup(void *raw) {
+    numeric_freeze_context *context = raw;
+    SEXP external = VECTOR_ELT(context->claims, 0);
+    if (external != R_NilValue && compact_payload_is_owned_by(external, context->claims))
+        R_SetExternalPtrTag(external, VECTOR_ELT(context->claims, 1));
+}
+
+static SEXP numeric_freeze_body(void *raw) {
+    numeric_freeze_context *context = raw;
+    const numeric_data *source = &context->storage;
+    size_t width = numeric_kind_width(source->kind);
+    if (source->length > (size_t) R_XLEN_T_MAX / width)
+        Rf_error("owned numeric freeze is too long");
+    size_t bytes = source->length * width;
+    if (numeric_freeze_checkpoint != 0) {
+        int mode = numeric_freeze_checkpoint;
+        numeric_freeze_checkpoint = 0;
+        if (numeric_freeze_checkpoint_token != NULL) {
+            R_ReleaseObject(numeric_freeze_checkpoint_token);
+            numeric_freeze_checkpoint_token = NULL;
+        }
+        R_gc();
+        if (mode == 2) Rf_error("injected numeric freeze checkpoint failure");
     }
-    size_t bytes = source->length * numeric_kind_width(source->kind);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) bytes));
     numeric_copy_region(source, 0, source->length, RAW(backing));
+    /* This adapter establishes its own proof over the copied bytes. Never
+       inherit a public descriptor's flag across allocation or callbacks. */
+    int strict = source->kind == NUMERIC_FLOAT && source->temporal == 0 &&
+        source->format_version > 111;
+    if (strict) {
+        for (size_t i = 0; i < source->length; i++) {
+            if ((i & 16383) == 0) R_CheckUserInterrupt();
+            uint32_t bits;
+            memcpy(&bits, RAW(backing) + i * sizeof(bits), sizeof(bits));
+            uint32_t magnitude = bits & UINT32_C(0x7fffffff);
+            uint32_t offset = bits - UINT32_C(0x7f000000);
+            if (magnitude > UINT32_C(0x7effffff) &&
+                !((offset >> 11 | offset << 21) <= 26U)) {
+                strict = 0;
+                break;
+            }
+        }
+    }
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     void *data = dtatools_owned_numeric_from_raw(
-        RAW(backing), source->length, (size_t) chunk_rows_double, source->kind,
+        RAW(backing), source->length, context->chunk_rows, source->kind,
         source->temporal, source->format_version, source->missing_count
     );
     if (data == NULL) Rf_error("could not freeze compact numeric storage");
+    ((numeric_data *) data)->domain_flags = strict ? NUMERIC_DOMAIN_STRICT_MODERN_FLOAT : 0;
     R_SetExternalPtrAddr(external, data);
     SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
-    SHALLOW_DUPLICATE_ATTRIB(result, value);
+    SHALLOW_DUPLICATE_ATTRIB(result, context->value);
     UNPROTECT(3);
+    return result;
+}
+
+/* Test-only R-backed adapter. Capture and claim before allocations so both
+   the copied bytes and their exact count survive reentrant public mutation. */
+SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
+    double chunk_rows_double = Rf_asReal(chunk_rows_value);
+    if (!R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
+        chunk_rows_double != trunc(chunk_rows_double) || chunk_rows_double > (double) R_XLEN_T_MAX)
+        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
+    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 2));
+    numeric_freeze_context context = {value, claims, {0}, (size_t) chunk_rows_double};
+    SEXP root = PROTECT(numeric_missing_mask_capture(value, &context.storage));
+    if (root == R_NilValue)
+        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
+    if (!numeric_payload_retained(&context.storage)) {
+        /* The plain capture above allocates nothing. Its root and snapshot
+           now refer to the exact allocation guarded by this temporary claim. */
+        SEXP external = R_altrep_data1(numeric_base_source(value));
+        SET_VECTOR_ELT(claims, 0, external);
+        SET_VECTOR_ELT(claims, 1, R_ExternalPtrTag(external));
+        compact_payload_claim(external, claims);
+    }
+    SEXP result = R_ExecWithCleanup(numeric_freeze_body, &context,
+        numeric_freeze_cleanup, &context);
+    UNPROTECT(2);
     return result;
 }
 

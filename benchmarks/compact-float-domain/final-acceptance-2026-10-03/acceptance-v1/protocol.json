@@ -1,0 +1,14 @@
+{
+  "baseline_commit": "7003eba901671797ee91fffc97f08e28a1f7f515",
+  "candidate_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+  "cases_per_build_round": 102,
+  "correctness": "Full little-endian binary64 result hashes, independent Stata normalization/promotion/float-rounding oracle, missing masks/cache, full typed result after clearing all oracle-missing rows through dibble/replace_values, storage, original result/source hashes and source states. Mutation is outside clocks and native-entry accounting; bare controls have no native cached count.",
+  "experiment": "Original 34-case arithmetic acceptance panel after the combined accepted follow-ups",
+  "inputs": "Exact combined7003 general-worker formulas: x is as.double((seq_len(1000000) * 13) %% 10001 - 5000), divided by eight only for float sources; y is as.double((seq_len(1000000) * 19) %% 1001 - 500)/8. Sparse missing starts at row13/stride997 in x and row19/stride991 in y. Long is only the original long+float addition case; this panel retains the original scope.",
+  "interval": "Preloaded public operations. Result allocation and automatic GC included; construction, explicit GC, qualification, hashing and calibration excluded.",
+  "limits": "One host and constructed deterministic columns. Retained chunks, all missing codes and floating boundaries are covered by the correctness suite, not this timing matrix. Typed results impose storage policy beyond bare arithmetic.",
+  "order": "Alternate build order each round. Fixed case order; rotate and reverse three representations through all six orders.",
+  "repetitions": "Calibrate at least 25 ms; choose a count targeting at least 150 ms per retained interval.",
+  "rounds": 6,
+  "rows": 1000000
+}

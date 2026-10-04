@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/r/4.6.1/bin/Rscript",
+    "--vanilla",
+    "<private-work>/dta-long-float-add-audit/focused.R",
+    "<work>/publication-build-v1/library",
+    "<publication-repository>/r-package/dtatools/tests/testthat",
+    "<work>/publication-focused-v1/focused.csv"
+  ],
+  "cwd": "<publication-repository>",
+  "exit_code": 0,
+  "finished_utc": "2026-10-03T15:11:16.941708+00:00",
+  "scope": "Public focused correctness with full external test-tree and installed-runtime binding; no performance measurement.",
+  "started_utc": "2026-10-03T15:10:27.351471+00:00"
+}

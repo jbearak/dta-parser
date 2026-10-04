@@ -1,0 +1,13 @@
+{
+  "generator_sha256": "fa00e894b978d7d4b0feaf337a030c1ff05be41aa6586491f1dc485ac52acfd2",
+  "inputs": {
+    "acceptance-independent-audit.json": "1cc533a03bd0e468654db9d27c4385906f75fcc9bfd7e4c614d4c2a1e5111869",
+    "raw.csv": "a8854c840b440de029b8ecfab788a6aac6768377123990c8b0cba098cbffd19b"
+  },
+  "outputs": {
+    "final-panel-description.json": "b5f74f21b121cf746c51903745e252216769ea9892ba15575f0903f33ccccc8c",
+    "final-panel-table.md": "b44b6b59f21e2aeed4b814eb8d3f4408765921072fa75a263f81236c45c0b5f3"
+  },
+  "scope": "Description and table generated together from independently audited1224 observations; descriptive statistics only.",
+  "status": "PASS"
+}
