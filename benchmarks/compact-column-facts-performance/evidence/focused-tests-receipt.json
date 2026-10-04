@@ -1,0 +1,23 @@
+{
+  "source_head": "fe74d4b5de0c9e4b7aaf9edcf8bf444e1c3c7db1",
+  "installed_dll_sha256": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+  "assertions": 67212,
+  "blocks": 77,
+  "failure": 0,
+  "error": 0,
+  "warning": 0,
+  "skip": 0,
+  "exit_code": 0,
+  "runner_sha256": "4ccf5a257ddd34d995b0d3831fbb8ee623c078f5ea0e4280d27991e89c95765f",
+  "csv_sha256": "84e8849e429b714545ebeb12d979931cf452a89bdd3e5deeca4105bcdacefc7a",
+  "log_sha256": "c54735879a3deb38398d6c55f705b1c28f3148be0a2e639474f6c05d403cde2f",
+  "test_files": [
+    "test-arithmetic-payload-lifetime.R",
+    "test-compact-float-domain.R",
+    "test-compact-pair-domain.R",
+    "test-compact-reciprocal-facts.R",
+    "test-dense-float-reciprocal-kernel.R",
+    "test-native-arithmetic-kernels.R",
+    "test-native-arithmetic-parity.R"
+  ]
+}

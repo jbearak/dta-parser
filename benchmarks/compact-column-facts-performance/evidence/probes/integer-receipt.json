@@ -1,0 +1,77 @@
+{
+  "commit": "fe74d4b5de0c9e4b7aaf9edcf8bf444e1c3c7db1",
+  "working_tree_status": "",
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "source_sha256": {
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "numeric-arithmetic-integer-reciprocal.h": "9a2951a8c2cbd1e0e8ebe71623d6ac63656b8922e0799ade6a8906123b2dc147",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4",
+    "numeric-payload.c": "2852eb419b560abf05c41c0aa5b6c96826a22671738a69f0a16cdd15f761e3a1"
+  },
+  "controller_sha256": "119c4e71eedf6386f15dfc6fb17f8ed31d5c61fe14c3e1a6755025fe9f0d33a6",
+  "probe_sha256": "320830029fbb8d2dc0536c990ff9af6beec0af11b47e0abdc34a6015592f2589",
+  "command": [
+    "/usr/bin/cc",
+    "-std=c11",
+    "-O1",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "<private-evidence>/integer-consumer-committed-green-v1",
+    "<repo>/benchmarks/integer-reciprocal/work-count.c",
+    "-lm",
+    "-o",
+    "<private-evidence>/integer-consumer-committed-green-v1/work-count"
+  ],
+  "require_proved": true,
+  "exit_code": 0,
+  "artifact_sha256": {
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "numeric-arithmetic-integer-reciprocal.h": "0bc4331c2ab3698f0c6d19b6bf3a9e8d7e54175adeb5b99464d0eb603530d7bd",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "work-count": "bb4a826bb1b406e749818b65b65166098b0d5aed2aad7c002e4b13d2e3d687af",
+    "numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-general.h": "d068d594b64459ba515518850bbebf81d2971161e10687caeff608ece55a3f58",
+    "work-count.csv": "e6fb923085e79a6d72a61d8930d70ee7972eb5b5183511081c73723e708a8ba0",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "work-count.log": "5b1d7494d421d0dbac352ae043206f03faf38234e09f60fb963b2077b7f869b2",
+    "production-common.h": "ee023990587fc7d0161dbb5d42c2a6eb2145956f1654198ba55565358447643d",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620"
+  },
+  "rounding_witnesses": [
+    [
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "8388608"
+    ],
+    [
+      "2",
+      "4194304"
+    ],
+    [
+      "3",
+      "12582912"
+    ]
+  ],
+  "cases": 640,
+  "scope": "Actual general result/preflight/producer headers under four verified rounding modes. Exact zero facts and unknown controls cover zero-free, zero-only, tag-only and mixed integer lanes, modern/legacy bytes and seven-row spans. Allocation and R reader boundaries mocked. No timing or ownership proof."
+}
