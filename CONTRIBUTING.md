@@ -127,7 +127,7 @@ Before committing documentation, check that examples match the current interface
 
 ## CI and local validation
 
-Everyday CI runs three short jobs and never installs R packages. Install the modified R package once locally and reuse that installation for the affected test files and conformance checks. Optional full compatibility runs are selected manually; they are not merge or release requirements. Full C++ CodeQL analysis is local only. See [the check policy](.github/workflows/README.md) and [local native analysis](.github/codeql/README.md).
+Everyday PR CI runs three short jobs and never installs R packages. Merging a checked PR does not repeat CI or CodeQL on `main`; the weekly security scan and manual checks remain available. Install the modified R package once locally and reuse that installation for the affected test files and conformance checks. Optional full compatibility runs are selected manually; they are not merge or release requirements. Full C++ CodeQL analysis is local only. See [the check policy](.github/workflows/README.md) and [local native analysis](.github/codeql/README.md).
 
 Release builds compile one fresh binary per supported platform and smoke-test that exact binary. They reuse compiled runtime dependency libraries across release tags, install only missing or outdated imports, and avoid optional test dependencies and repeated source installations. Run broader R checks locally before a release when the change warrants them.
 

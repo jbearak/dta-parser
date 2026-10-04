@@ -11,9 +11,17 @@ def require(value,message):
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def namespace_dll(library):
-    files=list((library/'dtatools/libs').rglob('dtatools.so'))
+    files=[path for path in (library/'dtatools/libs').rglob('*')
+           if path.is_file() and path.suffix in ('.so','.dll','.dylib')]
     require(len(files)==1,'Expected exactly one qualified dtatools shared library')
     return files[0]
+
+def library_binding(library):
+    package=library.resolve()/'dtatools'
+    files=[namespace_dll(package.parent),package/'DESCRIPTION',package/'NAMESPACE',
+           package/'R/dtatools.rdb',package/'R/dtatools.rdx']
+    require(all(path.is_file() for path in files),'Installed package is incomplete')
+    return {str(path.relative_to(package)):sha(path) for path in files}
 
 def validate(rows,round_number,representations):
     require(len(rows)==len(representations),'Incomplete dense round')
@@ -44,6 +52,7 @@ def main():
     libraries={'baseline':args.baseline_library.resolve(),'candidate':args.candidate_library.resolve()}
     dlls={role:namespace_dll(library) for role,library in libraries.items()}
     worker=args.worker.resolve();before={'worker':sha(worker),'dlls':{role:sha(path) for role,path in dlls.items()},'controller':sha(Path(__file__))}
+    before['installed_packages']={role:library_binding(library) for role,library in libraries.items()}
     before['build_receipts']={role:sha(path) for role,path in (('baseline',args.baseline_receipt),('candidate',args.candidate_receipt)) if path is not None}
     representations=('compact','typed_double','ordinary_double') if args.include_bare else ('compact','typed_double')
     rounds=[];commands=[];all_rows=[]
@@ -60,7 +69,8 @@ def main():
             with csv_path.open(newline='') as stream:rows=list(csv.DictReader(stream))
             observations[role]=validate(rows,round_number,representations)
             for row in rows:all_rows.append({'build':role,'build_position':build_position,**row})
-            require(sha(worker)==before['worker'] and all(sha(dlls[name])==before['dlls'][name] for name in libraries),'Consumed worker/shared library changed')
+            after={'worker':sha(worker),'installed_packages':{name:library_binding(library) for name,library in libraries.items()}}
+            require(after['worker']==before['worker'] and after['installed_packages']==before['installed_packages'],'Consumed worker/installed package changed')
         baseline,candidate=observations['baseline'],observations['candidate']
         for representation in representations:
             for field in ('position','input_hash','rank_hash','result_hash','missing_hash','metadata_hash','result_metadata_hash','cleared_hash','result_storage','input_missing','zero_observed','result_missing','compact_before','compact_after','materialized_before','materialized_after','retained_before','retained_after','chunks_before','chunks_after'):
@@ -75,10 +85,11 @@ def main():
     counts={(role,representation):[int(row['position']) for row in all_rows if row['build']==role and row['representation']==representation] for role in libraries for representation in representations}
     for key,positions in counts.items():
         require(all(positions.count(position)==6//len(representations) for position in range(1,len(representations)+1)),'Unbalanced representation positions: '+str(key))
-    require(sha(Path(__file__))==before['controller'],'Controller changed during experiment')
+    after['controller']=sha(Path(__file__))
+    require(after['controller']==before['controller'],'Controller changed during experiment')
     with (output/'raw.csv').open('w',newline='') as stream:
         writer=csv.DictWriter(stream,fieldnames=list(all_rows[0]));writer.writeheader();writer.writerows(all_rows)
-    summary={'status':'PASS','paired_rounds':6,'timed_observations':len(all_rows),'representations':representations,'before':before,'libraries':{key:str(value) for key,value in libraries.items()},'worker':str(worker),'rounds':rounds,
+    summary={'status':'PASS','paired_rounds':6,'timed_observations':len(all_rows),'representations':representations,'before':before,'after':after,'libraries':{key:str(value) for key,value in libraries.items()},'worker':str(worker),'rounds':rounds,
              'medians':{name:statistics.median(item[name] for item in rounds) for name in rounds[0] if name.endswith('_cpu') or name.endswith('_speedup')},
              'commands':commands,'artifact_sha256':{path.name:sha(path) for path in output.iterdir() if path.is_file()},
              'scope':'Original random_half million-row dense reciprocal input, exact public operation and per-process oracle/cache/native-entry qualifications. Six alternating build pairs in fresh R processes; balanced representation positions. CPU measured only in worker adaptive loops. Unchanged typed control drift reported. No reader, arbitrary-import or universal parity claim.'}

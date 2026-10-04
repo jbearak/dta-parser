@@ -1,10 +1,16 @@
 # Checks
 
-`ci.yml` runs three quick jobs on source and workflow changes: TypeScript
+`ci.yml` runs three quick jobs on pull requests with source or workflow changes: TypeScript
 typechecking/tests/build, one stable Rust library check, and Python source,
 vendor-integrity and collector guards. It does not install R or Arrow, rebuild
 archives, replay benchmark evidence or run a platform/dependency matrix.
 New commits cancel obsolete CI runs. Job timeouts are 5, 8 and 3 minutes.
+Merging a checked PR does not run the same checks again on `main`. A manual
+dispatch is available for a direct change or an investigation.
+
+CodeQL checks the four supported languages on relevant PR changes without a
+build. Its weekly scan checks `main`; merging a PR does not launch another scan.
+Manual scans remain available. C++ analysis is optional and local only.
 
 Use fast local tests for the code being changed. After installing a modified R
 package once, reuse that installation for the relevant test files, for example:
