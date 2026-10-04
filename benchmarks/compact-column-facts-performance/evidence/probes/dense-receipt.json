@@ -1,0 +1,89 @@
+{
+  "status": "PASS",
+  "commit": "fe74d4b5de0c9e4b7aaf9edcf8bf444e1c3c7db1",
+  "root": "<repo>",
+  "cwd": "<private-evidence>/dense-consumer-committed-green-v1",
+  "source_sha256": {
+    "numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "numeric-arithmetic-integer-reciprocal.h": "9a2951a8c2cbd1e0e8ebe71623d6ac63656b8922e0799ade6a8906123b2dc147",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-payload.c": "2852eb419b560abf05c41c0aa5b6c96826a22671738a69f0a16cdd15f761e3a1",
+    "dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4"
+  },
+  "source_before_after_equal": true,
+  "controller_sha256": "d52c784116ec8b08301da97a46205eebf657337c8e4da1efdea1a7ddbf8ceb0f",
+  "probe_sha256": "efc8fc0b8eb78b1dddc9e0688c3a9ff4c03d9333ba6dafd6304cff7e1dd9a7cf",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "command": [
+    "/usr/bin/cc",
+    "-std=gnu23",
+    "-O2",
+    "-g",
+    "-fPIC",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "<private-evidence>/dense-consumer-committed-green-v1",
+    "<repo>/benchmarks/dense-float-reciprocal/work-count.c",
+    "-lm",
+    "-o",
+    "<private-evidence>/dense-consumer-committed-green-v1/work-count"
+  ],
+  "run_command": [
+    "<private-evidence>/dense-consumer-committed-green-v1/work-count",
+    "require-proved"
+  ],
+  "require_proved": true,
+  "exit_code": 0,
+  "cases": 2672,
+  "semantic_failures": 0,
+  "work_failures": 0,
+  "rounding_witnesses": [
+    [
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "8388608"
+    ],
+    [
+      "2",
+      "4194304"
+    ],
+    [
+      "3",
+      "12582912"
+    ]
+  ],
+  "artifact_sha256": {
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "production-domain.h": "60b113b030cd12c63816d23ed82727c570f5114c480e9c1758ab01f0b89bb733",
+    "numeric-arithmetic-integer-reciprocal.h": "9a2951a8c2cbd1e0e8ebe71623d6ac63656b8922e0799ade6a8906123b2dc147",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "work-count": "dc40fe7e93db3887082d6da1ab60be96d28c0518288510449ddeda717699fa24",
+    "numeric-arithmetic-float-reciprocal.h": "b39f0561ad51d428791d4c23aa5ff18e707fd0d264bdcfb6a918ab4d7d7a8cf4",
+    "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "work-count.csv": "35f7f9b0ed15e34834e9b7d8b1ef5002e45e8ceef813a9dd37f3910bf8f6ad61",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "work-count.log": "4e9d7753b86a7a9c55ecf2aaf7b3359af6b95838a5fc01ded70830d85f770205",
+    "production-common.h": "824220025e87d6a151d191103413342dca0c500bfb60537099acd89711bf8c77",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4"
+  },
+  "scope": "Actual general dispatch, reciprocal proof and producer headers with counters only in private copies. Independent raw input/result oracle under four verified release-flag rounding modes. Strict/unknown/legacy bytes, signed zero/subnormals, discarded provisional writes and whole-column promotion, dense-prefix recovery and seven-row retained spans. Complete facts, bounds-only/zero-only controls, conservative unsafe bounds and ordinary/zero/tag/mixed masks qualify whole-column routing. R allocation/reader/interrupt boundaries mocked; no timing, R ownership or floating exception-state claim."
+}

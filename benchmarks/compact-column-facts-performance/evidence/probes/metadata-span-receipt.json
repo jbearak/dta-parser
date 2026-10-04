@@ -1,0 +1,24 @@
+{
+  "source_sha256": {
+    "<repo>/r-package/dtatools/src/dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4",
+    "<repo>/r-package/dtatools/src/numeric-payload.c": "2852eb419b560abf05c41c0aa5b6c96826a22671738a69f0a16cdd15f761e3a1",
+    "<repo>/benchmarks/compact-float-facts/metadata-span.c": "9d9d3981f5a0ef4afd529e816196d74b9105d4dd6d239871f9d2aac345cf8e71",
+    "<repo>/benchmarks/compact-float-facts/metadata-span.py": "48ec685c54cfd144bf0d1dd84cbd5b62b04b4468cfbb48aedb8f75954d359fcc"
+  },
+  "command": [
+    "clang",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-O2",
+    "-I",
+    "<private-evidence>/metadata-span-v2",
+    "<repo>/benchmarks/compact-float-facts/metadata-span.c",
+    "-o",
+    "<private-evidence>/metadata-span-v2/metadata-span"
+  ],
+  "cwd": "<private-evidence>/metadata-span-v2",
+  "stdout": "PASS: full and partial plain/retained spans preserve only valid facts",
+  "exit_code": 0
+}
