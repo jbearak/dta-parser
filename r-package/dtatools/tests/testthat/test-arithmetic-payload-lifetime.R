@@ -318,3 +318,93 @@ test_that("float reciprocal proofs retain captured bytes and missing counts duri
         }
     }
 })
+
+test_that("long float block proofs retain captured inputs through reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    n <- 32769L
+    for (retained in c(FALSE, TRUE)) for (action in c("patch", "materialize")) {
+        values <- rep(1.5, n)
+        values[seq_len(256L)] <- rep(c(NA_real_, tagged_missing(letters)), length.out = 256L)
+        x <- dta_long(rep(16777217, n))
+        y <- dta_float(values)
+        if (retained) {
+            x <- .Call(C_dtatools_owned_numeric_freeze, x, 8191L)
+            y <- .Call(C_dtatools_owned_numeric_freeze, y, 16385L)
+        }
+        expected <- rep(16777218.5, n)
+        expected[seq_len(256L)] <- NA_real_
+        fired <- 0L
+        .arithmetic_lifetime_arm(function(key) {
+            fired <<- fired + 1L
+            if (action == "patch") {
+                .Call(C_dtatools_patch_vector, x, n, NA_real_)
+                .Call(C_dtatools_patch_vector, y, n, 1e10)
+            } else {
+                .force_altrep_materialization(x)
+                .force_altrep_materialization(y)
+            }
+        })
+        before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+        result <- x + y
+        after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+        expect_identical(after - before, 1)
+        expect_identical(fired, 1L)
+        gc()
+        expect_identical(dta_storage_type(result), "double")
+        expect_identical(writeBin(as.double(result), raw(), 8L), writeBin(expected, raw(), 8L))
+        cleared <- dibble(x = result)
+        replace_values(cleared, x = 0, where = seq_len(256L))
+        expected[seq_len(256L)] <- 0
+        expect_identical(as.double(cleared$x), expected)
+        expect_false(anyNA(cleared$x))
+        if (action == "patch") {
+            expect_true(is.na(as.double(x)[[n]]))
+            expect_identical(as.double(y)[[n]], 1e10)
+        }
+    }
+})
+test_that("long float all missing facts retain captured counts through reentry", {
+    .arithmetic_lifetime_native()
+    .arithmetic_lifetime_checkpoint_ready()
+    n <- 32769L
+    tags <- rep(c(NA_real_, tagged_missing(letters)), length.out = n)
+    expected_bytes <- writeBin(rep(NA_real_, n), raw(), 8L)
+    for (missing_source in c("long", "float")) for (reverse in c(FALSE, TRUE)) {
+        for (retained in c(FALSE, TRUE)) for (action in c("patch", "materialize")) {
+            x <- dta_long(if (missing_source == "long") tags else rep(16777217, n))
+            y <- dta_float(if (missing_source == "float") tags else rep(1.5, n))
+            if (retained) {
+                x <- .Call(C_dtatools_owned_numeric_freeze, x, 8191L)
+                y <- .Call(C_dtatools_owned_numeric_freeze, y, 16385L)
+            }
+            fired <- 0L
+            .arithmetic_lifetime_arm(function(key) {
+                fired <<- fired + 1L
+                if (action == "patch") {
+                    .Call(C_dtatools_patch_vector, if (missing_source == "long") x else y, n, 2)
+                } else {
+                    .force_altrep_materialization(x)
+                    .force_altrep_materialization(y)
+                }
+            })
+            before <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+            result <- if (reverse) y + x else x + y
+            after <- .Call(C_dtatools_numeric_entry_stats, FALSE)[["scalar"]]
+            expect_identical(after - before, 1)
+            expect_identical(fired, 1L)
+            gc()
+            expect_identical(dta_storage_type(result), "double")
+            expect_identical(writeBin(as.double(result), raw(), 8L), expected_bytes)
+            cleared <- dibble(x = result)
+            replace_values(cleared, x = 0, where = seq_len(n))
+            expect_identical(as.double(cleared$x), rep(0, n))
+            expect_false(anyNA(cleared$x))
+            expect_identical(writeBin(as.double(result), raw(), 8L), expected_bytes)
+            if (action == "patch") {
+                changed <- if (missing_source == "long") x else y
+                expect_identical(as.double(changed)[[n]], 2)
+            }
+        }
+    }
+})

@@ -1,0 +1,54 @@
+{
+  "archive_binding_original_sha256": "d68b783edf5d83623443f224b030fb0746aed21e407970d15572764ce34c1717",
+  "guards": [
+    {
+      "command": [
+        "python3",
+        "scripts/test_native_manifest.py"
+      ],
+      "exit_code": 0,
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.007s\n\nOK\n",
+      "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426"
+    },
+    {
+      "command": [
+        "python3",
+        "-O",
+        "scripts/test_native_manifest.py"
+      ],
+      "exit_code": 0,
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.005s\n\nOK\n",
+      "script_sha256": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426"
+    }
+  ],
+  "manifest_change": {
+    "after": {
+      "file": "test-arithmetic-payload-lifetime.R",
+      "min_pass": 54,
+      "min_pass_before_skip": 0,
+      "occurrence": 1,
+      "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+      "skip": "allow",
+      "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile",
+      "test": "integer reciprocal inherits the captured missing count during reentrant writes",
+      "warnings": 0
+    },
+    "before": {
+      "file": "test-arithmetic-payload-lifetime.R",
+      "min_pass": 54,
+      "occurrence": 1,
+      "skip": "forbid",
+      "test": "integer reciprocal inherits the captured missing count during reentrant writes",
+      "warnings": 0
+    }
+  },
+  "package_delta": [
+    "r-package/dtatools/tools/native-test-manifest.json"
+  ],
+  "parent_head": "d9e01145d08a63257687b26a7d1c0c509719f04f",
+  "postbuild_merge_commit": "a6efadc6bf505f034cfa28d2d86bed807b6600bb",
+  "qualified_archive_commit": "958082e4e9eb3fd78be6a81f1e70b6fabca27d9f",
+  "runtime_and_R_tests_unchanged": true,
+  "scope": "Manifest-only postbuild correction inherited from PR299/300, checked after the exact958082 archive suite. No runtime rebuild or performance rerun. Original archive and measurement records remain unchanged.",
+  "status": "PASS"
+}
