@@ -299,6 +299,9 @@ impl PreparedOwnedNumeric {
             scalar_start: 0,
             scalar_end: 0,
             domain_flags: 0,
+            float_max_magnitude_bound: 0,
+            float_min_nonzero_magnitude_bound: 0,
+            zero_count: 0,
         }
     }
 }
@@ -513,6 +516,9 @@ pub unsafe extern "C" fn dtatools_owned_numeric_clone(data: *const c_void) -> *m
             scalar_start: 0,
             scalar_end: 0,
             domain_flags: source.domain_flags,
+            float_max_magnitude_bound: source.float_max_magnitude_bound,
+            float_min_nonzero_magnitude_bound: source.float_min_nonzero_magnitude_bound,
+            zero_count: source.zero_count,
         });
         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
         result.native_owner = source.native_owner;
@@ -654,26 +660,44 @@ mod tests {
         assert!(!descriptor.is_null());
         let mut data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
         assert_eq!(data.domain_flags, 0);
-        data.domain_flags = 1;
+        assert_eq!(data.float_max_magnitude_bound, 0);
+        assert_eq!(data.float_min_nonzero_magnitude_bound, 0);
+        assert_eq!(data.zero_count, 0);
+        data.domain_flags = 7;
+        data.float_max_magnitude_bound = 0x4040_0000;
+        data.float_min_nonzero_magnitude_bound = 1;
+        data.zero_count = 2;
         let copied = unsafe { dtatools_owned_numeric_clone((&*data as *const NumericData).cast()) };
         assert!(!copied.is_null());
         let copied = unsafe { Box::from_raw(copied.cast::<NumericData>()) };
-        assert_eq!(copied.domain_flags, 1);
+        assert_eq!(copied.domain_flags, 7);
+        assert_eq!(copied.float_max_magnitude_bound, data.float_max_magnitude_bound);
+        assert_eq!(copied.float_min_nonzero_magnitude_bound, data.float_min_nonzero_magnitude_bound);
+        assert_eq!(copied.zero_count, data.zero_count);
         assert_eq!(copied.native_owner, data.native_owner);
         let imported = prepare_from_arrow(&[], NumericKind::Float, TemporalKind::None,
             FormatVersion::V119, 0, || false).unwrap().into_descriptor();
         assert_eq!(imported.domain_flags, 0);
+        assert_eq!(imported.float_max_magnitude_bound, 0);
+        assert_eq!(imported.float_min_nonzero_magnitude_bound, 0);
+        assert_eq!(imported.zero_count, 0);
         let plain = NumericData::new(crate::RNumericData {
             backing: ptr::null_mut(), values: ptr::null_mut(), length: 0,
             kind: NumericKind::Float, temporal: TemporalKind::None,
             format_version: FormatVersion::V119, missing_count: 0,
         });
         assert_eq!(plain.domain_flags, 0);
+        assert_eq!(plain.float_max_magnitude_bound, 0);
+        assert_eq!(plain.float_min_nonzero_magnitude_bound, 0);
+        assert_eq!(plain.zero_count, 0);
         let allocated = unsafe { crate::dtatools_numeric_alloc(ptr::null_mut(), 0,
             NumericKind::Float as c_int, TemporalKind::None as c_int, 0) };
         assert!(!allocated.is_null());
         let allocated = unsafe { Box::from_raw(allocated.cast::<NumericData>()) };
         assert_eq!(allocated.domain_flags, 0);
+        assert_eq!(allocated.float_max_magnitude_bound, 0);
+        assert_eq!(allocated.float_min_nonzero_magnitude_bound, 0);
+        assert_eq!(allocated.zero_count, 0);
     }
 
     const RELEASES: [u16; 10] = [105, 108, 110, 111, 113, 114, 115, 117, 118, 119];

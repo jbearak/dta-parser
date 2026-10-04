@@ -290,14 +290,36 @@ typedef struct {
     size_t scalar_end;
     /* Zero means unknown. A proof describes these exact bytes, not an R class. */
     uint32_t domain_flags;
+    /* Magnitude bits bound the observed binary32 values, excluding zero from
+       the lower bound. UINT32_MAX denotes no observed nonzero values. Bounds
+       remain valid for subsets of these bytes; counts do not. */
+    uint32_t float_max_magnitude_bound;
+    uint32_t float_min_nonzero_magnitude_bound;
+    /* Exact only for the descriptor's complete extent, including both zeros. */
+    size_t zero_count;
 } numeric_data;
 
-enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
+enum {
+    NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U,
+    NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN = 2U,
+    NUMERIC_DOMAIN_ZERO_COUNT_KNOWN = 4U
+};
 
 static inline int numeric_strict_modern_float(const numeric_data *data) {
     return data != NULL && data->kind == NUMERIC_FLOAT && data->temporal == 0 &&
         data->format_version > 111 &&
         (data->domain_flags & NUMERIC_DOMAIN_STRICT_MODERN_FLOAT) != 0;
+}
+
+static inline int numeric_float_bounds_known(const numeric_data *data) {
+    return numeric_strict_modern_float(data) &&
+        (data->domain_flags & NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN) != 0;
+}
+
+static inline int numeric_zero_count_known(const numeric_data *data) {
+    return data != NULL && data->temporal == 0 &&
+        data->kind >= NUMERIC_BYTE && data->kind <= NUMERIC_FLOAT &&
+        (data->domain_flags & NUMERIC_DOMAIN_ZERO_COUNT_KNOWN) != 0;
 }
 
 /* A retained payload keeps its bytes behind the immutable Rust owner and is
@@ -839,6 +861,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_numeric_storage_matches(
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_domain_info(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_facts_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL SEXP C_dtatools_force_altrep_materialization(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement);

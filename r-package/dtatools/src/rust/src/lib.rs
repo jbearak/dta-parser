@@ -248,17 +248,28 @@ struct NumericData {
     scalar_end: usize,
     // An allocation-specific proof; every generic/imported construction starts unknown.
     domain_flags: u32,
+    // Conservative binary32 magnitude bounds, valid only with the corresponding flag.
+    float_max_magnitude_bound: u32,
+    float_min_nonzero_magnitude_bound: u32,
+    // An exact count for the complete descriptor, not for a borrowed subspan.
+    zero_count: usize,
 }
 
 #[cfg(target_pointer_width = "64")]
 const _: () = {
     assert!(std::mem::offset_of!(NumericData, domain_flags) == 72);
-    assert!(std::mem::size_of::<NumericData>() == 80);
+    assert!(std::mem::offset_of!(NumericData, float_max_magnitude_bound) == 76);
+    assert!(std::mem::offset_of!(NumericData, float_min_nonzero_magnitude_bound) == 80);
+    assert!(std::mem::offset_of!(NumericData, zero_count) == 88);
+    assert!(std::mem::size_of::<NumericData>() == 96);
 };
 #[cfg(target_pointer_width = "32")]
 const _: () = {
     assert!(std::mem::offset_of!(NumericData, domain_flags) == 40);
-    assert!(std::mem::size_of::<NumericData>() == 44);
+    assert!(std::mem::offset_of!(NumericData, float_max_magnitude_bound) == 44);
+    assert!(std::mem::offset_of!(NumericData, float_min_nonzero_magnitude_bound) == 48);
+    assert!(std::mem::offset_of!(NumericData, zero_count) == 52);
+    assert!(std::mem::size_of::<NumericData>() == 56);
 };
 
 impl Drop for NumericData {
@@ -281,6 +292,9 @@ impl NumericData {
             scalar_start: 0,
             scalar_end: 0,
             domain_flags: 0,
+            float_max_magnitude_bound: 0,
+            float_min_nonzero_magnitude_bound: 0,
+            zero_count: 0,
         }
     }
 }
@@ -374,6 +388,9 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         scalar_start: 0,
         scalar_end: 0,
         domain_flags: 0,
+        float_max_magnitude_bound: 0,
+        float_min_nonzero_magnitude_bound: 0,
+        zero_count: 0,
     }))
     .cast::<c_void>()
 }

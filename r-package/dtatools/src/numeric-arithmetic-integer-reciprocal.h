@@ -32,19 +32,23 @@ static void arithmetic_integer_reciprocal_write(
     const numeric_data *data = column->operand->reader.storage;
     const int32_t missing_minimum = (int32_t) column->policy.minimum;
     const int all_observed = data->missing_count == 0;
+    const int known_zeros = numeric_zero_count_known(data) &&
+        data->length == (size_t) length &&
+        data->zero_count <= (size_t) length - data->missing_count;
     /* The existing arithmetic_capture claim protects these bytes and their
        cached missing count through allocation, interrupts and publication.
        Zero is observed in every admitted integer layout: all modern and
        legacy reserved codes are positive. Zero denominators are therefore
        disjoint from inherited missing codes, without another classification. */
-    output->missing_count = data->missing_count;
+    output->missing_count = data->missing_count +
+        (known_zeros ? data->zero_count : 0);
     for (size_t start = 0; start < (size_t) length;) {
         R_CheckUserInterrupt();
         size_t count = (size_t) length - start;
         if (count > 16384) count = 16384;
         const unsigned char *raw = numeric_read_span(data, start, count, &count);
         unsigned zero_count = 0;
-#define INTEGER_RECIPROCAL_LOOP(SOURCE, TARGET, DEST, MISSING, OBSERVED)      \
+#define INTEGER_RECIPROCAL_LOOP(SOURCE, TARGET, DEST, MISSING, OBSERVED, KNOWN, ZERO_FREE) \
         do {                                                               \
             TARGET *restrict target = (DEST) + start;                      \
             const SOURCE missing_limit = (SOURCE) missing_minimum;         \
@@ -52,34 +56,40 @@ static void arithmetic_integer_reciprocal_write(
                 SOURCE source;                                             \
                 memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
                 unsigned observed = (OBSERVED) || source < missing_limit;   \
-                unsigned zero = source == 0;                              \
+                unsigned zero = !(ZERO_FREE) && source == 0;              \
                 unsigned invalid = (!observed) | zero;                    \
                 SOURCE denominator = zero ? (SOURCE) 1 : source;          \
                 TARGET result = (TARGET) (scalar / (double) denominator); \
                 target[i] = invalid ? (TARGET) (MISSING) : result;        \
-                zero_count += zero;                                       \
+                if (!(KNOWN)) zero_count += zero;                         \
             }                                                              \
         } while (0)
-#define INTEGER_RECIPROCAL_TARGET(SOURCE, OBSERVED)                         \
+#define INTEGER_RECIPROCAL_TARGET(SOURCE, OBSERVED, KNOWN, ZERO_FREE)         \
         if (output->kind == NUMERIC_FLOAT) {                                \
             INTEGER_RECIPROCAL_LOOP(SOURCE, float,                          \
-                (float *) (void *) output->raw, 0x1p127f, OBSERVED);        \
+                (float *) (void *) output->raw, 0x1p127f, OBSERVED, KNOWN, ZERO_FREE); \
         } else {                                                           \
             INTEGER_RECIPROCAL_LOOP(SOURCE, double,                         \
-                output->real, NA_REAL, OBSERVED);                          \
+                output->real, NA_REAL, OBSERVED, KNOWN, ZERO_FREE);         \
         }
-#define INTEGER_RECIPROCAL_WIDTHS(OBSERVED)                                \
+#define INTEGER_RECIPROCAL_WIDTHS(OBSERVED, KNOWN, ZERO_FREE)                \
         switch (data->kind) {                                               \
-        case NUMERIC_BYTE: INTEGER_RECIPROCAL_TARGET(int8_t, OBSERVED); break; \
-        case NUMERIC_INT: INTEGER_RECIPROCAL_TARGET(int16_t, OBSERVED); break; \
-        case NUMERIC_LONG: INTEGER_RECIPROCAL_TARGET(int32_t, OBSERVED); break; \
+        case NUMERIC_BYTE: INTEGER_RECIPROCAL_TARGET(int8_t, OBSERVED, KNOWN, ZERO_FREE); break; \
+        case NUMERIC_INT: INTEGER_RECIPROCAL_TARGET(int16_t, OBSERVED, KNOWN, ZERO_FREE); break; \
+        case NUMERIC_LONG: INTEGER_RECIPROCAL_TARGET(int32_t, OBSERVED, KNOWN, ZERO_FREE); break; \
         }
-        if (all_observed) { INTEGER_RECIPROCAL_WIDTHS(1); }
-        else { INTEGER_RECIPROCAL_WIDTHS(0); }
+#define INTEGER_RECIPROCAL_SHAPE(KNOWN, ZERO_FREE)                         \
+        if (all_observed) { INTEGER_RECIPROCAL_WIDTHS(1, KNOWN, ZERO_FREE); } \
+        else { INTEGER_RECIPROCAL_WIDTHS(0, KNOWN, ZERO_FREE); }
+        if (known_zeros) {
+            if (data->zero_count == 0) { INTEGER_RECIPROCAL_SHAPE(1, 1); }
+            else { INTEGER_RECIPROCAL_SHAPE(1, 0); }
+        } else { INTEGER_RECIPROCAL_SHAPE(0, 0); }
+#undef INTEGER_RECIPROCAL_SHAPE
 #undef INTEGER_RECIPROCAL_WIDTHS
 #undef INTEGER_RECIPROCAL_TARGET
 #undef INTEGER_RECIPROCAL_LOOP
-        output->missing_count += zero_count;
+        if (!known_zeros) output->missing_count += zero_count;
         start += count;
     }
 }

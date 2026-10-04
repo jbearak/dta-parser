@@ -17,8 +17,12 @@ typedef struct {
     size_t missing_count, chunk_size;
     const unsigned char *raw;
     uint32_t domain_flags;
+    uint32_t float_max_magnitude_bound, float_min_nonzero_magnitude_bound;
+    size_t zero_count;
+    size_t length;
 } numeric_data;
-enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
+enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U,
+    NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN = 2U, NUMERIC_DOMAIN_ZERO_COUNT_KNOWN = 4U };
 typedef struct {
     const numeric_data *storage;
     const double *real_values;
@@ -144,8 +148,8 @@ static int run_case(size_t length,int pattern,int legacy_x,int legacy_y,
     memset(span_rows,0,sizeof span_rows);
     int32_t *x=malloc(length*4); uint32_t *y=malloc(length*4);
     if (!x || !y) abort();
-    numeric_data xd={NUMERIC_LONG,0,legacy_x?111:118,0,xchunk,(const unsigned char *)x,0};
-    numeric_data yd={NUMERIC_FLOAT,0,legacy_y?111:118,0,ychunk,(const unsigned char *)y,0};
+    numeric_data xd={NUMERIC_LONG,0,legacy_x?111:118,0,xchunk,(const unsigned char *)x,0,0,0,0,length};
+    numeric_data yd={NUMERIC_FLOAT,0,legacy_y?111:118,0,ychunk,(const unsigned char *)y,0,0,0,0,length};
     size_t wanted_missing=0,overlap=0;
     for (size_t i=0;i<length;i++) {
         fixture(i,length,pattern,legacy_x,legacy_y,x+i,y+i);

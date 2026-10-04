@@ -14,7 +14,7 @@ SPEC.loader.exec_module(PROBE)
 def encode(cases):
     stream = io.StringIO()
     writer = csv.writer(stream)
-    writer.writerow(('length', 'kind', 'pattern', 'scalar', 'legacy', 'chunk'))
+    writer.writerow(('facts', 'length', 'kind', 'pattern', 'scalar', 'legacy', 'chunk', 'rounding'))
     writer.writerows(cases)
     return stream.getvalue()
 
@@ -22,11 +22,11 @@ def encode(cases):
 class MatrixGuard(unittest.TestCase):
     def test_complete_matrix_and_corruptions(self):
         cases = list(PROBE.expected_cases().elements())
-        self.assertEqual(len(cases), 64)
+        self.assertEqual(len(cases), 640)
         PROBE.validate_case_matrix(encode(cases))
-        wrong_sign = [(*row[:3], '0x0p+0', *row[4:]) if row[3] == (-0.0).hex() else row for row in cases]
+        wrong_sign = [(*row[:4], '0x0p+0', *row[5:]) if row[4] == (-0.0).hex() else row for row in cases]
         for broken in (cases[:-1], cases + [cases[0]], cases[:-1] + [cases[0]], wrong_sign):
-            with self.assertRaisesRegex(RuntimeError, '64-case'):
+            with self.assertRaisesRegex(RuntimeError, '640-case'):
                 PROBE.validate_case_matrix(encode(broken))
 
 

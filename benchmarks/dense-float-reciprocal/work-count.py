@@ -20,7 +20,7 @@ FIELDS = ('domain,length,pattern,scalar,legacy,chunk,minimum,rounding,output,'
           'reciprocal_exact_rows,reciprocal_fit_rows,reciprocal_threshold_calls,'
           'reciprocal_prepare_rows,reciprocal_scratch_bytes,reciprocal_prepared_rows,'
           'reciprocal_prepared_divisions,reciprocal_fill_rows,reciprocal_all_missing_rows,'
-          'canonical_attempt_rows,canonical_committed_rows').split(',')
+          'canonical_attempt_rows,canonical_committed_rows,whole_write_rows').split(',')
 
 
 def require(condition, message):
@@ -85,6 +85,13 @@ def expected_cases(modes):
         for minimum in (3, 4):
             add(0, 1025, 2, 1.01, 0, 0, minimum, mode)
             add(0, 1025, 10, 1.01, 1, 0, minimum, mode)
+        for domain in (3, 5, 7, 15):
+            for minimum in (3, 4):
+                for chunks in (0, 7):
+                    for pattern in (7, 8, 14, 15, 16, 17):
+                        for scalar in (1.01, -0.0, float.fromhex('0x1.fffffffffffffp1022'),
+                                       float.fromhex('0x1.fffffffffffffp1023')):
+                            add(domain, 1025, pattern, scalar, 0, chunks, minimum, mode)
     return cases
 
 
@@ -109,9 +116,18 @@ def validate_rows(rows, modes, require_proved):
         require(value('result_missing') <= n, 'Result missing count exceeds input length')
         require(value('reciprocal_scratch_bytes') == value('reciprocal_prepare_rows') * 5, 'Preparation scratch ledger differs')
         require(value('canonical_committed_rows') <= value('canonical_attempt_rows') <= value('output_span_rows'), 'Fused writer ledger differs')
+        require(value('whole_write_rows') <= value('output_span_rows'), 'Whole-column writer ledger differs')
         gated = (value('pattern') == 8 and value('domain') == 1 and value('legacy') == 0 and value('chunk') == 0)
-        work_failure = require_proved and ((gated and value('reciprocal_prepare_rows') > 256) or
-            ((value('domain') == 0 or value('legacy') == 1) and value('canonical_attempt_rows') != 0))
+        whole_gate = (value('domain') == 7 and value('legacy') == 0 and
+                      value('pattern') not in (14, 17) and float.fromhex(row['scalar']) in (1.01, 0))
+        dense_gate = value('pattern') == 8 and value('domain') != 0 and value('legacy') == 0 and value('chunk') == 0
+        work_failure = require_proved and ((dense_gate and value('reciprocal_prepare_rows') > 256) or
+            ((value('domain') == 0 or value('legacy') == 1) and value('canonical_attempt_rows') != 0) or
+            (whole_gate and (value('whole_write_rows') != n or value('reciprocal_prepare_rows') != 0 or
+                            value('canonical_attempt_rows') != 0)) or
+            ((value('domain') in (0, 1, 3, 5) or value('legacy') == 1 or
+              (value('domain') == 15 and value('output') == 3 and float.fromhex(row['scalar']) == 1.01)) and
+             value('whole_write_rows') != 0))
         require(value('work_failure') == int(work_failure), 'Work failure differs from observed counters')
         if gated:
             require(value('result_missing') == n // 2, 'Dense tag missing count differs from independent fixture')
@@ -149,7 +165,11 @@ def main():
         common += '\n' + function((src / 'numeric-arithmetic-scale.h').read_text(), name)
     (output / 'production-common.h').write_text(common)
     internal = (src / 'dtatools-internal.h').read_text()
-    domain = 'enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };\n' + function(internal, 'numeric_strict_modern_float')
+    domain_begin = internal.index('enum {\n    NUMERIC_DOMAIN_STRICT_MODERN_FLOAT')
+    domain_end = internal.index('};', domain_begin) + 2
+    domain = internal[domain_begin:domain_end] + '\n'
+    for name in ('numeric_strict_modern_float', 'numeric_float_bounds_known', 'numeric_zero_count_known'):
+        domain += function(internal, name) + '\n'
     (output / 'production-domain.h').write_text(domain)
     reciprocal_path = output / 'numeric-arithmetic-float-reciprocal.h'
     reciprocal = replace_once(reciprocal_path.read_text(), '    uint32_t minimum = UINT32_MAX;\n',
@@ -160,6 +180,11 @@ def main():
             '        canonical_attempt_rows += count; ' + continuation + '        unsigned invalid_count = 0, too_small = 0;')
         reciprocal = replace_once(reciprocal, '        *missing_count = invalid_count;',
             '        canonical_committed_rows += count; ' + continuation + '        *missing_count = invalid_count;')
+    if 'arithmetic_float_reciprocal_whole_write' in reciprocal:
+        reciprocal = replace_once(reciprocal, '    output->missing_count = proof->result_missing_count;',
+            '    whole_write_rows += (size_t) length;\n    output->missing_count = proof->result_missing_count;')
+    reciprocal = replace_once(reciprocal, '        output->missing_count += count;',
+        '        reciprocal_fill_rows += count;\n        output->missing_count += count;')
     reciprocal_path.write_text(reciprocal)
     compiler_path = shutil.which('cc')
     require(compiler_path is not None, 'C compiler cc is required for the local probe')
@@ -192,7 +217,7 @@ def main():
         command=command, run_command=run_command, require_proved=args.require_proved, exit_code=run.returncode,
         cases=len(rows), semantic_failures=semantic_failures, work_failures=work_failures, rounding_witnesses=witnesses,
         artifact_sha256={p.name: sha(p) for p in output.iterdir() if p.is_file()},
-        scope='Actual general dispatch, reciprocal proof and producer headers with counters only in private copies. Independent raw input/result oracle under four verified release-flag rounding modes. Strict/unknown/legacy bytes, signed zero/subnormals, discarded provisional writes and whole-column promotion, dense-prefix recovery and seven-row retained spans. R allocation/reader/interrupt boundaries mocked; no timing, R ownership or floating exception-state claim.')
+        scope='Actual general dispatch, reciprocal proof and producer headers with counters only in private copies. Independent raw input/result oracle under four verified release-flag rounding modes. Strict/unknown/legacy bytes, signed zero/subnormals, discarded provisional writes and whole-column promotion, dense-prefix recovery and seven-row retained spans. Complete facts, bounds-only/zero-only controls, conservative unsafe bounds and ordinary/zero/tag/mixed masks qualify whole-column routing. R allocation/reader/interrupt boundaries mocked; no timing, R ownership or floating exception-state claim.')
     (output / 'receipt.json').write_text(json.dumps(record, indent=2) + '\n')
     print(run.stderr, end='')
     print('Receipt:', output / 'receipt.json')

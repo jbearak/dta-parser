@@ -129,6 +129,7 @@ static void encode_compact_patch_value(
     numeric_data encoder = *target;
     encoder.values = encoded;
     encoder.length = 1;
+    encoder.domain_flags = 0;
     write_compact_patch_value(&encoder, 0, value, missing_code);
 }
 
@@ -2696,6 +2697,8 @@ static SEXP numeric_freeze_body(void *raw) {
        inherit a public descriptor's flag across allocation or callbacks. */
     int strict = source->kind == NUMERIC_FLOAT && source->temporal == 0 &&
         source->format_version > 111;
+    uint32_t maximum = 0, minimum = UINT32_MAX;
+    size_t zero_count = 0;
     if (strict) {
         for (size_t i = 0; i < source->length; i++) {
             if ((i & 16383) == 0) R_CheckUserInterrupt();
@@ -2708,6 +2711,11 @@ static SEXP numeric_freeze_body(void *raw) {
                 strict = 0;
                 break;
             }
+            if (magnitude <= UINT32_C(0x7effffff)) {
+                if (magnitude > maximum) maximum = magnitude;
+                if (magnitude == 0) zero_count++;
+                else if (magnitude < minimum) minimum = magnitude;
+            }
         }
     }
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
@@ -2717,7 +2725,14 @@ static SEXP numeric_freeze_body(void *raw) {
         source->temporal, source->format_version, source->missing_count
     );
     if (data == NULL) Rf_error("could not freeze compact numeric storage");
-    ((numeric_data *) data)->domain_flags = strict ? NUMERIC_DOMAIN_STRICT_MODERN_FLOAT : 0;
+    if (strict) {
+        numeric_data *storage = data;
+        storage->domain_flags = NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN | NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+        storage->float_max_magnitude_bound = maximum;
+        storage->float_min_nonzero_magnitude_bound = minimum;
+        storage->zero_count = zero_count;
+    }
     R_SetExternalPtrAddr(external, data);
     SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, context->value);

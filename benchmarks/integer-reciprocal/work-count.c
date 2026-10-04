@@ -2,6 +2,7 @@
    Only the R allocation/reader/interrupt boundary is mocked. The private
    Python driver inserts counters into copies, never the package headers. */
 #include <float.h>
+#include <fenv.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -14,11 +15,14 @@ typedef ptrdiff_t R_xlen_t;
 enum { NUMERIC_BYTE, NUMERIC_INT, NUMERIC_LONG, NUMERIC_FLOAT, NUMERIC_DOUBLE };
 typedef struct {
     int kind, temporal, format_version;
-    size_t missing_count, chunk_size;
+    size_t length, missing_count, chunk_size;
     const unsigned char *raw;
     uint32_t domain_flags;
+    uint32_t float_max_magnitude_bound, float_min_nonzero_magnitude_bound;
+    size_t zero_count;
 } numeric_data;
-enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
+enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U,
+    NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN = 2U, NUMERIC_DOMAIN_ZERO_COUNT_KNOWN = 4U };
 typedef struct {
     const numeric_data *storage;
     const double *real_values;
@@ -39,6 +43,8 @@ typedef int PROTECT_INDEX;
 static int phase;
 static size_t general_rows[2], result_checks[2], integer_loads[2], span_rows[2];
 static size_t fit_rows, scalar_reads, allocations;
+static size_t integer_zero_test_rows, integer_zero_reduction_rows, integer_cached_rows;
+static int facts_mode;
 static SEXP allocated[4];
 static size_t width(int kind) { return kind == 0 ? 1 : kind == 1 ? 2 : kind < 4 ? 4 : 8; }
 static void R_CheckUserInterrupt(void) {}
@@ -81,6 +87,8 @@ static int32_t fixture(size_t i, int kind, int pattern, size_t length) {
     int32_t limit = kind == 0 ? 101 : kind == 1 ? 32741 : 2147483621;
     if (pattern == 1 && i >= 12 && (i-12) % 997 == 0) return limit;
     if (pattern == 2) return i+1 == length ? 3 : 1;
+    if (pattern == 4) return i % 3 == 0 ? 0 : i % 3 == 1 ? 3 : -3;
+    if (pattern == 5) return i % 3 == 0 ? limit + (int32_t)(i % 27) : i % 3 == 1 ? 3 : -3;
     if (pattern == 3) {
         int32_t cases[] = {0,1,-1,INT32_MIN,limit-1,limit,limit+1,limit+26};
         int32_t value = cases[i%8];
@@ -92,14 +100,21 @@ static int32_t fixture(size_t i, int kind, int pattern, size_t length) {
     return kind == NUMERIC_BYTE ? (int32_t)((13*(i+1))%101)-50 :
         (int32_t)((13*(i+1))%10001)-5000;
 }
+static double quotient(double scalar, int32_t source) {
+    volatile double numerator=scalar, denominator=(double)source;
+    return numerator/denominator;
+}
 static int run_case(size_t length, int kind, int pattern, double scalar,
         int legacy, size_t chunks, int required) {
     phase = 0; fit_rows = scalar_reads = allocations = 0;
+    integer_zero_test_rows=integer_zero_reduction_rows=integer_cached_rows=0;
     memset(general_rows,0,sizeof general_rows); memset(result_checks,0,sizeof result_checks);
     memset(integer_loads,0,sizeof integer_loads); memset(span_rows,0,sizeof span_rows);
     unsigned char *raw = malloc(length * width(kind));
     if (!raw) return 2;
-    numeric_data data = {kind,0,legacy ? 111 : 118,0,chunks,raw,0};
+    numeric_data data = {.kind=kind, .length=length,
+        .format_version=legacy ? 111 : 118, .chunk_size=chunks, .raw=raw,
+        .domain_flags=(uint32_t)facts_mode};
     const int32_t missing_minimum = arithmetic_integer_missing(&data);
     size_t want_missing = 0;
     double minimum = 0, maximum = 0; unsigned fractional = 0;
@@ -107,7 +122,8 @@ static int run_case(size_t length, int kind, int pattern, double scalar,
         int32_t x=fixture(i,kind,pattern,length); store_integer(raw,i,kind,x);
         int inherited = x >= missing_minimum;
         data.missing_count += inherited;
-        double result = inherited ? NA_REAL : scalar / (double)x;
+        data.zero_count += x == 0;
+        double result = inherited ? NA_REAL : quotient(scalar,x);
         int valid = uncounted_result_valid(result); want_missing += !valid;
         double observed = valid ? result : 0;
         if (observed < minimum) minimum = observed;
@@ -131,7 +147,7 @@ static int run_case(size_t length, int kind, int pattern, double scalar,
     if (selected != wanted || result->missing_count != want_missing || scalar_reads != 1) return 3;
     for (size_t i=0;i<length;i++) {
         int32_t x=fixture(i,kind,pattern,length);
-        double value = x>=missing_minimum ? NA_REAL : scalar/(double)x;
+        double value = x>=missing_minimum ? NA_REAL : quotient(scalar,x);
         int valid = uncounted_result_valid(value);
         if (selected == NUMERIC_FLOAT) {
             float want = valid ? (float)value : 0x1p127f;
@@ -145,19 +161,25 @@ static int run_case(size_t length, int kind, int pattern, double scalar,
             if (memcmp(result->raw+width(selected)*i,bytes,width(selected))) return 6;
         }
     }
-    printf("%zu,%d,%d,%a,%d,%zu,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
-        length,kind,pattern,scalar,legacy,chunks,selected,general_rows[0],general_rows[1],
-        result_checks[0],result_checks[1],fit_rows,integer_loads[0],integer_loads[1],span_rows[0],span_rows[1],want_missing);
     int admitted_bound = selected == NUMERIC_DOUBLE ? uncounted_result_valid(scalar) :
         selected == NUMERIC_FLOAT && fabs(scalar) <= numeric_float_observed_limit();
-    int red = required && admitted_bound && general_rows[1] != 0;
+    int red = required && admitted_bound && (general_rows[1] != 0 ||
+        (facts_mode ? (integer_cached_rows != length || integer_zero_reduction_rows != 0 ||
+            (data.zero_count == 0 && integer_zero_test_rows != 0)) :
+            (integer_cached_rows != 0 || integer_zero_reduction_rows != length)));
+    printf("%d,%zu,%d,%d,%a,%d,%zu,%d,%d,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d\n",
+        facts_mode,length,kind,pattern,scalar,legacy,chunks,fegetround(),selected,
+        admitted_bound,general_rows[0],general_rows[1],result_checks[0],result_checks[1],
+        fit_rows,integer_loads[0],integer_loads[1],span_rows[0],span_rows[1],want_missing,
+        integer_zero_test_rows,integer_zero_reduction_rows,integer_cached_rows,red);
     for (size_t i=0;i<allocations;i++) {free(allocated[i]->raw);free(allocated[i]);}
     free(raw);
     return red ? 1 : 0;
 }
-static int semantic_failures, work_failures;
+static int semantic_failures, work_failures, cases;
 static void record_case(size_t n, int kind, int pattern, double scalar, int legacy, size_t chunks, int required) {
     int status=run_case(n,kind,pattern,scalar,legacy,chunks,required);
+    cases++;
     if (status==1) work_failures++;
     else if (status!=0) {
         semantic_failures++;
@@ -166,7 +188,10 @@ static void record_case(size_t n, int kind, int pattern, double scalar, int lega
 }
 int main(int argc, char **argv) {
     (void)argv;
-    puts("length,kind,pattern,scalar,legacy,chunk,output,preflight_rows,generic_output_rows,preflight_result_checks,output_result_checks,float_fit_rows,preflight_integer_loads,output_integer_loads,preflight_span_rows,output_span_rows,result_missing");
+    if (sizeof(float)!=4 || sizeof(double)!=8 || FLT_RADIX!=2 ||
+        FLT_MANT_DIG!=24 || DBL_MANT_DIG!=53) return 2;
+    puts("facts,length,kind,pattern,scalar,legacy,chunk,rounding,output,admitted_bound,preflight_rows,generic_output_rows,preflight_result_checks,output_result_checks,float_fit_rows,preflight_integer_loads,output_integer_loads,preflight_span_rows,output_span_rows,result_missing,zero_test_rows,zero_reduction_rows,cached_rows,work_failure");
+    if (fesetround(FE_TONEAREST)) return 2;
     const size_t lengths[] = {16383,16384,16385,1000000};
     for (int kind=0;kind<=2;kind++) for (int p=0;p<=1;p++)
         record_case(1000000,kind,p,1.01,0,0,argc>1);
@@ -176,7 +201,29 @@ int main(int argc, char **argv) {
     for (int kind=0;kind<=2;kind++) for (int legacy=0;legacy<=1;legacy++)
         for (size_t j=0;j<sizeof(scalars)/sizeof(*scalars);j++)
             record_case(128,kind,3,scalars[j],legacy,7,argc>1);
-    fprintf(stderr,"%s: %d semantic failures, %d proved-work failures across 64 cases\n",
-        semantic_failures || work_failures ? "FAIL" : "PASS",semantic_failures,work_failures);
+    const int modes[]={FE_TONEAREST,FE_DOWNWARD,FE_UPWARD,FE_TOWARDZERO};
+    const uint64_t positive[]={UINT64_C(0x3fd5555555555555),UINT64_C(0x3fd5555555555555),
+        UINT64_C(0x3fd5555555555556),UINT64_C(0x3fd5555555555555)};
+    const uint64_t negative[]={UINT64_C(0xbfd5555555555555),UINT64_C(0xbfd5555555555556),
+        UINT64_C(0xbfd5555555555555),UINT64_C(0xbfd5555555555555)};
+    const int patterns[]={0,3,4,5};
+    const double fact_scalars[]={1.01,-1.01,-0.0};
+    for (size_t m=0;m<4;m++) {
+        if (fesetround(modes[m]) || fegetround()!=modes[m]) return 2;
+        double plus=quotient(1.0,3),minus=quotient(-1.0,3);uint64_t p,n;
+        memcpy(&p,&plus,8);memcpy(&n,&minus,8);
+        if (p!=positive[m] || n!=negative[m]) return 2;
+        fprintf(stderr,"ROUNDING,%zu,%d,PASS\n",m,modes[m]);
+        for (int facts=0;facts<=4;facts+=4) {
+            facts_mode=facts;
+            for (int kind=0;kind<=2;kind++) for (int legacy=0;legacy<=1;legacy++)
+                for (size_t j=0;j<sizeof(patterns)/sizeof(*patterns);j++)
+                    for (size_t s=0;s<sizeof(fact_scalars)/sizeof(*fact_scalars);s++)
+                        record_case(129,kind,patterns[j],fact_scalars[s],legacy,7,argc>1);
+        }
+    }
+    fesetround(FE_TONEAREST);
+    fprintf(stderr,"%s: %d semantic failures, %d proved-work failures across %d cases\n",
+        semantic_failures || work_failures ? "FAIL" : "PASS",semantic_failures,work_failures,cases);
     return semantic_failures || work_failures ? 1 : 0;
 }

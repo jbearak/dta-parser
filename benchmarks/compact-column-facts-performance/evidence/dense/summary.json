@@ -1,0 +1,440 @@
+{
+  "status": "PASS",
+  "paired_rounds": 6,
+  "timed_observations": 36,
+  "representations": [
+    "compact",
+    "typed_double",
+    "ordinary_double"
+  ],
+  "before": {
+    "worker": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+    "dlls": {
+      "baseline": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+      "candidate": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13"
+    },
+    "controller": "662c631a6aed9b34418fd0a2bfb6c4102b377b84539447fb0be08f1b13915e06",
+    "installed_packages": {
+      "baseline": {
+        "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+        "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+        "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+        "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+        "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+      },
+      "candidate": {
+        "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+        "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+        "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+        "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+        "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+      }
+    },
+    "build_receipts": {
+      "baseline": "c3ea63b8266ebfdc01bb06b20c094199638fec5d0e53583994689513f27d6bbf",
+      "candidate": "a9e7a95ec636b8ea47a6cd91018e719e24f88ecaa7187701422093aed9bcd47b"
+    }
+  },
+  "after": {
+    "worker": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+    "installed_packages": {
+      "baseline": {
+        "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+        "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+        "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+        "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+        "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+      },
+      "candidate": {
+        "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+        "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+        "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+        "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+        "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+      }
+    },
+    "controller": "662c631a6aed9b34418fd0a2bfb6c4102b377b84539447fb0be08f1b13915e06"
+  },
+  "libraries": {
+    "baseline": "<baseline-library>",
+    "candidate": "<candidate-library>"
+  },
+  "worker": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+  "rounds": [
+    {
+      "round": 1,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "compact": 0.47777777777777775,
+          "typed_double": 0.37868852459016394,
+          "ordinary_double": 0.34596577017114916
+        },
+        "candidate": {
+          "compact": 0.3794808405438813,
+          "typed_double": 0.3787234042553192,
+          "ordinary_double": 0.34875000000000006
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.2616642616642615,
+      "candidate_compact_to_typed_cpu": 1.0019999722226078,
+      "paired_compact_speedup": 1.2590300398117988,
+      "paired_typed_control_speedup": 0.9999079020077363,
+      "baseline_compact_to_ordinary_cpu": 1.3809972516686297,
+      "candidate_compact_to_ordinary_cpu": 1.0881171055021686,
+      "paired_ordinary_control_speedup": 0.9920165452936175
+    },
+    {
+      "round": 2,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "ordinary_double": 0.4285714285714286,
+          "typed_double": 0.3721244925575102,
+          "compact": 0.3973105134474328
+        },
+        "baseline": {
+          "ordinary_double": 0.42571785268414486,
+          "typed_double": 0.39890710382513656,
+          "compact": 0.471875
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.1829195205479452,
+      "candidate_compact_to_typed_cpu": 1.0676817070460103,
+      "paired_compact_speedup": 1.1876730769230768,
+      "paired_typed_control_speedup": 1.0719721808246396,
+      "baseline_compact_to_ordinary_cpu": 1.1084219208211141,
+      "candidate_compact_to_ordinary_cpu": 0.9270578647106764,
+      "paired_ordinary_control_speedup": 0.9933416562630046
+    },
+    {
+      "round": 3,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "typed_double": 0.4073033707865168,
+          "ordinary_double": 0.40561622464898595,
+          "compact": 0.5063492063492064
+        },
+        "candidate": {
+          "typed_double": 0.41058655221745344,
+          "ordinary_double": 0.4015625,
+          "compact": 0.42729970326409494
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.2431746031746034,
+      "candidate_compact_to_typed_cpu": 1.0407055490648167,
+      "paired_compact_speedup": 1.1849977954144624,
+      "paired_typed_control_speedup": 0.9920036800689034,
+      "baseline_compact_to_ordinary_cpu": 1.2483455433455435,
+      "candidate_compact_to_ordinary_cpu": 1.0640926462607811,
+      "paired_ordinary_control_speedup": 1.0100948785033113
+    },
+    {
+      "round": 4,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "typed_double": 0.3620474406991261,
+          "compact": 0.3761840324763194,
+          "ordinary_double": 0.34758620689655173
+        },
+        "baseline": {
+          "typed_double": 0.3672680412371134,
+          "compact": 0.4708454810495627,
+          "ordinary_double": 0.3779310344827586
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.282021379980564,
+      "candidate_compact_to_typed_cpu": 1.0390462414259718,
+      "paired_compact_speedup": 1.2516360089770748,
+      "paired_typed_control_speedup": 1.0144196587273373,
+      "baseline_compact_to_ordinary_cpu": 1.2458502692004851,
+      "candidate_compact_to_ordinary_cpu": 1.0822754902592522,
+      "paired_ordinary_control_speedup": 1.0873015873015872
+    },
+    {
+      "round": 5,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "ordinary_double": 0.3734249713631157,
+          "compact": 0.4220314735336195,
+          "typed_double": 0.33207070707070707
+        },
+        "candidate": {
+          "ordinary_double": 0.42180094786729855,
+          "compact": 0.3728606356968215,
+          "typed_double": 0.3774373259052925
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.2709084678274776,
+      "candidate_compact_to_typed_cpu": 0.9878743041709145,
+      "paired_compact_speedup": 1.1318745749196746,
+      "paired_typed_control_speedup": 0.8798035707629803,
+      "baseline_compact_to_ordinary_cpu": 1.1301640380210114,
+      "candidate_compact_to_ordinary_cpu": 0.8839729677756106,
+      "paired_ordinary_control_speedup": 0.8853108871642407
+    },
+    {
+      "round": 6,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "compact": 0.3745318352059925,
+          "ordinary_double": 0.35509396636993074,
+          "typed_double": 0.37379310344827593
+        },
+        "baseline": {
+          "compact": 0.47619047619047616,
+          "ordinary_double": 0.3218884120171674,
+          "typed_double": 0.38548387096774195
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.235305837816298,
+      "candidate_compact_to_typed_cpu": 1.0019763118979501,
+      "paired_compact_speedup": 1.2714285714285716,
+      "paired_typed_control_speedup": 1.0312760385668371,
+      "baseline_compact_to_ordinary_cpu": 1.4793650793650792,
+      "candidate_compact_to_ordinary_cpu": 1.0547400707333103,
+      "paired_ordinary_control_speedup": 0.9064879792461177
+    }
+  ],
+  "medians": {
+    "baseline_compact_to_typed_cpu": 1.2524194324194324,
+    "candidate_compact_to_typed_cpu": 1.0205231068242897,
+    "paired_compact_speedup": 1.2196545429500758,
+    "paired_typed_control_speedup": 1.0071637803675368,
+    "baseline_compact_to_ordinary_cpu": 1.2470979062730143,
+    "candidate_compact_to_ordinary_cpu": 1.0594163584970457,
+    "paired_ordinary_control_speedup": 0.9926791007783111
+  },
+  "commands": [
+    {
+      "round": 1,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "1",
+        "<dense-evidence>/baseline-round1.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:10.891523+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 1,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "1",
+        "<dense-evidence>/candidate-round1.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:14.223637+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 2,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "2",
+        "<dense-evidence>/candidate-round2.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:17.841203+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 2,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "2",
+        "<dense-evidence>/baseline-round2.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:21.534678+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 3,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "3",
+        "<dense-evidence>/baseline-round3.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:25.136368+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 3,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "3",
+        "<dense-evidence>/candidate-round3.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:28.555612+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 4,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "4",
+        "<dense-evidence>/candidate-round4.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:32.059723+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 4,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "4",
+        "<dense-evidence>/baseline-round4.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:35.279434+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 5,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "5",
+        "<dense-evidence>/baseline-round5.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:38.584531+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 5,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "5",
+        "<dense-evidence>/candidate-round5.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:41.889566+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 6,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<candidate-library>",
+        "6",
+        "<dense-evidence>/candidate-round6.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:45.519970+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 6,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/dense-worker.R",
+        "<baseline-library>",
+        "6",
+        "<dense-evidence>/baseline-round6.csv"
+      ],
+      "cwd": "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels",
+      "started_utc": "2026-10-04T22:55:49.209460+00:00",
+      "exit_code": 0
+    }
+  ],
+  "artifact_sha256": {
+    "raw.csv": "51df40f95c4d5ba8b79e79a2b74fb6420ef46f75369d6fc4d4ff7a6a63d87519",
+    "baseline-round2.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round1.csv": "9c00385532c260aea401d060ec54a1a89f8977f5efb14cfc98411ff049e4ea6d",
+    "baseline-round3.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round1.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round3.csv": "52ccba05e7b8f62c5f008518a50d3155506a717f20e405e144744b6675c49a38",
+    "baseline-round2.csv": "ee398f5afc027170943b5cbb25b6944029458863336b387feaebbaeacc1107dd",
+    "baseline-round4.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round6.csv": "c4f683cac4dc206d4d00c3e5fa7c466fc37b089a6b84ac19d5f328b011d73886",
+    "baseline-round5.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round5.csv": "59bfe170f72b05ffe788017b8c4ecbe326919b0ff76b726a3333012231406ce7",
+    "baseline-round4.csv": "ad65c1d5ac7df4cf745a1e4555356cd38fd99696f9a039a6ced54f55cb738a65",
+    "baseline-round6.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round4.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round6.csv": "46868ac0b8994664d48ba09f133c55e4493b13ede7b96d287d1ff4649649f581",
+    "candidate-round5.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round5.csv": "82760895333e203ffa3f388f5918e1340607a2d3375e221d2874e533209a449d",
+    "candidate-round4.csv": "481a43d758b3322bbb402c871857f2083774aae5074535bfa1495b39a6be5f32",
+    "candidate-round6.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round2.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round1.csv": "294896edc3d867fddeb4b5e235ffbfc6009a0689acdac7b378c0fdbf11594292",
+    "candidate-round3.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round1.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round3.csv": "97ff43c7514cc63310542bf1907aa5941a608a71a699a9da189da8b68244520b",
+    "candidate-round2.csv": "8f81d0f9bf15a86a2485cdd999fa55f2e4f9cab0b2bddcc91e223d754b848c05"
+  },
+  "scope": "Original random_half million-row dense reciprocal input, exact public operation and per-process oracle/cache/native-entry qualifications. Six alternating build pairs in fresh R processes; balanced representation positions. CPU measured only in worker adaptive loops. Unchanged typed control drift reported. No reader, arbitrary-import or universal parity claim. Bare R comparison uses its own base division oracle: zero denominators remain Inf, while typed package operations normalize them to missing. Bare output does not run package mutation/cache qualification."
+}

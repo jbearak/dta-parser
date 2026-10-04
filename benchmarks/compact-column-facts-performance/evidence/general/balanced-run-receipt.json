@@ -1,0 +1,275 @@
+{
+  "started": "2026-10-04T22:51:14.267587+00:00",
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "controller_sha256": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+  "libraries": {
+    "baseline": "<baseline-library>",
+    "candidate": "<candidate-library>"
+  },
+  "library_before": {
+    "baseline": {
+      "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+      "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+      "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+    },
+    "candidate": {
+      "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+      "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+      "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+    }
+  },
+  "commands": [
+    {
+      "round": 1,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "1",
+        "<general-evidence>/balanced-baseline-round1.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:51:14.267707+00:00",
+      "ended": "2026-10-04T22:51:26.637091+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "1",
+        "<general-evidence>/balanced-candidate-round1.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:51:26.637432+00:00",
+      "ended": "2026-10-04T22:51:38.944134+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "2",
+        "<general-evidence>/balanced-candidate-round2.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:51:38.944456+00:00",
+      "ended": "2026-10-04T22:51:51.410148+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "2",
+        "<general-evidence>/balanced-baseline-round2.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:51:51.410435+00:00",
+      "ended": "2026-10-04T22:52:03.476084+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "3",
+        "<general-evidence>/balanced-baseline-round3.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:52:03.476398+00:00",
+      "ended": "2026-10-04T22:52:15.861449+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "3",
+        "<general-evidence>/balanced-candidate-round3.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:52:15.861791+00:00",
+      "ended": "2026-10-04T22:52:27.730324+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "4",
+        "<general-evidence>/balanced-candidate-round4.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:52:27.730633+00:00",
+      "ended": "2026-10-04T22:52:40.103320+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "4",
+        "<general-evidence>/balanced-baseline-round4.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:52:40.103643+00:00",
+      "ended": "2026-10-04T22:52:51.896170+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "5",
+        "<general-evidence>/balanced-baseline-round5.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:52:51.896518+00:00",
+      "ended": "2026-10-04T22:53:03.966103+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "5",
+        "<general-evidence>/balanced-candidate-round5.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:53:03.966424+00:00",
+      "ended": "2026-10-04T22:53:15.955266+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<candidate-library>",
+        "6",
+        "<general-evidence>/balanced-candidate-round6.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:53:15.955607+00:00",
+      "ended": "2026-10-04T22:53:27.583023+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-ci-avoid-duplicate-main/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "6",
+        "<general-evidence>/balanced-baseline-round6.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:53:27.583332+00:00",
+      "ended": "2026-10-04T22:53:40.139670+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    }
+  ],
+  "protocol": "Sequential fresh-R workers; six cases, three representations; alternating AB/BA rounds; CPU per call.",
+  "library_after": {
+    "baseline": {
+      "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+      "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+      "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+    },
+    "candidate": {
+      "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+      "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+      "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+    }
+  },
+  "ended": "2026-10-04T22:53:40.153248+00:00",
+  "observations": 216,
+  "exit_code": 0
+}
