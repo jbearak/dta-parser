@@ -1,0 +1,116 @@
+name: CodeQL
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      CODEQL_OVERLAY_DATABASE_MODE: ${{ matrix.language == 'c-cpp' && 'none' || '' }}
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: c-cpp
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: rust
+            build-mode: none
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - if: matrix.language == 'c-cpp'
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6
+        with:
+          r-version: "4.6.0"
+          use-public-rspm: true
+      - name: Prepare existing native dependencies
+        if: matrix.language == 'c-cpp'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libuv1-dev pkg-config clang
+          rustup toolchain install 1.98.0 --profile minimal
+      - name: Bind current native inputs and prebuild only Rust before tracing
+        if: matrix.language == 'c-cpp'
+        run: >-
+          python3 .github/codeql/build.py prebuild
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+      - name: Verify pinned official C++ bundle
+        if: matrix.language == 'c-cpp'
+        run: >-
+          python3 .github/codeql/build.py bundle
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+      - name: Initialize CodeQL
+        id: init
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          tools: ${{ matrix.language == 'c-cpp' && format('{0}/native-codeql/official-codeql-bundle.tar.gz', runner.temp) || 'linked' }}
+          db-location: ${{ runner.temp }}/production-codeql-db
+          config-file: ${{ matrix.language == 'c-cpp' && '.github/codeql/cpp.yml' || '' }}
+          trap-caching: false
+          dependency-caching: false
+      - name: Bind current C++ configuration and default security queries
+        if: matrix.language == 'c-cpp'
+        run: >-
+          python3 .github/codeql/collector.py initialized
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+          --database "$RUNNER_TEMP/production-codeql-db" --codeql "${{ steps.init.outputs.codeql-path }}"
+      - name: Compile every current native source with real includes
+        if: matrix.language == 'c-cpp'
+        run: >-
+          python3 .github/codeql/build.py build
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+      - name: Run all default security queries and upload results
+        id: analysis
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        env:
+          CODEQL_ACTION_EXTRA_OPTIONS: ${{ matrix.language == 'c-cpp' && '{"database":{"run-queries":["--max-disk-cache=32768"]}}' || '{}' }}
+        with:
+          category: /language:${{ matrix.language }}
+      - name: Enforce actual native extraction coverage and evaluator cap
+        if: matrix.language == 'c-cpp'
+        env:
+          ANALYSIS_STEP_OUTCOME: ${{ steps.analysis.outcome }}
+        run: >-
+          python3 .github/codeql/collector.py collect
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+          --database "$RUNNER_TEMP/production-codeql-db" --codeql "${{ steps.init.outputs.codeql-path }}"
+      - name: Preserve current native coverage, actual command and failures
+        if: always() && matrix.language == 'c-cpp'
+        env:
+          OBSERVED_JOB_STATUS: ${{ job.status }}
+          ANALYSIS_STEP_OUTCOME: ${{ steps.analysis.outcome }}
+        run: >-
+          python3 .github/codeql/collector.py finish
+          --root "$GITHUB_WORKSPACE" --work "$RUNNER_TEMP/native-codeql"
+          --database "$RUNNER_TEMP/production-codeql-db" --codeql "${{ steps.init.outputs.codeql-path }}"
+      - name: Retain native security validation records
+        if: always() && matrix.language == 'c-cpp'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-codeql-validation
+          path: ${{ runner.temp }}/native-codeql/extraction
+          if-no-files-found: error
+          retention-days: 14
