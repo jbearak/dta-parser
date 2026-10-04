@@ -1,6 +1,6 @@
 # Native CodeQL extraction
 
-Ordinary runs analyze Actions, JavaScript/TypeScript, Python and Rust without compiling the R package. Pull requests and pushes to `main` run only when those languages, their dependency manifests, Actions workflows or CodeQL files change. The weekly schedule and an ordinary manual dispatch also run only these four fast analyses. Superseded pull-request and push runs are canceled.
+Ordinary runs analyze Actions, JavaScript/TypeScript, Python and Rust without compiling the R package. Pull requests run only when those languages, their dependency manifests, Actions workflows or CodeQL files change. Merging a checked PR does not repeat the scan on `main`. The weekly schedule checks `main`, and manual dispatch remains available. Both run only these four fast analyses. Superseded pull-request runs are canceled.
 
 Full C/C++ analysis is supplementary and can take hours. It runs locally only when useful for an investigation. GitHub has no C/C++ lane, including manual dispatch, and it is not a merge or release gate. Compiler diagnostics, focused native regression tests and measured performance qualification provide the primary validation. The fast CI guard runs the collector regression tests on ordinary changes. The four hosted analyses retain their default security suites and remote threat model.
 
