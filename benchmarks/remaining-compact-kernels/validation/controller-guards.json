@@ -1,0 +1,15 @@
+{
+  "controller_sha256": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "observations": 216,
+  "checks": [
+    "normal complete CSV replay matches original summary",
+    "optimized complete CSV replay matches original summary",
+    "native-count rejected in normal and optimized Python",
+    "missing-row rejected in normal and optimized Python",
+    "stale-result rejected in normal and optimized Python",
+    "missing/incomplete/ambiguous installed package rejected; changed R database changes binding"
+  ],
+  "status": "PASS",
+  "no_R_worker_or_build": true
+}

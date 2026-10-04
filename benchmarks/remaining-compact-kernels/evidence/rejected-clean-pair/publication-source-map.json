@@ -1,0 +1,22 @@
+{
+  "candidate2-quick-round1.csv": {
+    "original_name": "candidate2-quick-round1.csv",
+    "original_sha256": "82ecb8934be027d89fa8f864c966b4b132183278dd8f4ea9e4633b877faae32f",
+    "published_sha256": "82ecb8934be027d89fa8f864c966b4b132183278dd8f4ea9e4633b877faae32f"
+  },
+  "candidate2-quick-summary.json": {
+    "original_name": "candidate2-quick-summary.json",
+    "original_sha256": "fa8a1f1c1b2792a0d01d0d8d906c4504efaaf4a5d30bc04d043136e83f21dc53",
+    "published_sha256": "fa8a1f1c1b2792a0d01d0d8d906c4504efaaf4a5d30bc04d043136e83f21dc53"
+  },
+  "candidate1-quick-round1.csv": {
+    "original_name": "candidate-round1.csv",
+    "original_sha256": "47d02119cd764d31ce8a5a8c2443f188417773a738bf039f0ff7b0bfbcfecc2a",
+    "published_sha256": "47d02119cd764d31ce8a5a8c2443f188417773a738bf039f0ff7b0bfbcfecc2a"
+  },
+  "candidate1-quick-summary.json": {
+    "original_name": "candidate-round1-summary.json",
+    "original_sha256": "0e88125bae659457796bcbdc273018d7033d0703ae0ce5d3b2aa29773599e63e",
+    "published_sha256": "0e88125bae659457796bcbdc273018d7033d0703ae0ce5d3b2aa29773599e63e"
+  }
+}

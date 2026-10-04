@@ -1,0 +1,12 @@
+{
+  "scope": "Focused six-file public regression suite on installed candidate native binary; all current-header routes and callback/missing/cache/promotion cases included. No full archive/conformance rerun.",
+  "blocks": 71,
+  "assertions": 65745,
+  "failures": 0,
+  "errors": 0,
+  "warnings": 0,
+  "skips": 0,
+  "dll_sha256": "5c280e4689b3c96a30c0159abdca880a79ea8a54c887b340441cfa4e44c11f43",
+  "csv_sha256": "dfff31e4fbd7448b552f4a78af848482cba1873949b1c23b41e5a8b4e6e250de",
+  "log_sha256": "d6bd9d5a7caac80e7e9475f0f9564b6a23e44a82ac1bb146d044a444a5a5ad04"
+}

@@ -1,0 +1,16 @@
+{
+  "scope": "Candidate2 quick screen measured all three simultaneous header experiments. Only the bounded clean-pair experiment was rejected; integer and dense reciprocal changes remained under evaluation. This is not the final candidate source or binary.",
+  "build_receipt_original_sha256": "cf56da4f6082d001f7e4a385346e03882c7b615e193ccb29cac338007e0435e6",
+  "source_head": "0549e3836cbeceba67a3cb3f4b363ed7b9c50957",
+  "header_sha256": {
+    "src/numeric-arithmetic-float-reciprocal.h": "44d8a1780c07de13cba3b3b0a60f232d2b6c0b4d01e68b3d4f4af85d4d5e2864",
+    "src/numeric-arithmetic-integer-reciprocal.h": "166259e71389c5cc258326efbc4b9b1ab2abd8332dd71c83f3f8710c3dd3fdad",
+    "src/numeric-arithmetic-pair-float.h": "d52750c5bd7b1eae28585938a4f4ebf28fb15250d15722c5a52c64142425fdb9"
+  },
+  "dll_sha256": "3613cc0b8b134301418f64f8a2091729c9357be7f9d202a38e2318b393f5b518",
+  "compiled_rust_archive_before": "96d728953898344e4facbe9e04334d38cd5f1af9f7cd94d7319dbf1b165fd0ea",
+  "compiled_rust_archive_after": "96d728953898344e4facbe9e04334d38cd5f1af9f7cd94d7319dbf1b165fd0ea",
+  "source_unchanged_during_build": true,
+  "exit_code": 0,
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19"
+}

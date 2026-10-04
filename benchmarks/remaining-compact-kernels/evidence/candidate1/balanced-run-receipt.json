@@ -1,0 +1,235 @@
+{
+  "started": "2026-10-04T21:36:13.982567+00:00",
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "commands": [
+    {
+      "round": 1,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "1",
+        "<evidence>/balanced-baseline-round1.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:36:13.982705+00:00",
+      "ended": "2026-10-04T21:36:26.704672+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "1",
+        "<evidence>/balanced-candidate-round1.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:36:26.704982+00:00",
+      "ended": "2026-10-04T21:36:38.898988+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "2",
+        "<evidence>/balanced-candidate-round2.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:36:38.899254+00:00",
+      "ended": "2026-10-04T21:36:51.134445+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "2",
+        "<evidence>/balanced-baseline-round2.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:36:51.134742+00:00",
+      "ended": "2026-10-04T21:37:03.919660+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "3",
+        "<evidence>/balanced-baseline-round3.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:37:03.920010+00:00",
+      "ended": "2026-10-04T21:37:16.078787+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "3",
+        "<evidence>/balanced-candidate-round3.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:37:16.079091+00:00",
+      "ended": "2026-10-04T21:37:28.120911+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "4",
+        "<evidence>/balanced-candidate-round4.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:37:28.121169+00:00",
+      "ended": "2026-10-04T21:37:40.122737+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "4",
+        "<evidence>/balanced-baseline-round4.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:37:40.123039+00:00",
+      "ended": "2026-10-04T21:37:52.018083+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "5",
+        "<evidence>/balanced-baseline-round5.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:37:52.018352+00:00",
+      "ended": "2026-10-04T21:38:04.927928+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "5",
+        "<evidence>/balanced-candidate-round5.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:38:04.928274+00:00",
+      "ended": "2026-10-04T21:38:17.739703+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "candidate",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<candidate1-library>",
+        "6",
+        "<evidence>/balanced-candidate-round6.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T21:38:17.740037+00:00",
+      "ended": "2026-10-04T21:38:30.560864+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "baseline",
+      "command": [
+        "Rscript",
+        "--vanilla",
+        "<evidence>/quick-public-worker.R",
+        "<baseline-library>",
+        "6",
+        "<evidence>/balanced-baseline-round6.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T21:38:30.561173+00:00",
+      "ended": "2026-10-04T21:38:43.398470+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    }
+  ],
+  "ended": "2026-10-04T21:38:43.398797+00:00"
+}

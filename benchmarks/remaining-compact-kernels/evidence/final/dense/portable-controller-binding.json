@@ -1,0 +1,6 @@
+{
+  "executed_controller_sha256": "24b857dd0eea62f7cc4f0c3ac4b3a52304faf03a2deb34d7f11687d62176e504",
+  "portable_controller_sha256": "6749896974da1197e5cc14384fd27788c25469a0fe8e2426ea23415710747338",
+  "worker_sha256": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+  "change": "Portable controller defaults include-bare=True to match its supplied three-representation worker. Executed original controller is retained in evidence/final/dense/controller.py; timing and validation logic unchanged."
+}

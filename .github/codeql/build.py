@@ -26,7 +26,8 @@ SDK = {
     'stplugin.h': '0d32086bfb7a621e30ed7fefa41b351b6733bb4561da28a4c581580d62c64e8b',
 }
 STRUCTURAL = ('integer-reciprocal', 'long-float-addition',
-              'compact-float-domain', 'retained-arithmetic-polling')
+              'compact-float-domain', 'compact-pair-domain',
+              'dense-float-reciprocal', 'retained-arithmetic-polling')
 FIXTURES = ('initial-capture-userdb.c', 'numeric-bytecode-probe.c',
             'numeric-size-userdb.c')
 

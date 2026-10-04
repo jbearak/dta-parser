@@ -1,0 +1,92 @@
+{
+  "balanced-summary.json": {
+    "original_sha256": "b4db7993bd01179a553bf23e9c7cbb7196bf4dfde16c47395a7d1364359ea558",
+    "published_sha256": "b4db7993bd01179a553bf23e9c7cbb7196bf4dfde16c47395a7d1364359ea558",
+    "private_paths_replaced": false
+  },
+  "balanced-run-receipt.json": {
+    "original_sha256": "9d6e3aa5a56dd45a8035c636d8ab8c92b352a5698563664e8357131a83561ccf",
+    "published_sha256": "06adf3df3bc051edb871457cb34b76fa34ce901238b2cb9826ffb51f3f5dae2b",
+    "private_paths_replaced": true
+  },
+  "repro-source.json": {
+    "original_sha256": "5cd8a500ed232a2f55da0091cd47912d629a841a2457e95710eeb908b7bdc942",
+    "published_sha256": "e5c47731f9a4d6b209f91b59ae76aa44e9ef2f87adcd6afbaf78f41d9f77eedc",
+    "private_paths_replaced": true
+  },
+  "focused-final-tests-receipt.json": {
+    "original_sha256": "6ad668e4587254e0c73c9a1aaf287c39ecbe69eb9e8b9f9a50a6055cbb5d466a",
+    "published_sha256": "6ad668e4587254e0c73c9a1aaf287c39ecbe69eb9e8b9f9a50a6055cbb5d466a",
+    "private_paths_replaced": false
+  },
+  "focused-final-test-results.csv": {
+    "original_sha256": "dfff31e4fbd7448b552f4a78af848482cba1873949b1c23b41e5a8b4e6e250de",
+    "published_sha256": "dfff31e4fbd7448b552f4a78af848482cba1873949b1c23b41e5a8b4e6e250de",
+    "private_paths_replaced": false
+  },
+  "candidate-test-only-update.json": {
+    "original_sha256": "412b8c8091cb557af3579871fee3be52179c9c4cf050a67687605699a3093645",
+    "published_sha256": "412b8c8091cb557af3579871fee3be52179c9c4cf050a67687605699a3093645",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round1.csv": {
+    "original_sha256": "c1f14c4cd9becaf70f8ab33fc2e8641313d188ae9af72449873c3f96a8bb9c7b",
+    "published_sha256": "c1f14c4cd9becaf70f8ab33fc2e8641313d188ae9af72449873c3f96a8bb9c7b",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round1.csv": {
+    "original_sha256": "c126d65a75ccc9c0b085472c529de026cd190c527830cf392ee38f6cf5deb230",
+    "published_sha256": "c126d65a75ccc9c0b085472c529de026cd190c527830cf392ee38f6cf5deb230",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round2.csv": {
+    "original_sha256": "25a3eeeed608f34b5956aa00bd1fa66bb020ab3e576ae37fc63f7e2a9f5368a0",
+    "published_sha256": "25a3eeeed608f34b5956aa00bd1fa66bb020ab3e576ae37fc63f7e2a9f5368a0",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round2.csv": {
+    "original_sha256": "7ffa7a689431f9e9520ea96e69838283e5e2d3298df65ea445075a2285e0a0f1",
+    "published_sha256": "7ffa7a689431f9e9520ea96e69838283e5e2d3298df65ea445075a2285e0a0f1",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round3.csv": {
+    "original_sha256": "5ec11f73faae20113afd0e04b9135dbc2a9a606e82708b14d0f9765e45a14d8a",
+    "published_sha256": "5ec11f73faae20113afd0e04b9135dbc2a9a606e82708b14d0f9765e45a14d8a",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round3.csv": {
+    "original_sha256": "a334f86aed9d5ff90862229aaaab44ecf807c0fc5c4b774b9eb2825a0b590e9d",
+    "published_sha256": "a334f86aed9d5ff90862229aaaab44ecf807c0fc5c4b774b9eb2825a0b590e9d",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round4.csv": {
+    "original_sha256": "067ca1777ab3d60c568ba33ce56eee9e1a0ced495cbd158da62d11863b813620",
+    "published_sha256": "067ca1777ab3d60c568ba33ce56eee9e1a0ced495cbd158da62d11863b813620",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round4.csv": {
+    "original_sha256": "083f71cd5b1950a85131829ecdb3085e97e99d8fccc7df9d80c3534c1564e5c2",
+    "published_sha256": "083f71cd5b1950a85131829ecdb3085e97e99d8fccc7df9d80c3534c1564e5c2",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round5.csv": {
+    "original_sha256": "5be8a3167c6e0342f0082b79c645e1be0ae2a042048f2c35b1b3c46f2391dca8",
+    "published_sha256": "5be8a3167c6e0342f0082b79c645e1be0ae2a042048f2c35b1b3c46f2391dca8",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round5.csv": {
+    "original_sha256": "babe4bb09b68428ec410417a780a2a12761c8ea4541884a5df6cd2aac6fab2d3",
+    "published_sha256": "babe4bb09b68428ec410417a780a2a12761c8ea4541884a5df6cd2aac6fab2d3",
+    "private_paths_replaced": false
+  },
+  "balanced-baseline-round6.csv": {
+    "original_sha256": "dd54e1c8bcad0df3dd358ed3a177eb12364cfe990560143c9d8edd31a8806c01",
+    "published_sha256": "dd54e1c8bcad0df3dd358ed3a177eb12364cfe990560143c9d8edd31a8806c01",
+    "private_paths_replaced": false
+  },
+  "balanced-candidate-round6.csv": {
+    "original_sha256": "443fcb2be688ce3e68f0ac6a220c5afb89bed1147d9796c39c353ddf4c2362fe",
+    "published_sha256": "443fcb2be688ce3e68f0ac6a220c5afb89bed1147d9796c39c353ddf4c2362fe",
+    "private_paths_replaced": false
+  }
+}

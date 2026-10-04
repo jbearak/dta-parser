@@ -2448,6 +2448,8 @@
   ],
   "standalone_sources": [
     "benchmarks/compact-float-domain/work-count.c",
+    "benchmarks/compact-pair-domain/work-count.c",
+    "benchmarks/dense-float-reciprocal/work-count.c",
     "benchmarks/compact-materialization/probe.c",
     "benchmarks/integer-reciprocal/work-count.c",
     "benchmarks/long-float-addition/work-count.c",

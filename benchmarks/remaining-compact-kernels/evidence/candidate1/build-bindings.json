@@ -1,0 +1,32 @@
+{
+  "scope": "Extracted source/DLL bindings from recorded local builds; candidate1 preliminary, not final candidate. Header hashes identify the measured bodies. This extraction does not claim new library qualification.",
+  "baseline": {
+    "build_receipt_original_sha256": "658d3ac9d4871767a33422ed624d7e38efaa99580f32655ba054eef8e01dcf1b",
+    "base_commit": "3eadb244253fb817d5773b01b11cb36c284f3a1d",
+    "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "header_sha256": {
+      "src/numeric-arithmetic-float-reciprocal.h": "66213d78674a75d2cae0b3d8ba43a5fa3493c36ada1551801d4201975a3b0d6b",
+      "src/numeric-arithmetic-integer-reciprocal.h": "4f463e9bbbcf2131ba32017b74874d918d390a91d95cade16a14ae2886059837",
+      "src/numeric-arithmetic-pair-float.h": "931a28865f5ef0ffe3337ab6718625f8346588199cba8e36b729a5326d38c34e"
+    },
+    "dll_sha256": "f627e6b8ef25144a0923b48c058b1a162f99404d675983f753deea63d35b7c3a",
+    "source_unchanged_during_build": true,
+    "exit_code": 0
+  },
+  "candidate1": {
+    "build_receipt_original_sha256": "59cc98692571389a11730c35c6e5eab470b244a8d1950850ef79a684c37680fc",
+    "source_head": "0549e3836cbeceba67a3cb3f4b363ed7b9c50957",
+    "header_sha256": {
+      "src/numeric-arithmetic-float-reciprocal.h": "2378a99d6d0c15aea8ea99132bcb38e4025582d3ed0a09e8842da5f498096cd7",
+      "src/numeric-arithmetic-integer-reciprocal.h": "d9f4bab86fef72312dc1aa2e0afaff644738c2d7922e7898b224106320e6604a",
+      "src/numeric-arithmetic-pair-float.h": "fa7674a2f718ae92b98c37df5f69dab99a72d2199ae9c14ad614c60246b5ee59"
+    },
+    "dll_sha256": "5c280e4689b3c96a30c0159abdca880a79ea8a54c887b340441cfa4e44c11f43",
+    "compiled_rust_archive_before": "96d728953898344e4facbe9e04334d38cd5f1af9f7cd94d7319dbf1b165fd0ea",
+    "compiled_rust_archive_after": "96d728953898344e4facbe9e04334d38cd5f1af9f7cd94d7319dbf1b165fd0ea",
+    "source_unchanged_during_build": true,
+    "exit_code": 0
+  },
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "run_receipt_original_sha256": "9d6e3aa5a56dd45a8035c636d8ab8c92b352a5698563664e8357131a83561ccf"
+}

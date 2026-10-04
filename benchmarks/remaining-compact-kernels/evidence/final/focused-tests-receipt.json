@@ -1,0 +1,22 @@
+{
+  "scope": "Focused six-file public regressions on installed final candidate3; no full archive or packaged conformance replay.",
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "<evidence>/focused-tests.R",
+    "<final-library>",
+    "<repo>/r-package/dtatools/tests/testthat",
+    "<evidence>/candidate3-focused-tests.csv"
+  ],
+  "exit_code": 0,
+  "blocks": 71,
+  "assertions": 65745,
+  "failures": 0,
+  "errors": 0,
+  "warnings": 0,
+  "skips": 0,
+  "dll_sha256": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+  "csv_sha256": "1bac02b7d93548a37acde02a791c250baf4a2266dd0c2bc68e22843510d3b7db",
+  "log_sha256": "ac5b682097d743a60f308e7b84acd215f5a033d88a6dc88d023dfd4cf86e411e",
+  "runner_sha256": "e18a2a3cf92a6fcf48acce69295b9c3314ce6e80bae80af1df94038222cbfd11"
+}

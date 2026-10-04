@@ -1,0 +1,47 @@
+{
+  "scope": "Fast local helper validation only; no R worker, native build, timing or C++ scan. Invocation outcomes recorded from successful commands.",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts.test_arithmetic_dependencies",
+        "scripts.test_native_manifest",
+        "scripts.test_reader_install",
+        "scripts.test_r_dependency_cache"
+      ],
+      "tests": 22,
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        ".github/codeql/test_collector.py"
+      ],
+      "tests": 30,
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        ".github/codeql/test_collector.py"
+      ],
+      "tests": 30,
+      "exit_code": 0
+    }
+  ],
+  "source_sha256": {
+    "scripts/test_arithmetic_dependencies.py": "12ec31b956de818f11d5a22ad67231a6718ee67df535116924a97c2fa5ced866",
+    "scripts/test_native_manifest.py": "ab03d74a7c889547705c6570536c210620ea4eb1216afb5922db5c1caae89426",
+    "scripts/test_reader_install.py": "b8210618c4418daa86df65b09e66690d9d623aafeeefcaf7979d89f5d4adf1b7",
+    "scripts/test_r_dependency_cache.py": "d4ddd70f67a4c14e1e9d61304bfab0b65e8c32860ea718ca7b08956c0e18ba19",
+    ".github/codeql/test_collector.py": "7859f652acb063a844111a7d0539916bd31d0c68ce0e3b4ae5fd21911cffd8b9",
+    ".github/codeql/collector.py": "284264ef045c1af2d4ed1bd91062c6d9c3ea726d545c4d871fb1a437342522e1",
+    ".github/codeql/build.py": "e085ac6ba2687753362bfda8bf735e73fe161d2b55902b066287156495e0966c",
+    ".github/codeql/native-source-scope.json": "9e53017389880b7e9fc041a5e162ffa39e5c0a27ee9e0f04c2ca404a1d73b013",
+    "benchmarks/compact-pair-domain/work-count.py": "f393f388dee1cc66c712b99bf81ea06b0366ef0240105c7c1f6c7724821d4db6",
+    "benchmarks/dense-float-reciprocal/work-count.py": "e528743098119ad6aecb11538eb23030e5d85aec6f77cc0ce563aa6a26e34711"
+  }
+}
