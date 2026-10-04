@@ -1,0 +1,354 @@
+{
+  "artifacts": {
+    "evidence/general/balanced-baseline-round1.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round1.csv",
+      "original_sha256": "45a3cf3d59f4a2b2b35529503e93458734a4249cb5058c2c806043cfe960feda",
+      "public_sha256": "45a3cf3d59f4a2b2b35529503e93458734a4249cb5058c2c806043cfe960feda",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-baseline-round2.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round2.csv",
+      "original_sha256": "ca20b7980f338aad0032ccda80f2e0206a52c795dae84f64c0b70a445511ba68",
+      "public_sha256": "ca20b7980f338aad0032ccda80f2e0206a52c795dae84f64c0b70a445511ba68",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-baseline-round3.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round3.csv",
+      "original_sha256": "240ecb1e1064976d33efc47ed0f1beee003abb46a34f4b051f6d2f1bba4d76be",
+      "public_sha256": "240ecb1e1064976d33efc47ed0f1beee003abb46a34f4b051f6d2f1bba4d76be",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-baseline-round4.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round4.csv",
+      "original_sha256": "ca9633303acf3ca4ef98d0e047416c3ec42ea7a970abe3da8efbab56d56597f4",
+      "public_sha256": "ca9633303acf3ca4ef98d0e047416c3ec42ea7a970abe3da8efbab56d56597f4",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-baseline-round5.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round5.csv",
+      "original_sha256": "ce62a086529c21830d3f3181f7a8975ae978956f160fb8e48613b869b3639e79",
+      "public_sha256": "ce62a086529c21830d3f3181f7a8975ae978956f160fb8e48613b869b3639e79",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-baseline-round6.csv": {
+      "original_path": "<general-evidence>/balanced-baseline-round6.csv",
+      "original_sha256": "bd0cb8e1018fda8a61c2af537b061570b84a213139d4958eb18859bfafa3167c",
+      "public_sha256": "bd0cb8e1018fda8a61c2af537b061570b84a213139d4958eb18859bfafa3167c",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round1.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round1.csv",
+      "original_sha256": "acacec2bf55c31578e73a9aace798b6ff464edc7de5e9c3492d47d131ac91ff2",
+      "public_sha256": "acacec2bf55c31578e73a9aace798b6ff464edc7de5e9c3492d47d131ac91ff2",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round2.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round2.csv",
+      "original_sha256": "975816162d29ea0a58d5c4151db6234d16eee6df26b0078ece33e12fc86617d4",
+      "public_sha256": "975816162d29ea0a58d5c4151db6234d16eee6df26b0078ece33e12fc86617d4",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round3.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round3.csv",
+      "original_sha256": "734e478108852d2a0999faacdbe1f5b62c03424b7f32b8f85149f0b3b01d86bd",
+      "public_sha256": "734e478108852d2a0999faacdbe1f5b62c03424b7f32b8f85149f0b3b01d86bd",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round4.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round4.csv",
+      "original_sha256": "0d450de14638b5547dac1d89732ebd3d0883ec29b473a9c7ad745fc7656efd97",
+      "public_sha256": "0d450de14638b5547dac1d89732ebd3d0883ec29b473a9c7ad745fc7656efd97",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round5.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round5.csv",
+      "original_sha256": "9657e2d9ba2d2e5e902f84033c196c017bd185c8bef9e51ad3abf51f8609e4f7",
+      "public_sha256": "9657e2d9ba2d2e5e902f84033c196c017bd185c8bef9e51ad3abf51f8609e4f7",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-candidate-round6.csv": {
+      "original_path": "<general-evidence>/balanced-candidate-round6.csv",
+      "original_sha256": "ce714348684e93e662ad1d9470993a498103212e28390be5b529ad30cae251a2",
+      "public_sha256": "ce714348684e93e662ad1d9470993a498103212e28390be5b529ad30cae251a2",
+      "transformation": "Exact bytes"
+    },
+    "evidence/general/balanced-run-receipt.json": {
+      "original_path": "<general-evidence>/balanced-run-receipt.json",
+      "original_sha256": "41dbc94bbb8db7caf0bb674919acf206249f6018a590acc5a61ea1dac3efea52",
+      "public_sha256": "55c46de2344cdccc0e89a16f801e385e2155bf48d2224f7d80acb21fd44d87fe",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/general/balanced-summary.json": {
+      "original_path": "<general-evidence>/balanced-summary.json",
+      "original_sha256": "b49521b106ad09d03d05d1b6f596a325341291c18efcbeefd371aaa360d7a003",
+      "public_sha256": "b49521b106ad09d03d05d1b6f596a325341291c18efcbeefd371aaa360d7a003",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/dense/baseline-round1.csv": {
+      "original_path": "<dense-evidence>/baseline-round1.csv",
+      "original_sha256": "9c00385532c260aea401d060ec54a1a89f8977f5efb14cfc98411ff049e4ea6d",
+      "public_sha256": "9c00385532c260aea401d060ec54a1a89f8977f5efb14cfc98411ff049e4ea6d",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/baseline-round2.csv": {
+      "original_path": "<dense-evidence>/baseline-round2.csv",
+      "original_sha256": "ee398f5afc027170943b5cbb25b6944029458863336b387feaebbaeacc1107dd",
+      "public_sha256": "ee398f5afc027170943b5cbb25b6944029458863336b387feaebbaeacc1107dd",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/baseline-round3.csv": {
+      "original_path": "<dense-evidence>/baseline-round3.csv",
+      "original_sha256": "52ccba05e7b8f62c5f008518a50d3155506a717f20e405e144744b6675c49a38",
+      "public_sha256": "52ccba05e7b8f62c5f008518a50d3155506a717f20e405e144744b6675c49a38",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/baseline-round4.csv": {
+      "original_path": "<dense-evidence>/baseline-round4.csv",
+      "original_sha256": "ad65c1d5ac7df4cf745a1e4555356cd38fd99696f9a039a6ced54f55cb738a65",
+      "public_sha256": "ad65c1d5ac7df4cf745a1e4555356cd38fd99696f9a039a6ced54f55cb738a65",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/baseline-round5.csv": {
+      "original_path": "<dense-evidence>/baseline-round5.csv",
+      "original_sha256": "59bfe170f72b05ffe788017b8c4ecbe326919b0ff76b726a3333012231406ce7",
+      "public_sha256": "59bfe170f72b05ffe788017b8c4ecbe326919b0ff76b726a3333012231406ce7",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/baseline-round6.csv": {
+      "original_path": "<dense-evidence>/baseline-round6.csv",
+      "original_sha256": "c4f683cac4dc206d4d00c3e5fa7c466fc37b089a6b84ac19d5f328b011d73886",
+      "public_sha256": "c4f683cac4dc206d4d00c3e5fa7c466fc37b089a6b84ac19d5f328b011d73886",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round1.csv": {
+      "original_path": "<dense-evidence>/candidate-round1.csv",
+      "original_sha256": "294896edc3d867fddeb4b5e235ffbfc6009a0689acdac7b378c0fdbf11594292",
+      "public_sha256": "294896edc3d867fddeb4b5e235ffbfc6009a0689acdac7b378c0fdbf11594292",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round2.csv": {
+      "original_path": "<dense-evidence>/candidate-round2.csv",
+      "original_sha256": "8f81d0f9bf15a86a2485cdd999fa55f2e4f9cab0b2bddcc91e223d754b848c05",
+      "public_sha256": "8f81d0f9bf15a86a2485cdd999fa55f2e4f9cab0b2bddcc91e223d754b848c05",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round3.csv": {
+      "original_path": "<dense-evidence>/candidate-round3.csv",
+      "original_sha256": "97ff43c7514cc63310542bf1907aa5941a608a71a699a9da189da8b68244520b",
+      "public_sha256": "97ff43c7514cc63310542bf1907aa5941a608a71a699a9da189da8b68244520b",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round4.csv": {
+      "original_path": "<dense-evidence>/candidate-round4.csv",
+      "original_sha256": "481a43d758b3322bbb402c871857f2083774aae5074535bfa1495b39a6be5f32",
+      "public_sha256": "481a43d758b3322bbb402c871857f2083774aae5074535bfa1495b39a6be5f32",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round5.csv": {
+      "original_path": "<dense-evidence>/candidate-round5.csv",
+      "original_sha256": "82760895333e203ffa3f388f5918e1340607a2d3375e221d2874e533209a449d",
+      "public_sha256": "82760895333e203ffa3f388f5918e1340607a2d3375e221d2874e533209a449d",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/candidate-round6.csv": {
+      "original_path": "<dense-evidence>/candidate-round6.csv",
+      "original_sha256": "46868ac0b8994664d48ba09f133c55e4493b13ede7b96d287d1ff4649649f581",
+      "public_sha256": "46868ac0b8994664d48ba09f133c55e4493b13ede7b96d287d1ff4649649f581",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/raw.csv": {
+      "original_path": "<dense-evidence>/raw.csv",
+      "original_sha256": "51df40f95c4d5ba8b79e79a2b74fb6420ef46f75369d6fc4d4ff7a6a63d87519",
+      "public_sha256": "51df40f95c4d5ba8b79e79a2b74fb6420ef46f75369d6fc4d4ff7a6a63d87519",
+      "transformation": "Exact bytes"
+    },
+    "evidence/dense/summary.json": {
+      "original_path": "<dense-evidence>/summary.json",
+      "original_sha256": "caaba83a4ea865fe57bb7ac599bf6d2b282f5b6f7653021dbef84524eec922eb",
+      "public_sha256": "58f3cd895885caffd90927558bbd062a0f67c8bae6ec9ce12b38e557410eefc4",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/construction/baseline-round1.csv": {
+      "original_path": "<construction-evidence>/baseline-round1.csv",
+      "original_sha256": "4eefbe72fd2fec08bb396427fd4adb1c5230d732168b1d3e9bd7caa89d930d26",
+      "public_sha256": "4eefbe72fd2fec08bb396427fd4adb1c5230d732168b1d3e9bd7caa89d930d26",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/baseline-round2.csv": {
+      "original_path": "<construction-evidence>/baseline-round2.csv",
+      "original_sha256": "ba63eee9573d0bbf9859d39f6acf0434af65b431b972e5e8806d3a2f86f71f7b",
+      "public_sha256": "ba63eee9573d0bbf9859d39f6acf0434af65b431b972e5e8806d3a2f86f71f7b",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/baseline-round3.csv": {
+      "original_path": "<construction-evidence>/baseline-round3.csv",
+      "original_sha256": "d142c1e47740a26114d23eb18dfca057552bebcbdf34d69670aa0874185b1b3c",
+      "public_sha256": "d142c1e47740a26114d23eb18dfca057552bebcbdf34d69670aa0874185b1b3c",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/baseline-round4.csv": {
+      "original_path": "<construction-evidence>/baseline-round4.csv",
+      "original_sha256": "99816b194ec10921dddd9782e6ef3631d97705340356c566400ca51d393f849c",
+      "public_sha256": "99816b194ec10921dddd9782e6ef3631d97705340356c566400ca51d393f849c",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/baseline-round5.csv": {
+      "original_path": "<construction-evidence>/baseline-round5.csv",
+      "original_sha256": "a9e3761db4701a7b36406c51604a817aea3c66ffd078eb0688c2b3be5017d97b",
+      "public_sha256": "a9e3761db4701a7b36406c51604a817aea3c66ffd078eb0688c2b3be5017d97b",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/baseline-round6.csv": {
+      "original_path": "<construction-evidence>/baseline-round6.csv",
+      "original_sha256": "441806fee38790f163203d8d42e7a9e70f308ba6fc0ecea4eaf40feb7e1aac8f",
+      "public_sha256": "441806fee38790f163203d8d42e7a9e70f308ba6fc0ecea4eaf40feb7e1aac8f",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round1.csv": {
+      "original_path": "<construction-evidence>/candidate-round1.csv",
+      "original_sha256": "6b5b84902b6fa3a7854a8866e7a9637961ae9da85d05835124954f8b1761bdff",
+      "public_sha256": "6b5b84902b6fa3a7854a8866e7a9637961ae9da85d05835124954f8b1761bdff",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round2.csv": {
+      "original_path": "<construction-evidence>/candidate-round2.csv",
+      "original_sha256": "464a2f9187a4dc5bc6d19b11d31cfacd0950c4533ca6895bf439f7912dd7aa78",
+      "public_sha256": "464a2f9187a4dc5bc6d19b11d31cfacd0950c4533ca6895bf439f7912dd7aa78",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round3.csv": {
+      "original_path": "<construction-evidence>/candidate-round3.csv",
+      "original_sha256": "1f0627b6efc24031b3758c3784d6aa183562c5c9f8358279632cd512c3a5a433",
+      "public_sha256": "1f0627b6efc24031b3758c3784d6aa183562c5c9f8358279632cd512c3a5a433",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round4.csv": {
+      "original_path": "<construction-evidence>/candidate-round4.csv",
+      "original_sha256": "0260b269c1456391ffd194373ab7ca02d459958c7fa84db5c8a6b5364cf5e200",
+      "public_sha256": "0260b269c1456391ffd194373ab7ca02d459958c7fa84db5c8a6b5364cf5e200",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round5.csv": {
+      "original_path": "<construction-evidence>/candidate-round5.csv",
+      "original_sha256": "b25de83f5065f2a64acc3297ef82c77cc26cfc69b478b4cb985fe03c28902ded",
+      "public_sha256": "b25de83f5065f2a64acc3297ef82c77cc26cfc69b478b4cb985fe03c28902ded",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/candidate-round6.csv": {
+      "original_path": "<construction-evidence>/candidate-round6.csv",
+      "original_sha256": "f509415be207bdd969189a5b7640e386ec5917f04ad88456055dce96af60223c",
+      "public_sha256": "f509415be207bdd969189a5b7640e386ec5917f04ad88456055dce96af60223c",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/raw.csv": {
+      "original_path": "<construction-evidence>/raw.csv",
+      "original_sha256": "e6744c6dfc196227c3411775731d2933477a4370e274d15fb9a83593ff5da6ab",
+      "public_sha256": "e6744c6dfc196227c3411775731d2933477a4370e274d15fb9a83593ff5da6ab",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/summary.json": {
+      "original_path": "<construction-evidence>/summary.json",
+      "original_sha256": "fba8b9fd3591476f586ce4a29dd9b2c5966cc901ff787f671ae4a4d65cdbb58e",
+      "public_sha256": "16e8523bff8c7344a2c94eb1c448573256ca67783f8afd7f293da03fb4960fff",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/candidate-build-receipt.json": {
+      "original_path": "<candidate-build-receipt>",
+      "original_sha256": "a9e7a95ec636b8ea47a6cd91018e719e24f88ecaa7187701422093aed9bcd47b",
+      "public_sha256": "e1700face09944b7872c8e22198d8c58dae71db340d2ddbcb8b62903bbe45837",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/focused-tests-receipt.json": {
+      "original_path": "<private-evidence>/focused-tests-v1-receipt.json",
+      "original_sha256": "e2a2d25ea451860b5d45bbfa797507a65b5b3afbf1ec0ebf1c6c5e45c100e3e0",
+      "public_sha256": "e2a2d25ea451860b5d45bbfa797507a65b5b3afbf1ec0ebf1c6c5e45c100e3e0",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/focused-tests.csv": {
+      "original_path": "<private-evidence>/focused-tests-v1.csv",
+      "original_sha256": "84e8849e429b714545ebeb12d979931cf452a89bdd3e5deeca4105bcdacefc7a",
+      "public_sha256": "84e8849e429b714545ebeb12d979931cf452a89bdd3e5deeca4105bcdacefc7a",
+      "transformation": "Exact bytes"
+    },
+    "focused-tests.R": {
+      "original_path": "<private-evidence>/focused-tests.R",
+      "original_sha256": "4ccf5a257ddd34d995b0d3831fbb8ee623c078f5ea0e4280d27991e89c95765f",
+      "public_sha256": "4ccf5a257ddd34d995b0d3831fbb8ee623c078f5ea0e4280d27991e89c95765f",
+      "transformation": "Exact bytes"
+    },
+    "construction-worker.R": {
+      "original_path": "<private-evidence>/construction-worker.R",
+      "original_sha256": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d",
+      "public_sha256": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d",
+      "transformation": "Exact bytes"
+    },
+    "evidence/construction/controller.py": {
+      "original_path": "<private-evidence>/construction-run.py",
+      "original_sha256": "de81618ce0428f49fca46a5572afd2594c88a1dcd118d49ae81ce937406b9e3b",
+      "public_sha256": "de81618ce0428f49fca46a5572afd2594c88a1dcd118d49ae81ce937406b9e3b",
+      "transformation": "Exact bytes"
+    },
+    "construction-run.py": {
+      "original_path": "<private-evidence>/construction-run.py",
+      "original_sha256": "de81618ce0428f49fca46a5572afd2594c88a1dcd118d49ae81ce937406b9e3b",
+      "public_sha256": "0c8476779ad100c2e9c92e2ecd53f1a9476ff53e540afafb7a4e70ae05a4cd5b",
+      "transformation": "Only public-workers-root default now resolves beside this folder"
+    },
+    "evidence/probes/pair-receipt.json": {
+      "original_path": "<private-evidence>/pair-facts-committed-v1/receipt.json",
+      "original_sha256": "c955eff4ee9620d895616607887c51ec069b0598862d33baf552df62e4e90c28",
+      "public_sha256": "ecafa095e6967634f75f9101b1c38298f00e455787725b07f070d42358c6e945",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/probes/pair-cases.csv": {
+      "original_path": "<private-evidence>/pair-facts-committed-v1/cases.csv",
+      "original_sha256": "bc192bfdcdc371413b66bcc331e80850f6656c913c13d706eda6b76d7e0890e3",
+      "public_sha256": "bc192bfdcdc371413b66bcc331e80850f6656c913c13d706eda6b76d7e0890e3",
+      "transformation": "Exact bytes"
+    },
+    "evidence/probes/dense-receipt.json": {
+      "original_path": "<private-evidence>/dense-consumer-committed-green-v1/receipt.json",
+      "original_sha256": "dff5497b32e8e0ac2958bca9ed6896d98c5e7c2091b9e8cea064290e1846fccd",
+      "public_sha256": "b12b45707dfe34e6a320eff42e9b4d9e7293c8baff200700ce01648a6be1198d",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/probes/dense-cases.csv": {
+      "original_path": "<private-evidence>/dense-consumer-committed-green-v1/work-count.csv",
+      "original_sha256": "35f7f9b0ed15e34834e9b7d8b1ef5002e45e8ceef813a9dd37f3910bf8f6ad61",
+      "public_sha256": "35f7f9b0ed15e34834e9b7d8b1ef5002e45e8ceef813a9dd37f3910bf8f6ad61",
+      "transformation": "Exact bytes"
+    },
+    "evidence/probes/integer-receipt.json": {
+      "original_path": "<private-evidence>/integer-consumer-committed-green-v1/receipt.json",
+      "original_sha256": "7e3c2db89fd9cf4a2f00676687f8265168ef3f3873a1c9cbb7557cd9bd6ff543",
+      "public_sha256": "d3bec93db3985871d44b6787c73e9f78de6d8ab0f51b85c20b8fcade6c14082c",
+      "transformation": "Private path placeholders only"
+    },
+    "evidence/probes/integer-cases.csv": {
+      "original_path": "<private-evidence>/integer-consumer-committed-green-v1/work-count.csv",
+      "original_sha256": "e6fb923085e79a6d72a61d8930d70ee7972eb5b5183511081c73723e708a8ba0",
+      "public_sha256": "e6fb923085e79a6d72a61d8930d70ee7972eb5b5183511081c73723e708a8ba0",
+      "transformation": "Exact bytes"
+    },
+    "evidence/probes/metadata-span-receipt.json": {
+      "original_path": "<private-evidence>/metadata-span-v2/receipt.json",
+      "original_sha256": "083fd93a5d21ad9638d85aa83c8b946308aa0f20ac93b8c1b3c2e1640552fddc",
+      "public_sha256": "40ce68e30ed67e90b70de8edaa2bc8a95dffb5763d93f5e2a26d3db8c3d479cb",
+      "transformation": "Private path placeholders only"
+    }
+  },
+  "omitted_artifacts": "Compiled libraries/executables, build/vendor trees, full logs, derived headers and the construction before.json duplicate are not copied. Construction summary retains the full before snapshot. Recorded artifact digests for omitted items refer to private originals.",
+  "path_placeholders": {
+    "/private/tmp/dta-compact-float-facts-evidence/public-balanced-v1": "<general-evidence>",
+    "/private/tmp/dta-compact-float-facts-evidence/public-dense-v1": "<dense-evidence>",
+    "/private/tmp/dta-compact-float-facts-evidence/construction-balanced-v1": "<construction-evidence>",
+    "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1": "<candidate-library>",
+    "/private/tmp/dta-compact-float-facts-evidence/candidate-build-v1-receipt.json": "<candidate-build-receipt>",
+    "/private/tmp/dta-compact-float-facts-evidence/candidate-build-v1": "<candidate-build-source>",
+    "/private/tmp/dta-remaining-kernels-evidence/candidate3-library": "<baseline-library>",
+    "/private/tmp/dta-remaining-kernels-evidence/candidate3-build-receipt.json": "<baseline-build-receipt>",
+    "/private/tmp/dta-remaining-kernels-evidence/candidate3-build": "<baseline-build-source>",
+    "/private/tmp/dta-compact-float-facts": "<repo>",
+    "/private/tmp/dta-compact-float-facts-evidence": "<private-evidence>"
+  }
+}

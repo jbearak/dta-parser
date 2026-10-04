@@ -1,0 +1,41 @@
+{
+  "base_commit": "092a4a4fac88fe36c7fa14233aab64d6f464639e",
+  "reviewed_runtime_head": "00b7d873401cebf272a3445d0c08e14e89bbda5a",
+  "qualified_build_head": "fe74d4b5de0c9e4b7aaf9edcf8bf444e1c3c7db1",
+  "candidate_dll_sha256": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+  "baseline_dll_sha256": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+  "candidate_build_receipt_original_sha256": "a9e7a95ec636b8ea47a6cd91018e719e24f88ecaa7187701422093aed9bcd47b",
+  "source_inventory_entries": 479,
+  "candidate_changed_source_sha256": {
+    "src/dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4",
+    "src/init.c": "bd880e96ad9875958e79be3d483d12320c32b1d51f256018d6674982f88e8bc8",
+    "src/mutation-transactions.c": "d2c5e7f59a650cd2ed138b85df87af26a7b5f2e05d15d311919f8b1fe826352d",
+    "src/mutation-write.h": "c0d05f28b3bcb5dea2dc24a524ef0830c8e130f5a1b849c6d1b4f177692e0eb4",
+    "src/numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "src/numeric-arithmetic-integer-reciprocal.h": "9a2951a8c2cbd1e0e8ebe71623d6ac63656b8922e0799ade6a8906123b2dc147",
+    "src/numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "src/numeric-payload.c": "2852eb419b560abf05c41c0aa5b6c96826a22671738a69f0a16cdd15f761e3a1",
+    "src/rust/src/lib.rs": "a1bcaef4f18c865b3b6c2adaf57a7517848d269392df3ac670f2bdd4310fdd3a",
+    "src/rust/src/owned_numeric.rs": "63ade14cd99485eee30a19f4549d67d9b82e287a811be5a1527d79ae583fef9b",
+    "tests/testthat/test-compact-float-domain.R": "65a9a9e2c056a5570ae2e064911e31dae6a1e8d33b5f1f6b6673f711e89fa3c2",
+    "tests/testthat/test-compact-pair-domain.R": "3bbbaeaf679b945dcccd359b65d3f15bb1fb49331dcb510c8c6a1f7c6d42f177",
+    "tests/testthat/test-compact-reciprocal-facts.R": "25a520615a6ffd9f8be89fcc969899184f389f874bd061f199e04859585de757",
+    "tools/native-test-manifest.json": "789f4f7b41929767f2d11c810c115e57841fec9bdd9c0c7a33d7d8d225a8e671"
+  },
+  "reusable_panel_sources": {
+    "benchmarks/remaining-compact-kernels/run.py": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+    "benchmarks/remaining-compact-kernels/worker.R": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+    "benchmarks/remaining-compact-kernels/dense-run.py": "662c631a6aed9b34418fd0a2bfb6c4102b377b84539447fb0be08f1b13915e06",
+    "benchmarks/remaining-compact-kernels/dense-worker.R": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473"
+  },
+  "construction_controller": {
+    "executed_path": "evidence/construction/controller.py",
+    "executed_sha256": "de81618ce0428f49fca46a5572afd2594c88a1dcd118d49ae81ce937406b9e3b",
+    "portable_path": "construction-run.py",
+    "portable_sha256": "0c8476779ad100c2e9c92e2ecd53f1a9476ff53e540afafb7a4e70ae05a4cd5b",
+    "change": "Only the default public-workers-root path changes; timing and qualifications remain identical."
+  },
+  "construction_worker_sha256": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d",
+  "focused_runner_sha256": "4ccf5a257ddd34d995b0d3831fbb8ee623c078f5ea0e4280d27991e89c95765f",
+  "scope": "Both public panels and construction panel consumed one candidate DLL. Build receipt retains the complete 479-file source inventory. Original installed libraries, build-source copies and private receipts are required to replay construction qualification."
+}
