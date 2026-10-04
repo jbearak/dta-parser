@@ -1,0 +1,655 @@
+--- a/src/dtatools-internal.h
++++ b/src/dtatools-internal.h
+@@ -288,7 +288,17 @@
+     const void *scalar_values;
+     size_t scalar_start;
+     size_t scalar_end;
++    /* Zero means unknown. A proof describes these exact bytes, not an R class. */
++    uint32_t domain_flags;
+ } numeric_data;
++
++enum { NUMERIC_DOMAIN_STRICT_MODERN_FLOAT = 1U };
++
++static inline int numeric_strict_modern_float(const numeric_data *data) {
++    return data != NULL && data->kind == NUMERIC_FLOAT && data->temporal == 0 &&
++        data->format_version > 111 &&
++        (data->domain_flags & NUMERIC_DOMAIN_STRICT_MODERN_FLOAT) != 0;
++}
+ 
+ /* A retained payload keeps its bytes behind the immutable Rust owner and is
+    read span by span; a plain payload keeps them contiguous in values. Every
+@@ -828,6 +838,8 @@
+ );
+ DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_info(SEXP value);
++DTATOOLS_INTERNAL SEXP C_dtatools_numeric_domain_info(SEXP value);
++DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token);
+ DTATOOLS_INTERNAL SEXP C_dtatools_force_altrep_materialization(SEXP value);
+ DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement);
+ DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_dictstring_altrep(
+--- a/src/init.c
++++ b/src/init.c
+@@ -254,6 +254,8 @@
+     {"C_dtatools_initial_capture_stats", (DL_FUNC) &C_dtatools_initial_capture_stats, 1},
+     {"C_dtatools_owned_numeric_freeze", (DL_FUNC) &C_dtatools_owned_numeric_freeze, 2},
+     {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
++    {"C_dtatools_numeric_domain_info", (DL_FUNC) &C_dtatools_numeric_domain_info, 1},
++    {"C_dtatools_test_numeric_freeze_checkpoint", (DL_FUNC) &C_dtatools_test_numeric_freeze_checkpoint, 2},
+     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
+     {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
+     {"C_dtatools_test_arithmetic_checkpoint", (DL_FUNC) &C_dtatools_test_arithmetic_checkpoint, 2},
+--- a/src/mutation-transactions.c
++++ b/src/mutation-transactions.c
+@@ -2639,29 +2639,115 @@
+     );
+ }
+ 
+-/* Test-only R-backed adapter. Copy first: the source may already have escaped
+-   through a writable compact consumer. The new raw allocation is immutable. */
+-SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
+-    numeric_data *source = unmaterialized_numeric_read_storage(value);
+-    double chunk_rows_double = Rf_asReal(chunk_rows_value);
+-    if (source == NULL || !R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
+-        chunk_rows_double != trunc(chunk_rows_double) || chunk_rows_double > (double) R_XLEN_T_MAX) {
+-        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
+-    }
+-    size_t bytes = source->length * numeric_kind_width(source->kind);
++/* One-use test-adapter checkpoint, after capture and before copying bytes. */
++static int numeric_freeze_checkpoint = 0;
++static SEXP numeric_freeze_checkpoint_token = NULL;
++
++SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token) {
++    if (TYPEOF(mode) != INTSXP || ALTREP(mode) || ANY_ATTRIB(mode) ||
++        XLENGTH(mode) != 1 || INTEGER(mode)[0] < 0 || INTEGER(mode)[0] > 2)
++        Rf_error("numeric freeze checkpoint mode must be 0, 1, or 2");
++    if ((token != R_NilValue && TYPEOF(token) != ENVSXP) ||
++        (INTEGER(mode)[0] == 0 && token != R_NilValue))
++        Rf_error("numeric freeze checkpoint token must be an environment or NULL");
++    int previous = numeric_freeze_checkpoint;
++    if (token != R_NilValue) R_PreserveObject(token);
++    if (numeric_freeze_checkpoint_token != NULL)
++        R_ReleaseObject(numeric_freeze_checkpoint_token);
++    numeric_freeze_checkpoint_token = token == R_NilValue ? NULL : token;
++    numeric_freeze_checkpoint = INTEGER(mode)[0];
++    return Rf_ScalarInteger(previous);
++}
++
++typedef struct {
++    SEXP value;
++    SEXP claims;
++    numeric_data storage;
++    size_t chunk_rows;
++} numeric_freeze_context;
++
++static void numeric_freeze_cleanup(void *raw) {
++    numeric_freeze_context *context = raw;
++    SEXP external = VECTOR_ELT(context->claims, 0);
++    if (external != R_NilValue && compact_payload_is_owned_by(external, context->claims))
++        R_SetExternalPtrTag(external, VECTOR_ELT(context->claims, 1));
++}
++
++static SEXP numeric_freeze_body(void *raw) {
++    numeric_freeze_context *context = raw;
++    const numeric_data *source = &context->storage;
++    size_t width = numeric_kind_width(source->kind);
++    if (source->length > (size_t) R_XLEN_T_MAX / width)
++        Rf_error("owned numeric freeze is too long");
++    size_t bytes = source->length * width;
++    if (numeric_freeze_checkpoint != 0) {
++        int mode = numeric_freeze_checkpoint;
++        numeric_freeze_checkpoint = 0;
++        if (numeric_freeze_checkpoint_token != NULL) {
++            R_ReleaseObject(numeric_freeze_checkpoint_token);
++            numeric_freeze_checkpoint_token = NULL;
++        }
++        R_gc();
++        if (mode == 2) Rf_error("injected numeric freeze checkpoint failure");
++    }
+     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) bytes));
+     numeric_copy_region(source, 0, source->length, RAW(backing));
++    /* This adapter establishes its own proof over the copied bytes. Never
++       inherit a public descriptor's flag across allocation or callbacks. */
++    int strict = source->kind == NUMERIC_FLOAT && source->temporal == 0 &&
++        source->format_version > 111;
++    if (strict) {
++        for (size_t i = 0; i < source->length; i++) {
++            if ((i & 16383) == 0) R_CheckUserInterrupt();
++            uint32_t bits;
++            memcpy(&bits, RAW(backing) + i * sizeof(bits), sizeof(bits));
++            uint32_t magnitude = bits & UINT32_C(0x7fffffff);
++            uint32_t offset = bits - UINT32_C(0x7f000000);
++            if (magnitude > UINT32_C(0x7effffff) &&
++                !((offset >> 11 | offset << 21) <= 26U)) {
++                strict = 0;
++                break;
++            }
++        }
++    }
+     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
+     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+     void *data = dtatools_owned_numeric_from_raw(
+-        RAW(backing), source->length, (size_t) chunk_rows_double, source->kind,
++        RAW(backing), source->length, context->chunk_rows, source->kind,
+         source->temporal, source->format_version, source->missing_count
+     );
+     if (data == NULL) Rf_error("could not freeze compact numeric storage");
++    ((numeric_data *) data)->domain_flags = strict ? NUMERIC_DOMAIN_STRICT_MODERN_FLOAT : 0;
+     R_SetExternalPtrAddr(external, data);
+     SEXP result = PROTECT(R_new_altrep(dtatools_numeric_class, external, R_NilValue));
+-    SHALLOW_DUPLICATE_ATTRIB(result, value);
++    SHALLOW_DUPLICATE_ATTRIB(result, context->value);
+     UNPROTECT(3);
++    return result;
++}
++
++/* Test-only R-backed adapter. Capture and claim before allocations so both
++   the copied bytes and their exact count survive reentrant public mutation. */
++SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value) {
++    double chunk_rows_double = Rf_asReal(chunk_rows_value);
++    if (!R_FINITE(chunk_rows_double) || chunk_rows_double < 1 ||
++        chunk_rows_double != trunc(chunk_rows_double) || chunk_rows_double > (double) R_XLEN_T_MAX)
++        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
++    SEXP claims = PROTECT(Rf_allocVector(VECSXP, 2));
++    numeric_freeze_context context = {value, claims, {0}, (size_t) chunk_rows_double};
++    SEXP root = PROTECT(numeric_missing_mask_capture(value, &context.storage));
++    if (root == R_NilValue)
++        Rf_error("owned numeric freeze requires compact values and positive chunk rows");
++    if (!numeric_payload_retained(&context.storage)) {
++        /* The plain capture above allocates nothing. Its root and snapshot
++           now refer to the exact allocation guarded by this temporary claim. */
++        SEXP external = R_altrep_data1(numeric_base_source(value));
++        SET_VECTOR_ELT(claims, 0, external);
++        SET_VECTOR_ELT(claims, 1, R_ExternalPtrTag(external));
++        compact_payload_claim(external, claims);
++    }
++    SEXP result = R_ExecWithCleanup(numeric_freeze_body, &context,
++        numeric_freeze_cleanup, &context);
++    UNPROTECT(2);
+     return result;
+ }
+ 
+--- a/src/numeric-arithmetic-pair-long-float.h
++++ b/src/numeric-arithmetic-pair-long-float.h
+@@ -92,6 +92,45 @@
+     }
+ }
+ 
++/* This loader is selected only from a captured strict-domain descriptor.
++   Every stored value is finite; positive high values are exactly the 27 tags. */
++#define LONG_FLOAT_CANONICAL_LOAD(NAME, MISSING)                            \
++    static inline arithmetic_pair_value arithmetic_pair_load_##NAME(       \
++        const unsigned char *raw, size_t index,                            \
++        const arithmetic_pair_policy *policy                              \
++    ) {                                                                    \
++        (void) policy;                                                     \
++        float value;                                                       \
++        memcpy(&value, raw + index * sizeof(value), sizeof(value));         \
++        return (arithmetic_pair_value) {                                  \
++            (double) value, (unsigned) (MISSING), 0,                        \
++            (unsigned) (value == 0), value                                 \
++        };                                                                 \
++    }
++LONG_FLOAT_CANONICAL_LOAD(canonical_float, value >= 0x1p127f)
++LONG_FLOAT_CANONICAL_LOAD(canonical_observed_float, 0)
++#undef LONG_FLOAT_CANONICAL_LOAD
++
++static void arithmetic_long_float_add_canonical(
++    const unsigned char *x_raw, const unsigned char *y_raw,
++    arithmetic_pair_policy x_policy, arithmetic_pair_policy y_policy,
++    size_t start, size_t count, int observed, arithmetic_general_output *output
++) {
++    if (x_policy.kind == NUMERIC_LONG) {
++        if (observed) {
++            ARITHMETIC_PAIR_LOOP(long, canonical_observed_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
++        } else {
++            ARITHMETIC_PAIR_LOOP(long, canonical_float, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
++        }
++    } else {
++        if (observed) {
++            ARITHMETIC_PAIR_LOOP(canonical_observed_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
++        } else {
++            ARITHMETIC_PAIR_LOOP(canonical_float, long, +, 0, double, NUMERIC_DOUBLE, NA_REAL);
++        }
++    }
++}
++
+ static int arithmetic_long_float_add_write(
+     const arithmetic_general_source *left, const arithmetic_general_source *right,
+     R_xlen_t length, arithmetic_general_output *output
+@@ -107,6 +146,9 @@
+     const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
+     const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
+     const int reverse = x_policy.kind != NUMERIC_LONG;
++    const numeric_data *float_data = reverse ? left->operand->reader.storage : right->operand->reader.storage;
++    const int canonical = numeric_strict_modern_float(float_data);
++    const int observed = float_data->missing_count == 0;
+     const int32_t missing_minimum = reverse ? y_policy.missing_minimum : x_policy.missing_minimum;
+     for (size_t start = 0; start < (size_t) length;) {
+         R_CheckUserInterrupt();
+@@ -127,14 +169,26 @@
+                     start + offset, block, reverse, output);
+                 failures = 0;
+             } else {
+-                arithmetic_long_float_add_exact(x, y, x_policy, y_policy,
+-                    start + offset, block, output);
++                /* The captured fact simplifies only exception classification.
++                   Ordinary blocks retain their missing-free vector loop. */
++                if (canonical) {
++                    arithmetic_long_float_add_canonical(x, y, x_policy, y_policy,
++                        start + offset, block, observed, output);
++                } else {
++                    arithmetic_long_float_add_exact(x, y, x_policy, y_policy,
++                        start + offset, block, output);
++                }
+                 failures++;
+             }
+             offset += block;
+             if (failures == 4 && offset < count) {
+-                arithmetic_long_float_add_exact(x_raw + 4 * offset, y_raw + 4 * offset,
+-                    x_policy, y_policy, start + offset, count - offset, output);
++                if (canonical) {
++                    arithmetic_long_float_add_canonical(x_raw + 4 * offset, y_raw + 4 * offset,
++                        x_policy, y_policy, start + offset, count - offset, observed, output);
++                } else {
++                    arithmetic_long_float_add_exact(x_raw + 4 * offset, y_raw + 4 * offset,
++                        x_policy, y_policy, start + offset, count - offset, output);
++                }
+                 break;
+             }
+         }
+--- a/src/numeric-payload.c
++++ b/src/numeric-payload.c
+@@ -208,6 +208,7 @@
+         data = numeric_read_storage(value);
+         UNPROTECT(1);
+     }
++    data->domain_flags = 0;
+     return data;
+ }
+ 
+@@ -345,6 +346,12 @@
+ numeric_data *unmaterialized_numeric_read_storage(SEXP value) {
+     SEXP source = numeric_base_source(value);
+     return source == R_NilValue ? NULL : numeric_read_storage(source);
++}
++
++/* Read-only diagnostic. Compute before allocation can change the public handle. */
++SEXP C_dtatools_numeric_domain_info(SEXP value) {
++    int strict = numeric_strict_modern_float(unmaterialized_numeric_read_storage(value));
++    return Rf_ScalarLogical(strict);
+ }
+ 
+ /* Immutable span access, with a contiguous R-backed adapter. The source
+@@ -1175,7 +1182,8 @@
+ DTATOOLS_LAYOUT_ASSERT(numeric_scalar_values, offsetof(numeric_data, scalar_values) == 48);
+ DTATOOLS_LAYOUT_ASSERT(numeric_scalar_start, offsetof(numeric_data, scalar_start) == 56);
+ DTATOOLS_LAYOUT_ASSERT(numeric_scalar_end, offsetof(numeric_data, scalar_end) == 64);
+-DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 72);
++DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 72);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 80);
+ DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+ DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+ DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+@@ -1226,6 +1234,9 @@
+ DTATOOLS_LAYOUT_ASSERT(arrow_table_texts, offsetof(dtatools_arrow_value_label_table, label_texts) == 16);
+ DTATOOLS_LAYOUT_ASSERT(arrow_table_count, offsetof(dtatools_arrow_value_label_table, label_count) == 24);
+ DTATOOLS_LAYOUT_ASSERT(arrow_table_size, sizeof(dtatools_arrow_value_label_table) == 32);
++#elif UINTPTR_MAX == UINT32_MAX
++DTATOOLS_LAYOUT_ASSERT(numeric_domain, offsetof(numeric_data, domain_flags) == 40);
++DTATOOLS_LAYOUT_ASSERT(numeric_size, sizeof(numeric_data) == 44);
+ #endif
+ 
+ int write_string_utf8_status(SEXP value) {
+@@ -2225,7 +2236,8 @@
+         .values = RAW(backing), .length = length, .kind = kind,
+         .temporal = temporal, .format_version = format_version,
+         .missing_count = missing_count, .native_owner = NULL,
+-        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0
++        .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0,
++        .domain_flags = 0
+     };
+     memcpy(data, &initial, sizeof(initial));
+     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
+@@ -5005,6 +5017,9 @@
+         UNPROTECT(1);
+         Rf_error("could not allocate compact Stata numeric storage");
+     }
++    /* Both encoding passes validate the strict observed range and exact tags. */
++    if (kind == NUMERIC_FLOAT && temporal == 0)
++        ((numeric_data *) data)->domain_flags = NUMERIC_DOMAIN_STRICT_MODERN_FLOAT;
+     SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+     SEXP result = PROTECT(R_new_altrep(
+--- a/src/probe-grouped-bracket-plan.c
++++ b/src/probe-grouped-bracket-plan.c
+@@ -172,6 +172,7 @@
+         if (TYPEOF(replacement) != INTSXP || XLENGTH(replacement) != 1 ||
+             INTEGER(replacement)[0] < 0)
+             Rf_error("invalid scratch plan key extent");
++        numeric_read_storage(base)->domain_flags = 0;
+         numeric_read_storage(base)->length = (size_t) INTEGER(replacement)[0];
+     } else if (INTEGER(change)[0] == 1 && TYPEOF(replacement) == EXTPTRSXP) {
+         R_set_altrep_data1(base, replacement);
+--- a/src/rust/src/lib.rs
++++ b/src/rust/src/lib.rs
+@@ -246,7 +246,20 @@
+     scalar_values: *const c_void,
+     scalar_start: usize,
+     scalar_end: usize,
+-}
++    // An allocation-specific proof; every generic/imported construction starts unknown.
++    domain_flags: u32,
++}
++
++#[cfg(target_pointer_width = "64")]
++const _: () = {
++    assert!(std::mem::offset_of!(NumericData, domain_flags) == 72);
++    assert!(std::mem::size_of::<NumericData>() == 80);
++};
++#[cfg(target_pointer_width = "32")]
++const _: () = {
++    assert!(std::mem::offset_of!(NumericData, domain_flags) == 40);
++    assert!(std::mem::size_of::<NumericData>() == 44);
++};
+ 
+ impl Drop for NumericData {
+     fn drop(&mut self) {
+@@ -267,6 +280,7 @@
+             scalar_values: ptr::null(),
+             scalar_start: 0,
+             scalar_end: 0,
++            domain_flags: 0,
+         }
+     }
+ }
+@@ -359,6 +373,7 @@
+         scalar_values: ptr::null(),
+         scalar_start: 0,
+         scalar_end: 0,
++        domain_flags: 0,
+     }))
+     .cast::<c_void>()
+ }
+--- a/src/rust/src/owned_numeric.rs
++++ b/src/rust/src/owned_numeric.rs
+@@ -286,6 +286,7 @@
+             scalar_values: ptr::null(),
+             scalar_start: 0,
+             scalar_end: 0,
++            domain_flags: 0,
+         }
+     }
+ }
+@@ -485,6 +486,7 @@
+             scalar_values: ptr::null(),
+             scalar_start: 0,
+             scalar_end: 0,
++            domain_flags: source.domain_flags,
+         });
+         Arc::increment_strong_count(source.native_owner.cast::<Owner>());
+         result.native_owner = source.native_owner;
+@@ -615,6 +617,38 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn numeric_domain_defaults_unknown_and_clone_retains_same_owner_fact() {
++        let raw = [0_u8; 8];
++        let descriptor = unsafe {
++            dtatools_owned_numeric_from_raw(raw.as_ptr(), 2, 1,
++                NumericKind::Float as c_int, TemporalKind::None as c_int, 119, 0)
++        };
++        assert!(!descriptor.is_null());
++        let mut data = unsafe { Box::from_raw(descriptor.cast::<NumericData>()) };
++        assert_eq!(data.domain_flags, 0);
++        data.domain_flags = 1;
++        let copied = unsafe { dtatools_owned_numeric_clone((&*data as *const NumericData).cast()) };
++        assert!(!copied.is_null());
++        let copied = unsafe { Box::from_raw(copied.cast::<NumericData>()) };
++        assert_eq!(copied.domain_flags, 1);
++        assert_eq!(copied.native_owner, data.native_owner);
++        let imported = prepare_from_arrow(&[], NumericKind::Float, TemporalKind::None,
++            FormatVersion::V119, 0, || false).unwrap().into_descriptor();
++        assert_eq!(imported.domain_flags, 0);
++        let plain = NumericData::new(crate::RNumericData {
++            backing: ptr::null_mut(), values: ptr::null_mut(), length: 0,
++            kind: NumericKind::Float, temporal: TemporalKind::None,
++            format_version: FormatVersion::V119, missing_count: 0,
++        });
++        assert_eq!(plain.domain_flags, 0);
++        let allocated = unsafe { crate::dtatools_numeric_alloc(ptr::null_mut(), 0,
++            NumericKind::Float as c_int, TemporalKind::None as c_int, 0) };
++        assert!(!allocated.is_null());
++        let allocated = unsafe { Box::from_raw(allocated.cast::<NumericData>()) };
++        assert_eq!(allocated.domain_flags, 0);
++    }
+ 
+     const RELEASES: [u16; 10] = [105, 108, 110, 111, 113, 114, 115, 117, 118, 119];
+ 
+--- a/tests/testthat/test-arithmetic-payload-lifetime.R
++++ b/tests/testthat/test-arithmetic-payload-lifetime.R
+@@ -408,3 +408,47 @@
+         }
+     }
+ })
++
++test_that("canonical float addition uses captured domain facts across reentry", {
++    .arithmetic_lifetime_native()
++    .arithmetic_lifetime_checkpoint_ready()
++    n <- 16385L
++    xv <- rep(c(1, NA_real_, 16777217), length.out = n)
++    yv <- rep(c(tagged_missing("z"), -2^-149, 0.125), length.out = n)
++    expected <- xv + yv
++    expected[is.na(xv) | is.na(yv)] <- NA_real_
++    expected_bytes <- writeBin(expected, raw(), size = 8L)
++    for (retained in c(FALSE, TRUE)) for (reverse in c(FALSE, TRUE)) {
++        for (action in c("patch", "materialize")) {
++            x <- dta_long(xv)
++            y <- dta_float(yv)
++            if (retained) {
++                x <- .Call(C_dtatools_owned_numeric_freeze, x, 8191L)
++                y <- .Call(C_dtatools_owned_numeric_freeze, y, 16385L)
++            }
++            expect_true(.Call(C_dtatools_numeric_domain_info, y))
++            fired <- 0L
++            .arithmetic_lifetime_arm(function(key) {
++                fired <<- fired + 1L
++                if (action == "patch") .Call(C_dtatools_patch_vector, y, n, 7)
++                else .force_altrep_materialization(y)
++            })
++            result <- if (reverse) y + x else x + y
++            expect_identical(fired, 1L)
++            expect_identical(writeBin(as.double(result), raw(), size = 8L), expected_bytes)
++            expect_false(.Call(C_dtatools_numeric_domain_info, y))
++            changed <- yv
++            if (action == "patch") changed[[n]] <- 7
++            expect_identical(writeBin(as.double(y), raw(), size = 8L),
++                writeBin(changed, raw(), size = 8L))
++            data <- dibble(value = result)
++            replace_values(data, value = 7, where = which(is.na(expected)))
++            cleared <- expected
++            cleared[is.na(cleared)] <- 7
++            expect_false(anyNA(data$value))
++            expect_identical(writeBin(as.double(data$value), raw(), size = 8L),
++                writeBin(cleared, raw(), size = 8L))
++            expect_identical(writeBin(as.double(result), raw(), size = 8L), expected_bytes)
++        }
++    }
++})
+--- a/tests/testthat/test-compact-float-domain.R
++++ b/tests/testthat/test-compact-float-domain.R
+@@ -0,0 +1,101 @@
++test_that("strict float constructors establish an allocation domain proof", {
++    x <- dta_float(c(-2^-149, -0, 0, 2^-149, -3, 3, NA_real_, tagged_missing(letters)))
++    before <- writeBin(as.double(x), raw(), size = 8L)
++    expect_true(.Call(C_dtatools_numeric_domain_info, x))
++    expect_identical(writeBin(as.double(x), raw(), size = 8L), before)
++    expect_false(.Call(C_dtatools_numeric_domain_info, dta_long(c(1, NA_real_))))
++    # Removing the R class can retain the same compact bytes and their proof.
++    expect_true(.Call(C_dtatools_numeric_domain_info, as.double(x)))
++    expect_false(.Call(C_dtatools_numeric_domain_info, c(1, 2)))
++    restored <- unserialize(serialize(x, NULL))
++    expect_false(.Call(C_dtatools_numeric_domain_info, restored))
++    expect_identical(writeBin(as.double(restored), raw(), size = 8L), before)
++})
++
++.domain_bytes <- function(x) writeBin(as.double(x), raw(), size = 8L, endian = "little")
++.domain_strict <- function(x) .Call(C_dtatools_numeric_domain_info, x)
++
++test_that("compact domain proofs follow retained bytes and writable invalidation", {
++    values <- rep(c(-2^-149, -0, 0, 2^-149, -3, 3, NA_real_, tagged_missing(letters)), 4L)
++    x <- dta_float(values)
++    frozen <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
++    alias <- .Call(C_dtatools_metadata_copy, frozen)
++    expect_true(.domain_strict(frozen))
++    expect_true(.domain_strict(alias))
++    expect_identical(.domain_bytes(frozen), .domain_bytes(x))
++    .Call(C_dtatools_patch_vector, frozen, 1L, 7)
++    expect_false(.domain_strict(frozen))
++    expect_true(.domain_strict(alias))
++    expect_identical(as.double(frozen)[[1L]], 7)
++    expect_identical(.domain_bytes(alias), .domain_bytes(x))
++    .Call(C_dtatools_patch_vector, x, 1L, 7)
++    expect_false(.domain_strict(x))
++    expect_identical(as.double(x)[[1L]], 7)
++    x <- dta_float(values)
++    .force_altrep_materialization(x)
++    expect_false(.domain_strict(x))
++    expect_identical(.domain_bytes(x), writeBin(values, raw(), size = 8L, endian = "little"))
++})
++
++test_that("imports and restored compact payloads do not assert strict domains", {
++    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
++    withr::defer(unlink(path))
++    raw_bits <- function(x) as.raw(floor(x / 256^(0:3)) %% 256)
++    bits <- c(0, 0x80000000, 1, 0x80000001, 0x7effffff, 0xfeffffff,
++        0x7f000000 + (0:26) * 2048, 0x7f000001, 0xff000001,
++        0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc00001, 0xff800001)
++    for (index in seq_along(bits)) {
++        patch_numeric_fixture_row(path, 0L, list(x_float = raw_bits(bits[[index]])))
++        x <- read_dta(path, col_select = "x_float", n_max = 2L)$x_float
++        expect_false(.domain_strict(x))
++        expected <- .domain_bytes(x)
++        frozen <- .Call(C_dtatools_owned_numeric_freeze, x, 1L)
++        # Only the test adapter's new independent validation can grant a fact.
++        expect_identical(.domain_strict(frozen), index <= 33L)
++        expect_identical(.domain_bytes(frozen), expected)
++        restored <- unserialize(serialize(frozen, NULL))
++        expect_false(.domain_strict(restored))
++        expect_identical(.domain_bytes(restored), expected)
++    }
++    legacy <- read_dta(fixture("synthetic_v111.dta"), col_select = "f")$f
++    expect_false(.domain_strict(legacy))
++    expect_false(.domain_strict(.Call(C_dtatools_owned_numeric_freeze, legacy, 1L)))
++})
++
++test_that("freeze validates captured bytes across reentry and releases failed claims", {
++    withr::defer(.Call(C_dtatools_test_numeric_freeze_checkpoint, 0L, NULL))
++    n <- 16385L
++    values <- rep(c(1, NA_real_, tagged_missing("z")), length.out = n)
++    for (retained in c(FALSE, TRUE)) for (action in c("patch", "materialize")) {
++        x <- dta_float(values)
++        if (retained) x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
++        original <- .domain_bytes(x)
++        fired <- 0L
++        local({
++            token <- new.env(parent = emptyenv())
++            reg.finalizer(token, function(key) {
++                fired <<- fired + 1L
++                if (action == "patch") .Call(C_dtatools_patch_vector, x, n, 7)
++                else .force_altrep_materialization(x)
++            }, onexit = FALSE)
++            .Call(C_dtatools_test_numeric_freeze_checkpoint, 1L, token)
++        })
++        result <- .Call(C_dtatools_owned_numeric_freeze, x, 11L)
++        expect_identical(fired, 1L)
++        expect_true(.domain_strict(result))
++        expect_identical(.domain_bytes(result), original)
++        expect_true(anyNA(result))
++        if (action == "patch") expect_identical(as.double(x)[[n]], 7)
++        else expect_false(.domain_strict(x))
++    }
++    x <- dta_float(values)
++    .Call(C_dtatools_test_numeric_freeze_checkpoint, 2L, NULL)
++    expect_error(.Call(C_dtatools_owned_numeric_freeze, x, 7L), "injected numeric freeze checkpoint failure")
++    expect_true(.domain_strict(x))
++    before <- .Call(C_dtatools_native_copy_stats, FALSE)[["compact_copy"]]
++    .Call(C_dtatools_patch_vector, x, 1L, 7)
++    after <- .Call(C_dtatools_native_copy_stats, FALSE)[["compact_copy"]]
++    expect_identical(after - before, 0)
++    expect_false(.domain_strict(x))
++    expect_identical(as.double(x)[[1L]], 7)
++})
+--- a/tools/native-test-manifest.json
++++ b/tools/native-test-manifest.json
+@@ -6157,7 +6157,7 @@
+         },
+         {
+           "path": "tests/testthat/test-arithmetic-payload-lifetime.R",
+-          "sha256": "8bc4e03794a4bb9b49ff7b3eb16fe6a5ab8c4d76c481848e34c5c8b7818a6e27"
++          "sha256": "19a0f50ddfb8de728f5817484ac9b31973038a65203642e29ae8f48a27239424"
+         },
+         {
+           "path": "tests/testthat/test-numeric-materialization.R",
+@@ -6166,6 +6166,10 @@
+         {
+           "path": "tests/testthat/test-native-decode-kernels.R",
+           "sha256": "5785c904d3adf207631744a55df8c197eccb5997272f426b4ad2e24f5d9defca"
++        },
++        {
++          "path": "tests/testthat/test-compact-float-domain.R",
++          "sha256": "806ed8f6ebff39814519a2995dd33f2e5392098cd6062d9200deffa121de33ad"
+         }
+       ],
+       "blocks": [
+@@ -7796,6 +7800,49 @@
+           "min_pass_before_skip": 0,
+           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
++        },
++        {
++          "file": "test-arithmetic-payload-lifetime.R",
++          "test": "canonical float addition uses captured domain facts across reentry",
++          "occurrence": 1,
++          "skip": "allow",
++          "min_pass": 64,
++          "warnings": 0,
++          "min_pass_before_skip": 0,
++          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
++          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
++        },
++        {
++          "file": "test-compact-float-domain.R",
++          "test": "strict float constructors establish an allocation domain proof",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 7,
++          "warnings": 0
++        },
++        {
++          "file": "test-compact-float-domain.R",
++          "test": "compact domain proofs follow retained bytes and writable invalidation",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 11,
++          "warnings": 0
++        },
++        {
++          "file": "test-compact-float-domain.R",
++          "test": "imports and restored compact payloads do not assert strict domains",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 207,
++          "warnings": 0
++        },
++        {
++          "file": "test-compact-float-domain.R",
++          "test": "freeze validates captured bytes across reentry and releases failed claims",
++          "occurrence": 1,
++          "skip": "forbid",
++          "min_pass": 25,
++          "warnings": 0
+         }
+       ],
+       "children": [],

@@ -1,0 +1,1 @@
+The new private controller accidentally added retained suffix cases to its expected matrix without adding them to the unchanged C matrix. Complete records were preserved; validation correctly rejected the mismatch. Corrected expected matrix to the inherited 162 cases before retry. No runtime change or semantic failure.
