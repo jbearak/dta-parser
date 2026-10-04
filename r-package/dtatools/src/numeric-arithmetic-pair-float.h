@@ -17,6 +17,26 @@
 #ifndef DTATOOLS_NUMERIC_ARITHMETIC_PAIR_FLOAT_H
 #define DTATOOLS_NUMERIC_ARITHMETIC_PAIR_FLOAT_H
 
+enum {
+    ARITHMETIC_PAIR_CANONICAL_FLOAT = 9,
+    ARITHMETIC_PAIR_CANONICAL_OBSERVED_FLOAT = 10
+};
+
+static arithmetic_pair_policy arithmetic_pair_float_policy_for(
+    const arithmetic_general_source *source
+) {
+    arithmetic_pair_policy policy = arithmetic_pair_policy_for(source);
+    const numeric_data *data = source->operand->reader.storage;
+    /* The operand's captured read claim protects the descriptor and bytes.
+       Unknown imports retain the general missing/infinity classification. */
+    if (numeric_strict_modern_float(data)) {
+        policy.kind = data->missing_count == 0
+            ? ARITHMETIC_PAIR_CANONICAL_OBSERVED_FLOAT
+            : ARITHMETIC_PAIR_CANONICAL_FLOAT;
+    }
+    return policy;
+}
+
 static int arithmetic_pair_float_admitted(
     const arithmetic_general_source *left, const arithmetic_general_source *right,
     R_xlen_t length, int operation, int kind
@@ -58,6 +78,8 @@ static int arithmetic_pair_float_admitted(
     case NUMERIC_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, float, OP); break;  \
     case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, observed_float, OP); break; \
     case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, legacy_float, OP); break; \
+    case ARITHMETIC_PAIR_CANONICAL_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, canonical_float, OP); break; \
+    case ARITHMETIC_PAIR_CANONICAL_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_LOOP(X, canonical_observed_float, OP); break; \
     }
 
 #define ARITHMETIC_PAIR_FLOAT_LEFT(OP)                                  \
@@ -67,14 +89,16 @@ static int arithmetic_pair_float_admitted(
     case NUMERIC_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(float, OP); break;   \
     case ARITHMETIC_SOURCE_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(observed_float, OP); break; \
     case ARITHMETIC_PAIR_LEGACY_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(legacy_float, OP); break; \
+    case ARITHMETIC_PAIR_CANONICAL_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(canonical_float, OP); break; \
+    case ARITHMETIC_PAIR_CANONICAL_OBSERVED_FLOAT: ARITHMETIC_PAIR_FLOAT_RIGHT(canonical_observed_float, OP); break; \
     }
 
 static int arithmetic_pair_float_write(
     const arithmetic_general_source *left, const arithmetic_general_source *right,
     R_xlen_t length, int operation, arithmetic_general_output *output
 ) {
-    const arithmetic_pair_policy x_policy = arithmetic_pair_policy_for(left);
-    const arithmetic_pair_policy y_policy = arithmetic_pair_policy_for(right);
+    const arithmetic_pair_policy x_policy = arithmetic_pair_float_policy_for(left);
+    const arithmetic_pair_policy y_policy = arithmetic_pair_float_policy_for(right);
     uint32_t maximum = 0;
     for (size_t start = 0; start < (size_t) length;) {
         R_CheckUserInterrupt();

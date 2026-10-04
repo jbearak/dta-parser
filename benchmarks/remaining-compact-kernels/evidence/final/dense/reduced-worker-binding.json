@@ -1,0 +1,7 @@
+{
+  "original_worker": "<repo>/benchmarks/adaptive-float-reciprocal/evidence/accepted/controller/worker.R",
+  "original_sha256": "0c519982244369b1e638f6a0099659c5ce61bcb9cb58e2e7af8bfb7888194708",
+  "screen_worker": "<dense-evidence>/dense-worker.R",
+  "screen_sha256": "8b3a02add6ea4fa63b5f89fe5dfa2808bb429efcbac1a3a1e5935ff292a39c04",
+  "edit": "Only original nine-stratum declaration changed to one original random_half million-row stratum. Every oracle, metadata/input/mutation/cache/native-entry qualification and adaptive CPU timing loop remains unchanged."
+}

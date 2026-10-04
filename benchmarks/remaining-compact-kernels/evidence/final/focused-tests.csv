@@ -1,0 +1,72 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","arithmetic payloads survive collection and compact serialization",32,0,FALSE,FALSE,0,0.273,0.011,0.283,32
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","arithmetic payload aliases detach before writable access and patches",32,0,FALSE,FALSE,0,0.293,0.011,0.303,32
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","arithmetic payload adoption roots descriptor and bytes across allocations",5,0,FALSE,FALSE,0,0.156,0.00199999999999999,0.158,5
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","arithmetic promotion proof survives a reentrant source patch",24,0,FALSE,FALSE,0,0.1,0.007,0.106,24
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","temporary arithmetic claims restore ordinary and owned write access",14,0,FALSE,FALSE,0,0.06,0.003,0.0640000000000001,14
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","arithmetic cleanup preserves aliases created while the source is claimed",10,0,FALSE,FALSE,0,0.073,0.004,0.0759999999999998,10
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","disarming an abandoned arithmetic checkpoint releases its token",7,0,FALSE,FALSE,0,0.0549999999999999,0.002,0.0570000000000002,7
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","general arithmetic preflight retains owned sources across reentrant writes",48,0,FALSE,FALSE,0,0.21,0.014,0.224,48
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","owned arithmetic read claims survive nesting and release on unwind",11,0,FALSE,FALSE,0,0.0980000000000001,0.00399999999999999,0.101,11
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","integer reciprocal inherits the captured missing count during reentrant writes",54,0,FALSE,FALSE,0,0.241,0.015,0.257,54
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","float reciprocal proofs retain captured bytes and missing counts during reentry",30,0,FALSE,FALSE,0,0.157,0.00899999999999999,0.166,30
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","long float block proofs retain captured inputs through reentry",28,0,FALSE,FALSE,0,0.204,0.00799999999999999,0.211,28
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","long float all missing facts retain captured counts through reentry",120,0,FALSE,FALSE,0,0.819,0.036,0.855,120
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","all missing reciprocal proofs retain captured counts through reentry",100,0,FALSE,FALSE,0,0.349,0.023,0.372,100
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","tiny retained pair spans preserve captured sources across reentry",36,0,FALSE,FALSE,0,0.12,0.00800000000000001,0.127,36
+"test-arithmetic-payload-lifetime.R","arithmetic-payload-lifetime","canonical float addition uses captured domain facts across reentry",64,0,FALSE,FALSE,0,0.242,0.016,0.258,64
+"test-compact-float-domain.R","compact-float-domain","strict float constructors establish an allocation domain proof",7,0,FALSE,FALSE,0,0.00499999999999989,0.002,0.00699999999999967,7
+"test-compact-float-domain.R","compact-float-domain","compact domain proofs follow retained bytes and writable invalidation",11,0,FALSE,FALSE,0,0.00800000000000001,0.002,0.00999999999999979,11
+"test-compact-float-domain.R","compact-float-domain","imports and restored compact payloads do not assert strict domains",207,0,FALSE,FALSE,0,0.153,0.049,0.209000000000001,207
+"test-compact-float-domain.R","compact-float-domain","freeze validates captured bytes across reentry and releases failed claims",25,0,FALSE,FALSE,0,0.137,0.006,0.143,25
+"test-compact-pair-domain.R","compact-pair-domain","mixed compact pairs preserve strict and unknown domain results",488,0,FALSE,FALSE,0,0.356000000000001,0.095,0.451,488
+"test-compact-pair-domain.R","compact-pair-domain","mixed domain pairs retain ambiguous limits and original promotion inputs",92,0,FALSE,FALSE,0,0.0640000000000001,0.018,0.0809999999999995,92
+"test-compact-pair-domain.R","compact-pair-domain","mixed domain read claims retain strict bytes through allocation callbacks",114,0,FALSE,FALSE,0,0.236,0.024,0.26,114
+"test-dense-float-reciprocal-kernel.R","dense-float-reciprocal-kernel","strict dense reciprocal masks retain zero signs and exact missing caches",99,0,FALSE,FALSE,0,0.0810000000000004,0.02,0.100000000000001,99
+"test-dense-float-reciprocal-kernel.R","dense-float-reciprocal-kernel","late unsafe strict dense reciprocals discard provisional narrowed results",30,0,FALSE,FALSE,0,0.0229999999999997,0.006,0.0289999999999999,30
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","compact arithmetic agrees with the ordinary public calculation",1500,0,FALSE,FALSE,0,1.081,0.282,1.363,1500
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","compact arithmetic promotes the complete result and collapses invalid values",31,0,FALSE,FALSE,0,0.0220000000000002,0.006,0.0280000000000005,31
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","arithmetic keeps recycling names and unsupported input behavior",38,0,FALSE,FALSE,0,0.0339999999999998,0.006,0.04,38
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","arithmetic crosses retained chunks without changing source storage",180,0,FALSE,FALSE,0,0.461,0.039,0.5,180
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","extended arithmetic keeps primitive and recycling callbacks",10,0,FALSE,FALSE,0,0.0410000000000004,0.003,0.0430000000000001,10
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","public scalar and column arithmetic enter the native producer",16,0,FALSE,FALSE,0,0.00600000000000023,0,0.00700000000000056,16
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","imported DTA and Arrow columns enter native arithmetic with display metadata",78,0,FALSE,FALSE,0,0.0620000000000003,0.016,0.0960000000000001,78
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","extended arithmetic retains storage-specific names methods",12,0,FALSE,FALSE,0,0.00699999999999967,0.002,0.00899999999999945,12
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","observed compact span arithmetic crosses distinct chunk boundaries",72,0,FALSE,FALSE,0,0.0499999999999998,0.014,0.0659999999999998,72
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","legacy observed integer codes promote into modern arithmetic storage",14,0,FALSE,FALSE,0,0.00899999999999945,0.002,0.0129999999999999,14
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","specialized arithmetic keeps aliased inputs scalar directions and promotion",300,0,FALSE,FALSE,0,0.207,0.0449999999999999,0.253,300
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","missing span arithmetic keeps all codes across scalar and column shapes",328,0,FALSE,FALSE,0,0.335,0.048,0.383,328
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","missing span arithmetic keeps each operand's legacy missing encoding",256,0,FALSE,FALSE,0,0.165,0.037,0.202000000000002,256
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","float span arithmetic matches eager IEEE and reserved-code decoding",20561,0,FALSE,FALSE,0,15.136,3.578,18.74,20561
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","compact pair promotion recomputes earlier chunks and counts missing unions",12,0,FALSE,FALSE,0,0.0110000000000028,0.00300000000000011,0.0119999999999969,12
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","rounded float multiplication limits retain exact binary64 storage decisions",412,0,FALSE,FALSE,0,0.311999999999998,0.0759999999999996,0.388999999999999,412
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","compact float sums preserve rounded binary64 fit and late promotion",1291,0,FALSE,FALSE,0,1.034,0.263,1.297,1291
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","compact float sums keep exponent-gap cancellation and zero bits",38,0,FALSE,FALSE,0,0.0309999999999988,0.00800000000000001,0.0380000000000003,38
+"test-native-arithmetic-kernels.R","native-arithmetic-kernels","integer reciprocal bounds preserve storage zero signs and missing caches",819,0,FALSE,FALSE,0,0.698,0.165,0.862000000000002,819
+"test-native-arithmetic-parity.R","native-arithmetic-parity","a final or boundary value promotes every earlier scalar result",640,0,FALSE,FALSE,0,0.502000000000002,0.14,0.642000000000003,640
+"test-native-arithmetic-parity.R","native-arithmetic-parity","column promotion crosses independently chunked operands",360,0,FALSE,FALSE,0,0.260999999999999,0.0750000000000002,0.335999999999999,360
+"test-native-arithmetic-parity.R","native-arithmetic-parity","missing codes and negative limits do not hide the final promotion",248,0,FALSE,FALSE,0,0.185000000000002,0.0529999999999999,0.238,248
+"test-native-arithmetic-parity.R","native-arithmetic-parity","fractional and large results choose storage for the complete column",225,0,FALSE,FALSE,0,0.160999999999998,0.0449999999999999,0.206000000000003,225
+"test-native-arithmetic-parity.R","native-arithmetic-parity","integer division by powers of two inspects the complete column",740,0,FALSE,FALSE,0,0.594999999999999,0.16,0.754999999999999,740
+"test-native-arithmetic-parity.R","native-arithmetic-parity","float power-of-two scaling preserves subnormals and zero signs",280,0,FALSE,FALSE,0,0.231000000000002,0.0620000000000003,0.295999999999996,280
+"test-native-arithmetic-parity.R","native-arithmetic-parity","integer preflight preserves missing-only storage and bounded scalars",405,0,FALSE,FALSE,0,0.323999999999998,0.0889999999999995,0.413000000000004,405
+"test-native-arithmetic-parity.R","native-arithmetic-parity","integer products choose long or float without losing signed zero",75,0,FALSE,FALSE,0,0.0620000000000012,0.0170000000000003,0.078000000000003,75
+"test-native-arithmetic-parity.R","native-arithmetic-parity","power-of-two arithmetic preserves legacy storage decoding",480,0,FALSE,FALSE,0,0.445,0.105,0.549999999999997,480
+"test-native-arithmetic-parity.R","native-arithmetic-parity","float scaling promotes just beyond the binary32 cutoff",484,0,FALSE,FALSE,0,0.407,0.11,0.516999999999996,484
+"test-native-arithmetic-parity.R","native-arithmetic-parity","early long promotion still counts missing rows in later chunks",58,0,FALSE,FALSE,0,0.0480000000000018,0.0129999999999999,0.0609999999999999,58
+"test-native-arithmetic-parity.R","native-arithmetic-parity","general arithmetic keeps mixed physical sources and scalar directions exact",10304,0,FALSE,FALSE,0,8.671,2.266,10.938,10304
+"test-native-arithmetic-parity.R","native-arithmetic-parity","general preflight and float promotion retain later missing rows and earlier precision",184,0,FALSE,FALSE,0,0.155000000000001,0.0389999999999997,0.193999999999996,184
+"test-native-arithmetic-parity.R","native-arithmetic-parity","general integer scalar bounds preserve floating storage and missing counts",5496,0,FALSE,FALSE,0,4.569,1.176,5.76,5496
+"test-native-arithmetic-parity.R","native-arithmetic-parity","general arithmetic includes imported physical signed minima and legacy reserved observations",3376,0,FALSE,FALSE,0,2.826,0.754,3.58,3376
+"test-native-arithmetic-parity.R","native-arithmetic-parity","floating scalar results reject unsafe endpoint proofs",320,0,FALSE,FALSE,0,0.301000000000002,0.0749999999999993,0.375,320
+"test-native-arithmetic-parity.R","native-arithmetic-parity","float scalar interval proofs retain zero signs and exact missing counts",2292,0,FALSE,FALSE,0,2.076,0.541,2.618,2292
+"test-native-arithmetic-parity.R","native-arithmetic-parity","float scalar fit intervals include exactly their binary32 boundary neighbors",1848,0,FALSE,FALSE,0,1.681,0.562000000000001,2.398,1848
+"test-native-arithmetic-parity.R","native-arithmetic-parity","scalar block proofs preserve ordinary tails and late whole-column promotion",1566,0,FALSE,FALSE,0,1.573,0.355,1.933,1566
+"test-native-arithmetic-parity.R","native-arithmetic-parity","scalar block proofs preserve imported exceptions after ordinary spans",2061,0,FALSE,FALSE,0,1.947,0.469999999999999,2.42199999999999,2061
+"test-native-arithmetic-parity.R","native-arithmetic-parity","float reciprocal block proofs preserve zero exceptions and late promotion",756,0,FALSE,FALSE,0,0.694999999999993,0.172000000000001,0.868000000000009,756
+"test-native-arithmetic-parity.R","native-arithmetic-parity","long float block addition preserves bits and exact missing unions",738,0,FALSE,FALSE,0,0.839000000000006,0.170000000000002,1.009,738
+"test-native-arithmetic-parity.R","native-arithmetic-parity","long float block addition retains imported exceptions after ordinary spans",841,0,FALSE,FALSE,0,0.910999999999994,0.197999999999999,1.11200000000001,841
+"test-native-arithmetic-parity.R","native-arithmetic-parity","long float all missing facts preserve output bits and cache mutation",96,0,FALSE,FALSE,0,0.0940000000000012,0.0220000000000002,0.117000000000004,96
+"test-native-arithmetic-parity.R","native-arithmetic-parity","dense reciprocal input masks preserve cache counts and late promotion",2700,0,FALSE,FALSE,0,2.334,0.605,2.94,2700
+"test-native-arithmetic-parity.R","native-arithmetic-parity","adaptive reciprocal proofs recover ordinary tails after dense spans",1036,0,FALSE,FALSE,0,1.06,0.233000000000001,1.29299999999999,1036
+"test-native-arithmetic-parity.R","native-arithmetic-parity","retained long float addition preserves poll-boundary outputs",480,0,FALSE,FALSE,0,0.399000000000001,0.108000000000001,0.506,480

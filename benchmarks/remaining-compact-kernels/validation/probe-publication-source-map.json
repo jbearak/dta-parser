@@ -1,0 +1,22 @@
+{
+  "committed-pair-receipt.json": {
+    "original_sha256": "80c78dec1093862e014a266a859b76cdf6eb7ce9e41630aa35bb75b648ea63ac",
+    "published_sha256": "a00dcb40cc0e1a5dd5892a7adbd98549a3d3c04042c58089265ba4ea5e109bf6",
+    "private_paths_replaced": true
+  },
+  "committed-pair-cases.csv": {
+    "original_sha256": "269bd2329752cf7507fdd9bbe43fc09b3f42a73fd4fece42cf19fee80d137455",
+    "published_sha256": "269bd2329752cf7507fdd9bbe43fc09b3f42a73fd4fece42cf19fee80d137455",
+    "private_paths_replaced": false
+  },
+  "committed-dense-receipt.json": {
+    "original_sha256": "308970829ae1bac3054cfbac7dbba25f756545f5a6b81502037e98b7d717aa59",
+    "published_sha256": "42078eab537a7ef6c6882ad2c94e03079a0b9c324879437f301ad61e9631df7e",
+    "private_paths_replaced": true
+  },
+  "committed-dense-cases.csv": {
+    "original_sha256": "ea698c2f9ab54d09d545bcc33cbef2544b6f06ce9083695e29a323e9d5461cdb",
+    "published_sha256": "ea698c2f9ab54d09d545bcc33cbef2544b6f06ce9083695e29a323e9d5461cdb",
+    "private_paths_replaced": false
+  }
+}

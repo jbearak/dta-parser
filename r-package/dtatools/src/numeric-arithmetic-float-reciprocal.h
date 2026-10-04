@@ -99,6 +99,46 @@ static int arithmetic_float_reciprocal_prepare_block(
     return minimum >= threshold;
 }
 
+/* Four failing ordinary blocks select this writer only for captured strict
+   modern bytes. Their domain proves finite observed inputs and exact missing
+   tags, so one magnitude comparison replaces the imported-value classifier.
+   Tags lie above the proved anchor and can keep their original denominator;
+   only below-threshold lanes need substitution, including both zero signs.
+   Keep the quotient in binary64, then narrow once. Too-small observed inputs
+   use a safe anchor in this private provisional pass; the caller overwrites
+   the entire attempted range with the exact producer before publishing it. */
+#define RECIPROCAL_CANONICAL_WRITE(NAME, TYPE, TARGET, MISSING)              \
+    static int arithmetic_float_reciprocal_canonical_##NAME(                \
+        const unsigned char *raw, size_t offset, size_t count,             \
+        size_t destination, double scalar, uint32_t threshold,             \
+        arithmetic_general_output *output, unsigned *missing_count        \
+    ) {                                                                    \
+        TYPE *restrict target = (TARGET) + destination;                    \
+        unsigned invalid_count = 0, too_small = 0;                         \
+        for (size_t i = 0; i < count; i++) {                               \
+            uint32_t bits;                                                 \
+            memcpy(&bits, raw + (offset + i) * sizeof(bits), sizeof(bits)); \
+            uint32_t magnitude = bits & UINT32_C(0x7fffffff);              \
+            unsigned invalid = (unsigned) (magnitude >= UINT32_C(0x7f000000)) | \
+                (unsigned) (magnitude == 0);                               \
+            unsigned small = (unsigned) (magnitude < threshold);           \
+            unsigned unsafe = small & (unsigned) (magnitude != 0);         \
+            too_small |= unsafe;                                           \
+            bits = small ? UINT32_C(0x7effffff) : bits;         \
+            float denominator;                                             \
+            memcpy(&denominator, &bits, sizeof(denominator));              \
+            double quotient = scalar / (double) denominator;              \
+            target[i] = invalid ? (TYPE) (MISSING) : (TYPE) quotient;       \
+            invalid_count += invalid;                                     \
+        }                                                                  \
+        if (too_small) return 0;                                          \
+        *missing_count = invalid_count;                                   \
+        return 1;                                                          \
+    }
+RECIPROCAL_CANONICAL_WRITE(float, float, (float *) (void *) output->raw, 0x1p127f)
+RECIPROCAL_CANONICAL_WRITE(double, double, output->real, NA_REAL)
+#undef RECIPROCAL_CANONICAL_WRITE
+
 /* The caller supplies fresh output with a zero missing count. */
 static int arithmetic_float_reciprocal_fill_missing(
     R_xlen_t length, arithmetic_general_output *output
@@ -131,6 +171,7 @@ static int arithmetic_float_reciprocal_write(
     const double scalar = proof->scalar;
     const uint32_t threshold = proof->minimum_magnitude;
     const int all_observed = data->missing_count == 0;
+    const int canonical = numeric_strict_modern_float(data);
     const double float_limit = numeric_float_observed_limit();
     uint64_t float_limit_bits;
     memcpy(&float_limit_bits, &float_limit, sizeof(float_limit_bits));
@@ -150,16 +191,31 @@ static int arithmetic_float_reciprocal_write(
                 size_t take = count - block;                               \
                 if (take > 64) take = 64;                                  \
                 size_t end = block + take;                                 \
+                int dense = PREPARED && canonical && ordinary_failures == 4; \
+                if (dense) {                                               \
+                    unsigned dense_missing = 0;                            \
+                    end = count;                                           \
+                    int proved_dense = output->kind == NUMERIC_FLOAT       \
+                        ? arithmetic_float_reciprocal_canonical_float(raw, block, \
+                            end - block, start + block, scalar, threshold, output, &dense_missing) \
+                        : arithmetic_float_reciprocal_canonical_double(raw, block, \
+                            end - block, start + block, scalar, threshold, output, &dense_missing); \
+                    if (proved_dense) {                                    \
+                        missing_count += dense_missing;                    \
+                        block = end;                                       \
+                        continue;                                          \
+                    }                                                      \
+                }                                                          \
                 float prepared[64];                                       \
                 unsigned char missing[64];                                \
                 unsigned block_missing = 0;                               \
                 /* Retry the ordinary proof at each captured span. */     \
-                int ordinary = !(PREPARED && ordinary_failures == 4) &&   \
+                int ordinary = !dense && !(PREPARED && ordinary_failures == 4) &&   \
                     arithmetic_float_reciprocal_ordinary_block(            \
                         raw, block, take, threshold);                      \
                 int prepared_block = PREPARED && !ordinary;               \
                 int proved = ordinary;                                    \
-                if (PREPARED) {                                           \
+                if (PREPARED && !dense) {                                 \
                     if (ordinary) ordinary_failures = 0;                  \
                     else {                                                \
                         if (ordinary_failures < 4) ordinary_failures++;    \

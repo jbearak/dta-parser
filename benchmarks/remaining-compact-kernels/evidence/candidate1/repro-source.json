@@ -1,0 +1,6 @@
+{
+  "source_worker": "benchmarks/compact-float-domain/final-acceptance-2026-10-03/acceptance-controller/general-worker.R",
+  "source_sha256": "b9871e9e73cccc4a74771545d26fb0c5e3d72aa4fb8c96f08fec521332a44c4e",
+  "subset_worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "difference": "Only select six original34 cases. Original fixtures, oracle, timed call, native route and mutation checks retained. No implementation changed."
+}

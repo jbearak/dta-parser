@@ -2,7 +2,9 @@
    exactly representable as binary64. Hence |scalar / value| <= |scalar|.
    A representable scalar inside the destination's observed limit also bounds
    the rounded quotient. Keep storage preflight and binary64 division; this
-   proof removes only per-result validity and destination-fit reductions. */
+   proof removes only per-result validity and destination-fit reductions.
+   Nonzero missing encodings obey the same bound. Only zero needs a benign
+   denominator; the store selects inherited missing results separately. */
 #ifndef DTATOOLS_NUMERIC_ARITHMETIC_INTEGER_RECIPROCAL_H
 #define DTATOOLS_NUMERIC_ARITHMETIC_INTEGER_RECIPROCAL_H
 
@@ -45,14 +47,15 @@ static void arithmetic_integer_reciprocal_write(
 #define INTEGER_RECIPROCAL_LOOP(SOURCE, TARGET, DEST, MISSING, OBSERVED)      \
         do {                                                               \
             TARGET *restrict target = (DEST) + start;                      \
+            const SOURCE missing_limit = (SOURCE) missing_minimum;         \
             for (size_t i = 0; i < count; i++) {                            \
                 SOURCE source;                                             \
                 memcpy(&source, raw + i * sizeof(source), sizeof(source));  \
-                unsigned observed = (OBSERVED) || source < missing_minimum; \
+                unsigned observed = (OBSERVED) || source < missing_limit;   \
                 unsigned zero = source == 0;                              \
                 unsigned invalid = (!observed) | zero;                    \
-                double denominator = invalid ? 1.0 : (double) source;     \
-                TARGET result = (TARGET) (scalar / denominator);          \
+                SOURCE denominator = zero ? (SOURCE) 1 : source;          \
+                TARGET result = (TARGET) (scalar / (double) denominator); \
                 target[i] = invalid ? (TARGET) (MISSING) : result;        \
                 zero_count += zero;                                       \
             }                                                              \

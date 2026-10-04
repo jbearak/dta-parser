@@ -1,0 +1,56 @@
+[
+  {
+    "width": "int",
+    "missing": "FALSE",
+    "operation": "reverse_divide",
+    "candidate2_ms": 0.4180790960451977,
+    "gain_over_candidate1": 0.893136102854773,
+    "compact_typed": 1.2034426316067373,
+    "compact_ordinary": 0.98480853735091
+  },
+  {
+    "width": "int",
+    "missing": "TRUE",
+    "operation": "reverse_divide",
+    "candidate2_ms": 0.5016501650165016,
+    "gain_over_candidate1": 0.9653674280039721,
+    "compact_typed": 1.230518345952242,
+    "compact_ordinary": 1.7194719471947306
+  },
+  {
+    "width": "int",
+    "missing": "TRUE",
+    "operation": "mixed_add",
+    "candidate2_ms": 0.41807909604520055,
+    "gain_over_candidate1": 0.9938608969079816,
+    "compact_typed": 1.155633727747572,
+    "compact_ordinary": 1.396276981022753
+  },
+  {
+    "width": "int",
+    "missing": "TRUE",
+    "operation": "mixed_multiply",
+    "candidate2_ms": 0.42105263157894735,
+    "gain_over_candidate1": 0.8746803069053708,
+    "compact_typed": 1.0273684210526257,
+    "compact_ordinary": 1.3952528379772962
+  },
+  {
+    "width": "float",
+    "missing": "FALSE",
+    "operation": "reverse_divide",
+    "candidate2_ms": 0.33333333333333554,
+    "gain_over_candidate1": 0.8639053254437871,
+    "compact_typed": 0.8563218390804654,
+    "compact_ordinary": 1.1380042462845086
+  },
+  {
+    "width": "float",
+    "missing": "TRUE",
+    "operation": "reverse_divide",
+    "candidate2_ms": 0.3597122302158273,
+    "gain_over_candidate1": 0.8922707423580787,
+    "compact_typed": 1.0186243528541556,
+    "compact_ordinary": 1.2249024309963794
+  }
+]

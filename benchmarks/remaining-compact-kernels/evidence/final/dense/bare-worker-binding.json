@@ -1,0 +1,5 @@
+{
+  "original_reduced_worker_sha256": "8b3a02add6ea4fa63b5f89fe5dfa2808bb429efcbac1a3a1e5935ff292a39c04",
+  "bare_worker_sha256": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+  "changes": "Add plain ordinary double; retain unmodified base-R division result as its exact oracle including zero-denominator Inf; no native entries/package cache-mutation assertion for bare output; rotate/reverse three representations so six rounds balance every position; handle NULL owned-info for ordinary vectors. Compact/typed exact canonical oracle and adaptive timing loops unchanged."
+}

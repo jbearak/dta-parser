@@ -1,0 +1,404 @@
+{
+  "status": "PASS",
+  "paired_rounds": 6,
+  "timed_observations": 36,
+  "representations": [
+    "compact",
+    "typed_double",
+    "ordinary_double"
+  ],
+  "before": {
+    "worker": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+    "dlls": {
+      "baseline": "f627e6b8ef25144a0923b48c058b1a162f99404d675983f753deea63d35b7c3a",
+      "candidate": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b"
+    },
+    "controller": "24b857dd0eea62f7cc4f0c3ac4b3a52304faf03a2deb34d7f11687d62176e504",
+    "build_receipts": {
+      "baseline": "658d3ac9d4871767a33422ed624d7e38efaa99580f32655ba054eef8e01dcf1b",
+      "candidate": "c3ea63b8266ebfdc01bb06b20c094199638fec5d0e53583994689513f27d6bbf"
+    }
+  },
+  "libraries": {
+    "baseline": "<baseline-library>",
+    "candidate": "<final-library>"
+  },
+  "worker": "<dense-evidence>/dense-bare-worker.R",
+  "rounds": [
+    {
+      "round": 1,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "compact": 0.7400468384074941,
+          "typed_double": 0.3965014577259475,
+          "ordinary_double": 0.3290414878397711
+        },
+        "candidate": {
+          "compact": 0.4770491803278688,
+          "typed_double": 0.3843594009983361,
+          "ordinary_double": 0.35905044510385753
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.8664416586306651,
+      "candidate_compact_to_typed_cpu": 1.2411539280391737,
+      "paired_compact_speedup": 1.5513009327442318,
+      "paired_typed_control_speedup": 1.0315903726982445,
+      "baseline_compact_to_ordinary_cpu": 2.2490988697688628,
+      "candidate_compact_to_ordinary_cpu": 1.3286411055412546,
+      "paired_ordinary_control_speedup": 0.9164213339008501
+    },
+    {
+      "round": 2,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "ordinary_double": 0.41947565543071164,
+          "typed_double": 0.40300546448087426,
+          "compact": 0.47465437788018433
+        },
+        "baseline": {
+          "ordinary_double": 0.4298469387755102,
+          "typed_double": 0.33634020618556704,
+          "compact": 0.6460176991150443
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.9207269521581392,
+      "candidate_compact_to_typed_cpu": 1.1777864562993048,
+      "paired_compact_speedup": 1.3610275796889768,
+      "paired_typed_control_speedup": 0.8345797658570681,
+      "baseline_compact_to_ordinary_cpu": 1.5029017095139305,
+      "candidate_compact_to_ordinary_cpu": 1.131542132982225,
+      "paired_ordinary_control_speedup": 1.0247243986880465
+    },
+    {
+      "round": 3,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "typed_double": 0.36540962288686607,
+          "ordinary_double": 0.39762611275964393,
+          "compact": 0.7810810810810811
+        },
+        "candidate": {
+          "typed_double": 0.4087078651685393,
+          "ordinary_double": 0.39465875370919884,
+          "compact": 0.5064516129032258
+        }
+      },
+      "baseline_compact_to_typed_cpu": 2.137549293065307,
+      "candidate_compact_to_typed_cpu": 1.2391530872408825,
+      "paired_compact_speedup": 1.5422620072301603,
+      "paired_typed_control_speedup": 0.894060658059961,
+      "baseline_compact_to_ordinary_cpu": 1.9643606292860023,
+      "candidate_compact_to_ordinary_cpu": 1.2832646131457675,
+      "paired_ordinary_control_speedup": 1.0075187969924813
+    },
+    {
+      "round": 4,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "typed_double": 0.4048640915593705,
+          "compact": 0.5225806451612903,
+          "ordinary_double": 0.3864795918367347
+        },
+        "baseline": {
+          "typed_double": 0.4163090128755364,
+          "compact": 0.7772397094430993,
+          "ordinary_double": 0.4081967213114754
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.8669778587653831,
+      "candidate_compact_to_typed_cpu": 1.2907557278012083,
+      "paired_compact_speedup": 1.4873105551071655,
+      "paired_typed_control_speedup": 1.028268551236749,
+      "baseline_compact_to_ordinary_cpu": 1.9040812159047815,
+      "candidate_compact_to_ordinary_cpu": 1.352155860747365,
+      "paired_ordinary_control_speedup": 1.0561921765947087
+    },
+    {
+      "round": 5,
+      "build_order": [
+        "baseline",
+        "candidate"
+      ],
+      "cpu_ms": {
+        "baseline": {
+          "ordinary_double": 0.43823146944083224,
+          "compact": 0.722488038277512,
+          "typed_double": 0.3896499238964992
+        },
+        "candidate": {
+          "ordinary_double": 0.46254927726675427,
+          "compact": 0.4838709677419355,
+          "typed_double": 0.41165755919854286
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.8541978169856461,
+      "candidate_compact_to_typed_cpu": 1.1754210676562946,
+      "paired_compact_speedup": 1.4931419457735249,
+      "paired_typed_control_speedup": 0.9465389744211419,
+      "baseline_compact_to_ordinary_cpu": 1.6486448113810288,
+      "candidate_compact_to_ordinary_cpu": 1.0460960410557185,
+      "paired_ordinary_control_speedup": 0.9474265575127084
+    },
+    {
+      "round": 6,
+      "build_order": [
+        "candidate",
+        "baseline"
+      ],
+      "cpu_ms": {
+        "candidate": {
+          "compact": 0.4793650793650793,
+          "ordinary_double": 0.3425499231950845,
+          "typed_double": 0.42275280898876405
+        },
+        "baseline": {
+          "compact": 0.728813559322034,
+          "ordinary_double": 0.3427299703264095,
+          "typed_double": 0.4129263913824057
+        }
+      },
+      "baseline_compact_to_typed_cpu": 1.7649963154016213,
+      "candidate_compact_to_typed_cpu": 1.1339134103253703,
+      "paired_compact_speedup": 1.5203726568638458,
+      "paired_typed_control_speedup": 0.9767561151636973,
+      "baseline_compact_to_ordinary_cpu": 2.126494973952601,
+      "candidate_compact_to_ordinary_cpu": 1.3994020926756352,
+      "paired_ordinary_control_speedup": 1.0005256084416707
+    }
+  ],
+  "medians": {
+    "baseline_compact_to_typed_cpu": 1.8667097586980241,
+    "candidate_compact_to_typed_cpu": 1.2084697717700936,
+    "paired_compact_speedup": 1.5067573013186855,
+    "paired_typed_control_speedup": 0.9616475447924195,
+    "baseline_compact_to_ordinary_cpu": 1.934220922595392,
+    "candidate_compact_to_ordinary_cpu": 1.305952859343511,
+    "paired_ordinary_control_speedup": 1.004022202717076
+  },
+  "commands": [
+    {
+      "round": 1,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "1",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round1.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T21:59:45.395229+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 1,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "1",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round1.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T21:59:48.933954+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 2,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "2",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round2.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T21:59:52.206849+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 2,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "2",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round2.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T21:59:55.786966+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 3,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "3",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round3.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T21:59:59.283478+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 3,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "3",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round3.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:02.529531+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 4,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "4",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round4.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:05.965100+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 4,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "4",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round4.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:09.544145+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 5,
+      "role": "baseline",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "5",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round5.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:13.090699+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 5,
+      "role": "candidate",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "5",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round5.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:16.838799+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 6,
+      "role": "candidate",
+      "position": 1,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<final-library>",
+        "6",
+        "<dense-evidence>/paired-six-final-candidate3/candidate-round6.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:20.462291+00:00",
+      "exit_code": 0
+    },
+    {
+      "round": 6,
+      "role": "baseline",
+      "position": 2,
+      "command": [
+        "Rscript",
+        "<dense-evidence>/dense-bare-worker.R",
+        "<baseline-library>",
+        "6",
+        "<dense-evidence>/paired-six-final-candidate3/baseline-round6.csv"
+      ],
+      "cwd": "<dense-evidence>",
+      "started_utc": "2026-10-04T22:00:23.953665+00:00",
+      "exit_code": 0
+    }
+  ],
+  "artifact_sha256": {
+    "raw.csv": "9bae6a998b80a3b069057e659e62c9beab1c345261b054f5f4949cb766d6afe2",
+    "baseline-round2.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round1.csv": "0540adc87b4b66dc3b6ca1c8a96bfaf7de2824c1ab79cf81d0fc2d5f6fdeea3e",
+    "baseline-round3.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round1.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round3.csv": "331e356c59a1040ba2d320cba5d3ac3f56f581d19246bfb2cb0c3bd9596e25d1",
+    "baseline-round2.csv": "bcea7e52ab33064d7c3e96137c61ed088837cf153bcd8f4a62d2ce1b1b58f2f8",
+    "baseline-round4.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round6.csv": "e949e47c6471051d64f2a2a9627e78deb591f68a148adfcaf0e38c0c96b518f0",
+    "baseline-round5.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "baseline-round5.csv": "f98c58230d9b031ca940ac0abbe3c58ba92444ad2568907f1a00241ecfefb515",
+    "baseline-round4.csv": "8cd705ba80bd6b350280aa14b899956748f6acd4bd7bf7a4810c0df9975bc646",
+    "baseline-round6.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round4.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round6.csv": "e1282d2a5fa82dcb92db178f9d5520266ec6f9add763ca4452f7fd07c90d4e51",
+    "candidate-round5.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round5.csv": "0c6a38edee8bcd43f6264e35db8c56ecf89d8b9c37b5e4558f294ed445675326",
+    "candidate-round4.csv": "419b1a666854e43e946b35da7ffa863d63a14fbb872bfa6eb4bea3a644e77830",
+    "candidate-round6.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round2.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round1.csv": "84822d9af59a442c64080c897b73ff416655ef5cf853dea53282324d025e8b84",
+    "candidate-round3.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round1.log": "ce871f124d15edde077c32791f298f900777326c2ac9cc804669f566b90a27d9",
+    "candidate-round3.csv": "10c3871ade745f9f5c069cfcefae95db423756ff6465a0e5ccd311f22e37e722",
+    "candidate-round2.csv": "7fd4b02cbed8f6b096a12ab2b470cc2d3774457f29e148fa7d6cf081b44c1c84"
+  },
+  "scope": "Original random_half million-row dense reciprocal input, exact public operation and per-process oracle/cache/native-entry qualifications. Six alternating build pairs in fresh R processes; balanced representation positions. CPU measured only in worker adaptive loops. Unchanged typed control drift reported. No reader, arbitrary-import or universal parity claim. Bare R comparison uses its own base division oracle: zero denominators remain Inf, while typed package operations normalize them to missing. Bare output does not run package mutation/cache qualification."
+}
