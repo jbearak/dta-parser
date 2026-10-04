@@ -6193,7 +6193,7 @@
         },
         {
           "path": "tests/testthat/test-compact-float-domain.R",
-          "sha256": "65a9a9e2c056a5570ae2e064911e31dae6a1e8d33b5f1f6b6673f711e89fa3c2"
+          "sha256": "b5e68d453402bfa564e42532bc222e8718a3678c25d358d24cc50165cded0ddb"
         },
         {
           "path": "tests/testthat/test-compact-pair-domain.R",
@@ -6206,6 +6206,10 @@
         {
           "path": "tests/testthat/test-compact-reciprocal-facts.R",
           "sha256": "25a520615a6ffd9f8be89fcc969899184f389f874bd061f199e04859585de757"
+        },
+        {
+          "path": "tests/testthat/test-reader-numeric-facts.R",
+          "sha256": "476a059e36f59b5f2ed2110c86740eb14b6a9396cccba0cc588f405a6e224619"
         }
       ],
       "blocks": [
@@ -7904,7 +7908,7 @@
         },
         {
           "file": "test-compact-float-domain.R",
-          "test": "imports and restored compact payloads do not assert strict domains",
+          "test": "reader and freeze validation grant only strict compact domains",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 207,
@@ -7995,6 +7999,30 @@
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-reader-numeric-facts.R",
+          "test": "DTA and Arrow readers publish facts for the returned compact extent",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 900,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-numeric-facts.R",
+          "test": "reader FLOAT facts decline invalid tails and legacy values without normalization",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 120,
+          "warnings": 0
+        },
+        {
+          "file": "test-reader-numeric-facts.R",
+          "test": "reader facts retain immutable owners and writable access invalidates them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 70,
+          "warnings": 0
         }
       ],
       "children": [],
