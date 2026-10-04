@@ -1,0 +1,15 @@
+# Final candidate3 evidence
+
+Both timing panels and the focused regression suite used final DLL `cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b`. `build-bindings.json` records the consumed arithmetic headers, payload/internal dependencies, focused tests and loaded helpers from the build receipt. The Rust archive was reused unchanged. Header hashes identify the accepted candidate3 combination, including the restored candidate1 mixed-pair body.
+
+`general/` contains six balanced rounds of six public cases and three representations, totaling 216 observations. The exact executed controller and worker are the maintained `../../run.py` and `../../worker.R`; their hashes are in the run receipt. Installed DLLs, R databases and package metadata match before and after timing.
+
+`dense/` contains the original random-half missing-tag reciprocal fixture, with six balanced rounds and three representations, totaling 36 observations. Half the million input rows are missing, with all 27 tags, and 48 observed rows are zero. Package results have 500,048 missing rows; bare R results have 500,000 missing rows and retain the 48 infinities. The package outputs also pass metadata and missing-cache mutation qualification. Bare output is checked against its base-R value oracle without those package-specific checks.
+
+The exact executed dense controller is `dense/controller.py`, and the exact worker is `../../dense-worker.R`. The portable `../../dense-run.py` changes only the default to enable three representations, matching that worker. `dense/portable-controller-binding.json` records both controller hashes. Worker provenance records the original nine-stratum worker, the reduced dense stratum and the later bare-double control.
+
+`focused-tests-receipt.json` and `focused-tests.csv` record 65,745 assertions in 71 blocks, with zero failures, errors, warnings or skips. The exact portable runner is `../../focused-tests.R`. This was a focused six-file regression replay against the installed candidate, with no full archive or conformance rerun.
+
+The [local validation records](../../validation/probe-publication-source-map.json) also retain committed-source receipts and CSVs for 624 mixed-pair cases and 1,136 dense reciprocal cases, all passing semantic and work checks. Their commit is `1b58701c612c55c7c6f72a3fdb128bfdf473e60b`; its runtime header hashes match this measured DLL's build binding. The later publication-only correction preserves those headers.
+
+Private paths in recorded commands are replaced by `<repo>`, `<baseline-library>`, `<final-library>`, `<evidence>` and `<dense-evidence>`. `publication-source-map.json` records original and public hashes for retained artifacts. Restore local paths before replaying historical commands. DLLs, package trees, old evidence archives and private failed screens are not copied into this publication. Preliminary candidate1 and rejected clean-pair evidence remain separate directories.

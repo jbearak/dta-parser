@@ -1,0 +1,8 @@
+{
+  "scope": "Post-install correction of test-only plain-alias expectation and manifest hash. No R runtime/native/compiled object changes; no recompilation or reinstall.",
+  "files": {
+    "tests/testthat/test-compact-pair-domain.R": "172ffa154fc5f08648b4d73d2279850fda3703acdab70e023b5f0d5c52322260",
+    "tools/native-test-manifest.json": "c5504b1abc6914f377aa6f47ecc9a7fbc7253607ccc8f5d97d4f495b2251f95e"
+  },
+  "dll_sha256": "5c280e4689b3c96a30c0159abdca880a79ea8a54c887b340441cfa4e44c11f43"
+}

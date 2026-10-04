@@ -6194,6 +6194,14 @@
         {
           "path": "tests/testthat/test-compact-float-domain.R",
           "sha256": "806ed8f6ebff39814519a2995dd33f2e5392098cd6062d9200deffa121de33ad"
+        },
+        {
+          "path": "tests/testthat/test-compact-pair-domain.R",
+          "sha256": "172ffa154fc5f08648b4d73d2279850fda3703acdab70e023b5f0d5c52322260"
+        },
+        {
+          "path": "tests/testthat/test-dense-float-reciprocal-kernel.R",
+          "sha256": "a92a906592beadf0cba6946056b3cfdd7d5d8f588648003d51e9ef0e478ee4eb"
         }
       ],
       "blocks": [
@@ -7888,6 +7896,49 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 25,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-pair-domain.R",
+          "test": "mixed compact pairs preserve strict and unknown domain results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 400,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-pair-domain.R",
+          "test": "mixed domain pairs retain ambiguous limits and original promotion inputs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 80,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-pair-domain.R",
+          "test": "mixed domain read claims retain strict bytes through allocation callbacks",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 96,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-dense-float-reciprocal-kernel.R",
+          "test": "strict dense reciprocal masks retain zero signs and exact missing caches",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-dense-float-reciprocal-kernel.R",
+          "test": "late unsafe strict dense reciprocals discard provisional narrowed results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
           "warnings": 0
         }
       ],

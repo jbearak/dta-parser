@@ -1,0 +1,275 @@
+{
+  "started": "2026-10-04T22:01:34.105830+00:00",
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "controller_sha256": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+  "libraries": {
+    "baseline": "<baseline-library>",
+    "candidate": "<final-library>"
+  },
+  "library_before": {
+    "baseline": {
+      "libs/dtatools.so": "f627e6b8ef25144a0923b48c058b1a162f99404d675983f753deea63d35b7c3a",
+      "DESCRIPTION": "cef9a093388aabcdc19aa3202117a52924018b40061b98e44d9382192331483e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "ed8816b205c45429ec7f22bc21daacdcbcd5c102a95a6b12f4ca9643ea9b9b08",
+      "R/dtatools.rdx": "c583a2fc45b34d803029193a2a1c8ce6f29eee3807b61975bfb0b3fd1cf3bef5"
+    },
+    "candidate": {
+      "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+      "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+      "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+    }
+  },
+  "commands": [
+    {
+      "round": 1,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "1",
+        "<evidence>/final-balanced/balanced-baseline-round1.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:01:34.105943+00:00",
+      "ended": "2026-10-04T22:01:46.050361+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "1",
+        "<evidence>/final-balanced/balanced-candidate-round1.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:01:46.050670+00:00",
+      "ended": "2026-10-04T22:01:58.009927+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "2",
+        "<evidence>/final-balanced/balanced-candidate-round2.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:01:58.010216+00:00",
+      "ended": "2026-10-04T22:02:09.805697+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "2",
+        "<evidence>/final-balanced/balanced-baseline-round2.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:02:09.805990+00:00",
+      "ended": "2026-10-04T22:02:21.754035+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "3",
+        "<evidence>/final-balanced/balanced-baseline-round3.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:02:21.754357+00:00",
+      "ended": "2026-10-04T22:02:33.790783+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "3",
+        "<evidence>/final-balanced/balanced-candidate-round3.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:02:33.791110+00:00",
+      "ended": "2026-10-04T22:02:45.644935+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "4",
+        "<evidence>/final-balanced/balanced-candidate-round4.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:02:45.645267+00:00",
+      "ended": "2026-10-04T22:02:57.580448+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "4",
+        "<evidence>/final-balanced/balanced-baseline-round4.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:02:57.580741+00:00",
+      "ended": "2026-10-04T22:03:09.604503+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "5",
+        "<evidence>/final-balanced/balanced-baseline-round5.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:03:09.604878+00:00",
+      "ended": "2026-10-04T22:03:21.462970+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "5",
+        "<evidence>/final-balanced/balanced-candidate-round5.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:03:21.463257+00:00",
+      "ended": "2026-10-04T22:03:33.243743+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<final-library>",
+        "6",
+        "<evidence>/final-balanced/balanced-candidate-round6.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-04T22:03:33.244067+00:00",
+      "ended": "2026-10-04T22:03:45.479459+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "<repo>/benchmarks/remaining-compact-kernels/worker.R",
+        "<baseline-library>",
+        "6",
+        "<evidence>/final-balanced/balanced-baseline-round6.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-04T22:03:45.479749+00:00",
+      "ended": "2026-10-04T22:03:57.153389+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    }
+  ],
+  "protocol": "Sequential fresh-R workers; six cases, three representations; alternating AB/BA rounds; CPU per call.",
+  "library_after": {
+    "baseline": {
+      "libs/dtatools.so": "f627e6b8ef25144a0923b48c058b1a162f99404d675983f753deea63d35b7c3a",
+      "DESCRIPTION": "cef9a093388aabcdc19aa3202117a52924018b40061b98e44d9382192331483e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "ed8816b205c45429ec7f22bc21daacdcbcd5c102a95a6b12f4ca9643ea9b9b08",
+      "R/dtatools.rdx": "c583a2fc45b34d803029193a2a1c8ce6f29eee3807b61975bfb0b3fd1cf3bef5"
+    },
+    "candidate": {
+      "libs/dtatools.so": "cc084e97ba396766be2cdfd480f952dfd420ee92ae9f2adf9d1f7db86833072b",
+      "DESCRIPTION": "3576a3b136061ab7d22f7acbb67d16b09d72f85e2eb72b9e93d5e5b327195647",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "f9eefd8261ec0b1d8d0c5ac8a5fece168ee61149ea13fb65bf83a336eaa2bea7",
+      "R/dtatools.rdx": "7fd434c551cd4814d77be67ede291e9a1ff54ffa254131f0c0a823de8795f6f7"
+    }
+  },
+  "ended": "2026-10-04T22:03:57.165192+00:00",
+  "observations": 216,
+  "exit_code": 0
+}
