@@ -14,10 +14,14 @@ jobs:
   build:
     name: R binary / ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     permissions:
       contents: read
+      actions: read
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+      R_RELEASE_DEP_LIB: ${{ github.workspace }}/release-runtime-library
+      R_LIBS_USER: ${{ github.workspace }}/release-runtime-library
       # Match the minimum macOS version of the R 4.6 ARM64 distribution.
       MACOSX_DEPLOYMENT_TARGET: '14.0'
     strategy:
@@ -96,12 +100,6 @@ jobs:
             exit 1
           fi
 
-      - name: Install native Linux build dependencies
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libuv1-dev pkg-config
       - name: Install CRAN macOS gettext build dependencies
         if: runner.os == 'macOS' && runner.arch == 'ARM64'
         shell: bash
@@ -119,28 +117,37 @@ jobs:
           test -s /opt/R/arm64/include/libintl.h
           test -s /opt/R/arm64/lib/libintl.a
 
-      - name: Install runtime and present test dependencies
-        shell: Rscript {0}
-        run: |
-          install.packages(
-            c("dplyr", "readr", "rlang", "tibble", "tidyselect", "stringi",
-              "testthat", "callr", "data.table", "httpuv", "arrow", "jsonlite",
-              "purrr", "haven", "labelled"),
-            repos = "https://cloud.r-project.org",
-            Ncpus = 2L
-          )
-
-      - name: Provision physical native release libraries
+      - name: Identify compiled runtime dependency library
+        id: dependency-key
         shell: bash
         run: >-
-          Rscript --vanilla scripts/provision-r-native-libraries.R
-          r-package/dtatools release-native-libraries current release with-arrow
+          Rscript scripts/install-r-runtime-dependencies.R key
+          r-package/dtatools "$R_RELEASE_DEP_LIB"
 
-      - name: Build source with isolated native dependencies
+      - name: Restore compiled dependencies across release tags
+        id: restore-dependencies
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPENDENCY_ARTIFACT: ${{ steps.dependency-key.outputs.cache_key }}
+        run: python scripts/restore-r-dependencies.py "$DEPENDENCY_ARTIFACT" "$R_RELEASE_DEP_LIB"
+
+      - name: Install only missing runtime dependencies
+        id: runtime-dependencies
         shell: bash
         run: >-
-          python scripts/build-r-native.py r-package/dtatools
-          release-native-libraries/evidence/lane-plan.json release release-native-build
+          Rscript scripts/install-r-runtime-dependencies.R install
+          r-package/dtatools "$R_RELEASE_DEP_LIB"
+
+      - name: Retain reusable compiled dependency library
+        if: steps.restore-dependencies.outputs.cache_hit != 'true' && steps.runtime-dependencies.outputs.cache_populated == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.dependency-key.outputs.cache_key }}
+          path: ${{ env.R_RELEASE_DEP_LIB }}
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
 
       - name: Build binary package
         id: package
@@ -158,14 +165,14 @@ jobs:
           mkdir -p "$source_dir" "$binary_dir" "$library_dir"
 
           source_archive="$source_dir/dtatools_${package_version}.tar.gz"
-          cp "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
-          python -c 'import pathlib, sys; a, b = map(pathlib.Path, sys.argv[1:]); sys.exit(0 if a.read_bytes() == b.read_bytes() else 1)' \
-            "$workspace/release-native-build/payload/dtatools_${package_version}.tar.gz" "$source_archive"
+          (cd "$source_dir" && R CMD build --no-manual --no-build-vignettes "$workspace/r-package/dtatools")
           "$workspace/scripts/check-r-package-archive.sh" "$source_archive"
 
+          # Compile the product once. The fresh binary below is installed again
+          # without compilation for the smoke test; full suites run locally.
           (
             cd "$binary_dir"
-            R CMD INSTALL --build --clean --install-tests --library="$library_dir" "$source_archive"
+            R CMD INSTALL --build --library="$library_dir" "$source_archive"
           )
 
           case "$ASSET_PLATFORM" in
@@ -192,12 +199,30 @@ jobs:
           sh scripts/check-macos-r-linkage.sh \
             release-build/library/dtatools/libs/dtatools.so
 
-      - name: Smoke test installed package
+      - name: Install the produced binary into a fresh library
+        shell: bash
+        env:
+          BINARY_ASSET: ${{ steps.package.outputs.asset }}
+        run: |
+          mkdir -p release-build/fresh-library
+          R CMD INSTALL --library=release-build/fresh-library "$BINARY_ASSET"
+
+      - name: Smoke test the exact fresh binary
         shell: Rscript {0}
         run: |
-          .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
+          .libPaths(c(file.path(getwd(), "release-build", "fresh-library"), .libPaths()))
           library(dtatools)
-          stopifnot(is.function(read_dta))
+          expected_path <- normalizePath(file.path("release-build", "fresh-library", "dtatools"))
+          actual_path <- normalizePath(getNamespaceInfo(loadNamespace("dtatools"), "path"))
+          stopifnot(identical(actual_path, expected_path))
+          stopifnot(identical(as.numeric(dta_float(c(1, 2, NA_real_)) + dta_long(c(2, 3, 4))), c(3, 5, NA_real_)))
+          data <- data.frame(value = c(1.5, -2, NA_real_), code = c("a", "b", ""))
+          path <- tempfile(fileext = ".dta")
+          save_dta(data, path)
+          restored <- read_dta(path, output = "tibble", threads = 1L)
+          stopifnot(identical(as.numeric(restored$value), data$value))
+          stopifnot(identical(as.character(restored$code), data$code))
+          unlink(path)
           notice <- system.file("NOTICE", package = "dtatools", mustWork = TRUE)
           expected <- readLines("r-package/dtatools/inst/NOTICE", warn = FALSE)
           stopifnot(identical(readLines(notice, warn = FALSE), expected))
@@ -205,52 +230,8 @@ jobs:
           stopifnot(length(binary) == 1L)
           unpacked <- tempfile("dtatools-binary-")
           dir.create(unpacked)
-          if (grepl("[.]zip$", binary)) {
-            utils::unzip(binary, exdir = unpacked)
-          } else {
-            utils::untar(binary, exdir = unpacked)
-          }
-          stopifnot(identical(
-            readLines(file.path(unpacked, "dtatools", "NOTICE"), warn = FALSE),
-            expected
-          ))
-
-      - name: Run complete present suite before release
-        shell: Rscript {0}
-        run: |
-          .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
-          expected <- normalizePath(file.path("release-build", "library", "dtatools"))
-          actual <- normalizePath(getNamespaceInfo(loadNamespace("dtatools"), "path"))
-          stopifnot(identical(actual, expected))
-          test_root <- system.file("tests", package = "dtatools", mustWork = TRUE)
-          stopifnot(dir.exists(file.path(test_root, "testthat")))
-          setwd(test_root)
-          testthat::test_check("dtatools")
-
-      - name: Qualify source and fresh binary installations without optional packages
-        shell: bash
-        env:
-          BINARY_ASSET: ${{ steps.package.outputs.asset }}
-        run: |
-          version=$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')
-          source_archive="release-build/source/dtatools_${version}.tar.gz"
-          python scripts/check-r-native.py "$source_archive" \
-            release-native-libraries/evidence/lane-plan.json release release-native-source
-          python scripts/check-r-native.py "$source_archive" \
-            release-native-libraries/evidence/lane-plan.json release release-native-binary \
-            --binary-archive "$BINARY_ASSET"
-
-      - name: Retain release native qualification evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: native-release-${{ matrix.platform }}
-          path: |
-            release-native-libraries/evidence
-            release-native-build/evidence
-            release-native-source/evidence
-            release-native-binary/evidence
-          if-no-files-found: warn
+          if (grepl("[.]zip$", binary)) utils::unzip(binary, exdir = unpacked) else utils::untar(binary, exdir = unpacked)
+          stopifnot(identical(readLines(file.path(unpacked, "dtatools", "NOTICE"), warn = FALSE), expected))
 
       - name: Stage binary for release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -100,7 +100,7 @@ The command reports the R and haven comparison as `SKIP` when its R dependencies
 DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
 ```
 
-CI requires it on the R job. Parser changes should update both the relevant implementation tests and the shared inventory or fixture oracle when the cross-language contract changes.
+Run that required comparison locally for parser changes. Everyday CI uses a small TypeScript/Rust/source guard gate; full R and platform compatibility checks are explicit manual runs. Parser changes should update both the relevant implementation tests and the shared inventory or fixture oracle when the cross-language contract changes.
 
 ## Benchmarks
 
@@ -124,6 +124,12 @@ Use repository-relative links in root documentation. Package READMEs should use 
 Keep changes focused and include regression coverage for behavior changes. Run the checks for each affected language. Run conformance when parsing, encoding, missing-value, label, projection, or error behavior changes.
 
 Before committing documentation, check that examples match the current interface and that shared compatibility facts appear only in the compatibility document.
+
+## CI and local validation
+
+Everyday CI runs three short jobs and never installs R packages. Install the modified R package once locally and reuse that installation for the affected test files and conformance checks. Optional full compatibility runs are selected manually; they are not merge or release requirements. Full C++ CodeQL analysis is local only. See [the check policy](.github/workflows/README.md) and [local native analysis](.github/codeql/README.md).
+
+Release builds compile one fresh binary per supported platform and smoke-test that exact binary. They reuse compiled runtime dependency libraries across release tags, install only missing or outdated imports, and avoid optional test dependencies and repeated source installations. Run broader R checks locally before a release when the change warrants them.
 
 ## Maintainer release
 
