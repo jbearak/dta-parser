@@ -4,18 +4,6 @@ name: CI
 # compatibility matrices and performance-evidence replay. Run focused R tests
 # locally; exhaustive checks are available in full-compatibility.yml.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'r-package/**'
-      - 'typescript/**'
-      - 'tests/**'
-      - 'conformance/**'
-      - 'scripts/**'
-      - '!**/*.md'
   pull_request:
     paths:
       - '.github/**'

@@ -21,7 +21,7 @@ python3 benchmarks/remaining-compact-kernels/run.py \
   --output /path/to/fresh-output
 ```
 
-The controller performs no installation or compilation. It records worker/controller hashes and installed DLL, R database and package metadata hashes before and after the run. The caller must retain the matching build receipt or source binding for each installed library. Timing a DLL does not prove which source produced it.
+The general controller performs no installation or compilation. It records worker/controller hashes and installed DLL, R database and package metadata hashes before and after the run. The caller must retain the matching build receipt or source binding for each installed library. Timing a DLL does not prove which source produced it.
 
 The dense panel uses the original million-row `random_half` fixture, all 27 missing tags and a separate three-representation worker. Its calibration targets approximately 300 milliseconds of CPU per observation. Run it against the same libraries:
 
@@ -32,7 +32,13 @@ python3 benchmarks/remaining-compact-kernels/dense-run.py \
   --include-bare --output /path/to/fresh-dense-output
 ```
 
-The exact executed dense controller is retained with the evidence. The portable controller defaults to three representations to match its supplied worker; this interface-only default change is recorded separately. Bare division retains the fixture's 48 zero-denominator infinities. The package outputs normalize them to missing and perform additional metadata and missing-cache checks outside timing.
+The exact executed dense controller is retained with the evidence. It checked worker and DLL immutability, but did not bind the installed R databases or package metadata. Its result oracles and metadata and missing-cache checks remain valid within that recorded scope. The current portable controller defaults to three representations, accepts `.so`, `.dll` and `.dylib` libraries, and binds DLLs, `DESCRIPTION`, `NAMESPACE` and both R database files before and after each worker. These changes are recorded separately and do not revise the historical receipts. Bare division retains the fixture's 48 zero-denominator infinities; package outputs normalize them to missing.
+
+Check the portable dense controller's library discovery and drift guards without running R:
+
+```sh
+python3 benchmarks/remaining-compact-kernels/test-dense-run.py
+```
 
 Replay the focused public regressions against an installed candidate without rebuilding:
 
