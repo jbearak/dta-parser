@@ -1,0 +1,20 @@
+{
+  "artifacts": {
+    "after.json": "2c5aa3858fbec0658215375a5d24164e389f9c7acb34268b7555bcc160646a36",
+    "before.json": "2c5aa3858fbec0658215375a5d24164e389f9c7acb34268b7555bcc160646a36",
+    "command.json": "73bb2cbaf883398fdca68ca23dc3f7ab2592d60d05707d2a187ef76272b5b69f",
+    "focused.csv": "c668fffc93e89f6c8ab8bc04cdfab670407865a0549a6b5d6f94673c03e680e7",
+    "focused.log": "26b7d3ef1d323b3daf78c0f952ba4b5c380707adcb7e95f0eb1a3f7c5e3f9957",
+    "test-source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "before_after_equal": true,
+  "blocks": 42,
+  "source_commit": "19f573720b4897a4f742bad0cebba22ce17d9a88",
+  "status": "PASS",
+  "test_source_head": "19f573720b4897a4f742bad0cebba22ce17d9a88",
+  "totals": {
+    "failed": 0,
+    "passed": 34602,
+    "warning": 0
+  }
+}
