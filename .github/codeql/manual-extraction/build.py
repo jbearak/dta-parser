@@ -165,8 +165,15 @@ def prebuild(root, work, scope):
     sdk = {}
     for name, digest in SDK.items():
         url = 'https://www.stata.com/plugins/' + name
-        with urllib.request.urlopen(url, timeout=60) as response:
-            data = response.read(1024 * 1024 + 1)
+        destination = sdk_dir / name
+        # Stata's public SDK endpoint accepts curl while rejecting Python's
+        # default HTTP client. Keep HTTPS, bounded downloads and exact digests.
+        record.run('sdk-' + name.replace('.', '-'),
+                   ['curl', '--fail', '--silent', '--show-error', '--location',
+                    '--proto', '=https', '--proto-redir', '=https',
+                    '--max-time', '60', '--max-filesize', '1048576',
+                    '--output', str(destination), url], root)
+        data = destination.read_bytes()
         require(len(data) <= 1024 * 1024 and hashlib.sha256(data).hexdigest() == digest, 'Official SPI bytes differ: ' + name)
         (sdk_dir / name).write_bytes(data)
         sdk[name] = dict(url=url, sha256=digest, bytes=len(data))
