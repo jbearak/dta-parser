@@ -135,3 +135,48 @@ test_that("mixed domain read claims retain strict bytes through allocation callb
         .pair_domain_check(op, x, y)
     }
 })
+
+test_that("cached pair bounds preserve FLOAT pairs and observed endpoint storage", {
+    .pair_domain_enable()
+    from_bits <- function(bits) readBin(as.raw(floor(bits / 256^(0:3)) %% 256),
+        "double", n = 1L, size = 4L, endian = "little")
+    witnesses <- list(
+        list(op = "+", x = 0x7efffffe, y = 0x72800000, storage = "float"),
+        list(op = "*", x = 0x5f7ffffe, y = 0x5f000000, storage = "float"),
+        list(op = "*", x = 0x5f7fffff, y = 0x5f000000, storage = "float"),
+        list(op = "*", x = 0x5f800000, y = 0x5f000000, storage = "double"))
+    for (retained in c(FALSE, TRUE)) {
+        xv <- rep(c(3, -2, 0, NA_real_, tagged_missing("z")), length.out = 131L)
+        yv <- rep(c(1 + 2^-23, -0, 0, NA_real_, tagged_missing("a")), length.out = 131L)
+        x <- dta_float(xv)
+        y <- dta_float(yv)
+        if (retained) {
+            x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+            y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
+        }
+        expect_identical(.Call(C_dtatools_numeric_facts_info, x)[["flags"]], 7)
+        expect_identical(.Call(C_dtatools_numeric_facts_info, y)[["flags"]], 7)
+        for (op in c("+", "-", "*")) {
+            .pair_domain_check(op, x, y)
+            .pair_domain_check(op, y, x)
+        }
+        .Call(C_dtatools_patch_vector, x, 1L, xv[[1L]])
+        expect_identical(.Call(C_dtatools_numeric_facts_info, x)[["flags"]], 0)
+        for (op in c("+", "-", "*")) .pair_domain_check(op, x, y)
+        for (witness in witnesses) {
+            xv[[131L]] <- from_bits(witness$x)
+            yv[[131L]] <- from_bits(witness$y)
+            x <- dta_float(xv)
+            y <- dta_float(yv)
+            if (retained) {
+                x <- .Call(C_dtatools_owned_numeric_freeze, x, 7L)
+                y <- .Call(C_dtatools_owned_numeric_freeze, y, 11L)
+            }
+            for (reverse in c(FALSE, TRUE)) {
+                result <- if (reverse) .pair_domain_check(witness$op, y, x) else
+                    .pair_domain_check(witness$op, x, y)
+                expect_identical(dta_storage_type(result), witness$storage)
+            }
+        }
+    }
+})

@@ -11,6 +11,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SRC = ROOT / 'r-package/dtatools/src'
 
-def expected_cases():
+def expected_cases(modes=(0, 1, 2, 3)):
     cases = [(1000000, kind, pattern, (1.01).hex(), 0, 0)
              for kind in range(3) for pattern in range(2)]
     cases += [(length, 1, 2, (1.0).hex(), 0, 0)
@@ -29,15 +30,21 @@ def expected_cases():
                float.fromhex('0x1.fffffffffffffp1022'), float.fromhex('0x1.fffffffffffffp1023')]
     cases += [(128, kind, 3, scalar.hex(), legacy, 7)
               for kind in range(3) for legacy in range(2) for scalar in scalars]
+    cases = [(0, *case, modes[0]) for case in cases]
+    cases += [(facts, 129, kind, pattern, scalar.hex(), legacy, 7, mode)
+              for mode in modes for facts in (0, 4) for kind in range(3)
+              for legacy in range(2) for pattern in (0, 3, 4, 5)
+              for scalar in (1.01, -1.01, -0.0)]
     return Counter(cases)
 
-def validate_case_matrix(text):
+def validate_case_matrix(text, modes=(0, 1, 2, 3)):
     rows = list(csv.DictReader(io.StringIO(text)))
-    actual = Counter((int(row['length']), int(row['kind']), int(row['pattern']),
+    actual = Counter((int(row['facts']), int(row['length']), int(row['kind']), int(row['pattern']),
                       float.fromhex(row['scalar']).hex(), int(row['legacy']), int(row['chunk']))
+                     + (int(row['rounding']),)
                      for row in rows)
-    if len(rows) != 64 or actual != expected_cases():
-        raise RuntimeError('Incomplete, duplicated or changed 64-case reciprocal matrix')
+    if len(modes) != 4 or len(set(modes)) != 4 or len(rows) != 640 or actual != expected_cases(modes):
+        raise RuntimeError('Incomplete, duplicated or changed 640-case reciprocal matrix')
 
 def function(text, name):
     start = text.index('static ', text.index(name + '(') - 30)
@@ -94,6 +101,25 @@ def main():
     general = replace_once(general, '                if ((int) (MODE) == NUMERIC_FLOAT) {',
         '                if ((int) (MODE) == NUMERIC_FLOAT) {                   \\\n                    fit_rows++;')
     general_path.write_text(general)
+    reciprocal_path = args.output / 'numeric-arithmetic-integer-reciprocal.h'
+    reciprocal = reciprocal_path.read_text()
+    continuation = chr(92) + '\n'
+    if 'const int known_zeros' in reciprocal:
+        reciprocal = replace_once(reciprocal, '    for (size_t start = 0;',
+            '    integer_cached_rows += known_zeros ? (size_t) length : 0;\n    for (size_t start = 0;')
+        reciprocal = replace_once(reciprocal, '                unsigned zero = !(ZERO_FREE) && source == 0;',
+            '                if (!(ZERO_FREE)) integer_zero_test_rows++; ' + continuation +
+            '                unsigned zero = !(ZERO_FREE) && source == 0;')
+        reciprocal = replace_once(reciprocal, '                if (!(KNOWN)) zero_count += zero;',
+            '                if (!(KNOWN)) { integer_zero_reduction_rows++; zero_count += zero; }')
+    else:
+        reciprocal = replace_once(reciprocal, '                unsigned zero = source == 0;',
+            '                integer_zero_test_rows++; ' + continuation +
+            '                unsigned zero = source == 0;')
+        reciprocal = replace_once(reciprocal, '                zero_count += zero;',
+            '                integer_zero_reduction_rows++; ' + continuation +
+            '                zero_count += zero;')
+    reciprocal_path.write_text(reciprocal)
     executable = args.output / 'work-count'
     compiler = Path(shutil.which('cc')).resolve()
     command = [str(compiler), '-std=c11', '-O1', '-Wall', '-Wextra', '-Werror',
@@ -104,9 +130,11 @@ def main():
         text=True, capture_output=True)
     (args.output / 'work-count.csv').write_text(run.stdout)
     (args.output / 'work-count.log').write_text(run.stderr)
-    print(run.stdout, end='')
     print(run.stderr, end='')
-    validate_case_matrix(run.stdout)
+    witnesses = re.findall(r'^ROUNDING,([0-3]),([0-9]+),PASS$', run.stderr, re.M)
+    if len(witnesses) != 4 or [int(item[0]) for item in witnesses] != list(range(4)):
+        raise RuntimeError('Incomplete verified rounding witnesses')
+    validate_case_matrix(run.stdout, [int(item[1]) for item in witnesses])
     patch = subprocess.check_output(['git', 'diff', 'HEAD', '--binary', '--', 'r-package/dtatools/src'], cwd=ROOT)
     (args.output / 'source.patch').write_bytes(patch)
     record = {'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
@@ -119,7 +147,8 @@ def main():
         'command': command, 'require_proved': args.require_proved, 'exit_code': run.returncode,
         'artifact_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in args.output.iterdir() if p.is_file() and p.name != 'receipt.json'},
-        'scope': 'Actual general result/preflight/producer headers; allocation, R reader and retained-span boundaries mocked. No timing or ownership proof.'}
+        'rounding_witnesses': witnesses, 'cases': 640,
+        'scope': 'Actual general result/preflight/producer headers under four verified rounding modes. Exact zero facts and unknown controls cover zero-free, zero-only, tag-only and mixed integer lanes, modern/legacy bytes and seven-row spans. Allocation and R reader boundaries mocked. No timing or ownership proof.'}
     (args.output / 'receipt.json').write_text(json.dumps(record, indent=2) + '\n')
     raise SystemExit(run.returncode)
 

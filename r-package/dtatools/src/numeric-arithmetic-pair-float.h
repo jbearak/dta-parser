@@ -50,10 +50,48 @@ static int arithmetic_pair_float_admitted(
         (x_kind == NUMERIC_FLOAT || y_kind == NUMERIC_FLOAT);
 }
 
-#define ARITHMETIC_PAIR_FLOAT_LOOP(X, Y, OP)                              \
+/* Integer physical limits and protected FLOAT magnitude bounds can prove
+   storage fit once for the entire captured input. Bounds may be conservative
+   for a subset; no exact count is consumed by this proof. */
+static int arithmetic_pair_float_magnitude_bound(
+    const arithmetic_general_source *source, double *bound
+) {
+    const numeric_data *data = source->operand->reader.storage;
+    if (data->kind == NUMERIC_BYTE) { *bound = 128.0; return 1; }
+    if (data->kind == NUMERIC_INT) { *bound = 32768.0; return 1; }
+    if (!numeric_float_bounds_known(data) ||
+        data->float_max_magnitude_bound > UINT32_C(0x7effffff)) return 0;
+    float maximum;
+    memcpy(&maximum, &data->float_max_magnitude_bound, sizeof(maximum));
+    *bound = (double) maximum;
+    return 1;
+}
+
+static int arithmetic_pair_float_range_proved(
+    const arithmetic_general_source *left, const arithmetic_general_source *right,
+    int operation
+) {
+    double x, y;
+    if (!arithmetic_pair_float_magnitude_bound(left, &x) ||
+        !arithmetic_pair_float_magnitude_bound(right, &y)) return 0;
+    double bound = operation == '*' ? x * y : x + y;
+    /* All finite compact products fit binary64 exactly. A sum at a large
+       exponent gap may round down in the current mode. Advance its positive
+       binary64 representation by one ulp to bound the exact sum in all four
+       modes, without an extra floating-point operation or exception flag. */
+    if (operation != '*') {
+        uint64_t bits;
+        memcpy(&bits, &bound, sizeof(bits));
+        bits++;
+        memcpy(&bound, &bits, sizeof(bound));
+    }
+    /* Strict inequality leaves the representable observed endpoint inside
+       the proof even when the producer rounds upward to binary32. */
+    return bound < numeric_float_observed_limit();
+}
+
+#define ARITHMETIC_PAIR_FLOAT_ROWS(X, Y, OP, RANGE_PROVED)                 \
     do {                                                                 \
-        float *restrict target = (float *) (void *) output->raw + start;  \
-        unsigned missing_count = 0;                                     \
         for (size_t i = 0; i < count; i++) {                             \
             arithmetic_pair_value x = arithmetic_pair_load_##X(x_raw, i, &x_policy); \
             arithmetic_pair_value y = arithmetic_pair_load_##Y(y_raw, i, &y_policy); \
@@ -61,12 +99,25 @@ static int arithmetic_pair_float_admitted(
             float a = invalid ? 0.0f : x.float_value;                    \
             float b = invalid ? 0.0f : y.float_value;                    \
             float value = a OP b;                                       \
-            uint32_t bits;                                               \
-            memcpy(&bits, &value, sizeof(bits));                         \
-            bits &= UINT32_C(0x7fffffff);                               \
-            maximum = bits > maximum ? bits : maximum;                  \
+            if (!(RANGE_PROVED)) {                                      \
+                uint32_t bits;                                           \
+                memcpy(&bits, &value, sizeof(bits));                     \
+                bits &= UINT32_C(0x7fffffff);                           \
+                maximum = bits > maximum ? bits : maximum;              \
+            }                                                            \
             missing_count += invalid;                                   \
             target[i] = invalid ? 0x1p127f : value;                      \
+        }                                                                \
+    } while (0)
+
+#define ARITHMETIC_PAIR_FLOAT_LOOP(X, Y, OP)                              \
+    do {                                                                 \
+        float *restrict target = (float *) (void *) output->raw + start;  \
+        unsigned missing_count = 0;                                     \
+        if (range_proved) {                                              \
+            ARITHMETIC_PAIR_FLOAT_ROWS(X, Y, OP, 1);                     \
+        } else {                                                         \
+            ARITHMETIC_PAIR_FLOAT_ROWS(X, Y, OP, 0);                     \
         }                                                                \
         output->missing_count += missing_count;                         \
     } while (0)
@@ -99,6 +150,7 @@ static int arithmetic_pair_float_write(
 ) {
     const arithmetic_pair_policy x_policy = arithmetic_pair_float_policy_for(left);
     const arithmetic_pair_policy y_policy = arithmetic_pair_float_policy_for(right);
+    const int range_proved = arithmetic_pair_float_range_proved(left, right, operation);
     uint32_t maximum = 0;
     for (size_t start = 0; start < (size_t) length;) {
         R_CheckUserInterrupt();
@@ -115,6 +167,7 @@ static int arithmetic_pair_float_write(
         }
         start += count;
     }
+    if (range_proved) return NUMERIC_FLOAT;
     if (maximum > UINT32_C(0x7effffff)) return NUMERIC_DOUBLE;
     if (maximum == UINT32_C(0x7effffff)) {
         /* The float backing remains private. Discard provisional reductions
@@ -129,4 +182,5 @@ static int arithmetic_pair_float_write(
 #undef ARITHMETIC_PAIR_FLOAT_LEFT
 #undef ARITHMETIC_PAIR_FLOAT_RIGHT
 #undef ARITHMETIC_PAIR_FLOAT_LOOP
+#undef ARITHMETIC_PAIR_FLOAT_ROWS
 #endif

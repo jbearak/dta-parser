@@ -16,9 +16,11 @@ typedef ptrdiff_t R_xlen_t;
 enum { NUMERIC_BYTE, NUMERIC_INT, NUMERIC_LONG, NUMERIC_FLOAT, NUMERIC_DOUBLE };
 typedef struct {
     int kind, temporal, format_version;
-    size_t missing_count, chunk_size;
+    size_t length, missing_count, chunk_size;
     const unsigned char *raw;
     uint32_t domain_flags;
+    uint32_t float_max_magnitude_bound, float_min_nonzero_magnitude_bound;
+    size_t zero_count;
 } numeric_data;
 typedef struct {
     const numeric_data *storage;
@@ -42,7 +44,7 @@ static double r_na_real(void) {
 #define RAW(x) ((x)->raw)
 #define REAL(x) ((double *)(void *)(x)->raw)
 static int domain_mode;
-static size_t canonical_attempt_rows, canonical_committed_rows;
+static size_t canonical_attempt_rows, canonical_committed_rows, whole_write_rows;
 static int phase;
 static size_t general_rows[2], result_checks[2], integer_loads[2], span_rows[2];
 static size_t fit_rows, float_loads, scalar_reads, allocations;
@@ -104,6 +106,17 @@ static int result_valid(double value) {
     return isfinite(value) && fabs(value)<=0x1.fffffffffffffp1022;
 }
 static uint32_t fixture(size_t i, int pattern, size_t length, double scalar) {
+    if (pattern >= 15 && pattern <= 17) {
+        if (pattern == 17 && i % 3 == 2)
+            return UINT32_C(0x7f000000) + (uint32_t)(i % 27) * 0x800U;
+        if (pattern == 17 || (pattern == 16 && i % 4 == 2))
+            return i % 2 ? UINT32_C(0x80000000) : 0;
+        if (pattern == 16 && i % 4 == 3)
+            return UINT32_C(0x7f000000) + (uint32_t)(i % 27) * 0x800U;
+        if (pattern == 15 && i % 4 >= 2)
+            return i % 2 ? UINT32_C(0x80000000) : 0;
+        return to_bits(i % 2 ? -0.125f : 0.125f);
+    }
     if (pattern==13 || pattern==14) {
         if (pattern==14 && i+1==length) return 1U;
         if ((i*UINT64_C(104729))%length < length/2)
@@ -168,7 +181,7 @@ static uint32_t fixture(size_t i, int pattern, size_t length, double scalar) {
 static int run_case(size_t length, int pattern, double scalar, int legacy,
         size_t chunks, int minimum_kind, int rounding, int required) {
     if (fesetround(rounding) || fegetround()!=rounding) return 2;
-    canonical_attempt_rows=canonical_committed_rows=0;
+    canonical_attempt_rows=canonical_committed_rows=whole_write_rows=0;
     phase=0; fit_rows=float_loads=scalar_reads=allocations=0;
     reciprocal_proof_rows=reciprocal_fast_rows=reciprocal_exact_rows=reciprocal_fit_rows=reciprocal_threshold_calls=0;
     reciprocal_prepare_rows=reciprocal_scratch_bytes=reciprocal_prepared_rows=reciprocal_prepared_divisions=reciprocal_fill_rows=reciprocal_all_missing_rows=0;
@@ -176,16 +189,29 @@ static int run_case(size_t length, int pattern, double scalar, int legacy,
     memset(integer_loads,0,sizeof integer_loads); memset(span_rows,0,sizeof span_rows);
     unsigned char *raw=malloc(length*4);
     if (!raw) return 2;
-    numeric_data data={NUMERIC_FLOAT,0,legacy ? 111 : 118,0,chunks,raw,(uint32_t)domain_mode};
+    numeric_data data={.kind=NUMERIC_FLOAT, .length=length,
+        .format_version=legacy ? 111 : 118, .chunk_size=chunks, .raw=raw,
+        .domain_flags=(uint32_t)domain_mode,
+        .float_min_nonzero_magnitude_bound=UINT32_MAX};
     size_t want_missing=0;
     int wanted=minimum_kind;
     for (size_t i=0;i<length;i++) {
         uint32_t bits=fixture(i,pattern,length,scalar); memcpy(raw+4*i,&bits,4);
         int inherited=input_missing(bits,legacy); data.missing_count+=inherited;
+        if (!inherited) {
+            uint32_t magnitude=bits & UINT32_C(0x7fffffff);
+            if (magnitude > data.float_max_magnitude_bound)
+                data.float_max_magnitude_bound=magnitude;
+            if (magnitude == 0) data.zero_count++;
+            else if (magnitude < data.float_min_nonzero_magnitude_bound)
+                data.float_min_nonzero_magnitude_bound=magnitude;
+        }
         double value=inherited ? NAN : quotient(scalar,from_bits(bits));
         int valid=result_valid(value); want_missing+=!valid;
         if (valid && fabs(value)>0x1.fffffep126) wanted=NUMERIC_DOUBLE;
     }
+    /* A conservative lower bound remains true but cannot prove safe input. */
+    if (domain_mode == 15) data.float_min_nonzero_magnitude_bound=1;
     arithmetic_operand left={{NULL,&scalar,NULL},1},right={{&data,NULL,NULL},(R_xlen_t)length};
     int selected=-1;
     SEXP result=arithmetic_general_result(&left,&right,(R_xlen_t)length,'/',minimum_kind,&selected);
@@ -205,13 +231,20 @@ static int run_case(size_t length, int pattern, double scalar, int legacy,
             if (memcmp(&actual,&want,8)) failure=6;
         } else failure=7;
     }
+    int whole_gate=domain_mode == 7 && !legacy && pattern != 14 &&
+        pattern != 17 && (scalar == 1.01 || scalar == 0);
     int red=required && ((pattern==8 && domain_mode && !legacy && !chunks &&
         reciprocal_prepare_rows>256) ||
-        ((!domain_mode || legacy) && canonical_attempt_rows!=0));
-    printf("%d,%zu,%d,%a,%d,%zu,%d,%d,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
+        ((!domain_mode || legacy) && canonical_attempt_rows!=0) ||
+        (whole_gate && (whole_write_rows != length || reciprocal_prepare_rows != 0 ||
+            canonical_attempt_rows != 0)) ||
+        ((domain_mode == 0 || domain_mode == 1 || domain_mode == 3 || domain_mode == 5 ||
+            legacy || (domain_mode == 15 && selected == NUMERIC_FLOAT && scalar == 1.01)) &&
+            whole_write_rows != 0));
+    printf("%d,%zu,%d,%a,%d,%zu,%d,%d,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d,%d,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
         domain_mode,length,pattern,scalar,legacy,chunks,minimum_kind,rounding,selected,
         general_rows[0],general_rows[1],result_checks[0],result_checks[1],fit_rows,
-        float_loads,span_rows[0],span_rows[1],want_missing,failure,red,reciprocal_proof_rows,reciprocal_fast_rows,reciprocal_exact_rows,reciprocal_fit_rows,reciprocal_threshold_calls,reciprocal_prepare_rows,reciprocal_scratch_bytes,reciprocal_prepared_rows,reciprocal_prepared_divisions,reciprocal_fill_rows,reciprocal_all_missing_rows,canonical_attempt_rows,canonical_committed_rows);
+        float_loads,span_rows[0],span_rows[1],want_missing,failure,red,reciprocal_proof_rows,reciprocal_fast_rows,reciprocal_exact_rows,reciprocal_fit_rows,reciprocal_threshold_calls,reciprocal_prepare_rows,reciprocal_scratch_bytes,reciprocal_prepared_rows,reciprocal_prepared_divisions,reciprocal_fill_rows,reciprocal_all_missing_rows,canonical_attempt_rows,canonical_committed_rows,whole_write_rows);
     for (size_t i=0;i<allocations;i++) { free(allocated[i]->raw);free(allocated[i]); }
     free(raw);
     return failure ? failure : red ? 1 : 0;
@@ -263,7 +296,7 @@ int main(int argc,char **argv) {
     (void)argv;
     if (sizeof(float)!=4 || sizeof(double)!=8 || FLT_RADIX!=2 ||
             FLT_MANT_DIG!=24 || DBL_MANT_DIG!=53) return 2;
-    puts("domain,length,pattern,scalar,legacy,chunk,minimum,rounding,output,preflight_rows,generic_output_rows,preflight_result_checks,output_result_checks,float_fit_rows,float_loads,preflight_span_rows,output_span_rows,result_missing,semantic_failure,work_failure,reciprocal_proof_rows,reciprocal_fast_rows,reciprocal_exact_rows,reciprocal_fit_rows,reciprocal_threshold_calls,reciprocal_prepare_rows,reciprocal_scratch_bytes,reciprocal_prepared_rows,reciprocal_prepared_divisions,reciprocal_fill_rows,reciprocal_all_missing_rows,canonical_attempt_rows,canonical_committed_rows");
+    puts("domain,length,pattern,scalar,legacy,chunk,minimum,rounding,output,preflight_rows,generic_output_rows,preflight_result_checks,output_result_checks,float_fit_rows,float_loads,preflight_span_rows,output_span_rows,result_missing,semantic_failure,work_failure,reciprocal_proof_rows,reciprocal_fast_rows,reciprocal_exact_rows,reciprocal_fit_rows,reciprocal_threshold_calls,reciprocal_prepare_rows,reciprocal_scratch_bytes,reciprocal_prepared_rows,reciprocal_prepared_divisions,reciprocal_fill_rows,reciprocal_all_missing_rows,canonical_attempt_rows,canonical_committed_rows,whole_write_rows");
     const int modes[]={FE_TONEAREST,FE_DOWNWARD,FE_UPWARD,FE_TOWARDZERO};
     const double scalars[]={0.0,-0.0,1.01,-1.01,0x1.0000000000001p0,
         0x1p-1074,-0x1p-1074,0x1.fffffep126,-0x1.fffffep126,
@@ -288,6 +321,18 @@ int main(int argc,char **argv) {
         for(int minimum=NUMERIC_FLOAT;minimum<=NUMERIC_DOUBLE;minimum++) {
             record_case(1025,2,1.01,0,0,minimum,modes[m],0);
             record_case(1025,10,1.01,1,0,minimum,modes[m],0);
+        }
+        const int fact_domains[]={3,5,7,15};
+        const int fact_patterns[]={7,8,14,15,16,17};
+        const double fact_scalars[]={1.01,-0.0,0x1.fffffffffffffp1022,DBL_MAX};
+        for (size_t d=0;d<sizeof(fact_domains)/sizeof(*fact_domains);d++) {
+            domain_mode=fact_domains[d];
+            for (int minimum=NUMERIC_FLOAT;minimum<=NUMERIC_DOUBLE;minimum++)
+                for (size_t chunk=0;chunk<2;chunk++)
+                    for (size_t p=0;p<sizeof(fact_patterns)/sizeof(*fact_patterns);p++)
+                        for (size_t s=0;s<sizeof(fact_scalars)/sizeof(*fact_scalars);s++)
+                            record_case(1025,fact_patterns[p],fact_scalars[s],0,
+                                chunk ? 7 : 0,minimum,modes[m],argc>1);
         }
     }
     fesetround(FE_TONEAREST);

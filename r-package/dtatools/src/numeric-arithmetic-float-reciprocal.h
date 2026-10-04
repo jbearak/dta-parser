@@ -8,6 +8,8 @@ typedef struct {
     double scalar;
     uint32_t minimum_magnitude;
     int all_missing;
+    int whole_domain;
+    size_t result_missing_count;
 } arithmetic_float_reciprocal_proof;
 
 static int arithmetic_float_reciprocal_safe(
@@ -39,6 +41,21 @@ static int arithmetic_float_reciprocal_prove(
     proof->scalar = left->scalar;
     proof->minimum_magnitude = 0;
     proof->all_missing = data->missing_count == (size_t) length;
+    proof->whole_domain = 0;
+    proof->result_missing_count = 0;
+    /* Only complete captured extents can use an exact zero count. Bounds may
+       be conservative subset facts, but zeros and inherited missing rows
+       must be disjoint exact counts for this result's complete length. */
+    const int cached = numeric_float_bounds_known(data) &&
+        numeric_zero_count_known(data) && data->length == (size_t) length &&
+        data->zero_count <= (size_t) length - data->missing_count;
+    if (cached) {
+        proof->result_missing_count = data->missing_count + data->zero_count;
+        if (proof->result_missing_count == (size_t) length) {
+            proof->all_missing = 1;
+            return 1;
+        }
+    }
     /* Captured exact input counts prove every result missing independently
        of its denominator encoding. No threshold or input read is needed. */
     if (proof->all_missing) return 1;
@@ -53,6 +70,12 @@ static int arithmetic_float_reciprocal_prove(
         else low = middle + 1;
     }
     proof->minimum_magnitude = low;
+    /* The existing search proves both denominator signs using binary64
+       division under the active rounding mode. Every nonzero observed lane
+       lies above this captured lower bound; tags are larger than the safe
+       search endpoint, and zero lanes will use that endpoint as an anchor. */
+    proof->whole_domain = cached &&
+        data->float_min_nonzero_magnitude_bound >= low;
     return 1;
 }
 
@@ -160,12 +183,70 @@ static int arithmetic_float_reciprocal_fill_missing(
     return output->kind;
 }
 
+/* Immutable complete-column facts remove both range and count reductions.
+   Missing-tag and zero presence are dispatched before the typed row loop.
+   A missing tag itself is a safe finite denominator; only zero needs an
+   anchor. Observed lanes retain their original binary64 division and single
+   narrowing, including signed zeros produced by underflow or a zero scalar. */
+static int arithmetic_float_reciprocal_whole_write(
+    const arithmetic_float_reciprocal_proof *proof, R_xlen_t length,
+    arithmetic_general_output *output
+) {
+    const numeric_data *data = proof->column->operand->reader.storage;
+    const double scalar = proof->scalar;
+    const int tagged = data->missing_count != 0;
+    const int zeros = data->zero_count != 0;
+    output->missing_count = proof->result_missing_count;
+#define RECIPROCAL_WHOLE_LOOP(TYPE, TARGET, MISSING, TAGGED, ZEROS)         \
+    do {                                                                  \
+        for (size_t start = 0; start < (size_t) length;) {                 \
+            R_CheckUserInterrupt();                                       \
+            size_t count = (size_t) length - start;                       \
+            if (count > 16384) count = 16384;                             \
+            const unsigned char *raw = numeric_read_span(data, start, count, &count); \
+            TYPE *restrict target = (TARGET) + start;                     \
+            for (size_t i = 0; i < count; i++) {                          \
+                uint32_t bits;                                            \
+                memcpy(&bits, raw + i * sizeof(bits), sizeof(bits));      \
+                uint32_t magnitude = bits & UINT32_C(0x7fffffff);         \
+                unsigned zero = (ZEROS) && magnitude == 0;               \
+                unsigned invalid = ((TAGGED) &&                          \
+                    magnitude >= UINT32_C(0x7f000000)) | zero;           \
+                bits = zero ? UINT32_C(0x7effffff) : bits;               \
+                float denominator;                                        \
+                memcpy(&denominator, &bits, sizeof(denominator));         \
+                double quotient = scalar / (double) denominator;         \
+                target[i] = invalid ? (TYPE) (MISSING) : (TYPE) quotient; \
+            }                                                             \
+            start += count;                                               \
+        }                                                                 \
+    } while (0)
+#define RECIPROCAL_WHOLE_SHAPE(TYPE, TARGET, MISSING)                      \
+    if (tagged) {                                                         \
+        if (zeros) { RECIPROCAL_WHOLE_LOOP(TYPE, TARGET, MISSING, 1, 1); } \
+        else { RECIPROCAL_WHOLE_LOOP(TYPE, TARGET, MISSING, 1, 0); }       \
+    } else {                                                              \
+        if (zeros) { RECIPROCAL_WHOLE_LOOP(TYPE, TARGET, MISSING, 0, 1); } \
+        else { RECIPROCAL_WHOLE_LOOP(TYPE, TARGET, MISSING, 0, 0); }       \
+    }
+    if (output->kind == NUMERIC_FLOAT) {
+        RECIPROCAL_WHOLE_SHAPE(float, (float *) (void *) output->raw, 0x1p127f);
+    } else {
+        RECIPROCAL_WHOLE_SHAPE(double, output->real, NA_REAL);
+    }
+#undef RECIPROCAL_WHOLE_SHAPE
+#undef RECIPROCAL_WHOLE_LOOP
+    return output->kind;
+}
+
 static int arithmetic_float_reciprocal_write(
     const arithmetic_float_reciprocal_proof *proof, R_xlen_t length,
     arithmetic_general_output *output
 ) {
     if (proof->all_missing)
         return arithmetic_float_reciprocal_fill_missing(length, output);
+    if (proof->whole_domain)
+        return arithmetic_float_reciprocal_whole_write(proof, length, output);
     const arithmetic_general_source *column = proof->column;
     const numeric_data *data = column->operand->reader.storage;
     const double scalar = proof->scalar;

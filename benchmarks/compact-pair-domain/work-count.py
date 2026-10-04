@@ -66,8 +66,9 @@ def main():
     begin = arithmetic.index("typedef struct {\n    double minimum;")
     end = arithmetic.index("/* Missing-bearing same-width", begin)
     common = arithmetic[begin:end]
-    common += "\n" + BASE.function((src / "dtatools-internal.h").read_text(),
-                                    "numeric_strict_modern_float")
+    for name in ("numeric_strict_modern_float", "numeric_float_bounds_known",
+                 "numeric_zero_count_known"):
+        common += "\n" + BASE.function((src / "dtatools-internal.h").read_text(), name)
     for name, path in [
         ("arithmetic_promoted_kind", "numeric-arithmetic.h"),
         ("numeric_float_observed_limit", "numeric-payload.c"),
@@ -84,6 +85,16 @@ def main():
     canonical.write_text(BASE.replace_once(canonical.read_text(),
         "        (void) policy;",
         "        canonical_rows++;                                         \\\n        (void) policy;"))
+    narrowed = output / "numeric-arithmetic-pair-float.h"
+    continuation = " " + chr(92) + "\n"
+    narrowed.write_text(BASE.replace_once(narrowed.read_text(),
+        "            if (!(RANGE_PROVED)) {",
+        "            if (RANGE_PROVED) pair_range_proved_rows++;" + continuation +
+        "            if (!(RANGE_PROVED)) {"))
+    narrowed.write_text(BASE.replace_once(narrowed.read_text(),
+        "                maximum = bits > maximum ? bits : maximum;",
+        "                pair_maximum_rows++;" + continuation +
+        "                maximum = bits > maximum ? bits : maximum;"))
     command = [str(compiler), "-std=c11", "-O1", "-ffp-contract=off",
         "-frounding-math", "-Wall", "-Wextra", "-Werror",
         "-Wno-unused-function", "-I", str(output), str(HERE / "work-count.c"),
@@ -96,12 +107,30 @@ def main():
     (output / "cases.csv").write_text(run.stdout)
     (output / "probe.log").write_text(run.stderr)
     rows = list(csv.DictReader(io.StringIO(run.stdout)))
-    expected = [(str(mode), pattern, str(strict), str(chunked), str(reverse), op)
+    expected = [(str(mode), pattern, str(strict), str(chunked), str(reverse), op, "1", "legacy")
         for mode in range(4) for pattern in ("ordinary", "sparse", "tags", "edges",
             "limit_above", "limit_below", "cancel")
         for strict in range(2) if pattern != "edges" or strict == 0
         for chunked in range(2) for reverse in range(2) for op in ("+", "-", "*")]
-    keys = [tuple(row[k] for k in ("mode", "pattern", "strict", "chunked", "reverse", "op"))
+    # Preserve the original 624-case matrix, then qualify facts separately.
+    for mode in range(4):
+        for kind in (0, 1, 3):
+            for pattern in ("ordinary", "sparse", "tags", "cancel"):
+                modes = ("known", "conservative", "subset", "unknown", "outside") \
+                    if pattern in ("ordinary", "tags") else ("known",)
+                expected.extend((str(mode), pattern, "1", str(chunked), str(reverse), op,
+                                 str(kind), facts)
+                    for facts in modes for chunked in range(2) for reverse in range(2)
+                    for op in ("+", "-", "*"))
+        for kind, patterns in ((1, ("limit_above", "limit_below", "physical_min", "endpoint")),
+                               (3, ("sum_inside", "product_inside", "product_endpoint",
+                                    "product_outside", "endpoint"))):
+            expected.extend((str(mode), pattern, "1", str(chunked), str(reverse), op,
+                             str(kind), facts)
+                for pattern in patterns for facts in ("known", "unknown")
+                for chunked in range(2) for reverse in range(2) for op in ("+", "-", "*"))
+    keys = [tuple(row[k] for k in ("mode", "pattern", "strict", "chunked", "reverse", "op",
+                                   "left_kind", "facts"))
             for row in rows]
     BASE.require(keys == expected, "Incomplete, duplicated or reordered matrix")
     semantics = sum(int(row["semantic_failures"]) for row in rows)
@@ -117,6 +146,9 @@ def main():
         head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
         commit=args.commit, compiler_sha256=compiler_before, command=command, cwd=str(root),
         cases=len(rows), semantic_failures=semantics, work_failures=work,
+        original_cases=624, fact_cases=len(rows) - 624,
+        range_proved_rows=sum(int(row["range_proved_rows"]) for row in rows),
+        maximum_reduction_rows=sum(int(row["maximum_rows"]) for row in rows),
         require_proved=args.require_proved, exit_code=status,
         scope="Actual mixed pair headers; independent binary64-then-binary32 oracle. "
               "Mocked R boundaries; no package ownership, runtime or performance claim.",
