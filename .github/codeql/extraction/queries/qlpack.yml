@@ -1,0 +1,4 @@
+name: dta/private-extraction-comparison
+version: 0.0.0
+dependencies:
+  codeql/cpp-all: 12.1.1

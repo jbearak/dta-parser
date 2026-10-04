@@ -1,0 +1,125 @@
+name: Private C++ extraction comparison (no security queries)
+"on":
+  push:
+    branches: [codex/codeql-extraction-followup]
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+jobs:
+  control:
+    name: control extraction only (no security evaluation or upload)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CODEQL_OVERLAY_DATABASE_MODE: none
+      EXTRACTION_ARM: control
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind exact final source and this arm
+        run: python3 .github/codeql/extraction/extraction-guard.py prepare
+      - name: Download and verify the pinned official bundle
+        run: python3 .github/codeql/extraction/extraction-guard.py bundle
+      - name: Initialize unchanged build-none extraction
+        id: init
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        with:
+          languages: c-cpp
+          build-mode: none
+          tools: ${{ runner.temp }}/extraction-bundle.tar.gz
+          config-file: .github/codeql/extraction/cpp-control.yml
+          db-location: ${{ runner.temp }}/extraction-db
+          trap-caching: false
+          dependency-caching: false
+          debug: false
+      - name: Bind generated configuration without evaluating its security queries
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+        run: python3 .github/codeql/extraction/extraction-guard.py initialized
+      - name: Finalize extraction without security query evaluation or upload
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        with:
+          output: ${{ runner.temp }}/extraction-unused-sarif
+          skip-queries: true
+          upload: never
+          upload-database: false
+          category: /private-extraction/control
+      - name: Collect five bounded tables and preserve the strict coverage verdict
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+        run: python3 .github/codeql/extraction/extraction-guard.py collect
+      - name: Retain final resources, metadata and raw extraction logs
+        if: always()
+        env:
+          OBSERVED_JOB_STATUS: ${{ job.status }}
+        run: python3 .github/codeql/extraction/extraction-guard.py finish
+      - name: Preserve diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: extraction-control
+          path: ${{ runner.temp }}/extraction-results
+          if-no-files-found: error
+          retention-days: 14
+  filtered:
+    needs: control
+    if: ${{ always() && needs.control.result != 'cancelled' }}
+    name: filtered extraction only (no security evaluation or upload)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CODEQL_OVERLAY_DATABASE_MODE: none
+      EXTRACTION_ARM: filtered
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind exact final source and this arm
+        run: python3 .github/codeql/extraction/extraction-guard.py prepare
+      - name: Download and verify the pinned official bundle
+        run: python3 .github/codeql/extraction/extraction-guard.py bundle
+      - name: Initialize unchanged build-none extraction
+        id: init
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        with:
+          languages: c-cpp
+          build-mode: none
+          tools: ${{ runner.temp }}/extraction-bundle.tar.gz
+          config-file: .github/codeql/extraction/cpp-filtered.yml
+          db-location: ${{ runner.temp }}/extraction-db
+          trap-caching: false
+          dependency-caching: false
+          debug: false
+      - name: Bind generated configuration without evaluating its security queries
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+        run: python3 .github/codeql/extraction/extraction-guard.py initialized
+      - name: Finalize extraction without security query evaluation or upload
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        with:
+          output: ${{ runner.temp }}/extraction-unused-sarif
+          skip-queries: true
+          upload: never
+          upload-database: false
+          category: /private-extraction/filtered
+      - name: Collect five bounded tables and preserve the strict coverage verdict
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+        run: python3 .github/codeql/extraction/extraction-guard.py collect
+      - name: Retain final resources, metadata and raw extraction logs
+        if: always()
+        env:
+          OBSERVED_JOB_STATUS: ${{ job.status }}
+        run: python3 .github/codeql/extraction/extraction-guard.py finish
+      - name: Preserve diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: extraction-filtered
+          path: ${{ runner.temp }}/extraction-results
+          if-no-files-found: error
+          retention-days: 14
