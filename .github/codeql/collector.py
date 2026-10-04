@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""PRODUCTION DRAFT: current native extraction and full-query command validation.
+"""Validate current native extraction and full-query commands.
 
-This draft has not been deployed. The historical retained116 FAIL stays FAIL.
+The historical retained116 FAIL stays FAIL.
 The workflow must pass both this coverage gate and all five security lanes.
 """
 import argparse, csv, hashlib, io, json, os, platform, re, shlex, shutil, subprocess, time
@@ -204,12 +204,33 @@ def security_command_binding(db,expected,log_dir):
         cap=[v for v in argv if v.startswith('--max-disk-cache')]
         need(cap==['--max-disk-cache=32768'],'Requested 32 GiB intermediate cache cap not applied exactly')
     need('path:'+str(db/'cpp/temp/config-queries.qls') in args,'Unexpected evaluated security suite')
-    finished=re.findall(r'Evaluation done; writing results to (codeql/cpp-queries/[^\r\n]+)\.bqrs\.',text)
-    need(len(finished)==61 and {q+'.ql' for q in finished}==set(expected),'Incomplete evaluator completion ledger')
     need(re.findall(r'Exiting with code ([0-9]+)',text)==['0'],'Security evaluator did not exit successfully')
+    # The evaluator's internal log can omit a progress notification that appears
+    # in the action's stdout. Bind completion to all actual interpreted outputs;
+    # security_binding separately verifies their exact live inventory and hashes.
+    interpretation_logs=list(log_dir.glob('database-interpret-results-*.log'))
+    need(len(interpretation_logs)==1,'Missing or repeated security interpretation command')
+    interpretation_args,interpretation=command_from_log(interpretation_logs[0],'database interpret-results')
+    need(interpretation_args[-1]==str(db/'cpp'),'Interpreted a different security database')
+    need([v for v in interpretation_args if v.startswith('--format')]==['--format=sarif-latest'],
+         'Security results were not interpreted as SARIF')
+    category=[i for i,v in enumerate(interpretation_args) if v.startswith('--sarif-category')]
+    need(len(category)==1 and interpretation_args[category[0]:category[0]+2]==['--sarif-category','/language:c-cpp'],
+         'Wrong security interpretation category')
+    result_paths={str(db/'cpp/results'/q[:-3])+'.bqrs' for q in expected}
+    found=re.findall(r'found results file at ([^\r\n]+\.bqrs)\.',interpretation)
+    interpreted=re.findall(r'Interpreted [^\r\n]+ query [^\r\n]+ at path ([^\r\n]+\.bqrs)\.',interpretation)
+    for records in [found,interpreted]:
+        need(len(records)==61 and set(records)==result_paths,'Incomplete or ambiguous interpreted security result ledger')
+    need(re.findall(r'^\[[^\r\n]+\] Terminating normally\.$',interpretation,re.M)==[interpretation.splitlines()[-1]],
+         'Security interpretation did not terminate normally')
+    finished=re.findall(r'Evaluation done; writing results to (codeql/cpp-queries/[^\r\n]+)\.bqrs\.',text)
     return {'status':'PASS_CURRENT_NATIVE_SECURITY_COMMAND', 'queries':61,
       'requested_intermediate_cache_mib':32768,'query_commands':[run_args,args],
-      'command_logs':{p.name:sha(p) for p in [run_logs[0],execute]},
+      'interpretation_command':interpretation_args,'interpreted_queries':sorted(expected),
+      'progress_completion_count':len(finished),
+      'progress_missing_queries':sorted(set(expected)-{q+'.ql' for q in finished}),
+      'command_logs':{p.name:sha(p) for p in [run_logs[0],execute,interpretation_logs[0]]},
       'scope':'Full unchanged C++ default suite. Cache cap is an intermediate evaluator-cache bound, not a whole-job disk or RAM limit. Other language gates remain independent.'}
 
 class Collector:
@@ -242,7 +263,7 @@ class Collector:
     def controller_hashes(self):
         workflow=self.root/'.github/workflows/codeql.yml'
         if not workflow.exists():workflow=HERE/'codeql.yml'
-        paths=[HERE/'collector.py',HERE/'build.py',HERE/'native-source-scope.json',HERE/'expected-query-names.json',HERE/'cpp.yml']+[HERE/'queries'/(n+'.ql') for n in NAMES]+[HERE/'queries/qlpack.yml']
+        paths=[HERE/'collector.py',HERE/'build.py',HERE/'test_collector.py',HERE/'native-source-scope.json',HERE/'expected-query-names.json',HERE/'cpp.yml']+[HERE/'queries'/(n+'.ql') for n in NAMES]+[HERE/'queries/qlpack.yml']
         return {**{str(p.relative_to(HERE)):sha(p) for p in paths},'workflow':sha(workflow)}
     def external_binding(self,pre):
         bundle=read(self.work/'bundle.json');archive=self.work/'official-codeql-bundle.tar.gz'
