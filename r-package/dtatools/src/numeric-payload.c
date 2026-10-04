@@ -4916,6 +4916,25 @@ SEXP C_dtatools_computed_numeric(SEXP value, SEXP frame, SEXP storage_getter, SE
     return status;
 }
 
+/* Borrow a direct pointer only until this bounded chunk finishes. Poll before
+   obtaining it and reacquire it for the next chunk and after output allocation.
+   Foreign ALTREP may return a partial region or decline region access; a zero
+   count retains the original scalar reads and their immediate validation. */
+static const double *numeric_constructor_region(
+    SEXP value, R_xlen_t start, R_xlen_t *count, double *scratch
+) {
+    R_CheckUserInterrupt();
+    const double *direct = (const double *) DATAPTR_OR_NULL(value);
+    if (direct != NULL) return direct + start;
+    if (*count > 2048) *count = 2048;
+    R_xlen_t copied = REAL_GET_REGION(value, start, *count, scratch);
+    if (copied < 0 || copied > *count)
+        Rf_error("invalid compact Stata numeric input region length");
+    if (copied == 0) return NULL;
+    *count = copied;
+    return scratch;
+}
+
 SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -4946,9 +4965,17 @@ SEXP C_dtatools_construct_numeric(
     int fits_double = 1;
     int has_nonfinite = 0;
     double float_maximum = numeric_float_observed_limit();
+    double scratch[2048];
+    R_xlen_t region_start = 0, region_end = 0;
+    const double *elements = NULL;
     for (R_xlen_t index = 0; index < length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        double element = REAL_ELT(value, index);
+        if (index == region_end) {
+            R_xlen_t count = length - index > 16384 ? 16384 : length - index;
+            elements = numeric_constructor_region(value, index, &count, scratch);
+            region_start = index;
+            region_end = index + count;
+        }
+        double element = elements == NULL ? REAL_ELT(value, index) : elements[index - region_start];
         int payload_tag = tagged_na_tag_value(element);
         int valid_missing = ISNA(element) ||
             (payload_tag >= 'a' && payload_tag <= 'z');
@@ -5019,6 +5046,9 @@ SEXP C_dtatools_construct_numeric(
             storage_name, recommendation
         );
     }
+    /* The next pass must observe the input again after allocation callbacks. */
+    elements = NULL;
+    region_start = region_end = 0;
     R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
     unsigned char *output = RAW(backing);
@@ -5028,8 +5058,13 @@ SEXP C_dtatools_construct_numeric(
     uint32_t float_minimum_nonzero_magnitude = UINT32_MAX;
 
     for (R_xlen_t index = 0; index < length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        double element = REAL_ELT(value, index);
+        if (index == region_end) {
+            R_xlen_t count = length - index > 16384 ? 16384 : length - index;
+            elements = numeric_constructor_region(value, index, &count, scratch);
+            region_start = index;
+            region_end = index + count;
+        }
+        double element = elements == NULL ? REAL_ELT(value, index) : elements[index - region_start];
         int payload_tag = tagged_na_tag_value(element);
         int offset = payload_tag >= 'a' && payload_tag <= 'z'
             ? payload_tag - 'a' + 1 : -1;

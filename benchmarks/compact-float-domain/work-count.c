@@ -48,6 +48,17 @@ static size_t proof_rows, interrupt_calls, canonical_rows;
 static SEXP allocated[4];
 static size_t width(int kind) { return kind == 0 ? 1 : kind == 1 ? 2 : kind < 4 ? 4 : 8; }
 static void R_CheckUserInterrupt(void) { interrupt_calls++; }
+/* Only the per-call reciprocal table uses this ephemeral arena. */
+static void *mock_scratch;
+static void release_mock_scratch(void) { free(mock_scratch); }
+static char *R_alloc(size_t count, int size) {
+    if (size <= 0 || count > SIZE_MAX / (size_t) size) abort();
+    if (mock_scratch == NULL && atexit(release_mock_scratch) != 0) abort();
+    void *next = realloc(mock_scratch, count * (size_t) size);
+    if (next == NULL) abort();
+    mock_scratch = next;
+    return next;
+}
 static const unsigned char *numeric_read_span(const numeric_data *data,
         size_t start, size_t count, size_t *available) {
     if (data->chunk_size && count > data->chunk_size - start % data->chunk_size)

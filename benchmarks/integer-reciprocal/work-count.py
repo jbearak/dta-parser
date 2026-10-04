@@ -30,21 +30,33 @@ def expected_cases(modes=(0, 1, 2, 3)):
                float.fromhex('0x1.fffffffffffffp1022'), float.fromhex('0x1.fffffffffffffp1023')]
     cases += [(128, kind, 3, scalar.hex(), legacy, 7)
               for kind in range(3) for legacy in range(2) for scalar in scalars]
-    cases = [(0, *case, modes[0]) for case in cases]
-    cases += [(facts, 129, kind, pattern, scalar.hex(), legacy, 7, mode)
+    cases = [(0, *case, modes[0], -1, 0) for case in cases]
+    cases += [(facts, 129, kind, pattern, scalar.hex(), legacy, 7, mode, -1, 0)
               for mode in modes for facts in (0, 4) for kind in range(3)
               for legacy in range(2) for pattern in (0, 3, 4, 5)
               for scalar in (1.01, -1.01, -0.0)]
+    lookup_scalars = [0.0, -0.0, 1.01, -1.01, float.fromhex('0x1p-1074'),
+                      -float.fromhex('0x1p-1074'), float.fromhex('0x1.fffffep126'),
+                      -float.fromhex('0x1.fffffep126'), float.fromhex('0x1.fffffffffffffp1022'),
+                      -float.fromhex('0x1.fffffffffffffp1022')]
+    cases += [(facts, 256 if kind == 0 else 65536, kind, 6, scalar.hex(), legacy, 4093,
+               mode, destination, 1)
+              for mode in modes for facts in (0, 4) for kind in range(2)
+              for legacy in range(2) for destination in (3, 4) for scalar in lookup_scalars]
+    cases += [(facts, length, kind, 6, (1.01).hex(), legacy, 4093, mode, destination, 0)
+              for mode in modes for facts in (0, 4) for kind in range(2)
+              for legacy in range(2) for destination in (3, 4)
+              for length in (262143, 262144, 262145)]
     return Counter(cases)
 
 def validate_case_matrix(text, modes=(0, 1, 2, 3)):
     rows = list(csv.DictReader(io.StringIO(text)))
     actual = Counter((int(row['facts']), int(row['length']), int(row['kind']), int(row['pattern']),
                       float.fromhex(row['scalar']).hex(), int(row['legacy']), int(row['chunk']))
-                     + (int(row['rounding']),)
+                     + (int(row['rounding']), int(row['minimum_kind']), int(row['direct']))
                      for row in rows)
-    if len(modes) != 4 or len(set(modes)) != 4 or len(rows) != 640 or actual != expected_cases(modes):
-        raise RuntimeError('Incomplete, duplicated or changed 640-case reciprocal matrix')
+    if len(modes) != 4 or len(set(modes)) != 4 or len(rows) != 1472 or actual != expected_cases(modes):
+        raise RuntimeError('Incomplete, duplicated or changed 1472-case reciprocal matrix')
 
 def function(text, name):
     start = text.index('static ', text.index(name + '(') - 30)
@@ -65,18 +77,39 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--require-proved', action='store_true')
+    parser.add_argument('--root', type=Path, default=ROOT)
+    parser.add_argument('--commit')
+    parser.add_argument('--source-commit', help='Read production headers from immutable Git blobs')
+    parser.add_argument('--optimization', choices=('O1', 'O3'), default='O1')
     args = parser.parse_args()
+    root = args.root.resolve()
+    src = root / 'r-package/dtatools/src'
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+    if args.commit and subprocess.check_output(['git', 'rev-parse', args.commit], cwd=root, text=True).strip() != commit:
+        raise RuntimeError('Requested commit does not match source HEAD')
+    source_commit = subprocess.check_output(['git', 'rev-parse', args.source_commit], cwd=root, text=True).strip() if args.source_commit else None
+    def source_bytes(name):
+        if source_commit:
+            return subprocess.check_output(['git', 'show', source_commit + ':r-package/dtatools/src/' + name], cwd=root)
+        return (src / name).read_bytes()
+    def source_text(name):
+        return source_bytes(name).decode()
     args.output.mkdir(parents=True, exist_ok=True)
     sources = {}
-    for path in SRC.glob('numeric-arithmetic*.h'):
-        data = path.read_bytes()
-        sources[path.name] = hashlib.sha256(data).hexdigest()
-        (args.output / path.name).write_bytes(data)
-    internal = (SRC / 'dtatools-internal.h').read_text()
+    if source_commit:
+        paths = subprocess.check_output(['git', 'ls-tree', '--name-only', source_commit, 'r-package/dtatools/src/'], cwd=root, text=True).splitlines()
+        names = [Path(path).name for path in paths if Path(path).name.startswith('numeric-arithmetic') and path.endswith('.h')]
+    else:
+        names = [path.name for path in src.glob('numeric-arithmetic*.h')]
+    for name in names:
+        data = source_bytes(name)
+        sources[name] = hashlib.sha256(data).hexdigest()
+        (args.output / name).write_bytes(data)
+    internal = source_text('dtatools-internal.h')
     sources['dtatools-internal.h'] = hashlib.sha256(internal.encode()).hexdigest()
-    payload = (SRC / 'numeric-payload.c').read_text()
+    payload = source_text('numeric-payload.c')
     sources['numeric-payload.c'] = hashlib.sha256(payload.encode()).hexdigest()
-    arithmetic = (SRC / 'numeric-arithmetic.h').read_text()
+    arithmetic = source_text('numeric-arithmetic.h')
     policy_start = arithmetic.index('typedef struct {\n    double minimum;')
     policy_end = arithmetic.index('/* Missing-bearing same-width', policy_start)
     common = arithmetic[policy_start:policy_end]
@@ -88,9 +121,12 @@ def main():
         'scalar_arithmetic_result_valid', 'uncounted_result_valid')
     common += '\nstatic int scalar_arithmetic_result_valid(double value) {\n'
     common += '  result_checks[phase]++; return uncounted_result_valid(value);\n}\n'
-    common += '\n' + function((SRC / 'numeric-arithmetic-integer.h').read_text(), 'arithmetic_integer_missing')
+    common += '\n' + function(source_text('numeric-arithmetic-integer.h'), 'arithmetic_integer_missing')
     for name in ('arithmetic_scale_float_invalid_modern', 'arithmetic_scale_float_invalid_legacy'):
-        common += '\n' + function((SRC / 'numeric-arithmetic-scale.h').read_text(), name)
+        common += '\n' + function(source_text('numeric-arithmetic-scale.h'), name)
+    has_lookup = 'INTEGER_RECIPROCAL_LOOKUP_ROW_LOOP' in source_text('numeric-arithmetic-integer-reciprocal.h')
+    if has_lookup:
+        common += '\n#define HAVE_INTEGER_LOOKUP_KERNEL 1\n'
     (args.output / 'production-common.h').write_text(common)
     general_path = args.output / 'numeric-arithmetic-general.h'
     general = general_path.read_text()
@@ -105,8 +141,8 @@ def main():
     reciprocal = reciprocal_path.read_text()
     continuation = chr(92) + '\n'
     if 'const int known_zeros' in reciprocal:
-        reciprocal = replace_once(reciprocal, '    for (size_t start = 0;',
-            '    integer_cached_rows += known_zeros ? (size_t) length : 0;\n    for (size_t start = 0;')
+        reciprocal = replace_once(reciprocal, '\n    for (size_t start = 0;',
+            '\n    integer_cached_rows += known_zeros ? (size_t) length : 0;\n    for (size_t start = 0;')
         reciprocal = replace_once(reciprocal, '                unsigned zero = !(ZERO_FREE) && source == 0;',
             '                if (!(ZERO_FREE)) integer_zero_test_rows++; ' + continuation +
             '                unsigned zero = !(ZERO_FREE) && source == 0;')
@@ -119,10 +155,23 @@ def main():
         reciprocal = replace_once(reciprocal, '                zero_count += zero;',
             '                integer_zero_reduction_rows++; ' + continuation +
             '                zero_count += zero;')
+    reciprocal = replace_once(reciprocal, 'TARGET result = (TARGET) (scalar / (double) denominator);',
+        'TARGET result = (TARGET) (integer_row_divisions++, scalar / (double) denominator);')
+    if has_lookup:
+        reciprocal = replace_once(reciprocal, '                CODE bits = (CODE) i;',
+            '                lookup_table_entries++; ' + continuation +
+            '                CODE bits = (CODE) i;')
+        reciprocal = replace_once(reciprocal, ': (TARGET) (scalar / (double) source);',
+            ': (TARGET) (lookup_table_divisions++, scalar / (double) source);')
+        reciprocal = replace_once(reciprocal, '                target[i] = table[code];',
+            '                lookup_rows++; integer_cached_rows += !!(KNOWN); ' + continuation +
+            '                target[i] = table[code];')
+        reciprocal = replace_once(reciprocal, 'if (!(KNOWN)) zero_count += code == 0;',
+            'if (!(KNOWN)) { integer_zero_test_rows++; integer_zero_reduction_rows++; zero_count += code == 0; }')
     reciprocal_path.write_text(reciprocal)
     executable = args.output / 'work-count'
     compiler = Path(shutil.which('cc')).resolve()
-    command = [str(compiler), '-std=c11', '-O1', '-Wall', '-Wextra', '-Werror',
+    command = [str(compiler), '-std=c11', '-' + args.optimization, '-Wall', '-Wextra', '-Werror',
         '-Wno-unused-function', '-I', str(args.output), str(HERE / 'work-count.c'),
         '-lm', '-o', str(executable)]
     subprocess.run(command, check=True)
@@ -135,10 +184,10 @@ def main():
     if len(witnesses) != 4 or [int(item[0]) for item in witnesses] != list(range(4)):
         raise RuntimeError('Incomplete verified rounding witnesses')
     validate_case_matrix(run.stdout, [int(item[1]) for item in witnesses])
-    patch = subprocess.check_output(['git', 'diff', 'HEAD', '--binary', '--', 'r-package/dtatools/src'], cwd=ROOT)
+    patch = b'' if source_commit else subprocess.check_output(['git', 'diff', 'HEAD', '--binary', '--', 'r-package/dtatools/src'], cwd=root)
     (args.output / 'source.patch').write_bytes(patch)
-    record = {'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-        'working_tree_status': subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True),
+    record = {'commit': commit, 'source_commit': source_commit, 'cwd': str(root),
+        'working_tree_status': subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True),
         'source_patch_sha256': hashlib.sha256(patch).hexdigest(),
         'compiler_sha256': hashlib.sha256(compiler.read_bytes()).hexdigest(),
         'compiler_version': subprocess.check_output([str(compiler), '--version'], text=True),
@@ -147,8 +196,8 @@ def main():
         'command': command, 'require_proved': args.require_proved, 'exit_code': run.returncode,
         'artifact_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in args.output.iterdir() if p.is_file() and p.name != 'receipt.json'},
-        'rounding_witnesses': witnesses, 'cases': 640,
-        'scope': 'Actual general result/preflight/producer headers under four verified rounding modes. Exact zero facts and unknown controls cover zero-free, zero-only, tag-only and mixed integer lanes, modern/legacy bytes and seven-row spans. Allocation and R reader boundaries mocked. No timing or ownership proof.'}
+        'rounding_witnesses': witnesses, 'cases': 1472, 'has_lookup': has_lookup,
+        'scope': 'Actual general result/preflight/producer headers under four verified rounding modes. 640 retained fallback/domain cases; 640 direct BYTE/INT producer cases cover every physical code, both destinations, modern/legacy policies, signed zeros, subnormals and magnitude endpoints; 192 actual general-result cases exercise both sides of the 262144 admission threshold. Exact-zero and unknown controls and bounded spans included. Allocation and R reader boundaries mocked. No timing or ownership proof.'}
     (args.output / 'receipt.json').write_text(json.dumps(record, indent=2) + '\n')
     raise SystemExit(run.returncode)
 
