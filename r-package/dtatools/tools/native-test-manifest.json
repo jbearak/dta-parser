@@ -15582,7 +15582,7 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "9664d6b315ed492706cf65a5630c7f02bb71c3ebeb9bd0874ea0a7a245372a78"
+          "sha256": "bba6a95c6829bcbd80e9d4f5a96fc0076c991a2d71084f9c5ac3150d72b3970f"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
@@ -16322,6 +16322,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab.R",
+          "test": "unlabelled numeric categories are the factor() of the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {

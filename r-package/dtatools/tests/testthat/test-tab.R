@@ -123,6 +123,19 @@ test_that("missing modes distinguish every numeric payload", {
     )
 })
 
+test_that("unlabelled numeric categories are the factor() of the values", {
+    values <- list(
+        c(b = 3, a = 1, NA, NaN, -0, 0, 0.1 + 0.2, 0.3, Inf),
+        c(3L, NA, 1L, 3L),
+        double(),
+        dta_double(c(0.1 + 0.2, 0.3, -0, 0, NA, tagged_missing("z"), 0.3)),
+        dta_byte(c(2, 1, NA, tagged_missing("a"), 2))
+    )
+    for (x in values) {
+        expect_identical(dtatools:::.tab_numeric_factor(x), factor(x))
+    }
+})
+
 test_that("labels apply to observed and missing values without adding levels", {
     x <- labelled_for_test(
         c(
