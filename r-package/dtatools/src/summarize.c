@@ -158,6 +158,12 @@ static int summary_scan_supported(SEXP value) {
         R_altrep_inherits(value, dtatools_numeric_class);
 }
 
+/* Lets summ() pass a full sample to the moments scan without a copy only
+   when the scan reads it directly rather than through the R fallback. */
+SEXP C_dtatools_summary_scan_supported(SEXP value) {
+    return Rf_ScalarLogical(summary_scan_supported(value));
+}
+
 /* A private compact capture outlives callbacks from another reader. Ordinary
    backing is rooted separately before any foreign ALTREP region is read. */
 static SEXP summary_reader_capture(

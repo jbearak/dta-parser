@@ -9,8 +9,13 @@
     if (is.null(specs)) specs <- names(data)
     sample <- !is.na(sample) & sample
     if (is.null(weights)) weights <- rep(1, nrow(data))
-    terms <- unlist(lapply(specs, function(spec) {
-        unlist(lapply(if (spec %in% names(data)) spec else .summarize_split(spec), .summarize_terms,
+    # Matching every spec at once avoids hashing the column names per spec.
+    # A literal name is the term .summarize_terms() would build for it.
+    literal <- specs %in% names(data)
+    terms <- unlist(lapply(seq_along(specs), function(i) {
+        spec <- specs[[i]]
+        if (literal[[i]]) return(list(list(list(variable = spec, prefix = ""))))
+        unlist(lapply(.summarize_split(spec), .summarize_terms,
                       columns = names(data)), recursive = FALSE)
     }), recursive = FALSE)
     time_index <- NULL
@@ -113,6 +118,7 @@
     keys <- lapply(evaluated, function(term) {
         vapply(term, function(component) .summarize_model_key(component[[1L]]), character(1))
     })
+    key_lengths <- lengths(keys)
     signatures <- vapply(keys, function(key) paste(sort(key), collapse = "#"), character(1))
     # Omission declarations belong to complete model terms. Combining their
     # component flags would incorrectly omit main effects or create omitted
@@ -139,15 +145,21 @@
                                        always = any(continuous_omitted))))
         rules
     })
-    omission_rules <- lapply(seq_along(evaluated), function(i) {
-        unlist(term_rules[signatures == signatures[[i]]], recursive = FALSE)
-    })
-    output <- list(values = list(), names = character(), headers = character(),
-                   factor_labels = character(), factor_headers = character(),
-                   display = logical())
+    # Group terms by signature once; comparing every pair grows with the
+    # square of the varlist length.
+    signature_index <- match(signatures, signatures)
+    shared_rules <- lapply(split(term_rules, signature_index), unlist,
+                           recursive = FALSE)
+    omission_rules <- unname(shared_rules[as.character(signature_index)])
+    # Results are assigned by position: appending with c() would copy each
+    # vector once per expanded variable.
+    values <- list()
+    output_names <- headers <- factor_labels <- factor_headers <- character()
+    display_flags <- logical()
     time_columns <- time_labels <- character()
     time_active <- logical()
     expanded_keys <- character()
+    count <- 0L
     for (term_index in seq_along(evaluated)) {
         term <- evaluated[[term_index]]
         choices <- .summarize_cross(term)
@@ -161,8 +173,9 @@
             bases <- vapply(choice, `[[`, logical(1), "base")
             omitted <- vapply(choice, `[[`, logical(1), "omitted")
             component_keys <- vapply(choice, .summarize_model_key, character(1))
-            lower_base_term <- any(vapply(keys, function(key) {
-                if (length(key) >= length(component_keys)) return(FALSE)
+            # Only a term with fewer components can be a lower-order base.
+            shorter <- keys[key_lengths < length(component_keys)]
+            lower_base_term <- any(vapply(shorter, function(key) {
                 remaining <- seq_along(component_keys)
                 for (part in key) {
                     position <- match(part, component_keys[remaining])
@@ -226,19 +239,23 @@
                 factor_header <- choice[[1L]]$variable
                 factor_label <- choice[[1L]]$time_label
             }
-            output$values[[length(output$values) + 1L]] <- value
-            output$names <- c(output$names, name)
-            output$headers <- c(output$headers, header)
-            output$factor_headers <- c(output$factor_headers, factor_header)
-            output$factor_labels <- c(output$factor_labels, factor_label)
-            output$display <- c(output$display, display)
-            expanded_keys <- c(expanded_keys, expanded_key)
+            count <- count + 1L
+            values[[count]] <- value
+            output_names[[count]] <- name
+            headers[[count]] <- header
+            factor_headers[[count]] <- factor_header
+            factor_labels[[count]] <- factor_label
+            display_flags[[count]] <- display
+            expanded_keys[[count]] <- expanded_key
             simple <- length(choice) == 1L && !any(factor)
-            time_columns <- c(time_columns, if (simple) choice[[1L]]$variable else "")
-            time_labels <- c(time_labels, if (simple) choice[[1L]]$time_label else "")
-            time_active <- c(time_active, simple && choice[[1L]]$time)
+            time_columns[[count]] <- if (simple) choice[[1L]]$variable else ""
+            time_labels[[count]] <- if (simple) choice[[1L]]$time_label else ""
+            time_active[[count]] <- simple && choice[[1L]]$time
         }
     }
+    output <- list(values = values, names = output_names, headers = headers,
+                   factor_labels = factor_labels,
+                   factor_headers = factor_headers, display = display_flags)
     if (length(time_columns)) {
         runs <- split(seq_along(time_columns), cumsum(c(TRUE,
             utils::tail(time_columns, -1L) != utils::head(time_columns, -1L))))
