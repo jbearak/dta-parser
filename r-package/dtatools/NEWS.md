@@ -28,6 +28,11 @@
   through vctrs do less work per column. Detecting duplicate observations
   across a 5,360-column file took 2.2 seconds and now takes 0.5.
 
+* `dta_append()` copies each source's rows of a numeric column into the
+  result natively, decoding compact columns in blocks, and no longer copies
+  the whole result column on every write. Appending a 5,360-column file to
+  itself took 8.4 seconds and now takes 5.7.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
