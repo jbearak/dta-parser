@@ -1,0 +1,5 @@
+ROUNDING,0,0,PASS
+ROUNDING,1,8388608,PASS
+ROUNDING,2,4194304,PASS
+ROUNDING,3,12582912,PASS
+FAIL: 0 semantic failures, 709 proved-work failures across 1472 cases

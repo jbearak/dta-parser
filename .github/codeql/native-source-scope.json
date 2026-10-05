@@ -2449,14 +2449,15 @@
   "standalone_sources": [
     "benchmarks/compact-float-domain/work-count.c",
     "benchmarks/compact-float-facts/metadata-span.c",
+    "benchmarks/compact-materialization/probe.c",
     "benchmarks/compact-pair-domain/work-count.c",
     "benchmarks/dense-float-reciprocal/work-count.c",
-    "benchmarks/compact-materialization/probe.c",
     "benchmarks/integer-reciprocal/work-count.c",
     "benchmarks/long-float-addition/work-count.c",
     "benchmarks/reader-cpu-scaling/cpuclock.c",
     "benchmarks/retained-arithmetic-polling/work-count.c",
     "benchmarks/scalar-float-blocks/test-kernel.c",
+    "r-package/dtatools/tests/testthat/fixtures/constructor-region-probe.c",
     "r-package/dtatools/tests/testthat/fixtures/initial-capture-userdb.c",
     "r-package/dtatools/tests/testthat/fixtures/numeric-bytecode-probe.c",
     "r-package/dtatools/tests/testthat/fixtures/numeric-size-userdb.c"

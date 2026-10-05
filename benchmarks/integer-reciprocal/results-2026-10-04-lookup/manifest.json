@@ -1,0 +1,569 @@
+{
+  "format": 1,
+  "runtime_checkpoint": "3ef04edca377e122befd77c8481831a60bda6b64",
+  "test_metadata_checkpoint": "56f4631701477c29d444dd293ca2bda752f625e8",
+  "publication_source_head": "56f4631701477c29d444dd293ca2bda752f625e8",
+  "candidate_dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+  "measured_baseline_dll_sha256": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+  "historical_probe_source_commit": "00b7d873401cebf272a3445d0c08e14e89bbda5a",
+  "sources": {
+    "r-package/dtatools/DESCRIPTION": "c414371986bb1867c735f0c5c7cd370493c15536bfb99c21b142c22c2a08fafd",
+    "r-package/dtatools/NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+    "r-package/dtatools/R/aaa-native-admission.R": "8a570a7caa5ceba0e6a2aa615c6128c0e65304e2aae5b4e8ca8a006bdc079630",
+    "r-package/dtatools/R/assignment-groups.R": "9213ee2cea29d1c075929782a5d53871b31e8c7ef87885b30fb5691110f8f665",
+    "r-package/dtatools/R/codebooks.R": "50899926f0f54324b7177fb7173bf26d4c8a06b0124130c5914c10b64601a8c8",
+    "r-package/dtatools/R/column-typing.R": "7393360c1967a50bb9d2817c20f551f279cf471fa76457d9710174767fb633ab",
+    "r-package/dtatools/R/datasig.R": "e39e8504ef5744c4920cd4cefb3930c30fd024e6fe3092ea278f618d8f61721c",
+    "r-package/dtatools/R/dibble-base-bind-construction.R": "a9d647fd73054ccfa9a2d7dedaf93943e99f9cd30048080dd3272db3c08136c4",
+    "r-package/dtatools/R/dibble-base-bind.R": "996b2e3d4aa19d9ad0be245a37cbf5e112d3ddaea1f3984588c4309454100be9",
+    "r-package/dtatools/R/dibble-callbacks.R": "2d9d395897c39346a153a70baefa0646e7d766fe72dea632af826523178b76d5",
+    "r-package/dtatools/R/dibble-column-modify.R": "836987c881d0a728bdcc9a4c8d9f8ed36e8adda5403f41e4bd7f42d5bc3951a9",
+    "r-package/dtatools/R/dibble-dplyr-context.R": "b8b1bfa46f80899e37e3551f45e28b5dea91b2c09df536779a84d6437ba896f3",
+    "r-package/dtatools/R/dibble-expressions.R": "56cd1817318767498071cad64f3c2b43a17ac74771cec34bdff9114053eb2572",
+    "r-package/dtatools/R/dibble-groups.R": "59f84d6d875a8c001d687778c77943755dd7119c0db767a1740b8c6636bf1023",
+    "r-package/dtatools/R/dibble-join-matches.R": "ba85e78720b51143e73f3546d6960714fe7a1da1f93571a08d5f94907bcda19c",
+    "r-package/dtatools/R/dibble-join-plan.R": "1a7dae8d7a2e9aac29b47344eac77dd9a3144c116e3cc7dad18359ac754537a6",
+    "r-package/dtatools/R/dibble-joins.R": "23b43568c719cc96b6ee7144ffe941c234603a1252b7f3753391c59f2bdd5305",
+    "r-package/dtatools/R/dibble-nested-capture.R": "dc3a210bd024a00b8953e33dc2b836d629503153895da540cb863ffdf0af4153",
+    "r-package/dtatools/R/dibble-result.R": "6f015c3ecf00f244d2e0da1654b90efa3eba52f7e9f32175a3ab3c4459bef60f",
+    "r-package/dtatools/R/dibble-row-operations.R": "e7fabf8cdf18419258c78ad5d7127419f2fed79bc1d65ef0151e6f0a7b152738",
+    "r-package/dtatools/R/dibble-rows-mutate.R": "0770e2e9b1ae962a123a3e8f4ec538ead38a044f8ce79fcff7c40af22f0d0cc3",
+    "r-package/dtatools/R/dibble-rows.R": "46aa84d1605fc3054756b6b9c7ba08f783afb0b189ad96f5ed56eb50654599a4",
+    "r-package/dtatools/R/dibble-summaries.R": "6a454c72ffea38f5b48f1436ea61aafc80404ea0af05f3f1b9eb8f69f7165498",
+    "r-package/dtatools/R/dibble.R": "cb9e6d3aaa20dc52764bc95fdd29a52f5a42ce4d13196ca9b9994979bb93555f",
+    "r-package/dtatools/R/dplyr-registration.R": "0b1d0b02262ab6e9f372f5aed3d2d758e37e0f5057763b95d59cdffff47af1e4",
+    "r-package/dtatools/R/dta-append.R": "c9ec1988cc00ea407ea963f3863fe5f7bec10750602aaf31bd87fe619cd8f7a2",
+    "r-package/dtatools/R/dta-match.R": "ebe0656e29c50970d5c7806ddc31f7b4156f585ba873c2d231935d2577d920f2",
+    "r-package/dtatools/R/dta-merge.R": "b470c7de4c5778056ea9213eea92824f791c0b43fe4158900329d45d589746e2",
+    "r-package/dtatools/R/dta-metadata.R": "f613384b53c82f7674960ee5a6c30e97e57ace583405621ef1c05ec692412b84",
+    "r-package/dtatools/R/dta-numeric.R": "57cccc28cd3842795071ec5e7330ba1ff695eabd3cacf85dcf57d25da5d9bb30",
+    "r-package/dtatools/R/dta-storage-defaults.R": "56dd3c34b11dd5d3df4ea697aea0b9cb20baadf086157c97ebaac89d3f1f2b1c",
+    "r-package/dtatools/R/dta-string.R": "dd597abb546e088ad34e472293e78271b5bded0cc29f2de59fd05660d15e03f6",
+    "r-package/dtatools/R/egen-groups.R": "fcf2bf6ee4392d20c50a692608761d4b8fa596db797803c151e1e3926116addb",
+    "r-package/dtatools/R/egen-values.R": "48c55ff2676ae2cfb4a8f0a067ccfb54c05a4ea6ec8abca3fcc0535f762e5743",
+    "r-package/dtatools/R/egen.R": "1710ebb2b432e978492d5b3a01270462d592aa6d28a4748e937b64b57a3f6c05",
+    "r-package/dtatools/R/factor-from-labels.R": "371af43f3273b437f50cf348ed57d92b17cff7a871904a9315edcfdf2a2838e4",
+    "r-package/dtatools/R/is-missing.R": "a71198e9cd9963b3c860a26d8053bb69aa898114f0380b55a39ed240decd3706",
+    "r-package/dtatools/R/keep-drop.R": "4ce29edcda6688956d7a440e455bee28ada41fe5af78f36e1eef4a59d963e069",
+    "r-package/dtatools/R/labels.R": "46c14b944e3dbabe05b2d35b4a8d401909204a0e0157e24c73157a5d088653e5",
+    "r-package/dtatools/R/mutate-data.R": "a02c3816604fa76fe2eb09945dde4317ca6536fd4eed4d0c2948b880997358d9",
+    "r-package/dtatools/R/numeric-arithmetic.R": "f668780780e20ee90c7706517fd5579d2b2affa5f33bc32adbbb67266492b2f5",
+    "r-package/dtatools/R/output-container.R": "3c116ea30b91a4ad4192066b059c226d4c38f28c463fc6a9aad14f72fdf2af09",
+    "r-package/dtatools/R/print-dibble.R": "d04ac6d9ef603d38bb9778ed84bb276c404ed8c6959e7db5ad2f4690f128f160",
+    "r-package/dtatools/R/print-summarize.R": "d1b92e5946b95d6d4fa80701b2cfbfc38e301d5148ed3f3c12a5954c07639ec8",
+    "r-package/dtatools/R/print-tab.R": "4cec2ccfc75decf23f40ac1a187ac79d77edfa918fd19de03c206352049d6023",
+    "r-package/dtatools/R/probe-bracket-public-source-profile.R": "ef9722ac534f539e952288b287657fdee77bba150190222b9fbd0bf3cb3619f3",
+    "r-package/dtatools/R/probe-gen-extra-profile.R": "ffa49351d0491d1d5bd6f270b3779ad384372b440bd5d71ff91fd42e84e0578d",
+    "r-package/dtatools/R/probe-plain-public-profile.R": "a530ea448edc9051cd6682a54d4cb71dbaa72c1fa5a16f224e40ed3a797dd2d5",
+    "r-package/dtatools/R/probe-public-source-profile.R": "31080d750470e0b93a59fc2e27e0201191c51b6fe2496b0b4d418de72f646b11",
+    "r-package/dtatools/R/read-arrow.R": "0c264b4a18c26bf55eba3dc3f1d6c39b3d019e6c2081cd26c520024a456ced66",
+    "r-package/dtatools/R/read-dta.R": "48fb0083207d51161b6376f33e7391a8c534d055467c6a6c23cdc5def767d000",
+    "r-package/dtatools/R/recode.R": "7e432633f35de9d713e90a9e2b5bc2c2f57170f9759731d559fbfa2c7ab74791",
+    "r-package/dtatools/R/reorder-dta-rows.R": "470b06fd15608267f2b385b8cfa1e41a0ff216a1308a9c4de8c3e17b460b46f0",
+    "r-package/dtatools/R/reserve-columns.R": "22f2bd06c2ca83644101724dc7d741fedfd3346f819f278e9aae7365c31c08e3",
+    "r-package/dtatools/R/save-arrow.R": "6d22cec26fd07d6fddac1f3af6e6d6114ad176fecb729ef768e2fdab4289607a",
+    "r-package/dtatools/R/save-dta.R": "350da084da08f716e859973912e8b17aaea5c23e628e01517fc0c88a124c1c3e",
+    "r-package/dtatools/R/set-dta-values.R": "e9d11fa23e4945ad384267caf4bdf72e0195fdadf34c3c887c9d3f24bd335eb3",
+    "r-package/dtatools/R/set-metadata.R": "0b06b2094322a9e0b771678fe296a8716a9ed0f8b51db57eb869b8efba7d2de1",
+    "r-package/dtatools/R/slice-dta-rows.R": "508a05573dc8945bd8b71268703e9eb1bee65050873e9c1b55f7fd68df8c9b0f",
+    "r-package/dtatools/R/summarize-calendar.R": "7bee5cd186ea0e8573081bc256ce5eaa38166abb90cb6029d07c8fa6c8119a5e",
+    "r-package/dtatools/R/summarize-varlist.R": "66b0a1a155bae81454f6217514aa3fb65097aa376d49217f5c4e750ea633eab6",
+    "r-package/dtatools/R/summarize.R": "706a67795514ecf9de7775b496019c5a4347f16fc5c912ef69dd63f966de11d2",
+    "r-package/dtatools/R/tab-indicators.R": "224a6b81fcf051bd3fc033b93de8b84b572afa17d9e6e50d37739ac37bc943e5",
+    "r-package/dtatools/R/tab-multiple.R": "13b828996e18b1fc1780d53644cff3f62cace482f4227113993ac69027eb6eb8",
+    "r-package/dtatools/R/tab-sample.R": "64e805c41cf361c38904a5059704c6fb8b9dea41457fd1ed603c1372e404d8df",
+    "r-package/dtatools/R/tab-summary.R": "1c58329d0c5d0497d73152dfb262445ca4eff1b063d6892e4368ce1f125f7165",
+    "r-package/dtatools/R/tab-tests.R": "da3a72c5536ec76fb85334a5b4854401ea6512ea53626900e5dfc2b6ea168654",
+    "r-package/dtatools/R/tab.R": "9707f45abbd396c3a22833b60b5b788c592f6584d608afb8f612b3522f994476",
+    "r-package/dtatools/R/tagged-missing.R": "73dba3bb15254f2437c882cd197b70a5ef864811eb94ca359bfc51e1ee7009a3",
+    "r-package/dtatools/R/variable-names.R": "e414e4b5ab26b3cc1a7e265354936515ccda9d001993c5e2f1941799ce7f4d57",
+    "r-package/dtatools/R/write-column.R": "7026d18627a356483562becac2db659e965cf8620c44b0d069a5dd12324b79de",
+    "r-package/dtatools/R/z-double-combine-profile.R": "1f48430fdd21b587bc292d2bed4aa06858a7ee4ae7f642b35736dff5b432f2ad",
+    "r-package/dtatools/R/z-initial-capture-profile.R": "d3504a863c5e3e5ba0db72b966d3bbfb40d3f424a6bc6580beb8a929a728a85e",
+    "r-package/dtatools/R/z-metadata-profile.R": "61d3277bfede0c452c767b75391efe2816ada2778fc248b466bc0841d39191b2",
+    "r-package/dtatools/R/z-numeric-helper-profile.R": "f941431787116d4517e844adbec6be324056b50307d1a6c791eff4b30c147254",
+    "r-package/dtatools/R/zz-grouped-bracket-profile.R": "70b943118e31a06448d3e639c803b2f130dc24919944bc9d96233be2467a0062",
+    "r-package/dtatools/R/zz-grouped-dplyr-profile.R": "6563cec9cfd58c1153dc0ce627915b34c891999500ab9b762a326084685c775e",
+    "r-package/dtatools/R/zz-ungrouped-mutate-profile.R": "2bbd268418641d52f43b0e15f4bbf19b3fc1b00584423204349360c325ab4d44",
+    "r-package/dtatools/R/zzz.R": "ffb5978ab3b0e2558306db713415f4b3cf8c269f0ff21e0c1a030dbf0c6d3a94",
+    "r-package/dtatools/cleanup": "f9df8209dcc491c06504c0e34ac2e43beec1e46bac7098b6622dabf086809ca7",
+    "r-package/dtatools/configure": "e9d918e439a3f4c621facff846e2229b6e38746b60019b04937b354beaf09246",
+    "r-package/dtatools/configure.win": "b6d1bb8f6b959a4ac78c716ca264eb3122f8893434b15834900db72634848592",
+    "r-package/dtatools/src/Makevars.in": "4718d6be1c8a67838d39682d951b06f3df993d7fe25813722d95ee443e5b0685",
+    "r-package/dtatools/src/Makevars.rust": "f409ac812388d498f59fe46487924e39b7813a2ed718593fa74e75600a3ca743",
+    "r-package/dtatools/src/Makevars.win.in": "271e7299d265fd2597e8685c3534fd5402b58c60788aaeae0fec5c253fbc25eb",
+    "r-package/dtatools/src/bracket-generation-hooks.c": "de624d0e467efadcb68cabdb9a1709c67f5d26dfb0e7baf519ce2dee9518e0df",
+    "r-package/dtatools/src/bracket-ungrouped-admission.c": "0b1297d6307f32fdb0b7fe5096dee1f1103982cc2472bc052d8b3358107fa435",
+    "r-package/dtatools/src/dictstring.c": "bbbe3c41e337807e18bed616ef0c565c9e15bb89fb7453c6d24ac70ce1185e4e",
+    "r-package/dtatools/src/dta-tools/Cargo.toml": "be4437a2e05a5d5459e4f1e26f99b04ca280e621c238a3e880c28908be4a8d80",
+    "r-package/dtatools/src/dta-tools/LICENSE": "3fb86ad2fc6f9ee1bada36000b8a6905b492caab81e3601c2592a3d6504d803a",
+    "r-package/dtatools/src/dta-tools/examples/bench.rs": "9ef961da13517fd8b9a611b4c3dc20a28d05c3814894cabbe94856492aa0bc97",
+    "r-package/dtatools/src/dta-tools/examples/typescript_arrow_fixtures.rs": "487939221c686da1015714fb25815f4c5719374b76987002d7e9fc89363b54db",
+    "r-package/dtatools/src/dta-tools/src/arrow/checksum.rs": "610bd2b3c25029df5057c7bb1ec0d4fcb81bab51767deb5af92bca2b3af4779a",
+    "r-package/dtatools/src/dta-tools/src/arrow/mod.rs": "63a0d047127579525c125f6e0387bc0edc4877d99fc36fa1839ff4362dbcc158",
+    "r-package/dtatools/src/dta-tools/src/arrow/profile.rs": "caa8af362db65435add3bc8c670028b7cf4b36a70d3cf87ce8d692a8e0bf5a0b",
+    "r-package/dtatools/src/dta-tools/src/arrow/read.rs": "5431ebfed3d62f61835e702f9ad9a8f1f07ca7fdaf2ac417957e8723974469af",
+    "r-package/dtatools/src/dta-tools/src/arrow/write.rs": "1cea13541432d908b3a802ddb733bd304605bec75b77e4682a1f0d2bee82f145",
+    "r-package/dtatools/src/dta-tools/src/arrow/write_source.rs": "dca82929628b65c248bb6ae4ab078b1f7d057cef1f8d44761432ef96b16d55bb",
+    "r-package/dtatools/src/dta-tools/src/data_reader.rs": "e872eb4f68cd7941a3064c0a299541bf0395a1346e991cedb45b49eed0d90668",
+    "r-package/dtatools/src/dta-tools/src/dta_metadata.rs": "fc823940eae74be61cd86667a367a620efff8145b9fca72acaf4b47f3be69543",
+    "r-package/dtatools/src/dta-tools/src/endian.rs": "fd0bca2750f1eec6a3951e3d3768399b2602ffe8b6a65a7b2e2bdd8c8078225f",
+    "r-package/dtatools/src/dta-tools/src/error.rs": "d716541fedca39464baa8a97f74b7e9cef7e8506828e183b4a9e49b0ebd39378",
+    "r-package/dtatools/src/dta-tools/src/file.rs": "19ddc148a1102537aa3185940a4762d857085936548828627105eaf12a8b06fd",
+    "r-package/dtatools/src/dta-tools/src/legacy.rs": "987ce81dbb1ed3f7481e1b6a13f380502eed5d2dc21add8395af0d7790a17e5c",
+    "r-package/dtatools/src/dta-tools/src/lib.rs": "7f8bd38a53b1cf150648d294d8023dff8e3868380dfb013a851f4515b9f4d8e9",
+    "r-package/dtatools/src/dta-tools/src/metadata.rs": "e4ab8183377b4e813a2177a300560549a5712073fae415939e261aca23f722ac",
+    "r-package/dtatools/src/dta-tools/src/missing.rs": "5f5dee09122cc0db2e34171f4e1be82b2480e36ac352839a4121c537f8fc42c7",
+    "r-package/dtatools/src/dta-tools/src/selection.rs": "41139e996a585c67993c5b9f2b8bb735d661261006a0169473ddc496826ab209",
+    "r-package/dtatools/src/dta-tools/src/strl.rs": "f456ba74f4313a0d2e64a373c1f83242d4f1e9a505950b009535bc9106dea8fc",
+    "r-package/dtatools/src/dta-tools/src/text.rs": "7a7b01c06a665b0f601df44c097411e1792476960c79f31aadefb1de9171a60d",
+    "r-package/dtatools/src/dta-tools/src/types.rs": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a",
+    "r-package/dtatools/src/dta-tools/src/value_labels.rs": "f8c025db968ef91e09b968ffcaf29e6d140fb7dde337820c9eabe03392abcd40",
+    "r-package/dtatools/src/dta-tools/src/write.rs": "c23f70b4e60f4c34269dd47e02f5706db7dc32adf19e7d0d3a65952a5b4d47ce",
+    "r-package/dtatools/src/dta-tools/tests/arrow.rs": "310b22cd8f125f029b3617f4ce597844682c4fa41851d331b232e540f527506f",
+    "r-package/dtatools/src/dta-tools/tests/conformance.rs": "e8bcd96fb45e18183ec00609024c14cdacac0ce665feadaa14c7fc20db2b0124",
+    "r-package/dtatools/src/dta-tools/tests/data/modern-canonical.json": "c515d7b44af55f45bc9e1ff438ccd3388f259acae2cd24ed92f07406442122e4",
+    "r-package/dtatools/src/dta-tools/tests/data/synthetic-v105.dta": "c3904deb80d9f1451dfa5e60f7bf51b2bf7c35319fee9d1f394120a82dc3aaec",
+    "r-package/dtatools/src/dta-tools/tests/data/synthetic-v108.dta": "7a304c5c806456121af5654bf0affa1950d773eb962e74fa4133290152564fda",
+    "r-package/dtatools/src/dta-tools/tests/data/synthetic-v110.dta": "b852a64f9c009cfe894d0dd6ef597657eced84e2924408ddc760577126dc6322",
+    "r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta": "5fff7a7760f3b261dbdd3fc7575dc51523d62feb60a47d46e4dfb7113ab4b968",
+    "r-package/dtatools/src/dta-tools/tests/encoding.rs": "151f5ed2619651ed723566b57c8d1729e20f60cd75bbd79b94174964edaf206e",
+    "r-package/dtatools/src/dta-tools/tests/file.rs": "51826ed727a94377fc88d7a5c943c5832a181f5b790f966c8896d07bef552f46",
+    "r-package/dtatools/src/dta-tools/tests/fuzz_smoke.rs": "e12705de3b93c77722c9a9fea91f16f22b5837e1ae0e750d8ed6b144c5fb94ce",
+    "r-package/dtatools/src/dta-tools/tests/legacy.rs": "cf28be104122ce90e90475b6b11c9392b043ffc680916b0236c90f7e0105aa97",
+    "r-package/dtatools/src/dta-tools/tests/metadata.rs": "c0f8bd5b0487f69cb3ebc7234785220793269ec2b0fb168fa8b7d80366e850e5",
+    "r-package/dtatools/src/dta-tools/tests/observations.rs": "17d1f24f9f6efc05608dcf6b6964dedee13d45bbcc43a7de9c0fe0df2f70283a",
+    "r-package/dtatools/src/dta-tools/tests/strl.rs": "3ceaa89efd1c04c813368f52fa82d17596fcd079c98226b185c8778c35db5926",
+    "r-package/dtatools/src/dta-tools/tests/support/generate-modern-canonical.ts": "cf89302fc964fb6afbf8085f17586e05031201819e566f31e49ae70a690c30d2",
+    "r-package/dtatools/src/dta-tools/tests/support/mod.rs": "05523b8e88e4e8b230f7990c07e444aa78d31791005e3023cc32e971f2052b62",
+    "r-package/dtatools/src/dta-tools/tests/value_labels.rs": "d100865f5133e4d90fdb37d48caac355de391c840e6b36413346d6d9d66711df",
+    "r-package/dtatools/src/dta-tools/tests/write.rs": "7ad087cc43aa7cb2185146fe3b9968e3b1d3bcd700031cc22354a8337d90200b",
+    "r-package/dtatools/src/dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4",
+    "r-package/dtatools/src/dtatools-win.def": "17ecfc56cfa2dffdfa7329310e2a2c8688c03973b838004c7646d324ef08d5cf",
+    "r-package/dtatools/src/egen-groups.h": "0bcbdcfa2d6e400ece194a0daa5272e57f3a82a60a45659d33a116b127413b22",
+    "r-package/dtatools/src/egen-values.h": "cb63a64b1b0762660dc1c381bc917ef8c4777ed6252647d4b6a346979d020d94",
+    "r-package/dtatools/src/generated-real-reader.c": "b13aac2a5ee52b094c143e6e71c910ef3f30c245a7b95d63e7cd2dada8e063f3",
+    "r-package/dtatools/src/generation-attributes.c": "a1619ae51b168fe355fb20e4c94ff6d4454b2e3b825154c45f9dc636f072103c",
+    "r-package/dtatools/src/grouped-double-input.c": "34f80a08590f444dbb04dc72b6b785b38095bfcff59508b407022e5c634d41af",
+    "r-package/dtatools/src/grouped-dplyr-admission.c": "545cff5bd056ac4068bfa93ae133aca0d119bf0076298ba449129c2866c21b8a",
+    "r-package/dtatools/src/grouped-public-code-qualify.inc": "1c8820977a7bb54de9ba20fc680b720b2edef1083d65e96dc47c947b2991798a",
+    "r-package/dtatools/src/init.c": "bd880e96ad9875958e79be3d483d12320c32b1d51f256018d6674982f88e8bc8",
+    "r-package/dtatools/src/initial-capture.inc": "941f6125ad000160ee6bf9e7311ca9a024b51bfe1e91e6f4ec1004121ab11088",
+    "r-package/dtatools/src/io.c": "03471b7064af836f0a94e128b1c1583df691d2158163bbed8cf9fc04cc9174c8",
+    "r-package/dtatools/src/metadata-proxies.c": "8222a04101c238178271b56ab67ae51ae99e9d36a98c177449438268fadbeb10",
+    "r-package/dtatools/src/mutation-fast.h": "39722f1c7ace57e6f41dade533db2f8762c43debc5288ef919fcc251eecb953f",
+    "r-package/dtatools/src/mutation-transactions.c": "d2c5e7f59a650cd2ed138b85df87af26a7b5f2e05d15d311919f8b1fe826352d",
+    "r-package/dtatools/src/mutation-write.h": "c0d05f28b3bcb5dea2dc24a524ef0830c8e130f5a1b849c6d1b4f177692e0eb4",
+    "r-package/dtatools/src/numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "r-package/dtatools/src/numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "r-package/dtatools/src/numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "r-package/dtatools/src/numeric-arithmetic-integer-reciprocal.h": "5dacb11a9a9af8141252dc7af243661dbe991afb229576bb237e722acac18c51",
+    "r-package/dtatools/src/numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "r-package/dtatools/src/numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "r-package/dtatools/src/numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "r-package/dtatools/src/numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "r-package/dtatools/src/numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "r-package/dtatools/src/numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "r-package/dtatools/src/numeric-decode.h": "e7a73018b19ca5dc2221ceca167c07d65d6eb43aa8269215bab5abc0e2af578a",
+    "r-package/dtatools/src/numeric-match.c": "5e43b224e34ad7831e2f765005f04227b4fe16c3a60d6da2664c62a8c880ceb2",
+    "r-package/dtatools/src/numeric-payload.c": "43d9f9cebacc12e32561116fd971a876d3f929b0de47c79e92568bbe7e62bb66",
+    "r-package/dtatools/src/owned-columns.h": "28bf7739eb44e86d91a20d4e2365fa9204fa1d6257920cdc4747ca530431d3ca",
+    "r-package/dtatools/src/probe-base-public.c": "670e3d49165ae71cae467fc2795fc80f5cc1e910296483f37f0fbc0e4c88fb45",
+    "r-package/dtatools/src/probe-base16-pointer.c": "65db5014b9e87ead3d4a84d3ced2e95bba7be9cfcf417b1f4ec9b2d09a8fb7a8",
+    "r-package/dtatools/src/probe-bracket-generalized-descriptor.c": "9ef98f97394accdad309964735939ad55eae119dc70e8986537b90091e4fee90",
+    "r-package/dtatools/src/probe-bracket-guard-floor.c": "209d45d264ac537b299724592c28c2b73bcb4a57d4619fdac7e91d102252a770",
+    "r-package/dtatools/src/probe-bracket-live-cache.h": "532fbe99804066342a3f0ed3f1e3ae907669a19660bf80fd7b31aad264526e0c",
+    "r-package/dtatools/src/probe-bracket-s3.c": "b317bf43f719849a4d9456eec99017c8db497c6db1b63d786f9f6ea057c3bf92",
+    "r-package/dtatools/src/probe-bracketcert.c": "de94ee54f3bcad0910c13df38b6420a1e9ff3a5c5f06f5e955419821e0fea1fd",
+    "r-package/dtatools/src/probe-gen-extra.c": "35107257999566c29ade6e9a6a5491e53d1e7bb5c40c05ffcffea56edad07765",
+    "r-package/dtatools/src/probe-gen-methods.c": "da27f6b9ca690a17b9a6a9f7f9b89471195c48707e630613c10369ab1f52e3a8",
+    "r-package/dtatools/src/probe-gen-public-guard.c": "ae23322935046fb20930608e2f1f2c39386e76a07563b81e06d720f546abad43",
+    "r-package/dtatools/src/probe-gen-transaction.c": "ee6c2d1d5b6de117aed156c8a98c73018302caf693b68b0c9e8449ec16025b30",
+    "r-package/dtatools/src/probe-grouped-bracket-batch.c": "158be9befbd0610d023ed94d20bfccba26ad3bf299b3543370d829a3bdee1518",
+    "r-package/dtatools/src/probe-grouped-bracket-plan.c": "2cc1064ab9b22a972c6bca0a9347a9af707aff6ef93585bd22a1e4ae62e7a91b",
+    "r-package/dtatools/src/probe-grouped-bracket-raw.c": "0041e9b3a3a17e5e23d4065ae5223dac5e268f24dde28379224d6004c1bfe9a4",
+    "r-package/dtatools/src/probe-grouped-gen.c": "935a0a0f5ee6cdde7b167a19cc5d91d26e5df5ab88cb86bd75650287b469c941",
+    "r-package/dtatools/src/probe-plain-public.c": "f79892eb85dc9a60a94606bdd0a907f8a5158992f181bcd36aedfc05972f34ec",
+    "r-package/dtatools/src/probe-profile-file-fingerprint.c": "a1760f8ce2cf87c308850f56040c15203af121283d79a49a5ab72513d9497467",
+    "r-package/dtatools/src/probe-public-fused.c": "68471a1f61c2630ea6a5110b8b055d7ed45aa8b89a3fa0afa82814424e201cb4",
+    "r-package/dtatools/src/probe-public-methods.c": "5f169c448fcfdd65527fe6130dd296bf300c6cc2e46d38486073a5c50ec6d638",
+    "r-package/dtatools/src/probe-public48-attrs.c": "22c0d966ad3e9a63c5e8ae995bfaa8bf31d73ea1ee5277e5c00c5d7a6526a587",
+    "r-package/dtatools/src/probe-public48-code.c": "8cc7fdac751429b9199fd8e777dd543423e46ec223b66bdff9c083390d2c0e64",
+    "r-package/dtatools/src/probe-public48-formals.c": "d2b91c107f33050f7090e75f16c9b2aaacf04cb97649610d87e3be4e3daff259",
+    "r-package/dtatools/src/probe-rlang-public.c": "98a025037a2de32fd66363136ffa3bf20becb09d019c8ac19fb5ead0d7bdfc4b",
+    "r-package/dtatools/src/probe-unique-repl.c": "43519f7d8172e6465c2467c7c91c722df9a86788ea5c60d2474725837545f20d",
+    "r-package/dtatools/src/probe-vctrs-size-public.c": "8d61082c4b4eb7d319a918acb1f369a0010880b81988cf049870c2b1667cc8b3",
+    "r-package/dtatools/src/probe-wrapper-public.c": "d86ca86f1a1a2d545558cc9f8cfcf760ec2a4bcf0943f180759431305e14887f",
+    "r-package/dtatools/src/r-bridge.c": "1d89aa046fdebbf2320d2ed51cd64c85ff26f4adb462b66299f5b84411ab42de",
+    "r-package/dtatools/src/row-filter.h": "46c7b069883e41ba8f5660e9d9deba1dd210b6f58051fe266c254649ce59bf41",
+    "r-package/dtatools/src/rust/Cargo.lock": "76e35a04e5e87abb4107653c7ae7061ee17b6b52747ad2bac4f911e5287d4209",
+    "r-package/dtatools/src/rust/Cargo.toml": "904bffdb2aa44882ac91950fba66077bcaba4a4b8768fddec6b647225e228f32",
+    "r-package/dtatools/src/rust/cargo-config.toml": "60f1bbe1f3f7449d5ec772629f7e7623fe96077ebb87ccbf426f833a0b6f2688",
+    "r-package/dtatools/src/rust/src/arrow_ffi.rs": "1c5483830ca2e51064195cdbe13b1fae7bc7cb814e16776562b75ae215271ffa",
+    "r-package/dtatools/src/rust/src/double_compare.rs": "a99adb3738345ca8e9eb0831fb73413192b953f04661a62248883bacfa77836a",
+    "r-package/dtatools/src/rust/src/float_compare.rs": "a5f017aa930ba0035e6f677edeb4dbff193f3faccb47461f3fc0501d1d9dba3d",
+    "r-package/dtatools/src/rust/src/lib.rs": "a1bcaef4f18c865b3b6c2adaf57a7517848d269392df3ac670f2bdd4310fdd3a",
+    "r-package/dtatools/src/rust/src/native_pressure.rs": "005a4c370ca42a50327e03fced90ff5f85b1641411583ee050e1c6e2af80f2a9",
+    "r-package/dtatools/src/rust/src/owned_numeric.rs": "63ade14cd99485eee30a19f4549d67d9b82e287a811be5a1527d79ae583fef9b",
+    "r-package/dtatools/src/rust/vendor.sha256": "147065f56a04e8833bbff3f840406a1354dc456706ce1ae58514c4a35ba5f639",
+    "r-package/dtatools/src/rust/vendor.tar.gz": "31249dcf2962711a7e51ccb7983661543e3d87bcc0c574aadfbad4ee9c19252e",
+    "r-package/dtatools/src/summarize.c": "597ab75e595c94a790dfef9b2193c3dda4839afe96605204c6ba0f746a137299",
+    "r-package/dtatools/src/ungrouped-dplyr-admission.c": "030d9e66ee364630e7c488fa271594c0dd2502d84dfd0541118584bea2eab9b1",
+    "r-package/dtatools/tools/configure-rust.sh": "90720c10ddd9180a5e0a09f8a719bc9e7f9e52c03e8350ae55580d3228730124",
+    "r-package/dtatools/tools/rust-source-hash.R": "f67e3c4ebff9c9c6e7c4c3faf9252dc91634fc8e16885ef0ea5934a23fabf101",
+    "benchmarks/integer-reciprocal/work-count.c": "ce43fcd03638daa017a7247cd2d1a71161a023534a75247ee276aeaa69853325",
+    "benchmarks/integer-reciprocal/work-count.py": "ad09efe72d159147a838793bf693fc183dd55f7f43499acaecae1558735d7c30",
+    "benchmarks/integer-reciprocal/test-work-count.py": "125c228b629ea3bc45013e17978ec2b7e08c5e3fa45d7e4d386bcf1604df4103",
+    "benchmarks/remaining-compact-kernels/run.py": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+    "benchmarks/remaining-compact-kernels/worker.R": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+    "benchmarks/remaining-compact-kernels/dense-worker.R": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473",
+    "benchmarks/compact-column-facts-performance/construction-run.py": "0c8476779ad100c2e9c92e2ecd53f1a9476ff53e540afafb7a4e70ae05a4cd5b",
+    "benchmarks/compact-column-facts-performance/construction-worker.R": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d",
+    "r-package/dtatools/tests/testthat/test-integer-reciprocal-lookup.R": "1bfcae992dcb8ea5fd860226d77943d4236b7d9e525d6b0cf6b4a0c1545430c4",
+    "r-package/dtatools/tests/testthat/test-constructor-region-inputs.R": "532b836e7d6147eaa601f4ee68fe6b3cd53709f73107b0b6e7b7f60656f5ea16",
+    "r-package/dtatools/tests/testthat/fixtures/constructor-region-probe.c": "d3adca1303e9fb15de0ed144502e9e9c9a94f97271a3a797d61bef3a51d7e474",
+    "r-package/dtatools/tools/native-test-manifest.json": "f6b13d209549201328b9d5e06504d8ec6f7f62b7ed750d638c660d4a88413af4"
+  },
+  "files": {
+    "README.md": "ce6538bd79d0f20053fca22bd73d84076b69763f86359f819f2761c67b6f71b5",
+    "construction/baseline-round1.csv": "ccf1362064a3c803285577cb7fa82c65b16012e60cf5f34839beacfaddd7ec2f",
+    "construction/baseline-round1.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/baseline-round2.csv": "5a28a9c7a7ce0c59f4d6f2c13b683add21cd38c222225cf25d9bddafc131d759",
+    "construction/baseline-round2.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/baseline-round3.csv": "de8b2018db4ed471c5ba677910c4b5cf164e76dbc90afc81c19a39d93e589e75",
+    "construction/baseline-round3.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/baseline-round4.csv": "ab01ab1ea4ee6ed362e7486a18d2d7a3c8673a8222a401583152358ad3d7dd87",
+    "construction/baseline-round4.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/baseline-round5.csv": "7cea40acdff18685c0b1c4d82cccf1f8cc1508bd4509b187182fb19990063b0c",
+    "construction/baseline-round5.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/baseline-round6.csv": "7e74ac5d0eb557fc2003920b6b76fd33ac877e028fa91dee85297bb3bb4a5c05",
+    "construction/baseline-round6.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/before.json": "4452f309e9a872f412b1d21e9d2627ac467088ff636d2b932c4400ce38089f30",
+    "construction/candidate-round1.csv": "73c7a23c7b74c929308fc159ca2881adc00779a925d7478202dd0b98ca9ef365",
+    "construction/candidate-round1.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/candidate-round2.csv": "23547a5866b0da86939931e4caf684aeea7439686a75ed92871fa470e60ccc39",
+    "construction/candidate-round2.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/candidate-round3.csv": "0324b06ca405bd635ad07bf8b15e2b137d9411d5014ffd7787699cdd60a36e6f",
+    "construction/candidate-round3.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/candidate-round4.csv": "958714e43b77826307d5c4a7cee0dbf9dd735557058537d68bb36a4c45c1320e",
+    "construction/candidate-round4.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/candidate-round5.csv": "6b5575c2aacf09bb3bf22efc03b6b43b7fd6294a1684026d64b714d0c4c8e47b",
+    "construction/candidate-round5.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/candidate-round6.csv": "163f81428d55b86400cf20f8f3f563afb214d3ea66f77215a1ed6054a850b01a",
+    "construction/candidate-round6.log": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee",
+    "construction/construction-run.py": "0c8476779ad100c2e9c92e2ecd53f1a9476ff53e540afafb7a4e70ae05a4cd5b",
+    "construction/construction-worker.R": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d",
+    "construction/raw.csv": "5dcd3314672e7c3c2c10d042ab18837be8f69f80bd462c750a468b80fe56a2f5",
+    "construction/summary.json": "68e26ae3cab53bb4a56b31193e1feeb21da3cba773179b4a63b273ec7d666109",
+    "general/balanced-baseline-round1.csv": "ce9ae165a565f455c83606833563299d683ae86427ec0a2fcf5d4ce44dc72c11",
+    "general/balanced-baseline-round2.csv": "657532a1411c988a3dabb6aeabbb3d96a0ea6dfb8d3e53f3b81324e960de9765",
+    "general/balanced-baseline-round3.csv": "2d0a1fb197125b909a481f8db7b1625762bcbc4d4b1f38234bfc4440a94b84c6",
+    "general/balanced-baseline-round4.csv": "7af927486d90dba5d00f33a2b48eb15aab75cee111861afb804255c4de269628",
+    "general/balanced-baseline-round5.csv": "4b675551cc6299ec3822459ac0214405cc7027c6c71ef5feec8e4819d73c2ae9",
+    "general/balanced-baseline-round6.csv": "08c7a950696ee06cc76a4988e78a79b292057ddcc54238cfd73af0566aaaf33a",
+    "general/balanced-candidate-round1.csv": "716972e1c67ca0a66a5e2f843d43244812143f17935dd7f9d6f4b299718f0654",
+    "general/balanced-candidate-round2.csv": "0601c64857e344dbf7400fdf72a402cc4ab7ec8272e861e8f85b03503685686e",
+    "general/balanced-candidate-round3.csv": "6f6c3e151ecd98e63d141840fe9fdb535f9fea6805796b6e50a3c97b6295fac4",
+    "general/balanced-candidate-round4.csv": "758c30efa450d638642bcc8baea5e0d3bba4749d8b903019ddd5db305ea24904",
+    "general/balanced-candidate-round5.csv": "cf0b80068968d9983774c6450a143082276e2724028233d52c16e494064a723e",
+    "general/balanced-candidate-round6.csv": "09791c5432c467a1f919be58531982cf0c0f8bbfe94b0e3af47baf387cf17dbe",
+    "general/balanced-run-receipt.json": "4883aa8dda438eb86cd53190a89249e91fa6277017b5a35ac3e0ef4c7025d43d",
+    "general/balanced-summary.json": "8625c3b1392d7b85804b0a79e6dab97ff9fe0cb89bbc1975838cb44d979383a1",
+    "proof/candidate-receipt.json": "205a8324ead1f1344615c5a60665f306e357e3f2a35069b76a3652fcb1bc2182",
+    "proof/candidate-work-count.csv": "1905937f57d00243ea5a6b7b3dde24fbe99449076f1808544104b62ab2f14c86",
+    "proof/candidate-work-count.log": "fcd71820036f82ce885cf29fc41947c0872023d0d34cc630c6ec1e9f66cdc2b8",
+    "proof/frozen-kernel-o3-receipt.json": "2f8040980b3ec0e06e801ca15feccd8b4195c7c33e3d84960e102588b7b7903c",
+    "proof/historical-negative-control-receipt.json": "19161f1bdb56b874feb1829e45ce9cbb3b87fd571266b26c43df7b25c74fc932",
+    "proof/historical-negative-control-work-count.csv": "f2bd14e774fd11ecc19eac44b382b0f988aa0b11b5424a296dcf7b7263fb955a",
+    "proof/historical-negative-control-work-count.log": "9950c966df043ba17e6b93b10830ddea4dd39bb5a21185cc6fb0cef743483e8f",
+    "supplement/baseline-round1.csv": "d7993f7b6b6d3f2d2b9dd61e2d992b58cc23c4f44f31baf6fa8ac9fe85aa900a",
+    "supplement/baseline-round2.csv": "4c66b7aa000554b4645b91cb4e0c24476329853dd4392683de6bdf18c1f013b3",
+    "supplement/candidate-round1.csv": "44135186a4f525fca69cafee75f367517250caec9ad27718cabd4dcc6141fd3b",
+    "supplement/candidate-round2.csv": "73e82811fb6a28acd11d60a2f83e11efd74eb6d37f9925dff264ec2724cd1b5f",
+    "supplement/lookup-run.py": "eb99feb11048089969a84aaa06b482acec68f4f7676e98dc67441a318bb60992",
+    "supplement/lookup-worker.R": "e17543c1190c7e31f8c74e68fc740ce56473d4aea95c6e3264cffc6de7f2576d",
+    "supplement/receipt.json": "afde90fcad0534e53cf9645cba4e8000f544a10cddb18b8693afbd08b64061b5",
+    "supplement/summary.json": "95dc632ba41ae1a81758f719ecc7aa82acfc86264f77ef8845d20f5192806c23",
+    "validate.py": "afd1c27a14277bb8671c36ef3357d7a68da8e4e2919e333d1e5b4a218a5cf3dd",
+    "validation/final-tests-build-receipt.json": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+    "validation/focused-tests-receipt.json": "8509d7ecc422713f88ba69a6444928384ef810b2c1c3cfec870b96cc999fbbaf",
+    "validation/focused-tests.R": "9942eb5684ed0c98f150ee6617c2b127e3adfa885efd4de05fc372041b70962b",
+    "validation/focused-tests.csv": "964a3b8ce3b53adef1ea03cec7f66ed1c6d4e31db76e4e10c40b41235cf0fa24",
+    "validation/focused-tests.log": "d9673291d79d259210f9375e2f254ad593bf764da2b39d2df18e36ef5cfa50a1",
+    "validation/guard-corrected-build-receipt.json": "21bbf1bd1e68aa0c709cda4f961030d438cbc48921c8ca8820b82095e29945ce",
+    "validation/install.log": "405697c9811f78ce2c63d03093882bdd6ac84104fd02b07777e2e93925ceb204",
+    "validation/measured-baseline-build-receipt.json": "a9e7a95ec636b8ea47a6cd91018e719e24f88ecaa7187701422093aed9bcd47b",
+    "validation/original-build-receipt.json": "8f1f7826769bab4f32fd41e5c4de9e543180ae604ad4c517800037fc3d662ed4"
+  },
+  "copies": {
+    "proof/candidate-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/committed-oracle-o1-v1/receipt.json",
+      "sha256": "205a8324ead1f1344615c5a60665f306e357e3f2a35069b76a3652fcb1bc2182"
+    },
+    "proof/candidate-work-count.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/committed-oracle-o1-v1/work-count.csv",
+      "sha256": "1905937f57d00243ea5a6b7b3dde24fbe99449076f1808544104b62ab2f14c86"
+    },
+    "proof/candidate-work-count.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/committed-oracle-o1-v1/work-count.log",
+      "sha256": "fcd71820036f82ce885cf29fc41947c0872023d0d34cc630c6ec1e9f66cdc2b8"
+    },
+    "proof/historical-negative-control-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/baseline-o1-v1/receipt.json",
+      "sha256": "19161f1bdb56b874feb1829e45ce9cbb3b87fd571266b26c43df7b25c74fc932"
+    },
+    "proof/historical-negative-control-work-count.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/baseline-o1-v1/work-count.csv",
+      "sha256": "f2bd14e774fd11ecc19eac44b382b0f988aa0b11b5424a296dcf7b7263fb955a"
+    },
+    "proof/historical-negative-control-work-count.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/baseline-o1-v1/work-count.log",
+      "sha256": "9950c966df043ba17e6b93b10830ddea4dd39bb5a21185cc6fb0cef743483e8f"
+    },
+    "proof/frozen-kernel-o3-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/green-o3-v1/receipt.json",
+      "sha256": "2f8040980b3ec0e06e801ca15feccd8b4195c7c33e3d84960e102588b7b7903c"
+    },
+    "validation/focused-tests.R": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/focused-tests.R",
+      "sha256": "9942eb5684ed0c98f150ee6617c2b127e3adfa885efd4de05fc372041b70962b"
+    },
+    "validation/focused-tests.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/focused-tests-v3.csv",
+      "sha256": "964a3b8ce3b53adef1ea03cec7f66ed1c6d4e31db76e4e10c40b41235cf0fa24"
+    },
+    "validation/focused-tests.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/focused-tests-v3.log",
+      "sha256": "d9673291d79d259210f9375e2f254ad593bf764da2b39d2df18e36ef5cfa50a1"
+    },
+    "validation/focused-tests-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/focused-tests-v3-receipt.json",
+      "sha256": "8509d7ecc422713f88ba69a6444928384ef810b2c1c3cfec870b96cc999fbbaf"
+    },
+    "validation/original-build-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v1-receipt.json",
+      "sha256": "8f1f7826769bab4f32fd41e5c4de9e543180ae604ad4c517800037fc3d662ed4"
+    },
+    "validation/guard-corrected-build-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v1-qualified-receipt.json",
+      "sha256": "21bbf1bd1e68aa0c709cda4f961030d438cbc48921c8ca8820b82095e29945ce"
+    },
+    "validation/final-tests-build-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v3-qualified-receipt.json",
+      "sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3"
+    },
+    "validation/install.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v1.log",
+      "sha256": "405697c9811f78ce2c63d03093882bdd6ac84104fd02b07777e2e93925ceb204"
+    },
+    "validation/measured-baseline-build-receipt.json": {
+      "original": "/private/tmp/dta-compact-float-facts-evidence/candidate-build-v1-receipt.json",
+      "sha256": "a9e7a95ec636b8ea47a6cd91018e719e24f88ecaa7187701422093aed9bcd47b"
+    },
+    "general/balanced-summary.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-summary.json",
+      "sha256": "8625c3b1392d7b85804b0a79e6dab97ff9fe0cb89bbc1975838cb44d979383a1"
+    },
+    "general/balanced-run-receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-run-receipt.json",
+      "sha256": "4883aa8dda438eb86cd53190a89249e91fa6277017b5a35ac3e0ef4c7025d43d"
+    },
+    "general/balanced-baseline-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round1.csv",
+      "sha256": "ce9ae165a565f455c83606833563299d683ae86427ec0a2fcf5d4ce44dc72c11"
+    },
+    "general/balanced-candidate-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round1.csv",
+      "sha256": "716972e1c67ca0a66a5e2f843d43244812143f17935dd7f9d6f4b299718f0654"
+    },
+    "general/balanced-baseline-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round2.csv",
+      "sha256": "657532a1411c988a3dabb6aeabbb3d96a0ea6dfb8d3e53f3b81324e960de9765"
+    },
+    "general/balanced-candidate-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round2.csv",
+      "sha256": "0601c64857e344dbf7400fdf72a402cc4ab7ec8272e861e8f85b03503685686e"
+    },
+    "general/balanced-baseline-round3.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round3.csv",
+      "sha256": "2d0a1fb197125b909a481f8db7b1625762bcbc4d4b1f38234bfc4440a94b84c6"
+    },
+    "general/balanced-candidate-round3.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round3.csv",
+      "sha256": "6f6c3e151ecd98e63d141840fe9fdb535f9fea6805796b6e50a3c97b6295fac4"
+    },
+    "general/balanced-baseline-round4.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round4.csv",
+      "sha256": "7af927486d90dba5d00f33a2b48eb15aab75cee111861afb804255c4de269628"
+    },
+    "general/balanced-candidate-round4.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round4.csv",
+      "sha256": "758c30efa450d638642bcc8baea5e0d3bba4749d8b903019ddd5db305ea24904"
+    },
+    "general/balanced-baseline-round5.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round5.csv",
+      "sha256": "4b675551cc6299ec3822459ac0214405cc7027c6c71ef5feec8e4819d73c2ae9"
+    },
+    "general/balanced-candidate-round5.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round5.csv",
+      "sha256": "cf0b80068968d9983774c6450a143082276e2724028233d52c16e494064a723e"
+    },
+    "general/balanced-baseline-round6.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round6.csv",
+      "sha256": "08c7a950696ee06cc76a4988e78a79b292057ddcc54238cfd73af0566aaaf33a"
+    },
+    "general/balanced-candidate-round6.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round6.csv",
+      "sha256": "09791c5432c467a1f919be58531982cf0c0f8bbfe94b0e3af47baf387cf17dbe"
+    },
+    "supplement/receipt.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/receipt.json",
+      "sha256": "afde90fcad0534e53cf9645cba4e8000f544a10cddb18b8693afbd08b64061b5"
+    },
+    "supplement/summary.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/summary.json",
+      "sha256": "95dc632ba41ae1a81758f719ecc7aa82acfc86264f77ef8845d20f5192806c23"
+    },
+    "supplement/baseline-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/baseline-round1.csv",
+      "sha256": "d7993f7b6b6d3f2d2b9dd61e2d992b58cc23c4f44f31baf6fa8ac9fe85aa900a"
+    },
+    "supplement/candidate-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/candidate-round1.csv",
+      "sha256": "44135186a4f525fca69cafee75f367517250caec9ad27718cabd4dcc6141fd3b"
+    },
+    "supplement/baseline-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/baseline-round2.csv",
+      "sha256": "4c66b7aa000554b4645b91cb4e0c24476329853dd4392683de6bdf18c1f013b3"
+    },
+    "supplement/candidate-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement-balanced-v1/candidate-round2.csv",
+      "sha256": "73e82811fb6a28acd11d60a2f83e11efd74eb6d37f9925dff264ec2724cd1b5f"
+    },
+    "supplement/lookup-worker.R": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement/lookup-worker.R",
+      "sha256": "e17543c1190c7e31f8c74e68fc740ce56473d4aea95c6e3264cffc6de7f2576d"
+    },
+    "supplement/lookup-run.py": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/supplement/lookup-run.py",
+      "sha256": "eb99feb11048089969a84aaa06b482acec68f4f7676e98dc67441a318bb60992"
+    },
+    "construction/summary.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/summary.json",
+      "sha256": "68e26ae3cab53bb4a56b31193e1feeb21da3cba773179b4a63b273ec7d666109"
+    },
+    "construction/before.json": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/before.json",
+      "sha256": "4452f309e9a872f412b1d21e9d2627ac467088ff636d2b932c4400ce38089f30"
+    },
+    "construction/raw.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/raw.csv",
+      "sha256": "5dcd3314672e7c3c2c10d042ab18837be8f69f80bd462c750a468b80fe56a2f5"
+    },
+    "construction/baseline-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round1.csv",
+      "sha256": "ccf1362064a3c803285577cb7fa82c65b16012e60cf5f34839beacfaddd7ec2f"
+    },
+    "construction/baseline-round1.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round1.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round1.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round1.csv",
+      "sha256": "73c7a23c7b74c929308fc159ca2881adc00779a925d7478202dd0b98ca9ef365"
+    },
+    "construction/candidate-round1.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round1.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/baseline-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round2.csv",
+      "sha256": "5a28a9c7a7ce0c59f4d6f2c13b683add21cd38c222225cf25d9bddafc131d759"
+    },
+    "construction/baseline-round2.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round2.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round2.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round2.csv",
+      "sha256": "23547a5866b0da86939931e4caf684aeea7439686a75ed92871fa470e60ccc39"
+    },
+    "construction/candidate-round2.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round2.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/baseline-round3.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round3.csv",
+      "sha256": "de8b2018db4ed471c5ba677910c4b5cf164e76dbc90afc81c19a39d93e589e75"
+    },
+    "construction/baseline-round3.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round3.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round3.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round3.csv",
+      "sha256": "0324b06ca405bd635ad07bf8b15e2b137d9411d5014ffd7787699cdd60a36e6f"
+    },
+    "construction/candidate-round3.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round3.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/baseline-round4.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round4.csv",
+      "sha256": "ab01ab1ea4ee6ed362e7486a18d2d7a3c8673a8222a401583152358ad3d7dd87"
+    },
+    "construction/baseline-round4.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round4.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round4.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round4.csv",
+      "sha256": "958714e43b77826307d5c4a7cee0dbf9dd735557058537d68bb36a4c45c1320e"
+    },
+    "construction/candidate-round4.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round4.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/baseline-round5.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round5.csv",
+      "sha256": "7cea40acdff18685c0b1c4d82cccf1f8cc1508bd4509b187182fb19990063b0c"
+    },
+    "construction/baseline-round5.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round5.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round5.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round5.csv",
+      "sha256": "6b5575c2aacf09bb3bf22efc03b6b43b7fd6294a1684026d64b714d0c4c8e47b"
+    },
+    "construction/candidate-round5.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round5.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/baseline-round6.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round6.csv",
+      "sha256": "7e74ac5d0eb557fc2003920b6b76fd33ac877e028fa91dee85297bb3bb4a5c05"
+    },
+    "construction/baseline-round6.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/baseline-round6.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/candidate-round6.csv": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round6.csv",
+      "sha256": "163f81428d55b86400cf20f8f3f563afb214d3ea66f77215a1ed6054a850b01a"
+    },
+    "construction/candidate-round6.log": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup-evidence/construction-balanced-v1/candidate-round6.log",
+      "sha256": "8ed584322dd5dba946a8ec853c2fa2227e77bbb4936ac3d72d0637accf2ff1ee"
+    },
+    "construction/construction-worker.R": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/compact-column-facts-performance/construction-worker.R",
+      "sha256": "b7761fec1ec67c1e0d732a1c066cc2c4ffb6147bfe5b490008c160af5d87150d"
+    },
+    "construction/construction-run.py": {
+      "original": "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/compact-column-facts-performance/construction-run.py",
+      "sha256": "0c8476779ad100c2e9c92e2ecd53f1a9476ff53e540afafb7a4e70ae05a4cd5b"
+    }
+  },
+  "scope": "Selected completed local evidence only. Publication and validation launch no R process, build, compiler or timing."
+}

@@ -1,0 +1,80 @@
+{
+  "commit": "56f4631701477c29d444dd293ca2bda752f625e8",
+  "source_commit": "56f4631701477c29d444dd293ca2bda752f625e8",
+  "cwd": "/private/tmp/dta-integer-reciprocal-lookup",
+  "working_tree_status": "",
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "compiler_sha256": "5b1ddb7e9c11b87a034fc88b212e8ac243cfe2b4db696d767aa44c79595fc09a",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "source_sha256": {
+    "numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "numeric-arithmetic-general.h": "3f9d47e88fda644d5e3889475695abb87e5dddd32ae1d3f4c37144c7d4f42ae3",
+    "numeric-arithmetic-integer-reciprocal.h": "5dacb11a9a9af8141252dc7af243661dbe991afb229576bb237e722acac18c51",
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "dtatools-internal.h": "da5978b9c8098d0045c5b8280b6d3469a6e25cc15a28ad0b40f93047f0b394a4",
+    "numeric-payload.c": "43d9f9cebacc12e32561116fd971a876d3f929b0de47c79e92568bbe7e62bb66"
+  },
+  "controller_sha256": "ad09efe72d159147a838793bf693fc183dd55f7f43499acaecae1558735d7c30",
+  "probe_sha256": "ce43fcd03638daa017a7247cd2d1a71161a023534a75247ee276aeaa69853325",
+  "command": [
+    "/usr/bin/cc",
+    "-std=c11",
+    "-O1",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "-I",
+    "/private/tmp/dta-integer-reciprocal-lookup-evidence/committed-oracle-o1-v1",
+    "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/integer-reciprocal/work-count.c",
+    "-lm",
+    "-o",
+    "/private/tmp/dta-integer-reciprocal-lookup-evidence/committed-oracle-o1-v1/work-count"
+  ],
+  "require_proved": true,
+  "exit_code": 0,
+  "artifact_sha256": {
+    "numeric-arithmetic-integer.h": "551da516994dcc9cbddd92f0ac391b170783e487241dbbae38f2a656038caeff",
+    "numeric-arithmetic.h": "c14b7492366c19bcff31ea5fd46230166167f6461f025d3f12fa2557b6c22e21",
+    "numeric-arithmetic-pair.h": "2c4f25f2b3f585450416b6c3fd2749f318aeb84a45b7ea1ff4ff6832892d4a2d",
+    "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "numeric-arithmetic-integer-reciprocal.h": "5f29536bafea33f56097c14f2bc3b7f9f1bc2dea02b5a3796cb8be43510f3efd",
+    "numeric-arithmetic-pair-float.h": "8c1cf018ff87199ab7051df6e22a2b91c751c6a7cb76f5f1e42c3fa04c3106c6",
+    "work-count": "27298a3fc3adf39d84bebbfd9775b8530b9cf27bf4411b3fca7fde84935481b2",
+    "numeric-arithmetic-float-reciprocal.h": "34b1448f59afb26b91a0b757582f19fbf3739ec6adf061dd349d4156757f5dc2",
+    "numeric-arithmetic-pair-long-float.h": "dc2c376cacd0540d9244b8f8366467a1900e4f5c9019574660f3c7f9a6735c48",
+    "numeric-arithmetic-general.h": "d068d594b64459ba515518850bbebf81d2971161e10687caeff608ece55a3f58",
+    "work-count.csv": "1905937f57d00243ea5a6b7b3dde24fbe99449076f1808544104b62ab2f14c86",
+    "numeric-arithmetic-float-scalar.h": "4d090f882a44ad810d8ba559ecd675ccbc9a9d6afef46121f79b8651c784784c",
+    "work-count.log": "fcd71820036f82ce885cf29fc41947c0872023d0d34cc630c6ec1e9f66cdc2b8",
+    "production-common.h": "cd7374eb4b9b5ba4b7d6a762236108eb8a0ebf199132e64394acc4383ed5450a",
+    "numeric-arithmetic-scale.h": "d3b33df30c2926eea918ac7ff609dbf96831a3b7e6db0da494bc2a0e0d1bd620"
+  },
+  "rounding_witnesses": [
+    [
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "8388608"
+    ],
+    [
+      "2",
+      "4194304"
+    ],
+    [
+      "3",
+      "12582912"
+    ]
+  ],
+  "cases": 1472,
+  "has_lookup": true,
+  "scope": "Actual general result/preflight/producer headers under four verified rounding modes. 640 retained fallback/domain cases; 640 direct BYTE/INT producer cases cover every physical code, both destinations, modern/legacy policies, signed zeros, subnormals and magnitude endpoints; 192 actual general-result cases exercise both sides of the 262144 admission threshold. Exact-zero and unknown controls and bounded spans included. Allocation and R reader boundaries mocked. No timing or ownership proof."
+}

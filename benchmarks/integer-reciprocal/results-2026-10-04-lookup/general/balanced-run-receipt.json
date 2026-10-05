@@ -1,0 +1,275 @@
+{
+  "started": "2026-10-05T00:29:40.129335+00:00",
+  "worker_sha256": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+  "controller_sha256": "34b4d03937ace29f795d11121a6f58ef0c854e4e71106bdc9ad98ec46409bf46",
+  "libraries": {
+    "baseline": "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+    "candidate": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1"
+  },
+  "library_before": {
+    "baseline": {
+      "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+      "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+      "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+    },
+    "candidate": {
+      "libs/dtatools.so": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+      "DESCRIPTION": "fad7c29312e97e6b15266db102c14b0bd141151f8717d7aea58bf1e156a34065",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "b2e4371f50cf0c12e832080022180947012f3d48a444df38ac695b00fe24bc4c",
+      "R/dtatools.rdx": "c583a2fc45b34d803029193a2a1c8ce6f29eee3807b61975bfb0b3fd1cf3bef5"
+    }
+  },
+  "commands": [
+    {
+      "round": 1,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "1",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round1.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:29:40.129443+00:00",
+      "ended": "2026-10-05T00:29:52.001388+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "1",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round1.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:29:52.001677+00:00",
+      "ended": "2026-10-05T00:30:03.985842+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "2",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round2.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:30:03.986182+00:00",
+      "ended": "2026-10-05T00:30:15.897660+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 2,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "2",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round2.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:30:15.897960+00:00",
+      "ended": "2026-10-05T00:30:27.725302+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "3",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round3.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:30:27.725685+00:00",
+      "ended": "2026-10-05T00:30:40.567862+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 3,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "3",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round3.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:30:40.568226+00:00",
+      "ended": "2026-10-05T00:30:53.347587+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "4",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round4.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:30:53.347907+00:00",
+      "ended": "2026-10-05T00:31:05.360352+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 4,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "4",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round4.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:31:05.360755+00:00",
+      "ended": "2026-10-05T00:31:17.958458+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "5",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round5.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:31:17.958819+00:00",
+      "ended": "2026-10-05T00:31:30.535154+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 5,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "5",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round5.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:31:30.535464+00:00",
+      "ended": "2026-10-05T00:31:42.517386+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "candidate",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1",
+        "6",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-candidate-round6.csv",
+        "candidate",
+        "timed"
+      ],
+      "started": "2026-10-05T00:31:42.517713+00:00",
+      "ended": "2026-10-05T00:31:54.355665+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    },
+    {
+      "round": 6,
+      "variant": "baseline",
+      "command": [
+        "/opt/homebrew/bin/Rscript",
+        "--vanilla",
+        "/private/tmp/dta-integer-reciprocal-lookup/benchmarks/remaining-compact-kernels/worker.R",
+        "/private/tmp/dta-compact-float-facts-evidence/candidate-library-v1",
+        "6",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/public-balanced-v1/balanced-baseline-round6.csv",
+        "baseline",
+        "timed"
+      ],
+      "started": "2026-10-05T00:31:54.355949+00:00",
+      "ended": "2026-10-05T00:32:07.121491+00:00",
+      "exit_code": 0,
+      "stdout": "18 qualified observations\n",
+      "stderr": ""
+    }
+  ],
+  "protocol": "Sequential fresh-R workers; six cases, three representations; alternating AB/BA rounds; CPU per call.",
+  "library_after": {
+    "baseline": {
+      "libs/dtatools.so": "e6e4c4edf80144803dcb556612ca86ca54b0c6568fc560c0c5ecc258fcd8bc13",
+      "DESCRIPTION": "efc7950dd1271a429ea17dd7fdb4465d327aa2492665ed49df69215792c16c9e",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "6144a4bedfae6d7deddf139a7d224a3f752dad9fa4bf8f60d3b3fcf7dca90b40",
+      "R/dtatools.rdx": "926164532c77cac54306694165e8102ddd7fd6867436f8bfcb40a777ed03339d"
+    },
+    "candidate": {
+      "libs/dtatools.so": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+      "DESCRIPTION": "fad7c29312e97e6b15266db102c14b0bd141151f8717d7aea58bf1e156a34065",
+      "NAMESPACE": "8bb6262fdcf64a11d411beed5b682d9c814c671436711622cf844fa1889ed427",
+      "R/dtatools.rdb": "b2e4371f50cf0c12e832080022180947012f3d48a444df38ac695b00fe24bc4c",
+      "R/dtatools.rdx": "c583a2fc45b34d803029193a2a1c8ce6f29eee3807b61975bfb0b3fd1cf3bef5"
+    }
+  },
+  "ended": "2026-10-05T00:32:07.134886+00:00",
+  "observations": 216,
+  "exit_code": 0
+}

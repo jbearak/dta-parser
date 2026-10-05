@@ -233,6 +233,10 @@
     {
       "path": "tests/testthat/fixtures/tabulate-summary.log",
       "sha256": "576302a58f6384a92f4533d95c601866259ce247472242954f33ee02524c7faf"
+    },
+    {
+      "path": "tests/testthat/fixtures/constructor-region-probe.c",
+      "sha256": "d3adca1303e9fb15de0ed144502e9e9c9a94f97271a3a797d61bef3a51d7e474"
     }
   ],
   "families": [
@@ -6206,6 +6210,14 @@
         {
           "path": "tests/testthat/test-compact-reciprocal-facts.R",
           "sha256": "25a520615a6ffd9f8be89fcc969899184f389f874bd061f199e04859585de757"
+        },
+        {
+          "path": "tests/testthat/test-integer-reciprocal-lookup.R",
+          "sha256": "1bfcae992dcb8ea5fd860226d77943d4236b7d9e525d6b0cf6b4a0c1545430c4"
+        },
+        {
+          "path": "tests/testthat/test-constructor-region-inputs.R",
+          "sha256": "532b836e7d6147eaa601f4ee68fe6b3cd53709f73107b0b6e7b7f60656f5ea16"
         }
       ],
       "blocks": [
@@ -7995,9 +8007,80 @@
           "min_pass_before_skip": 0,
           "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
           "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-integer-reciprocal-lookup.R",
+          "test": "BYTE and INT reciprocals preserve modern observed codes and tags across lookup admission",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 156,
+          "warnings": 0
+        },
+        {
+          "file": "test-integer-reciprocal-lookup.R",
+          "test": "large integer reciprocals retain zero caches and unknown backing fallbacks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 194,
+          "warnings": 0
+        },
+        {
+          "file": "test-integer-reciprocal-lookup.R",
+          "test": "short integer and LONG reciprocals preserve ordinary fallback results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 78,
+          "warnings": 0
+        },
+        {
+          "file": "test-integer-reciprocal-lookup.R",
+          "test": "large integer reciprocals keep captured bytes during allocation callbacks",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 52,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+          "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+        },
+        {
+          "file": "test-constructor-region-inputs.R",
+          "test": "constructor chunk readers preserve final encoded values and facts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 588,
+          "warnings": 0
+        },
+        {
+          "file": "test-constructor-region-inputs.R",
+          "test": "constructor region reads support partial fallback and changing input",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 243,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "The isolated foreign ALTREP fixture requires callr and a C compiler; other profiles retain constructor value and diagnostics checks.",
+          "skip_message": "Reason: (constructor region probe requires a C compiler|callr cannot be loaded)"
+        },
+        {
+          "file": "test-constructor-region-inputs.R",
+          "test": "constructor chunk boundaries retain strict diagnostics",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 48,
+          "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "constructor-region-inputs",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     },
     {
