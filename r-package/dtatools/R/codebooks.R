@@ -462,20 +462,23 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 
 # One variable's tabulation rows for .book_rows(), or NULL without any.
 .codebook_tabulate <- function(x, name, position) {
-    factorized <- if (is.numeric(x) && !is.factor(x)) {
-        .prepare_tab_argument(x, "distinguish", "value")
-    } else addNA(x, ifany = TRUE)
-    counts <- .book_level_counts(factorized)
+    source_labels <- attr(x, "labels", exact = TRUE)
+    labelled <- is.numeric(x) && .valid_tab_labels(source_labels)
+    # A labelled variable's value and label factors share one grouping.
+    factors <- if (labelled) {
+        .prepare_tab_argument(x, "distinguish", c("value", "label"))
+    } else if (is.numeric(x) && !is.factor(x)) {
+        list(value = .prepare_tab_argument(x, "distinguish", "value"))
+    } else list(value = addNA(x, ifany = TRUE))
+    counts <- .book_level_counts(factors$value)
     displayed <- names(counts)
     if (!length(counts)) return(NULL)
     numeric_value <- suppressWarnings(as.double(displayed))
     missing_code <- ifelse(grepl("^\\.[a-z]$|^\\.$|^NaN$", displayed), displayed, NA_character_)
     labels <- rep(NA_character_, length(displayed))
-    source_labels <- attr(x, "labels", exact = TRUE)
-    if (is.numeric(x) && .valid_tab_labels(source_labels)) {
+    if (labelled) {
         # Only the label factor's category names are needed, not its counts.
-        prepared <- .prepare_tab_argument(x, "distinguish", "label")
-        label_names <- names(.book_level_counts(prepared, count = FALSE))
+        label_names <- names(.book_level_counts(factors$label, count = FALSE))
         if (length(label_names) == length(counts)) labels <- label_names
     } else if (is.factor(x)) labels <- displayed
     list(position = rep(position, length(displayed)),
