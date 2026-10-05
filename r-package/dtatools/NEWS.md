@@ -5,6 +5,11 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* dplyr verbs on wide dibbles set up their data mask in time linear in the
+  number of columns. On a 5,360-column file, `filter()`, `mutate()`,
+  `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
+  now take 0.03 to 0.12 seconds.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.

@@ -13021,7 +13021,7 @@
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
-          "sha256": "224d17ca77a8736429e7ded2d3fab28201c4cd11201a2e26561f164c2223d200"
+          "sha256": "57aee84481a9f2a49e781ec45c050c8ed38a5ec59107eb7e6aec49ccc7e50cad"
         },
         {
           "path": "tests/testthat/test-mask-reader-callbacks.R",
@@ -14050,6 +14050,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "initial capture registers a name repeated during capture once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         },
         {
