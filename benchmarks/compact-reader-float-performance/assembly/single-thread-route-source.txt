@@ -1,0 +1,21 @@
+3347: fn run_column_fills(
+3348:     columns: &[ArrowReadColumn],
+3349:     fills: Vec<Option<ColumnFill>>,
+3350:     threads: usize,
+3351: ) -> Result<Vec<FillOutcome>, String> {
+3352:     let mut outcomes: Vec<FillOutcome> = fills.iter().map(|_| FillOutcome::Plain).collect();
+3353:     if threads <= 1 {
+3354:         for (index, fill) in fills.into_iter().enumerate() {
+3355:             let Some(fill) = fill else { continue };
+3356:             check_interrupt()?;
+3357:             outcomes[index] =
+3358:                 unsafe { fill_read_column_with_poll(&columns[index], &fill, coarse_interrupt) }?;
+3359:         }
+3360:         return Ok(outcomes);
+3361:     }
+3362:     let tasks: Vec<(usize, ColumnFill)> = fills
+3363:         .into_iter()
+3364:         .enumerate()
+3365:         .filter_map(|(index, fill)| fill.map(|fill| (index, fill)))
+3366:         .collect();
+3367:     let next = AtomicUsize::new(0);

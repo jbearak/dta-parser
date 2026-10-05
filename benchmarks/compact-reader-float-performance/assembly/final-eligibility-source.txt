@@ -1,0 +1,24 @@
+97: impl ReaderFacts {
+98:     pub(crate) fn new(kind: NumericKind, temporal: TemporalKind, version: FormatVersion) -> Self {
+99:         let eligibility = if temporal != TemporalKind::None {
+100:             Eligibility::Unknown
+101:         } else if kind == NumericKind::Float && version.as_u16() > 111 {
+102:             Eligibility::Float
+103:         } else {
+104:             Eligibility::Unknown
+105:         };
+106:         Self {
+107:             eligibility,
+108:             next_row: 0,
+109:             ordered: true,
+110:             float: FloatFacts::new(),
+111:         }
+112:     }
+113: 
+114:     #[inline(always)]
+115:     pub(crate) fn collects_float(&self) -> bool {
+116:         self.eligibility == Eligibility::Float && self.ordered
+117:     }
+118: 
+119:     fn record_coverage(&mut self, start: usize, count: usize) -> bool {
+120:         if count == 0 {

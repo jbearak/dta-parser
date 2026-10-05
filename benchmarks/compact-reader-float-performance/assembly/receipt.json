@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "status": "BOUND",
+  "scope": "Read-only source and disassembly of existing baseline/final Mach-O DLLs; no R, build, benchmark or new performance observation. Earlier measured9e witness is separate and unchanged.",
+  "source": {
+    "baseline": {
+      "commit": "3ef04edca377e122befd77c8481831a60bda6b64",
+      "build_receipt_sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+      "build_receipt_path": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v3-qualified-receipt.json",
+      "compiled_source_directory": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-build-v1",
+      "source_inventory_matches_commit_and_compiled_copy": true,
+      "files_sha256": {
+        "src/rust/src/owned_numeric.rs": "63ade14cd99485eee30a19f4549d67d9b82e287a811be5a1527d79ae583fef9b",
+        "src/rust/src/arrow_ffi.rs": "1c5483830ca2e51064195cdbe13b1fae7bc7cb814e16776562b75ae215271ffa",
+        "src/rust/src/lib.rs": "a1bcaef4f18c865b3b6c2adaf57a7517848d269392df3ac670f2bdd4310fdd3a",
+        "src/dta-tools/src/missing.rs": "5f5dee09122cc0db2e34171f4e1be82b2480e36ac352839a4121c537f8fc42c7",
+        "src/dta-tools/src/types.rs": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a"
+      },
+      "dll_path": "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1/dtatools/libs/dtatools.so",
+      "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5"
+    },
+    "final": {
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "build_receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+      "build_receipt_path": "/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-build-v1-receipt.json",
+      "compiled_source_directory": "/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-build-v1",
+      "source_inventory_matches_commit_and_compiled_copy": true,
+      "files_sha256": {
+        "src/rust/src/owned_numeric.rs": "c186c2382b0385d7ee555f7c93c132dc70d34cc8916571aa4e0388a9bb00c936",
+        "src/rust/src/arrow_ffi.rs": "1c5483830ca2e51064195cdbe13b1fae7bc7cb814e16776562b75ae215271ffa",
+        "src/rust/src/lib.rs": "cc7026d81e46b7ec33fd12819a3a89bf9aeed4316edd33769d2406ce1eb16e1a",
+        "src/dta-tools/src/missing.rs": "5f5dee09122cc0db2e34171f4e1be82b2480e36ac352839a4121c537f8fc42c7",
+        "src/dta-tools/src/types.rs": "46cb44d58cfd9fbb559c88ed501fc006cd004734f724835978e44c36dfebc20a",
+        "src/rust/src/numeric_facts.rs": "e1f50361ca51571b8b4ff653fea5f73192fd5d233d38281b88b0563664518258"
+      },
+      "dll_path": "/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-library-v1/dtatools/libs/dtatools.so",
+      "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984"
+    }
+  },
+  "source_excerpts": [
+    {
+      "file": "baseline-arrow-source.txt",
+      "sha256": "3ff8a3030af57bb7253bbd0adefbdb56c6174d95cb0e8808faaa361a160bfb3e",
+      "commit": "3ef04edca377e122befd77c8481831a60bda6b64",
+      "path": "src/rust/src/owned_numeric.rs",
+      "lines": [
+        348,
+        393
+      ]
+    },
+    {
+      "file": "final-arrow-source.txt",
+      "sha256": "b9ba1555a0cbb0b2bb9811bd758c8fb5c5a685c0e76afa23e56f4521abd25416",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/owned_numeric.rs",
+      "lines": [
+        393,
+        428
+      ]
+    },
+    {
+      "file": "final-count-and-facts-source.txt",
+      "sha256": "1ee32ada706395e745b1f73f9ae59f2f7b0936b548a4dd237d9f7c1b73dd9e52",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/numeric_facts.rs",
+      "lines": [
+        1,
+        76
+      ]
+    },
+    {
+      "file": "final-eligibility-source.txt",
+      "sha256": "56a042e793431742e50bfe5fd4fbd985ec6571d3e947468221fd4b39c7c38575",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/numeric_facts.rs",
+      "lines": [
+        97,
+        120
+      ]
+    },
+    {
+      "file": "final-dta-float-source.txt",
+      "sha256": "7d63e8b4b44da7e9cb2d657c050408f5a0cff180c18f6451d6c586ef446a1af3",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/lib.rs",
+      "lines": [
+        3354,
+        3388
+      ]
+    },
+    {
+      "file": "final-dta-admission-source.txt",
+      "sha256": "e2c92c8b4e3ab6b4fbcbbbf3487fc404f26b084d7f1946694daed7db70e89c59",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/lib.rs",
+      "lines": [
+        3267,
+        3302
+      ]
+    },
+    {
+      "file": "single-thread-route-source.txt",
+      "sha256": "64cdf8a0d0ac86554fd759de9b2a2caf675ba03d724e42ee9c4b761560724980",
+      "commit": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "path": "src/rust/src/arrow_ffi.rs",
+      "lines": [
+        3347,
+        3367
+      ]
+    },
+    {
+      "file": "original-missing-classifier-source.txt",
+      "sha256": "e361b913f64c206a9177d1baba38641bbeab891925505aa87f95ea7b221fb0b3",
+      "commit": "3ef04edca377e122befd77c8481831a60bda6b64",
+      "path": "src/dta-tools/src/missing.rs",
+      "lines": [
+        190,
+        262
+      ]
+    }
+  ],
+  "snippets": {
+    "baseline-arrow-float.asm": {
+      "sha256": "7b983a6b31286d9617045887c63083d81f81ada0de540885bd104604bc5af67c",
+      "address_inclusive": [
+        "0x5a155c",
+        "0x5a15a8"
+      ],
+      "instructions": 20,
+      "calls": 1
+    },
+    "final-arrow-float.asm": {
+      "sha256": "d674daf2157d2e7b8138b63f4e88fba7e19902d88808321085237292cc258182",
+      "address_inclusive": [
+        "0x5de3a8",
+        "0x5de414"
+      ],
+      "instructions": 28,
+      "calls": 0
+    },
+    "final-arrow-block-poll.asm": {
+      "sha256": "53b6a02d040d23e76dff97308c7fe6b2085acdd81daba2151d2cff6b438346ed",
+      "address_inclusive": [
+        "0x5de370",
+        "0x5de3a4"
+      ],
+      "instructions": 14,
+      "calls": 1
+    },
+    "baseline-dta-float.asm": {
+      "sha256": "262facb4762968bfe9bb1026a5ec916a524593826ce0623c832efbe99b9a680e",
+      "address_inclusive": [
+        "0x566580",
+        "0x5665f4"
+      ],
+      "instructions": 30,
+      "calls": 0
+    },
+    "final-dta-float-gate.asm": {
+      "sha256": "f458d777be65df0a0c6c5f83d5a5f51a4f15a6040ec9837009821b8c7c681450",
+      "address_inclusive": [
+        "0x5666ac",
+        "0x5666fc"
+      ],
+      "instructions": 21,
+      "calls": 0
+    },
+    "final-dta-float.asm": {
+      "sha256": "49a3a9a298ecb6a50100c264ccf6eab5c273156a08250f463127392af3831008",
+      "address_inclusive": [
+        "0x56715c",
+        "0x567190"
+      ],
+      "instructions": 14,
+      "calls": 0
+    }
+  },
+  "disassembly_commands": {
+    "baseline_arrow": {
+      "command": [
+        "xcrun",
+        "llvm-objdump",
+        "--disassemble",
+        "--start-address=0x5a0290",
+        "--stop-address=0x5a1b70",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1/dtatools/libs/dtatools.so"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5"
+    },
+    "baseline_dta": {
+      "command": [
+        "xcrun",
+        "llvm-objdump",
+        "--disassemble",
+        "--start-address=0x5661c0",
+        "--stop-address=0x568130",
+        "/private/tmp/dta-integer-reciprocal-lookup-evidence/candidate-library-v1/dtatools/libs/dtatools.so"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5"
+    },
+    "final": {
+      "arrow-single-thread": {
+        "command": [
+          "xcrun",
+          "llvm-objdump",
+          "--disassemble",
+          "--start-address=0x5dd4f0",
+          "--stop-address=0x5df94c",
+          "/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-library-v1/dtatools/libs/dtatools.so"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "output_file": "final-arrow-single-thread.asm",
+        "sha256": "382c9ba1fe4525ecf8124d3f8259a5bd60fff1137e5bbc2c6c0493f69a0b9985",
+        "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984"
+      },
+      "dta-numeric-batch": {
+        "command": [
+          "xcrun",
+          "llvm-objdump",
+          "--disassemble",
+          "--start-address=0x566288",
+          "--stop-address=0x568330",
+          "/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-library-v1/dtatools/libs/dtatools.so"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "output_file": "final-dta-numeric-batch.asm",
+        "sha256": "ce6f1388411f5420a6fa62099eb101f018f2c4b53bc6fd224f97b4ca1e1b8dfa",
+        "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984"
+      }
+    }
+  },
+  "findings": {
+    "matched_arrow_function": "prepare_from_arrow::<coarse_interrupt>, entry0x5dd4f0; threads<=1 public route",
+    "final_arrow": "Eligible modern non-temporal FLOAT loop is scalar integer-bit code: zero per-element classifier/R/indirect calls, no FP comparison, no per-element version dispatch or data-dependent branch. One backedge. Cancellation remains outside each bounded65536-row block.",
+    "matched_dta_function": "<RColumn as DtaColumnSink>::try_push_numeric_rows, entry0x566288",
+    "final_dta": "Modern version gate cmp#111 outside gather. Successful compact FLOAT paths use scalar0x56715c\u20130x567190, zero per-element calls/version selection/FP compares/data-dependent branches; endian is selected per lane and raw words copied unchanged.",
+    "simd_limit": "DTA function contains additional SIMD bodies behind byte-stride==1. FLOAT admission requires stride>=width==4, so those bodies do not establish SIMD on successful FLOAT gathers. Eligible Arrow FLOAT loop is scalar; other Arrow generic/integer bodies are not evidence for this path.",
+    "semantic_review": "Exact canonical-offset plus either-sign IEEE NaN predicate; legacy retains original classifier. Infinities and noncanonical high finite words remain nonmissing. Facts remain Arrow-only, modern non-temporal strict FLOAT, complete ordered allocation-specific coverage.",
+    "performance_limit": "No new timing or claim for finalfc35 DLL; earlier9e gain is historical evidence only."
+  },
+  "review_artifact_sha256": {
+    "README.md": "917970f9fd1588a871f42d528f997725956bf05cabe2c981e85322f9a62b5fad",
+    "modern-predicate-review.md": "d21457885e5081d8484f45397c1a22c889344214857a4a20b02f037fbf22ca39"
+  }
+}

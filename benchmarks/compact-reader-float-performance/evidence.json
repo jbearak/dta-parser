@@ -1,0 +1,4184 @@
+{
+  "schema_version": 2,
+  "panel": {
+    "status": "PASS",
+    "mode": "measure",
+    "paired_rounds": 6,
+    "observations": 144,
+    "before_after_equal": true,
+    "rounds": [
+      {
+        "round": 1,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.6785714285714286,
+            "1": 1.9285714285714286,
+            "5": 4.561643835616438
+          },
+          "candidate": {
+            "0": 1.644927536231884,
+            "1": 1.808139534883721,
+            "5": 5.2835820895522385
+          }
+        },
+        "reader_cpu_cost_ratio": 0.9799568300955904,
+        "reader_cpu_delta_ms": -0.03364389233954457,
+        "one_operation_cpu_workflow_speedup": 1.0666054203031694,
+        "one_operation_cpu_workflow_saved_ms": 0.12043189368770757,
+        "five_operation_cpu_workflow_speedup": 0.863361968887857,
+        "five_operation_cpu_workflow_saved_ms": -0.7219382539358001,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.6785714285714286,
+            "1": 1.9285714285714286,
+            "5": 4.561643835616438
+          },
+          "candidate": {
+            "0": 1.6521739130434783,
+            "1": 1.808139534883721,
+            "5": 5.298507462686567
+          }
+        },
+        "reader_wall_cost_ratio": 0.9842738205365402,
+        "reader_wall_delta_ms": -0.026397515527950333,
+        "one_operation_wall_workflow_speedup": 1.0666054203031694,
+        "one_operation_wall_workflow_saved_ms": 0.12043189368770757,
+        "five_operation_wall_workflow_speedup": 0.860929963341694,
+        "five_operation_wall_workflow_saved_ms": -0.7368636270701288
+      },
+      {
+        "round": 1,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 6.135593220339,
+            "1": 7.14,
+            "5": 8.852941176470589
+          },
+          "candidate": {
+            "0": 3.168421052631579,
+            "1": 3.5,
+            "5": 4.115384615384603
+          }
+        },
+        "reader_cpu_cost_ratio": 0.5164001163128803,
+        "reader_cpu_delta_ms": -2.9671721677074205,
+        "one_operation_cpu_workflow_speedup": 2.04,
+        "one_operation_cpu_workflow_saved_ms": 3.6399999999999997,
+        "five_operation_cpu_workflow_speedup": 2.151181968114355,
+        "five_operation_cpu_workflow_saved_ms": 4.737556561085985,
+        "wall_ms": {
+          "baseline": {
+            "0": 6.135593220338983,
+            "1": 7.14,
+            "5": 8.882352941176471
+          },
+          "candidate": {
+            "0": 3.1789473684210527,
+            "1": 3.5,
+            "5": 4.128205128205116
+          }
+        },
+        "reader_wall_cost_ratio": 0.5181157313172434,
+        "reader_wall_delta_ms": -2.95664585191793,
+        "one_operation_wall_workflow_speedup": 2.04,
+        "one_operation_wall_workflow_saved_ms": 3.6399999999999997,
+        "five_operation_wall_workflow_speedup": 2.151625867738406,
+        "five_operation_wall_workflow_saved_ms": 4.754147812971355
+      },
+      {
+        "round": 1,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 0.7377398720682303,
+            "1": 1.1835205992509363,
+            "5": 3.288659793814433
+          },
+          "candidate": {
+            "0": 0.6864988558352403,
+            "1": 1.1963636363636363,
+            "5": 3.306122448979592
+          }
+        },
+        "reader_cpu_cost_ratio": 0.9305432467824499,
+        "reader_cpu_delta_ms": -0.051241016232990044,
+        "one_operation_cpu_workflow_speedup": 0.9892649385836094,
+        "one_operation_cpu_workflow_saved_ms": -0.012843037112699962,
+        "five_operation_cpu_workflow_speedup": 0.9947180857833778,
+        "five_operation_cpu_workflow_saved_ms": -0.017462655165159102,
+        "wall_ms": {
+          "baseline": {
+            "0": 0.7356076759061834,
+            "1": 1.1797752808988764,
+            "5": 3.288659793814433
+          },
+          "candidate": {
+            "0": 0.6864988558352403,
+            "1": 1.1963636363636363,
+            "5": 3.306122448979592
+          }
+        },
+        "reader_wall_cost_ratio": 0.933240473584718,
+        "reader_wall_delta_ms": -0.04910882007094308,
+        "one_operation_wall_workflow_speedup": 0.9861343533349272,
+        "one_operation_wall_workflow_saved_ms": -0.016588355464759896,
+        "five_operation_wall_workflow_speedup": 0.9947180857833778,
+        "five_operation_wall_workflow_saved_ms": -0.017462655165159102
+      },
+      {
+        "round": 1,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0790816326530637,
+            "1": 1.5225806451612902,
+            "5": 3.019047619047609
+          },
+          "candidate": {
+            "0": 1.0510204081632626,
+            "1": 1.4854771784232366,
+            "5": 2.9906542056074863
+          }
+        },
+        "reader_cpu_cost_ratio": 0.9739952718676076,
+        "reader_cpu_delta_ms": -0.028061224489801084,
+        "one_operation_cpu_workflow_speedup": 1.0249774734186339,
+        "one_operation_cpu_workflow_saved_ms": 0.03710346673805365,
+        "five_operation_cpu_workflow_speedup": 1.009494047619041,
+        "five_operation_cpu_workflow_saved_ms": 0.028393413440122917,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0790816326530612,
+            "1": 1.5258064516129064,
+            "5": 3.0285714285714285
+          },
+          "candidate": {
+            "0": 1.0535714285714286,
+            "1": 1.4854771784232406,
+            "5": 2.9906542056074765
+          }
+        },
+        "reader_wall_cost_ratio": 0.9763593380614658,
+        "reader_wall_delta_ms": -0.025510204081632626,
+        "one_operation_wall_workflow_speedup": 1.0271490358623168,
+        "one_operation_wall_workflow_saved_ms": 0.04032927318966584,
+        "five_operation_wall_workflow_speedup": 1.0126785714285715,
+        "five_operation_wall_workflow_saved_ms": 0.037917222963951946
+      },
+      {
+        "round": 2,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.225296442687747,
+            "1": 2.3624999999999936,
+            "5": 5.435483870967742
+          },
+          "candidate": {
+            "0": 1.3419689119170986,
+            "1": 1.8791208791208847,
+            "5": 4.96875
+          }
+        },
+        "reader_cpu_cost_ratio": 1.0952197894033093,
+        "reader_cpu_delta_ms": 0.11667246922935148,
+        "one_operation_cpu_workflow_speedup": 1.257236842105256,
+        "one_operation_cpu_workflow_saved_ms": 0.48337912087910895,
+        "five_operation_cpu_workflow_speedup": 1.0939338608236966,
+        "five_operation_cpu_workflow_saved_ms": 0.466733870967742,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.2292490118577075,
+            "1": 2.3625,
+            "5": 5.435483870967742
+          },
+          "candidate": {
+            "0": 1.3419689119170986,
+            "1": 1.879120879120879,
+            "5": 4.968750000000016
+          }
+        },
+        "reader_wall_cost_ratio": 1.0916981823634275,
+        "reader_wall_delta_ms": 0.11271990005939103,
+        "one_operation_wall_workflow_speedup": 1.257236842105263,
+        "one_operation_wall_workflow_saved_ms": 0.4833791208791207,
+        "five_operation_wall_workflow_speedup": 1.093933860823693,
+        "five_operation_wall_workflow_saved_ms": 0.466733870967726
+      },
+      {
+        "round": 2,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 6.290322580645161,
+            "1": 6.886792452830207,
+            "5": 8.628571428571428
+          },
+          "candidate": {
+            "0": 3.2526315789473683,
+            "1": 3.5180722891566263,
+            "5": 4.397435897435898
+          }
+        },
+        "reader_cpu_cost_ratio": 0.517085020242915,
+        "reader_cpu_delta_ms": -3.0376910016977927,
+        "one_operation_cpu_workflow_speedup": 1.957547169811326,
+        "one_operation_cpu_workflow_saved_ms": 3.3687201636735806,
+        "five_operation_cpu_workflow_speedup": 1.9621824239900039,
+        "five_operation_cpu_workflow_saved_ms": 4.23113553113553,
+        "wall_ms": {
+          "baseline": {
+            "0": 6.274193548387097,
+            "1": 6.886792452830188,
+            "5": 8.628571428571428
+          },
+          "candidate": {
+            "0": 3.2421052631579057,
+            "1": 3.5180722891566263,
+            "5": 4.410256410256397
+          }
+        },
+        "reader_wall_cost_ratio": 0.5167365715058873,
+        "reader_wall_delta_ms": -3.0320882852291913,
+        "one_operation_wall_workflow_speedup": 1.9575471698113207,
+        "one_operation_wall_workflow_saved_ms": 3.368720163673562,
+        "five_operation_wall_workflow_speedup": 1.9564784053156203,
+        "five_operation_wall_workflow_saved_ms": 4.218315018315031
+      },
+      {
+        "round": 2,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 0.9104477611940298,
+            "1": 1.269090909090909,
+            "5": 3.5000000000000098
+          },
+          "candidate": {
+            "0": 0.6737739872068208,
+            "1": 1.226923076923077,
+            "5": 3.295918367346939
+          }
+        },
+        "reader_cpu_cost_ratio": 0.7400468384074917,
+        "reader_cpu_delta_ms": -0.236673773987209,
+        "one_operation_cpu_workflow_speedup": 1.0343687660302079,
+        "one_operation_cpu_workflow_saved_ms": 0.04216783216783204,
+        "five_operation_cpu_workflow_speedup": 1.0619195046439658,
+        "five_operation_cpu_workflow_saved_ms": 0.20408163265307078,
+        "wall_ms": {
+          "baseline": {
+            "0": 0.9104477611940298,
+            "1": 1.269090909090909,
+            "5": 3.5
+          },
+          "candidate": {
+            "0": 0.6737739872068208,
+            "1": 1.2192307692307693,
+            "5": 3.306122448979592
+          }
+        },
+        "reader_wall_cost_ratio": 0.7400468384074917,
+        "reader_wall_delta_ms": -0.236673773987209,
+        "one_operation_wall_workflow_speedup": 1.0408947519357612,
+        "one_operation_wall_workflow_saved_ms": 0.04986013986013971,
+        "five_operation_wall_workflow_speedup": 1.058641975308642,
+        "five_operation_wall_workflow_saved_ms": 0.19387755102040805
+      },
+      {
+        "round": 2,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0415647921760391,
+            "1": 1.196774193548387,
+            "5": 2.8598130841121496
+          },
+          "candidate": {
+            "0": 1.0623441396508728,
+            "1": 1.5125,
+            "5": 2.8545454545454545
+          }
+        },
+        "reader_cpu_cost_ratio": 1.0199501246882792,
+        "reader_cpu_delta_ms": 0.020779347474833676,
+        "one_operation_cpu_workflow_speedup": 0.7912556651559585,
+        "one_operation_cpu_workflow_saved_ms": -0.31572580645161286,
+        "five_operation_cpu_workflow_speedup": 1.0018453479373772,
+        "five_operation_cpu_workflow_saved_ms": 0.005267629566695131,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0440097799511003,
+            "1": 1.196774193548387,
+            "5": 2.869158878504673
+          },
+          "candidate": {
+            "0": 1.059850374064838,
+            "1": 1.5125,
+            "5": 2.8545454545454545
+          }
+        },
+        "reader_wall_cost_ratio": 1.0151728407318938,
+        "reader_wall_delta_ms": 0.015840594113737616,
+        "one_operation_wall_workflow_speedup": 0.7912556651559585,
+        "one_operation_wall_workflow_saved_ms": -0.31572580645161286,
+        "five_operation_wall_workflow_speedup": 1.0051193523424014,
+        "five_operation_wall_workflow_saved_ms": 0.014613423959218608
+      },
+      {
+        "round": 3,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.2550607287449473,
+            "1": 2.2808219178082125,
+            "5": 5.69354838709679
+          },
+          "candidate": {
+            "0": 1.1325301204819307,
+            "1": 2.1978021978022033,
+            "5": 5.4
+          }
+        },
+        "reader_cpu_cost_ratio": 0.9023707734162422,
+        "reader_cpu_delta_ms": -0.12253060826301665,
+        "one_operation_cpu_workflow_speedup": 1.0377739726027342,
+        "one_operation_cpu_workflow_saved_ms": 0.08301972000600921,
+        "five_operation_cpu_workflow_speedup": 1.0543608124253314,
+        "five_operation_cpu_workflow_saved_ms": 0.29354838709678965,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.2591093117408907,
+            "1": 2.287671232876712,
+            "5": 5.693548387096774
+          },
+          "candidate": {
+            "0": 1.1295180722891567,
+            "1": 2.192307692307687,
+            "5": 5.400000000000015
+          }
+        },
+        "reader_wall_cost_ratio": 0.8970770541974974,
+        "reader_wall_delta_ms": -0.129591239451734,
+        "one_operation_wall_workflow_speedup": 1.0434991588560465,
+        "one_operation_wall_workflow_saved_ms": 0.09536354056902496,
+        "five_operation_wall_workflow_speedup": 1.0543608124253256,
+        "five_operation_wall_workflow_saved_ms": 0.29354838709675946
+      },
+      {
+        "round": 3,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 6.0508474576271185,
+            "1": 6.7407407407407405,
+            "5": 8.805555555555555
+          },
+          "candidate": {
+            "0": 3.056179775280899,
+            "1": 3.5764705882352943,
+            "5": 4.191780821917808
+          }
+        },
+        "reader_cpu_cost_ratio": 0.5050829320492242,
+        "reader_cpu_delta_ms": -2.9946676823462197,
+        "one_operation_cpu_workflow_speedup": 1.884746588693957,
+        "one_operation_cpu_workflow_saved_ms": 3.164270152505446,
+        "five_operation_cpu_workflow_speedup": 2.100671750181554,
+        "five_operation_cpu_workflow_saved_ms": 4.613774733637747,
+        "wall_ms": {
+          "baseline": {
+            "0": 6.0508474576271185,
+            "1": 6.7407407407407405,
+            "5": 8.805555555555555
+          },
+          "candidate": {
+            "0": 3.067415730337079,
+            "1": 3.5764705882352943,
+            "5": 4.205479452054795
+          }
+        },
+        "reader_wall_cost_ratio": 0.5069398545935229,
+        "reader_wall_delta_ms": -2.9834317272900397,
+        "one_operation_wall_workflow_speedup": 1.884746588693957,
+        "one_operation_wall_workflow_saved_ms": 3.164270152505446,
+        "five_operation_wall_workflow_speedup": 2.0938291711907344,
+        "five_operation_wall_workflow_saved_ms": 4.6000761035007605
+      },
+      {
+        "round": 3,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 0.6545842217484008,
+            "1": 1.1730769230769231,
+            "5": 3.4489795918367347
+          },
+          "candidate": {
+            "0": 0.6855895196506573,
+            "1": 1.2411067193675889,
+            "5": 3.6288659793814433
+          }
+        },
+        "reader_cpu_cost_ratio": 1.0473663997269,
+        "reader_cpu_delta_ms": 0.03100529790225648,
+        "one_operation_cpu_workflow_speedup": 0.9451861832435081,
+        "one_operation_cpu_workflow_saved_ms": -0.06802979629066574,
+        "five_operation_cpu_workflow_speedup": 0.9504290352504638,
+        "five_operation_cpu_workflow_saved_ms": -0.17988638754470854,
+        "wall_ms": {
+          "baseline": {
+            "0": 0.6545842217484008,
+            "1": 1.176923076923077,
+            "5": 3.4489795918367347
+          },
+          "candidate": {
+            "0": 0.6877729257641921,
+            "1": 1.2450592885375493,
+            "5": 3.6288659793814433
+          }
+        },
+        "reader_wall_cost_ratio": 1.0507019615094662,
+        "reader_wall_delta_ms": 0.033188704015791326,
+        "one_operation_wall_workflow_speedup": 0.9452747252747253,
+        "one_operation_wall_workflow_saved_ms": -0.06813621161447236,
+        "five_operation_wall_workflow_speedup": 0.9504290352504638,
+        "five_operation_wall_workflow_saved_ms": -0.17988638754470854
+      },
+      {
+        "round": 3,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0833333333333306,
+            "1": 1.5838709677419356,
+            "5": 3.1941747572815533
+          },
+          "candidate": {
+            "0": 1.0875331564986737,
+            "1": 1.537500000000004,
+            "5": 2.961904761904762
+          }
+        },
+        "reader_cpu_cost_ratio": 1.003876759844932,
+        "reader_cpu_delta_ms": 0.004199823165343064,
+        "one_operation_cpu_workflow_speedup": 1.0301599790191425,
+        "one_operation_cpu_workflow_saved_ms": 0.0463709677419315,
+        "five_operation_cpu_workflow_speedup": 1.078419130271907,
+        "five_operation_cpu_workflow_saved_ms": 0.23226999537679127,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0807291666666667,
+            "1": 1.5806451612903225,
+            "5": 3.1941747572815533
+          },
+          "candidate": {
+            "0": 1.087533156498671,
+            "1": 1.537500000000004,
+            "5": 2.9714285714285618
+          }
+        },
+        "reader_wall_cost_ratio": 1.0062957399891317,
+        "reader_wall_delta_ms": 0.0068039898320042536,
+        "one_operation_wall_workflow_speedup": 1.0280618935221582,
+        "one_operation_wall_workflow_saved_ms": 0.04314516129031842,
+        "five_operation_wall_workflow_speedup": 1.0749626587005263,
+        "five_operation_wall_workflow_saved_ms": 0.22274618585299155
+      },
+      {
+        "round": 4,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.5692307692307692,
+            "1": 2.361290322580645,
+            "5": 5.711864406779661
+          },
+          "candidate": {
+            "0": 1.1661721068249258,
+            "1": 1.9213483146067416,
+            "5": 5.098360655737705
+          }
+        },
+        "reader_cpu_cost_ratio": 0.7431488916041193,
+        "reader_cpu_delta_ms": -0.4030586624058434,
+        "one_operation_cpu_workflow_speedup": 1.228975664968874,
+        "one_operation_cpu_workflow_saved_ms": 0.4399420079739036,
+        "five_operation_cpu_workflow_speedup": 1.1203335331625701,
+        "five_operation_cpu_workflow_saved_ms": 0.6135037510419563,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.5692307692307692,
+            "1": 2.361290322580645,
+            "5": 5.711864406779661
+          },
+          "candidate": {
+            "0": 1.1661721068249258,
+            "1": 1.9213483146067416,
+            "5": 5.114754098360656
+          }
+        },
+        "reader_wall_cost_ratio": 0.7431488916041193,
+        "reader_wall_delta_ms": -0.4030586624058434,
+        "one_operation_wall_workflow_speedup": 1.228975664968874,
+        "one_operation_wall_workflow_saved_ms": 0.4399420079739036,
+        "five_operation_wall_workflow_speedup": 1.1167427205562799,
+        "five_operation_wall_workflow_saved_ms": 0.5971103084190048
+      },
+      {
+        "round": 4,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 5.9655172413793105,
+            "1": 6.814814814814815,
+            "5": 9.228571428571428
+          },
+          "candidate": {
+            "0": 3.2637362637362526,
+            "1": 3.621951219512183,
+            "5": 4.3076923076923075
+          }
+        },
+        "reader_cpu_cost_ratio": 0.5471002985453833,
+        "reader_cpu_delta_ms": -2.701780977643058,
+        "one_operation_cpu_workflow_speedup": 1.881531363012851,
+        "one_operation_cpu_workflow_saved_ms": 3.192863595302632,
+        "five_operation_cpu_workflow_speedup": 2.14234693877551,
+        "five_operation_cpu_workflow_saved_ms": 4.92087912087912,
+        "wall_ms": {
+          "baseline": {
+            "0": 5.948275862068982,
+            "1": 6.7962962962963145,
+            "5": 9.285714285714315
+          },
+          "candidate": {
+            "0": 3.2527472527472634,
+            "1": 3.621951219512183,
+            "5": 4.307692307692321
+          }
+        },
+        "reader_wall_cost_ratio": 0.5468386685777993,
+        "reader_wall_delta_ms": -2.695528609321719,
+        "one_operation_wall_workflow_speedup": 1.876418506048147,
+        "one_operation_wall_workflow_saved_ms": 3.1743450767841317,
+        "five_operation_wall_workflow_speedup": 2.1556122448979593,
+        "five_operation_wall_workflow_saved_ms": 4.978021978021994
+      },
+      {
+        "round": 4,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.056379821958457,
+            "1": 1.2584269662921348,
+            "5": 3.5339805825242814
+          },
+          "candidate": {
+            "0": 1.0741935483870968,
+            "1": 1.3279352226720649,
+            "5": 3.877551020408143
+          }
+        },
+        "reader_cpu_cost_ratio": 1.016862993838347,
+        "reader_cpu_delta_ms": 0.017813726428639765,
+        "one_operation_cpu_workflow_speedup": 0.94765689229926,
+        "one_operation_cpu_workflow_saved_ms": -0.06950825637993008,
+        "five_operation_cpu_workflow_speedup": 0.9113949923352141,
+        "five_operation_cpu_workflow_saved_ms": -0.34357043788386177,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.053412462908012,
+            "1": 1.2621722846441947,
+            "5": 3.533980582524262
+          },
+          "candidate": {
+            "0": 1.0774193548387097,
+            "1": 1.3279352226720609,
+            "5": 3.877551020408174
+          }
+        },
+        "reader_wall_cost_ratio": 1.02278964107224,
+        "reader_wall_delta_ms": 0.024006891930697716,
+        "one_operation_wall_workflow_speedup": 0.9504772997168202,
+        "one_operation_wall_workflow_saved_ms": -0.06576293802786615,
+        "five_operation_wall_workflow_speedup": 0.9113949923352019,
+        "five_operation_wall_workflow_saved_ms": -0.34357043788391195
+      },
+      {
+        "round": 4,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0822281167108754,
+            "1": 1.6580645161290322,
+            "5": 2.9523809523809526
+          },
+          "candidate": {
+            "0": 1.0945945945945945,
+            "1": 1.5368852459016393,
+            "5": 3.327272727272727
+          }
+        },
+        "reader_cpu_cost_ratio": 1.011426868044515,
+        "reader_cpu_delta_ms": 0.01236647788371914,
+        "one_operation_cpu_workflow_speedup": 1.078847311827957,
+        "one_operation_cpu_workflow_saved_ms": 0.12117927022739283,
+        "five_operation_cpu_workflow_speedup": 0.8873276086390841,
+        "five_operation_cpu_workflow_saved_ms": -0.3748917748917746,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0822281167108754,
+            "1": 1.6580645161290322,
+            "5": 2.9523809523809526
+          },
+          "candidate": {
+            "0": 1.0918918918918918,
+            "1": 1.540983606557377,
+            "5": 3.3363636363636364
+          }
+        },
+        "reader_wall_cost_ratio": 1.008929517753047,
+        "reader_wall_delta_ms": 0.009663775181016465,
+        "one_operation_wall_workflow_speedup": 1.075978037062457,
+        "one_operation_wall_workflow_saved_ms": 0.11708090957165518,
+        "five_operation_wall_workflow_speedup": 0.8849098222395225,
+        "five_operation_wall_workflow_saved_ms": -0.38398268398268387
+      },
+      {
+        "round": 5,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.1835205992509363,
+            "1": 2.1096774193548327,
+            "5": 5.359375
+          },
+          "candidate": {
+            "0": 1.6516393442622992,
+            "1": 1.9550561797752808,
+            "5": 5.048387096774194
+          }
+        },
+        "reader_cpu_cost_ratio": 1.39553071176593,
+        "reader_cpu_delta_ms": 0.46811874501136286,
+        "one_operation_cpu_workflow_speedup": 1.0790878754171271,
+        "one_operation_cpu_workflow_saved_ms": 0.15462123957955187,
+        "five_operation_cpu_workflow_speedup": 1.0616014376996805,
+        "five_operation_cpu_workflow_saved_ms": 0.31098790322580605,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.1835205992509363,
+            "1": 2.1161290322580646,
+            "5": 5.359375
+          },
+          "candidate": {
+            "0": 1.6598360655737665,
+            "1": 1.960674157303365,
+            "5": 5.04838709677421
+          }
+        },
+        "reader_wall_cost_ratio": 1.4024564224942901,
+        "reader_wall_delta_ms": 0.47631546632283017,
+        "one_operation_wall_workflow_speedup": 1.0792864405213083,
+        "one_operation_wall_workflow_saved_ms": 0.15545487495469956,
+        "five_operation_wall_workflow_speedup": 1.061601437699677,
+        "five_operation_wall_workflow_saved_ms": 0.31098790322579006
+      },
+      {
+        "round": 5,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 6.271186440677966,
+            "1": 7.018867924528302,
+            "5": 8.63888888888889
+          },
+          "candidate": {
+            "0": 3.4069767441860463,
+            "1": 3.750000000000012,
+            "5": 4.295774647887324
+          }
+        },
+        "reader_cpu_cost_ratio": 0.543274670018856,
+        "reader_cpu_delta_ms": -2.86420969649192,
+        "one_operation_cpu_workflow_speedup": 1.8716981132075412,
+        "one_operation_cpu_workflow_saved_ms": 3.26886792452829,
+        "five_operation_cpu_workflow_speedup": 2.0110200364298727,
+        "five_operation_cpu_workflow_saved_ms": 4.343114241001565,
+        "wall_ms": {
+          "baseline": {
+            "0": 6.2711864406779485,
+            "1": 7.037735849056585,
+            "5": 8.63888888888889
+          },
+          "candidate": {
+            "0": 3.406976744186058,
+            "1": 3.749999999999987,
+            "5": 4.295774647887324
+          }
+        },
+        "reader_wall_cost_ratio": 0.5432746700188594,
+        "reader_wall_delta_ms": -2.8642096964918906,
+        "one_operation_wall_workflow_speedup": 1.876729559748429,
+        "one_operation_wall_workflow_saved_ms": 3.2877358490565975,
+        "five_operation_wall_workflow_speedup": 2.0110200364298727,
+        "five_operation_wall_workflow_saved_ms": 4.343114241001565
+      },
+      {
+        "round": 5,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 0.7551487414187643,
+            "1": 1.2807692307692347,
+            "5": 3.4526315789473583
+          },
+          "candidate": {
+            "0": 0.8908296943231441,
+            "1": 1.1538461538461575,
+            "5": 3.208333333333323
+          }
+        },
+        "reader_cpu_cost_ratio": 1.179674473997618,
+        "reader_cpu_delta_ms": 0.13568095290437976,
+        "one_operation_cpu_workflow_speedup": 1.1099999999999999,
+        "one_operation_cpu_workflow_saved_ms": 0.12692307692307714,
+        "five_operation_cpu_workflow_speedup": 1.0761449077238554,
+        "five_operation_cpu_workflow_saved_ms": 0.24429824561403546,
+        "wall_ms": {
+          "baseline": {
+            "0": 0.7597254004576682,
+            "1": 1.2807692307692307,
+            "5": 3.463157894736853
+          },
+          "candidate": {
+            "0": 0.8973799126637555,
+            "1": 1.15,
+            "5": 3.2083333333333335
+          }
+        },
+        "reader_wall_cost_ratio": 1.1811898248013855,
+        "reader_wall_delta_ms": 0.13765451220608727,
+        "one_operation_wall_workflow_speedup": 1.1137123745819397,
+        "one_operation_wall_workflow_saved_ms": 0.13076923076923075,
+        "five_operation_wall_workflow_speedup": 1.0794258373205774,
+        "five_operation_wall_workflow_saved_ms": 0.2548245614035194
+      },
+      {
+        "round": 5,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "baseline",
+          "candidate"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0714285714285714,
+            "1": 1.4743083003952568,
+            "5": 2.9906542056074765
+          },
+          "candidate": {
+            "0": 1.0769230769230769,
+            "1": 1.5580645161290323,
+            "5": 2.8737864077669903
+          }
+        },
+        "reader_cpu_cost_ratio": 1.005128205128205,
+        "reader_cpu_delta_ms": 0.005494505494505475,
+        "one_operation_cpu_workflow_speedup": 0.9462434226139329,
+        "one_operation_cpu_workflow_saved_ms": -0.08375621573377545,
+        "five_operation_cpu_workflow_speedup": 1.0406668350593584,
+        "five_operation_cpu_workflow_saved_ms": 0.11686779784048618,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0714285714285714,
+            "1": 1.4703557312252964,
+            "5": 3.0
+          },
+          "candidate": {
+            "0": 1.0769230769230769,
+            "1": 1.5548387096774194,
+            "5": 2.8932038834951457
+          }
+        },
+        "reader_wall_cost_ratio": 1.005128205128205,
+        "reader_wall_delta_ms": 0.005494505494505475,
+        "one_operation_wall_workflow_speedup": 0.945664474439506,
+        "one_operation_wall_workflow_saved_ms": -0.08448297845212305,
+        "five_operation_wall_workflow_speedup": 1.0369127516778522,
+        "five_operation_wall_workflow_saved_ms": 0.10679611650485432
+      },
+      {
+        "round": 6,
+        "fixture": "dense_float",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.250936329588015,
+            "1": 2.233128834355834,
+            "5": 5.745762711864407
+          },
+          "candidate": {
+            "0": 1.053125,
+            "1": 2.0988372093023258,
+            "5": 5.516666666666667
+          }
+        },
+        "reader_cpu_cost_ratio": 0.841869386227545,
+        "reader_cpu_delta_ms": -0.19781132958801484,
+        "one_operation_cpu_workflow_speedup": 1.063983821355134,
+        "one_operation_cpu_workflow_saved_ms": 0.13429162505350822,
+        "five_operation_cpu_workflow_speedup": 1.0415279840237595,
+        "five_operation_cpu_workflow_saved_ms": 0.22909604519773996,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.250936329588015,
+            "1": 2.233128834355828,
+            "5": 5.745762711864407
+          },
+          "candidate": {
+            "0": 1.05,
+            "1": 2.104651162790698,
+            "5": 5.516666666666667
+          }
+        },
+        "reader_wall_cost_ratio": 0.83937125748503,
+        "reader_wall_delta_ms": -0.20093632958801488,
+        "one_operation_wall_workflow_speedup": 1.0610446395281834,
+        "one_operation_wall_workflow_saved_ms": 0.12847767156513035,
+        "five_operation_wall_workflow_speedup": 1.0415279840237595,
+        "five_operation_wall_workflow_saved_ms": 0.22909604519773996
+      },
+      {
+        "round": 6,
+        "fixture": "dense_float",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 6.193548387096774,
+            "1": 7.0,
+            "5": 8.63888888888886
+          },
+          "candidate": {
+            "0": 3.337078651685393,
+            "1": 3.8,
+            "5": 4.653846153846141
+          }
+        },
+        "reader_cpu_cost_ratio": 0.5387991573033708,
+        "reader_cpu_delta_ms": -2.856469735411381,
+        "one_operation_cpu_workflow_speedup": 1.842105263157895,
+        "one_operation_cpu_workflow_saved_ms": 3.2,
+        "five_operation_cpu_workflow_speedup": 1.8562901744719917,
+        "five_operation_cpu_workflow_saved_ms": 3.98504273504272,
+        "wall_ms": {
+          "baseline": {
+            "0": 6.193548387096774,
+            "1": 7.0,
+            "5": 8.666666666666694
+          },
+          "candidate": {
+            "0": 3.348314606741573,
+            "1": 3.8,
+            "5": 4.653846153846154
+          }
+        },
+        "reader_wall_cost_ratio": 0.5406132958801498,
+        "reader_wall_delta_ms": -2.845233780355201,
+        "one_operation_wall_workflow_speedup": 1.842105263157895,
+        "one_operation_wall_workflow_saved_ms": 3.2,
+        "five_operation_wall_workflow_speedup": 1.86225895316805,
+        "five_operation_wall_workflow_saved_ms": 4.01282051282054
+      },
+      {
+        "round": 6,
+        "fixture": "sparse_int",
+        "format": "dta",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 0.7172557172557192,
+            "1": 1.2285714285714286,
+            "5": 3.96875
+          },
+          "candidate": {
+            "0": 0.6501766784452332,
+            "1": 1.4331983805668016,
+            "5": 4.406593406593407
+          }
+        },
+        "reader_cpu_cost_ratio": 0.9064782096584241,
+        "reader_cpu_delta_ms": -0.06707903881048605,
+        "one_operation_cpu_workflow_speedup": 0.8572235673930589,
+        "one_operation_cpu_workflow_saved_ms": -0.20462695199537295,
+        "five_operation_cpu_workflow_speedup": 0.9006390274314213,
+        "five_operation_cpu_workflow_saved_ms": -0.4378434065934069,
+        "wall_ms": {
+          "baseline": {
+            "0": 0.7172557172557172,
+            "1": 1.2285714285714286,
+            "5": 3.9791666666666665
+          },
+          "candidate": {
+            "0": 0.6537102473498233,
+            "1": 1.4331983805668016,
+            "5": 4.395604395604396
+          }
+        },
+        "reader_wall_cost_ratio": 0.9114047216674348,
+        "reader_wall_delta_ms": -0.06354546990589394,
+        "one_operation_wall_workflow_speedup": 0.8572235673930589,
+        "one_operation_wall_workflow_saved_ms": -0.20462695199537295,
+        "five_operation_wall_workflow_speedup": 0.9052604166666666,
+        "five_operation_wall_workflow_saved_ms": -0.41643772893772946
+      },
+      {
+        "round": 6,
+        "fixture": "sparse_int",
+        "format": "arrow",
+        "build_order": [
+          "candidate",
+          "baseline"
+        ],
+        "cpu_ms": {
+          "baseline": {
+            "0": 1.0175000000000025,
+            "1": 1.5136186770428015,
+            "5": 3.0186915887850376
+          },
+          "candidate": {
+            "0": 1.0756756756756731,
+            "1": 1.5446428571428525,
+            "5": 3.1523809523809523
+          }
+        },
+        "reader_cpu_cost_ratio": 1.05717511122916,
+        "reader_cpu_delta_ms": 0.05817567567567061,
+        "one_operation_cpu_workflow_speedup": 0.9799149816693311,
+        "one_operation_cpu_workflow_saved_ms": -0.031024180100051035,
+        "five_operation_cpu_workflow_speedup": 0.9575909873789394,
+        "five_operation_cpu_workflow_saved_ms": -0.13368936359591466,
+        "wall_ms": {
+          "baseline": {
+            "0": 1.0175,
+            "1": 1.5136186770427977,
+            "5": 3.0186915887850376
+          },
+          "candidate": {
+            "0": 1.0756756756756756,
+            "1": 1.5491071428571428,
+            "5": 3.142857142857143
+          }
+        },
+        "reader_wall_cost_ratio": 1.0571751112291652,
+        "reader_wall_delta_ms": 0.0581756756756755,
+        "one_operation_wall_workflow_speedup": 0.9770910191861288,
+        "one_operation_wall_workflow_saved_ms": -0.03548846581434506,
+        "five_operation_wall_workflow_speedup": 0.9604927782497847,
+        "five_operation_wall_workflow_saved_ms": -0.12416555407210517
+      }
+    ],
+    "medians": {
+      "dense_float/dta": {
+        "reader_cpu_cost_ratio": 0.9411638017559163,
+        "reader_cpu_delta_ms": -0.07808725030128061,
+        "one_operation_cpu_workflow_speedup": 1.0728466478601484,
+        "one_operation_cpu_workflow_saved_ms": 0.14445643231653005,
+        "five_operation_cpu_workflow_speedup": 1.057981125062506,
+        "five_operation_cpu_workflow_saved_ms": 0.30226814516129785,
+        "reader_wall_cost_ratio": 0.9406754373670188,
+        "reader_wall_delta_ms": -0.07799437748984217,
+        "one_operation_wall_workflow_speedup": 1.0729459304122388,
+        "one_operation_wall_workflow_saved_ms": 0.14196627325991495,
+        "five_operation_wall_workflow_speedup": 1.0579811250625013,
+        "five_operation_wall_workflow_saved_ms": 0.30226814516127476
+      },
+      "dense_float/arrow": {
+        "reader_cpu_cost_ratio": 0.527942088773143,
+        "reader_cpu_delta_ms": -2.91569093209967,
+        "one_operation_cpu_workflow_speedup": 1.883138975853404,
+        "one_operation_cpu_workflow_saved_ms": 3.234433962264145,
+        "five_operation_cpu_workflow_speedup": 2.0558458933057135,
+        "five_operation_cpu_workflow_saved_ms": 4.478444487319656,
+        "reader_wall_cost_ratio": 0.5293645135986966,
+        "reader_wall_delta_ms": -2.9104277742049103,
+        "one_operation_wall_workflow_speedup": 1.880738074221193,
+        "one_operation_wall_workflow_saved_ms": 3.243867924528299,
+        "five_operation_wall_workflow_speedup": 2.0524246038103033,
+        "five_operation_wall_workflow_saved_ms": 4.471595172251163
+      },
+      "sparse_int/dta": {
+        "reader_cpu_cost_ratio": 0.9737031203103985,
+        "reader_cpu_delta_ms": -0.01671364490217514,
+        "one_operation_cpu_workflow_speedup": 0.9684609154414348,
+        "one_operation_cpu_workflow_saved_ms": -0.040436416701682854,
+        "five_operation_cpu_workflow_speedup": 0.9725735605169208,
+        "five_operation_cpu_workflow_saved_ms": -0.09867452135493382,
+        "reader_wall_cost_ratio": 0.9780150573284789,
+        "reader_wall_delta_ms": -0.012550964070122683,
+        "one_operation_wall_workflow_speedup": 0.9683058265258737,
+        "one_operation_wall_workflow_saved_ms": -0.04117564674631302,
+        "five_operation_wall_workflow_speedup": 0.9725735605169208,
+        "five_operation_wall_workflow_saved_ms": -0.09867452135493382
+      },
+      "sparse_int/arrow": {
+        "reader_cpu_cost_ratio": 1.00827753658636,
+        "reader_cpu_delta_ms": 0.008930491689112308,
+        "one_operation_cpu_workflow_speedup": 1.0024462275439825,
+        "one_operation_cpu_workflow_saved_ms": 0.003039643319001306,
+        "five_operation_cpu_workflow_speedup": 1.0056696977782091,
+        "five_operation_cpu_workflow_saved_ms": 0.016830521503409024,
+        "reader_wall_cost_ratio": 1.0076126288710894,
+        "reader_wall_delta_ms": 0.00823388250651036,
+        "one_operation_wall_workflow_speedup": 1.0021200275242228,
+        "one_operation_wall_workflow_saved_ms": 0.0024204036876603885,
+        "five_operation_wall_workflow_speedup": 1.0088989618854864,
+        "five_operation_wall_workflow_saved_ms": 0.026265323461585277
+      }
+    },
+    "scope": "Original dense FLOAT/random_half and sparse INT million-row fixtures, each saved once as DTA and uncompressed profiled Arrow. Public reader-only/+one/+five same-source reciprocal workflows with threads=1. Six alternating fresh-process build pairs; each phase occupies six distinct positions with mean 6.5 and three positions per half. CPU and elapsed include all reader/result allocations and automatic GC. Exact input/output bits, storage, missing masks/cache mutation, facts, immutable sources and native calls qualified outside clocks. Input files, complete installed packages, build receipts/source inventories and private/public scripts bound before/after. Warm OS file cache; identical small workflow-list bookkeeping included. No cold-disk, parallel-worker, bare-construction or universal performance claim.",
+    "before": {
+      "worker_sha256": "c2284b0b2296cb8c99c3736eedd0bc85fbea1e6f9f334c9df1e50dc47773b6ad",
+      "generator_sha256": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
+      "controller_sha256": "af9e8ec5f4d39101b85ba05224498e52c8bd91f824aa7a0a5df5b6c9e278544d",
+      "public_worker_sha256": {
+        "worker.R": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+        "dense-worker.R": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473"
+      },
+      "inputs": {
+        "directory": "generated separately",
+        "manifest_sha256": "16a8c48a9871a76a5bc6a66b12e530e0c8ad22a687f4dff306ba2a7e6279dd9d",
+        "rows": [
+          {
+            "fixture": "dense_float",
+            "format": "dta",
+            "rows": "1000000",
+            "width": "float",
+            "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+            "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+            "input_missing": "500000",
+            "zero_observed": "48",
+            "bytes": "4001195"
+          },
+          {
+            "fixture": "dense_float",
+            "format": "arrow",
+            "rows": "1000000",
+            "width": "float",
+            "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+            "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+            "input_missing": "500000",
+            "zero_observed": "48",
+            "bytes": "4130130"
+          },
+          {
+            "fixture": "sparse_int",
+            "format": "dta",
+            "rows": "1000000",
+            "width": "int",
+            "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+            "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+            "input_missing": "1003",
+            "zero_observed": "100",
+            "bytes": "2001195"
+          },
+          {
+            "fixture": "sparse_int",
+            "format": "arrow",
+            "rows": "1000000",
+            "width": "int",
+            "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+            "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+            "input_missing": "1003",
+            "zero_observed": "100",
+            "bytes": "2130130"
+          }
+        ],
+        "file_sha256": {
+          "dense_float.dta": "343b5ec7d78226c15f192d03431fdc517466691c26a2b841fefcc4d2d4ea4029",
+          "dense_float.arrow": "d8c04bc6642d76c24bd059027870c24e82ab351ecb8dc5b8412e56c59a25fc11",
+          "sparse_int.dta": "d43f969d5d65b701c6c56098e4ff17ccca9900f16ca051c0c8a7a2d89193b044",
+          "sparse_int.arrow": "9c83f075db3ef39cc5734bc24e3a6702b531aec8ce018e972f27727644908944"
+        }
+      },
+      "builds": {
+        "baseline": {
+          "source_head": "3ef04edca377e122befd77c8481831a60bda6b64",
+          "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+          "receipt_sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+          "runtime_source_inventory_sha256": "22c150529ccd4c20bfbeb5fd68df01c62fab8511d4386325e33d7d6599b30992",
+          "installed_package_inventory_sha256": "10fc4559906c6f16361ac2ad385e810b7b97893c841d7187df45a3b8c9faddbc"
+        },
+        "candidate": {
+          "source_head": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+          "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984",
+          "receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+          "runtime_source_inventory_sha256": "c2438c217b6f2d47f01f947cac6315a46a92f904c447a6a9c916fc95795c28fb",
+          "installed_package_inventory_sha256": "69ce4ccc1e9423c2fb4ccbacaba0131bacfafd4510fbf1bce964d3c8979d093d"
+        }
+      }
+    },
+    "commands": [
+      {
+        "round": 1,
+        "role": "baseline",
+        "position": 1,
+        "started_utc": "2026-10-05T01:37:10.989272+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 1,
+        "role": "candidate",
+        "position": 2,
+        "started_utc": "2026-10-05T01:37:22.468024+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 2,
+        "role": "candidate",
+        "position": 1,
+        "started_utc": "2026-10-05T01:37:33.970511+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 2,
+        "role": "baseline",
+        "position": 2,
+        "started_utc": "2026-10-05T01:37:45.899487+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 3,
+        "role": "baseline",
+        "position": 1,
+        "started_utc": "2026-10-05T01:37:58.088529+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 3,
+        "role": "candidate",
+        "position": 2,
+        "started_utc": "2026-10-05T01:38:09.959199+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 4,
+        "role": "candidate",
+        "position": 1,
+        "started_utc": "2026-10-05T01:38:21.973052+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 4,
+        "role": "baseline",
+        "position": 2,
+        "started_utc": "2026-10-05T01:38:34.080900+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 5,
+        "role": "baseline",
+        "position": 1,
+        "started_utc": "2026-10-05T01:38:46.131843+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 5,
+        "role": "candidate",
+        "position": 2,
+        "started_utc": "2026-10-05T01:38:58.278651+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 6,
+        "role": "candidate",
+        "position": 1,
+        "started_utc": "2026-10-05T01:39:10.702860+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 6,
+        "role": "baseline",
+        "position": 2,
+        "started_utc": "2026-10-05T01:39:22.821630+00:00",
+        "exit_code": 0
+      }
+    ],
+    "private_summary_sha256": "78e9d42c0f89c40b396fd2b121d38c93d674388e8342be43ad21948b99880474"
+  },
+  "qualification": {
+    "status": "PASS",
+    "mode": "qualify",
+    "paired_rounds": 1,
+    "observations": 24,
+    "before_after_equal": true,
+    "rounds": [],
+    "medians": {},
+    "scope": "Original dense FLOAT/random_half and sparse INT million-row fixtures, each saved once as DTA and uncompressed profiled Arrow. Public reader-only/+one/+five same-source reciprocal workflows with threads=1. Six alternating fresh-process build pairs; each phase occupies six distinct positions with mean 6.5 and three positions per half. CPU and elapsed include all reader/result allocations and automatic GC. Exact input/output bits, storage, missing masks/cache mutation, facts, immutable sources and native calls qualified outside clocks. Input files, complete installed packages, build receipts/source inventories and private/public scripts bound before/after. Warm OS file cache; identical small workflow-list bookkeeping included. No cold-disk, parallel-worker, bare-construction or universal performance claim.",
+    "before": {
+      "worker_sha256": "c2284b0b2296cb8c99c3736eedd0bc85fbea1e6f9f334c9df1e50dc47773b6ad",
+      "generator_sha256": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
+      "controller_sha256": "af9e8ec5f4d39101b85ba05224498e52c8bd91f824aa7a0a5df5b6c9e278544d",
+      "public_worker_sha256": {
+        "worker.R": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+        "dense-worker.R": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473"
+      },
+      "inputs": {
+        "directory": "generated separately",
+        "manifest_sha256": "16a8c48a9871a76a5bc6a66b12e530e0c8ad22a687f4dff306ba2a7e6279dd9d",
+        "rows": [
+          {
+            "fixture": "dense_float",
+            "format": "dta",
+            "rows": "1000000",
+            "width": "float",
+            "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+            "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+            "input_missing": "500000",
+            "zero_observed": "48",
+            "bytes": "4001195"
+          },
+          {
+            "fixture": "dense_float",
+            "format": "arrow",
+            "rows": "1000000",
+            "width": "float",
+            "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+            "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+            "input_missing": "500000",
+            "zero_observed": "48",
+            "bytes": "4130130"
+          },
+          {
+            "fixture": "sparse_int",
+            "format": "dta",
+            "rows": "1000000",
+            "width": "int",
+            "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+            "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+            "input_missing": "1003",
+            "zero_observed": "100",
+            "bytes": "2001195"
+          },
+          {
+            "fixture": "sparse_int",
+            "format": "arrow",
+            "rows": "1000000",
+            "width": "int",
+            "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+            "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+            "input_missing": "1003",
+            "zero_observed": "100",
+            "bytes": "2130130"
+          }
+        ],
+        "file_sha256": {
+          "dense_float.dta": "343b5ec7d78226c15f192d03431fdc517466691c26a2b841fefcc4d2d4ea4029",
+          "dense_float.arrow": "d8c04bc6642d76c24bd059027870c24e82ab351ecb8dc5b8412e56c59a25fc11",
+          "sparse_int.dta": "d43f969d5d65b701c6c56098e4ff17ccca9900f16ca051c0c8a7a2d89193b044",
+          "sparse_int.arrow": "9c83f075db3ef39cc5734bc24e3a6702b531aec8ce018e972f27727644908944"
+        }
+      },
+      "builds": {
+        "baseline": {
+          "source_head": "3ef04edca377e122befd77c8481831a60bda6b64",
+          "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+          "receipt_sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+          "runtime_source_inventory_sha256": "22c150529ccd4c20bfbeb5fd68df01c62fab8511d4386325e33d7d6599b30992",
+          "installed_package_inventory_sha256": "10fc4559906c6f16361ac2ad385e810b7b97893c841d7187df45a3b8c9faddbc"
+        },
+        "candidate": {
+          "source_head": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+          "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984",
+          "receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+          "runtime_source_inventory_sha256": "c2438c217b6f2d47f01f947cac6315a46a92f904c447a6a9c916fc95795c28fb",
+          "installed_package_inventory_sha256": "69ce4ccc1e9423c2fb4ccbacaba0131bacfafd4510fbf1bce964d3c8979d093d"
+        }
+      }
+    },
+    "commands": [
+      {
+        "round": 1,
+        "role": "baseline",
+        "position": 1,
+        "started_utc": "2026-10-05T01:34:02.474020+00:00",
+        "exit_code": 0
+      },
+      {
+        "round": 1,
+        "role": "candidate",
+        "position": 2,
+        "started_utc": "2026-10-05T01:34:07.180076+00:00",
+        "exit_code": 0
+      }
+    ],
+    "private_summary_sha256": "72c244ec447d1dc2fd3a288befacd980a0b683f93297c8b0edc0d5bc1de385c9"
+  },
+  "runtime": {
+    "source_head": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+    "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984",
+    "rust_namespace": "cdaed7ea9eb59950861eac3fb1386f2f",
+    "rust_archive_sha256": "255ff91a5a77403b7155c661a1fea8726ab4976f05ff80247f19858425f28bb2",
+    "exit_code": 0,
+    "source_unchanged_during_build": true,
+    "c_compile_count": 0,
+    "rust_compile_count": 62,
+    "rust_archive_rebuilt": true,
+    "reused_own_rust_archive": false,
+    "private_receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+    "wall_seconds": 23.570673,
+    "runtime_source_inventory_sha256": "c2438c217b6f2d47f01f947cac6315a46a92f904c447a6a9c916fc95795c28fb",
+    "production_source_sha256": {
+      "src/rust/src/lib.rs": "cc7026d81e46b7ec33fd12819a3a89bf9aeed4316edd33769d2406ce1eb16e1a",
+      "src/rust/src/owned_numeric.rs": "c186c2382b0385d7ee555f7c93c132dc70d34cc8916571aa4e0388a9bb00c936",
+      "src/rust/src/numeric_facts.rs": "e1f50361ca51571b8b4ff653fea5f73192fd5d233d38281b88b0563664518258",
+      "src/dta-tools/src/missing.rs": "5f5dee09122cc0db2e34171f4e1be82b2480e36ac352839a4121c537f8fc42c7"
+    },
+    "interpretation": "One dtatools installation, zero C compilations, 62 Rust compilations. No R dependencies were installed. Reused C objects and immutable seed inputs do not imply Rust dependency cache hits."
+  },
+  "baseline_build_receipt_sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+  "r_checks": {
+    "exit_code": 0,
+    "bindings_unchanged": true,
+    "scripts_unchanged": true,
+    "block_membership_pass": true,
+    "policy_failures": [],
+    "counts": {
+      "nb": 70260,
+      "passed": 70260,
+      "failed": 0,
+      "warning": 0
+    },
+    "errors": 0,
+    "skips": 0,
+    "blocks": 139,
+    "selected_files": [
+      "test-native-arithmetic-kernels.R",
+      "test-native-arithmetic-parity.R",
+      "test-compact-float-domain.R",
+      "test-arithmetic-payload-lifetime.R",
+      "test-compact-pair-domain.R",
+      "test-dense-float-reciprocal-kernel.R",
+      "test-compact-reciprocal-facts.R",
+      "test-integer-reciprocal-lookup.R",
+      "test-constructor-region-inputs.R",
+      "test-dta-numeric.R",
+      "test-reader-numeric-facts.R"
+    ],
+    "expected_blocks": [
+      {
+        "file": "test-dta-numeric.R",
+        "test": "storage constructors create declared compact vectors",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 25,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "size allocation creates system-missing compact vectors",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 12,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "constructors enforce Stata ranges and precision rules",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 13,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "constructors preserve Stata extended missing codes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Stata numeric comparisons use missing-code identity and order",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 7,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Stata numeric comparisons return empty results for empty operands",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Stata numeric ordering retains and ranks missing codes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 9,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "vctrs identity distinguishes Stata missing codes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "identity operations reject noncanonical NaN payloads",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Stata temporal vectors use numeric missing identity",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "native construction rejects unsupported tagged missing payloads",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "storage inspection does not materialize imported columns",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 3,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "serialization preserves compact numeric backing",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "saveRDS preserves compact numeric backing",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 3,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "serialization preserves writable materialized values",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "stored public coercions are isolated from reference mutation",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 3,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "stored vctrs proxies are isolated from reference mutation",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "data-frame coercion preserves vector and explicit row names",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "lazy public snapshots release stripped source attributes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 3,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "base subsetting and duplication preserve compact backing",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "vctrs proxy slicing preserves compact backing",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 12,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "vctrs restoration distinguishes storage and temporal encoding",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 8,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "legacy compact widths preserve system missing encoding",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 16,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "narrow dates validate and encode in Stata source units",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 15,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "narrow temporal storage through dplyr",
+        "occurrence": 1,
+        "skip": "require",
+        "min_pass": 18,
+        "warnings": 0,
+        "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+        "min_pass_before_skip": 0,
+        "skip_message": "Reason: {dplyr} is not installed"
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "temporal summaries, concatenation, and recodes retain storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 14,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "temporal label reconciliation through dplyr",
+        "occurrence": 1,
+        "skip": "require",
+        "min_pass": 16,
+        "warnings": 0,
+        "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+        "min_pass_before_skip": 0,
+        "skip_message": "Reason: {dplyr} is not installed"
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "temporal common operations reject mixed kinds",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 9,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "empty temporal extrema retain base infinity behavior",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 6,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "common types follow the Stata storage promotion lattice",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 25,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "bare vectors meet declared storage at their own mapping",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 14,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "casts into declared storage are strict and preserve missing tags",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 6,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "assignment and vctrs recodes re-encode compact storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "compact numeric conditional storage through dplyr",
+        "occurrence": 1,
+        "skip": "require",
+        "min_pass": 17,
+        "warnings": 0,
+        "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+        "min_pass_before_skip": 0,
+        "skip_message": "Reason: {dplyr} is not installed"
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "base right and full merges can append native Stata keys",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "base full merges promote native Stata temporal keys",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "extension promotes declared inputs without weakening assignment",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "dplyr joins preserve compatible Stata key information",
+        "occurrence": 1,
+        "skip": "require",
+        "min_pass": 9,
+        "warnings": 0,
+        "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+        "min_pass_before_skip": 0,
+        "skip_message": "Reason: {dplyr} is not installed"
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "value labels compose with declared storage classes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 7,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "common types reconcile value and variable labels",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 15,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "common type label reconciliation through dplyr",
+        "occurrence": 1,
+        "skip": "require",
+        "min_pass": 19,
+        "warnings": 0,
+        "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+        "min_pass_before_skip": 0,
+        "skip_message": "Reason: {dplyr} is not installed"
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "common types reconcile notes and characteristics left first",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 6,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "arithmetic promotes from operand storage according to result values",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 16,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "arithmetic collapses tags and returns bare logical comparisons",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 7,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "missing operands yield system missing whatever their tag",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 15,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "rounding keeps a missing tag and other math functions drop it",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 30,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "computed results preserve Stata construction semantics",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 27,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Complex group members use value-dependent storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 7,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "math and summary generics use value-dependent storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 13,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "Summary generics accept bare numeric and logical arguments",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 6,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "base ifelse strips declared storage as documented",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2,
+        "warnings": 0
+      },
+      {
+        "file": "test-dta-numeric.R",
+        "test": "undefined Stata arithmetic becomes system missing",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 4,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "compact arithmetic agrees with the ordinary public calculation",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1500,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "compact arithmetic promotes the complete result and collapses invalid values",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 31,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "arithmetic keeps recycling names and unsupported input behavior",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 38,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "arithmetic crosses retained chunks without changing source storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 180,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "extended arithmetic keeps primitive and recycling callbacks",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "public scalar and column arithmetic enter the native producer",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 16,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "Bytecode scalar admission requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic suite.",
+        "skip_message": "Reason: .dtatools_numeric_entry_expected() is not TRUE"
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "imported DTA and Arrow columns enter native arithmetic with display metadata",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 78,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "extended arithmetic retains storage-specific names methods",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 12,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "observed compact span arithmetic crosses distinct chunk boundaries",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 72,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "legacy observed integer codes promote into modern arithmetic storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 14,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "specialized arithmetic keeps aliased inputs scalar directions and promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 300,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "missing span arithmetic keeps all codes across scalar and column shapes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 328,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "missing span arithmetic keeps each operand's legacy missing encoding",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 256,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "float span arithmetic matches eager IEEE and reserved-code decoding",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2777,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "compact pair promotion recomputes earlier chunks and counts missing unions",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 12,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "rounded float multiplication limits retain exact binary64 storage decisions",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 412,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "compact float sums preserve rounded binary64 fit and late promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1291,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "compact float sums keep exponent-gap cancellation and zero bits",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 38,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-kernels.R",
+        "test": "integer reciprocal bounds preserve storage zero signs and missing caches",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 819,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "a final or boundary value promotes every earlier scalar result",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 640,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "column promotion crosses independently chunked operands",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 360,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "missing codes and negative limits do not hide the final promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 248,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "fractional and large results choose storage for the complete column",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 225,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "integer division by powers of two inspects the complete column",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 740,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "float power-of-two scaling preserves subnormals and zero signs",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 280,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "integer preflight preserves missing-only storage and bounded scalars",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 405,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "integer products choose long or float without losing signed zero",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 75,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "power-of-two arithmetic preserves legacy storage decoding",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 480,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "float scaling promotes just beyond the binary32 cutoff",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 484,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "early long promotion still counts missing rows in later chunks",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 58,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "general arithmetic keeps mixed physical sources and scalar directions exact",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10304,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "general preflight and float promotion retain later missing rows and earlier precision",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 184,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "general integer scalar bounds preserve floating storage and missing counts",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5496,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "floating scalar results reject unsafe endpoint proofs",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 320,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "float scalar interval proofs retain zero signs and exact missing counts",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1988,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "float scalar fit intervals include exactly their binary32 boundary neighbors",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1512,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "general arithmetic includes imported physical signed minima and legacy reserved observations",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 3376,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "scalar block proofs preserve ordinary tails and late whole-column promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1566,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "scalar block proofs preserve imported exceptions after ordinary spans",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2061,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "float reciprocal block proofs preserve zero exceptions and late promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 756,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "long float block addition preserves bits and exact missing unions",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 738,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "long float block addition retains imported exceptions after ordinary spans",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 841,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "long float all missing facts preserve output bits and cache mutation",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 96,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "dense reciprocal input masks preserve cache counts and late promotion",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 2700,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "adaptive reciprocal proofs recover ordinary tails after dense spans",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1036,
+        "warnings": 0
+      },
+      {
+        "file": "test-native-arithmetic-parity.R",
+        "test": "retained long float addition preserves poll-boundary outputs",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 480,
+        "warnings": 0
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "arithmetic payloads survive collection and compact serialization",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 32,
+        "warnings": 0
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "arithmetic payload aliases detach before writable access and patches",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 32,
+        "warnings": 0
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "arithmetic payload adoption roots descriptor and bytes across allocations",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 5,
+        "warnings": 0
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "arithmetic promotion proof survives a reentrant source patch",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 24,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "temporary arithmetic claims restore ordinary and owned write access",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 14,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "arithmetic cleanup preserves aliases created while the source is claimed",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 10,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "disarming an abandoned arithmetic checkpoint releases its token",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 7,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "general arithmetic preflight retains owned sources across reentrant writes",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 48,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "owned arithmetic read claims survive nesting and release on unwind",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 11,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "integer reciprocal inherits the captured missing count during reentrant writes",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 54,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "float reciprocal proofs retain captured bytes and missing counts during reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 30,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "long float block proofs retain captured inputs through reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 28,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "long float all missing facts retain captured counts through reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 120,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "all missing reciprocal proofs retain captured counts through reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 100,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "tiny retained pair spans preserve captured sources across reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 36,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-arithmetic-payload-lifetime.R",
+        "test": "canonical float addition uses captured domain facts across reentry",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 64,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "strict float constructors establish an allocation domain proof",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 7,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "compact facts describe final encoded values and independent counts",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "facts are retained only by descriptors for unchanged immutable bytes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 10,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "compact domain proofs follow retained bytes and writable invalidation",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 11,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "freeze validates strict domains while DTA imports remain unknown",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 207,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-float-domain.R",
+        "test": "freeze validates captured bytes across reentry and releases failed claims",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 25,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-pair-domain.R",
+        "test": "mixed compact pairs preserve strict and unknown domain results",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 400,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-pair-domain.R",
+        "test": "mixed domain pairs retain ambiguous limits and original promotion inputs",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 80,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-pair-domain.R",
+        "test": "mixed domain read claims retain strict bytes through allocation callbacks",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 96,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-compact-pair-domain.R",
+        "test": "cached pair bounds preserve FLOAT pairs and observed endpoint storage",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 320,
+        "warnings": 0
+      },
+      {
+        "file": "test-dense-float-reciprocal-kernel.R",
+        "test": "strict dense reciprocal masks retain zero signs and exact missing caches",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1,
+        "warnings": 0
+      },
+      {
+        "file": "test-dense-float-reciprocal-kernel.R",
+        "test": "late unsafe strict dense reciprocals discard provisional narrowed results",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 1,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-reciprocal-facts.R",
+        "test": "cached FLOAT reciprocal facts cover ordinary zero and missing shapes",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 600,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-reciprocal-facts.R",
+        "test": "reciprocal fact invalidation preserves fallback and exact result caches",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 270,
+        "warnings": 0
+      },
+      {
+        "file": "test-compact-reciprocal-facts.R",
+        "test": "captured reciprocal facts survive source changes during allocation",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 60,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-reader-numeric-facts.R",
+        "test": "readers preserve compact extents and grant facts only for eligible Arrow FLOAT",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 900,
+        "warnings": 0
+      },
+      {
+        "file": "test-reader-numeric-facts.R",
+        "test": "reader FLOAT facts decline invalid tails and legacy values without normalization",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 120,
+        "warnings": 0
+      },
+      {
+        "file": "test-reader-numeric-facts.R",
+        "test": "reader facts retain immutable owners and writable access invalidates them",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 70,
+        "warnings": 0
+      },
+      {
+        "file": "test-integer-reciprocal-lookup.R",
+        "test": "BYTE and INT reciprocals preserve modern observed codes and tags across lookup admission",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 156,
+        "warnings": 0
+      },
+      {
+        "file": "test-integer-reciprocal-lookup.R",
+        "test": "large integer reciprocals retain zero caches and unknown backing fallbacks",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 194,
+        "warnings": 0
+      },
+      {
+        "file": "test-integer-reciprocal-lookup.R",
+        "test": "short integer and LONG reciprocals preserve ordinary fallback results",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 78,
+        "warnings": 0
+      },
+      {
+        "file": "test-integer-reciprocal-lookup.R",
+        "test": "large integer reciprocals keep captured bytes during allocation callbacks",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 52,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The arithmetic allocation checkpoint requires the supported R, vctrs and rlang execution profile; other builds exercise the ordinary fallback in the arithmetic and lifetime suites.",
+        "skip_message": "Reason: arithmetic checkpoint requires an admitted native execution profile"
+      },
+      {
+        "file": "test-constructor-region-inputs.R",
+        "test": "constructor chunk readers preserve final encoded values and facts",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 588,
+        "warnings": 0
+      },
+      {
+        "file": "test-constructor-region-inputs.R",
+        "test": "constructor region reads support partial fallback and changing input",
+        "occurrence": 1,
+        "skip": "allow",
+        "min_pass": 243,
+        "warnings": 0,
+        "min_pass_before_skip": 0,
+        "reason": "The isolated foreign ALTREP fixture requires callr and a C compiler; other profiles retain constructor value and diagnostics checks.",
+        "skip_message": "Reason: (constructor region probe requires a C compiler|callr cannot be loaded)"
+      },
+      {
+        "file": "test-constructor-region-inputs.R",
+        "test": "constructor chunk boundaries retain strict diagnostics",
+        "occurrence": 1,
+        "skip": "forbid",
+        "min_pass": 48,
+        "warnings": 0
+      }
+    ],
+    "private_receipt_sha256": "7c035132c18fce39b81e9a597ac05c65c0ef4787a5d86d7614df85d0434b3768",
+    "native_manifest_sha256": "e926d6b0e4260eba86b472e234003ce9e009170f106798ec4bcc3242d6e35f1c",
+    "one_fresh_observation": true,
+    "build_binding": {
+      "source_head": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984",
+      "receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+      "runtime_source_inventory_sha256": "c2438c217b6f2d47f01f947cac6315a46a92f904c447a6a9c916fc95795c28fb",
+      "installed_package_inventory_sha256": "69ce4ccc1e9423c2fb4ccbacaba0131bacfafd4510fbf1bce964d3c8979d093d"
+    }
+  },
+  "rust_checks": {
+    "bindings_unchanged": true,
+    "scripts_unchanged": true,
+    "archive_unchanged": true,
+    "rust_namespace": "cdaed7ea9eb59950861eac3fb1386f2f",
+    "rust_archive_sha256": "255ff91a5a77403b7155c661a1fea8726ab4976f05ff80247f19858425f28bb2",
+    "private_receipt_sha256": "98a9ee0a42b71a3036113cb915ff968d5a9079270ca4868e2820c7c41384308a",
+    "build_binding": {
+      "source_head": "fc35f1f31ca78d3640480923d7daa3b89677220c",
+      "dll_sha256": "c784dfa83aba9aad90d0ab40e35ab8ffea5d513998c2b695723c80bf14b76984",
+      "receipt_sha256": "7323fd6d08af640e48a8f7ea909a9f349040a17bf7d90ad673a10afdc9fa4b2c",
+      "runtime_source_inventory_sha256": "c2438c217b6f2d47f01f947cac6315a46a92f904c447a6a9c916fc95795c28fb",
+      "installed_package_inventory_sha256": "69ce4ccc1e9423c2fb4ccbacaba0131bacfafd4510fbf1bce964d3c8979d093d"
+    },
+    "observations": [
+      {
+        "filter": "reader_",
+        "exit_code": 0,
+        "tests": [
+          [
+            "arrow_ffi::tests::automatic_reader_threads_use_available_cpus_and_honor_explicit_limits",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_float_reader_facts_cover_strict_slices_chunks_and_complete_scans",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_float_reader_invalid_final_tail_declines_facts_without_changing_values",
+            "ok"
+          ]
+        ],
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "rust_compile_lines": [
+          "   Compiling dtatools-r v0.11.2 (/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-build-v1/src/rust)"
+        ],
+        "log_sha256": "4f03ce359ffa38f21959c7934c8fbf0045ba7b643861d1b9bbb2b8d0400e63bc"
+      },
+      {
+        "filter": "compact_float_count_only_gather_",
+        "exit_code": 0,
+        "tests": [
+          [
+            "tests::compact_float_count_only_gather_preserves_raw_bytes_and_missing_cache_for_every_release",
+            "ok"
+          ]
+        ],
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "rust_compile_lines": [],
+        "log_sha256": "d4e3d497a7fb8c2c925a9a98285b74cb56005a86a07c5fb9bccac52eedccb37b"
+      },
+      {
+        "filter": "numeric_facts::tests::",
+        "exit_code": 0,
+        "tests": [
+          [
+            "numeric_facts::tests::any_invalid_float_tail_declines_both_bounds_and_zero_count",
+            "ok"
+          ],
+          [
+            "numeric_facts::tests::float_facts_require_complete_ordered_strict_modern_non_temporal_values",
+            "ok"
+          ],
+          [
+            "numeric_facts::tests::empty_and_nonzero_free_float_extents_are_exact_and_integer_readers_decline",
+            "ok"
+          ],
+          [
+            "numeric_facts::tests::count_only_float_predicates_match_modern_classifiers_for_endpoints_and_raw_words",
+            "ok"
+          ]
+        ],
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "rust_compile_lines": [],
+        "log_sha256": "1f55ffb2464c02bae340e8829f280bd3b880ea47f7820c2d0e0dcdeac163006f"
+      },
+      {
+        "filter": "owned_numeric::tests::",
+        "exit_code": 0,
+        "tests": [
+          [
+            "owned_numeric::tests::numeric_domain_defaults_unknown_and_clone_retains_same_owner_fact",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_byte_missing_scan_remains_interruptible_between_bounded_spans",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::chunk_geometry_preserves_sliced_buffers_and_irregular_tails",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_float_missing_counts_preserve_nan_payloads_and_legacy_ranges",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::scalar_spans_cover_raw_chunk_edges_for_every_storage_width",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_byte_missing_counts_accumulate_across_full_spans_and_chunk_tails",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_byte_missing_counts_preserve_sliced_chunk_values_for_every_release",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_long_missing_counts_cover_sentinels_and_signed_boundaries_for_every_release",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::uniform_lookup_preserves_owner_and_descriptor_bounds",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::scalar_spans_return_whole_sliced_arrow_chunks_in_any_order",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::scalar_spans_reject_empty_plain_and_invalid_arguments",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_int_missing_counts_cover_every_value_and_release_in_sliced_chunks",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::wider_owned_missing_scans_accumulate_spans_and_keep_cancellation_bounds",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_float_reader_facts_cover_strict_slices_chunks_and_complete_scans",
+            "ok"
+          ],
+          [
+            "owned_numeric::tests::owned_float_reader_invalid_final_tail_declines_facts_without_changing_values",
+            "ok"
+          ]
+        ],
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0,
+        "rust_compile_lines": [],
+        "log_sha256": "4799111b5e4df0accb7ef1fb5360ee25030278478cff63d7884846bf7fce3fb4"
+      }
+    ]
+  },
+  "rejected_all_facts": {
+    "accepted": false,
+    "panel": {
+      "status": "PASS",
+      "mode": "measure",
+      "paired_rounds": 6,
+      "observations": 144,
+      "before_after_equal": true,
+      "rounds": [
+        {
+          "round": 1,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.8739495798319328,
+              "1": 2.3375,
+              "5": 6.032258064516129
+            },
+            "candidate": {
+              "0": 2.964788732394366,
+              "1": 2.6538461538461537,
+              "5": 4.407894736842105
+            }
+          },
+          "reader_cpu_cost_ratio": 1.5821069917261414,
+          "reader_cpu_delta_ms": 1.0908391525624332,
+          "one_operation_cpu_workflow_speedup": 0.8807971014492754,
+          "one_operation_cpu_workflow_saved_ms": -0.31634615384615383,
+          "five_operation_cpu_workflow_speedup": 1.368512277323062,
+          "five_operation_cpu_workflow_saved_ms": 1.6243633276740237,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.8739495798319328,
+              "1": 2.33125,
+              "5": 6.016129032258065
+            },
+            "candidate": {
+              "0": 2.964788732394366,
+              "1": 2.6538461538461537,
+              "5": 4.407894736842105
+            }
+          },
+          "reader_wall_cost_ratio": 1.5821069917261414,
+          "reader_wall_delta_ms": 1.0908391525624332,
+          "one_operation_wall_workflow_speedup": 0.8784420289855072,
+          "one_operation_wall_workflow_saved_ms": -0.3225961538461539,
+          "five_operation_wall_workflow_speedup": 1.3648531535869042,
+          "five_operation_wall_workflow_saved_ms": 1.6082342954159596
+        },
+        {
+          "round": 1,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.426229508196721,
+              "1": 7.111111111111111,
+              "5": 8.74285714285717
+            },
+            "candidate": {
+              "0": 3.3181818181818183,
+              "1": 4.0,
+              "5": 4.535211267605648
+            }
+          },
+          "reader_cpu_cost_ratio": 0.5163497217068646,
+          "reader_cpu_delta_ms": -3.108047690014903,
+          "one_operation_cpu_workflow_speedup": 1.7777777777777777,
+          "one_operation_cpu_workflow_saved_ms": 3.1111111111111107,
+          "five_operation_cpu_workflow_speedup": 1.9277728482697427,
+          "five_operation_cpu_workflow_saved_ms": 4.207645875251522,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.426229508196705,
+              "1": 7.092592592592593,
+              "5": 8.771428571428572
+            },
+            "candidate": {
+              "0": 3.318181818181829,
+              "1": 4.012987012987013,
+              "5": 4.53521126760562
+            }
+          },
+          "reader_wall_cost_ratio": 0.5163497217068675,
+          "reader_wall_delta_ms": -3.1080476900148764,
+          "one_operation_wall_workflow_speedup": 1.767409804626633,
+          "one_operation_wall_workflow_saved_ms": 3.0796055796055795,
+          "five_operation_wall_workflow_speedup": 1.9340727595386042,
+          "five_operation_wall_workflow_saved_ms": 4.2362173038229525
+        },
+        {
+          "round": 1,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 0.6572052401746725,
+              "1": 1.2115384615384615,
+              "5": 3.35
+            },
+            "candidate": {
+              "0": 1.1290322580645162,
+              "1": 1.4196428571428616,
+              "5": 3.203883495145631
+            }
+          },
+          "reader_cpu_cost_ratio": 1.7179294823705926,
+          "reader_cpu_delta_ms": 0.4718270178898437,
+          "one_operation_cpu_workflow_speedup": 0.8534107402031903,
+          "one_operation_cpu_workflow_saved_ms": -0.2081043956044002,
+          "five_operation_cpu_workflow_speedup": 1.0456060606060606,
+          "five_operation_cpu_workflow_saved_ms": 0.1461165048543691,
+          "wall_ms": {
+            "baseline": {
+              "0": 0.6572052401746725,
+              "1": 1.2115384615384615,
+              "5": 3.36
+            },
+            "candidate": {
+              "0": 1.1290322580645162,
+              "1": 1.4196428571428572,
+              "5": 3.203883495145631
+            }
+          },
+          "reader_wall_cost_ratio": 1.7179294823705926,
+          "reader_wall_delta_ms": 0.4718270178898437,
+          "one_operation_wall_workflow_speedup": 0.853410740203193,
+          "one_operation_wall_workflow_saved_ms": -0.20810439560439575,
+          "five_operation_wall_workflow_speedup": 1.0487272727272727,
+          "five_operation_wall_workflow_saved_ms": 0.1561165048543689
+        },
+        {
+          "round": 1,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.0822281167108727,
+              "1": 1.5462184873949536,
+              "5": 2.941747572815534
+            },
+            "candidate": {
+              "0": 1.1632047477744838,
+              "1": 1.5732758620689655,
+              "5": 2.8249999999999917
+            }
+          },
+          "reader_cpu_cost_ratio": 1.0748239948798566,
+          "reader_cpu_delta_ms": 0.08097663106361108,
+          "one_operation_cpu_workflow_speedup": 0.9828018878784363,
+          "one_operation_cpu_workflow_saved_ms": -0.027057374674011925,
+          "five_operation_cpu_workflow_speedup": 1.0413265744479796,
+          "five_operation_cpu_workflow_saved_ms": 0.11674757281554227,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.0875331564986737,
+              "1": 1.5504201680672351,
+              "5": 2.9417475728155433
+            },
+            "candidate": {
+              "0": 1.166172106824929,
+              "1": 1.5775862068965518,
+              "5": 2.8166666666666584
+            }
+          },
+          "reader_wall_cost_ratio": 1.072309473836581,
+          "reader_wall_delta_ms": 0.07863895032625523,
+          "one_operation_wall_workflow_speedup": 0.9827799972448047,
+          "one_operation_wall_workflow_saved_ms": -0.027166038829316674,
+          "five_operation_wall_workflow_speedup": 1.0444074223013793,
+          "five_operation_wall_workflow_saved_ms": 0.1250809061488849
+        },
+        {
+          "round": 2,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.1985018726591798,
+              "1": 2.3,
+              "5": 5.578124999999984
+            },
+            "candidate": {
+              "0": 2.0387096774193547,
+              "1": 2.838709677419355,
+              "5": 4.6973684210526185
+            }
+          },
+          "reader_cpu_cost_ratio": 1.7010483870967688,
+          "reader_cpu_delta_ms": 0.8402078047601749,
+          "one_operation_cpu_workflow_speedup": 0.8102272727272726,
+          "one_operation_cpu_workflow_saved_ms": -0.5387096774193552,
+          "five_operation_cpu_workflow_speedup": 1.1875,
+          "five_operation_cpu_workflow_saved_ms": 0.8807565789473655,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.198501872659176,
+              "1": 2.30625,
+              "5": 5.578124999999984
+            },
+            "candidate": {
+              "0": 2.0387096774193614,
+              "1": 2.838709677419355,
+              "5": 4.697368421052644
+            }
+          },
+          "reader_wall_cost_ratio": 1.7010483870967796,
+          "reader_wall_delta_ms": 0.8402078047601853,
+          "one_operation_wall_workflow_speedup": 0.8124289772727272,
+          "one_operation_wall_workflow_saved_ms": -0.5324596774193551,
+          "five_operation_wall_workflow_speedup": 1.1874999999999933,
+          "five_operation_wall_workflow_saved_ms": 0.8807565789473397
+        },
+        {
+          "round": 2,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.084745762711864,
+              "1": 6.962264150943377,
+              "5": 8.76470588235297
+            },
+            "candidate": {
+              "0": 3.411764705882353,
+              "1": 4.0,
+              "5": 4.464788732394366
+            }
+          },
+          "reader_cpu_cost_ratio": 0.5607078485990497,
+          "reader_cpu_delta_ms": -2.6729810568295114,
+          "one_operation_cpu_workflow_speedup": 1.7405660377358443,
+          "one_operation_cpu_workflow_saved_ms": 2.962264150943377,
+          "five_operation_cpu_workflow_speedup": 1.9630729263314224,
+          "five_operation_cpu_workflow_saved_ms": 4.299917149958604,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.084745762711864,
+              "1": 6.962264150943396,
+              "5": 8.764705882352942
+            },
+            "candidate": {
+              "0": 3.411764705882353,
+              "1": 3.9871794871794872,
+              "5": 4.464788732394366
+            }
+          },
+          "reader_wall_cost_ratio": 0.5607078485990497,
+          "reader_wall_delta_ms": -2.6729810568295114,
+          "one_operation_wall_workflow_speedup": 1.7461627130983437,
+          "one_operation_wall_workflow_saved_ms": 2.9750846637639086,
+          "five_operation_wall_workflow_speedup": 1.9630729263314162,
+          "five_operation_wall_workflow_saved_ms": 4.299917149958576
+        },
+        {
+          "round": 2,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 0.6548856548856549,
+              "1": 1.2076923076923076,
+              "5": 3.297029702970297
+            },
+            "candidate": {
+              "0": 0.968253968253965,
+              "1": 1.45662100456621,
+              "5": 3.4761904761904763
+            }
+          },
+          "reader_cpu_cost_ratio": 1.4785084404131974,
+          "reader_cpu_delta_ms": 0.31336831336831017,
+          "one_operation_cpu_workflow_speedup": 0.8291053773812395,
+          "one_operation_cpu_workflow_saved_ms": -0.2489286968739024,
+          "five_operation_cpu_workflow_speedup": 0.9484605994846059,
+          "five_operation_cpu_workflow_saved_ms": -0.17916077322017943,
+          "wall_ms": {
+            "baseline": {
+              "0": 0.6548856548856549,
+              "1": 1.2076923076923076,
+              "5": 3.297029702970297
+            },
+            "candidate": {
+              "0": 0.9714285714285745,
+              "1": 1.452054794520548,
+              "5": 3.4761904761904763
+            }
+          },
+          "reader_wall_cost_ratio": 1.4833560090702995,
+          "reader_wall_delta_ms": 0.31654291654291966,
+          "one_operation_wall_workflow_speedup": 0.8317126269956457,
+          "one_operation_wall_workflow_saved_ms": -0.24436248682824036,
+          "five_operation_wall_workflow_speedup": 0.9484605994846059,
+          "five_operation_wall_workflow_saved_ms": -0.17916077322017943
+        },
+        {
+          "round": 2,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.1198979591836735,
+              "1": 1.538709677419355,
+              "5": 2.941747572815534
+            },
+            "candidate": {
+              "0": 1.1314285714285715,
+              "1": 1.5612903225806452,
+              "5": 2.675
+            }
+          },
+          "reader_cpu_cost_ratio": 1.0102961275626423,
+          "reader_cpu_delta_ms": 0.011530612244897931,
+          "one_operation_cpu_workflow_speedup": 0.9855371900826447,
+          "one_operation_cpu_workflow_saved_ms": -0.022580645161290214,
+          "five_operation_cpu_workflow_speedup": 1.0997187188095454,
+          "five_operation_cpu_workflow_saved_ms": 0.2667475728155342,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.1224489795918366,
+              "1": 1.538709677419355,
+              "5": 2.941747572815534
+            },
+            "candidate": {
+              "0": 1.1314285714285715,
+              "1": 1.564516129032258,
+              "5": 2.675
+            }
+          },
+          "reader_wall_cost_ratio": 1.008,
+          "reader_wall_delta_ms": 0.008979591836734802,
+          "one_operation_wall_workflow_speedup": 0.9835051546391753,
+          "one_operation_wall_workflow_saved_ms": -0.02580645161290307,
+          "five_operation_wall_workflow_speedup": 1.0997187188095454,
+          "five_operation_wall_workflow_saved_ms": 0.2667475728155342
+        },
+        {
+          "round": 3,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.272727272727269,
+              "1": 2.1677419354838774,
+              "5": 5.606557377049165
+            },
+            "candidate": {
+              "0": 2.615894039735099,
+              "1": 2.440944881889756,
+              "5": 4.333333333333333
+            }
+          },
+          "reader_cpu_cost_ratio": 2.055345316934727,
+          "reader_cpu_delta_ms": 1.3431667670078302,
+          "one_operation_cpu_workflow_speedup": 0.888074921956301,
+          "one_operation_cpu_workflow_saved_ms": -0.2732029464058785,
+          "five_operation_cpu_workflow_speedup": 1.293820933165192,
+          "five_operation_cpu_workflow_saved_ms": 1.2732240437158318,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.2690909090909017,
+              "1": 2.174193548387097,
+              "5": 5.60655737704918
+            },
+            "candidate": {
+              "0": 2.622516556291384,
+              "1": 2.440944881889764,
+              "5": 4.346153846153846
+            }
+          },
+          "reader_wall_cost_ratio": 2.066452873868581,
+          "reader_wall_delta_ms": 1.3534256472004824,
+          "one_operation_wall_workflow_speedup": 0.8907180020811655,
+          "one_operation_wall_workflow_saved_ms": -0.266751333502667,
+          "five_operation_wall_workflow_speedup": 1.2900043522414044,
+          "five_operation_wall_workflow_saved_ms": 1.260403530895334
+        },
+        {
+          "round": 3,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.360655737704918,
+              "1": 6.981132075471698,
+              "5": 8.787878787878787
+            },
+            "candidate": {
+              "0": 3.4,
+              "1": 3.909090909090909,
+              "5": 4.449275362318841
+            }
+          },
+          "reader_cpu_cost_ratio": 0.5345360824742268,
+          "reader_cpu_delta_ms": -2.960655737704918,
+          "one_operation_cpu_workflow_speedup": 1.7858709960508994,
+          "one_operation_cpu_workflow_saved_ms": 3.0720411663807887,
+          "five_operation_cpu_workflow_speedup": 1.9751258513473495,
+          "five_operation_cpu_workflow_saved_ms": 4.338603425559946,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.360655737704918,
+              "1": 6.981132075471698,
+              "5": 8.818181818181818
+            },
+            "candidate": {
+              "0": 3.4,
+              "1": 3.909090909090909,
+              "5": 4.463768115942029
+            }
+          },
+          "reader_wall_cost_ratio": 0.5345360824742268,
+          "reader_wall_delta_ms": -2.960655737704918,
+          "one_operation_wall_workflow_speedup": 1.7858709960508994,
+          "one_operation_wall_workflow_saved_ms": 3.0720411663807887,
+          "five_operation_wall_workflow_speedup": 1.9755017709563163,
+          "five_operation_wall_workflow_saved_ms": 4.354413702239789
+        },
+        {
+          "round": 3,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 0.6503198294243091,
+              "1": 1.2192307692307693,
+              "5": 3.618556701030928
+            },
+            "candidate": {
+              "0": 1.1840490797546044,
+              "1": 1.4065420560747663,
+              "5": 3.495145631067961
+            }
+          },
+          "reader_cpu_cost_ratio": 1.8207180931308449,
+          "reader_cpu_delta_ms": 0.5337292503302953,
+          "one_operation_cpu_workflow_speedup": 0.8668285203168925,
+          "one_operation_cpu_workflow_saved_ms": -0.187311286843997,
+          "five_operation_cpu_workflow_speedup": 1.0353092783505156,
+          "five_operation_cpu_workflow_saved_ms": 0.12341106996296691,
+          "wall_ms": {
+            "baseline": {
+              "0": 0.650319829424307,
+              "1": 1.2153846153846153,
+              "5": 3.6082474226804124
+            },
+            "candidate": {
+              "0": 1.1840490797546044,
+              "1": 1.4018691588785046,
+              "5": 3.4854368932038833
+            }
+          },
+          "reader_wall_cost_ratio": 1.8207180931308509,
+          "reader_wall_delta_ms": 0.5337292503302974,
+          "one_operation_wall_workflow_speedup": 0.8669743589743589,
+          "one_operation_wall_workflow_saved_ms": -0.18648454349388932,
+          "five_operation_wall_workflow_speedup": 1.0352353329695891,
+          "five_operation_wall_workflow_saved_ms": 0.12281052947652915
+        },
+        {
+          "round": 3,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.0442708333333333,
+              "1": 1.5327868852459017,
+              "5": 2.897196261682243
+            },
+            "candidate": {
+              "0": 1.1171428571428572,
+              "1": 1.62,
+              "5": 2.8434782608695652
+            }
+          },
+          "reader_cpu_cost_ratio": 1.0697826861417885,
+          "reader_cpu_delta_ms": 0.07287202380952396,
+          "one_operation_cpu_workflow_speedup": 0.9461647439789516,
+          "one_operation_cpu_workflow_saved_ms": -0.08721311475409843,
+          "five_operation_cpu_workflow_speedup": 1.0188916516619508,
+          "five_operation_cpu_workflow_saved_ms": 0.05371800081267786,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.0442708333333333,
+              "1": 1.5327868852459017,
+              "5": 2.897196261682243
+            },
+            "candidate": {
+              "0": 1.1171428571428572,
+              "1": 1.6200000000000032,
+              "5": 2.8347826086956522
+            }
+          },
+          "reader_wall_cost_ratio": 1.0697826861417885,
+          "reader_wall_delta_ms": 0.07287202380952396,
+          "one_operation_wall_workflow_speedup": 0.9461647439789498,
+          "one_operation_wall_workflow_saved_ms": -0.08721311475410154,
+          "five_operation_wall_workflow_speedup": 1.0220170861762514,
+          "five_operation_wall_workflow_saved_ms": 0.06241365298659085
+        },
+        {
+          "round": 4,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.2038461538461538,
+              "1": 2.03125,
+              "5": 5.55
+            },
+            "candidate": {
+              "0": 2.1733333333333333,
+              "1": 2.652173913043478,
+              "5": 4.7368421052631575
+            }
+          },
+          "reader_cpu_cost_ratio": 1.805324813631523,
+          "reader_cpu_delta_ms": 0.9694871794871796,
+          "one_operation_cpu_workflow_speedup": 0.7658811475409837,
+          "one_operation_cpu_workflow_saved_ms": -0.620923913043478,
+          "five_operation_cpu_workflow_speedup": 1.1716666666666666,
+          "five_operation_cpu_workflow_saved_ms": 0.8131578947368423,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.2,
+              "1": 2.025,
+              "5": 5.55
+            },
+            "candidate": {
+              "0": 2.1733333333333333,
+              "1": 2.652173913043478,
+              "5": 4.75
+            }
+          },
+          "reader_wall_cost_ratio": 1.8111111111111111,
+          "reader_wall_delta_ms": 0.9733333333333334,
+          "one_operation_wall_workflow_speedup": 0.7635245901639345,
+          "one_operation_wall_workflow_saved_ms": -0.6271739130434781,
+          "five_operation_wall_workflow_speedup": 1.1684210526315788,
+          "five_operation_wall_workflow_saved_ms": 0.7999999999999998
+        },
+        {
+          "round": 4,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.155172413793085,
+              "1": 7.115384615384615,
+              "5": 9.0
+            },
+            "candidate": {
+              "0": 3.4725274725274726,
+              "1": 3.7804878048780486,
+              "5": 4.712328767123288
+            }
+          },
+          "reader_cpu_cost_ratio": 0.564164127189339,
+          "reader_cpu_delta_ms": -2.682644941265613,
+          "one_operation_cpu_workflow_speedup": 1.882133995037221,
+          "one_operation_cpu_workflow_saved_ms": 3.3348968105065664,
+          "five_operation_cpu_workflow_speedup": 1.9098837209302324,
+          "five_operation_cpu_workflow_saved_ms": 4.287671232876712,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.15517241379312,
+              "1": 7.115384615384635,
+              "5": 9.0
+            },
+            "candidate": {
+              "0": 3.4835164835164836,
+              "1": 3.7804878048780486,
+              "5": 4.712328767123288
+            }
+          },
+          "reader_wall_cost_ratio": 0.5659494567057577,
+          "reader_wall_delta_ms": -2.6716559302766365,
+          "one_operation_wall_workflow_speedup": 1.8821339950372262,
+          "one_operation_wall_workflow_saved_ms": 3.334896810506587,
+          "five_operation_wall_workflow_speedup": 1.9098837209302324,
+          "five_operation_wall_workflow_saved_ms": 4.287671232876712
+        },
+        {
+          "round": 4,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.036144578313253,
+              "1": 1.2999999999999963,
+              "5": 3.789473684210526
+            },
+            "candidate": {
+              "0": 1.2451612903225806,
+              "1": 1.4062500000000047,
+              "5": 3.5619047619047617
+            }
+          },
+          "reader_cpu_cost_ratio": 1.2017254313578394,
+          "reader_cpu_delta_ms": 0.2090167120093276,
+          "one_operation_cpu_workflow_speedup": 0.9244444444444387,
+          "one_operation_cpu_workflow_saved_ms": -0.1062500000000084,
+          "five_operation_cpu_workflow_speedup": 1.0638896707008163,
+          "five_operation_cpu_workflow_saved_ms": 0.22756892230576442,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.036144578313253,
+              "1": 1.3038461538461539,
+              "5": 3.80000000000001
+            },
+            "candidate": {
+              "0": 1.2451612903225806,
+              "1": 1.4017857142857142,
+              "5": 3.5619047619047715
+            }
+          },
+          "reader_wall_cost_ratio": 1.2017254313578394,
+          "reader_wall_delta_ms": 0.2090167120093276,
+          "one_operation_wall_workflow_speedup": 0.9301322880940717,
+          "one_operation_wall_workflow_saved_ms": -0.09793956043956031,
+          "five_operation_wall_workflow_speedup": 1.0668449197860963,
+          "five_operation_wall_workflow_saved_ms": 0.23809523809523858
+        },
+        {
+          "round": 4,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.063660477453581,
+              "1": 1.5580645161290323,
+              "5": 2.9305555555555554
+            },
+            "candidate": {
+              "0": 1.1162162162162161,
+              "1": 1.464,
+              "5": 2.7857142857142767
+            }
+          },
+          "reader_cpu_cost_ratio": 1.0494102581384375,
+          "reader_cpu_delta_ms": 0.052555738762635196,
+          "one_operation_cpu_workflow_speedup": 1.064251718667372,
+          "one_operation_cpu_workflow_saved_ms": 0.09406451612903233,
+          "five_operation_cpu_workflow_speedup": 1.0519943019943054,
+          "five_operation_cpu_workflow_saved_ms": 0.14484126984127865,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.0636604774535836,
+              "1": 1.5612903225806452,
+              "5": 2.9305555555555416
+            },
+            "candidate": {
+              "0": 1.1189189189189188,
+              "1": 1.46,
+              "5": 2.794642857142857
+            }
+          },
+          "reader_wall_cost_ratio": 1.0519512030733948,
+          "reader_wall_delta_ms": 0.055258441465335206,
+          "one_operation_wall_workflow_speedup": 1.0693769332744145,
+          "one_operation_wall_workflow_saved_ms": 0.10129032258064519,
+          "five_operation_wall_workflow_speedup": 1.0486332978345707,
+          "five_operation_wall_workflow_saved_ms": 0.13591269841268439
+        },
+        {
+          "round": 5,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.8153846153846154,
+              "1": 2.161290322580645,
+              "5": 5.370967741935484
+            },
+            "candidate": {
+              "0": 2.6838709677419357,
+              "1": 2.71900826446281,
+              "5": 4.287671232876712
+            }
+          },
+          "reader_cpu_cost_ratio": 1.4784034991798798,
+          "reader_cpu_delta_ms": 0.8684863523573203,
+          "one_operation_cpu_workflow_speedup": 0.7948818511618786,
+          "one_operation_cpu_workflow_saved_ms": -0.557717941882165,
+          "five_operation_cpu_workflow_speedup": 1.2526538184066784,
+          "five_operation_cpu_workflow_saved_ms": 1.0832965090587718,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.8153846153846154,
+              "1": 2.167741935483871,
+              "5": 5.370967741935484
+            },
+            "candidate": {
+              "0": 2.6838709677419357,
+              "1": 2.727272727272727,
+              "5": 4.287671232876712
+            }
+          },
+          "reader_wall_cost_ratio": 1.4784034991798798,
+          "reader_wall_delta_ms": 0.8684863523573203,
+          "one_operation_wall_workflow_speedup": 0.7948387096774195,
+          "one_operation_wall_workflow_saved_ms": -0.5595307917888559,
+          "five_operation_wall_workflow_speedup": 1.2526538184066784,
+          "five_operation_wall_workflow_saved_ms": 1.0832965090587718
+        },
+        {
+          "round": 5,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.224137931034483,
+              "1": 7.25,
+              "5": 8.857142857142858
+            },
+            "candidate": {
+              "0": 3.3181818181818183,
+              "1": 3.6951219512195,
+              "5": 4.521739130434782
+            }
+          },
+          "reader_cpu_cost_ratio": 0.5331150843616218,
+          "reader_cpu_delta_ms": -2.9059561128526648,
+          "one_operation_cpu_workflow_speedup": 1.9620462046204685,
+          "one_operation_cpu_workflow_saved_ms": 3.5548780487805,
+          "five_operation_cpu_workflow_speedup": 1.9587912087912092,
+          "five_operation_cpu_workflow_saved_ms": 4.335403726708075,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.224137931034465,
+              "1": 7.23076923076925,
+              "5": 8.857142857142858
+            },
+            "candidate": {
+              "0": 3.3181818181818183,
+              "1": 3.6951219512195,
+              "5": 4.536231884057971
+            }
+          },
+          "reader_wall_cost_ratio": 0.5331150843616232,
+          "reader_wall_delta_ms": -2.905956112852647,
+          "one_operation_wall_workflow_speedup": 1.9568418380299686,
+          "one_operation_wall_workflow_saved_ms": 3.5356472795497504,
+          "five_operation_wall_workflow_speedup": 1.9525330899132818,
+          "five_operation_wall_workflow_saved_ms": 4.320910973084887
+        },
+        {
+          "round": 5,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 0.6956521739130435,
+              "1": 1.2397003745318351,
+              "5": 3.4838709677419466
+            },
+            "candidate": {
+              "0": 0.99079754601227,
+              "1": 1.421276595744681,
+              "5": 3.306930693069317
+            }
+          },
+          "reader_cpu_cost_ratio": 1.4242714723926382,
+          "reader_cpu_delta_ms": 0.29514537209922653,
+          "one_operation_cpu_workflow_speedup": 0.8722442754939558,
+          "one_operation_cpu_workflow_saved_ms": -0.18157622121284578,
+          "five_operation_cpu_workflow_speedup": 1.0535058914429207,
+          "five_operation_cpu_workflow_saved_ms": 0.17694027467262963,
+          "wall_ms": {
+            "baseline": {
+              "0": 0.6956521739130435,
+              "1": 1.243445692883899,
+              "5": 3.4946236559139683
+            },
+            "candidate": {
+              "0": 0.99079754601227,
+              "1": 1.421276595744681,
+              "5": 3.3069306930693068
+            }
+          },
+          "reader_wall_cost_ratio": 1.4242714723926382,
+          "reader_wall_delta_ms": 0.29514537209922653,
+          "one_operation_wall_workflow_speedup": 0.8748794545740008,
+          "one_operation_wall_workflow_saved_ms": -0.17783090286078185,
+          "five_operation_wall_workflow_speedup": 1.05675745283626,
+          "five_operation_wall_workflow_saved_ms": 0.18769296284466153
+        },
+        {
+          "round": 5,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "baseline",
+            "candidate"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.0610079575596818,
+              "1": 1.5625,
+              "5": 2.942857142857143
+            },
+            "candidate": {
+              "0": 1.1151685393258426,
+              "1": 1.50625,
+              "5": 2.5338983050847457
+            }
+          },
+          "reader_cpu_cost_ratio": 1.0510463483146066,
+          "reader_cpu_delta_ms": 0.05416058176616079,
+          "one_operation_cpu_workflow_speedup": 1.0373443983402488,
+          "one_operation_cpu_workflow_saved_ms": 0.05624999999999991,
+          "five_operation_cpu_workflow_speedup": 1.161395126612518,
+          "five_operation_cpu_workflow_saved_ms": 0.4089588377723974,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.0610079575596818,
+              "1": 1.5625,
+              "5": 2.933333333333343
+            },
+            "candidate": {
+              "0": 1.1151685393258426,
+              "1": 1.503125,
+              "5": 2.5338983050847457
+            }
+          },
+          "reader_wall_cost_ratio": 1.0510463483146066,
+          "reader_wall_delta_ms": 0.05416058176616079,
+          "one_operation_wall_workflow_speedup": 1.0395010395010396,
+          "one_operation_wall_workflow_saved_ms": 0.059374999999999956,
+          "five_operation_wall_workflow_speedup": 1.1576365663322223,
+          "five_operation_wall_workflow_saved_ms": 0.3994350282485972
+        },
+        {
+          "round": 6,
+          "fixture": "dense_float",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.607773851590106,
+              "1": 2.13125,
+              "5": 5.612903225806452
+            },
+            "candidate": {
+              "0": 2.5364238410596025,
+              "1": 2.5923076923076924,
+              "5": 4.650602409638543
+            }
+          },
+          "reader_cpu_cost_ratio": 1.5775998835601484,
+          "reader_cpu_delta_ms": 0.9286499894694964,
+          "one_operation_cpu_workflow_speedup": 0.8221439169139466,
+          "one_operation_cpu_workflow_saved_ms": -0.46105769230769234,
+          "five_operation_cpu_workflow_speedup": 1.2069196055490587,
+          "five_operation_cpu_workflow_saved_ms": 0.9623008161679092,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.6113074204946995,
+              "1": 2.125,
+              "5": 5.612903225806452
+            },
+            "candidate": {
+              "0": 2.5430463576158875,
+              "1": 2.5923076923076924,
+              "5": 4.662650602409639
+            }
+          },
+          "reader_wall_cost_ratio": 1.5782502614151233,
+          "reader_wall_delta_ms": 0.9317389371211879,
+          "one_operation_wall_workflow_speedup": 0.8197329376854599,
+          "one_operation_wall_workflow_saved_ms": -0.4673076923076924,
+          "five_operation_wall_workflow_speedup": 1.2038009502375595,
+          "five_operation_wall_workflow_saved_ms": 0.9502526233968132
+        },
+        {
+          "round": 6,
+          "fixture": "dense_float",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 6.311475409836065,
+              "1": 6.716981132075472,
+              "5": 8.857142857142858
+            },
+            "candidate": {
+              "0": 3.3255813953488373,
+              "1": 3.6341463414634148,
+              "5": 4.746666666666667
+            }
+          },
+          "reader_cpu_cost_ratio": 0.5269102990033223,
+          "reader_cpu_delta_ms": -2.985894014487228,
+          "one_operation_cpu_workflow_speedup": 1.8482968215778144,
+          "one_operation_cpu_workflow_saved_ms": 3.0828347906120572,
+          "five_operation_cpu_workflow_speedup": 1.8659711075441412,
+          "five_operation_cpu_workflow_saved_ms": 4.110476190476191,
+          "wall_ms": {
+            "baseline": {
+              "0": 6.311475409836065,
+              "1": 6.716981132075472,
+              "5": 8.857142857142858
+            },
+            "candidate": {
+              "0": 3.313953488372093,
+              "1": 3.6463414634146343,
+              "5": 4.733333333333333
+            }
+          },
+          "reader_wall_cost_ratio": 0.5250679553005135,
+          "reader_wall_delta_ms": -2.997521921463972,
+          "one_operation_wall_workflow_speedup": 1.8421152268568184,
+          "one_operation_wall_workflow_saved_ms": 3.0706396686608377,
+          "five_operation_wall_workflow_speedup": 1.8712273641851107,
+          "five_operation_wall_workflow_saved_ms": 4.123809523809524
+        },
+        {
+          "round": 6,
+          "fixture": "sparse_int",
+          "format": "dta",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 0.6694386694386695,
+              "1": 1.3754940711462489,
+              "5": 3.9081632653061225
+            },
+            "candidate": {
+              "0": 0.9028571428571428,
+              "1": 1.5065502183406114,
+              "5": 3.801980198019802
+            }
+          },
+          "reader_cpu_cost_ratio": 1.3486779059449865,
+          "reader_cpu_delta_ms": 0.23341847341847333,
+          "one_operation_cpu_workflow_speedup": 0.9130091080941768,
+          "one_operation_cpu_workflow_saved_ms": -0.13105614719436254,
+          "five_operation_cpu_workflow_speedup": 1.0279283588435375,
+          "five_operation_cpu_workflow_saved_ms": 0.10618306728632065,
+          "wall_ms": {
+            "baseline": {
+              "0": 0.6694386694386695,
+              "1": 1.3715415019762847,
+              "5": 3.9183673469387754
+            },
+            "candidate": {
+              "0": 0.9028571428571428,
+              "1": 1.5065502183406114,
+              "5": 3.801980198019802
+            }
+          },
+          "reader_wall_cost_ratio": 1.3486779059449865,
+          "reader_wall_delta_ms": 0.23341847341847333,
+          "one_operation_wall_workflow_speedup": 0.910385518703099,
+          "one_operation_wall_workflow_saved_ms": -0.13500871636432676,
+          "five_operation_wall_workflow_speedup": 1.030612244897959,
+          "five_operation_wall_workflow_saved_ms": 0.11638714891897362
+        },
+        {
+          "round": 6,
+          "fixture": "sparse_int",
+          "format": "arrow",
+          "build_order": [
+            "candidate",
+            "baseline"
+          ],
+          "cpu_ms": {
+            "baseline": {
+              "0": 1.0567567567567568,
+              "1": 1.4732142857142814,
+              "5": 2.794392523364486
+            },
+            "candidate": {
+              "0": 1.0963541666666667,
+              "1": 1.581896551724138,
+              "5": 2.7096774193548385
+            }
+          },
+          "reader_cpu_cost_ratio": 1.037470694799659,
+          "reader_cpu_delta_ms": 0.0395974099099099,
+          "one_operation_cpu_workflow_speedup": 0.9312962242117528,
+          "one_operation_cpu_workflow_saved_ms": -0.10868226600985653,
+          "five_operation_cpu_workflow_speedup": 1.031263907432132,
+          "five_operation_cpu_workflow_saved_ms": 0.08471510400964766,
+          "wall_ms": {
+            "baseline": {
+              "0": 1.0567567567567568,
+              "1": 1.4732142857142858,
+              "5": 2.803738317757
+            },
+            "candidate": {
+              "0": 1.096354166666664,
+              "1": 1.5862068965517242,
+              "5": 2.7016129032258145
+            }
+          },
+          "reader_wall_cost_ratio": 1.0374706947996564,
+          "reader_wall_delta_ms": 0.03959740990990723,
+          "one_operation_wall_workflow_speedup": 0.9287655279503105,
+          "one_operation_wall_workflow_saved_ms": -0.11299261083743839,
+          "five_operation_wall_workflow_speedup": 1.0378016459757222,
+          "five_operation_wall_workflow_saved_ms": 0.1021254145311854
+        }
+      ],
+      "medians": {
+        "dense_float/dta": {
+          "reader_cpu_cost_ratio": 1.641577689411455,
+          "reader_cpu_delta_ms": 0.949068584478338,
+          "one_operation_cpu_workflow_speedup": 0.8161855948206096,
+          "one_operation_cpu_workflow_saved_ms": -0.49988368486352375,
+          "five_operation_cpu_workflow_speedup": 1.2297867119778685,
+          "five_operation_cpu_workflow_saved_ms": 1.0227986626133405,
+          "reader_wall_cost_ratio": 1.6415776894114606,
+          "reader_wall_delta_ms": 0.9525361352272607,
+          "one_operation_wall_workflow_speedup": 0.8160809574790935,
+          "one_operation_wall_workflow_saved_ms": -0.49988368486352375,
+          "five_operation_wall_workflow_speedup": 1.228227384322119,
+          "five_operation_wall_workflow_saved_ms": 1.0167745662277925
+        },
+        "dense_float/arrow": {
+          "reader_cpu_cost_ratio": 0.5338255834179243,
+          "reader_cpu_delta_ms": -2.933305925278791,
+          "one_operation_cpu_workflow_speedup": 1.8170839088143569,
+          "one_operation_cpu_workflow_saved_ms": 3.096972950861584,
+          "five_operation_cpu_workflow_speedup": 1.943282028530476,
+          "five_operation_cpu_workflow_saved_ms": 4.293794191417659,
+          "reader_wall_cost_ratio": 0.5338255834179251,
+          "reader_wall_delta_ms": -2.9333059252787823,
+          "one_operation_wall_workflow_speedup": 1.813993111453859,
+          "one_operation_wall_workflow_saved_ms": 3.075823372993184,
+          "five_operation_wall_workflow_speedup": 1.943302924725943,
+          "five_operation_wall_workflow_saved_ms": 4.2937941914176445
+        },
+        "sparse_int/dta": {
+          "reader_cpu_cost_ratio": 1.4513899564029178,
+          "reader_cpu_delta_ms": 0.30425684273376835,
+          "one_operation_cpu_workflow_speedup": 0.8695363979054241,
+          "one_operation_cpu_workflow_saved_ms": -0.1844437540284214,
+          "five_operation_cpu_workflow_speedup": 1.040457669478288,
+          "five_operation_cpu_workflow_saved_ms": 0.134763787408668,
+          "reader_wall_cost_ratio": 1.4538137407314689,
+          "reader_wall_delta_ms": 0.3058441443210731,
+          "one_operation_wall_workflow_speedup": 0.8709269067741798,
+          "one_operation_wall_workflow_saved_ms": -0.18215772317733558,
+          "five_operation_wall_workflow_speedup": 1.041981302848431,
+          "five_operation_wall_workflow_saved_ms": 0.13946351716544902
+        },
+        "sparse_int/arrow": {
+          "reader_cpu_cost_ratio": 1.050228303226522,
+          "reader_cpu_delta_ms": 0.05335816026439799,
+          "one_operation_cpu_workflow_speedup": 0.9841695389805405,
+          "one_operation_cpu_workflow_saved_ms": -0.02481900991765107,
+          "five_operation_cpu_workflow_speedup": 1.0466604382211426,
+          "five_operation_cpu_workflow_saved_ms": 0.13079442132841046,
+          "reader_wall_cost_ratio": 1.0514987756940006,
+          "reader_wall_delta_ms": 0.054709511615748,
+          "one_operation_wall_workflow_speedup": 0.9831425759419901,
+          "one_operation_wall_workflow_saved_ms": -0.026486245221109872,
+          "five_operation_wall_workflow_speedup": 1.046520360067975,
+          "five_operation_wall_workflow_saved_ms": 0.13049680228078464
+        }
+      },
+      "scope": "Original dense FLOAT/random_half and sparse INT million-row fixtures, each saved once as DTA and uncompressed profiled Arrow. Public reader-only/+one/+five same-source reciprocal workflows with threads=1. Six alternating fresh-process build pairs; each phase occupies six distinct positions with mean 6.5 and three positions per half. CPU and elapsed include all reader/result allocations and automatic GC. Exact input/output bits, storage, missing masks/cache mutation, facts, immutable sources and native calls qualified outside clocks. Input files, complete installed packages, build receipts/source inventories and private/public scripts bound before/after. Warm OS file cache; identical small workflow-list bookkeeping included. No cold-disk, parallel-worker, bare-construction or universal performance claim.",
+      "before": {
+        "worker_sha256": "9af77b3d078b970787e9723d85a5e6993cdc92a07b916c88cb0b2113c6ea4a75",
+        "generator_sha256": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
+        "controller_sha256": "c08d2802f1fe4d70b2f24d3d89922ee7e3d64c98ec0146c8dbab7c2e03e30165",
+        "public_worker_sha256": {
+          "worker.R": "9526c9047472facc68f86e5cb2fc2df896d4bb21fac7974a70d11afef4400a19",
+          "dense-worker.R": "7a008d64eccf3a4d6b7d97706d48aaf11cb5592d904dded9ef35367d201fe473"
+        },
+        "inputs": {
+          "directory": "generated separately",
+          "manifest_sha256": "16a8c48a9871a76a5bc6a66b12e530e0c8ad22a687f4dff306ba2a7e6279dd9d",
+          "rows": [
+            {
+              "fixture": "dense_float",
+              "format": "dta",
+              "rows": "1000000",
+              "width": "float",
+              "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+              "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+              "input_missing": "500000",
+              "zero_observed": "48",
+              "bytes": "4001195"
+            },
+            {
+              "fixture": "dense_float",
+              "format": "arrow",
+              "rows": "1000000",
+              "width": "float",
+              "input_hash": "b6b60ef8bb430be90e7239dd64b807cda383733b1048ca6748094e19e1003f06",
+              "rank_hash": "6d001f63d9ce5612a17ed6ff62e0d269d6d862dde318265b90a63af3b92b0706",
+              "input_missing": "500000",
+              "zero_observed": "48",
+              "bytes": "4130130"
+            },
+            {
+              "fixture": "sparse_int",
+              "format": "dta",
+              "rows": "1000000",
+              "width": "int",
+              "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+              "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+              "input_missing": "1003",
+              "zero_observed": "100",
+              "bytes": "2001195"
+            },
+            {
+              "fixture": "sparse_int",
+              "format": "arrow",
+              "rows": "1000000",
+              "width": "int",
+              "input_hash": "5af7169f9d20a77a6f06236647a66be1493d6e155163c245a466bda43242d0e7",
+              "rank_hash": "2c3d712c4b869db707211a9641b70f4fcf04eb0bc5000f397325e704b05a2a63",
+              "input_missing": "1003",
+              "zero_observed": "100",
+              "bytes": "2130130"
+            }
+          ],
+          "file_sha256": {
+            "dense_float.dta": "343b5ec7d78226c15f192d03431fdc517466691c26a2b841fefcc4d2d4ea4029",
+            "dense_float.arrow": "d8c04bc6642d76c24bd059027870c24e82ab351ecb8dc5b8412e56c59a25fc11",
+            "sparse_int.dta": "d43f969d5d65b701c6c56098e4ff17ccca9900f16ca051c0c8a7a2d89193b044",
+            "sparse_int.arrow": "9c83f075db3ef39cc5734bc24e3a6702b531aec8ce018e972f27727644908944"
+          }
+        },
+        "builds": {
+          "baseline": {
+            "source_head": "3ef04edca377e122befd77c8481831a60bda6b64",
+            "dll_sha256": "8834c59562bda7efe3ddb549f21318623d2ecf2fa76b637fa0c2617dd03c5fa5",
+            "receipt_sha256": "6274f6922b8d2e4b8c9247a8042ea65d4f0e701417e0b6ce564dd6b3b9bec7d3",
+            "runtime_source_inventory_sha256": "22c150529ccd4c20bfbeb5fd68df01c62fab8511d4386325e33d7d6599b30992",
+            "installed_package_inventory_sha256": "10fc4559906c6f16361ac2ad385e810b7b97893c841d7187df45a3b8c9faddbc"
+          },
+          "candidate": {
+            "source_head": "9e7c166a1f7556e85807925ecffe67bd3a3d1299",
+            "dll_sha256": "5cf31a50111846f4c19aac7402d1ce82ce114361bf6c5eb42a91269c6f0e0abb",
+            "receipt_sha256": "b3d3f5161517698077a6abbce2d892e17e7e27372bfcff92bd63867daaf2df17",
+            "runtime_source_inventory_sha256": "5db54e75c81061ddcd6bb0268308c29db7452bb9434790a675f049e02c00efce",
+            "installed_package_inventory_sha256": "e7d40ffb8b74acc40dda44107ca8fba1b8c38d1b81c80838949cf3f3f76bdaf8"
+          }
+        }
+      },
+      "commands": [
+        {
+          "round": 1,
+          "role": "baseline",
+          "position": 1,
+          "started_utc": "2026-10-05T01:02:33.699432+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 1,
+          "role": "candidate",
+          "position": 2,
+          "started_utc": "2026-10-05T01:02:45.499406+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 2,
+          "role": "candidate",
+          "position": 1,
+          "started_utc": "2026-10-05T01:02:57.367220+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 2,
+          "role": "baseline",
+          "position": 2,
+          "started_utc": "2026-10-05T01:03:09.625142+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 3,
+          "role": "baseline",
+          "position": 1,
+          "started_utc": "2026-10-05T01:03:21.862512+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 3,
+          "role": "candidate",
+          "position": 2,
+          "started_utc": "2026-10-05T01:03:33.808412+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 4,
+          "role": "candidate",
+          "position": 1,
+          "started_utc": "2026-10-05T01:03:45.780500+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 4,
+          "role": "baseline",
+          "position": 2,
+          "started_utc": "2026-10-05T01:03:57.572422+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 5,
+          "role": "baseline",
+          "position": 1,
+          "started_utc": "2026-10-05T01:04:09.339459+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 5,
+          "role": "candidate",
+          "position": 2,
+          "started_utc": "2026-10-05T01:04:21.649265+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 6,
+          "role": "candidate",
+          "position": 1,
+          "started_utc": "2026-10-05T01:04:33.707792+00:00",
+          "exit_code": 0
+        },
+        {
+          "round": 6,
+          "role": "baseline",
+          "position": 2,
+          "started_utc": "2026-10-05T01:04:45.517766+00:00",
+          "exit_code": 0
+        }
+      ],
+      "private_summary_sha256": "eda0b1c5d0723913e829e4d9119df34be9d002e12b2aa0d5cf694bd8976abf1c"
+    },
+    "reason": "The broad implementation collected facts for DTA and integer readers. It raised DTA reader CPU cost by 64% for dense FLOAT and 45% for sparse INT in these paired controls, and slowed the one-operation DTA workflows. The final independently built implementation removes those fact scans."
+  },
+  "mutation_qualification": "Timed source values, metadata, facts and state are checked before outside-clock alias mutation. Reader-only Arrow detaches retained storage to raw and clears facts under its existing writable-access policy. Operation workflows retain the immutable source.",
+  "limitations": "Warm OS file cache, threads=1, two million-row fixtures, twelve workflows. Allocation time and automatic GC are included; allocated-byte volume is not measured. No cold-disk, general format ranking, parallel-worker, zero-cost facts or universal parity claim.",
+  "artifact_sha256": {
+    "README.md": "cc2d59bff7974303cbe5c5724845b41ee056dbad387aa81da4f16cc4d85aa02c",
+    "assembly/README.md": "917970f9fd1588a871f42d528f997725956bf05cabe2c981e85322f9a62b5fad",
+    "assembly/baseline-arrow-float.asm": "7b983a6b31286d9617045887c63083d81f81ada0de540885bd104604bc5af67c",
+    "assembly/baseline-arrow-source.txt": "3ff8a3030af57bb7253bbd0adefbdb56c6174d95cb0e8808faaa361a160bfb3e",
+    "assembly/baseline-dta-float.asm": "262facb4762968bfe9bb1026a5ec916a524593826ce0623c832efbe99b9a680e",
+    "assembly/final-arrow-block-poll.asm": "53b6a02d040d23e76dff97308c7fe6b2085acdd81daba2151d2cff6b438346ed",
+    "assembly/final-arrow-float.asm": "d674daf2157d2e7b8138b63f4e88fba7e19902d88808321085237292cc258182",
+    "assembly/final-arrow-source.txt": "b9ba1555a0cbb0b2bb9811bd758c8fb5c5a685c0e76afa23e56f4521abd25416",
+    "assembly/final-count-and-facts-source.txt": "1ee32ada706395e745b1f73f9ae59f2f7b0936b548a4dd237d9f7c1b73dd9e52",
+    "assembly/final-dta-admission-source.txt": "e2c92c8b4e3ab6b4fbcbbbf3487fc404f26b084d7f1946694daed7db70e89c59",
+    "assembly/final-dta-float-gate.asm": "f458d777be65df0a0c6c5f83d5a5f51a4f15a6040ec9837009821b8c7c681450",
+    "assembly/final-dta-float-source.txt": "7d63e8b4b44da7e9cb2d657c050408f5a0cff180c18f6451d6c586ef446a1af3",
+    "assembly/final-dta-float.asm": "49a3a9a298ecb6a50100c264ccf6eab5c273156a08250f463127392af3831008",
+    "assembly/final-eligibility-source.txt": "56a042e793431742e50bfe5fd4fbd985ec6571d3e947468221fd4b39c7c38575",
+    "assembly/modern-predicate-review.md": "d21457885e5081d8484f45397c1a22c889344214857a4a20b02f037fbf22ca39",
+    "assembly/original-missing-classifier-source.txt": "e361b913f64c206a9177d1baba38641bbeab891925505aa87f95ea7b221fb0b3",
+    "assembly/receipt.json": "7253b83575d9ede0f92139eaf333101cb6adc5af927a5cbd00e2d9881c6eb3c4",
+    "assembly/single-thread-route-source.txt": "64cdf8a0d0ac86554fd759de9b2a2caf675ba03d724e42ee9c4b761560724980",
+    "focused-test-run.py": "662310d64adce3320d02491995d627dea3fd01ba787efd9b00a2cdebabf18979",
+    "focused-tests.R": "21001905f9497bb3982f46b49f6061efbaa4508119ddd09676742bbe387da956",
+    "native-test-manifest.json": "e926d6b0e4260eba86b472e234003ce9e009170f106798ec4bcc3242d6e35f1c",
+    "publish-reader-evidence.py": "c056f079eae31423e086020413d34dbc9dc7e797d125d0898159da63600302a0",
+    "qualification.csv": "faa82beb2a8f5dd0390d9da2383c57b40bda8c18e1a7f4a7a976822d3c18cd4c",
+    "r-checks.csv": "d2b0263312c9bcde6af6f816189846e6346217d0a49332def26df608747b1c33",
+    "raw.csv": "7682f7c908b56e3760a5d7d89221fe8c45116000a40e5dd9bb91a7b3e6cb883d",
+    "reader-fixtures.R": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
+    "reader-run.py": "af9e8ec5f4d39101b85ba05224498e52c8bd91f824aa7a0a5df5b6c9e278544d",
+    "reader-rust-tests.py": "ba403202c3f48dbf8335a5672e8d98f0e5c4d58c42e7e57b461d32490316902d",
+    "reader-worker.R": "c2284b0b2296cb8c99c3736eedd0bc85fbea1e6f9f334c9df1e50dc47773b6ad",
+    "rejected-all-facts/raw.csv": "97cc49413d66dfd7240c3f488d5349235590f0b611f513264c768a5bcb5f5e4a",
+    "rejected-all-facts/reader-fixtures.R": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
+    "rejected-all-facts/reader-run.py": "c08d2802f1fe4d70b2f24d3d89922ee7e3d64c98ec0146c8dbab7c2e03e30165",
+    "rejected-all-facts/reader-worker.R": "9af77b3d078b970787e9723d85a5e6993cdc92a07b916c88cb0b2113c6ea4a75"
+  }
+}
