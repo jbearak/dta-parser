@@ -1,0 +1,7 @@
+This witness binds the final fc35 source to its compiled copies, build receipt and c784 DLL, and preserves exact matched Arrow/DTA hot-loop excerpts. It does not contain a new timing result. The earlier measured9e witness remains separate.
+
+The actual threads=1 Arrow route calls `prepare_from_arrow::<coarse_interrupt>`. Its eligible modern FLOAT loop is scalar integer-bit code: no per-element decoder, R call, floating comparison or format-version dispatch. The only branch inside the excerpt is the loop backedge. Interrupt polling remains outside each bounded block. Baseline called the generic tag classifier per finite lane.
+
+The final DTA compact modern FLOAT gate occurs before its scalar gather loop. That loop preserves endian handling, unaligned raw copies and counts exact canonical tags or either-sign IEEE NaNs with no per-element call or version branch. The encompassing function also contains SIMD bodies, but their stride==1 admission is incompatible with successful FLOAT inputs, which require stride>=4; this witness makes no active FLOAT SIMD claim.
+
+The source review preserves legacy classifier semantics, excludes temporal/legacy Arrow proof eligibility, and declines facts on every invalid high finite/NaN/infinite lane without changing missing counts. No R execution, build or benchmark was run in this inspection. `modern-predicate-review.md` supplies the algebraic proof for every raw u32.

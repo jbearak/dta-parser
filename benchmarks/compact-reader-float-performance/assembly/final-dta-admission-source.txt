@@ -1,0 +1,36 @@
+3267:         }
+3268:         let Self::NumericAltRep { data, .. } = self else {
+3269:             return Ok(false);
+3270:         };
+3271:         let (kind, width) = match dta_type {
+3272:             DtaType::Int => (NumericKind::Int, 2),
+3273:             DtaType::Long => (NumericKind::Long, 4),
+3274:             DtaType::Float => (NumericKind::Float, 4),
+3275:             _ => return Ok(false),
+3276:         };
+3277:         if data.kind != kind {
+3278:             return Ok(false);
+3279:         }
+3280:         if data.format_version != version {
+3281:             return Err(DtaError::Output(
+3282:                 "numeric batch format version mismatch".to_owned(),
+3283:             ));
+3284:         }
+3285:         let output_end = output_start
+3286:             .checked_add(row_count)
+3287:             .ok_or(DtaError::ArithmeticOverflow("numeric batch output range"))?;
+3288:         if output_end > data.length {
+3289:             return Err(RNumericData::row_error(output_end, data.length));
+3290:         }
+3291:         if row_count == 0 {
+3292:             return Ok(true);
+3293:         }
+3294:         let input_end = (row_count - 1)
+3295:             .checked_mul(stride)
+3296:             .and_then(|last| last.checked_add(width))
+3297:             .ok_or(DtaError::ArithmeticOverflow("numeric batch input range"))?;
+3298:         if stride < width || input_end > source.len() {
+3299:             return Err(DtaError::Output(
+3300:                 "numeric batch input range is out of bounds".to_owned(),
+3301:             ));
+3302:         }

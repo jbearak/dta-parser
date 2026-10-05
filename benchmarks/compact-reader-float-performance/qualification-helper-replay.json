@@ -1,0 +1,74 @@
+{
+  "status": "PASS",
+  "scope": "Untimed Python replay of the four original immutable Cargo logs; no Cargo/R/build execution.",
+  "private_rust_receipt_sha256": "98a9ee0a42b71a3036113cb915ff968d5a9079270ca4868e2820c7c41384308a",
+  "maintained_parser_sha256": "23fcdc3e137f36e60270ae8908c4c67e32a86f65dea43e189a37013b4755e1cd",
+  "recorded_parser_sha256": "ba403202c3f48dbf8335a5672e8d98f0e5c4d58c42e7e57b461d32490316902d",
+  "observations": [
+    {
+      "filter": "reader_",
+      "log_sha256": "4f03ce359ffa38f21959c7934c8fbf0045ba7b643861d1b9bbb2b8d0400e63bc",
+      "tests_identical": true,
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "summary": {
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 75
+      }
+    },
+    {
+      "filter": "compact_float_count_only_gather_",
+      "log_sha256": "d4e3d497a7fb8c2c925a9a98285b74cb56005a86a07c5fb9bccac52eedccb37b",
+      "tests_identical": true,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "summary": {
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 77
+      }
+    },
+    {
+      "filter": "numeric_facts::tests::",
+      "log_sha256": "1f55ffb2464c02bae340e8829f280bd3b880ea47f7820c2d0e0dcdeac163006f",
+      "tests_identical": true,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "summary": {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 74
+      }
+    },
+    {
+      "filter": "owned_numeric::tests::",
+      "log_sha256": "4799111b5e4df0accb7ef1fb5360ee25030278478cff63d7884846bf7fce3fb4",
+      "tests_identical": true,
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "summary": {
+        "status": "ok",
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 63
+      }
+    }
+  ],
+  "test_executions": 23
+}

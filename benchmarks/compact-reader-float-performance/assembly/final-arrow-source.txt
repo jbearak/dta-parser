@@ -1,0 +1,36 @@
+393:             NumericKind::Float => {
+394:                 // Legacy and temporal FLOAT keep the exact original scan.
+395:                 // Only eligible modern FLOAT needs count-only raw predicates
+396:                 // and allocation-specific facts; never decode a MissingTag.
+397:                 if facts.collects_float() {
+398:                     let typed = array
+399:                         .as_any()
+400:                         .downcast_ref::<Float32Array>()
+401:                         .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
+402:                     for values in typed.values().chunks(MISSING_SCAN_ROWS) {
+403:                         if cancelled() {
+404:                             return Err("Arrow read interrupted".to_owned());
+405:                         }
+406:                         let mut missing = 0u32;
+407:                         let mut block = FloatFacts::new();
+408:                         for &value in values {
+409:                             missing += u32::from(block.observe(value.to_bits()));
+410:                         }
+411:                         missing_count += missing as usize;
+412:                         facts.record_float_span(scanned_rows, values.len(), block);
+413:                         scanned_rows += values.len();
+414:                     }
+415:                     typed.values().inner().clone()
+416:                 } else {
+417:                     buffer!(Float32Array, |value: f32| value.is_nan()
+418:                         || crate::classify_float_missing_bits_for_version(value.to_bits(), version)
+419:                             .is_some())
+420:                 }
+421:             }
+422:         };
+423:         if array.is_empty() {
+424:             continue;
+425:         }
+426:         if buffer.len() != array.len() * width(kind) {
+427:             return Err("owned compact Arrow buffer has the wrong length".to_owned());
+428:         }

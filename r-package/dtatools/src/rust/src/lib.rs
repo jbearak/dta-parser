@@ -29,6 +29,7 @@ mod arrow_ffi;
 mod double_compare;
 mod float_compare;
 mod native_pressure;
+mod numeric_facts;
 mod owned_numeric;
 
 type Sexp = *mut c_void;
@@ -3352,25 +3353,36 @@ impl DtaColumnSink for RColumn {
                 }
             }
             NumericKind::Float => {
-                for row in 0..row_count {
-                    let bytes = unsafe {
-                        ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>())
-                    };
-                    let bits = if little {
-                        u32::from_le_bytes(bytes)
-                    } else {
-                        u32::from_be_bytes(bytes)
-                    };
-                    unsafe {
-                        data.values
-                            .add((output_start + row) * 4)
-                            .cast::<u32>()
-                            .write_unaligned(bits);
-                    }
-                    missing_count += usize::from(
-                        f32::from_bits(bits).is_nan()
-                            || classify_float_missing_bits_for_version(bits, version).is_some(),
-                    );
+                macro_rules! gather_float {
+                    ($modern:expr) => {{
+                        for row in 0..row_count {
+                            let bytes = unsafe {
+                                ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>())
+                            };
+                            let bits = if little {
+                                u32::from_le_bytes(bytes)
+                            } else {
+                                u32::from_be_bytes(bytes)
+                            };
+                            unsafe {
+                                data.values
+                                    .add((output_start + row) * 4)
+                                    .cast::<u32>()
+                                    .write_unaligned(bits);
+                            }
+                            missing_count += usize::from(if $modern {
+                                numeric_facts::modern_float_missing(bits)
+                            } else {
+                                f32::from_bits(bits).is_nan()
+                                    || classify_float_missing_bits_for_version(bits, version).is_some()
+                            });
+                        }
+                    }};
+                }
+                if version.as_u16() > 111 {
+                    gather_float!(true);
+                } else {
+                    gather_float!(false);
                 }
             }
             NumericKind::Byte => unreachable!(),
@@ -6313,6 +6325,112 @@ mod tests {
                         unreachable!()
                     };
                     assert_eq!(data.missing_count, 7 + expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn compact_float_count_only_gather_preserves_raw_bytes_and_missing_cache_for_every_release() {
+        use crate::{
+            classify_float_missing_bits_for_version, DtaColumnSink, FormatVersion, NumericData,
+            NumericKind, RColumn, RNumericData,
+        };
+        use dta_tools::ByteOrder;
+
+        let mut bits = vec![
+            0u32,
+            0x8000_0000,
+            1,
+            0x8000_0001,
+            0x7eff_ffff,
+            0xfeff_ffff,
+            0x7f00_0001,
+            0xff00_0000,
+            0x7f00_d001,
+            0x7f7f_ffff,
+            0xff7f_ffff,
+            0x7f80_0000,
+            0xff80_0000,
+            0x7f80_0001,
+            0xff80_0001,
+            0x7fc0_0000,
+            0xffc0_0000,
+            0x7fff_ffff,
+            0xffff_ffff,
+        ];
+        bits.extend((0..=26).map(|tag| 0x7f00_0000 + tag * 2048));
+        let mut word = 0x243f_6a88u32;
+        for _ in 0..257 {
+            word = word.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            bits.push(word);
+        }
+        for release in [105, 108, 110, 111, 113, 114, 115, 117, 118, 119] {
+            let version = FormatVersion::try_from(release).unwrap();
+            let expected_missing = bits
+                .iter()
+                .filter(|&&bits| {
+                    f32::from_bits(bits).is_nan()
+                        || classify_float_missing_bits_for_version(bits, version).is_some()
+                })
+                .count();
+            for temporal in [
+                TemporalKind::None,
+                TemporalKind::Date,
+                TemporalKind::Datetime,
+            ] {
+                for endian in [ByteOrder::Lsf, ByteOrder::Msf] {
+                    for stride in [4, 17] {
+                        let mut source = vec![0xccu8; bits.len() * stride];
+                        for (row, &bits) in bits.iter().enumerate() {
+                            let bytes = match endian {
+                                ByteOrder::Lsf => bits.to_le_bytes(),
+                                ByteOrder::Msf => bits.to_be_bytes(),
+                            };
+                            source[row * stride..row * stride + 4].copy_from_slice(&bytes);
+                        }
+                        let mut output = vec![0xa5u8; (bits.len() + 2) * 4];
+                        let mut column = RColumn::NumericAltRep {
+                            vector: ptr::null_mut(),
+                            data: RNumericData {
+                                backing: ptr::null_mut(),
+                                values: output.as_mut_ptr(),
+                                length: bits.len() + 2,
+                                kind: NumericKind::Float,
+                                temporal,
+                                format_version: version,
+                                missing_count: 7,
+                            },
+                        };
+                        let middle = bits.len() / 2;
+                        for (start, count) in [(0, middle), (middle, bits.len() - middle)] {
+                            assert!(column
+                                .try_push_numeric_rows(
+                                    1 + start,
+                                    count,
+                                    &source[start * stride..],
+                                    stride,
+                                    DtaType::Float,
+                                    endian,
+                                    version
+                                )
+                                .unwrap());
+                        }
+                        assert_eq!(&output[..4], &[0xa5; 4]);
+                        assert_eq!(&output[output.len() - 4..], &[0xa5; 4]);
+                        let actual: Vec<u32> = output[4..output.len() - 4]
+                            .chunks_exact(4)
+                            .map(|bytes| u32::from_ne_bytes(bytes.try_into().unwrap()))
+                            .collect();
+                        assert_eq!(actual, bits);
+                        let RColumn::NumericAltRep { data, .. } = column else {
+                            unreachable!()
+                        };
+                        assert_eq!(data.missing_count, 7 + expected_missing);
+                        let descriptor = NumericData::new(data);
+                        assert_eq!(descriptor.domain_flags, 0);
+                        assert_eq!(descriptor.zero_count, 0);
+                    }
                 }
             }
         }

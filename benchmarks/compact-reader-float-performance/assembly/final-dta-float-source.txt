@@ -1,0 +1,35 @@
+3354:             }
+3355:             NumericKind::Float => {
+3356:                 macro_rules! gather_float {
+3357:                     ($modern:expr) => {{
+3358:                         for row in 0..row_count {
+3359:                             let bytes = unsafe {
+3360:                                 ptr::read_unaligned(source.as_ptr().add(row * stride).cast::<[u8; 4]>())
+3361:                             };
+3362:                             let bits = if little {
+3363:                                 u32::from_le_bytes(bytes)
+3364:                             } else {
+3365:                                 u32::from_be_bytes(bytes)
+3366:                             };
+3367:                             unsafe {
+3368:                                 data.values
+3369:                                     .add((output_start + row) * 4)
+3370:                                     .cast::<u32>()
+3371:                                     .write_unaligned(bits);
+3372:                             }
+3373:                             missing_count += usize::from(if $modern {
+3374:                                 numeric_facts::modern_float_missing(bits)
+3375:                             } else {
+3376:                                 f32::from_bits(bits).is_nan()
+3377:                                     || classify_float_missing_bits_for_version(bits, version).is_some()
+3378:                             });
+3379:                         }
+3380:                     }};
+3381:                 }
+3382:                 if version.as_u16() > 111 {
+3383:                     gather_float!(true);
+3384:                 } else {
+3385:                     gather_float!(false);
+3386:                 }
+3387:             }
+3388:             NumericKind::Byte => unreachable!(),

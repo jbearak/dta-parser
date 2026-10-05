@@ -15,6 +15,7 @@ use arrow_array::{Array, ArrayRef, Float32Array, Int16Array, Int32Array, Int8Arr
 use arrow_buffer::{Buffer, ScalarBuffer};
 
 use crate::{FormatVersion, NumericData, NumericKind, TemporalKind};
+use crate::numeric_facts::{FloatFacts, NumericFacts, ReaderFacts};
 
 static LIVE_NATIVE_BYTES: AtomicUsize = AtomicUsize::new(0);
 static LIVE_OWNERS: AtomicUsize = AtomicUsize::new(0);
@@ -264,6 +265,7 @@ pub(crate) struct PreparedOwnedNumeric {
     temporal: TemporalKind,
     version: FormatVersion,
     missing_count: usize,
+    facts: NumericFacts,
 }
 
 impl PreparedOwnedNumeric {
@@ -283,11 +285,12 @@ impl PreparedOwnedNumeric {
             temporal,
             version,
             missing_count,
+            facts: NumericFacts::default(),
         }
     }
 
     pub(crate) fn into_descriptor(self) -> NumericData {
-        NumericData {
+        let mut descriptor = NumericData {
             values: ptr::null_mut(),
             length: self.owner.length,
             kind: self.kind as c_int,
@@ -302,7 +305,9 @@ impl PreparedOwnedNumeric {
             float_max_magnitude_bound: 0,
             float_min_nonzero_magnitude_bound: 0,
             zero_count: 0,
-        }
+        };
+        self.facts.publish(&mut descriptor);
+        descriptor
     }
 }
 
@@ -334,6 +339,8 @@ pub(crate) fn prepare_from_arrow(
     let mut length = 0usize;
     let mut native_bytes = 0usize;
     let mut missing_count = 0usize;
+    let mut facts = ReaderFacts::new(kind, temporal, version);
+    let mut scanned_rows = 0usize;
     let mut uniform_rows = 0usize;
     let mut previous_rows = 0usize;
     let mut regular = true;
@@ -383,9 +390,35 @@ pub(crate) fn prepare_from_arrow(
             NumericKind::Long => buffer!(Int32Array, |value| {
                 crate::classify_long_missing_for_version(value, version).is_some()
             }),
-            NumericKind::Float => buffer!(Float32Array, |value: f32| value.is_nan()
-                || crate::classify_float_missing_bits_for_version(value.to_bits(), version)
-                    .is_some()),
+            NumericKind::Float => {
+                // Legacy and temporal FLOAT keep the exact original scan.
+                // Only eligible modern FLOAT needs count-only raw predicates
+                // and allocation-specific facts; never decode a MissingTag.
+                if facts.collects_float() {
+                    let typed = array
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
+                    for values in typed.values().chunks(MISSING_SCAN_ROWS) {
+                        if cancelled() {
+                            return Err("Arrow read interrupted".to_owned());
+                        }
+                        let mut missing = 0u32;
+                        let mut block = FloatFacts::new();
+                        for &value in values {
+                            missing += u32::from(block.observe(value.to_bits()));
+                        }
+                        missing_count += missing as usize;
+                        facts.record_float_span(scanned_rows, values.len(), block);
+                        scanned_rows += values.len();
+                    }
+                    typed.values().inner().clone()
+                } else {
+                    buffer!(Float32Array, |value: f32| value.is_nan()
+                        || crate::classify_float_missing_bits_for_version(value.to_bits(), version)
+                            .is_some())
+                }
+            }
         };
         if array.is_empty() {
             continue;
@@ -420,7 +453,7 @@ pub(crate) fn prepare_from_arrow(
     if cancelled() {
         return Err("Arrow read interrupted".to_owned());
     }
-    Ok(PreparedOwnedNumeric::new(
+    let mut prepared = PreparedOwnedNumeric::new(
         Owner {
             chunks,
             uniform_rows: if regular { uniform_rows } else { 0 },
@@ -432,7 +465,9 @@ pub(crate) fn prepare_from_arrow(
         temporal,
         version,
         missing_count,
-    ))
+    );
+    prepared.facts = facts.finish(expected_rows);
+    Ok(prepared)
 }
 
 /// The R thread keeps `data` rooted and immutable for every retained handle.
@@ -677,9 +712,9 @@ mod tests {
         assert_eq!(copied.native_owner, data.native_owner);
         let imported = prepare_from_arrow(&[], NumericKind::Float, TemporalKind::None,
             FormatVersion::V119, 0, || false).unwrap().into_descriptor();
-        assert_eq!(imported.domain_flags, 0);
+        assert_eq!(imported.domain_flags, 7);
         assert_eq!(imported.float_max_magnitude_bound, 0);
-        assert_eq!(imported.float_min_nonzero_magnitude_bound, 0);
+        assert_eq!(imported.float_min_nonzero_magnitude_bound, u32::MAX);
         assert_eq!(imported.zero_count, 0);
         let plain = NumericData::new(crate::RNumericData {
             backing: ptr::null_mut(), values: ptr::null_mut(), length: 0,
@@ -721,6 +756,11 @@ mod tests {
         .expect("sliced compact chunks retain values and release-specific missings");
         let descriptor = prepared.into_descriptor();
         assert_eq!(descriptor.missing_count, expected_missing);
+        // Integer readers remain unknown. These FLOAT fixtures deliberately
+        // contain noncanonical endpoints, infinities and NaNs, so modern
+        // FLOAT also declines the allocation-specific proof.
+        assert_eq!(descriptor.domain_flags, 0);
+        assert_eq!(descriptor.zero_count, 0);
         let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
         drop(descriptor);
         drop(arrays);
@@ -1138,6 +1178,170 @@ mod tests {
                 if release <= 111 { 38 } else { 33 },
                 &expected_bytes,
             );
+        }
+    }
+
+    #[test]
+    fn owned_float_reader_facts_cover_strict_slices_chunks_and_complete_scans() {
+        let rows = MISSING_SCAN_ROWS * 2 + 1;
+        let mut pattern = vec![
+            0u32,
+            0x8000_0000,
+            1,
+            0x8000_0001,
+            0x3fc0_0000,
+            0xc040_0000,
+            0x7eff_ffff,
+            0xfeff_ffff,
+        ];
+        pattern.extend((0..=26).map(|tag| 0x7f00_0000 + tag * 2048));
+        let bits: Vec<u32> = pattern.iter().copied().cycle().take(rows).collect();
+        let expected_missing = bits
+            .iter()
+            .filter(|&&value| value >= 0x7f00_0000 && value < 0x8000_0000)
+            .count();
+        let expected_zeros = bits
+            .iter()
+            .filter(|&&value| value & 0x7fff_ffff == 0)
+            .count();
+        let mut padded = vec![f32::from_bits(0x7f80_0001); 2];
+        padded.extend(bits.iter().copied().map(f32::from_bits));
+        padded.extend([f32::from_bits(0xff80_0001); 3]);
+        let whole = Float32Array::from(padded);
+        for temporal in [
+            TemporalKind::None,
+            TemporalKind::Date,
+            TemporalKind::Datetime,
+        ] {
+            for version in [
+                FormatVersion::V111,
+                FormatVersion::V113,
+                FormatVersion::V118,
+                FormatVersion::V119,
+            ] {
+                let arrays: Vec<ArrayRef> = vec![
+                    Arc::new(Float32Array::from(Vec::<f32>::new())),
+                    Arc::new(whole.slice(2, 11)),
+                    Arc::new(whole.slice(13, rows - 11)),
+                ];
+                let prepared = prepare_from_arrow(
+                    &arrays,
+                    NumericKind::Float,
+                    temporal,
+                    version,
+                    rows,
+                    || false,
+                )
+                .unwrap();
+                let descriptor = prepared.into_descriptor();
+                let known = temporal == TemporalKind::None && version.as_u16() > 111;
+                assert_eq!(descriptor.domain_flags, if known { 7 } else { 0 });
+                assert_eq!(
+                    descriptor.float_max_magnitude_bound,
+                    if known { 0x7eff_ffff } else { 0 }
+                );
+                assert_eq!(
+                    descriptor.float_min_nonzero_magnitude_bound,
+                    if known { 1 } else { 0 }
+                );
+                assert_eq!(
+                    descriptor.zero_count,
+                    if known { expected_zeros } else { 0 }
+                );
+                assert_eq!(descriptor.missing_count, expected_missing);
+                let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
+                drop(descriptor);
+                drop(arrays);
+                let mut observed = Vec::new();
+                while observed.len() < rows {
+                    let (values, count) = read.region(observed.len(), usize::MAX).unwrap();
+                    observed.extend_from_slice(unsafe {
+                        std::slice::from_raw_parts(values.cast::<u32>(), count)
+                    });
+                }
+                assert_eq!(observed, bits);
+            }
+        }
+    }
+
+    #[test]
+    fn owned_float_reader_invalid_final_tail_declines_facts_without_changing_values() {
+        let rows = MISSING_SCAN_ROWS * 2 + 1;
+        for invalid in [
+            0x7f00_0001u32,
+            0xff00_0000,
+            0x7f7f_ffff,
+            0xff7f_ffff,
+            0x7f80_0000,
+            0xff80_0000,
+            0x7f80_0001,
+            0xffc0_0001,
+        ] {
+            let mut bits = vec![1.0f32.to_bits(); rows];
+            bits[0] = 0x8000_0000;
+            bits[rows - 1] = invalid;
+            let whole =
+                Float32Array::from(bits.iter().copied().map(f32::from_bits).collect::<Vec<_>>());
+            let arrays: Vec<ArrayRef> = vec![Arc::new(whole.clone())];
+            let prepared = prepare_from_arrow(
+                &arrays,
+                NumericKind::Float,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows,
+                || false,
+            )
+            .unwrap();
+            let descriptor = prepared.into_descriptor();
+            assert_eq!(descriptor.domain_flags, 0);
+            assert_eq!(descriptor.zero_count, 0);
+            assert_eq!(
+                descriptor.missing_count,
+                usize::from(f32::from_bits(invalid).is_nan())
+            );
+            let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
+            let (pointer, count) = read.region(0, rows).unwrap();
+            assert_eq!(count, rows);
+            assert_eq!(
+                unsafe { std::slice::from_raw_parts(pointer.cast::<u32>(), rows) },
+                bits
+            );
+            let selected: Vec<ArrayRef> = vec![Arc::new(whole.slice(0, rows - 1))];
+            let descriptor = prepare_from_arrow(
+                &selected,
+                NumericKind::Float,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows - 1,
+                || false,
+            )
+            .unwrap()
+            .into_descriptor();
+            assert_eq!(descriptor.domain_flags, 7);
+            assert_eq!(descriptor.float_max_magnitude_bound, 1.0f32.to_bits());
+            assert_eq!(
+                descriptor.float_min_nonzero_magnitude_bound,
+                1.0f32.to_bits()
+            );
+            assert_eq!(descriptor.zero_count, 1);
+            assert!(prepare_from_arrow(
+                &selected,
+                NumericKind::Float,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows,
+                || false
+            )
+            .is_err());
+            assert!(prepare_from_arrow(
+                &selected,
+                NumericKind::Float,
+                TemporalKind::None,
+                FormatVersion::V118,
+                rows - 2,
+                || false
+            )
+            .is_err());
         }
     }
 

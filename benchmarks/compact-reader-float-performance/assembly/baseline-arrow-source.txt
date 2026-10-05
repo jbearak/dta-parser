@@ -1,0 +1,46 @@
+348:         macro_rules! buffer {
+349:             ($array:ty, $missing:expr) => {{
+350:                 let typed = array
+351:                     .as_any()
+352:                     .downcast_ref::<$array>()
+353:                     .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
+354:                 for values in typed.values().chunks(MISSING_SCAN_ROWS) {
+355:                     if cancelled() {
+356:                         return Err("Arrow read interrupted".to_owned());
+357:                     }
+358:                     // No callbacks or atomics in the typed reduction. Each
+359:                     // block is bounded so workers respond to cancellation.
+360:                     // A span fits in u32, including wider storage kinds;
+361:                     // widen its subtotal after the contiguous reduction.
+362:                     missing_count += values
+363:                         .iter()
+364:                         .map(|&value| u32::from(($missing)(value)))
+365:                         .sum::<u32>() as usize;
+366:                 }
+367:                 typed.values().inner().clone()
+368:             }};
+369:         }
+370:         let buffer = match kind {
+371:             NumericKind::Byte => {
+372:                 buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
+373:                     value, version
+374:                 )
+375:                 .is_some())
+376:             }
+377:             NumericKind::Int => {
+378:                 buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
+379:                     value, version
+380:                 )
+381:                 .is_some())
+382:             }
+383:             NumericKind::Long => buffer!(Int32Array, |value| {
+384:                 crate::classify_long_missing_for_version(value, version).is_some()
+385:             }),
+386:             NumericKind::Float => buffer!(Float32Array, |value: f32| value.is_nan()
+387:                 || crate::classify_float_missing_bits_for_version(value.to_bits(), version)
+388:                     .is_some()),
+389:         };
+390:         if array.is_empty() {
+391:             continue;
+392:         }
+393:         if buffer.len() != array.len() * width(kind) {
