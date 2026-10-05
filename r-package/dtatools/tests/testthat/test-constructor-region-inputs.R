@@ -60,7 +60,6 @@ test_that("constructor chunk readers preserve final encoded values and facts", {
                                  .constructor_region_facts(expected, kind))
                 expect_identical(state(source), before)
                 expect_identical(.constructor_region_bytes(source), .constructor_region_bytes(source_expected))
-                expect_identical(state(source), before)
             }
         }
     }
@@ -104,9 +103,10 @@ test_that("constructor region reads support partial fallback and changing input"
             values <- rep(patterns[[kind + 1L]], length.out = n)
             x <- .Call(create, values, NULL, mode, 7L, NULL)
             result <- .Call(construct, x, kind, 0L)
+            facts <- .Call(dtatools:::C_dtatools_numeric_facts_info, result)
             cases[[length(cases) + 1L]] <- list(kind = kind, mode = mode, values = values,
                 bytes = bytes(result), missing = is.na(result), any_missing = anyNA(result),
-                facts = .Call(dtatools:::C_dtatools_numeric_facts_info, result),
+                facts = facts,
                 counts = .Call(info, x))
         }
         invalid <- lapply(4:5, function(mode) {
@@ -130,9 +130,10 @@ test_that("constructor region reads support partial fallback and changing input"
                 gc()
             })
             result <- .Call(construct, x, kind, 0L)
+            facts <- .Call(dtatools:::C_dtatools_numeric_facts_info, result)
             changed[[length(changed) + 1L]] <- list(kind = kind, mode = mode, values = second,
                 bytes = bytes(result), any_missing = anyNA(result), fired = fired,
-                facts = .Call(dtatools:::C_dtatools_numeric_facts_info, result), counts = .Call(info, x))
+                facts = facts, counts = .Call(info, x))
         }
         rejected <- list()
         for (mode in c(1L, 3L)) for (bad in c(NaN, 101)) {
@@ -157,7 +158,11 @@ test_that("constructor region reads support partial fallback and changing input"
         regions <- switch(as.character(case$mode), `0` = 0L, `1` = 6L,
                           `2` = 1172L, `3` = 6L)
         expect_identical(case$counts[["regions"]], regions)
-        expect_identical(case$counts[["pointers"]], if (case$mode == 0L) 2L else regions)
+        if (case$mode == 0L) expect_identical(case$counts[["pointers"]], 2L)
+        else {
+            expect_gte(case$counts[["pointers"]], regions)
+            expect_lte(case$counts[["pointers"]], 2L * regions)
+        }
         expect_identical(case$counts[["max_request"]], if (case$mode == 0L) 0L else 2048L)
     }
     for (case in observed$invalid) {

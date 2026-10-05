@@ -6217,7 +6217,7 @@
         },
         {
           "path": "tests/testthat/test-constructor-region-inputs.R",
-          "sha256": "08cbbf3f2a1f62af49a42a5b4b1db54169e89fc28559a938bdf4118f392ab6bc"
+          "sha256": "532b836e7d6147eaa601f4ee68fe6b3cd53709f73107b0b6e7b7f60656f5ea16"
         }
       ],
       "blocks": [
@@ -8048,7 +8048,7 @@
           "test": "constructor chunk readers preserve final encoded values and facts",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 672,
+          "min_pass": 588,
           "warnings": 0
         },
         {
@@ -8056,7 +8056,7 @@
           "test": "constructor region reads support partial fallback and changing input",
           "occurrence": 1,
           "skip": "allow",
-          "min_pass": 231,
+          "min_pass": 243,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "The isolated foreign ALTREP fixture requires callr and a C compiler; other profiles retain constructor value and diagnostics checks.",
