@@ -27,6 +27,13 @@
   16,787-row, 5,360-column DHS file it falls from 36 to 13 seconds, and
   the compact report from 32 to 10 seconds.
 
+* `labelbook()` collects each table's summary, mappings, assignment and
+  diagnostics as field vectors and builds each result table once, rather
+  than one data frame per row. On a 5,360-column DHS file with 4,831
+  value-label tables it falls from 4 to 1.1 seconds. A value-label set
+  with no mappings is now reported as a table with no mappings rather than
+  failing.
+
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
   to retained compact Arrow numerics reuses the current immutable chunk,

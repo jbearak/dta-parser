@@ -108,6 +108,21 @@ test_that("labelbook detail restores the normal report", {
     expect_output(print(detailed), "Value label x", fixed = TRUE)
 })
 
+test_that("labelbook reports a value-label set without mappings", {
+    data <- data.frame(x = labelled_for_test(c(1, 2), stats::setNames(numeric(), character())))
+    result <- labelbook(data)
+
+    expect_identical(result$tables$table, "x")
+    expect_identical(result$tables$mapping_count, 0L)
+    expect_identical(result$tables$missing_mapping_count, 0L)
+    expect_false(result$tables$malformed)
+    expect_identical(nrow(result$mappings), 0L)
+    expect_identical(names(result$mappings), names(labelbook(data.frame(a = 1))$mappings))
+    expect_identical(nrow(result$diagnostics), 0L)
+    expect_identical(result$assignments$variable, "x")
+    expect_output(print(result), "Value label x", fixed = TRUE)
+})
+
 test_that("codebook classifies and summarizes numeric and string variables", {
     data <- data.frame(
         category = c(rep(c(1, 2), length.out = 9), NA_real_, tagged_missing("a")),
