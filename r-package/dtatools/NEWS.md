@@ -5,6 +5,12 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `summ()` and `tab()` slice a column to each group only when `where`,
+  `weights`, `subpop`, or `summarize` reads it, rather than slicing every
+  column of the data. On a 16,787-row, 5,360-column DHS file,
+  `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
+  milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
+
 * `dta_append()` copies each source's rows of a numeric column into the
   result natively, decoding compact columns in blocks, and no longer copies
   the whole result column on every write. Appending a 5,360-column file to

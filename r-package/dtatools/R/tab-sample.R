@@ -48,12 +48,21 @@
         !(is.character(collect) && length(collect) == 1L && !is.na(collect) && nzchar(collect)))
         stop("`collect` must be TRUE, FALSE, or a collection name", call. = FALSE)
     result <- vector("list", length(group_rows))
+    filtered <- !rlang::quo_is_null(where)
+    expressions <- filtered || weighted || has_summary || !rlang::quo_is_null(subpop)
+    # Columns are sliced to a group only when an expression reads them, so
+    # a wide dataset does not cost one slice per column per group. Data with
+    # duplicate or empty names keeps the list view and its name handling.
+    lazy <- .lazy_group_names(names(columns))
     for (g in seq_along(group_rows)) {
         full <- group_rows[[g]]
         size <- length(full)
-        view <- lapply(columns, function(z) .tab_slice(z, full))
+        view <- if (!expressions) NULL else if (lazy) {
+            .lazy_group_columns(columns, full, .tab_slice, caller)
+        } else lapply(columns, function(z) .tab_slice(z, full))
         extras <- list(.n = seq_len(size), .N = size)
-        keep <- .mutation_rows(.eval_mutation_expression(where, view, "where", extras), size)
+        keep <- if (filtered)
+            .mutation_rows(.eval_mutation_expression(where, view, "where", extras), size)
         if (is.null(keep)) keep <- seq_len(size)
         if (!is.null(positions)) {
             if (any(positions > size)) stop("`rows` exceeds the group row count", call. = FALSE)
