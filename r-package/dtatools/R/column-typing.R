@@ -421,14 +421,23 @@
     row_count <- nrow(result)
     # One match finds every prior column, where `before[[name]]` would scan
     # the names once per column. Like `[[`, it takes the first column with
-    # a name and never matches "" or NA.
-    prior_locations <- match(
-        result_names, names(before), incomparables = c("", NA)
-    )
+    # a name and never matches "" or NA. `incomparables` is not used for
+    # that: with a Latin-1 name present, match() still pairs NA with NA.
+    # A bytes-encoded name makes match() compare every name as bytes,
+    # while `[[` still translates the others, so those tables keep the
+    # lookup by name.
+    before_names <- names(before)
+    bytes <- any(Encoding(as.character(c(result_names, before_names))) == "bytes")
+    if (!bytes) {
+        prior_locations <- match(result_names, before_names)
+        prior_locations[is.na(result_names) | !nzchar(result_names)] <- NA_integer_
+    }
     for (index in seq_along(result_names)) {
         column <- .subset2(result, index)
-        location <- prior_locations[[index]]
-        prior <- if (is.na(location)) NULL else .subset2(before, location)
+        prior <- if (bytes) before[[result_names[[index]]]] else {
+            location <- prior_locations[[index]]
+            if (is.na(location)) NULL else .subset2(before, location)
+        }
         if (!is.null(prior) &&
             identical(rlang::obj_address(prior), rlang::obj_address(column))) {
             next
