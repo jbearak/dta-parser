@@ -6588,6 +6588,12 @@ SEXP C_dtatools_construct_double(SEXP value, SEXP frame, SEXP dependencies) {
     if (frame != R_NilValue) return C_dtatools_construct_double_impl(value, frame, dependencies);
     frame = R_GetCurrentEnv();
     if (!numeric_size_admitted(frame, DTATOOLS_NUMERIC_CONSTRUCT)) return Rf_ScalarLogical(FALSE);
+    /* Only double storage can pass the checks below. Read it the way the size
+       preflight reads `x`, before qualifying the closure costs a call. */
+    SEXP declared = PROTECT(numeric_size_peek(Rf_install("storage"), frame));
+    int double_storage = computed_storage_kind(declared) == NUMERIC_DOUBLE;
+    UNPROTECT(1);
+    if (!double_storage) return Rf_ScalarLogical(FALSE);
     if (!dtatools_numeric_entry_frame_admitted(frame, DTATOOLS_NUMERIC_CONSTRUCT) ||
         !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
     value = PROTECT(computed_peek(Rf_install("x"), frame, 16));
