@@ -23,6 +23,10 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* Printing or formatting a dibble checks the classes of declared string
+  columns only, rather than running a set operation on every column. On a
+  5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
