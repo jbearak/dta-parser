@@ -181,6 +181,12 @@ test_that("retyping finds each prior column as `[[` does", {
     # A bytes-encoded name after them leaves both lookups unchanged.
     expect_identical(retype(c(utf8, "k"), c(latin1, "k", bytes)),
                      list("Prior", "Prior"))
+    # Outside a UTF-8 locale, translation can write a name as escapes
+    # that match() would pair with a literal name `[[` keeps apart.
+    withr::local_locale(c(LC_CTYPE = "C"))
+    native <- rawToChar(as.raw(c(195L, 169L)))
+    expect_identical(retype(c(native, "x"), c("<c3><a9>", utf8)),
+                     list(NULL, NULL))
 })
 
 test_that("Stata string text and the declaration accessor are one rule each", {

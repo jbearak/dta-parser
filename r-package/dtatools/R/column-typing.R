@@ -423,18 +423,23 @@
     # the names once per column. Like `[[`, it takes the first column with
     # a name and never matches "" or NA. `incomparables` is not used for
     # that: with a Latin-1 name present, match() still pairs NA with NA.
-    # A bytes-encoded name makes match() compare every name as bytes,
-    # while `[[` still translates the others, so those tables keep the
+    # match() agrees with `[[` on the names it translates only in a UTF-8
+    # locale, where translation never writes escapes such as `<c3><a9>`,
+    # and only without bytes-encoded names, which make match() compare
+    # every name as bytes. Other tables with a non-ASCII name keep the
     # lookup by name.
     before_names <- names(before)
-    bytes <- any(Encoding(as.character(c(result_names, before_names))) == "bytes")
-    if (!bytes) {
+    all_names <- as.character(c(result_names, before_names))
+    by_name <- any(Encoding(all_names) == "bytes") ||
+        (!isTRUE(l10n_info()[["UTF-8"]]) &&
+         any(grepl("[^\001-\177]", all_names, useBytes = TRUE)))
+    if (!by_name) {
         prior_locations <- match(result_names, before_names)
         prior_locations[is.na(result_names) | !nzchar(result_names)] <- NA_integer_
     }
     for (index in seq_along(result_names)) {
         column <- .subset2(result, index)
-        prior <- if (bytes) before[[result_names[[index]]]] else {
+        prior <- if (by_name) before[[result_names[[index]]]] else {
             location <- prior_locations[[index]]
             if (is.na(location)) NULL else .subset2(before, location)
         }

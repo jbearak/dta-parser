@@ -1807,7 +1807,7 @@
         },
         {
           "path": "tests/testthat/test-column-typing.R",
-          "sha256": "e16d8d14efda3df0065dd01325cfa2d7a670a8ee9a6c6af92f63ddc4e0238fb0"
+          "sha256": "5cac1351cd23bce6e7c7c828afecbe94adac2e539b73e10dcb9e0a22c0c4eeb1"
         },
         {
           "path": "tests/testthat/test-owned-finite-double.R",
@@ -4191,6 +4191,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "retyping finds each prior column as `[[` does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         },
         {
           "file": "test-owned-finite-double.R",
