@@ -711,11 +711,13 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
         open(subset(data, foreign == 1, select = c(make, price))),
         open(expected(base::subset(snapshot, foreign == 1, select = c(make, price))))
     )
-    expect_identical(gathered, 2L)
+    expect_identical(open(subset(data, price > 6000, drop = FALSE)),
+                     open(expected(base::subset(snapshot, price > 6000, drop = FALSE))))
+    expect_identical(gathered, 3L)
     # One column dropped to a vector keeps the tibble bracket's result.
     expect_identical(subset(data, price > 6000, price, drop = TRUE),
                      base::subset(snapshot, price > 6000, price, drop = TRUE))
-    expect_identical(gathered, 2L)
+    expect_identical(gathered, 3L)
     # A row subscript the tibble bracket rejects reports its own error.
     expect_identical(
         conditionMessage(expect_error(subset(data, c(TRUE, FALSE)))),
@@ -731,7 +733,10 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
         conditionMessage(expect_error(subset(data, price > 6000, select = quote(price)))),
         conditionMessage(expect_error(base::subset(snapshot, price > 6000, select = quote(price))))
     )
-    expect_identical(gathered, 2L)
+    # The tibble bracket keeps a `groups` attribute on an ungrouped table.
+    attr(plain, "groups") <- "study groups"
+    expect_identical(attr(subset(plain, x > 1), "groups"), "study groups")
+    expect_identical(gathered, 3L)
 
     result <- subset(data, price > 6000)
     result[, price := 0]
@@ -864,6 +869,16 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         replaced$bracket <- c(failure(subset(plain, y > 1)),
                               failure(base::subset(plain_snapshot, y > 1)))
         registerS3method("[", "tbl_df", bracket, envir = baseenv())
+        # The tibble bracket forces a lazy `drop` after slicing the rows.
+        late_drop <- function(data) {
+            on.exit(registerS3method("[", "tbl_df", bracket, envir = baseenv()))
+            failure(subset(data, y > 1, drop = {
+                registerS3method("[", "tbl_df", function(x, ...) stop("bracket replaced"),
+                                 envir = baseenv())
+                FALSE
+            }))
+        }
+        replaced$late_drop <- list(late_drop(plain), late_drop(plain_snapshot))
         # An active method binding is read as often as slicing reads it.
         proxy <- get("vec_proxy.dta_numeric", table)
         reads <- 0L
@@ -916,6 +931,7 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     expect_identical(observed$replaced$bracket, c("rows refused", "rows refused"))
     expect_identical(observed$replaced$reads[[1L]], observed$replaced$reads[[2L]])
     expect_identical(observed$replaced$frame, list(c("b y", "c z"), c("b y", "c z")))
+    expect_identical(observed$replaced$late_drop, list(NULL, NULL))
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)

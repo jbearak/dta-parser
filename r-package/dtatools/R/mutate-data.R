@@ -3043,12 +3043,15 @@ subset.dibble <- function(x, ...) {
 #' @export
 `[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
     class(x) <- class(x)[-1L]
+    # The tibble bracket forces `drop` after slicing. Base passes its own
+    # `drop`, and only a literal FALSE there reads the same at any time.
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
-        !missing(drop) && isNamespaceLoaded("tibble") &&
+        !missing(drop) && identical(substitute(drop), quote(drop)) &&
+        identical(substitute(drop, parent.frame()), FALSE) &&
+        is.null(attr(x, "groups", exact = TRUE)) && isNamespaceLoaded("tibble") &&
         .subset_brackets_registered(class(x)) &&
         .subset_plain_subscripts(x, i, j) &&
-        .subset_gathers_columns(.subset(x, .subset_column_positions(x, j))) &&
-        identical(drop, FALSE)) {
+        .subset_gathers_columns(.subset(x, .subset_column_positions(x, j)))) {
         selected <- x[, j, drop = FALSE]
         # With automatic row names the tibble bracket keeps the rows `i`
         # marks and numbers them afresh.
