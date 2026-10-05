@@ -23,6 +23,11 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* `dta_append()` copies each source's rows of a numeric column into the
+  result natively, decoding compact columns in blocks, and no longer copies
+  the whole result column on every write. Appending a 5,360-column file to
+  itself took 8.4 seconds and now takes 5.7.
+
 * Printing or formatting a dibble checks the classes of declared string
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.

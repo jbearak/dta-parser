@@ -528,13 +528,19 @@ dta_append <- function(sources, force = TRUE,
     buffers <- vector("list", length(plan$names))
     pieces <- vector("list", length(plan$names))
     for (plan_index in seq_along(plan$names)) {
-        buffers[plan_index] <- list(.append_allocate_buffer(
+        buffer <- .append_allocate_buffer(
             plan$prototypes[[plan_index]], total_rows
-        ))
-        if (is.null(buffers[[plan_index]])) {
+        )
+        # Store the buffer itself. A temporary `list(buffer)` would keep
+        # a reference count that never drops, so every later write would
+        # see a shared buffer and copy the whole column.
+        if (is.null(buffer)) {
             pieces[plan_index] <- list(vector("list", source_count))
+        } else {
+            buffers[[plan_index]] <- buffer
         }
     }
+    buffer <- NULL
 
     for (my_index in seq_len(source_count)) {
         data <- .append_read_data(schemas[[my_index]])
@@ -577,7 +583,16 @@ dta_append <- function(sources, force = TRUE,
                         # the whole column on every source instead of
                         # writing the destination range in place.
                         buffers[plan_index] <- list(NULL)
-                        buffer[span] <- .append_buffer_values(writable)
+                        values <- .append_buffer_values(writable)
+                        # A numeric range is copied natively, decoding a
+                        # compact source in blocks; `[<-` reads it one
+                        # element at a time. The call must stay direct:
+                        # a wrapper's argument would share the buffer.
+                        if (!.Call(C_dtatools_append_write_doubles, buffer,
+                                   offsets[[my_index]], rows, values)) {
+                            buffer[span] <- values
+                        }
+                        rm(values)
                         buffers[[plan_index]] <- buffer
                     }
                 }
@@ -622,15 +637,20 @@ dta_append <- function(sources, force = TRUE,
 # range already holds that variable's missing value.
 .append_allocate_buffer <- function(prototype, total_rows) {
     if (inherits(prototype, "dta_temporal")) return(NULL)
+    # attr<- on a fresh local vector sets attributes in place. structure()
+    # would return a 64-or-more-element vector as an ALTREP wrapper, which
+    # the native range copy declines and `[<-` writes through.
     if (inherits(prototype, "dta_string")) {
-        return(structure(character(total_rows), dtatools.buffer = "string"))
+        buffer <- character(total_rows)
+        attr(buffer, "dtatools.buffer") <- "string"
+        return(buffer)
     }
     storage <- .declared_dta_storage(prototype)
     if (is.null(storage)) return(NULL)
-    structure(
-        rep(NA_real_, total_rows), dtatools.buffer = "numeric",
-        dtatools.storage = storage
-    )
+    buffer <- rep(NA_real_, total_rows)
+    attr(buffer, "dtatools.buffer") <- "numeric"
+    attr(buffer, "dtatools.storage") <- storage
+    buffer
 }
 
 .append_fits_buffer <- function(value, prototype) {
