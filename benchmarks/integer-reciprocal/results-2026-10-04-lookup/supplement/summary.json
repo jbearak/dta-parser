@@ -1,0 +1,166 @@
+{
+  "scope": "Two paired fresh-process screening rounds only; per-call table setup and allocation included. Public constructor-accepted codes, sparse missing tags and zero denominators. No universal performance claim or threshold tuning beyond these cases.",
+  "observations": 120,
+  "cases": [
+    {
+      "width": "byte",
+      "destination": "float",
+      "cardinality": "low",
+      "n": 262143,
+      "baseline_ms": 0.24794382371198012,
+      "candidate_ms": 0.2556677613054675,
+      "paired_gain": 0.9700415469578505,
+      "paired_gains": [
+        0.9652481104173514,
+        0.9748349834983497
+      ],
+      "compact_typed": 1.387451516359473,
+      "compact_ordinary": 2.7338230546072078,
+      "typed_drift": 0.9923571304498897
+    },
+    {
+      "width": "byte",
+      "destination": "float",
+      "cardinality": "low",
+      "n": 262144,
+      "baseline_ms": 0.24998167692758705,
+      "candidate_ms": 0.19772738591914063,
+      "paired_gain": 1.263385457938933,
+      "paired_gains": [
+        1.308811619948273,
+        1.2179592959295926
+      ],
+      "compact_typed": 1.0676145057829773,
+      "compact_ordinary": 2.021952639940756,
+      "typed_drift": 1.1531785313904461
+    },
+    {
+      "width": "byte",
+      "destination": "float",
+      "cardinality": "full_observed",
+      "n": 1000000,
+      "baseline_ms": 0.6090412909349786,
+      "candidate_ms": 0.35738831615120276,
+      "paired_gain": 1.6984037113352983,
+      "paired_gains": [
+        1.8974136057378832,
+        1.4993938169327135
+      ],
+      "compact_typed": 0.7491390063004846,
+      "compact_ordinary": 1.0883432225719343,
+      "typed_drift": 0.9280502401769166
+    },
+    {
+      "width": "byte",
+      "destination": "double",
+      "cardinality": "full_observed",
+      "n": 1000000,
+      "baseline_ms": 0.6187222543910408,
+      "candidate_ms": 0.41723011043497665,
+      "paired_gain": 1.5128187764590622,
+      "paired_gains": [
+        1.8703962703962547,
+        1.1552412825218696
+      ],
+      "compact_typed": 1.2077230809482251,
+      "compact_ordinary": 1.375748034674499,
+      "typed_drift": 1.1848240574502
+    },
+    {
+      "width": "int",
+      "destination": "float",
+      "cardinality": "low",
+      "n": 262143,
+      "baseline_ms": 0.22321386283982173,
+      "candidate_ms": 0.23075907283121913,
+      "paired_gain": 0.9729584969882283,
+      "paired_gains": [
+        1.0932292367748073,
+        0.8526877572016492
+      ],
+      "compact_typed": 1.366386207021937,
+      "compact_ordinary": 2.8409692296956273,
+      "typed_drift": 1.0216462358139133
+    },
+    {
+      "width": "int",
+      "destination": "float",
+      "cardinality": "low",
+      "n": 262144,
+      "baseline_ms": 0.2314925597319105,
+      "candidate_ms": 0.22879381058911283,
+      "paired_gain": 1.0106612576676084,
+      "paired_gains": [
+        1.0461278036394313,
+        0.9751947116957858
+      ],
+      "compact_typed": 1.3698745740132763,
+      "compact_ordinary": 3.0276141554991023,
+      "typed_drift": 1.0505794158536694
+    },
+    {
+      "width": "int",
+      "destination": "float",
+      "cardinality": "low",
+      "n": 1000000,
+      "baseline_ms": 0.48640819964349774,
+      "candidate_ms": 0.35816072385636266,
+      "paired_gain": 1.3642245857785236,
+      "paired_gains": [
+        1.5952716014635924,
+        1.1331775700934545
+      ],
+      "compact_typed": 0.8915726933791828,
+      "compact_ordinary": 0.9534560814349371,
+      "typed_drift": 0.8688910697209662
+    },
+    {
+      "width": "int",
+      "destination": "float",
+      "cardinality": "full_observed",
+      "n": 1000000,
+      "baseline_ms": 0.4745049298128336,
+      "candidate_ms": 0.3842105263157913,
+      "paired_gain": 1.2483548390947208,
+      "paired_gains": [
+        1.4021390374331486,
+        1.0945706407562932
+      ],
+      "compact_typed": 1.0355361726049217,
+      "compact_ordinary": 1.1161141889812396,
+      "typed_drift": 1.1115252643470257
+    },
+    {
+      "width": "int",
+      "destination": "double",
+      "cardinality": "full_observed",
+      "n": 262144,
+      "baseline_ms": 0.22055179348845375,
+      "candidate_ms": 0.19688867562379964,
+      "paired_gain": 1.1202260466966394,
+      "paired_gains": [
+        1.1130011130011108,
+        1.127450980392168
+      ],
+      "compact_typed": 1.1263406795157618,
+      "compact_ordinary": 2.6554340240510554,
+      "typed_drift": 1.1056109248017008
+    },
+    {
+      "width": "int",
+      "destination": "double",
+      "cardinality": "full_observed",
+      "n": 1000000,
+      "baseline_ms": 0.43584905660377427,
+      "candidate_ms": 0.38947368421052697,
+      "paired_gain": 1.1339900110987804,
+      "paired_gains": [
+        1.3179800221975626,
+        0.9499999999999983
+      ],
+      "compact_typed": 0.975771324863894,
+      "compact_ordinary": 1.076907384740923,
+      "typed_drift": 0.9467504189731419
+    }
+  ]
+}
