@@ -40,6 +40,22 @@ test_that("where and rows select each group's calculation sample", {
     expect_error(summ(d, x, weights = c(1, 2)), "group row count")
 })
 
+test_that("grouped summaries slice only the columns their expressions read", {
+    slices <- local_slice_probe(1:6)
+    d <- data.frame(x = c(1, 2, 3, 5, 7, 9), g = c(2, 1, 2, 1, 2, 1),
+        w = 1:6)
+    expected <- summ(d, x, by = g, where = x > 1, weights = w)
+    d$probe <- slices$column
+    expect_identical(summ(d, x, by = g)$statistics,
+        summ(d[c("x", "g")], x, by = g)$statistics)
+    expect_identical(summ(d, x, by = g, where = x > 1, weights = w)$statistics,
+        expected$statistics)
+    expect_identical(slices$count(), 0L)
+    expect_equal(summ(d, x, by = g, where = probe > 2L,
+        weights = as.integer(probe))$statistics$N, c(2, 2))
+    expect_identical(slices$count(), 2L)
+})
+
 test_that("summary grouping preserves Stata missing identities and dplyr groups", {
     d <- dibble(x = 1:6, g = c(NA_real_, tagged_missing("a"),
         tagged_missing("z"), NA_real_, tagged_missing("a"), tagged_missing("z")))

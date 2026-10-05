@@ -1613,7 +1613,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # first use and caches the slice until the group changes, so an
 # expression pays for the columns it reads and nothing else, and a
 # runtime name through `.data[[name]]` or `.(name)` still resolves.
-.mutation_group_view <- function(columns) {
+# `slice` lets a caller keep its own row-subsetting semantics.
+.mutation_group_view <- function(columns, slice = .mutation_group_slice) {
     if (isTRUE(attr(columns, ".dtatools_mutation_views", exact = TRUE))) {
         columns <- .exposed_mutation_columns(columns)
     }
@@ -1638,7 +1639,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                 }
                 hit <- view$cache[[column_name]]
                 if (is.null(hit)) {
-                    hit <- .mutation_group_slice(
+                    hit <- slice(
                         .mutation_column(columns, column_name), view$rows
                     )
                     view$cache[[column_name]] <- hit

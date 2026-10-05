@@ -48,31 +48,40 @@
         !(is.character(collect) && length(collect) == 1L && !is.na(collect) && nzchar(collect)))
         stop("`collect` must be TRUE, FALSE, or a collection name", call. = FALSE)
     result <- vector("list", length(group_rows))
+    filtered <- !rlang::quo_is_null(where)
+    # Columns are sliced to a group only when an expression reads them, so
+    # a wide dataset does not cost one slice per column per group.
+    view <- if (filtered || weighted || has_summary || !rlang::quo_is_null(subpop))
+        .mutation_group_view(columns, .tab_slice)
     for (g in seq_along(group_rows)) {
         full <- group_rows[[g]]
         size <- length(full)
-        view <- lapply(columns, function(z) .tab_slice(z, full))
+        if (!is.null(view)) {
+            view$rows <- full
+            view$cache <- new.env(hash = TRUE, parent = emptyenv())
+        }
         extras <- list(.n = seq_len(size), .N = size)
-        keep <- .mutation_rows(.eval_mutation_expression(where, view, "where", extras), size)
+        keep <- if (filtered)
+            .mutation_rows(.eval_mutation_expression(where, view$columns, "where", extras), size)
         if (is.null(keep)) keep <- seq_len(size)
         if (!is.null(positions)) {
             if (any(positions > size)) stop("`rows` exceeds the group row count", call. = FALSE)
             keep <- intersect(keep, positions)
         }
         selected <- full[sort(unique(keep))]
-        w <- if (weighted) .tab_eval_vector(weights, view, extras, size, "weights") else rep(1, size)
+        w <- if (weighted) .tab_eval_vector(weights, view$columns, extras, size, "weights") else rep(1, size)
         if (weighted) {
             w <- .summarize_numeric(w)
         }
         population <- if (rlang::quo_is_null(subpop)) rep(TRUE, size) else {
-            s <- .tab_eval_vector(subpop, view, extras, size, "subpop")
+            s <- .tab_eval_vector(subpop, view$columns, extras, size, "subpop")
             if (!is.numeric(s) && !is.logical(s))
                 stop("`subpop` must be numeric or logical", call. = FALSE)
             # Stata's subpop excludes exactly zero, including missing as nonzero.
             is.na(s) | s != 0
         }
         response <- if (has_summary)
-            .tab_eval_vector(summary, view, extras, size, "summarize") else NULL
+            .tab_eval_vector(summary, view$columns, extras, size, "summarize") else NULL
         local <- match(selected, full)
         values <- lapply(inputs$values, function(z) .tab_slice(z, selected))
         names(values) <- inputs$names

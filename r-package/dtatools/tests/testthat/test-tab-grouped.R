@@ -61,3 +61,22 @@ test_that("by headers preserve group order and distinguish empty and unlabelled 
     expect_identical(grep("^->", format(tab(d, x, by = g)), value = TRUE),
                      c("-> g = ", "-> g = 2", "-> g = .", "-> g = .z"))
 })
+
+test_that("grouped tabulation slices only the columns its expressions read", {
+    slices <- local_slice_probe(1:4)
+    d <- data.frame(x = c(1, 2, 1, 2), g = c(1, 1, 2, 2), w = c(1, 2, 3, 4))
+    expected <- tab(d, x, by = g, where = x > 0, weights = w,
+                    weight = "fweight", subpop = w)
+    d$probe <- slices$column
+    expect_identical(format(tab(d, x, by = g)),
+                     format(tab(d[c("x", "g")], x, by = g)))
+    expect_identical(format(tab(d, x, by = g, where = x > 0, weights = w,
+                                weight = "fweight", subpop = w)),
+                     format(expected))
+    expect_identical(slices$count(), 0L)
+    result <- tab(d, x, by = g, where = probe > 1L,
+                  weights = as.integer(probe), weight = "fweight")
+    expect_identical(lapply(result, function(table) as.vector(table)),
+                     list(2, c(3, 4)))
+    expect_identical(slices$count(), 2L)
+})
