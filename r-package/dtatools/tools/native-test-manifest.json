@@ -13053,7 +13053,7 @@
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
-          "sha256": "224d17ca77a8736429e7ded2d3fab28201c4cd11201a2e26561f164c2223d200"
+          "sha256": "57aee84481a9f2a49e781ec45c050c8ed38a5ec59107eb7e6aec49ccc7e50cad"
         },
         {
           "path": "tests/testthat/test-mask-reader-callbacks.R",
@@ -14085,6 +14085,14 @@
           "warnings": 0
         },
         {
+          "file": "test-mask-bindings.R",
+          "test": "initial capture registers a name repeated during capture once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
           "file": "test-mask-reader-callbacks.R",
           "test": "mask readers retain argument expressions for executable tracers",
           "occurrence": 1,
@@ -14290,7 +14298,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "475b7400093adf45ca2374a5c9c6b07ae4fc6e7181300d35c96d70d930aef233"
+          "sha256": "59c3b4eaff555b80fe177cf8e515956411f6caa8951b0a97bfadc8c5e5032c5a"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -14843,6 +14851,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "a numeric buffer range is copied natively with its exact bits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
           "warnings": 0
         },
         {

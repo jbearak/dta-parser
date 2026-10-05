@@ -23,11 +23,33 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* `dta_append()` copies each source's rows of a numeric column into the
+  result natively, decoding compact columns in blocks, and no longer copies
+  the whole result column on every write. Appending a 5,360-column file to
+  itself took 8.4 seconds and now takes 5.7.
+
+* Printing or formatting a dibble checks the classes of declared string
+  columns only, rather than running a set operation on every column. On a
+  5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
+
+* dplyr verbs on wide dibbles set up their data mask in time linear in the
+  number of columns. On a 5,360-column file, `filter()`, `mutate()`,
+  `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
+  now take 0.03 to 0.12 seconds.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
+
+* `dta_append()` skips reconciling a Stata numeric or string variable whose
+  sources declare it identically apart from value labels. It takes an empty
+  Stata numeric or string schema column as its own prototype, unless the
+  column carries the class that marks notes and characteristics. It reads a
+  dibble or tibble source's columns by position rather than by name.
+  Appending a 5,360-column DHS file to itself falls from 5.3 to 2.6 seconds,
+  and appending two copies of it on disk from 4.6 to 2.2 seconds.
 
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
