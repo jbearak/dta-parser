@@ -21,6 +21,8 @@ The rejected broad-facts experiment is preserved in `rejected-all-facts/`. Its 1
 
 One fresh R qualification passed 139 blocks and 70,260 assertions with no failure, error, warning or skip. The exact native test manifest is included. Four release Rust filters passed 23 test executions; the filters overlap, so this is not a count of distinct tests.
 
+The exact Python controllers used for that qualification are retained in `recorded-qualification-scripts/`, bound to their original private receipt script digests. The root `focused-test-run.py` and `reader-rust-tests.py` are maintained helpers hardened after qualification. They were not used to produce the recorded R or Cargo runs. The focused helper now requires zero observed and zero allowed warnings; the Rust helper handles CRLF, timing suffixes and should-panic labels, and checks parsed status counts against the Cargo summary. Six fake-row/log tests pass with normal Python and `-O`. Untimed replay of the four included original Cargo logs preserves the same 23 executions. No R, Cargo, build or timing was rerun.
+
 The final local build took 23.57 seconds: zero C compilations, 62 Rust compilations and one dtatools installation. It installed no R dependencies. Existing C objects were reused; external Rust dependency cache hits are not claimed.
 
 The final source/DLL-bound assembly witness is in `assembly/`. Its active FLOAT loops remain scalar. Arrow removes the per-element generic tag-classifier call; DTA moves the version gate outside the loop. The exact canonical tag predicate preserves all 27 positive tags and both-sign IEEE NaNs without treating infinities or noncanonical high finite words as missing.

@@ -18,12 +18,6 @@ FILES = tuple('test-' + name + '.R' for name in (
     'dta-numeric', 'reader-numeric-facts'))
 
 
-def row_passes_policy(row, policy):
-    return (int(row['failed']) == 0 and row['error'] == 'FALSE' and
-            int(row['warning']) == 0 and policy['warnings'] == 0 and
-            row['skipped'] == 'FALSE' and int(row['passed']) >= policy['min_pass'])
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--library', type=Path, required=True)
@@ -86,7 +80,9 @@ def main():
         failures.append('Actual file/block/occurrence membership differs from the manifest')
     for key in set(actual) & set(expected):
         row, policy = actual[key], expected[key]
-        if not row_passes_policy(row, policy):
+        if (int(row['failed']) != 0 or row['error'] != 'FALSE' or
+                int(row['warning']) != policy['warnings'] or row['skipped'] != 'FALSE' or
+                int(row['passed']) < policy['min_pass']):
             failures.append(dict(block=key, observations=row, policy=policy))
     unchanged = bindings.build_binding(library, receipt_path) == binding and sha(archive) == archive_sha
     scripts_unchanged = all(sha(Path(path)) == digest for path, digest in scripts.items())

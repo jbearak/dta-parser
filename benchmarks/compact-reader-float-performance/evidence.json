@@ -4147,7 +4147,7 @@
   "mutation_qualification": "Timed source values, metadata, facts and state are checked before outside-clock alias mutation. Reader-only Arrow detaches retained storage to raw and clears facts under its existing writable-access policy. Operation workflows retain the immutable source.",
   "limitations": "Warm OS file cache, threads=1, two million-row fixtures, twelve workflows. Allocation time and automatic GC are included; allocated-byte volume is not measured. No cold-disk, general format ranking, parallel-worker, zero-cost facts or universal parity claim.",
   "artifact_sha256": {
-    "README.md": "cc2d59bff7974303cbe5c5724845b41ee056dbad387aa81da4f16cc4d85aa02c",
+    "README.md": "644456cf492b3e7f3f41a3ba3366ae70cd05cd4592bf2153cc022cbb7de0913b",
     "assembly/README.md": "917970f9fd1588a871f42d528f997725956bf05cabe2c981e85322f9a62b5fad",
     "assembly/baseline-arrow-float.asm": "7b983a6b31286d9617045887c63083d81f81ada0de540885bd104604bc5af67c",
     "assembly/baseline-arrow-source.txt": "3ff8a3030af57bb7253bbd0adefbdb56c6174d95cb0e8808faaa361a160bfb3e",
@@ -4165,20 +4165,54 @@
     "assembly/original-missing-classifier-source.txt": "e361b913f64c206a9177d1baba38641bbeab891925505aa87f95ea7b221fb0b3",
     "assembly/receipt.json": "7253b83575d9ede0f92139eaf333101cb6adc5af927a5cbd00e2d9881c6eb3c4",
     "assembly/single-thread-route-source.txt": "64cdf8a0d0ac86554fd759de9b2a2caf675ba03d724e42ee9c4b761560724980",
-    "focused-test-run.py": "662310d64adce3320d02491995d627dea3fd01ba787efd9b00a2cdebabf18979",
+    "focused-test-run.py": "ed5536a7345a7b8a7b88bba56bc79d66ee8493f3a7193100e0c47847948633b8",
     "focused-tests.R": "21001905f9497bb3982f46b49f6061efbaa4508119ddd09676742bbe387da956",
     "native-test-manifest.json": "e926d6b0e4260eba86b472e234003ce9e009170f106798ec4bcc3242d6e35f1c",
-    "publish-reader-evidence.py": "c056f079eae31423e086020413d34dbc9dc7e797d125d0898159da63600302a0",
+    "publish-reader-evidence.py": "d92b3e27590feca7e0b1922a485af760289676f192aa35a6a1c8a8446b6bf790",
+    "qualification-helper-replay.json": "1b8dc4f115df0b3dae292d0a778eb6ffb87cac8fc5a76d333a22d1aa2ab01779",
     "qualification.csv": "faa82beb2a8f5dd0390d9da2383c57b40bda8c18e1a7f4a7a976822d3c18cd4c",
     "r-checks.csv": "d2b0263312c9bcde6af6f816189846e6346217d0a49332def26df608747b1c33",
     "raw.csv": "7682f7c908b56e3760a5d7d89221fe8c45116000a40e5dd9bb91a7b3e6cb883d",
     "reader-fixtures.R": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
     "reader-run.py": "af9e8ec5f4d39101b85ba05224498e52c8bd91f824aa7a0a5df5b6c9e278544d",
-    "reader-rust-tests.py": "ba403202c3f48dbf8335a5672e8d98f0e5c4d58c42e7e57b461d32490316902d",
+    "reader-rust-tests.py": "23fcdc3e137f36e60270ae8908c4c67e32a86f65dea43e189a37013b4755e1cd",
     "reader-worker.R": "c2284b0b2296cb8c99c3736eedd0bc85fbea1e6f9f334c9df1e50dc47773b6ad",
+    "recorded-qualification-logs/rust-1.log": "4f03ce359ffa38f21959c7934c8fbf0045ba7b643861d1b9bbb2b8d0400e63bc",
+    "recorded-qualification-logs/rust-2.log": "d4e3d497a7fb8c2c925a9a98285b74cb56005a86a07c5fb9bccac52eedccb37b",
+    "recorded-qualification-logs/rust-3.log": "1f55ffb2464c02bae340e8829f280bd3b880ea47f7820c2d0e0dcdeac163006f",
+    "recorded-qualification-logs/rust-4.log": "4799111b5e4df0accb7ef1fb5360ee25030278478cff63d7884846bf7fce3fb4",
+    "recorded-qualification-scripts/focused-test-run.py": "662310d64adce3320d02491995d627dea3fd01ba787efd9b00a2cdebabf18979",
+    "recorded-qualification-scripts/reader-rust-tests.py": "ba403202c3f48dbf8335a5672e8d98f0e5c4d58c42e7e57b461d32490316902d",
     "rejected-all-facts/raw.csv": "97cc49413d66dfd7240c3f488d5349235590f0b611f513264c768a5bcb5f5e4a",
     "rejected-all-facts/reader-fixtures.R": "7ecd0cf3c4b8a6651807dcf6dfc97ee8244c51a11206c435a3fa03c77aea3cb2",
     "rejected-all-facts/reader-run.py": "c08d2802f1fe4d70b2f24d3d89922ee7e3d64c98ec0146c8dbab7c2e03e30165",
-    "rejected-all-facts/reader-worker.R": "9af77b3d078b970787e9723d85a5e6993cdc92a07b916c88cb0b2113c6ea4a75"
+    "rejected-all-facts/reader-worker.R": "9af77b3d078b970787e9723d85a5e6993cdc92a07b916c88cb0b2113c6ea4a75",
+    "test-qualification-scripts.py": "f556d596b1e32ab3b719ed80f10250b9bec1911583efa879c569ab117c446b85"
+  },
+  "qualification_scripts": {
+    "recorded": {
+      "focused-test-run.py": {
+        "file": "recorded-qualification-scripts/focused-test-run.py",
+        "original_private_script_sha256": "662310d64adce3320d02491995d627dea3fd01ba787efd9b00a2cdebabf18979",
+        "private_receipt_sha256": "7c035132c18fce39b81e9a597ac05c65c0ef4787a5d86d7614df85d0434b3768"
+      },
+      "reader-rust-tests.py": {
+        "file": "recorded-qualification-scripts/reader-rust-tests.py",
+        "original_private_script_sha256": "ba403202c3f48dbf8335a5672e8d98f0e5c4d58c42e7e57b461d32490316902d",
+        "private_receipt_sha256": "98a9ee0a42b71a3036113cb915ff968d5a9079270ca4868e2820c7c41384308a"
+      }
+    },
+    "maintained": {
+      "focused-test-run.py": {
+        "file": "focused-test-run.py",
+        "sha256": "ed5536a7345a7b8a7b88bba56bc79d66ee8493f3a7193100e0c47847948633b8",
+        "executed_for_recorded_qualification": false
+      },
+      "reader-rust-tests.py": {
+        "file": "reader-rust-tests.py",
+        "sha256": "23fcdc3e137f36e60270ae8908c4c67e32a86f65dea43e189a37013b4755e1cd",
+        "executed_for_recorded_qualification": false
+      }
+    }
   }
 }

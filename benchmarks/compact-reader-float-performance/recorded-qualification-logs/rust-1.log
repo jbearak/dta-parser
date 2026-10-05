@@ -1,0 +1,11 @@
+   Compiling dtatools-r v0.11.2 (/private/tmp/dta-compact-reader-facts-evidence/incremental-build-v2/candidate-build-v1/src/rust)
+    Finished `release` profile [optimized] target(s) in 7.79s
+     Running unittests src/lib.rs (rust/target/cdaed7ea9eb59950861eac3fb1386f2f/release/deps/dtatools_r-ecc3fa5d7cdac6b4)
+
+running 3 tests
+test arrow_ffi::tests::automatic_reader_threads_use_available_cpus_and_honor_explicit_limits ... ok
+test owned_numeric::tests::owned_float_reader_facts_cover_strict_slices_chunks_and_complete_scans ... ok
+test owned_numeric::tests::owned_float_reader_invalid_final_tail_declines_facts_without_changing_values ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 75 filtered out; finished in 0.00s
+

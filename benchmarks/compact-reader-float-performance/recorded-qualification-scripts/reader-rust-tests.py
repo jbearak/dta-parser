@@ -13,26 +13,6 @@ FILTERS = ('reader_', 'compact_float_count_only_gather_',
            'numeric_facts::tests::', 'owned_numeric::tests::')
 
 
-def parse_test_output(text):
-    tests = re.findall(r'^test ([^\r\n]+?)(?: - should panic)? \.\.\. '
-                       r'(ok|FAILED|ignored)(?:[ \t]+[^\r\n]*)?\r?$', text, re.M)
-    summaries = re.findall(r'^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; '
-                          r'(\d+) ignored; (\d+) measured; (\d+) filtered out;[^\r\n]*\r?$',
-                          text, re.M)
-    if len(summaries) != 1:
-        raise RuntimeError('Expected exactly one Cargo test-result summary')
-    status, passed, failed, ignored, measured, filtered = summaries[0]
-    summary = dict(status=status, passed=int(passed), failed=int(failed),
-                   ignored=int(ignored), measured=int(measured), filtered_out=int(filtered))
-    counts = {name: sum(result == result_status for _, result in tests)
-              for name, result_status in (('passed', 'ok'), ('failed', 'FAILED'), ('ignored', 'ignored'))}
-    if (len({name for name, _ in tests}) != len(tests) or summary['measured'] != 0 or
-            any(counts[key] != summary[key] for key in counts) or
-            (status == 'ok') != (summary['failed'] == 0)):
-        raise RuntimeError('Parsed Cargo test statuses disagree with the test-result summary')
-    return dict(tests=tests, summary=summary, **counts)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--library', type=Path, required=True)
@@ -74,10 +54,13 @@ def main():
             result = subprocess.run(command, cwd=source / 'src', env=env,
                                     stdout=log, stderr=subprocess.STDOUT)
         text = log_path.read_text()
-        parsed = parse_test_output(text)
+        tests = re.findall(r'^test (.*?) \.\.\. (ok|FAILED|ignored)$', text, re.M)
         observation = dict(filter=filter, command=command, cwd=str(source / 'src'),
                            started=started, finished=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                           exit_code=result.returncode, **parsed,
+                           exit_code=result.returncode, tests=tests,
+                           passed=sum(status == 'ok' for _, status in tests),
+                           failed=sum(status == 'FAILED' for _, status in tests),
+                           ignored=sum(status == 'ignored' for _, status in tests),
                            rust_compile_lines=[line for line in text.splitlines()
                                                if re.search(r'\bCompiling\s+', line)],
                            log_sha256=sha(log_path))

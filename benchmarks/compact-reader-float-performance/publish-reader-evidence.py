@@ -223,6 +223,38 @@ def validate_assembly(directory, receipt, panel):
             'Final assembly witness has failed disassembly or per-row calls')
 
 
+def validate_qualification_helpers(out, evidence):
+    scripts = evidence['qualification_scripts']
+    for name, item in scripts['recorded'].items():
+        checks = evidence['rust_checks'] if name == 'reader-rust-tests.py' else evidence['r_checks']
+        require(sha(out / item['file']) == item['original_private_script_sha256'] and
+                item['private_receipt_sha256'] == checks['private_receipt_sha256'],
+                'Recorded qualification controller does not match its original receipt')
+    for name, item in scripts['maintained'].items():
+        require(item['file'] == name and not item['executed_for_recorded_qualification'] and
+                sha(out / name) == item['sha256'], 'Maintained helper provenance differs')
+    replay = read_json(out / 'qualification-helper-replay.json')
+    parse = controller(out / 'reader-rust-tests.py').parse_test_output
+    require(replay['status'] == 'PASS' and
+            replay['maintained_parser_sha256'] == sha(out / 'reader-rust-tests.py') and
+            replay['recorded_parser_sha256'] == sha(out / 'recorded-qualification-scripts/reader-rust-tests.py') and
+            replay['private_rust_receipt_sha256'] == evidence['rust_checks']['private_receipt_sha256'] and
+            len(replay['observations']) == len(evidence['rust_checks']['observations']) == 4,
+            'Original-log helper replay provenance differs')
+    for index, (recorded, checked) in enumerate(zip(evidence['rust_checks']['observations'],
+                                                  replay['observations']), 1):
+        log = out / 'recorded-qualification-logs' / f'rust-{index}.log'
+        require(sha(log) == recorded['log_sha256'] == checked['log_sha256'], 'Original Cargo log changed')
+        parsed = parse(log.read_text())
+        require(parsed['tests'] == [tuple(item) for item in recorded['tests']] and
+                checked['tests_identical'] and checked['filter'] == recorded['filter'] and
+                parsed['summary'] == checked['summary'] and
+                all(parsed[key] == recorded[key] == checked[key] for key in ('passed', 'failed', 'ignored')),
+                'Hardened parser changes the recorded Rust qualification')
+    require(replay['test_executions'] == sum(item['passed'] for item in replay['observations']) == 23,
+            'Original-log replay does not preserve all 23 executions')
+
+
 def report(evidence):
     lines = ['# Compact reader FLOAT performance', '',
         'The final reader implementation keeps allocation facts only for complete, strict, '
@@ -267,6 +299,16 @@ def report(evidence):
         'The exact native test manifest is included. Four release Rust filters passed '
         f"{sum(item['passed'] for item in evidence['rust_checks']['observations'])} test executions; "
         'the filters overlap, so this is not a count of distinct tests.', '',
+        'The exact Python controllers used for that qualification are retained in '
+        '`recorded-qualification-scripts/`, bound to their original private receipt '
+        'script digests. The root `focused-test-run.py` and `reader-rust-tests.py` '
+        'are maintained helpers hardened after qualification. They were not used '
+        'to produce the recorded R or Cargo runs. The focused helper now requires '
+        'zero observed and zero allowed warnings; the Rust helper handles CRLF, '
+        'timing suffixes and should-panic labels, and checks parsed status counts '
+        'against the Cargo summary. Six fake-row/log tests pass with normal Python '
+        'and `-O`. Untimed replay of the four included original Cargo logs preserves '
+        'the same 23 executions. No R, Cargo, build or timing was rerun.', '',
         f"The final local build took {evidence['runtime']['wall_seconds']:.2f} seconds: "
         'zero C compilations, 62 Rust compilations and one dtatools installation. '
         'It installed no R dependencies. Existing C objects were reused; external Rust '
@@ -333,6 +375,7 @@ def check_public(out):
             'Exact final manifest binding differs')
     validate_r(read_csv(out / 'r-checks.csv'), evidence['r_checks'], manifest)
     validate_rust(evidence['rust_checks'])
+    validate_qualification_helpers(out, evidence)
     validate_assembly(out / 'assembly', read_json(out / 'assembly/receipt.json'), evidence['panel'])
     require((out / 'README.md').read_text() == report(evidence), 'Report differs from the actual observations')
     for base, panel in ((out, evidence['panel']), (out / 'rejected-all-facts', rejected['panel'])):
@@ -422,11 +465,34 @@ def main():
         shutil.copy2(directory / 'raw.csv', out / name)
     shutil.copy2(r_dir / 'test-results.csv', out / 'r-checks.csv')
     shutil.copy2(manifest_path, out / 'native-test-manifest.json')
-    for name in ('focused-test-run.py', 'focused-tests.R', 'reader-rust-tests.py'):
+    recorded_dir = out / 'recorded-qualification-scripts'
+    recorded_dir.mkdir()
+    recorded_scripts = {}
+    for name in ('focused-test-run.py', 'reader-rust-tests.py'):
         source = HERE / name
         receipt = rust if name == 'reader-rust-tests.py' else r
         require(receipt['scripts'][str(source)] == sha(source), 'Executed test controller source changed')
-        shutil.copy2(source, out / name)
+        shutil.copy2(source, recorded_dir / name)
+        recorded_scripts[name] = dict(file='recorded-qualification-scripts/' + name,
+            original_private_script_sha256=receipt['scripts'][str(source)],
+            private_receipt_sha256=sha((rust_dir if name == 'reader-rust-tests.py' else r_dir) / 'receipt.json'))
+    require(r['scripts'][str(HERE / 'focused-tests.R')] == sha(HERE / 'focused-tests.R'),
+            'Executed R qualification worker changed')
+    shutil.copy2(HERE / 'focused-tests.R', out / 'focused-tests.R')
+    maintained_root = root / 'benchmarks/compact-reader-float-performance'
+    maintained_scripts = {}
+    for name in ('focused-test-run.py', 'reader-rust-tests.py', 'test-qualification-scripts.py',
+                 'qualification-helper-replay.json'):
+        shutil.copy2(maintained_root / name, out / name)
+        if name in ('focused-test-run.py', 'reader-rust-tests.py'):
+            maintained_scripts[name] = dict(file=name, sha256=sha(out / name),
+                executed_for_recorded_qualification=False)
+    log_dir = out / 'recorded-qualification-logs'
+    log_dir.mkdir()
+    for index, record in enumerate(rust['observations'], 1):
+        source = rust_dir / f'rust-{index}.log'
+        require(sha(source) == record['log_sha256'], 'Recorded original Cargo log changed')
+        shutil.copy2(source, log_dir / source.name)
     rejected_out = out / 'rejected-all-facts'
     rejected_out.mkdir()
     for source_name, public_name in zip(historical_sources, SCRIPT_NAMES):
@@ -453,6 +519,7 @@ def main():
     evidence = dict(schema_version=2, panel=compact_panel(panel), qualification=compact_panel(qualification),
         runtime=build_summary(candidate, candidate_path),
         baseline_build_receipt_sha256=sha(baseline_path), r_checks=r_public, rust_checks=rust_public,
+        qualification_scripts=dict(recorded=recorded_scripts, maintained=maintained_scripts),
         rejected_all_facts=dict(accepted=False, panel=compact_panel(rejected),
             reason='The broad implementation collected facts for DTA and integer readers. '
                    'It raised DTA reader CPU cost by 64% for dense FLOAT and 45% for sparse INT '

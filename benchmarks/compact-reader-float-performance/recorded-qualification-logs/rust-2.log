@@ -1,0 +1,8 @@
+    Finished `release` profile [optimized] target(s) in 0.03s
+     Running unittests src/lib.rs (rust/target/cdaed7ea9eb59950861eac3fb1386f2f/release/deps/dtatools_r-ecc3fa5d7cdac6b4)
+
+running 1 test
+test tests::compact_float_count_only_gather_preserves_raw_bytes_and_missing_cache_for_every_release ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 77 filtered out; finished in 0.00s
+

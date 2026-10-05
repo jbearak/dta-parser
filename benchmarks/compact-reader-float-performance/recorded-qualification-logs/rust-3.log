@@ -1,0 +1,11 @@
+    Finished `release` profile [optimized] target(s) in 0.03s
+     Running unittests src/lib.rs (rust/target/cdaed7ea9eb59950861eac3fb1386f2f/release/deps/dtatools_r-ecc3fa5d7cdac6b4)
+
+running 4 tests
+test numeric_facts::tests::any_invalid_float_tail_declines_both_bounds_and_zero_count ... ok
+test numeric_facts::tests::float_facts_require_complete_ordered_strict_modern_non_temporal_values ... ok
+test numeric_facts::tests::empty_and_nonzero_free_float_extents_are_exact_and_integer_readers_decline ... ok
+test numeric_facts::tests::count_only_float_predicates_match_modern_classifiers_for_endpoints_and_raw_words ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 74 filtered out; finished in 0.00s
+
