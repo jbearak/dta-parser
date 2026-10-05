@@ -302,7 +302,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         examples[[length(examples) + 1L]] <- summary$examples
         diagnostics[[i]] <- .codebook_diagnostics(
             column, name, position, source_rows, diagnostic_limit, mask,
-            summary$unique_count
+            summary$unique_count, summary$observed_values,
+            summary$distinct_values
         )
         missing_masks[[as.character(position)]] <- mask
         if (notes) {
@@ -387,8 +388,9 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     finite_observed <- if (numeric) .book_numeric_data(observed) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
+    distinct <- if (numeric) unique(finite_observed) else NULL
     unique_count <- if (!supported) NA_integer_ else if (numeric) {
-        length(unique(finite_observed))
+        length(distinct)
     } else length(unique(observed))
     categorical <- supported && (is.factor(x) || is.logical(x) ||
         (numeric && unique_count <= threshold))
@@ -417,7 +419,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     if (numeric && length(finite_observed)) {
         q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
                              names = FALSE, type = 2)
-        sorted <- sort(unique(finite_observed))
+        sorted <- sort(distinct)
         unit <- if (length(sorted) < 2L) NA_real_ else min(diff(sorted))
         stats <- c(min(finite_observed), max(finite_observed), unit,
                    mean(finite_observed), if (length(finite_observed) > 1L) stats::sd(finite_observed) else NA,
@@ -433,7 +435,11 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         value_label_table = .book_or_na(table_name), report_type = report_type,
         observations = length(x), unique_nonmissing = unique_count,
         missing_count = sum(missing), system_missing_count = sum(system),
-        extended_missing_count = sum(extended), nan_count = if (is.numeric(x) && anyNA(x)) sum(is.nan(x)) else 0L,
+        extended_missing_count = sum(extended), nan_count = if (is.numeric(x) && anyNA(x)) {
+            # `is.nan()` on a Stata numeric tests its plain values, without
+            # building a computed vector through vctrs.
+            sum(is.nan(if (inherits(x, "dta_numeric")) .book_numeric_data(x) else x))
+        } else 0L,
         empty_count = if (is.character(x)) sum(x == "", na.rm = TRUE) else 0L,
         na_string_count = if (is.character(x)) sum(is.na(x)) else 0L,
         minimum = stats[[1L]], maximum = stats[[2L]], unit = stats[[3L]],
@@ -448,7 +454,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
                    stringsAsFactors = FALSE)
     } else .codebook_examples()
     list(variable = variable, tabulation = tabulation, examples = example,
-         unique_count = unique_count)
+         unique_count = unique_count, observed_values = finite_observed,
+         distinct_values = distinct)
 }
 
 # One variable's tabulation rows for .book_rows(), or NULL without any.
@@ -496,7 +503,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 }
 
 .codebook_diagnostics <- function(x, name, position, source_rows, limit,
-                                  mask, unique_count) {
+                                  mask, unique_count, values = NULL,
+                                  distinct = NULL) {
     result <- list(); add <- function(code, condition, message, severity = "problem", details = list()) {
         if (condition) result[[length(result) + 1L]] <<- .book_diag(
             code, "variable", variable = name, position = position,
@@ -533,8 +541,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             "String variable has few unique values and may be better represented as labelled numeric data",
             "suggestion")
     }
-    # The numeric checks share one conversion of the observed values.
-    values <- NULL
+    # The numeric checks share one conversion of the observed values, which
+    # the summary passes in when it has made it.
     observed_values <- function() {
         if (is.null(values)) values <<- .book_numeric_data(x[!missing])
         values
@@ -546,7 +554,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     if (is.numeric(x) && !is.null(labels) && .valid_tab_labels(labels)) {
         # Coverage depends only on the distinct values, kept in order of
         # first appearance.
-        observed <- unique(observed_values())
+        observed <- if (is.null(distinct)) unique(observed_values()) else distinct
         uncovered <- !(.dta_value_label_keys(observed) %in% .dta_value_label_keys(labels))
         add("incomplete_value_labels", any(uncovered), "Observed values are not fully value labelled",
             details = list(values = observed[uncovered]))

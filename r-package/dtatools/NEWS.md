@@ -39,6 +39,13 @@
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
 
+* `codebook()` finds each numeric variable's distinct values once and
+  shares them, and its observed values, with the problem checks. It counts
+  NaNs in a Stata numeric variable from its plain values, without building
+  a computed vector through vctrs. On a 16,787-row, 5,360-column DHS file
+  it falls from 9.9 to 7.9 seconds, and the compact report from 8.8 to
+  7.2 seconds.
+
 * `codebook()` computes each variable's missing mask and distinct-value
   count once, counts missing codes and categories without formatting every
   value or calling `table()`, and builds its result tables once. On a
