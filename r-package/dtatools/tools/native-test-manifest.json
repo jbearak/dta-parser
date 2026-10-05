@@ -16712,7 +16712,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "daad660c3c0f5a8f1139d7ea02959ce9f95d0a48d1b2ac69db44a97146e6059c"
+          "sha256": "6658f0447f4b96f162b48a4086ae99e8e39551ad38d5d04b794e90c45e1bf0d2"
         }
       ],
       "blocks": [
@@ -17205,6 +17205,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "full-sample summaries copy foreign ALTREP inputs for the fused scan",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         }
       ],
