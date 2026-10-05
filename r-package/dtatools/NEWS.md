@@ -5,6 +5,18 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
+  date, or datetime vector compare the packed native key that `dta_match()`
+  uses, rather than formatting each value as text. On 2 million doubles,
+  `unique()` falls from about 2.4 seconds to 0.03 seconds, and `factor()`,
+  `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
+  Results and errors are unchanged.
+
+* `subset()` on a dibble selects its rows with the native gather that `[`
+  on a dibble uses, rather than slicing one column at a time. On a
+  16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
+  about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
+
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
   column of the data. On a 16,787-row, 5,360-column DHS file,
@@ -26,9 +38,21 @@
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
 
+* `summ()` expands long varlists in linear rather than quadratic time,
+  summarizes a full sample without copying each variable, and builds its
+  statistics table once. Summarizing all 5,360 variables of a 16,787-row
+  DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
+  17.5 to 4.4 seconds.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
+
+* `codebook()` computes each variable's missing mask and distinct-value
+  count once, counts missing codes and categories without formatting every
+  value or calling `table()`, and builds its result tables once. On a
+  16,787-row, 5,360-column DHS file it falls from 36 to 13 seconds, and
+  the compact report from 32 to 10 seconds.
 
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
