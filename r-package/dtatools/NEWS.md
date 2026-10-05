@@ -10,6 +10,11 @@
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
   about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
 
+* `[` and `head()` on a dibble with Stata metadata check each column's
+  notes and characteristics without a function call per attribute name.
+  On a 16,787-row, 5,360-column DHS file this saves about 15 milliseconds
+  per call, for example `head(d)` falls from about 67 to 53 milliseconds.
+
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
   column of the data. On a 16,787-row, 5,360-column DHS file,
