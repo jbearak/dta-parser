@@ -188,9 +188,12 @@
     explicit <- intersect(c("x", "i", "j"), names(call))
     for (name in explicit) names(column_call)[match(name, c("", "x", "i", "j", "drop"))] <- name
     selected <- eval(column_call, environment)
-    result <- if (supplied_i) .reference_tibble_rows(snapshot, selected, i) else
+    result <- if (supplied_i) {
+        .reference_tibble_rows(selected, .reference_tibble_row_plan(snapshot, i))
+    } else {
         .ungrouped_result_frame(.data_columns(selected), attributes(selected),
                                 .row_names_info(selected, 0L))
+    }
     drop <- if (supplied_drop) eval(matched$drop, environment) else FALSE
     result <- result[, , drop = drop]
     if (!is.data.frame(result)) return(result)
@@ -205,13 +208,16 @@
             if (supplied_i) "bracket" else "columns"))
 }
 
-# The rows `i` selects from a tibble snapshot, of the columns already
-# `selected` from it. Tibble's index rules plan one integer column, and the
-# shared gatherer slices every selected column at those locations.
-.reference_tibble_rows <- function(snapshot, selected, i) {
+# Tibble's index rules plan the rows `i` selects from a snapshot on one
+# integer column, and the shared gatherer slices every column already
+# `selected` from the snapshot at those locations.
+.reference_tibble_row_plan <- function(snapshot, i) {
     row_frame <- tibble::new_tibble(list(.row = seq_len(nrow(snapshot))), nrow = nrow(snapshot))
     attr(row_frame, "row.names") <- .row_names_info(snapshot, 0L)
-    row_plan <- row_frame[i, , drop = FALSE]
+    row_frame[i, , drop = FALSE]
+}
+
+.reference_tibble_rows <- function(selected, row_plan) {
     columns <- .gather_dta_columns(.data_columns(selected), row_plan[[1L]])
     .ungrouped_result_frame(columns, attributes(selected), .row_names_info(row_plan, 0L))
 }

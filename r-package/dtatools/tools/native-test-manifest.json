@@ -10862,7 +10862,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "534f6a150cc24817633cde9615af27084724ff0ada88f4925e74f190a87cd6e8"
+          "sha256": "3a53876e374a23edea1580fc662ac75f7d4abac8cbe1de1bcbf11c677ee5922c"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -11954,6 +11954,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "subset() restores Stata columns and calls column methods once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

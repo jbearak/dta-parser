@@ -726,6 +726,46 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
     result[, price := 0]
     expect_identical(data$price, snapshot$price)
 })
+
+test_that("subset() restores Stata columns and calls column methods once", {
+    data <- dibble(x = structure(dta_double(c(1, 2, 3)), row_ids = 1:3), y = 1:3)
+    snapshot <- dtatools:::.reference_snapshot(data)
+    # Restoring a sliced Stata column drops the attribute it does not know.
+    expect_warning(actual <- subset(data, y > 1), "row_ids")
+    expect_warning(expected <- base::subset(snapshot, y > 1), "row_ids")
+    expect_identical(dtatools:::.reference_snapshot(actual),
+                     dtatools:::.reference_snapshot(dtatools:::.close_dibble(data, expected)))
+    expect_null(attr(actual$x, "row_ids"))
+
+    skip_if_not_installed("callr")
+    observed <- callr::r(function(libraries) {
+        .libPaths(libraries)
+        library(dtatools)
+        calls <- 0L
+        armed <- FALSE
+        once <- function(x = double()) vctrs::new_vctr(x, class = "dtatools_subset_once")
+        registerS3method("vec_restore", "dtatools_subset_once", function(x, to, ...) {
+            if (!armed) return(NextMethod())
+            calls <<- calls + 1L
+            warning("restoring once")
+            stop("restore failed")
+        }, envir = asNamespace("vctrs"))
+        data <- dibble(k = once(c(1, 2, 3)), y = 1:3)
+        warnings <- character()
+        armed <- TRUE
+        message <- withCallingHandlers(
+            tryCatch(subset(data, y > 1), error = conditionMessage),
+            warning = function(condition) {
+                warnings <<- c(warnings, conditionMessage(condition))
+                invokeRestart("muffleWarning")
+            }
+        )
+        list(calls = calls, warnings = warnings, message = message)
+    }, args = list(.libPaths()), libpath = .libPaths(), timeout = 120)
+    expect_identical(observed$calls, 1L)
+    expect_identical(observed$warnings, "restoring once")
+    expect_identical(observed$message, "restore failed")
+})
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)
     data$score <- c(1.5, 2, 3)

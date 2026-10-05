@@ -3026,22 +3026,38 @@ subset.dibble <- function(x, ...) {
 )
 
 # Base evaluates the row and column subscripts before this bracket runs,
-# and all three arguments are forced before the gather is tried. A call of
-# any other shape, a `drop` that could return one column as a vector, and
-# any error take the tibble bracket on the unmarked snapshot, so errors and
-# warnings are the ones it reports.
+# and all three arguments are forced before the gather is tried. Selecting
+# columns and planning rows call no column methods, so an error or warning
+# from either leaves the call to the tibble bracket on the unmarked
+# snapshot, which reports it. So does a call of any other shape, a `drop`
+# that could return one column as a vector, and a Stata column whose
+# attributes restoration would drop.
 #' @export
 `[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
         is.logical(i) && !missing(drop) && identical(drop, FALSE)) {
-        result <- tryCatch(
-            .reference_tibble_rows(x, x[, j, drop = FALSE], i)[, , drop = FALSE],
-            error = function(condition) .absent_column
+        plan <- tryCatch(
+            list(x[, j, drop = FALSE], .reference_tibble_row_plan(x, i)),
+            error = function(condition) NULL,
+            warning = function(condition) NULL
         )
-        if (!identical(result, .absent_column)) return(result)
+        if (!is.null(plan) && .subset_gathers_columns(plan[[1L]])) {
+            return(.reference_tibble_rows(plan[[1L]], plan[[2L]])[, , drop = FALSE])
+        }
     }
     NextMethod()
+}
+
+# The gather keeps every attribute of a Stata column, where restoring a
+# sliced one drops and warns about the attributes it does not know.
+.subset_gathers_columns <- function(selected) {
+    known <- c("names", "class", .dta_variable_attribute_names)
+    for (column in .data_columns(selected)) {
+        if (inherits(column, c("dta_numeric", "dta_temporal", "dta_string")) &&
+            !all(names(attributes(column)) %in% known)) return(FALSE)
+    }
+    TRUE
 }
 
 #' @export
