@@ -5,6 +5,12 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `summ()` and `tab()` slice a column to each group only when `where`,
+  `weights`, `subpop`, or `summarize` reads it, rather than slicing every
+  column of the data. On a 16,787-row, 5,360-column DHS file,
+  `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
+  milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and

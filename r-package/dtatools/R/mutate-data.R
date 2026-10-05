@@ -1650,6 +1650,36 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     view
 }
 
+# One group's columns for `summ()` and `tab()` expressions, each sliced to
+# `rows` by `slice` only when an expression first reads it, so a call on
+# wide data pays for the columns it reads. Each group gets its own
+# environment: an expression that retains `.data` keeps its group's rows.
+# Its parent is the calling environment, as a list-based mask's would be.
+# Column names must satisfy `.lazy_group_names()`.
+.lazy_group_columns <- function(columns, rows, slice, parent) {
+    # A retained `.data` can read a column after the caller's loop has moved
+    # on, so the promises must not refer back to the caller's row variable.
+    force(columns)
+    force(rows)
+    force(slice)
+    view <- new.env(parent = parent, size = length(columns))
+    column_names <- names(columns)
+    bind <- function(index) {
+        delayedAssign(column_names[[index]],
+                      slice(.subset2(columns, index), rows),
+                      assign.env = view)
+    }
+    for (index in seq_along(columns)) bind(index)
+    view
+}
+
+# Names that each bind one column: an environment would merge duplicates
+# that a list-based mask reports as ambiguous.
+.lazy_group_names <- function(column_names) {
+    !is.null(column_names) && !anyNA(column_names) &&
+        all(nzchar(column_names)) && !anyDuplicated(column_names)
+}
+
 # The `where` half of `.grouped_mutation()` on its own: each group's rows
 # as validated group-relative positions, or `NULL` for the whole group.
 # The bracket form calls it once and hands the result to every assignment
