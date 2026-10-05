@@ -3038,7 +3038,8 @@ subset.dibble <- function(x, ...) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
         !missing(drop) && isNamespaceLoaded("tibble") &&
-        .subset_plain_subscripts(x, i, j) && .subset_gathers_columns(x) &&
+        .subset_plain_subscripts(x, i, j) &&
+        .subset_gathers_columns(.subset(x, .subset_column_positions(x, j))) &&
         identical(drop, FALSE)) {
         selected <- x[, j, drop = FALSE]
         rows <- .reference_tibble_row_plan(x, i)
@@ -3070,12 +3071,20 @@ subset.dibble <- function(x, ...) {
         (all(j >= 1 & j <= length(x)) || all(j <= -1 & j >= -length(x)))
 }
 
+# Positions of the columns a subscript that passed .subset_plain_subscripts()
+# keeps. Only those are sliced, so only those need checking.
+.subset_column_positions <- function(x, j) {
+    if (is.logical(j)) return(which(rep_len(j, length(x))))
+    if (is.character(j)) return(match(j, names(x)))
+    if (all(j > 0)) j else seq_along(x)[j]
+}
+
 # The package's Stata vectors, factors, and unclassed vectors, with only the
 # attributes their restoration keeps and the vctrs methods dtatools and vctrs
 # register. A subclass or a replaced method can do work only the tibble
 # bracket calls, and the gather keeps an attribute that restoring a sliced
 # Stata column drops with a warning.
-.subset_gathers_columns <- function(snapshot) {
+.subset_gathers_columns <- function(columns) {
     stata <- c(
         lapply(.dta_storage, .dta_storage_class),
         lapply(.dta_storage, function(storage) {
@@ -3091,7 +3100,7 @@ subset.dibble <- function(x, ...) {
     stata <- vapply(stata, paste, character(1), collapse = " ")
     known <- c("names", "class", .dta_variable_attribute_names)
     checked <- character()
-    for (column in .data_columns(snapshot)) {
+    for (column in columns) {
         classes <- paste(oldClass(column), collapse = " ")
         allowed <- if (identical(classes, "factor")) c("class", "levels") else
             if (!nzchar(classes) || classes %in% stata) known else return(FALSE)
@@ -3106,8 +3115,11 @@ subset.dibble <- function(x, ...) {
 
 # Slicing finds a class's proxy and restore methods in the global
 # environment or the vctrs method table, taking the first class that has
-# one. Each must be the method the package that registers it defines.
+# one. Each must be the method the package that registers it defines. The
+# metadata wrapper's methods call the methods of the classes beneath it.
 .subset_methods_registered <- function(classes) {
+    if (identical(classes[[1L]], .dta_metadata_vector_class) &&
+        !.subset_methods_registered(classes[-1L])) return(FALSE)
     table <- get(".__S3MethodsTable__.", asNamespace("vctrs"), inherits = FALSE)
     for (generic in c("vec_proxy", "vec_restore")) {
         for (class in classes) {
