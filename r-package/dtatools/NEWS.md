@@ -39,6 +39,12 @@
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
 
+* `dta_append()` skips reconciling a variable whose sources declare it
+  identically, takes an empty Stata column as its own prototype, and reads
+  source columns by position rather than by name. Appending a 5,360-column
+  DHS file to itself falls from 5.3 to 2.6 seconds, and appending two
+  copies of it on disk from 4.6 to 2.2 seconds.
+
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
   statistics table once. Summarizing all 5,360 variables of a 16,787-row

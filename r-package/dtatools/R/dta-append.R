@@ -211,6 +211,17 @@ dta_append <- function(sources, force = TRUE,
     )
 }
 
+# A source's column by position. A dibble's `[[` finds a position by its
+# name, a scan of every name, and its names are unique, so the position
+# reads the same column; a tibble's `[[` validates the position first.
+.append_source_column <- function(data, index) {
+    if (inherits(data, c("dibble", "tbl_df"))) {
+        .subset2(data, index)
+    } else {
+        data[[index]]
+    }
+}
+
 .append_read_data <- function(entry) {
     switch(
         entry$kind,
@@ -280,8 +291,14 @@ dta_append <- function(sources, force = TRUE,
         for (my_index in seq_len(source_count)) {
             my_column <- source_columns[[my_index]][[plan_index]]
             if (is.na(my_column)) next
-            value <- schemas[[my_index]]$schema[[my_column]]
-            candidate <- vctrs::vec_ptype(value)
+            value <- .append_source_column(schemas[[my_index]]$schema, my_column)
+            candidate <- if (length(value) == 0L &&
+                inherits(value, c("dta_numeric", "dta_string")) &&
+                !inherits(value, .dta_metadata_vector_class)) {
+                value
+            } else {
+                vctrs::vec_ptype(value)
+            }
             if (is.null(prototype)) {
                 prototype <- candidate
                 metadata_owners[[plan_index]] <- candidate
@@ -351,7 +368,7 @@ dta_append <- function(sources, force = TRUE,
         schema <- my_schema$schema
         column_names <- names(schema)
         for (my_column in seq_along(schema)) {
-            value <- schema[[my_column]]
+            value <- .append_source_column(schema, my_column)
             labels <- attr(value, "labels", exact = TRUE)
             if (is.null(labels)) next
             table_name <- .append_value_label_table_name(
@@ -475,6 +492,12 @@ dta_append <- function(sources, force = TRUE,
     }
     left <- .append_without_value_labels(left)
     right <- .append_without_value_labels(right)
+    # Two identical Stata prototypes have nothing to reconcile, and the
+    # result takes its metadata from the owning source afterwards.
+    if (inherits(left, c("dta_numeric", "dta_string")) &&
+        identical(left, right)) {
+        return(left)
+    }
     left_storage <- .declared_dta_storage(left)
     right_storage <- .declared_dta_storage(right)
     left_declared <- !is.null(left_storage) &&
@@ -557,7 +580,7 @@ dta_append <- function(sources, force = TRUE,
                 is.na(my_column)) {
                 NULL
             } else {
-                data[[my_column]]
+                .append_source_column(data, my_column)
             }
             if (!is.null(buffers[[plan_index]])) {
                 if (!is.null(value) && rows > 0L) {
