@@ -2983,9 +2983,10 @@ select.dibble <- function(.data, ...) {
     .dibble_select_columns(context, locations)
 }
 
-.reference_delegate <- function(data, call, generic, environment) {
+.reference_delegate <- function(data, call, generic, environment,
+                                snapshot = .reference_snapshot(data)) {
     call[[1L]] <- generic
-    call[[2L]] <- .reference_snapshot(data)
+    call[[2L]] <- snapshot
     eval(call, environment)
 }
 
@@ -3007,7 +3008,40 @@ within.dibble <- function(data, expr, ...) {
 
 #' @export
 subset.dibble <- function(x, ...) {
-    .close_dibble(x, .reference_delegate(x, sys.call(), base::subset, parent.frame()))
+    # Base subset() ends in `x[r, vars, drop = drop]`, and the tibble
+    # bracket slices one column at a time. The mark routes that bracket
+    # on a plain tibble snapshot to the gather `[` on a dibble uses.
+    snapshot <- .reference_snapshot(x)
+    if (any(vapply(.subset_snapshot_classes, identical, logical(1), class(snapshot)))) {
+        class(snapshot) <- c("dtatools_subset_snapshot", class(snapshot))
+    }
+    .close_dibble(x, .reference_delegate(
+        x, sys.call(), base::subset, parent.frame(), snapshot
+    ))
+}
+
+.subset_snapshot_classes <- list(
+    c("tbl_df", "tbl", "data.frame"),
+    c("dtatools_dta_metadata", "tbl_df", "tbl", "data.frame")
+)
+
+# Base evaluates the row and column subscripts before this bracket runs,
+# and all three arguments are forced before the gather is tried. A call of
+# any other shape, a `drop` that could return one column as a vector, and
+# any error take the tibble bracket on the unmarked snapshot, so errors and
+# warnings are the ones it reports.
+#' @export
+`[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
+    class(x) <- class(x)[-1L]
+    if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
+        is.logical(i) && !missing(drop) && identical(drop, FALSE)) {
+        result <- tryCatch(
+            .reference_tibble_rows(x, x[, j, drop = FALSE], i)[, , drop = FALSE],
+            error = function(condition) .absent_column
+        )
+        if (!identical(result, .absent_column)) return(result)
+    }
+    NextMethod()
 }
 
 #' @export

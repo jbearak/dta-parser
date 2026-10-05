@@ -693,6 +693,39 @@ test_that("dataset closure through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_639(TRUE)
 })
+
+test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
+    data <- read_dta(system.file("extdata", "auto_v118.dta", package = "dtatools"))
+    snapshot <- dtatools:::.reference_snapshot(data)
+    expected <- function(result) dtatools:::.close_dibble(data, result)
+    ns <- asNamespace("dtatools")
+    gathered <- 0L
+    trace(".reference_tibble_rows", tracer = function() gathered <<- gathered + 1L,
+          where = ns, print = FALSE)
+    on.exit(untrace(".reference_tibble_rows", where = ns), add = TRUE)
+    open <- dtatools:::.reference_snapshot
+
+    expect_identical(open(subset(data, price > 6000)),
+                     open(expected(base::subset(snapshot, price > 6000))))
+    expect_identical(
+        open(subset(data, foreign == 1, select = c(make, price))),
+        open(expected(base::subset(snapshot, foreign == 1, select = c(make, price))))
+    )
+    expect_identical(gathered, 2L)
+    # One column dropped to a vector keeps the tibble bracket's result.
+    expect_identical(subset(data, price > 6000, price, drop = TRUE),
+                     base::subset(snapshot, price > 6000, price, drop = TRUE))
+    expect_identical(gathered, 2L)
+    # A row subscript the tibble bracket rejects reports its own error.
+    expect_identical(
+        conditionMessage(expect_error(subset(data, c(TRUE, FALSE)))),
+        conditionMessage(expect_error(base::subset(snapshot, c(TRUE, FALSE))))
+    )
+
+    result <- subset(data, price > 6000)
+    result[, price := 0]
+    expect_identical(data$price, snapshot$price)
+})
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)
     data$score <- c(1.5, 2, 3)

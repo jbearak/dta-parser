@@ -10862,7 +10862,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "b68104b594d980a0c7a2d0e77aa158dfa358618a1eab737b2db27cb266141dcd"
+          "sha256": "534f6a150cc24817633cde9615af27084724ff0ada88f4925e74f190a87cd6e8"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -11946,6 +11946,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "subset() gathers a dibble's rows as base subset() of its snapshot",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         },
         {
