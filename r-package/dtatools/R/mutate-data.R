@@ -3026,36 +3026,54 @@ subset.dibble <- function(x, ...) {
 )
 
 # Base evaluates the row and column subscripts before this bracket runs,
-# and all three arguments are forced before the gather is tried. Selecting
-# columns and planning rows call no column methods, so an error or warning
-# from either leaves the call to the tibble bracket on the unmarked
-# snapshot, which reports it. So does a call of any other shape, a `drop`
-# that could return one column as a vector, and a Stata column whose
-# attributes restoration would drop.
+# and all three arguments are forced before the gather is tried. Every
+# column must be one the gather slices as the tibble bracket would, so
+# selecting columns and planning rows then call only package methods, and
+# an error or warning from either leaves the call to the tibble bracket on
+# the unmarked snapshot, which reports it. So does a call of any other
+# shape and a `drop` that could return one column as a vector.
 #' @export
 `[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
-        is.logical(i) && !missing(drop) && identical(drop, FALSE)) {
+        is.logical(i) && !missing(drop) && identical(drop, FALSE) &&
+        .subset_gathers_columns(x)) {
         plan <- tryCatch(
             list(x[, j, drop = FALSE], .reference_tibble_row_plan(x, i)),
             error = function(condition) NULL,
             warning = function(condition) NULL
         )
-        if (!is.null(plan) && .subset_gathers_columns(plan[[1L]])) {
+        if (!is.null(plan)) {
             return(.reference_tibble_rows(plan[[1L]], plan[[2L]])[, , drop = FALSE])
         }
     }
     NextMethod()
 }
 
-# The gather keeps every attribute of a Stata column, where restoring a
-# sliced one drops and warns about the attributes it does not know.
-.subset_gathers_columns <- function(selected) {
+# The package's Stata vectors, factors, and unclassed vectors, with only the
+# attributes their restoration keeps. A subclass can define vctrs methods
+# that only the tibble bracket calls, and the gather keeps an attribute that
+# restoring a sliced Stata column drops with a warning.
+.subset_gathers_columns <- function(snapshot) {
+    stata <- c(
+        lapply(.dta_storage, .dta_storage_class),
+        lapply(.dta_storage, function(storage) {
+            append(.dta_storage_class(storage), "haven_labelled", after = 2L)
+        }),
+        list(c("dta_string", "vctrs_vctr", "character"),
+             c("dta_temporal", "dta_date", "Date"),
+             c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt"))
+    )
+    stata <- c(stata, lapply(stata, function(classes) {
+        c(.dta_metadata_vector_class, classes)
+    }))
+    stata <- vapply(stata, paste, character(1), collapse = " ")
     known <- c("names", "class", .dta_variable_attribute_names)
-    for (column in .data_columns(selected)) {
-        if (inherits(column, c("dta_numeric", "dta_temporal", "dta_string")) &&
-            !all(names(attributes(column)) %in% known)) return(FALSE)
+    for (column in .data_columns(snapshot)) {
+        classes <- paste(oldClass(column), collapse = " ")
+        allowed <- if (identical(classes, "factor")) c("class", "levels") else
+            if (!nzchar(classes) || classes %in% stata) known else return(FALSE)
+        if (!all(names(attributes(column)) %in% allowed)) return(FALSE)
     }
     TRUE
 }

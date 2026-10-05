@@ -727,7 +727,7 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
     expect_identical(data$price, snapshot$price)
 })
 
-test_that("subset() restores Stata columns and calls column methods once", {
+test_that("subset() drops the attributes Stata restoration drops", {
     data <- dibble(x = structure(dta_double(c(1, 2, 3)), row_ids = 1:3), y = 1:3)
     snapshot <- dtatools:::.reference_snapshot(data)
     # Restoring a sliced Stata column drops the attribute it does not know.
@@ -736,35 +736,73 @@ test_that("subset() restores Stata columns and calls column methods once", {
     expect_identical(dtatools:::.reference_snapshot(actual),
                      dtatools:::.reference_snapshot(dtatools:::.close_dibble(data, expected)))
     expect_null(attr(actual$x, "row_ids"))
+})
 
-    skip_if_not_installed("callr")
-    observed <- callr::r(function(libraries) {
-        .libPaths(libraries)
+test_that("subset() leaves custom column methods to the tibble bracket", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("subset-column-methods", function() {
         library(dtatools)
+        register <- function(generic, class, method) {
+            registerS3method(generic, class, method, envir = asNamespace("vctrs"))
+        }
         calls <- 0L
         armed <- FALSE
-        once <- function(x = double()) vctrs::new_vctr(x, class = "dtatools_subset_once")
-        registerS3method("vec_restore", "dtatools_subset_once", function(x, to, ...) {
-            if (!armed) return(NextMethod())
+        register("vec_restore", "dtatools_subset_once", function(x, to, ...) {
+            if (!armed) return(vctrs::vec_restore_default(x, to))
             calls <<- calls + 1L
             warning("restoring once")
             stop("restore failed")
-        }, envir = asNamespace("vctrs"))
-        data <- dibble(k = once(c(1, 2, 3)), y = 1:3)
-        warnings <- character()
-        armed <- TRUE
-        message <- withCallingHandlers(
-            tryCatch(subset(data, y > 1), error = conditionMessage),
-            warning = function(condition) {
-                warnings <<- c(warnings, conditionMessage(condition))
-                invokeRestart("muffleWarning")
+        })
+        register("vec_proxy", "dtatools_subset_noted", function(x, ...) {
+            if (armed) {
+                calls <<- calls + 1L
+                if (calls == 1L) stop("proxy failed once")
             }
+            attributes(x) <- NULL
+            x
+        })
+        register("vec_restore", "dtatools_subset_relabel", function(x, to, ...) {
+            restore <- get("vec_restore.dta_numeric", asNamespace("dtatools"))
+            result <- restore(x, to)
+            attr(result, "label") <- "restored"
+            class(result) <- class(to)
+            result
+        })
+        noted <- vctrs::new_vctr(c(1, 2, 3), class = "dtatools_subset_noted")
+        attr(noted, "notes") <- "a note"
+        frames <- list(
+            once = dibble(k = vctrs::new_vctr(c(1, 2, 3), class = "dtatools_subset_once"), y = 1:3),
+            noted = dibble(k = noted, y = 1:3),
+            relabel = dibble(k = structure(dta_double(c(1, 2, 3)), class = c(
+                "dtatools_subset_relabel", class(dta_double(1)))), y = 1:3)
         )
-        list(calls = calls, warnings = warnings, message = message)
-    }, args = list(.libPaths()), libpath = .libPaths(), timeout = 120)
-    expect_identical(observed$calls, 1L)
-    expect_identical(observed$warnings, "restoring once")
-    expect_identical(observed$message, "restore failed")
+        attempt <- function(data) {
+            calls <<- 0L
+            warnings <- character()
+            armed <<- TRUE
+            on.exit(armed <<- FALSE)
+            value <- withCallingHandlers(
+                tryCatch(attr(subset(data, y > 1)$k, "label"), error = conditionMessage),
+                warning = function(condition) {
+                    warnings <<- c(warnings, conditionMessage(condition))
+                    invokeRestart("muffleWarning")
+                }
+            )
+            list(value = value, warnings = warnings, calls = calls)
+        }
+        lapply(frames, function(data) list(
+            dibble = attempt(data),
+            snapshot = attempt(dtatools:::.reference_snapshot(data))
+        ))
+    })
+    for (name in names(observed)) {
+        expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
+    }
+    expect_identical(observed$once$dibble,
+                     list(value = "restore failed", warnings = "restoring once", calls = 1L))
+    expect_identical(observed$noted$dibble,
+                     list(value = "proxy failed once", warnings = character(), calls = 1L))
+    expect_identical(observed$relabel$dibble$value, "restored")
 })
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)

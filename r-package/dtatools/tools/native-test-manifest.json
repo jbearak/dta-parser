@@ -10862,7 +10862,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "3a53876e374a23edea1580fc662ac75f7d4abac8cbe1de1bcbf11c677ee5922c"
+          "sha256": "8a24b3b90a6bdb841313d9af6f7675996b0d64d51354a18a9e59a4ed2bbafcf8"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -11958,10 +11958,18 @@
         },
         {
           "file": "test-dibble.R",
-          "test": "subset() restores Stata columns and calls column methods once",
+          "test": "subset() drops the attributes Stata restoration drops",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 7,
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "subset() leaves custom column methods to the tibble bracket",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -12125,6 +12133,14 @@
         {
           "id": "bracket-autoprint",
           "kind": "rscript",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "subset-column-methods",
+          "kind": "r",
           "minimum": 1,
           "maximum": 1,
           "completion": "complete",
