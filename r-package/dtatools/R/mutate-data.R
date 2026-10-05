@@ -1657,6 +1657,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # Its parent is the calling environment, as a list-based mask's would be.
 # Column names must satisfy `.lazy_group_names()`.
 .lazy_group_columns <- function(columns, rows, slice, parent) {
+    # A retained `.data` can read a column after the caller's loop has moved
+    # on, so the promises must not refer back to the caller's row variable.
+    force(columns)
+    force(rows)
+    force(slice)
     view <- new.env(parent = parent, size = length(columns))
     column_names <- names(columns)
     bind <- function(index) {

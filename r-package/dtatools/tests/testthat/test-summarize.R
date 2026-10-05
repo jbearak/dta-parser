@@ -54,13 +54,17 @@ test_that("grouped summaries slice only the columns their expressions read", {
     expect_equal(summ(d, x, by = g, where = probe > 2L,
         weights = as.integer(probe))$statistics$N, c(2, 2))
     expect_identical(slices$count(), 2L)
+    # The first group saves `.data` without reading a column, so the later
+    # read must still slice the first group's rows.
     first <- NULL
     retained <- summ(d, x, by = g, where = {
-        if (is.null(first)) first <<- .data
-        x > max(first$x)
+        if (is.null(first)) {
+            first <<- .data
+            .n > 0
+        } else x > max(first$x)
     })
     expect_identical(as.double(first$x), c(1, 3, 7))
-    expect_equal(retained$statistics$N, c(0, 1))
+    expect_equal(retained$statistics$N, c(3, 1))
 })
 
 test_that("summary grouping preserves Stata missing identities and dplyr groups", {

@@ -79,14 +79,19 @@ test_that("grouped tabulation slices only the columns its expressions read", {
     expect_identical(lapply(result, function(table) as.vector(table)),
                      list(2, c(3, 4)))
     expect_identical(slices$count(), 2L)
+    # The first group saves `.data` without reading a column, so the later
+    # read must still slice the first group's rows.
     first <- NULL
-    retained <- tab(d, x, by = g, where = {
-        if (is.null(first)) first <<- .data
-        x >= max(first$x)
+    retained <- tab(data.frame(x = 1:4, g = c(1, 1, 2, 2)), x, by = g,
+                    where = {
+        if (is.null(first)) {
+            first <<- .data
+            .n > 0
+        } else x > mean(first$x) + 1
     })
     expect_identical(as.double(first$x), c(1, 2))
     expect_identical(lapply(retained, function(table) as.vector(table)),
-                     list(1L, 1L))
+                     list(c(1L, 1L), c(1L, 1L)))
     duplicated_names <- data.frame(x = 1:2, w = 1:2, w = 8:9,
                                    check.names = FALSE)
     expect_identical(as.vector(tab(duplicated_names, x, weights = w,

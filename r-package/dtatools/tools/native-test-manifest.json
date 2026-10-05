@@ -15558,7 +15558,7 @@
         },
         {
           "path": "tests/testthat/test-tab-grouped.R",
-          "sha256": "1764c5d683c23aa8e5a58b26acc6396f0e9e6b76a9929e9816bf853704b9e546"
+          "sha256": "c5038f6bf5230f8e97af00c162ca6158994cd1d5a86cea0c741b680bb91e0473"
         },
         {
           "path": "tests/testthat/test-tab-indicators.R",
@@ -16700,7 +16700,7 @@
         },
         {
           "path": "tests/testthat/test-summarize.R",
-          "sha256": "714227a5b9a11f7341a415c779f5d2f7d61af66ca4347af399006e08094d7346"
+          "sha256": "7822bb04f77f7770433e09125d6cfab8fa1e4c75c2e3c288d64a7f8d00b38592"
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
