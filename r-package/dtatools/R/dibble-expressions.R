@@ -84,7 +84,59 @@
         .native_admission_branches(.native_admission_call(
             C_dtatools_initial_capture_initial, .initial_capture_profile
         ), NULL, {
-            for (name in names(columns)) add(name, columns[[name]])
+            # add() copies its growing registries for every column, which is
+            # quadratic in the width. Unique names are registered in one pass
+            # instead, capturing each column by position as the native batch
+            # does. Names repeat only if a callback renamed the input by
+            # reference after validation. Besides match(), which add() reaches
+            # through %in%, this calls only functions the native batch checks.
+            consumed <- names(columns)
+            repeated <- function(values) {
+                first <- match(values, values)
+                found <- FALSE
+                position <- 0L
+                for (index in first) {
+                    position <- position + 1L
+                    found <- found || index != position
+                }
+                found
+            }
+            if (repeated(consumed)) {
+                for (name in consumed) add(name, columns[[name]])
+            } else {
+                registered <- c(consumed)
+                current <- history <- NULL
+                index <- 0L
+                for (name in consumed) {
+                    index <- index + 1L
+                    generation <- new.env(parent = emptyenv())
+                    generation$value <- .capture_dibble_nested(columns[[index]])
+                    generation$chunks <- NULL
+                    generation$used <- FALSE
+                    current[[index]] <- generation
+                    # The name the loop consumed, as add() registers it.
+                    registered[[index]] <- name
+                    history[[index]] <- rlang::new_weakref(generation)
+                }
+                if (repeated(registered)) {
+                    # A capture callback renamed the input. Register as add()
+                    # does: each name's first position and last generation.
+                    index <- 0L
+                    for (name in registered) {
+                        index <- index + 1L
+                        state$current[[name]] <- current[[index]]
+                        if (!name %in% state$names) state$names <- c(state$names, name)
+                    }
+                    state$generations <- history
+                } else if (index) {
+                    names(current) <- c(registered)
+                    state$current <- current
+                    state$names <- registered
+                    state$generations <- history
+                }
+                registered <- current <- history <- generation <- NULL
+            }
+            consumed <- repeated <- NULL
         }), .native_admission_if
     )
     columns <- NULL
@@ -137,7 +189,9 @@
         mask
     }
     values <- function(vars = names(state$current)) {
-        stats::setNames(lapply(vars, function(name) state$current[[name]]$value), vars)
+        # One subset by name: a lookup per name is quadratic in the width.
+        generations <- state$current[vars]
+        stats::setNames(lapply(generations, function(generation) generation$value), vars)
     }
     current_cols <- function(vars) {
         stats::setNames(lapply(vars, function(name) read(state$current[[name]], name, state$id)), vars)
