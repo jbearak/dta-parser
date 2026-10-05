@@ -792,7 +792,9 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         unlist(lapply(rows, .subset2, j), use.names = FALSE)
     })
     names(columns) <- fields
-    data.frame(columns, stringsAsFactors = FALSE)
+    # Attributes in the order binding the row frames gives them.
+    structure(columns, row.names = .set_row_names(length(columns[[1L]])),
+              class = "data.frame")
 }
 
 .book_flag <- function(x, name) {
