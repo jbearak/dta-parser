@@ -190,8 +190,11 @@ labelbook <- function(data, ..., .tables = NULL,
     )
 }
 
-# A table's mapping rows for .book_rows(), in report order.
+# A table's mapping rows for .book_rows(), in report order, or NULL for a
+# table without mappings, which leaves the typed empty frame when no table
+# has any.
 .labelbook_mapping_rows <- function(table, labels, order, codes = .book_codes(labels)) {
+    if (!length(labels)) return(NULL)
     result <- list(
         table = rep(table, length(labels)), source_position = seq_along(labels),
         code = as.double(labels), missing_code = codes$missing_code,

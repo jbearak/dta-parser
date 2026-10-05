@@ -15538,7 +15538,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "555231a721e26e95f9de7f0dae38be84ebeca2026ca59f431b74952522e2be0e"
+          "sha256": "8700f6f0f0dae3bb7bcc3747d09fe373b1e4749af3ca94beb4e5aaf9bac4c32d"
         },
         {
           "path": "tests/testthat/test-datasig.R",
