@@ -54,10 +54,13 @@ test_that("DTA and Arrow readers publish facts for the returned compact extent",
     n <- 65539L
     integer_values <- rep(c(-3, -1, 0, 1, 3, NA_real_, tagged_missing("z")), length.out = n)
     float_values <- rep(c(0, -0, 0.125, -3, 3, NA_real_, tagged_missing("z")), length.out = n)
+    when <- dtatools:::.construct_dta_numeric(
+        rep(c(0, 1, NA_real_), length.out = n), NULL, "float", temporal = 1L)
+    when <- dtatools:::.attach_dta_temporal(when,
+        structure(double(), format.stata = "%td",
+                  class = c("dta_temporal", "dta_date", "Date")), "float")
     data <- dibble(b = dta_byte(integer_values), i = dta_int(integer_values),
-                   l = dta_long(integer_values), f = dta_float(float_values),
-                   when = dtatools:::.construct_dta_numeric(
-                       rep(c(0, 1, NA_real_), length.out = n), NULL, "float", temporal = 1L))
+                   l = dta_long(integer_values), f = dta_float(float_values), when = when)
     dta_path <- tempfile(fileext = ".dta")
     arrow_path <- tempfile(fileext = ".arrow")
     withr::defer(unlink(c(dta_path, arrow_path)))
@@ -154,7 +157,7 @@ test_that("reader facts retain immutable owners and writable access invalidates 
         expect_identical(.reader_facts(source), expected)
         .reader_facts_reciprocal(source, "float")
         info <- .Call(C_dtatools_owned_numeric_info, source)
-        retained <- !is.null(info) && isTRUE(info$owned)
+        retained <- !is.null(info) && isTRUE(info[["owned"]] == 1)
         alias <- .Call(C_dtatools_metadata_copy, source)
         expect_identical(.reader_facts(alias)[["flags"]], if (retained) 7 else 0)
         .Call(C_dtatools_patch_vector, source, 3L, 2^-149)
