@@ -177,6 +177,44 @@ test_that("identity operations reject noncanonical NaN payloads", {
     expect_true(is.na(value))
 })
 
+test_that("native identity parts match the R missing-code ranks", {
+    native <- function(values) .Call(dtatools:::C_dtatools_identity_parts, values)
+    bits <- function(x) writeBin(x, raw())
+    values <- as.double(dta_double(c(
+        3, NA, tagged_missing("a"), -0, tagged_missing("z"), 7
+    )))
+    expect_true(dtatools:::.is_altrep(values))
+    observed <- native(values)
+    expected <- list(rank = c(0L, 1L, 2L, 0L, 27L, 0L),
+                     value = c(3, 0, 0, -0, 0, 7))
+    expect_identical(observed, expected)
+    expect_identical(bits(observed$value), bits(expected$value))
+    expect_identical(native(unclass(dta_double(c(NA, 2)))),
+                     list(rank = c(1L, 0L), value = c(0, 2)))
+
+    # A foreign ALTREP keeps its R reads, and a noncanonical payload its
+    # R error naming the operation.
+    reads <- 0L
+    foreign <- .Call(dtatools:::C_dtatools_callback_double, c(1, NA),
+                     function() reads <<- reads + 1L, TRUE)
+    expect_null(native(foreign))
+    expect_identical(dtatools:::.dta_identity_parts(foreign, "op"),
+                     list(rank = c(0L, 1L), value = c(1, 0)))
+    expect_true(reads > 0L)
+    noncanonical <- c(1, tagged_nan_for_test("?"))
+    expect_null(native(noncanonical))
+    expect_error(dtatools:::.dta_identity_parts(noncanonical, "matching"),
+                 "`matching` cannot use a noncanonical NaN payload")
+
+    # The proxy is the data frame data.frame() builds, attribute order too.
+    proxy <- vctrs::vec_proxy_equal(dta_byte(c(1, NA)))
+    reference <- data.frame(rank = c(0L, 1L), value = c(1, 0))
+    expect_identical(proxy, reference)
+    expect_identical(names(attributes(proxy)), names(attributes(reference)))
+    empty <- vctrs::vec_proxy_order(dta_byte())
+    expect_identical(empty, data.frame(rank = integer(), value = double()))
+})
+
 test_that("Stata temporal vectors use numeric missing identity", {
     path <- fixture_with_temporal_storage("price")
     on.exit(unlink(path), add = TRUE)

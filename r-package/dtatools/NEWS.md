@@ -11,6 +11,11 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* The vctrs equality and ordering proxies for Stata numerics rank missing
+  values in one native pass, so duplicate checks, `unique()` and sorting
+  through vctrs do less work per column. Detecting duplicate observations
+  across a 5,360-column file took 2.2 seconds and now takes 0.5.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.

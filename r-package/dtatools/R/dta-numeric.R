@@ -734,6 +734,11 @@ vec_proxy.dta_numeric <- function(x, ...) {
         # every rank is finite; skip the missing-code scan.
         return(list(rank = integer(length(values)), value = values))
     }
+    # Classify and zero the missing values in one native pass. It declines
+    # foreign ALTREP inputs and noncanonical payloads, which the R code
+    # below reads and reports as before.
+    parts <- .Call(C_dtatools_identity_parts, values)
+    if (!is.null(parts)) return(parts)
     codes <- .tab_missing_codes(values)
     invalid <- !is.na(codes) & !(
         codes == 0L |
@@ -760,7 +765,11 @@ vec_proxy.dta_numeric <- function(x, ...) {
 
 .dta_identity_proxy <- function(x, operation) {
     parts <- .dta_identity_parts(x, operation)
-    data.frame(rank = parts$rank, value = parts$value)
+    # What data.frame() builds, attributes in the same order, without its
+    # per-call argument checks.
+    structure(list(rank = parts$rank, value = parts$value),
+              class = "data.frame",
+              row.names = .set_row_names(length(parts$rank)))
 }
 
 #' @export
