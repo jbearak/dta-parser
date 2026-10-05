@@ -231,6 +231,17 @@ test_that("foreign summary providers retain the previous read path", {
                      run("summ", reference = TRUE, detail = TRUE))
 })
 
+test_that("full-sample summaries copy foreign ALTREP inputs for the fused scan", {
+    d <- data.frame(x = as.double(seq_len(10)), y = seq_len(10))
+    expect_true(dtatools:::.is_altrep(d$x))
+    expect_true(dtatools:::.is_altrep(d$y))
+    local_mocked_bindings(.summarize_moments_fallback = function(...)
+        stop("unexpected R fallback"), .package = "dtatools")
+    result <- summ(d, x, y, detail = TRUE)
+    expect_identical(result$statistics$sum, c(55, 55))
+    expect_identical(result$statistics$p50, c(5.5, 5.5))
+})
+
 test_that("summary na.rm promises retain input capture order", {
     run <- function(constructor, operation, reference) {
         x <- constructor(c(1, 2, 3))
