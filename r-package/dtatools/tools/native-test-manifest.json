@@ -118,7 +118,7 @@
   "helpers": [
     {
       "path": "tests/testthat/helper-fixtures.R",
-      "sha256": "0cbb2ffc21363beb4aa71353c9ec73ed6280b08ce6149425468a4db91fddbe16"
+      "sha256": "05ebbb4e5b938c35304d06788cb3198432b3a824fd06c18f8d972e601c9dc12b"
     },
     {
       "path": "tests/testthat/helper-generation-interrupt.R",
@@ -15558,7 +15558,7 @@
         },
         {
           "path": "tests/testthat/test-tab-grouped.R",
-          "sha256": "679ae3dede048d26cecb3ce06693a5f013eb009a00fde9630c1598b88e09b31d"
+          "sha256": "c5038f6bf5230f8e97af00c162ca6158994cd1d5a86cea0c741b680bb91e0473"
         },
         {
           "path": "tests/testthat/test-tab-indicators.R",
@@ -16445,6 +16445,14 @@
           "warnings": 0
         },
         {
+          "file": "test-tab-grouped.R",
+          "test": "grouped tabulation slices only the columns its expressions read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
           "file": "test-tab-indicators.R",
           "test": "generated indicator labels match Stata's metadata",
           "occurrence": 1,
@@ -16692,7 +16700,7 @@
         },
         {
           "path": "tests/testthat/test-summarize.R",
-          "sha256": "f17ad226b254cfd2e6f60af3f86413fecdb638a3a647c49ba385037ffb9b8fec"
+          "sha256": "7822bb04f77f7770433e09125d6cfab8fa1e4c75c2e3c288d64a7f8d00b38592"
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
@@ -17069,6 +17077,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize.R",
+          "test": "grouped summaries slice only the columns their expressions read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {

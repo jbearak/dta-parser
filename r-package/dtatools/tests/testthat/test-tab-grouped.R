@@ -61,3 +61,41 @@ test_that("by headers preserve group order and distinguish empty and unlabelled 
     expect_identical(grep("^->", format(tab(d, x, by = g)), value = TRUE),
                      c("-> g = ", "-> g = 2", "-> g = .", "-> g = .z"))
 })
+
+test_that("grouped tabulation slices only the columns its expressions read", {
+    slices <- local_slice_probe(1:4)
+    d <- data.frame(x = c(1, 2, 1, 2), g = c(1, 1, 2, 2), w = c(1, 2, 3, 4))
+    expected <- tab(d, x, by = g, where = x > 0, weights = w,
+                    weight = "fweight", subpop = w)
+    d$probe <- slices$column
+    expect_identical(format(tab(d, x, by = g)),
+                     format(tab(d[c("x", "g")], x, by = g)))
+    expect_identical(format(tab(d, x, by = g, where = x > 0, weights = w,
+                                weight = "fweight", subpop = w)),
+                     format(expected))
+    expect_identical(slices$count(), 0L)
+    result <- tab(d, x, by = g, where = probe > 1L,
+                  weights = as.integer(probe), weight = "fweight")
+    expect_identical(lapply(result, function(table) as.vector(table)),
+                     list(2, c(3, 4)))
+    expect_identical(slices$count(), 2L)
+    # The first group saves `.data` without reading a column, so the later
+    # read must still slice the first group's rows.
+    first <- NULL
+    retained <- tab(data.frame(x = 1:4, g = c(1, 1, 2, 2)), x, by = g,
+                    where = {
+        if (is.null(first)) {
+            first <<- .data
+            .n > 0
+        } else x > mean(first$x) + 1
+    })
+    expect_identical(as.double(first$x), c(1, 2))
+    expect_identical(lapply(retained, function(table) as.vector(table)),
+                     list(c(1L, 1L), c(1L, 1L)))
+    duplicated_names <- data.frame(x = 1:2, w = 1:2, w = 8:9,
+                                   check.names = FALSE)
+    expect_identical(as.vector(tab(duplicated_names, x, weights = w,
+                                   weight = "fweight")), c(8, 9))
+    expect_error(tab(duplicated_names, x, weights = .data$w,
+                     weight = "fweight"), "duplicate")
+})
