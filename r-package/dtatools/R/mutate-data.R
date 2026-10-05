@@ -3025,29 +3025,49 @@ subset.dibble <- function(x, ...) {
     c("dtatools_dta_metadata", "tbl_df", "tbl", "data.frame")
 )
 
-# Base evaluates the row and column subscripts before this bracket runs,
-# and all three arguments are forced before the gather is tried. Every
-# column must be one the gather slices as the tibble bracket would, so
-# selecting columns and planning rows then call only package methods, and
-# an error or warning from either leaves the call to the tibble bracket on
-# the unmarked snapshot, which reports it. So does a call of any other
-# shape and a `drop` that could return one column as a vector.
+# Base evaluates the row and column subscripts before this bracket runs.
+# Subscripts the tibble bracket accepts without a condition, on columns the
+# gather slices as it would, select the rows through the gather. Anything
+# else dispatches the caller's call again on the unmarked snapshot, so the
+# next bracket sees the caller's frame and subscript expressions, which
+# name the subscripts in its errors, as it would have without the mark.
+# Base reaches the tibble bracket only when tibble is loaded, so the gather
+# waits until it is.
 #' @export
 `[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
-        is.logical(i) && !missing(drop) && identical(drop, FALSE) &&
+        !missing(drop) && isNamespaceLoaded("tibble") &&
+        .subset_plain_subscripts(x, i, j) && identical(drop, FALSE) &&
         .subset_gathers_columns(x)) {
-        plan <- tryCatch(
-            list(x[, j, drop = FALSE], .reference_tibble_row_plan(x, i)),
-            error = function(condition) NULL,
-            warning = function(condition) NULL
-        )
-        if (!is.null(plan)) {
-            return(.reference_tibble_rows(plan[[1L]], plan[[2L]])[, , drop = FALSE])
-        }
+        selected <- x[, j, drop = FALSE]
+        rows <- .reference_tibble_row_plan(x, i)
+        return(.reference_tibble_rows(selected, rows)[, , drop = FALSE])
+    }
+    # Symbols evaluate again without side effects; base passes only these.
+    call <- sys.call()
+    if (is.symbol(call[[2L]]) &&
+        all(vapply(as.list(call)[-1L], is.symbol, logical(1)))) {
+        call[[1L]] <- quote(`[`)
+        frame <- new.env(parent = parent.frame())
+        assign(as.character(call[[2L]]), x, envir = frame)
+        return(eval(call, frame))
     }
     NextMethod()
+}
+
+# A logical row subscript of one or every row, and columns by a logical of
+# one or every column, by distinct positions, or by distinct names, none
+# missing: subscripts no column or subscript method sees and the tibble
+# bracket takes without an error or warning.
+.subset_plain_subscripts <- function(x, i, j) {
+    if (!is.logical(i) || is.object(i) || !is.null(dim(i)) || anyNA(i) ||
+        !(length(i) %in% c(1L, nrow(x)))) return(FALSE)
+    if (is.object(j) || !is.null(dim(j)) || anyNA(j)) return(FALSE)
+    if (is.logical(j)) return(length(j) %in% c(1L, length(x)))
+    if (is.character(j)) return(!anyDuplicated(j) && all(j %in% names(x)))
+    is.numeric(j) && !anyDuplicated(j) && all(j == trunc(j)) &&
+        (all(j >= 1 & j <= length(x)) || all(j <= -1 & j >= -length(x)))
 }
 
 # The package's Stata vectors, factors, and unclassed vectors, with only the

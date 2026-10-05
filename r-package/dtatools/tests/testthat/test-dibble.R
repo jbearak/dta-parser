@@ -742,6 +742,20 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
     observed <- .dtatools_child_r("subset-column-methods", function() {
         library(dtatools)
+        # Without tibble, base subset() takes the data frame bracket.
+        auto <- read_dta(system.file("extdata", "auto_v118.dta", package = "dtatools"))
+        unloaded <- !isNamespaceLoaded("tibble")
+        failure <- function(expr) tryCatch({ expr; NULL }, error = conditionMessage)
+        base <- list(
+            rows = unclass(subset(auto, price > 6000, select = c(make, price))),
+            error = failure(subset(auto, TRUE, select = 1000)),
+            tibble = isNamespaceLoaded("tibble")
+        )
+        snapshot <- dtatools:::.reference_snapshot(auto)
+        base$expected <- list(
+            rows = unclass(base::subset(snapshot, price > 6000, select = c(make, price))),
+            error = failure(base::subset(snapshot, TRUE, select = 1000))
+        )
         register <- function(generic, class, method) {
             registerS3method(generic, class, method, envir = asNamespace("vctrs"))
         }
@@ -790,11 +804,20 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
             )
             list(value = value, warnings = warnings, calls = calls)
         }
-        lapply(frames, function(data) list(
+        list(unloaded = unloaded, base = base, methods = lapply(frames, function(data) list(
             dibble = attempt(data),
             snapshot = attempt(dtatools:::.reference_snapshot(data))
-        ))
+        )))
     })
+    if (observed$unloaded) {
+        base <- observed$base
+        expect_false(base$tibble)
+        expect_identical(base$error, "undefined columns selected")
+        expect_identical(base$error, base$expected$error)
+        expect_identical(as.double(base$rows$price), as.double(base$expected$rows$price))
+        expect_identical(names(base$rows), names(base$expected$rows))
+    }
+    observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
     }
