@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
+  `transform()`, `within()`, `group_modify()`, `summarise()`, and
+  `reframe()`, match the result's column names to the prior columns in
+  one pass, rather than scanning the names once per column. On a
+  5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
+  milliseconds.
+
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from

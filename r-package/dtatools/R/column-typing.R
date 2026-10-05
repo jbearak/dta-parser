@@ -419,9 +419,16 @@
 .retype_changed_columns <- function(result, before, caller) {
     result_names <- names(result)
     row_count <- nrow(result)
+    # One match finds every prior column, where `before[[name]]` would scan
+    # the names once per column. Like `[[`, it takes the first column with
+    # a name and never matches "" or NA.
+    prior_locations <- match(
+        result_names, names(before), incomparables = c("", NA)
+    )
     for (index in seq_along(result_names)) {
         column <- .subset2(result, index)
-        prior <- before[[result_names[[index]]]]
+        location <- prior_locations[[index]]
+        prior <- if (is.na(location)) NULL else .subset2(before, location)
         if (!is.null(prior) &&
             identical(rlang::obj_address(prior), rlang::obj_address(column))) {
             next
