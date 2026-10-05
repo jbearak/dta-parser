@@ -3063,7 +3063,7 @@ subset.dibble <- function(x, ...) {
 .subset_plain_subscripts <- function(x, i, j) {
     if (!is.logical(i) || is.object(i) || !is.null(dim(i)) || anyNA(i) ||
         !(length(i) %in% c(1L, nrow(x)))) return(FALSE)
-    if (is.object(j) || !is.null(dim(j)) || anyNA(j)) return(FALSE)
+    if (!is.atomic(j) || is.object(j) || !is.null(dim(j)) || anyNA(j)) return(FALSE)
     if (is.logical(j)) return(length(j) %in% c(1L, length(x)))
     if (is.character(j)) return(!anyDuplicated(j) && all(j %in% names(x)))
     is.numeric(j) && !anyDuplicated(j) && all(j == trunc(j)) &&
@@ -3071,9 +3071,10 @@ subset.dibble <- function(x, ...) {
 }
 
 # The package's Stata vectors, factors, and unclassed vectors, with only the
-# attributes their restoration keeps. A subclass can define vctrs methods
-# that only the tibble bracket calls, and the gather keeps an attribute that
-# restoring a sliced Stata column drops with a warning.
+# attributes their restoration keeps and the vctrs methods dtatools and vctrs
+# register. A subclass or a replaced method can do work only the tibble
+# bracket calls, and the gather keeps an attribute that restoring a sliced
+# Stata column drops with a warning.
 .subset_gathers_columns <- function(snapshot) {
     stata <- c(
         lapply(.dta_storage, .dta_storage_class),
@@ -3089,11 +3090,36 @@ subset.dibble <- function(x, ...) {
     }))
     stata <- vapply(stata, paste, character(1), collapse = " ")
     known <- c("names", "class", .dta_variable_attribute_names)
+    checked <- character()
     for (column in .data_columns(snapshot)) {
         classes <- paste(oldClass(column), collapse = " ")
         allowed <- if (identical(classes, "factor")) c("class", "levels") else
             if (!nzchar(classes) || classes %in% stata) known else return(FALSE)
         if (!all(names(attributes(column)) %in% allowed)) return(FALSE)
+        if (nzchar(classes) && !(classes %in% checked)) {
+            if (!.subset_methods_registered(oldClass(column))) return(FALSE)
+            checked <- c(checked, classes)
+        }
+    }
+    TRUE
+}
+
+# Slicing finds a class's proxy and restore methods in the global
+# environment or the vctrs method table, taking the first class that has
+# one. Each must be the method the package that registers it defines.
+.subset_methods_registered <- function(classes) {
+    table <- get(".__S3MethodsTable__.", asNamespace("vctrs"), inherits = FALSE)
+    for (generic in c("vec_proxy", "vec_restore")) {
+        for (class in classes) {
+            name <- paste0(generic, ".", class)
+            if (!is.null(get0(name, globalenv(), mode = "function", inherits = FALSE)))
+                return(FALSE)
+            method <- get0(name, table, inherits = FALSE)
+            expected <- get0(name, asNamespace("dtatools"), inherits = FALSE)
+            if (is.null(expected)) expected <- get0(name, asNamespace("vctrs"), inherits = FALSE)
+            if (!identical(method, expected)) return(FALSE)
+            if (!is.null(method)) break
+        }
     }
     TRUE
 }

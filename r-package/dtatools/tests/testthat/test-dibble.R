@@ -721,6 +721,17 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
         conditionMessage(expect_error(subset(data, c(TRUE, FALSE)))),
         conditionMessage(expect_error(base::subset(snapshot, c(TRUE, FALSE))))
     )
+    # A selector that evaluates to a symbol stays with the next bracket.
+    plain <- dibble(x = 1:3, y = 4:6)
+    expect_identical(
+        open(subset(plain, x > 1, select = quote(x))),
+        open(dtatools:::.close_dibble(plain, base::subset(open(plain), x > 1, select = quote(x))))
+    )
+    expect_identical(
+        conditionMessage(expect_error(subset(data, price > 6000, select = quote(price)))),
+        conditionMessage(expect_error(base::subset(snapshot, price > 6000, select = quote(price))))
+    )
+    expect_identical(gathered, 2L)
 
     result <- subset(data, price > 6000)
     result[, price := 0]
@@ -806,7 +817,26 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
             )
             list(value = value, warnings = warnings, calls = calls)
         }
-        list(unloaded = unloaded, base = base, methods = lapply(frames, function(data) list(
+        # Replacing a registered method sends the slice back to vctrs.
+        plain <- dibble(k = dta_double(c(1, 2, 3)), y = 1:3)
+        plain_snapshot <- dtatools:::.reference_snapshot(plain)
+        table <- get(".__S3MethodsTable__.", asNamespace("vctrs"))
+        restore <- get("vec_restore.dta_numeric", table)
+        register("vec_restore", "dta_numeric", function(x, to, ...) {
+            result <- restore(x, to, ...)
+            attr(result, "label") <- "replaced"
+            result
+        })
+        replaced <- list(
+            dibble = attr(subset(plain, y > 1)$k, "label"),
+            snapshot = attr(base::subset(plain_snapshot, y > 1)$k, "label")
+        )
+        assign("vec_restore.dta_numeric", restore, envir = table)
+        assign("vec_proxy.dta_numeric", function(x, ...) stop("global proxy"), envir = globalenv())
+        replaced$proxy <- c(failure(subset(plain, y > 1)),
+                            failure(base::subset(plain_snapshot, y > 1)))
+        rm("vec_proxy.dta_numeric", envir = globalenv())
+        list(unloaded = unloaded, base = base, replaced = replaced, methods = lapply(frames, function(data) list(
             dibble = attempt(data),
             snapshot = attempt(dtatools:::.reference_snapshot(data)),
             lazy = attempt(data, lazy = TRUE),
@@ -821,6 +851,9 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         expect_identical(as.double(base$rows$price), as.double(base$expected$rows$price))
         expect_identical(names(base$rows), names(base$expected$rows))
     }
+    expect_identical(observed$replaced$dibble, "replaced")
+    expect_identical(observed$replaced$snapshot, "replaced")
+    expect_identical(observed$replaced$proxy, c("global proxy", "global proxy"))
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
