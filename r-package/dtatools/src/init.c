@@ -371,6 +371,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_try_combine_double, 5},
     {"C_dtatools_combine_double_into_current",
      (DL_FUNC) &C_dtatools_combine_double_into_current, 3},
+    {"C_dtatools_double_ptype_method",
+     (DL_FUNC) &C_dtatools_double_ptype_method, 4},
     {"C_dtatools_construct_double",
      (DL_FUNC) &C_dtatools_construct_double, 3},
     {"C_dtatools_double_fits",

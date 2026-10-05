@@ -6443,6 +6443,91 @@ static SEXP combine_exported_function(SEXP frame, SEXP dependencies) {
                                     "list_unchop", VECTOR_ELT(primitives, 4));
 }
 
+/* A registered routine that a reducer wrapper passes to .External2 must be a
+   settled ordinary binding in the wrapper's namespace, never a promise or an
+   active binding that could run code once admission has passed. */
+static int summary_routine_settled(SEXP ns, const char *name) {
+    SEXP value = R_NilValue;
+    if (combine_peek_frame(ns, Rf_install(name), &value) != COMBINE_VALUE ||
+        TYPEOF(value) != VECSXP || ALTREP(value) || XLENGTH(value) < 1) return 0;
+    SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
+    SEXP names = Rf_getAttrib(value, R_NamesSymbol);
+    SEXP routine = VECTOR_ELT(value, 0);
+    return TYPEOF(classes) == STRSXP && XLENGTH(classes) == 2 &&
+        strcmp(CHAR(STRING_ELT(classes, 0)), "ExternalRoutine") == 0 &&
+        strcmp(CHAR(STRING_ELT(classes, 1)), "NativeSymbolInfo") == 0 &&
+        TYPEOF(names) == STRSXP && strcmp(CHAR(STRING_ELT(names, 0)), "name") == 0 &&
+        TYPEOF(routine) == STRSXP && XLENGTH(routine) == 1 &&
+        strcmp(CHAR(STRING_ELT(routine, 0)), name) == 0;
+}
+
+/* A grouped summary that skips folds hands vctrs::vec_ptype_common() only
+   its first chunks. Its wrapper and rlang::list2() must match their build
+   copies, with their braces, .External2 and routines unchanged, so the
+   shortened argument list cannot be observed. */
+static int summary_reducer_unchanged(SEXP frame, SEXP expected) {
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 6 ||
+        TYPEOF(VECTOR_ELT(expected, 2)) != ENVSXP) return 0;
+    SEXP ns = VECTOR_ELT(expected, 2);
+    SEXP common = PROTECT(vctrs_exported_function(
+        frame, ns, "vec_ptype_common", VECTOR_ELT(expected, 3)));
+    SEXP list2 = PROTECT(computed_dependency_value(Rf_install("list2"), ns, 16));
+    int same = scalar_same_function(common, VECTOR_ELT(expected, 0)) &&
+        scalar_same_function(list2, VECTOR_ELT(expected, 1));
+    static const char *names[] = {"{", ".External2"};
+    SEXP wrappers[] = {common, list2};
+    for (int wrapper = 0; wrapper < 2 && same; wrapper++) {
+        for (int i = 0; i < 2 && same; i++) {
+            SEXP primitive = VECTOR_ELT(expected, 4 + i);
+            same = (TYPEOF(primitive) == BUILTINSXP || TYPEOF(primitive) == SPECIALSXP) &&
+                computed_dependency_value(Rf_install(names[i]),
+                    R_ClosureEnv(wrappers[wrapper]), 16) == primitive;
+        }
+    }
+    same = same && summary_routine_settled(R_ClosureEnv(common), "ffi_ptype_common") &&
+        summary_routine_settled(R_ClosureEnv(list2), "ffi_list2");
+    UNPROTECT(2);
+    return same;
+}
+
+/* A grouped summary folds every group's result into a common type with
+   vctrs, one chunk at a time. Over canonical double pieces, the ones double
+   assembly combines without vctrs, each fold is a pure function of the
+   running type and the next piece's attributes while the checks that admit
+   that assembly pass. Return the method vctrs would send each fold to, as
+   vctrs would find it, or NULL when any chunk or dependency differs. */
+SEXP C_dtatools_double_ptype_method(
+    SEXP chunks, SEXP state, SEXP metadata_state, SEXP reducer
+) {
+    SEXP frame = R_GetCurrentEnv(), dependencies, metadata;
+    if (!combine_plain_list(chunks)) return R_NilValue;
+    for (R_xlen_t i = 0; i < XLENGTH(chunks); i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        if (!combine_double_canonical_piece(VECTOR_ELT(chunks, i))) return R_NilValue;
+    }
+    if (!summary_reducer_unchanged(frame, reducer) ||
+        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE ||
+        combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE)
+        return R_NilValue;
+    PROTECT(dependencies);
+    PROTECT(metadata);
+    if (!combine_dependencies_valid(dependencies, 11) ||
+        !dtatools_metadata_dependencies_unchanged(VECTOR_ELT(dependencies, 1), metadata, 0)) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    SEXP combine = PROTECT(combine_exported_function(frame, dependencies));
+    SEXP method = R_NilValue;
+    if (combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
+        SEXP symbol = Rf_install("vec_ptype2.dta_numeric.dta_numeric");
+        if (combine_peek_frame(R_GlobalEnv, symbol, &method) == COMBINE_ABSENT &&
+            combine_peek_frame(VECTOR_ELT(dependencies, 7), symbol, &method) != COMBINE_VALUE)
+            method = R_NilValue;
+    }
+    UNPROTECT(3);
+    return method;
+}
+
 /* The original R assignment follows the native status call. Only an absent
    or ordinary unlocked target can be published without invoking a setter or
    forcing a promise. Reusing an ordinary value slot supports later expressions

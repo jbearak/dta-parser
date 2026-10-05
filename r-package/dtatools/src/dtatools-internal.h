@@ -616,6 +616,9 @@ DTATOOLS_INTERNAL SEXP C_dtatools_try_combine_double(
 DTATOOLS_INTERNAL SEXP C_dtatools_combine_double_into_current(
     SEXP indexed, SEXP state, SEXP metadata_state
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_double_ptype_method(
+    SEXP chunks, SEXP state, SEXP metadata_state, SEXP reducer
+);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(
     SEXP value, SEXP frame, SEXP dependencies
 );

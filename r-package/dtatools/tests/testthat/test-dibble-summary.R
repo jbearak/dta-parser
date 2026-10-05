@@ -371,3 +371,82 @@ test_that("S7-S20 unchanged reframe chunks avoid extra restoration callbacks", {
     expect_identical(vctrs::vec_data(result$value), c(1, 2, 1, 2))
     expect_identical(vctrs::vec_data(result$value), vctrs::vec_data(reference$value))
 })
+
+test_that("a shared Stata type settles the summary common type as vctrs does", {
+    common <- dtatools:::.summary_common_ptype
+    labelled <- function(x) {
+        x <- set_val_labels(x, c(Low = 1, High = 2))
+        attr(x, "label") <- "Score"
+        attr(x, "notes") <- "A note"
+        x
+    }
+    for (make in list(dta_byte, dta_int, dta_long, dta_float, dta_double)) {
+        for (decorate in list(identity, labelled)) {
+            values <- c(1, NA, 2, 1, 2, 2, 1, NA, 1)
+            chunks <- lapply(values, function(value) decorate(make(value)))
+            expect_true(identical(common(chunks), vctrs::vec_ptype_common(!!!chunks),
+                                  attrib.as.set = FALSE))
+        }
+    }
+    mixed <- c(lapply(1:8, dta_byte), list(dta_int(9)))
+    expect_identical(common(mixed), vctrs::vec_ptype_common(!!!mixed))
+})
+
+test_that("summary common typing runs every fold of a replaced Stata method", {
+    table <- get(".__S3MethodsTable__.", asNamespace("vctrs"), inherits = FALSE)
+    canonical <- get("vec_ptype2.dta_numeric.dta_numeric", envir = table, inherits = FALSE)
+    folds <- 0L
+    assign("vec_ptype2.dta_numeric.dta_numeric", function(x, y, ...) {
+        folds <<- folds + 1L
+        canonical(x, y, ...)
+    }, envir = table)
+    on.exit(assign("vec_ptype2.dta_numeric.dta_numeric", canonical, envir = table))
+    chunks <- lapply(1:9, dta_double)
+    expected <- vctrs::vec_ptype_common(!!!chunks)
+    reference <- folds
+    folds <- 0L
+    expect_identical(dtatools:::.summary_common_ptype(chunks), expected)
+    expect_identical(folds, reference)
+    expect_gt(folds, 3L)
+})
+
+test_that("summary common typing hands a traced reducer every chunk", {
+    events <- new.env(parent = emptyenv())
+    events$sizes <- integer()
+    tracer <- substitute(assign("sizes", c(get("sizes", envir = EVENTS),
+                                           length(rlang::list2(...))),
+                                envir = EVENTS), list(EVENTS = events))
+    vctrs_ns <- asNamespace("vctrs")
+    suppressMessages(trace("vec_ptype_common", tracer = tracer, print = FALSE,
+                           where = vctrs_ns))
+    on.exit(suppressMessages(untrace("vec_ptype_common", where = vctrs_ns)))
+    chunks <- lapply(1:9, dta_double)
+    dtatools:::.summary_common_ptype(chunks)
+    expect_identical(events$sizes, 9L)
+})
+
+test_that("summary common typing declines a delayed reducer routine", {
+    chunks <- lapply(1:9, dta_double)
+    # Settle the lazily loaded bindings that admission reads, as a first
+    # double assembly and common typing would.
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(chunks)
+        vctrs::vec_ptype_common(!!!chunks)
+    }
+    gate <- function() .Call(dtatools:::C_dtatools_double_ptype_method, chunks,
+                             dtatools:::.double_combine_state, dtatools:::.metadata_state,
+                             dtatools:::.summary_ptype_dependencies)
+    settled <- gate()
+    expect_identical(is.null(settled), !.dtatools_numeric_entry_expected())
+    vctrs_ns <- asNamespace("vctrs")
+    routine <- get("ffi_ptype_common", envir = vctrs_ns)
+    unlockBinding("ffi_ptype_common", vctrs_ns)
+    on.exit({
+        assign("ffi_ptype_common", routine, envir = vctrs_ns)
+        lockBinding("ffi_ptype_common", vctrs_ns)
+    })
+    delayedAssign("ffi_ptype_common", routine, assign.env = vctrs_ns)
+    expect_null(gate())
+    assign("ffi_ptype_common", routine, envir = vctrs_ns)
+    expect_identical(gate(), settled)
+})

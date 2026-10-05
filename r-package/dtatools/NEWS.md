@@ -32,6 +32,13 @@
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
 
+* Grouped `summarise()` and `reframe()` stop folding an expression's
+  per-group results into a common type once the type settles. When every
+  group returns a plain Stata double and the Stata numeric methods are
+  unchanged, the first three groups give the common type. Over 10,000 groups
+  of 100,000 rows, `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds,
+  and `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
