@@ -352,106 +352,72 @@ pub(crate) fn prepare_from_arrow(
         if array.null_count() != 0 {
             return Err("owned compact Arrow chunks cannot contain nulls".to_owned());
         }
-        macro_rules! integer_buffer {
+        macro_rules! buffer {
             ($array:ty, $missing:expr) => {{
                 let typed = array
                     .as_any()
                     .downcast_ref::<$array>()
                     .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
-                macro_rules! scan_integer {
-                    ($collect:expr) => {{
-                        for values in typed.values().chunks(MISSING_SCAN_ROWS) {
-                            if cancelled() {
-                                return Err("Arrow read interrupted".to_owned());
-                            }
-                            // No callbacks or atomics in the typed reduction.
-                            // Both block subtotals fit u32; widen only once.
-                            let mut missing = 0u32;
-                            let mut zeros = 0u32;
-                            for &value in values {
-                                missing += u32::from(($missing)(value));
-                                if $collect {
-                                    zeros += u32::from(value == 0);
-                                }
-                            }
-                            missing_count += missing as usize;
-                            if $collect {
-                                facts.record_integer_span(
-                                    scanned_rows,
-                                    values.len(),
-                                    zeros as usize,
-                                );
-                            }
-                            scanned_rows += values.len();
-                        }
-                    }};
-                }
-                if facts.collects_integer() {
-                    scan_integer!(true);
-                } else {
-                    scan_integer!(false);
+                for values in typed.values().chunks(MISSING_SCAN_ROWS) {
+                    if cancelled() {
+                        return Err("Arrow read interrupted".to_owned());
+                    }
+                    // No callbacks or atomics in the typed reduction. Each
+                    // block is bounded so workers respond to cancellation.
+                    // A span fits in u32, including wider storage kinds;
+                    // widen its subtotal after the contiguous reduction.
+                    missing_count += values
+                        .iter()
+                        .map(|&value| u32::from(($missing)(value)))
+                        .sum::<u32>() as usize;
                 }
                 typed.values().inner().clone()
             }};
         }
         let buffer = match kind {
             NumericKind::Byte => {
-                integer_buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
+                buffer!(Int8Array, |value| crate::classify_byte_missing_for_version(
                     value, version
                 )
                 .is_some())
             }
             NumericKind::Int => {
-                integer_buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
+                buffer!(Int16Array, |value| crate::classify_int_missing_for_version(
                     value, version
                 )
                 .is_some())
             }
-            NumericKind::Long => integer_buffer!(Int32Array, |value| {
+            NumericKind::Long => buffer!(Int32Array, |value| {
                 crate::classify_long_missing_for_version(value, version).is_some()
             }),
             NumericKind::Float => {
-                let typed = array
-                    .as_any()
-                    .downcast_ref::<Float32Array>()
-                    .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
-                // Select the eligibility once per chunk, keeping legacy and
-                // temporal columns on their original missing-only scan.
-                macro_rules! scan_float {
-                    ($collect:expr) => {{
-                        for values in typed.values().chunks(MISSING_SCAN_ROWS) {
-                            if cancelled() {
-                                return Err("Arrow read interrupted".to_owned());
-                            }
-                            let mut missing = 0u32;
-                            let mut block = FloatFacts::new();
-                            for &value in values {
-                                let bits = value.to_bits();
-                                missing += u32::from(
-                                    value.is_nan()
-                                        || crate::classify_float_missing_bits_for_version(
-                                            bits, version,
-                                        )
-                                        .is_some(),
-                                );
-                                if $collect {
-                                    block.observe(bits);
-                                }
-                            }
-                            missing_count += missing as usize;
-                            if $collect {
-                                facts.record_float_span(scanned_rows, values.len(), block);
-                            }
-                            scanned_rows += values.len();
-                        }
-                    }};
-                }
+                // Legacy and temporal FLOAT keep the exact original scan.
+                // Only eligible modern FLOAT needs count-only raw predicates
+                // and allocation-specific facts; never decode a MissingTag.
                 if facts.collects_float() {
-                    scan_float!(true);
+                    let typed = array
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| "owned compact Arrow chunk has the wrong type".to_owned())?;
+                    for values in typed.values().chunks(MISSING_SCAN_ROWS) {
+                        if cancelled() {
+                            return Err("Arrow read interrupted".to_owned());
+                        }
+                        let mut missing = 0u32;
+                        let mut block = FloatFacts::new();
+                        for &value in values {
+                            missing += u32::from(block.observe(value.to_bits()));
+                        }
+                        missing_count += missing as usize;
+                        facts.record_float_span(scanned_rows, values.len(), block);
+                        scanned_rows += values.len();
+                    }
+                    typed.values().inner().clone()
                 } else {
-                    scan_float!(false);
+                    buffer!(Float32Array, |value: f32| value.is_nan()
+                        || crate::classify_float_missing_bits_for_version(value.to_bits(), version)
+                            .is_some())
                 }
-                typed.values().inner().clone()
             }
         };
         if array.is_empty() {
@@ -754,7 +720,6 @@ mod tests {
             backing: ptr::null_mut(), values: ptr::null_mut(), length: 0,
             kind: NumericKind::Float, temporal: TemporalKind::None,
             format_version: FormatVersion::V119, missing_count: 0,
-            facts: ReaderFacts::unknown(),
         });
         assert_eq!(plain.domain_flags, 0);
         assert_eq!(plain.float_max_magnitude_bound, 0);
@@ -791,17 +756,11 @@ mod tests {
         .expect("sliced compact chunks retain values and release-specific missings");
         let descriptor = prepared.into_descriptor();
         assert_eq!(descriptor.missing_count, expected_missing);
-        if kind == NumericKind::Float {
-            // This helper's FLOAT fixtures deliberately contain noncanonical
-            // endpoints, infinities and NaNs, even for modern releases.
-            assert_eq!(descriptor.domain_flags, 0);
-            assert_eq!(descriptor.zero_count, 0);
-        } else {
-            let zeros = expected_bytes.chunks_exact(width(kind))
-                .filter(|bytes| bytes.iter().all(|&byte| byte == 0)).count();
-            assert_eq!(descriptor.domain_flags, 4);
-            assert_eq!(descriptor.zero_count, zeros);
-        }
+        // Integer readers remain unknown. These FLOAT fixtures deliberately
+        // contain noncanonical endpoints, infinities and NaNs, so modern
+        // FLOAT also declines the allocation-specific proof.
+        assert_eq!(descriptor.domain_flags, 0);
+        assert_eq!(descriptor.zero_count, 0);
         let read = unsafe { RetainedRead::from_owner(descriptor.native_owner).unwrap() };
         drop(descriptor);
         drop(arrays);
@@ -1065,7 +1024,6 @@ mod tests {
             temporal: TemporalKind::None,
             format_version: FormatVersion::V118,
             missing_count: 0,
-            facts: ReaderFacts::unknown(),
         });
         assert!(unsafe { scalar_span(&plain, 0) }.is_none());
         let data = (&empty as *const NumericData).cast();

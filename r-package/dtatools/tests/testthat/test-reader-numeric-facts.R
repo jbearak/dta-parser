@@ -1,10 +1,10 @@
 .reader_facts <- function(x) .Call(C_dtatools_numeric_facts_info, x)
 .reader_facts_bytes <- function(x) writeBin(as.double(x), raw(), size = 8L, endian = "little")
-.reader_facts_expected <- function(values, storage) {
+.reader_facts_expected <- function(values, storage, known = TRUE) {
+    if (!known || storage != "float") return(c(flags = 0, max_magnitude_bound = 0,
+        min_nonzero_magnitude_bound = 0, zero_count = 0))
     observed <- values[!is.na(values)]
     zeros <- sum(observed == 0)
-    if (storage != "float") return(c(flags = 4, max_magnitude_bound = 0,
-        min_nonzero_magnitude_bound = 0, zero_count = as.double(zeros)))
     bits <- readBin(writeBin(abs(observed), raw(), size = 4L, endian = "little"),
                     "integer", length(observed), size = 4L, endian = "little")
     c(flags = 7, max_magnitude_bound = if (length(bits)) as.double(max(bits)) else 0,
@@ -49,7 +49,7 @@
     expect_identical(.reader_facts_bytes(result), original)
 }
 
-test_that("DTA and Arrow readers publish facts for the returned compact extent", {
+test_that("readers preserve compact extents and grant facts only for eligible Arrow FLOAT", {
     .reader_facts_native()
     n <- 65539L
     integer_values <- rep(c(-3, -1, 0, 1, 3, NA_real_, tagged_missing("z")), length.out = n)
@@ -67,8 +67,8 @@ test_that("DTA and Arrow readers publish facts for the returned compact extent",
     save_dta(data, dta_path)
     save_arrow(data, arrow_path)
     windows <- list(c(0L, n), c(3L, 65536L), c(n - 3L, 3L), c(n, 0L))
-    for (source in list(list(read = read_dta, path = dta_path),
-                        list(read = read_arrow, path = arrow_path))) {
+    for (source in list(list(read = read_dta, path = dta_path, float_facts = FALSE),
+                        list(read = read_arrow, path = arrow_path, float_facts = TRUE))) {
         for (threads in c(1L, 2L)) for (window in windows) {
             result <- source$read(source$path, skip = window[[1L]], n_max = window[[2L]],
                                   threads = threads, use_numeric_altrep = TRUE)
@@ -80,7 +80,8 @@ test_that("DTA and Arrow readers publish facts for the returned compact extent",
                 expect_identical(length(result[[name]]), length(values))
                 expect_identical(dta_storage_type(result[[name]]), storage)
                 expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result[[name]]))
-                expect_identical(.reader_facts(result[[name]]), .reader_facts_expected(values, storage))
+                expect_identical(.reader_facts(result[[name]]),
+                    .reader_facts_expected(values, storage, known = source$float_facts))
                 expect_identical(.reader_facts_bytes(result[[name]]), .reader_facts_bytes(values))
                 expect_identical(is.na(result[[name]]), is.na(values))
                 expect_identical(anyNA(result[[name]]), anyNA(values))
@@ -111,8 +112,8 @@ test_that("reader FLOAT facts decline invalid tails and legacy values without no
             selected <- read_dta(dta_path, col_select = "x_float", n_max = 26L, threads = threads)$x_float
             expect_identical(.reader_facts(full)[["flags"]], 0)
             expect_identical(.reader_facts_bytes(full), .reader_facts_bytes(eager))
-            expect_identical(.reader_facts(selected), c(flags = 7, max_magnitude_bound = 1,
-                min_nonzero_magnitude_bound = 1, zero_count = 2))
+            expect_identical(.reader_facts(selected),
+                .reader_facts_expected(double(), "float", known = FALSE))
             expect_true(anyNA(full))
         }
     }
@@ -153,11 +154,11 @@ test_that("reader facts retain immutable owners and writable access invalidates 
     save_dta(dibble(x = dta_float(values)), dta_path)
     save_arrow(dibble(x = dta_float(values)), arrow_path)
     for (source in list(read_dta(dta_path)$x, read_arrow(arrow_path)$x)) {
-        expected <- .reader_facts_expected(values, "float")
-        expect_identical(.reader_facts(source), expected)
-        .reader_facts_reciprocal(source, "float")
         info <- .Call(C_dtatools_owned_numeric_info, source)
         retained <- !is.null(info) && isTRUE(info[["owned"]] == 1)
+        expected <- .reader_facts_expected(values, "float", known = retained)
+        expect_identical(.reader_facts(source), expected)
+        .reader_facts_reciprocal(source, "float")
         alias <- .Call(C_dtatools_metadata_copy, source)
         expect_identical(.reader_facts(alias), expected)
         gathered <- .Call(C_dtatools_gather_numeric, alias, NULL, c(1L, 2L, 3L), NULL)

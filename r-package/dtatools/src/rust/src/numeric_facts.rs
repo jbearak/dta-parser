@@ -1,12 +1,23 @@
-//! Allocation-specific facts collected while readers already visit numeric bytes.
+//! Allocation-specific facts validated during eligible Arrow FLOAT scans.
 //! No generic descriptor factory grants these facts. Coverage is deliberately
-//! stricter than the missing-count cache: repeated or reordered writes decline.
+//! stricter than the missing-count cache: incomplete or reordered spans decline.
 
 use crate::{FormatVersion, NumericData, NumericKind, TemporalKind};
 
 const STRICT_MODERN_FLOAT: u32 = 1;
 const FLOAT_BOUNDS_KNOWN: u32 = 2;
 const ZERO_COUNT_KNOWN: u32 = 4;
+
+#[inline(always)]
+pub(crate) fn is_canonical_modern_float_tag(bits: u32) -> bool {
+    let offset = bits.wrapping_sub(0x7f00_0000);
+    (offset <= 26 * 2048) & (offset & 2047 == 0)
+}
+
+#[inline(always)]
+pub(crate) fn modern_float_missing(bits: u32) -> bool {
+    is_canonical_modern_float_tag(bits) | ((bits & 0x7fff_ffff) > 0x7f80_0000)
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct NumericFacts {
@@ -44,12 +55,11 @@ impl FloatFacts {
     }
 
     #[inline(always)]
-    pub(crate) fn observe(&mut self, bits: u32) {
+    pub(crate) fn observe(&mut self, bits: u32) -> bool {
         let magnitude = bits & 0x7fff_ffff;
         let observed = magnitude <= 0x7eff_ffff;
-        let tag_offset = bits.wrapping_sub(0x7f00_0000);
-        let canonical_tag = tag_offset <= 26 * 2048 && tag_offset & 2047 == 0;
-        self.valid &= observed || canonical_tag;
+        let canonical_tag = is_canonical_modern_float_tag(bits);
+        self.valid &= observed | canonical_tag;
         self.maximum = self.maximum.max(if observed { magnitude } else { 0 });
         self.minimum_nonzero = self.minimum_nonzero.min(if observed && magnitude != 0 {
             magnitude
@@ -57,6 +67,10 @@ impl FloatFacts {
             u32::MAX
         });
         self.zeros += usize::from(observed && magnitude == 0);
+        // Modern missing counts include exactly the 27 canonical positive
+        // tags or either-sign IEEE NaNs. Neither infinity nor noncanonical
+        // high finite codes are missing, even though they decline the proof.
+        canonical_tag | (magnitude > 0x7f80_0000)
     }
 
     fn merge(&mut self, block: Self) {
@@ -70,7 +84,6 @@ impl FloatFacts {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Eligibility {
     Unknown,
-    Integer,
     Float,
 }
 
@@ -79,16 +92,13 @@ pub(crate) struct ReaderFacts {
     next_row: usize,
     ordered: bool,
     float: FloatFacts,
-    integer_zeros: usize,
 }
 
 impl ReaderFacts {
     pub(crate) fn new(kind: NumericKind, temporal: TemporalKind, version: FormatVersion) -> Self {
         let eligibility = if temporal != TemporalKind::None {
             Eligibility::Unknown
-        } else if kind != NumericKind::Float {
-            Eligibility::Integer
-        } else if version.as_u16() > 111 {
+        } else if kind == NumericKind::Float && version.as_u16() > 111 {
             Eligibility::Float
         } else {
             Eligibility::Unknown
@@ -98,28 +108,12 @@ impl ReaderFacts {
             next_row: 0,
             ordered: true,
             float: FloatFacts::new(),
-            integer_zeros: 0,
-        }
-    }
-
-    pub(crate) fn unknown() -> Self {
-        Self {
-            eligibility: Eligibility::Unknown,
-            next_row: 0,
-            ordered: false,
-            float: FloatFacts::new(),
-            integer_zeros: 0,
         }
     }
 
     #[inline(always)]
     pub(crate) fn collects_float(&self) -> bool {
         self.eligibility == Eligibility::Float && self.ordered
-    }
-
-    #[inline(always)]
-    pub(crate) fn collects_integer(&self) -> bool {
-        self.eligibility == Eligibility::Integer && self.ordered
     }
 
     fn record_coverage(&mut self, start: usize, count: usize) -> bool {
@@ -139,27 +133,9 @@ impl ReaderFacts {
         }
     }
 
-    #[inline(always)]
-    pub(crate) fn record_float(&mut self, row: usize, bits: u32) {
-        if self.collects_float() && self.record_coverage(row, 1) {
-            self.float.observe(bits);
-        }
-    }
-
     pub(crate) fn record_float_span(&mut self, start: usize, count: usize, block: FloatFacts) {
         if self.eligibility == Eligibility::Float && self.record_coverage(start, count) {
             self.float.merge(block);
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) fn record_integer_span(&mut self, start: usize, count: usize, zeros: usize) {
-        if self.eligibility == Eligibility::Integer && self.record_coverage(start, count) {
-            if zeros > count {
-                self.ordered = false;
-            } else {
-                self.integer_zeros += zeros;
-            }
         }
     }
 
@@ -174,11 +150,6 @@ impl ReaderFacts {
                 minimum_nonzero: self.float.minimum_nonzero,
                 zeros: self.float.zeros,
             },
-            Eligibility::Integer => NumericFacts {
-                flags: ZERO_COUNT_KNOWN,
-                zeros: self.integer_zeros,
-                ..NumericFacts::default()
-            },
             _ => NumericFacts::default(),
         }
     }
@@ -188,6 +159,12 @@ impl ReaderFacts {
 mod tests {
     use super::*;
 
+    fn record_float(facts: &mut ReaderFacts, row: usize, bits: u32) {
+        let mut block = FloatFacts::new();
+        block.observe(bits);
+        facts.record_float_span(row, 1, block);
+    }
+
     #[test]
     fn float_facts_require_complete_ordered_strict_modern_non_temporal_values() {
         let mut bits = vec![0, 0x8000_0000, 1, 0x8000_0001, 0x7eff_ffff, 0xfeff_ffff];
@@ -196,7 +173,7 @@ mod tests {
             ReaderFacts::new(NumericKind::Float, TemporalKind::None, FormatVersion::V118);
         assert_eq!(facts.finish(bits.len()), NumericFacts::default());
         for (row, &value) in bits.iter().enumerate() {
-            facts.record_float(row, value);
+            record_float(&mut facts, row, value);
         }
         assert_eq!(
             facts.finish(bits.len()),
@@ -208,7 +185,7 @@ mod tests {
             }
         );
         assert_eq!(facts.finish(bits.len() - 1), NumericFacts::default());
-        facts.record_float(bits.len() - 1, 0);
+        record_float(&mut facts, bits.len() - 1, 0);
         assert_eq!(facts.finish(bits.len()), NumericFacts::default());
         for (version, temporal) in [
             (FormatVersion::V111, TemporalKind::None),
@@ -216,13 +193,13 @@ mod tests {
             (FormatVersion::V118, TemporalKind::Datetime),
         ] {
             let mut facts = ReaderFacts::new(NumericKind::Float, temporal, version);
-            facts.record_float(0, 0);
+            record_float(&mut facts, 0, 0);
             assert_eq!(facts.finish(1), NumericFacts::default());
         }
         let mut facts =
             ReaderFacts::new(NumericKind::Float, TemporalKind::None, FormatVersion::V118);
-        facts.record_float(1, 0);
-        facts.record_float(0, 0);
+        record_float(&mut facts, 1, 0);
+        record_float(&mut facts, 0, 0);
         assert_eq!(facts.finish(2), NumericFacts::default());
     }
 
@@ -256,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn empty_and_nonzero_free_extents_and_integer_zeros_are_exact() {
+    fn empty_and_nonzero_free_float_extents_are_exact_and_integer_readers_decline() {
         let mut facts =
             ReaderFacts::new(NumericKind::Float, TemporalKind::None, FormatVersion::V118);
         let expected = NumericFacts {
@@ -270,7 +247,7 @@ mod tests {
             .into_iter()
             .enumerate()
         {
-            facts.record_float(row, bits);
+            record_float(&mut facts, row, bits);
         }
         assert_eq!(
             facts.finish(4),
@@ -280,20 +257,84 @@ mod tests {
             }
         );
         for kind in [NumericKind::Byte, NumericKind::Int, NumericKind::Long] {
-            let mut facts = ReaderFacts::new(kind, TemporalKind::None, FormatVersion::V111);
-            facts.record_integer_span(0, 3, 2);
-            facts.record_integer_span(3, 4, 1);
-            assert_eq!(
-                facts.finish(7),
-                NumericFacts {
-                    flags: 4,
-                    zeros: 3,
-                    ..NumericFacts::default()
+            for version in [FormatVersion::V111, FormatVersion::V118] {
+                for temporal in [
+                    TemporalKind::None,
+                    TemporalKind::Date,
+                    TemporalKind::Datetime,
+                ] {
+                    let mut facts = ReaderFacts::new(kind, temporal, version);
+                    assert!(!facts.collects_float());
+                    assert_eq!(facts.finish(0), NumericFacts::default());
+                    record_float(&mut facts, 0, 0);
+                    assert_eq!(facts.finish(1), NumericFacts::default());
                 }
-            );
-            facts.record_integer_span(6, 1, 0);
-            assert_eq!(facts.finish(7), NumericFacts::default());
+            }
         }
-        assert_eq!(ReaderFacts::unknown().finish(0), NumericFacts::default());
+    }
+
+    #[test]
+    fn count_only_float_predicates_match_modern_classifiers_for_endpoints_and_raw_words() {
+        fn check(bits: u32) {
+            let mut block = FloatFacts::new();
+            let count = block.observe(bits);
+            for version in [
+                FormatVersion::V113,
+                FormatVersion::V114,
+                FormatVersion::V115,
+                FormatVersion::V117,
+                FormatVersion::V118,
+                FormatVersion::V119,
+            ] {
+                let tag = crate::classify_float_missing_bits_for_version(bits, version).is_some();
+                assert_eq!(
+                    is_canonical_modern_float_tag(bits),
+                    tag,
+                    "{bits:#x} {version:?}"
+                );
+                assert_eq!(
+                    count,
+                    f32::from_bits(bits).is_nan() || tag,
+                    "{bits:#x} {version:?}"
+                );
+                assert_eq!(modern_float_missing(bits), count, "{bits:#x} {version:?}");
+            }
+        }
+        for bits in [
+            0,
+            0x8000_0000,
+            1,
+            0x8000_0001,
+            0x7eff_fffe,
+            0x7eff_ffff,
+            0xfeff_ffff,
+            0x7f00_0000,
+            0x7f00_0001,
+            0xff00_0000,
+            0x7f00_cfff,
+            0x7f00_d000,
+            0x7f00_d001,
+            0x7f7f_ffff,
+            0xff7f_ffff,
+            0x7f80_0000,
+            0xff80_0000,
+            0x7f80_0001,
+            0xff80_0001,
+            0x7fc0_0000,
+            0xffc0_0000,
+            0x7fff_ffff,
+            0xffff_ffff,
+        ] {
+            check(bits);
+        }
+        // Exhaust every code and intervening word around the canonical range.
+        for bits in 0x7eff_ffff..=0x7f00_d800 {
+            check(bits);
+        }
+        let mut word = 0x243f_6a88u32;
+        for _ in 0..65_536 {
+            word = word.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            check(word);
+        }
     }
 }

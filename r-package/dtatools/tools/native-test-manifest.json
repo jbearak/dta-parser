@@ -6197,7 +6197,7 @@
         },
         {
           "path": "tests/testthat/test-compact-float-domain.R",
-          "sha256": "b5e68d453402bfa564e42532bc222e8718a3678c25d358d24cc50165cded0ddb"
+          "sha256": "7466fbebb54d046ff5037bc059004058ddfd5e10fefa49f053e63bd5b258b65c"
         },
         {
           "path": "tests/testthat/test-compact-pair-domain.R",
@@ -6213,7 +6213,7 @@
         },
         {
           "path": "tests/testthat/test-reader-numeric-facts.R",
-          "sha256": "999c9e8f6f5c0a287308e3ab9bddfd90b1c06449ef1b17977c2df49c07410ad9"
+          "sha256": "e42c2ae6447ec5fe65fcdff56d444d74cf25414f1ea9bea722b49194c16e7250"
         },
         {
           "path": "tests/testthat/test-integer-reciprocal-lookup.R",
@@ -7920,7 +7920,7 @@
         },
         {
           "file": "test-compact-float-domain.R",
-          "test": "reader and freeze validation grant only strict compact domains",
+          "test": "freeze validates strict domains while DTA imports remain unknown",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 207,
@@ -8014,7 +8014,7 @@
         },
         {
           "file": "test-reader-numeric-facts.R",
-          "test": "DTA and Arrow readers publish facts for the returned compact extent",
+          "test": "readers preserve compact extents and grant facts only for eligible Arrow FLOAT",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 900,

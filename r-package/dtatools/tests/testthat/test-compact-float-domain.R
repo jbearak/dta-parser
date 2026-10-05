@@ -90,7 +90,7 @@ test_that("compact domain proofs follow retained bytes and writable invalidation
     expect_identical(.domain_bytes(x), writeBin(values, raw(), size = 8L, endian = "little"))
 })
 
-test_that("reader and freeze validation grant only strict compact domains", {
+test_that("freeze validates strict domains while DTA imports remain unknown", {
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     withr::defer(unlink(path))
     raw_bits <- function(x) as.raw(floor(x / 256^(0:3)) %% 256)
@@ -100,13 +100,13 @@ test_that("reader and freeze validation grant only strict compact domains", {
     for (index in seq_along(bits)) {
         patch_numeric_fixture_row(path, 0L, list(x_float = raw_bits(bits[[index]])))
         x <- read_dta(path, col_select = "x_float", n_max = 2L)$x_float
-        expect_identical(.domain_strict(x), index <= 33L)
+        expect_false(.domain_strict(x))
         expected <- .domain_bytes(x)
         frozen <- .Call(C_dtatools_owned_numeric_freeze, x, 1L)
-        # Both validators prove the same bytes; imports do not normalize them.
+        # Fresh freeze validates the captured bytes without normalizing them.
         expect_identical(.domain_strict(frozen), index <= 33L)
         expect_identical(.domain_facts(frozen)[["flags"]], if (index <= 33L) 7 else 0)
-        expect_identical(.domain_facts(x), .domain_facts(frozen))
+        expect_identical(.domain_facts(x)[["flags"]], 0)
         expect_identical(.domain_bytes(frozen), expected)
         restored <- unserialize(serialize(frozen, NULL))
         expect_false(.domain_strict(restored))
