@@ -13021,7 +13021,7 @@
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
-          "sha256": "57aee84481a9f2a49e781ec45c050c8ed38a5ec59107eb7e6aec49ccc7e50cad"
+          "sha256": "c2b17d74985680ad22e34e16a5172311b254db9d59f82993f55eab3f805a7548"
         },
         {
           "path": "tests/testthat/test-mask-reader-callbacks.R",
