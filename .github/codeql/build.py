@@ -28,7 +28,7 @@ SDK = {
 STRUCTURAL = ('integer-reciprocal', 'long-float-addition',
               'compact-float-domain', 'compact-pair-domain',
               'dense-float-reciprocal', 'retained-arithmetic-polling')
-FIXTURES = ('initial-capture-userdb.c', 'numeric-bytecode-probe.c',
+FIXTURES = ('constructor-region-probe.c', 'initial-capture-userdb.c', 'numeric-bytecode-probe.c',
             'numeric-size-userdb.c')
 
 
