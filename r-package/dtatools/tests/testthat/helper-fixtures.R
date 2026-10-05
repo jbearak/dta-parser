@@ -232,3 +232,18 @@ expect_identical_table <- function(object, expected, ...) {
     expect_identical(dtatools:::.reference_snapshot(object),
                      dtatools:::.reference_snapshot(expected), ...)
 }
+
+# A column whose `[` method counts its calls, for asserting that an
+# operation leaves unread columns unsliced. `count()` reports the total.
+local_slice_probe <- function(values, env = parent.frame()) {
+    calls <- 0L
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    registerS3method("[", "dtatools_slice_probe", function(x, i) {
+        calls <<- calls + 1L
+        structure(unclass(x)[i], class = "dtatools_slice_probe")
+    }, envir = baseenv())
+    withr::defer(rm(list = "[.dtatools_slice_probe", envir = table),
+                 envir = env)
+    list(column = structure(values, class = "dtatools_slice_probe"),
+         count = function() calls)
+}
