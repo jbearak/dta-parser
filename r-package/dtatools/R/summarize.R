@@ -76,15 +76,21 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
     group_rows <- if (n == 0L && grouped_request) list() else
         if (is.null(groups)) list(seq_len(n)) else groups$rows
     where_quo <- rlang::enquo(where)
+    filtered <- !rlang::quo_is_null(where_quo)
     selected <- vector("list", length(group_rows))
     w <- if (weighted) rep(NA_real_, n) else rep(1, n)
+    # Columns are sliced to a group only when `where` or `weights` reads
+    # them, so a wide dataset does not cost one slice per column per group.
+    lazy <- .lazy_group_names(names(columns))
     for (g in seq_along(group_rows)) {
         full <- group_rows[[g]]
         size <- length(full)
-        view <- lapply(columns, function(z) z[full])
+        view <- if (!filtered && !weighted) NULL else if (lazy) {
+            .lazy_group_columns(columns, full, function(z, rows) z[rows], caller)
+        } else lapply(columns, function(z) z[full])
         extras <- list(.n = seq_len(size), .N = size)
-        keep <- .mutation_rows(.eval_mutation_expression(where_quo, view,
-            "where", extras), size)
+        keep <- if (filtered) .mutation_rows(.eval_mutation_expression(
+            where_quo, view, "where", extras), size)
         if (is.null(keep)) keep <- seq_len(size)
         if (!is.null(positions)) {
             if (any(positions > size))
