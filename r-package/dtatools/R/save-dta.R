@@ -265,15 +265,19 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
+# The whole match and its groups, as regmatches(format, regexec(pattern,
+# format, perl = TRUE))[[1L]] gives them. regexec() reads the same positions
+# from regexpr() but adds per-call work that dominated one check per column.
+.dta_format_pieces <- function(format, pattern) {
+    matched <- regexpr(pattern, format, perl = TRUE)
+    if (is.na(matched) || matched < 0L) return(character())
+    starts <- c(matched, attr(matched, "capture.start"))
+    substring(format, starts,
+              starts + c(attr(matched, "match.length"), attr(matched, "capture.length")) - 1L)
+}
+
 .valid_dta_decimal_format <- function(format) {
-    matched <- regmatches(
-        format,
-        regexec(
-            "^%-?([0-9]+)[.,]([0-9]+)([efg])(c?)$",
-            format,
-            perl = TRUE
-        )
-    )[[1L]]
+    matched <- .dta_format_pieces(format, "^%-?([0-9]+)[.,]([0-9]+)([efg])(c?)$")
     if (length(matched) != 5L) {
         return(format %in% c("%21x", "%8H", "%8L", "%16H", "%16L"))
     }
@@ -285,10 +289,7 @@ save_dta <- function(data, path, version = 19L,
 }
 
 .valid_dta_string_format <- function(format) {
-    matched <- regmatches(
-        format,
-        regexec("^%-?([0-9]+)s$", format, perl = TRUE)
-    )[[1L]]
+    matched <- .dta_format_pieces(format, "^%-?([0-9]+)s$")
     if (length(matched) != 2L) return(FALSE)
     width <- suppressWarnings(as.numeric(matched[[2L]]))
     is.finite(width) && width >= 1 && width <= 2045
@@ -506,12 +507,19 @@ save_dta <- function(data, path, version = 19L,
     )
     usable <- !vapply(mappings, is.null, logical(1))
     explicit <- lapply(data, attr, which = "value.label.name", exact = TRUE)
+    # Check every plain one-string name in one call.
+    plain <- vapply(explicit, function(name) {
+        is.character(name) && !is.object(name) && length(name) == 1L && !is.na(name)
+    }, logical(1))
+    valid_plain <- logical(length(explicit))
+    valid_plain[plain] <- .valid_dta_names(as.character(unlist(explicit[plain], use.names = FALSE)))
 
     for (index in seq_along(data)) {
         table_name <- explicit[[index]]
         if (is.null(table_name)) next
         if (!is.character(table_name) || length(table_name) != 1L ||
-            is.na(table_name) || !.valid_dta_names(table_name)) {
+            is.na(table_name) ||
+            !(if (plain[[index]]) valid_plain[[index]] else .valid_dta_names(table_name))) {
             .dta_write_abort(sprintf(
                 paste0(
                     "Column `%s` has an invalid `value.label.name`; ",
