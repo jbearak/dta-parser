@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
+  date, or datetime vector compare the packed native key that `dta_match()`
+  uses, rather than formatting each value as text. On 2 million doubles,
+  `unique()` falls from about 2.4 seconds to 0.03 seconds, and `factor()`,
+  `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
+  Results and errors are unchanged.
+
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
