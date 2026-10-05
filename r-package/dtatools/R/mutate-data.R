@@ -3042,8 +3042,14 @@ subset.dibble <- function(x, ...) {
         .subset_gathers_columns(.subset(x, .subset_column_positions(x, j))) &&
         identical(drop, FALSE)) {
         selected <- x[, j, drop = FALSE]
-        rows <- .reference_tibble_row_plan(x, i)
-        return(.reference_tibble_rows(selected, rows)[, , drop = FALSE])
+        # With automatic row names the tibble bracket keeps the rows `i`
+        # marks and numbers them afresh.
+        result <- if (.row_names_info(x) < 0L) {
+            rows <- which(rep_len(i, nrow(x)))
+            .ungrouped_result_frame(.gather_dta_columns(.data_columns(selected), rows),
+                                    attributes(selected), .set_row_names(length(rows)))
+        } else .reference_tibble_rows(selected, .reference_tibble_row_plan(x, i))
+        return(result[, , drop = FALSE])
     }
     # Symbols evaluate again without side effects; base passes only these.
     call <- sys.call()
@@ -3079,12 +3085,7 @@ subset.dibble <- function(x, ...) {
     if (all(j > 0)) j else seq_along(x)[j]
 }
 
-# The package's Stata vectors, factors, and unclassed vectors, with only the
-# attributes their restoration keeps and the vctrs methods dtatools and vctrs
-# register. A subclass or a replaced method can do work only the tibble
-# bracket calls, and the gather keeps an attribute that restoring a sliced
-# Stata column drops with a warning.
-.subset_gathers_columns <- function(columns) {
+.subset_stata_classes <- local({
     stata <- c(
         lapply(.dta_storage, .dta_storage_class),
         lapply(.dta_storage, function(storage) {
@@ -3097,13 +3098,22 @@ subset.dibble <- function(x, ...) {
     stata <- c(stata, lapply(stata, function(classes) {
         c(.dta_metadata_vector_class, classes)
     }))
-    stata <- vapply(stata, paste, character(1), collapse = " ")
-    known <- c("names", "class", .dta_variable_attribute_names)
+    vapply(stata, paste, character(1), collapse = " ")
+})
+.subset_stata_attributes <- c("names", "class", .dta_variable_attribute_names)
+
+# The package's Stata vectors, factors, and unclassed vectors, with only the
+# attributes their restoration keeps and the vctrs methods dtatools and vctrs
+# register. A subclass or a replaced method can do work only the tibble
+# bracket calls, and the gather keeps an attribute that restoring a sliced
+# Stata column drops with a warning.
+.subset_gathers_columns <- function(columns) {
     checked <- character()
     for (column in columns) {
         classes <- paste(oldClass(column), collapse = " ")
         allowed <- if (identical(classes, "factor")) c("class", "levels") else
-            if (!nzchar(classes) || classes %in% stata) known else return(FALSE)
+            if (!nzchar(classes) || classes %in% .subset_stata_classes)
+                .subset_stata_attributes else return(FALSE)
         if (!all(names(attributes(column)) %in% allowed)) return(FALSE)
         if (nzchar(classes) && !(classes %in% checked)) {
             if (!.subset_methods_registered(oldClass(column))) return(FALSE)

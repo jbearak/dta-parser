@@ -700,9 +700,9 @@ test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
     expected <- function(result) dtatools:::.close_dibble(data, result)
     ns <- asNamespace("dtatools")
     gathered <- 0L
-    trace(".reference_tibble_rows", tracer = function() gathered <<- gathered + 1L,
+    trace(".gather_dta_columns", tracer = function() gathered <<- gathered + 1L,
           where = ns, print = FALSE)
-    on.exit(untrace(".reference_tibble_rows", where = ns), add = TRUE)
+    on.exit(untrace(".gather_dta_columns", where = ns), add = TRUE)
     open <- dtatools:::.reference_snapshot
 
     expect_identical(open(subset(data, price > 6000)),
@@ -832,6 +832,19 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
             snapshot = attr(base::subset(plain_snapshot, y > 1)$k, "label")
         )
         assign("vec_restore.dta_numeric", restore, envir = table)
+        # The metadata wrapper's methods reach the string methods beneath it.
+        noted_string <- dibble(s = dta_string(c("a", "b", "c")), y = 1:3)
+        add_dta_note(noted_string, "a note", variable = "s")
+        noted_snapshot <- dtatools:::.reference_snapshot(noted_string)
+        string_restore <- get("vec_restore.dta_string", table)
+        register("vec_restore", "dta_string", function(x, to, ...) {
+            result <- string_restore(x, to, ...)
+            attr(result, "label") <- "replaced"
+            result
+        })
+        replaced$string <- c(attr(subset(noted_string, y > 1)$s, "label"),
+                             attr(base::subset(noted_snapshot, y > 1)$s, "label"))
+        assign("vec_restore.dta_string", string_restore, envir = table)
         assign("vec_proxy.dta_numeric", function(x, ...) stop("global proxy"), envir = globalenv())
         replaced$proxy <- c(failure(subset(plain, y > 1)),
                             failure(base::subset(plain_snapshot, y > 1)))
@@ -854,6 +867,7 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     expect_identical(observed$replaced$dibble, "replaced")
     expect_identical(observed$replaced$snapshot, "replaced")
     expect_identical(observed$replaced$proxy, c("global proxy", "global proxy"))
+    expect_identical(observed$replaced$string, c("replaced", "replaced"))
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
