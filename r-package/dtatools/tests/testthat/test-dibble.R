@@ -883,6 +883,16 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         replaced$proxy <- c(failure(subset(plain, y > 1)),
                             failure(base::subset(plain_snapshot, y > 1)))
         rm("vec_proxy.dta_numeric", envir = globalenv())
+        # The tibble bracket slices each column by itself and never takes a
+        # data frame proxy.
+        strings <- dibble(s = c("a", "b", "c"), t = dta_string(c("x", "y", "z")), y = 1:3)
+        sliced <- function(data) tryCatch({
+            result <- subset(data, y > 1)
+            paste(result$s, as.character(result$t))
+        }, error = conditionMessage)
+        assign("vec_proxy.data.frame", function(x, ...) stop("frame proxy"), envir = globalenv())
+        replaced$frame <- list(sliced(strings), sliced(dtatools:::.reference_snapshot(strings)))
+        rm("vec_proxy.data.frame", envir = globalenv())
         list(unloaded = unloaded, base = base, replaced = replaced, methods = lapply(frames, function(data) list(
             dibble = attempt(data),
             snapshot = attempt(dtatools:::.reference_snapshot(data)),
@@ -905,6 +915,7 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     expect_identical(observed$replaced$assigned, c("assigned", "assigned"))
     expect_identical(observed$replaced$bracket, c("rows refused", "rows refused"))
     expect_identical(observed$replaced$reads[[1L]], observed$replaced$reads[[2L]])
+    expect_identical(observed$replaced$frame, list(c("b y", "c z"), c("b y", "c z")))
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)

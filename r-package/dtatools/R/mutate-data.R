@@ -2983,10 +2983,9 @@ select.dibble <- function(.data, ...) {
     .dibble_select_columns(context, locations)
 }
 
-.reference_delegate <- function(data, call, generic, environment,
-                                snapshot = .reference_snapshot(data)) {
+.reference_delegate <- function(data, call, generic, environment) {
     call[[1L]] <- generic
-    call[[2L]] <- snapshot
+    call[[2L]] <- .reference_snapshot(data)
     eval(call, environment)
 }
 
@@ -3008,16 +3007,24 @@ within.dibble <- function(data, expr, ...) {
 
 #' @export
 subset.dibble <- function(x, ...) {
-    # Base subset() ends in `x[r, vars, drop = drop]`, and the tibble
-    # bracket slices one column at a time. The mark routes that bracket
-    # on a plain tibble snapshot to the gather `[` on a dibble uses.
+    # Only the call holds the snapshot, as in .reference_delegate(). With a
+    # second reference held here, slicing the columns took several times
+    # longer.
+    call <- sys.call()
+    call[[1L]] <- base::subset
+    call[[2L]] <- .subset_snapshot(x)
+    .close_dibble(x, eval(call, parent.frame()))
+}
+
+# Base subset() ends in `x[r, vars, drop = drop]`, and the tibble bracket
+# slices one column at a time. The mark routes that bracket on a plain
+# tibble snapshot to the gather `[` on a dibble uses.
+.subset_snapshot <- function(x) {
     snapshot <- .reference_snapshot(x)
     if (any(vapply(.subset_snapshot_classes, identical, logical(1), class(snapshot)))) {
         class(snapshot) <- c("dtatools_subset_snapshot", class(snapshot))
     }
-    .close_dibble(x, .reference_delegate(
-        x, sys.call(), base::subset, parent.frame(), snapshot
-    ))
+    snapshot
 }
 
 .subset_snapshot_classes <- list(
@@ -3047,9 +3054,9 @@ subset.dibble <- function(x, ...) {
         # marks and numbers them afresh.
         result <- if (.row_names_info(x) < 0L) {
             rows <- which(rep_len(i, nrow(x)))
-            .ungrouped_result_frame(.gather_dta_columns(.data_columns(selected), rows),
+            .ungrouped_result_frame(.gather_dta_columns(.data_columns(selected), rows, "columns"),
                                     attributes(selected), .set_row_names(length(rows)))
-        } else .reference_tibble_rows(selected, .reference_tibble_row_plan(x, i))
+        } else .reference_tibble_rows(selected, .reference_tibble_row_plan(x, i), "columns")
         return(result[, , drop = FALSE])
     }
     # Symbols evaluate again without side effects; base passes only these.

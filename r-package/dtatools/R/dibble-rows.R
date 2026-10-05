@@ -24,9 +24,15 @@
     positions <- which(!native)
     if (length(positions)) {
         remaining <- columns[positions]
-        gathered <- if (identical(fallback, "vctrs"))
+        gathered <- if (!identical(fallback, "base"))
             .Call(C_dtatools_gather_owned_discrete, remaining, locations) else NULL
-        if (!is.null(gathered)) result[positions] <- gathered else {
+        if (!is.null(gathered)) {
+            result[positions] <- gathered
+        } else if (identical(fallback, "columns")) {
+            # The tibble bracket slices each column by itself, so no data
+            # frame proxy or restore method runs.
+            result[positions] <- lapply(remaining, vctrs::vec_slice, locations)
+        } else {
             frame <- vctrs::new_data_frame(remaining,
                                            n = NROW(columns[[positions[[1L]]]]))
             result[positions] <- .plain_data_columns(if (identical(fallback, "base")) {
@@ -217,8 +223,8 @@
     row_frame[i, , drop = FALSE]
 }
 
-.reference_tibble_rows <- function(selected, row_plan) {
-    columns <- .gather_dta_columns(.data_columns(selected), row_plan[[1L]])
+.reference_tibble_rows <- function(selected, row_plan, fallback = "vctrs") {
+    columns <- .gather_dta_columns(.data_columns(selected), row_plan[[1L]], fallback)
     .ungrouped_result_frame(columns, attributes(selected), .row_names_info(row_plan, 0L))
 }
 
