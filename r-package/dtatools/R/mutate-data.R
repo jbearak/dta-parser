@@ -1613,8 +1613,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # first use and caches the slice until the group changes, so an
 # expression pays for the columns it reads and nothing else, and a
 # runtime name through `.data[[name]]` or `.(name)` still resolves.
-# `slice` lets a caller keep its own row-subsetting semantics.
-.mutation_group_view <- function(columns, slice = .mutation_group_slice) {
+.mutation_group_view <- function(columns) {
     if (isTRUE(attr(columns, ".dtatools_mutation_views", exact = TRUE))) {
         columns <- .exposed_mutation_columns(columns)
     }
@@ -1639,7 +1638,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                 }
                 hit <- view$cache[[column_name]]
                 if (is.null(hit)) {
-                    hit <- slice(
+                    hit <- .mutation_group_slice(
                         .mutation_column(columns, column_name), view$rows
                     )
                     view$cache[[column_name]] <- hit
@@ -1649,6 +1648,31 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
         })
     }
     view
+}
+
+# One group's columns for `summ()` and `tab()` expressions, each sliced to
+# `rows` by `slice` only when an expression first reads it, so a call on
+# wide data pays for the columns it reads. Each group gets its own
+# environment: an expression that retains `.data` keeps its group's rows.
+# Its parent is the calling environment, as a list-based mask's would be.
+# Column names must satisfy `.lazy_group_names()`.
+.lazy_group_columns <- function(columns, rows, slice, parent) {
+    view <- new.env(parent = parent, size = length(columns))
+    column_names <- names(columns)
+    bind <- function(index) {
+        delayedAssign(column_names[[index]],
+                      slice(.subset2(columns, index), rows),
+                      assign.env = view)
+    }
+    for (index in seq_along(columns)) bind(index)
+    view
+}
+
+# Names that each bind one column: an environment would merge duplicates
+# that a list-based mask reports as ambiguous.
+.lazy_group_names <- function(column_names) {
+    !is.null(column_names) && !anyNA(column_names) &&
+        all(nzchar(column_names)) && !anyDuplicated(column_names)
 }
 
 # The `where` half of `.grouped_mutation()` on its own: each group's rows

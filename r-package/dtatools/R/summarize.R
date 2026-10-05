@@ -81,18 +81,16 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
     w <- if (weighted) rep(NA_real_, n) else rep(1, n)
     # Columns are sliced to a group only when `where` or `weights` reads
     # them, so a wide dataset does not cost one slice per column per group.
-    view <- if (filtered || weighted)
-        .mutation_group_view(columns, function(z, rows) z[rows])
+    lazy <- .lazy_group_names(names(columns))
     for (g in seq_along(group_rows)) {
         full <- group_rows[[g]]
         size <- length(full)
-        if (!is.null(view)) {
-            view$rows <- full
-            view$cache <- new.env(hash = TRUE, parent = emptyenv())
-        }
+        view <- if (!filtered && !weighted) NULL else if (lazy) {
+            .lazy_group_columns(columns, full, function(z, rows) z[rows], caller)
+        } else lapply(columns, function(z) z[full])
         extras <- list(.n = seq_len(size), .N = size)
         keep <- if (filtered) .mutation_rows(.eval_mutation_expression(
-            where_quo, view$columns, "where", extras), size)
+            where_quo, view, "where", extras), size)
         if (is.null(keep)) keep <- seq_len(size)
         if (!is.null(positions)) {
             if (any(positions > size))
@@ -102,8 +100,7 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         }
         selected[[g]] <- full[sort(unique(keep))]
         if (weighted) {
-            wg <- .eval_mutation_expression(weight_quo, view$columns,
-                "weights", extras)
+            wg <- .eval_mutation_expression(weight_quo, view, "weights", extras)
             wg <- .summarize_numeric(wg)
             if (!length(wg) && size == 0L) next
             if (!length(wg) %in% c(1L, size))
