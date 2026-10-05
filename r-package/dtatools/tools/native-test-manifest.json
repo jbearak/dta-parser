@@ -6213,7 +6213,7 @@
         },
         {
           "path": "tests/testthat/test-reader-numeric-facts.R",
-          "sha256": "039af78b6e1becf117b2269d84dd86927e50d01c39c8dd4888dd7a5480f8a2ef"
+          "sha256": "999c9e8f6f5c0a287308e3ab9bddfd90b1c06449ef1b17977c2df49c07410ad9"
         },
         {
           "path": "tests/testthat/test-integer-reciprocal-lookup.R",
