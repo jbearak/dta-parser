@@ -3123,10 +3123,27 @@ subset.dibble <- function(x, ...) {
     TRUE
 }
 
+# The proxy and restore methods the admitted classes reach, as defined when
+# dtatools was built. trace() and assignInNamespace() replace the registered
+# entry along with the namespace binding, so only these copies show the
+# original.
+.subset_original_methods <- list(
+    vec_proxy.dta_numeric = vec_proxy.dta_numeric,
+    vec_restore.dta_numeric = vec_restore.dta_numeric,
+    vec_proxy.dta_string = vec_proxy.dta_string,
+    vec_restore.dta_string = vec_restore.dta_string,
+    vec_proxy.dta_temporal = vec_proxy.dta_temporal,
+    vec_restore.dta_temporal = vec_restore.dta_temporal,
+    vec_proxy.dtatools_dta_metadata_vector = vec_proxy.dtatools_dta_metadata_vector,
+    vec_restore.dtatools_dta_metadata_vector = vec_restore.dtatools_dta_metadata_vector,
+    vec_proxy.factor = get("vec_proxy.factor", asNamespace("vctrs")),
+    vec_restore.factor = get("vec_restore.factor", asNamespace("vctrs"))
+)
+
 # Slicing finds a class's proxy and restore methods in the global
 # environment or the vctrs method table, taking the first class that has
-# one. Each must be the method the package that registers it defines. The
-# metadata wrapper's methods call the methods of the classes beneath it.
+# one. Each must be the original definition. The metadata wrapper's methods
+# call the methods of the classes beneath it.
 .subset_methods_registered <- function(classes) {
     if (identical(classes[[1L]], .dta_metadata_vector_class) &&
         !.subset_methods_registered(classes[-1L])) return(FALSE)
@@ -3137,9 +3154,7 @@ subset.dibble <- function(x, ...) {
             if (!is.null(get0(name, globalenv(), mode = "function", inherits = FALSE)))
                 return(FALSE)
             method <- get0(name, table, inherits = FALSE)
-            expected <- get0(name, asNamespace("dtatools"), inherits = FALSE)
-            if (is.null(expected)) expected <- get0(name, asNamespace("vctrs"), inherits = FALSE)
-            if (!identical(method, expected)) return(FALSE)
+            if (!identical(method, .subset_original_methods[[name]])) return(FALSE)
             if (!is.null(method)) break
         }
     }

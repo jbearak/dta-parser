@@ -845,6 +845,16 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         replaced$string <- c(attr(subset(noted_string, y > 1)$s, "label"),
                              attr(base::subset(noted_snapshot, y > 1)$s, "label"))
         assign("vec_restore.dta_string", string_restore, envir = table)
+        # assignInNamespace() replaces the registered entry along with the binding.
+        original <- get("vec_restore.dta_numeric", asNamespace("dtatools"))
+        utils::assignInNamespace("vec_restore.dta_numeric", function(x, to, ...) {
+            result <- original(x, to, ...)
+            attr(result, "label") <- "assigned"
+            result
+        }, "dtatools")
+        replaced$assigned <- c(attr(subset(plain, y > 1)$k, "label"),
+                               attr(base::subset(plain_snapshot, y > 1)$k, "label"))
+        utils::assignInNamespace("vec_restore.dta_numeric", original, "dtatools")
         assign("vec_proxy.dta_numeric", function(x, ...) stop("global proxy"), envir = globalenv())
         replaced$proxy <- c(failure(subset(plain, y > 1)),
                             failure(base::subset(plain_snapshot, y > 1)))
@@ -868,6 +878,7 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     expect_identical(observed$replaced$snapshot, "replaced")
     expect_identical(observed$replaced$proxy, c("global proxy", "global proxy"))
     expect_identical(observed$replaced$string, c("replaced", "replaced"))
+    expect_identical(observed$replaced$assigned, c("assigned", "assigned"))
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
