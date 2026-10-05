@@ -142,6 +142,31 @@ test_that("codebook handles string variables containing only Stata missing value
     expect_equal(nrow(result$examples), 0L)
 })
 
+test_that("codebook string checks read equal strings alike", {
+    latin <- "caf\xe9 "
+    Encoding(latin) <- "latin1"
+    text <- c("ok", enc2utf8(latin), latin, "ok")
+    attr(text, "stata.string.storage") <- "str20"
+    problems <- codebook(tibble::tibble(text = text), problems = TRUE)$diagnostics
+    expect_true("trailing_blanks" %in% problems$code)
+    wide <- problems[problems$code == "string_storage_wider_than_required", ]
+    expect_identical(wide$details[[1L]][[1L]], list(declared = "str20", required = 6L))
+
+    # An invalid string keeps grepl()'s warnings, which name its position
+    # among all the observed strings.
+    invalid <- rawToChar(as.raw(c(0x20, 0xff)))
+    Encoding(invalid) <- "UTF-8"
+    warnings <- character()
+    withCallingHandlers(
+        codebook(data.frame(text = c("ok", "ok", invalid)), problems = TRUE),
+        warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        }
+    )
+    expect_true("input string 3 is invalid" %in% warnings)
+})
+
 test_that("codebook selections and where use report semantics", {
     data <- data.frame(x = 1:5, y = 6:10, eligible = c(TRUE, FALSE, TRUE, TRUE, FALSE))
     selected <- codebook(data, x, where = eligible)

@@ -15570,7 +15570,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "18da4113751a3a836af58c6d1c9f0d0bc480832ada59a9a746a1102724751c30"
+          "sha256": "a00eedbe6a33171a87fb57bd3a01f5427f04cde19da544434ff3c56e69fcfb4f"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15740,6 +15740,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook string checks read equal strings alike",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
