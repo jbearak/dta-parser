@@ -292,14 +292,19 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         position <- positions[[i]]
         name <- names(data)[[position]]
         column <- selected[[position]]
-        summary <- .codebook_variable(column, name, position, tabulate, compact)
+        # One missing mask and one unique count serve the summary, the
+        # diagnostics and the missing-value relationships.
+        mask <- .codebook_missing(column)
+        summary <- .codebook_variable(column, name, position, tabulate, compact,
+                                      mask)
         variables[[length(variables) + 1L]] <- summary$variable
         tabulations[[length(tabulations) + 1L]] <- summary$tabulation
         examples[[length(examples) + 1L]] <- summary$examples
-        diagnostics <- c(diagnostics, .codebook_diagnostics(
-            column, name, position, source_rows, diagnostic_limit
-        ))
-        missing_masks[[as.character(position)]] <- .codebook_missing(column)
+        diagnostics[[i]] <- .codebook_diagnostics(
+            column, name, position, source_rows, diagnostic_limit, mask,
+            summary$unique_count
+        )
+        missing_masks[[as.character(position)]] <- mask
         if (notes) {
             variable_notes <- dta_notes(data, variable = position)
             if (length(variable_notes)) note_rows[[length(note_rows) + 1L]] <- data.frame(
@@ -310,6 +315,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         if (dots) cat(".")
     }
     if (dots) cat("\n")
+    diagnostics <- do.call(c, c(list(list()), diagnostics))
     if (length(positions)) {
         duplicate <- vctrs::vec_duplicate_detect(selected[positions])
         diagnostics <- c(diagnostics, .book_row_diag(
@@ -327,8 +333,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         missing_masks, names(data)[positions], positions
     ) else .codebook_relationships()
     structure(list(
-        variables = .book_bind(variables, .codebook_variables()),
-        tabulations = .book_bind(tabulations, .codebook_tabulations()),
+        variables = .book_rows(variables, .codebook_variables()),
+        tabulations = .book_rows(tabulations, .codebook_tabulations()),
         examples = .book_bind(examples, .codebook_examples()),
         missing_relationships = relationships,
         notes = .book_bind(note_rows, .codebook_notes()),
@@ -373,12 +379,17 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     right_position = integer(), right_variable = character(), stringsAsFactors = FALSE
 )
 
-.codebook_variable <- function(x, name, position, threshold, compact) {
+.codebook_variable <- function(x, name, position, threshold, compact, mask) {
     supported <- is.atomic(x) && is.null(dim(x)) || is.factor(x)
-    missing <- if (supported) .codebook_missing(x) else rep(FALSE, length(x))
+    missing <- if (supported) mask else rep(FALSE, length(x))
     observed <- x[!missing]
-    unique_count <- if (supported) length(unique(observed)) else NA_integer_
     numeric <- supported && (is.numeric(x) || is.logical(x)) && !is.factor(x)
+    finite_observed <- if (numeric) .book_numeric_data(observed) else double()
+    # Observed numeric values hold no missing codes, so their distinct
+    # values are their distinct doubles, with -0 equal to 0 as in Stata.
+    unique_count <- if (!supported) NA_integer_ else if (numeric) {
+        length(unique(finite_observed))
+    } else length(unique(observed))
     categorical <- supported && (is.factor(x) || is.logical(x) ||
         (numeric && unique_count <= threshold))
     report_type <- if (!supported) "unsupported" else if (categorical) {
@@ -396,10 +407,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         paste(class(x), collapse = "/")
     }
     if (!nzchar(type)) type <- typeof(x)
-    codes <- if (is.numeric(x)) .book_codes(x) else list(missing_code = rep(NA_character_, length(x)))
-    system <- if (is.numeric(x)) codes$missing_code == "." & !is.na(codes$missing_code) else rep(FALSE, length(x))
-    extended <- if (is.numeric(x)) grepl("^\\.[a-z]$", codes$missing_code) & !is.na(codes$missing_code) else rep(FALSE, length(x))
-    finite_observed <- if (numeric) .book_numeric_data(observed) else double()
+    # Code 0 is system missing and codes a-z are .a through .z; observed
+    # values have no code.
+    codes <- if (is.numeric(x)) .tab_missing_codes(x) else integer()
+    codes <- codes[!is.na(codes)]
+    system <- codes == 0L
+    extended <- codes >= utf8ToInt("a") & codes <= utf8ToInt("z")
     stats <- rep(NA_real_, 10L)
     if (numeric && length(finite_observed)) {
         q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
@@ -413,53 +426,77 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     labels <- attr(x, "labels", exact = TRUE)
     table_name <- attr(x, "value.label.name", exact = TRUE)
     if (is.null(table_name) && !is.null(labels)) table_name <- name
-    variable <- data.frame(
-        position, variable = name,
-        label = .book_or_na(attr(x, "label", exact = TRUE)), type,
+    variable <- list(
+        position = position, variable = name,
+        label = .book_or_na(attr(x, "label", exact = TRUE)), type = type,
         storage = .book_or_na(storage), format = .book_or_na(attr(x, "format.stata", exact = TRUE)),
-        value_label_table = .book_or_na(table_name), report_type,
+        value_label_table = .book_or_na(table_name), report_type = report_type,
         observations = length(x), unique_nonmissing = unique_count,
         missing_count = sum(missing), system_missing_count = sum(system),
-        extended_missing_count = sum(extended), nan_count = if (is.numeric(x)) sum(is.nan(x)) else 0L,
+        extended_missing_count = sum(extended), nan_count = if (is.numeric(x) && anyNA(x)) sum(is.nan(x)) else 0L,
         empty_count = if (is.character(x)) sum(x == "", na.rm = TRUE) else 0L,
         na_string_count = if (is.character(x)) sum(is.na(x)) else 0L,
         minimum = stats[[1L]], maximum = stats[[2L]], unit = stats[[3L]],
         mean = stats[[4L]], sd = stats[[5L]], p10 = stats[[6L]], p25 = stats[[7L]],
-        p50 = stats[[8L]], p75 = stats[[9L]], p90 = stats[[10L]],
-        stringsAsFactors = FALSE
+        p50 = stats[[8L]], p75 = stats[[9L]], p90 = stats[[10L]]
     )
-    tabulation <- if (!compact && categorical) .codebook_tabulate(x, name, position) else .codebook_tabulations()
+    tabulation <- if (!compact && categorical) .codebook_tabulate(x, name, position)
     example <- if (!compact && report_type == "examples") {
         values <- unique(as.character(observed)); values <- utils::head(values, 5L)
         data.frame(position = rep(position, length(values)),
                    variable = rep(name, length(values)), example = values,
                    stringsAsFactors = FALSE)
     } else .codebook_examples()
-    list(variable = variable, tabulation = tabulation, examples = example)
+    list(variable = variable, tabulation = tabulation, examples = example,
+         unique_count = unique_count)
 }
 
+# One variable's tabulation rows for .book_rows(), or NULL without any.
 .codebook_tabulate <- function(x, name, position) {
     factorized <- if (is.numeric(x) && !is.factor(x)) {
         .prepare_tab_argument(x, "distinguish", "value")
     } else addNA(x, ifany = TRUE)
-    counts <- table(factorized, useNA = "ifany")
-    if (!length(counts)) return(.codebook_tabulations())
+    counts <- .book_level_counts(factorized)
     displayed <- names(counts)
+    if (!length(counts)) return(NULL)
     numeric_value <- suppressWarnings(as.double(displayed))
     missing_code <- ifelse(grepl("^\\.[a-z]$|^\\.$|^NaN$", displayed), displayed, NA_character_)
     labels <- rep(NA_character_, length(displayed))
     source_labels <- attr(x, "labels", exact = TRUE)
     if (is.numeric(x) && .valid_tab_labels(source_labels)) {
+        # Only the label factor's category names are needed, not its counts.
         prepared <- .prepare_tab_argument(x, "distinguish", "label")
-        label_counts <- table(prepared, useNA = "ifany")
-        if (length(label_counts) == length(counts)) labels <- names(label_counts)
+        label_names <- names(.book_level_counts(prepared, count = FALSE))
+        if (length(label_names) == length(counts)) labels <- label_names
     } else if (is.factor(x)) labels <- displayed
-    data.frame(position, variable = name, value = displayed, numeric_value,
-               missing_code, label = labels, frequency = as.integer(counts),
-               stringsAsFactors = FALSE)
+    list(position = rep(position, length(displayed)),
+         variable = rep(name, length(displayed)), value = displayed,
+         numeric_value = numeric_value, missing_code = missing_code,
+         label = labels, frequency = as.integer(counts))
 }
 
-.codebook_diagnostics <- function(x, name, position, source_rows, limit) {
+# The counts and names of `table(x, useNA = "ifany")`. A factor is counted
+# by its codes; `count = FALSE` gives the names with zero counts.
+.book_level_counts <- function(x, count = TRUE) {
+    if (!is.factor(x)) {
+        counts <- table(x, useNA = "ifany")
+        return(stats::setNames(as.integer(counts), names(counts)))
+    }
+    codes <- unclass(x)
+    attributes(codes) <- NULL
+    names <- levels(x)
+    absent <- sum(is.na(codes))
+    counts <- if (count) tabulate(codes, nbins = length(names)) else
+        integer(length(names))
+    if (absent) {
+        counts <- c(counts, absent)
+        names <- c(names, NA_character_)
+    }
+    stats::setNames(counts, names)
+}
+
+.codebook_diagnostics <- function(x, name, position, source_rows, limit,
+                                  mask, unique_count) {
     result <- list(); add <- function(code, condition, message, severity = "problem", details = list()) {
         if (condition) result[[length(result) + 1L]] <<- .book_diag(
             code, "variable", variable = name, position = position,
@@ -467,11 +504,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         )
     }
     supported <- is.atomic(x) && is.null(dim(x)) || is.factor(x)
-    missing <- if (supported) .codebook_missing(x) else logical()
+    missing <- if (supported) mask else logical()
     add("unsupported_column", !supported,
         "Column type is not supported", "suggestion")
+    # `unique_count` is the number of distinct values in `x[!missing]`.
     add("constant_or_all_missing", supported && length(x) > 0L &&
-            length(unique(x[!missing])) <= 1L,
+            unique_count <= 1L,
         "Variable is constant or always missing")
     if (is.character(x)) {
         observed <- x[!is.na(x)]
@@ -495,19 +533,27 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             "String variable has few unique values and may be better represented as labelled numeric data",
             "suggestion")
     }
+    # The numeric checks share one conversion of the observed values.
+    values <- NULL
+    observed_values <- function() {
+        if (is.null(values)) values <<- .book_numeric_data(x[!missing])
+        values
+    }
     labels <- attr(x, "labels", exact = TRUE)
     reference <- attr(x, "value.label.name", exact = TRUE)
     add("undefined_value_label_table", !is.null(reference) && is.null(labels),
         "Variable refers to an undefined value-label table")
     if (is.numeric(x) && !is.null(labels) && .valid_tab_labels(labels)) {
-        observed <- .book_numeric_data(x[!missing])
+        # Coverage depends only on the distinct values, kept in order of
+        # first appearance.
+        observed <- unique(observed_values())
         uncovered <- !(.dta_value_label_keys(observed) %in% .dta_value_label_keys(labels))
         add("incomplete_value_labels", any(uncovered), "Observed values are not fully value labelled",
-            details = list(values = unique(observed[uncovered])))
+            details = list(values = observed[uncovered]))
     }
     format <- attr(x, "format.stata", exact = TRUE)
     if (is.numeric(x) && .book_scalar_text(format) && grepl("^%t", format)) {
-        date_values <- .book_numeric_data(x[!missing])
+        date_values <- observed_values()
         add("noninteger_date_values", any(date_values != floor(date_values)),
             "Date variable contains noninteger values")
     }
@@ -515,8 +561,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         .declared_dta_storage(x)
     } else NULL
     if (!is.null(declared) && is.numeric(x)) {
-        observed <- .book_numeric_data(x[!missing])
-        narrower <- .codebook_narrower_storage(observed, declared)
+        narrower <- .codebook_narrower_storage(observed_values(), declared)
         add("numeric_storage_may_be_compressed", !is.null(narrower),
             "Numeric storage may be compressed", "suggestion",
             list(declared = declared, suggested = narrower))
@@ -709,6 +754,20 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     rows <- Filter(function(x) !is.null(x) && nrow(x), rows)
     if (!length(rows)) return(empty)
     result <- do.call(rbind, rows); rownames(result) <- NULL; result
+}
+
+# Rows given as named lists of equal-length atomic fields, one list per
+# group of rows, combined into the data frame that binding one data frame
+# per list would give. NULL entries contribute no rows.
+.book_rows <- function(rows, empty) {
+    rows <- Filter(Negate(is.null), rows)
+    if (!length(rows)) return(empty)
+    fields <- names(rows[[1L]])
+    columns <- lapply(seq_along(fields), function(j) {
+        unlist(lapply(rows, .subset2, j), use.names = FALSE)
+    })
+    names(columns) <- fields
+    data.frame(columns, stringsAsFactors = FALSE)
 }
 
 .book_flag <- function(x, name) {
