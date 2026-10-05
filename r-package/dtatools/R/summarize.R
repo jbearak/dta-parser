@@ -133,7 +133,9 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         }
         count <- length(variables$values)
         rows <- selected[[g]]
-        # A sample of every row in order needs no copy of each variable.
+        # A sample of every row in order needs no copy of a variable that the
+        # native scan reads directly. Other ALTREP vectors are still copied,
+        # since the scan would send them through the slower R fallback.
         whole <- length(rows) == n && identical(rows, seq_len(n))
         for (j in seq_len(count)) {
             value <- variables$values[[j]]
@@ -141,7 +143,9 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
                 if (!is.null(dim(value)))
                     stop("summary inputs must be vectors", call. = FALSE)
             } else .dta_egen_numeric(value)
-            fit <- .summarize_statistics(if (whole) value else value[rows],
+            direct <- whole &&
+                .Call(C_dtatools_summary_scan_supported, value)
+            fit <- .summarize_statistics(if (direct) value else value[rows],
                 w[rows], if (weighted) weight else NULL,
                 detail, meanonly)
             i <- length(result$statistics) + 1L
