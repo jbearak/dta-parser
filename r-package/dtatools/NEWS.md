@@ -5,6 +5,11 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `subset()` on a dibble selects its rows with the native gather that `[`
+  on a dibble uses, rather than slicing one column at a time. On a
+  16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
+  about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
+
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
   column of the data. On a 16,787-row, 5,360-column DHS file,

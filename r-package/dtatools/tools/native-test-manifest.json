@@ -10862,7 +10862,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "b68104b594d980a0c7a2d0e77aa158dfa358618a1eab737b2db27cb266141dcd"
+          "sha256": "4b07ea8bea2f526d56435de96e15490c9c138d14e7d92c899fd23a84cee2f881"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
@@ -11949,6 +11949,30 @@
           "warnings": 0
         },
         {
+          "file": "test-dibble.R",
+          "test": "subset() gathers a dibble's rows as base subset() of its snapshot",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "subset() drops the attributes Stata restoration drops",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble.R",
+          "test": "subset() leaves custom column methods to the tibble bracket",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
           "file": "test-dplyr-optional.R",
           "test": "unsupported dplyr registration warns once without touching methods",
           "occurrence": 1,
@@ -12109,6 +12133,14 @@
         {
           "id": "bracket-autoprint",
           "kind": "rscript",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "subset-column-methods",
+          "kind": "r",
           "minimum": 1,
           "maximum": 1,
           "completion": "complete",

@@ -3007,7 +3007,193 @@ within.dibble <- function(data, expr, ...) {
 
 #' @export
 subset.dibble <- function(x, ...) {
-    .close_dibble(x, .reference_delegate(x, sys.call(), base::subset, parent.frame()))
+    # Only the call holds the snapshot, as in .reference_delegate(). With a
+    # second reference held here, slicing the columns took several times
+    # longer.
+    call <- sys.call()
+    call[[1L]] <- base::subset
+    call[[2L]] <- .subset_snapshot(x)
+    .close_dibble(x, eval(call, parent.frame()))
+}
+
+# Base subset() ends in `x[r, vars, drop = drop]`, and the tibble bracket
+# slices one column at a time. The mark routes that bracket on a plain
+# tibble snapshot to the gather `[` on a dibble uses.
+.subset_snapshot <- function(x) {
+    snapshot <- .reference_snapshot(x)
+    if (any(vapply(.subset_snapshot_classes, identical, logical(1), class(snapshot)))) {
+        class(snapshot) <- c("dtatools_subset_snapshot", class(snapshot))
+    }
+    snapshot
+}
+
+.subset_snapshot_classes <- list(
+    c("tbl_df", "tbl", "data.frame"),
+    c("dtatools_dta_metadata", "tbl_df", "tbl", "data.frame")
+)
+
+# Base evaluates the row and column subscripts before this bracket runs.
+# Subscripts the tibble bracket accepts without a condition, on columns the
+# gather slices as it would, select the rows through the gather. Anything
+# else dispatches the caller's call again on the unmarked snapshot, so the
+# next bracket sees the caller's frame and subscript expressions, which
+# name the subscripts in its errors, as it would have without the mark.
+# Base reaches the tibble bracket only when tibble is loaded, so the gather
+# waits until it is.
+#' @export
+`[.dtatools_subset_snapshot` <- function(x, i, j, ..., drop) {
+    class(x) <- class(x)[-1L]
+    # The tibble bracket forces `drop` after slicing. Base passes its own
+    # `drop`, and only a literal FALSE there reads the same at any time.
+    if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
+        !missing(drop) && identical(substitute(drop), quote(drop)) &&
+        identical(substitute(drop, parent.frame()), FALSE) &&
+        is.null(attr(x, "groups", exact = TRUE)) && isNamespaceLoaded("tibble") &&
+        .subset_brackets_registered(class(x)) &&
+        .subset_plain_subscripts(x, i, j) &&
+        .subset_gathers_columns(.subset(x, .subset_column_positions(x, j)))) {
+        selected <- x[, j, drop = FALSE]
+        # With automatic row names the tibble bracket keeps the rows `i`
+        # marks and numbers them afresh.
+        result <- if (.row_names_info(x) < 0L) {
+            rows <- which(rep_len(i, nrow(x)))
+            .ungrouped_result_frame(.gather_dta_columns(.data_columns(selected), rows, "columns"),
+                                    attributes(selected), .set_row_names(length(rows)))
+        } else .reference_tibble_rows(selected, .reference_tibble_row_plan(x, i), "columns")
+        return(result[, , drop = FALSE])
+    }
+    # Symbols evaluate again without side effects; base passes only these.
+    call <- sys.call()
+    if (is.symbol(call[[2L]]) &&
+        all(vapply(as.list(call)[-1L], is.symbol, logical(1)))) {
+        call[[1L]] <- quote(`[`)
+        frame <- new.env(parent = parent.frame())
+        assign(as.character(call[[2L]]), x, envir = frame)
+        return(eval(call, frame))
+    }
+    NextMethod()
+}
+
+# A logical row subscript of one or every row, and columns by a logical of
+# one or every column, by distinct positions, or by distinct names, none
+# missing: subscripts no column or subscript method sees and the tibble
+# bracket takes without an error or warning.
+.subset_plain_subscripts <- function(x, i, j) {
+    if (!is.logical(i) || is.object(i) || !is.null(dim(i)) || anyNA(i) ||
+        !(length(i) %in% c(1L, nrow(x)))) return(FALSE)
+    if (!is.atomic(j) || is.object(j) || !is.null(dim(j)) || anyNA(j)) return(FALSE)
+    if (is.logical(j)) return(length(j) %in% c(1L, length(x)))
+    if (is.character(j)) return(!anyDuplicated(j) && all(j %in% names(x)))
+    is.numeric(j) && !anyDuplicated(j) && all(j == trunc(j)) &&
+        (all(j >= 1 & j <= length(x)) || all(j <= -1 & j >= -length(x)))
+}
+
+# Positions of the columns a subscript that passed .subset_plain_subscripts()
+# keeps. Only those are sliced, so only those need checking.
+.subset_column_positions <- function(x, j) {
+    if (is.logical(j)) return(which(rep_len(j, length(x))))
+    if (is.character(j)) return(match(j, names(x)))
+    if (all(j > 0)) j else seq_along(x)[j]
+}
+
+.subset_stata_classes <- local({
+    stata <- c(
+        lapply(.dta_storage, .dta_storage_class),
+        lapply(.dta_storage, function(storage) {
+            append(.dta_storage_class(storage), "haven_labelled", after = 2L)
+        }),
+        list(c("dta_string", "vctrs_vctr", "character"),
+             c("dta_temporal", "dta_date", "Date"),
+             c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt"))
+    )
+    stata <- c(stata, lapply(stata, function(classes) {
+        c(.dta_metadata_vector_class, classes)
+    }))
+    vapply(stata, paste, character(1), collapse = " ")
+})
+.subset_stata_attributes <- c("names", "class", .dta_variable_attribute_names)
+
+# The package's Stata vectors, factors, and unclassed vectors, with only the
+# attributes their restoration keeps and the vctrs methods dtatools and vctrs
+# register. A subclass or a replaced method can do work only the tibble
+# bracket calls, and the gather keeps an attribute that restoring a sliced
+# Stata column drops with a warning.
+.subset_gathers_columns <- function(columns) {
+    checked <- character()
+    for (column in columns) {
+        classes <- paste(oldClass(column), collapse = " ")
+        allowed <- if (identical(classes, "factor")) c("class", "levels") else
+            if (!nzchar(classes) || classes %in% .subset_stata_classes)
+                .subset_stata_attributes else return(FALSE)
+        if (!all(names(attributes(column)) %in% allowed)) return(FALSE)
+        if (nzchar(classes) && !(classes %in% checked)) {
+            if (!.subset_methods_registered(oldClass(column))) return(FALSE)
+            checked <- c(checked, classes)
+        }
+    }
+    TRUE
+}
+
+# The proxy and restore methods the admitted classes reach, as defined when
+# dtatools was built. trace() and assignInNamespace() replace the registered
+# entry along with the namespace binding, so only these copies show the
+# original.
+.subset_original_methods <- list(
+    vec_proxy.dta_numeric = vec_proxy.dta_numeric,
+    vec_restore.dta_numeric = vec_restore.dta_numeric,
+    vec_proxy.dta_string = vec_proxy.dta_string,
+    vec_restore.dta_string = vec_restore.dta_string,
+    vec_proxy.dta_temporal = vec_proxy.dta_temporal,
+    vec_restore.dta_temporal = vec_restore.dta_temporal,
+    vec_proxy.dtatools_dta_metadata_vector = vec_proxy.dtatools_dta_metadata_vector,
+    vec_restore.dtatools_dta_metadata_vector = vec_restore.dtatools_dta_metadata_vector,
+    vec_proxy.factor = get("vec_proxy.factor", asNamespace("vctrs")),
+    vec_restore.factor = get("vec_restore.factor", asNamespace("vctrs"))
+)
+
+# The bracket methods base's S3 table gives the snapshot classes, as defined
+# when dtatools was built. Table entries come before the global environment
+# in dispatch from base and package code. Only read once tibble is loaded,
+# since the tibble method's environment is its namespace.
+.subset_original_brackets <- list(
+    `[.dtatools_dta_metadata` = `[.dtatools_dta_metadata`,
+    `[.tbl_df` = get("[.tbl_df", asNamespace("tibble"))
+)
+
+# The fast path calls these brackets without a row subscript, so each one
+# the snapshot reaches must be the original.
+.subset_brackets_registered <- function(classes) {
+    table <- get(".__S3MethodsTable__.", baseenv(), inherits = FALSE)
+    for (name in paste0("[.", classes[seq_len(match("tbl_df", classes))])) {
+        if (!exists(name, envir = table, inherits = FALSE) ||
+            bindingIsActive(name, table) ||
+            !identical(get(name, table, inherits = FALSE),
+                       .subset_original_brackets[[name]])) return(FALSE)
+    }
+    TRUE
+}
+
+# Slicing finds a class's proxy and restore methods in the global
+# environment or the vctrs method table, taking the first class that has
+# one. Each must be the original definition. The metadata wrapper's methods
+# call the methods of the classes beneath it.
+.subset_methods_registered <- function(classes) {
+    if (identical(classes[[1L]], .dta_metadata_vector_class) &&
+        !.subset_methods_registered(classes[-1L])) return(FALSE)
+    table <- get(".__S3MethodsTable__.", asNamespace("vctrs"), inherits = FALSE)
+    for (generic in c("vec_proxy", "vec_restore")) {
+        for (class in classes) {
+            name <- paste0(generic, ".", class)
+            # Neither check calls an active binding's getter.
+            if (exists(name, envir = globalenv(), inherits = FALSE) ||
+                (exists(name, envir = table, inherits = FALSE) &&
+                 bindingIsActive(name, table))) return(FALSE)
+            method <- get0(name, table, inherits = FALSE)
+            if (!identical(method, .subset_original_methods[[name]])) return(FALSE)
+            if (!is.null(method)) break
+        }
+    }
+    TRUE
 }
 
 #' @export

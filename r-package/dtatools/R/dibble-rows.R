@@ -24,9 +24,15 @@
     positions <- which(!native)
     if (length(positions)) {
         remaining <- columns[positions]
-        gathered <- if (identical(fallback, "vctrs"))
+        gathered <- if (!identical(fallback, "base"))
             .Call(C_dtatools_gather_owned_discrete, remaining, locations) else NULL
-        if (!is.null(gathered)) result[positions] <- gathered else {
+        if (!is.null(gathered)) {
+            result[positions] <- gathered
+        } else if (identical(fallback, "columns")) {
+            # The tibble bracket slices each column by itself, so no data
+            # frame proxy or restore method runs.
+            result[positions] <- lapply(remaining, vctrs::vec_slice, locations)
+        } else {
             frame <- vctrs::new_data_frame(remaining,
                                            n = NROW(columns[[positions[[1L]]]]))
             result[positions] <- .plain_data_columns(if (identical(fallback, "base")) {
@@ -188,16 +194,12 @@
     explicit <- intersect(c("x", "i", "j"), names(call))
     for (name in explicit) names(column_call)[match(name, c("", "x", "i", "j", "drop"))] <- name
     selected <- eval(column_call, environment)
-    row_frame <- tibble::new_tibble(list(.row = seq_len(nrow(snapshot))), nrow = nrow(snapshot))
-    attr(row_frame, "row.names") <- .row_names_info(snapshot, 0L)
-    row_plan <- if (supplied_i) row_frame[i, , drop = FALSE] else row_frame
-    locations <- row_plan[[1L]]
-    columns <- if (supplied_i) .gather_dta_columns(.data_columns(selected), locations) else
-        .data_columns(selected)
-    metadata <- attributes(selected)
-    result <- .ungrouped_result_frame(columns, metadata,
-        if (supplied_i) .row_names_info(row_plan, 0L) else
-            .row_names_info(selected, 0L))
+    result <- if (supplied_i) {
+        .reference_tibble_rows(selected, .reference_tibble_row_plan(snapshot, i))
+    } else {
+        .ungrouped_result_frame(.data_columns(selected), attributes(selected),
+                                .row_names_info(selected, 0L))
+    }
     drop <- if (supplied_drop) eval(matched$drop, environment) else FALSE
     result <- result[, , drop = drop]
     if (!is.data.frame(result)) return(result)
@@ -212,6 +214,19 @@
             if (supplied_i) "bracket" else "columns"))
 }
 
+# Tibble's index rules plan the rows `i` selects from a snapshot on one
+# integer column, and the shared gatherer slices every column already
+# `selected` from the snapshot at those locations.
+.reference_tibble_row_plan <- function(snapshot, i) {
+    row_frame <- tibble::new_tibble(list(.row = seq_len(nrow(snapshot))), nrow = nrow(snapshot))
+    attr(row_frame, "row.names") <- .row_names_info(snapshot, 0L)
+    row_frame[i, , drop = FALSE]
+}
+
+.reference_tibble_rows <- function(selected, row_plan, fallback = "vctrs") {
+    columns <- .gather_dta_columns(.data_columns(selected), row_plan[[1L]], fallback)
+    .ungrouped_result_frame(columns, attributes(selected), .row_names_info(row_plan, 0L))
+}
 
 # Base subsetting policy adapted from R 4.6.1 [.data.frame, modified 2026-09-06.
 # Copyright (C) 1998-2025 The R Core Team; Statlib code by John Chambers,

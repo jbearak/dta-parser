@@ -693,6 +693,258 @@ test_that("dataset closure through dplyr", {
     skip_if_not_installed("dplyr", "1.2.1")
     .check_optional_split_dibble_639(TRUE)
 })
+
+test_that("subset() gathers a dibble's rows as base subset() of its snapshot", {
+    data <- read_dta(system.file("extdata", "auto_v118.dta", package = "dtatools"))
+    snapshot <- dtatools:::.reference_snapshot(data)
+    expected <- function(result) dtatools:::.close_dibble(data, result)
+    ns <- asNamespace("dtatools")
+    gathered <- 0L
+    trace(".gather_dta_columns", tracer = function() gathered <<- gathered + 1L,
+          where = ns, print = FALSE)
+    on.exit(untrace(".gather_dta_columns", where = ns), add = TRUE)
+    open <- dtatools:::.reference_snapshot
+
+    expect_identical(open(subset(data, price > 6000)),
+                     open(expected(base::subset(snapshot, price > 6000))))
+    expect_identical(
+        open(subset(data, foreign == 1, select = c(make, price))),
+        open(expected(base::subset(snapshot, foreign == 1, select = c(make, price))))
+    )
+    expect_identical(open(subset(data, price > 6000, drop = FALSE)),
+                     open(expected(base::subset(snapshot, price > 6000, drop = FALSE))))
+    expect_identical(gathered, 3L)
+    # One column dropped to a vector keeps the tibble bracket's result.
+    expect_identical(subset(data, price > 6000, price, drop = TRUE),
+                     base::subset(snapshot, price > 6000, price, drop = TRUE))
+    expect_identical(gathered, 3L)
+    # A row subscript the tibble bracket rejects reports its own error.
+    expect_identical(
+        conditionMessage(expect_error(subset(data, c(TRUE, FALSE)))),
+        conditionMessage(expect_error(base::subset(snapshot, c(TRUE, FALSE))))
+    )
+    # A selector that evaluates to a symbol stays with the next bracket.
+    plain <- dibble(x = 1:3, y = 4:6)
+    expect_identical(
+        open(subset(plain, x > 1, select = quote(x))),
+        open(dtatools:::.close_dibble(plain, base::subset(open(plain), x > 1, select = quote(x))))
+    )
+    expect_identical(
+        conditionMessage(expect_error(subset(data, price > 6000, select = quote(price)))),
+        conditionMessage(expect_error(base::subset(snapshot, price > 6000, select = quote(price))))
+    )
+    # The tibble bracket keeps a `groups` attribute on an ungrouped table.
+    attr(plain, "groups") <- "study groups"
+    expect_identical(attr(subset(plain, x > 1), "groups"), "study groups")
+    expect_identical(gathered, 3L)
+
+    result <- subset(data, price > 6000)
+    result[, price := 0]
+    expect_identical(data$price, snapshot$price)
+})
+
+test_that("subset() drops the attributes Stata restoration drops", {
+    data <- dibble(x = structure(dta_double(c(1, 2, 3)), row_ids = 1:3), y = 1:3)
+    snapshot <- dtatools:::.reference_snapshot(data)
+    # Restoring a sliced Stata column drops the attribute it does not know.
+    expect_warning(actual <- subset(data, y > 1), "row_ids")
+    expect_warning(expected <- base::subset(snapshot, y > 1), "row_ids")
+    expect_identical(dtatools:::.reference_snapshot(actual),
+                     dtatools:::.reference_snapshot(dtatools:::.close_dibble(data, expected)))
+    expect_null(attr(actual$x, "row_ids"))
+})
+
+test_that("subset() leaves custom column methods to the tibble bracket", {
+    if (!.dtatools_child_native(.libPaths())) skip_if_not_installed("callr")
+    observed <- .dtatools_child_r("subset-column-methods", function() {
+        library(dtatools)
+        # Without tibble, base subset() takes the data frame bracket.
+        auto <- read_dta(system.file("extdata", "auto_v118.dta", package = "dtatools"))
+        unloaded <- !isNamespaceLoaded("tibble")
+        failure <- function(expr) tryCatch({ expr; NULL }, error = conditionMessage)
+        base <- list(
+            rows = unclass(subset(auto, price > 6000, select = c(make, price))),
+            error = failure(subset(auto, TRUE, select = 1000)),
+            tibble = isNamespaceLoaded("tibble")
+        )
+        snapshot <- dtatools:::.reference_snapshot(auto)
+        base$expected <- list(
+            rows = unclass(base::subset(snapshot, price > 6000, select = c(make, price))),
+            error = failure(base::subset(snapshot, TRUE, select = 1000))
+        )
+        register <- function(generic, class, method) {
+            registerS3method(generic, class, method, envir = asNamespace("vctrs"))
+        }
+        calls <- 0L
+        armed <- FALSE
+        register("vec_restore", "dtatools_subset_once", function(x, to, ...) {
+            if (!armed) return(vctrs::vec_restore_default(x, to))
+            calls <<- calls + 1L
+            warning("restoring once")
+            stop("restore failed")
+        })
+        register("vec_proxy", "dtatools_subset_noted", function(x, ...) {
+            if (armed) {
+                calls <<- calls + 1L
+                if (calls == 1L) stop("proxy failed once")
+            }
+            attributes(x) <- NULL
+            x
+        })
+        register("vec_restore", "dtatools_subset_relabel", function(x, to, ...) {
+            restore <- get("vec_restore.dta_numeric", asNamespace("dtatools"))
+            result <- restore(x, to)
+            attr(result, "label") <- "restored"
+            class(result) <- class(to)
+            result
+        })
+        noted <- vctrs::new_vctr(c(1, 2, 3), class = "dtatools_subset_noted")
+        attr(noted, "notes") <- "a note"
+        frames <- list(
+            once = dibble(k = vctrs::new_vctr(c(1, 2, 3), class = "dtatools_subset_once"), y = 1:3),
+            noted = dibble(k = noted, y = 1:3),
+            relabel = dibble(k = structure(dta_double(c(1, 2, 3)), class = c(
+                "dtatools_subset_relabel", class(dta_double(1)))), y = 1:3)
+        )
+        # A lazy drop runs after the columns slice, as in the tibble bracket.
+        attempt <- function(data, lazy = FALSE) {
+            calls <<- 0L
+            warnings <- character()
+            armed <<- TRUE
+            on.exit(armed <<- FALSE)
+            value <- withCallingHandlers(
+                tryCatch(attr(if (lazy) subset(data, y > 1, drop = stop("drop failed"))$k
+                              else subset(data, y > 1)$k, "label"), error = conditionMessage),
+                warning = function(condition) {
+                    warnings <<- c(warnings, conditionMessage(condition))
+                    invokeRestart("muffleWarning")
+                }
+            )
+            list(value = value, warnings = warnings, calls = calls)
+        }
+        # Replacing a registered method sends the slice back to vctrs.
+        plain <- dibble(k = dta_double(c(1, 2, 3)), y = 1:3)
+        plain_snapshot <- dtatools:::.reference_snapshot(plain)
+        table <- get(".__S3MethodsTable__.", asNamespace("vctrs"))
+        restore <- get("vec_restore.dta_numeric", table)
+        register("vec_restore", "dta_numeric", function(x, to, ...) {
+            result <- restore(x, to, ...)
+            attr(result, "label") <- "replaced"
+            result
+        })
+        replaced <- list(
+            dibble = attr(subset(plain, y > 1)$k, "label"),
+            snapshot = attr(base::subset(plain_snapshot, y > 1)$k, "label")
+        )
+        assign("vec_restore.dta_numeric", restore, envir = table)
+        # The metadata wrapper's methods reach the string methods beneath it.
+        noted_string <- dibble(s = dta_string(c("a", "b", "c")), y = 1:3)
+        add_dta_note(noted_string, "a note", variable = "s")
+        noted_snapshot <- dtatools:::.reference_snapshot(noted_string)
+        string_restore <- get("vec_restore.dta_string", table)
+        register("vec_restore", "dta_string", function(x, to, ...) {
+            result <- string_restore(x, to, ...)
+            attr(result, "label") <- "replaced"
+            result
+        })
+        replaced$string <- c(attr(subset(noted_string, y > 1)$s, "label"),
+                             attr(base::subset(noted_snapshot, y > 1)$s, "label"))
+        assign("vec_restore.dta_string", string_restore, envir = table)
+        # assignInNamespace() replaces the registered entry along with the binding.
+        original <- get("vec_restore.dta_numeric", asNamespace("dtatools"))
+        utils::assignInNamespace("vec_restore.dta_numeric", function(x, to, ...) {
+            result <- original(x, to, ...)
+            attr(result, "label") <- "assigned"
+            result
+        }, "dtatools")
+        replaced$assigned <- c(attr(subset(plain, y > 1)$k, "label"),
+                               attr(base::subset(plain_snapshot, y > 1)$k, "label"))
+        utils::assignInNamespace("vec_restore.dta_numeric", original, "dtatools")
+        # A replaced tibble bracket sees the row subscript base passes it.
+        bracket <- get("[.tbl_df", asNamespace("tibble"))
+        registerS3method("[", "tbl_df", function(x, i, j, ..., drop = FALSE) {
+            if (!missing(i)) stop("rows refused")
+            bracket(x, , j, drop = drop)
+        }, envir = baseenv())
+        replaced$bracket <- c(failure(subset(plain, y > 1)),
+                              failure(base::subset(plain_snapshot, y > 1)))
+        registerS3method("[", "tbl_df", bracket, envir = baseenv())
+        # The tibble bracket forces a lazy `drop` after slicing the rows.
+        late_drop <- function(data) {
+            on.exit(registerS3method("[", "tbl_df", bracket, envir = baseenv()))
+            failure(subset(data, y > 1, drop = {
+                registerS3method("[", "tbl_df", function(x, ...) stop("bracket replaced"),
+                                 envir = baseenv())
+                FALSE
+            }))
+        }
+        replaced$late_drop <- list(late_drop(plain), late_drop(plain_snapshot))
+        # An active method binding is read as often as slicing reads it.
+        proxy <- get("vec_proxy.dta_numeric", table)
+        reads <- 0L
+        rm("vec_proxy.dta_numeric", envir = table)
+        makeActiveBinding("vec_proxy.dta_numeric", function() {
+            reads <<- reads + 1L
+            proxy
+        }, table)
+        subset(plain, y > 1)
+        replaced$reads <- reads
+        reads <- 0L
+        base::subset(plain_snapshot, y > 1)
+        replaced$reads <- c(replaced$reads, reads)
+        rm("vec_proxy.dta_numeric", envir = table)
+        assign("vec_proxy.dta_numeric", proxy, envir = table)
+        assign("vec_proxy.dta_numeric", function(x, ...) stop("global proxy"), envir = globalenv())
+        replaced$proxy <- c(failure(subset(plain, y > 1)),
+                            failure(base::subset(plain_snapshot, y > 1)))
+        rm("vec_proxy.dta_numeric", envir = globalenv())
+        # The tibble bracket slices each column by itself and never takes a
+        # data frame proxy.
+        strings <- dibble(s = c("a", "b", "c"), t = dta_string(c("x", "y", "z")), y = 1:3)
+        sliced <- function(data) tryCatch({
+            result <- subset(data, y > 1)
+            paste(result$s, as.character(result$t))
+        }, error = conditionMessage)
+        assign("vec_proxy.data.frame", function(x, ...) stop("frame proxy"), envir = globalenv())
+        replaced$frame <- list(sliced(strings), sliced(dtatools:::.reference_snapshot(strings)))
+        rm("vec_proxy.data.frame", envir = globalenv())
+        list(unloaded = unloaded, base = base, replaced = replaced, methods = lapply(frames, function(data) list(
+            dibble = attempt(data),
+            snapshot = attempt(dtatools:::.reference_snapshot(data)),
+            lazy = attempt(data, lazy = TRUE),
+            lazy_snapshot = attempt(dtatools:::.reference_snapshot(data), lazy = TRUE)
+        )))
+    })
+    if (observed$unloaded) {
+        base <- observed$base
+        expect_false(base$tibble)
+        expect_identical(base$error, "undefined columns selected")
+        expect_identical(base$error, base$expected$error)
+        expect_identical(as.double(base$rows$price), as.double(base$expected$rows$price))
+        expect_identical(names(base$rows), names(base$expected$rows))
+    }
+    expect_identical(observed$replaced$dibble, "replaced")
+    expect_identical(observed$replaced$snapshot, "replaced")
+    expect_identical(observed$replaced$proxy, c("global proxy", "global proxy"))
+    expect_identical(observed$replaced$string, c("replaced", "replaced"))
+    expect_identical(observed$replaced$assigned, c("assigned", "assigned"))
+    expect_identical(observed$replaced$bracket, c("rows refused", "rows refused"))
+    expect_identical(observed$replaced$reads[[1L]], observed$replaced$reads[[2L]])
+    expect_identical(observed$replaced$frame, list(c("b y", "c z"), c("b y", "c z")))
+    expect_identical(observed$replaced$late_drop, list(NULL, NULL))
+    observed <- observed$methods
+    for (name in names(observed)) {
+        expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
+        expect_identical(observed[[name]]$lazy, observed[[name]]$lazy_snapshot, info = name)
+    }
+    expect_identical(observed$once$dibble,
+                     list(value = "restore failed", warnings = "restoring once", calls = 1L))
+    expect_identical(observed$noted$dibble,
+                     list(value = "proxy failed once", warnings = character(), calls = 1L))
+    expect_identical(observed$relabel$dibble$value, "restored")
+    expect_identical(observed$once$lazy, observed$once$dibble)
+    expect_identical(observed$relabel$lazy$value, "drop failed")
+})
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)
     data$score <- c(1.5, 2, 3)
