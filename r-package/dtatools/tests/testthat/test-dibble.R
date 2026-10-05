@@ -855,6 +855,30 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         replaced$assigned <- c(attr(subset(plain, y > 1)$k, "label"),
                                attr(base::subset(plain_snapshot, y > 1)$k, "label"))
         utils::assignInNamespace("vec_restore.dta_numeric", original, "dtatools")
+        # A replaced tibble bracket sees the row subscript base passes it.
+        bracket <- get("[.tbl_df", asNamespace("tibble"))
+        registerS3method("[", "tbl_df", function(x, i, j, ..., drop = FALSE) {
+            if (!missing(i)) stop("rows refused")
+            bracket(x, , j, drop = drop)
+        }, envir = baseenv())
+        replaced$bracket <- c(failure(subset(plain, y > 1)),
+                              failure(base::subset(plain_snapshot, y > 1)))
+        registerS3method("[", "tbl_df", bracket, envir = baseenv())
+        # An active method binding is read as often as slicing reads it.
+        proxy <- get("vec_proxy.dta_numeric", table)
+        reads <- 0L
+        rm("vec_proxy.dta_numeric", envir = table)
+        makeActiveBinding("vec_proxy.dta_numeric", function() {
+            reads <<- reads + 1L
+            proxy
+        }, table)
+        subset(plain, y > 1)
+        replaced$reads <- reads
+        reads <- 0L
+        base::subset(plain_snapshot, y > 1)
+        replaced$reads <- c(replaced$reads, reads)
+        rm("vec_proxy.dta_numeric", envir = table)
+        assign("vec_proxy.dta_numeric", proxy, envir = table)
         assign("vec_proxy.dta_numeric", function(x, ...) stop("global proxy"), envir = globalenv())
         replaced$proxy <- c(failure(subset(plain, y > 1)),
                             failure(base::subset(plain_snapshot, y > 1)))
@@ -879,6 +903,8 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     expect_identical(observed$replaced$proxy, c("global proxy", "global proxy"))
     expect_identical(observed$replaced$string, c("replaced", "replaced"))
     expect_identical(observed$replaced$assigned, c("assigned", "assigned"))
+    expect_identical(observed$replaced$bracket, c("rows refused", "rows refused"))
+    expect_identical(observed$replaced$reads[[1L]], observed$replaced$reads[[2L]])
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)

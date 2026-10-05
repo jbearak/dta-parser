@@ -3038,6 +3038,7 @@ subset.dibble <- function(x, ...) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
         !missing(drop) && isNamespaceLoaded("tibble") &&
+        .subset_brackets_registered(class(x)) &&
         .subset_plain_subscripts(x, i, j) &&
         .subset_gathers_columns(.subset(x, .subset_column_positions(x, j))) &&
         identical(drop, FALSE)) {
@@ -3140,6 +3141,28 @@ subset.dibble <- function(x, ...) {
     vec_restore.factor = get("vec_restore.factor", asNamespace("vctrs"))
 )
 
+# The bracket methods base's S3 table gives the snapshot classes, as defined
+# when dtatools was built. Table entries come before the global environment
+# in dispatch from base and package code. Only read once tibble is loaded,
+# since the tibble method's environment is its namespace.
+.subset_original_brackets <- list(
+    `[.dtatools_dta_metadata` = `[.dtatools_dta_metadata`,
+    `[.tbl_df` = get("[.tbl_df", asNamespace("tibble"))
+)
+
+# The fast path calls these brackets without a row subscript, so each one
+# the snapshot reaches must be the original.
+.subset_brackets_registered <- function(classes) {
+    table <- get(".__S3MethodsTable__.", baseenv(), inherits = FALSE)
+    for (name in paste0("[.", classes[seq_len(match("tbl_df", classes))])) {
+        if (!exists(name, envir = table, inherits = FALSE) ||
+            bindingIsActive(name, table) ||
+            !identical(get(name, table, inherits = FALSE),
+                       .subset_original_brackets[[name]])) return(FALSE)
+    }
+    TRUE
+}
+
 # Slicing finds a class's proxy and restore methods in the global
 # environment or the vctrs method table, taking the first class that has
 # one. Each must be the original definition. The metadata wrapper's methods
@@ -3151,8 +3174,10 @@ subset.dibble <- function(x, ...) {
     for (generic in c("vec_proxy", "vec_restore")) {
         for (class in classes) {
             name <- paste0(generic, ".", class)
-            if (!is.null(get0(name, globalenv(), mode = "function", inherits = FALSE)))
-                return(FALSE)
+            # Neither check calls an active binding's getter.
+            if (exists(name, envir = globalenv(), inherits = FALSE) ||
+                (exists(name, envir = table, inherits = FALSE) &&
+                 bindingIsActive(name, table))) return(FALSE)
             method <- get0(name, table, inherits = FALSE)
             if (!identical(method, .subset_original_methods[[name]])) return(FALSE)
             if (!is.null(method)) break
