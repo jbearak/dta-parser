@@ -40,6 +40,11 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `dta_merge()` gathers the result's columns by position rather than
+  looking each one up and appending it by name. On a 16,787-row,
+  5,360-column DHS file, a one-to-one merge that adds one variable falls
+  from 0.34 to 0.13 seconds.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
