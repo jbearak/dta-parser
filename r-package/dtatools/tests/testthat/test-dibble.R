@@ -790,13 +790,15 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
             relabel = dibble(k = structure(dta_double(c(1, 2, 3)), class = c(
                 "dtatools_subset_relabel", class(dta_double(1)))), y = 1:3)
         )
-        attempt <- function(data) {
+        # A lazy drop runs after the columns slice, as in the tibble bracket.
+        attempt <- function(data, lazy = FALSE) {
             calls <<- 0L
             warnings <- character()
             armed <<- TRUE
             on.exit(armed <<- FALSE)
             value <- withCallingHandlers(
-                tryCatch(attr(subset(data, y > 1)$k, "label"), error = conditionMessage),
+                tryCatch(attr(if (lazy) subset(data, y > 1, drop = stop("drop failed"))$k
+                              else subset(data, y > 1)$k, "label"), error = conditionMessage),
                 warning = function(condition) {
                     warnings <<- c(warnings, conditionMessage(condition))
                     invokeRestart("muffleWarning")
@@ -806,7 +808,9 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
         }
         list(unloaded = unloaded, base = base, methods = lapply(frames, function(data) list(
             dibble = attempt(data),
-            snapshot = attempt(dtatools:::.reference_snapshot(data))
+            snapshot = attempt(dtatools:::.reference_snapshot(data)),
+            lazy = attempt(data, lazy = TRUE),
+            lazy_snapshot = attempt(dtatools:::.reference_snapshot(data), lazy = TRUE)
         )))
     })
     if (observed$unloaded) {
@@ -820,12 +824,15 @@ test_that("subset() leaves custom column methods to the tibble bracket", {
     observed <- observed$methods
     for (name in names(observed)) {
         expect_identical(observed[[name]]$dibble, observed[[name]]$snapshot, info = name)
+        expect_identical(observed[[name]]$lazy, observed[[name]]$lazy_snapshot, info = name)
     }
     expect_identical(observed$once$dibble,
                      list(value = "restore failed", warnings = "restoring once", calls = 1L))
     expect_identical(observed$noted$dibble,
                      list(value = "proxy failed once", warnings = character(), calls = 1L))
     expect_identical(observed$relabel$dibble$value, "restored")
+    expect_identical(observed$once$lazy, observed$once$dibble)
+    expect_identical(observed$relabel$lazy$value, "drop failed")
 })
 test_that("replacement operators type their columns and keep the dibble", {
     data <- dibble(id = 1:3)

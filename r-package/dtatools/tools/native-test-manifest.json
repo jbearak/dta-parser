@@ -10862,7 +10862,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble.R",
-          "sha256": "fc976d103359a143007663d6864561469179facb725bb8eadd8b712da0f6047f"
+          "sha256": "c6af8993c54a5a3f943d28ef16119cde0e2e2e8f2a43f10a53a97130b1fdf192"
         },
         {
           "path": "tests/testthat/test-dibble-class.R",

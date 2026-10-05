@@ -3038,8 +3038,8 @@ subset.dibble <- function(x, ...) {
     class(x) <- class(x)[-1L]
     if (nargs() == 4L && ...length() == 0L && !missing(i) && !missing(j) &&
         !missing(drop) && isNamespaceLoaded("tibble") &&
-        .subset_plain_subscripts(x, i, j) && identical(drop, FALSE) &&
-        .subset_gathers_columns(x)) {
+        .subset_plain_subscripts(x, i, j) && .subset_gathers_columns(x) &&
+        identical(drop, FALSE)) {
         selected <- x[, j, drop = FALSE]
         rows <- .reference_tibble_row_plan(x, i)
         return(.reference_tibble_rows(selected, rows)[, , drop = FALSE])
