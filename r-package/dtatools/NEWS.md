@@ -27,6 +27,12 @@
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
 
+* `codebook()` computes each variable's missing mask and distinct-value
+  count once, counts missing codes and categories without formatting every
+  value or calling `table()`, and builds its result tables once. On a
+  16,787-row, 5,360-column DHS file it falls from 36 to 13 seconds, and
+  the compact report from 32 to 10 seconds.
+
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
   to retained compact Arrow numerics reuses the current immutable chunk,
