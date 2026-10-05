@@ -118,6 +118,7 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         formats = character(), empty = logical(), base = logical(), omitted = logical(),
         display = logical(), factor_labels = character(), factor_headers = character())
     group_index <- integer()
+    statistic_variables <- character()
     for (g in seq_along(selected)) {
         variables <- plain_variables
         if (is.null(variables)) {
@@ -131,19 +132,21 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
                 weights = w)
         }
         count <- length(variables$values)
+        rows <- selected[[g]]
+        # A sample of every row in order needs no copy of each variable.
+        whole <- length(rows) == n && identical(rows, seq_len(n))
         for (j in seq_len(count)) {
             value <- variables$values[[j]]
             if (is.character(value)) {
                 if (!is.null(dim(value)))
                     stop("summary inputs must be vectors", call. = FALSE)
             } else .dta_egen_numeric(value)
-            fit <- .summarize_statistics(value[selected[[g]]],
-                w[selected[[g]]], if (weighted) weight else NULL,
+            fit <- .summarize_statistics(if (whole) value else value[rows],
+                w[rows], if (weighted) weight else NULL,
                 detail, meanonly)
             i <- length(result$statistics) + 1L
-            result$statistics[[i]] <- data.frame(
-                variable = variables$names[[j]], as.list(fit$statistics),
-                check.names = FALSE, stringsAsFactors = FALSE)
+            result$statistics[[i]] <- fit$statistics
+            statistic_variables[i] <- variables$names[[j]]
             result$smallest[[i]] <- fit$smallest
             result$largest[[i]] <- fit$largest
             result$r <- fit$r
@@ -159,8 +162,11 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
             group_index[i] <- g
         }
     }
+    # One data frame from the statistic rows, rather than one per variable.
     result$statistics <- if (length(result$statistics)) {
-        do.call(rbind, result$statistics)
+        data.frame(variable = statistic_variables,
+            do.call(rbind, result$statistics),
+            check.names = FALSE, stringsAsFactors = FALSE)
     } else {
         empty <- .summarize_statistics(numeric(), numeric(), NULL, detail, meanonly)
         template <- data.frame(variable = "", as.list(empty$statistics),

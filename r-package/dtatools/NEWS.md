@@ -11,6 +11,12 @@
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
 
+* `summ()` expands long varlists in linear rather than quadratic time,
+  summarizes a full sample without copying each variable, and builds its
+  statistics table once. Summarizing all 5,360 variables of a 16,787-row
+  DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
+  17.5 to 4.4 seconds.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
