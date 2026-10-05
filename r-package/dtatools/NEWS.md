@@ -5,6 +5,11 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `dta_append()` copies each source's rows of a numeric column into the
+  result natively, decoding compact columns in blocks, and no longer copies
+  the whole result column on every write. Appending a 5,360-column file to
+  itself took 8.4 seconds and now takes 5.7.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
