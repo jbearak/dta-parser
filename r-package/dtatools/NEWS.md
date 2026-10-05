@@ -12,6 +12,13 @@
   5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
   milliseconds.
 
+* `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
+  date, or datetime vector compare the packed native key that `dta_match()`
+  uses, rather than formatting each value as text. On 2 million doubles,
+  `unique()` falls from about 2.4 seconds to 0.03 seconds, and `factor()`,
+  `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
+  Results and errors are unchanged.
+
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
@@ -22,6 +29,11 @@
   column of the data. On a 16,787-row, 5,360-column DHS file,
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
+
+* dplyr verbs on wide dibbles set up their data mask in time linear in the
+  number of columns. On a 5,360-column file, `filter()`, `mutate()`,
+  `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
+  now take 0.03 to 0.12 seconds.
 
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
