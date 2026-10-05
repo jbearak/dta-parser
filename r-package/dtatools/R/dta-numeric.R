@@ -932,7 +932,15 @@ sort.dta_numeric <- function(
 duplicated.dta_numeric <- function(
     x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
 ) {
-    key <- .dta_identity_key(x, "numeric", "x")
+    # The packed native key groups values as the text key does, without
+    # formatting each one. Other arguments take the text key, rebuilt from
+    # the packed one so the values are read once.
+    key <- .dta_identity_key(x, "numeric", "x", native = TRUE)
+    if (is.raw(key) && identical(incomparables, FALSE) && identical(fromLast, FALSE) &&
+        identical(nmax, NA) && ...length() == 0L) {
+        return(.dta_identity_duplicated_keys(key))
+    }
+    if (is.raw(key)) key <- .dta_identity_text_key(key)
     incomparable_key <- if (identical(incomparables, FALSE)) {
         FALSE
     } else {
@@ -949,7 +957,12 @@ duplicated.dta_numeric <- function(
 
 #' @export
 anyDuplicated.dta_numeric <- function(x, incomparables = FALSE, ...) {
-    key <- .dta_identity_key(x, "numeric", "x")
+    key <- .dta_identity_key(x, "numeric", "x", native = TRUE)
+    if (is.raw(key) && identical(incomparables, FALSE) && ...length() == 0L &&
+        length(key) %/% 8 <= .Machine$integer.max) {
+        return(match(TRUE, .dta_identity_duplicated_keys(key), nomatch = 0L))
+    }
+    if (is.raw(key)) key <- .dta_identity_text_key(key)
     incomparable_key <- if (identical(incomparables, FALSE)) {
         FALSE
     } else {

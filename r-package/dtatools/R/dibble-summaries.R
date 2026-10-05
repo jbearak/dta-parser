@@ -56,7 +56,7 @@
                         value <- evaluate(quo)
                         if (is.null(value) || !typable) return(value)
                         prior <- function(target) {
-                            if (target %in% names(mask$values()))
+                            if (target %in% mask$helpers$current_vars())
                                 mask$helpers$current_cols(target)[[target]] else NULL
                         }
                         if (is.data.frame(value)) {

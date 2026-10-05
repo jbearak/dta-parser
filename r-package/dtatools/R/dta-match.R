@@ -404,6 +404,25 @@ mtfrm.dta_temporal <- function(x) {
     duplicated(x)
 }
 
+# The text key `.dta_identity_key()` builds for numeric values, recovered
+# from the packed key. A packed key holds an observed value's bits, with -0
+# as 0, or a quiet NaN whose low word is the missing code. Observed values
+# are finite, so their high word never matches the NaN's.
+.dta_identity_text_key <- function(packed) {
+    count <- length(packed) %/% 8L
+    values <- readBin(packed, "double", n = count, size = 8L, endian = .Platform$endian)
+    words <- matrix(readBin(packed, "integer", n = 2L * count, size = 4L,
+        endian = .Platform$endian), nrow = 2L)
+    little <- identical(.Platform$endian, "little")
+    low <- words[if (little) 1L else 2L, ]
+    high <- words[if (little) 2L else 1L, ]
+    missing <- !is.na(high) & high == 2146959360L
+    key <- character(count)
+    key[!missing] <- paste0("n:", sprintf("%a", values[!missing]))
+    key[missing] <- paste0("m:", low[missing])
+    key
+}
+
 .dta_identity_native_class <- function(x) {
     !isS4(x) && all(class(x) %in% c(
         "NULL", "logical", "integer", "numeric", "double", "dta_numeric",
