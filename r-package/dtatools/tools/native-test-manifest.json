@@ -15594,7 +15594,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "18da4113751a3a836af58c6d1c9f0d0bc480832ada59a9a746a1102724751c30"
+          "sha256": "8700f6f0f0dae3bb7bcc3747d09fe373b1e4749af3ca94beb4e5aaf9bac4c32d"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15764,6 +15764,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook reports a value-label set without mappings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         },
         {

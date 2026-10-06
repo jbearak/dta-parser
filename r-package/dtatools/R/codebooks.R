@@ -42,7 +42,7 @@ labelbook <- function(data, ..., .tables = NULL,
         labels = labels, variable = NA_character_, position = NA_integer_
     )))
     for (table in names(input$registry)[!registry_ok]) {
-        diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
+        diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
             "malformed_value_labels", "table", table,
             message = "Value-label registry entry cannot be interpreted safely"
         )
@@ -54,13 +54,12 @@ labelbook <- function(data, ..., .tables = NULL,
         explicit <- attr(column, "value.label.name", exact = TRUE)
         if (is.null(labels) && is.null(explicit)) next
         table <- if (is.null(explicit)) names(data)[[position]] else explicit
-        assignments[[length(assignments) + 1L]] <- data.frame(
+        assignments[[length(assignments) + 1L]] <- list(
             table = if (.book_scalar_text(table)) table else NA_character_,
-            variable = names(data)[[position]], position = position,
-            stringsAsFactors = FALSE
+            variable = names(data)[[position]], position = position
         )
         if (!.book_scalar_text(table)) {
-            diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
+            diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
                 "invalid_table_name", "variable", table = NA_character_,
                 variable = names(data)[[position]], position = position,
                 message = "Variable has an invalid value-label table reference"
@@ -68,7 +67,7 @@ labelbook <- function(data, ..., .tables = NULL,
             next
         }
         if (!.labelbook_shape_ok(labels)) {
-            diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
+            diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
                 "malformed_value_labels", "variable", table, names(data)[[position]],
                 position, message = "Value-label metadata cannot be interpreted safely"
             )
@@ -102,7 +101,7 @@ labelbook <- function(data, ..., .tables = NULL,
         keys <- vapply(variants, function(x) .book_mapping_signature(x$labels), "")
         malformed <- length(unique(keys)) > 1L
         if (malformed) {
-            diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
+            diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
                 "inconsistent_resolved_mappings", "table", table,
                 message = paste0("Variables assigned to `", table,
                                  "` carry different resolved mappings"),
@@ -116,24 +115,27 @@ labelbook <- function(data, ..., .tables = NULL,
             next
         }
         labels <- variants[[1L]]$labels
-        info <- .labelbook_mapping_frame(table, labels, order)
-        mapping_rows[[length(mapping_rows) + 1L]] <- info
+        codes <- .book_codes(labels)
+        mapping_rows[[length(mapping_rows) + 1L]] <- .labelbook_mapping_rows(
+            table, labels, order, codes
+        )
         table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
-            table, labels, length, malformed = FALSE
+            table, labels, length, malformed = FALSE, codes = codes
         )
         diagnostics <- c(diagnostics, .labelbook_diagnostics(
             table, labels, length,
-            variables = stats::na.omit(vapply(variants, `[[`, "", "variable"))
+            variables = stats::na.omit(vapply(variants, `[[`, "", "variable")),
+            codes = codes
         ))
     }
 
-    assignments <- .book_bind(assignments, .labelbook_assignments())
+    assignments <- .book_rows(assignments, .labelbook_assignments())
     assignments <- assignments[assignments$table %in% selected, , drop = FALSE]
     result <- structure(list(
-        tables = .book_bind(table_rows, .labelbook_tables()),
-        mappings = .book_bind(mapping_rows, .labelbook_mappings()),
+        tables = .book_rows(table_rows, .labelbook_tables()),
+        mappings = .book_rows(mapping_rows, .labelbook_mappings()),
         assignments = assignments,
-        diagnostics = .book_bind(diagnostics, .book_diagnostics()),
+        diagnostics = .book_diag_rows(diagnostics),
         options = list(order = order, length = length, list_limit = list_limit,
                        problems = problems, detail = detail),
         source = input$source
@@ -165,50 +167,54 @@ labelbook <- function(data, ..., .tables = NULL,
     stringsAsFactors = FALSE
 )
 
-.labelbook_table_row <- function(table, labels, compare_length, malformed) {
-    if (is.null(labels)) return(data.frame(
-        table, mapping_count = NA_integer_, minimum = NA_real_, maximum = NA_real_,
+# A table's summary row for .book_rows(). `codes` is .book_codes(labels).
+.labelbook_table_row <- function(table, labels, compare_length, malformed,
+                                 codes = .book_codes(labels)) {
+    if (is.null(labels)) return(list(
+        table = table, mapping_count = NA_integer_, minimum = NA_real_, maximum = NA_real_,
         missing_mapping_count = NA_integer_, minimum_text_length = NA_integer_,
         maximum_text_length = NA_integer_, unique_full = NA, unique_truncated = NA,
-        malformed = TRUE, stringsAsFactors = FALSE
+        malformed = TRUE
     ))
-    codes <- .book_codes(labels)
     ordinary <- is.na(codes$missing_code)
     text_length <- nchar(enc2utf8(names(labels)), type = "chars")
     range <- if (any(ordinary)) range(as.double(labels[ordinary])) else c(NA, NA)
-    data.frame(
-        table, mapping_count = length(labels), minimum = range[[1L]],
+    list(
+        table = table, mapping_count = length(labels), minimum = range[[1L]],
         maximum = range[[2L]], missing_mapping_count = sum(!ordinary),
         minimum_text_length = if (length(text_length)) min(text_length) else NA_integer_,
         maximum_text_length = if (length(text_length)) max(text_length) else NA_integer_,
         unique_full = !anyDuplicated(names(labels)),
         unique_truncated = !anyDuplicated(substr(names(labels), 1L, compare_length)),
-        malformed, stringsAsFactors = FALSE
+        malformed = malformed
     )
 }
 
-.labelbook_mapping_frame <- function(table, labels, order) {
-    codes <- .book_codes(labels)
-    result <- data.frame(
-        table, source_position = seq_along(labels), code = as.double(labels),
-        missing_code = codes$missing_code, code_text = codes$text,
-        text = names(labels), stringsAsFactors = FALSE
+# A table's mapping rows for .book_rows(), in report order, or NULL for a
+# table without mappings, which leaves the typed empty frame when no table
+# has any.
+.labelbook_mapping_rows <- function(table, labels, order, codes = .book_codes(labels)) {
+    if (!length(labels)) return(NULL)
+    result <- list(
+        table = rep(table, length(labels)), source_position = seq_along(labels),
+        code = as.double(labels), missing_code = codes$missing_code,
+        code_text = codes$text, text = names(labels)
     )
     index <- switch(order,
-        definition = seq_len(nrow(result)),
+        definition = seq_along(labels),
         alpha = order(enc2utf8(result$text), result$source_position, method = "radix"),
         value = order(codes$rank, result$code, result$source_position, na.last = TRUE,
                       method = "radix")
     )
-    result[index, , drop = FALSE]
+    lapply(result, `[`, index)
 }
 
-.labelbook_diagnostics <- function(table, labels, compare_length, variables) {
+.labelbook_diagnostics <- function(table, labels, compare_length, variables,
+                                   codes = .book_codes(labels)) {
     result <- list()
-    codes <- .book_codes(labels)
     ordinary <- as.double(labels[is.na(codes$missing_code)])
     add <- function(code, condition, message, details = list()) {
-        if (condition) result[[length(result) + 1L]] <<- .book_diag(
+        if (condition) result[[length(result) + 1L]] <<- .book_diag_fields(
             code, "table", table, message = message,
             details = list(c(list(variables = variables), details))
         )
@@ -743,6 +749,28 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
                        position = NA_integer_, severity = "problem", details = list(), message) {
     data.frame(code, scope, table, variable, position = as.integer(position), severity,
                details = I(list(details)), message, stringsAsFactors = FALSE)
+}
+
+# One diagnostic row for .book_diag_rows(): the fields of .book_diag().
+.book_diag_fields <- function(code, scope, table = NA_character_, variable = NA_character_,
+                              position = NA_integer_, severity = "problem",
+                              details = list(), message) {
+    list(code = code, scope = scope, table = table, variable = variable,
+         position = as.integer(position), severity = severity,
+         details = details, message = message)
+}
+
+# Diagnostic rows given as .book_diag_fields() lists, combined into the
+# frame that binding one .book_diag() frame per row gives.
+.book_diag_rows <- function(rows) {
+    if (!length(rows)) return(.book_diagnostics())
+    fields <- names(rows[[1L]])
+    columns <- lapply(seq_along(fields), function(j) {
+        values <- lapply(unname(rows), .subset2, j)
+        if (identical(fields[[j]], "details")) I(values) else unlist(values, use.names = FALSE)
+    })
+    names(columns) <- fields
+    structure(columns, row.names = .set_row_names(length(rows)), class = "data.frame")
 }
 
 .book_row_diag <- function(code, message, rows, limit) {
