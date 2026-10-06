@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
+  `transform()`, `within()`, `group_modify()`, `summarise()`, and
+  `reframe()`, match the result's column names to the prior columns in
+  one pass, rather than scanning the names once per column. On a
+  5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
+  milliseconds.
+
 * `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
   date, or datetime vector compare the packed native key that `dta_match()`
   uses, rather than formatting each value as text. On 2 million doubles,
@@ -24,10 +31,23 @@
 * `unique()` on a dibble no longer reads a column named `x` or `fromLast`
   in place of its own argument. It deduplicated by that column alone.
 
+* `mean()` and `range()` on a Stata numeric compare each base R closure
+  they depend on once per call, rather than once for every binding that
+  holds it, when they check that base dispatch is unchanged. A `mean()` of
+  20 values falls from 161 to 44 microseconds. Over 10,000 groups of
+  100,000 rows, `gen(d, z = mean(x), by = g)` falls from 2.9 to 1.5 seconds,
+  and grouped `summarise()` and `mutate()` with `mean()` from 5.2 to 3.5
+  seconds.
+
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
   about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
+
+* `[` and `head()` on a dibble with Stata metadata check each column's
+  notes and characteristics without a function call per attribute name.
+  On a 16,787-row, 5,360-column DHS file, `head(d, 10)` falls from about
+  67 to 53 milliseconds.
 
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
@@ -54,6 +74,10 @@
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
   now take 0.03 to 0.12 seconds.
 
+* `mutate()` on a dibble reads only the prior values each new column uses,
+  rather than every column's value once per new column. On a 5,360-column
+  file, `mutate(d, across(1:1000, ~ .x))` falls from 2.9 to 0.25 seconds.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
@@ -73,6 +97,11 @@
   statistics table once. Summarizing all 5,360 variables of a 16,787-row
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
+
+* `dta_merge()` gathers the result's columns by position rather than
+  looking each one up and appending it by name. On a 16,787-row,
+  5,360-column DHS file, a one-to-one merge that adds one variable falls
+  from 0.34 to 0.13 seconds.
 
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
@@ -96,6 +125,16 @@
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
+
+* `codebook()` copies a numeric variable's observed values out of compact
+  storage once, so its statistics no longer decode every value on each
+  pass. It groups a labelled variable's values once for both the value and
+  label columns of its tabulation, checks a string variable's blanks and
+  width on its distinct strings, and builds its example rows without a
+  data frame per variable. On 1,000,000 rows of 38 synthetic variables it
+  falls from 5.2 to 3.5 seconds, on 1,007,220 rows of 100 DHS variables
+  from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
+  8.3 to 6.7 seconds.
 
 * `codebook()` finds each numeric variable's distinct values once and
   shares them, and its observed values, with the problem checks. It counts
@@ -167,6 +206,10 @@
   instead of appended, with the same column-name spellings `egen()` accepts.
   A call that names both, or names a column that does not exist, changes
   nothing.
+* `tab()` builds the categories of an unlabelled numeric variable from its
+  distinct values, formatting each distinct value once rather than every
+  observation. On 1,000,000 rows, a one-way table falls from 0.27 to 0.08
+  seconds and a two-way table from 0.47 to 0.08 seconds.
 * `tab()` prints as Stata prints `tabulate`: a one-way table with
   frequency, percent, cumulative percent, and a total; a two-way table
   with row and column totals. New arguments carry `tabulate`'s options:

@@ -1807,7 +1807,7 @@
         },
         {
           "path": "tests/testthat/test-column-typing.R",
-          "sha256": "e16d8d14efda3df0065dd01325cfa2d7a670a8ee9a6c6af92f63ddc4e0238fb0"
+          "sha256": "5cac1351cd23bce6e7c7c828afecbe94adac2e539b73e10dcb9e0a22c0c4eeb1"
         },
         {
           "path": "tests/testthat/test-owned-finite-double.R",
@@ -4199,6 +4199,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-column-typing.R",
+          "test": "retyping finds each prior column as `[[` does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         },
         {
           "file": "test-owned-finite-double.R",
@@ -13157,7 +13165,7 @@
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
-          "sha256": "57aee84481a9f2a49e781ec45c050c8ed38a5ec59107eb7e6aec49ccc7e50cad"
+          "sha256": "c2b17d74985680ad22e34e16a5172311b254db9d59f82993f55eab3f805a7548"
         },
         {
           "path": "tests/testthat/test-mask-reader-callbacks.R",
@@ -15686,11 +15694,11 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "9664d6b315ed492706cf65a5630c7f02bb71c3ebeb9bd0874ea0a7a245372a78"
+          "sha256": "bba6a95c6829bcbd80e9d4f5a96fc0076c991a2d71084f9c5ac3150d72b3970f"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "8700f6f0f0dae3bb7bcc3747d09fe373b1e4749af3ca94beb4e5aaf9bac4c32d"
+          "sha256": "9061164351b16d955a30d0675b27fb1c5971894ed2b724039105ff2e82cf1e9c"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15860,6 +15868,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook string checks read equal strings alike",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -16434,6 +16450,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab.R",
+          "test": "unlabelled numeric categories are the factor() of the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
           "warnings": 0
         },
         {
