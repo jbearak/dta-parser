@@ -193,7 +193,6 @@ dta_storage_type <- function(x) {
 .metadata_state$dependencies <- NULL
 
 .dta_storage <- c("byte", "int", "long", "float", "double")
-.dta_storage_classes <- paste0("dta_", .dta_storage)
 
 .dta_temporal_none <- 0L
 .dta_temporal_date <- 1L
@@ -539,7 +538,8 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_classes_from <- function(prototype, storage) {
     classes <- class(prototype)
-    location <- classes %in% .dta_storage_classes
+    storage_classes <- paste0("dta_", .dta_storage)
+    location <- classes %in% storage_classes
     if (any(location)) {
         classes[location] <- paste0("dta_", storage)
         return(classes)

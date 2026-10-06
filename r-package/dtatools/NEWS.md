@@ -9,8 +9,8 @@
   or combines it matches the attribute names directly, rather than through
   `setdiff()` and `intersect()`, which check their arguments on every call.
   `vctrs::vec_slice()` on one column takes about half as long. On a
-  16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.22 to
-  0.15 seconds and `dta_append(list(d, d))` from about 1.9 to 1.5 seconds.
+  16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
+  0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
   Results and warnings are unchanged.
 
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
