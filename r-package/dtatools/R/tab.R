@@ -454,10 +454,23 @@ as.table.dta_tab <- function(x, ...) {
     labels
 }
 
+# Several displays give a list of factors, named by display, that share
+# one grouping of the values.
 .tab_factor <- function(value, labels, missing, display, restore_to,
                         drop_unused) {
     seeds <- if (drop_unused) NULL else labels
     grouped <- .factorize_numeric(value, seeds, missing)
+    if (length(display) == 1L) {
+        return(.tab_grouped_factor(grouped, labels, display, restore_to))
+    }
+    factors <- lapply(display, function(one) {
+        .tab_grouped_factor(grouped, labels, one, restore_to)
+    })
+    names(factors) <- display
+    factors
+}
+
+.tab_grouped_factor <- function(grouped, labels, display, restore_to) {
     factor_codes <- grouped$codes
     observed_values <- grouped$values
     observed_missing_codes <- grouped$missing_codes

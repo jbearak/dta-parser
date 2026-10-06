@@ -106,6 +106,16 @@
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
 
+* `codebook()` copies a numeric variable's observed values out of compact
+  storage once, so its statistics no longer decode every value on each
+  pass. It groups a labelled variable's values once for both the value and
+  label columns of its tabulation, checks a string variable's blanks and
+  width on its distinct strings, and builds its example rows without a
+  data frame per variable. On 1,000,000 rows of 38 synthetic variables it
+  falls from 5.2 to 3.5 seconds, on 1,007,220 rows of 100 DHS variables
+  from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
+  8.3 to 6.7 seconds.
+
 * `codebook()` finds each numeric variable's distinct values once and
   shares them, and its observed values, with the problem checks. It counts
   NaNs in a Stata numeric variable from its plain values, without building
