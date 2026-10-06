@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
+  `transform()`, `within()`, `group_modify()`, `summarise()`, and
+  `reframe()`, match the result's column names to the prior columns in
+  one pass, rather than scanning the names once per column. On a
+  5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
+  milliseconds.
+
 * `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
   date, or datetime vector compare the packed native key that `dta_match()`
   uses, rather than formatting each value as text. On 2 million doubles,
