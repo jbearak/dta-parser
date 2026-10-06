@@ -606,11 +606,11 @@ test_that("a compact buffer copies compact sources of its kind as bytes", {
     byte <- match("byte", dtatools:::.dta_storage) - 1L
     buffer <- .Call(dtatools:::C_dtatools_append_compact_buffer, byte, 6L)
     expect_identical(bits(.Call(decode, buffer, byte)), bits(rep(NA_real_, 6L)))
-    values <- dta_byte(c(1, tagged_missing("b"), NA, -1))
+    values <- as.double(dta_byte(c(1, tagged_missing("b"), NA, -1)))
     expect_true(.Call(writer, buffer, 1L, 4L, values, byte))
     expect_identical(
         bits(.Call(decode, buffer, byte)),
-        bits(c(NA_real_, as.double(values), NA_real_))
+        bits(c(NA_real_, values, NA_real_))
     )
 
     # Declined writes leave the buffer for the double path, unchanged.
@@ -621,14 +621,23 @@ test_that("a compact buffer copies compact sources of its kind as bytes", {
     expect_false(.Call(writer, buffer, 3L, 4L, values, byte))
     expect_false(.Call(writer, buffer, 0L, 3L, values, byte))
     expect_false(.Call(writer, buffer, NA_integer_, 4L, values, byte))
-    expect_false(.Call(writer, buffer, 0L, 4L, dta_int(c(1, 2, 3, 4)), byte))
+    expect_false(.Call(writer, buffer, 0L, 4L, as.double(dta_int(c(1, 2, 3, 4))), byte))
     expect_false(.Call(writer, buffer, 0L, 4L, c(1, 2, 3, 4), byte))
+    # Doubles written through a pointer no longer read from the bytes.
+    changed <- as.double(dta_byte(c(1, 2, 3, 4)))
+    changed[[1L]] <- 5
+    expect_false(.Call(writer, buffer, 0L, 4L, changed, byte))
     expect_identical(buffer, untouched)
 })
 
 test_that("a compact append column is the column its doubles construct", {
     facts <- function(x) .Call(dtatools:::C_dtatools_numeric_facts_info, x)
     writer <- dtatools:::C_dtatools_append_write_compact
+    finish <- function(buffer, storage, prototype) {
+        attr(buffer, "dtatools.buffer") <- if (is.raw(buffer)) "compact" else "numeric"
+        attr(buffer, "dtatools.storage") <- storage
+        dtatools:::.append_finish_buffer(buffer, prototype)
+    }
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     on.exit(unlink(path), add = TRUE)
     data <- read_dta(path)
@@ -649,25 +658,15 @@ test_that("a compact append column is the column its doubles construct", {
                         sum(rows) + 2L)
         for (i in seq_along(sources)) {
             expect_true(.Call(writer, buffer, offsets[[i]], rows[[i]],
-                              sources[[i]], kind))
+                              as.double(sources[[i]]), kind))
         }
-        column <- .Call(dtatools:::C_dtatools_append_compact_finish, buffer, kind)
         doubles <- .Call(dtatools:::C_dtatools_append_compact_doubles, buffer, kind)
-        expected <- .Call(dtatools:::C_dtatools_construct_numeric, doubles, kind, 0L)
+        column <- finish(buffer, storage, data[[name]])
+        expected <- finish(doubles, storage, data[[name]])
         # Reading the facts first: writing the values out materializes them.
         expect_identical(facts(column), facts(expected), info = name)
         expect_identical(serialize(column, NULL), serialize(expected, NULL))
         expect_identical(writeBin(as.double(column), raw()), writeBin(doubles, raw()))
-
-        compact <- buffer
-        attr(compact, "dtatools.buffer") <- "compact"
-        attr(compact, "dtatools.storage") <- storage
-        attr(doubles, "dtatools.buffer") <- "numeric"
-        attr(doubles, "dtatools.storage") <- storage
-        expect_identical(
-            serialize(dtatools:::.append_finish_buffer(compact, data[[name]]), NULL),
-            serialize(dtatools:::.append_finish_buffer(doubles, data[[name]]), NULL)
-        )
     }
 
     # A subclass converts to doubles by its own method, so its source
@@ -680,11 +679,42 @@ test_that("a compact append column is the column its doubles construct", {
         }
         registerS3method("as.double", "shifted_byte", as.double.shifted_byte)
     })
-    expect_false(dtatools:::.append_compact_source(shifted))
-    expect_true(dtatools:::.append_compact_source(data$x_byte))
     expect_identical(as.double(shifted), c(11, 12))
     result <- dta_append(list(tibble::tibble(v = shifted), tibble::tibble(v = shifted)))
     expect_identical(as.double(result$v), c(11, 12, 11, 12))
+
+    # So does a source whose conversion method was replaced.
+    result <- local({
+        local_mocked_bindings(
+            as.double.dta_numeric = function(x, ...) {
+                as.double(dtatools:::.dta_snapshot(x)) + 10
+            },
+            .package = "dtatools"
+        )
+        dta_append(list(tibble::tibble(v = dta_byte(c(1, 2))),
+                        tibble::tibble(v = dta_byte(c(3, NA)))))
+    })
+    expect_identical(as.double(result$v), c(11, 12, 13, NA))
+
+    # A traced conversion method runs once for each source on both paths.
+    counts <- vapply(list(dta_byte, dta_double), function(construct) {
+        counter <- new.env()
+        counter$n <- 0L
+        suppressMessages(trace(
+            "as.double.dta_numeric", where = asNamespace("dtatools"),
+            tracer = bquote(assign("n", .(counter)$n + 1L, envir = .(counter))),
+            print = FALSE
+        ))
+        on.exit(suppressMessages(untrace(
+            "as.double.dta_numeric", where = asNamespace("dtatools")
+        )))
+        result <- dta_append(list(tibble::tibble(v = construct(c(1, 2))),
+                                  tibble::tibble(v = construct(c(3, NA)))))
+        expect_identical(as.double(result$v), c(1, 2, 3, NA))
+        counter$n
+    }, integer(1))
+    expect_identical(counts[[1L]], counts[[2L]])
+    expect_gte(counts[[1L]], 2L)
 
     # A source of another kind turns the buffer into doubles part way.
     mixed <- dibble(x_int = dta_int(c(7, tagged_missing("a"))),

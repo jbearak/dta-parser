@@ -6229,7 +6229,7 @@
         },
         {
           "path": "tests/testthat/test-constructor-region-inputs.R",
-          "sha256": "532b836e7d6147eaa601f4ee68fe6b3cd53709f73107b0b6e7b7f60656f5ea16"
+          "sha256": "64b285bb6d5cf5b5f61f7fc6c87c68919c2a730cbf8da9966a3b79ed6153c3f2"
         }
       ],
       "blocks": [
@@ -8104,6 +8104,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-constructor-region-inputs.R",
+          "test": "compact input of the requested storage builds the column its doubles build",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 62,
           "warnings": 0
         }
       ],
@@ -14306,7 +14314,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "1d4191e9beabdcee8b227f08e82f08937c5d280e5bc368019177545dd43270a6"
+          "sha256": "d918140e34f43cca0904ece2ab663e682b7d3ec3961474c8c40c72606b47502a"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -14874,7 +14882,7 @@
           "test": "a compact buffer copies compact sources of its kind as bytes",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 10,
+          "min_pass": 11,
           "warnings": 0
         },
         {
@@ -14882,7 +14890,7 @@
           "test": "a compact append column is the column its doubles construct",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 36,
+          "min_pass": 35,
           "warnings": 0
         },
         {

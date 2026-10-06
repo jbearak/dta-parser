@@ -606,18 +606,19 @@ dta_append <- function(sources, force = TRUE,
                         # the whole column on every source instead of
                         # writing the destination range in place.
                         buffers[plan_index] <- list(NULL)
+                        values <- .append_buffer_values(writable)
                         kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
-                        # A compact buffer takes the source's bytes when
-                        # the source is compact storage of the same kind.
-                        # Otherwise it becomes the double buffer it
+                        # A compact buffer takes the bytes behind the
+                        # values when they are compact storage of the same
+                        # kind. Otherwise it becomes the double buffer it
                         # stands for, and this and later sources write
                         # doubles. The calls must stay direct, as below.
                         if (identical(kind, "compact")) {
                             storage <- attr(buffer, "dtatools.storage", exact = TRUE)
-                            if (.append_compact_source(writable) &&
-                                .Call(C_dtatools_append_write_compact, buffer,
-                                      offsets[[my_index]], rows, writable,
+                            if (.Call(C_dtatools_append_write_compact, buffer,
+                                      offsets[[my_index]], rows, values,
                                       match(storage, .dta_storage) - 1L)) {
+                                rm(values)
                                 buffers[[plan_index]] <- buffer
                                 next
                             }
@@ -626,7 +627,6 @@ dta_append <- function(sources, force = TRUE,
                             attr(buffer, "dtatools.buffer") <- "numeric"
                             attr(buffer, "dtatools.storage") <- storage
                         }
-                        values <- .append_buffer_values(writable)
                         # A numeric range is copied natively, decoding a
                         # compact source in blocks; `[<-` reads it one
                         # element at a time. The call must stay direct:
@@ -775,21 +775,6 @@ dta_append <- function(sources, force = TRUE,
     ))
 }
 
-# Whether a source's doubles are its stored values, so a compact buffer
-# can take its bytes. `as.double()` reaches dtatools' own method for a
-# plain or labelled Stata numeric class; a subclass may convert otherwise.
-.append_compact_source <- function(value) {
-    storage <- .declared_dta_storage(value)
-    if (!is.character(storage) || length(storage) != 1L ||
-        !storage %in% .dta_storage) {
-        return(FALSE)
-    }
-    plain <- .dta_storage_class(storage)
-    classes <- class(value)
-    identical(classes, plain) ||
-        identical(classes, append(plain, "haven_labelled", after = 2L))
-}
-
 .append_buffer_values <- function(value) {
     if (is.character(value)) as.character(value) else as.double(value)
 }
@@ -797,20 +782,12 @@ dta_append <- function(sources, force = TRUE,
 .append_finish_buffer <- function(buffer, prototype) {
     kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
     storage <- attr(buffer, "dtatools.storage", exact = TRUE)
-    if (identical(kind, "compact")) {
-        code <- match(storage, .dta_storage) - 1L
-        # The column .construct_dta_numeric() builds from these values, or
-        # NULL when it would reject them, which decoding then reports.
-        result <- .Call(C_dtatools_append_compact_finish, buffer, code)
-        if (!is.null(result)) {
-            attr(result, "stata.storage") <- storage
-            attr(result, "class") <- .dta_storage_class(storage)
-            names(result) <- NULL
-            return(.restore_dta_variable_metadata(result, prototype, names = NULL))
-        }
-        buffer <- .Call(C_dtatools_append_compact_doubles, buffer, code)
-    }
     attributes(buffer) <- NULL
+    if (identical(kind, "compact")) {
+        # The constructor reads the bytes as the doubles they stand for.
+        buffer <- .Call(C_dtatools_append_compact_values, buffer,
+                        match(storage, .dta_storage) - 1L)
+    }
     if (identical(kind, "string")) return(vctrs::vec_cast(buffer, prototype))
     .restore_dta_variable_metadata(
         .construct_dta_numeric(buffer, NULL, storage), prototype,

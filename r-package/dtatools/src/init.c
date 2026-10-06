@@ -51,7 +51,7 @@ SEXP C_dtatools_append_write_doubles(SEXP buffer, SEXP offset, SEXP rows, SEXP v
 SEXP C_dtatools_append_compact_buffer(SEXP kind, SEXP rows);
 SEXP C_dtatools_append_write_compact(SEXP buffer, SEXP offset, SEXP rows, SEXP value, SEXP kind);
 SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind);
-SEXP C_dtatools_append_compact_finish(SEXP buffer, SEXP kind);
+SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind);
 SEXP C_dtatools_summary_scan_supported(SEXP value);
 SEXP C_dtatools_numeric_identity_key(SEXP values, SEXP argument);
 SEXP C_dtatools_identity_parts(SEXP values);
@@ -192,7 +192,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_append_compact_buffer", (DL_FUNC) &C_dtatools_append_compact_buffer, 2},
     {"C_dtatools_append_write_compact", (DL_FUNC) &C_dtatools_append_write_compact, 5},
     {"C_dtatools_append_compact_doubles", (DL_FUNC) &C_dtatools_append_compact_doubles, 2},
-    {"C_dtatools_append_compact_finish", (DL_FUNC) &C_dtatools_append_compact_finish, 2},
+    {"C_dtatools_append_compact_values", (DL_FUNC) &C_dtatools_append_compact_values, 2},
     {"C_dtatools_summary_scan_supported", (DL_FUNC) &C_dtatools_summary_scan_supported, 1},
     {"C_dtatools_numeric_identity_key", (DL_FUNC) &C_dtatools_numeric_identity_key, 2},
     {"C_dtatools_identity_parts", (DL_FUNC) &C_dtatools_identity_parts, 1},
