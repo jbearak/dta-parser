@@ -348,6 +348,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_write_string_plan, 1},
     {"C_dtatools_ephemeral_altstring",
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
+    {"C_dtatools_numeric_values_fit",
+     (DL_FUNC) &C_dtatools_numeric_values_fit, 2},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
     {"C_dtatools_try_mask_bindings",
