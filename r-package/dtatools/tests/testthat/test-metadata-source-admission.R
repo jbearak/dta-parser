@@ -93,7 +93,9 @@ test_that("attribute planning keeps active source reads after original callbacks
              values = if (inherits(result, "error")) NULL else as.double(result$y),
              source = as.double(data$x))
     }, args = list(.libPaths()), timeout = 20)
-    expect_identical(observed$events, c("setdiff", "source", "source", "source"))
+    # Planning matches attribute names without setdiff(), so no set operation
+    # runs before it reads the active `source` for its names and its values.
+    expect_identical(observed$events, c("source", "source"))
     expect_null(observed$error)
     expect_identical(observed$values, c(2, 3))
     expect_identical(observed$source, c(1, 2))

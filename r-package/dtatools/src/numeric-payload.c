@@ -5741,9 +5741,9 @@ int dtatools_numeric_entry_frame_admitted(SEXP frame, unsigned route) {
     return admitted;
 }
 
-/* Attribute shortcuts skip the same base set operations, including their
+/* Generation shortcuts skip base set operations, including their
    character-vector dispatch. Share one nonforcing admission check with the
-   combiner, which would otherwise bypass those calls through restoration. */
+   combiner, which would otherwise bypass the helpers restoration reaches. */
 int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int generation) {
     static const char *function_names[] = {
         "intersect", "setdiff", "startsWith", ".set_ops_need_as_vector",
@@ -5754,11 +5754,13 @@ int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int 
         "!", ">", "any", "class"
     };
     /* 1 = attribute planning, 2 = generation. Compiled operations may settle
-       a binding even when they bypass its executable tracer. Only generation
-       reaches the final four names on these canonical metadata inputs. */
+       a binding even when they bypass its executable tracer. Planning matches
+       attribute names with %in% and reaches none of the set operations or the
+       helpers only they call. Only generation reaches the final four names on
+       these canonical metadata inputs. */
     static const unsigned routes[] = {
-        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 3,
-        3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 3, 2, 2, 1, 2,
+        3, 2, 3, 2, 2, 3, 2, 3, 2, 2, 2, 2, 2
     };
     if (!combine_plain_environment(frame) || TYPEOF(dependencies) != VECSXP ||
         ALTREP(dependencies) || Rf_isObject(dependencies) || Rf_isS4(dependencies) ||
@@ -5781,6 +5783,8 @@ int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int 
              (base_dependency && !dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, expected))))
             return 0;
     }
+    /* Only generation's set operations dispatch unique() on character names. */
+    if (!generation) return 1;
     SEXP method = Rf_install("unique.character"), table = R_NilValue;
     if (!combine_chain_absent(frame, method) ||
         !combine_chain_absent(R_BaseNamespace, method) ||
@@ -5790,8 +5794,9 @@ int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int 
     return 1;
 }
 
-SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies) {
-    return Rf_ScalarLogical(dtatools_metadata_dependencies_unchanged(frame, dependencies, 0));
+SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, SEXP generation) {
+    return Rf_ScalarLogical(dtatools_metadata_dependencies_unchanged(
+        frame, dependencies, Rf_asLogical(generation) == TRUE));
 }
 
 SEXP dtatools_metadata_profile_from_state(SEXP state) {
@@ -5864,7 +5869,7 @@ SEXP C_dtatools_canonical_attribute_plan(SEXP source, SEXP state) {
     PROTECT(source);
     int admitted = canonical_attribute_plan_admitted(source, frame, state);
     if (admitted && publish) {
-        /* The omitted setdiff assigns this ordinary empty character vector.
+        /* The omitted name match assigns this ordinary empty character vector.
            Later R callbacks still see the original local in their caller.
            Existing or protected bindings retain the original R assignment. */
         admitted = metadata_unknown_slot_available(frame, unknown_symbol);

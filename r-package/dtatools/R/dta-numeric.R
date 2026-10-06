@@ -168,8 +168,10 @@ dta_storage_type <- function(x) {
     .Primitive("{"), .Primitive(".External2")
 ) else NULL
 
-# Set operations on ordinary attribute names still enter these base helpers
-# and unique.character dispatch. Native metadata shortcuts share this profile.
+# Generation's set operations on ordinary attribute names enter these base
+# helpers and unique.character dispatch. Native metadata shortcuts share this
+# profile; attribute planning matches names without the set operations, and
+# its admission checks only the entries it reaches.
 .metadata_dependencies <- if (
     identical(as.character(getRversion()), "4.6.1") &&
     identical(as.character(R.version[["svn rev"]]), "90187")
@@ -561,7 +563,8 @@ as.logical.dta_numeric <- function(x, ...) {
 .restore_dta_variable_metadata <- function(value, prototype, names = names(value)) {
     source <- attributes(prototype)
     known <- c("names", "class", .dta_variable_attribute_names)
-    unknown <- setdiff(names(source), known)
+    source_names <- names(source)
+    unknown <- source_names[match(source_names, known, 0L) == 0L]
     if (length(unknown)) {
         warning(sprintf(
             "Dropped unknown attribute%s during Stata vector restoration: %s",
@@ -569,7 +572,7 @@ as.logical.dta_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    for (name in intersect(names(source), .dta_variable_attribute_names)) {
+    for (name in source_names[source_names %in% .dta_variable_attribute_names]) {
         owned <- if (is.character(value)) .set_dta_string_attribute(value, name, source[[name]])
         if (is.null(owned)) attr(value, name) <- source[[name]] else value <- owned
     }
@@ -585,9 +588,12 @@ as.logical.dta_numeric <- function(x, ...) {
     temporal = inherits(prototype, "dta_temporal"), labelled = FALSE
 ) {
     source <- attributes(prototype)
-    unknown <- setdiff(
-        names(source), c("names", "class", .dta_variable_attribute_names)
-    )
+    # Attribute names are unique, so matching them gives what setdiff() and
+    # intersect() would, without their per-call checks on every column.
+    source_names <- names(source)
+    unknown <- source_names[match(
+        source_names, c("names", "class", .dta_variable_attribute_names), 0L
+    ) == 0L]
     if (length(unknown)) {
         warning(sprintf(
             "Dropped unknown attribute%s during Stata vector restoration: %s",
@@ -595,7 +601,7 @@ as.logical.dta_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    desired <- source[intersect(names(source), .dta_variable_attribute_names)]
+    desired <- source[source_names[source_names %in% .dta_variable_attribute_names]]
     desired$stata.storage <- storage
     classes <- if (temporal) {
         class(prototype)
