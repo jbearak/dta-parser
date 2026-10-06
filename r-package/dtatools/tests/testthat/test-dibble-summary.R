@@ -538,3 +538,176 @@ test_that("interpreted summary common typing calls no added base predicates", {
     expect_identical(observe(chunks[1:3]), list(same = TRUE, calls = 0L))
     expect_identical(observe(chunks), list(same = TRUE, calls = 0L))
 })
+
+# The summary gate reads chunks and ptype as ordinary bindings in the frame
+# that calls it, as .dibble_summary_columns() holds them, and assigns result
+# there when it admits them.
+.summary_assembly <- function(x, type) {
+    chunks <- x
+    ptype <- type
+    if (dtatools:::.summary_combine_double(chunks, ptype)) result else NULL
+}
+
+.summary_assembly_chunks <- function(x, type) {
+    chunks <- x
+    ptype <- type
+    if (dtatools:::.summary_combine_double(chunks, ptype)) chunks else NULL
+}
+
+.summary_casts <- function(chunks, ptype) {
+    chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
+    vctrs::vec_c(!!!chunks, .ptype = ptype)
+}
+
+test_that("summary assembly of canonical doubles matches the vctrs casts and combine", {
+    values <- list(1.5, NA, -0, tagged_missing("a"), c(2, 3), numeric(), 4, 5, 6)
+    chunks <- lapply(values, dta_double)
+    ptype <- vctrs::vec_ptype_common(!!!chunks)
+    # Settle the lazily loaded bindings that admission reads, as a first
+    # double assembly and a first summary would.
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(chunks)
+        .summary_casts(chunks, ptype)
+    }
+    result <- .summary_assembly(chunks, ptype)
+    casts <- .summary_assembly_chunks(chunks, ptype)
+    if (.dtatools_numeric_entry_expected()) {
+        expect_true(identical(result, .summary_casts(chunks, ptype), attrib.as.set = FALSE))
+        expect_true(identical(casts, vctrs::vec_cast_common(!!!chunks, .to = ptype),
+                              attrib.as.set = FALSE))
+    } else {
+        expect_null(result)
+        expect_null(casts)
+    }
+    expect_null(.summary_assembly(chunks[1:7], ptype))
+    reordered <- chunks
+    reordered[[7]] <- structure(4, class = class(chunks[[7]]), stata.storage = "double")
+    expect_null(.summary_assembly(reordered, ptype))
+    labelled <- chunks
+    attr(labelled[[2]], "label") <- "Score"
+    expect_null(.summary_assembly(labelled, ptype))
+    expect_null(.summary_assembly(chunks, vctrs::vec_ptype(labelled[[2]])))
+    longs <- lapply(1:9, dta_long)
+    expect_null(.summary_assembly(longs, vctrs::vec_ptype_common(!!!longs)))
+})
+
+test_that("summary assembly runs every cast of a replaced Stata method", {
+    table <- get(".__S3MethodsTable__.", asNamespace("vctrs"), inherits = FALSE)
+    canonical <- get("vec_cast.dta_numeric.dta_numeric", envir = table, inherits = FALSE)
+    casts <- 0L
+    assign("vec_cast.dta_numeric.dta_numeric", function(x, to, ...) {
+        casts <<- casts + 1L
+        canonical(x, to, ...)
+    }, envir = table)
+    on.exit(assign("vec_cast.dta_numeric.dta_numeric", canonical, envir = table))
+    chunks <- lapply(1:9, dta_double)
+    ptype <- vctrs::vec_ptype_common(!!!chunks)
+    casts <- 0L
+    expect_null(.summary_assembly(chunks, ptype))
+    expect_identical(casts, 0L)
+    expect_identical(as.double(.summary_casts(chunks, ptype)), as.double(1:9))
+    expect_gte(casts, 18L)
+})
+
+test_that("summary assembly hands traced vctrs calls every chunk", {
+    events <- new.env(parent = emptyenv())
+    events$cast <- integer()
+    events$combine <- integer()
+    tracer <- function(field) substitute(
+        assign(FIELD, c(get(FIELD, envir = EVENTS), length(rlang::list2(...))),
+               envir = EVENTS), list(FIELD = field, EVENTS = events))
+    vctrs_ns <- asNamespace("vctrs")
+    suppressMessages({
+        trace("vec_cast_common", tracer = tracer("cast"), print = FALSE, where = vctrs_ns)
+        trace("vec_c", tracer = tracer("combine"), print = FALSE, where = vctrs_ns)
+    })
+    on.exit(suppressMessages({
+        untrace("vec_cast_common", where = vctrs_ns)
+        untrace("vec_c", where = vctrs_ns)
+    }))
+    chunks <- lapply(1:9, dta_double)
+    ptype <- vctrs::vec_ptype_common(!!!chunks)
+    expect_null(.summary_assembly(chunks, ptype))
+    .summary_casts(chunks, ptype)
+    expect_identical(events$cast, 9L)
+    expect_identical(events$combine, 9L)
+})
+
+test_that("summary assembly declines a delayed or forged routine or a replaced caller_env()", {
+    chunks <- lapply(1:9, dta_double)
+    ptype <- vctrs::vec_ptype_common(!!!chunks)
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(chunks)
+        .summary_casts(chunks, ptype)
+    }
+    settled <- .summary_assembly(chunks, ptype)
+    expect_identical(is.null(settled), !.dtatools_numeric_entry_expected())
+    vctrs_ns <- asNamespace("vctrs")
+    routine <- get("ffi_vec_c", envir = vctrs_ns)
+    unlockBinding("ffi_vec_c", vctrs_ns)
+    on.exit({
+        assign("ffi_vec_c", routine, envir = vctrs_ns)
+        lockBinding("ffi_vec_c", vctrs_ns)
+    })
+    delayedAssign("ffi_vec_c", routine, assign.env = vctrs_ns)
+    expect_null(.summary_assembly(chunks, ptype))
+    forged <- routine
+    forged$address <- get("ffi_list2", envir = asNamespace("rlang"))$address
+    assign("ffi_vec_c", forged, envir = vctrs_ns)
+    expect_null(.summary_assembly(chunks, ptype))
+    assign("ffi_vec_c", routine, envir = vctrs_ns)
+    expect_identical(.summary_assembly(chunks, ptype), settled)
+    imports <- parent.env(vctrs_ns)
+    caller_env <- get("caller_env", envir = imports)
+    unlockBinding("caller_env", imports)
+    on.exit({
+        assign("caller_env", caller_env, envir = imports)
+        lockBinding("caller_env", imports)
+    }, add = TRUE)
+    assign("caller_env", function(n = 1) parent.frame(n + 1), envir = imports)
+    expect_null(.summary_assembly(chunks, ptype))
+    assign("caller_env", caller_env, envir = imports)
+    expect_identical(.summary_assembly(chunks, ptype), settled)
+})
+
+test_that("interpreted summary assembly calls no added base predicates", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    observe <- function(groups) {
+        data <- dplyr::group_by(dibble(g = rep(seq_len(groups), 2), x = seq_len(2 * groups)), g)
+        expected <- dplyr::summarise(data, m = mean(x))
+        jit <- compiler::enableJIT(0L)
+        on.exit(compiler::enableJIT(jit), add = TRUE)
+        columns <- dtatools:::.dibble_summary_columns
+        body(columns) <- body(columns)
+        local_mocked_bindings(.dibble_summary_columns = columns, .package = "dtatools")
+        calls <- 0L
+        original <- .Primitive("is.null")
+        local_mocked_bindings(is.null = function(x) {
+            if (identical(substitute(x), quote(result))) calls <<- calls + 1L
+            original(x)
+        }, .package = "base")
+        result <- dplyr::summarise(data, m = mean(x))
+        list(same = identical(result$m, expected$m), calls = calls)
+    }
+    expect_identical(observe(3L), list(same = TRUE, calls = 0L))
+    expect_identical(observe(9L), list(same = TRUE, calls = 0L))
+})
+
+test_that("summary assembly gives later dots unshared chunks", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    source <- dta_double(5)
+    data <- dplyr::group_by(dibble(g = 1:9, x = 1:9), g)
+    seen <- list()
+    observe <- function(a) {
+        seen[[length(seen) + 1L]] <<- c(data.table::address(a),
+                                        data.table::address(attr(a, "class")))
+        1
+    }
+    dplyr::summarise(data, a = source, b = observe(a))
+    seen <- do.call(rbind, seen)
+    expect_identical(nrow(seen), 9L)
+    expect_false(any(seen[, 1L] == data.table::address(source)))
+    expect_false(any(seen[, 2L] == data.table::address(attr(source, "class"))))
+    expect_identical(anyDuplicated(seen[, 1L]), 0L)
+    expect_identical(anyDuplicated(seen[, 2L]), 0L)
+})

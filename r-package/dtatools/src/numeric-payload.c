@@ -6585,6 +6585,41 @@ SEXP C_dtatools_double_ptype_method(
     return method;
 }
 
+/* The skipped calls cast every chunk with vctrs::vec_cast_common() and then
+   combine the casts with vctrs::vec_c(). Both wrappers, rlang::list2() and
+   the caller_env() default that the cast forces must match their build
+   copies, with their braces, .External2 and routines unchanged. */
+static int summary_combiner_unchanged(SEXP frame, SEXP expected, SEXP routines) {
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 9 ||
+        TYPEOF(VECTOR_ELT(expected, 3)) != ENVSXP) return 0;
+    SEXP ns = VECTOR_ELT(expected, 3);
+    SEXP cast = PROTECT(vctrs_exported_function(
+        frame, ns, "vec_cast_common", VECTOR_ELT(expected, 4)));
+    SEXP combine = PROTECT(vctrs_exported_function(
+        frame, ns, "vec_c", VECTOR_ELT(expected, 4)));
+    SEXP list2 = PROTECT(computed_dependency_value(Rf_install("list2"), ns, 16));
+    int same = scalar_same_function(cast, VECTOR_ELT(expected, 0)) &&
+        scalar_same_function(combine, VECTOR_ELT(expected, 1)) &&
+        scalar_same_function(list2, VECTOR_ELT(expected, 2));
+    static const char *names[] = {"{", ".External2"};
+    SEXP wrappers[] = {cast, combine, list2};
+    for (int wrapper = 0; wrapper < 3 && same; wrapper++) {
+        for (int i = 0; i < 2 && same; i++) {
+            SEXP primitive = VECTOR_ELT(expected, 5 + i);
+            same = (TYPEOF(primitive) == BUILTINSXP || TYPEOF(primitive) == SPECIALSXP) &&
+                computed_dependency_value(Rf_install(names[i]),
+                    R_ClosureEnv(wrappers[wrapper]), 16) == primitive;
+        }
+    }
+    same = same && summary_caller_env_unchanged(ns, VECTOR_ELT(expected, 7),
+                                                VECTOR_ELT(expected, 8), VECTOR_ELT(expected, 5)) &&
+        summary_routine_same(R_ClosureEnv(list2), "ffi_list2", routines, 1) &&
+        summary_routine_same(R_ClosureEnv(cast), "ffi_cast_common", routines, 2) &&
+        summary_routine_same(R_ClosureEnv(combine), "ffi_vec_c", routines, 3);
+    UNPROTECT(3);
+    return same;
+}
+
 /* The original R assignment follows the native status call. Only an absent
    or ordinary unlocked target can be published without invoking a setter or
    forcing a promise. Reusing an ordinary value slot supports later expressions
@@ -6595,6 +6630,116 @@ static int combine_assignment_available(SEXP frame, SEXP symbol) {
     return type == R_BindingTypeUnbound ||
         ((type == R_BindingTypeValue || type == R_BindingTypeForced) &&
          !R_BindingIsLocked(symbol, frame));
+}
+
+/* The cast writes stata.storage and then class onto a copy of the values.
+   A canonical piece whose attributes come in that order equals its cast. */
+static SEXP summary_cast_attribute(SEXP name, SEXP value, void *context) {
+    int *position = context;
+    int expected = (*position)++;
+    if (expected == 0 && strcmp(CHAR(PRINTNAME(name)), "stata.storage") == 0) return NULL;
+    if (expected == 1 && name == R_ClassSymbol) return NULL;
+    return R_NilValue;
+}
+
+static int summary_cast_unchanged(SEXP piece) {
+    int position = 0;
+    return combine_double_canonical_piece(piece) &&
+        R_mapAttrib(piece, summary_cast_attribute, &position) == NULL && position == 2;
+}
+
+/* Build what the casts return. Each cast copies its chunk's values with the
+   metadata copy, which forks owned backing or captures plain values, then
+   sets the common type's storage vector, which the casts share, and a new
+   class vector. Later dots read these chunks, so none may share its class
+   with another group or with the value a group returned. */
+static SEXP summary_fresh_casts(SEXP chunks, SEXP ptype) {
+    SEXP storage_symbol = Rf_install("stata.storage");
+    SEXP storage = PROTECT(Rf_getAttrib(ptype, storage_symbol));
+    R_xlen_t count = XLENGTH(chunks);
+    SEXP casts = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t i = 0; i < count; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SEXP piece = VECTOR_ELT(chunks, i);
+        SEXP copy = PROTECT(C_dtatools_metadata_copy(piece));
+        SEXP classes = PROTECT(Rf_duplicate(Rf_getAttrib(piece, R_ClassSymbol)));
+        Rf_setAttrib(copy, storage_symbol, storage);
+        Rf_setAttrib(copy, R_ClassSymbol, classes);
+        SET_VECTOR_ELT(casts, i, copy);
+        UNPROTECT(2);
+    }
+    UNPROTECT(2);
+    return casts;
+}
+
+/* A grouped summary casts every chunk to the common type and combines the
+   casts. When every chunk equals its cast and the common type is the
+   canonical double type, the casts change nothing and the combine is what
+   double assembly computes. The vctrs calls reach the methods that assembly
+   checks, plus the wrappers checked above. The helper passes chunks and ptype
+   as unforced symbol promises, so lookups are checked in the caller's frame,
+   where those calls run, and nothing is forced. Assign the casts to chunks
+   and the combined vector to result in that frame and return TRUE, or
+   return FALSE when any chunk, dependency or binding differs. */
+SEXP C_dtatools_summary_combine_double(
+    SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
+) {
+    SEXP frame = R_GetCurrentEnv();
+    SEXP chunks_symbol = Rf_install("chunks"), ptype_symbol = Rf_install("ptype");
+    SEXP target = Rf_install("result");
+    if (!combine_plain_environment(frame) ||
+        R_GetBindingType(chunks_symbol, frame) != R_BindingTypeDelayed ||
+        R_GetBindingType(ptype_symbol, frame) != R_BindingTypeDelayed ||
+        R_DelayedBindingExpression(chunks_symbol, frame) != chunks_symbol ||
+        R_DelayedBindingExpression(ptype_symbol, frame) != ptype_symbol)
+        return Rf_ScalarLogical(FALSE);
+    SEXP caller = R_DelayedBindingEnvironment(chunks_symbol, frame);
+    SEXP chunks, ptype, dependencies, metadata, routines;
+    if (caller != R_DelayedBindingEnvironment(ptype_symbol, frame) ||
+        !combine_assignment_available(caller, chunks_symbol) ||
+        !combine_assignment_available(caller, target) ||
+        combine_peek_frame(caller, chunks_symbol, &chunks) != COMBINE_VALUE)
+        return Rf_ScalarLogical(FALSE);
+    PROTECT(chunks);
+    if (combine_peek_frame(caller, ptype_symbol, &ptype) != COMBINE_VALUE) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    PROTECT(ptype);
+    int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8 &&
+        combine_double_canonical_piece(ptype) && XLENGTH(ptype) == 0;
+    for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        admitted = summary_cast_unchanged(VECTOR_ELT(chunks, i));
+    }
+    if (!admitted ||
+        combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
+        !summary_combiner_unchanged(caller, expected, routines) ||
+        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE) {
+        UNPROTECT(2);
+        return Rf_ScalarLogical(FALSE);
+    }
+    PROTECT(dependencies);
+    if (combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE ||
+        !combine_dependencies_valid(dependencies, 11)) {
+        UNPROTECT(3);
+        return Rf_ScalarLogical(FALSE);
+    }
+    PROTECT(metadata);
+    SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
+    SEXP result = PROTECT(combine == R_UnboundValue ? R_NilValue :
+        C_dtatools_try_combine_double(chunks, R_NilValue, combine, dependencies, metadata));
+    SEXP casts = PROTECT(result == R_NilValue ? R_NilValue : summary_fresh_casts(chunks, ptype));
+    /* Allocation may run finalizers that alter the assignment targets. */
+    admitted = result != R_NilValue &&
+        combine_assignment_available(caller, chunks_symbol) &&
+        combine_assignment_available(caller, target);
+    if (admitted) {
+        Rf_defineVar(chunks_symbol, casts, caller);
+        Rf_defineVar(target, result, caller);
+    }
+    UNPROTECT(7);
+    return Rf_ScalarLogical(admitted);
 }
 
 /* Production calls stay at their original assignment sites. This native
