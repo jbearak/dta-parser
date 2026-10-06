@@ -23,6 +23,11 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* The vctrs equality and ordering proxies for Stata numerics rank missing
+  values in one native pass, so duplicate checks, `unique()` and sorting
+  through vctrs do less work per column. Detecting duplicate observations
+  across a 5,360-column file took 2.2 seconds and now takes 0.5.
+
 * `dta_append()` copies each source's rows of a numeric column into the
   result natively, decoding compact columns in blocks, and no longer copies
   the whole result column on every write. Appending a 5,360-column file to
@@ -57,6 +62,17 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
+  encode values about three times faster. The native constructor checks for
+  missing and finite values inline instead of calling into R for each value,
+  and encodes each storage type in its own loop. Building a byte column from
+  10 million values falls from 88 to 30 milliseconds. A non-double vector of
+  2,048 or more values also skips the qualification check for the native
+  double constructor, which only double storage can pass and which cost
+  about 35 microseconds per vector. `dplyr::bind_rows()` of two copies of a
+  5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
+  are unchanged.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
@@ -83,6 +99,13 @@
   value or calling `table()`, and builds its result tables once. On a
   16,787-row, 5,360-column DHS file it falls from 36 to 13 seconds, and
   the compact report from 32 to 10 seconds.
+
+* `labelbook()` collects each table's summary, mappings, assignment and
+  diagnostics as field vectors and builds each result table once, rather
+  than one data frame per row. On a 5,360-column DHS file with 4,831
+  value-label tables it falls from 4 to 1.1 seconds. A value-label set
+  with no mappings is now reported as a table with no mappings rather than
+  failing.
 
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
