@@ -62,6 +62,17 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
+  encode values about three times faster. The native constructor checks for
+  missing and finite values inline instead of calling into R for each value,
+  and encodes each storage type in its own loop. Building a byte column from
+  10 million values falls from 88 to 30 milliseconds. A non-double vector of
+  2,048 or more values also skips the qualification check for the native
+  double constructor, which only double storage can pass and which cost
+  about 35 microseconds per vector. `dplyr::bind_rows()` of two copies of a
+  5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
+  are unchanged.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
