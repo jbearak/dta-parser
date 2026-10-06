@@ -18,7 +18,11 @@
             }
         paste0("Result of type <", vctrs::vec_ptype_full(value), "> for ", where, ".")
     }
-    withCallingHandlers(vctrs::vec_ptype_common(!!!chunks), error = function(condition) {
+    # The branch uses the captured if, so a declined check adds no R calls.
+    withCallingHandlers(.native_admission_if(.summary_ptype_settles(chunks),
+        vctrs::vec_ptype_common(chunks[[1L]], chunks[[2L]], chunks[[3L]]),
+        vctrs::vec_ptype_common(!!!chunks)
+    ), error = function(condition) {
         details <- c(detail(condition$x, condition$x_arg),
                      detail(condition$y, condition$y_arg))
         if (!length(details)) details <- conditionMessage(condition)
@@ -26,6 +30,55 @@
             stats::setNames(details, rep.int("i", length(details)))),
             class = "dplyr:::error_incompatible_combine", parent = NULL)
     })
+}
+
+# Build copies of the reducer that receives only the first chunks when the
+# others are skipped, of the helper it calls, and of the caller_env()
+# default that a fold forces.
+.summary_ptype_dependencies <- if (
+    identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
+    identical(as.character(getNamespaceVersion("rlang")), "1.3.0")
+) list(
+    utils::removeSource(vctrs::vec_ptype_common), utils::removeSource(rlang::list2),
+    asNamespace("vctrs"), .Primitive("::"), .Primitive("{"), .Primitive(".External2"),
+    utils::removeSource(rlang::caller_env), .Primitive("+")
+) else NULL
+
+# The routine objects that the reducers pass to .External2, as vctrs and
+# rlang bound them when dtatools loaded. Build copies cannot hold them.
+.summary_routine_state <- new.env(parent = emptyenv())
+.summary_routine_state$routines <- NULL
+
+# vctrs folds the per-group results into a common type one chunk at a time.
+# When every chunk is a canonical Stata double, the native check confirms
+# that each fold would reach the canonical method with its whole graph
+# unchanged, so a fold is a pure function of the running type and the next
+# chunk's attributes. The check also confirms that vctrs::vec_ptype_common()
+# is unchanged, so handing it fewer chunks cannot be observed. That method
+# folds the first three chunks and then the shared attributes once more. If
+# the type comes back unchanged, no later chunk can change it, and vctrs
+# folds only the first three. The check costs about as much as six folds, so
+# fewer than eight chunks are always folded in full. chunks stays an unforced
+# promise, so the check reads the caller's frame, where vctrs is called.
+# The captured predicates add no R calls when the check declines.
+.summary_ptype_settles <- function(chunks) {
+    fold <- .native_admission_call(C_dtatools_double_ptype_method,
+                                   .double_combine_state, .metadata_state,
+                                   .summary_ptype_dependencies, .summary_routine_state)
+    .native_admission_and(.native_admission_not(.native_admission_is_null(fold)),
+        .chunks_share_attributes(chunks) && tryCatch({
+            ptype <- fold(fold(chunks[[1L]], chunks[[2L]]), chunks[[3L]])
+            identical(fold(ptype, chunks[[1L]]), ptype, attrib.as.set = FALSE)
+        }, error = function(condition) FALSE, warning = function(condition) FALSE,
+        message = function(condition) FALSE))
+}
+
+.chunks_share_attributes <- function(chunks) {
+    shared <- attributes(chunks[[1L]])
+    for (chunk in chunks) {
+        if (!identical(attributes(chunk), shared)) return(FALSE)
+    }
+    TRUE
 }
 
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
