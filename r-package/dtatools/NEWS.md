@@ -39,6 +39,12 @@
   of 100,000 rows, `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds,
   and `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
 
+* Grouped `summarise()` and `reframe()` combine per-group plain Stata
+  doubles natively, without casting each group's result to the common type
+  twice, when the Stata numeric methods are unchanged. Over 10,000 groups of
+  100,000 rows, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
+  `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and

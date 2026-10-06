@@ -262,7 +262,11 @@
         .native_admission_call(C_dtatools_settled_routine,
                                .summary_ptype_dependencies[[3L]], "ffi_ptype_common"),
         .native_admission_call(C_dtatools_settled_routine,
-                               environment(.summary_ptype_dependencies[[2L]]), "ffi_list2")
+                               environment(.summary_ptype_dependencies[[2L]]), "ffi_list2"),
+        .native_admission_call(C_dtatools_settled_routine,
+                               .summary_ptype_dependencies[[3L]], "ffi_cast_common"),
+        .native_admission_call(C_dtatools_settled_routine,
+                               .summary_ptype_dependencies[[3L]], "ffi_vec_c")
     ) else NULL
     # Settle the admission helper before a first indexed operation can trace
     # the lazy-load machinery used to restore its namespace environment.

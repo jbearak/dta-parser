@@ -81,6 +81,34 @@
     TRUE
 }
 
+# Build copies of the calls that cast the chunks to the common type and
+# combine them, of the helper they call, and of the caller_env() default
+# that the cast forces.
+.summary_combine_dependencies <- if (
+    identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
+    identical(as.character(getNamespaceVersion("rlang")), "1.3.0")
+) list(
+    utils::removeSource(vctrs::vec_cast_common), utils::removeSource(vctrs::vec_c),
+    utils::removeSource(rlang::list2), asNamespace("vctrs"), .Primitive("::"),
+    .Primitive("{"), .Primitive(".External2"), utils::removeSource(rlang::caller_env),
+    .Primitive("+")
+) else NULL
+
+# After the common type, vctrs casts every chunk to it and then combines the
+# casts, at two method calls per chunk. When every chunk is a canonical Stata
+# double with its attributes in the order the cast writes them, and the
+# common type is one too, each cast returns a copy of its chunk. The native
+# check confirms that, and that both vctrs calls and every method they reach
+# are unchanged. It then copies the chunks as the casts would, assembles the
+# result as double assembly does, and assigns both in the caller's frame, or
+# returns FALSE. The arguments stay unforced promises, so the check can read
+# the caller's frame, where the vctrs calls otherwise run.
+.summary_combine_double <- function(chunks, ptype) {
+    .native_admission_call(C_dtatools_summary_combine_double,
+                           .double_combine_state, .metadata_state,
+                           .summary_combine_dependencies, .summary_routine_state)
+}
+
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
     caller <- if (reframe) "reframe()" else "summarise()"
     mask <- .new_dibble_expression_mask(context$columns, groups, size, caller)
@@ -136,8 +164,13 @@
                 }
                 mask$set_group(0L)
                 ptype <- .dibble_summary_ptype(chunks, name, groups, size)
-                chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
-                result <- vctrs::vec_c(!!!chunks, .ptype = ptype)
+                # A settled native combine assigns the casts to chunks and
+                # the combined vector to result. A decline runs the vctrs calls.
+                result <- .native_admission_call(C_dtatools_select_branch,
+                    .native_admission_branches(.summary_combine_double(chunks, ptype), result, {
+                        chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
+                        vctrs::vec_c(!!!chunks, .ptype = ptype)
+                    }), .native_admission_if)
                 install <- function(target, pieces, value) {
                     binding_chunks <- pieces
                     if (identical(groups$type, "rowwise") &&
