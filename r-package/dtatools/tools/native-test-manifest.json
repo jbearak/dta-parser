@@ -1675,7 +1675,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-numeric.R",
-          "sha256": "cf173a9bcc54a343376e0faabf304e70e3c8cf14dd440cc3a2c2d4108f3fb181"
+          "sha256": "22804df4aa593cfb81f3ba03585bae95b21b4cfedf9965f2e83bf3c34b1e1148"
         },
         {
           "path": "tests/testthat/test-dta-string.R",
@@ -2280,6 +2280,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-numeric.R",
+          "test": "native identity parts match the R missing-code ranks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
@@ -14298,7 +14306,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "475b7400093adf45ca2374a5c9c6b07ae4fc6e7181300d35c96d70d930aef233"
+          "sha256": "59c3b4eaff555b80fe177cf8e515956411f6caa8951b0a97bfadc8c5e5032c5a"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -14851,6 +14859,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "a numeric buffer range is copied natively with its exact bits",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
           "warnings": 0
         },
         {

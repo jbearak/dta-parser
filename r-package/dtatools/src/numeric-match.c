@@ -222,3 +222,65 @@ SEXP C_dtatools_numeric_duplicated_keys(SEXP keys) {
     UNPROTECT(1);
     return result;
 }
+
+/* The rank and value parts of the Stata identity proxy for a double vector
+   that holds missing values: rank 0 for an observed value, 1 for `.`, and
+   2 through 27 for `.a` through `.z`, whose values become zero. Codes come
+   from the classification `.tab_missing_codes()` uses. Return NULL for a
+   foreign ALTREP, whose reads may run callbacks, and for a noncanonical
+   code, so the R caller keeps its own reads and error. */
+SEXP C_dtatools_identity_parts(SEXP values) {
+    if (TYPEOF(values) != REALSXP) return R_NilValue;
+    if (ALTREP(values) && !owned_real(values) &&
+        !R_altrep_inherits(values, dtatools_numeric_class) &&
+        unmaterialized_numeric_read_storage(values) == NULL &&
+        !(R_altrep_inherits(values, dtatools_metadata_real_class) &&
+          R_altrep_data2(values) != R_NilValue)) return R_NilValue;
+    R_xlen_t length = XLENGTH(values);
+    SEXP codes = PROTECT(C_dtatools_missing_codes(values));
+    if (XLENGTH(codes) != length) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    const int *code = INTEGER(codes);
+    for (R_xlen_t index = 0; index < length; index++) {
+        int missing = code[index];
+        if (missing != NA_INTEGER && missing != 0 &&
+            (missing < 'a' || missing > 'z')) {
+            UNPROTECT(1);
+            return R_NilValue;
+        }
+    }
+    SEXP rank = PROTECT(Rf_allocVector(INTSXP, length));
+    SEXP value = PROTECT(Rf_allocVector(REALSXP, length));
+    int *ranks = INTEGER(rank);
+    double *output = REAL(value);
+    R_xlen_t copied = 0;
+    while (copied < length) {
+        R_xlen_t region = REAL_GET_REGION(
+            values, copied, length - copied, output + copied
+        );
+        if (region <= 0) break;
+        copied += region;
+    }
+    for (; copied < length; copied++) output[copied] = REAL_ELT(values, copied);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int missing = code[index];
+        if (missing == NA_INTEGER) {
+            ranks[index] = 0;
+        } else {
+            ranks[index] = missing == 0 ? 1 : missing - 'a' + 2;
+            output[index] = 0;
+        }
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(result, 0, rank);
+    SET_VECTOR_ELT(result, 1, value);
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(names, 0, Rf_mkChar("rank"));
+    SET_STRING_ELT(names, 1, Rf_mkChar("value"));
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(5);
+    return result;
+}

@@ -4,10 +4,12 @@
     result <- .reference_snapshot(x)
     for (index in seq_along(result)) {
         column <- .subset2(result, index)
+        # Only declared strings take a view, so other columns skip the
+        # class check, which costs a set operation per column.
+        if (!is.character(column) ||
+            is.null(attr(column, "stata.string.storage", exact = TRUE))) next
         classes <- setdiff(class(column), .dta_metadata_vector_class)
-        bare_string <- !length(classes) || identical(classes, "character")
-        if (is.character(column) && bare_string &&
-            !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
+        if (!length(classes) || identical(classes, "character")) {
             column <- .metadata_copy(column)
             class(column) <- c("dtatools_dibble_string", class(column))
             result[[index]] <- column

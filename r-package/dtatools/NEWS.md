@@ -23,6 +23,20 @@
   `tab(d, v106, by = v024)` falls from about 5 seconds to about 10
   milliseconds and `summ(d, v012)` from about 1 second to 1 millisecond.
 
+* The vctrs equality and ordering proxies for Stata numerics rank missing
+  values in one native pass, so duplicate checks, `unique()` and sorting
+  through vctrs do less work per column. Detecting duplicate observations
+  across a 5,360-column file took 2.2 seconds and now takes 0.5.
+
+* `dta_append()` copies each source's rows of a numeric column into the
+  result natively, decoding compact columns in blocks, and no longer copies
+  the whole result column on every write. Appending a 5,360-column file to
+  itself took 8.4 seconds and now takes 5.7.
+
+* Printing or formatting a dibble checks the classes of declared string
+  columns only, rather than running a set operation on every column. On a
+  5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
@@ -33,6 +47,14 @@
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
+
+* `dta_append()` skips reconciling a Stata numeric or string variable whose
+  sources declare it identically apart from value labels. It takes an empty
+  Stata numeric or string schema column as its own prototype, unless the
+  column carries the class that marks notes and characteristics. It reads a
+  dibble or tibble source's columns by position rather than by name.
+  Appending a 5,360-column DHS file to itself falls from 5.3 to 2.6 seconds,
+  and appending two copies of it on disk from 4.6 to 2.2 seconds.
 
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
@@ -45,9 +67,27 @@
   5,360-column DHS file, a one-to-one merge that adds one variable falls
   from 0.34 to 0.13 seconds.
 
+* `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
+  encode values about three times faster. The native constructor checks for
+  missing and finite values inline instead of calling into R for each value,
+  and encodes each storage type in its own loop. Building a byte column from
+  10 million values falls from 88 to 30 milliseconds. A non-double vector of
+  2,048 or more values also skips the qualification check for the native
+  double constructor, which only double storage can pass and which cost
+  about 35 microseconds per vector. `dplyr::bind_rows()` of two copies of a
+  5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
+  are unchanged.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
+
+* `codebook()` finds each numeric variable's distinct values once and
+  shares them, and its observed values, with the problem checks. It counts
+  NaNs in a Stata numeric variable from its plain values, without building
+  a computed vector through vctrs. On a 16,787-row, 5,360-column DHS file
+  it falls from 9.9 to 7.9 seconds, and the compact report from 8.8 to
+  7.2 seconds.
 
 * `codebook()` computes each variable's missing mask and distinct-value
   count once, counts missing codes and categories without formatting every
