@@ -95,6 +95,16 @@
   from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
   8.3 to 6.7 seconds.
 
+* `codebook()` collects its problem rows as columns, where it built a data
+  frame for each one, and counts each numeric variable's missing codes in
+  one pass. It checks for duplicate observations a block of columns at a
+  time and drops each row from the comparison once no other row matches
+  it, so a table with an identifier column is done after that column.
+  Comparing Stata numerics through vctrs decodes compact storage once
+  rather than twice. On a 16,787-row, 5,360-column DHS file,
+  `codebook(compact = TRUE)` falls from 4.4 to 2.4 seconds and
+  `codebook()` from 5.4 to 3.1 seconds.
+
 * `codebook()` finds each numeric variable's distinct values once and
   shares them, and its observed values, with the problem checks. It counts
   NaNs in a Stata numeric variable from its plain values, without building

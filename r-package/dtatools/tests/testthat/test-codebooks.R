@@ -333,3 +333,115 @@ test_that("codebook reports declared string storage and a wide declaration", {
         wide$details[[1L]][[1L]], list(declared = "str20", required = 2L)
     )
 })
+
+test_that("codebook duplicate rows match vctrs duplicate detection", {
+    detect <- dtatools:::.codebook_duplicate_rows
+    wide <- as.data.frame(matrix(1, nrow = 4L, ncol = 300L))
+    wide[[300L]] <- c(1, 2, 1, 3)
+    late <- as.data.frame(matrix(1, nrow = 4L, ncol = 40L))
+    late[[40L]] <- c(1, 1, 2, 2)
+    listed <- data.frame(a = c(1, 1, 1))
+    listed$b <- list(1, 1, "1")
+    matrixed <- data.frame(a = c(1, 1, 1))
+    matrixed$m <- matrix(c(1, 1, 2, 3, 3, 3), 3L)
+    packed <- data.frame(a = c(1, 1, 2))
+    packed$df <- data.frame(x = c(1, 1, 1), y = c("a", "a", "b"))
+    latin <- "caf\xe9"
+    Encoding(latin) <- "latin1"
+    tables <- list(
+        identifier = data.frame(id = 1:4, x = c(1, 1, 1, 1)),
+        missing = data.frame(
+            x = dta_double(c(
+                1, 1, NA_real_, NA_real_, tagged_missing("a"),
+                tagged_missing("a"), tagged_missing("b")
+            )),
+            y = dta_string(rep("same", 7L))
+        ),
+        zeros = data.frame(x = c(0, -0, NA, NaN, NA, NaN)),
+        mixed = data.frame(
+            f = factor(c("u", "v", "u", NA, NA)),
+            d = as.Date("2020-01-01") + c(0, 1, 0, NA, NA),
+            s = c(latin, "b", enc2utf8(latin), NA, NA),
+            l = c(TRUE, FALSE, TRUE, NA, NA)
+        ),
+        wide = wide, late = late, listed = listed, matrixed = matrixed,
+        packed = packed, dibble = dibble(a = dta_byte(c(1, 1, 2)), b = c("x", "x", "y")),
+        empty = data.frame(x = double(), y = character()),
+        single = data.frame(x = 1, y = "a")
+    )
+    for (name in names(tables)) {
+        data <- tables[[name]]
+        expect_identical(detect(data), vctrs::vec_duplicate_detect(data), info = name)
+        twice <- data[c(seq_len(nrow(data)), seq_len(nrow(data))), , drop = FALSE]
+        expect_identical(detect(twice), vctrs::vec_duplicate_detect(twice), info = name)
+    }
+})
+
+test_that("codebook counts missing codes and NaN payloads in compact columns", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    patch_numeric_fixture_row(path, 0L, list(x_float = .raw_little_integer(0x7fc00000, 4L)))
+    patch_numeric_fixture_row(path, 1L, list(x_float = .raw_little_integer(0x7f800001, 4L)))
+    data <- read_dta(path)
+    for (name in c("x_byte", "x_int", "x_long", "x_float", "x_double")) {
+        x <- data[[name]]
+        values <- dtatools:::.book_numeric_data(x)
+        codes <- dtatools:::.tab_missing_codes(x)
+        summary <- dtatools:::.codebook_variable(x, name, 1L, 9L, TRUE, is.na(x))$variable
+        expect_identical(summary$nan_count, sum(is.nan(values)), info = name)
+        expect_identical(summary$system_missing_count, sum(codes == 0L, na.rm = TRUE), info = name)
+        expect_identical(
+            summary$extended_missing_count,
+            sum(codes >= utf8ToInt("a") & codes <= utf8ToInt("z"), na.rm = TRUE),
+            info = name
+        )
+    }
+    expect_identical(sum(is.nan(dtatools:::.book_numeric_data(data$x_float))), 2L)
+    expect_error(codebook(data), "noncanonical NaN payload")
+})
+
+test_that("compact identity parts match the parts of the decoded values", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    data <- read_dta(path)
+    for (name in c("x_byte", "x_int", "x_long", "x_float", "x_double")) {
+        x <- data[[name]]
+        values <- dtatools:::.book_numeric_data(x)
+        # Reading each element builds an ordinary double vector.
+        plain <- vapply(seq_along(values), function(i) values[[i]], double(1))
+        expect_identical(
+            dtatools:::.dta_identity_parts(x),
+            dtatools:::.dta_identity_parts(plain),
+            info = name
+        )
+    }
+    patch_numeric_fixture_row(path, 0L, list(x_float = .raw_little_integer(0x7fc00000, 4L)))
+    expect_error(
+        dtatools:::.dta_identity_parts(read_dta(path)$x_float, "vctrs equality"),
+        "`vctrs equality` cannot use a noncanonical NaN payload"
+    )
+})
+
+test_that("codebook diagnostics bind as one data frame per row would", {
+    data <- data.frame(
+        constant = rep(1, 4),
+        text = c(" a", "b ", "c d", "c d"),
+        none = rep(NA_real_, 4)
+    )
+    result <- codebook(data, problems = TRUE, diagnostic_limit = 1)$diagnostics
+    expect_true(nrow(result) > 3L)
+    rows <- lapply(seq_len(nrow(result)), function(i) data.frame(
+        code = result$code[[i]], scope = result$scope[[i]],
+        table = result$table[[i]], variable = result$variable[[i]],
+        position = result$position[[i]], severity = result$severity[[i]],
+        details = I(result$details[i]), message = result$message[[i]],
+        stringsAsFactors = FALSE
+    ))
+    expected <- do.call(rbind, rows)
+    rownames(expected) <- NULL
+    expect_identical(result, expected)
+    expect_identical(
+        codebook(data, problems = TRUE, mv = TRUE)$diagnostics,
+        codebook(data, problems = TRUE)$diagnostics
+    )
+})
