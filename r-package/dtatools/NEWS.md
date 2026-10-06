@@ -12,8 +12,8 @@
 
 * `[` and `head()` on a dibble with Stata metadata check each column's
   notes and characteristics without a function call per attribute name.
-  On a 16,787-row, 5,360-column DHS file this saves about 15 milliseconds
-  per call, for example `head(d)` falls from about 67 to 53 milliseconds.
+  On a 16,787-row, 5,360-column DHS file, `head(d, 10)` falls from about
+  67 to 53 milliseconds.
 
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
