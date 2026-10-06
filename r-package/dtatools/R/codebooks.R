@@ -230,14 +230,17 @@ labelbook <- function(data, ..., .tables = NULL,
 
 # The label text checks of every table at once, as lists of one flag per
 # table, or NULL to check each table alone. `labels` holds each table's
-# labels, or NULL. In a UTF-8 locale with only valid strings and none in
-# bytes, grepl() and sub() treat each string the same whatever strings
-# come with it, and signal nothing.
+# labels, or NULL. In a UTF-8 locale with only valid strings in the native
+# encoding or UTF-8, grepl(), sub() and as.double() treat each string the
+# same whatever strings come with it, and raise no error. This matters
+# because the checks run before labelbook() knows which tables it will
+# diagnose: as.double() fails on some Latin-1 text, and a table whose
+# mappings disagree never has its text checked.
 .labelbook_text_checks <- function(tables, labels) {
     text <- lapply(labels, names)
     strings <- c(tables, unlist(text, use.names = FALSE))
     if (!isTRUE(l10n_info()[["UTF-8"]]) || !all(validEnc(strings)) ||
-        "bytes" %in% Encoding(strings)) {
+        !all(Encoding(strings) %in% c("unknown", "UTF-8"))) {
         return(NULL)
     }
     table <- rep.int(seq_along(text), lengths(text))
