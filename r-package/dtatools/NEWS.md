@@ -5,6 +5,12 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `copy_data()` looks for environments, functions, bytecode, external
+  pointers, and weak references in one native pass over the columns and
+  their attributes, rather than an R call per value. On a 16,787-row,
+  5,360-column DHS file it falls from about 0.14 to 0.05 seconds. Results
+  and errors are unchanged.
+
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
   `reframe()`, match the result's column names to the prior columns in
