@@ -2608,9 +2608,15 @@ copy_data <- function(data) {
     snapshot_columns <- source$columns
     snapshot_attributes <- attributes(snapshot)
     reference_values <- c(snapshot_columns, unname(snapshot_attributes))
-    if (any(vapply(
-        reference_values, .contains_reference_object, logical(1)
-    ))) {
+    # The native walk answers as the R walk does, and leaves deep nesting and
+    # malformed pairlists to the R walk, which raises their errors.
+    found <- .Call(C_dtatools_reference_objects_found, reference_values)
+    if (is.na(found)) {
+        found <- any(vapply(
+            reference_values, .contains_reference_object, logical(1)
+        ))
+    }
+    if (found) {
         stop(
             paste0(
                 "`copy_data()` cannot isolate environments, functions, ",

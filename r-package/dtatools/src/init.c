@@ -401,6 +401,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_deep_copy_value, 1},
     {"C_dtatools_reference_contents",
      (DL_FUNC) &C_dtatools_reference_contents, 1},
+    {"C_dtatools_reference_objects_found",
+     (DL_FUNC) &C_dtatools_reference_objects_found, 1},
     {"C_dtatools_reference_row_reads",
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_inject_reference_write_interrupt",

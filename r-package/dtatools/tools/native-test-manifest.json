@@ -8132,7 +8132,7 @@
       "files": [
         {
           "path": "tests/testthat/test-mutate-data.R",
-          "sha256": "f39d2255481e2b0cf2c3339bb2eb60ee74d63d4da20d7294abdaa175bc7c5b0d"
+          "sha256": "0a237a90ffd0035dc0687a85e119b05891fee5ac4c228991e9af461bd9d21feb"
         },
         {
           "path": "tests/testthat/test-mutation-containers.R",
@@ -9261,6 +9261,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutate-data.R",
+          "test": "copy_data finds reference objects natively as the R walk does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 23,
           "warnings": 0
         },
         {

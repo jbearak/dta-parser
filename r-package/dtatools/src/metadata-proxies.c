@@ -811,6 +811,82 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
     return object;
 }
 
+// copy_data() refuses values that hold an environment, function, bytecode,
+// external pointer or weak reference among their elements or attributes.
+// This walk answers as .contains_reference_object() does, 1 or 0, and gives
+// NA past a nesting depth or at a malformed pairlist, where the R walk
+// decides and raises its own errors. Like the R walk it visits every value,
+// so a malformed pairlist after a reference still leaves the answer to R.
+#define REFERENCE_WALK_DEPTH 64
+
+typedef struct {
+    int depth;
+    int found;
+    int undecided;
+    R_xlen_t *visited;
+} reference_walk_state;
+
+static int reference_walk_value(SEXP value, int depth, R_xlen_t *visited);
+
+static SEXP reference_walk_attribute(SEXP name, SEXP value, void *data) {
+    (void) name;
+    reference_walk_state *state = (reference_walk_state *) data;
+    int found = reference_walk_value(value, state->depth, state->visited);
+    if (found == NA_LOGICAL) {
+        state->undecided = 1;
+        return R_NilValue;
+    }
+    state->found |= found;
+    return NULL;
+}
+
+static int reference_walk_value(SEXP value, int depth, R_xlen_t *visited) {
+    if ((++*visited & 16383) == 0) R_CheckUserInterrupt();
+    int type = TYPEOF(value);
+    switch (type) {
+    case ENVSXP: case CLOSXP: case BUILTINSXP: case SPECIALSXP:
+    case BCODESXP: case EXTPTRSXP: case WEAKREFSXP:
+        return 1;
+    default:
+        break;
+    }
+    if (depth >= REFERENCE_WALK_DEPTH) return NA_LOGICAL;
+    int found = 0;
+    if (type == VECSXP || type == EXPRSXP) {
+        R_xlen_t length = XLENGTH(value);
+        for (R_xlen_t index = 0; index < length; index++) {
+            int element = reference_walk_value(VECTOR_ELT(value, index), depth + 1, visited);
+            if (element == NA_LOGICAL) return NA_LOGICAL;
+            found |= element;
+        }
+    } else if (type == LISTSXP || type == LANGSXP) {
+        for (SEXP node = value; node != R_NilValue; node = CDR(node)) {
+            int node_type = TYPEOF(node);
+            if (node_type != LISTSXP && node_type != LANGSXP && node_type != DOTSXP)
+                return NA_LOGICAL;
+            int element = reference_walk_value(CAR(node), depth + 1, visited);
+            if (element == NA_LOGICAL) return NA_LOGICAL;
+            found |= element;
+        }
+    }
+    reference_walk_state state = { depth + 1, 0, 0, visited };
+    R_mapAttrib(value, reference_walk_attribute, &state);
+    if (state.undecided) return NA_LOGICAL;
+    return found | state.found;
+}
+
+SEXP C_dtatools_reference_objects_found(SEXP values) {
+    if (TYPEOF(values) != VECSXP) Rf_error("invalid reference-object values");
+    R_xlen_t length = XLENGTH(values), visited = 0;
+    int found = 0;
+    for (R_xlen_t index = 0; index < length; index++) {
+        int element = reference_walk_value(VECTOR_ELT(values, index), 0, &visited);
+        if (element == NA_LOGICAL) return Rf_ScalarLogical(NA_LOGICAL);
+        found |= element;
+    }
+    return Rf_ScalarLogical(found);
+}
+
 SEXP C_dtatools_reference_contents(SEXP value) {
     int type = TYPEOF(value);
     if (type != VECSXP && type != EXPRSXP &&
