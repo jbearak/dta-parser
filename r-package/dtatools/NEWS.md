@@ -5,6 +5,15 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Native arithmetic and summary admission compares dtatools' captured
+  helper closures with less work per call. Its comparison table clears only
+  its occupancy flags, a shared symbol or environment compares by identity
+  without the vector checks, and a helper found again in the base namespace
+  is not compared a second time. `x + 1` on a 16,787-value Stata double
+  falls from about 111 to 81 microseconds, and `mean()` on 10 values from
+  157 to 129. A grouped `summarise(m = mean(x))` over 10,000 groups falls
+  from 4.7 to 4.4 seconds.
+
 * `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
   date, or datetime vector compare the packed native key that `dta_match()`
   uses, rather than formatting each value as text. On 2 million doubles,
