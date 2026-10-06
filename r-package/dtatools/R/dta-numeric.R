@@ -734,6 +734,11 @@ vec_proxy.dta_numeric <- function(x, ...) {
         # every rank is finite; skip the missing-code scan.
         return(list(rank = integer(length(values)), value = values))
     }
+    # Classify and zero the missing values in one native pass. It declines
+    # foreign ALTREP inputs and noncanonical payloads, which the R code
+    # below reads and reports as before.
+    parts <- .Call(C_dtatools_identity_parts, values)
+    if (!is.null(parts)) return(parts)
     codes <- .tab_missing_codes(values)
     invalid <- !is.na(codes) & !(
         codes == 0L |
@@ -760,7 +765,11 @@ vec_proxy.dta_numeric <- function(x, ...) {
 
 .dta_identity_proxy <- function(x, operation) {
     parts <- .dta_identity_parts(x, operation)
-    data.frame(rank = parts$rank, value = parts$value)
+    # What data.frame() builds, attributes in the same order, without its
+    # per-call argument checks.
+    structure(list(rank = parts$rank, value = parts$value),
+              class = "data.frame",
+              row.names = .set_row_names(length(parts$rank)))
 }
 
 #' @export
@@ -932,7 +941,15 @@ sort.dta_numeric <- function(
 duplicated.dta_numeric <- function(
     x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
 ) {
-    key <- .dta_identity_key(x, "numeric", "x")
+    # The packed native key groups values as the text key does, without
+    # formatting each one. Other arguments take the text key, rebuilt from
+    # the packed one so the values are read once.
+    key <- .dta_identity_key(x, "numeric", "x", native = TRUE)
+    if (is.raw(key) && identical(incomparables, FALSE) && identical(fromLast, FALSE) &&
+        identical(nmax, NA) && ...length() == 0L) {
+        return(.dta_identity_duplicated_keys(key))
+    }
+    if (is.raw(key)) key <- .dta_identity_text_key(key)
     incomparable_key <- if (identical(incomparables, FALSE)) {
         FALSE
     } else {
@@ -949,7 +966,12 @@ duplicated.dta_numeric <- function(
 
 #' @export
 anyDuplicated.dta_numeric <- function(x, incomparables = FALSE, ...) {
-    key <- .dta_identity_key(x, "numeric", "x")
+    key <- .dta_identity_key(x, "numeric", "x", native = TRUE)
+    if (is.raw(key) && identical(incomparables, FALSE) && ...length() == 0L &&
+        length(key) %/% 8 <= .Machine$integer.max) {
+        return(match(TRUE, .dta_identity_duplicated_keys(key), nomatch = 0L))
+    }
+    if (is.raw(key)) key <- .dta_identity_text_key(key)
     incomparable_key <- if (identical(incomparables, FALSE)) {
         FALSE
     } else {

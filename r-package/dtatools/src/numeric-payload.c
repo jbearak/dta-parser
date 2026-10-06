@@ -4935,6 +4935,47 @@ static const double *numeric_constructor_region(
     return scratch;
 }
 
+/* ISNA() and R_FINITE() reach packages only as calls into libR, which cost
+   more than the rest of each constructor step. These match their results. */
+static inline int numeric_constructor_is_na(double value) {
+    uint64_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    return isnan(value) && (uint32_t) bits == UINT32_C(1954);
+}
+
+static int numeric_constructor_missing_offset(double element) {
+    int payload_tag = tagged_na_tag_value(element);
+    if (payload_tag >= 'a' && payload_tag <= 'z') return payload_tag - 'a' + 1;
+    if (payload_tag == 0 && numeric_constructor_is_na(element)) return 0;
+    Rf_error(
+        "compact Stata numerics accept only system missing and `.a` through `.z`"
+    );
+}
+
+/* Encode one region inside C_dtatools_construct_numeric(), whose locals this
+   uses. The first pass validated every element, but foreign ALTREP may answer
+   the second read differently, so each value is checked again. A value
+   outside the range goes to write_numeric_observed() for its error. */
+#define NUMERIC_CONSTRUCT_INTEGERS(TYPE, KIND, MINIMUM, MAXIMUM, MISSING) \
+    for (R_xlen_t index = start; index < end; index++) {                  \
+        double element = elements == NULL                                 \
+            ? REAL_ELT(value, index) : elements[index - start];           \
+        TYPE encoded;                                                     \
+        if (isnan(element)) {                                             \
+            encoded = (TYPE) ((MISSING) +                                 \
+                numeric_constructor_missing_offset(element));             \
+            missing_count++;                                              \
+        } else {                                                          \
+            if (!(element >= (MINIMUM) && element <= (MAXIMUM) &&         \
+                  element == trunc(element)))                             \
+                write_numeric_observed(output, index, KIND, element);     \
+            encoded = (TYPE) element;                                     \
+            zero_count += element == 0.0;                                 \
+        }                                                                 \
+        memcpy(output + (size_t) index * sizeof(TYPE), &encoded,          \
+               sizeof(TYPE));                                             \
+    }
+
 SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -4958,7 +4999,9 @@ SEXP C_dtatools_construct_numeric(
         Rf_error("compact Stata numeric vector is too long");
     }
 
-    int fits_requested = 1;
+    /* Every storage fit is tracked, since a failure recommends the narrowest
+       storage that holds `x`. numeric_kind_width() rejected other kinds. */
+    int fits_byte = 1;
     int fits_int = 1;
     int fits_long = 1;
     int fits_float = 1;
@@ -4966,62 +5009,40 @@ SEXP C_dtatools_construct_numeric(
     int has_nonfinite = 0;
     double float_maximum = numeric_float_observed_limit();
     double scratch[2048];
-    R_xlen_t region_start = 0, region_end = 0;
-    const double *elements = NULL;
-    for (R_xlen_t index = 0; index < length; index++) {
-        if (index == region_end) {
-            R_xlen_t count = length - index > 16384 ? 16384 : length - index;
-            elements = numeric_constructor_region(value, index, &count, scratch);
-            region_start = index;
-            region_end = index + count;
-        }
-        double element = elements == NULL ? REAL_ELT(value, index) : elements[index - region_start];
-        int payload_tag = tagged_na_tag_value(element);
-        int valid_missing = ISNA(element) ||
-            (payload_tag >= 'a' && payload_tag <= 'z');
-        if (valid_missing) continue;
-        if (ISNAN(element)) {
-            if (payload_tag == 0) {
+    for (R_xlen_t start = 0, end; start < length; start = end) {
+        R_xlen_t count = length - start > 16384 ? 16384 : length - start;
+        const double *elements = numeric_constructor_region(value, start, &count, scratch);
+        end = start + count;
+        for (R_xlen_t index = start; index < end; index++) {
+            double element = elements == NULL
+                ? REAL_ELT(value, index) : elements[index - start];
+            if (isnan(element)) {
+                int payload_tag = tagged_na_tag_value(element);
+                if (numeric_constructor_is_na(element) ||
+                    (payload_tag >= 'a' && payload_tag <= 'z')) continue;
+                if (payload_tag == 0) {
+                    Rf_error(
+                        "No Stata numeric storage can represent `x`; use `NA_real_` for system missing or `tagged_missing()` for `.a` through `.z`"
+                    );
+                }
                 Rf_error(
-                    "No Stata numeric storage can represent `x`; use `NA_real_` for system missing or `tagged_missing()` for `.a` through `.z`"
+                    "compact Stata numerics accept only system missing and `.a` through `.z`"
                 );
             }
-            Rf_error(
-                "compact Stata numerics accept only system missing and `.a` through `.z`"
-            );
-        }
-        if (!R_FINITE(element)) has_nonfinite = 1;
-        int integral = R_FINITE(element) && element == trunc(element);
-        int element_fits_int = integral &&
-            element >= -32767.0 && element <= 32740.0;
-        int element_fits_long = integral &&
-            element >= -2147483647.0 && element <= 2147483620.0;
-        int element_fits_float = R_FINITE(element) &&
-            fabs(element) <= float_maximum;
-        int element_fits_double = R_FINITE(element) &&
-            fabs(element) <= DBL_MAX / 2.0;
-        fits_int = fits_int && element_fits_int;
-        fits_long = fits_long && element_fits_long;
-        fits_float = fits_float && element_fits_float;
-        fits_double = fits_double && element_fits_double;
-        switch (kind) {
-        case NUMERIC_BYTE:
-            fits_requested = fits_requested && integral &&
-                element >= -127.0 && element <= 100.0;
-            break;
-        case NUMERIC_INT:
-            fits_requested = fits_requested && element_fits_int;
-            break;
-        case NUMERIC_LONG:
-            fits_requested = fits_requested && element_fits_long;
-            break;
-        case NUMERIC_FLOAT:
-            fits_requested = fits_requested && element_fits_float;
-            break;
-        default:
-            Rf_error("invalid compact Stata numeric storage type");
+            int finite = isfinite(element) != 0;
+            int integral = finite & (element == trunc(element));
+            has_nonfinite |= !finite;
+            fits_byte &= integral & (element >= -127.0) & (element <= 100.0);
+            fits_int &= integral & (element >= -32767.0) & (element <= 32740.0);
+            fits_long &= integral & (element >= -2147483647.0) &
+                (element <= 2147483620.0);
+            fits_float &= finite & (fabs(element) <= float_maximum);
+            fits_double &= finite & (fabs(element) <= DBL_MAX / 2.0);
         }
     }
+    int fits_requested = kind == NUMERIC_BYTE ? fits_byte :
+        kind == NUMERIC_INT ? fits_int :
+        kind == NUMERIC_LONG ? fits_long : fits_float;
     if (!fits_requested) {
         if (has_nonfinite) {
             Rf_error(
@@ -5047,8 +5068,6 @@ SEXP C_dtatools_construct_numeric(
         );
     }
     /* The next pass must observe the input again after allocation callbacks. */
-    elements = NULL;
-    region_start = region_end = 0;
     R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
     unsigned char *output = RAW(backing);
@@ -5057,39 +5076,45 @@ SEXP C_dtatools_construct_numeric(
     uint32_t float_maximum_magnitude = 0;
     uint32_t float_minimum_nonzero_magnitude = UINT32_MAX;
 
-    for (R_xlen_t index = 0; index < length; index++) {
-        if (index == region_end) {
-            R_xlen_t count = length - index > 16384 ? 16384 : length - index;
-            elements = numeric_constructor_region(value, index, &count, scratch);
-            region_start = index;
-            region_end = index + count;
-        }
-        double element = elements == NULL ? REAL_ELT(value, index) : elements[index - region_start];
-        int payload_tag = tagged_na_tag_value(element);
-        int offset = payload_tag >= 'a' && payload_tag <= 'z'
-            ? payload_tag - 'a' + 1 : -1;
-        if (payload_tag == 0 && ISNA(element)) offset = 0;
-        if (offset >= 0) {
-            missing_count++;
-            write_numeric_missing(output, index, kind, offset);
-        } else if (ISNAN(element)) {
-            Rf_error(
-                "compact Stata numerics accept only system missing and `.a` through `.z`"
-            );
-        } else {
-            write_numeric_observed(output, index, kind, element);
-            if (temporal == 0) {
-                if (kind == NUMERIC_FLOAT) {
+    for (R_xlen_t start = 0, end; start < length; start = end) {
+        R_xlen_t count = length - start > 16384 ? 16384 : length - start;
+        const double *elements = numeric_constructor_region(value, start, &count, scratch);
+        end = start + count;
+        switch (kind) {
+        case NUMERIC_BYTE:
+            NUMERIC_CONSTRUCT_INTEGERS(int8_t, NUMERIC_BYTE, -127.0, 100.0, 101)
+            break;
+        case NUMERIC_INT:
+            NUMERIC_CONSTRUCT_INTEGERS(int16_t, NUMERIC_INT, -32767.0, 32740.0, 32741)
+            break;
+        case NUMERIC_LONG:
+            NUMERIC_CONSTRUCT_INTEGERS(int32_t, NUMERIC_LONG, -2147483647.0,
+                                       2147483620.0, INT32_C(2147483621))
+            break;
+        default:
+            for (R_xlen_t index = start; index < end; index++) {
+                double element = elements == NULL
+                    ? REAL_ELT(value, index) : elements[index - start];
+                uint32_t bits;
+                if (isnan(element)) {
+                    bits = UINT32_C(0x7f000000) + (uint32_t)
+                        numeric_constructor_missing_offset(element) *
+                        UINT32_C(0x00000800);
+                    missing_count++;
+                } else {
+                    if (!(element >= -float_maximum && element <= float_maximum))
+                        write_numeric_observed(output, index, kind, element);
+                    float encoded = (float) element;
+                    memcpy(&bits, &encoded, sizeof(bits));
                     /* Record the encoded value: binary32 narrowing can create zero. */
-                    uint32_t bits;
-                    memcpy(&bits, output + (size_t) index * sizeof(bits), sizeof(bits));
                     uint32_t magnitude = bits & UINT32_C(0x7fffffff);
                     if (magnitude > float_maximum_magnitude)
                         float_maximum_magnitude = magnitude;
                     if (magnitude == 0) zero_count++;
                     else if (magnitude < float_minimum_nonzero_magnitude)
                         float_minimum_nonzero_magnitude = magnitude;
-                } else if (element == 0.0) zero_count++;
+                }
+                memcpy(output + (size_t) index * sizeof(bits), &bits, sizeof(bits));
             }
         }
     }
@@ -6563,6 +6588,12 @@ SEXP C_dtatools_construct_double(SEXP value, SEXP frame, SEXP dependencies) {
     if (frame != R_NilValue) return C_dtatools_construct_double_impl(value, frame, dependencies);
     frame = R_GetCurrentEnv();
     if (!numeric_size_admitted(frame, DTATOOLS_NUMERIC_CONSTRUCT)) return Rf_ScalarLogical(FALSE);
+    /* Only double storage can pass the checks below. Read it the way the size
+       preflight reads `x`, before qualifying the closure costs a call. */
+    SEXP declared = PROTECT(numeric_size_peek(Rf_install("storage"), frame));
+    int double_storage = computed_storage_kind(declared) == NUMERIC_DOUBLE;
+    UNPROTECT(1);
+    if (!double_storage) return Rf_ScalarLogical(FALSE);
     if (!dtatools_numeric_entry_frame_admitted(frame, DTATOOLS_NUMERIC_CONSTRUCT) ||
         !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
     value = PROTECT(computed_peek(Rf_install("x"), frame, 16));

@@ -344,6 +344,32 @@ test_that('initial capture records the column names actually consumed', {
     }
 })
 
+test_that('initial capture registers a name repeated during capture once', {
+    groups <- list(rows = list(1:2), names = character(),
+                   keys = tibble::new_tibble(list(), nrow = 1L), type = 'ungrouped')
+    armed <- FALSE
+    foreign <- .Call(C_dtatools_callback_double, c(1, 2), function() {
+        if (armed) {
+            armed <<- FALSE
+            data.table::setnames(carrier, 'z', 'y')
+        }
+    }, FALSE)
+    columns <- list(x = foreign, y = dta_double(c(3, 4)), z = dta_double(c(5, 6)))
+    # A real data.frame header can share the initial column-name vector.
+    carrier <- structure(list(1:2, 3:4, 5:6), names = names(columns),
+                         class = 'data.frame', row.names = c(NA_integer_, -2L))
+    armed <- TRUE
+    mask <- .new_dibble_expression_mask(columns, groups, 2L, 'mutate()')
+    withr::defer(mask$forget())
+    state <- get('state', environment(mask$evaluate))
+    # Each consumed name keeps the column at its position. A repeated name
+    # registers as add() would: first position, last column captured.
+    expect_false(armed)
+    expect_identical(state$names, c('x', 'y'))
+    expect_identical(lapply(mask$values(), as.double), list(x = c(1, 2), y = c(5, 6)))
+    expect_length(state$generations, 3L)
+})
+
 test_that("mutation can retain initial column names across caller renames", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(1, 2))
@@ -681,7 +707,9 @@ test_that('public masks retain history and values bookkeeping callbacks', {
         }, libpath = .libPaths(),
         env = c(R_DISABLE_BYTECODE = if (disabled) '1' else NA_character_))
         expect_identical(observed[[1L]]$calls, c(5L, 0L, 0L, 0L, 5L))
-        expect_identical(observed[[2L]]$calls, c(0L, 0L, 0L, 3L, 0L))
+        # Initial capture registers its history at once; only the added
+        # column reads its length.
+        expect_identical(observed[[2L]]$calls, c(0L, 0L, 0L, 1L, 0L))
         expect_identical(observed[[3L]]$calls, c(0L, 0L, 0L, 0L, 0L))
         for (result in observed) expect_identical(result$values, c(2, 3, 4))
     }

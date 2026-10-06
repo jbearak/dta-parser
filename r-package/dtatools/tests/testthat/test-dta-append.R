@@ -547,10 +547,51 @@ test_that("a buffered column is written in place, not duplicated", {
     prototype <- dta_byte()
     buffer <- dtatools:::.append_allocate_buffer(prototype, 4L)
     expect_identical(attr(buffer, "dtatools.storage"), "byte")
+    # structure() would wrap a long buffer in ALTREP, which the native
+    # range copy declines.
+    long <- dtatools:::.append_allocate_buffer(prototype, 100L)
+    expect_false(dtatools:::.is_altrep(long))
+    expect_identical(attributes(long), list(dtatools.buffer = "numeric",
+                                            dtatools.storage = "byte"))
+    strings <- dtatools:::.append_allocate_buffer(dta_string(), 100L)
+    expect_false(dtatools:::.is_altrep(strings))
+    expect_identical(attributes(strings), list(dtatools.buffer = "string"))
 
     expect_true(dtatools:::.append_fits_buffer(dta_byte(1), dta_long()))
     expect_false(dtatools:::.append_fits_buffer(1, dta_long()))
     expect_null(dtatools:::.append_allocate_buffer(factor("a"), 4L))
+})
+
+test_that("a numeric buffer range is copied natively with its exact bits", {
+    # Call the writer directly: a wrapper's argument would share the buffer.
+    writer <- dtatools:::C_dtatools_append_write_doubles
+    bits <- function(x) writeBin(as.double(x), raw())
+    values <- as.double(dta_byte(c(1, tagged_missing("b"), NA, -1)))
+    expect_true(dtatools:::.is_altrep(values))
+    buffer <- rep(NA_real_, 6L)
+    expect_true(.Call(writer, buffer, 1L, 4L, values))
+    expect_identical(bits(buffer), bits(c(NA_real_, values, NA_real_)))
+    expect_identical(missing_tag(dta_double(buffer))[[3L]], "b")
+
+    # Declined writes leave the buffer for `[<-`, unchanged.
+    untouched <- bits(buffer)
+    shared <- buffer
+    expect_false(.Call(writer, buffer, 0L, 4L, values))
+    rm(shared)
+    expect_false(.Call(writer, buffer, 0L, 3L, values))
+    expect_false(.Call(writer, buffer, 3L, 4L, values))
+    expect_false(.Call(writer, buffer, -1L, 4L, values))
+    expect_false(.Call(writer, buffer, NA_integer_, 4L, values))
+    expect_false(.Call(writer, buffer, 0L, 4L, c("a", "b", "c", "d")))
+    expect_identical(bits(buffer), untouched)
+    strings <- c("a", "b", "c", "d")
+    expect_false(.Call(writer, strings, 0L, 4L, values))
+
+    left <- tibble::tibble(v = dta_byte(c(1, tagged_missing("a"))))
+    right <- tibble::tibble(v = dta_byte(c(tagged_missing("c"), 4)))
+    result <- dta_append(list(left, right))
+    expect_identical(missing_tag(result$v), c(NA, "a", "c", NA))
+    expect_identical(as.double(result$v)[c(1L, 4L)], c(1, 4))
 })
 
 test_that("a buffered column keeps values that do not fit the buffer", {
