@@ -48,6 +48,14 @@
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
 
+* `mutate()` on a dibble grouped with `group_by()` or `rowwise()` assembles
+  per-group Stata doubles natively, as it already did with `.by`. dplyr keeps
+  each group's rows in a `list_of`, which native assembly declined, so every
+  group's result went through vctrs. Over 10,000 groups of 100,000 rows,
+  `mutate(y = x * 2)` falls from 3.1 to 0.6 seconds and `mutate(m = mean(x))`
+  from 4.6 to 2.5 seconds. On 10,000 rowwise rows, `mutate(s = a + b)` falls
+  from 3.3 to 0.6 seconds.
+
 * `dta_append()` skips reconciling a Stata numeric or string variable whose
   sources declare it identically apart from value labels. It takes an empty
   Stata numeric or string schema column as its own prototype, unless the

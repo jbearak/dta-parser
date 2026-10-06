@@ -795,6 +795,22 @@ test_that("public indexed combination admits five expressions in one run frame",
                                    rep(c(1, 4, 2, 8), 25) + i)
 })
 
+test_that("public indexed combination admits grouped and rowwise row lists", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    withr::local_options(dtatools.generate_type = "double")
+    .combine_warm()
+    # More than 64 groups: unclass() would hand R's wrapper of the list_of.
+    data <- dibble(x = rep(c(1, 4, 2, 8), 50), g = rep(1:100, 2))
+    for (grouped in list(dplyr::group_by(data, g), dplyr::rowwise(data))) {
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        result <- dplyr::mutate(grouped, y = x + 1)
+        counters <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(counters[["combine_copied_payload_bytes"]],
+                         if (.combine_profile_expected()) 1600 else 0)
+        expect_identical(as.double(result$y), rep(c(1, 4, 2, 8), 50) + 1)
+    }
+})
+
 test_that("combination namespace admission leaves active exports untouched", {
     pieces <- .combine_warm()
     exports <- getNamespaceInfo(asNamespace("vctrs"), "exports")
