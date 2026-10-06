@@ -6443,30 +6443,69 @@ static SEXP combine_exported_function(SEXP frame, SEXP dependencies) {
                                     "list_unchop", VECTOR_ELT(primitives, 4));
 }
 
-/* A registered routine that a reducer wrapper passes to .External2 must be a
-   settled ordinary binding in the wrapper's namespace, never a promise or an
-   active binding that could run code once admission has passed. */
+/* A registered routine object bound to name in ns: a settled ordinary
+   binding of the ExternalRoutine class with that name and an address. A
+   promise or an active binding could run code once admission has passed. */
 static int summary_routine_settled(SEXP ns, const char *name) {
     SEXP value = R_NilValue;
     if (combine_peek_frame(ns, Rf_install(name), &value) != COMBINE_VALUE ||
-        TYPEOF(value) != VECSXP || ALTREP(value) || XLENGTH(value) < 1) return 0;
+        TYPEOF(value) != VECSXP || ALTREP(value) || XLENGTH(value) < 2) return 0;
     SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
     SEXP names = Rf_getAttrib(value, R_NamesSymbol);
     SEXP routine = VECTOR_ELT(value, 0);
     return TYPEOF(classes) == STRSXP && XLENGTH(classes) == 2 &&
         strcmp(CHAR(STRING_ELT(classes, 0)), "ExternalRoutine") == 0 &&
         strcmp(CHAR(STRING_ELT(classes, 1)), "NativeSymbolInfo") == 0 &&
-        TYPEOF(names) == STRSXP && strcmp(CHAR(STRING_ELT(names, 0)), "name") == 0 &&
+        TYPEOF(names) == STRSXP && XLENGTH(names) >= 2 &&
+        strcmp(CHAR(STRING_ELT(names, 0)), "name") == 0 &&
+        strcmp(CHAR(STRING_ELT(names, 1)), "address") == 0 &&
         TYPEOF(routine) == STRSXP && XLENGTH(routine) == 1 &&
         strcmp(CHAR(STRING_ELT(routine, 0)), name) == 0;
 }
 
+/* Capture at load the routine object that a reducer wrapper passes to
+   .External2, or NULL when it is not settled. Build copies cannot hold a
+   routine, whose address is valid only in the session that loaded it.
+   A routine object replaced before dtatools loads is not covered: R
+   exposes the routine behind a registered address only through non-API
+   calls and its private symbol record. */
+SEXP C_dtatools_settled_routine(SEXP ns, SEXP name) {
+    SEXP value = R_NilValue;
+    if (TYPEOF(ns) != ENVSXP || TYPEOF(name) != STRSXP || ALTREP(name) ||
+        XLENGTH(name) != 1 || STRING_ELT(name, 0) == NA_STRING) return R_NilValue;
+    const char *text = CHAR(STRING_ELT(name, 0));
+    if (!summary_routine_settled(ns, text) ||
+        combine_peek_frame(ns, Rf_install(text), &value) != COMBINE_VALUE) return R_NilValue;
+    return value;
+}
+
+/* The routine binding must still hold the object captured at load. A
+   replaced, delayed or active binding declines, including a routine object
+   that keeps the name but carries another address. */
+static int summary_routine_same(SEXP ns, const char *name, SEXP routines, R_xlen_t index) {
+    SEXP value = R_NilValue;
+    return combine_plain_list(routines) && index < XLENGTH(routines) &&
+        TYPEOF(VECTOR_ELT(routines, index)) == VECSXP &&
+        combine_peek_frame(ns, Rf_install(name), &value) == COMBINE_VALUE &&
+        value == VECTOR_ELT(routines, index);
+}
+
+/* vctrs forces a reducer's caller_env() default when it calls a method, and
+   caller_env() calls parent.frame(n + 1) in rlang. The shared graph checks
+   parent.frame; the rest must match the build copy. */
+static int summary_caller_env_unchanged(SEXP ns, SEXP caller_env, SEXP plus, SEXP brace) {
+    return TYPEOF(caller_env) == CLOSXP && TYPEOF(plus) == BUILTINSXP &&
+        combine_lexical_function_same(ns, Rf_install("caller_env"), caller_env) &&
+        computed_dependency_value(Rf_install("+"), R_ClosureEnv(caller_env), 16) == plus &&
+        computed_dependency_value(Rf_install("{"), R_ClosureEnv(caller_env), 16) == brace;
+}
+
 /* A grouped summary that skips folds hands vctrs::vec_ptype_common() only
-   its first chunks. Its wrapper and rlang::list2() must match their build
-   copies, with their braces, .External2 and routines unchanged, so the
-   shortened argument list cannot be observed. */
-static int summary_reducer_unchanged(SEXP frame, SEXP expected) {
-    if (!combine_plain_list(expected) || XLENGTH(expected) != 6 ||
+   its first chunks. Its wrapper, rlang::list2() and caller_env() must match
+   their build copies, with their braces, .External2 and routines unchanged,
+   so the shortened argument list cannot be observed. */
+static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 8 ||
         TYPEOF(VECTOR_ELT(expected, 2)) != ENVSXP) return 0;
     SEXP ns = VECTOR_ELT(expected, 2);
     SEXP common = PROTECT(vctrs_exported_function(
@@ -6484,8 +6523,10 @@ static int summary_reducer_unchanged(SEXP frame, SEXP expected) {
                     R_ClosureEnv(wrappers[wrapper]), 16) == primitive;
         }
     }
-    same = same && summary_routine_settled(R_ClosureEnv(common), "ffi_ptype_common") &&
-        summary_routine_settled(R_ClosureEnv(list2), "ffi_list2");
+    same = same && summary_caller_env_unchanged(ns, VECTOR_ELT(expected, 6),
+                                                VECTOR_ELT(expected, 7), VECTOR_ELT(expected, 4)) &&
+        summary_routine_same(R_ClosureEnv(common), "ffi_ptype_common", routines, 0) &&
+        summary_routine_same(R_ClosureEnv(list2), "ffi_list2", routines, 1);
     UNPROTECT(2);
     return same;
 }
@@ -6494,37 +6535,53 @@ static int summary_reducer_unchanged(SEXP frame, SEXP expected) {
    vctrs, one chunk at a time. Over canonical double pieces, the ones double
    assembly combines without vctrs, each fold is a pure function of the
    running type and the next piece's attributes while the checks that admit
-   that assembly pass. Return the method vctrs would send each fold to, as
-   vctrs would find it, or NULL when any chunk or dependency differs. */
+   that assembly pass. The helper passes chunks as an unforced symbol
+   promise, so lookups are checked in the caller's frame, where vctrs is
+   called, and nothing is forced. Return the method vctrs would send each
+   fold to, as vctrs would find it, or NULL when there are fewer than eight
+   chunks or any chunk or dependency differs. */
 SEXP C_dtatools_double_ptype_method(
-    SEXP chunks, SEXP state, SEXP metadata_state, SEXP reducer
+    SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
 ) {
-    SEXP frame = R_GetCurrentEnv(), dependencies, metadata;
-    if (!combine_plain_list(chunks)) return R_NilValue;
-    for (R_xlen_t i = 0; i < XLENGTH(chunks); i++) {
+    SEXP frame = R_GetCurrentEnv(), symbol = Rf_install("chunks");
+    if (!combine_plain_environment(frame) ||
+        R_GetBindingType(symbol, frame) != R_BindingTypeDelayed ||
+        R_DelayedBindingExpression(symbol, frame) != symbol) return R_NilValue;
+    SEXP caller = R_DelayedBindingEnvironment(symbol, frame);
+    if (!combine_plain_environment(caller)) return R_NilValue;
+    SEXP chunks = PROTECT(computed_peek(symbol, caller, 16)), dependencies, metadata, routines;
+    int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8;
+    for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
-        if (!combine_double_canonical_piece(VECTOR_ELT(chunks, i))) return R_NilValue;
+        admitted = combine_double_canonical_piece(VECTOR_ELT(chunks, i));
     }
-    if (!summary_reducer_unchanged(frame, reducer) ||
-        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE ||
-        combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE)
+    if (!admitted ||
+        combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
+        !summary_reducer_unchanged(caller, reducer, routines) ||
+        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE) {
+        UNPROTECT(1);
         return R_NilValue;
+    }
     PROTECT(dependencies);
-    PROTECT(metadata);
-    if (!combine_dependencies_valid(dependencies, 11) ||
-        !dtatools_metadata_dependencies_unchanged(VECTOR_ELT(dependencies, 1), metadata, 0)) {
+    if (combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE ||
+        !combine_dependencies_valid(dependencies, 11)) {
         UNPROTECT(2);
         return R_NilValue;
     }
-    SEXP combine = PROTECT(combine_exported_function(frame, dependencies));
+    PROTECT(metadata);
+    if (!dtatools_metadata_dependencies_unchanged(VECTOR_ELT(dependencies, 1), metadata, 0)) {
+        UNPROTECT(3);
+        return R_NilValue;
+    }
+    SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
     SEXP method = R_NilValue;
     if (combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
-        SEXP symbol = Rf_install("vec_ptype2.dta_numeric.dta_numeric");
-        if (combine_peek_frame(R_GlobalEnv, symbol, &method) == COMBINE_ABSENT &&
-            combine_peek_frame(VECTOR_ELT(dependencies, 7), symbol, &method) != COMBINE_VALUE)
+        SEXP name = Rf_install("vec_ptype2.dta_numeric.dta_numeric");
+        if (combine_peek_frame(R_GlobalEnv, name, &method) == COMBINE_ABSENT &&
+            combine_peek_frame(VECTOR_ELT(dependencies, 7), name, &method) != COMBINE_VALUE)
             method = R_NilValue;
     }
-    UNPROTECT(3);
+    UNPROTECT(4);
     return method;
 }
 

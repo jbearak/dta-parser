@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "2e26fd312b4ed50edd6359c012d8995bb7b48d92b4d376120550e3a744873a34"
+          "sha256": "b07e7c0a8e1d69c0c5cadad16988fb57faf4e7c363e0eb7f45a86682d5d88da8"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13828,6 +13828,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing declines a forged routine or a replaced caller_env()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing calls a replaced reducer from its original frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "interpreted summary common typing calls no added base predicates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {

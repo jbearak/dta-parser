@@ -258,6 +258,12 @@
     .double_combine_state$dependencies <- if (
         identical(as.character(getNamespaceVersion("vctrs")), "0.7.3")
     ) .native_admission_call(C_dtatools_double_combine_dependencies, .double_combine_expected) else NULL
+    .summary_routine_state$routines <- if (!is.null(.summary_ptype_dependencies)) list(
+        .native_admission_call(C_dtatools_settled_routine,
+                               .summary_ptype_dependencies[[3L]], "ffi_ptype_common"),
+        .native_admission_call(C_dtatools_settled_routine,
+                               environment(.summary_ptype_dependencies[[2L]]), "ffi_list2")
+    ) else NULL
     # Settle the admission helper before a first indexed operation can trace
     # the lazy-load machinery used to restore its namespace environment.
     .try_combine_dta_double_indexed
