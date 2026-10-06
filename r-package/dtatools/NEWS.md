@@ -186,6 +186,10 @@
   instead of appended, with the same column-name spellings `egen()` accepts.
   A call that names both, or names a column that does not exist, changes
   nothing.
+* `tab()` builds the categories of an unlabelled numeric variable from its
+  distinct values, formatting each distinct value once rather than every
+  observation. On 1,000,000 rows, a one-way table falls from 0.27 to 0.08
+  seconds and a two-way table from 0.47 to 0.08 seconds.
 * `tab()` prints as Stata prints `tabulate`: a one-way table with
   frequency, percent, cumulative percent, and a total; a two-way table
   with row and column totals. New arguments carry `tabulate`'s options:
