@@ -61,6 +61,13 @@
   Appending a 5,360-column DHS file to itself falls from 5.3 to 2.6 seconds,
   and appending two copies of it on disk from 4.6 to 2.2 seconds.
 
+* `dta_append()` collects a byte, int, long or float variable whose sources
+  are all compact storage of that type as raw bytes, rather than decoding
+  every source into doubles and encoding the result again. Appending a
+  16,787-row, 5,360-column DHS file to itself falls from 1.9 to 1.2
+  seconds and its peak memory from 1.6 to 0.4 GB, and appending two
+  copies of it on disk falls from 1.6 to 1.0 seconds.
+
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
   statistics table once. Summarizing all 5,360 variables of a 16,787-row

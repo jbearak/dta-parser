@@ -551,8 +551,12 @@ test_that("a buffered column is written in place, not duplicated", {
     # range copy declines.
     long <- dtatools:::.append_allocate_buffer(prototype, 100L)
     expect_false(dtatools:::.is_altrep(long))
-    expect_identical(attributes(long), list(dtatools.buffer = "numeric",
+    expect_identical(attributes(long), list(dtatools.buffer = "compact",
                                             dtatools.storage = "byte"))
+    doubles <- dtatools:::.append_allocate_buffer(dta_double(), 100L)
+    expect_false(dtatools:::.is_altrep(doubles))
+    expect_identical(attributes(doubles), list(dtatools.buffer = "numeric",
+                                               dtatools.storage = "double"))
     strings <- dtatools:::.append_allocate_buffer(dta_string(), 100L)
     expect_false(dtatools:::.is_altrep(strings))
     expect_identical(attributes(strings), list(dtatools.buffer = "string"))
@@ -592,6 +596,123 @@ test_that("a numeric buffer range is copied natively with its exact bits", {
     result <- dta_append(list(left, right))
     expect_identical(missing_tag(result$v), c(NA, "a", "c", NA))
     expect_identical(as.double(result$v)[c(1L, 4L)], c(1, 4))
+})
+
+test_that("a compact buffer copies compact sources of its kind as bytes", {
+    # Call the writer directly: a wrapper's argument would share the buffer.
+    writer <- dtatools:::C_dtatools_append_write_compact
+    decode <- dtatools:::C_dtatools_append_compact_doubles
+    bits <- function(x) writeBin(as.double(x), raw())
+    byte <- match("byte", dtatools:::.dta_storage) - 1L
+    buffer <- .Call(dtatools:::C_dtatools_append_compact_buffer, byte, 6L)
+    expect_identical(bits(.Call(decode, buffer, byte)), bits(rep(NA_real_, 6L)))
+    values <- dta_byte(c(1, tagged_missing("b"), NA, -1))
+    expect_true(.Call(writer, buffer, 1L, 4L, values, byte))
+    expect_identical(
+        bits(.Call(decode, buffer, byte)),
+        bits(c(NA_real_, as.double(values), NA_real_))
+    )
+
+    # Declined writes leave the buffer for the double path, unchanged.
+    untouched <- buffer[seq_along(buffer)]
+    shared <- buffer
+    expect_false(.Call(writer, buffer, 0L, 4L, values, byte))
+    rm(shared)
+    expect_false(.Call(writer, buffer, 3L, 4L, values, byte))
+    expect_false(.Call(writer, buffer, 0L, 3L, values, byte))
+    expect_false(.Call(writer, buffer, NA_integer_, 4L, values, byte))
+    expect_false(.Call(writer, buffer, 0L, 4L, dta_int(c(1, 2, 3, 4)), byte))
+    expect_false(.Call(writer, buffer, 0L, 4L, c(1, 2, 3, 4), byte))
+    expect_identical(buffer, untouched)
+})
+
+test_that("a compact append column is the column its doubles construct", {
+    facts <- function(x) .Call(dtatools:::C_dtatools_numeric_facts_info, x)
+    writer <- dtatools:::C_dtatools_append_write_compact
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    data <- read_dta(path)
+    edges <- dibble(
+        x_byte = dta_byte(c(0, 0, 100, -127, tagged_missing("z"), 3)),
+        x_int = dta_int(c(0, -32767, 32740, NA, tagged_missing("a"), 0)),
+        x_long = dta_long(c(0, -2147483647, 2147483620, NA, tagged_missing("q"), 5)),
+        x_float = dta_float(c(-0, 0, 1.5, -2.25, 1e30, NA))
+    )
+    for (name in c("x_byte", "x_int", "x_long", "x_float")) {
+        storage <- dtatools:::.declared_dta_storage(data[[name]])
+        kind <- match(storage, dtatools:::.dta_storage) - 1L
+        sources <- list(data[[name]], edges[[name]], data[[name]])
+        rows <- lengths(sources)
+        offsets <- as.integer(cumsum(c(0, rows))[seq_along(sources)])
+        # Two rows stay at the buffer's system missing initialization.
+        buffer <- .Call(dtatools:::C_dtatools_append_compact_buffer, kind,
+                        sum(rows) + 2L)
+        for (i in seq_along(sources)) {
+            expect_true(.Call(writer, buffer, offsets[[i]], rows[[i]],
+                              sources[[i]], kind))
+        }
+        column <- .Call(dtatools:::C_dtatools_append_compact_finish, buffer, kind)
+        doubles <- .Call(dtatools:::C_dtatools_append_compact_doubles, buffer, kind)
+        expected <- .Call(dtatools:::C_dtatools_construct_numeric, doubles, kind, 0L)
+        # Reading the facts first: writing the values out materializes them.
+        expect_identical(facts(column), facts(expected), info = name)
+        expect_identical(serialize(column, NULL), serialize(expected, NULL))
+        expect_identical(writeBin(as.double(column), raw()), writeBin(doubles, raw()))
+
+        compact <- buffer
+        attr(compact, "dtatools.buffer") <- "compact"
+        attr(compact, "dtatools.storage") <- storage
+        attr(doubles, "dtatools.buffer") <- "numeric"
+        attr(doubles, "dtatools.storage") <- storage
+        expect_identical(
+            serialize(dtatools:::.append_finish_buffer(compact, data[[name]]), NULL),
+            serialize(dtatools:::.append_finish_buffer(doubles, data[[name]]), NULL)
+        )
+    }
+
+    # A source of another kind turns the buffer into doubles part way.
+    mixed <- dibble(x_int = dta_int(c(7, tagged_missing("a"))),
+                    x_byte = dta_byte(c(1, 2)))
+    for (sources in list(list(data, mixed), list(mixed, data))) {
+        result <- dta_append(sources)
+        expected <- c(as.double(sources[[1L]]$x_int), as.double(sources[[2L]]$x_int))
+        expect_identical(writeBin(as.double(result$x_int), raw()),
+                         writeBin(expected, raw()))
+        expect_identical(dtatools:::.declared_dta_storage(result$x_int), "int")
+    }
+})
+
+test_that("compact append sources the constructor rejects keep its errors", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    good <- read_dta(path)
+    cases <- list(
+        list(x_byte = as.raw(0x80)),
+        list(x_int = .raw_little_integer(-32768L, 2L)),
+        list(x_float = .raw_little_integer(0x7fc00000, 4L)),
+        list(x_float = .raw_little_integer(0x7f000001, 4L))
+    )
+    for (values in cases) {
+        bad <- tempfile(fileext = ".dta")
+        file.copy(path, bad)
+        patch_numeric_fixture_row(bad, 0L, values)
+        source <- read_dta(bad)
+        unlink(bad)
+        name <- names(values)
+        expected <- tryCatch(
+            dtatools:::.construct_dta_numeric(
+                c(as.double(good[[name]]), as.double(source[[name]])), NULL,
+                dtatools:::.declared_dta_storage(good[[name]])
+            ),
+            error = conditionMessage
+        )
+        expect_type(expected, "character")
+        expect_identical(
+            tryCatch(dta_append(list(good, source)), error = conditionMessage),
+            expected,
+            info = name
+        )
+    }
 })
 
 test_that("a buffered column keeps values that do not fit the buffer", {

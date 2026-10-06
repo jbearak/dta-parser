@@ -5147,6 +5147,219 @@ SEXP C_dtatools_construct_numeric(
     return result;
 }
 
+/* dta_append() collects a byte, int, long, or float column whose sources
+   are all compact storage of that kind as raw bytes in the modern encoding,
+   rather than decoding every source into doubles and encoding the doubles
+   again. These routines refuse anything else, so the caller can fall back
+   to its double buffer. */
+static int append_compact_kind(SEXP kind_value) {
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1) return -1;
+    int kind = INTEGER(kind_value)[0];
+    return kind == NUMERIC_BYTE || kind == NUMERIC_INT ||
+        kind == NUMERIC_LONG || kind == NUMERIC_FLOAT ? kind : -1;
+}
+
+/* Scan modern-encoded bytes as the compact constructor scans the doubles
+   they decode to. Return 0 if any value is one it rejects; the integer
+   storages reject only their minimum, since every other pattern is an
+   observed value in range or a missing code. Otherwise return 1 and, when
+   `facts` is not NULL, fill in what the constructor records. */
+typedef struct {
+    size_t missing_count;
+    size_t zero_count;
+    uint32_t float_maximum_magnitude;
+    uint32_t float_minimum_nonzero_magnitude;
+} append_compact_facts;
+
+#define APPEND_COMPACT_INTEGERS(TYPE, MINIMUM, MISSING)                     \
+    for (size_t index = 0; index < count; index++) {                        \
+        TYPE raw;                                                           \
+        memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));            \
+        if (raw == (MINIMUM)) return 0;                                     \
+        missing_count += raw >= (MISSING);                                  \
+        zero_count += raw == 0;                                             \
+    }
+
+static int append_compact_scan(
+    const unsigned char *bytes, size_t count, int kind,
+    append_compact_facts *facts
+) {
+    size_t missing_count = 0;
+    size_t zero_count = 0;
+    uint32_t float_maximum_magnitude = 0;
+    uint32_t float_minimum_nonzero_magnitude = UINT32_MAX;
+    switch (kind) {
+    case NUMERIC_BYTE:
+        APPEND_COMPACT_INTEGERS(int8_t, INT8_MIN, 101)
+        break;
+    case NUMERIC_INT:
+        APPEND_COMPACT_INTEGERS(int16_t, INT16_MIN, 32741)
+        break;
+    case NUMERIC_LONG:
+        APPEND_COMPACT_INTEGERS(int32_t, INT32_MIN, INT32_C(2147483621))
+        break;
+    default: {
+        double float_maximum = numeric_float_observed_limit();
+        for (size_t index = 0; index < count; index++) {
+            float raw;
+            memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));
+            if (float_missing_offset(raw, 119) >= 0) {
+                missing_count++;
+                continue;
+            }
+            double value = (double) raw;
+            if (!(value >= -float_maximum && value <= float_maximum)) return 0;
+            uint32_t bits;
+            memcpy(&bits, &raw, sizeof(bits));
+            uint32_t magnitude = bits & UINT32_C(0x7fffffff);
+            if (magnitude > float_maximum_magnitude)
+                float_maximum_magnitude = magnitude;
+            if (magnitude == 0) zero_count++;
+            else if (magnitude < float_minimum_nonzero_magnitude)
+                float_minimum_nonzero_magnitude = magnitude;
+        }
+    }
+    }
+    if (facts != NULL) {
+        facts->missing_count = missing_count;
+        facts->zero_count = zero_count;
+        facts->float_maximum_magnitude = float_maximum_magnitude;
+        facts->float_minimum_nonzero_magnitude = float_minimum_nonzero_magnitude;
+    }
+    return 1;
+}
+
+#undef APPEND_COMPACT_INTEGERS
+
+/* `rows` system missing values in the modern encoding of `kind`. */
+SEXP C_dtatools_append_compact_buffer(SEXP kind_value, SEXP rows_value) {
+    int kind = append_compact_kind(kind_value);
+    if (kind < 0 || TYPEOF(rows_value) != INTSXP || XLENGTH(rows_value) != 1 ||
+        INTEGER(rows_value)[0] == NA_INTEGER || INTEGER(rows_value)[0] < 0) {
+        Rf_error("invalid compact append buffer");
+    }
+    R_xlen_t rows = INTEGER(rows_value)[0];
+    size_t width = numeric_kind_width(kind);
+    SEXP buffer = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) ((size_t) rows * width)));
+    unsigned char *output = RAW(buffer);
+    for (R_xlen_t index = 0; index < rows; index++) {
+        write_numeric_missing(output, index, kind, 0);
+    }
+    UNPROTECT(1);
+    return buffer;
+}
+
+/* Copy `value`'s bytes into `buffer` at the zero-based row `offset`. Return
+   FALSE, leaving the buffer as it was, unless `value` is `rows` values of
+   unmaterialized compact storage of `kind` in the modern encoding, with no
+   temporal conversion, that the constructor would accept, and the buffer
+   is unshared and holds the destination rows. */
+SEXP C_dtatools_append_write_compact(
+    SEXP buffer, SEXP offset, SEXP rows, SEXP value, SEXP kind_value
+) {
+    int kind = append_compact_kind(kind_value);
+    if (kind < 0 || TYPEOF(buffer) != RAWSXP || ALTREP(buffer) ||
+        MAYBE_SHARED(buffer) || TYPEOF(value) != REALSXP ||
+        TYPEOF(offset) != INTSXP || XLENGTH(offset) != 1 ||
+        TYPEOF(rows) != INTSXP || XLENGTH(rows) != 1) {
+        return Rf_ScalarLogical(FALSE);
+    }
+    size_t width = numeric_kind_width(kind);
+    int start = INTEGER(offset)[0], count = INTEGER(rows)[0];
+    if (start == NA_INTEGER || count == NA_INTEGER || start < 0 || count < 0 ||
+        XLENGTH(value) != count || XLENGTH(buffer) % (R_xlen_t) width != 0 ||
+        count > XLENGTH(buffer) / (R_xlen_t) width - start) {
+        return Rf_ScalarLogical(FALSE);
+    }
+    numeric_data captured;
+    SEXP root = PROTECT(numeric_missing_mask_capture(value, &captured));
+    if (root == R_NilValue || captured.kind != kind || captured.temporal != 0 ||
+        captured.format_version <= 111 || captured.length != (size_t) count) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    unsigned char *target = RAW(buffer) + (size_t) start * width;
+    numeric_copy_region(&captured, 0, (size_t) count, target);
+    if (!append_compact_scan(target, (size_t) count, kind, NULL)) {
+        for (R_xlen_t index = 0; index < count; index++) {
+            write_numeric_missing(target, index, kind, 0);
+        }
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    UNPROTECT(1);
+    return Rf_ScalarLogical(TRUE);
+}
+
+/* The doubles a compact buffer holds, for a caller that must continue
+   with a double buffer. Missing values decode to `NA_real_` and tagged
+   missing values, as reading the finished column would give them. */
+SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind_value) {
+    int kind = append_compact_kind(kind_value);
+    if (kind < 0 || TYPEOF(buffer) != RAWSXP ||
+        XLENGTH(buffer) % (R_xlen_t) numeric_kind_width(kind) != 0) {
+        Rf_error("invalid compact append buffer");
+    }
+    R_xlen_t rows = XLENGTH(buffer) / (R_xlen_t) numeric_kind_width(kind);
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, rows));
+    numeric_data data;
+    memset(&data, 0, sizeof(data));
+    data.values = RAW(buffer);
+    data.length = (size_t) rows;
+    data.kind = kind;
+    data.format_version = 119;
+    double *output = REAL(result);
+    for (R_xlen_t index = 0; index < rows; index++) {
+        output[index] = numeric_value_at(&data, (size_t) index);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+/* The compact column C_dtatools_construct_numeric() builds from the doubles
+   a valid compact buffer holds: the same bytes, missing count and facts.
+   Return NULL for bytes the constructor would reject, so the caller can
+   decode them and raise its error. */
+SEXP C_dtatools_append_compact_finish(SEXP buffer, SEXP kind_value) {
+    int kind = append_compact_kind(kind_value);
+    size_t width = kind < 0 ? 1 : numeric_kind_width(kind);
+    if (kind < 0 || TYPEOF(buffer) != RAWSXP ||
+        XLENGTH(buffer) % (R_xlen_t) width != 0) {
+        Rf_error("invalid compact append buffer");
+    }
+    size_t length = (size_t) XLENGTH(buffer) / width;
+    append_compact_facts facts;
+    if (!append_compact_scan(RAW(buffer), length, kind, &facts)) return R_NilValue;
+    /* The column owns a copy, so later writes to the buffer cannot reach it. */
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, XLENGTH(buffer)));
+    memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
+    size_t missing_count = facts.missing_count;
+    void *data = dtatools_numeric_alloc(
+        RAW(backing), length, kind, 0, missing_count
+    );
+    if (data == NULL) {
+        UNPROTECT(1);
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    numeric_data *storage = data;
+    storage->zero_count = facts.zero_count;
+    storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+    if (kind == NUMERIC_FLOAT) {
+        storage->float_max_magnitude_bound = facts.float_maximum_magnitude;
+        storage->float_min_nonzero_magnitude_bound =
+            facts.float_minimum_nonzero_magnitude;
+        storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(3);
+    return result;
+}
+
 /* A successful strict-double check can replace the R masks only while their
    predicates retain the installed definitions. Inspect bindings and syntax
    without forcing a policy promise or reading a foreign literal. */

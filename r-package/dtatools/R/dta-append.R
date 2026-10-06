@@ -606,6 +606,25 @@ dta_append <- function(sources, force = TRUE,
                         # the whole column on every source instead of
                         # writing the destination range in place.
                         buffers[plan_index] <- list(NULL)
+                        kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
+                        # A compact buffer takes the source's bytes when
+                        # the source is compact storage of the same kind.
+                        # Otherwise it becomes the double buffer it
+                        # stands for, and this and later sources write
+                        # doubles. The calls must stay direct, as below.
+                        if (identical(kind, "compact")) {
+                            storage <- attr(buffer, "dtatools.storage", exact = TRUE)
+                            if (.Call(C_dtatools_append_write_compact, buffer,
+                                      offsets[[my_index]], rows, writable,
+                                      match(storage, .dta_storage) - 1L)) {
+                                buffers[[plan_index]] <- buffer
+                                next
+                            }
+                            buffer <- .Call(C_dtatools_append_compact_doubles,
+                                            buffer, match(storage, .dta_storage) - 1L)
+                            attr(buffer, "dtatools.buffer") <- "numeric"
+                            attr(buffer, "dtatools.storage") <- storage
+                        }
                         values <- .append_buffer_values(writable)
                         # A numeric range is copied natively, decoding a
                         # compact source in blocks; `[<-` reads it one
@@ -670,6 +689,15 @@ dta_append <- function(sources, force = TRUE,
     }
     storage <- .declared_dta_storage(prototype)
     if (is.null(storage)) return(NULL)
+    # A compact storage starts as raw bytes, one to four a row rather than
+    # eight, while its sources are compact storage of the same kind.
+    if (storage %in% c("byte", "int", "long", "float")) {
+        buffer <- .Call(C_dtatools_append_compact_buffer,
+                        match(storage, .dta_storage) - 1L, total_rows)
+        attr(buffer, "dtatools.buffer") <- "compact"
+        attr(buffer, "dtatools.storage") <- storage
+        return(buffer)
+    }
     buffer <- rep(NA_real_, total_rows)
     attr(buffer, "dtatools.buffer") <- "numeric"
     attr(buffer, "dtatools.storage") <- storage
@@ -753,6 +781,19 @@ dta_append <- function(sources, force = TRUE,
 .append_finish_buffer <- function(buffer, prototype) {
     kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
     storage <- attr(buffer, "dtatools.storage", exact = TRUE)
+    if (identical(kind, "compact")) {
+        code <- match(storage, .dta_storage) - 1L
+        # The column .construct_dta_numeric() builds from these values, or
+        # NULL when it would reject them, which decoding then reports.
+        result <- .Call(C_dtatools_append_compact_finish, buffer, code)
+        if (!is.null(result)) {
+            attr(result, "stata.storage") <- storage
+            attr(result, "class") <- .dta_storage_class(storage)
+            names(result) <- NULL
+            return(.restore_dta_variable_metadata(result, prototype, names = NULL))
+        }
+        buffer <- .Call(C_dtatools_append_compact_doubles, buffer, code)
+    }
     attributes(buffer) <- NULL
     if (identical(kind, "string")) return(vctrs::vec_cast(buffer, prototype))
     .restore_dta_variable_metadata(
