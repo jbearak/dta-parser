@@ -102,8 +102,8 @@
   it, so a table with an identifier column is done after that column.
   Comparing Stata numerics through vctrs decodes compact storage once
   rather than twice. On a 16,787-row, 5,360-column DHS file,
-  `codebook(compact = TRUE)` falls from 4.4 to 2.4 seconds and
-  `codebook()` from 5.4 to 3.1 seconds.
+  `codebook(compact = TRUE)` falls from 4.1 to 2.0 seconds and
+  `codebook()` from 5.3 to 3.2 seconds.
 
 * `codebook()` finds each numeric variable's distinct values once and
   shares them, and its observed values, with the problem checks. It counts
