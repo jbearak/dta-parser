@@ -365,7 +365,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_execution_profile",
      (DL_FUNC) &C_dtatools_metadata_execution_profile, 1},
     {"C_dtatools_metadata_dependencies_unchanged",
-     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 2},
+     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 3},
     {"C_dtatools_canonical_attribute_plan",
      (DL_FUNC) &C_dtatools_canonical_attribute_plan, 2},
     {"C_dtatools_attribute_plan_stats", (DL_FUNC) &C_dtatools_attribute_plan_stats, 1},

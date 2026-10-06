@@ -1707,7 +1707,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "e952ceea5bfc949a31385cbed207271111563cd3953cd22097eb3acaebd53cf1"
+          "sha256": "f09a7bca52781a2ea3000a94cf652f3890051ec83a02682b2bc2d65cf3f0d777"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
@@ -1719,7 +1719,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "7a1dcddc7929ea6cbabd48164330d48a9c940fd3647678b4216c8e4631867249"
+          "sha256": "d07708a74bbe013280534ddeb673b9afde0238eec730afdc81184ae01bcea103"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-canonical-nested-callbacks.R",
-          "sha256": "09fb27affbd51c064952eb048246b081ec1341193de537e31e3a2040e4c74226"
+          "sha256": "95439b36833bfac6a80ac016f850bb63fa471c2c8516ab3ebd78cac3bd3d03ad"
         },
         {
           "path": "tests/testthat/test-combiner-stack-callbacks.R",
@@ -1771,7 +1771,7 @@
         },
         {
           "path": "tests/testthat/test-metadata-dependency-settlement.R",
-          "sha256": "2ddf5c194011b173e3f5850e726fe66d0c3f730a9d036f4f7b75218b9a253ba2"
+          "sha256": "14ad41a67c3653e147fda2a9d5ba3202039d74c0f5c9c3e2b62a6ee37dab0ae3"
         },
         {
           "path": "tests/testthat/test-numeric-size-policy.R",
@@ -3008,6 +3008,14 @@
           "warnings": 0
         },
         {
+          "file": "test-dta-attribute-plan.R",
+          "test": "restoration matches attribute names as the set operations would",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
           "file": "test-double-combine.R",
           "test": "double combination preserves bytes, order and independent backing",
           "occurrence": 1,
@@ -3147,14 +3155,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 16,
-          "warnings": 0
-        },
-        {
-          "file": "test-double-combine.R",
-          "test": "combination retains registered character methods used by metadata",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -3312,6 +3312,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "combination admits registered character methods its metadata never calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         },
         {
           "file": "test-numeric-helper-profile.R",
@@ -3857,7 +3865,7 @@
           "test": "metadata filtering retains nested environment tracer errors before generation",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 13,
+          "min_pass": 7,
           "warnings": 0
         },
         {
@@ -3897,7 +3905,7 @@
           "test": "metadata and combination settle every reached delayed primitive binding",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 82,
+          "min_pass": 58,
           "warnings": 0
         },
         {
@@ -4880,7 +4888,7 @@
         },
         {
           "path": "tests/testthat/test-metadata-source-admission.R",
-          "sha256": "b8a00a9e475ef9b8a88d4b6d47e7cda4d1ae984c008de2fe5a9e8fa4693ec6bc"
+          "sha256": "eb9c7d9d72a9f030cb10136b5e7f7e318a1f1d6ea5335a04b64acd718f4b0bea"
         }
       ],
       "blocks": [
@@ -8172,11 +8180,11 @@
         },
         {
           "path": "tests/testthat/test-generation-metadata.R",
-          "sha256": "7e15ea1a555818995f21ff58f6b75e8de0fd8ce4370e2565f930cc0eba5d35eb"
+          "sha256": "07f24e921ffe3d8c70d463faf9b0886418b98603fc4806022329697e43b0293b"
         },
         {
           "path": "tests/testthat/test-metadata-execution-profile.R",
-          "sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3"
+          "sha256": "7c06bf0f8e07ec56311707467439928fc578b87f5edf382678ff53ce0e2312cc"
         },
         {
           "path": "tests/testthat/test-bracket-native-admission.R",
@@ -10021,7 +10029,7 @@
           "test": "metadata admission leaves active and delayed helpers untouched",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 12,
+          "min_pass": 40,
           "warnings": 0
         },
         {

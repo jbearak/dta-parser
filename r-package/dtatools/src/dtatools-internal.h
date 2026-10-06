@@ -602,7 +602,8 @@ DTATOOLS_INTERNAL int dtatools_numeric_decoration_admitted(
 );
 DTATOOLS_INTERNAL int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int generation);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_execution_profile(SEXP probe);
-DTATOOLS_INTERNAL SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies);
+DTATOOLS_INTERNAL SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies,
+                                                                  SEXP generation);
 DTATOOLS_INTERNAL SEXP C_dtatools_canonical_attribute_plan(SEXP source, SEXP state);
 DTATOOLS_INTERNAL SEXP C_dtatools_attribute_plan_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP dtatools_metadata_profile_from_state(SEXP state);
