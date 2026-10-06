@@ -6237,7 +6237,7 @@
         },
         {
           "path": "tests/testthat/test-constructor-region-inputs.R",
-          "sha256": "532b836e7d6147eaa601f4ee68fe6b3cd53709f73107b0b6e7b7f60656f5ea16"
+          "sha256": "64b285bb6d5cf5b5f61f7fc6c87c68919c2a730cbf8da9966a3b79ed6153c3f2"
         }
       ],
       "blocks": [
@@ -8112,6 +8112,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-constructor-region-inputs.R",
+          "test": "compact input of the requested storage builds the column its doubles build",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 62,
           "warnings": 0
         }
       ],
@@ -14314,7 +14322,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "59c3b4eaff555b80fe177cf8e515956411f6caa8951b0a97bfadc8c5e5032c5a"
+          "sha256": "d918140e34f43cca0904ece2ab663e682b7d3ec3961474c8c40c72606b47502a"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -14810,7 +14818,7 @@
           "test": "a buffered column is written in place, not duplicated",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 4,
+          "min_pass": 10,
           "warnings": 0
         },
         {
@@ -14875,6 +14883,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "a compact buffer copies compact sources of its kind as bytes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "a compact append column is the column its doubles construct",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 35,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "compact append sources the constructor rejects keep its errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
           "warnings": 0
         },
         {
