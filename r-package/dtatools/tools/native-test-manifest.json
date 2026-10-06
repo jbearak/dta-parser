@@ -15594,7 +15594,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "9061164351b16d955a30d0675b27fb1c5971894ed2b724039105ff2e82cf1e9c"
+          "sha256": "7142c1dd4ad3d7f4e73610e55453569bb41f5602d9e263914dace7d18af65663"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15780,6 +15780,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook duplicate rows match vctrs duplicate detection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook counts missing codes and NaN payloads in compact columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "compact identity parts match the parts of the decoded values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook diagnostics bind as one data frame per row would",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
