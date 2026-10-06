@@ -15602,7 +15602,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "9061164351b16d955a30d0675b27fb1c5971894ed2b724039105ff2e82cf1e9c"
+          "sha256": "06d1b8d3130d1d89408b555b8432381086c9158d9da0a47f9fad878e70565171"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15788,6 +15788,25 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook checks every table's text at once as it checks each alone",
+          "occurrence": 1,
+          "skip": "allow",
+          "min_pass": 14,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Checking every table's label text in one pass requires a UTF-8 locale; other locales check each table alone.",
+          "skip_message": "Reason: isTRUE(l10n_info()[[\"UTF-8\"]]) is not TRUE"
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook checks each table's text alone for other encodings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

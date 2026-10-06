@@ -49,7 +49,10 @@ labelbook <- function(data, ..., .tables = NULL,
     }
     assignments <- list()
     for (position in seq_along(data)) {
-        column <- data[[position]]
+        # A dibble's `[[` finds a position by its name, a scan of every
+        # name, and its names are unique, so the position reads the same
+        # column, as for dta_append().
+        column <- .append_source_column(data, position)
         labels <- attr(column, "labels", exact = TRUE)
         explicit <- attr(column, "value.label.name", exact = TRUE)
         if (is.null(labels) && is.null(explicit)) next
@@ -90,7 +93,11 @@ labelbook <- function(data, ..., .tables = NULL,
 
     table_rows <- list()
     mapping_rows <- list()
-    for (table in selected) {
+    text_checks <- .labelbook_text_checks(selected, lapply(selected, function(table) {
+        candidates[[table]][[1L]]$labels
+    }))
+    for (table_index in seq_along(selected)) {
+        table <- selected[[table_index]]
         variants <- candidates[[table]]
         if (is.null(variants)) {
             table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
@@ -98,7 +105,16 @@ labelbook <- function(data, ..., .tables = NULL,
             )
             next
         }
-        keys <- vapply(variants, function(x) .book_mapping_signature(x$labels), "")
+        # The first variant's codes serve its signature and the duplicate
+        # code check.
+        label_keys <- .dta_value_label_keys(variants[[1L]]$labels)
+        keys <- vapply(seq_along(variants), function(i) {
+            if (i == 1L) {
+                .book_mapping_signature(variants[[1L]]$labels, label_keys)
+            } else {
+                .book_mapping_signature(variants[[i]]$labels)
+            }
+        }, "")
         malformed <- length(unique(keys)) > 1L
         if (malformed) {
             diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
@@ -125,7 +141,10 @@ labelbook <- function(data, ..., .tables = NULL,
         diagnostics <- c(diagnostics, .labelbook_diagnostics(
             table, labels, length,
             variables = stats::na.omit(vapply(variants, `[[`, "", "variable")),
-            codes = codes
+            codes = codes, keys = label_keys,
+            text = if (!is.null(text_checks)) {
+                lapply(text_checks, .subset2, table_index)
+            }
         ))
     }
 
@@ -209,38 +228,83 @@ labelbook <- function(data, ..., .tables = NULL,
     lapply(result, `[`, index)
 }
 
-.labelbook_diagnostics <- function(table, labels, compare_length, variables,
-                                   codes = .book_codes(labels)) {
-    result <- list()
-    ordinary <- as.double(labels[is.na(codes$missing_code)])
-    add <- function(code, condition, message, details = list()) {
-        if (condition) result[[length(result) + 1L]] <<- .book_diag_fields(
-            code, "table", table, message = message,
-            details = list(c(list(variables = variables), details))
-        )
+# The label text checks of every table at once, as lists of one flag per
+# table, or NULL to check each table alone. `labels` holds each table's
+# labels, or NULL. In a UTF-8 locale with only valid strings in the native
+# encoding or UTF-8, grepl(), sub() and as.double() treat each string the
+# same whatever strings come with it, and raise no error. This matters
+# because the checks run before labelbook() knows which tables it will
+# diagnose: as.double() fails on some Latin-1 text, and a table whose
+# mappings disagree never has its text checked.
+.labelbook_text_checks <- function(tables, labels) {
+    text <- lapply(labels, names)
+    strings <- c(tables, unlist(text, use.names = FALSE))
+    if (!isTRUE(l10n_info()[["UTF-8"]]) || !all(validEnc(strings)) ||
+        !all(Encoding(strings) %in% c("unknown", "UTF-8"))) {
+        return(NULL)
     }
+    table <- rep.int(seq_along(text), lengths(text))
+    text <- unlist(text, use.names = FALSE)
+    any_in_table <- function(found) tabulate(table[found], length(tables)) > 0L
+    trimmed <- trimws(text)
+    numeric <- suppressWarnings(!is.na(as.double(trimmed))) & nzchar(trimmed)
+    list(
+        valid_name = .valid_dta_name_syntax(tables, 32L),
+        blanks = any_in_table(grepl("^\\s|\\s$", text)),
+        numeric = any_in_table(numeric),
+        empty = any_in_table(text == "")
+    )
+}
+
+.labelbook_messages <- c(
+    invalid_table_name = "Table name is not a valid Stata name",
+    duplicate_codes = "Value-label table contains duplicate codes",
+    gaps = "Mapped integer values contain gaps",
+    leading_or_trailing_blanks = "Label text contains leading or trailing blanks",
+    duplicate_label_text = "Different codes use the same full label text",
+    duplicate_truncated_text = "Different codes use the same truncated label text",
+    numeric_label_text = "Numeric codes map to numeric-looking text",
+    empty_label_text = "Numeric codes map to empty text",
+    unassigned_table = "Value-label table is not assigned to any variable"
+)
+
+# A table's diagnostics. `keys` is .dta_value_label_keys(labels), and
+# `text` holds the table's flags from .labelbook_text_checks(), or is NULL
+# to check its text here.
+.labelbook_diagnostics <- function(table, labels, compare_length, variables,
+                                   codes = .book_codes(labels),
+                                   keys = .dta_value_label_keys(labels),
+                                   text = NULL) {
+    ordinary <- as.double(labels[is.na(codes$missing_code)])
     sorted <- sort(unique(ordinary))
     gaps <- length(sorted) > 1L && all(sorted == floor(sorted)) &&
         any(diff(sorted) > 1)
-    text <- names(labels)
-    keys <- .dta_value_label_keys(labels)
-    add("invalid_table_name", !.valid_dta_name_syntax(table, 32L),
-        "Table name is not a valid Stata name")
-    add("duplicate_codes", anyDuplicated(keys) > 0L,
-        "Value-label table contains duplicate codes")
-    add("gaps", gaps, "Mapped integer values contain gaps")
-    add("leading_or_trailing_blanks", any(grepl("^\\s|\\s$", text)),
-        "Label text contains leading or trailing blanks")
-    add("duplicate_label_text", anyDuplicated(text) > 0L,
-        "Different codes use the same full label text")
-    add("duplicate_truncated_text", anyDuplicated(substr(text, 1L, compare_length)) > 0L,
-        "Different codes use the same truncated label text")
-    numeric_text <- suppressWarnings(!is.na(as.double(trimws(text)))) & nzchar(trimws(text))
-    add("numeric_label_text", any(numeric_text), "Numeric codes map to numeric-looking text")
-    add("empty_label_text", any(text == ""), "Numeric codes map to empty text")
-    add("unassigned_table", !length(variables),
-        "Value-label table is not assigned to any variable")
-    result
+    label_text <- names(labels)
+    if (is.null(text)) {
+        trimmed <- trimws(label_text)
+        text <- list(
+            valid_name = .valid_dta_name_syntax(table, 32L),
+            blanks = any(grepl("^\\s|\\s$", label_text)),
+            numeric = any(suppressWarnings(!is.na(as.double(trimmed))) & nzchar(trimmed)),
+            empty = any(label_text == "")
+        )
+    }
+    found <- c(
+        invalid_table_name = !text$valid_name,
+        duplicate_codes = anyDuplicated(keys) > 0L,
+        gaps = gaps,
+        leading_or_trailing_blanks = text$blanks,
+        duplicate_label_text = anyDuplicated(label_text) > 0L,
+        duplicate_truncated_text =
+            anyDuplicated(substr(label_text, 1L, compare_length)) > 0L,
+        numeric_label_text = text$numeric,
+        empty_label_text = text$empty,
+        unassigned_table = !length(variables)
+    )
+    lapply(names(found)[found], function(code) .book_diag_fields(
+        code, "table", table, message = .labelbook_messages[[code]],
+        details = list(list(variables = variables))
+    ))
 }
 
 #' Describe variables and observed data
@@ -754,9 +818,9 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     as.double(value)
 }
 
-.book_mapping_signature <- function(labels) paste(
-    .dta_value_label_keys(labels), enc2utf8(names(labels)), collapse = "\r"
-)
+.book_mapping_signature <- function(labels, keys = .dta_value_label_keys(labels)) {
+    paste(keys, enc2utf8(names(labels)), collapse = "\r")
+}
 
 .book_diag <- function(code, scope, table = NA_character_, variable = NA_character_,
                        position = NA_integer_, severity = "problem", details = list(), message) {
