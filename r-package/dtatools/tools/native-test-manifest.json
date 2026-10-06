@@ -261,7 +261,7 @@
         },
         {
           "path": "tests/testthat/test-write-column.R",
-          "sha256": "717ae00868121d5015b47ae2bc97ce5abcd00963dc590aa5d8d0017512b7dfff"
+          "sha256": "9ea3531f529832dc4f9acce6d7453f6fe8b1175f7ecc2a842e9a4500e4ed3885"
         },
         {
           "path": "tests/testthat/test-input-sources.R",
@@ -1655,7 +1655,7 @@
           "test": "a write checks each display format once per kind",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 7,
+          "min_pass": 9,
           "warnings": 0
         },
         {

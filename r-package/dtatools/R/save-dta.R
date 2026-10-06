@@ -363,8 +363,9 @@ save_dta <- function(data, path, version = 19L,
 
 # Columns share few display formats, and whether a format suits a kind
 # depends only on its text: .write_text() passes only valid text, in UTF-8.
-# `accepted`, an environment one write creates, holds the formats each kind
-# has accepted so far in that write.
+# `accepted`, an environment one write creates, holds the first formats each
+# kind accepts in that write. The cap bounds each lookup, so a table whose
+# formats all differ pays a short scan per column rather than one that grows.
 .prepare_write_format <- function(column, name, default, kind, accepted = NULL) {
     format <- attr(column, "format.stata", exact = TRUE)
     if (is.null(format)) format <- default
@@ -387,7 +388,9 @@ save_dta <- function(data, path, version = 19L,
             name, format
         ))
     }
-    if (remember) accepted[[kind]] <- c(accepted[[kind]], format)
+    if (remember && length(accepted[[kind]]) < 32L) {
+        accepted[[kind]] <- c(accepted[[kind]], format)
+    }
     format
 }
 

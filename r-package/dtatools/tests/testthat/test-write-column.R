@@ -272,6 +272,20 @@ test_that("a write checks each display format once per kind", {
         expect_identical(columns[[2L]]$format, c(shared = "%9.2f"), info = writer)
     }
 
+    # A write remembers the first 32 formats of a kind; it checks a later
+    # new format in full each time a column uses it.
+    formats <- sprintf("%%%d.0f", c(2:34, 34L, 2L))
+    wide <- structure(
+        lapply(formats, function(format) structure(1, format.stata = format)),
+        names = sprintf("v%d", seq_along(formats)), class = "data.frame",
+        row.names = .set_row_names(1L)
+    )
+    for (writer in names(prepare)) {
+        calls <- 0L
+        prepare[[writer]](wide)
+        expect_identical(calls, 34L, info = writer)
+    }
+
     # A format one kind accepted is checked again for another kind.
     dates <- data.frame(a = c(1, 2), d = as.Date("2020-01-01") + 0:1)
     attr(dates$a, "format.stata") <- "%9.2f"
