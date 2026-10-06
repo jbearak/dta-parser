@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
+  `transform()`, `within()`, `group_modify()`, `summarise()`, and
+  `reframe()`, match the result's column names to the prior columns in
+  one pass, rather than scanning the names once per column. On a
+  5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
+  milliseconds.
+
 * Native arithmetic and summary admission compares dtatools' captured
   helper closures with less work per call. Its comparison table clears only
   its occupancy flags, a shared symbol or environment compares by identity
@@ -25,6 +32,11 @@
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
   about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
+
+* `[` and `head()` on a dibble with Stata metadata check each column's
+  notes and characteristics without a function call per attribute name.
+  On a 16,787-row, 5,360-column DHS file, `head(d, 10)` falls from about
+  67 to 53 milliseconds.
 
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
