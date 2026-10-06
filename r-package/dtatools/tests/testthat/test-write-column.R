@@ -256,10 +256,11 @@ test_that("a write checks each display format once per kind", {
         calls <<- calls + 1L
         decimal(format)
     })
-    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6))
+    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6), d = c(7, 8))
     attr(data$a, "format.stata") <- "%9.2f"
     attr(data$b, "format.stata") <- c(shared = "%9.2f")
     attr(data$c, "format.stata") <- "%8.0g"
+    attr(data$d, "format.stata") <- "%9.2f"
     prepare <- list(
         dta = function(x) dtatools:::.prepare_dta_write(x, NULL, 2045L, TRUE)[[3L]],
         arrow = function(x) dtatools:::.prepare_arrow_write(x, NULL, TRUE)[[3L]]
@@ -267,9 +268,10 @@ test_that("a write checks each display format once per kind", {
     for (writer in names(prepare)) {
         calls <- 0L
         columns <- prepare[[writer]](data)
-        expect_identical(calls, 2L, info = writer)
-        # A remembered format is still the column's own value.
+        # The named format is checked in full and keeps its names.
+        expect_identical(calls, 3L, info = writer)
         expect_identical(columns[[2L]]$format, c(shared = "%9.2f"), info = writer)
+        expect_identical(columns[[4L]]$format, "%9.2f", info = writer)
     }
 
     # A write remembers the first 32 formats of a kind; it checks a later
@@ -285,6 +287,16 @@ test_that("a write checks each display format once per kind", {
         prepare[[writer]](wide)
         expect_identical(calls, 34L, info = writer)
     }
+
+    # The calendar checks read a format's names, so a named format's result
+    # is not reused for the plain string.
+    calendars <- data.frame(x = c(1, 2), y = c(3, 4))
+    attr(calendars$x, "format.stata") <- c(shared = "%tgCCYY")
+    attr(calendars$y, "format.stata") <- "%tgCCYY"
+    message <- "Column `y` has malformed or incompatible display format `%tgCCYY`"
+    expect_error(save_dta(calendars, tempfile(fileext = ".dta")), message, fixed = TRUE)
+    expect_error(save_arrow(calendars, tempfile(fileext = ".arrow")), message, fixed = TRUE)
+    expect_error(datasig(calendars), message, fixed = TRUE)
 
     # A format one kind accepted is checked again for another kind.
     dates <- data.frame(a = c(1, 2), d = as.Date("2020-01-01") + 0:1)

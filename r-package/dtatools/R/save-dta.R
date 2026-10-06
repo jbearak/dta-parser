@@ -361,11 +361,12 @@ save_dta <- function(data, path, version = 19L,
     .valid_dta_datetime_details(details, tokens)
 }
 
-# Columns share few display formats, and whether a format suits a kind
+# Columns share few display formats, and whether a plain string suits a kind
 # depends only on its text: .write_text() passes only valid text, in UTF-8.
-# `accepted`, an environment one write creates, holds the first formats each
-# kind accepts in that write. The cap bounds each lookup, so a table whose
-# formats all differ pays a short scan per column rather than one that grows.
+# A format with attributes is checked in full, since the calendar checks keep
+# names through substr(). `accepted`, an environment one write creates, holds
+# the first plain formats each kind accepts in that write. The cap bounds each
+# lookup, so a table whose formats all differ pays a short scan per column.
 .prepare_write_format <- function(column, name, default, kind, accepted = NULL) {
     format <- attr(column, "format.stata", exact = TRUE)
     if (is.null(format)) format <- default
@@ -373,7 +374,7 @@ save_dta <- function(data, path, version = 19L,
         format, sprintf("format.stata for `%s`", name),
         maximum_characters = 56L, maximum_bytes = 56L
     )
-    remember <- !is.null(accepted) && !is.object(format)
+    remember <- !is.null(accepted) && is.null(attributes(format))
     if (remember && format %in% accepted[[kind]]) return(format)
     compatible <- switch(kind,
         string = .valid_dta_string_format(format),
