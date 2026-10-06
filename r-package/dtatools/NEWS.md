@@ -78,6 +78,11 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `dta_merge()` gathers the result's columns by position rather than
+  looking each one up and appending it by name. On a 16,787-row,
+  5,360-column DHS file, a one-to-one merge that adds one variable falls
+  from 0.34 to 0.13 seconds.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
   `regexec()`, check value-label table names in one call, and find the
