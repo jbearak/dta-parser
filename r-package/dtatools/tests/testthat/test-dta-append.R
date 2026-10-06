@@ -670,6 +670,22 @@ test_that("a compact append column is the column its doubles construct", {
         )
     }
 
+    # A subclass converts to doubles by its own method, so its source
+    # goes through the double buffer.
+    shifted <- dta_byte(c(1, 2))
+    class(shifted) <- c("shifted_byte", class(shifted))
+    local({
+        as.double.shifted_byte <- function(x, ...) {
+            as.double(unclass(x)) + 10
+        }
+        registerS3method("as.double", "shifted_byte", as.double.shifted_byte)
+    })
+    expect_false(dtatools:::.append_compact_source(shifted))
+    expect_true(dtatools:::.append_compact_source(data$x_byte))
+    expect_identical(as.double(shifted), c(11, 12))
+    result <- dta_append(list(tibble::tibble(v = shifted), tibble::tibble(v = shifted)))
+    expect_identical(as.double(result$v), c(11, 12, 11, 12))
+
     # A source of another kind turns the buffer into doubles part way.
     mixed <- dibble(x_int = dta_int(c(7, tagged_missing("a"))),
                     x_byte = dta_byte(c(1, 2)))

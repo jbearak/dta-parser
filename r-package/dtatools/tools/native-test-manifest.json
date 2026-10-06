@@ -14306,7 +14306,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "17115f41403f1c3d14bec0155731f3d6fba7534b460dc820648cf3ffe4bc6401"
+          "sha256": "1d4191e9beabdcee8b227f08e82f08937c5d280e5bc368019177545dd43270a6"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -14882,7 +14882,7 @@
           "test": "a compact append column is the column its doubles construct",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 32,
+          "min_pass": 36,
           "warnings": 0
         },
         {

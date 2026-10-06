@@ -614,7 +614,8 @@ dta_append <- function(sources, force = TRUE,
                         # doubles. The calls must stay direct, as below.
                         if (identical(kind, "compact")) {
                             storage <- attr(buffer, "dtatools.storage", exact = TRUE)
-                            if (.Call(C_dtatools_append_write_compact, buffer,
+                            if (.append_compact_source(writable) &&
+                                .Call(C_dtatools_append_write_compact, buffer,
                                       offsets[[my_index]], rows, writable,
                                       match(storage, .dta_storage) - 1L)) {
                                 buffers[[plan_index]] <- buffer
@@ -772,6 +773,21 @@ dta_append <- function(sources, force = TRUE,
         ),
         my_name, .append_source_label(schema$source, schema$index)
     ))
+}
+
+# Whether a source's doubles are its stored values, so a compact buffer
+# can take its bytes. `as.double()` reaches dtatools' own method for a
+# plain or labelled Stata numeric class; a subclass may convert otherwise.
+.append_compact_source <- function(value) {
+    storage <- .declared_dta_storage(value)
+    if (!is.character(storage) || length(storage) != 1L ||
+        !storage %in% .dta_storage) {
+        return(FALSE)
+    }
+    plain <- .dta_storage_class(storage)
+    classes <- class(value)
+    identical(classes, plain) ||
+        identical(classes, append(plain, "haven_labelled", after = 2L))
 }
 
 .append_buffer_values <- function(value) {
