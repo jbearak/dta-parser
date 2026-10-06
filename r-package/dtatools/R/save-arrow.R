@@ -423,10 +423,10 @@ save_arrow <- function(data, path,
         )
     }
     for (index in seq_along(data)) {
-        dropped <- setdiff(
-            names(attributes(data[[index]])),
-            .arrow_known_column_attributes(kinds[[index]])
-        )
+        # Attribute names are unique, so this is their setdiff() without its
+        # per-call overhead.
+        present <- names(attributes(data[[index]]))
+        dropped <- present[!(present %in% .arrow_known_column_attributes(kinds[[index]]))]
         if (length(dropped)) {
             details <- c(details, sprintf(
                 "`%s` (%s)", names(data)[[index]], paste(dropped, collapse = ", ")

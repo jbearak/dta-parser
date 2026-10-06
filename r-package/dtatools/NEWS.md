@@ -67,6 +67,14 @@
   5,360-column DHS file, a one-to-one merge that adds one variable falls
   from 0.34 to 0.13 seconds.
 
+* `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
+  format with one `regexpr()` call instead of `regmatches()` over
+  `regexec()`, check value-label table names in one call, and find the
+  attributes Arrow drops without `setdiff()`. On a 5,360-column DHS file
+  `save_dta()` falls from 0.68 to 0.44 seconds, `save_arrow()` from 0.74 to
+  0.46 seconds, and `datasig()` from 0.69 to 0.40 seconds. Files,
+  signatures, errors, and warnings are unchanged.
+
 * `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
   encode values about three times faster. The native constructor checks for
   missing and finite values inline instead of calling into R for each value,
@@ -94,6 +102,13 @@
   value or calling `table()`, and builds its result tables once. On a
   16,787-row, 5,360-column DHS file it falls from 36 to 13 seconds, and
   the compact report from 32 to 10 seconds.
+
+* `labelbook()` collects each table's summary, mappings, assignment and
+  diagnostics as field vectors and builds each result table once, rather
+  than one data frame per row. On a 5,360-column DHS file with 4,831
+  value-label tables it falls from 4 to 1.1 seconds. A value-label set
+  with no mappings is now reported as a table with no mappings rather than
+  failing.
 
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
