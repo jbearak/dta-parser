@@ -3705,6 +3705,63 @@ SEXP C_dtatools_missing_codes(SEXP value) {
     return result;
 }
 
+/* tabulate(codes + 1L, 257L) for the codes C_dtatools_missing_codes()
+   gives, counted without allocating them. NULL for a long vector, whose
+   counts tabulate() would report differently. */
+SEXP C_dtatools_missing_code_counts(SEXP value) {
+    if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) {
+        Rf_error("missing-code classification requires a numeric vector");
+    }
+    numeric_data captured;
+    SEXP compact_root = PROTECT(TYPEOF(value) == REALSXP
+        ? numeric_missing_mask_capture(value, &captured) : R_NilValue);
+    SEXP payload = PROTECT(owned_real(value) ? owned_values(value) : value);
+    R_xlen_t length = XLENGTH(payload);
+    if (length > INT_MAX) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, 257));
+    int *counts = INTEGER(result);
+    memset(counts, 0, 257 * sizeof(int));
+
+    if (compact_root != R_NilValue) {
+        numeric_reader reader = {value, &captured, NULL, NULL, REALSXP};
+        int codes[4096];
+        for (R_xlen_t start = 0; start < length; start += 4096) {
+            if ((start & 16383) == 0) R_CheckUserInterrupt();
+            R_xlen_t count = length - start < 4096 ? length - start : 4096;
+            numeric_reader_region(&reader, start, count, NULL, codes);
+            for (R_xlen_t index = 0; index < count; index++) {
+                if (codes[index] >= 0 && codes[index] <= 256) counts[codes[index]]++;
+            }
+        }
+    } else if (TYPEOF(value) == REALSXP) {
+        const double *values = owned_real(value) ? (const double *) DATAPTR_RO(payload)
+            : (!ALTREP(value) ? REAL(value) : NULL);
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            double element = values != NULL ? values[index] : REAL_ELT(value, index);
+            int tag = tagged_na_tag_value(element);
+            if (tag != 0) {
+                if (tag <= 256) counts[tag]++;
+            } else if (ISNA(element)) {
+                counts[0]++;
+            } else if (ISNAN(element)) {
+                counts[256]++;
+            }
+        }
+    } else {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            if (INTEGER_ELT(value, index) == NA_INTEGER) counts[0]++;
+        }
+    }
+
+    UNPROTECT(3);
+    return result;
+}
+
 /* Commits one already gathered set of columns back into a table, and into
    the reference-state column store when the table carries an overlay.
    Every column reaches its destination or none does: the plan is fully

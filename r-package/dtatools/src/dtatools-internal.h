@@ -887,6 +887,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_missing_code_counts(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(
     SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
 );

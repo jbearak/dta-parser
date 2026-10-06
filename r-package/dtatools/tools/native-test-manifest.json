@@ -15594,7 +15594,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "7142c1dd4ad3d7f4e73610e55453569bb41f5602d9e263914dace7d18af65663"
+          "sha256": "75fcf0161cea0915ddbfe905c6d2718e6ed53ccbcaa86275e4ec4c60e9b70bb1"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15812,6 +15812,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "native missing-code counts match the tabulated codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 30,
           "warnings": 0
         },
         {
