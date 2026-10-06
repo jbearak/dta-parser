@@ -361,13 +361,21 @@ save_dta <- function(data, path, version = 19L,
     .valid_dta_datetime_details(details, tokens)
 }
 
-.prepare_write_format <- function(column, name, default, kind) {
+# Columns share few display formats, and whether a plain string suits a kind
+# depends only on its text: .write_text() passes only valid text, in UTF-8.
+# A format with attributes is checked in full, since the calendar checks keep
+# names through substr(). `accepted`, an environment one write creates, holds
+# the first plain formats each kind accepts in that write. The cap bounds each
+# lookup, so a table whose formats all differ pays a short scan per column.
+.prepare_write_format <- function(column, name, default, kind, accepted = NULL) {
     format <- attr(column, "format.stata", exact = TRUE)
     if (is.null(format)) format <- default
     format <- .write_text(
         format, sprintf("format.stata for `%s`", name),
         maximum_characters = 56L, maximum_bytes = 56L
     )
+    remember <- !is.null(accepted) && is.null(attributes(format))
+    if (remember && format %in% accepted[[kind]]) return(format)
     compatible <- switch(kind,
         string = .valid_dta_string_format(format),
         numeric = .valid_dta_decimal_format(format) ||
@@ -380,6 +388,9 @@ save_dta <- function(data, path, version = 19L,
             "Column `%s` has malformed or incompatible display format `%s`",
             name, format
         ))
+    }
+    if (remember && length(accepted[[kind]]) < 32L) {
+        accepted[[kind]] <- c(accepted[[kind]], format)
     }
     format
 }
@@ -698,16 +709,19 @@ save_dta <- function(data, path, version = 19L,
     resolution <- .resolve_write_value_label_names(
         data, factor_value_labels = factor_value_labels
     )
+    data_names <- names(data)
     for (column_index in which(resolution$indices >= 0L)) {
         validate_column(
-            data[[column_index]], names(data)[[column_index]], column_index
+            .append_source_column(data, column_index),
+            data_names[[column_index]], column_index
         )
     }
     tables <- vector("list", length(resolution$first_columns))
     for (table_position in seq_along(resolution$first_columns)) {
         column_index <- resolution$first_columns[[table_position]]
         prepared <- prepare_table(
-            data[[column_index]], names(data)[[column_index]], column_index
+            .append_source_column(data, column_index),
+            data_names[[column_index]], column_index
         )
         tables[[table_position]] <- stats::setNames(list(
             enc2utf8(resolution$names[[column_index]]),
@@ -876,14 +890,17 @@ save_dta <- function(data, path, version = 19L,
 # (CONTEXT.md, "Factor export"); strings take their declared width or the
 # widest value, and cross to `strL` above `strl_threshold`.
 .prepare_dta_write_column <- function(column, name, kind, strl_threshold,
-                                      adjust_tz, value_label_index) {
+                                      adjust_tz, value_label_index,
+                                      accepted = NULL) {
     variable_label <- .write_variable_label(column, name)
-    dta_metadata <- .dta_metadata_payload(
-        dta_notes(column), dta_characteristics(column)
-    )
+    # Without notes or characteristics their getters return empty vectors,
+    # after an object check that every write kind's vector passes.
+    dta_metadata <- if (.write_column_described(column)) {
+        .dta_metadata_payload(dta_notes(column), dta_characteristics(column))
+    }
     if (identical(kind, "factor")) {
         format <- .prepare_write_format(
-            column, name, .default_dta_format("long"), "numeric"
+            column, name, .default_dta_format("long"), "numeric", accepted
         )
         return(.new_dta_write_column(
             name, 2L, format, variable_label, column,
@@ -910,7 +927,8 @@ save_dta <- function(data, path, version = 19L,
         type_code <- if (fixed) width + 4L else 2050L
         storage <- if (fixed) "fixed" else "strL"
         format <- .prepare_write_format(
-            column, name, .default_dta_format(storage, width), "string"
+            column, name, .default_dta_format(storage, width), "string",
+            accepted
         )
         return(.new_dta_write_column(
             name, type_code, format, variable_label, values,
@@ -922,7 +940,7 @@ save_dta <- function(data, path, version = 19L,
     format <- .prepare_write_format(
         column, name,
         .write_default_numeric_format(numeric$storage, numeric$temporal),
-        numeric$temporal %||% "numeric"
+        numeric$temporal %||% "numeric", accepted
     )
     .new_dta_write_column(
         name, match(numeric$storage, .dta_storage) - 1L,
@@ -1014,11 +1032,12 @@ save_dta <- function(data, path, version = 19L,
         }
     )
     columns <- Map(
-        .prepare_dta_write_column, data, data_names, kinds,
+        .prepare_dta_write_column, .write_source_columns(data), data_names, kinds,
         value_label_plan$indices,
         MoreArgs = list(
             strl_threshold = strl_threshold,
-            adjust_tz = adjust_tz
+            adjust_tz = adjust_tz,
+            accepted = new.env(parent = emptyenv())
         )
     )
     write_warnings <- c(write_warnings, value_label_plan$warnings)

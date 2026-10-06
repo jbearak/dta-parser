@@ -248,3 +248,100 @@ test_that("the shared default format follows storage and calendar", {
     expect_identical(default("double", "date"), "%td")
     expect_identical(default("double", "datetime"), "%tc")
 })
+
+test_that("a write checks each display format once per kind", {
+    decimal <- dtatools:::.valid_dta_decimal_format
+    calls <- 0L
+    local_mocked_bindings(.valid_dta_decimal_format = function(format) {
+        calls <<- calls + 1L
+        decimal(format)
+    })
+    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6), d = c(7, 8))
+    attr(data$a, "format.stata") <- "%9.2f"
+    attr(data$b, "format.stata") <- c(shared = "%9.2f")
+    attr(data$c, "format.stata") <- "%8.0g"
+    attr(data$d, "format.stata") <- "%9.2f"
+    prepare <- list(
+        dta = function(x) dtatools:::.prepare_dta_write(x, NULL, 2045L, TRUE)[[3L]],
+        arrow = function(x) dtatools:::.prepare_arrow_write(x, NULL, TRUE)[[3L]]
+    )
+    for (writer in names(prepare)) {
+        calls <- 0L
+        columns <- prepare[[writer]](data)
+        # The named format is checked in full and keeps its names.
+        expect_identical(calls, 3L, info = writer)
+        expect_identical(columns[[2L]]$format, c(shared = "%9.2f"), info = writer)
+        expect_identical(columns[[4L]]$format, "%9.2f", info = writer)
+    }
+
+    # A write remembers the first 32 formats of a kind; it checks a later
+    # new format in full each time a column uses it.
+    formats <- sprintf("%%%d.0f", c(2:34, 34L, 2L))
+    wide <- structure(
+        lapply(formats, function(format) structure(1, format.stata = format)),
+        names = sprintf("v%d", seq_along(formats)), class = "data.frame",
+        row.names = .set_row_names(1L)
+    )
+    for (writer in names(prepare)) {
+        calls <- 0L
+        prepare[[writer]](wide)
+        expect_identical(calls, 34L, info = writer)
+    }
+
+    # The calendar checks read a format's names, so a named format's result
+    # is not reused for the plain string.
+    calendars <- data.frame(x = c(1, 2), y = c(3, 4))
+    attr(calendars$x, "format.stata") <- c(shared = "%tgCCYY")
+    attr(calendars$y, "format.stata") <- "%tgCCYY"
+    message <- "Column `y` has malformed or incompatible display format `%tgCCYY`"
+    expect_error(save_dta(calendars, tempfile(fileext = ".dta")), message, fixed = TRUE)
+    expect_error(save_arrow(calendars, tempfile(fileext = ".arrow")), message, fixed = TRUE)
+    expect_error(datasig(calendars), message, fixed = TRUE)
+
+    # A format one kind accepted is checked again for another kind.
+    dates <- data.frame(a = c(1, 2), d = as.Date("2020-01-01") + 0:1)
+    attr(dates$a, "format.stata") <- "%9.2f"
+    attr(dates$d, "format.stata") <- "%9.2f"
+    message <- "Column `d` has malformed or incompatible display format `%9.2f`"
+    expect_error(save_dta(dates, tempfile(fileext = ".dta")), message, fixed = TRUE)
+    expect_error(save_arrow(dates, tempfile(fileext = ".arrow")), message, fixed = TRUE)
+    expect_error(datasig(dates), message, fixed = TRUE)
+})
+
+test_that("a column without notes or characteristics exports no metadata", {
+    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6))
+    attr(data$b, "notes") <- "A note"
+    attr(data$c, "stata.characteristics") <- c(mychar = "x")
+    dta <- dtatools:::.prepare_dta_write(data, NULL, 2045L, TRUE)[[3L]]
+    arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)[[3L]]
+    for (columns in list(dta, arrow)) {
+        expect_null(columns[[1L]]$dta_metadata)
+        expect_type(columns[[2L]]$dta_metadata, "character")
+        expect_type(columns[[3L]]$dta_metadata, "character")
+    }
+    attr(data$a, "notes") <- 1
+    message <- "The object contains malformed Stata note metadata"
+    expect_error(save_dta(data, tempfile(fileext = ".dta")), message, fixed = TRUE)
+    expect_error(datasig(data), message, fixed = TRUE)
+})
+
+test_that("writers read a dibble's columns by position", {
+    data <- dibble(
+        a = set_val_labels(c(1, 2), .labels = c(one = 1)),
+        b = set_val_labels(c(1, 2), .labels = c(one = 1, two = 2)),
+        c = c("x", "y")
+    )
+    snapshot <- dtatools:::.reference_snapshot(data)
+    calls <- 0L
+    trace("[[.dibble", tracer = function() calls <<- calls + 1L,
+          where = asNamespace("dtatools"), print = FALSE)
+    on.exit(untrace("[[.dibble", where = asNamespace("dtatools")), add = TRUE)
+    signed <- datasig(data)
+    arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_identical(calls, 0L)
+    expect_identical(signed, datasig(snapshot))
+    expect_identical(
+        arrow[[3L]],
+        dtatools:::.prepare_arrow_write(snapshot, NULL, TRUE)[[3L]]
+    )
+})

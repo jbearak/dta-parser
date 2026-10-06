@@ -129,6 +129,19 @@
     kinds
 }
 
+# A write source's columns in order. Map() calls `[[` for each column of a
+# data frame, and a dibble's `[[` scans every name; a dibble's or tibble's
+# columns are its elements, as .append_source_column() reads them.
+.write_source_columns <- function(data) {
+    if (inherits(data, c("dibble", "tbl_df"))) unclass(data) else data
+}
+
+# Whether a column carries Stata notes or characteristics to export.
+.write_column_described <- function(column) {
+    !is.null(attr(column, "notes", exact = TRUE)) ||
+        !is.null(attr(column, "stata.characteristics", exact = TRUE))
+}
+
 # "date", "datetime", or NULL: the calendar a numeric column's values count.
 .write_temporal_kind <- function(column) {
     if (inherits(column, "Date")) return("date")

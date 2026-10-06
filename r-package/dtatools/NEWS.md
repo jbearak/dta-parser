@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `save_dta()`, `save_arrow()`, and `datasig()` check each display format
+  once per kind in a write rather than once per column, skip the notes and
+  characteristics getters for columns that have neither, and read a
+  dibble's columns by position. On a 16,787-row, 5,360-column DHS file,
+  `save_dta()` falls from about 0.44 to 0.31 seconds, `save_arrow()` from
+  0.46 to 0.31 seconds, and `datasig()` from 0.41 to 0.26 seconds. Results,
+  errors, and warnings are unchanged.
+
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
   `reframe()`, match the result's column names to the prior columns in
