@@ -469,6 +469,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
+    {"C_dtatools_missing_code_counts",
+     (DL_FUNC) &C_dtatools_missing_code_counts, 1},
     {"C_dtatools_dta_compare",
      (DL_FUNC) &C_dtatools_dta_compare, 5},
     {"C_dtatools_fused_compare_patch",

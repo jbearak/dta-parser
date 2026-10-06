@@ -294,10 +294,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 
     variables <- list(); tabulations <- list(); examples <- list(); diagnostics <- list()
     note_rows <- list(); missing_masks <- list(); all_missing <- NULL
+    data_names <- names(data)
     for (i in seq_along(positions)) {
         position <- positions[[i]]
-        name <- names(data)[[position]]
-        column <- selected[[position]]
+        name <- data_names[[position]]
+        # A dibble's `[[` scans every name for the position's, and its names
+        # are unique, so the position reads the same column.
+        column <- .append_source_column(selected, position)
         # One missing mask and one unique count serve the summary, the
         # diagnostics and the missing-value relationships.
         mask <- .codebook_missing(column)
@@ -391,11 +394,16 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 .codebook_variable <- function(x, name, position, threshold, compact, mask) {
     supported <- is.atomic(x) && is.null(dim(x)) || is.factor(x)
     missing <- if (supported) mask else rep(FALSE, length(x))
-    observed <- x[!missing]
     numeric <- supported && (is.numeric(x) || is.logical(x)) && !is.factor(x)
-    # A slice of compact storage decodes each value as it is read, so the
-    # scans below share one ordinary copy of the observed values.
-    finite_observed <- if (numeric) c(.book_numeric_data(observed)) else double()
+    # The summaries read a Stata numeric's values only. A slice of compact
+    # storage decodes each value as it is read and vctrs restores metadata
+    # the summaries drop, so they subset the decoded values instead.
+    stata_numeric <- numeric && inherits(x, "dta_numeric")
+    observed <- if (!stata_numeric) x[!missing]
+    # The scans below share one ordinary copy of the observed values.
+    finite_observed <- if (stata_numeric) {
+        .book_numeric_data(x)[!missing]
+    } else if (numeric) c(.book_numeric_data(observed)) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
     distinct <- if (numeric) unique(finite_observed) else NULL
@@ -422,9 +430,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     # Code 0 is system missing, codes a-z are .a through .z, and code 256
     # is a NaN that is neither; observed values have no code. `codes`
     # counts each code c at position c + 1.
-    codes <- if (is.numeric(x)) {
-        tabulate(.tab_missing_codes(x) + 1L, 257L)
-    } else integer(257L)
+    codes <- if (is.numeric(x)) .book_missing_code_counts(x) else integer(257L)
     stats <- rep(NA_real_, 10L)
     if (numeric && length(finite_observed)) {
         q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
@@ -784,6 +790,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         if (!rlang::is_symbol(expr)) stop("unquoted ", kind, " selections must be names", call. = FALSE)
         rlang::as_name(expr)
     }, "")
+}
+
+# tabulate(.tab_missing_codes(x) + 1L, 257L), counted natively except for
+# a long vector.
+.book_missing_code_counts <- function(x) {
+    counts <- .Call(C_dtatools_missing_code_counts, x)
+    if (is.null(counts)) tabulate(.tab_missing_codes(x) + 1L, 257L) else counts
 }
 
 .book_codes <- function(x) {
