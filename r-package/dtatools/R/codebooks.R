@@ -477,11 +477,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 # that column, rather than hashing every column of every row.
 .codebook_duplicate_rows <- function(data) {
     proxy <- vctrs::vec_proxy_equal(data)
-    columns <- unclass(proxy)
+    # The proxy of a single column is that column's proxy, which need not
+    # be a data frame. With one proxy column, no row can leave early.
+    columns <- if (is.data.frame(proxy)) unclass(proxy) else list(proxy)
     plain <- vapply(columns, function(column) {
         (is.atomic(column) || is.list(column)) && is.null(dim(column))
     }, logical(1))
-    if (!is.data.frame(proxy) || !length(columns) || !all(plain)) {
+    if (length(columns) < 2L || !all(plain)) {
         return(vctrs::vec_duplicate_detect(data))
     }
     rows <- vctrs::vec_size(proxy)

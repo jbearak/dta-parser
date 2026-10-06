@@ -367,7 +367,11 @@ test_that("codebook duplicate rows match vctrs duplicate detection", {
         wide = wide, late = late, listed = listed, matrixed = matrixed,
         packed = packed, dibble = dibble(a = dta_byte(c(1, 1, 2)), b = c("x", "x", "y")),
         empty = data.frame(x = double(), y = character()),
-        single = data.frame(x = 1, y = "a")
+        single = data.frame(x = 1, y = "a"),
+        strings = data.frame(x = c("a", "b", "a")),
+        factor = data.frame(x = factor(c("a", "b", "a"))),
+        stata = data.frame(x = dta_double(c(1, NA_real_, tagged_missing("a"), 1))),
+        list = data.frame(x = I(list(1, "1", 1)))
     )
     for (name in names(tables)) {
         data <- tables[[name]]
