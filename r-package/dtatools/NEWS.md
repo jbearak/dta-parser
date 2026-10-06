@@ -19,6 +19,18 @@
   `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
   Results and errors are unchanged.
 
+* `duplicated()`, `anyDuplicated()`, and `unique()` on a dibble compare
+  rows through one integer key per row, built with `match()` one column
+  at a time, rather than through base's list of cells for every row,
+  which dispatched `[[` on each Stata value. On a 16,787-row, 5,360-column
+  DHS file with 500 rows repeated, `duplicated()` takes 0.6 seconds, where
+  base would take over an hour. Results are those of the base methods.
+  Columns the key cannot compare as base does, such as factors, dates, and
+  lists, still take the base methods.
+
+* `unique()` on a dibble no longer reads a column named `x` or `fromLast`
+  in place of its own argument. It deduplicated by that column alone.
+
 * `mean()` and `range()` on a Stata numeric compare each base R closure
   they depend on once per call, rather than once for every binding that
   holds it, when they check that base dispatch is unchanged. A `mean()` of

@@ -10882,7 +10882,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
-          "sha256": "d07a80a77b590e7fe7cbd0ee953cbe9dd1fb861201793b0f73235eb33cad0474"
+          "sha256": "390c463df8dcd06590f9730bdbece79e7fa1ae9e6adad3ee203e7961add9c0a3"
         },
         {
           "path": "tests/testthat/test-dibble-print.R",
@@ -11139,6 +11139,102 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates match the base data frame methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates compare only rows that still share a group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave other tables and columns to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates construct cells as their [[ method does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave invalid compact values to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates defer to another cell method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates keep read columns compact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "unique dibble rows read the arguments, not same-named columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates defer to a next method local to the caller",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates follow the dispatch chain past a changed class",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave restoration warnings to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row values fit their storage by the replacement rules",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 145,
+          "warnings": 0
         },
         {
           "file": "test-dibble-columns.R",

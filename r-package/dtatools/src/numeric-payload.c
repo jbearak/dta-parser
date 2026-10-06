@@ -4952,6 +4952,53 @@ static int numeric_constructor_missing_offset(double element) {
     );
 }
 
+/* Whether every value fits Stata storage `kind` exactly, by the rules of
+   C_dtatools_replacement_fits(): a system missing or `.a` through `.z`, or
+   an observed value in the storage's range, integral for byte, int and
+   long and exact in single precision for float. Construction returns such
+   values unchanged. Regions are read as construction reads them, so
+   compact backing is decoded a block at a time and stays compact. */
+SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value) {
+    if (TYPEOF(value) != REALSXP || TYPEOF(kind_value) != INTSXP ||
+        XLENGTH(kind_value) != 1 || INTEGER(kind_value)[0] < NUMERIC_BYTE ||
+        INTEGER(kind_value)[0] > NUMERIC_DOUBLE) {
+        Rf_error("invalid Stata numeric fit probe");
+    }
+    int kind = INTEGER(kind_value)[0];
+    double float_maximum = numeric_float_observed_limit();
+    double scratch[2048];
+    R_xlen_t length = XLENGTH(value);
+    for (R_xlen_t start = 0, end; start < length; start = end) {
+        R_xlen_t count = length - start > 16384 ? 16384 : length - start;
+        const double *elements = numeric_constructor_region(value, start, &count, scratch);
+        end = start + count;
+        for (R_xlen_t index = start; index < end; index++) {
+            double element = elements == NULL
+                ? REAL_ELT(value, index) : elements[index - start];
+            if (isnan(element)) {
+                int tag = tagged_na_tag_value(element);
+                if ((tag >= 'a' && tag <= 'z') ||
+                    (tag == 0 && numeric_constructor_is_na(element))) continue;
+                return Rf_ScalarLogical(FALSE);
+            }
+            int finite = isfinite(element) != 0;
+            int integral = finite && element == trunc(element);
+            int fits = kind == NUMERIC_BYTE
+                ? integral && element >= -127.0 && element <= 100.0
+                : kind == NUMERIC_INT
+                ? integral && element >= -32767.0 && element <= 32740.0
+                : kind == NUMERIC_LONG
+                ? integral && element >= -2147483647.0 && element <= 2147483620.0
+                : kind == NUMERIC_FLOAT
+                ? finite && fabs(element) <= float_maximum &&
+                    (double) ((float) element) == element
+                : finite && fabs(element) <= DBL_MAX / 2.0;
+            if (!fits) return Rf_ScalarLogical(FALSE);
+        }
+    }
+    return Rf_ScalarLogical(TRUE);
+}
+
 /* Encode one region inside C_dtatools_construct_numeric(), whose locals this
    uses. The first pass validated every element, but foreign ALTREP may answer
    the second read differently, so each value is checked again. A value
