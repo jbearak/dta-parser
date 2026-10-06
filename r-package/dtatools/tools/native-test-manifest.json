@@ -15594,7 +15594,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "8700f6f0f0dae3bb7bcc3747d09fe373b1e4749af3ca94beb4e5aaf9bac4c32d"
+          "sha256": "991be780989758e0f6d44b6bd2f6e0f727194b034ee3ef0596c8b77ff6f6e63f"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15772,6 +15772,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook checks every table's text at once as it checks each alone",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 23,
           "warnings": 0
         },
         {

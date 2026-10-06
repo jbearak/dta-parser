@@ -110,6 +110,11 @@
   with no mappings is now reported as a table with no mappings rather than
   failing.
 
+* `labelbook()` checks the label text of every table in one pass when all
+  strings are valid in a UTF-8 locale, reads each table's codes once for
+  its signature and its duplicate check, and reads a dibble's columns by
+  position. On the same DHS file it falls from 0.9 to 0.6 seconds.
+
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
   to retained compact Arrow numerics reuses the current immutable chunk,
