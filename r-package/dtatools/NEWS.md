@@ -62,6 +62,14 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
+  format with one `regexpr()` call instead of `regmatches()` over
+  `regexec()`, check value-label table names in one call, and find the
+  attributes Arrow drops without `setdiff()`. On a 5,360-column DHS file
+  `save_dta()` falls from 0.68 to 0.44 seconds, `save_arrow()` from 0.74 to
+  0.46 seconds, and `datasig()` from 0.69 to 0.40 seconds. Files,
+  signatures, errors, and warnings are unchanged.
+
 * `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
   encode values about three times faster. The native constructor checks for
   missing and finite values inline instead of calling into R for each value,
