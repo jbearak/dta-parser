@@ -1675,7 +1675,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-numeric.R",
-          "sha256": "cf173a9bcc54a343376e0faabf304e70e3c8cf14dd440cc3a2c2d4108f3fb181"
+          "sha256": "22804df4aa593cfb81f3ba03585bae95b21b4cfedf9965f2e83bf3c34b1e1148"
         },
         {
           "path": "tests/testthat/test-dta-string.R",
@@ -2280,6 +2280,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-numeric.R",
+          "test": "native identity parts match the R missing-code ranks",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
