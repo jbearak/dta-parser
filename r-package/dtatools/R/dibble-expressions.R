@@ -316,14 +316,17 @@
                     # Inlined constants recycle to the whole table before chopping,
                     # unlike caller symbols and other expressions evaluated per group.
                     constant <- !rlang::quo_is_symbolic(quo) && !rlang::quo_is_null(quo)
-                    current <- mask$values()
-                    symbol <- rlang::quo_is_symbol(quo) && rlang::as_name(quo) %in% names(current)
+                    # Read only the values this item uses. Collecting every
+                    # column for each item is quadratic in width under across().
+                    symbol <- rlang::quo_is_symbol(quo) &&
+                        rlang::as_name(quo) %in% mask$helpers$current_vars()
                     preserved <- NULL
                     if (symbol) {
                         target <- rlang::as_name(quo)
+                        current <- mask$values(target)[[target]]
                         chunks <- mask$resolve(target)
-                        if (!(identical(groups$type, "rowwise") && vctrs::obj_is_list(current[[target]]))) {
-                            preserved <- current[[target]]
+                        if (!(identical(groups$type, "rowwise") && vctrs::obj_is_list(current))) {
+                            preserved <- current
                         } else {
                             sizes <- vapply(chunks, vctrs::vec_size, integer(1))
                             bad <- which(sizes != lengths(mask$rows) & sizes != 1L)
@@ -374,17 +377,16 @@
                                 value, vctrs::list_unchop(chunks, indices = mask$rows)
                             ), .native_admission_if
                         )
-                    prior <- mask$values()
                     if (!item$named && is.data.frame(value)) {
                         for (position in seq_along(value)) {
                             target <- names(value)[[position]]
                             pending[target] <- list(.metadata_copy(.retyped_column(
-                                value[[position]], prior[[target]],
+                                value[[position]], mask$values(target)[[target]],
                                 length(value[[position]]), caller)))
                         }
                     } else {
                         pending[name] <- list(.metadata_copy(if (is.data.frame(value)) value else
-                            .retyped_column(value, prior[[name]], length(value), caller)))
+                            .retyped_column(value, mask$values(name)[[name]], length(value), caller)))
                     }
                 }
                 for (name in names(pending)) {
