@@ -279,17 +279,34 @@
     headers <- character(count)
     output_names <- sub("^co\\.", "o.", sub("^c\\.", "",
         sub("^([0-9]+)o\\.", "\\1.", specs)))
-    # A dibble or tibble column read by name is the first column of that
-    # name, and reading it by position skips the search through every name.
-    # An empty or missing name matches no column when read by name, so it
-    # is still read that way.
-    positions <- if (inherits(data, c("dibble", "tbl_df"))) {
-        match(specs, names(data))
-    } else rep(NA_integer_, count)
-    positions[is.na(specs) | !nzchar(specs)] <- NA_integer_
+    # The dibble, tibble and data frame `[[` methods read the first column
+    # of a name, and reading it by position skips the search through every
+    # name. Another method keeps its dispatch. An empty or missing name
+    # matches no column when read by name, so it is still read that way.
+    classes <- oldClass(data)
+    positional <- .summarize_plain_extraction(data)
+    column_names <- names(data)
+    locate <- function() {
+        found <- if (positional) match(specs, column_names)
+            else rep(NA_integer_, count)
+        found[is.na(specs) | !nzchar(specs)] <- NA_integer_
+        found
+    }
+    positions <- locate()
     plain_sample <- is.logical(sample) && is.null(attributes(sample))
     for (i in seq_len(count)) {
         variable <- specs[[i]]
+        # A method run for an earlier column can rename, reorder or reclass
+        # a dibble in place, which installs new names or classes. The reads
+        # then follow them. Holding the old ones keeps them from changing in
+        # place, so an unchanged attribute is the same object.
+        if (!identical(names(data), column_names) ||
+            !identical(oldClass(data), classes)) {
+            classes <- oldClass(data)
+            positional <- .summarize_plain_extraction(data)
+            column_names <- names(data)
+            positions <- locate()
+        }
         position <- positions[[i]]
         value <- if (is.na(position)) data[[variable]] else .subset2(data, position)
         label <- attr(value, "label", exact = TRUE)
@@ -309,6 +326,22 @@
     list(values = values, names = output_names, headers = headers,
          factor_labels = character(count), factor_headers = character(count),
          display = rep(TRUE, count))
+}
+
+# Whether dispatch reads a column of data with the dibble, tibble or data
+# frame `[[` method, as a call from this namespace would.
+.summarize_plain_extraction <- function(data) {
+    for (class in class(data)) {
+        method <- utils::getS3method("[[", class, optional = TRUE,
+                                     envir = environment())
+        if (!is.null(method)) {
+            return(identical(method, `[[.dibble`) ||
+                identical(method, `[[.data.frame`) ||
+                identical(method, get0("[[.tbl_df", asNamespace("tibble"),
+                                       inherits = FALSE)))
+        }
+    }
+    FALSE
 }
 
 .summarize_model_key <- function(component) {
