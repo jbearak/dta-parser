@@ -33,11 +33,13 @@
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
 
 * Grouped `summarise()` and `reframe()` stop folding an expression's
-  per-group results into a common type once the type settles. When every
-  group returns a plain Stata double and the Stata numeric methods are
-  unchanged, the first three groups give the common type. Over 10,000 groups
-  of 100,000 rows, `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds,
-  and `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
+  per-group results into a common type once the type settles. When there are
+  at least eight groups, every group returns a plain Stata double with the
+  same attributes, and the Stata numeric methods are unchanged, the first
+  three groups give the common type. Other results are folded over every
+  group as before. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds, and
+  `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
 
 * Grouped `summarise()` and `reframe()` combine per-group plain Stata
   doubles natively, without casting each group's result to the common type
