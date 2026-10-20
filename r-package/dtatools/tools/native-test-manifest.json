@@ -6220,7 +6220,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "300090635321826623a2bf3d47774dbb0f53a014ec53b364f24de045adebd887"
+          "sha256": "2615d5a8defd435735736c24072abc6021a55f13940d4fd0eeaf27b309e906f4"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6773,6 +6773,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "materializing a compact view reads its values from the dictionary",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         },
         {
