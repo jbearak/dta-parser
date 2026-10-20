@@ -6593,6 +6593,35 @@ static int combine_dispatch_unchanged(SEXP dependencies, SEXP combine) {
     return computed_double_limit_unchanged(dtatools);
 }
 
+/* The checks combine_dispatch_unchanged makes for the dta_double class, for
+   another storage class: no method of that class may change how vctrs takes a
+   type, finalises it, or how base reads and sets its names and dimensions. */
+static int combine_storage_methods_absent(SEXP dependencies, const char *storage_class) {
+    static const char *generics[] = {
+        "vec_ptype", "vec_ptype_finalise", "names", "dim", "names<-"
+    };
+    SEXP vctrs = VECTOR_ELT(dependencies, 0), dtatools = VECTOR_ELT(dependencies, 1);
+    SEXP vctrs_table = VECTOR_ELT(dependencies, 7), base_table = VECTOR_ELT(dependencies, 8);
+    SEXP methods[5];
+    char name[64];
+    for (int i = 0; i < 5; i++) {
+        if (snprintf(name, sizeof(name), "%s.%s", generics[i], storage_class) >=
+            (int) sizeof(name)) return 0;
+        methods[i] = Rf_install(name);
+    }
+    return combine_frame_absent(R_GlobalEnv, methods[0]) &&
+        combine_frame_absent(vctrs_table, methods[0]) &&
+        combine_chain_absent(vctrs, methods[1]) &&
+        combine_frame_absent(vctrs_table, methods[1]) &&
+        combine_chain_absent(dtatools, methods[2]) &&
+        combine_chain_absent(vctrs, methods[2]) &&
+        combine_frame_absent(base_table, methods[2]) &&
+        combine_chain_absent(dtatools, methods[3]) &&
+        combine_frame_absent(base_table, methods[3]) &&
+        combine_chain_absent(dtatools, methods[4]) &&
+        combine_frame_absent(base_table, methods[4]);
+}
+
 static int combine_double_plain_indices(SEXP value) {
     return TYPEOF(value) == INTSXP && !ALTREP(value) && !ANY_ATTRIB(value) &&
         !Rf_isObject(value) && !Rf_isS4(value);
@@ -6902,7 +6931,7 @@ static int summary_caller_env_unchanged(SEXP ns, SEXP caller_env, SEXP plus, SEX
    their build copies, with their braces, .External2 and routines unchanged,
    so the shortened argument list cannot be observed. */
 static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
-    if (!combine_plain_list(expected) || XLENGTH(expected) != 8 ||
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 10 ||
         TYPEOF(VECTOR_ELT(expected, 2)) != ENVSXP) return 0;
     SEXP ns = VECTOR_ELT(expected, 2);
     SEXP common = PROTECT(vctrs_exported_function(
@@ -6928,18 +6957,39 @@ static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
     return same;
 }
 
+/* A fold of two storages reaches the branch of .dta_promote() that names
+   the pair with is.character() and switch(). The package and base lookups
+   of both must find the build primitives. */
+static int summary_promotion_unchanged(SEXP dtatools, SEXP expected) {
+    static const char *names[] = {"is.character", "switch"};
+    for (int i = 0; i < 2; i++) {
+        SEXP symbol = Rf_install(names[i]), primitive = VECTOR_ELT(expected, 8 + i);
+        if ((TYPEOF(primitive) != BUILTINSXP && TYPEOF(primitive) != SPECIALSXP) ||
+            !dtatools_execution_lexical_function_same(dtatools, symbol, primitive) ||
+            !dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, primitive))
+            return 0;
+    }
+    return 1;
+}
+
 /* A grouped summary folds every group's result into a common type with
    vctrs, one chunk at a time. Over canonical double pieces, the ones double
    assembly combines without vctrs, each fold is a pure function of the
    running type and the next piece's attributes while the checks that admit
-   that assembly pass. The helper passes chunks as an unforced symbol
-   promise, so lookups are checked in the caller's frame, where vctrs is
-   called, and nothing is forced. Return the method vctrs would send each
-   fold to, as vctrs would find it, or NULL when there are fewer than eight
-   chunks or any chunk or dependency differs. */
-SEXP C_dtatools_double_ptype_method(
+   that assembly pass. The same holds for canonical byte, int, long, and float
+   pieces when no method of their storage classes changes dispatch and the
+   constructor that a fold reaches for them is unchanged. Pieces of more
+   than one storage also need the promotion above. The helper passes
+   chunks as an unforced symbol promise, so lookups are checked in the
+   caller's frame, where vctrs is called, and nothing is forced. Return the
+   method vctrs would send each fold to, as vctrs would find it, or NULL when
+   there are fewer than eight chunks or any chunk or dependency differs. */
+SEXP C_dtatools_summary_ptype_method(
     SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
 ) {
+    static const char *storage_classes[] = {
+        "dta_byte", "dta_int", "dta_long", "dta_float"
+    };
     SEXP frame = R_GetCurrentEnv(), symbol = Rf_install("chunks");
     if (!combine_plain_environment(frame) ||
         R_GetBindingType(symbol, frame) != R_BindingTypeDelayed ||
@@ -6948,9 +6998,19 @@ SEXP C_dtatools_double_ptype_method(
     if (!combine_plain_environment(caller)) return R_NilValue;
     SEXP chunks = PROTECT(computed_peek(symbol, caller, 16)), dependencies, metadata, routines;
     int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8;
+    /* Bit k marks a compact piece of kind k. */
+    unsigned compact = 0;
+    int doubles = 0;
     for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
-        admitted = combine_double_canonical_piece(VECTOR_ELT(chunks, i));
+        SEXP piece = VECTOR_ELT(chunks, i);
+        int kind = 0;
+        if (combine_double_canonical_piece(piece)) {
+            doubles = 1;
+            continue;
+        }
+        admitted = scalar_compact_numeric(piece, &kind);
+        if (admitted) compact |= 1U << kind;
     }
     if (!admitted ||
         combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
@@ -6970,9 +7030,23 @@ SEXP C_dtatools_double_ptype_method(
         UNPROTECT(3);
         return R_NilValue;
     }
+    /* A compact piece's fold constructs an empty vector of its storage through
+       the constructor's compact branch. */
+    int storages = doubles;
+    for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
+        if (compact & (1U << kind)) {
+            storages++;
+            admitted = combine_storage_methods_absent(dependencies, storage_classes[kind]);
+        }
+    }
+    if (admitted && compact)
+        admitted = dtatools_numeric_helpers_admitted(VECTOR_ELT(dependencies, 1),
+                                                     DTATOOLS_NUMERIC_CONSTRUCT);
+    if (admitted && storages > 1)
+        admitted = summary_promotion_unchanged(VECTOR_ELT(dependencies, 1), reducer);
     SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
     SEXP method = R_NilValue;
-    if (combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
+    if (admitted && combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
         SEXP name = Rf_install("vec_ptype2.dta_numeric.dta_numeric");
         if (combine_peek_frame(R_GlobalEnv, name, &method) == COMBINE_ABSENT &&
             combine_peek_frame(VECTOR_ELT(dependencies, 7), name, &method) != COMBINE_VALUE)

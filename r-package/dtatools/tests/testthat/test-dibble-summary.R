@@ -375,7 +375,7 @@ test_that("S7-S20 unchanged reframe chunks avoid extra restoration callbacks", {
 # The summary gate reads chunks through an unforced promise, as
 # .dibble_summary_ptype() passes it.
 .summary_ptype_gate <- function(chunks) {
-    .Call(dtatools:::C_dtatools_double_ptype_method,
+    .Call(dtatools:::C_dtatools_summary_ptype_method,
           dtatools:::.double_combine_state, dtatools:::.metadata_state,
           dtatools:::.summary_ptype_dependencies, dtatools:::.summary_routine_state)
 }
@@ -398,6 +398,180 @@ test_that("a shared Stata type settles the summary common type as vctrs does", {
     }
     mixed <- c(lapply(1:8, dta_byte), list(dta_int(9)))
     expect_identical(common(mixed), vctrs::vec_ptype_common(!!!mixed))
+})
+
+# Means of byte groups are bytes when they are whole and floats otherwise.
+.summary_mean_chunks <- function(values) {
+    lapply(values, function(value) {
+        if (is.na(value) || value == round(value)) dta_byte(value) else dta_float(value)
+    })
+}
+
+test_that("mixed compact summary types settle as vctrs folds them", {
+    common <- function(chunks) dtatools:::.dibble_summary_ptype(chunks, "v", NULL, 0L)
+    shapes <- list(
+        .summary_mean_chunks(c(1, 1.5, 2, NA, 2.5, rep(c(3, 3.5), 20))),
+        c(lapply(1:20, dta_byte), lapply(21:40, dta_int)),
+        c(list(dta_float(0.5)), lapply(1:40, dta_byte), list(dta_double(2))),
+        lapply(1:40, function(i) switch(i %% 4 + 1, dta_byte(i), dta_int(i),
+                                        dta_long(i), dta_float(i))),
+        lapply(1:40, function(i) switch(i %% 5 + 1, dta_byte(i), dta_int(i),
+                                        dta_long(i), dta_float(i), dta_double(i))),
+        c(lapply(1:6, dta_byte), list(dta_float(0.5), dta_byte(1)))
+    )
+    for (chunks in shapes) {
+        expect_true(identical(common(chunks), vctrs::vec_ptype_common(!!!chunks),
+                              attrib.as.set = FALSE))
+    }
+})
+
+test_that("summary common typing keeps the first three chunks and each first type", {
+    kept <- dtatools:::.summary_ptype_kept
+    means <- .summary_mean_chunks(c(1, 1.5, 2, NA, 2.5, rep(c(3, 3.5), 20)))
+    expect_identical(kept(means), structure(1:3, firsts = 1:2))
+    late <- c(lapply(1:20, dta_byte), lapply(21:40, dta_int))
+    expect_identical(kept(late), structure(c(1:3, 21L), firsts = c(1L, 21L)))
+    four <- lapply(1:40, function(i) switch(i %% 4 + 1, dta_byte(i), dta_int(i),
+                                            dta_long(i), dta_float(i)))
+    expect_identical(kept(four), structure(1:4, firsts = 1:4))
+    five <- lapply(1:40, function(i) switch(i %% 5 + 1, dta_byte(i), dta_int(i),
+                                            dta_long(i), dta_float(i), dta_double(i)))
+    expect_null(kept(five))
+    # One type keeps three chunks at any count. With more, the check must
+    # fold less often than the chunks it skips.
+    expect_identical(kept(lapply(1:8, dta_byte)), structure(1:3, firsts = 1L))
+    expect_null(kept(c(lapply(1:6, dta_byte), list(dta_float(0.5), dta_byte(1)))))
+})
+
+test_that("the summary gate admits mixed compact chunks and declines their methods", {
+    chunks <- .summary_mean_chunks(c(1, 1.5, 2, NA, 2.5, rep(c(3, 3.5), 20)))
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(lapply(1:9, dta_double))
+        vctrs::vec_ptype_common(!!!chunks)
+    }
+    gate <- function() .summary_ptype_gate(chunks)
+    supported <- .dtatools_numeric_entry_expected()
+    expect_identical(dtatools:::.summary_ptype_settles(chunks), supported)
+    settled <- gate()
+    expect_identical(is.null(settled), !supported)
+    for (method in c("names.dta_float", "dim.dta_byte", "vec_ptype_finalise.dta_float",
+                     "vec_ptype.dta_byte", "names<-.dta_float")) {
+        assign(method, function(x, ...) NextMethod(), envir = globalenv())
+        expect_null(gate(), info = method)
+        rm(list = method, envir = globalenv())
+        expect_identical(gate(), settled, info = method)
+    }
+    unpacked <- chunks
+    chunks <- lapply(unpacked, function(x) set_val_labels(x, c(Low = 1)))
+    expect_null(gate())
+    expect_false(dtatools:::.summary_ptype_settles(chunks))
+    chunks <- c(unpacked, list(1))
+    expect_null(gate())
+})
+
+test_that("storage promotion names each pair as the sorted key did", {
+    reference <- function(left, right) {
+        if (identical(left, right)) return(left)
+        switch(paste(sort(c(left, right)), collapse = ":"),
+            "byte:int" = "int", "byte:long" = "long", "byte:float" = "float",
+            "byte:double" = "double", "int:long" = "long", "float:int" = "float",
+            "double:int" = "double", "float:long" = "double", "double:long" = "double",
+            "double:float" = "double",
+            stop("unknown Stata storage type combination", call. = FALSE))
+    }
+    storages <- c("byte", "int", "long", "float", "double")
+    for (left in storages) for (right in storages) {
+        expect_identical(dtatools:::.dta_promote(left, right), reference(left, right),
+                         info = paste(left, right))
+    }
+    unknown <- list(list("byte", NA_character_), list(NA_character_, "int"),
+                    list("byte", ""), list("byte", "text"), list(c("byte", "int"), "float"),
+                    list(NULL, "byte"), list(1, "byte"))
+    for (pair in unknown) {
+        expect_error(dtatools:::.dta_promote(pair[[1L]], pair[[2L]]),
+                     "unknown Stata storage type combination", fixed = TRUE)
+    }
+})
+
+test_that("mixed storage folds call neither sort() nor paste()", {
+    chunks <- .summary_mean_chunks(c(1, 1.5, rep(c(2, 2.5), 24)))
+    events <- new.env(parent = emptyenv())
+    tracer <- substitute(assign("count", get("count", envir = EVENTS) + 1L, envir = EVENTS),
+                         list(EVENTS = events))
+    for (name in c("sort", "paste")) {
+        suppressMessages(trace(name, tracer = tracer, print = FALSE, where = baseenv()))
+    }
+    on.exit(suppressMessages(for (name in c("sort", "paste")) untrace(name, where = baseenv())))
+    events$count <- 0L
+    full <- vctrs::vec_ptype_common(!!!chunks)
+    settled <- dtatools:::.dibble_summary_ptype(chunks, "v", NULL, 0L)
+    count <- events$count
+    expect_identical(count, 0L)
+    expect_true(identical(settled, full, attrib.as.set = FALSE))
+})
+
+test_that("the summary gate declines mixed storages when promotion primitives change", {
+    chunks <- .summary_mean_chunks(c(1, 1.5, 2, NA, 2.5, rep(c(3, 3.5), 20)))
+    single <- lapply(1:40, dta_byte)
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(lapply(1:9, dta_double))
+        vctrs::vec_ptype_common(!!!chunks)
+        vctrs::vec_ptype_common(!!!single)
+    }
+    routine <- dtatools:::C_dtatools_summary_ptype_method
+    state <- dtatools:::.double_combine_state
+    metadata <- dtatools:::.metadata_state
+    dependencies <- dtatools:::.summary_ptype_dependencies
+    routines <- dtatools:::.summary_routine_state
+    # The gate reads the caller's chunks through a promise of that name.
+    gate <- function(chunks) .Call(routine, state, metadata, dependencies, routines)
+    probe <- function(values) {
+        chunks <- values
+        gate(chunks)
+    }
+    supported <- .dtatools_numeric_entry_expected()
+    expect_identical(is.null(probe(chunks)), !supported)
+    expect_identical(is.null(probe(single)), !supported)
+    with_primitive <- function(name, replacement, expression) {
+        original <- get(name, envir = baseenv(), inherits = FALSE)
+        unlockBinding(name, baseenv())
+        on.exit({
+            unlockBinding(name, baseenv())
+            assign(name, original, envir = baseenv())
+            lockBinding(name, baseenv())
+        }, add = TRUE)
+        assign(name, replacement, envir = baseenv())
+        lockBinding(name, baseenv())
+        force(expression)
+    }
+    # The wrappers behave as the primitives do if anything calls them.
+    replacements <- list(
+        is.character = function(x) .Primitive("is.character")(x),
+        switch = function(EXPR, ...) .Primitive("switch")(EXPR, ...)
+    )
+    for (name in names(replacements)) {
+        declined <- with_primitive(name, replacements[[name]],
+            c(mixed = is.null(probe(chunks)), single = is.null(probe(single))))
+        expect_identical(declined, c(mixed = TRUE, single = !supported), info = name)
+        expect_identical(is.null(probe(chunks)), !supported, info = name)
+    }
+})
+
+test_that("grouped compact summaries match the summaries folded in full", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    withr::local_seed(11)
+    data <- dibble(g = sample(1:60, 600, TRUE), b = dta_byte(sample(0:90, 600, TRUE)),
+                   i = dta_int(sample(0:30000, 600, TRUE)), l = dta_long(sample(1:9, 600, TRUE)))
+    run <- function() dplyr::summarise(data, m = mean(b), mi = mean(i), x = max(b),
+                                       s = sum(i), k = dplyr::n(), lo = min(l), .by = g)
+    settled <- run()
+    local_mocked_bindings(.summary_ptype_settles = function(chunks) FALSE, .package = "dtatools")
+    full <- run()
+    expect_identical(lapply(.data_columns(settled), attributes),
+                     lapply(.data_columns(full), attributes))
+    expect_identical(lapply(.data_columns(settled), as.double),
+                     lapply(.data_columns(full), as.double))
+    expect_identical(names(settled), names(full))
 })
 
 test_that("summary common typing runs every fold of a replaced Stata method", {
@@ -722,7 +896,7 @@ test_that("a fresh session settles the summary common type after grouped summari
         data <- dplyr::group_by(dibble(g = rep(1:9, each = 2),
                                        x = dta_double(as.double(1:18))), g)
         result <- dplyr::summarise(data, m = mean(x))
-        gate <- function(chunks) .Call(dtatools:::C_dtatools_double_ptype_method,
+        gate <- function(chunks) .Call(dtatools:::C_dtatools_summary_ptype_method,
             dtatools:::.double_combine_state, dtatools:::.metadata_state,
             dtatools:::.summary_ptype_dependencies, dtatools:::.summary_routine_state)
         chunks <- lapply(1:9, dta_double)
