@@ -9,8 +9,8 @@ column slices. ADR 0034 built a new set of bindings for every group, each
 fixed to that group, so a closure, promise, quosure, or pronoun captured in
 one group kept reading that group's rows when called in another. On wide data
 that costs a binding per column per group. On a 16,787-row, 5,360-column DHS
-file with 400 clusters, building them took about 0.55 of the 0.69 seconds of
-`summarise(m = mean(v012), .by = v001)`, a quarter of it in garbage
+file with 400 clusters, building them took about 0.55 of the 0.7 to 0.8
+seconds of `summarise(m = mean(v012), .by = v001)`, a third of it in garbage
 collection.
 
 The mask now builds one set of bindings and uses it for every group. Each
@@ -30,7 +30,7 @@ in place, so that a dplyr capture reads the new column.
 Keeping fixed groups would need a binding per column per group, however each
 binding is built. A cheaper construction could reduce that cost but not
 remove it. Sharing the set removes it, so the grouped `summarise()` above
-takes 0.16 seconds.
+takes 0.17 seconds.
 
 This replaces the sentences of ADR 0034 that fix each capture's group. Its
 other decisions stand.
