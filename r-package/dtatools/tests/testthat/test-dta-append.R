@@ -634,8 +634,13 @@ test_that("a compact append column is the column its doubles construct", {
     facts <- function(x) .Call(dtatools:::C_dtatools_numeric_facts_info, x)
     writer <- dtatools:::C_dtatools_append_write_compact
     finish <- function(buffer, storage, prototype) {
-        kind <- if (is.raw(buffer)) "compact" else "numeric"
-        dtatools:::.append_finish_buffer(buffer, kind, storage, prototype)
+        if (!is.raw(buffer)) {
+            return(dtatools:::.append_finish_buffer(buffer, "numeric", storage, prototype))
+        }
+        column <- .Call(dtatools:::C_dtatools_append_compact_values, buffer,
+                        match(storage, dtatools:::.dta_storage) - 1L, storage,
+                        dtatools:::.dta_storage_class(storage))
+        dtatools:::.append_finish_buffer(column, "column", storage, prototype)
     }
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     on.exit(unlink(path), add = TRUE)
@@ -728,9 +733,9 @@ test_that("a compact append column is the column its doubles construct", {
 })
 
 test_that("append buffers reach their finish bare and unwrapped", {
-    # Removing a buffer's attributes after it is shared would wrap it, and
-    # the constructor would then read a double buffer one value at a time.
-    # The native constructor takes at least 2,048 doubles.
+    # Removing a buffer's attributes after it is shared would wrap it.
+    # Reading the wrapper's bytes copies them, and the native constructor
+    # declines a wrapper. It also takes only 2,048 or more doubles.
     rows <- 1024L
     frame <- dibble(b = dta_byte(rep(c(1, NA), rows / 2L)),
                     d = dta_double(seq_len(rows) / 4),
@@ -742,16 +747,21 @@ test_that("append buffers reach their finish bare and unwrapped", {
         tracer = bquote(assign("buffers", c(.(seen)$buffers, list(c(
             kind = kind,
             altrep = dtatools:::.is_altrep(buffer),
-            attributes = !is.null(attributes(buffer))
+            compact = is.double(buffer) &&
+                dtatools:::.is_unmaterialized_numeric_altrep(buffer),
+            attributes = paste(names(attributes(buffer)), collapse = " ")
         ))), envir = .(seen))),
         print = FALSE
     ))
     traced <- dta_append(list(frame, frame))
     suppressMessages(untrace(".append_finish_buffer", where = asNamespace("dtatools")))
+    # The compact buffer arrives as the column built from its bytes.
     expect_identical(
         do.call(rbind, seen$buffers),
-        cbind(kind = c("compact", "numeric", "string"),
-              altrep = "FALSE", attributes = "FALSE")
+        cbind(kind = c("column", "numeric", "string"),
+              altrep = c("TRUE", "FALSE", "FALSE"),
+              compact = c("TRUE", "FALSE", "FALSE"),
+              attributes = c("stata.storage class", "", ""))
     )
 
     # The double column is built natively where the profile admits it.
@@ -768,6 +778,34 @@ test_that("append buffers reach their finish bare and unwrapped", {
         expect_identical(as.character(result$s), rep("a", 2L * rows))
         expect_identical(dtatools:::.declared_dta_storage(result$b), "byte")
     }
+})
+
+test_that("a compact append column keeps an unshared buffer's bytes", {
+    # Call the functions directly: a wrapper's argument would share the buffer.
+    writer <- dtatools:::C_dtatools_append_write_compact
+    build <- dtatools:::C_dtatools_append_compact_values
+    byte <- match("byte", dtatools:::.dta_storage) - 1L
+    class <- dtatools:::.dta_storage_class("byte")
+    first <- as.double(dta_byte(c(1, 2, 3, 4)))
+    second <- as.double(dta_byte(c(5, 6, 7, 8)))
+
+    # The column holds the buffer's bytes, so the buffer is now shared and
+    # declines the write that would change the column.
+    buffer <- .Call(dtatools:::C_dtatools_append_compact_buffer, byte, 6L)
+    expect_true(.Call(writer, buffer, 0L, 4L, first, byte))
+    column <- .Call(build, buffer, byte, "byte", class)
+    expect_false(.Call(writer, buffer, 0L, 4L, second, byte))
+    expect_identical(as.double(column), c(1, 2, 3, 4, NA, NA))
+    expect_identical(attributes(column), list(stata.storage = "byte", class = class))
+
+    # A shared buffer is copied and stays writable.
+    buffer <- .Call(dtatools:::C_dtatools_append_compact_buffer, byte, 6L)
+    expect_true(.Call(writer, buffer, 0L, 4L, first, byte))
+    shared <- buffer
+    column <- .Call(build, buffer, byte, "byte", class)
+    rm(shared)
+    expect_true(.Call(writer, buffer, 0L, 4L, second, byte))
+    expect_identical(as.double(column), c(1, 2, 3, 4, NA, NA))
 })
 
 test_that("compact append sources the constructor rejects keep its errors", {

@@ -5455,24 +5455,37 @@ SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind_value) {
     return result;
 }
 
-/* The compact storage the constructor builds from the doubles a compact
-   buffer holds, over a copy of its bytes and with the same facts, from one
-   scan. Return NULL when the scan refuses a value; the caller then hands
-   the constructor the doubles. */
-SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind_value) {
+/* The column the constructor builds from the doubles a compact buffer
+   holds, with the same facts from one scan, and with the `stata.storage`
+   and class attributes it is given. Return NULL when the scan refuses a
+   value; the caller then hands the constructor the doubles. A plain buffer
+   that only the calling frame's binding holds becomes the column's storage.
+   The column's reference then marks it shared, so the append writers
+   refuse it. Any other buffer is copied. */
+SEXP C_dtatools_append_compact_values(
+    SEXP buffer, SEXP kind_value, SEXP storage, SEXP class
+) {
     int kind = append_compact_kind(kind_value);
     size_t width = kind < 0 ? 1 : numeric_kind_width(kind);
     if (kind < 0 || TYPEOF(buffer) != RAWSXP ||
-        XLENGTH(buffer) % (R_xlen_t) width != 0) {
+        XLENGTH(buffer) % (R_xlen_t) width != 0 ||
+        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 ||
+        TYPEOF(class) != STRSXP) {
         Rf_error("invalid compact append buffer");
     }
     size_t length = (size_t) XLENGTH(buffer) / width;
-    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, XLENGTH(buffer)));
-    memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
     compact_numeric_facts facts;
-    SEXP result = compact_numeric_scan(RAW(backing), length, kind, &facts)
-        ? compact_numeric_from_scan(backing, length, kind, &facts) : R_NilValue;
-    UNPROTECT(1);
+    if (!compact_numeric_scan(RAW(buffer), length, kind, &facts)) return R_NilValue;
+    SEXP backing = buffer;
+    if (ALTREP(buffer) || MAYBE_SHARED(buffer) || ANY_ATTRIB(buffer)) {
+        backing = Rf_allocVector(RAWSXP, XLENGTH(buffer));
+        memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
+    }
+    PROTECT(backing);
+    SEXP result = PROTECT(compact_numeric_from_scan(backing, length, kind, &facts));
+    Rf_setAttrib(result, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(result, R_ClassSymbol, class);
+    UNPROTECT(2);
     return result;
 }
 

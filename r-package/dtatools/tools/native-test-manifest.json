@@ -14566,7 +14566,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "27169eea664d69f55c3df381355de368191f3d6399a0df3e40ef2fc74d0210a2"
+          "sha256": "09fd5630e45c313da9bc8ad79d6d6e71919abcbc5e9c4d96a4bcb107c11f6189"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -15159,6 +15159,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "a compact append column keeps an unshared buffer's bytes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {
