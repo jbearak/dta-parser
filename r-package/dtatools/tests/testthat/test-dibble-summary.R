@@ -1009,6 +1009,53 @@ test_that("a fresh session settles the summary common type after grouped summari
     expect_identical(observed$means, seq(1.5, 17.5, by = 2))
 })
 
+test_that("a fresh session's first grouped summaries take both native checks", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    skip_if_not_installed("callr")
+    # Lazy bindings exist only in an installed copy, which loads its
+    # namespace lazily, so the checks see them there.
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    first_summaries <- function(package_path, load_package, path) {
+        load_package(package_path)
+        record <- new.env()
+        record$settled <- logical()
+        record$combined <- logical()
+        suppressMessages({
+            trace(".summary_ptype_settles", where = asNamespace("dtatools"), print = FALSE,
+                exit = bquote(assign("settled", c(get("settled", envir = .(record)),
+                    returnValue()), envir = .(record))))
+            trace(".summary_combine", where = asNamespace("dtatools"), print = FALSE,
+                exit = bquote(assign("combined", c(get("combined", envir = .(record)),
+                    isTRUE(returnValue())), envir = .(record))))
+        })
+        # Only native generation builds the counts, and a read file's columns
+        # come from the reader, so neither runs the R constructor.
+        if (is.null(path)) {
+            data <- dplyr::group_by(dibble(g = rep(1:10, each = 2), x = dta_int(1:20)), g)
+            values <- list(as.double(dplyr::summarise(data, n = dplyr::n())$n))
+        } else {
+            data <- dplyr::group_by(read_dta(path, col_select = c("make", "weight")), make)
+            values <- list(as.double(dplyr::summarise(data, n = dplyr::n())$n),
+                           as.double(dplyr::summarise(data, w = max(weight))$w))
+        }
+        list(settled = record$settled, combined = record$combined, values = values)
+    }
+    expected <- .dtatools_numeric_entry_expected()
+    counted <- callr::r(first_summaries, args = list(package_path = package_path,
+        load_package = load_dtatools_for_subprocess, path = NULL), libpath = .libPaths())
+    expect_identical(counted$settled, expected)
+    expect_identical(counted$combined, expected)
+    expect_identical(counted$values, list(rep(2, 10)))
+    auto <- fixture("auto_v118.dta")
+    read <- callr::r(first_summaries, args = list(package_path = package_path,
+        load_package = load_dtatools_for_subprocess, path = auto), libpath = .libPaths())
+    expect_identical(read$settled, rep(expected, 2L))
+    expect_identical(read$combined, rep(expected, 2L))
+    weights <- read_dta(auto, col_select = c("make", "weight"))
+    expect_identical(read$values, list(rep(1, 74),
+        as.double(weights$weight)[order(weights$make)]))
+})
+
 test_that("declined summary common typing runs the original compiled call", {
     expected <- lapply(c(3L, 9L), function(n)
         vctrs::vec_ptype_common(!!!lapply(seq_len(n), dta_double)))

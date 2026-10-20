@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` on a dibble takes its native common type and
+  combine steps from a session's first call. Their checks compare each
+  function they skip with the package's own copy, and declined while any of
+  those functions was still waiting to be loaded. A session's first grouped
+  summary, and in a session that had not built a Stata numeric through the
+  R constructor every `summarise(n = n())`, then combined each group's
+  result through vctrs's R methods. dtatools now loads those functions when
+  it loads. On the 1,274,250-row India 2021 DHS births file, a session's
+  first `summarise(group_by(d, caseid), n = n())` over its 494,019 women
+  falls from about 187 to 34 seconds. Results are unchanged.
+
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
   from one by `keep_vars()` or `gen()`, warned that it dropped the row
