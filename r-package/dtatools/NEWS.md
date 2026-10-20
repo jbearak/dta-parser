@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Subsetting a table with `[`, as `head()` does, checks which columns
+  carry Stata notes or characteristics in one native pass, rather than
+  with an R call for each column. So do `set_dta_metadata()` and the note
+  and characteristic setters, such as `add_dta_note()`. On a 16,787-row,
+  5,360-column DHS file, `head(d)` falls from about 0.039 to 0.033 seconds
+  and `d[1:10, ]` from 0.040 to 0.035. Results are unchanged.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,

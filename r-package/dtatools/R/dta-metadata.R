@@ -351,13 +351,20 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     result
 }
 
-# Called once per column when a wide table is subset, so it avoids a
-# closure call per attribute name.
+# Whether one value carries Stata notes or characteristics.
 .has_dta_metadata <- function(value) {
     for (name in .dta_metadata_attribute_names) {
         if (!is.null(attr(value, name, exact = TRUE))) return(TRUE)
     }
     FALSE
+}
+
+# `vapply(x, .has_dta_metadata, logical(1))` in one native pass, since a
+# subset of a wide table asks this of every column. A frame or other
+# object is listed through `as.list()` first, as `vapply()` lists it.
+.has_dta_metadata_each <- function(x) {
+    if (!is.vector(x) || is.object(x)) x <- as.list(x)
+    .Call(C_dtatools_any_attribute, x, .dta_metadata_attribute_names)
 }
 
 .dta_metadata_vector_class <- "dtatools_dta_metadata_vector"
@@ -408,7 +415,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
 
 .as_dta_metadata_frame <- function(value) {
     if (!is.data.frame(value)) return(.as_dta_metadata_vector(value))
-    variable_metadata <- vapply(value, .has_dta_metadata, logical(1))
+    variable_metadata <- .has_dta_metadata_each(value)
     if (any(variable_metadata)) {
         locations <- which(variable_metadata)
         marked <- lapply(
@@ -615,9 +622,7 @@ vec_cast.ordered.dtatools_dta_metadata_vector <-
         stop("Could not restore Stata metadata after subsetting", call. = FALSE)
     }
     source_columns <- unclass(x)[unname(selected)]
-    variable_metadata <- vapply(
-        source_columns, .has_dta_metadata, logical(1)
-    )
+    variable_metadata <- .has_dta_metadata_each(source_columns)
     if (any(variable_metadata)) {
         locations <- which(variable_metadata)
         replacements <- Map(

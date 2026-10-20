@@ -291,5 +291,5 @@ set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
 
 .metadata_frame_class <- function(data) {
     .set_dta_metadata_class(data, .has_dta_metadata(data) ||
-        any(vapply(data, .has_dta_metadata, logical(1))))
+        any(.has_dta_metadata_each(data)))
 }
