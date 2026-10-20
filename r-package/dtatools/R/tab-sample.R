@@ -216,8 +216,25 @@
 
 .tab_categories <- function(value, missing, display) {
     result <- .prepare_tab_argument(value, missing, display)
-    if (!is.factor(result)) result <- factor(result)
+    if (!is.factor(result)) result <- .tab_numeric_factor(result)
     if (missing != "exclude" && anyNA(result)) result <- addNA(result, ifany = TRUE)
+    result
+}
+
+# `factor(x)` formats every value with as.character() and matches the
+# text. Values that unique() holds equal have the same text, so a numeric
+# vector's factor is the factor of its distinct values, indexed by the
+# distinct value each one matches, and only those few are formatted.
+.tab_numeric_factor <- function(x) {
+    plain <- typeof(x) %in% c("double", "integer") && !is.object(x)
+    if (!plain && !inherits(x, "dta_numeric")) return(factor(x))
+    distinct <- unique(x)
+    grouped <- factor(distinct)
+    position <- if (plain) match(x, distinct) else dta_match(x, distinct)
+    result <- unclass(grouped)[position]
+    names(result) <- names(x)
+    levels(result) <- levels(grouped)
+    class(result) <- "factor"
     result
 }
 

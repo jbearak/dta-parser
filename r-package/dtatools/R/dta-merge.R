@@ -250,16 +250,17 @@ dta_merge <- function(x, y, by, relationship,
             overlap_columns[[name]], x[[name]], y[[name]]
         )
     }
-    for (name in x_extra) {
-        columns[[name]] <- if (name %in% overlapping) {
-            overlap_columns[[name]]
-        } else {
-            x_only_columns[[name]]
-        }
-    }
-    for (name in y_only) {
-        columns[[name]] <- y_only_columns[[name]]
-    }
+    # Merge inputs have unique names, and `overlapping` and `x_only` keep
+    # the order of `x_extra`, so their columns fill its positions in turn.
+    # Assigning each column by name would scan and grow the list once per
+    # column.
+    from_overlap <- x_extra %in% overlapping
+    extra_columns <- vector("list", length(x_extra))
+    extra_columns[from_overlap] <- overlap_columns
+    extra_columns[!from_overlap] <- x_only_columns
+    names(extra_columns) <- x_extra
+    names(y_only_columns) <- y_only
+    columns <- c(columns, extra_columns, y_only_columns)
     indicator <- dta_byte(merge_codes)
     val_labels(indicator) <- c(
         "x only (1)" = 1,
@@ -319,7 +320,14 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_select_columns <- function(data, names) {
-    columns <- lapply(names, function(name) data[[name]])
+    # Merge inputs have unique names, so one match finds the column `[[`
+    # would, without a data-frame `[[` call per column.
+    locations <- match(names, names(data))
+    columns <- if (anyNA(locations)) {
+        lapply(names, function(name) data[[name]])
+    } else {
+        .subset(data, locations)
+    }
     names(columns) <- names
     vctrs::new_data_frame(columns, n = nrow(data))
 }

@@ -342,7 +342,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     structure(list(
         variables = .book_rows(variables, .codebook_variables()),
         tabulations = .book_rows(tabulations, .codebook_tabulations()),
-        examples = .book_bind(examples, .codebook_examples()),
+        examples = .book_rows(examples, .codebook_examples()),
         missing_relationships = relationships,
         notes = .book_bind(note_rows, .codebook_notes()),
         diagnostics = .book_bind(diagnostics, .book_diagnostics()),
@@ -391,7 +391,9 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     missing <- if (supported) mask else rep(FALSE, length(x))
     observed <- x[!missing]
     numeric <- supported && (is.numeric(x) || is.logical(x)) && !is.factor(x)
-    finite_observed <- if (numeric) .book_numeric_data(observed) else double()
+    # A slice of compact storage decodes each value as it is read, so the
+    # scans below share one ordinary copy of the observed values.
+    finite_observed <- if (numeric) c(.book_numeric_data(observed)) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
     distinct <- if (numeric) unique(finite_observed) else NULL
@@ -453,12 +455,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         p50 = stats[[8L]], p75 = stats[[9L]], p90 = stats[[10L]]
     )
     tabulation <- if (!compact && categorical) .codebook_tabulate(x, name, position)
+    # Example rows for .book_rows(), or NULL without any.
     example <- if (!compact && report_type == "examples") {
         values <- unique(as.character(observed)); values <- utils::head(values, 5L)
-        data.frame(position = rep(position, length(values)),
-                   variable = rep(name, length(values)), example = values,
-                   stringsAsFactors = FALSE)
-    } else .codebook_examples()
+        if (length(values)) list(position = rep(position, length(values)),
+            variable = rep(name, length(values)), example = values)
+    }
     list(variable = variable, tabulation = tabulation, examples = example,
          unique_count = unique_count, observed_values = finite_observed,
          distinct_values = distinct)
@@ -466,20 +468,23 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 
 # One variable's tabulation rows for .book_rows(), or NULL without any.
 .codebook_tabulate <- function(x, name, position) {
-    factorized <- if (is.numeric(x) && !is.factor(x)) {
-        .prepare_tab_argument(x, "distinguish", "value")
-    } else addNA(x, ifany = TRUE)
-    counts <- .book_level_counts(factorized)
+    source_labels <- attr(x, "labels", exact = TRUE)
+    labelled <- is.numeric(x) && .valid_tab_labels(source_labels)
+    # A labelled variable's value and label factors share one grouping.
+    factors <- if (labelled) {
+        .prepare_tab_argument(x, "distinguish", c("value", "label"))
+    } else if (is.numeric(x) && !is.factor(x)) {
+        list(value = .prepare_tab_argument(x, "distinguish", "value"))
+    } else list(value = addNA(x, ifany = TRUE))
+    counts <- .book_level_counts(factors$value)
     displayed <- names(counts)
     if (!length(counts)) return(NULL)
     numeric_value <- suppressWarnings(as.double(displayed))
     missing_code <- ifelse(grepl("^\\.[a-z]$|^\\.$|^NaN$", displayed), displayed, NA_character_)
     labels <- rep(NA_character_, length(displayed))
-    source_labels <- attr(x, "labels", exact = TRUE)
-    if (is.numeric(x) && .valid_tab_labels(source_labels)) {
+    if (labelled) {
         # Only the label factor's category names are needed, not its counts.
-        prepared <- .prepare_tab_argument(x, "distinguish", "label")
-        label_names <- names(.book_level_counts(prepared, count = FALSE))
+        label_names <- names(.book_level_counts(factors$label, count = FALSE))
         if (length(label_names) == length(counts)) labels <- label_names
     } else if (is.factor(x)) labels <- displayed
     list(position = rep(position, length(displayed)),
@@ -527,9 +532,17 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         "Variable is constant or always missing")
     if (is.character(x)) {
         observed <- x[!is.na(x)]
-        add("leading_blanks", any(grepl("^\\s", observed)), "Strings contain leading blanks")
-        add("trailing_blanks", any(grepl("\\s$", observed)), "Strings contain trailing blanks")
-        add("embedded_blanks", any(grepl("\\S\\s+\\S", observed)), "Strings contain embedded blanks")
+        # Strings that R holds equal have the same UTF-8 bytes, so the width
+        # check reads each distinct string once. The blank checks do too in
+        # a UTF-8 locale with only valid strings and none in bytes, where
+        # grepl() matches equal strings alike and its warnings name no
+        # positions.
+        strings <- unique(unclass(observed))
+        blanks <- if (isTRUE(l10n_info()[["UTF-8"]]) && all(validEnc(strings)) &&
+            !"bytes" %in% Encoding(strings)) strings else observed
+        add("leading_blanks", any(grepl("^\\s", blanks)), "Strings contain leading blanks")
+        add("trailing_blanks", any(grepl("\\s$", blanks)), "Strings contain trailing blanks")
+        add("embedded_blanks", any(grepl("\\S\\s+\\S", blanks)), "Strings contain embedded blanks")
         declared <- attr(x, "stata.string.storage", exact = TRUE)
         # The declaration is `str8` or `strL`, never a number. Only a fixed
         # width can be compared with the bytes the values need.
@@ -537,13 +550,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             !is.na(declared) && grepl("^str[0-9]+$", declared)) {
             as.integer(sub("^str", "", declared))
         } else NULL
-        needed <- if (length(observed)) max(nchar(enc2utf8(observed), type = "bytes")) else 0L
+        needed <- if (length(strings)) max(nchar(enc2utf8(strings), type = "bytes")) else 0L
         add("string_storage_wider_than_required",
             !is.null(width) && width > needed,
             "Declared string storage is wider than required", "suggestion",
             list(declared = declared, required = needed))
-        add("few_unique_strings", length(unique(observed[observed != ""])) <= 9L &&
-                length(unique(observed[observed != ""])) > 0L,
+        nonblank <- length(unique(observed[observed != ""]))
+        add("few_unique_strings", nonblank <= 9L && nonblank > 0L,
             "String variable has few unique values and may be better represented as labelled numeric data",
             "suggestion")
     }

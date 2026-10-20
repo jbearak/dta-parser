@@ -15606,11 +15606,11 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "9664d6b315ed492706cf65a5630c7f02bb71c3ebeb9bd0874ea0a7a245372a78"
+          "sha256": "bba6a95c6829bcbd80e9d4f5a96fc0076c991a2d71084f9c5ac3150d72b3970f"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "8700f6f0f0dae3bb7bcc3747d09fe373b1e4749af3ca94beb4e5aaf9bac4c32d"
+          "sha256": "9061164351b16d955a30d0675b27fb1c5971894ed2b724039105ff2e82cf1e9c"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15780,6 +15780,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook string checks read equal strings alike",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -16357,6 +16365,14 @@
           "warnings": 0
         },
         {
+          "file": "test-tab.R",
+          "test": "unlabelled numeric categories are the factor() of the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
           "file": "test-tab-stata-parity.R",
           "test": "tab prints every tabulate case of the Stata log identically",
           "occurrence": 1,
@@ -16776,7 +16792,7 @@
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "061260cc2a97c98992055cc99a1ca547982f4c23c08a0c19918e47408a498541"
+          "sha256": "ae6a184cd808cd52d1f57cb0c2c5645fe1ff90540f895eca02bb6d787eb73a7d"
         },
         {
           "path": "tests/testthat/test-summarize.R",
@@ -17090,6 +17106,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names expands as the general expansion does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names still reads each variable's missing values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {
