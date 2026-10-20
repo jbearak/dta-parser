@@ -54,6 +54,7 @@ SEXP C_dtatools_identity_parts(SEXP values);
 SEXP C_dtatools_numeric_match_keys(SEXP x, SEXP table, SEXP nomatch, SEXP incomparables);
 SEXP C_dtatools_numeric_duplicated_keys(SEXP keys);
 SEXP C_dtatools_numeric_any_na(SEXP value, SEXP recursive);
+SEXP C_dtatools_codebook_facts(SEXP x);
 
 /* THROWAWAY unique-target function-entry floor. */
 SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
@@ -191,6 +192,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_numeric_match_keys", (DL_FUNC) &C_dtatools_numeric_match_keys, 4},
     {"C_dtatools_numeric_duplicated_keys", (DL_FUNC) &C_dtatools_numeric_duplicated_keys, 1},
     {"C_dtatools_numeric_any_na", (DL_FUNC) &C_dtatools_numeric_any_na, 2},
+    {"C_dtatools_codebook_facts", (DL_FUNC) &C_dtatools_codebook_facts, 1},
     {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
     {"C_dtatools_grouped_mode", (DL_FUNC) &C_dtatools_grouped_mode, 1},
     {"C_dtatools_grouped_stats", (DL_FUNC) &C_dtatools_grouped_stats, 1},
