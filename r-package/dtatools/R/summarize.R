@@ -143,6 +143,9 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         # native scan reads directly. Other ALTREP vectors are still copied,
         # since the scan would send them through the slower R fallback.
         whole <- length(rows) == n && identical(rows, seq_len(n))
+        # The group's weights are the same for every variable, and a copy
+        # of them per variable costs more than a moments scan.
+        group_weights <- w[rows]
         for (j in seq_len(count)) {
             value <- variables$values[[j]]
             if (is.character(value)) {
@@ -152,7 +155,7 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
             direct <- whole &&
                 .Call(C_dtatools_summary_scan_supported, value)
             fit <- .summarize_statistics(if (direct) value else value[rows],
-                w[rows], if (weighted) weight else NULL,
+                group_weights, if (weighted) weight else NULL,
                 detail, meanonly)
             i <- length(result$statistics) + 1L
             result$statistics[[i]] <- fit$statistics
@@ -313,22 +316,31 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
             }
         }
         if (detail) {
-            if (is.null(fallback)) {
-                value <- .summarize_numeric(value)
-                keep <- !is.na(value) & !is.na(weights) & weights != 0
-                x <- value[keep]
-                w <- weights[keep]
+            # Under unit weights, compact integer storage is sorted natively
+            # by counting its values, and each observed value weighs 1.
+            ordered <- if (is.null(fallback))
+                .Call(C_dtatools_summary_sorted, value, weights)
+            if (!is.null(ordered)) {
+                ordered_weights <- rep(1, length(ordered))
             } else {
-                x <- fallback$x
-                w <- fallback$w
+                if (is.null(fallback)) {
+                    value <- .summarize_numeric(value)
+                    keep <- !is.na(value) & !is.na(weights) & weights != 0
+                    x <- value[keep]
+                    w <- weights[keep]
+                } else {
+                    x <- fallback$x
+                    w <- fallback$w
+                }
+                order <- order(x)
+                ordered <- x[order]
+                ordered_weights <- w[order]
             }
-            order <- order(x)
-            ordered <- x[order]
             smallest[seq_len(min(n, 4L))] <- utils::head(ordered, 4L)
             largest[5L - rev(seq_len(min(n, 4L)))] <- utils::tail(ordered, 4L)
             ps <- c(1, 5, 10, 25, 50, 75, 90, 95, 99)
             out[paste0("p", ps)] <- .summarize_percentiles(ordered,
-                w[order], total, ps)
+                ordered_weights, total, ps)
         }
         out[!is.finite(out)] <- NA_real_
         r <- as.list(out)
@@ -370,18 +382,36 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
     cumulative <- cumsum(weights)
     # Native summarize uses a 1e-5 percentage-point boundary tolerance.
     # Scaling after division avoids overflow for large finite weight sums.
-    percent <- if (total > .Machine$double.xmax / 100)
-        (cumulative / total) * 100 else (cumulative * 100) / total
+    # Only the two totals around a percentile's index are ever compared
+    # with it, so only those two are converted to percentages.
+    scaled <- total > .Machine$double.xmax / 100
+    near <- function(index, p) {
+        percent <- if (scaled) (cumulative[index] / total) * 100
+            else (cumulative[index] * 100) / total
+        percent > p - 1e-5 & percent < p + 1e-5
+    }
     n <- length(ordered)
     midpoint <- function(index) ordered[index] / 2 + ordered[index + 1L] / 2
-    vapply(ps, function(p) {
-        target <- total * (p / 100)
-        index <- which(cumulative >= target)[1L]
+    targets <- total * (ps / 100)
+    # Totals in order put every total below a target before every other
+    # one, so the first total at or above it follows the count below it.
+    # Totals out of order, which only negative weights could give, are
+    # still searched one by one.
+    first <- if (isFALSE(is.unsorted(cumulative))) {
+        found <- findInterval(targets, cumulative, left.open = TRUE,
+                              checkSorted = FALSE) + 1L
+        found[found > length(cumulative)] <- NA_integer_
+        found
+    } else vapply(targets, function(target) which(cumulative >= target)[1L],
+                  integer(1))
+    vapply(seq_along(ps), function(k) {
+        p <- ps[[k]]
+        target <- targets[[k]]
+        index <- first[[k]]
         if (is.na(index)) return(ordered[n])
         if (index < n && cumulative[index] == target) return(midpoint(index))
-        near <- percent > p - 1e-5 & percent < p + 1e-5
-        previous <- index > 1L && isTRUE(near[index - 1L])
-        current <- isTRUE(near[index])
+        previous <- index > 1L && isTRUE(near(index - 1L, p))
+        current <- isTRUE(near(index, p))
         # Locate the actual weight interval before checking its boundaries.
         # If both boundaries are near, the percentile lies inside a small
         # positive weight; averaging either boundary would skip that value.
