@@ -133,10 +133,15 @@
 # check confirms that, and that both vctrs calls and every method they reach
 # are unchanged. It then copies the chunks as the casts would, assembles the
 # result as double assembly does, and assigns both in the caller's frame, or
-# returns FALSE. The arguments stay unforced promises, so the check can read
-# the caller's frame, where the vctrs calls otherwise run.
-.summary_combine_double <- function(chunks, ptype) {
-    .native_admission_call(C_dtatools_summary_combine_double,
+# returns FALSE. When every chunk is a compact Stata numeric, or the metadata
+# proxy over one that a summary usually returns, with only its storage and
+# class, and its storage widens to a compact common type, the check instead
+# constructs each cast and the result in that storage, as the cast and
+# restore methods do.
+# The arguments stay unforced promises, so the check can read the caller's
+# frame, where the vctrs calls otherwise run.
+.summary_combine <- function(chunks, ptype) {
+    .native_admission_call(C_dtatools_summary_combine,
                            .double_combine_state, .metadata_state,
                            .summary_combine_dependencies, .summary_routine_state)
 }
@@ -199,7 +204,7 @@
                 # A settled native combine assigns the casts to chunks and
                 # the combined vector to result. A decline runs the vctrs calls.
                 result <- .native_admission_call(C_dtatools_select_branch,
-                    .native_admission_branches(.summary_combine_double(chunks, ptype), result, {
+                    .native_admission_branches(.summary_combine(chunks, ptype), result, {
                         chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
                         vctrs::vec_c(!!!chunks, .ptype = ptype)
                     }), .native_admission_if)

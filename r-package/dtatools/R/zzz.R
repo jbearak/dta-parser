@@ -262,6 +262,11 @@
     # reads without calling it, so settle its lazy binding as a first call
     # would. Otherwise a fresh session declines the summary common type.
     if (!is.null(.double_combine_state$dependencies)) vctrs::list_unchop
+    # The construct and combine helper checks read utf8ToInt(), which only
+    # the double constructor calls. Settle its lazy base binding as that call
+    # would, so a session that never builds a Stata double still admits
+    # compact summary assembly.
+    if (!is.null(.numeric_helper_state$dependencies)) utf8ToInt
     .summary_routine_state$routines <- if (!is.null(.summary_ptype_dependencies)) list(
         .native_admission_call(C_dtatools_settled_routine,
                                .summary_ptype_dependencies[[3L]], "ffi_ptype_common"),

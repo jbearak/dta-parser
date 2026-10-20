@@ -56,6 +56,15 @@
   `summarise(m = max(x))` from 3.1 to 1.3 seconds, and
   `summarise(k = n())` from 2.9 to 1.1 seconds.
 
+* Grouped `summarise()` and `reframe()` also combine per-group compact Stata
+  bytes, ints, longs and floats natively when each group's storage widens to
+  the common one, as a byte widens to an int or a float. Loading dtatools
+  now settles one lazily loaded base function that these checks read, so a
+  session that never builds a Stata double takes the native path too. On
+  100,000 rows in 10,000 groups, `summarise(m = max(x))` on a byte column
+  falls from 1.4 to 0.6 seconds, `summarise(k = n())` from 1.2 to 0.4
+  seconds, and `summarise(m = mean(x))` from 2.8 to 1.9 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
