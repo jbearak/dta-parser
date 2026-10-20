@@ -12,6 +12,13 @@
   5,360-column DHS file, `head(d)` falls from about 0.039 to 0.033 seconds
   and `d[1:10, ]` from 0.040 to 0.035. Results are unchanged.
 
+* Restoring a Stata numeric vector's classes after vctrs slices, casts, or
+  combines it reads the storage classes from a fixed table, rather than
+  spelling them with `paste0()` on every call. `vctrs::vec_slice()` on one
+  labelled column takes about 6% less time, and on a 16,787-row,
+  5,360-column DHS file `print(d)` falls from about 0.139 to 0.133
+  seconds.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,
