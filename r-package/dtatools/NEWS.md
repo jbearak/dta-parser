@@ -51,7 +51,7 @@
 * `mutate()` on a dibble grouped with `group_by()` or `rowwise()` assembles
   per-group Stata doubles natively, as it already did with `.by`. dplyr keeps
   each group's rows in a `list_of`, which native assembly declined, so every
-  group's result went through vctrs. Over 10,000 groups of 100,000 rows,
+  group's result went through vctrs. On 100,000 rows in 10,000 groups,
   `mutate(y = x * 2)` falls from 3.1 to 0.6 seconds and `mutate(m = mean(x))`
   from 4.6 to 2.5 seconds. On 10,000 rowwise rows, `mutate(s = a + b)` falls
   from 3.3 to 0.6 seconds.
