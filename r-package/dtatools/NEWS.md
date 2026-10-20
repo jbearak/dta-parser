@@ -43,8 +43,8 @@
 
 * Grouped `summarise()` and `reframe()` combine per-group plain Stata
   doubles natively, without casting each group's result to the common type
-  twice, when the Stata numeric methods are unchanged. Over 10,000 groups of
-  100,000 rows, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
+  twice, when the Stata numeric methods are unchanged. On 100,000 rows in
+  10,000 groups, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
   `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
 
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
