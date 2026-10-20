@@ -140,6 +140,13 @@
   `summarise(f = first(caseid))` grouped by cluster over the 14,526 rows
   of 378 clusters from 96 to 0.16.
 
+* A compact subset or copy of a string column from `read_dta()` or
+  `read_arrow()` shares the column's dictionary of distinct values, rather
+  than rebuilding the dictionary's strings and hash table for itself. On
+  the India 2021 DHS birth history file, a subset of every other row of
+  `caseid` falls from 19 to 3 milliseconds, `filter(b2 >= 2010)` on three
+  columns from 54 to 31, and `arrange(desc(b2))` from 127 to 104.
+
 * Printing or formatting a dibble checks the classes of declared string
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
