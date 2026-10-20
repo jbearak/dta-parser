@@ -157,6 +157,17 @@
   from 1.9 to 1.3 seconds and its peak memory from 1.6 to 0.5 GB, and
   appending two copies of it on disk falls from 1.6 to 1.0 seconds.
 
+* `dta_append()` builds each byte, int, long or float column from one scan
+  of its collected bytes, where it copied and scanned them twice, and builds
+  a double column with the native constructor. The collected buffer now
+  loses its marker attributes before the step that builds the column
+  receives it. Removing them there had made R wrap the shared buffer.
+  Reading the wrapper's bytes copied them, and the native double
+  constructor declined the wrapper, so R checked each value instead.
+  Appending the 1,274,250-row, 1,644-column India 2021 DHS birth history to
+  itself falls from 4.2 to 2.5 seconds, and appending 20 double columns of
+  1,000,000 rows to themselves from 0.73 to 0.10 seconds.
+
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
   statistics table once. Summarizing all 5,360 variables of a 16,787-row

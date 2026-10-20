@@ -634,9 +634,8 @@ test_that("a compact append column is the column its doubles construct", {
     facts <- function(x) .Call(dtatools:::C_dtatools_numeric_facts_info, x)
     writer <- dtatools:::C_dtatools_append_write_compact
     finish <- function(buffer, storage, prototype) {
-        attr(buffer, "dtatools.buffer") <- if (is.raw(buffer)) "compact" else "numeric"
-        attr(buffer, "dtatools.storage") <- storage
-        dtatools:::.append_finish_buffer(buffer, prototype)
+        kind <- if (is.raw(buffer)) "compact" else "numeric"
+        dtatools:::.append_finish_buffer(buffer, kind, storage, prototype)
     }
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     on.exit(unlink(path), add = TRUE)
@@ -725,6 +724,49 @@ test_that("a compact append column is the column its doubles construct", {
         expect_identical(writeBin(as.double(result$x_int), raw()),
                          writeBin(expected, raw()))
         expect_identical(dtatools:::.declared_dta_storage(result$x_int), "int")
+    }
+})
+
+test_that("append buffers reach their finish bare and unwrapped", {
+    # Removing a buffer's attributes after it is shared would wrap it, and
+    # the constructor would then read a double buffer one value at a time.
+    # The native constructor takes at least 2,048 doubles.
+    rows <- 1024L
+    frame <- dibble(b = dta_byte(rep(c(1, NA), rows / 2L)),
+                    d = dta_double(seq_len(rows) / 4),
+                    s = dta_string(rep("a", rows)))
+    seen <- new.env()
+    seen$buffers <- list()
+    suppressMessages(trace(
+        ".append_finish_buffer", where = asNamespace("dtatools"),
+        tracer = bquote(assign("buffers", c(.(seen)$buffers, list(c(
+            kind = kind,
+            altrep = dtatools:::.is_altrep(buffer),
+            attributes = !is.null(attributes(buffer))
+        ))), envir = .(seen))),
+        print = FALSE
+    ))
+    traced <- dta_append(list(frame, frame))
+    suppressMessages(untrace(".append_finish_buffer", where = asNamespace("dtatools")))
+    expect_identical(
+        do.call(rbind, seen$buffers),
+        cbind(kind = c("compact", "numeric", "string"),
+              altrep = "FALSE", attributes = "FALSE")
+    )
+
+    # The double column is built natively where the profile admits it.
+    observed <- .dtatools_numeric_entry_observe(
+        function() dta_append(list(frame, frame))
+    )
+    expect_identical(
+        observed$counts[["construct"]],
+        if (.dtatools_numeric_entry_expected("construct")) 1 else 0
+    )
+    for (result in list(traced, observed$result)) {
+        expect_identical(as.double(result$d), rep(seq_len(rows) / 4, 2L))
+        expect_identical(as.double(result$b), rep(c(1, NA), rows))
+        expect_identical(as.character(result$s), rep("a", 2L * rows))
+        expect_identical(dtatools:::.declared_dta_storage(result$b), "byte")
     }
 })
 
