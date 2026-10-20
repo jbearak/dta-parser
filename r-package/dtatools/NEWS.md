@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Restoring a Stata numeric vector's attributes after vctrs slices, casts,
+  or combines it matches the attribute names directly, rather than through
+  `setdiff()` and `intersect()`, which check their arguments on every call.
+  `vctrs::vec_slice()` on one column takes about half as long. On a
+  16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
+  0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
+  Results and warnings are unchanged.
+
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
   rather than through the expansion that factor variables, interactions,
