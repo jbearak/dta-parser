@@ -5,6 +5,15 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* A string column that `read_dta()` or `read_arrow()` keeps in compact
+  dictionary form now stays compact after `filter()`, `arrange()`, `[`, or
+  `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
+  R's generic attribute wrapper, which hid the dictionary, so the width check
+  that follows read every value through the wrapper. On the 1,274,250-row,
+  1,644-column India 2021 DHS births file, `filter()` falls from about 0.54
+  to 0.43 seconds, `arrange()` from 0.60 to 0.48 seconds, and taking every
+  other row with `[` from 0.52 to 0.44 seconds. Results are unchanged.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
   formats of each kind that passed their check in a write, so a later
   column with one of those formats skips the check. A format that carries
