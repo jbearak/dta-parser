@@ -41,6 +41,9 @@ dta_string <- function(x = character(), storage = NULL) {
     owned_width <- .Call(C_dtatools_owned_string_width, x)
     if (!is.null(owned_width)) return(owned_width)
     if (!length(x)) return(1L)
+    # A compact dictionary string holds UTF-8 values, and its dictionary
+    # gives their byte widths without reading each value through ALTREP.
+    if (.is_unmaterialized_dictstring(x)) return(as.integer(.dictstring_max_width(x)))
     max(nchar(enc2utf8(x), type = "bytes"))
 }
 
@@ -62,7 +65,9 @@ dta_string <- function(x = character(), storage = NULL) {
 # admits an `NA` into a Stata string spells the rule through here.
 .stata_string_text <- function(values) {
     text <- as.character(values)
-    if (anyNA(text)) text[is.na(text)] <- ""
+    # A compact dictionary string never holds NA; anyNA() would read each of
+    # its values through ALTREP to find that out.
+    if (!.is_unmaterialized_dictstring(text) && anyNA(text)) text[is.na(text)] <- ""
     text
 }
 

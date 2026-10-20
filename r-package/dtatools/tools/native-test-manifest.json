@@ -6220,7 +6220,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "2615d5a8defd435735736c24072abc6021a55f13940d4fd0eeaf27b309e906f4"
+          "sha256": "5ab215395feaefb8217a2e2cdef203cd469dc972818c2cc4d797c9cf126a6151"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6781,6 +6781,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "casting a compact string checks it without reading each value",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

@@ -11,11 +11,16 @@
   R's generic attribute wrapper, which hid the dictionary, so the width check
   that follows read every value through the wrapper. On the 1,274,250-row,
   1,644-column India 2021 DHS births file, `filter()` falls from about 0.55
-  to 0.44 seconds, `arrange()` from 0.60 to 0.48 seconds, and taking every
-  other row with `[` from 0.51 to 0.44 seconds. When vctrs needs all of a
-  compact column's values at once, as a join does, they are now read from
-  the dictionary directly rather than one at a time through R, in about a
-  quarter of the time. Results are unchanged.
+  to 0.44 seconds, `arrange()` from 0.61 to 0.47 seconds, and taking every
+  other row with `[` from 0.51 to 0.43 seconds. When vctrs needs all of a
+  compact column's values at once, as `vctrs::vec_c()` does, they are now
+  read from the dictionary directly rather than one at a time through R.
+  Casting a compact column to a Stata string, as a join does with its key,
+  takes the width from the dictionary and skips the search for `NA`, which
+  a compact column never holds. Joining the births file's 1,274,250 rows to
+  its 494,019 distinct `caseid` values, `left_join()` falls from about 0.95
+  to 0.57 seconds and `dta_merge()` from 0.80 to 0.67 seconds. Results are
+  unchanged.
 
 * Width checks on a compact string column count only the values it holds.
   A slice of a compact column shares its source's whole dictionary, so on a

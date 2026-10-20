@@ -1074,6 +1074,28 @@ test_that("narrowed declarations on compact subsets count only the values held",
     }
 })
 
+test_that("casting a compact string checks it without reading each value", {
+    path <- tempfile(fileext = ".dta")
+    withr::defer(unlink(path))
+    raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
+    save_dta(data.frame(x = raw), path)
+    # Unlike an Arrow read, this column has no owned width facts.
+    x <- read_dta(path)$x
+    expect_true(.is_unmaterialized_dictstring(x))
+    # A join casts each key this way. The dictionary gives the width, and a
+    # compact string holds no NA, so no value passes through the cache.
+    cast <- vctrs::vec_cast(x, dta_string(character(), "str20"))
+    expect_identical(attr(cast, "stata.string.storage", exact = TRUE), "str20")
+    expect_true(.is_unmaterialized_dictstring(cast))
+    expect_identical(.dictstring_cached_count(x), 0)
+    expect_error(
+        vctrs::vec_cast(x, dta_string(character(), "str5")),
+        'storage = "str8"', fixed = TRUE
+    )
+    expect_identical(.dictstring_cached_count(x), 0)
+    expect_identical(as.character(cast), raw)
+})
+
 test_that("large string construction captures borrowed values before removing metadata", {
     skip_if_not_installed("data.table")
     for (rows in c(64L, 1000L, 1000000L)) for (unknown in c(FALSE, TRUE)) {
