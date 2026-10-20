@@ -1719,7 +1719,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "7a1dcddc7929ea6cbabd48164330d48a9c940fd3647678b4216c8e4631867249"
+          "sha256": "e394bc36c0d844a6867351256833841efa92af6a5fe15c9be82f8d6050d46d8a"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -3308,6 +3308,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "public indexed combination admits grouped and rowwise row lists",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
@@ -10882,7 +10893,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-class.R",
-          "sha256": "d07a80a77b590e7fe7cbd0ee953cbe9dd1fb861201793b0f73235eb33cad0474"
+          "sha256": "390c463df8dcd06590f9730bdbece79e7fa1ae9e6adad3ee203e7961add9c0a3"
         },
         {
           "path": "tests/testthat/test-dibble-print.R",
@@ -11139,6 +11150,102 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates match the base data frame methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates compare only rows that still share a group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave other tables and columns to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates construct cells as their [[ method does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave invalid compact values to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates defer to another cell method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates keep read columns compact",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "unique dibble rows read the arguments, not same-named columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates defer to a next method local to the caller",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates follow the dispatch chain past a changed class",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row duplicates leave restoration warnings to base",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-class.R",
+          "test": "dibble row values fit their storage by the replacement rules",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 145,
+          "warnings": 0
         },
         {
           "file": "test-dibble-columns.R",
@@ -13061,7 +13168,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "e695f8f6c39ef0fc5907d3c20b9aaa0be893ed7012cf2b5434b264dfdff87389"
+          "sha256": "ebca78e85f43168e89d1f1dab4dd8ca2439a50495fb607dc89a602713dcd3a06"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13813,6 +13920,135 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a shared Stata type settles the summary common type as vctrs does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing runs every fold of a replaced Stata method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing hands a traced reducer every chunk",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing declines a delayed reducer routine",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing declines a forged routine or a replaced caller_env()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing calls a replaced reducer from its original frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "interpreted summary common typing calls no added base predicates",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly of canonical doubles matches the vctrs casts and combine",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly runs every cast of a replaced Stata method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly hands traced vctrs calls every chunk",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly declines a delayed or forged routine or a replaced caller_env()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "interpreted summary assembly calls no added base predicates",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly gives later dots unshared chunks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a fresh session settles the summary common type after grouped summaries",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "declined summary common typing runs the original compiled call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         },
         {
           "file": "test-dibble-expressions.R",
@@ -15598,11 +15834,11 @@
         },
         {
           "path": "tests/testthat/test-tab.R",
-          "sha256": "9664d6b315ed492706cf65a5630c7f02bb71c3ebeb9bd0874ea0a7a245372a78"
+          "sha256": "bba6a95c6829bcbd80e9d4f5a96fc0076c991a2d71084f9c5ac3150d72b3970f"
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "06d1b8d3130d1d89408b555b8432381086c9158d9da0a47f9fad878e70565171"
+          "sha256": "81b89d29cda63cacc82b0d6608066fbe3216c565e20d002904fe55525b7900dd"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15807,6 +16043,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook duplicate rows match vctrs duplicate detection",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook counts missing codes and NaN payloads in compact columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "compact identity parts match the parts of the decoded values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook diagnostics bind as one data frame per row would",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -16376,6 +16644,14 @@
           "warnings": 0
         },
         {
+          "file": "test-tab.R",
+          "test": "unlabelled numeric categories are the factor() of the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
           "file": "test-tab-stata-parity.R",
           "test": "tab prints every tabulate case of the Stata log identically",
           "occurrence": 1,
@@ -16795,7 +17071,7 @@
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "061260cc2a97c98992055cc99a1ca547982f4c23c08a0c19918e47408a498541"
+          "sha256": "ae6a184cd808cd52d1f57cb0c2c5645fe1ff90540f895eca02bb6d787eb73a7d"
         },
         {
           "path": "tests/testthat/test-summarize.R",
@@ -17109,6 +17385,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names expands as the general expansion does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names still reads each variable's missing values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {

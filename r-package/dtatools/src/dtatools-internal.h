@@ -568,6 +568,7 @@ DTATOOLS_INTERNAL void write_numeric_missing(
 DTATOOLS_INTERNAL void write_numeric_observed(
     unsigned char *output, R_xlen_t index, int kind, double value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 );
@@ -615,6 +616,13 @@ DTATOOLS_INTERNAL SEXP C_dtatools_try_combine_double(
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_combine_double_into_current(
     SEXP indexed, SEXP state, SEXP metadata_state
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_double_ptype_method(
+    SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_settled_routine(SEXP ns, SEXP name);
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_combine_double(
+    SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(
     SEXP value, SEXP frame, SEXP dependencies
