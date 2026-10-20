@@ -16924,7 +16924,7 @@
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "ae6a184cd808cd52d1f57cb0c2c5645fe1ff90540f895eca02bb6d787eb73a7d"
+          "sha256": "109067cae8abcf81f7704a92952bf425a44ee95fb076a7de0e4794c55e3977dd"
         },
         {
           "path": "tests/testthat/test-summarize.R",
@@ -16932,7 +16932,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "6658f0447f4b96f162b48a4086ae99e8e39551ad38d5d04b794e90c45e1bf0d2"
+          "sha256": "9ca53fcca5516402ff29d99d4dc792f8ff56bc6bd46a772d66d79d1018d835cf"
         }
       ],
       "blocks": [
@@ -17257,6 +17257,38 @@
           "warnings": 0
         },
         {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names reads tibble and dibble columns as their names do",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names keeps the observation check for other missing values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names keeps another class's column method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names follows a dibble reordered while it is read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
           "file": "test-summarize.R",
           "test": "where and rows select each group's calculation sample",
           "occurrence": 1,
@@ -17449,6 +17481,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "unit-weight scans of compact integer storage match the previous calculation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 319,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "percentiles search ordered totals as the previous scan did",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 618,
           "warnings": 0
         }
       ],

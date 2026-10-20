@@ -317,14 +317,16 @@ summ <- function(x, ..., data = NULL, where = NULL, rows = NULL,
         }
         if (detail) {
             # Under unit weights, compact integer storage is sorted natively
-            # by counting its values, and each observed value weighs 1.
+            # by counting its values, and each observed value weighs 1. The
+            # conversion still runs first, with the checks it dispatches.
+            numeric <- if (is.null(fallback)) .summarize_numeric(value)
             ordered <- if (is.null(fallback))
                 .Call(C_dtatools_summary_sorted, value, weights)
             if (!is.null(ordered)) {
                 ordered_weights <- rep(1, length(ordered))
             } else {
                 if (is.null(fallback)) {
-                    value <- .summarize_numeric(value)
+                    value <- numeric
                     keep <- !is.na(value) & !is.na(weights) & weights != 0
                     x <- value[keep]
                     w <- weights[keep]
