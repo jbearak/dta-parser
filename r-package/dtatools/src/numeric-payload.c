@@ -2055,10 +2055,12 @@ SEXP C_dtatools_factorize_numeric(
    them, and its NA count, from one pass over integer codes. A factor built
    by structure() usually wraps its codes, so they are read through the
    wrapper's pointer. Codes with no pointer to read without allocating are
-   left to R. `count` false skips the per-level counts. */
+   left to R, and so are long vectors, where tabulate() gives counts past
+   INT_MAX as doubles. `count` false skips the per-level counts. */
 SEXP C_dtatools_level_counts(SEXP codes, SEXP levels, SEXP count) {
-    if (TYPEOF(codes) != INTSXP || TYPEOF(levels) != INTSXP ||
-        XLENGTH(levels) != 1 || INTEGER(levels)[0] < 0) return R_NilValue;
+    if (TYPEOF(codes) != INTSXP || XLENGTH(codes) > INT_MAX ||
+        TYPEOF(levels) != INTSXP || XLENGTH(levels) != 1 ||
+        INTEGER(levels)[0] < 0) return R_NilValue;
     const int *code = (const int *) DATAPTR_OR_NULL(codes);
     if (code == NULL) return R_NilValue;
     int bins = INTEGER(levels)[0], counting = Rf_asLogical(count) == TRUE;
@@ -2080,10 +2082,6 @@ SEXP C_dtatools_level_counts(SEXP codes, SEXP levels, SEXP count) {
             for (R_xlen_t i = start; i < end; i++)
                 absent += code[i] == NA_INTEGER;
         }
-    }
-    if (absent > INT_MAX) {
-        UNPROTECT(1);
-        return R_NilValue;
     }
     SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(result, 0, counts);
