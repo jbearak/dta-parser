@@ -13061,7 +13061,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "f0a6fea1293ea4c8581a21979594d7f960bf880e2a0159bc50cb744b16a8a6e9"
+          "sha256": "ebca78e85f43168e89d1f1dab4dd8ca2439a50495fb607dc89a602713dcd3a06"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13869,6 +13869,60 @@
           "skip": "forbid",
           "min_pass": 2,
           "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly of canonical doubles matches the vctrs casts and combine",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly runs every cast of a replaced Stata method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly hands traced vctrs calls every chunk",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly declines a delayed or forged routine or a replaced caller_env()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "interpreted summary assembly calls no added base predicates",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly gives later dots unshared chunks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-summary.R",

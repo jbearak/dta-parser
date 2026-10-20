@@ -620,6 +620,9 @@ DTATOOLS_INTERNAL SEXP C_dtatools_double_ptype_method(
     SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_settled_routine(SEXP ns, SEXP name);
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_combine_double(
+    SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
+);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(
     SEXP value, SEXP frame, SEXP dependencies
 );
