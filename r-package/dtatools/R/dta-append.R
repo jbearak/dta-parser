@@ -618,7 +618,10 @@ dta_append <- function(sources, force = TRUE,
                             if (.Call(C_dtatools_append_write_compact, buffer,
                                       offsets[[my_index]], rows, values,
                                       match(storage, .dta_storage) - 1L)) {
-                                rm(values)
+                                # Dropping a reference by assignment costs a
+                                # small fraction of the `rm()` call, which
+                                # these loops make for every column.
+                                values <- NULL
                                 buffers[[plan_index]] <- buffer
                                 next
                             }
@@ -635,7 +638,7 @@ dta_append <- function(sources, force = TRUE,
                                    offsets[[my_index]], rows, values)) {
                             buffer[span] <- values
                         }
-                        rm(values)
+                        values <- NULL
                         buffers[[plan_index]] <- buffer
                     }
                 }
@@ -667,10 +670,35 @@ dta_append <- function(sources, force = TRUE,
         # and every finished buffer would stay resident beside the
         # result until the whole frame was built.
         buffers[my_index] <- list(NULL)
+        kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
+        storage <- attr(buffer, "dtatools.storage", exact = TRUE)
+        # Only this binding holds the buffer now, so its attributes come
+        # off in place. In a function its argument would share the buffer,
+        # and R would wrap it. Reading the wrapper's bytes copies them, and
+        # the native double constructor declines a wrapper.
+        attributes(buffer) <- NULL
+        if (identical(kind, "compact")) {
+            # Called here, where this binding is the buffer's only
+            # reference, the column keeps the buffer's bytes rather than a
+            # copy, and rebinding `buffer` lets the buffer go.
+            code <- match(storage, .dta_storage) - 1L
+            column <- .Call(C_dtatools_append_compact_values, buffer, code,
+                            storage, .dta_storage_class(storage))
+            if (is.null(column)) {
+                # A value the scan refuses reaches the constructor as a
+                # double, which decides what to make of it.
+                buffer <- .Call(C_dtatools_append_compact_doubles, buffer, code)
+                kind <- "numeric"
+            } else {
+                buffer <- column
+                kind <- "column"
+            }
+            column <- NULL
+        }
         columns[[my_index]] <- .append_finish_buffer(
-            buffer, plan$prototypes[[my_index]]
+            buffer, kind, storage, plan$prototypes[[my_index]]
         )
-        rm(buffer)
+        buffer <- NULL
     }
     list(columns = columns, row_count = total_rows)
 }
@@ -779,16 +807,16 @@ dta_append <- function(sources, force = TRUE,
     if (is.character(value)) as.character(value) else as.double(value)
 }
 
-.append_finish_buffer <- function(buffer, prototype) {
-    kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
-    storage <- attr(buffer, "dtatools.storage", exact = TRUE)
-    attributes(buffer) <- NULL
-    if (identical(kind, "compact")) {
-        # The constructor reads the bytes as the doubles they stand for.
-        buffer <- .Call(C_dtatools_append_compact_values, buffer,
-                        match(storage, .dta_storage) - 1L)
-    }
+# `buffer` arrives without the attributes that held `kind` and `storage`.
+# A compact buffer arrives as the column built from its bytes, of kind
+# "column", with the attributes `.construct_dta_numeric()` gives a column.
+.append_finish_buffer <- function(buffer, kind, storage, prototype) {
     if (identical(kind, "string")) return(vctrs::vec_cast(buffer, prototype))
+    if (identical(kind, "column")) {
+        # The constructor's last step.
+        names(buffer) <- NULL
+        return(.restore_dta_variable_metadata(buffer, prototype, names = NULL))
+    }
     .restore_dta_variable_metadata(
         .construct_dta_numeric(buffer, NULL, storage), prototype,
         names = NULL

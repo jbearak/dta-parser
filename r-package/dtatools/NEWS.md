@@ -173,6 +173,22 @@
   from 1.9 to 1.3 seconds and its peak memory from 1.6 to 0.5 GB, and
   appending two copies of it on disk falls from 1.6 to 1.0 seconds.
 
+* `dta_append()` builds each byte, int, long or float column from one scan
+  of the bytes it collected, where it copied and scanned them twice, and the
+  column keeps those bytes as its storage. It also builds a double column
+  with the native constructor. The collected buffer now loses its marker
+  attributes before any other binding holds it. Removing them later had made
+  R wrap the shared buffer. Reading the wrapper's bytes copied them, and the
+  native double constructor declined the wrapper, so the slower R checks ran
+  instead. The scan of compact byte, int and long values counts in the
+  width of the values, which makes it about eight times faster on bytes.
+  The loops over columns drop references by assignment rather than with
+  `rm()`, which takes about 4.5 microseconds a call. Appending the
+  1,274,250-row, 1,644-column India 2021 DHS birth history to itself falls
+  from 4.1 to 1.0 seconds, a 16,787-row, 5,360-column DHS file from 1.0 to
+  0.75 seconds, and 20 double columns of 1,000,000 rows from 0.73 to 0.09
+  seconds.
+
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
   statistics table once. Summarizing all 5,360 variables of a 16,787-row
