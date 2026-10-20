@@ -5,8 +5,10 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
-* `save_dta()`, `save_arrow()`, and `datasig()` check each display format
-  once per kind in a write rather than once per column, skip the notes and
+* `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
+  formats of each kind that passed their check in a write, so a later
+  column with one of those formats skips the check. A format that carries
+  attributes is still checked every time. They also skip the notes and
   characteristics getters for columns that have neither, and read a
   dibble's columns by position. On a 16,787-row, 5,360-column DHS file,
   `save_dta()` falls from about 0.44 to 0.31 seconds, `save_arrow()` from
