@@ -11,6 +11,13 @@
   and time-series operators need. On a 16,787-row, 5,360-column DHS file,
   `summ(d)` falls from 1.5 to 0.87 seconds.
 
+* Indexing an empty `byte`, `int`, `long`, or `float` Stata numeric returns
+  ordinary missing doubles, rather than compact storage of missing values.
+  vctrs starts each combined column this way from the zero-length common
+  type and then writes every input into it, so the compact result was
+  decoded again at once. On a 16,787-row, 5,360-column DHS file,
+  `bind_rows(d, d)` falls from 7.0 to 6.4 seconds.
+
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
   `reframe()`, match the result's column names to the prior columns in
