@@ -15783,6 +15783,10 @@
         {
           "path": "tests/testthat/test-egen-block-kernels.R",
           "sha256": "46c9ce8b7182a72b314a55d54d7d6d00f358717df55782c3a39f2578846f7cd6"
+        },
+        {
+          "path": "tests/testthat/test-tab-byte-factor.R",
+          "sha256": "0ed41c5208a9fee86d46da3b40142a46d1e4349ae809959a5395aac7cf95c6df"
         }
       ],
       "blocks": [
@@ -16905,6 +16909,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "byte factorization reads raw storage as the general loop decodes it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 83,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "codebook level counts match tabulate() and is.na()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
           "warnings": 0
         }
       ],
