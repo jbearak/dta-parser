@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "ae3fd23719d41de96b38725b401f349e337491719627b196e4e71d89ece253b6"
+          "sha256": "3fc6911cdf71c71dc4ac2bca441f6910266ba02759ca5fc69a7476d911e02016"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13918,6 +13918,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "declined summary common typing runs the original compiled call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
         },
         {
           "file": "test-dibble-expressions.R",

@@ -18,11 +18,13 @@
             }
         paste0("Result of type <", vctrs::vec_ptype_full(value), "> for ", where, ".")
     }
-    # The branch uses the captured if, so a declined check adds no R calls.
-    withCallingHandlers(.native_admission_if(.summary_ptype_settles(chunks),
-        vctrs::vec_ptype_common(chunks[[1L]], chunks[[2L]], chunks[[3L]]),
-        vctrs::vec_ptype_common(!!!chunks)
-    ), error = function(condition) {
+    # The selector keeps each branch's compiled promise and uses the captured
+    # if, so a declined check runs the original call and adds no R calls.
+    withCallingHandlers(.native_admission_call(C_dtatools_select_branch,
+        .native_admission_branches(.summary_ptype_settles(chunks),
+            vctrs::vec_ptype_common(chunks[[1L]], chunks[[2L]], chunks[[3L]]),
+            vctrs::vec_ptype_common(!!!chunks)),
+        .native_admission_if), error = function(condition) {
         details <- c(detail(condition$x, condition$x_arg),
                      detail(condition$y, condition$y_arg))
         if (!length(details)) details <- conditionMessage(condition)
