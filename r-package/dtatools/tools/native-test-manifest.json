@@ -260,6 +260,10 @@
           "sha256": "15bc7b1e8a2664abbf1be61917cb626f85f38f676dbb7180cd50ef5c20168545"
         },
         {
+          "path": "tests/testthat/test-save-dta-callback-columns.R",
+          "sha256": "7ab96fb7ed126b190b99b8f1ca1a39d592c870a7d541624ff369a9ce99184dd4"
+        },
+        {
           "path": "tests/testthat/test-write-column.R",
           "sha256": "86550fa0d7946c09f4aa646d3fe3b2ad3d7c109871cc1cb3c2d6ab484b41754a"
         },
@@ -1648,6 +1652,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-callback-columns.R",
+          "test": "columns read through R callbacks write the same rows as direct columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-callback-columns.R",
+          "test": "a strL column keeps every column on the row-by-row writer",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         }
       ],

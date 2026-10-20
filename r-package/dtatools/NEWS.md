@@ -176,6 +176,17 @@
   0.46 seconds, and `datasig()` from 0.69 to 0.40 seconds. Files,
   signatures, errors, and warnings are unchanged.
 
+* `save_dta()` no longer writes every cell one at a time when one column
+  has no buffer the writer can read directly, such as an ordinary character
+  column made by `mutate()` or a column with Stata notes after `[`. Such a
+  column now fills its cells of each block of rows on the main thread, and
+  the other columns still fill theirs on worker threads. On the
+  1,274,250-row, 1,644-column India 2021 DHS birth history,
+  `save_dta(bh[, names(bh)])` falls from 35 to 1.5 seconds, and saving the
+  result of an `m:1` merge with four columns of the women file falls from
+  42 to 1.3 seconds. Files are unchanged. A strL column still sends the
+  dataset to the row-by-row writer.
+
 * `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
   encode values about three times faster. The native constructor checks for
   missing and finite values inline instead of calling into R for each value,
