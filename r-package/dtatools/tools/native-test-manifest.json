@@ -15594,7 +15594,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "75fcf0161cea0915ddbfe905c6d2718e6ed53ccbcaa86275e4ec4c60e9b70bb1"
+          "sha256": "0a17fa7c3b458c662d042468594ed309be033e772cce4dec1548e11d4c6d1fae"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -15820,6 +15820,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 30,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook scans one ordinary copy of a compact column's observed values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
