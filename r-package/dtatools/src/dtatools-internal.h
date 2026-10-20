@@ -674,6 +674,7 @@ DTATOOLS_INTERNAL SEXP dictstring_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP dictstring_compact_copy(SEXP value);
 DTATOOLS_INTERNAL SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
 DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index);
+DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_width(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_deep_copy_value(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_contents(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_objects_found(SEXP values);
