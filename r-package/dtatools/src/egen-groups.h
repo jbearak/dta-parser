@@ -44,10 +44,12 @@ static double egen_group_scalar(const numeric_reader *reader, R_xlen_t index,
 typedef struct {
     SEXP column;
     const char **strings;
-    uint64_t *prepared; /* Eight bytes per row for wholly known numeric keys. */
+    uint64_t *prepared; /* Eight bytes per row for wholly known keys. */
     numeric_reader numeric;
     int string;
     int allow_nan;
+    const uint32_t *ids; /* A compact string key's dictionary ids. */
+    const uint32_t *ranks; /* Its order key for each id it holds. */
 } egen_key_reader;
 
 static int egen_key_compare(egen_key_reader *keys, R_xlen_t count,
@@ -88,21 +90,82 @@ static uint64_t egen_group_order_key(double value, int missing) {
 
 /* A foreign numeric/string provider or class can mutate another key while
    admission or sorting runs. Keep the complete scalar route for those calls,
-   including its callback order. Only wholly known numeric inputs prepare
-   keys. Their row-major validation remains exactly where it was. */
+   including its callback order. Only wholly known numeric inputs and compact
+   strings prepare keys. Their row-major validation remains exactly where it
+   was. */
 static int egen_group_can_prepare(SEXP columns, SEXP include_missing, SEXP allow_nan) {
     if (ALTREP(columns) || ALTREP(include_missing) || ALTREP(allow_nan)) return 0;
     for (R_xlen_t k = 0; k < XLENGTH(columns); k++) {
         SEXP value = VECTOR_ELT(columns, k);
-        if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP &&
+        if (TYPEOF(value) == STRSXP) {
+            if (unmaterialized_dictstring_source(value) == R_NilValue) return 0;
+        } else if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP &&
             TYPEOF(value) != LGLSXP) return 0;
-        if (ALTREP(value) && !owned_column(value) &&
+        else if (ALTREP(value) && !owned_column(value) &&
             unmaterialized_numeric_read_storage(value) == NULL) return 0;
         SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
         if (classes != R_NilValue &&
             (TYPEOF(classes) != STRSXP || ALTREP(classes))) return 0;
     }
     return 1;
+}
+
+typedef struct {
+    const char *bytes;
+    int length;
+    uint32_t id;
+} egen_group_text;
+
+/* memcmp and strcmp both compare unsigned bytes, and without NUL bytes a
+   prefix sorts first under strcmp too. */
+static int egen_group_text_compare(const void *left, const void *right) {
+    const egen_group_text *a = left, *b = right;
+    int comparison = memcmp(a->bytes, b->bytes,
+        (size_t) (a->length < b->length ? a->length : b->length));
+    if (comparison) return comparison;
+    return (a->length > b->length) - (a->length < b->length);
+}
+
+/* Rank the distinct values that a pinned compact string holds, in the order
+   strcmp gives the UTF-8 bytes its Elt method would return. The empty string,
+   Stata's missing string, ranks zero; other values rank from one, and equal
+   bytes share a rank. A subset keeps its source's whole dictionary, so only
+   held ids are ranked. Returns NULL when a held value contains a NUL byte,
+   which Elt rejects, so the call keeps the element path and its error. */
+static uint32_t *egen_group_string_ranks(SEXP root) {
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    size_t slots = (size_t) cardinality < data->length
+        ? (size_t) cardinality : data->length;
+    uint32_t *ranks = (uint32_t *) R_alloc((size_t) cardinality + 1, sizeof(uint32_t));
+    egen_group_text *held = (egen_group_text *) R_alloc(slots + 1, sizeof(egen_group_text));
+    for (R_xlen_t id = 0; id < cardinality; id++) ranks[id] = UINT32_MAX;
+    size_t distinct = 0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= cardinality) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        if (ranks[id] != UINT32_MAX) continue;
+        ranks[id] = 0;
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+            bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if (memchr(bytes, 0, (size_t) length) != NULL) return NULL;
+        held[distinct++] = (egen_group_text) { bytes, length, id };
+    }
+    qsort(held, distinct, sizeof(egen_group_text), egen_group_text_compare);
+    uint32_t rank = 0;
+    for (size_t i = 0; i < distinct; i++) {
+        if (held[i].length &&
+            (i == 0 || egen_group_text_compare(held + i - 1, held + i))) rank++;
+        ranks[held[i].id] = rank;
+    }
+    return ranks;
 }
 
 /* All allocations precede reader preparation. Known ordinary readers borrow
@@ -132,12 +195,14 @@ static R_xlen_t egen_group_prepare(
     double *values = (double *) R_alloc(slots, sizeof(double));
     int *codes = (int *) R_alloc(slots, sizeof(int));
     for (R_xlen_t k = 0; k < count; k++)
-        egen_prepare_reader(readers + k, VECTOR_ELT(roots, k), n);
+        if (keys[k].ranks == NULL)
+            egen_prepare_reader(readers + k, VECTOR_ELT(roots, k), n);
     R_xlen_t admitted = 0;
     for (R_xlen_t start = 0; start < n;) {
         R_CheckUserInterrupt();
         R_xlen_t length = n - start < rows ? n - start : rows;
         for (R_xlen_t k = 0; k < count; k++) {
+            if (keys[k].ranks != NULL) continue;
             size_t offset = (size_t) k * (size_t) rows;
             numeric_reader_region(&readers[k].reader, start, length,
                                   values + offset, codes + offset);
@@ -147,6 +212,12 @@ static R_xlen_t egen_group_prepare(
         for (R_xlen_t row = 0; row < length; row++) {
             int eligible = 1;
             for (R_xlen_t k = 0; k < count; k++) {
+                if (keys[k].ranks != NULL) {
+                    uint64_t key = keys[k].ranks[keys[k].ids[start + row]];
+                    keys[k].prepared[start + row] = key;
+                    if (!missing && key == 0) eligible = 0;
+                    continue;
+                }
                 size_t offset = (size_t) k * (size_t) rows + (size_t) row;
                 int code = codes[offset];
                 double value = egen_block_value(readers + k, start + row,
@@ -161,6 +232,49 @@ static R_xlen_t egen_group_prepare(
     if (egen_group_counting)
         egen_group_prepared_values += (double) n * (double) count;
     return admitted;
+}
+
+/* Prepared keys sort by a stable LSD radix sort: one pass for each 11-bit
+   digit of the last key, then of each earlier key. A stable pass keeps the
+   order the later passes gave equal digits, so rows end up ordered by every
+   key in turn with ties in row order, as the stable merge sort orders them.
+   A digit that every admitted row shares would leave the order alone and is
+   skipped. Returns whichever buffer holds the result. */
+static R_xlen_t *egen_group_radix(egen_key_reader *keys, R_xlen_t count,
+                                  R_xlen_t *order, R_xlen_t *scratch,
+                                  R_xlen_t admitted) {
+    enum { DIGIT_BITS = 11, BUCKETS = 1 << DIGIT_BITS };
+    R_xlen_t starts[BUCKETS];
+    if (admitted < 2) return order;
+    for (R_xlen_t k = count - 1; k >= 0; k--) {
+        const uint64_t *prepared = keys[k].prepared;
+        uint64_t first = prepared[order[0]], varying = 0;
+        for (R_xlen_t i = 1; i < admitted; i++) {
+            if ((i & 16383) == 0) R_CheckUserInterrupt();
+            varying |= prepared[order[i]] ^ first;
+        }
+        for (int shift = 0; shift < 64; shift += DIGIT_BITS) {
+            if (((varying >> shift) & (BUCKETS - 1)) == 0) continue;
+            memset(starts, 0, sizeof(starts));
+            for (R_xlen_t i = 0; i < admitted; i++) {
+                if ((i & 16383) == 0) R_CheckUserInterrupt();
+                starts[(prepared[order[i]] >> shift) & (BUCKETS - 1)]++;
+            }
+            R_xlen_t total = 0;
+            for (int bucket = 0; bucket < BUCKETS; bucket++) {
+                R_xlen_t size = starts[bucket];
+                starts[bucket] = total;
+                total += size;
+            }
+            for (R_xlen_t i = 0; i < admitted; i++) {
+                if ((i & 16383) == 0) R_CheckUserInterrupt();
+                R_xlen_t row = order[i];
+                scratch[starts[(prepared[row] >> shift) & (BUCKETS - 1)]++] = row;
+            }
+            R_xlen_t *swap = order; order = scratch; scratch = swap;
+        }
+    }
+    return order;
 }
 
 SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
@@ -187,14 +301,32 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
             egen_prepare_temporal(readers + k);
         }
     }
+    egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
+    for (R_xlen_t k = 0; k < count; k++) keys[k].ranks = NULL;
+    /* Pin and rank each compact string before capturing numeric readers, so
+       a value that sends the call back to the element path does so before
+       any numeric root is captured. */
+    for (R_xlen_t k = 0; prepare && k < count; k++) {
+        SEXP column = VECTOR_ELT(sources, k);
+        if (TYPEOF(column) != STRSXP) continue;
+        SEXP root = dictstring_read_root(column);
+        SET_VECTOR_ELT(read_roots, k, root);
+        if (root == R_NilValue) prepare = 0;
+        else {
+            keys[k].ranks = egen_group_string_ranks(root);
+            keys[k].ids = ((dictstring_data *) R_ExternalPtrAddr(root))->value_ids;
+            if (keys[k].ranks == NULL) prepare = 0;
+        }
+    }
+    if (!prepare) for (R_xlen_t k = 0; k < count; k++) keys[k].ranks = NULL;
     for (R_xlen_t k = 0; k < count; k++) {
         SEXP column = VECTOR_ELT(prepare ? sources : columns, k);
+        if (keys[k].ranks != NULL) continue;
         SET_VECTOR_ELT(read_roots, k, prepare
             ? egen_capture_reader(column, readers + k) : numeric_payload_root(column));
     }
     R_xlen_t n = XLENGTH(VECTOR_ELT(prepare ? sources : columns, 0));
     if (n > INT_MAX) Rf_error("Grouping currently supports at most INT_MAX rows");
-    egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
     /* Root every cached CHARSXP, including strings produced by an ALTREP
      * element method that does not itself retain the returned string. The
      * cached CHAR pointers then survive all allocations and GC during sort. */
@@ -204,9 +336,14 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
         if (XLENGTH(column) != n) Rf_error("Grouping columns must have equal lengths");
         keys[k].column = column;
         keys[k].prepared = NULL;
-        keys[k].string = TYPEOF(column) == STRSXP;
+        keys[k].string = TYPEOF(column) == STRSXP && keys[k].ranks == NULL;
         keys[k].allow_nan = Rf_asLogical(allow_nan) == TRUE;
-        if (keys[k].string) {
+        if (keys[k].ranks != NULL) {
+            dictstring_data *data = (dictstring_data *)
+                R_ExternalPtrAddr(VECTOR_ELT(read_roots, k));
+            if ((R_xlen_t) data->length != n)
+                Rf_error("dtatools string storage length does not match vector length");
+        } else if (keys[k].string) {
             keys[k].strings = (const char **) R_alloc(n, sizeof(const char *));
             SEXP cache = PROTECT(Rf_allocVector(STRSXP, n));
             SET_VECTOR_ELT(string_roots, k, cache);
@@ -245,7 +382,11 @@ SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
             if (eligible) order[admitted++] = row;
         }
     }
-    for (R_xlen_t width = 1; width < admitted; width *= 2) {
+    if (prepare) {
+        R_xlen_t *sorted = egen_group_radix(keys, count, order, scratch, admitted);
+        if (sorted != order) { scratch = order; order = sorted; }
+    }
+    for (R_xlen_t width = 1; !prepare && width < admitted; width *= 2) {
         for (R_xlen_t start = 0; start < admitted; start += 2 * width) {
             R_CheckUserInterrupt();
             R_xlen_t middle = start + width < admitted ? start + width : admitted;
