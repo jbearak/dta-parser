@@ -404,6 +404,17 @@ test_that("codebook counts missing codes and NaN payloads in compact columns", {
     expect_error(codebook(data), "noncanonical NaN payload")
 })
 
+test_that("codebook scans one ordinary copy of a compact column's observed values", {
+    for (make in list(dta_byte, dta_int, dta_long, dta_float)) {
+        x <- make(c(3, NA, 1, tagged_missing("a"), 2, 1))
+        missing <- dtatools:::.codebook_missing(x)
+        summary <- dtatools:::.codebook_variable(x, "x", 1L, 9L, FALSE, missing)
+        expect_false(.Call(dtatools:::C_dtatools_is_altrep, summary$observed_values))
+        expect_identical(summary$observed_values, c(3, 1, 2, 1))
+        expect_identical(summary$distinct_values, c(3, 1, 2))
+    }
+})
+
 test_that("native missing-code counts match the tabulated codes", {
     native <- function(x) .Call(dtatools:::C_dtatools_missing_code_counts, x)
     tabulated <- function(x) tabulate(dtatools:::.tab_missing_codes(x) + 1L, 257L)

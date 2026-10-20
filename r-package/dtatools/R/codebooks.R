@@ -397,12 +397,14 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     numeric <- supported && (is.numeric(x) || is.logical(x)) && !is.factor(x)
     # The summaries read a Stata numeric's values only. A slice of compact
     # storage decodes each value as it is read and vctrs restores metadata
-    # the summaries drop, so they subset the decoded values instead.
+    # the summaries drop, so they subset the bare values instead.
     stata_numeric <- numeric && inherits(x, "dta_numeric")
     observed <- if (!stata_numeric) x[!missing]
-    # The scans below share one ordinary copy of the observed values.
+    # The scans below share one ordinary copy of the observed values. A
+    # subset of compact storage stays compact, and every scan of it would
+    # decode each value again, so c() decodes the subset once.
     finite_observed <- if (stata_numeric) {
-        .book_numeric_data(x)[!missing]
+        c(.book_numeric_data(x)[!missing])
     } else if (numeric) c(.book_numeric_data(observed)) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
