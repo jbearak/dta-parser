@@ -48,6 +48,11 @@ labelbook <- function(data, ..., .tables = NULL,
         )
     }
     assignments <- list()
+    # Variants are gathered in order and grouped by table once below. Finding
+    # each table by name scans every table, and a wide file can have one for
+    # each of thousands of variables.
+    found <- list()
+    found_tables <- character()
     for (position in seq_along(data)) {
         # A dibble's `[[` finds a position by its name, a scan of every
         # name, and its names are unique, so the position reads the same
@@ -76,10 +81,12 @@ labelbook <- function(data, ..., .tables = NULL,
             )
             next
         }
-        candidates[[table]] <- c(candidates[[table]], list(list(
+        found[[length(found) + 1L]] <- list(
             labels = labels, variable = names(data)[[position]], position = position
-        )))
+        )
+        found_tables[[length(found)]] <- table
     }
+    candidates <- .labelbook_group_candidates(candidates, found, found_tables)
     available <- unique(c(
         names(input$registry), names(candidates),
         vapply(assignments, `[[`, "", "table")
@@ -93,12 +100,22 @@ labelbook <- function(data, ..., .tables = NULL,
 
     table_rows <- list()
     mapping_rows <- list()
-    text_checks <- .labelbook_text_checks(selected, lapply(selected, function(table) {
-        candidates[[table]][[1L]]$labels
+    # `[[` matches no table named `NA` or `""`, so those keep its lookup.
+    slots <- match(selected, names(candidates), incomparables = c(NA, ""))
+    variants_of <- function(index) {
+        table <- selected[[index]]
+        if (!is.na(slots[[index]])) candidates[[slots[[index]]]]
+        else if (is.na(table) || !nzchar(table)) candidates[[table]]
+    }
+    text_checks <- .labelbook_text_checks(selected, lapply(seq_along(selected), function(index) {
+        variants_of(index)[[1L]]$labels
     }))
+    # Each table's diagnostics join the list once, after the loop, rather
+    # than copying the growing list for every table.
+    table_diagnostics <- vector("list", length(selected))
     for (table_index in seq_along(selected)) {
         table <- selected[[table_index]]
-        variants <- candidates[[table]]
+        variants <- variants_of(table_index)
         if (is.null(variants)) {
             table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
                 table, NULL, length, malformed = TRUE
@@ -117,14 +134,14 @@ labelbook <- function(data, ..., .tables = NULL,
         }, "")
         malformed <- length(unique(keys)) > 1L
         if (malformed) {
-            diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
+            table_diagnostics[[table_index]] <- list(.book_diag_fields(
                 "inconsistent_resolved_mappings", "table", table,
                 message = paste0("Variables assigned to `", table,
                                  "` carry different resolved mappings"),
                 details = list(lapply(variants, function(x) list(
                     variable = x$variable, position = x$position, labels = x$labels
                 )))
-            )
+            ))
             table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
                 table, NULL, length, malformed = TRUE
             )
@@ -138,15 +155,16 @@ labelbook <- function(data, ..., .tables = NULL,
         table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
             table, labels, length, malformed = FALSE, codes = codes
         )
-        diagnostics <- c(diagnostics, .labelbook_diagnostics(
+        table_diagnostics[[table_index]] <- .labelbook_diagnostics(
             table, labels, length,
             variables = stats::na.omit(vapply(variants, `[[`, "", "variable")),
             codes = codes, keys = label_keys,
             text = if (!is.null(text_checks)) {
                 lapply(text_checks, .subset2, table_index)
             }
-        ))
+        )
     }
+    diagnostics <- c(diagnostics, do.call(c, table_diagnostics))
 
     assignments <- .book_rows(assignments, .labelbook_assignments())
     assignments <- assignments[assignments$table %in% selected, , drop = FALSE]
@@ -160,6 +178,31 @@ labelbook <- function(data, ..., .tables = NULL,
         source = input$source
     ), class = "dtatools_labelbook")
     result
+}
+
+# Each table's variants, as appending each found variant to
+# `candidates[[table]]` in turn gives them: a table already present keeps
+# its registry variant first, and a new table joins the end where its first
+# variant appears. Every found table is a nonempty string, which `match()`
+# compares as `[[` does.
+.labelbook_group_candidates <- function(candidates, found, tables) {
+    if (!length(found)) return(candidates)
+    known <- names(candidates)
+    if (is.null(known)) known <- rep.int("", length(candidates))
+    slots <- match(tables, known)
+    fresh <- is.na(slots)
+    if (any(fresh)) {
+        added <- unique(tables[fresh])
+        slots[fresh] <- length(candidates) + match(tables[fresh], added)
+        candidates[length(candidates) + seq_along(added)] <- list(NULL)
+        names(candidates) <- c(known, added)
+    }
+    groups <- split(found, slots)
+    for (index in seq_along(groups)) {
+        slot <- as.integer(names(groups)[[index]])
+        candidates[[slot]] <- c(candidates[[slot]], groups[[index]])
+    }
+    candidates
 }
 
 .labelbook_shape_ok <- function(labels) {
@@ -275,10 +318,12 @@ labelbook <- function(data, ..., .tables = NULL,
                                    codes = .book_codes(labels),
                                    keys = .dta_value_label_keys(labels),
                                    text = NULL) {
-    ordinary <- as.double(labels[is.na(codes$missing_code)])
-    sorted <- sort(unique(ordinary))
-    gaps <- length(sorted) > 1L && all(sorted == floor(sorted)) &&
-        any(diff(sorted) > 1)
+    ordinary <- unique(as.double(labels[is.na(codes$missing_code)]))
+    ordinary <- ordinary[!is.na(ordinary)]
+    # Distinct whole codes skip a value exactly when they span more values
+    # than there are codes, so no sort is needed.
+    gaps <- length(ordinary) > 1L && all(ordinary == floor(ordinary)) &&
+        max(ordinary) - min(ordinary) + 1 > length(ordinary)
     label_text <- names(labels)
     if (is.null(text)) {
         trimmed <- trimws(label_text)

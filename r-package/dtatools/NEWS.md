@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `labelbook()` groups each value-label table's variables in one pass,
+  rather than finding the table by name for every labelled variable, which
+  scanned every table found so far. It also joins the tables' diagnostics
+  once and checks a table's codes for gaps without sorting them. On the
+  16,787-row, 5,360-column Senegal 2017 DHS women's file, which has a table
+  for each of 4,831 labelled variables, `labelbook(d)` falls from about
+  0.61 to 0.35 seconds. Results are unchanged.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
   formats of each kind that passed their check in a write, so a later
   column with one of those formats skips the check. A format that carries
