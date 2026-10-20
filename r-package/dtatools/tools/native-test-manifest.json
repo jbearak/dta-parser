@@ -16095,6 +16095,10 @@
         {
           "path": "tests/testthat/test-egen-block-kernels.R",
           "sha256": "46c9ce8b7182a72b314a55d54d7d6d00f358717df55782c3a39f2578846f7cd6"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-short-subsets.R",
+          "sha256": "bbf3e82ffe0602d3624bc90e0eb96be4ca0a6d2ffdcb143bc32077127e3754ef"
         }
       ],
       "blocks": [
@@ -17324,6 +17328,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 20,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "empty subsets of compact strings leave the dictionary alone",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "casts into strL storage do not measure the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "short subsets of compact strings are ordinary strings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "an index that materializes the source while it is read still subsets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
           "warnings": 0
         }
       ],
