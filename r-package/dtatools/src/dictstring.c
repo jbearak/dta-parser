@@ -1,6 +1,7 @@
 /* Compact dictionary strings: the dictstring_data ALTREP methods, the
    reference string reader shared with mutation, and the compact subset and
-   copy paths that keep a dictionary payload private to its result. */
+   copy paths, whose results own their value ids and share the immutable
+   dictionary. */
 #include "dtatools-internal.h"
 
 void dictstring_finalize(SEXP external) {
@@ -338,9 +339,9 @@ static SEXP dictstring_peek_value(
 }
 
 /* `x[i]` on a compact dictionary string stays compact: the selected value
-   ids are gathered over a private copy of the dictionary, so the result
-   owns its payload and the source is untouched. That copy costs as much
-   as the whole dictionary, so a subset of at most a sixteenth of the
+   ids are gathered into a payload that shares the dictionary, so the result
+   owns its ids and the source is untouched. The result's cache still needs
+   a slot for each distinct value, so a subset of at most a sixteenth of the
    dictionary's length is built as ordinary strings instead, which also
    leave the source untouched. That covers the empty subset that
    `vec_ptype()` takes on every vctrs operation, and the rows of each group

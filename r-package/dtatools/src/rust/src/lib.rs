@@ -1808,14 +1808,21 @@ pub unsafe extern "C" fn dtatools_numeric_compare_patch(
     }
 }
 
-#[repr(C)]
-struct DictStringData {
-    value_ids: *mut u32,
-    length: usize,
+/// A dictionary's value strings with the views into them that
+/// `dtatools_dictstring_bytes` serves. No payload changes its dictionary, so
+/// the payloads that subsets and copies gather share their source's.
+struct SharedDictionary {
     value_views: Vec<(*const u8, usize)>,
     // Owns the string buffers referenced by `value_views`. Declared after the
     // views so it is dropped after them.
     _values: AHashMap<String, u32>,
+}
+
+#[repr(C)]
+struct DictStringData {
+    value_ids: *mut u32,
+    length: usize,
+    dictionary: std::sync::Arc<SharedDictionary>,
     // Native readers can outlive materialization of the original R handle.
     // Pins own this same immutable allocation without changing column sharing.
     references: std::sync::atomic::AtomicUsize,
@@ -1827,16 +1834,30 @@ impl DictStringData {
         values: AHashMap<String, u32>,
         value_views: Vec<(*const u8, usize)>,
     ) -> Self {
+        Self::over(
+            value_ids,
+            std::sync::Arc::new(SharedDictionary {
+                value_views,
+                _values: values,
+            }),
+        )
+    }
+
+    /// A payload whose rows are `value_ids` into `dictionary`.
+    fn over(value_ids: Vec<u32>, dictionary: std::sync::Arc<SharedDictionary>) -> Self {
         let ids = value_ids.into_boxed_slice();
         let length = ids.len();
         let value_ids = Box::into_raw(ids).cast::<u32>();
         Self {
             value_ids,
             length,
-            value_views,
-            _values: values,
+            dictionary,
             references: std::sync::atomic::AtomicUsize::new(1),
         }
+    }
+
+    fn value_views(&self) -> &[(*const u8, usize)] {
+        &self.dictionary.value_views
     }
 }
 
@@ -1881,7 +1902,7 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
         return 0;
     }
     let data = &*data.cast::<DictStringData>();
-    let Some(&(bytes, byte_length)) = data.value_views.get(id as usize) else {
+    let Some(&(bytes, byte_length)) = data.value_views().get(id as usize) else {
         return 0;
     };
     let Ok(byte_length) = c_int::try_from(byte_length) else {
@@ -1892,40 +1913,9 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
     1
 }
 
-/// A dictionary's value strings with the views into them that
-/// `dtatools_dictstring_bytes` serves.
-type Dictionary = (AHashMap<String, u32>, Vec<(*const u8, usize)>);
-
-/// An independent copy of a dictionary-string payload's dictionary. `None`
-/// when an allocation fails or an id has no value.
-fn clone_dictionary(source: &DictStringData) -> Option<Dictionary> {
-    let mut values = AHashMap::new();
-    if values.try_reserve(source._values.len()).is_err() {
-        return None;
-    }
-    for (value, &id) in &source._values {
-        let mut copy = String::new();
-        if copy.try_reserve_exact(value.len()).is_err() {
-            return None;
-        }
-        copy.push_str(value);
-        values.insert(copy, id);
-    }
-
-    let mut views = Vec::new();
-    if views.try_reserve_exact(values.len()).is_err() {
-        return None;
-    }
-    views.resize(values.len(), (ptr::null(), 0));
-    for (value, &id) in &values {
-        let slot = views.get_mut(id as usize)?;
-        *slot = (value.as_ptr(), value.len());
-    }
-    Some((values, views))
-}
-
 #[no_mangle]
 /// Clone a live dictionary-string payload for an independent R ALTREP vector.
+/// The clone owns its value ids and shares the immutable dictionary.
 ///
 /// # Safety
 ///
@@ -1942,16 +1932,14 @@ pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut 
         return ptr::null_mut();
     }
     ids.extend_from_slice(std::slice::from_raw_parts(source.value_ids, source.length));
-    let Some((values, views)) = clone_dictionary(source) else {
-        return ptr::null_mut();
-    };
-    Box::into_raw(Box::new(DictStringData::new(ids, values, views))).cast::<c_void>()
+    let dictionary = std::sync::Arc::clone(&source.dictionary);
+    Box::into_raw(Box::new(DictStringData::over(ids, dictionary))).cast::<c_void>()
 }
 
 #[no_mangle]
 /// Build a dictionary-string payload over `source`'s dictionary whose rows
 /// are the `count` value ids in `ids`, so an R subset of a compact string
-/// column stays compact.
+/// column stays compact. The two payloads share the dictionary.
 ///
 /// # Safety
 ///
@@ -1976,14 +1964,12 @@ pub unsafe extern "C" fn dtatools_dictstring_gather(
     }
     if row_ids
         .iter()
-        .any(|&id| id as usize >= source.value_views.len())
+        .any(|&id| id as usize >= source.value_views().len())
     {
         return ptr::null_mut();
     }
-    let Some((values, views)) = clone_dictionary(source) else {
-        return ptr::null_mut();
-    };
-    Box::into_raw(Box::new(DictStringData::new(row_ids, values, views))).cast::<c_void>()
+    let dictionary = std::sync::Arc::clone(&source.dictionary);
+    Box::into_raw(Box::new(DictStringData::over(row_ids, dictionary))).cast::<c_void>()
 }
 
 #[no_mangle]
@@ -5215,7 +5201,7 @@ impl<'a> RWriteSource<'a> {
         if !self.descriptor.direct_string_data.is_null() {
             let (data, id) = self.dictionary_value_id_at(index)?;
             let &(value, length) = data
-                .value_views
+                .value_views()
                 .get(id as usize)
                 .ok_or_else(|| "R string dictionary contains an invalid value ID".to_owned())?;
             let bytes = if length == 0 {
@@ -5382,7 +5368,7 @@ unsafe fn encode_direct_observation_column(
                 }
                 let id = ptr::read(data.value_ids.add(row_index));
                 let &(value, length) =
-                    data.value_views
+                    data.value_views()
                         .get(id as usize)
                         .ok_or_else(|| DtaWriteError::Source {
                             column: column.name.to_string(),
@@ -6815,6 +6801,64 @@ mod tests {
                 1
             );
             dtatools_dictstring_free(data.cast());
+        }
+    }
+
+    #[test]
+    fn gathered_and_cloned_payloads_share_their_source_dictionary() {
+        let mut dictionary = AHashMap::new();
+        dictionary.insert("alpha".to_owned(), 0_u32);
+        dictionary.insert("beta".to_owned(), 1_u32);
+        let mut views = vec![(ptr::null(), 0); dictionary.len()];
+        for (value, &id) in &dictionary {
+            views[id as usize] = (value.as_ptr(), value.len());
+        }
+        let source = Box::into_raw(Box::new(DictStringData::new(
+            vec![0, 1, 0],
+            dictionary,
+            views,
+        )));
+        unsafe {
+            let rows = [1_u32, 1, 0];
+            let gathered =
+                super::dtatools_dictstring_gather(source.cast(), rows.as_ptr(), rows.len())
+                    .cast::<DictStringData>();
+            let cloned = super::dtatools_dictstring_clone(source.cast()).cast::<DictStringData>();
+            assert!(!gathered.is_null() && !cloned.is_null());
+            assert!(std::sync::Arc::ptr_eq(
+                &(*gathered).dictionary,
+                &(*source).dictionary
+            ));
+            assert!(std::sync::Arc::ptr_eq(
+                &(*cloned).dictionary,
+                &(*source).dictionary
+            ));
+            assert_eq!(std::slice::from_raw_parts((*gathered).value_ids, 3), &rows);
+            assert_eq!(
+                std::slice::from_raw_parts((*cloned).value_ids, 3),
+                &[0, 1, 0]
+            );
+            // An id outside the dictionary declines.
+            let outside = [2_u32];
+            assert!(
+                super::dtatools_dictstring_gather(source.cast(), outside.as_ptr(), 1).is_null()
+            );
+
+            // Each payload keeps the dictionary alive after the others are released.
+            dtatools_dictstring_free(source.cast());
+            dtatools_dictstring_free(cloned.cast());
+            let mut bytes = ptr::null();
+            let mut length = 0;
+            assert_eq!(
+                super::dtatools_dictstring_bytes(gathered.cast(), 1, &mut bytes, &mut length),
+                1
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(bytes.cast::<u8>(), length as usize),
+                b"beta"
+            );
+            assert_eq!(std::sync::Arc::strong_count(&(*gathered).dictionary), 1);
+            dtatools_dictstring_free(gathered.cast());
         }
     }
 }
