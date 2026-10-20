@@ -817,6 +817,9 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
 // NA past a nesting depth or at a malformed pairlist, where the R walk
 // decides and raises its own errors. Like the R walk it visits every value,
 // so a malformed pairlist after a reference still leaves the answer to R.
+// An ALTREP list may return an element that nothing else holds, so each
+// element stays protected while the walk reads it. Attributes and pairlist
+// nodes stay reachable through their protected owner.
 #define REFERENCE_WALK_DEPTH 64
 
 typedef struct {
@@ -855,7 +858,9 @@ static int reference_walk_value(SEXP value, int depth, R_xlen_t *visited) {
     if (type == VECSXP || type == EXPRSXP) {
         R_xlen_t length = XLENGTH(value);
         for (R_xlen_t index = 0; index < length; index++) {
-            int element = reference_walk_value(VECTOR_ELT(value, index), depth + 1, visited);
+            SEXP item = PROTECT(VECTOR_ELT(value, index));
+            int element = reference_walk_value(item, depth + 1, visited);
+            UNPROTECT(1);
             if (element == NA_LOGICAL) return NA_LOGICAL;
             found |= element;
         }
@@ -880,7 +885,9 @@ SEXP C_dtatools_reference_objects_found(SEXP values) {
     R_xlen_t length = XLENGTH(values), visited = 0;
     int found = 0;
     for (R_xlen_t index = 0; index < length; index++) {
-        int element = reference_walk_value(VECTOR_ELT(values, index), 0, &visited);
+        SEXP item = PROTECT(VECTOR_ELT(values, index));
+        int element = reference_walk_value(item, 0, &visited);
+        UNPROTECT(1);
         if (element == NA_LOGICAL) return Rf_ScalarLogical(NA_LOGICAL);
         found |= element;
     }
