@@ -225,6 +225,32 @@ SEXP dictstring_value(SEXP value, R_xlen_t index) {
     return dictstring_cached_value(data, cache, id);
 }
 
+/* Fill target with a compact dictionary string's values in order, as reading
+   each element would, filling the shared cache the same way but without an
+   ALTREP dispatch per value. The pinned root keeps the ids and dictionary if
+   R code run by an allocation or an interrupt check materializes the source.
+   Returns 0, leaving target alone, when the value is not compact. */
+int dictstring_fill_values(SEXP value, SEXP target) {
+    SEXP root = PROTECT(dictstring_read_root(value));
+    if (root == R_NilValue) {
+        UNPROTECT(1);
+        return 0;
+    }
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    SEXP cache = R_ExternalPtrProtected(root);
+    if (TYPEOF(target) != STRSXP || (size_t) XLENGTH(target) != data->length) {
+        Rf_error("invalid dtatools string-vector length");
+    }
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(target, (R_xlen_t) index, dictstring_cached_value(
+            data, cache, data->value_ids[index]
+        ));
+    }
+    UNPROTECT(1);
+    return 1;
+}
+
 static SEXP dictstring_materialized_values(SEXP value, SEXP cache) {
     dictstring_data *data = dictstring_storage(value);
     R_xlen_t dictionary_length = XLENGTH(cache);

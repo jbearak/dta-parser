@@ -648,6 +648,7 @@ DTATOOLS_INTERNAL SEXP dictstring_cache(SEXP value);
 DTATOOLS_INTERNAL SEXP unmaterialized_dictstring_source(SEXP value);
 DTATOOLS_INTERNAL SEXP dictstring_read_root(SEXP value);
 DTATOOLS_INTERNAL size_t dictstring_used_width(SEXP root, int check_values);
+DTATOOLS_INTERNAL int dictstring_fill_values(SEXP value, SEXP target);
 DTATOOLS_INTERNAL SEXP reference_string_reader_private_cache(
     SEXP values, R_xlen_t read_count
 );
