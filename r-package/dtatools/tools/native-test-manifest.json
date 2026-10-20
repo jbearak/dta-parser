@@ -13053,7 +13053,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-expressions.R",
-          "sha256": "9aa9329bd07619cb56278af1bcbd2ade927acf350e2448ac5f6ac6f3699bae08"
+          "sha256": "be83f522fb52e1a17b5bc071001b8f641e8b5af5477e4e3bd547b2943113e9ed"
         },
         {
           "path": "tests/testthat/test-dibble-callbacks.R",
@@ -13069,11 +13069,11 @@
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
-          "sha256": "c2b17d74985680ad22e34e16a5172311b254db9d59f82993f55eab3f805a7548"
+          "sha256": "f26458cb96e6b88209b26bf6fbe8152d279d8dc17defe77347de2923a4805da1"
         },
         {
           "path": "tests/testthat/test-mask-reader-callbacks.R",
-          "sha256": "7d38ba1695159e6201c22278936e8e82e7f5d9e143fe90e2598712e841297246"
+          "sha256": "3e735d07ee191e5d8cf635f65273c98c92e990f9a22a0e145eee071d238653b6"
         },
         {
           "path": "tests/testthat/test-initial-capture.R",
@@ -13493,17 +13493,6 @@
         },
         {
           "file": "test-dibble-expressions.R",
-          "test": "within-call captures keep their original generation and group",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 12,
-          "warnings": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "min_pass_before_skip": 0,
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-dibble-expressions.R",
           "test": "removed and re-added column generations retain values and expire",
           "occurrence": 1,
           "skip": "require",
@@ -13831,19 +13820,44 @@
           "warnings": 0
         },
         {
-          "file": "test-mask-bindings.R",
-          "test": "native bindings capture fixed generations names and groups",
+          "file": "test-dibble-expressions.R",
+          "test": "within-call captures keep their generation and read the current group",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
+          "min_pass": 12,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-expressions.R",
+          "test": "captures from another group read the current group as in dplyr",
+          "occurrence": 1,
+          "skip": "require",
           "min_pass": 2,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-expressions.R",
+          "test": "groups share one set of bindings until an expression changes a column",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 11,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-mask-bindings.R",
           "test": "native binding admission declines unsupported containers and names",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 15,
+          "min_pass": 10,
           "warnings": 0
         },
         {
@@ -13880,26 +13894,10 @@
         },
         {
           "file": "test-mask-bindings.R",
-          "test": "changed constructors run before the fallback group promise is forced",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-mask-bindings.R",
           "test": "long ASCII names retain the original symbol-conversion diagnostics",
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
-          "warnings": 0
-        },
-        {
-          "file": "test-mask-bindings.R",
-          "test": "foreign names run before a declined binding attempt forces its group",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -14048,41 +14046,6 @@
         },
         {
           "file": "test-mask-bindings.R",
-          "test": "binding admission accepts settled IDs and settles successful default IDs",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 4,
-          "warnings": 0
-        },
-        {
-          "file": "test-mask-bindings.R",
-          "test": "public mask constructors see the original forced group argument",
-          "occurrence": 1,
-          "skip": "require",
-          "min_pass": 3,
-          "warnings": 0,
-          "min_pass_before_skip": 0,
-          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
-          "skip_message": "Reason: {dplyr} is not installed"
-        },
-        {
-          "file": "test-mask-bindings.R",
-          "test": "successful nonempty native masks settle only their default group promise",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 15,
-          "warnings": 0
-        },
-        {
-          "file": "test-mask-bindings.R",
-          "test": "empty and declined native masks leave group promises untouched",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 15,
-          "warnings": 0
-        },
-        {
-          "file": "test-mask-bindings.R",
           "test": "public mask constructors see the original final loop name",
           "occurrence": 1,
           "skip": "require",
@@ -14097,7 +14060,7 @@
           "test": "native masks preserve loop names and decline unsafe name bindings",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 48,
+          "min_pass": 42,
           "warnings": 0
         },
         {
@@ -14106,6 +14069,57 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native bindings capture fixed generations and names and read the group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "bindings from changed constructors read the group at each read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "a declined binding attempt runs foreign names callbacks once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "native bindings read the group when they are read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "public mask constructors see one set of bindings for every group",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-mask-bindings.R",
+          "test": "empty native masks build and duplicate names decline",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {
