@@ -19,21 +19,18 @@
 
 .finish_dibble_result <- function(context, result, sources = NULL, grouping = NULL) {
     result <- .prepare_dibble_frame(result)
-    source_addresses <- if (!is.null(sources)) {
-        unlist(lapply(sources, function(source) {
-            if (is.data.frame(source)) {
-                vapply(.data_columns(source), rlang::obj_address, character(1))
-            } else rlang::obj_address(source)
-        }))
-    }
-    # Keep original columns rooted while their addresses describe this result.
+    # The original columns stay rooted in `columns` while the loop replaces
+    # them in `result`. Identity is matched by pointer: a column's first
+    # slot in the result, and whether a source, or a column of a source
+    # frame, is the same vector.
     columns <- .data_columns(result)
-    addresses <- vapply(columns, rlang::obj_address, character(1))
-    shared <- if (!is.null(sources)) addresses %in% source_addresses else NULL
-    first <- match(addresses, addresses)
+    shared <- if (!is.null(sources)) {
+        frames <- vapply(sources, is.data.frame, logical(1))
+        !is.na(.Call(C_dtatools_reference_match, columns, sources, frames))
+    }
+    first <- .Call(C_dtatools_reference_match, columns, columns, NULL)
     row_count <- nrow(result)
     for (index in seq_along(columns)) {
-        address <- addresses[[index]]
         if (first[[index]] < index) {
             prepared <- .subset2(result, first[[index]])
         } else {

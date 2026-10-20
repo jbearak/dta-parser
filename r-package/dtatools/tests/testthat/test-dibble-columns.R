@@ -222,6 +222,42 @@ test_that("column results isolate later writes in both directions and duplicated
     }
 })
 
+test_that("result columns are matched to their slots and sources by identity", {
+    reference_match <- function(x, table, frames = NULL) {
+        .Call(dtatools:::C_dtatools_reference_match, x, table, frames)
+    }
+    a <- c(1, 2)
+    b <- c(1, 2)
+    s <- "s"
+    frame <- data.frame(p = 1, q = 2)
+    # Each element finds the first slot holding the same vector, never an
+    # equal one.
+    expect_identical(reference_match(list(a, b, a, s), list(a, b, a, s)),
+                     c(1L, 2L, 1L, 4L))
+    expect_identical(reference_match(list(b), list(a)), NA_integer_)
+    # A flagged frame contributes its columns; the frame itself is no entry.
+    expect_identical(
+        reference_match(list(frame$q, a, frame, b), list(a, frame), c(FALSE, TRUE)),
+        c(3L, 1L, NA, NA)
+    )
+    expect_identical(reference_match(list(a), list()), NA_integer_)
+    expect_identical(reference_match(list(), list(a)), integer())
+
+    # A column assigned from another stays its alias in the result, and the
+    # result's columns are detached from the original dibble's.
+    data <- dibble(x = dta_double(c(1, 2)), y = dta_double(c(3, 4)))
+    original <- data
+    data$z <- data$x
+    expect_true(rlang::is_reference(.subset2(data, "z"), .subset2(data, "x")))
+    expect_false(rlang::is_reference(.subset2(data, "x"), .subset2(original, "x")))
+    repl(data, x = 9, where = 1L)
+    expect_identical(as.double(data$z), c(9, 2))
+    expect_identical(as.double(original$x), c(1, 2))
+    data[["y"]] <- dta_double(c(5, 6))
+    expect_identical(as.double(data$y), c(5, 6))
+    expect_identical(as.double(original$y), c(3, 4))
+})
+
 test_that("borrowed and stale strings are checked on every column result", {
     skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("data.table", "1.18.2.1")

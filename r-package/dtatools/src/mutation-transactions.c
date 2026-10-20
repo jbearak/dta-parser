@@ -1469,6 +1469,84 @@ SEXP C_dtatools_shared_columns(SEXP columns) {
     return result;
 }
 
+typedef struct {
+    uintptr_t address;
+    R_xlen_t position;
+} reference_entry;
+
+static int compare_reference_entries(const void *left, const void *right) {
+    const reference_entry *a = left;
+    const reference_entry *b = right;
+    if (a->address != b->address) return a->address < b->address ? -1 : 1;
+    return (a->position > b->position) - (a->position < b->position);
+}
+
+/* For each element of the list `x`, the 1-based position of the first
+   entry of `table` that is the same object, or NA. A `table` element
+   whose `frames` flag is TRUE is a data frame that contributes each of its
+   columns as an entry; any other element is one entry. This is `match()`
+   over `rlang::obj_address()` strings without formatting an address for
+   each element: the entries are sorted by address once, and each element
+   finds the earliest equal entry by binary search. */
+SEXP C_dtatools_reference_match(SEXP x, SEXP table, SEXP frames) {
+    if (TYPEOF(x) != VECSXP || TYPEOF(table) != VECSXP) {
+        Rf_error("`x` and `table` must be lists");
+    }
+    R_xlen_t table_length = XLENGTH(table);
+    if (frames != R_NilValue &&
+        (TYPEOF(frames) != LGLSXP || XLENGTH(frames) != table_length)) {
+        Rf_error("`frames` must be NULL or one logical value per `table` element");
+    }
+    R_xlen_t entry_count = 0;
+    for (R_xlen_t index = 0; index < table_length; index++) {
+        SEXP element = VECTOR_ELT(table, index);
+        if (frames != R_NilValue && LOGICAL(frames)[index] == TRUE) {
+            if (TYPEOF(element) != VECSXP) Rf_error("a `table` frame must be a list");
+            entry_count += XLENGTH(element);
+        } else {
+            entry_count++;
+        }
+    }
+    if (entry_count > INT_MAX) Rf_error("`table` has too many entries");
+    reference_entry *entries = (reference_entry *) R_alloc(
+        entry_count > 0 ? (size_t) entry_count : 1, sizeof(reference_entry));
+    R_xlen_t position = 0;
+    for (R_xlen_t index = 0; index < table_length; index++) {
+        SEXP element = VECTOR_ELT(table, index);
+        if (frames != R_NilValue && LOGICAL(frames)[index] == TRUE) {
+            R_xlen_t column_count = XLENGTH(element);
+            for (R_xlen_t column = 0; column < column_count; column++) {
+                entries[position].address = (uintptr_t) VECTOR_ELT(element, column);
+                entries[position].position = position;
+                position++;
+            }
+        } else {
+            entries[position].address = (uintptr_t) element;
+            entries[position].position = position;
+            position++;
+        }
+    }
+    qsort(entries, (size_t) entry_count, sizeof(reference_entry),
+          compare_reference_entries);
+    R_xlen_t length = XLENGTH(x);
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
+    int *matches = INTEGER(result);
+    for (R_xlen_t index = 0; index < length; index++) {
+        uintptr_t address = (uintptr_t) VECTOR_ELT(x, index);
+        R_xlen_t low = 0;
+        R_xlen_t high = entry_count;
+        while (low < high) {
+            R_xlen_t middle = low + (high - low) / 2;
+            if (entries[middle].address < address) low = middle + 1;
+            else high = middle;
+        }
+        matches[index] = low < entry_count && entries[low].address == address ?
+            (int) entries[low].position + 1 : NA_INTEGER;
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 /* Validate data.table's non-owning self-reference and names identity.
    The layout and validity rule come from data.table 1.18.6.1 src/assign.c,
    setselfref() and _selfrefok(), by its contributors under MPL-2.0;
