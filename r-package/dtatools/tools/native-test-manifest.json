@@ -264,6 +264,10 @@
           "sha256": "86550fa0d7946c09f4aa646d3fe3b2ad3d7c109871cc1cb3c2d6ab484b41754a"
         },
         {
+          "path": "tests/testthat/test-save-dta-strl-repeats.R",
+          "sha256": "e2c23f3d55ed8cb5b313c7e0de2c17eba8a469fa3957606f63554c0c34ec0c4f"
+        },
+        {
           "path": "tests/testthat/test-input-sources.R",
           "sha256": "d2865970e79bc3c798a99a978f73dfec87769ee76569ddcdb688ced9de18850a"
         },
@@ -1648,6 +1652,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-strl-repeats.R",
+          "test": "strL repeats past the first string region keep one record each",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],

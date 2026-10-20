@@ -4515,6 +4515,12 @@ struct RWriteStringRegion {
 struct RWriteStringRegionCache {
     rows: usize,
     region: RefCell<RWriteStringRegion>,
+    /// One row before `region`, read alone. strL planning rereads a
+    /// repeated value's first row, and refilling `region` from that row
+    /// would cost a whole region for each repeat.
+    lookback: RefCell<RWriteStringRegion>,
+    /// The row `lookback` served last, until `region` serves one.
+    looked_back: Cell<Option<u64>>,
 }
 
 #[derive(Clone, Copy)]
@@ -5030,6 +5036,8 @@ impl<'a> RWriteSource<'a> {
                 Box::new(RWriteStringRegionCache {
                     rows: string_region_rows.max(1),
                     region: RefCell::new(RWriteStringRegion::default()),
+                    lookback: RefCell::new(RWriteStringRegion::default()),
+                    looked_back: Cell::new(None),
                 })
             }),
             numeric_replacements: Cell::new(0),
@@ -5150,7 +5158,21 @@ impl<'a> RWriteSource<'a> {
             .string_region
             .as_ref()
             .ok_or_else(|| "R character callback source is unavailable".to_owned())?;
-        let mut region = cache.region.borrow_mut();
+        // The row after one the lookback served starts a forward scan, as
+        // the write pass does after planning, so it refills `region`.
+        let restart = row
+            .checked_sub(1)
+            .is_some_and(|previous| cache.looked_back.get() == Some(previous));
+        let behind = {
+            let region = cache.region.borrow();
+            !region.values.is_empty() && row < region.start && !restart
+        };
+        cache.looked_back.set(behind.then_some(row));
+        let (mut region, rows) = if behind {
+            (cache.lookback.borrow_mut(), 1)
+        } else {
+            (cache.region.borrow_mut(), cache.rows)
+        };
         let end = region
             .start
             .checked_add(region.values.len() as u64)
@@ -5158,7 +5180,7 @@ impl<'a> RWriteSource<'a> {
         if region.values.is_empty() || row < region.start || row >= end {
             let remaining = usize::try_from(self.row_count - row)
                 .map_err(|_| "R character region is too large".to_owned())?;
-            let length = remaining.min(cache.rows);
+            let length = remaining.min(rows);
             let has_ids = self.descriptor.dta_type == 2_050;
             region.ids.resize(if has_ids { length } else { 0 }, 0);
             region.values.resize(length, ptr::null());
@@ -6028,6 +6050,106 @@ mod tests {
         let mut descriptor = direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
         descriptor.direct_string_data = data;
         descriptor
+    }
+
+    /// A character column that the stub callback below serves, recording
+    /// each region it is asked for.
+    struct CallbackStrings {
+        values: Vec<String>,
+        regions: std::sync::Mutex<Vec<(usize, usize)>>,
+    }
+
+    /// Stands in for the R character region callback. A test column's ids
+    /// are its value's first index in `values` plus one.
+    #[no_mangle]
+    unsafe extern "C" fn dtatools_write_string_region(
+        values: super::Sexp,
+        start: usize,
+        length: usize,
+        ids: *mut u64,
+        strings: *mut *const c_char,
+        string_lengths: *mut usize,
+        _error_message: *mut c_char,
+        _error_capacity: usize,
+    ) -> c_int {
+        let Some(column) = values.cast::<CallbackStrings>().as_ref() else {
+            return 0;
+        };
+        if start
+            .checked_add(length)
+            .is_none_or(|end| end > column.values.len())
+        {
+            return 0;
+        }
+        column.regions.lock().unwrap().push((start, length));
+        for offset in 0..length {
+            let value = &column.values[start + offset];
+            if !ids.is_null() {
+                let first = column.values.iter().position(|other| other == value);
+                *ids.add(offset) = first.unwrap() as u64 + 1;
+            }
+            *strings.add(offset) = value.as_ptr().cast();
+            *string_lengths.add(offset) = value.len();
+        }
+        1
+    }
+
+    #[test]
+    fn earlier_string_rows_do_not_refill_the_forward_region() {
+        let rows = 1_000;
+        let column = CallbackStrings {
+            values: (0..rows)
+                .map(|row| {
+                    if row % 3 == 0 {
+                        "x".repeat(3_000)
+                    } else {
+                        format!("row {row}")
+                    }
+                })
+                .collect(),
+            regions: Default::default(),
+        };
+        let mut descriptor = direct_numeric_descriptor(2_050, ptr::null(), 0, 0.0, 1.0);
+        descriptor.string_values = (&column as *const CallbackStrings).cast_mut().cast();
+        let source = RWriteSource::new(&descriptor, rows as u64, 1, 64).unwrap();
+        // Read forward as strL planning does, rereading the first row of
+        // each repeated value.
+        for row in 0..rows {
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+            assert_eq!(
+                source.string_id_at(row as u64).unwrap(),
+                Some(if row % 3 == 0 { 1 } else { row as u64 + 1 })
+            );
+            if row % 3 == 0 && row > 0 {
+                assert_eq!(source.string_value_at(0).unwrap(), column.values[0]);
+            }
+        }
+        {
+            let regions = column.regions.lock().unwrap();
+            // 16 forward regions of up to 64 rows and one lookback of row 0.
+            assert_eq!(regions.len(), 17, "{regions:?}");
+            assert_eq!(
+                regions.iter().filter(|&&(_, length)| length == 1).count(),
+                1
+            );
+            assert!(regions.contains(&(0, 1)));
+        }
+        // A second forward pass, as the write pass makes, reads row 0 from
+        // the lookback and then refills whole regions from row 1.
+        column.regions.lock().unwrap().clear();
+        for row in 0..rows {
+            assert_eq!(source.string_id_at(row as u64).unwrap().is_some(), true);
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+        }
+        let regions = column.regions.lock().unwrap();
+        assert_eq!(regions.first(), Some(&(1, 64)), "{regions:?}");
+        assert_eq!(regions.len(), 16, "{regions:?}");
     }
 
     #[test]
