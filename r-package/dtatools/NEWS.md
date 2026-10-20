@@ -5,6 +5,11 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `copy_data()` keeps a dibble's automatic row names. It stored them as
+  explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
+  from one by `keep_vars()` or `gen()`, warned that it dropped the row
+  names.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,

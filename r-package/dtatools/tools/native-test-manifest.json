@@ -6236,7 +6236,7 @@
         },
         {
           "path": "tests/testthat/test-copy-data.R",
-          "sha256": "d1b04a7b8cd151e87e9232ec933533c5c71d9a50c185d5b1c2a49a69a0a73e41"
+          "sha256": "6ad5b0480a32d72a1ffe3ae5662d79df733769221e1a6704eee2faec34db00ff"
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
@@ -6306,6 +6306,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-copy-data.R",
+          "test": "copy_data keeps automatic row names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {

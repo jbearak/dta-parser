@@ -2639,6 +2639,13 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
+    # attributes() expands automatic row names to 1:n, which the assignment
+    # stores as explicit row names. Keep the snapshot's compact form.
+    row_names <- .row_names_info(snapshot, 0L)
+    if (is.integer(row_names) && length(row_names) == 2L &&
+        is.na(row_names[[1L]])) {
+        attr(columns, "row.names") <- row_names
+    }
     .as_dibble(columns, "copy_data()")
 }
 
