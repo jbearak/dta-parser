@@ -3852,10 +3852,21 @@ static int scalar_strict_attributes(SEXP left, SEXP right,
     return 1;
 }
 static int scalar_strict_equal(SEXP left, SEXP right, scalar_strict_memo *memo, int depth) {
-    if (--memo->remaining < 0 || depth > 256 || TYPEOF(left) != TYPEOF(right) ||
-        ALTREP(left) || ALTREP(right) || Rf_isObject(left) != Rf_isObject(right) ||
-        Rf_isS4(left) != Rf_isS4(right)) return 0;
+    if (--memo->remaining < 0 || depth > 256) return 0;
     int type = TYPEOF(left);
+    /* A shared global node equals itself under the full checks below: these
+       types are never ALTREP, and the switch compares them by identity. Only
+       the attribute rule can still reject one, so apply it alone. */
+    if (left == right && (type == SYMSXP || type == CHARSXP || type == NILSXP ||
+                          type == ENVSXP || type == BUILTINSXP || type == SPECIALSXP))
+        return type == CHARSXP || !ANY_ATTRIB(left);
+    /* Only vectors can be ALTREP. */
+    int vector = type != LANGSXP && type != LISTSXP && type != DOTSXP &&
+        type != BCODESXP && type != CLOSXP && type != SYMSXP && type != CHARSXP &&
+        type != NILSXP && type != ENVSXP && type != BUILTINSXP && type != SPECIALSXP;
+    if (type != TYPEOF(right) || (vector && (ALTREP(left) || ALTREP(right))) ||
+        Rf_isObject(left) != Rf_isObject(right) ||
+        Rf_isS4(left) != Rf_isS4(right)) return 0;
     if (type == SYMSXP && (ANY_ATTRIB(left) || ANY_ATTRIB(right))) return 0;
     if (type != CHARSXP && type != SYMSXP &&
         (ANY_ATTRIB(left) || ANY_ATTRIB(right))) {
@@ -3944,7 +3955,9 @@ static int scalar_strict_equal(SEXP left, SEXP right, scalar_strict_memo *memo, 
 
 static int numeric_bytecode_identical_safe(SEXP left, SEXP right) {
     if (TYPEOF(left) != BCODESXP || TYPEOF(right) != BCODESXP) return 0;
-    scalar_strict_memo memo = {.occupied = {0}, .remaining = 131072};
+    scalar_strict_memo memo;
+    memset(memo.occupied, 0, sizeof(memo.occupied));
+    memo.remaining = 131072;
     if (scalar_strict_equal(left, right, &memo, 0)) return 1;
     int remaining = 131072;
     return numeric_bytecode_equal_plain(left, right, &remaining, 0);
@@ -3974,19 +3987,17 @@ static int numeric_expected_function_same(
     return same;
 }
 
-static int numeric_expected_lexical_same(
-    SEXP env, SEXP symbol, const numeric_expected_function *expected
-) {
-    /* Same ordinary-environment and settled-binding rules as the original
-       numeric helper profile; do not coalesce either lexical lookup. */
+/* Same ordinary-environment and settled-binding rules as the original
+   numeric helper profile; do not coalesce either lexical lookup. Reading a
+   forced binding evaluates its promise, and evaluation can run pending
+   finalizers, so callers find every object before comparing any. */
+static int numeric_expected_lexical_find(SEXP env, SEXP symbol, SEXP *found) {
     for (int depth = 0; depth < 16 && env != R_EmptyEnv; depth++) {
         if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env)) return 0;
         R_BindingType_t type = R_GetBindingType(symbol, env);
         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
-            SEXP actual = PROTECT(R_getVar(symbol, env, FALSE));
-            int same = numeric_expected_function_same(actual, expected);
-            UNPROTECT(1);
-            return same;
+            *found = R_getVar(symbol, env, FALSE);
+            return 1;
         }
         if (type != R_BindingTypeUnbound) return 0;
         env = R_ParentEnv(env);
@@ -5604,11 +5615,26 @@ int dtatools_numeric_helpers_unchanged(SEXP frame, SEXP profile, unsigned route,
             return 0;
         if (!(routes[i] & route)) continue;
         SEXP symbol = Rf_installTrChar(label), expected = VECTOR_ELT(profile, i);
-        if (i < 50) {
-            if (!(prepared ? numeric_expected_lexical_same(frame, symbol, &prepared->functions[i]) :
-                  dtatools_execution_lexical_function_same(frame, symbol, expected)) ||
-                (i >= 17 && !(prepared ? numeric_expected_lexical_same(R_BaseNamespace, symbol, &prepared->functions[i]) :
-                  dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, expected)))) return 0;
+        if (i < 50 && prepared != NULL) {
+            /* Both lookups run before either comparison, so no R code runs
+               between proving the first object and finding the second to be
+               that same object, which is then not walked again. */
+            const numeric_expected_function *function = &prepared->functions[i];
+            SEXP first = R_NilValue, second = R_NilValue;
+            if (!numeric_expected_lexical_find(frame, symbol, &first)) return 0;
+            PROTECT(first);
+            int found = i < 17 ||
+                numeric_expected_lexical_find(R_BaseNamespace, symbol, &second);
+            PROTECT(second);
+            int same = numeric_expected_function_same(first, function) && found &&
+                (i < 17 || second == first ||
+                 numeric_expected_function_same(second, function));
+            UNPROTECT(2);
+            if (!same) return 0;
+        } else if (i < 50) {
+            if (!dtatools_execution_lexical_function_same(frame, symbol, expected) ||
+                (i >= 17 && !dtatools_execution_lexical_function_same(
+                    R_BaseNamespace, symbol, expected))) return 0;
         } else {
             SEXP actual = computed_peek(symbol, frame, 16);
             int remaining = 64;
