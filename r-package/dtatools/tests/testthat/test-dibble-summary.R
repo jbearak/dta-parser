@@ -469,6 +469,94 @@ test_that("the summary gate admits mixed compact chunks and declines their metho
     expect_null(gate())
 })
 
+test_that("storage promotion names each pair as the sorted key did", {
+    reference <- function(left, right) {
+        if (identical(left, right)) return(left)
+        switch(paste(sort(c(left, right)), collapse = ":"),
+            "byte:int" = "int", "byte:long" = "long", "byte:float" = "float",
+            "byte:double" = "double", "int:long" = "long", "float:int" = "float",
+            "double:int" = "double", "float:long" = "double", "double:long" = "double",
+            "double:float" = "double",
+            stop("unknown Stata storage type combination", call. = FALSE))
+    }
+    storages <- c("byte", "int", "long", "float", "double")
+    for (left in storages) for (right in storages) {
+        expect_identical(dtatools:::.dta_promote(left, right), reference(left, right),
+                         info = paste(left, right))
+    }
+    unknown <- list(list("byte", NA_character_), list(NA_character_, "int"),
+                    list("byte", ""), list("byte", "text"), list(c("byte", "int"), "float"),
+                    list(NULL, "byte"), list(1, "byte"))
+    for (pair in unknown) {
+        expect_error(dtatools:::.dta_promote(pair[[1L]], pair[[2L]]),
+                     "unknown Stata storage type combination", fixed = TRUE)
+    }
+})
+
+test_that("mixed storage folds call neither sort() nor paste()", {
+    chunks <- .summary_mean_chunks(c(1, 1.5, rep(c(2, 2.5), 24)))
+    events <- new.env(parent = emptyenv())
+    tracer <- substitute(assign("count", get("count", envir = EVENTS) + 1L, envir = EVENTS),
+                         list(EVENTS = events))
+    for (name in c("sort", "paste")) {
+        suppressMessages(trace(name, tracer = tracer, print = FALSE, where = baseenv()))
+    }
+    on.exit(suppressMessages(for (name in c("sort", "paste")) untrace(name, where = baseenv())))
+    events$count <- 0L
+    full <- vctrs::vec_ptype_common(!!!chunks)
+    settled <- dtatools:::.dibble_summary_ptype(chunks, "v", NULL, 0L)
+    count <- events$count
+    expect_identical(count, 0L)
+    expect_true(identical(settled, full, attrib.as.set = FALSE))
+})
+
+test_that("the summary gate declines mixed storages when promotion primitives change", {
+    chunks <- .summary_mean_chunks(c(1, 1.5, 2, NA, 2.5, rep(c(3, 3.5), 20)))
+    single <- lapply(1:40, dta_byte)
+    for (i in 1:3) {
+        dtatools:::.combine_dta_double(lapply(1:9, dta_double))
+        vctrs::vec_ptype_common(!!!chunks)
+        vctrs::vec_ptype_common(!!!single)
+    }
+    routine <- dtatools:::C_dtatools_summary_ptype_method
+    state <- dtatools:::.double_combine_state
+    metadata <- dtatools:::.metadata_state
+    dependencies <- dtatools:::.summary_ptype_dependencies
+    routines <- dtatools:::.summary_routine_state
+    # The gate reads the caller's chunks through a promise of that name.
+    gate <- function(chunks) .Call(routine, state, metadata, dependencies, routines)
+    probe <- function(values) {
+        chunks <- values
+        gate(chunks)
+    }
+    supported <- .dtatools_numeric_entry_expected()
+    expect_identical(is.null(probe(chunks)), !supported)
+    expect_identical(is.null(probe(single)), !supported)
+    with_primitive <- function(name, replacement, expression) {
+        original <- get(name, envir = baseenv(), inherits = FALSE)
+        unlockBinding(name, baseenv())
+        on.exit({
+            unlockBinding(name, baseenv())
+            assign(name, original, envir = baseenv())
+            lockBinding(name, baseenv())
+        }, add = TRUE)
+        assign(name, replacement, envir = baseenv())
+        lockBinding(name, baseenv())
+        force(expression)
+    }
+    # The wrappers behave as the primitives do if anything calls them.
+    replacements <- list(
+        is.character = function(x) .Primitive("is.character")(x),
+        switch = function(EXPR, ...) .Primitive("switch")(EXPR, ...)
+    )
+    for (name in names(replacements)) {
+        declined <- with_primitive(name, replacements[[name]],
+            c(mixed = is.null(probe(chunks)), single = is.null(probe(single))))
+        expect_identical(declined, c(mixed = TRUE, single = !supported), info = name)
+        expect_identical(is.null(probe(chunks)), !supported, info = name)
+    }
+})
+
 test_that("grouped compact summaries match the summaries folded in full", {
     skip_if_not_installed("dplyr", "1.2.1")
     withr::local_seed(11)

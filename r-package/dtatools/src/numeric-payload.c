@@ -6534,7 +6534,7 @@ static int summary_caller_env_unchanged(SEXP ns, SEXP caller_env, SEXP plus, SEX
    their build copies, with their braces, .External2 and routines unchanged,
    so the shortened argument list cannot be observed. */
 static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
-    if (!combine_plain_list(expected) || XLENGTH(expected) != 8 ||
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 10 ||
         TYPEOF(VECTOR_ELT(expected, 2)) != ENVSXP) return 0;
     SEXP ns = VECTOR_ELT(expected, 2);
     SEXP common = PROTECT(vctrs_exported_function(
@@ -6560,13 +6560,29 @@ static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
     return same;
 }
 
+/* A fold of two storages reaches the branch of .dta_promote() that names
+   the pair with is.character() and switch(). The package and base lookups
+   of both must find the build primitives. */
+static int summary_promotion_unchanged(SEXP dtatools, SEXP expected) {
+    static const char *names[] = {"is.character", "switch"};
+    for (int i = 0; i < 2; i++) {
+        SEXP symbol = Rf_install(names[i]), primitive = VECTOR_ELT(expected, 8 + i);
+        if ((TYPEOF(primitive) != BUILTINSXP && TYPEOF(primitive) != SPECIALSXP) ||
+            !dtatools_execution_lexical_function_same(dtatools, symbol, primitive) ||
+            !dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, primitive))
+            return 0;
+    }
+    return 1;
+}
+
 /* A grouped summary folds every group's result into a common type with
    vctrs, one chunk at a time. Over canonical double pieces, the ones double
    assembly combines without vctrs, each fold is a pure function of the
    running type and the next piece's attributes while the checks that admit
    that assembly pass. The same holds for canonical byte, int, long, and float
    pieces when no method of their storage classes changes dispatch and the
-   constructor that a fold reaches for them is unchanged. The helper passes
+   constructor that a fold reaches for them is unchanged. Pieces of more
+   than one storage also need the promotion above. The helper passes
    chunks as an unforced symbol promise, so lookups are checked in the
    caller's frame, where vctrs is called, and nothing is forced. Return the
    method vctrs would send each fold to, as vctrs would find it, or NULL when
@@ -6587,11 +6603,15 @@ SEXP C_dtatools_summary_ptype_method(
     int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8;
     /* Bit k marks a compact piece of kind k. */
     unsigned compact = 0;
+    int doubles = 0;
     for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         SEXP piece = VECTOR_ELT(chunks, i);
         int kind = 0;
-        if (combine_double_canonical_piece(piece)) continue;
+        if (combine_double_canonical_piece(piece)) {
+            doubles = 1;
+            continue;
+        }
         admitted = scalar_compact_numeric(piece, &kind);
         if (admitted) compact |= 1U << kind;
     }
@@ -6615,13 +6635,18 @@ SEXP C_dtatools_summary_ptype_method(
     }
     /* A compact piece's fold constructs an empty vector of its storage through
        the constructor's compact branch. */
+    int storages = doubles;
     for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
-        if (compact & (1U << kind))
+        if (compact & (1U << kind)) {
+            storages++;
             admitted = combine_storage_methods_absent(dependencies, storage_classes[kind]);
+        }
     }
     if (admitted && compact)
         admitted = dtatools_numeric_helpers_admitted(VECTOR_ELT(dependencies, 1),
                                                      DTATOOLS_NUMERIC_CONSTRUCT);
+    if (admitted && storages > 1)
+        admitted = summary_promotion_unchanged(VECTOR_ELT(dependencies, 1), reducer);
     SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
     SEXP method = R_NilValue;
     if (admitted && combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {

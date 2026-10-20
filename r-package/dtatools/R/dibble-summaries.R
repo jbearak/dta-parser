@@ -35,15 +35,16 @@
 }
 
 # Build copies of the reducer that receives only the first chunks when the
-# others are skipped, of the helper it calls, and of the caller_env()
-# default that a fold forces.
+# others are skipped, of the helper it calls, of the caller_env() default
+# that a fold forces, and of the primitives that promote mixed storage.
 .summary_ptype_dependencies <- if (
     identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
     identical(as.character(getNamespaceVersion("rlang")), "1.3.0")
 ) list(
     utils::removeSource(vctrs::vec_ptype_common), utils::removeSource(rlang::list2),
     asNamespace("vctrs"), .Primitive("::"), .Primitive("{"), .Primitive(".External2"),
-    utils::removeSource(rlang::caller_env), .Primitive("+")
+    utils::removeSource(rlang::caller_env), .Primitive("+"),
+    .Primitive("is.character"), .Primitive("switch")
 ) else NULL
 
 # The routine objects that the reducers pass to .External2, as vctrs and
@@ -102,7 +103,7 @@
             firsts <- c(firsts, index)
         }
     }
-    kept <- sort(union(1:3, firsts))
+    kept <- c(1:3, firsts[firsts > 3L])
     if (length(firsts) > 1L) {
         # The check folds the kept chunks and every first seen after each
         # kept fold from the third, and vctrs folds the kept chunks again.

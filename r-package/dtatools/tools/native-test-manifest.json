@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "c908d8e945574146c201e15e0b3562b2011c7e199b5a49ff6d89675291ff4e7e"
+          "sha256": "0e418357d59509db299fa7265611f31530e0d5f58d20c6d294eaa8a72425edb8"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13961,6 +13961,30 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "storage promotion names each pair as the sorted key did",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "mixed storage folds call neither sort() nor paste()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "the summary gate declines mixed storages when promotion primitives change",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         },
         {
           "file": "test-dibble-expressions.R",
