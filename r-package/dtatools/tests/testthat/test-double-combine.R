@@ -215,15 +215,18 @@ test_that('combination retains strict-validator trace callbacks', {
     expect_identical(as.double(observed$public$y), c(2, 3, 4, 5))
 })
 
-test_that("combination retains registered character methods used by metadata", {
+test_that("combination admits registered character methods its metadata never calls", {
     pieces <- .combine_warm()
+    native_expected <- .combine_profile_expected()
     calls <- 0L
     method <- function(x, ...) {
         calls <<- calls + 1L
         base::unique.default(x, ...)
     }
     .combine_with_method("unique", "character", method, function() {
-        declined <- .combine_attempt(pieces)
+        # Attribute planning matches names without unique(), so a character
+        # method neither runs on the R path nor blocks the native one.
+        native <- .combine_attempt(pieces)
         speculative <- calls
         calls <<- 0L
         expected <- vctrs::list_unchop(pieces)
@@ -231,12 +234,17 @@ test_that("combination retains registered character methods used by metadata", {
         calls <<- 0L
         actual <- .combine_dta_double(pieces)
         actual_calls <- calls
-        expect_null(declined)
         expect_identical(speculative, 0L)
-        expect_gt(expected_calls, 0L)
-        expect_identical(actual_calls, expected_calls)
+        expect_identical(expected_calls, 0L)
+        expect_identical(actual_calls, 0L)
         expect_identical(.combine_bits(actual), .combine_bits(expected))
         expect_identical(attributes(actual), attributes(expected))
+        if (native_expected) {
+            expect_identical(list(.combine_bits(native), attributes(native)),
+                             list(.combine_bits(expected), attributes(expected)))
+        } else {
+            expect_null(native)
+        }
     }, namespace = "base")
 })
 
