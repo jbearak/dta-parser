@@ -6220,7 +6220,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "cbada7ce3566cb1a7e4d03d18e9081d48a8fb5b04ca9f0ab4bd3c74887fb58c9"
+          "sha256": "300090635321826623a2bf3d47774dbb0f53a014ec53b364f24de045adebd887"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6766,6 +6766,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "narrowed declarations on compact subsets count only the values held",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
         },
         {
           "file": "test-owned-columns.R",
