@@ -1032,6 +1032,24 @@ test_that("dplyr row verbs keep large compact strings visible", {
     )
 })
 
+test_that("materializing a compact view reads its values from the dictionary", {
+    fixture <- compact_subset_source()
+    x <- fixture$data$x
+    even <- seq(2L, length(x), by = 2L)
+    sliced <- vctrs::vec_slice(x, even)
+    # vec_c() reads the whole view through its data pointer, which fills the
+    # dictionary's cache as reading each value would.
+    expect_identical(
+        vctrs::vec_c(.dta_string_data(sliced), "end"),
+        c(fixture$raw[even], "end")
+    )
+    expect_identical(
+        .dictstring_cached_count(sliced), as.double(length(unique(fixture$raw[even])))
+    )
+    expect_true(.is_unmaterialized_dictstring(sliced))
+    expect_identical(as.character(sliced), fixture$raw[even])
+})
+
 test_that("narrowed declarations on compact subsets count only the values held", {
     path <- tempfile(fileext = ".arrow")
     withr::defer(unlink(path))

@@ -10,9 +10,12 @@
   `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
   R's generic attribute wrapper, which hid the dictionary, so the width check
   that follows read every value through the wrapper. On the 1,274,250-row,
-  1,644-column India 2021 DHS births file, `filter()` falls from about 0.54
-  to 0.43 seconds, `arrange()` from 0.60 to 0.48 seconds, and taking every
-  other row with `[` from 0.52 to 0.44 seconds. Results are unchanged.
+  1,644-column India 2021 DHS births file, `filter()` falls from about 0.55
+  to 0.44 seconds, `arrange()` from 0.60 to 0.48 seconds, and taking every
+  other row with `[` from 0.51 to 0.44 seconds. When vctrs needs all of a
+  compact column's values at once, as a join does, they are now read from
+  the dictionary directly rather than one at a time through R, in about a
+  quarter of the time. Results are unchanged.
 
 * Width checks on a compact string column count only the values it holds.
   A slice of a compact column shares its source's whole dictionary, so on a

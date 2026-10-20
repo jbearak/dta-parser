@@ -2606,7 +2606,9 @@ SEXP C_dtatools_dictstring_max_width(SEXP value) {
     if (root == R_NilValue) {
         Rf_error("value is not an unmaterialized dictionary string");
     }
-    size_t maximum = dictstring_used_width(root, 0);
+    size_t maximum = dictstring_used_width(
+        root, dictstring_dictionary_width(root, 0)
+    );
     UNPROTECT(1);
     return Rf_ScalarReal((double) maximum);
 }

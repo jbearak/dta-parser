@@ -1569,7 +1569,11 @@ SEXP C_dtatools_write_string_plan(SEXP value) {
     SEXP normalized = R_NilValue;
     SEXP dictionary_root = PROTECT(dictstring_read_root(value));
     if (dictionary_root != R_NilValue) {
-        maximum = dictstring_used_width(dictionary_root, 1);
+        /* Every dictionary value is checked, as before; only the width
+           counts just the values the column holds. */
+        maximum = dictstring_used_width(
+            dictionary_root, dictstring_dictionary_width(dictionary_root, 1)
+        );
         SEXP result = write_string_plan_result(maximum, 0, value);
         UNPROTECT(1);
         return result;
