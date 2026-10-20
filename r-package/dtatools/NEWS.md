@@ -47,6 +47,15 @@
   10,000 groups, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
   `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
 
+* Grouped `summarise()` and `reframe()` also stop folding per-group results
+  into a common type once it settles when the groups return compact Stata
+  bytes, ints, longs or floats, or mix up to four storage types or sets of
+  attributes. The mean of a byte column, a byte in groups where it is whole
+  and a float elsewhere, now settles too. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` on a byte column falls from 5.1 to 3.0 seconds,
+  `summarise(m = max(x))` from 4.1 to 1.5 seconds, and
+  `summarise(k = n())` from 3.6 to 1.3 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and

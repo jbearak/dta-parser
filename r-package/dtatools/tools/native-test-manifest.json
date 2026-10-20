@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "ebca78e85f43168e89d1f1dab4dd8ca2439a50495fb607dc89a602713dcd3a06"
+          "sha256": "c908d8e945574146c201e15e0b3562b2011c7e199b5a49ff6d89675291ff4e7e"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13926,6 +13926,41 @@
           "skip": "forbid",
           "min_pass": 1,
           "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "mixed compact summary types settle as vctrs folds them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing keeps the first three chunks and each first type",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "the summary gate admits mixed compact chunks and declines their methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "grouped compact summaries match the summaries folded in full",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-expressions.R",
