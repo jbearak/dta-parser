@@ -182,9 +182,9 @@
   column now fills its cells of each block of rows on the main thread, and
   the other columns still fill theirs on worker threads. On the
   1,274,250-row, 1,644-column India 2021 DHS birth history,
-  `save_dta(bh[, names(bh)])` falls from 35 to 1.5 seconds, and saving the
+  `save_dta(bh[, names(bh)])` falls from 34 to 1.4 seconds, and saving the
   result of an `m:1` merge with four columns of the women file falls from
-  42 to 1.3 seconds. Files are unchanged. A strL column still sends the
+  40 to 1.3 seconds. Files are unchanged. A strL column still sends the
   dataset to the row-by-row writer.
 
 * `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
