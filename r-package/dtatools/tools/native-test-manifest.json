@@ -16099,6 +16099,10 @@
         {
           "path": "tests/testthat/test-dictstring-short-subsets.R",
           "sha256": "bbf3e82ffe0602d3624bc90e0eb96be4ca0a6d2ffdcb143bc32077127e3754ef"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-shared-dictionary.R",
+          "sha256": "9a6a1ce2c5c9a53039aab3f46635706fb75ed634fd3e8864b6f8fb09d0993e27"
         }
       ],
       "blocks": [
@@ -17360,6 +17364,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-shared-dictionary.R",
+          "test": "compact subsets and copies keep the dictionary they share",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],
