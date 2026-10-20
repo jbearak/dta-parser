@@ -1719,7 +1719,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "7a1dcddc7929ea6cbabd48164330d48a9c940fd3647678b4216c8e4631867249"
+          "sha256": "e394bc36c0d844a6867351256833841efa92af6a5fe15c9be82f8d6050d46d8a"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -3308,6 +3308,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "public indexed combination admits grouped and rowwise row lists",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
