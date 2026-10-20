@@ -197,9 +197,11 @@ dta_append <- function(sources, force = TRUE,
 # An ungrouped dibble's columns are gathered natively, without the vctrs
 # methods that `vec_slice()` dispatches for each column. A grouped or
 # rowwise dibble keeps `vec_slice()`, since `slice_dta_rows()` would first
-# validate every group that the append then discards.
+# validate every group that the append then discards, and so does a dibble
+# with another class, which `slice_dta_rows()` refuses.
 .append_frame_schema <- function(source) {
-    if (is_dibble(source) && !inherits(source, c("grouped_df", "rowwise_df"))) {
+    if (is_dibble(source) && .plain_dibble_classes(source) &&
+        !inherits(source, c("grouped_df", "rowwise_df"))) {
         return(slice_dta_rows(source, integer()))
     }
     vctrs::vec_slice(source, integer())

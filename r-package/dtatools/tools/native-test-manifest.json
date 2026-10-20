@@ -14606,7 +14606,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-append.R",
-          "sha256": "2c371734b443dd152d14bc46137072b709531c4b79008910a0116d6ffbbe055b"
+          "sha256": "2c12eb209be052de7f90ff253af16cae986de51baa432e9cafea1fcd21920623"
         },
         {
           "path": "tests/testthat/test-dta-merge.R",
@@ -15222,11 +15222,19 @@
           "test": "a grouped dibble source appends as its ungrouped rows",
           "occurrence": 1,
           "skip": "require",
-          "min_pass": 4,
+          "min_pass": 1,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dta-append.R",
+          "test": "subclassed and column-free dibble sources append their rows",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
         },
         {
           "file": "test-dta-compare-native.R",

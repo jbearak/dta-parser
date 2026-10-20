@@ -93,6 +93,16 @@ test_that("a grouped dibble source appends as its ungrouped rows", {
         dta_append(list(grouped, source), output = "tibble"),
         dta_append(list(source, source), output = "tibble")
     )
+})
+
+test_that("subclassed and column-free dibble sources append their rows", {
+    source <- dibble(g = dta_byte(c(1, 1, 2)), x = dta_int(c(10, 20, 30)))
+    subclassed <- source
+    class(subclassed) <- c("custom", class(subclassed))
+    expect_identical(
+        dta_append(list(subclassed, source), output = "tibble"),
+        dta_append(list(source, source), output = "tibble")
+    )
     no_columns <- source[, integer()]
     expect_true(is_dibble(no_columns))
     padded <- dta_append(list(no_columns, source), output = "tibble")
