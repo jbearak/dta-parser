@@ -237,6 +237,13 @@ impl ReadCursor<'_> {
         }
         Some(unsafe { self.values.add((index - self.start) * self.source.width) })
     }
+
+    /// The value at `index` and the number of values, counting it, that
+    /// follow it contiguously in the same region.
+    pub(crate) fn run(&mut self, index: usize) -> Option<(*const u8, usize)> {
+        let value = self.at(index)?;
+        Some((value, self.end - index))
+    }
 }
 
 fn width(kind: NumericKind) -> usize {

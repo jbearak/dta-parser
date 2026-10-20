@@ -152,6 +152,15 @@
   5,360-column DHS file, a one-to-one merge that adds one variable falls
   from 0.34 to 0.13 seconds.
 
+* Gathering compact numeric columns by row, as `dta_merge()`, `filter()`,
+  `arrange()`, and `[` do, copies each value with a loop fixed to the
+  column's width and copies each run of 16 or more consecutive rows as one
+  block. Each column decides once, not once per row, how to test its values
+  for missing, and each worker takes the next column as it finishes one. On
+  the 1,274,250-row, 1,644-column India 2021 DHS birth history file, an
+  `m:1` merge on `caseid` falls from 2.0 to 1.5 seconds and `arrange(b2)`
+  from 0.54 to 0.37 seconds.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
   `regexec()`, check value-label table names in one call, and find the

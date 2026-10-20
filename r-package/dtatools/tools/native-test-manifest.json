@@ -8186,6 +8186,10 @@
           "sha256": "7e15ea1a555818995f21ff58f6b75e8de0fd8ce4370e2565f930cc0eba5d35eb"
         },
         {
+          "path": "tests/testthat/test-gather-runs.R",
+          "sha256": "fcfe5e0198d2cd3e5387f47cc8009df751dc392e17b7191824fe50ef1d77e0d6"
+        },
+        {
           "path": "tests/testthat/test-metadata-execution-profile.R",
           "sha256": "380bed1cb2dcadf0ea866e790628d6c92ef941121204d034ed4f48a8972d89b3"
         },
@@ -10493,6 +10497,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-gather-runs.R",
+          "test": "column gathers copy row runs across chunks and keep missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1044,
           "warnings": 0
         }
       ],

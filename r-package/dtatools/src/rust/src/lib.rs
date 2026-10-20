@@ -414,86 +414,180 @@ pub struct NumericGatherColumn {
     y_length: usize,
 }
 
-unsafe fn gathered_numeric_is_missing(column: NumericGatherColumn, value: *const u8) -> bool {
-    let kind = NumericKind::try_from(column.kind).expect("compact gather has a valid numeric kind");
-    let release =
-        u16::try_from(column.format_version).expect("compact gather has a valid format version");
-    let version =
-        FormatVersion::try_from(release).expect("compact gather has a supported format version");
-    match kind {
-        NumericKind::Byte => {
-            classify_byte_missing_for_version(value.cast::<i8>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Int => {
-            classify_int_missing_for_version(value.cast::<i16>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Long => {
-            classify_long_missing_for_version(value.cast::<i32>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Float => {
-            let value = value.cast::<f32>().read_unaligned();
-            value.is_nan()
-                || classify_float_missing_bits_for_version(value.to_bits(), version).is_some()
+/// A compact column's missing-value test, parsed once per column so the row
+/// loop carries no `try_from` parsing.
+#[derive(Clone, Copy)]
+enum GatherMissing {
+    Byte(FormatVersion),
+    Int(FormatVersion),
+    Long(FormatVersion),
+    Float(FormatVersion),
+}
+
+impl GatherMissing {
+    fn new(column: NumericGatherColumn) -> Option<Self> {
+        let release = u16::try_from(column.format_version).ok()?;
+        let version = FormatVersion::try_from(release).ok()?;
+        Some(match NumericKind::try_from(column.kind).ok()? {
+            NumericKind::Byte => Self::Byte(version),
+            NumericKind::Int => Self::Int(version),
+            NumericKind::Long => Self::Long(version),
+            NumericKind::Float => Self::Float(version),
+        })
+    }
+
+    unsafe fn is_missing(self, value: *const u8) -> bool {
+        match self {
+            Self::Byte(version) => {
+                classify_byte_missing_for_version(value.cast::<i8>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Int(version) => {
+                classify_int_missing_for_version(value.cast::<i16>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Long(version) => {
+                classify_long_missing_for_version(value.cast::<i32>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Float(version) => {
+                let value = value.cast::<f32>().read_unaligned();
+                value.is_nan()
+                    || classify_float_missing_bits_for_version(value.to_bits(), version).is_some()
+            }
         }
     }
+}
+
+/// Rows that read at least this many consecutive `x` values copy as blocks.
+const GATHER_MIN_RUN: usize = 16;
+
+/// The output ranges whose rows read at least `GATHER_MIN_RUN` consecutive
+/// `x` values. Every column of one gather shares the row plan, so the plan
+/// is scanned once rather than once for each column.
+fn gather_runs(x_rows: &[c_int]) -> Vec<(usize, usize)> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    while start < x_rows.len() {
+        if x_rows[start] < 0 {
+            start += 1;
+            continue;
+        }
+        let mut end = start + 1;
+        while end < x_rows.len()
+            && x_rows[end] >= 0
+            && i64::from(x_rows[end]) == i64::from(x_rows[end - 1]) + 1
+        {
+            end += 1;
+        }
+        if end - start >= GATHER_MIN_RUN {
+            runs.push((start, end));
+        }
+        start = end;
+    }
+    runs
 }
 
 unsafe fn gather_numeric_column(
     column: NumericGatherColumn,
     x_rows: &[c_int],
     y_rows: Option<&[c_int]>,
+    runs: &[(usize, usize)],
+) -> Option<()> {
+    match column.width {
+        1 => gather_numeric_width::<1>(column, x_rows, y_rows, runs),
+        2 => gather_numeric_width::<2>(column, x_rows, y_rows, runs),
+        4 => gather_numeric_width::<4>(column, x_rows, y_rows, runs),
+        8 => gather_numeric_width::<8>(column, x_rows, y_rows, runs),
+        _ => None,
+    }
+}
+
+/// Gather one column whose values are `W` bytes wide. Rows in `runs` copy
+/// as blocks, split where the source's storage regions end, and every other
+/// row copies alone. Missing values are counted as each row has always been
+/// counted: an absent row counts, and a copied value counts when the
+/// sources hold missing values and it is one.
+unsafe fn gather_numeric_width<const W: usize>(
+    column: NumericGatherColumn,
+    x_rows: &[c_int],
+    y_rows: Option<&[c_int]>,
+    runs: &[(usize, usize)],
 ) -> Option<()> {
     let x_read = owned_numeric::CompactRead::new(
         column.x_values as *const c_void,
         column.x_owner as *const c_void,
-        column.width,
+        W,
         column.x_length,
     )?;
     let y_read = if y_rows.is_some() {
         Some(owned_numeric::CompactRead::new(
             column.y_values as *const c_void,
             column.y_owner as *const c_void,
-            column.width,
+            W,
             column.y_length,
         )?)
+    } else {
+        None
+    };
+    let counting = column.missing_count != 0;
+    let classify = if counting && column.source_has_missing != 0 {
+        Some(GatherMissing::new(column)?)
     } else {
         None
     };
     let mut x_cursor = x_read.cursor();
     let mut y_cursor = y_read.as_ref().map(|read| read.cursor());
     let output = column.output as *mut u8;
+    let missing = column.missing.as_ptr();
+    let rows = x_rows.len();
     let mut missing_count = 0;
-    for (output_index, &x_index) in x_rows.iter().enumerate() {
-        let source = if x_index >= 0 {
-            x_cursor.at(x_index as usize)?
-        } else if let Some(cursor) = &mut y_cursor {
-            let y_index = y_rows.expect("paired gather requires y rows")[output_index];
-            if y_index >= 0 {
-                cursor.at(y_index as usize)?
+    let mut index = 0;
+    for &(run_start, run_end) in runs.iter().chain(std::iter::once(&(rows, rows))) {
+        while index < run_start {
+            let x_index = x_rows[index];
+            let target = output.add(index * W);
+            let source = if x_index >= 0 {
+                x_cursor.at(x_index as usize)?
+            } else if let Some(cursor) = &mut y_cursor {
+                let y_index = y_rows.expect("paired gather requires y rows")[index];
+                if y_index >= 0 {
+                    cursor.at(y_index as usize)?
+                } else {
+                    ptr::null()
+                }
             } else {
                 ptr::null()
+            };
+            if source.is_null() {
+                ptr::copy_nonoverlapping(missing, target, W);
+                if counting {
+                    missing_count += 1;
+                }
+            } else {
+                ptr::copy_nonoverlapping(source, target, W);
+                if classify.is_some_and(|classify| classify.is_missing(target)) {
+                    missing_count += 1;
+                }
             }
-        } else {
-            ptr::null()
-        };
-
-        let target = output.add(output_index * column.width);
-        if source.is_null() {
-            ptr::copy_nonoverlapping(column.missing.as_ptr(), target, column.width);
-        } else {
-            ptr::copy_nonoverlapping(source, target, column.width);
+            index += 1;
         }
-        if column.missing_count != 0
-            && (source.is_null()
-                || (column.source_has_missing != 0 && gathered_numeric_is_missing(column, target)))
-        {
-            missing_count += 1;
+        while index < run_end {
+            let (source, available) = x_cursor.run(x_rows[index] as usize)?;
+            let length = available.min(run_end - index);
+            let target = output.add(index * W);
+            ptr::copy_nonoverlapping(source, target, length * W);
+            if let Some(classify) = classify {
+                for offset in 0..length {
+                    if classify.is_missing(target.add(offset * W)) {
+                        missing_count += 1;
+                    }
+                }
+            }
+            index += length;
         }
     }
-    if column.missing_count != 0 {
+    if counting {
         (column.missing_count as *mut usize).write(missing_count);
     }
     Some(())
@@ -532,23 +626,28 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
         };
         // Grouped expression reads commonly gather one column at a time.
         // No column-level parallelism is available in that case.
+        let runs = gather_runs(x_rows);
         if column_count == 1 {
-            return unsafe { gather_numeric_column(columns[0], x_rows, y_rows) }.is_some();
+            return unsafe { gather_numeric_column(columns[0], x_rows, y_rows, &runs) }.is_some();
         }
         let workers = std::thread::available_parallelism()
             .map_or(1, usize::from)
             .min(column_count.max(1));
-        let columns_per_worker = column_count.div_ceil(workers);
 
+        // Columns differ in width, so each worker takes the next column as
+        // it finishes one rather than a fixed share of the columns.
         let ok = std::sync::atomic::AtomicBool::new(true);
+        let next = std::sync::atomic::AtomicUsize::new(0);
         std::thread::scope(|scope| {
-            for chunk in columns.chunks(columns_per_worker) {
-                let ok = &ok;
-                scope.spawn(move || {
-                    for &column in chunk {
-                        if unsafe { gather_numeric_column(column, x_rows, y_rows) }.is_none() {
-                            ok.store(false, std::sync::atomic::Ordering::Relaxed);
-                        }
+            for _ in 0..workers {
+                let (ok, next, runs) = (&ok, &next, &runs);
+                scope.spawn(move || loop {
+                    let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(&column) = columns.get(index) else {
+                        break;
+                    };
+                    if unsafe { gather_numeric_column(column, x_rows, y_rows, runs) }.is_none() {
+                        ok.store(false, std::sync::atomic::Ordering::Relaxed);
                     }
                 });
             }
@@ -559,6 +658,124 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
     match catch_unwind(AssertUnwindSafe(call)) {
         Ok(true) => 1,
         Ok(false) | Err(_) => 0,
+    }
+}
+
+#[cfg(test)]
+mod gather_tests {
+    use super::{gather_numeric_column, NumericGatherColumn};
+    use std::ffi::c_int;
+
+    /// Gather `rows` with the kernel and with one row at a time, and compare
+    /// the bytes and the missing count.
+    fn check<const W: usize>(
+        x: &[[u8; W]],
+        y: Option<(&[[u8; W]], &[c_int])>,
+        rows: &[c_int],
+        kind: c_int,
+        missing: impl Fn(&[u8; W]) -> bool,
+    ) {
+        let mut output = vec![[0_u8; W]; rows.len()];
+        let mut count = usize::MAX;
+        let mut pattern = [0_u8; 8];
+        pattern[..W].fill(0x65);
+        let column = NumericGatherColumn {
+            x_values: x.as_ptr() as usize,
+            y_values: y.map_or(0, |(values, _)| values.as_ptr() as usize),
+            output: output.as_mut_ptr() as usize,
+            width: W,
+            missing: pattern,
+            missing_count: if kind < 0 {
+                0
+            } else {
+                &mut count as *mut usize as usize
+            },
+            kind: kind.max(0),
+            format_version: if kind < 0 { 0 } else { 119 },
+            source_has_missing: c_int::from(
+                x.iter().any(&missing) || y.is_some_and(|(values, _)| values.iter().any(&missing)),
+            ),
+            x_owner: 0,
+            y_owner: 0,
+            x_length: x.len(),
+            y_length: y.map_or(0, |(values, _)| values.len()),
+        };
+        let runs = super::gather_runs(rows);
+        unsafe { gather_numeric_column(column, rows, y.map(|(_, rows)| rows), &runs) }.unwrap();
+        let mut expected = Vec::new();
+        let mut expected_count = 0;
+        for (index, &row) in rows.iter().enumerate() {
+            let value = if row >= 0 {
+                Some(x[row as usize])
+            } else {
+                y.and_then(|(values, y_rows)| {
+                    (y_rows[index] >= 0).then(|| values[y_rows[index] as usize])
+                })
+            };
+            let value = value.unwrap_or_else(|| {
+                expected_count += 1;
+                pattern[..W].try_into().unwrap()
+            });
+            if row >= 0 || y.is_some_and(|(_, y_rows)| y_rows[index] >= 0) {
+                expected_count += usize::from(missing(&value));
+            }
+            expected.push(value);
+        }
+        assert_eq!(output, expected);
+        if kind >= 0 {
+            assert_eq!(count, expected_count);
+        }
+    }
+
+    #[test]
+    fn column_gather_copies_runs_and_counts_like_single_rows() {
+        let rows: Vec<c_int> = (0..40)
+            .chain([-1, -1, -1])
+            .chain((60..90).rev())
+            .chain((100..200).step_by(3))
+            .chain([199, 0, 1, 2, -1, 3, 4])
+            .chain(150..200)
+            .collect();
+        let bytes: Vec<[u8; 1]> = (0..200)
+            .map(|i| [if i % 9 == 0 { 101 } else { (i % 90) as u8 }])
+            .collect();
+        // Byte storage from format 113 treats 101 through 127 as missing.
+        let byte_missing = |value: &[u8; 1]| (101..=127).contains(&(value[0] as i8));
+        check::<1>(&bytes, None, &rows, 0, byte_missing);
+        check::<1>(&bytes, None, &[], 0, byte_missing);
+        check::<1>(&bytes, None, &[-1, -1], 0, byte_missing);
+        let y_rows: Vec<c_int> = rows
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                if index % 4 == 0 {
+                    -1
+                } else {
+                    (index % 150) as c_int
+                }
+            })
+            .collect();
+        check::<1>(
+            &bytes,
+            Some((&bytes[..150], &y_rows)),
+            &rows,
+            0,
+            byte_missing,
+        );
+        let ints: Vec<[u8; 2]> = (0..200_i16).map(|i| (i * 37).to_le_bytes()).collect();
+        check::<2>(&ints, None, &rows, 1, |value| {
+            i16::from_le_bytes(*value) > 32_740
+        });
+        let longs: Vec<[u8; 4]> = (0..200_i32)
+            .map(|i| (i * 1_000_003).to_le_bytes())
+            .collect();
+        check::<4>(&longs, None, &rows, 2, |value| {
+            i32::from_le_bytes(*value) > 2_147_483_620
+        });
+        let doubles: Vec<[u8; 8]> = (0..200)
+            .map(|i| (f64::from(i) / 3.0).to_le_bytes())
+            .collect();
+        check::<8>(&doubles, None, &rows, -1, |_| false);
     }
 }
 
