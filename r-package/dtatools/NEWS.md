@@ -11,6 +11,12 @@
   5,360-column DHS file it falls from about 0.14 to 0.05 seconds. Results
   and errors are unchanged.
 
+* `summ()` with a varlist of column names, which includes the default of
+  every column, builds each variable's entry from its name and label,
+  rather than through the expansion that factor variables, interactions,
+  and time-series operators need. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 1.5 to 0.87 seconds.
+
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
   `reframe()`, match the result's column names to the prior columns in
@@ -24,6 +30,14 @@
   `unique()` falls from about 2.4 seconds to 0.03 seconds, and `factor()`,
   `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
   Results and errors are unchanged.
+
+* `mean()` and `range()` on a Stata numeric compare each base R closure
+  they depend on once per call, rather than once for every binding that
+  holds it, when they check that base dispatch is unchanged. A `mean()` of
+  20 values falls from 161 to 44 microseconds. Over 10,000 groups of
+  100,000 rows, `gen(d, z = mean(x), by = g)` falls from 2.9 to 1.5 seconds,
+  and grouped `summarise()` and `mutate()` with `mean()` from 5.2 to 3.5
+  seconds.
 
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
