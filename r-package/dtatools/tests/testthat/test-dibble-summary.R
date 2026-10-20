@@ -556,3 +556,21 @@ test_that("a fresh session settles the summary common type after grouped summari
     expect_identical(observed$settled, .dtatools_numeric_entry_expected())
     expect_identical(observed$means, seq(1.5, 17.5, by = 2))
 })
+
+test_that("declined summary common typing runs the original compiled call", {
+    expected <- lapply(c(3L, 9L), function(n)
+        vctrs::vec_ptype_common(!!!lapply(seq_len(n), dta_double)))
+    # A traced `::` receives symbols from interpreted calls and strings from
+    # compiled ones, and it declines the native check. The trace ends before
+    # testthat's own interpreted calls run.
+    traced <- function() {
+        suppressMessages(suppressWarnings(
+            trace("::", tracer = quote(NULL), print = FALSE, where = baseenv())))
+        on.exit(suppressMessages(untrace("::", where = baseenv())))
+        lapply(c(3L, 9L), function(n) {
+            chunks <- lapply(seq_len(n), dta_double)
+            dtatools:::.dibble_summary_ptype(chunks, "v", NULL, 0L)
+        })
+    }
+    expect_identical(traced(), expected)
+})
