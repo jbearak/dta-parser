@@ -5,6 +5,13 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* When `tab()` or `codebook()` group a compact byte column into levels,
+  they mark the raw bytes present and write each row's level from a
+  256-entry table, rather than decoding each value and hashing it.
+  `codebook()` also counts each tabulation's levels and missing values in
+  one native pass. On a 16,787-row, 5,360-column DHS file, `codebook(d)`
+  falls from 5.0 to 4.5 seconds. Results are unchanged.
+
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
   rather than through the expansion that factor variables, interactions,

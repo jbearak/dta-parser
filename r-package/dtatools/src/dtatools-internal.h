@@ -526,6 +526,9 @@ DTATOOLS_INTERNAL int dtatools_write_string_region(
 DTATOOLS_INTERNAL SEXP C_dtatools_capture_string(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_string(SEXP value, SEXP storage);
 DTATOOLS_INTERNAL SEXP C_dtatools_write_string_plan(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_level_counts(
+    SEXP codes, SEXP levels, SEXP count
+);
 DTATOOLS_INTERNAL SEXP C_dtatools_factorize_numeric(
     SEXP value, SEXP seeds, SEXP missing_mode
 );

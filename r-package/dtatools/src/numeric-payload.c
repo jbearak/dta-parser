@@ -1802,6 +1802,103 @@ static void numeric_level_sort(numeric_level_entry *levels, size_t count) {
     }
 }
 
+/* Byte storage holds at most 256 raw values, and with no date scaling
+   their order is the order of the values they decode to. One pass marks
+   the raw values present, the levels and missing codes follow from the
+   marks in raw order, and a second pass writes each row's code from a
+   table. The codes, levels and missing codes are those of the general loop
+   below, without decoding each row or hashing its value. */
+typedef struct {
+    int writing;
+    unsigned char seen[256];
+    int map[256];
+    int *codes;
+} numeric_byte_factor_state;
+
+static void numeric_byte_factor_span(
+    const numeric_data *span, size_t offset, void *context
+) {
+    numeric_byte_factor_state *state = context;
+    const unsigned char *raw = span->values;
+    for (size_t begin = 0; begin < span->length; ) {
+        size_t size = span->length - begin;
+        if (size > 65536) size = 65536;
+        if (span->length >= 16384) R_CheckUserInterrupt();
+        if (!state->writing) {
+            for (size_t i = begin; i < begin + size; i++)
+                state->seen[raw[i]] = 1;
+        } else {
+            int *codes = state->codes + offset;
+            for (size_t i = begin; i < begin + size; i++)
+                codes[i] = state->map[raw[i]];
+        }
+        begin += size;
+    }
+}
+
+static SEXP numeric_byte_factor(
+    const numeric_data *data, int missing_mode, SEXP codes
+) {
+    numeric_byte_factor_state state;
+    memset(&state, 0, sizeof(state));
+    numeric_for_each_span(data, 0, data->length, numeric_byte_factor_span,
+                          &state);
+    int missing_seen[257] = {0};
+    int level_count = 0;
+    double level_values[256];
+    for (int value = INT8_MIN; value <= INT8_MAX; value++) {
+        unsigned char index = (unsigned char) (int8_t) value;
+        if (!state.seen[index]) continue;
+        int missing = byte_missing_offset((int8_t) value, data->format_version);
+        if (missing < 0) {
+            level_values[level_count] = (double) value;
+            state.map[index] = ++level_count;
+        } else if (missing_mode == 1) {
+            int code = missing == 0 ? 0 : 'a' + missing - 1;
+            missing_seen[code] = 1;
+            state.map[index] = -(code + 1);
+        } else {
+            state.map[index] = NA_INTEGER;
+        }
+    }
+    int missing_positions[257] = {0};
+    int missing_count = 0;
+    for (int code = 0; code <= 256; code++) {
+        if (missing_seen[code]) missing_positions[code] = ++missing_count;
+    }
+    for (int index = 0; index < 256; index++) {
+        int code = state.map[index];
+        if (state.seen[index] && code < 0 && code != NA_INTEGER)
+            state.map[index] = level_count + missing_positions[-code - 1];
+    }
+    state.writing = 1;
+    state.codes = INTEGER(codes);
+    numeric_for_each_span(data, 0, data->length, numeric_byte_factor_span,
+                          &state);
+
+    PROTECT(codes);
+    SEXP values = PROTECT(Rf_allocVector(REALSXP, level_count));
+    for (int index = 0; index < level_count; index++)
+        REAL(values)[index] = level_values[index];
+    SEXP missing_codes = PROTECT(Rf_allocVector(INTSXP, missing_count));
+    for (int code = 0; code <= 256; code++) {
+        if (missing_positions[code] != 0) {
+            INTEGER(missing_codes)[missing_positions[code] - 1] = code;
+        }
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(result, 0, codes);
+    SET_VECTOR_ELT(result, 1, values);
+    SET_VECTOR_ELT(result, 2, missing_codes);
+    SEXP result_names = PROTECT(Rf_allocVector(STRSXP, 3));
+    SET_STRING_ELT(result_names, 0, Rf_mkChar("codes"));
+    SET_STRING_ELT(result_names, 1, Rf_mkChar("values"));
+    SET_STRING_ELT(result_names, 2, Rf_mkChar("missing_codes"));
+    Rf_setAttrib(result, R_NamesSymbol, result_names);
+    UNPROTECT(5);
+    return result;
+}
+
 static void numeric_factor_cleanup(void *data) {
     numeric_factor_context *context = (numeric_factor_context *) data;
     free(context->entries);
@@ -1816,6 +1913,14 @@ static SEXP numeric_factor_body(void *data) {
     int *code_values = INTEGER(codes);
     int missing_seen[257] = {0};
     numeric_reader reader = numeric_reader_create(context->value, length);
+    if (context->seeds == R_NilValue && reader.storage != NULL &&
+        reader.storage->kind == NUMERIC_BYTE && reader.storage->temporal == 0) {
+        SEXP result = numeric_byte_factor(
+            reader.storage, context->missing_mode, codes
+        );
+        UNPROTECT(1);
+        return result;
+    }
 
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -1944,6 +2049,47 @@ SEXP C_dtatools_factorize_numeric(
     return R_ExecWithCleanup(
         numeric_factor_body, &context, numeric_factor_cleanup, &context
     );
+}
+
+/* A factor's code counts for levels 1 to `levels`, as tabulate() gives
+   them, and its NA count, from one pass over integer codes. A factor built
+   by structure() usually wraps its codes, so they are read through the
+   wrapper's pointer. Codes with no pointer to read without allocating are
+   left to R. `count` false skips the per-level counts. */
+SEXP C_dtatools_level_counts(SEXP codes, SEXP levels, SEXP count) {
+    if (TYPEOF(codes) != INTSXP || TYPEOF(levels) != INTSXP ||
+        XLENGTH(levels) != 1 || INTEGER(levels)[0] < 0) return R_NilValue;
+    const int *code = (const int *) DATAPTR_OR_NULL(codes);
+    if (code == NULL) return R_NilValue;
+    int bins = INTEGER(levels)[0], counting = Rf_asLogical(count) == TRUE;
+    R_xlen_t length = XLENGTH(codes);
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, bins));
+    int *tally = INTEGER(counts);
+    memset(tally, 0, (size_t) bins * sizeof(int));
+    R_xlen_t absent = 0;
+    for (R_xlen_t start = 0; start < length; start += 65536) {
+        R_CheckUserInterrupt();
+        R_xlen_t end = length - start < 65536 ? length : start + 65536;
+        if (counting) {
+            for (R_xlen_t i = start; i < end; i++) {
+                int value = code[i];
+                if (value == NA_INTEGER) absent++;
+                else if (value >= 1 && value <= bins) tally[value - 1]++;
+            }
+        } else {
+            for (R_xlen_t i = start; i < end; i++)
+                absent += code[i] == NA_INTEGER;
+        }
+    }
+    if (absent > INT_MAX) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(result, 0, counts);
+    SET_VECTOR_ELT(result, 1, Rf_ScalarInteger((int) absent));
+    UNPROTECT(2);
+    return result;
 }
 
 #include "numeric-decode.h"
