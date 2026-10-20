@@ -55,6 +55,43 @@ SEXP dictstring_read_root(SEXP value) {
     return root;
 }
 
+/* The widest value in bytes among the ids a compact dictionary string holds,
+   read through a pinned dictstring_read_root(). A subset keeps its source's
+   whole dictionary, so values it no longer holds must not count. Each
+   distinct value is read once. With check_values, a value a Stata write
+   cannot hold is an error. */
+size_t dictstring_used_width(SEXP root, int check_values) {
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    unsigned char *seen = cardinality > 0
+        ? (unsigned char *) R_alloc((size_t) cardinality, 1) : NULL;
+    if (seen != NULL) memset(seen, 0, (size_t) cardinality);
+    size_t maximum = 0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= cardinality) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        if (seen[id]) continue;
+        seen[id] = 1;
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+            bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if (check_values && memchr(bytes, 0, (size_t) length) != NULL) {
+            Rf_error("character values cannot contain NUL bytes");
+        }
+        if (check_values && (uint64_t) length > UINT64_C(2000000000)) {
+            Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
+        }
+        if ((size_t) length > maximum) maximum = (size_t) length;
+    }
+    return maximum;
+}
+
 static SEXP dictstring_cached_value(
     dictstring_data *data, SEXP cache, uint32_t id
 ) {

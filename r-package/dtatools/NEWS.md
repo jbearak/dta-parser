@@ -14,6 +14,12 @@
   to 0.43 seconds, `arrange()` from 0.60 to 0.48 seconds, and taking every
   other row with `[` from 0.52 to 0.44 seconds. Results are unchanged.
 
+* Width checks on a compact string column count only the values it holds.
+  A slice of a compact column shares its source's whole dictionary, so on a
+  slice of fewer than 64 rows, `dibble()` and `save_dta()` widened a
+  narrower declaration such as `dta_string(x[rows], "str1")` to fit the
+  widest value anywhere in the source.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
   formats of each kind that passed their check in a write, so a later
   column with one of those formats skips the check. A format that carries

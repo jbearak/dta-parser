@@ -1032,6 +1032,30 @@ test_that("dplyr row verbs keep large compact strings visible", {
     )
 })
 
+test_that("narrowed declarations on compact subsets count only the values held", {
+    path <- tempfile(fileext = ".arrow")
+    withr::defer(unlink(path))
+    raw <- rep(c("a", "very long value"), length.out = 512L)
+    save_arrow(data.frame(x = raw), path)
+    x <- read_arrow(path)$x
+    # Both subsets keep the source's dictionary, with a long value neither holds.
+    for (rows in c(10L, 256L)) {
+        odd <- seq(1L, by = 2L, length.out = rows)
+        narrowed <- dta_string(x[odd], "str1")
+        expect_true(.is_unmaterialized_dictstring(narrowed))
+        expect_identical(.dictstring_max_width(narrowed), 1)
+        expect_identical(.Call(C_dtatools_write_string_plan, narrowed)[[1L]], 1)
+        data <- dibble(v = narrowed)
+        expect_identical(attr(data$v, "stata.string.storage", exact = TRUE), "str1")
+        out <- tempfile(fileext = ".dta")
+        withr::defer(unlink(out))
+        save_dta(data, out)
+        back <- read_dta(out)
+        expect_identical(attr(back$v, "stata.string.storage", exact = TRUE), "str1")
+        expect_identical(as.character(back$v), rep("a", rows))
+    }
+})
+
 test_that("large string construction captures borrowed values before removing metadata", {
     skip_if_not_installed("data.table")
     for (rows in c(64L, 1000L, 1000000L)) for (unknown in c(FALSE, TRUE)) {
