@@ -187,13 +187,14 @@
   5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
   are unchanged.
 
-* `save_dta()` writes a strL column from an ordinary character vector in
-  time that grows with its rows. Planning rereads the first row of each
-  repeated value, and once the column passed its first region of about
-  350,000 rows, each reread refilled that region from the earlier row and
-  the next row refilled it again. An earlier row now comes alone. Saving
-  500,000 rows of 20 DHS columns with a strL note that repeats on every
-  seventh row falls from 190 to 0.33 seconds. Files are unchanged.
+* `save_dta()` no longer takes minutes to write a strL column from an
+  ordinary character vector of more than about 350,000 rows. Planning
+  rereads the first row of each repeated value. Past the first region of
+  string pointers, each reread refilled the region from that earlier row,
+  and the next row refilled it again. An earlier row is now read by
+  itself. Saving 500,000 rows of 20 DHS columns plus a note column that
+  holds either a 3,000-byte value or `"short"` falls from 190 to 0.33
+  seconds. Files are unchanged.
 
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk

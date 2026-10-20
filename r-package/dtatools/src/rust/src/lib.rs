@@ -5158,10 +5158,11 @@ impl<'a> RWriteSource<'a> {
             .string_region
             .as_ref()
             .ok_or_else(|| "R character callback source is unavailable".to_owned())?;
-        // A later row right after one the lookback served starts a forward
-        // scan, as the write pass and the pass over canonical strL rows do
-        // after planning, so it refills `region`. Planning reads a forward
-        // row between any two lookbacks.
+        // A later row read just after the lookback served one starts a
+        // forward scan, as the write pass and the pass over canonical strL
+        // rows make after planning, so it refills `region`. Planning reads
+        // a forward row between lookbacks, unless a hash matches several
+        // earlier values.
         let restart = cache
             .looked_back
             .get()
