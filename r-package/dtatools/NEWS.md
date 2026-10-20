@@ -40,6 +40,16 @@
   and time-series operators need. On a 16,787-row, 5,360-column DHS file,
   `summ(d)` falls from 1.5 to 0.87 seconds.
 
+* `summ()` does less work for each variable. It copies a group's weights
+  once rather than once per variable, and skips the part of an unused
+  observation check that cannot fail. Without weights, it reads compact
+  byte, int, and long columns directly, sums them in integers, and with
+  `detail = TRUE` sorts their observed values by counting them. Detailed
+  percentiles find all nine positions with one search rather than nine
+  scans of the running totals. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 0.75 to 0.28 seconds and `summ(d, detail = TRUE)`
+  from 2.0 to 0.57 seconds. Results are unchanged.
+
 * Indexing an empty `byte`, `int`, `long`, or `float` Stata numeric returns
   ordinary missing doubles, rather than compact storage of missing values.
   vctrs starts each combined column this way from the zero-length common
