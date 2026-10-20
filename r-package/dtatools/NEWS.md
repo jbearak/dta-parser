@@ -71,6 +71,21 @@
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
 
+* Grouped `summarise()` and `reframe()` stop folding an expression's
+  per-group results into a common type once the type settles. When there are
+  at least eight groups, every group returns a plain Stata double with the
+  same attributes, and the Stata numeric methods are unchanged, the first
+  three groups give the common type. Other results are folded over every
+  group as before. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds, and
+  `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
+
+* Grouped `summarise()` and `reframe()` combine per-group plain Stata
+  doubles natively, without casting each group's result to the common type
+  twice, when the Stata numeric methods are unchanged. On 100,000 rows in
+  10,000 groups, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
+  `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
+
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
@@ -85,6 +100,14 @@
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
+
+* `mutate()` on a dibble grouped with `group_by()` or `rowwise()` assembles
+  per-group Stata doubles natively, as it already did with `.by`. dplyr keeps
+  each group's rows in a `list_of`, which native assembly declined, so every
+  group's result went through vctrs. On 100,000 rows in 10,000 groups,
+  `mutate(y = x * 2)` falls from 3.1 to 0.6 seconds and `mutate(m = mean(x))`
+  from 4.6 to 2.5 seconds. On 10,000 rowwise rows, `mutate(s = a + b)` falls
+  from 3.3 to 0.6 seconds.
 
 * `dta_append()` skips reconciling a Stata numeric or string variable whose
   sources declare it identically apart from value labels. It takes an empty
