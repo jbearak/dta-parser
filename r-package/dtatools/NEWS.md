@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `tab()`, `tab1()`, and `tab2()` copy less on large data. Without `where`
+  or `rows`, they take each group's rows as the sample, rather than
+  rebuilding it through `sort(unique())` and `match()`. When they drop no
+  row for a missing value or a zero or missing weight, they use the inputs
+  as they are rather than copying subsets. They find the first row of each
+  category, which its label and value come from, in one native pass that
+  stops once every category has a row. On the 1,274,250-row India 2021 DHS
+  births file, `tab(v024, data = bh)` falls from about 0.069 to 0.024
+  seconds and `tab(v024, b4, data = bh)` from 0.10 to 0.036. Results are
+  unchanged.
+
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
   from one by `keep_vars()` or `gen()`, warned that it dropped the row
