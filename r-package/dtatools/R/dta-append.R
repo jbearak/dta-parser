@@ -194,10 +194,14 @@ dta_append <- function(sources, force = TRUE,
 }
 
 # A zero-row copy of a frame source, which holds each column's prototype.
-# A dibble's columns are gathered natively, without the vctrs methods that
-# `vec_slice()` dispatches for each column.
+# An ungrouped dibble's columns are gathered natively, without the vctrs
+# methods that `vec_slice()` dispatches for each column. A grouped or
+# rowwise dibble keeps `vec_slice()`, since `slice_dta_rows()` would first
+# validate every group that the append then discards.
 .append_frame_schema <- function(source) {
-    if (is_dibble(source)) return(slice_dta_rows(source, integer()))
+    if (is_dibble(source) && !inherits(source, c("grouped_df", "rowwise_df"))) {
+        return(slice_dta_rows(source, integer()))
+    }
     vctrs::vec_slice(source, integer())
 }
 
