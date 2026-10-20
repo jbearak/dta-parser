@@ -11,7 +11,7 @@
   once and checks a table's codes for gaps without sorting them. On the
   16,787-row, 5,360-column Senegal 2017 DHS women's file, which has a table
   for each of 4,831 labelled variables, `labelbook(d)` falls from about
-  0.61 to 0.35 seconds. Results are unchanged.
+  0.57 to 0.31 seconds. Results are unchanged.
 
 * `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
   formats of each kind that passed their check in a write, so a later
