@@ -542,8 +542,10 @@ test_that("interpreted summary common typing calls no added base predicates", {
 test_that("a fresh session settles the summary common type after grouped summaries", {
     skip_if_not_installed("dplyr", "1.2.1")
     skip_if_not_installed("callr")
-    observed <- callr::r(function() {
-        library(dtatools)
+    # Load the package under test, which an installed copy may predate.
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    observed <- callr::r(function(package_path, load_package) {
+        load_package(package_path)
         data <- dplyr::group_by(dibble(g = rep(1:9, each = 2),
                                        x = dta_double(as.double(1:18))), g)
         result <- dplyr::summarise(data, m = mean(x))
@@ -552,7 +554,8 @@ test_that("a fresh session settles the summary common type after grouped summari
             dtatools:::.summary_ptype_dependencies, dtatools:::.summary_routine_state)
         chunks <- lapply(1:9, dta_double)
         list(settled = !is.null(gate(chunks)), means = as.double(result$m))
-    }, libpath = .libPaths())
+    }, args = list(package_path = package_path, load_package = load_dtatools_for_subprocess),
+    libpath = .libPaths())
     expect_identical(observed$settled, .dtatools_numeric_entry_expected())
     expect_identical(observed$means, seq(1.5, 17.5, by = 2))
 })
