@@ -5158,11 +5158,14 @@ impl<'a> RWriteSource<'a> {
             .string_region
             .as_ref()
             .ok_or_else(|| "R character callback source is unavailable".to_owned())?;
-        // The row after one the lookback served starts a forward scan, as
-        // the write pass does after planning, so it refills `region`.
-        let restart = row
-            .checked_sub(1)
-            .is_some_and(|previous| cache.looked_back.get() == Some(previous));
+        // A later row right after one the lookback served starts a forward
+        // scan, as the write pass and the pass over canonical strL rows do
+        // after planning, so it refills `region`. Planning reads a forward
+        // row between any two lookbacks.
+        let restart = cache
+            .looked_back
+            .get()
+            .is_some_and(|previous| row > previous);
         let behind = {
             let region = cache.region.borrow();
             !region.values.is_empty() && row < region.start && !restart
@@ -6147,8 +6150,22 @@ mod tests {
                 column.values[row]
             );
         }
+        {
+            let regions = column.regions.lock().unwrap();
+            assert_eq!(regions.first(), Some(&(1, 64)), "{regions:?}");
+            assert_eq!(regions.len(), 16, "{regions:?}");
+        }
+        // So does a sparse forward pass, as writing the canonical values
+        // makes. Row 0 is still in the lookback.
+        column.regions.lock().unwrap().clear();
+        for row in (0..rows).step_by(2) {
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+        }
         let regions = column.regions.lock().unwrap();
-        assert_eq!(regions.first(), Some(&(1, 64)), "{regions:?}");
+        assert_eq!(regions.first(), Some(&(2, 64)), "{regions:?}");
         assert_eq!(regions.len(), 16, "{regions:?}");
     }
 
