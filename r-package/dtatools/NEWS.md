@@ -37,7 +37,7 @@
   at least eight groups, every group returns a plain Stata double with the
   same attributes, and the Stata numeric methods are unchanged, the first
   three groups give the common type. Other results are folded over every
-  group as before. Over 10,000 groups of 100,000 rows,
+  group as before. On 100,000 rows in 10,000 groups,
   `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds, and
   `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
 
