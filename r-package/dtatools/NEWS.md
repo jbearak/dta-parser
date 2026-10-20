@@ -5,6 +5,12 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `summ()` with a varlist of column names, which includes the default of
+  every column, builds each variable's entry from its name and label,
+  rather than through the expansion that factor variables, interactions,
+  and time-series operators need. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 1.5 to 0.87 seconds.
+
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
   `reframe()`, match the result's column names to the prior columns in

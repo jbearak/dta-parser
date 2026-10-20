@@ -12,6 +12,7 @@
     # Matching every spec at once avoids hashing the column names per spec.
     # A literal name is the term .summarize_terms() would build for it.
     literal <- specs %in% names(data)
+    if (all(literal)) return(.summarize_literal_varlist(data, specs, sample))
     terms <- unlist(lapply(seq_along(specs), function(i) {
         spec <- specs[[i]]
         if (literal[[i]]) return(list(list(list(variable = spec, prefix = ""))))
@@ -265,6 +266,35 @@
         }
     }
     output
+}
+
+# A varlist of column names expands to one plain variable per name: no
+# factor, base, omission, empty cell or time operator applies, so each one
+# is displayed under its own name and label. This builds what the general
+# expansion above builds for such a varlist, one variable at a time and in
+# the same steps, without its per-term bookkeeping.
+.summarize_literal_varlist <- function(data, specs, sample) {
+    count <- length(specs)
+    values <- vector("list", count)
+    output_names <- headers <- character(count)
+    for (i in seq_len(count)) {
+        variable <- specs[[i]]
+        value <- data[[variable]]
+        label <- attr(value, "label", exact = TRUE)
+        if (is.null(label) || !is.character(label) || length(label) != 1L ||
+            is.na(label)) label <- ""
+        # The general expansion checks each variable for observations even
+        # when, as here, the answer cannot change whether it is displayed.
+        any(sample & !is.na(value))
+        name <- sub("^co\\.", "o.", sub("^c\\.", "",
+            sub("^([0-9]+)o\\.", "\\1.", variable)))
+        values[i] <- list(value)
+        output_names[[i]] <- name
+        headers[[i]] <- if (nzchar(label)) label else name
+    }
+    list(values = values, names = output_names, headers = headers,
+         factor_labels = character(count), factor_headers = character(count),
+         display = rep(TRUE, count))
 }
 
 .summarize_model_key <- function(component) {
