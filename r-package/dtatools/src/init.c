@@ -448,6 +448,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_dictstring_max_width, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
+    {"C_dtatools_construct_numeric_storage",
+     (DL_FUNC) &C_dtatools_construct_numeric_storage, 2},
     {"C_dtatools_force_altrep_materialization",
      (DL_FUNC) &C_dtatools_force_altrep_materialization, 1},
     {"C_dtatools_mutate_first_numeric_altrep",

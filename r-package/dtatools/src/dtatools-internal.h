@@ -859,6 +859,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_max_width(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_storage_matches(
     SEXP value, SEXP kind_value, SEXP temporal_value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric_storage(SEXP value, SEXP kind_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_rows_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_domain_info(SEXP value);

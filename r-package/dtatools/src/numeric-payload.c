@@ -2484,6 +2484,16 @@ SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
     SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(read_handle)));
     (void) source_backing;
     R_xlen_t length = XLENGTH(index);
+    if (data->length == 0 && length > 0) {
+        /* Every index of an empty source reads system missing. vctrs fills
+           each combined column this way from the zero-length common type,
+           then writes into it, which would materialize compact storage. */
+        SEXP result = PROTECT(Rf_allocVector(REALSXP, length));
+        double *output = REAL(result);
+        for (R_xlen_t i = 0; i < length; i++) output[i] = NA_REAL;
+        UNPROTECT(3);
+        return result;
+    }
     size_t width = numeric_kind_width(data->kind);
     if ((size_t) length > SIZE_MAX / width) {
         Rf_error("compact Stata numeric subset is too long");
@@ -4976,6 +4986,40 @@ static int numeric_constructor_missing_offset(double element) {
                sizeof(TYPE));                                             \
     }
 
+/* Publish constructed bytes in `backing`, which the caller protects, with
+   the facts that describe them. */
+static SEXP numeric_publish_constructed(
+    SEXP backing, size_t length, int kind, int temporal, size_t missing_count,
+    size_t zero_count, uint32_t float_maximum_magnitude,
+    uint32_t float_minimum_nonzero_magnitude
+) {
+    void *data = dtatools_numeric_alloc(
+        RAW(backing), length, kind, temporal, missing_count
+    );
+    if (data == NULL) {
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    /* Facts describe final encoded bytes, before publishing the descriptor. */
+    if (temporal == 0) {
+        numeric_data *storage = data;
+        storage->zero_count = zero_count;
+        storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+        if (kind == NUMERIC_FLOAT) {
+            storage->float_max_magnitude_bound = float_maximum_magnitude;
+            storage->float_min_nonzero_magnitude_bound = float_minimum_nonzero_magnitude;
+            storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+                NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+        }
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(2);
+    return result;
+}
+
 SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -5119,31 +5163,128 @@ SEXP C_dtatools_construct_numeric(
         }
     }
 
-    void *data = dtatools_numeric_alloc(
-        output, (size_t) length, kind, temporal, missing_count
+    SEXP result = numeric_publish_constructed(
+        backing, (size_t) length, kind, temporal, missing_count, zero_count,
+        float_maximum_magnitude, float_minimum_nonzero_magnitude
     );
-    if (data == NULL) {
-        UNPROTECT(1);
-        Rf_error("could not allocate compact Stata numeric storage");
+    UNPROTECT(1);
+    return result;
+}
+
+typedef struct {
+    double float_maximum;
+    unsigned char *output;
+    size_t missing_count;
+    size_t zero_count;
+    uint32_t float_maximum_magnitude;
+    uint32_t float_minimum_nonzero_magnitude;
+    int valid;
+} numeric_storage_copy_context;
+
+#define NUMERIC_STORAGE_COPY_INTEGERS(TYPE, MINIMUM, MAXIMUM)             \
+    for (size_t i = 0; i < span->length; i++) {                           \
+        TYPE raw;                                                         \
+        memcpy(&raw, bytes + i * sizeof(TYPE), sizeof(TYPE));             \
+        valid &= raw != (MINIMUM);                                        \
+        context->missing_count += raw > (MAXIMUM);                        \
+        context->zero_count += raw == 0;                                  \
     }
-    /* Facts describe final encoded bytes, before publishing the descriptor. */
-    if (temporal == 0) {
-        numeric_data *storage = data;
-        storage->zero_count = zero_count;
-        storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
-        if (kind == NUMERIC_FLOAT) {
-            storage->float_max_magnitude_bound = float_maximum_magnitude;
-            storage->float_min_nonzero_magnitude_bound = float_minimum_nonzero_magnitude;
-            storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
-                NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+
+/* Modern storage reads every raw value as a missing code or an observed
+   value. The observed values the constructor rejects are the integer
+   kinds' minimums, one below each range, and floats that are not finite or
+   exceed the largest float Stata stores. It encodes every other value to
+   the bytes it was read from, so a valid span is copied as it is, with the
+   counts and float bounds the constructor records. */
+static void numeric_storage_copy_span(
+    const numeric_data *span, size_t offset, void *raw_context
+) {
+    numeric_storage_copy_context *context = raw_context;
+    if (!context->valid) return;
+    const unsigned char *bytes = span->values;
+    int valid = 1;
+    switch (span->kind) {
+    case NUMERIC_BYTE:
+        NUMERIC_STORAGE_COPY_INTEGERS(int8_t, INT8_MIN, 100)
+        break;
+    case NUMERIC_INT:
+        NUMERIC_STORAGE_COPY_INTEGERS(int16_t, INT16_MIN, 32740)
+        break;
+    case NUMERIC_LONG:
+        NUMERIC_STORAGE_COPY_INTEGERS(int32_t, INT32_MIN, INT32_C(2147483620))
+        break;
+    case NUMERIC_FLOAT:
+        for (size_t i = 0; i < span->length && valid; i++) {
+            float raw;
+            uint32_t bits;
+            memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));
+            if (float_missing_offset(raw, span->format_version) >= 0) {
+                context->missing_count++;
+                continue;
+            }
+            valid = isfinite(raw) && fabs((double) raw) <= context->float_maximum;
+            memcpy(&bits, &raw, sizeof(bits));
+            uint32_t magnitude = bits & UINT32_C(0x7fffffff);
+            if (magnitude > context->float_maximum_magnitude)
+                context->float_maximum_magnitude = magnitude;
+            if (magnitude == 0) context->zero_count++;
+            else if (magnitude < context->float_minimum_nonzero_magnitude)
+                context->float_minimum_nonzero_magnitude = magnitude;
         }
+        break;
+    default:
+        valid = 0;
     }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
-    SEXP result = PROTECT(R_new_altrep(
-        dtatools_numeric_class, external, R_NilValue
-    ));
-    UNPROTECT(3);
+    context->valid = valid;
+    if (valid && span->length != 0) {
+        size_t width = numeric_kind_width(span->kind);
+        memcpy(context->output + offset * width, bytes, span->length * width);
+    }
+}
+
+/* The root of `value` when it is unmaterialized modern compact storage of
+   `kind` with no temporal encoding, or NULL. Legacy formats read wider
+   ranges and are left to the constructor. */
+static SEXP numeric_storage_copy_capture(SEXP value, int kind, numeric_data *captured) {
+    SEXP root = numeric_missing_mask_capture(value, captured);
+    return root != R_NilValue && captured->kind == kind && captured->temporal == 0 &&
+        captured->format_version > 111 &&
+        (R_xlen_t) captured->length == XLENGTH(value) ? root : R_NilValue;
+}
+
+/* Construct `kind` storage from compact storage of the same kind without
+   decoding it. When every stored value is one the constructor accepts, the
+   constructor would write the same bytes and facts, so the bytes are copied
+   and the facts counted in one pass. Return NULL for any other input, which
+   the constructor encodes with its diagnostics. */
+SEXP C_dtatools_construct_numeric_storage(SEXP value, SEXP kind_value) {
+    if (TYPEOF(value) != REALSXP || TYPEOF(kind_value) != INTSXP ||
+        XLENGTH(kind_value) != 1) return R_NilValue;
+    int kind = INTEGER(kind_value)[0];
+    if (kind < NUMERIC_BYTE || kind > NUMERIC_FLOAT) return R_NilValue;
+    numeric_data captured;
+    if (numeric_storage_copy_capture(value, kind, &captured) == R_NilValue)
+        return R_NilValue;
+    size_t width = numeric_kind_width(kind);
+    R_xlen_t length = XLENGTH(value);
+    if ((size_t) length > SIZE_MAX / width ||
+        (size_t) length * width > (size_t) R_XLEN_T_MAX) return R_NilValue;
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, (R_xlen_t) ((size_t) length * width)));
+    /* An allocation callback may materialize the input, so capture it again. */
+    SEXP root = PROTECT(numeric_storage_copy_capture(value, kind, &captured));
+    if (root == R_NilValue) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    numeric_storage_copy_context context = {
+        numeric_float_observed_limit(), RAW(backing), 0, 0, 0, UINT32_MAX, 1
+    };
+    numeric_for_each_span(&captured, 0, captured.length, numeric_storage_copy_span, &context);
+    SEXP result = context.valid ? numeric_publish_constructed(
+        backing, (size_t) length, kind, 0, context.missing_count, context.zero_count,
+        context.float_maximum_magnitude, context.float_minimum_nonzero_magnitude
+    ) : R_NilValue;
+    UNPROTECT(2);
     return result;
 }
 

@@ -431,6 +431,137 @@ test_that("vctrs restoration distinguishes storage and temporal encoding", {
     expect_identical(as.double(restored_date), c(0, 1, 2))
 })
 
+.storage_copied <- function(x, storage) {
+    !is.null(.Call(dtatools:::C_dtatools_construct_numeric_storage, x,
+                   match(storage, dtatools:::.dta_storage) - 1L))
+}
+
+.numeric_facts <- function(x) .Call(dtatools:::C_dtatools_numeric_facts_info, x)
+
+# What the constructor gave before it kept valid compact storage: every
+# value encoded again.
+.encoded_dta_numeric <- function(x, storage) {
+    result <- .Call(dtatools:::C_dtatools_construct_numeric, as.double(x),
+                    match(storage, dtatools:::.dta_storage) - 1L, 0L)
+    attr(result, "stata.storage") <- storage
+    attr(result, "class") <- dtatools:::.dta_storage_class(storage)
+    names(result) <- names(x)
+    result
+}
+
+test_that("construction copies compact storage the encoder accepts", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    data <- read_dta(path)
+    storages <- c(x_byte = "byte", x_int = "int", x_long = "long", x_float = "float")
+    same <- function(actual, expected) identical(
+        actual, expected, num.eq = FALSE, single.NA = FALSE, attrib.as.set = FALSE
+    )
+    for (name in names(storages)) {
+        storage <- storages[[name]]
+        x <- data[[name]]
+        expect_true(.storage_copied(x, storage), info = name)
+        expect_false(.storage_copied(x, if (storage == "byte") "int" else "byte"),
+                     info = name)
+        named <- x
+        names(named) <- paste0("row", seq_along(x))
+        described <- dtatools:::.construct_dta_numeric(double(), NULL, storage)
+        attr(described, "label") <- "Described"
+        attr(described, "format.stata") <- "%9.2f"
+        described <- set_val_labels(described, c(one = 1, two = 2))
+        for (value in list(x, named, x[3:9])) {
+            # Comparing values materializes them, so check storage first.
+            constructed <- dtatools:::.construct_dta_numeric(value, NULL, storage)
+            expect_true(
+                dtatools:::.is_unmaterialized_numeric_altrep(constructed), info = name
+            )
+            encoded <- .encoded_dta_numeric(value, storage)
+            expect_identical(.numeric_facts(constructed), .numeric_facts(encoded),
+                             info = name)
+            expect_true(same(constructed, encoded), info = name)
+            for (to in list(vctrs::vec_ptype(x), described)) {
+                cast <- vctrs::vec_cast(value, to)
+                expect_true(
+                    dtatools:::.is_unmaterialized_numeric_altrep(cast), info = name
+                )
+                expect_true(same(cast, dtatools:::.restore_dta_metadata(
+                    .encoded_dta_numeric(value, storage), to, storage
+                )), info = name)
+            }
+        }
+    }
+    expect_false(.storage_copied(c(1, 2), "byte"))
+    expect_false(.storage_copied(data$x_double, "float"))
+    expect_false(.storage_copied(data$x_byte, "double"))
+    expect_false(.storage_copied(data$x_byte, NA_character_))
+    materialized <- data$x_byte
+    dtatools:::.force_altrep_materialization(materialized)
+    expect_false(dtatools:::.is_unmaterialized_numeric_altrep(materialized))
+    expect_false(.storage_copied(materialized, "byte"))
+})
+
+test_that("construction from compact storage keeps its checks and coercion", {
+    shaped <- dta_byte(c(1, 2))
+    attr(shaped, "dim") <- c(2L, 1L)
+    expect_error(vctrs::vec_cast(shaped, dta_byte()),
+                 "`x` must be a logical, integer, or double vector")
+    calls <- 0L
+    trace("as.double.dta_numeric", tracer = function() calls <<- calls + 1L,
+          where = asNamespace("dtatools"), print = FALSE)
+    on.exit(untrace("as.double.dta_numeric", where = asNamespace("dtatools")))
+    expect_identical(as.double(vctrs::vec_cast(dta_byte(c(1, 2)), dta_byte())),
+                     c(1, 2))
+    expect_gt(calls, 0L)
+})
+
+test_that("construction encodes compact values the encoder rejects", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    # One below each integer range, and floats beyond the largest Stata
+    # float or not finite.
+    patch_numeric_fixture_row(path, 27L, list(
+        x_byte = as.raw(0x80), x_int = as.raw(c(0x00, 0x80)),
+        x_long = as.raw(c(0x00, 0x00, 0x00, 0x80)),
+        x_float = as.raw(c(0x01, 0x00, 0x00, 0x7f))
+    ))
+    data <- read_dta(path)
+    storages <- c(x_byte = "byte", x_int = "int", x_long = "long", x_float = "float")
+    for (name in names(storages)) {
+        x <- data[[name]]
+        expect_false(.storage_copied(x, storages[[name]]), info = name)
+        expect_error(vctrs::vec_cast(x, vctrs::vec_ptype(x)),
+                     "cannot represent", info = name)
+    }
+    for (bits in list(as.raw(c(0x00, 0x00, 0x80, 0x7f)),
+                      as.raw(c(0x00, 0x00, 0xc0, 0x7f)),
+                      as.raw(c(0xff, 0xff, 0x7f, 0xff)))) {
+        patch_numeric_fixture_row(path, 27L, list(x_float = bits))
+        x <- read_dta(path)$x_float
+        expect_false(.storage_copied(x, "float"))
+        expect_error(vctrs::vec_cast(x, vctrs::vec_ptype(x)))
+    }
+    # Format 111 reads bytes 101 and 102 as values, which Stata's byte
+    # storage no longer holds.
+    legacy <- read_dta(fixture("synthetic_v111.dta"))$b
+    expect_false(.storage_copied(legacy, "byte"))
+    expect_error(vctrs::vec_cast(legacy, dta_byte()),
+                 "Stata byte storage cannot represent")
+})
+
+test_that("indexing empty compact storage gives ordinary missing doubles", {
+    for (construct in list(dta_byte, dta_int, dta_long, dta_float)) {
+        proxy <- vctrs::vec_proxy(construct())
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(proxy))
+        selected <- .subset(proxy, c(NA_integer_, 3L, NA_integer_))
+        expect_identical(selected, rep(NA_real_, 3L))
+        expect_false(dtatools:::.is_unmaterialized_numeric_altrep(selected))
+        expect_identical(.subset(proxy, integer()), double())
+        expect_identical(
+            vctrs::vec_init(construct(), 2L), construct(c(NA_real_, NA_real_))
+        )
+    }
+})
+
 test_that("legacy compact widths preserve system missing encoding", {
     data <- read_dta(fixture("synthetic_v111.dta"))
 

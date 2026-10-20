@@ -253,12 +253,12 @@ dta_storage_type <- function(x) {
     values <- as.double(x)
     if (!identical(storage, "double") &&
         identical(temporal, .dta_temporal_none)) {
-        result <- .Call(
-            C_dtatools_construct_numeric,
-            values,
-            match(storage, .dta_storage) - 1L,
-            temporal
-        )
+        kind <- match(storage, .dta_storage) - 1L
+        # Compact storage of this kind that holds only values the encoder
+        # accepts would encode to the same bytes, so they are copied.
+        result <- .Call(C_dtatools_construct_numeric_storage, values, kind)
+        if (is.null(result))
+            result <- .Call(C_dtatools_construct_numeric, values, kind, temporal)
         attr(result, "stata.storage") <- storage
         attr(result, "class") <- .dta_storage_class(storage)
         names(result) <- value_names
@@ -538,8 +538,8 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_classes_from <- function(prototype, storage) {
     classes <- class(prototype)
-    storage_classes <- paste0("dta_", .dta_storage)
-    location <- classes %in% storage_classes
+    location <- classes %in%
+        c("dta_byte", "dta_int", "dta_long", "dta_float", "dta_double")
     if (any(location)) {
         classes[location] <- paste0("dta_", storage)
         return(classes)

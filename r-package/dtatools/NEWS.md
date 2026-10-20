@@ -5,6 +5,18 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Constructing a `byte`, `int`, `long`, or `float` Stata numeric from
+  compact storage of the same type copies the stored bytes, rather than
+  decoding and encoding every value again, when a native scan confirms
+  that each stored value is one the encoder accepts. Legacy formats and
+  out-of-range values are still encoded, with the encoder's errors. Casts
+  build through this constructor, so `bind_rows()`, `vctrs::vec_c()`,
+  `dplyr::if_else()`, and other vctrs operations on compact columns get
+  faster. Combined columns also start from ordinary missing doubles,
+  rather than reading an empty compact vector one index at a time. On a
+  16,787-row, 5,360-column DHS file, `bind_rows(d, d)` falls from 5.7 to
+  4.2 seconds.
+
 * Restoring a Stata numeric vector's attributes after vctrs slices, casts,
   or combines it matches the attribute names directly, rather than through
   `setdiff()` and `intersect()`, which check their arguments on every call.
