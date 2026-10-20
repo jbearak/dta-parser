@@ -170,7 +170,7 @@ dta_append <- function(sources, force = TRUE,
     kind <- .append_source_kind(source, index)
     schema <- switch(
         kind,
-        frame = vctrs::vec_slice(source, integer()),
+        frame = .append_frame_schema(source),
         dta = .append_read_dta_schema(source, output),
         arrow = .append_read_arrow_schema(source, output)
     )
@@ -191,6 +191,14 @@ dta_append <- function(sources, force = TRUE,
         kind = kind, source = source, index = index, schema = schema,
         rows = rows
     )
+}
+
+# A zero-row copy of a frame source, which holds each column's prototype.
+# A dibble's columns are gathered natively, without the vctrs methods that
+# `vec_slice()` dispatches for each column.
+.append_frame_schema <- function(source) {
+    if (is_dibble(source)) return(slice_dta_rows(source, integer()))
+    vctrs::vec_slice(source, integer())
 }
 
 .append_read_dta_schema <- function(source, output) {
@@ -233,44 +241,30 @@ dta_append <- function(sources, force = TRUE,
 
 .append_build_plan <- function(schemas, force) {
     source_count <- length(schemas)
-    the_names <- character(0)
-    occurrences <- integer(0)
-    plan_lookup <- new.env(hash = TRUE, parent = emptyenv())
-    source_plans <- vector("list", source_count)
-    for (my_index in seq_len(source_count)) {
-        source_names <- names(schemas[[my_index]]$schema)
-        if (is.null(source_names)) source_names <- rep("", ncol(
-            schemas[[my_index]]$schema
-        ))
-        source_names[is.na(source_names)] <- ""
-        source_occurrences <- .append_name_occurrences(source_names)
-        source_plans[[my_index]] <- integer(length(source_names))
-        for (my_column in seq_along(source_names)) {
-            name_key <- paste0("x", enc2utf8(source_names[[my_column]]))
-            if (exists(name_key, plan_lookup, inherits = FALSE)) {
-                name_lookup <- get(name_key, plan_lookup, inherits = FALSE)
-            } else {
-                name_lookup <- new.env(hash = TRUE, parent = emptyenv())
-                assign(name_key, name_lookup, plan_lookup)
-            }
-            occurrence_key <- as.character(
-                source_occurrences[[my_column]]
-            )
-            if (exists(occurrence_key, name_lookup, inherits = FALSE)) {
-                plan_index <- get(
-                    occurrence_key, name_lookup, inherits = FALSE
-                )
-            } else {
-                the_names <- c(the_names, source_names[[my_column]])
-                occurrences <- c(
-                    occurrences, source_occurrences[[my_column]]
-                )
-                plan_index <- length(the_names)
-                assign(occurrence_key, plan_index, name_lookup)
-            }
-            source_plans[[my_index]][[my_column]] <- plan_index
+    # A variable is a name and its occurrence among the equal names of its
+    # source, so the second `x` of one source lines up with the second `x`
+    # of another. Plan indices follow first appearance across the sources.
+    # The occurrence leads each key, so the first colon ends it.
+    source_names <- lapply(schemas, function(my_schema) {
+        the_source_names <- names(my_schema$schema)
+        if (is.null(the_source_names)) {
+            the_source_names <- rep("", ncol(my_schema$schema))
         }
-    }
+        the_source_names[is.na(the_source_names)] <- ""
+        the_source_names
+    })
+    source_keys <- lapply(source_names, function(the_source_names) {
+        if (!length(the_source_names)) return(character(0))
+        paste0(
+            .append_name_occurrences(the_source_names), ":",
+            enc2utf8(the_source_names)
+        )
+    })
+    all_keys <- unlist(source_keys, use.names = FALSE)
+    first <- !duplicated(all_keys)
+    plan_keys <- all_keys[first]
+    the_names <- unlist(source_names, use.names = FALSE)[first]
+    source_plans <- lapply(source_keys, match, table = plan_keys)
     source_columns <- lapply(source_plans, function(plan_indices) {
         columns <- rep(NA_integer_, length(the_names))
         columns[plan_indices] <- seq_along(plan_indices)
@@ -469,18 +463,15 @@ dta_append <- function(sources, force = TRUE,
     .apply_haven_labelled_class(value, FALSE)
 }
 
+# Each name's count among the equal names up to and including it. A
+# stable order of each name's first position keeps equal names in place.
 .append_name_occurrences <- function(the_names) {
-    counts <- new.env(hash = TRUE, parent = emptyenv())
-    vapply(the_names, function(my_name) {
-        key <- paste0("x", enc2utf8(my_name))
-        occurrence <- if (exists(key, counts, inherits = FALSE)) {
-            get(key, counts, inherits = FALSE) + 1L
-        } else {
-            1L
-        }
-        assign(key, occurrence, counts)
-        occurrence
-    }, integer(1))
+    keys <- enc2utf8(the_names)
+    groups <- match(keys, keys)
+    ranked <- order(groups)
+    occurrences <- integer(length(keys))
+    occurrences[ranked] <- sequence(rle(groups[ranked])$lengths)
+    occurrences
 }
 
 .append_common_prototype <- function(left, right) {

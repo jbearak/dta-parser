@@ -62,6 +62,44 @@ test_that("duplicate source columns survive planning until name repair", {
     )
 })
 
+test_that("names line up by occurrence and encoding across sources", {
+    latin <- iconv("café", "UTF-8", "latin1")
+    first <- data.frame(a = 1, b = 2, c = 3, d = 4, e = 9)
+    names(first) <- c("1:a", "a", latin, "a", "")
+    no_columns <- data.frame(row.names = 1:2)
+    second <- data.frame(a = 5, b = 6, c = 7, d = 8, e = 10)
+    names(second) <- c("a", "café", "2:a", "a", "")
+
+    result <- dta_append(
+        list(first, no_columns, second),
+        .name_repair = "minimal", output = "tibble"
+    )
+    expect_identical(names(result), c("1:a", "a", "café", "a", "", "2:a"))
+    expect_identical(nrow(result), 4L)
+    values <- lapply(result, as.numeric)
+    expect_identical(values[[1L]], c(1, NA, NA, NA))
+    expect_identical(values[[2L]], c(2, NA, NA, 5))
+    expect_identical(values[[3L]], c(3, NA, NA, 6))
+    expect_identical(values[[4L]], c(4, NA, NA, 8))
+    expect_identical(values[[5L]], c(9, NA, NA, 10))
+    expect_identical(values[[6L]], c(NA, NA, NA, 7))
+})
+
+test_that("a grouped dibble source appends as its ungrouped rows", {
+    skip_if_not_installed("dplyr")
+    source <- dibble(g = dta_byte(c(1, 1, 2)), x = dta_int(c(10, 20, 30)))
+    grouped <- dplyr::group_by(source, g)
+    expect_identical(
+        dta_append(list(grouped, source), output = "tibble"),
+        dta_append(list(source, source), output = "tibble")
+    )
+    no_columns <- source[, integer()]
+    expect_true(is_dibble(no_columns))
+    padded <- dta_append(list(no_columns, source), output = "tibble")
+    expect_identical(names(padded), c("g", "x"))
+    expect_identical(as.numeric(padded$x), c(NA, NA, NA, 10, 20, 30))
+})
+
 test_that("a source missing a variable contributes missing values", {
     result <- dta_append(list(master_frame(), using_frame()))
 
