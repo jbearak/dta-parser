@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "94d6ed0d9e1418f5c63c67e88ce5931eb9c24b1ca453275103fac08f85876c9e"
+          "sha256": "ae3fd23719d41de96b38725b401f349e337491719627b196e4e71d89ece253b6"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -13903,6 +13903,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a fresh session settles the summary common type after grouped summaries",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",

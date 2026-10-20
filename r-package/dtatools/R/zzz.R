@@ -258,6 +258,10 @@
     .double_combine_state$dependencies <- if (
         identical(as.character(getNamespaceVersion("vctrs")), "0.7.3")
     ) .native_admission_call(C_dtatools_double_combine_dependencies, .double_combine_expected) else NULL
+    # Grouped summaries check the list_unchop() binding that double assembly
+    # reads without calling it, so settle its lazy binding as a first call
+    # would. Otherwise a fresh session declines the summary common type.
+    if (!is.null(.double_combine_state$dependencies)) vctrs::list_unchop
     .summary_routine_state$routines <- if (!is.null(.summary_ptype_dependencies)) list(
         .native_admission_call(C_dtatools_settled_routine,
                                .summary_ptype_dependencies[[3L]], "ffi_ptype_common"),
