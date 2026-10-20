@@ -163,10 +163,13 @@
   loses its marker attributes before the step that builds the column
   receives it. Removing them there had made R wrap the shared buffer.
   Reading the wrapper's bytes copied them, and the native double
-  constructor declined the wrapper, so R checked each value instead.
-  Appending the 1,274,250-row, 1,644-column India 2021 DHS birth history to
-  itself falls from 4.2 to 2.5 seconds, and appending 20 double columns of
-  1,000,000 rows to themselves from 0.73 to 0.10 seconds.
+  constructor declined the wrapper, so the slower R checks ran instead. The
+  scan of compact byte, int and long values also counts in the width of
+  the values, which makes it about eight times faster on bytes. Appending
+  the 1,274,250-row, 1,644-column India 2021 DHS birth history to itself
+  falls from 4.1 to 1.3 seconds, a 16,787-row, 5,360-column DHS file from
+  1.0 to 0.84 seconds, and 20 double columns of 1,000,000 rows from 0.72 to
+  0.09 seconds.
 
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
