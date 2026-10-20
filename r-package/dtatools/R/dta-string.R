@@ -41,6 +41,10 @@ dta_string <- function(x = character(), storage = NULL) {
     owned_width <- .Call(C_dtatools_owned_string_width, x)
     if (!is.null(owned_width)) return(owned_width)
     if (!length(x)) return(1L)
+    # A compact dictionary holds UTF-8 bytes, so its byte lengths are the
+    # widths below without making a string for each value.
+    dictionary_width <- .Call(C_dtatools_dictstring_width, x)
+    if (!is.null(dictionary_width)) return(dictionary_width)
     max(nchar(enc2utf8(x), type = "bytes"))
 }
 

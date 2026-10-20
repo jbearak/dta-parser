@@ -317,6 +317,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
     {"C_dtatools_dictstring_subset", (DL_FUNC) &C_dtatools_dictstring_subset, 2},
+    {"C_dtatools_dictstring_width", (DL_FUNC) &C_dtatools_dictstring_width, 1},
     {"C_dtatools_owned_subset", (DL_FUNC) &C_dtatools_owned_subset, 2},
     {"C_dtatools_gather_owned_discrete", (DL_FUNC) &C_dtatools_gather_owned_discrete, 2},
     {"C_dtatools_owned_set_string", (DL_FUNC) &C_dtatools_owned_set_string, 3},

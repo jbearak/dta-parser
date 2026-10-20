@@ -15879,6 +15879,10 @@
         {
           "path": "tests/testthat/test-egen-block-kernels.R",
           "sha256": "46c9ce8b7182a72b314a55d54d7d6d00f358717df55782c3a39f2578846f7cd6"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-width.R",
+          "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
         }
       ],
       "blocks": [
@@ -17001,6 +17005,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "compact string widths count the bytes of the values they hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "casts of compact strings into narrow storage keep their errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         }
       ],

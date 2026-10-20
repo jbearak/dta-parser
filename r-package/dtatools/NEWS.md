@@ -104,6 +104,13 @@
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
   now take 0.03 to 0.12 seconds.
 
+* The width check before a cast into fixed Stata string storage reads the
+  byte length of each distinct value of a string column from `read_dta()` or
+  `read_arrow()` once from its dictionary, rather than making a string for
+  every value and measuring it. On the 1,274,250-row India 2021 DHS birth
+  history file, measuring `caseid` falls from 27 to 3 milliseconds, its cast
+  into `str15` from 111 to 59, and `vec_c(caseid, caseid)` from 537 to 427.
+
 * `mutate()` on a dibble reads only the prior values each new column uses,
   rather than every column's value once per new column. On a 5,360-column
   file, `mutate(d, across(1:1000, ~ .x))` falls from 2.9 to 0.25 seconds.

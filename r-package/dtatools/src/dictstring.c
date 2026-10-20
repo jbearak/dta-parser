@@ -388,6 +388,44 @@ SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
     return result == NULL ? R_NilValue : result;
 }
 
+/* The widest value in bytes of an unmaterialized dictionary string, or NULL
+   for any other vector. Only the ids the vector holds count, since a subset
+   keeps its source's whole dictionary. Each distinct value's length is read
+   once from the dictionary, without making its string. An allocation or an
+   interrupt check can run R code that materializes the source, so the scan
+   reads a pinned dictionary. */
+SEXP C_dtatools_dictstring_width(SEXP value) {
+    SEXP root = PROTECT(dictstring_read_root(value));
+    if (root == R_NilValue) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    int *lengths = (int *) R_alloc((size_t) cardinality, sizeof(int));
+    for (R_xlen_t id = 0; id < cardinality; id++) lengths[id] = -1;
+    int widest = 0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= cardinality) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        if (lengths[id] < 0) {
+            const char *bytes = NULL;
+            int length = 0;
+            if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+                bytes == NULL || length < 0) {
+                Rf_error("invalid dtatools string-dictionary value");
+            }
+            lengths[id] = length;
+        }
+        if (lengths[id] > widest) widest = lengths[id];
+    }
+    UNPROTECT(1);
+    return Rf_ScalarInteger(widest);
+}
+
 SEXP C_dtatools_deep_copy_value(SEXP value) {
     if (owned_column(value)) return owned_capture(value);
     numeric_data *numeric = unmaterialized_numeric_read_storage(value);
