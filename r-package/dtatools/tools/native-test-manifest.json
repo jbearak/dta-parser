@@ -13045,7 +13045,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "a774295e6cbbea5911da8ada441cdf71c7fe788d7d4c2bb0a25c58d72b5e1dce"
+          "sha256": "f0a6fea1293ea4c8581a21979594d7f960bf880e2a0159bc50cb744b16a8a6e9"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
