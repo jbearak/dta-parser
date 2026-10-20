@@ -3988,24 +3988,16 @@ static int numeric_expected_function_same(
 }
 
 /* Same ordinary-environment and settled-binding rules as the original
-   numeric helper profile; do not coalesce either lexical lookup. A caller
-   that has just found the same object equal to the same expectation passes
-   it as proven, and that object is not walked again. No R code runs
-   between the two lookups, so it cannot have changed. */
-static int numeric_expected_lexical_same_proven(
-    SEXP env, SEXP symbol, const numeric_expected_function *expected,
-    SEXP proven, SEXP *found
-) {
+   numeric helper profile; do not coalesce either lexical lookup. Reading a
+   forced binding evaluates its promise, and evaluation can run pending
+   finalizers, so callers find every object before comparing any. */
+static int numeric_expected_lexical_find(SEXP env, SEXP symbol, SEXP *found) {
     for (int depth = 0; depth < 16 && env != R_EmptyEnv; depth++) {
         if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env)) return 0;
         R_BindingType_t type = R_GetBindingType(symbol, env);
         if (type == R_BindingTypeValue || type == R_BindingTypeForced) {
-            SEXP actual = PROTECT(R_getVar(symbol, env, FALSE));
-            int same = (actual == proven && proven != R_NilValue) ||
-                numeric_expected_function_same(actual, expected);
-            if (same && found != NULL) *found = actual;
-            UNPROTECT(1);
-            return same;
+            *found = R_getVar(symbol, env, FALSE);
+            return 1;
         }
         if (type != R_BindingTypeUnbound) return 0;
         env = R_ParentEnv(env);
@@ -5623,14 +5615,26 @@ int dtatools_numeric_helpers_unchanged(SEXP frame, SEXP profile, unsigned route,
             return 0;
         if (!(routes[i] & route)) continue;
         SEXP symbol = Rf_installTrChar(label), expected = VECTOR_ELT(profile, i);
-        if (i < 50) {
-            SEXP proven = R_NilValue;
-            if (!(prepared ? numeric_expected_lexical_same_proven(
-                      frame, symbol, &prepared->functions[i], R_NilValue, &proven) :
-                  dtatools_execution_lexical_function_same(frame, symbol, expected)) ||
-                (i >= 17 && !(prepared ? numeric_expected_lexical_same_proven(
-                      R_BaseNamespace, symbol, &prepared->functions[i], proven, NULL) :
-                  dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, expected)))) return 0;
+        if (i < 50 && prepared != NULL) {
+            /* Both lookups run before either comparison, so no R code runs
+               between proving the first object and finding the second to be
+               that same object, which is then not walked again. */
+            const numeric_expected_function *function = &prepared->functions[i];
+            SEXP first = R_NilValue, second = R_NilValue;
+            if (!numeric_expected_lexical_find(frame, symbol, &first)) return 0;
+            PROTECT(first);
+            int found = i < 17 ||
+                numeric_expected_lexical_find(R_BaseNamespace, symbol, &second);
+            PROTECT(second);
+            int same = numeric_expected_function_same(first, function) && found &&
+                (i < 17 || second == first ||
+                 numeric_expected_function_same(second, function));
+            UNPROTECT(2);
+            if (!same) return 0;
+        } else if (i < 50) {
+            if (!dtatools_execution_lexical_function_same(frame, symbol, expected) ||
+                (i >= 17 && !dtatools_execution_lexical_function_same(
+                    R_BaseNamespace, symbol, expected))) return 0;
         } else {
             SEXP actual = computed_peek(symbol, frame, 16);
             int remaining = 64;
