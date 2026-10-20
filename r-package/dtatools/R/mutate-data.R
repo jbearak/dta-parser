@@ -1599,6 +1599,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 }
 
 .mutation_group_slice <- function(column, rows) {
+    # Every row of a compact string needs no slice. A metadata copy is a
+    # private view over the same immutable ids and dictionary, so native
+    # readers such as dta_group_id() still see the ids, not a wrapped copy.
+    if (.is_unmaterialized_dictstring(column) && is.integer(rows) &&
+        length(rows) == length(column) && length(rows) &&
+        identical(rows[[1L]], 1L) && identical(rows[[length(rows)]], length(rows)) &&
+        isFALSE(is.unsorted(rows, strictly = TRUE))) {
+        return(.Call(C_dtatools_metadata_copy, column))
+    }
     # The vctrs fallback may invoke an R proxy that retains its input. Native
     # compact and declared-double gathering cannot expose that full read view.
     if (!.dta_merge_has_compact_storage(column) &&

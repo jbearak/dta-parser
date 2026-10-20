@@ -15,9 +15,9 @@ test_that("metadata and combination settle every reached delayed primitive bindi
         )
         for (operation in operations) for (i in 1:3) invisible(operation())
         targets <- list(
-            attribute = c("==", "all", "c", "dim", "isS4", "length", "missing", "names", "UseMethod"),
+            attribute = c("==", "c", "length", "names"),
             generate = c("!", "==", ">", "all", "any", "c", "class", "dim", "isS4", "length", "missing", "names", "UseMethod"),
-            combine = c(".subset", "all", "attr", "isS4", "missing")
+            combine = c(".subset", "attr")
         )
         get_original <- base::get
         identical_original <- base::identical
@@ -48,7 +48,7 @@ test_that("metadata and combination settle every reached delayed primitive bindi
         }
         list(records = records, metadata = metadata)
     }, args = list(.libPaths()), timeout = 30)
-    expect_length(observed$records, 27L)
+    expect_length(observed$records, 19L)
     for (name in names(observed$records)) {
         record <- observed$records[[name]]
         expect_true(record$settled, info = name)
@@ -74,7 +74,7 @@ test_that("settled metadata dependencies retain later public function results", 
         )
         for (operation in operations) for (i in 1:3) invisible(operation())
         inspect <- function(route) {
-            target <- if (route == "combine") ".subset" else "all"
+            target <- switch(route, attribute = "c", generate = "all", combine = ".subset")
             original <- get(target, baseenv(), inherits = FALSE)
             holder <- new.env(parent = baseenv())
             holder$fn <- original
@@ -89,7 +89,8 @@ test_that("settled metadata dependencies retain later public function results", 
             lockBinding(target, baseenv())
             first <- operations[[route]]()
             holder$fn <- function(...) stop("delayed metadata dependency changed", call. = FALSE)
-            expression <- if (route == "combine") quote(.subset(c(1, 2), 1L)) else quote(all(TRUE))
+            expression <- switch(route, attribute = quote(c(1)), generate = quote(all(TRUE)),
+                                 combine = quote(.subset(c(1, 2), 1L)))
             # Evaluate the public call as source so compiler builtin instructions
             # cannot hide the changed function value after the missed force.
             later <- tryCatch(eval(expression), error = conditionMessage)
@@ -98,7 +99,7 @@ test_that("settled metadata dependencies retain later public function results", 
         }
         lapply(names(operations), inspect)
     }, args = list(.libPaths()), timeout = 30)
-    expected <- list(TRUE, TRUE, 1)
+    expected <- list(1, TRUE, 1)
     for (i in seq_along(observed)) {
         expect_identical(observed[[i]]$later, expected[[i]])
         expect_true(observed[[i]]$restored)
@@ -124,7 +125,7 @@ test_that("public generation retains delayed metadata errors before publication"
             alias <- data
             helper <- switch(route, generate = ".generate_attributes",
                              attribute = ".dta_attribute_plan", combine = ".mutation_gather_values")
-            target <- if (route == "combine") ".subset" else "all"
+            target <- switch(route, attribute = "c", generate = "all", combine = ".subset")
             original <- get(helper, ns)
             original_target <- get(target, baseenv())
             callbacks <- 0L
