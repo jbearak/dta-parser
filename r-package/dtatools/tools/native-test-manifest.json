@@ -15825,6 +15825,10 @@
           "sha256": "9856ed3c843cf755d26d91b3d7c74269ab460430a280c8d48f671547a10ad22c"
         },
         {
+          "path": "tests/testthat/test-egen-group-prepared.R",
+          "sha256": "3590fed1b9bcb151db3b4532bddb68a172e030a34f43b205f69b8fff0de7187c"
+        },
+        {
           "path": "tests/testthat/test-egen-stata-fixture.R",
           "sha256": "1de8da374f3b3b77669d8b159341f7c829bdf24ebdaa11f69cee2f8f3bd4b9d4"
         },
@@ -17033,6 +17037,62 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "compact string keys rank their values once in Stata order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "compact string subsets rank only the values they hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "compact string and numeric keys prepare together",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "foreign keys keep compact strings on the element path",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "a compact string holding a NUL byte keeps its element error",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "egen reads every row of a compact string through a private view",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-prepared.R",
+          "test": "prepared keys sort by every digit and keep ties in row order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
           "warnings": 0
         }
       ],

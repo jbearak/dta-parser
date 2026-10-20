@@ -108,6 +108,17 @@
   rather than every column's value once per new column. On a 5,360-column
   file, `mutate(d, across(1:1000, ~ .x))` falls from 2.9 to 0.25 seconds.
 
+* `dta_group_id()` and `dta_group_tag()` sort rows with a radix sort when
+  every key is an ordinary or dtatools numeric vector or a string column
+  from `read_dta()` or `read_arrow()`, rather than a merge sort that
+  compared keys. Such a string column now ranks its distinct values once and
+  sorts by those ranks, where it made an R string for every row and compared
+  strings. `egen()` passes such a column to its calculation without a slice
+  when it reads every row. On a 1,274,250-row DHS birth history,
+  `dta_group_id(caseid)`, with 494,019 distinct values, falls from 0.27 to
+  0.05 seconds, `dta_group_id(v001)` from 66 to 20 milliseconds, and
+  `egen(d, g = dta_group_id(caseid))` from 0.33 to 0.08 seconds.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
