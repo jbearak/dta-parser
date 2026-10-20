@@ -99,7 +99,8 @@ test_that("generated canonical metadata retains executable base helper tracers",
         expect_identical(observed$calls, 3L, info = target)
         if (identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
             !is.null(.metadata_state$dependencies)) {
-            expected <- switch(target, intersect = 18L, startsWith = 3L, setdiff = 24L)
+            # Generation's own calls; attribute planning uses none of these.
+            expected <- switch(target, intersect = 3L, startsWith = 3L, setdiff = 9L)
             expect_identical(observed$total, expected, info = target)
         }
         expect_identical(as.double(observed$result$y), c(2, 3, 4, 5))
@@ -121,8 +122,9 @@ test_that("canonical metadata retains nested unique callbacks and character meth
         list(kept = kept, planned = planned,
              calls = c(generation_calls, calls))
     }, finally = untrace("unique", where = baseenv()))
+    # Generation's set operations call unique(); planning matches names.
     if (!is.null(.metadata_state$dependencies)) {
-        expect_identical(observed$calls, c(4L, 4L))
+        expect_identical(observed$calls, c(4L, 0L))
     }
     expect_identical(observed$kept, source)
     expect_identical(observed$planned, source)
@@ -143,23 +145,31 @@ test_that("canonical metadata retains nested unique callbacks and character meth
     calls <- 0L
     planned <- .dta_attribute_plan(prototype, "double", temporal = FALSE)
     if (!is.null(.metadata_state$dependencies)) {
-        expect_identical(c(generation_calls, calls), c(4L, 4L))
+        expect_identical(c(generation_calls, calls), c(4L, 0L))
     }
     expect_identical(kept, source)
     expect_identical(planned, source)
 })
 
 test_that("metadata admission leaves active and delayed helpers untouched", {
-    for (target in c("intersect", "identity", "unique.character")) {
-        for (binding in c("active", "delayed")) {
-            frame <- new.env(parent = asNamespace("dtatools"))
-            calls <- 0L
-            callback <- function() { calls <<- calls + 1L; base::identity }
-            if (binding == "active") makeActiveBinding(target, callback, frame)
-            else delayedAssign(target, callback(), assign.env = frame)
-            expect_false(.Call(C_dtatools_metadata_dependencies_unchanged,
-                               frame, .metadata_state$dependencies))
-            expect_identical(calls, 0L)
+    profile <- !is.null(.metadata_state$dependencies)
+    # Planning reaches only %in% and c() among these; generation reaches all.
+    checked <- list(planning = c("%in%", "c"),
+                    generation = c("intersect", "identity", "unique.character", "%in%", "c"))
+    for (route in names(checked)) {
+        for (target in c("intersect", "identity", "unique.character", "%in%", "c")) {
+            for (binding in c("active", "delayed")) {
+                frame <- new.env(parent = asNamespace("dtatools"))
+                calls <- 0L
+                callback <- function() { calls <<- calls + 1L; base::identity }
+                if (binding == "active") makeActiveBinding(target, callback, frame)
+                else delayedAssign(target, callback(), assign.env = frame)
+                admitted <- .Call(C_dtatools_metadata_dependencies_unchanged,
+                                  frame, .metadata_state$dependencies, route == "generation")
+                info <- paste(route, target, binding)
+                expect_identical(admitted, profile && !target %in% checked[[route]], info = info)
+                expect_identical(calls, 0L, info = info)
+            }
         }
     }
 })
