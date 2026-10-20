@@ -6220,7 +6220,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "0c606f579d22b96453d6263ff328ed2756d62ef886fcdf737cbedaed4a7e6660"
+          "sha256": "cbada7ce3566cb1a7e4d03d18e9081d48a8fb5b04ca9f0ab4bd3c74887fb58c9"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6691,14 +6691,6 @@
         },
         {
           "file": "test-owned-atoms.R",
-          "test": "string metadata declines compact storage without changing its source",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-atoms.R",
           "test": "large string construction captures borrowed values before removing metadata",
           "occurrence": 1,
           "skip": "forbid",
@@ -6746,6 +6738,33 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "string metadata keeps compact storage without changing its source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "large compact string subsets keep their dictionary visible",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "dplyr row verbs keep large compact strings visible",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 8,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {

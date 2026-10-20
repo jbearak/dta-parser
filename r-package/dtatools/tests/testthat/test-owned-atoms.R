@@ -989,28 +989,47 @@ test_that("string metadata keeps compact storage without changing its source", {
     expect_identical(as.character(annotated), c("text-new", raw[-1L]))
 })
 
-test_that("large compact string subsets keep their dictionary visible", {
+compact_subset_source <- function(envir = parent.frame()) {
     path <- tempfile(fileext = ".arrow")
-    withr::defer(unlink(path))
+    withr::defer(unlink(path), envir = envir)
     raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
     save_arrow(data.frame(x = raw, k = seq_along(raw)), path)
-    data <- read_arrow(path)
-    even <- seq(2L, length(raw), by = 2L)
-    results <- list(
-        data$x[even], vctrs::vec_slice(data$x, even),
-        dplyr::filter(data, k %% 2L == 0L)$x,
-        dplyr::arrange(data, dplyr::desc(k))$x
-    )
-    expected <- list(raw[even], raw[even], raw[even], rev(raw))
+    list(raw = raw, data = read_arrow(path))
+}
+
+expect_compact_subsets <- function(results, expected, source) {
     for (index in seq_along(results)) {
         result <- results[[index]]
         # R's attribute wrapper would hide the dictionary, and the width
         # check below would then make a string for every value.
         expect_true(.is_unmaterialized_dictstring(result))
-        expect_identical(attributes(result), attributes(data$x))
+        expect_identical(attributes(result), attributes(source))
         expect_true(.string_declaration_holds(result))
         expect_identical(as.character(result), expected[[index]])
     }
+}
+
+test_that("large compact string subsets keep their dictionary visible", {
+    fixture <- compact_subset_source()
+    x <- fixture$data$x
+    even <- seq(2L, length(x), by = 2L)
+    expect_compact_subsets(
+        list(x[even], vctrs::vec_slice(x, even)),
+        list(fixture$raw[even], fixture$raw[even]), x
+    )
+})
+
+test_that("dplyr row verbs keep large compact strings visible", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    fixture <- compact_subset_source()
+    data <- fixture$data
+    expect_compact_subsets(
+        list(
+            dplyr::filter(data, k %% 2L == 0L)$x,
+            dplyr::arrange(data, dplyr::desc(k))$x
+        ),
+        list(fixture$raw[c(FALSE, TRUE)], rev(fixture$raw)), data$x
+    )
 })
 
 test_that("large string construction captures borrowed values before removing metadata", {
