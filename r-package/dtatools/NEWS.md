@@ -126,6 +126,20 @@
   the whole result column on every write. Appending a 5,360-column file to
   itself took 8.4 seconds and now takes 5.7.
 
+* A subset of a string column from `read_dta()` or `read_arrow()` that is
+  at most a sixteenth as long as the column's dictionary of distinct values
+  is built as ordinary strings, rather than over a copy of the whole
+  dictionary. vctrs takes an empty subset of each input it compares,
+  combines or casts, and a grouped verb slices each group's rows, so these
+  copies added up. A cast into `strL` storage also stops measuring the
+  width of each value, since `strL` holds any width, and a cast of a
+  compact column no longer scans it for `NA`, which its dictionary cannot
+  hold. On the India 2021 DHS birth history file, with 1,274,250 rows and
+  494,019 distinct `caseid` values, `caseid == ""` falls from 0.20 to 0.02
+  seconds, `codebook()` of `caseid` from 1.09 to 0.60, and a
+  `summarise(f = first(caseid))` grouped by cluster over the 14,526 rows
+  of 378 clusters from 96 to 0.16.
+
 * Printing or formatting a dibble checks the classes of declared string
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
