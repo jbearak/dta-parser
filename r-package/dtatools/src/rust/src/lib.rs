@@ -6824,18 +6824,23 @@ mod tests {
                 super::dtatools_dictstring_gather(source.cast(), rows.as_ptr(), rows.len())
                     .cast::<DictStringData>();
             let cloned = super::dtatools_dictstring_clone(source.cast()).cast::<DictStringData>();
-            assert!(!gathered.is_null() && !cloned.is_null());
+            // Both calls return null when they decline, so read through checked references.
+            let gathered_data = gathered.as_ref().expect("the gather declined");
+            let cloned_data = cloned.as_ref().expect("the clone declined");
             assert!(std::sync::Arc::ptr_eq(
-                &(*gathered).dictionary,
+                &gathered_data.dictionary,
                 &(*source).dictionary
             ));
             assert!(std::sync::Arc::ptr_eq(
-                &(*cloned).dictionary,
+                &cloned_data.dictionary,
                 &(*source).dictionary
             ));
-            assert_eq!(std::slice::from_raw_parts((*gathered).value_ids, 3), &rows);
             assert_eq!(
-                std::slice::from_raw_parts((*cloned).value_ids, 3),
+                std::slice::from_raw_parts(gathered_data.value_ids, 3),
+                &rows
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(cloned_data.value_ids, 3),
                 &[0, 1, 0]
             );
             // An id outside the dictionary declines.
@@ -6857,7 +6862,7 @@ mod tests {
                 std::slice::from_raw_parts(bytes.cast::<u8>(), length as usize),
                 b"beta"
             );
-            assert_eq!(std::sync::Arc::strong_count(&(*gathered).dictionary), 1);
+            assert_eq!(std::sync::Arc::strong_count(&gathered_data.dictionary), 1);
             dtatools_dictstring_free(gathered.cast());
         }
     }
