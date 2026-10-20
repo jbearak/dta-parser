@@ -15922,7 +15922,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "81b89d29cda63cacc82b0d6608066fbe3216c565e20d002904fe55525b7900dd"
+          "sha256": "1980fdbff37226980c98d8e06bd930871b4e049cfd4d7d7c45e48af068e83fbd"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -16159,6 +16159,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook groups variants by table in first-seen order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook finds gaps among the distinct whole codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
           "warnings": 0
         },
         {
