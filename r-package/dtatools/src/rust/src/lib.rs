@@ -26,6 +26,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod dictstring_codes;
 mod double_compare;
 mod float_compare;
 mod native_pressure;

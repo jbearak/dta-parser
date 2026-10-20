@@ -147,6 +147,14 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `dta_merge()` matches a string key that is a column from `read_dta()` or
+  `read_arrow()` on both sides through integer codes, one for each distinct
+  value, rather than through R strings. Rows get equal codes exactly when
+  their values are equal, so the merge matches the same rows. With five
+  columns of the 1,274,250-row India 2021 DHS birth history and four of the
+  724,115-row women file, a many-to-one merge on `caseid` falls from 1.50
+  to 0.64 seconds.
+
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
   5,360-column DHS file, a one-to-one merge that adds one variable falls
