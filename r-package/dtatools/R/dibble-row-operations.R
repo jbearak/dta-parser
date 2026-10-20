@@ -127,7 +127,7 @@
                 vctrs::vec_as_subscript(value, logical = "error", character = "error",
                     arg = .mask_expression_label(quo), call = NULL)
             })
-            rlang::exec(vctrs::vec_c, !!!values, .ptype = integer())
+            vctrs::vec_c(!!!values, .ptype = integer())
         }))
         # All dots/groups evaluate before the combined sign/bounds policy.
         locations <- lapply(seq_along(chunks), function(id) {
@@ -137,7 +137,7 @@
                 zero = "remove", oob = "remove", missing = "remove", call = NULL)
             rows[local]
         })
-        rlang::exec(vctrs::vec_c, !!!locations, .ptype = integer())
+        vctrs::vec_c(!!!locations, .ptype = integer())
     })
 }
 
@@ -215,7 +215,7 @@
                 }
                 rows[local]
             }))
-            rlang::exec(vctrs::vec_c, !!!chunks, .ptype = integer())
+            vctrs::vec_c(!!!chunks, .ptype = integer())
         })
     .dibble_take_rows(context, locations, data, "slice")
 }
