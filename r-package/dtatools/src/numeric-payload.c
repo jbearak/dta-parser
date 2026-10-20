@@ -2484,6 +2484,16 @@ SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
     SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(read_handle)));
     (void) source_backing;
     R_xlen_t length = XLENGTH(index);
+    if (data->length == 0 && length > 0) {
+        /* Every index of an empty source reads system missing. vctrs fills
+           each combined column this way from the zero-length common type,
+           then writes into it, which would materialize compact storage. */
+        SEXP result = PROTECT(Rf_allocVector(REALSXP, length));
+        double *output = REAL(result);
+        for (R_xlen_t i = 0; i < length; i++) output[i] = NA_REAL;
+        UNPROTECT(3);
+        return result;
+    }
     size_t width = numeric_kind_width(data->kind);
     if ((size_t) length > SIZE_MAX / width) {
         Rf_error("compact Stata numeric subset is too long");

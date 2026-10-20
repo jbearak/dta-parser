@@ -1699,7 +1699,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-numeric.R",
-          "sha256": "22804df4aa593cfb81f3ba03585bae95b21b4cfedf9965f2e83bf3c34b1e1148"
+          "sha256": "5229c289cd862c5c3fce9bfca85e6fb572fe1a55ae3b8826edb2755a2ecda473"
         },
         {
           "path": "tests/testthat/test-dta-string.R",
@@ -2312,6 +2312,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-numeric.R",
+          "test": "indexing empty compact storage gives ordinary missing doubles",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 20,
           "warnings": 0
         },
         {
