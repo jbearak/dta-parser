@@ -699,15 +699,15 @@ test_that("summary assembly gives later dots unshared chunks", {
     data <- dplyr::group_by(dibble(g = 1:9, x = 1:9), g)
     seen <- list()
     observe <- function(a) {
-        seen[[length(seen) + 1L]] <<- c(data.table::address(a),
-                                        data.table::address(attr(a, "class")))
+        seen[[length(seen) + 1L]] <<- c(rlang::obj_address(a),
+                                        rlang::obj_address(attr(a, "class")))
         1
     }
     dplyr::summarise(data, a = source, b = observe(a))
     seen <- do.call(rbind, seen)
     expect_identical(nrow(seen), 9L)
-    expect_false(any(seen[, 1L] == data.table::address(source)))
-    expect_false(any(seen[, 2L] == data.table::address(attr(source, "class"))))
+    expect_false(any(seen[, 1L] == rlang::obj_address(source)))
+    expect_false(any(seen[, 2L] == rlang::obj_address(attr(source, "class"))))
     expect_identical(anyDuplicated(seen[, 1L]), 0L)
     expect_identical(anyDuplicated(seen[, 2L]), 0L)
 })
