@@ -261,7 +261,7 @@
         },
         {
           "path": "tests/testthat/test-write-column.R",
-          "sha256": "86550fa0d7946c09f4aa646d3fe3b2ad3d7c109871cc1cb3c2d6ab484b41754a"
+          "sha256": "4ec6868d2192e4ae9267eae1d01883357fe5721347854e6e8e9e3bf5e4773057"
         },
         {
           "path": "tests/testthat/test-input-sources.R",
@@ -1648,6 +1648,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a write checks each display format once per kind",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "a column without notes or characteristics exports no metadata",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-write-column.R",
+          "test": "writers read a dibble's columns by position",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
