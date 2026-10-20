@@ -194,6 +194,10 @@ dta_storage_type <- function(x) {
 
 .dta_storage <- c("byte", "int", "long", "float", "double")
 
+# The classes that name each storage. Restoring a column after a vctrs
+# slice, cast, or combination looks them up, so they are spelled once here.
+.dta_storage_classes <- paste0("dta_", .dta_storage)
+
 .dta_temporal_none <- 0L
 .dta_temporal_date <- 1L
 .dta_temporal_datetime <- 2L
@@ -557,8 +561,8 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_classes_from <- function(prototype, storage) {
     classes <- class(prototype)
-    storage_classes <- paste0("dta_", .dta_storage)
-    location <- classes %in% storage_classes
+    # `%in%` is this match() behind one more closure call.
+    location <- match(classes, .dta_storage_classes, 0L) > 0L
     if (any(location)) {
         classes[location] <- paste0("dta_", storage)
         return(classes)
