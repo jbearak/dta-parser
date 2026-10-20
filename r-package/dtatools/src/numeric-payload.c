@@ -5048,17 +5048,27 @@ typedef struct {
 
 /* Count into locals and test validity after each block: an early return
    or a store through `facts`, which may alias `bytes`, would keep the
-   compiler from vectorizing the loop. */
-#define COMPACT_NUMERIC_INTEGERS(TYPE, MINIMUM, MISSING)                    \
+   compiler from vectorizing the loop. Each chunk counts in `UTYPE`, the
+   width of `TYPE`, with at most `CHUNK` values so the count cannot wrap:
+   a count wider than the values would split each vector of them into
+   several. */
+#define COMPACT_NUMERIC_INTEGERS(TYPE, UTYPE, CHUNK, MINIMUM, MISSING)      \
     {                                                                       \
         int invalid = 0;                                                    \
         size_t missing = 0, zeros = 0;                                      \
-        for (size_t index = start; index < end; index++) {                  \
-            TYPE raw;                                                       \
-            memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));        \
-            invalid |= raw == (MINIMUM);                                    \
-            missing += raw >= (MISSING);                                    \
-            zeros += raw == 0;                                              \
+        for (size_t chunk = start; chunk < end; chunk += (CHUNK)) {         \
+            size_t stop = end - chunk > (CHUNK) ? chunk + (CHUNK) : end;    \
+            UTYPE chunk_invalid = 0, chunk_missing = 0, chunk_zeros = 0;    \
+            for (size_t index = chunk; index < stop; index++) {             \
+                TYPE raw;                                                   \
+                memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));    \
+                chunk_invalid |= raw == (MINIMUM);                          \
+                chunk_missing += raw >= (MISSING);                          \
+                chunk_zeros += raw == 0;                                    \
+            }                                                               \
+            invalid |= chunk_invalid != 0;                                  \
+            missing += chunk_missing;                                       \
+            zeros += chunk_zeros;                                           \
         }                                                                   \
         if (invalid) return 0;                                              \
         missing_count += missing;                                           \
@@ -5077,13 +5087,14 @@ static int compact_numeric_scan(
         end = count - start > 16384 ? start + 16384 : count;
         switch (kind) {
         case NUMERIC_BYTE:
-            COMPACT_NUMERIC_INTEGERS(int8_t, INT8_MIN, 101)
+            COMPACT_NUMERIC_INTEGERS(int8_t, uint8_t, 255, INT8_MIN, 101)
             break;
         case NUMERIC_INT:
-            COMPACT_NUMERIC_INTEGERS(int16_t, INT16_MIN, 32741)
+            COMPACT_NUMERIC_INTEGERS(int16_t, uint16_t, 16384, INT16_MIN, 32741)
             break;
         case NUMERIC_LONG:
-            COMPACT_NUMERIC_INTEGERS(int32_t, INT32_MIN, INT32_C(2147483621))
+            COMPACT_NUMERIC_INTEGERS(int32_t, uint32_t, 16384, INT32_MIN,
+                                     INT32_C(2147483621))
             break;
         default:
             for (size_t index = start; index < end; index++) {
@@ -5114,6 +5125,35 @@ static int compact_numeric_scan(
 
 #undef COMPACT_NUMERIC_INTEGERS
 
+/* Compact storage over `backing`, whose bytes compact_numeric_scan()
+   accepted, with the facts the constructor records. The caller protects
+   `backing`. */
+static SEXP compact_numeric_from_scan(
+    SEXP backing, size_t length, int kind, const compact_numeric_facts *facts
+) {
+    void *data = dtatools_numeric_alloc(
+        RAW(backing), length, kind, 0, facts->missing_count
+    );
+    if (data == NULL) {
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    numeric_data *storage = data;
+    storage->zero_count = facts->zero_count;
+    storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+    if (kind == NUMERIC_FLOAT) {
+        storage->float_max_magnitude_bound = facts->float_maximum_magnitude;
+        storage->float_min_nonzero_magnitude_bound =
+            facts->float_minimum_nonzero_magnitude;
+        storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = R_new_altrep(dtatools_numeric_class, external, R_NilValue);
+    UNPROTECT(1);
+    return result;
+}
+
 /* Compact storage of the requested kind in the modern encoding already
    holds the bytes the constructor would write for its doubles. Copy them
    when the constructor accepts every value, with the facts it records.
@@ -5138,29 +5178,8 @@ static SEXP construct_numeric_from_compact(SEXP value, int kind) {
         UNPROTECT(2);
         return R_NilValue;
     }
-    void *data = dtatools_numeric_alloc(
-        RAW(backing), length, kind, 0, facts.missing_count
-    );
-    if (data == NULL) {
-        UNPROTECT(2);
-        Rf_error("could not allocate compact Stata numeric storage");
-    }
-    numeric_data *storage = data;
-    storage->zero_count = facts.zero_count;
-    storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
-    if (kind == NUMERIC_FLOAT) {
-        storage->float_max_magnitude_bound = facts.float_maximum_magnitude;
-        storage->float_min_nonzero_magnitude_bound =
-            facts.float_minimum_nonzero_magnitude;
-        storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
-            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
-    }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
-    SEXP result = PROTECT(R_new_altrep(
-        dtatools_numeric_class, external, R_NilValue
-    ));
-    UNPROTECT(4);
+    SEXP result = compact_numeric_from_scan(backing, length, kind, &facts);
+    UNPROTECT(2);
     return result;
 }
 
@@ -5436,25 +5455,37 @@ SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind_value) {
     return result;
 }
 
-/* The same doubles as unmaterialized compact storage over a copy of the
-   buffer, which the constructor copies when it accepts every value. */
-SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind_value) {
+/* The column the constructor builds from the doubles a compact buffer
+   holds, with the same facts from one scan, and with the `stata.storage`
+   and class attributes it is given. Return NULL when the scan refuses a
+   value; the caller then hands the constructor the doubles. A plain buffer
+   that only the calling frame's binding holds becomes the column's storage.
+   The column's reference then marks it shared, so the append writers
+   refuse it. Any other buffer is copied. */
+SEXP C_dtatools_append_compact_values(
+    SEXP buffer, SEXP kind_value, SEXP storage, SEXP class
+) {
     int kind = append_compact_kind(kind_value);
     size_t width = kind < 0 ? 1 : numeric_kind_width(kind);
     if (kind < 0 || TYPEOF(buffer) != RAWSXP ||
-        XLENGTH(buffer) % (R_xlen_t) width != 0) {
+        XLENGTH(buffer) % (R_xlen_t) width != 0 ||
+        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 ||
+        TYPEOF(class) != STRSXP) {
         Rf_error("invalid compact append buffer");
     }
     size_t length = (size_t) XLENGTH(buffer) / width;
-    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, XLENGTH(buffer)));
-    memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
     compact_numeric_facts facts;
-    SEXP result = numeric_from_backing(
-        backing, length, kind, 0, 119,
-        compact_numeric_scan(RAW(backing), length, kind, &facts)
-            ? facts.missing_count : SIZE_MAX
-    );
-    UNPROTECT(1);
+    if (!compact_numeric_scan(RAW(buffer), length, kind, &facts)) return R_NilValue;
+    SEXP backing = buffer;
+    if (ALTREP(buffer) || MAYBE_SHARED(buffer) || ANY_ATTRIB(buffer)) {
+        backing = Rf_allocVector(RAWSXP, XLENGTH(buffer));
+        memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
+    }
+    PROTECT(backing);
+    SEXP result = PROTECT(compact_numeric_from_scan(backing, length, kind, &facts));
+    Rf_setAttrib(result, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(result, R_ClassSymbol, class);
+    UNPROTECT(2);
     return result;
 }
 
