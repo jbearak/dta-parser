@@ -958,7 +958,7 @@ test_that("owned string metadata leaves names replacement dispatch to R", {
     expect_identical(class(value), "stage4_owned_names")
 })
 
-test_that("string metadata declines compact storage without changing its source", {
+test_that("string metadata keeps compact storage without changing its source", {
     path <- tempfile(fileext = ".arrow")
     withr::defer(unlink(path))
     raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
@@ -966,7 +966,9 @@ test_that("string metadata declines compact storage without changing its source"
     value <- read_arrow(path)$x
     expect_true(.is_unmaterialized_dictstring(value))
     cache <- .dictstring_cached_count(value)
-    expect_null(.set_dta_string_attribute(value, "label", "later"))
+    annotated <- .set_dta_string_attribute(value, "label", "later")
+    expect_true(.is_unmaterialized_dictstring(annotated))
+    expect_identical(attr(annotated, "label", exact = TRUE), "later")
     expect_null(attr(value, "label", exact = TRUE))
     expect_identical(.dictstring_cached_count(value), cache)
     prototype <- set_var_labels(value, "source label")
@@ -979,6 +981,36 @@ test_that("string metadata declines compact storage without changing its source"
     expect_true(.is_unmaterialized_dictstring(value))
     expect_identical(.dictstring_cached_count(value), cache)
     expect_identical(as.character(value), raw)
+    # A write to either handle leaves the other's values alone.
+    annotated[1L] <- "text-new"
+    expect_identical(as.character(value), raw)
+    expect_identical(as.character(annotated), c("text-new", raw[-1L]))
+    value[2L] <- "text-old"
+    expect_identical(as.character(annotated), c("text-new", raw[-1L]))
+})
+
+test_that("large compact string subsets keep their dictionary visible", {
+    path <- tempfile(fileext = ".arrow")
+    withr::defer(unlink(path))
+    raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
+    save_arrow(data.frame(x = raw, k = seq_along(raw)), path)
+    data <- read_arrow(path)
+    even <- seq(2L, length(raw), by = 2L)
+    results <- list(
+        data$x[even], vctrs::vec_slice(data$x, even),
+        dplyr::filter(data, k %% 2L == 0L)$x,
+        dplyr::arrange(data, dplyr::desc(k))$x
+    )
+    expected <- list(raw[even], raw[even], raw[even], rev(raw))
+    for (index in seq_along(results)) {
+        result <- results[[index]]
+        # R's attribute wrapper would hide the dictionary, and the width
+        # check below would then make a string for every value.
+        expect_true(.is_unmaterialized_dictstring(result))
+        expect_identical(attributes(result), attributes(data$x))
+        expect_true(.string_declaration_holds(result))
+        expect_identical(as.character(result), expected[[index]])
+    }
 })
 
 test_that("large string construction captures borrowed values before removing metadata", {
