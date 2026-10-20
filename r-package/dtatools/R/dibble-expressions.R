@@ -40,16 +40,17 @@
     .Primitive("<-"), .Primitive("function"),
     # Match the actual local factory below, including standard compiler output.
     # Its environment is checked separately because each mask owns its reader.
-    compiler::cmpfun(function(generation, name, id) {
-        force(generation); force(name); force(id)
-        function() read(generation, name, id)
+    compiler::cmpfun(function(generation, name) {
+        force(generation); force(name)
+        function() read(generation, name, state$id)
     })
 )
 
 # The mask owns isolated public column handles. Bindings capture a column
-# generation and a fixed group, never the mutable current-group scalar. A
-# call-local lifetime invalidates deferred reads and releases all retained
-# generation payloads on normal return, errors and interrupts.
+# generation and read the group being evaluated, as dplyr's do, so one set
+# serves every group. A call-local lifetime invalidates deferred reads and
+# releases all retained generation payloads on normal return, errors and
+# interrupts.
 .new_dibble_expression_mask <- function(columns, groups, size, caller) {
     force(columns); force(groups); force(size); force(caller)
     if (is.null(names(columns)) || anyNA(names(columns)) ||
@@ -65,6 +66,7 @@
     # during callbacks; captured names must also survive later input renames.
     state$names <- character()
     state$current <- list()
+    state$bindings <- NULL
     state$mask <- NULL
     rows <- groups$rows
     if (!length(rows)) rows <- list(integer())
@@ -166,26 +168,31 @@
         if (id == 0L) return(vctrs::vec_slice(generation$value, integer()))
         generation$chunks[[id]]
     }
-    binding <- function(generation, name, id) {
-        force(generation); force(name); force(id)
-        function() read(generation, name, id)
+    binding <- function(generation, name) {
+        force(generation); force(name)
+        function() read(generation, name, state$id)
     }
-    make_mask <- function(id = state$id) {
-        # Admission inspects settled state and the default promise without
-        # forcing either input. Every decline retains the original sequence.
-        .native_admission_call(
-            C_dtatools_select_branch,
-            .native_admission_branches(.native_admission_call(
-                C_dtatools_try_mask_bindings, NULL, NULL, .mask_bindings_expected
-            ), NULL, {
-                bindings <- new.env(parent = emptyenv())
-                for (name in names(state$current)) {
-                    makeActiveBinding(name, binding(state$current[[name]], name, id), bindings)
-                }
-            }), .native_admission_if
-        )
-        mask <- rlang::new_data_mask(bindings)
-        mask$.data <- rlang::as_data_pronoun(bindings)
+    make_mask <- function() {
+        # Building a binding per column for every group was quadratic in
+        # groups times width. Adding or removing a column retires the set.
+        if (is.null(state$bindings)) {
+            # Admission inspects settled state without forcing it. Every
+            # decline retains the original sequence.
+            .native_admission_call(
+                C_dtatools_select_branch,
+                .native_admission_branches(.native_admission_call(
+                    C_dtatools_try_mask_bindings, NULL, NULL, .mask_bindings_expected
+                ), NULL, {
+                    bindings <- new.env(parent = emptyenv())
+                    for (name in names(state$current)) {
+                        makeActiveBinding(name, binding(state$current[[name]], name), bindings)
+                    }
+                }), .native_admission_if
+            )
+            state$bindings <- bindings
+        }
+        mask <- rlang::new_data_mask(state$bindings)
+        mask$.data <- rlang::as_data_pronoun(state$bindings)
         mask
     }
     values <- function(vars = names(state$current)) {
@@ -251,11 +258,18 @@
             }
         }
         state$generations <- state$current <- list()
-        state$mask <- NULL
+        state$bindings <- state$mask <- NULL
         groups <<- rows <<- NULL
     }
-    list(helpers = helpers, evaluate = evaluate, with_group = with_group, add = add,
-         remove = function(name) { state$current[[name]] <- NULL },
+    list(helpers = helpers, evaluate = evaluate, with_group = with_group,
+         add = function(name, value, chunks = NULL) {
+             state$bindings <- NULL
+             add(name, value, chunks)
+         },
+         remove = function(name) {
+             state$bindings <- NULL
+             state$current[[name]] <- NULL
+         },
          values = values, rows = rows, groups = groups,
          resolve = function(name) {
              generation <- state$current[[name]]
