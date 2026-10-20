@@ -568,6 +568,7 @@ DTATOOLS_INTERNAL void write_numeric_missing(
 DTATOOLS_INTERNAL void write_numeric_observed(
     unsigned char *output, R_xlen_t index, int kind, double value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 );
