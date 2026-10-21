@@ -322,6 +322,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_string_fits", (DL_FUNC) &C_dtatools_string_fits, 3},
     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
+    {"C_dtatools_blank_missing_strings", (DL_FUNC) &C_dtatools_blank_missing_strings, 1},
     {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
