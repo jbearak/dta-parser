@@ -630,12 +630,19 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         counts <- table(x, useNA = "ifany")
         return(stats::setNames(as.integer(counts), names(counts)))
     }
-    codes <- unclass(x)
-    attributes(codes) <- NULL
     names <- levels(x)
-    absent <- sum(is.na(codes))
-    counts <- if (count) tabulate(codes, nbins = length(names)) else
-        integer(length(names))
+    # One native pass counts the codes and their NAs together.
+    counted <- .Call(C_dtatools_level_counts, x, length(names), count)
+    if (is.null(counted)) {
+        codes <- unclass(x)
+        attributes(codes) <- NULL
+        absent <- sum(is.na(codes))
+        counts <- if (count) tabulate(codes, nbins = length(names)) else
+            integer(length(names))
+    } else {
+        counts <- counted[[1L]]
+        absent <- counted[[2L]]
+    }
     if (absent) {
         counts <- c(counts, absent)
         names <- c(names, NA_character_)
