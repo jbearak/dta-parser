@@ -1599,6 +1599,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 }
 
 .mutation_group_slice <- function(column, rows) {
+    # Every row of a compact string needs no slice. A metadata copy is a
+    # private view over the same immutable ids and dictionary, so native
+    # readers such as dta_group_id() still see the ids, not a wrapped copy.
+    if (.is_unmaterialized_dictstring(column) && is.integer(rows) &&
+        length(rows) == length(column) && length(rows) &&
+        identical(rows[[1L]], 1L) && identical(rows[[length(rows)]], length(rows)) &&
+        isFALSE(is.unsorted(rows, strictly = TRUE))) {
+        return(.Call(C_dtatools_metadata_copy, column))
+    }
     # The vctrs fallback may invoke an R proxy that retains its input. Native
     # compact and declared-double gathering cannot expose that full read view.
     if (!.dta_merge_has_compact_storage(column) &&
@@ -2608,9 +2617,15 @@ copy_data <- function(data) {
     snapshot_columns <- source$columns
     snapshot_attributes <- attributes(snapshot)
     reference_values <- c(snapshot_columns, unname(snapshot_attributes))
-    if (any(vapply(
-        reference_values, .contains_reference_object, logical(1)
-    ))) {
+    # The native walk answers as the R walk does, and leaves deep nesting and
+    # malformed pairlists to the R walk, which raises their errors.
+    found <- .Call(C_dtatools_reference_objects_found, reference_values)
+    if (is.na(found)) {
+        found <- any(vapply(
+            reference_values, .contains_reference_object, logical(1)
+        ))
+    }
+    if (found) {
         stop(
             paste0(
                 "`copy_data()` cannot isolate environments, functions, ",
@@ -2624,6 +2639,13 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
+    # attributes() expands automatic row names to 1:n, which the assignment
+    # stores as explicit row names. Keep the snapshot's compact form.
+    row_names <- .row_names_info(snapshot, 0L)
+    if (is.integer(row_names) && length(row_names) == 2L &&
+        is.na(row_names[[1L]])) {
+        attr(columns, "row.names") <- row_names
+    }
     .as_dibble(columns, "copy_data()")
 }
 

@@ -32,7 +32,7 @@ test_that("metadata shape admission adds no executable names callbacks", {
     plan <- get(".dta_attribute_plan", asNamespace("dtatools"))
     result <- plan(prototype, "double", temporal = FALSE)
     observed <- calls
-    expect_identical(observed, 2L)
+    expect_identical(observed, 1L)
     expect_identical(result, attributes(prototype))
 })
 
@@ -76,7 +76,9 @@ test_that("metadata admission preserves environment callbacks", {
     calls <- 0L
     generated <- generate(source)
     generate_calls <- calls
-    expect_identical(plan_calls, 4L)
+    # Planning matches attribute names without the set operations, which
+    # are where generation reaches environment().
+    expect_identical(plan_calls, 0L)
     expect_identical(generate_calls, 4L)
     expect_identical(planned, source)
     expect_identical(generated, source)

@@ -22,7 +22,7 @@
     # if, so a declined check runs the original call and adds no R calls.
     withCallingHandlers(.native_admission_call(C_dtatools_select_branch,
         .native_admission_branches(.summary_ptype_settles(chunks),
-            vctrs::vec_ptype_common(chunks[[1L]], chunks[[2L]], chunks[[3L]]),
+            vctrs::vec_ptype_common(!!!chunks[.summary_ptype_kept(chunks)]),
             vctrs::vec_ptype_common(!!!chunks)),
         .native_admission_if), error = function(condition) {
         details <- c(detail(condition$x, condition$x_arg),
@@ -35,15 +35,16 @@
 }
 
 # Build copies of the reducer that receives only the first chunks when the
-# others are skipped, of the helper it calls, and of the caller_env()
-# default that a fold forces.
+# others are skipped, of the helper it calls, of the caller_env() default
+# that a fold forces, and of the primitives that promote mixed storage.
 .summary_ptype_dependencies <- if (
     identical(as.character(getNamespaceVersion("vctrs")), "0.7.3") &&
     identical(as.character(getNamespaceVersion("rlang")), "1.3.0")
 ) list(
     utils::removeSource(vctrs::vec_ptype_common), utils::removeSource(rlang::list2),
     asNamespace("vctrs"), .Primitive("::"), .Primitive("{"), .Primitive(".External2"),
-    utils::removeSource(rlang::caller_env), .Primitive("+")
+    utils::removeSource(rlang::caller_env), .Primitive("+"),
+    .Primitive("is.character"), .Primitive("switch")
 ) else NULL
 
 # The routine objects that the reducers pass to .External2, as vctrs and
@@ -52,35 +53,64 @@
 .summary_routine_state$routines <- NULL
 
 # vctrs folds the per-group results into a common type one chunk at a time.
-# When every chunk is a canonical Stata double, the native check confirms
+# When every chunk is a canonical Stata numeric, the native check confirms
 # that each fold would reach the canonical method with its whole graph
 # unchanged, so a fold is a pure function of the running type and the next
 # chunk's attributes. The check also confirms that vctrs::vec_ptype_common()
-# is unchanged, so handing it fewer chunks cannot be observed. That method
-# folds the first three chunks and then the shared attributes once more. If
-# the type comes back unchanged, no later chunk can change it, and vctrs
-# folds only the first three. The check costs about as much as six folds, so
-# fewer than eight chunks are always folded in full. chunks stays an unforced
-# promise, so the check reads the caller's frame, where vctrs is called.
-# The captured predicates add no R calls when the check declines.
+# is unchanged, so handing it fewer chunks cannot be observed. The kept
+# chunks are the first three and the first chunk with each distinct set of
+# attributes. Folding them in order, each type from the third fold on must
+# come back unchanged when folded with every distinct set seen so far. Then
+# no skipped chunk can change the type, and vctrs folds only the kept chunks.
+# The native check costs about as much as six folds, so fewer than eight
+# chunks are always folded in full. chunks stays an unforced promise, so the
+# check reads the caller's frame, where vctrs is called. The captured
+# predicates add no R calls when the check declines.
 .summary_ptype_settles <- function(chunks) {
-    fold <- .native_admission_call(C_dtatools_double_ptype_method,
+    fold <- .native_admission_call(C_dtatools_summary_ptype_method,
                                    .double_combine_state, .metadata_state,
                                    .summary_ptype_dependencies, .summary_routine_state)
     .native_admission_and(.native_admission_not(.native_admission_is_null(fold)),
-        .chunks_share_attributes(chunks) && tryCatch({
-            ptype <- fold(fold(chunks[[1L]], chunks[[2L]]), chunks[[3L]])
-            identical(fold(ptype, chunks[[1L]]), ptype, attrib.as.set = FALSE)
+        !is.null(kept <- .summary_ptype_kept(chunks)) && tryCatch({
+            firsts <- attr(kept, "firsts", exact = TRUE)
+            ptype <- fold(chunks[[1L]], chunks[[2L]])
+            settled <- TRUE
+            for (index in kept[-(1:2)]) {
+                ptype <- fold(ptype, chunks[[index]])
+                for (first in firsts[firsts <= index]) {
+                    settled <- settled &&
+                        identical(fold(ptype, chunks[[first]]), ptype, attrib.as.set = FALSE)
+                }
+            }
+            settled
         }, error = function(condition) FALSE, warning = function(condition) FALSE,
         message = function(condition) FALSE))
 }
 
-.chunks_share_attributes <- function(chunks) {
-    shared <- attributes(chunks[[1L]])
-    for (chunk in chunks) {
-        if (!identical(attributes(chunk), shared)) return(FALSE)
+# The chunks vctrs must fold, with the first chunk of each distinct set of
+# attributes as their "firsts". NULL past four distinct sets, or when the
+# check would fold more often than the chunks it skips.
+.summary_ptype_kept <- function(chunks) {
+    seen <- list()
+    firsts <- integer()
+    for (index in seq_along(chunks)) {
+        current <- attributes(chunks[[index]])
+        known <- FALSE
+        for (attributes in seen) known <- known || identical(attributes, current)
+        if (!known) {
+            if (length(seen) == 4L) return(NULL)
+            seen[[length(seen) + 1L]] <- current
+            firsts <- c(firsts, index)
+        }
     }
-    TRUE
+    kept <- c(1:3, firsts[firsts > 3L])
+    if (length(firsts) > 1L) {
+        # The check folds the kept chunks and every first seen after each
+        # kept fold from the third, and vctrs folds the kept chunks again.
+        checks <- sum(vapply(kept[-(1:2)], function(index) sum(firsts <= index), integer(1)))
+        if (2L * (length(kept) - 1L) + checks + 6L >= length(chunks) - 1L) return(NULL)
+    }
+    structure(kept, firsts = firsts)
 }
 
 # Build copies of the calls that cast the chunks to the common type and
@@ -103,12 +133,53 @@
 # check confirms that, and that both vctrs calls and every method they reach
 # are unchanged. It then copies the chunks as the casts would, assembles the
 # result as double assembly does, and assigns both in the caller's frame, or
-# returns FALSE. The arguments stay unforced promises, so the check can read
-# the caller's frame, where the vctrs calls otherwise run.
-.summary_combine_double <- function(chunks, ptype) {
-    .native_admission_call(C_dtatools_summary_combine_double,
+# returns FALSE. When every chunk is a compact Stata numeric, or the metadata
+# proxy over one that a summary usually returns, with only its storage and
+# class, and its storage widens to a compact common type, the check instead
+# constructs each cast and the result in that storage, as the cast and
+# restore methods do.
+# The arguments stay unforced promises, so the check can read the caller's
+# frame, where the vctrs calls otherwise run.
+.summary_combine <- function(chunks, ptype) {
+    .native_admission_call(C_dtatools_summary_combine,
                            .double_combine_state, .metadata_state,
                            .summary_combine_dependencies, .summary_routine_state)
+}
+
+# The functions that the common type and combine checks read, besides the
+# numeric helper profile: the vctrs reducers and assembly, the package
+# helpers and methods of the combine graph, the vctrs and rlang functions
+# it reaches, and the delayed entries that registration put in the vctrs
+# and base method tables for those methods. A first grouped summary reaches
+# many of them only through the vctrs calls the checks replace, so each
+# check found a lazy binding and declined, and vctrs folded and cast every
+# group's result through R methods. `dependencies` is the combine profile,
+# which holds the vctrs namespace and the two method tables the checks read.
+.settle_summary_bindings <- function(dependencies) {
+    package <- topenv()
+    for (name in c(".dta_promote", ".dta_common_ptype", ".dta_ptype",
+                   ".reconcile_dta_metadata", ".restore_dta_metadata",
+                   ".dta_classes_from", ".dta_combine_value_labels",
+                   ".reconcile_dta_metadata_attributes", ".apply_haven_labelled_class",
+                   ".dta_snapshot", ".cast_to_dta", ".compact_dta_storage_matches",
+                   "vec_ptype2.dta_numeric.dta_numeric", "vec_cast.dta_numeric.dta_numeric",
+                   "vec_proxy.dta_numeric", "vec_restore.dta_numeric",
+                   "as.double.dta_numeric")) {
+        get(name, envir = package, inherits = FALSE)
+    }
+    for (name in c("vec_ptype_common", "vec_cast_common", "vec_c", "list_unchop",
+                   "vec_ptype_finalise.default", "names<-.vctrs_vctr",
+                   "names_repair_missing")) {
+        get(name, envir = dependencies[[1L]], inherits = FALSE)
+    }
+    rlang::check_dots_empty0
+    rlang::current_env
+    for (name in c("vec_ptype2.dta_numeric.dta_numeric", "vec_cast.dta_numeric.dta_numeric",
+                   "vec_proxy.dta_numeric", "vec_restore.dta_numeric")) {
+        get0(name, envir = dependencies[[8L]], inherits = FALSE)
+    }
+    get0("names<-.vctrs_vctr", envir = dependencies[[9L]], inherits = FALSE)
+    invisible(NULL)
 }
 
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
@@ -169,7 +240,7 @@
                 # A settled native combine assigns the casts to chunks and
                 # the combined vector to result. A decline runs the vctrs calls.
                 result <- .native_admission_call(C_dtatools_select_branch,
-                    .native_admission_branches(.summary_combine_double(chunks, ptype), result, {
+                    .native_admission_branches(.summary_combine(chunks, ptype), result, {
                         chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
                         vctrs::vec_c(!!!chunks, .ptype = ptype)
                     }), .native_admission_if)

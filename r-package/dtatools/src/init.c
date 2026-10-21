@@ -47,7 +47,12 @@ SEXP C_dtatools_mean_admitted(SEXP frame);
 SEXP C_dtatools_range_admitted(SEXP frame);
 SEXP C_dtatools_numeric_range(SEXP values, SEXP na_rm);
 SEXP C_dtatools_summarize_moments(SEXP values, SEXP weights, SEXP detail, SEXP meanonly);
+SEXP C_dtatools_summary_sorted(SEXP x, SEXP weights);
 SEXP C_dtatools_append_write_doubles(SEXP buffer, SEXP offset, SEXP rows, SEXP values);
+SEXP C_dtatools_append_compact_buffer(SEXP kind, SEXP rows);
+SEXP C_dtatools_append_write_compact(SEXP buffer, SEXP offset, SEXP rows, SEXP value, SEXP kind);
+SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind);
+SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind, SEXP storage, SEXP class);
 SEXP C_dtatools_summary_scan_supported(SEXP value);
 SEXP C_dtatools_numeric_identity_key(SEXP values, SEXP argument);
 SEXP C_dtatools_identity_parts(SEXP values);
@@ -184,7 +189,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_range_admitted", (DL_FUNC) &C_dtatools_range_admitted, 1},
     {"C_dtatools_numeric_range", (DL_FUNC) &C_dtatools_numeric_range, 2},
     {"C_dtatools_summarize_moments", (DL_FUNC) &C_dtatools_summarize_moments, 4},
+    {"C_dtatools_summary_sorted", (DL_FUNC) &C_dtatools_summary_sorted, 2},
     {"C_dtatools_append_write_doubles", (DL_FUNC) &C_dtatools_append_write_doubles, 4},
+    {"C_dtatools_append_compact_buffer", (DL_FUNC) &C_dtatools_append_compact_buffer, 2},
+    {"C_dtatools_append_write_compact", (DL_FUNC) &C_dtatools_append_write_compact, 5},
+    {"C_dtatools_append_compact_doubles", (DL_FUNC) &C_dtatools_append_compact_doubles, 2},
+    {"C_dtatools_append_compact_values", (DL_FUNC) &C_dtatools_append_compact_values, 4},
     {"C_dtatools_summary_scan_supported", (DL_FUNC) &C_dtatools_summary_scan_supported, 1},
     {"C_dtatools_numeric_identity_key", (DL_FUNC) &C_dtatools_numeric_identity_key, 2},
     {"C_dtatools_identity_parts", (DL_FUNC) &C_dtatools_identity_parts, 1},
@@ -348,6 +358,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_write_string_plan, 1},
     {"C_dtatools_ephemeral_altstring",
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
+    {"C_dtatools_numeric_values_fit",
+     (DL_FUNC) &C_dtatools_numeric_values_fit, 2},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
     {"C_dtatools_try_mask_bindings",
@@ -365,7 +377,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_execution_profile",
      (DL_FUNC) &C_dtatools_metadata_execution_profile, 1},
     {"C_dtatools_metadata_dependencies_unchanged",
-     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 2},
+     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 3},
     {"C_dtatools_canonical_attribute_plan",
      (DL_FUNC) &C_dtatools_canonical_attribute_plan, 2},
     {"C_dtatools_attribute_plan_stats", (DL_FUNC) &C_dtatools_attribute_plan_stats, 1},
@@ -373,12 +385,12 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_try_combine_double, 5},
     {"C_dtatools_combine_double_into_current",
      (DL_FUNC) &C_dtatools_combine_double_into_current, 3},
-    {"C_dtatools_double_ptype_method",
-     (DL_FUNC) &C_dtatools_double_ptype_method, 4},
+    {"C_dtatools_summary_ptype_method",
+     (DL_FUNC) &C_dtatools_summary_ptype_method, 4},
     {"C_dtatools_settled_routine",
      (DL_FUNC) &C_dtatools_settled_routine, 2},
-    {"C_dtatools_summary_combine_double",
-     (DL_FUNC) &C_dtatools_summary_combine_double, 4},
+    {"C_dtatools_summary_combine",
+     (DL_FUNC) &C_dtatools_summary_combine, 4},
     {"C_dtatools_construct_double",
      (DL_FUNC) &C_dtatools_construct_double, 3},
     {"C_dtatools_double_fits",
@@ -407,6 +419,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_deep_copy_value, 1},
     {"C_dtatools_reference_contents",
      (DL_FUNC) &C_dtatools_reference_contents, 1},
+    {"C_dtatools_reference_objects_found",
+     (DL_FUNC) &C_dtatools_reference_objects_found, 1},
     {"C_dtatools_reference_row_reads",
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_inject_reference_write_interrupt",
