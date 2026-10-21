@@ -8313,7 +8313,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "70e0da2f967b05e3efefffe7a2a72fd7273c4fe312b3e63cddd4e0ef48586f71"
+          "sha256": "d13827e6565dcdb17ea57f0f064e6613fb3f6dec19479ebd9873a1e1d7874236"
         },
         {
           "path": "tests/testthat/test-generation-metadata.R",
@@ -10636,6 +10636,25 @@
           "skip": "forbid",
           "min_pass": 13,
           "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "bare scalars type natively as the R path types them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "grouped summaries type bare scalar results natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
