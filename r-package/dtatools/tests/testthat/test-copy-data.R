@@ -64,3 +64,16 @@ test_that("copy_data rejects ordinary containers and leaves them unchanged", {
         expect_false(inherits(original, "dtatools_ref_data"))
     }
 })
+
+test_that("copy_data keeps automatic row names", {
+    for (n in c(3L, 0L)) {
+        original <- dibble(x = dta_byte(seq_len(n)))
+        copied <- copy_data(original)
+        expect_identical(.row_names_info(copied, 0L), .row_names_info(original, 0L))
+        expect_identical(.row_names_info(copied, 1L), .row_names_info(original, 1L))
+        # The Arrow profile drops, with a warning, row names it cannot write.
+        path <- tempfile(fileext = ".arrow")
+        expect_silent(save_arrow(copied, path))
+        unlink(path)
+    }
+})

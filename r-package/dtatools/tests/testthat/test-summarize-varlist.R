@@ -379,3 +379,59 @@ test_that("a varlist of column names still reads each variable's missing values"
     expect_identical(calls, 2L)
     expect_identical(result$names, c("a", "x", "b"))
 })
+
+test_that("a varlist of column names reads tibble and dibble columns as their names do", {
+    tbl <- structure(
+        list(dta_byte(c(1, NA, 3)), c(2, 4, 6), 7:9, dta_int(c(10, 11, NA))),
+        names = c("a", "b", "a", ""),
+        class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -3L))
+    specs <- c("a", "b", "", "a")
+    result <- .summarize_varlist(tbl, specs, rep(TRUE, 3))
+    expect_identical(result$values, lapply(specs, function(name) tbl[[name]]))
+    data <- as_dibble(data.frame(a = dta_byte(c(1, NA, 3)), b = c(2, 4, 6),
+                                 c = dta_long(c(5, 6, 7))))
+    specs <- c("c", "a", "c", "b")
+    result <- .summarize_varlist(data, specs, rep(TRUE, 3))
+    expect_identical(result$values, lapply(specs, function(name) data[[name]]))
+    expect_identical(result$names, specs)
+})
+
+test_that("a varlist of column names keeps the observation check for other missing values", {
+    registerS3method("is.na", "dtatools_short_missing",
+                     function(x) logical(length(x) - 1L))
+    odd <- structure(c(1, 2, 3), class = "dtatools_short_missing")
+    frame <- data.frame(x = 1:3)
+    frame$odd <- odd
+    tbl <- structure(list(x = 1:3, odd = odd),
+                     class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -3L))
+    for (data in list(frame, tbl)) {
+        expect_warning(.summarize_varlist(data, c("x", "odd"), rep(TRUE, 3)),
+                       "longer object length")
+    }
+})
+
+test_that("a varlist of column names keeps another class's column method", {
+    registerS3method("[[", "dtatools_scaled_columns",
+                     function(x, i, ...) 10 * NextMethod())
+    data <- structure(list(value = c(1, 2, 3)),
+                      class = c("dtatools_scaled_columns", "tbl_df", "tbl", "data.frame"),
+                      row.names = c(NA, -3L))
+    result <- .summarize_varlist(data, "value", rep(TRUE, 3))
+    expect_identical(result$values, list(c(10, 20, 30)))
+    expect_identical(summ(data, value)$statistics$mean, 20)
+})
+
+test_that("a varlist of column names follows a dibble reordered while it is read", {
+    data <- dibble(a = c(1, 2, 3), b = c(10, 20, 30), c = c(4, 5, 6))
+    probe <- data$a
+    class(probe) <- "dtatools_reorder_probe"
+    data$a <- probe
+    registerS3method("is.na", "dtatools_reorder_probe", function(x) {
+        order_vars(data, c)
+        is.na(unclass(x))
+    })
+    result <- .summarize_varlist(data, c("a", "b", "c"), rep(TRUE, 3))
+    expect_identical(names(data), c("c", "a", "b"))
+    expect_identical(lapply(result$values, function(x) as.vector(unclass(x))),
+                     list(c(1, 2, 3), c(10, 20, 30), c(4, 5, 6)))
+})
