@@ -145,6 +145,15 @@
   longer than 10,000 bytes no longer stops the append with R's limit on
   variable names.
 
+* `$<-`, `[[<-`, and the dplyr verbs on a dibble tell which result
+  columns are the same vector as a prior column, a source column, or an
+  earlier result column by comparing pointers, rather than by formatting
+  an address string for every column and matching the strings. On a
+  16,787-row, 5,360-column DHS file, `d$z <- value` falls from about 0.025
+  to 0.015 seconds, `relocate()` from 0.019 to 0.014, `filter()` from
+  0.052 to 0.045, and `left_join()` from 0.066 to 0.053. Results are
+  unchanged.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,

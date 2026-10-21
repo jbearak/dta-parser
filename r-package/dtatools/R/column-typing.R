@@ -443,14 +443,10 @@
             location <- prior_locations[[index]]
             if (is.na(location)) NULL else .subset2(before, location)
         }
-        if (!is.null(prior) &&
-            identical(rlang::obj_address(prior), rlang::obj_address(column))) {
-            next
-        }
+        # A pointer comparison, without formatting two address strings.
+        if (!is.null(prior) && rlang::is_reference(prior, column)) next
         typed <- .retyped_column(column, prior, row_count, caller)
-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
-            result[[index]] <- typed
-        }
+        if (!rlang::is_reference(typed, column)) result[[index]] <- typed
     }
     result
 }

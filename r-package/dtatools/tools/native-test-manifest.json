@@ -11157,7 +11157,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-columns.R",
-          "sha256": "43a1d2226b53ccf91f8ff2ce23ac5a8d7e0dc9ae0af67e63c1617ed680948dc8"
+          "sha256": "b2f8467ec3474bab55ed198c79e522eca107ff87d5dcf3c2fe9d2e38ff766215"
         },
         {
           "path": "tests/testthat/test-dibble-result-history.R",
@@ -11627,6 +11627,14 @@
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-columns.R",
+          "test": "result columns are matched to their slots and sources by identity",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
         },
         {
           "file": "test-dibble-print.R",
