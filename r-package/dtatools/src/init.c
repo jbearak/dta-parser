@@ -59,6 +59,7 @@ SEXP C_dtatools_identity_parts(SEXP values);
 SEXP C_dtatools_numeric_match_keys(SEXP x, SEXP table, SEXP nomatch, SEXP incomparables);
 SEXP C_dtatools_numeric_duplicated_keys(SEXP keys);
 SEXP C_dtatools_numeric_any_na(SEXP value, SEXP recursive);
+SEXP C_dtatools_codebook_facts(SEXP x);
 
 /* THROWAWAY unique-target function-entry floor. */
 SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
@@ -201,6 +202,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_numeric_match_keys", (DL_FUNC) &C_dtatools_numeric_match_keys, 4},
     {"C_dtatools_numeric_duplicated_keys", (DL_FUNC) &C_dtatools_numeric_duplicated_keys, 1},
     {"C_dtatools_numeric_any_na", (DL_FUNC) &C_dtatools_numeric_any_na, 2},
+    {"C_dtatools_codebook_facts", (DL_FUNC) &C_dtatools_codebook_facts, 1},
     {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
     {"C_dtatools_grouped_mode", (DL_FUNC) &C_dtatools_grouped_mode, 1},
     {"C_dtatools_grouped_stats", (DL_FUNC) &C_dtatools_grouped_stats, 1},
@@ -322,6 +324,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_string_fits", (DL_FUNC) &C_dtatools_string_fits, 3},
     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
+    {"C_dtatools_blank_missing_strings", (DL_FUNC) &C_dtatools_blank_missing_strings, 1},
     {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
@@ -408,6 +411,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
+    {"C_dtatools_dictstring_match_codes",
+     (DL_FUNC) &C_dtatools_dictstring_match_codes, 2},
     {"C_dtatools_replace_reference_columns",
      (DL_FUNC) &C_dtatools_replace_reference_columns, 5},
     {"C_dtatools_is_numeric_altrep",
@@ -495,6 +500,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
+    {"C_dtatools_missing_code_counts",
+     (DL_FUNC) &C_dtatools_missing_code_counts, 1},
     {"C_dtatools_dta_compare",
      (DL_FUNC) &C_dtatools_dta_compare, 5},
     {"C_dtatools_fused_compare_patch",
