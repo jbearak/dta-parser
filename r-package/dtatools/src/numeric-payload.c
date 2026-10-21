@@ -1567,30 +1567,18 @@ SEXP C_dtatools_write_string_plan(SEXP value) {
     size_t maximum = 0;
     double missing = 0;
     SEXP normalized = R_NilValue;
-    SEXP dictionary_source = unmaterialized_dictstring_source(value);
-    if (dictionary_source != R_NilValue) {
-        dictstring_data *data = dictstring_storage(dictionary_source);
-        SEXP cache = dictstring_cache(dictionary_source);
-        R_xlen_t value_count = XLENGTH(cache);
-        for (R_xlen_t id = 0; id < value_count; id++) {
-            if ((id & 16383) == 0) R_CheckUserInterrupt();
-            const char *bytes = NULL;
-            int length = 0;
-            if (!dtatools_dictstring_bytes(
-                    data, (uint32_t) id, &bytes, &length
-                ) || bytes == NULL || length < 0) {
-                Rf_error("invalid dtatools string-dictionary value");
-            }
-            if (memchr(bytes, 0, (size_t) length) != NULL) {
-                Rf_error("character values cannot contain NUL bytes");
-            }
-            if ((uint64_t) length > UINT64_C(2000000000)) {
-                Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
-            }
-            if ((size_t) length > maximum) maximum = (size_t) length;
-        }
-        return write_string_plan_result(maximum, 0, value);
+    SEXP dictionary_root = PROTECT(dictstring_read_root(value));
+    if (dictionary_root != R_NilValue) {
+        /* Every dictionary value is checked, as before; only the width
+           counts just the values the column holds. */
+        maximum = dictstring_used_width(
+            dictionary_root, dictstring_dictionary_width(dictionary_root, 1)
+        );
+        SEXP result = write_string_plan_result(maximum, 0, value);
+        UNPROTECT(1);
+        return result;
     }
+    UNPROTECT(1);
     /* Owned strings have stable ordinary storage. Read that allocation here,
        but return the tracked handle when no normalization is needed. Foreign
        ALTSTRING values still need the established materialization boundary. */
