@@ -254,6 +254,10 @@ extern void *dtatools_dictstring_clone(const void *);
 extern void *dtatools_dictstring_gather(
     const void *, const uint32_t *, size_t
 );
+extern int dtatools_dictstring_match_codes(
+    void *, size_t, const uint32_t *, size_t, int *,
+    void *, size_t, const uint32_t *, size_t, int *
+);
 extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, const char *, SEXP, const dtatools_arrow_column *,
     size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
@@ -559,6 +563,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_gather_numeric(
 DTATOOLS_INTERNAL SEXP C_dtatools_gather_numeric_columns(
     SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_match_codes(SEXP x, SEXP y);
 DTATOOLS_INTERNAL int dtatools_make_numeric(
     void *data, SEXP backing, int *transferred, SEXP *result
 );
@@ -904,6 +909,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_missing_code_counts(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(
     SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
 );
