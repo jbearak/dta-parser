@@ -428,6 +428,9 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     quo <- calculation$quo
     .egen_validate_external(rlang::quo_get_expr(quo), rlang::quo_get_env(quo),
                             original$columns)
+    summary <- .egen_group_summary(original, groups, where, positions,
+                                   calculation, view)
+    if (!is.null(summary)) return(summary)
     group_rows <- if (is.null(groups)) list(seq_len(original$nrow)) else groups$rows
     if (!length(group_rows)) group_rows <- list(integer())
     values <- rows <- vector("list", length(group_rows))
@@ -478,6 +481,55 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     order <- order(admitted_rows)
     list(values = vctrs::vec_slice(result, order),
          rows = if (length(admitted_rows) == original$nrow) NULL else admitted_rows[order])
+}
+
+# A grouped summary of one column, such as `dta_mean(x)`, gives each group
+# one value. The loop above would evaluate it once per group. One native
+# pass gives every group's value instead, after the checks that the loop's
+# first group makes: the shadowing check, the column's validation, and the
+# type check in `.dta_egen_summary()`, which declines here so the loop
+# raises its error. Any other calculation, `where`, `rows`, or groups whose
+# rows are not each in increasing order keep the loop.
+.egen_group_summary <- function(original, groups, where, positions,
+                                calculation, view) {
+    if (is.null(groups) || !rlang::quo_is_null(where) || !is.null(positions)) {
+        return(NULL)
+    }
+    operation <- match(calculation$kind,
+                       c("dta_mean", "dta_min", "dta_max", "dta_total"))
+    expression <- rlang::quo_get_expr(calculation$quo)
+    frame <- rlang::quo_get_env(calculation$quo)
+    if (is.na(operation) || !is.call(expression) || length(expression) != 2L ||
+        !is.null(names(expression)) || !is.symbol(expression[[1L]]) ||
+        !is.symbol(expression[[2L]])) return(NULL)
+    head <- as.character(expression[[1L]])
+    name <- as.character(expression[[2L]])
+    # The loop binds `.n` and `.N` in front of the columns, and the columns
+    # in front of the calculation's environment. A data mask also binds the
+    # pronouns. Neither name may resolve to anything but the function and
+    # the column.
+    masked <- c(".n", ".N", ".data", ".env", ".")
+    columns <- original$columns
+    if (name %in% masked || head %in% masked ||
+        !.has_mutation_column(columns, name) ||
+        .has_mutation_column(columns, head) ||
+        !identical(get0(head, envir = frame, mode = "function"),
+                   get(calculation$kind, envir = environment(egen)))) {
+        return(NULL)
+    }
+    column <- .mutation_column(columns, name)
+    if (!typeof(column) %in% c("double", "integer", "logical") ||
+        !.dta_egen_numeric_supported(column) || is.factor(column) ||
+        inherits(column, "integer64") || inherits(column, "difftime") ||
+        !is.null(dim(column)) || !sum(lengths(groups$rows))) return(NULL)
+    if (calculation$shadow) {
+        .check_shadowed_symbols(expression, view$columns, frame)
+    }
+    .egen_validate_source(column)
+    result <- .Call(C_dtatools_egen_group_summary, column, groups$rows,
+                    operation - 1L, FALSE, TRUE)
+    if (is.null(result)) return(NULL)
+    list(values = result[[1L]], rows = result[[2L]])
 }
 
 .egen_eval_value <- function(quo, columns, size, shadow) {
