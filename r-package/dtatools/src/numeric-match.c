@@ -223,6 +223,55 @@ SEXP C_dtatools_numeric_duplicated_keys(SEXP keys) {
     return result;
 }
 
+static SEXP identity_parts_list(SEXP rank, SEXP value) {
+    PROTECT(rank);
+    PROTECT(value);
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(result, 0, rank);
+    SET_VECTOR_ELT(result, 1, value);
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(names, 0, Rf_mkChar("rank"));
+    SET_STRING_ELT(names, 1, Rf_mkChar("value"));
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(4);
+    return result;
+}
+
+/* Compact backing decodes both parts in one pass: the region reader writes
+   each value's missing code and a zero for every missing value. Separate
+   passes for the codes and the values decoded every value twice. Return
+   NULL for other backing, or a noncanonical code, which the caller handles. */
+static SEXP compact_identity_parts(SEXP values, R_xlen_t length) {
+    numeric_data captured;
+    SEXP root = PROTECT(numeric_missing_mask_capture(values, &captured));
+    if (root == R_NilValue || (R_xlen_t) captured.length != length) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    SEXP rank = PROTECT(Rf_allocVector(INTSXP, length));
+    SEXP value = PROTECT(Rf_allocVector(REALSXP, length));
+    int *ranks = INTEGER(rank);
+    numeric_reader reader = {values, &captured, NULL, NULL, REALSXP};
+    numeric_reader_region(&reader, 0, length, REAL(value), ranks);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int code = ranks[index];
+        if (code < 0) {
+            ranks[index] = 0;
+        } else if (code == 0) {
+            ranks[index] = 1;
+        } else if (code >= 'a' && code <= 'z') {
+            ranks[index] = code - 'a' + 2;
+        } else {
+            UNPROTECT(3);
+            return R_NilValue;
+        }
+    }
+    SEXP result = identity_parts_list(rank, value);
+    UNPROTECT(3);
+    return result;
+}
+
 /* The rank and value parts of the Stata identity proxy for a double vector
    that holds missing values: rank 0 for an observed value, 1 for `.`, and
    2 through 27 for `.a` through `.z`, whose values become zero. Codes come
@@ -237,6 +286,8 @@ SEXP C_dtatools_identity_parts(SEXP values) {
         !(R_altrep_inherits(values, dtatools_metadata_real_class) &&
           R_altrep_data2(values) != R_NilValue)) return R_NilValue;
     R_xlen_t length = XLENGTH(values);
+    SEXP parts = compact_identity_parts(values, length);
+    if (parts != R_NilValue) return parts;
     SEXP codes = PROTECT(C_dtatools_missing_codes(values));
     if (XLENGTH(codes) != length) {
         UNPROTECT(1);
@@ -274,13 +325,7 @@ SEXP C_dtatools_identity_parts(SEXP values) {
             output[index] = 0;
         }
     }
-    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
-    SET_VECTOR_ELT(result, 0, rank);
-    SET_VECTOR_ELT(result, 1, value);
-    SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
-    SET_STRING_ELT(names, 0, Rf_mkChar("rank"));
-    SET_STRING_ELT(names, 1, Rf_mkChar("value"));
-    Rf_setAttrib(result, R_NamesSymbol, names);
-    UNPROTECT(5);
+    SEXP result = identity_parts_list(rank, value);
+    UNPROTECT(3);
     return result;
 }

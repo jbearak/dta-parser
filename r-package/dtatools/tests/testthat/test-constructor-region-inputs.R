@@ -208,3 +208,69 @@ test_that("constructor chunk boundaries retain strict diagnostics", {
         expect_error(case$construct(.Call(C_dtatools_capture_column, values)), case$message)
     }
 })
+
+test_that("compact input of the requested storage builds the column its doubles build", {
+    construct <- function(x, kind, temporal = 0L) {
+        .Call(C_dtatools_construct_numeric, x,
+              match(kind, dtatools:::.dta_storage) - 1L, temporal)
+    }
+    decoded <- function(x) {
+        values <- as.double(x)
+        values[[1L]] <- values[[1L]]
+        values
+    }
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    data <- read_dta(path)
+    edges <- list(
+        byte = c(-127, -0, 0, 100, NA, tagged_missing(c("a", "z"))),
+        int = c(-32767, 0, 32740, NA, tagged_missing("m")),
+        long = c(-2147483647, 0, 2147483620, NA, tagged_missing("q")),
+        float = c(-0, 0, 2^-149, -2^-149, 1e30, -1.5, NA, tagged_missing("b"))
+    )
+    for (kind in names(edges)) {
+        name <- paste0("x_", kind)
+        for (source in list(data[[name]], construct(edges[[kind]], kind),
+                            construct(rep(edges[[kind]], length.out = 16385L), kind))) {
+            values <- as.double(source)
+            doubles <- decoded(source)
+            expect_true(dtatools:::.is_unmaterialized_numeric_altrep(values))
+            expect_false(dtatools:::.is_unmaterialized_numeric_altrep(doubles))
+            result <- construct(values, kind)
+            expected <- construct(doubles, kind)
+            expect_identical(.Call(C_dtatools_numeric_facts_info, result),
+                             .Call(C_dtatools_numeric_facts_info, expected),
+                             info = kind)
+            expect_identical(serialize(result, NULL), serialize(expected, NULL))
+        }
+    }
+
+    # Other storage, a temporal conversion, and values the constructor
+    # rejects take the double path and its errors.
+    byte <- construct(edges$byte, "byte")
+    expect_identical(serialize(construct(byte, "int"), NULL),
+                     serialize(construct(decoded(byte), "int"), NULL))
+    long <- construct(edges$long, "long")
+    expect_identical(serialize(construct(long, "long", 1L), NULL),
+                     serialize(construct(decoded(long), "long", 1L), NULL))
+    cases <- list(
+        list(x_byte = as.raw(0x80)),
+        list(x_int = .raw_little_integer(-32768L, 2L)),
+        list(x_long = as.raw(c(0x00, 0x00, 0x00, 0x80))),
+        list(x_float = .raw_little_integer(0x7fc00000, 4L)),
+        list(x_float = .raw_little_integer(0x7f000001, 4L)),
+        list(x_float = .raw_little_integer(0x7f800000, 4L))
+    )
+    for (values in cases) {
+        bad <- tempfile(fileext = ".dta")
+        file.copy(path, bad)
+        patch_numeric_fixture_row(bad, 0L, values)
+        source <- read_dta(bad)[[names(values)]]
+        unlink(bad)
+        kind <- dtatools:::.declared_dta_storage(source)
+        message <- function(x) tryCatch(construct(x, kind), error = conditionMessage)
+        expect_type(message(decoded(source)), "character")
+        expect_identical(message(as.double(source)), message(decoded(source)),
+                         info = names(values))
+    }
+})
