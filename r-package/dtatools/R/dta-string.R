@@ -65,9 +65,13 @@ dta_string <- function(x = character(), storage = NULL) {
 # as they are, so a bare character vector is not copied. Every path that
 # admits an `NA` into a Stata string spells the rule through here. A compact
 # dictionary holds no `NA`, and scanning one for it would fill its cache with
-# a string for each distinct value.
+# a string for each distinct value. A classless ordinary or owned vector has
+# its `NA` replaced in one native pass rather than through `[<-`, which writes
+# each element of an owned vector through ALTREP.
 .stata_string_text <- function(values) {
     text <- as.character(values)
+    blanked <- .Call(C_dtatools_blank_missing_strings, text)
+    if (!is.null(blanked)) return(blanked)
     if (!.is_unmaterialized_dictstring(text) && anyNA(text)) text[is.na(text)] <- ""
     text
 }
@@ -153,7 +157,13 @@ vec_proxy.dta_string <- function(x, ...) .dta_string_data(x)
 vec_restore.dta_string <- function(x, to, ...) {
     storage <- .declared_string_storage(to)
     value <- as.character(x)
-    if (!.is_unmaterialized_dictstring(value) && anyNA(value)) value[is.na(value)] <- ""
+    # As in `.stata_string_text()`. Keep the fallback assignment in this frame.
+    blanked <- .Call(C_dtatools_blank_missing_strings, value)
+    if (!is.null(blanked)) {
+        value <- blanked
+    } else if (!.is_unmaterialized_dictstring(value) && anyNA(value)) {
+        value[is.na(value)] <- ""
+    }
     .new_dta_string(value, storage, to)
 }
 
@@ -162,7 +172,12 @@ vec_restore.dta_string <- function(x, to, ...) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
     data <- .dta_string_data(x)
     result <- if (missing(i)) data[] else data[i]
-    if (!.is_unmaterialized_dictstring(result) && anyNA(result)) result[is.na(result)] <- ""
+    blanked <- .Call(C_dtatools_blank_missing_strings, result)
+    if (!is.null(blanked)) {
+        result <- blanked
+    } else if (!.is_unmaterialized_dictstring(result) && anyNA(result)) {
+        result[is.na(result)] <- ""
+    }
     .new_dta_string(result, .declared_string_storage(x), x)
 }
 

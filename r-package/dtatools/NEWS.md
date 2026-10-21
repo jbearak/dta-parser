@@ -5,6 +5,32 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Every grouped verb on a dibble checks that its grouping metadata matches
+  its rows. That check now reads the rows of all groups in one native pass
+  when they are ordinary integer vectors, as `group_by()` makes them, rather
+  than calling the list's `[[` method, `is.integer()`, and `is.unsorted()`
+  through R for each group. On the 1,274,250-row India 2021 DHS births file,
+  `group_by(d, caseid)` over its 494,019 women falls from about 0.72 to 0.21
+  seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
+  to 0.99 seconds. Results and errors are unchanged.
+
+* When a grouped verb on a dibble checks its grouping metadata, it compares
+  each row's numeric grouping key with its group's key in one native pass,
+  rather than repeating each group's key for every row and comparing the two
+  with vctrs. On the India 2021 DHS births file, `count(d, v024, b4)` falls
+  from about 0.10 to 0.05 seconds, grouped `mutate()` by state from 0.064 to
+  0.037 seconds, and `group_by(d, v024)` from 0.025 to 0.012 seconds.
+  Results and errors are unchanged.
+
+* A Stata string column replaces `NA` with `""` in one native pass when
+  vctrs restores, slices, or casts it, as `bind_rows()`, `vctrs::vec_c()`,
+  and joins that pad unmatched rows do. Assigning `""` through `[<-` had
+  copied a dtatools-owned string and then written each value through
+  ALTREP. On the India 2021 DHS births file, `vctrs::vec_c()` of its
+  1,274,250-row `caseid` column with itself falls from about 0.20 to 0.13
+  seconds, and a `full_join()` of its 724,115 women to their births' `caseid`
+  and `bidx` from 0.38 to 0.31 seconds. Results are unchanged.
+
 * Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
   type a group's bare integer or double scalar result, such as `n()`, in one
   native call, as `gen()` already did for a scalar. They had built its Stata
