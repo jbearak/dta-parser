@@ -65,8 +65,8 @@
   as they are rather than copying subsets. They find the first row of each
   category, which its label and value come from, in one native pass that
   stops once every category has a row. On the 1,274,250-row India 2021 DHS
-  births file, `tab(v024, data = bh)` falls from about 0.069 to 0.024
-  seconds and `tab(v024, b4, data = bh)` from 0.10 to 0.036. Results are
+  births file, `tab(v024, data = bh)` falls from about 0.083 to 0.025
+  seconds and `tab(v024, b4, data = bh)` from 0.12 to 0.036. Results are
   unchanged.
 
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
