@@ -361,8 +361,8 @@
   block. Each column decides once, not once per row, how to test its values
   for missing, and each worker takes the next column as it finishes one. On
   the 1,274,250-row, 1,644-column India 2021 DHS birth history file, an
-  `m:1` merge on `caseid` falls from 2.0 to 1.5 seconds and `arrange(b2)`
-  from 0.54 to 0.37 seconds.
+  `m:1` merge on `caseid` falls from 0.99 to 0.55 seconds and
+  `arrange(b2)` from 0.46 to 0.29 seconds.
 
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
