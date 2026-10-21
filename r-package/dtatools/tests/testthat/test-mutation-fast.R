@@ -258,6 +258,73 @@ test_that("invalid generation defaults still fail before appending a scalar", {
     }
 })
 
+test_that("bare scalars type natively as the R path types them", {
+    ns <- asNamespace("dtatools")
+    reached <- 0L
+    trace(".generated_numeric", tracer = function() reached <<- reached + 1L,
+          where = ns, print = FALSE)
+    on.exit(untrace(".generated_numeric", where = ns), add = TRUE)
+    # The container mapping sends the first values to the native call.
+    fitting <- list(1L, -5L, NA_integer_, 1.5, -0, 1e300, 2^31)
+    outside <- list(.Machine$integer.max, NA_real_, NaN, Inf, 9e307)
+    # Container mapping, gen(), and egen().
+    modes <- list(c(FALSE, TRUE), c(TRUE, FALSE), c(TRUE, TRUE))
+    shapes <- list(list(rows = NULL, count = 1), list(rows = 2L, count = 3))
+    outcome <- function(expr) tryCatch(list(value = serialize(expr, NULL)),
+        error = function(e) list(error = conditionMessage(e), call = conditionCall(e)[[1L]]))
+    differences <- list()
+    native <- 0L
+    for (storage in c("float", "double")) {
+        withr::local_options(dtatools.generate_type = storage)
+        for (value in c(fitting, outside)) for (mode in modes) for (shape in shapes) {
+            expected <- outcome(.generated_numeric(value, shape$rows, shape$count,
+                                                   "gen()", mode[[1L]]))
+            before <- reached
+            actual <- outcome(.generated_column(value, shape$rows, shape$count, "gen()",
+                generate = mode[[1L]], carry_metadata = mode[[2L]]))
+            native <- native + (reached == before)
+            # gen() already raised its errors from the native call.
+            if (identical(mode, c(TRUE, FALSE))) expected$call <- actual$call <- NULL
+            if (!identical(actual, expected)) {
+                differences[[length(differences) + 1L]] <- list(value, mode, shape)
+            }
+        }
+    }
+    expect_identical(differences, list())
+    expect_identical(native, 2L * length(shapes) *
+        (length(fitting) + length(fitting) + length(outside)))
+    # Attributed and longer values take the R path, which carries metadata.
+    before <- reached
+    labelled <- .generated_column(structure(2L, label = "count"), NULL, 1, "summarise()")
+    pair <- .generated_column(c(1.5, 2), NULL, 2, "summarise()")
+    expect_identical(reached - before, 2L)
+    expect_identical(attr(labelled, "label"), "count")
+    expect_identical(dta_storage_type(pair), "double")
+    # The container mapping never reads the generate option.
+    withr::local_options(dtatools.generate_type = "long")
+    expect_identical(dta_storage_type(.generated_column(1.5, NULL, 1, "summarise()")), "double")
+    expect_error(.generated_column(1.5, NULL, 1, "gen()", generate = TRUE),
+                 "dtatools.generate_type")
+})
+
+test_that("grouped summaries type bare scalar results natively", {
+    skip_if_not_installed("dplyr")
+    ns <- asNamespace("dtatools")
+    reached <- 0L
+    trace(".generated_numeric", tracer = function() reached <<- reached + 1L,
+          where = ns, print = FALSE)
+    on.exit(untrace(".generated_numeric", where = ns), add = TRUE)
+    data <- dibble(g = c(1, 1, 2), x = c(1L, 2L, 4L))
+    before <- reached
+    result <- dplyr::summarise(dplyr::group_by(data, g), n = dplyr::n(),
+                               s = sum(as.integer(x)), m = mean(as.double(x)))
+    expect_identical(reached, before)
+    expect_identical(vapply(result[c("n", "s", "m")], dta_storage_type, ""),
+                     c(n = "long", s = "long", m = "double"))
+    expect_identical(lapply(result[c("n", "s", "m")], as.double),
+                     list(n = c(2, 1), s = c(3, 4), m = c(1.5, 4)))
+})
+
 test_that("promote callbacks cannot change a declined scalar assignment", {
     for (promoting in c(FALSE, TRUE)) {
         data <- dibble(x = dta_byte(c(1, 2, 3)))
