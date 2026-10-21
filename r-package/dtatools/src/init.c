@@ -47,6 +47,7 @@ SEXP C_dtatools_mean_admitted(SEXP frame);
 SEXP C_dtatools_range_admitted(SEXP frame);
 SEXP C_dtatools_numeric_range(SEXP values, SEXP na_rm);
 SEXP C_dtatools_summarize_moments(SEXP values, SEXP weights, SEXP detail, SEXP meanonly);
+SEXP C_dtatools_summary_sorted(SEXP x, SEXP weights);
 SEXP C_dtatools_append_write_doubles(SEXP buffer, SEXP offset, SEXP rows, SEXP values);
 SEXP C_dtatools_append_compact_buffer(SEXP kind, SEXP rows);
 SEXP C_dtatools_append_write_compact(SEXP buffer, SEXP offset, SEXP rows, SEXP value, SEXP kind);
@@ -188,6 +189,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_range_admitted", (DL_FUNC) &C_dtatools_range_admitted, 1},
     {"C_dtatools_numeric_range", (DL_FUNC) &C_dtatools_numeric_range, 2},
     {"C_dtatools_summarize_moments", (DL_FUNC) &C_dtatools_summarize_moments, 4},
+    {"C_dtatools_summary_sorted", (DL_FUNC) &C_dtatools_summary_sorted, 2},
     {"C_dtatools_append_write_doubles", (DL_FUNC) &C_dtatools_append_write_doubles, 4},
     {"C_dtatools_append_compact_buffer", (DL_FUNC) &C_dtatools_append_compact_buffer, 2},
     {"C_dtatools_append_write_compact", (DL_FUNC) &C_dtatools_append_write_compact, 5},

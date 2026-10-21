@@ -202,6 +202,117 @@ test_that("fused scans cross retained chunks and retain the input backing", {
     }
 })
 
+test_that("unit-weight scans of compact integer storage match the previous calculation", {
+    samples <- list(
+        byte = c(-127, 100, 0, NA, tagged_missing("a"), 5, 5, -3),
+        int = c(-32767, 32740, 0, NA, tagged_missing("a"), 5, 5, -3),
+        long = c(-2147483647, 2147483620, 0, NA, tagged_missing("a"), 5, -3),
+        narrow = c(70000, 70003, NA, 69998, 70003, tagged_missing("z")))
+    constructors <- list(byte = dta_byte, int = dta_int, long = dta_long,
+                         narrow = dta_long)
+    sorted <- function(x, w) .Call(dtatools:::C_dtatools_summary_sorted, x, w)
+    for (kind in names(samples)) {
+        constructor <- constructors[[kind]]
+        for (values in list(samples[[kind]], c(NA, tagged_missing("z")), 42,
+                            numeric(), rep_len(samples[[kind]], 65539))) {
+            w <- rep(1, length(values))
+            compact <- constructor(values)
+            frozen <- .native_summary_freeze(compact, 4093)
+            inputs <- list(compact, frozen,
+                           .Call(dtatools:::C_dtatools_metadata_copy, frozen))
+            for (x in inputs) for (mode in c("default", "detail", "meanonly")) {
+                detail <- mode == "detail"
+                meanonly <- mode == "meanonly"
+                expect_identical(
+                    dtatools:::.summarize_statistics(x, w, NULL, detail, meanonly),
+                    .native_summary_reference(values, w, NULL, detail, meanonly),
+                    info = paste(kind, mode, length(values)))
+            }
+            observed <- sort(values[!is.na(values)])
+            # Counting sorts only a range not much wider than the count.
+            wide <- length(observed) &&
+                diff(range(observed)) + 1 > length(observed) + 65536
+            for (x in inputs) {
+                expect_identical(sorted(x, w), if (wide) NULL else observed,
+                                 info = paste(kind, length(values)))
+                expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+            }
+        }
+    }
+    x <- dta_byte(c(1, 2, NA))
+    expect_identical(sorted(x, c(1, 1, 1)), c(1, 2))
+    expect_null(sorted(x, c(1, 2, 1)))
+    expect_null(sorted(x, c(1, 1)))
+    expect_null(sorted(x, c(1, NA, 1)))
+    expect_null(sorted(dta_float(c(1, 2, NA)), c(1, 1, 1)))
+    expect_null(sorted(dta_double(c(1, 2, NA)), c(1, 1, 1)))
+    expect_null(sorted(c(1, 2, NA), c(1, 1, 1)))
+    legacy <- read_dta(fixture("synthetic_v111.dta"))
+    for (name in c("b", "i", "l")) {
+        x <- legacy[[name]]
+        w <- rep(1, length(x))
+        for (detail in c(FALSE, TRUE)) {
+            expect_identical(
+                dtatools:::.summarize_statistics(x, w, NULL, detail, FALSE),
+                .native_summary_reference(as.double(x), w, NULL, detail, FALSE),
+                info = name)
+        }
+        observed <- sort(as.double(x))
+        wide <- diff(range(observed)) + 1 > length(observed) + 65536
+        expect_identical(sorted(x, w), if (wide) NULL else observed, info = name)
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(x))
+    }
+})
+
+test_that("percentiles search ordered totals as the previous scan did", {
+    previous <- function(ordered, weights, total, ps) {
+        if (!is.finite(total)) return(rep(0, length(ps)))
+        cumulative <- cumsum(weights)
+        percent <- if (total > .Machine$double.xmax / 100)
+            (cumulative / total) * 100 else (cumulative * 100) / total
+        n <- length(ordered)
+        midpoint <- function(index) ordered[index] / 2 + ordered[index + 1L] / 2
+        vapply(ps, function(p) {
+            target <- total * (p / 100)
+            index <- which(cumulative >= target)[1L]
+            if (is.na(index)) return(ordered[n])
+            if (index < n && cumulative[index] == target) return(midpoint(index))
+            near <- percent > p - 1e-5 & percent < p + 1e-5
+            previous <- index > 1L && isTRUE(near[index - 1L])
+            current <- isTRUE(near[index])
+            if (xor(previous, current)) {
+                boundary <- if (previous) index - 1L else index
+                if (boundary < n) return(midpoint(boundary))
+            }
+            ordered[index]
+        }, numeric(1))
+    }
+    ps <- c(1, 5, 10, 25, 50, 75, 90, 95, 99)
+    cases <- list(
+        list(x = 1:100, w = rep(1, 100)),
+        list(x = 1:3, w = c(0.1, 0.2, 0.7)),
+        list(x = 1:4, w = rep(1e307, 4)),
+        list(x = 1:3, w = c(-2, 1, 4)),
+        list(x = c(2, 5, 9), w = c(3, -1, 1)),
+        list(x = 7, w = 1))
+    set.seed(20261020)
+    for (i in 1:200) {
+        n <- sample(1:40, 1)
+        cases[[length(cases) + 1L]] <- list(
+            x = sort(sample(1:6, n, TRUE)),
+            w = sample(c(1, 2, 0.5, 1e-6, 3e-7, 1e-9), n, TRUE))
+    }
+    for (case in cases) {
+        total <- dtatools:::.summarize_sum(case$w)
+        for (scale in c(1, 1.5, Inf)) {
+            expect_identical(
+                dtatools:::.summarize_percentiles(case$x, case$w, total * scale, ps),
+                previous(case$x, case$w, total * scale, ps),
+                info = paste(deparse(case$x), deparse(case$w), scale))
+        }
+    }
+})
+
 test_that("foreign summary providers retain the previous read path", {
     run <- function(operation, reference = FALSE, detail = FALSE) {
         calls <- 0L
