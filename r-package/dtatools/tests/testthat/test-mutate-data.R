@@ -1399,6 +1399,53 @@ test_that("copy_data isolates every mutable column backing", {
     )
 })
 
+test_that("copy_data finds reference objects natively as the R walk does", {
+    walk <- function(values) .Call(C_dtatools_reference_objects_found, values)
+    environment <- new.env(parent = emptyenv())
+    deep <- list(1)
+    for (i in 1:70) deep <- list(deep)
+    deep_reference <- list(environment)
+    for (i in 1:70) deep_reference <- list(deep_reference)
+    values <- list(
+        plain = list(1, "a", NULL, quote(x), quote(f(x, 1)), pairlist(a = 1),
+                     expression(1 + 2), structure(list(1), names = "a")),
+        environment = environment,
+        closure = function() 1,
+        builtin = sum,
+        special = quote,
+        bytecode = compiler::compile(quote(1)),
+        pointer = new("externalptr"),
+        weakref = rlang::new_weakref(environment),
+        attribute = structure(1, owner = sum),
+        nested_attribute = structure(
+            1, labels = structure(c(a = 1), extra = list(environment))
+        ),
+        call = as.call(list(sum, 1)),
+        pairlist = pairlist(a = 1, b = environment),
+        expression = as.expression(list(environment)),
+        dta = dta_double(c(1, 2)),
+        labelled = set_val_labels(c(1, 2), .labels = c(one = 1))
+    )
+    for (name in names(values)) {
+        value <- values[[name]]
+        expect_identical(
+            walk(list(value)), .contains_reference_object(value), info = name
+        )
+    }
+    expect_true(walk(values))
+    expect_false(walk(values["plain"]))
+    # Past the native walk's depth the R walk decides.
+    expect_identical(walk(list(deep)), NA)
+    expect_identical(walk(list(deep_reference)), NA)
+    expect_false(.contains_reference_object(deep))
+    expect_true(.contains_reference_object(deep_reference))
+    expect_error(
+        copy_data(dibble(value = I(list(deep_reference)))),
+        "cannot isolate environments"
+    )
+    expect_identical(names(copy_data(dibble(value = I(list(deep))))), "value")
+})
+
 test_that("subsets, metadata proxies, and serialized data stay isolated", {
     source <- dibble(x = dta_int(c(1, 2, 3)))
     subset <- source[1:2, , drop = FALSE]

@@ -49,7 +49,10 @@ labelbook <- function(data, ..., .tables = NULL,
     }
     assignments <- list()
     for (position in seq_along(data)) {
-        column <- data[[position]]
+        # A dibble's `[[` finds a position by its name, a scan of every
+        # name, and its names are unique, so the position reads the same
+        # column, as for dta_append().
+        column <- .append_source_column(data, position)
         labels <- attr(column, "labels", exact = TRUE)
         explicit <- attr(column, "value.label.name", exact = TRUE)
         if (is.null(labels) && is.null(explicit)) next
@@ -90,7 +93,11 @@ labelbook <- function(data, ..., .tables = NULL,
 
     table_rows <- list()
     mapping_rows <- list()
-    for (table in selected) {
+    text_checks <- .labelbook_text_checks(selected, lapply(selected, function(table) {
+        candidates[[table]][[1L]]$labels
+    }))
+    for (table_index in seq_along(selected)) {
+        table <- selected[[table_index]]
         variants <- candidates[[table]]
         if (is.null(variants)) {
             table_rows[[length(table_rows) + 1L]] <- .labelbook_table_row(
@@ -98,7 +105,16 @@ labelbook <- function(data, ..., .tables = NULL,
             )
             next
         }
-        keys <- vapply(variants, function(x) .book_mapping_signature(x$labels), "")
+        # The first variant's codes serve its signature and the duplicate
+        # code check.
+        label_keys <- .dta_value_label_keys(variants[[1L]]$labels)
+        keys <- vapply(seq_along(variants), function(i) {
+            if (i == 1L) {
+                .book_mapping_signature(variants[[1L]]$labels, label_keys)
+            } else {
+                .book_mapping_signature(variants[[i]]$labels)
+            }
+        }, "")
         malformed <- length(unique(keys)) > 1L
         if (malformed) {
             diagnostics[[length(diagnostics) + 1L]] <- .book_diag_fields(
@@ -125,7 +141,10 @@ labelbook <- function(data, ..., .tables = NULL,
         diagnostics <- c(diagnostics, .labelbook_diagnostics(
             table, labels, length,
             variables = stats::na.omit(vapply(variants, `[[`, "", "variable")),
-            codes = codes
+            codes = codes, keys = label_keys,
+            text = if (!is.null(text_checks)) {
+                lapply(text_checks, .subset2, table_index)
+            }
         ))
     }
 
@@ -209,38 +228,83 @@ labelbook <- function(data, ..., .tables = NULL,
     lapply(result, `[`, index)
 }
 
-.labelbook_diagnostics <- function(table, labels, compare_length, variables,
-                                   codes = .book_codes(labels)) {
-    result <- list()
-    ordinary <- as.double(labels[is.na(codes$missing_code)])
-    add <- function(code, condition, message, details = list()) {
-        if (condition) result[[length(result) + 1L]] <<- .book_diag_fields(
-            code, "table", table, message = message,
-            details = list(c(list(variables = variables), details))
-        )
+# The label text checks of every table at once, as lists of one flag per
+# table, or NULL to check each table alone. `labels` holds each table's
+# labels, or NULL. In a UTF-8 locale with only valid strings in the native
+# encoding or UTF-8, grepl(), sub() and as.double() treat each string the
+# same whatever strings come with it, and raise no error. This matters
+# because the checks run before labelbook() knows which tables it will
+# diagnose: as.double() fails on some Latin-1 text, and a table whose
+# mappings disagree never has its text checked.
+.labelbook_text_checks <- function(tables, labels) {
+    text <- lapply(labels, names)
+    strings <- c(tables, unlist(text, use.names = FALSE))
+    if (!isTRUE(l10n_info()[["UTF-8"]]) || !all(validEnc(strings)) ||
+        !all(Encoding(strings) %in% c("unknown", "UTF-8"))) {
+        return(NULL)
     }
+    table <- rep.int(seq_along(text), lengths(text))
+    text <- unlist(text, use.names = FALSE)
+    any_in_table <- function(found) tabulate(table[found], length(tables)) > 0L
+    trimmed <- trimws(text)
+    numeric <- suppressWarnings(!is.na(as.double(trimmed))) & nzchar(trimmed)
+    list(
+        valid_name = .valid_dta_name_syntax(tables, 32L),
+        blanks = any_in_table(grepl("^\\s|\\s$", text)),
+        numeric = any_in_table(numeric),
+        empty = any_in_table(text == "")
+    )
+}
+
+.labelbook_messages <- c(
+    invalid_table_name = "Table name is not a valid Stata name",
+    duplicate_codes = "Value-label table contains duplicate codes",
+    gaps = "Mapped integer values contain gaps",
+    leading_or_trailing_blanks = "Label text contains leading or trailing blanks",
+    duplicate_label_text = "Different codes use the same full label text",
+    duplicate_truncated_text = "Different codes use the same truncated label text",
+    numeric_label_text = "Numeric codes map to numeric-looking text",
+    empty_label_text = "Numeric codes map to empty text",
+    unassigned_table = "Value-label table is not assigned to any variable"
+)
+
+# A table's diagnostics. `keys` is .dta_value_label_keys(labels), and
+# `text` holds the table's flags from .labelbook_text_checks(), or is NULL
+# to check its text here.
+.labelbook_diagnostics <- function(table, labels, compare_length, variables,
+                                   codes = .book_codes(labels),
+                                   keys = .dta_value_label_keys(labels),
+                                   text = NULL) {
+    ordinary <- as.double(labels[is.na(codes$missing_code)])
     sorted <- sort(unique(ordinary))
     gaps <- length(sorted) > 1L && all(sorted == floor(sorted)) &&
         any(diff(sorted) > 1)
-    text <- names(labels)
-    keys <- .dta_value_label_keys(labels)
-    add("invalid_table_name", !.valid_dta_name_syntax(table, 32L),
-        "Table name is not a valid Stata name")
-    add("duplicate_codes", anyDuplicated(keys) > 0L,
-        "Value-label table contains duplicate codes")
-    add("gaps", gaps, "Mapped integer values contain gaps")
-    add("leading_or_trailing_blanks", any(grepl("^\\s|\\s$", text)),
-        "Label text contains leading or trailing blanks")
-    add("duplicate_label_text", anyDuplicated(text) > 0L,
-        "Different codes use the same full label text")
-    add("duplicate_truncated_text", anyDuplicated(substr(text, 1L, compare_length)) > 0L,
-        "Different codes use the same truncated label text")
-    numeric_text <- suppressWarnings(!is.na(as.double(trimws(text)))) & nzchar(trimws(text))
-    add("numeric_label_text", any(numeric_text), "Numeric codes map to numeric-looking text")
-    add("empty_label_text", any(text == ""), "Numeric codes map to empty text")
-    add("unassigned_table", !length(variables),
-        "Value-label table is not assigned to any variable")
-    result
+    label_text <- names(labels)
+    if (is.null(text)) {
+        trimmed <- trimws(label_text)
+        text <- list(
+            valid_name = .valid_dta_name_syntax(table, 32L),
+            blanks = any(grepl("^\\s|\\s$", label_text)),
+            numeric = any(suppressWarnings(!is.na(as.double(trimmed))) & nzchar(trimmed)),
+            empty = any(label_text == "")
+        )
+    }
+    found <- c(
+        invalid_table_name = !text$valid_name,
+        duplicate_codes = anyDuplicated(keys) > 0L,
+        gaps = gaps,
+        leading_or_trailing_blanks = text$blanks,
+        duplicate_label_text = anyDuplicated(label_text) > 0L,
+        duplicate_truncated_text =
+            anyDuplicated(substr(label_text, 1L, compare_length)) > 0L,
+        numeric_label_text = text$numeric,
+        empty_label_text = text$empty,
+        unassigned_table = !length(variables)
+    )
+    lapply(names(found)[found], function(code) .book_diag_fields(
+        code, "table", table, message = .labelbook_messages[[code]],
+        details = list(list(variables = variables))
+    ))
 }
 
 #' Describe variables and observed data
@@ -293,7 +357,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     source_rows <- if (is.null(rows)) seq_len(nrow(data)) else rows
 
     variables <- list(); tabulations <- list(); examples <- list(); diagnostics <- list()
-    note_rows <- list(); missing_masks <- list()
+    note_rows <- list(); missing_masks <- list(); all_missing <- NULL
     for (i in seq_along(positions)) {
         position <- positions[[i]]
         name <- names(data)[[position]]
@@ -311,7 +375,10 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             summary$unique_count, summary$observed_values,
             summary$distinct_values
         )
-        missing_masks[[as.character(position)]] <- mask
+        # Only the relationships need every mask. Adding each mask to a
+        # list by name copied the list every time.
+        if (mv) missing_masks[[as.character(position)]] <- mask
+        all_missing <- if (is.null(all_missing)) mask else all_missing & mask
         if (notes) {
             variable_notes <- dta_notes(data, variable = position)
             if (length(variable_notes)) note_rows[[length(note_rows) + 1L]] <- data.frame(
@@ -324,12 +391,11 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     if (dots) cat("\n")
     diagnostics <- do.call(c, c(list(list()), diagnostics))
     if (length(positions)) {
-        duplicate <- vctrs::vec_duplicate_detect(selected[positions])
+        duplicate <- .codebook_duplicate_rows(selected[positions])
         diagnostics <- c(diagnostics, .book_row_diag(
             "duplicate_observations", "Selected variables contain duplicate observations",
             source_rows[duplicate], diagnostic_limit
         ))
-        all_missing <- if (length(missing_masks)) Reduce(`&`, missing_masks) else logical()
         diagnostics <- c(diagnostics, .book_row_diag(
             "all_selected_variables_missing",
             "Observations are missing across every selected variable",
@@ -345,7 +411,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         examples = .book_rows(examples, .codebook_examples()),
         missing_relationships = relationships,
         notes = .book_bind(note_rows, .codebook_notes()),
-        diagnostics = .book_bind(diagnostics, .book_diagnostics()),
+        diagnostics = .book_diag_rows(diagnostics),
         header = if (header) .codebook_header(data, input$source) else NULL,
         options = list(mode = if (compact) "compact" else "standard",
                        problems = problems, detail = detail, mv = mv,
@@ -422,12 +488,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         paste(class(x), collapse = "/")
     }
     if (!nzchar(type)) type <- typeof(x)
-    # Code 0 is system missing and codes a-z are .a through .z; observed
-    # values have no code.
-    codes <- if (is.numeric(x)) .tab_missing_codes(x) else integer()
-    codes <- codes[!is.na(codes)]
-    system <- codes == 0L
-    extended <- codes >= utf8ToInt("a") & codes <= utf8ToInt("z")
+    # Code 0 is system missing, codes a-z are .a through .z, and code 256
+    # is a NaN that is neither; observed values have no code. `codes`
+    # counts each code c at position c + 1.
+    codes <- if (is.numeric(x)) {
+        tabulate(.tab_missing_codes(x) + 1L, 257L)
+    } else integer(257L)
     stats <- rep(NA_real_, 10L)
     if (numeric && length(finite_observed)) {
         # The minimum, maximum, smallest gap and quantiles, in that order.
@@ -451,11 +517,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         storage = .book_or_na(storage), format = .book_or_na(attr(x, "format.stata", exact = TRUE)),
         value_label_table = .book_or_na(table_name), report_type = report_type,
         observations = length(x), unique_nonmissing = unique_count,
-        missing_count = sum(missing), system_missing_count = sum(system),
-        extended_missing_count = sum(extended), nan_count = if (is.numeric(x) && anyNA(x)) {
-            # `is.nan()` on a Stata numeric tests its plain values, without
-            # building a computed vector through vctrs.
-            sum(is.nan(if (inherits(x, "dta_numeric")) .book_numeric_data(x) else x))
+        missing_count = sum(missing), system_missing_count = codes[[1L]],
+        extended_missing_count = sum(codes[utf8ToInt("a"):utf8ToInt("z") + 1L]),
+        nan_count = if (is.numeric(x) && anyNA(x)) {
+            # Code 256 marks exactly the values of a Stata numeric that
+            # `is.nan()` finds in its plain values.
+            if (inherits(x, "dta_numeric")) codes[[257L]] else sum(is.nan(x))
         } else 0L,
         empty_count = if (is.character(x)) sum(x == "", na.rm = TRUE) else 0L,
         na_string_count = if (is.character(x)) sum(is.na(x)) else 0L,
@@ -473,6 +540,52 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     list(variable = variable, tabulation = tabulation, examples = example,
          unique_count = unique_count, observed_values = finite_observed,
          distinct_values = distinct)
+}
+
+# The rows of `data` equal to another row, as
+# `vctrs::vec_duplicate_detect()` finds them. The rows compare on the same
+# equality proxy, a block of its columns at a time, and a row leaves the
+# comparison once no other row matches it so far, since later columns
+# cannot give it a match. A table with an identifier column is done after
+# that column, rather than hashing every column of every row.
+.codebook_duplicate_rows <- function(data) {
+    proxy <- vctrs::vec_proxy_equal(data)
+    # The proxy of a single column is that column's proxy, which need not
+    # be a data frame. With one proxy column, no row can leave early.
+    columns <- if (is.data.frame(proxy)) unclass(proxy) else list(proxy)
+    plain <- vapply(columns, function(column) {
+        (is.atomic(column) || is.list(column)) && is.null(dim(column))
+    }, logical(1))
+    if (length(columns) < 2L || !all(plain)) {
+        return(vctrs::vec_duplicate_detect(data))
+    }
+    rows <- vctrs::vec_size(proxy)
+    active <- seq_len(rows)
+    key <- NULL
+    first <- 1L
+    width <- 1L
+    while (length(active) && first <= length(columns)) {
+        block <- columns[first:min(length(columns), first + width - 1L)]
+        # vctrs compares each proxy column by its base type, so dropping
+        # the column's other attributes leaves equality unchanged.
+        block <- lapply(block, function(column) {
+            if (!is.null(attributes(column))) attributes(column) <- NULL
+            if (length(active) < rows) column[active] else column
+        })
+        if (!is.null(key)) block <- c(list(key), block)
+        names(block) <- paste0("v", seq_along(block))
+        key <- vctrs::vec_group_id(structure(
+            block, class = "data.frame", row.names = .set_row_names(length(active))
+        ))
+        shared <- tabulate(key, attr(key, "n"))[key] > 1L
+        active <- active[shared]
+        key <- key[shared]
+        first <- first + width
+        width <- min(2L * width, 256L)
+    }
+    duplicate <- logical(rows)
+    duplicate[active] <- TRUE
+    duplicate
 }
 
 # One variable's tabulation rows for .book_rows(), or NULL without any.
@@ -526,7 +639,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
                                   mask, unique_count, values = NULL,
                                   distinct = NULL) {
     result <- list(); add <- function(code, condition, message, severity = "problem", details = list()) {
-        if (condition) result[[length(result) + 1L]] <<- .book_diag(
+        if (condition) result[[length(result) + 1L]] <<- .book_diag_fields(
             code, "variable", variable = name, position = position,
             severity = severity, message = message, details = list(details)
         )
@@ -597,7 +710,11 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         .declared_dta_storage(x)
     } else NULL
     if (!is.null(declared) && is.numeric(x)) {
-        narrower <- .codebook_narrower_storage(observed_values(), declared)
+        # Each check holds for every value exactly when it holds for every
+        # distinct value.
+        narrower <- .codebook_narrower_storage(
+            if (is.null(distinct)) observed_values() else distinct, declared
+        )
         add("numeric_storage_may_be_compressed", !is.null(narrower),
             "Numeric storage may be compressed", "suggestion",
             list(declared = declared, suggested = narrower))
@@ -763,17 +880,11 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     as.double(value)
 }
 
-.book_mapping_signature <- function(labels) paste(
-    .dta_value_label_keys(labels), enc2utf8(names(labels)), collapse = "\r"
-)
-
-.book_diag <- function(code, scope, table = NA_character_, variable = NA_character_,
-                       position = NA_integer_, severity = "problem", details = list(), message) {
-    data.frame(code, scope, table, variable, position = as.integer(position), severity,
-               details = I(list(details)), message, stringsAsFactors = FALSE)
+.book_mapping_signature <- function(labels, keys = .dta_value_label_keys(labels)) {
+    paste(keys, enc2utf8(names(labels)), collapse = "\r")
 }
 
-# One diagnostic row for .book_diag_rows(): the fields of .book_diag().
+# One diagnostic row for .book_diag_rows().
 .book_diag_fields <- function(code, scope, table = NA_character_, variable = NA_character_,
                               position = NA_integer_, severity = "problem",
                               details = list(), message) {
@@ -783,7 +894,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 }
 
 # Diagnostic rows given as .book_diag_fields() lists, combined into the
-# frame that binding one .book_diag() frame per row gives.
+# frame that binding one single-row data frame per row gives.
 .book_diag_rows <- function(rows) {
     if (!length(rows)) return(.book_diagnostics())
     fields <- names(rows[[1L]])
@@ -798,8 +909,8 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 .book_row_diag <- function(code, message, rows, limit) {
     if (!length(rows)) return(list())
     examples <- if (is.infinite(limit)) rows else utils::head(rows, limit)
-    list(.book_diag(code, "observation", message = message,
-                    details = list(list(count = length(rows), rows = examples))))
+    list(.book_diag_fields(code, "observation", message = message,
+                           details = list(list(count = length(rows), rows = examples))))
 }
 
 .book_diagnostics <- function() data.frame(

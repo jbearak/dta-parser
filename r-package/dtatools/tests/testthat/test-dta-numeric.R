@@ -431,6 +431,20 @@ test_that("vctrs restoration distinguishes storage and temporal encoding", {
     expect_identical(as.double(restored_date), c(0, 1, 2))
 })
 
+test_that("indexing empty compact storage gives ordinary missing doubles", {
+    for (construct in list(dta_byte, dta_int, dta_long, dta_float)) {
+        proxy <- vctrs::vec_proxy(construct())
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(proxy))
+        selected <- .subset(proxy, c(NA_integer_, 3L, NA_integer_))
+        expect_identical(selected, rep(NA_real_, 3L))
+        expect_false(dtatools:::.is_unmaterialized_numeric_altrep(selected))
+        expect_identical(.subset(proxy, integer()), double())
+        expect_identical(
+            vctrs::vec_init(construct(), 2L), construct(c(NA_real_, NA_real_))
+        )
+    }
+})
+
 test_that("legacy compact widths preserve system missing encoding", {
     data <- read_dta(fixture("synthetic_v111.dta"))
 
