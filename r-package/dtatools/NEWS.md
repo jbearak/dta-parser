@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
+  type a group's bare integer or double scalar result, such as `n()`, in one
+  native call, as `gen()` already did for a scalar. They had built its Stata
+  attributes in R for every group. A value that Stata storage can't hold
+  still takes the R path and its error. On the 42,944-row Senegal 2017 DHS
+  births file, `count(d, caseid)` over its 11,111 women falls from about
+  0.48 to 0.34 seconds. Results and errors are unchanged.
+
 * Grouped `summarise()` on a dibble takes its native common type and
   combine steps from a session's first call. Their checks compare each
   function they skip with the package's own copy, and declined while any of
