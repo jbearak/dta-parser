@@ -1,6 +1,7 @@
 /* Compact dictionary strings: the dictstring_data ALTREP methods, the
    reference string reader shared with mutation, and the compact subset and
-   copy paths that keep a dictionary payload private to its result. */
+   copy paths, whose results own their value ids and share the immutable
+   dictionary. */
 #include "dtatools-internal.h"
 
 void dictstring_finalize(SEXP external) {
@@ -397,11 +398,35 @@ SEXP dictstring_compact_copy(SEXP value) {
     return result;
 }
 
+/* A dictionary value from the cache an earlier read filled, or made from
+   its bytes without storing it, so the read leaves the cache as it was. */
+static SEXP dictstring_peek_value(
+    dictstring_data *data, SEXP cache, uint32_t id
+) {
+    if ((R_xlen_t) id >= XLENGTH(cache)) {
+        Rf_error("invalid dtatools string-dictionary index");
+    }
+    SEXP cached = VECTOR_ELT(cache, (R_xlen_t) id);
+    if (cached != R_NilValue) return cached;
+    const char *bytes = NULL;
+    int length = 0;
+    if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+        bytes == NULL || length < 0) {
+        Rf_error("invalid dtatools string-dictionary value");
+    }
+    return Rf_mkCharLenCE(bytes, length, CE_UTF8);
+}
+
 /* `x[i]` on a compact dictionary string stays compact: the selected value
-   ids are gathered over a private copy of the dictionary, so the result
-   owns its payload and the source is untouched. An index outside the
-   vector would need `NA`, which the dictionary cannot hold, so such a
-   subset falls back to R's default and materializes. */
+   ids are gathered into a payload that shares the dictionary, so the result
+   owns its ids and the source is untouched. The result's cache still needs
+   a slot for each distinct value, so a subset of at most a sixteenth of the
+   dictionary's length is built as ordinary strings instead, which also
+   leave the source untouched. That covers the empty subset that
+   `vec_ptype()` takes on every vctrs operation, and the rows of each group
+   that a grouped verb slices. An index outside the vector would need `NA`,
+   which the dictionary cannot hold, so such a subset falls back to R's
+   default and materializes. */
 SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     (void) call;
     if (R_altrep_data2(value) != R_NilValue ||
@@ -410,14 +435,19 @@ SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     }
     SEXP root = PROTECT(dictstring_read_root(value));
     dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    SEXP source_cache = R_ExternalPtrProtected(root);
+    R_xlen_t cardinality = XLENGTH(source_cache);
+    /* An ALTREP index can materialize `value` while reporting its length,
+       so the length is read only once the dictionary is pinned. */
     R_xlen_t length = XLENGTH(index);
+    int ordinary = length <= cardinality / 16;
     if ((size_t) length > SIZE_MAX / sizeof(uint32_t)) {
         Rf_error("compact dictionary-string subset is too long");
     }
-    SEXP ids = PROTECT(Rf_allocVector(
+    SEXP selected = PROTECT(ordinary ? Rf_allocVector(STRSXP, length) : Rf_allocVector(
         RAWSXP, (R_xlen_t) ((size_t) length * sizeof(uint32_t))
     ));
-    uint32_t *output = (uint32_t *) RAW(ids);
+    uint32_t *output = ordinary ? NULL : (uint32_t *) RAW(selected);
     for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t source = -1;
@@ -436,10 +466,17 @@ SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
             UNPROTECT(2);
             return NULL;
         }
-        output[i] = data->value_ids[source];
+        uint32_t id = data->value_ids[source];
+        if (ordinary) {
+            SET_STRING_ELT(selected, i, dictstring_peek_value(data, source_cache, id));
+        } else {
+            output[i] = id;
+        }
     }
-    SEXP source_cache = R_ExternalPtrProtected(root);
-    R_xlen_t cardinality = XLENGTH(source_cache);
+    if (ordinary) {
+        UNPROTECT(2);
+        return selected;
+    }
     SEXP cache = PROTECT(Rf_allocVector(VECSXP, cardinality));
     for (R_xlen_t id = 0; id < cardinality; id++) {
         if ((id & 16383) == 0) R_CheckUserInterrupt();

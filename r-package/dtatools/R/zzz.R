@@ -245,6 +245,14 @@
         identical(as.character(R.version[["svn rev"]]), "90187") &&
         .native_admission_call(C_dtatools_metadata_execution_profile, .metadata_execution_probe)
     ) .metadata_dependencies else NULL
+    # The metadata checks compare these functions without forcing them, and
+    # only the R attribute planning and generation they replace call some of
+    # them, so a session's first grouped summary of a read column declined.
+    # Settle them as those calls would.
+    if (!is.null(.metadata_state$dependencies)) {
+        for (name in c(names(.metadata_dependencies), "environment",
+                       ".generate_attributes", ".dta_attribute_plan")) get(name)
+    }
     .numeric_helper_state$dependencies <- if (!is.null(.metadata_state$dependencies)) {
         .numeric_helper_dependencies
     } else NULL
@@ -258,10 +266,20 @@
     .double_combine_state$dependencies <- if (
         identical(as.character(getNamespaceVersion("vctrs")), "0.7.3")
     ) .native_admission_call(C_dtatools_double_combine_dependencies, .double_combine_expected) else NULL
-    # Grouped summaries check the list_unchop() binding that double assembly
-    # reads without calling it, so settle its lazy binding as a first call
-    # would. Otherwise a fresh session declines the summary common type.
-    if (!is.null(.double_combine_state$dependencies)) vctrs::list_unchop
+    # The summary checks decline on a lazy binding, and a session's first
+    # grouped summary reaches some of the functions they read only through
+    # the R calls they replace. Settle those bindings as the calls would.
+    if (!is.null(.double_combine_state$dependencies))
+        .settle_summary_bindings(.double_combine_state$dependencies)
+    # The construct and combine helper checks read every binding in the
+    # numeric helper profile. Some, such as utf8ToInt() and
+    # .tab_missing_codes(), only the R constructor calls, so a session whose
+    # Stata numerics all come from the reader and native generation, as
+    # `summarise(n = n())` over a read file does, declined every compact
+    # summary. Settle each binding as a call would.
+    if (!is.null(.numeric_helper_state$dependencies)) {
+        for (name in names(.numeric_helper_dependencies)) get(name)
+    }
     .summary_routine_state$routines <- if (!is.null(.summary_ptype_dependencies)) list(
         .native_admission_call(C_dtatools_settled_routine,
                                .summary_ptype_dependencies[[3L]], "ffi_ptype_common"),

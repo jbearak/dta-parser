@@ -63,11 +63,11 @@ dta_string <- function(x = character(), storage = NULL) {
 # Values as Stata string text: `NA` is `""`, Stata's only missing string
 # (see CONTEXT.md, "Stata string missing"). Values without `NA` come back
 # as they are, so a bare character vector is not copied. Every path that
-# admits an `NA` into a Stata string spells the rule through here.
+# admits an `NA` into a Stata string spells the rule through here. A compact
+# dictionary holds no `NA`, and scanning one for it would fill its cache with
+# a string for each distinct value.
 .stata_string_text <- function(values) {
     text <- as.character(values)
-    # A compact dictionary string never holds NA; anyNA() would read each of
-    # its values through ALTREP to find that out.
     if (!.is_unmaterialized_dictstring(text) && anyNA(text)) text[is.na(text)] <- ""
     text
 }
@@ -213,7 +213,10 @@ vec_ptype2.character.dta_string <- .dta_string_ptype2
 .cast_dta_string <- function(x, to) {
     storage <- .declared_string_storage(to)
     value <- .stata_string_text(x)
-    .normalize_dta_string_storage(storage, .dta_string_required_width(value))
+    # `strL` holds any width, so only other storage needs the widest value.
+    if (!identical(storage, "strL")) {
+        .normalize_dta_string_storage(storage, .dta_string_required_width(value))
+    }
     .new_dta_string(value, storage, to)
 }
 

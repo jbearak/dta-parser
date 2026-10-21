@@ -618,11 +618,11 @@ DTATOOLS_INTERNAL SEXP C_dtatools_try_combine_double(
 DTATOOLS_INTERNAL SEXP C_dtatools_combine_double_into_current(
     SEXP indexed, SEXP state, SEXP metadata_state
 );
-DTATOOLS_INTERNAL SEXP C_dtatools_double_ptype_method(
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_ptype_method(
     SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_settled_routine(SEXP ns, SEXP name);
-DTATOOLS_INTERNAL SEXP C_dtatools_summary_combine_double(
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_combine(
     SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(

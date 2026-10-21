@@ -5,6 +5,39 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` on a dibble takes its native common type and
+  combine steps from a session's first call. Their checks compare each
+  function they skip with the package's own copy, and declined while any of
+  those functions was still waiting to be loaded. A session's first grouped
+  summary, and in a session that had not built a Stata numeric through the
+  R constructor every `summarise(n = n())`, then combined each group's
+  result through vctrs's R methods. dtatools now loads those functions when
+  it loads. On the 1,274,250-row India 2021 DHS births file, a session's
+  first `summarise(group_by(d, caseid), n = n())` over its 494,019 women
+  falls from about 187 to 34 seconds. Results are unchanged.
+
+* Grouped `mutate()` on a dibble, and grouped `gen()` and `repl()`, combine
+  per-group results stored as Stata bytes, ints, longs, or floats in one
+  native pass, as they already did for doubles, rather than casting each
+  group's result through vctrs's R methods. On the 1,274,250-row India 2021
+  DHS births file, `mutate(group_by(d, caseid), v = mean(b2))` over its
+  494,019 women falls from about 231 to 66 seconds, and `v = b2 + 1` from
+  about 252 to 46 seconds. Results are unchanged.
+
+* Grouped `slice()`, `slice_head()`, `slice_tail()`, `slice_min()`,
+  `slice_max()`, and `slice_sample()` on a dibble pass the list of each
+  group's rows to `vctrs::vec_c()` as one spliced argument, rather than
+  through a call that `rlang::exec()` built with one argument per group.
+  That call's cost grew with about the square of the number of groups. On
+  the first 100,000 rows of the India 2021 DHS births file,
+  `slice_head(group_by(d, caseid), n = 1)` over 42,739 women falls from
+  about 16 to 0.6 seconds. Results and errors are unchanged.
+
+* `copy_data()` keeps a dibble's automatic row names. It stored them as
+  explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
+  from one by `keep_vars()` or `gen()`, warned that it dropped the row
+  names.
+
 * A string column that `read_dta()` or `read_arrow()` keeps in compact
   dictionary form now stays compact after `filter()`, `arrange()`, `[`, or
   `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
@@ -57,6 +90,23 @@
   rather than through the expansion that factor variables, interactions,
   and time-series operators need. On a 16,787-row, 5,360-column DHS file,
   `summ(d)` falls from 1.5 to 0.87 seconds.
+
+* `summ()` does less work for each variable. It copies a group's weights
+  once rather than once per variable, and skips the part of an unused
+  observation check that cannot fail. Without weights, it reads compact
+  byte, int, and long columns directly, sums them in integers, and with
+  `detail = TRUE` sorts their observed values by counting them. Detailed
+  percentiles find all nine positions with one search rather than nine
+  scans of the running totals. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 0.75 to 0.28 seconds and `summ(d, detail = TRUE)`
+  from 2.0 to 0.57 seconds. Results are unchanged.
+
+* Indexing an empty `byte`, `int`, `long`, or `float` Stata numeric returns
+  ordinary missing doubles, rather than compact storage of missing values.
+  vctrs starts each combined column this way from the zero-length common
+  type and then writes every input into it, so the compact result was
+  decoded again at once. On a 16,787-row, 5,360-column DHS file,
+  `bind_rows(d, d)` falls from 7.0 to 6.4 seconds.
 
 * Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
   `transform()`, `within()`, `group_modify()`, `summarise()`, and
@@ -127,6 +177,27 @@
   the whole result column on every write. Appending a 5,360-column file to
   itself took 8.4 seconds and now takes 5.7.
 
+* A subset of a string column from `read_dta()` or `read_arrow()` that is
+  at most a sixteenth as long as the column's dictionary of distinct values
+  is built as ordinary strings, rather than over a copy of the whole
+  dictionary. vctrs takes an empty subset of each input it compares,
+  combines or casts, and a grouped verb slices each group's rows, so these
+  copies added up. A cast into `strL` storage also stops measuring the
+  width of each value, since `strL` holds any width, and a cast of a
+  compact column no longer scans it for `NA`, which its dictionary cannot
+  hold. On the India 2021 DHS birth history file, with 1,274,250 rows and
+  494,019 distinct `caseid` values, `caseid == ""` falls from 0.20 to 0.02
+  seconds, `codebook()` of `caseid` from 1.09 to 0.60, and a
+  `summarise(f = first(caseid))` grouped by cluster over the 14,526 rows
+  of 378 clusters from 96 to 0.16.
+
+* A compact subset or copy of a string column from `read_dta()` or
+  `read_arrow()` shares the column's dictionary of distinct values, rather
+  than rebuilding the dictionary's strings and hash table for itself. On
+  the India 2021 DHS birth history file, a subset of every other row of
+  `caseid` falls from 19 to 3 milliseconds, `filter(b2 >= 2010)` on three
+  columns from 54 to 31, and `arrange(desc(b2))` from 127 to 104.
+
 * Printing or formatting a dibble checks the classes of declared string
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
@@ -145,6 +216,24 @@
   twice, when the Stata numeric methods are unchanged. On 100,000 rows in
   10,000 groups, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
   `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
+
+* Grouped `summarise()` and `reframe()` also stop folding per-group results
+  into a common type once it settles when the groups return compact Stata
+  bytes, ints, longs or floats, or a mix of up to four Stata numeric storage
+  types. The mean of a byte column, a byte in groups where it is whole and a
+  float elsewhere, now settles too. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` on a byte column falls from 4.5 to 2.8 seconds,
+  `summarise(m = max(x))` from 3.1 to 1.3 seconds, and
+  `summarise(k = n())` from 2.9 to 1.1 seconds.
+
+* Grouped `summarise()` and `reframe()` also combine per-group compact Stata
+  bytes, ints, longs and floats natively when each group's storage widens to
+  the common one, as a byte widens to an int or a float. Loading dtatools
+  now settles one lazily loaded base function that these checks read, so a
+  session that never builds a Stata double takes the native path too. On
+  100,000 rows in 10,000 groups, `summarise(m = max(x))` on a byte column
+  falls from 1.4 to 0.6 seconds, `summarise(k = n())` from 1.2 to 0.4
+  seconds, and `summarise(m = mean(x))` from 2.8 to 1.9 seconds.
 
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
