@@ -1532,6 +1532,44 @@ SEXP C_dtatools_capture_string(SEXP value) {
     return owned_fork(value);
 }
 
+/* `value[is.na(value)] <- ""` in one pass over a classless character vector
+   that is ordinary or package-owned. On an owned value, `[<-` copies it and
+   then writes each element through ALTREP. The result has the same
+   attributes and stays owned when the value was. A value without NA comes
+   back unchanged, as does an unmaterialized dictionary, which holds none.
+   NULL declines any other value, whose is.na() and `[<-` keep their R
+   behavior. */
+SEXP C_dtatools_blank_missing_strings(SEXP value) {
+    if (TYPEOF(value) != STRSXP || Rf_isObject(value) || Rf_isS4(value))
+        return R_NilValue;
+    if (unmaterialized_dictstring_source(value) != R_NilValue) return value;
+    int owned = owned_column(value);
+    if (ALTREP(value) && !owned) return R_NilValue;
+    /* A retained writable pointer can add an NA after the fact was cached. */
+    if (owned && !owned_flags(value)[OWNED_EXPOSED] &&
+        owned_flags(value)[OWNED_NO_NA] == 1) return value;
+    SEXP payload = PROTECT(owned ? owned_values(value) : value);
+    R_xlen_t length = XLENGTH(payload), first = length;
+    const SEXP *source = STRING_PTR_RO(payload);
+    for (R_xlen_t i = 0; i < length; i++) {
+        if (source[i] == NA_STRING) { first = i; break; }
+    }
+    if (first == length) {
+        UNPROTECT(1);
+        return value;
+    }
+    SEXP values = PROTECT(Rf_allocVector(STRSXP, length));
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(values, i, source[i] == NA_STRING ? R_BlankString : source[i]);
+    }
+    SHALLOW_DUPLICATE_ATTRIB(values, value);
+    SEXP result = owned ? owned_adopt(values) : values;
+    if (owned) owned_flags(result)[OWNED_NO_NA] = 1;
+    UNPROTECT(2);
+    return result;
+}
+
 /* Complete callback-free, unnamed construction on one unpublished handle.
    Borrowed values are captured before metadata is removed; existing owned
    inputs still fork, retaining their real aliases. NULL declines cases whose

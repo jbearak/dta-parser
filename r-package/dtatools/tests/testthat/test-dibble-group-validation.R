@@ -285,3 +285,61 @@ test_that("native group row facts decline when list_of dispatch changes", {
     expect_identical(observed$active, c(0L, 0L))
     expect_true(observed$after)
 })
+
+test_that("native group key matching gives vec_equal's result", {
+    match_keys <- function(actual, key, sizes) {
+        .Call(dtatools:::C_dtatools_group_keys_match, actual, key, sizes)
+    }
+    expected <- function(actual, key, sizes) {
+        all(vctrs::vec_equal(actual, vctrs::vec_slice(key, rep.int(seq_along(sizes), sizes)),
+                             na_equal = TRUE))
+    }
+    proxy <- function(x) vctrs::vec_proxy_equal(x)
+    numbers <- c(1, -0, NA, NaN, Inf, 2.5)
+    cases <- list(
+        list(c(1L, 1L, NA, 2L), c(1L, NA, 2L), c(2L, 1L, 1L)),
+        list(c(1L, 2L, NA, 2L), c(1L, NA, 2L), c(2L, 1L, 1L)),
+        list(c(TRUE, TRUE, NA), c(TRUE, NA), c(2L, 1L)),
+        list(c(TRUE, FALSE, NA), c(TRUE, NA), c(2L, 1L)),
+        list(c(0, 0, NA, NaN, Inf), c(-0, NA, NaN, Inf), c(2L, 1L, 1L, 1L)),
+        list(c(0, NaN), c(0, NA), c(1L, 1L)),
+        list(c(0, NA), c(0, NaN), c(1L, 1L)),
+        list(numbers, numbers[c(1, 3, 6)], c(1L, 4L, 1L)),
+        list(rep(2.5, 4L), 2.5, 4L),
+        # Stata missing codes compare through the equality proxy's rank.
+        list(proxy(dta_double(c(1, 1, NA, tagged_missing("a")))),
+             proxy(dta_double(c(1, NA, tagged_missing("a")))), c(2L, 1L, 1L)),
+        list(proxy(dta_double(c(1, 1, NA, tagged_missing("a")))),
+             proxy(dta_double(c(1, tagged_missing("b"), tagged_missing("a")))), c(2L, 1L, 1L)),
+        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 4))), c(2L, 1L)),
+        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 5))), c(2L, 1L))
+    )
+    for (case in cases) {
+        expect_identical(match_keys(case[[1L]], case[[2L]], case[[3L]]),
+                         expected(case[[1L]], case[[2L]], case[[3L]]))
+    }
+    # Groups listing no rows contribute no values.
+    expect_true(match_keys(c(1L, 3L), c(1L, 2L, 3L), c(1L, 0L, 1L)))
+    # Anything else keeps vctrs's comparison.
+    frame <- proxy(dta_double(c(1, 1)))
+    key_frame <- proxy(dta_double(1))
+    declined <- list(
+        list(c(a = 1L, b = 1L), 1L, 2L),
+        list(structure(c(1L, 1L), class = "other"), 1L, 2L),
+        list(c(1L, 1L), 1, 2L),
+        list(c("a", "a"), "a", 2L),
+        list(seq_len(2L), 1L, 2L),
+        list(c(1L, 1L), 1L, 3L),
+        list(c(1L, 1L), 1L, NA_integer_),
+        list(c(1L, 1L), 1L, 2),
+        list(frame, key_frame$value, 2L),
+        list(frame$value, key_frame, 2L),
+        list(tibble::as_tibble(frame), tibble::as_tibble(key_frame), 2L),
+        list(stats::setNames(frame, c("rank", "other")), key_frame, 2L),
+        list(structure(frame, extra = TRUE), key_frame, 2L),
+        list(frame, structure(key_frame, row.names = c(NA_integer_, -3L)), 2L)
+    )
+    for (case in declined) {
+        expect_null(match_keys(case[[1L]], case[[2L]], case[[3L]]))
+    }
+})

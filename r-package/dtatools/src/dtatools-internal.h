@@ -524,6 +524,7 @@ DTATOOLS_INTERNAL int dtatools_write_string_region(
     char *error_message, size_t error_capacity
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_capture_string(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_blank_missing_strings(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_string(SEXP value, SEXP storage);
 DTATOOLS_INTERNAL SEXP C_dtatools_write_string_plan(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_level_counts(
@@ -774,6 +775,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_ephemeral_altstring(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_numeric_altrep(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_altrep(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_group_rows_facts(SEXP x, SEXP originals);
+DTATOOLS_INTERNAL SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes);
 DTATOOLS_INTERNAL SEXP metadata_proxy_state(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_source(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_owner(SEXP value);
@@ -905,6 +907,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_missing_code_counts(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(
     SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
 );

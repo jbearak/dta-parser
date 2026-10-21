@@ -1723,7 +1723,7 @@
         },
         {
           "path": "tests/testthat/test-dta-string.R",
-          "sha256": "a4d2cc3b134ab0d56fac760415b8dd4e7fe7f4dace8de6cdd71b555cf3f4683e"
+          "sha256": "ee10f812d6c326c94ec93927c0ee98aa250fb48658c5236a291dc56f2ec0e2e8"
         },
         {
           "path": "tests/testthat/test-dta-numeric-summary.R",
@@ -2451,6 +2451,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-string.R",
+          "test": "missing strings are blanked natively as the R expression blanks them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         },
         {
@@ -13387,7 +13395,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
-          "sha256": "d004d4998bf9481b6bc36369f6ee84b4733aa29bc13a9213e9107c221b2c9259"
+          "sha256": "712b7b60cd8a509f7a569601ff9a23248a78f0830ca84d2e5ad7990b70581093"
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
@@ -13945,6 +13953,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-group-validation.R",
+          "test": "native group key matching gives vec_equal's result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
         },
         {
           "file": "test-dibble-summary.R",
@@ -16235,7 +16251,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "81b89d29cda63cacc82b0d6608066fbe3216c565e20d002904fe55525b7900dd"
+          "sha256": "2f665a65f2292934a10d102a1630f50e54795f76c05f2987b6fd6d768f7ebd7b"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -16292,6 +16308,10 @@
         {
           "path": "tests/testthat/test-dictstring-width.R",
           "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
+        },
+        {
+          "path": "tests/testthat/test-codebook-facts.R",
+          "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
         },
         {
           "path": "tests/testthat/test-tab-byte-factor.R",
@@ -17621,6 +17641,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook facts of whole numbers match the R calls they replace",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook statistics and label coverage match the R calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "native missing-code counts match the tabulated codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 30,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook scans one ordinary copy of a compact column's observed values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         },
         {
