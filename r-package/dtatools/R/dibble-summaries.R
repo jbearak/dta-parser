@@ -146,6 +146,42 @@
                            .summary_combine_dependencies, .summary_routine_state)
 }
 
+# The functions that the common type and combine checks read, besides the
+# numeric helper profile: the vctrs reducers and assembly, the package
+# helpers and methods of the combine graph, the vctrs and rlang functions
+# it reaches, and the delayed entries that registration put in the vctrs
+# and base method tables for those methods. A first grouped summary reaches
+# many of them only through the vctrs calls the checks replace, so each
+# check found a lazy binding and declined, and vctrs folded and cast every
+# group's result through R methods. `dependencies` is the combine profile,
+# which holds the vctrs namespace and the two method tables the checks read.
+.settle_summary_bindings <- function(dependencies) {
+    package <- topenv()
+    for (name in c(".dta_promote", ".dta_common_ptype", ".dta_ptype",
+                   ".reconcile_dta_metadata", ".restore_dta_metadata",
+                   ".dta_classes_from", ".dta_combine_value_labels",
+                   ".reconcile_dta_metadata_attributes", ".apply_haven_labelled_class",
+                   ".dta_snapshot", ".cast_to_dta", ".compact_dta_storage_matches",
+                   "vec_ptype2.dta_numeric.dta_numeric", "vec_cast.dta_numeric.dta_numeric",
+                   "vec_proxy.dta_numeric", "vec_restore.dta_numeric",
+                   "as.double.dta_numeric")) {
+        get(name, envir = package, inherits = FALSE)
+    }
+    for (name in c("vec_ptype_common", "vec_cast_common", "vec_c", "list_unchop",
+                   "vec_ptype_finalise.default", "names<-.vctrs_vctr",
+                   "names_repair_missing")) {
+        get(name, envir = dependencies[[1L]], inherits = FALSE)
+    }
+    rlang::check_dots_empty0
+    rlang::current_env
+    for (name in c("vec_ptype2.dta_numeric.dta_numeric", "vec_cast.dta_numeric.dta_numeric",
+                   "vec_proxy.dta_numeric", "vec_restore.dta_numeric")) {
+        get0(name, envir = dependencies[[8L]], inherits = FALSE)
+    }
+    get0("names<-.vctrs_vctr", envir = dependencies[[9L]], inherits = FALSE)
+    invisible(NULL)
+}
+
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
     caller <- if (reframe) "reframe()" else "summarise()"
     mask <- .new_dibble_expression_mask(context$columns, groups, size, caller)
