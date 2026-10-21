@@ -13395,7 +13395,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
-          "sha256": "d004d4998bf9481b6bc36369f6ee84b4733aa29bc13a9213e9107c221b2c9259"
+          "sha256": "712b7b60cd8a509f7a569601ff9a23248a78f0830ca84d2e5ad7990b70581093"
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
@@ -13953,6 +13953,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-group-validation.R",
+          "test": "native group key matching gives vec_equal's result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 28,
+          "warnings": 0
         },
         {
           "file": "test-dibble-summary.R",

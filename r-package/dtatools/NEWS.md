@@ -14,6 +14,14 @@
   seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
   to 0.99 seconds. Results and errors are unchanged.
 
+* When a grouped verb on a dibble checks its grouping metadata, it compares
+  each row's numeric grouping key with its group's key in one native pass,
+  rather than repeating each group's key for every row and comparing the two
+  with vctrs. On the India 2021 DHS births file, `count(d, v024, b4)` falls
+  from about 0.10 to 0.05 seconds, grouped `mutate()` by state from 0.064 to
+  0.037 seconds, and `group_by(d, v024)` from 0.025 to 0.012 seconds.
+  Results and errors are unchanged.
+
 * A Stata string column replaces `NA` with `""` in one native pass when
   vctrs restores, slices, or casts it, as `bind_rows()`, `vctrs::vec_c()`,
   and joins that pad unmatched rows do. Assigning `""` through `[<-` had

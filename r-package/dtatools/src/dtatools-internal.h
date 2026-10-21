@@ -772,6 +772,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_ephemeral_altstring(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_numeric_altrep(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_altrep(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_group_rows_facts(SEXP x, SEXP originals);
+DTATOOLS_INTERNAL SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes);
 DTATOOLS_INTERNAL SEXP metadata_proxy_state(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_source(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_owner(SEXP value);
