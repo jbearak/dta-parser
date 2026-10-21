@@ -108,6 +108,14 @@
   narrower declaration such as `dta_string(x[rows], "str1")` to fit the
   widest value anywhere in the source.
 
+* `labelbook()` groups each value-label table's variables in one pass,
+  rather than finding the table by name for every labelled variable, which
+  scanned every table found so far. It also joins the tables' diagnostics
+  once and checks a table's codes for gaps without sorting them. On the
+  16,787-row, 5,360-column Senegal 2017 DHS women's file, which has a table
+  for each of 4,831 labelled variables, `labelbook(d)` falls from about
+  0.57 to 0.31 seconds. Results are unchanged.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,
