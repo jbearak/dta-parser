@@ -408,6 +408,14 @@
   from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
   8.3 to 6.7 seconds.
 
+* `codebook()` counts each numeric variable's missing codes in compiled
+  code, without building a code for every value. For a Stata numeric
+  variable it subsets the column's bare values and decodes the observed
+  ones once, rather than slicing the column through vctrs and decoding the
+  slice in every summary, and it reads a dibble's columns by position. On
+  a 16,787-row, 5,360-column DHS file, `codebook(compact = TRUE)` falls
+  from 1.5 to 1.2 seconds and `codebook()` from 2.6 to 2.2 seconds.
+
 * `codebook()` collects its problem rows as columns, where it built a data
   frame for each one, and counts each numeric variable's missing codes in
   one pass. It checks for duplicate observations a block of columns at a
