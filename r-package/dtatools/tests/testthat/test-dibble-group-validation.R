@@ -151,3 +151,195 @@ test_that("bytes-encoded group attributes retain their existing error boundary",
         expect_identical(.group_validation_snapshot(attr(data, "groups")$g), expected_key)
     }
 })
+
+test_that("native group row facts give the R expressions' results", {
+    facts <- function(x) .Call(dtatools:::C_dtatools_group_rows_facts, x,
+                               dtatools:::.group_rows_list_of_methods)
+    expected <- function(x) list(unlist(x, use.names = FALSE), lengths(x),
+        !any(vapply(x, is.unsorted, logical(1), strictly = TRUE)))
+    pairs <- lapply(seq_len(100L), function(i) c(2L * i - 1L, 2L * i))
+    # Setting the attributes of a list this long wraps it in ALTREP.
+    wrapped <- vctrs::new_list_of(pairs, ptype = integer())
+    expect_true(dtatools:::.is_altrep(wrapped))
+    for (x in list(list(c(1L, 3L), integer(), 2L), list(c(3L, 1L), 2L),
+                   list(c(1L, 1L)), list(c(NA_integer_, 2L)),
+                   vctrs::new_list_of(list(c(1L, 2L), 3L), ptype = integer()),
+                   wrapped)) {
+        expect_identical(facts(x), expected(x))
+    }
+    compact <- seq_len(3L)
+    expect_true(dtatools:::.is_altrep(compact))
+    for (x in list(list(), list(compact), list(c(a = 1L)), list(factor("a")),
+                   list(c(1, 2)), list(a = 1L),
+                   structure(list(1L), class = "other"),
+                   vctrs::new_list_of(list(1L), ptype = integer(), class = "extra"),
+                   structure(vctrs::new_list_of(list(1L), ptype = integer()),
+                             names = "a"))) {
+        expect_null(facts(x))
+    }
+})
+
+test_that("group validation errors are the same with rows read natively", {
+    skip_if_not_installed("dplyr")
+    data <- dplyr::group_by(as_dibble(data.frame(
+        g = rep(seq_len(100L), each = 2L), x = seq_len(200L))), g)
+    facts <- function(rows) .Call(dtatools:::C_dtatools_group_rows_facts, rows,
+                                  dtatools:::.group_rows_list_of_methods)
+    expect_false(is.null(facts(attr(data, "groups")$.rows)))
+    expect_silent(dtatools:::.validate_group_metadata(data))
+    damages <- list(
+        "malformed grouping metadata" = function(rows) {
+            rows[[1L]] <- c(2L, 1L); rows
+        },
+        "malformed grouping metadata" = function(rows) {
+            rows[[1L]] <- c(1L, 1L); rows[[2L]] <- c(2L, 3L, 4L); rows
+        },
+        "keys that do not match" = function(rows) {
+            rows[[1L]] <- 1L; rows[[2L]] <- c(2L, 3L, 4L); rows
+        }
+    )
+    for (index in seq_along(damages)) {
+        native <- data
+        attr(native, "groups")$.rows <- damages[[index]](attr(data, "groups")$.rows)
+        # A compact sequence in the last group sends the same rows through the
+        # R expressions.
+        fallback <- native
+        attr(fallback, "groups")$.rows[[100L]] <- 199:200
+        expect_false(is.null(facts(attr(native, "groups")$.rows)))
+        expect_null(facts(attr(fallback, "groups")$.rows))
+        message <- names(damages)[[index]]
+        expect_error(dtatools:::.validate_group_metadata(native), message)
+        expect_error(dtatools:::.validate_group_metadata(fallback), message)
+        expect_identical(
+            tryCatch(dtatools:::.validate_group_metadata(native),
+                     error = conditionMessage),
+            tryCatch(dtatools:::.validate_group_metadata(fallback),
+                     error = conditionMessage))
+    }
+})
+
+# Replacing a list_of method changes what the R expressions read, so the
+# native facts must decline. Methods are replaced only in a disposable child.
+test_that("native group row facts decline when list_of dispatch changes", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("callr")
+    observed <- callr::r(function(libraries, expected_namespace) {
+        .libPaths(libraries)
+        library(dtatools)
+        stopifnot(identical(normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path")),
+            normalizePath(expected_namespace)))
+        data <- dplyr::group_by(as_dibble(data.frame(
+            g = rep(seq_len(100L), each = 2L), x = seq_len(200L))), g)
+        rows <- attr(data, "groups")$.rows
+        facts <- function() !is.null(.Call(dtatools:::C_dtatools_group_rows_facts,
+            rows, dtatools:::.group_rows_list_of_methods))
+        validate <- function() tryCatch({
+            dtatools:::.validate_group_metadata(data)
+            "valid"
+        }, error = conditionMessage)
+        register <- function(generic, method) {
+            registerS3method(generic, "vctrs_list_of", method, envir = asNamespace("vctrs"))
+        }
+        original_as_list <- get("as.list.vctrs_list_of", asNamespace("vctrs"))
+        original_get <- get("[[.vctrs_list_of", asNamespace("vctrs"))
+        result <- list(before = facts())
+        # Reversing each group's rows makes them decrease, which the R
+        # expressions report through vapply()'s as.list().
+        register("as.list", function(x, ...) lapply(original_as_list(x), rev))
+        result$as_list <- c(facts(), validate())
+        register("as.list", original_as_list)
+        result$as_list_restored <- facts()
+        register("[[", function(x, i, ...) rev(original_get(x, i)))
+        result$get <- facts()
+        register("[[", original_get)
+        result$get_restored <- facts()
+        for (name in c("unlist.vctrs_list_of", "unlist.vctrs_vctr", "unlist.list",
+                       "unlist.default", "lengths.vctrs_list_of", "lengths.default",
+                       "length.vctrs_list_of", "length.vctrs_vctr")) {
+            assign(name, function(x, ...) stop("unexpected"), envir = globalenv())
+            result[[name]] <- facts()
+            rm(list = name, envir = globalenv())
+        }
+        reads <- 0L
+        makeActiveBinding("unlist.vctrs_list_of", function() {
+            reads <<- reads + 1L
+            NULL
+        }, globalenv())
+        result$active <- c(facts(), reads)
+        rm("unlist.vctrs_list_of", envir = globalenv())
+        result$after <- facts()
+        result
+    }, args = list(.libPaths(), getNamespaceInfo(asNamespace("dtatools"), "path")),
+        libpath = .libPaths(), timeout = 120)
+    expect_true(observed$before)
+    expect_identical(observed$as_list[[1L]], "FALSE")
+    expect_match(observed$as_list[[2L]], "malformed grouping metadata")
+    expect_true(observed$as_list_restored)
+    expect_false(observed$get)
+    expect_true(observed$get_restored)
+    for (name in c("unlist.vctrs_list_of", "unlist.vctrs_vctr", "unlist.list",
+                   "unlist.default", "lengths.vctrs_list_of", "lengths.default",
+                   "length.vctrs_list_of", "length.vctrs_vctr")) {
+        expect_false(observed[[name]], info = name)
+    }
+    expect_identical(observed$active, c(0L, 0L))
+    expect_true(observed$after)
+})
+
+test_that("native group key matching gives vec_equal's result", {
+    match_keys <- function(actual, key, sizes) {
+        .Call(dtatools:::C_dtatools_group_keys_match, actual, key, sizes)
+    }
+    expected <- function(actual, key, sizes) {
+        all(vctrs::vec_equal(actual, vctrs::vec_slice(key, rep.int(seq_along(sizes), sizes)),
+                             na_equal = TRUE))
+    }
+    proxy <- function(x) vctrs::vec_proxy_equal(x)
+    numbers <- c(1, -0, NA, NaN, Inf, 2.5)
+    cases <- list(
+        list(c(1L, 1L, NA, 2L), c(1L, NA, 2L), c(2L, 1L, 1L)),
+        list(c(1L, 2L, NA, 2L), c(1L, NA, 2L), c(2L, 1L, 1L)),
+        list(c(TRUE, TRUE, NA), c(TRUE, NA), c(2L, 1L)),
+        list(c(TRUE, FALSE, NA), c(TRUE, NA), c(2L, 1L)),
+        list(c(0, 0, NA, NaN, Inf), c(-0, NA, NaN, Inf), c(2L, 1L, 1L, 1L)),
+        list(c(0, NaN), c(0, NA), c(1L, 1L)),
+        list(c(0, NA), c(0, NaN), c(1L, 1L)),
+        list(numbers, numbers[c(1, 3, 6)], c(1L, 4L, 1L)),
+        list(rep(2.5, 4L), 2.5, 4L),
+        # Stata missing codes compare through the equality proxy's rank.
+        list(proxy(dta_double(c(1, 1, NA, tagged_missing("a")))),
+             proxy(dta_double(c(1, NA, tagged_missing("a")))), c(2L, 1L, 1L)),
+        list(proxy(dta_double(c(1, 1, NA, tagged_missing("a")))),
+             proxy(dta_double(c(1, tagged_missing("b"), tagged_missing("a")))), c(2L, 1L, 1L)),
+        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 4))), c(2L, 1L)),
+        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 5))), c(2L, 1L))
+    )
+    for (case in cases) {
+        expect_identical(match_keys(case[[1L]], case[[2L]], case[[3L]]),
+                         expected(case[[1L]], case[[2L]], case[[3L]]))
+    }
+    # Groups listing no rows contribute no values.
+    expect_true(match_keys(c(1L, 3L), c(1L, 2L, 3L), c(1L, 0L, 1L)))
+    # Anything else keeps vctrs's comparison.
+    frame <- proxy(dta_double(c(1, 1)))
+    key_frame <- proxy(dta_double(1))
+    declined <- list(
+        list(c(a = 1L, b = 1L), 1L, 2L),
+        list(structure(c(1L, 1L), class = "other"), 1L, 2L),
+        list(c(1L, 1L), 1, 2L),
+        list(c("a", "a"), "a", 2L),
+        list(seq_len(2L), 1L, 2L),
+        list(c(1L, 1L), 1L, 3L),
+        list(c(1L, 1L), 1L, NA_integer_),
+        list(c(1L, 1L), 1L, 2),
+        list(frame, key_frame$value, 2L),
+        list(frame$value, key_frame, 2L),
+        list(tibble::as_tibble(frame), tibble::as_tibble(key_frame), 2L),
+        list(stats::setNames(frame, c("rank", "other")), key_frame, 2L),
+        list(structure(frame, extra = TRUE), key_frame, 2L),
+        list(frame, structure(key_frame, row.names = c(NA_integer_, -3L)), 2L)
+    )
+    for (case in declined) {
+        expect_null(match_keys(case[[1L]], case[[2L]], case[[3L]]))
+    }
+})
