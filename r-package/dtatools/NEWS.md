@@ -116,6 +116,22 @@
   for each of 4,831 labelled variables, `labelbook(d)` falls from about
   0.57 to 0.31 seconds. Results are unchanged.
 
+* `dta_match()`, `dta_in()`, `dta_identical()`, `dta_union()`,
+  `dta_intersect()`, `dta_setdiff()`, and `dta_setequal()` compare strings
+  as they are, rather than first pasting a prefix onto each one. A compact
+  string column from `read_dta()` or `read_arrow()` is copied once into an
+  ordinary vector, because `match()` slows down when it reads each value
+  through the compact column. On the 1,274,250-row `caseid` column of the
+  India 2021 DHS births file, matching it against every other row falls
+  from about 0.41 to 0.03 seconds, and `dta_union()` from 0.49 to 0.10
+  seconds. On an ordinary character vector holding the same values,
+  `dta_match()` falls from 0.16 to 0.02 seconds. An empty string operand
+  now matches nothing. Pasting the prefix onto an empty vector had given one
+  key, the prefix alone, which also stood for `""`. So
+  `dta_in("", character())` returned `TRUE`, `dta_setdiff(c("", "a"),
+  character())` dropped `""`, and `dta_union()` with an empty operand
+  failed. Other results are unchanged.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,

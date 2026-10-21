@@ -14979,7 +14979,7 @@
         },
         {
           "path": "tests/testthat/test-dta-match.R",
-          "sha256": "330c0697e50973c6fa9034cbaec8c0c780b17c09433f4c206c99c3f167b07821"
+          "sha256": "e25270f8ecd980bc3a711124ce63787f7541c4e7e3995280c4fa05e58b6723b0"
         },
         {
           "path": "tests/testthat/test-dibble-joins.R",
@@ -15940,6 +15940,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-match.R",
+          "test": "matching and sets read compact strings as their values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-match.R",
+          "test": "an empty string operand matches nothing",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
           "warnings": 0
         },
         {
