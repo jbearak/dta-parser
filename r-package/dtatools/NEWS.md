@@ -92,10 +92,10 @@
   dibble source's zero-row schema is gathered natively by `slice_dta_rows()`
   rather than by `vctrs::vec_slice()`, which ran the vctrs methods of each
   column. Appending the 16,787-row, 5,360-column Senegal 2017 DHS women's
-  file to itself falls from about 0.66 to 0.40 seconds, and appending it
+  file to itself falls from about 0.64 to 0.37 seconds, and appending it
   from two file paths from 0.58 to 0.48 seconds. Appending the
   1,274,250-row, 1,644-column India 2021 births file to itself falls from
-  1.05 to 0.94 seconds. Results are unchanged, except that a column name
+  0.89 to 0.79 seconds. Results are unchanged, except that a column name
   longer than 10,000 bytes no longer stops the append with R's limit on
   variable names.
 
