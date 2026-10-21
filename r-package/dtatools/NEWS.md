@@ -376,6 +376,15 @@
   5,360-column DHS file, a one-to-one merge that adds one variable falls
   from 0.34 to 0.13 seconds.
 
+* Gathering compact numeric columns by row, as `dta_merge()`, `filter()`,
+  `arrange()`, and `[` do, copies each value with a loop fixed to the
+  column's width and copies each run of 16 or more consecutive rows as one
+  block. Each column decides once, not once per row, how to test its values
+  for missing, and each worker takes the next column as it finishes one. On
+  the 1,274,250-row, 1,644-column India 2021 DHS birth history file, an
+  `m:1` merge on `caseid` falls from 0.78 to 0.35 seconds and
+  `arrange(b2)` from 0.46 to 0.29 seconds.
+
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
   `regexec()`, check value-label table names in one call, and find the
@@ -405,6 +414,15 @@
   about 35 microseconds per vector. `dplyr::bind_rows()` of two copies of a
   5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
   are unchanged.
+
+* `save_dta()` no longer takes minutes to write a strL column from an
+  ordinary character vector of more than about 350,000 rows. Planning
+  rereads the first row of each repeated value. Past the first region of
+  string pointers, each reread refilled the region from that earlier row,
+  and the next row refilled it again. An earlier row is now read by
+  itself. Saving 500,000 rows of 20 DHS columns plus a note column that
+  holds either a 3,000-byte value or `"short"` falls from 190 to 0.33
+  seconds. Files are unchanged.
 
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
