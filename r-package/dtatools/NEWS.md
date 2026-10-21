@@ -50,22 +50,21 @@
   dictionary form now stays compact after `filter()`, `arrange()`, `[`, or
   `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
   R's generic attribute wrapper, which hid the dictionary, so the width check
-  that follows read every value through the wrapper. On the 1,274,250-row,
-  1,644-column India 2021 DHS births file, `filter()` falls from about 0.55
-  to 0.44 seconds, `arrange()` from 0.61 to 0.48 seconds, and taking every
-  other row with `[` from 0.51 to 0.44 seconds. When vctrs needs all of a
-  compact column's values at once, as `vctrs::vec_c()` does, they are now
-  read from the dictionary directly rather than one at a time through R.
-  Casting a compact column to a Stata string, as a join does with its key,
-  no longer searches it for `NA`, which a compact column never holds. With
-  the dictionary width check described below, joining the births file's
-  1,274,250 rows to its 494,019 distinct `caseid` values, `left_join()`
-  falls from about 0.95 to 0.58 seconds and `dta_merge()` from 0.80 to 0.69
-  seconds. Results are unchanged.
+  that follows read every value through the wrapper. That width check, before
+  a cast into fixed Stata string storage, now reads byte lengths from the
+  dictionary rather than making a string for each value. When vctrs needs all
+  of a compact column's values at once, as `vctrs::vec_c()` does, they are
+  read from the dictionary directly rather than one at a time through R. On
+  the 1,274,250-row, 1,644-column India 2021 DHS births file, `filter()` falls
+  from about 0.51 to 0.44 seconds, `arrange()` from 0.59 to 0.48 seconds, and
+  taking every other row with `[` from 0.48 to 0.42 seconds. Joining the
+  births file's 1,274,250 rows to its 494,019 distinct `caseid` values,
+  `left_join()` falls from about 0.60 to 0.35 seconds and `dta_merge()` from
+  0.51 to 0.35 seconds. Results are unchanged.
 
 * Width checks on a compact string column count only the values it holds.
-  A slice of a compact column shares its source's whole dictionary, so on a
-  slice of fewer than 64 rows, `dibble()` and `save_dta()` widened a
+  A slice of a compact column shares its source's whole dictionary, so on
+  some slices of fewer than 64 rows, `dibble()` and `save_dta()` widened a
   narrower declaration such as `dta_string(x[rows], "str1")` to fit the
   widest value anywhere in the source.
 
@@ -247,13 +246,6 @@
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
   now take 0.03 to 0.12 seconds.
-
-* The width check before a cast into fixed Stata string storage reads the
-  byte length of each distinct value of a string column from `read_dta()` or
-  `read_arrow()` once from its dictionary, rather than making a string for
-  every value and measuring it. On the 1,274,250-row India 2021 DHS birth
-  history file, measuring `caseid` falls from 27 to 3 milliseconds, its cast
-  into `str15` from 111 to 59, and `vec_c(caseid, caseid)` from 537 to 427.
 
 * `mutate()` on a dibble reads only the prior values each new column uses,
   rather than every column's value once per new column. On a 5,360-column
