@@ -2484,6 +2484,16 @@ SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
     SEXP source_backing = PROTECT(R_ExternalPtrProtected(R_altrep_data1(read_handle)));
     (void) source_backing;
     R_xlen_t length = XLENGTH(index);
+    if (data->length == 0 && length > 0) {
+        /* Every index of an empty source reads system missing. vctrs fills
+           each combined column this way from the zero-length common type,
+           then writes into it, which would materialize compact storage. */
+        SEXP result = PROTECT(Rf_allocVector(REALSXP, length));
+        double *output = REAL(result);
+        for (R_xlen_t i = 0; i < length; i++) output[i] = NA_REAL;
+        UNPROTECT(3);
+        return result;
+    }
     size_t width = numeric_kind_width(data->kind);
     if ((size_t) length > SIZE_MAX / width) {
         Rf_error("compact Stata numeric subset is too long");
@@ -5048,17 +5058,27 @@ typedef struct {
 
 /* Count into locals and test validity after each block: an early return
    or a store through `facts`, which may alias `bytes`, would keep the
-   compiler from vectorizing the loop. */
-#define COMPACT_NUMERIC_INTEGERS(TYPE, MINIMUM, MISSING)                    \
+   compiler from vectorizing the loop. Each chunk counts in `UTYPE`, the
+   width of `TYPE`, with at most `CHUNK` values so the count cannot wrap:
+   a count wider than the values would split each vector of them into
+   several. */
+#define COMPACT_NUMERIC_INTEGERS(TYPE, UTYPE, CHUNK, MINIMUM, MISSING)      \
     {                                                                       \
         int invalid = 0;                                                    \
         size_t missing = 0, zeros = 0;                                      \
-        for (size_t index = start; index < end; index++) {                  \
-            TYPE raw;                                                       \
-            memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));        \
-            invalid |= raw == (MINIMUM);                                    \
-            missing += raw >= (MISSING);                                    \
-            zeros += raw == 0;                                              \
+        for (size_t chunk = start; chunk < end; chunk += (CHUNK)) {         \
+            size_t stop = end - chunk > (CHUNK) ? chunk + (CHUNK) : end;    \
+            UTYPE chunk_invalid = 0, chunk_missing = 0, chunk_zeros = 0;    \
+            for (size_t index = chunk; index < stop; index++) {             \
+                TYPE raw;                                                   \
+                memcpy(&raw, bytes + index * sizeof(raw), sizeof(raw));    \
+                chunk_invalid |= raw == (MINIMUM);                          \
+                chunk_missing += raw >= (MISSING);                          \
+                chunk_zeros += raw == 0;                                    \
+            }                                                               \
+            invalid |= chunk_invalid != 0;                                  \
+            missing += chunk_missing;                                       \
+            zeros += chunk_zeros;                                           \
         }                                                                   \
         if (invalid) return 0;                                              \
         missing_count += missing;                                           \
@@ -5077,13 +5097,14 @@ static int compact_numeric_scan(
         end = count - start > 16384 ? start + 16384 : count;
         switch (kind) {
         case NUMERIC_BYTE:
-            COMPACT_NUMERIC_INTEGERS(int8_t, INT8_MIN, 101)
+            COMPACT_NUMERIC_INTEGERS(int8_t, uint8_t, 255, INT8_MIN, 101)
             break;
         case NUMERIC_INT:
-            COMPACT_NUMERIC_INTEGERS(int16_t, INT16_MIN, 32741)
+            COMPACT_NUMERIC_INTEGERS(int16_t, uint16_t, 16384, INT16_MIN, 32741)
             break;
         case NUMERIC_LONG:
-            COMPACT_NUMERIC_INTEGERS(int32_t, INT32_MIN, INT32_C(2147483621))
+            COMPACT_NUMERIC_INTEGERS(int32_t, uint32_t, 16384, INT32_MIN,
+                                     INT32_C(2147483621))
             break;
         default:
             for (size_t index = start; index < end; index++) {
@@ -5114,6 +5135,35 @@ static int compact_numeric_scan(
 
 #undef COMPACT_NUMERIC_INTEGERS
 
+/* Compact storage over `backing`, whose bytes compact_numeric_scan()
+   accepted, with the facts the constructor records. The caller protects
+   `backing`. */
+static SEXP compact_numeric_from_scan(
+    SEXP backing, size_t length, int kind, const compact_numeric_facts *facts
+) {
+    void *data = dtatools_numeric_alloc(
+        RAW(backing), length, kind, 0, facts->missing_count
+    );
+    if (data == NULL) {
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    numeric_data *storage = data;
+    storage->zero_count = facts->zero_count;
+    storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
+    if (kind == NUMERIC_FLOAT) {
+        storage->float_max_magnitude_bound = facts->float_maximum_magnitude;
+        storage->float_min_nonzero_magnitude_bound =
+            facts->float_minimum_nonzero_magnitude;
+        storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
+            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = R_new_altrep(dtatools_numeric_class, external, R_NilValue);
+    UNPROTECT(1);
+    return result;
+}
+
 /* Compact storage of the requested kind in the modern encoding already
    holds the bytes the constructor would write for its doubles. Copy them
    when the constructor accepts every value, with the facts it records.
@@ -5138,29 +5188,8 @@ static SEXP construct_numeric_from_compact(SEXP value, int kind) {
         UNPROTECT(2);
         return R_NilValue;
     }
-    void *data = dtatools_numeric_alloc(
-        RAW(backing), length, kind, 0, facts.missing_count
-    );
-    if (data == NULL) {
-        UNPROTECT(2);
-        Rf_error("could not allocate compact Stata numeric storage");
-    }
-    numeric_data *storage = data;
-    storage->zero_count = facts.zero_count;
-    storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
-    if (kind == NUMERIC_FLOAT) {
-        storage->float_max_magnitude_bound = facts.float_maximum_magnitude;
-        storage->float_min_nonzero_magnitude_bound =
-            facts.float_minimum_nonzero_magnitude;
-        storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
-            NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
-    }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
-    SEXP result = PROTECT(R_new_altrep(
-        dtatools_numeric_class, external, R_NilValue
-    ));
-    UNPROTECT(4);
+    SEXP result = compact_numeric_from_scan(backing, length, kind, &facts);
+    UNPROTECT(2);
     return result;
 }
 
@@ -5436,25 +5465,37 @@ SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind_value) {
     return result;
 }
 
-/* The same doubles as unmaterialized compact storage over a copy of the
-   buffer, which the constructor copies when it accepts every value. */
-SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind_value) {
+/* The column the constructor builds from the doubles a compact buffer
+   holds, with the same facts from one scan, and with the `stata.storage`
+   and class attributes it is given. Return NULL when the scan refuses a
+   value; the caller then hands the constructor the doubles. A plain buffer
+   that only the calling frame's binding holds becomes the column's storage.
+   The column's reference then marks it shared, so the append writers
+   refuse it. Any other buffer is copied. */
+SEXP C_dtatools_append_compact_values(
+    SEXP buffer, SEXP kind_value, SEXP storage, SEXP class
+) {
     int kind = append_compact_kind(kind_value);
     size_t width = kind < 0 ? 1 : numeric_kind_width(kind);
     if (kind < 0 || TYPEOF(buffer) != RAWSXP ||
-        XLENGTH(buffer) % (R_xlen_t) width != 0) {
+        XLENGTH(buffer) % (R_xlen_t) width != 0 ||
+        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 ||
+        TYPEOF(class) != STRSXP) {
         Rf_error("invalid compact append buffer");
     }
     size_t length = (size_t) XLENGTH(buffer) / width;
-    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, XLENGTH(buffer)));
-    memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
     compact_numeric_facts facts;
-    SEXP result = numeric_from_backing(
-        backing, length, kind, 0, 119,
-        compact_numeric_scan(RAW(backing), length, kind, &facts)
-            ? facts.missing_count : SIZE_MAX
-    );
-    UNPROTECT(1);
+    if (!compact_numeric_scan(RAW(buffer), length, kind, &facts)) return R_NilValue;
+    SEXP backing = buffer;
+    if (ALTREP(buffer) || MAYBE_SHARED(buffer) || ANY_ATTRIB(buffer)) {
+        backing = Rf_allocVector(RAWSXP, XLENGTH(buffer));
+        memcpy(RAW(backing), RAW(buffer), (size_t) XLENGTH(buffer));
+    }
+    PROTECT(backing);
+    SEXP result = PROTECT(compact_numeric_from_scan(backing, length, kind, &facts));
+    Rf_setAttrib(result, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(result, R_ClassSymbol, class);
+    UNPROTECT(2);
     return result;
 }
 
@@ -6552,6 +6593,35 @@ static int combine_dispatch_unchanged(SEXP dependencies, SEXP combine) {
     return computed_double_limit_unchanged(dtatools);
 }
 
+/* The checks combine_dispatch_unchanged makes for the dta_double class, for
+   another storage class: no method of that class may change how vctrs takes a
+   type, finalises it, or how base reads and sets its names and dimensions. */
+static int combine_storage_methods_absent(SEXP dependencies, const char *storage_class) {
+    static const char *generics[] = {
+        "vec_ptype", "vec_ptype_finalise", "names", "dim", "names<-"
+    };
+    SEXP vctrs = VECTOR_ELT(dependencies, 0), dtatools = VECTOR_ELT(dependencies, 1);
+    SEXP vctrs_table = VECTOR_ELT(dependencies, 7), base_table = VECTOR_ELT(dependencies, 8);
+    SEXP methods[5];
+    char name[64];
+    for (int i = 0; i < 5; i++) {
+        if (snprintf(name, sizeof(name), "%s.%s", generics[i], storage_class) >=
+            (int) sizeof(name)) return 0;
+        methods[i] = Rf_install(name);
+    }
+    return combine_frame_absent(R_GlobalEnv, methods[0]) &&
+        combine_frame_absent(vctrs_table, methods[0]) &&
+        combine_chain_absent(vctrs, methods[1]) &&
+        combine_frame_absent(vctrs_table, methods[1]) &&
+        combine_chain_absent(dtatools, methods[2]) &&
+        combine_chain_absent(vctrs, methods[2]) &&
+        combine_frame_absent(base_table, methods[2]) &&
+        combine_chain_absent(dtatools, methods[3]) &&
+        combine_frame_absent(base_table, methods[3]) &&
+        combine_chain_absent(dtatools, methods[4]) &&
+        combine_frame_absent(base_table, methods[4]);
+}
+
 static int combine_double_plain_indices(SEXP value) {
     return TYPEOF(value) == INTSXP && !ALTREP(value) && !ANY_ATTRIB(value) &&
         !Rf_isObject(value) && !Rf_isS4(value);
@@ -6861,7 +6931,7 @@ static int summary_caller_env_unchanged(SEXP ns, SEXP caller_env, SEXP plus, SEX
    their build copies, with their braces, .External2 and routines unchanged,
    so the shortened argument list cannot be observed. */
 static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
-    if (!combine_plain_list(expected) || XLENGTH(expected) != 8 ||
+    if (!combine_plain_list(expected) || XLENGTH(expected) != 10 ||
         TYPEOF(VECTOR_ELT(expected, 2)) != ENVSXP) return 0;
     SEXP ns = VECTOR_ELT(expected, 2);
     SEXP common = PROTECT(vctrs_exported_function(
@@ -6887,18 +6957,39 @@ static int summary_reducer_unchanged(SEXP frame, SEXP expected, SEXP routines) {
     return same;
 }
 
+/* A fold of two storages reaches the branch of .dta_promote() that names
+   the pair with is.character() and switch(). The package and base lookups
+   of both must find the build primitives. */
+static int summary_promotion_unchanged(SEXP dtatools, SEXP expected) {
+    static const char *names[] = {"is.character", "switch"};
+    for (int i = 0; i < 2; i++) {
+        SEXP symbol = Rf_install(names[i]), primitive = VECTOR_ELT(expected, 8 + i);
+        if ((TYPEOF(primitive) != BUILTINSXP && TYPEOF(primitive) != SPECIALSXP) ||
+            !dtatools_execution_lexical_function_same(dtatools, symbol, primitive) ||
+            !dtatools_execution_lexical_function_same(R_BaseNamespace, symbol, primitive))
+            return 0;
+    }
+    return 1;
+}
+
 /* A grouped summary folds every group's result into a common type with
    vctrs, one chunk at a time. Over canonical double pieces, the ones double
    assembly combines without vctrs, each fold is a pure function of the
    running type and the next piece's attributes while the checks that admit
-   that assembly pass. The helper passes chunks as an unforced symbol
-   promise, so lookups are checked in the caller's frame, where vctrs is
-   called, and nothing is forced. Return the method vctrs would send each
-   fold to, as vctrs would find it, or NULL when there are fewer than eight
-   chunks or any chunk or dependency differs. */
-SEXP C_dtatools_double_ptype_method(
+   that assembly pass. The same holds for canonical byte, int, long, and float
+   pieces when no method of their storage classes changes dispatch and the
+   constructor that a fold reaches for them is unchanged. Pieces of more
+   than one storage also need the promotion above. The helper passes
+   chunks as an unforced symbol promise, so lookups are checked in the
+   caller's frame, where vctrs is called, and nothing is forced. Return the
+   method vctrs would send each fold to, as vctrs would find it, or NULL when
+   there are fewer than eight chunks or any chunk or dependency differs. */
+SEXP C_dtatools_summary_ptype_method(
     SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
 ) {
+    static const char *storage_classes[] = {
+        "dta_byte", "dta_int", "dta_long", "dta_float"
+    };
     SEXP frame = R_GetCurrentEnv(), symbol = Rf_install("chunks");
     if (!combine_plain_environment(frame) ||
         R_GetBindingType(symbol, frame) != R_BindingTypeDelayed ||
@@ -6907,9 +6998,19 @@ SEXP C_dtatools_double_ptype_method(
     if (!combine_plain_environment(caller)) return R_NilValue;
     SEXP chunks = PROTECT(computed_peek(symbol, caller, 16)), dependencies, metadata, routines;
     int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8;
+    /* Bit k marks a compact piece of kind k. */
+    unsigned compact = 0;
+    int doubles = 0;
     for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
-        admitted = combine_double_canonical_piece(VECTOR_ELT(chunks, i));
+        SEXP piece = VECTOR_ELT(chunks, i);
+        int kind = 0;
+        if (combine_double_canonical_piece(piece)) {
+            doubles = 1;
+            continue;
+        }
+        admitted = scalar_compact_numeric(piece, &kind);
+        if (admitted) compact |= 1U << kind;
     }
     if (!admitted ||
         combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
@@ -6929,9 +7030,23 @@ SEXP C_dtatools_double_ptype_method(
         UNPROTECT(3);
         return R_NilValue;
     }
+    /* A compact piece's fold constructs an empty vector of its storage through
+       the constructor's compact branch. */
+    int storages = doubles;
+    for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
+        if (compact & (1U << kind)) {
+            storages++;
+            admitted = combine_storage_methods_absent(dependencies, storage_classes[kind]);
+        }
+    }
+    if (admitted && compact)
+        admitted = dtatools_numeric_helpers_admitted(VECTOR_ELT(dependencies, 1),
+                                                     DTATOOLS_NUMERIC_CONSTRUCT);
+    if (admitted && storages > 1)
+        admitted = summary_promotion_unchanged(VECTOR_ELT(dependencies, 1), reducer);
     SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
     SEXP method = R_NilValue;
-    if (combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
+    if (admitted && combine != R_UnboundValue && combine_dispatch_unchanged(dependencies, combine)) {
         SEXP name = Rf_install("vec_ptype2.dta_numeric.dta_numeric");
         if (combine_peek_frame(R_GlobalEnv, name, &method) == COMBINE_ABSENT &&
             combine_peek_frame(VECTOR_ELT(dependencies, 7), name, &method) != COMBINE_VALUE)
@@ -7028,16 +7143,172 @@ static SEXP summary_fresh_casts(SEXP chunks, SEXP ptype) {
     return casts;
 }
 
+/* The common type of compact pieces is an empty vector of one compact
+   storage whose only attributes are that storage and its class. */
+static int summary_compact_ptype(SEXP ptype, int *kind) {
+    if (TYPEOF(ptype) != REALSXP || Rf_isS4(ptype) || !Rf_isObject(ptype) ||
+        (ALTREP(ptype) && !R_altrep_inherits(ptype, dtatools_numeric_class) &&
+         !R_altrep_inherits(ptype, dtatools_metadata_real_class)) ||
+        XLENGTH(ptype) != 0) return 0;
+    int found = computed_storage_kind(Rf_getAttrib(ptype, Rf_install("stata.storage")));
+    if (found < NUMERIC_BYTE || found > NUMERIC_FLOAT) return 0;
+    scalar_compact_attribute_state state = {found, 0};
+    if (R_mapAttrib(ptype, scalar_compact_attribute, &state) != NULL || state.seen != 3U)
+        return 0;
+    *kind = found;
+    return 1;
+}
+
+/* A cast to the common storage widens, so it holds every value it reads. */
+static int summary_compact_widens(int from, int to) {
+    if (from == to) return 1;
+    if (from == NUMERIC_BYTE)
+        return to == NUMERIC_INT || to == NUMERIC_LONG || to == NUMERIC_FLOAT;
+    return from == NUMERIC_INT && (to == NUMERIC_LONG || to == NUMERIC_FLOAT);
+}
+
+/* Construct a piece's values in the common storage as the constructor does
+   for a cast or a restore, with the common type's storage vector, which every
+   cast shares, and a new class vector, which none shares. */
+static SEXP summary_compact_value(SEXP values, SEXP kind, SEXP storage, int common) {
+    static const char *storage_classes[] = {
+        "dta_byte", "dta_int", "dta_long", "dta_float"
+    };
+    SEXP temporal = PROTECT(Rf_ScalarInteger(0));
+    SEXP value = PROTECT(C_dtatools_construct_numeric(values, kind, temporal));
+    SEXP classes = PROTECT(Rf_allocVector(STRSXP, 4));
+    SET_STRING_ELT(classes, 0, Rf_mkChar("dta_numeric"));
+    SET_STRING_ELT(classes, 1, Rf_mkChar(storage_classes[common]));
+    SET_STRING_ELT(classes, 2, Rf_mkChar("vctrs_vctr"));
+    SET_STRING_ELT(classes, 3, Rf_mkChar("double"));
+    Rf_setAttrib(value, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(value, R_ClassSymbol, classes);
+    UNPROTECT(3);
+    return value;
+}
+
+static int summary_compact_payload(SEXP value) {
+    return ALTREP(value) && R_altrep_inherits(value, dtatools_numeric_class) &&
+        R_altrep_data2(value) == R_NilValue &&
+        TYPEOF(R_altrep_data1(value)) == EXTPTRSXP;
+}
+
+/* Over compact pieces each cast constructs the values of a metadata copy of
+   its piece in the common storage, and the combine constructs all of them
+   once more from the doubles vctrs assembles. A piece is a compact vector or
+   an unmaterialized metadata proxy over one, as a summary chunk usually is.
+   The same copy here marks the payloads it reaches shared, as the cast's
+   snapshot does, and the combine's copies of the casts mark theirs; the
+   combined vector's stays private. A payload a native owner retains is
+   copied differently, so its piece declines. Return NULL when any piece,
+   dependency or method differs. */
+static SEXP summary_combine_compact(
+    SEXP caller, SEXP chunks, SEXP ptype, int common,
+    SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
+) {
+    static const char *storage_classes[] = {
+        "dta_byte", "dta_int", "dta_long", "dta_float"
+    };
+    if (!combine_plain_list(chunks) || XLENGTH(chunks) < 8) return R_NilValue;
+    R_xlen_t count = XLENGTH(chunks), total = 0;
+    unsigned kinds = 1U << common;
+    /* Construction below can run finalizers that replace elements of chunks,
+       so it reads only the pieces checked here, whose lengths are fixed. */
+    SEXP pieces = PROTECT(Rf_allocVector(VECSXP, count));
+    int admitted = 1;
+    for (R_xlen_t i = 0; admitted && i < count; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SEXP piece = VECTOR_ELT(chunks, i);
+        int kind = -1;
+        admitted = scalar_compact_numeric(piece, &kind) &&
+            summary_compact_widens(kind, common) &&
+            !numeric_payload_retained(unmaterialized_numeric_read_storage(piece)) &&
+            XLENGTH(piece) <= INT_MAX - total;
+        if (admitted) {
+            SET_VECTOR_ELT(pieces, i, piece);
+            kinds |= 1U << kind;
+            total += XLENGTH(piece);
+        }
+    }
+    SEXP dependencies, metadata, routines;
+    if (!admitted ||
+        combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
+        !summary_combiner_unchanged(caller, expected, routines) ||
+        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    PROTECT(dependencies);
+    if (combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE ||
+        !combine_dependencies_valid(dependencies, 11)) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    PROTECT(metadata);
+    SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
+    admitted = combine != R_UnboundValue &&
+        dtatools_metadata_dependencies_unchanged(VECTOR_ELT(dependencies, 1), metadata, 0) &&
+        combine_dispatch_unchanged(dependencies, combine) &&
+        dtatools_numeric_helpers_admitted(VECTOR_ELT(dependencies, 1),
+                                          DTATOOLS_NUMERIC_CONSTRUCT);
+    for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
+        if (kinds & (1U << kind))
+            admitted = combine_storage_methods_absent(dependencies, storage_classes[kind]);
+    }
+    if (!admitted) {
+        UNPROTECT(4);
+        return R_NilValue;
+    }
+    SEXP storage = PROTECT(Rf_getAttrib(ptype, Rf_install("stata.storage")));
+    SEXP kind = PROTECT(Rf_ScalarInteger(common));
+    SEXP casts = PROTECT(Rf_allocVector(VECSXP, count));
+    SEXP values = PROTECT(Rf_allocVector(REALSXP, total));
+    R_xlen_t offset = 0;
+    for (R_xlen_t i = 0; i < count; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        SEXP piece = VECTOR_ELT(pieces, i);
+        R_xlen_t length = XLENGTH(piece);
+        SEXP snapshot = PROTECT(C_dtatools_metadata_copy(piece));
+        SET_VECTOR_ELT(casts, i, summary_compact_value(snapshot, kind, storage, common));
+        UNPROTECT(1);
+        if (length > 0 && REAL_GET_REGION(piece, 0, length, REAL(values) + offset) != length) {
+            UNPROTECT(8);
+            return R_NilValue;
+        }
+        offset += length;
+    }
+    SEXP result = PROTECT(summary_compact_value(values, kind, storage, common));
+    for (R_xlen_t i = 0; i < count; i++) {
+        if (!summary_compact_payload(VECTOR_ELT(casts, i))) {
+            UNPROTECT(9);
+            return R_NilValue;
+        }
+    }
+    SEXP outcome = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(outcome, 0, casts);
+    SET_VECTOR_ELT(outcome, 1, result);
+    UNPROTECT(10);
+    return outcome;
+}
+
+/* Mark the cast payloads that the combine's copies would have marked. */
+static void summary_compact_share(SEXP casts) {
+    for (R_xlen_t i = 0; i < XLENGTH(casts); i++)
+        compact_payload_mark_shared(R_altrep_data1(VECTOR_ELT(casts, i)));
+}
+
 /* A grouped summary casts every chunk to the common type and combines the
    casts. When every chunk equals its cast and the common type is the
    canonical double type, the casts change nothing and the combine is what
-   double assembly computes. The vctrs calls reach the methods that assembly
-   checks, plus the wrappers checked above. The helper passes chunks and ptype
-   as unforced symbol promises, so lookups are checked in the caller's frame,
-   where those calls run, and nothing is forced. Assign the casts to chunks
-   and the combined vector to result in that frame and return TRUE, or
-   return FALSE when any chunk, dependency or binding differs. */
-SEXP C_dtatools_summary_combine_double(
+   double assembly computes. When the common type is compact, the casts and
+   the combine construct compact values as above. The vctrs calls reach the
+   methods that assembly checks, plus the wrappers checked above. The helper
+   passes chunks and ptype as unforced symbol promises, so lookups are
+   checked in the caller's frame, where those calls run, and nothing is
+   forced. Assign the casts to chunks and the combined vector to result in
+   that frame and return TRUE, or return FALSE when any chunk, dependency or
+   binding differs. */
+SEXP C_dtatools_summary_combine(
     SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
 ) {
     SEXP frame = R_GetCurrentEnv();
@@ -7062,6 +7333,22 @@ SEXP C_dtatools_summary_combine_double(
         return Rf_ScalarLogical(FALSE);
     }
     PROTECT(ptype);
+    int common = -1;
+    if (summary_compact_ptype(ptype, &common)) {
+        SEXP outcome = PROTECT(summary_combine_compact(caller, chunks, ptype, common,
+            state, metadata_state, expected, routine_state));
+        /* Allocation may run finalizers that alter the assignment targets. */
+        int assigned = outcome != R_NilValue &&
+            combine_assignment_available(caller, chunks_symbol) &&
+            combine_assignment_available(caller, target);
+        if (assigned) {
+            summary_compact_share(VECTOR_ELT(outcome, 0));
+            Rf_defineVar(chunks_symbol, VECTOR_ELT(outcome, 0), caller);
+            Rf_defineVar(target, VECTOR_ELT(outcome, 1), caller);
+        }
+        UNPROTECT(3);
+        return Rf_ScalarLogical(assigned);
+    }
     int admitted = combine_plain_list(chunks) && XLENGTH(chunks) >= 8 &&
         combine_double_canonical_piece(ptype) && XLENGTH(ptype) == 0;
     for (R_xlen_t i = 0; admitted && i < XLENGTH(chunks); i++) {

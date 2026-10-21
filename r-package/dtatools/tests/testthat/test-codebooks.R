@@ -68,6 +68,62 @@ test_that("labelbook diagnoses table problems and malformed sharing", {
     expect_true("inconsistent_resolved_mappings" %in% malformed$diagnostics$code)
 })
 
+test_that("labelbook checks each table's text alone for other encodings", {
+    latin1 <- "\xe4"
+    Encoding(latin1) <- "latin1"
+    bytes <- "caf\xe9"
+    Encoding(bytes) <- "bytes"
+    labels <- stats::setNames(c(1, tagged_missing("a"), NA), c("One", "Dot a", "Dot"))
+    expect_identical(
+        dtatools:::.book_mapping_signature(labels, dtatools:::.dta_value_label_keys(labels)),
+        dtatools:::.book_mapping_signature(labels)
+    )
+    expect_null(dtatools:::.labelbook_text_checks("t", list(stats::setNames(1, latin1))))
+    expect_null(dtatools:::.labelbook_text_checks("t", list(stats::setNames(1, bytes))))
+    expect_null(dtatools:::.labelbook_text_checks(bytes, list(NULL)))
+    expect_null(dtatools:::.labelbook_text_checks("t", list(stats::setNames(1, "caf\xe9"))))
+
+    # Disagreeing mappings are reported without checking their text.
+    data <- data.frame(
+        a = labelled_for_test(1, stats::setNames(c(1, 2), c(latin1, "Two"))),
+        b = labelled_for_test(2, c(Two = 2))
+    )
+    attr(data$a, "value.label.name") <- "shared"
+    attr(data$b, "value.label.name") <- "shared"
+    result <- labelbook(data, problems = TRUE)
+    expect_true(result$tables$malformed)
+    expect_identical(result$diagnostics$code, "inconsistent_resolved_mappings")
+})
+
+test_that("labelbook checks every table's text at once as it checks each alone", {
+    skip_if_not(isTRUE(l10n_info()[["UTF-8"]]))
+    tables <- c("good", "1bad", "café", "with space", "plain", "unused",
+                strrep("n", 33L))
+    labels <- list(
+        stats::setNames(c(1, 2), c(" lead", "trail ")),
+        stats::setNames(c(1, 2, 3), c("1.5", " 2 ", "")),
+        stats::setNames(c(1, 2), c("café", " nbsp")),
+        stats::setNames(c(1, 2), c(enc2utf8("ä"), "plain")),
+        stats::setNames(c(1, tagged_missing("a"), NA), c("One", "Dot a", "Dot")),
+        NULL,
+        stats::setNames(1, "\t")
+    )
+    batched <- dtatools:::.labelbook_text_checks(tables, labels)
+    # Each check passes some tables and fails others.
+    expect_true(all(vapply(batched, function(x) any(x) && !all(x), logical(1))))
+    for (i in seq_along(tables)) {
+        text <- lapply(batched, .subset2, i)
+        alone <- dtatools:::.labelbook_text_checks(tables[i], labels[i])
+        expect_identical(text, lapply(alone, .subset2, 1L))
+        if (is.null(labels[[i]])) next
+        expect_identical(
+            dtatools:::.labelbook_diagnostics(tables[[i]], labels[[i]], 3L, "x",
+                                              text = text),
+            dtatools:::.labelbook_diagnostics(tables[[i]], labels[[i]], 3L, "x")
+        )
+    }
+})
+
 test_that("labelbook diagnoses missing value-label names as malformed", {
     labels <- stats::setNames(c(1, 2), c("One", NA_character_))
     data <- data.frame(x = labelled_for_test(1, labels))

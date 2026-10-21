@@ -519,6 +519,25 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_promote <- function(left, right) {
     if (identical(left, right)) return(left)
+    # Two storage names promote through switch(), in either order, without
+    # sort() or paste(). A grouped summary that settles its common type
+    # skips folds, and its check qualifies only this branch for them.
+    if (is.character(left) && length(left) == 1L &&
+        is.character(right) && length(right) == 1L) {
+        promoted <- switch(left,
+            byte = switch(right, int = "int", long = "long", float = "float",
+                          double = "double"),
+            int = switch(right, byte = "int", long = "long", float = "float",
+                         double = "double"),
+            long = switch(right, byte = "long", int = "long", float = "double",
+                          double = "double"),
+            float = switch(right, byte = "float", int = "float", long = "double",
+                           double = "double"),
+            double = switch(right, byte = "double", int = "double", long = "double",
+                            float = "double")
+        )
+        if (!is.null(promoted)) return(promoted)
+    }
     pair <- sort(c(left, right))
     key <- paste(pair, collapse = ":")
     switch(key,
