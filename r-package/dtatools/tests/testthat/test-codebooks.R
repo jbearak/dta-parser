@@ -136,6 +136,72 @@ test_that("labelbook diagnoses missing value-label names as malformed", {
     expect_identical(result$diagnostics$scope, "variable")
 })
 
+test_that("labelbook groups variants by table in first-seen order", {
+    answer <- c(No = 0, Yes = 1)
+    local_mocked_bindings(
+        .labelbook_input = function(data) list(
+            data = data, registry = list(registered = answer, unused = c(One = 1)),
+            source = NULL
+        ),
+        .package = "dtatools"
+    )
+    data <- data.frame(
+        late = labelled_for_test(5, c(Late = 5)),
+        first = labelled_for_test(0, answer),
+        early = labelled_for_test(2, c(Early = 2)),
+        second = labelled_for_test(1, answer),
+        again = labelled_for_test(5, c(Late = 5)),
+        other = labelled_for_test(1, c(Other = 1))
+    )
+    attr(data$first, "value.label.name") <- "registered"
+    attr(data$second, "value.label.name") <- "registered"
+    attr(data$again, "value.label.name") <- "late"
+    attr(data$other, "value.label.name") <- "early"
+
+    result <- labelbook(data, problems = TRUE)
+    expect_identical(result$tables$table, c("registered", "unused", "late", "early"))
+    expect_identical(result$tables$malformed, c(FALSE, FALSE, FALSE, TRUE))
+    expect_identical(result$assignments$variable,
+                     c("late", "first", "early", "second", "again", "other"))
+    conflict <- result$diagnostics$code == "inconsistent_resolved_mappings"
+    expect_identical(result$diagnostics$table[conflict], "early")
+    expect_identical(
+        vapply(result$diagnostics$details[[which(conflict)]][[1L]], `[[`, "", "variable"),
+        c("early", "other")
+    )
+    expect_identical(
+        result$diagnostics$table[result$diagnostics$code == "unassigned_table"],
+        "unused"
+    )
+})
+
+test_that("labelbook finds gaps among the distinct whole codes", {
+    sets <- list(
+        consecutive = c(a = 3, b = 1, c = 2),
+        skipped = c(a = 1, b = 3),
+        repeated = c(a = 2, b = 1, c = 2),
+        repeated_gap = c(a = 4, b = 1, c = 1),
+        fractional = c(a = 1, b = 2.5),
+        single = c(a = 7),
+        negative = c(a = 0, b = -2, c = -1),
+        negative_gap = c(a = -3, b = 0),
+        infinite = c(a = 1, b = Inf),
+        both_infinite = c(a = Inf, b = -Inf),
+        not_a_number = c(a = 1, b = NaN, c = 2),
+        not_a_number_gap = c(a = NaN, b = 1, c = 3),
+        wide = c(a = 2^53 + 2, b = 2^53),
+        tagged = c(a = 1, b = 2, c = tagged_missing("a"))
+    )
+    data <- as.data.frame(lapply(sets, function(labels) {
+        labelled_for_test(labels[[1L]], labels)
+    }))
+    result <- labelbook(data, problems = TRUE)
+    expect_setequal(result$diagnostics$table[result$diagnostics$code == "gaps"], c(
+        "skipped", "repeated_gap", "negative_gap", "infinite", "both_infinite",
+        "not_a_number_gap", "wide"
+    ))
+})
+
 test_that("labelbook diagnoses malformed registry entries", {
     labels <- stats::setNames(c(1, 2), c("One", NA_character_))
     local_mocked_bindings(
