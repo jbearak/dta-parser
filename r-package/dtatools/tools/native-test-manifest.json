@@ -12357,7 +12357,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-row-slice.R",
-          "sha256": "76744408be7742c9d0801f6155f798264395273be4c6ddd3d4ef1151dab8c332"
+          "sha256": "dde6fee584cb6db13316772a98ee2f30ca318cd48ef3080ee06af7a5ae090668"
         },
         {
           "path": "tests/testthat/test-slice-dta-rows.R",
@@ -12833,6 +12833,17 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-row-slice.R",
+          "test": "S6-S08 slices of many groups take the rows of the typed-frame oracle",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 14,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
