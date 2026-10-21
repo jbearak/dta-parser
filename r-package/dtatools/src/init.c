@@ -336,6 +336,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_egen_group", (DL_FUNC) &dtatools_egen_group, 3},
     {"C_dtatools_egen_group_stats", (DL_FUNC) &C_dtatools_egen_group_stats, 1},
     {"C_dtatools_egen_summary", (DL_FUNC) &C_dtatools_egen_summary, 4},
+    {"C_dtatools_egen_group_summary",
+     (DL_FUNC) &C_dtatools_egen_group_summary, 5},
     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 7},
