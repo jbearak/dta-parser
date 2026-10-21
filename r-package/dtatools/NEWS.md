@@ -355,8 +355,8 @@
   value, rather than through R strings. Rows get equal codes exactly when
   their values are equal, so the merge matches the same rows. With five
   columns of the 1,274,250-row India 2021 DHS birth history and four of the
-  724,115-row women file, a many-to-one merge on `caseid` falls from 1.50
-  to 0.64 seconds.
+  724,115-row women file, a many-to-one merge on `caseid` falls from 0.51
+  to 0.26 seconds.
 
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
