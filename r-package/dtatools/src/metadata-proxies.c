@@ -255,9 +255,11 @@ static SEXP metadata_string_materialize(SEXP value) {
     SEXP source = metadata_proxy_source(value);
     R_xlen_t length = XLENGTH(source);
     materialized = PROTECT(Rf_allocVector(STRSXP, length));
-    for (R_xlen_t index = 0; index < length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        SET_STRING_ELT(materialized, index, STRING_ELT(source, index));
+    if (!dictstring_fill_values(source, materialized)) {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            SET_STRING_ELT(materialized, index, STRING_ELT(source, index));
+        }
     }
     R_set_altrep_data2(value, materialized);
     R_set_altrep_data1(value, R_NilValue);

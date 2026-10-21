@@ -958,7 +958,7 @@ test_that("owned string metadata leaves names replacement dispatch to R", {
     expect_identical(class(value), "stage4_owned_names")
 })
 
-test_that("string metadata declines compact storage without changing its source", {
+test_that("string metadata keeps compact storage without changing its source", {
     path <- tempfile(fileext = ".arrow")
     withr::defer(unlink(path))
     raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
@@ -966,7 +966,9 @@ test_that("string metadata declines compact storage without changing its source"
     value <- read_arrow(path)$x
     expect_true(.is_unmaterialized_dictstring(value))
     cache <- .dictstring_cached_count(value)
-    expect_null(.set_dta_string_attribute(value, "label", "later"))
+    annotated <- .set_dta_string_attribute(value, "label", "later")
+    expect_true(.is_unmaterialized_dictstring(annotated))
+    expect_identical(attr(annotated, "label", exact = TRUE), "later")
     expect_null(attr(value, "label", exact = TRUE))
     expect_identical(.dictstring_cached_count(value), cache)
     prototype <- set_var_labels(value, "source label")
@@ -979,6 +981,119 @@ test_that("string metadata declines compact storage without changing its source"
     expect_true(.is_unmaterialized_dictstring(value))
     expect_identical(.dictstring_cached_count(value), cache)
     expect_identical(as.character(value), raw)
+    # A write to either handle leaves the other's values alone.
+    annotated[1L] <- "text-new"
+    expect_identical(as.character(value), raw)
+    expect_identical(as.character(annotated), c("text-new", raw[-1L]))
+    value[2L] <- "text-old"
+    expect_identical(as.character(annotated), c("text-new", raw[-1L]))
+})
+
+compact_subset_source <- function(envir = parent.frame()) {
+    path <- tempfile(fileext = ".arrow")
+    withr::defer(unlink(path), envir = envir)
+    raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
+    save_arrow(data.frame(x = raw, k = seq_along(raw)), path)
+    list(raw = raw, data = read_arrow(path))
+}
+
+expect_compact_subsets <- function(results, expected, source) {
+    for (index in seq_along(results)) {
+        result <- results[[index]]
+        # R's attribute wrapper would hide the dictionary, and the width
+        # check below would then make a string for every value.
+        expect_true(.is_unmaterialized_dictstring(result))
+        expect_identical(attributes(result), attributes(source))
+        expect_true(.string_declaration_holds(result))
+        expect_identical(as.character(result), expected[[index]])
+    }
+}
+
+test_that("large compact string subsets keep their dictionary visible", {
+    fixture <- compact_subset_source()
+    x <- fixture$data$x
+    even <- seq(2L, length(x), by = 2L)
+    expect_compact_subsets(
+        list(x[even], vctrs::vec_slice(x, even)),
+        list(fixture$raw[even], fixture$raw[even]), x
+    )
+})
+
+test_that("dplyr row verbs keep large compact strings visible", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    fixture <- compact_subset_source()
+    data <- fixture$data
+    expect_compact_subsets(
+        list(
+            dplyr::filter(data, k %% 2L == 0L)$x,
+            dplyr::arrange(data, dplyr::desc(k))$x
+        ),
+        list(fixture$raw[c(FALSE, TRUE)], rev(fixture$raw)), data$x
+    )
+})
+
+test_that("materializing a compact view reads its values from the dictionary", {
+    fixture <- compact_subset_source()
+    x <- fixture$data$x
+    even <- seq(2L, length(x), by = 2L)
+    sliced <- vctrs::vec_slice(x, even)
+    # vec_c() reads the whole view through its data pointer, which fills the
+    # dictionary's cache as reading each value would.
+    expect_identical(
+        vctrs::vec_c(.dta_string_data(sliced), "end"),
+        c(fixture$raw[even], "end")
+    )
+    expect_identical(
+        .dictstring_cached_count(sliced), as.double(length(unique(fixture$raw[even])))
+    )
+    expect_true(.is_unmaterialized_dictstring(sliced))
+    expect_identical(as.character(sliced), fixture$raw[even])
+})
+
+test_that("narrowed declarations on compact subsets count only the values held", {
+    path <- tempfile(fileext = ".arrow")
+    withr::defer(unlink(path))
+    raw <- rep(c("a", "very long value"), length.out = 512L)
+    save_arrow(data.frame(x = raw), path)
+    x <- read_arrow(path)$x
+    # Both subsets keep the source's dictionary, with a long value neither holds.
+    for (rows in c(10L, 256L)) {
+        odd <- seq(1L, by = 2L, length.out = rows)
+        narrowed <- dta_string(x[odd], "str1")
+        expect_true(.is_unmaterialized_dictstring(narrowed))
+        expect_identical(.dictstring_max_width(narrowed), 1)
+        expect_identical(.Call(C_dtatools_write_string_plan, narrowed)[[1L]], 1)
+        data <- dibble(v = narrowed)
+        expect_identical(attr(data$v, "stata.string.storage", exact = TRUE), "str1")
+        out <- tempfile(fileext = ".dta")
+        withr::defer(unlink(out))
+        save_dta(data, out)
+        back <- read_dta(out)
+        expect_identical(attr(back$v, "stata.string.storage", exact = TRUE), "str1")
+        expect_identical(as.character(back$v), rep("a", rows))
+    }
+})
+
+test_that("casting a compact string checks it without reading each value", {
+    path <- tempfile(fileext = ".dta")
+    withr::defer(unlink(path))
+    raw <- rep(sprintf("text-%03d", seq_len(128L)), 4L)
+    save_dta(data.frame(x = raw), path)
+    # Unlike an Arrow read, this column has no owned width facts.
+    x <- read_dta(path)$x
+    expect_true(.is_unmaterialized_dictstring(x))
+    # A join casts each key this way. The dictionary gives the width, and a
+    # compact string holds no NA, so no value passes through the cache.
+    cast <- vctrs::vec_cast(x, dta_string(character(), "str20"))
+    expect_identical(attr(cast, "stata.string.storage", exact = TRUE), "str20")
+    expect_true(.is_unmaterialized_dictstring(cast))
+    expect_identical(.dictstring_cached_count(x), 0)
+    expect_error(
+        vctrs::vec_cast(x, dta_string(character(), "str5")),
+        'storage = "str8"', fixed = TRUE
+    )
+    expect_identical(.dictstring_cached_count(x), 0)
+    expect_identical(as.character(cast), raw)
 })
 
 test_that("large string construction captures borrowed values before removing metadata", {

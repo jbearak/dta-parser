@@ -278,6 +278,10 @@
         {
           "path": "tests/testthat/test-reader-experiments.R",
           "sha256": "3d570df8d5e20a19722df0e6b4ad3421c0bf56263cc44917edfd3fab8071ef6e"
+        },
+        {
+          "path": "tests/testthat/test-save-dta-callback-columns.R",
+          "sha256": "7ab96fb7ed126b190b99b8f1ca1a39d592c870a7d541624ff369a9ce99184dd4"
         }
       ],
       "blocks": [
@@ -1672,6 +1676,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-callback-columns.R",
+          "test": "columns read through R callbacks write the same rows as direct columns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-callback-columns.R",
+          "test": "a strL column keeps every column on the row-by-row writer",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         }
       ],
@@ -6286,7 +6306,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "0c606f579d22b96453d6263ff328ed2756d62ef886fcdf737cbedaed4a7e6660"
+          "sha256": "5ab215395feaefb8217a2e2cdef203cd469dc972818c2cc4d797c9cf126a6151"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6761,14 +6781,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-atoms.R",
-          "test": "string metadata declines compact storage without changing its source",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -8237,6 +8249,57 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 62,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "string metadata keeps compact storage without changing its source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "large compact string subsets keep their dictionary visible",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "dplyr row verbs keep large compact strings visible",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 8,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "narrowed declarations on compact subsets count only the values held",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "materializing a compact view reads its values from the dictionary",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "casting a compact string checks it without reading each value",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],
@@ -16193,6 +16256,14 @@
           "sha256": "9a6a1ce2c5c9a53039aab3f46635706fb75ed634fd3e8864b6f8fb09d0993e27"
         },
         {
+          "path": "tests/testthat/test-egen-group-summary.R",
+          "sha256": "b057a0c0e49c7d11c25e4ebac0ae0f083600fe606ee021907920734613e97c41"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-width.R",
+          "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
+        },
+        {
           "path": "tests/testthat/test-codebook-facts.R",
           "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
         }
@@ -17464,6 +17535,62 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries of one column match evaluation per group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 121,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries follow dplyr groups, empty groups and missing keys",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries raise the shadowing error of evaluation per group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries leave compact source columns untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "the grouped summary kernel declines groups it cannot read in order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "compact string widths count the bytes of the values they hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "casts of compact strings into narrow storage keep their errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         },
         {
