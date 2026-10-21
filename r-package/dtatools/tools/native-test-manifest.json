@@ -16287,7 +16287,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "81b89d29cda63cacc82b0d6608066fbe3216c565e20d002904fe55525b7900dd"
+          "sha256": "2f665a65f2292934a10d102a1630f50e54795f76c05f2987b6fd6d768f7ebd7b"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -17689,6 +17689,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "native missing-code counts match the tabulated codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 30,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook scans one ordinary copy of a compact column's observed values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         }
       ],
