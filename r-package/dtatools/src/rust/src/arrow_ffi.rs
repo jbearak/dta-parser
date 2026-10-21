@@ -486,7 +486,7 @@ unsafe fn dictstring_array(
     let mut total_bytes = 0_usize;
     for &id in ids {
         let (_, length) = data
-            .value_views
+            .value_views()
             .get(id as usize)
             .ok_or_else(|| format!("column `{name}` has an invalid dictionary index"))?;
         total_bytes = total_bytes
@@ -496,7 +496,7 @@ unsafe fn dictstring_array(
     if uses_large_string_offsets(total_bytes) {
         let mut builder = LargeStringBuilder::with_capacity(row_count, total_bytes);
         for &id in ids {
-            let &(bytes, length) = &data.value_views[id as usize];
+            let &(bytes, length) = &data.value_views()[id as usize];
             let view = std::slice::from_raw_parts(bytes, length);
             let value = std::str::from_utf8(view)
                 .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
@@ -506,7 +506,7 @@ unsafe fn dictstring_array(
     } else {
         let mut builder = StringBuilder::with_capacity(row_count, total_bytes);
         for &id in ids {
-            let &(bytes, length) = &data.value_views[id as usize];
+            let &(bytes, length) = &data.value_views()[id as usize];
             let view = std::slice::from_raw_parts(bytes, length);
             let value = std::str::from_utf8(view)
                 .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
