@@ -91,6 +91,61 @@ test_that("named numeric production results retain fallback names and values", {
     }
 })
 
+test_that("arithmetic the scalar route declines classifies its settled result", {
+    values <- rep(c(1, 2), length.out = 2048L)
+    labelled <- set_val_labels(dta_byte(values), One = 1, Two = 2)
+    source <- dta_byte(values)
+    operations <- list(
+        labelled = function() labelled * 2,
+        reverse = function() 3 - labelled,
+        divide = function() labelled / 4,
+        power = function() source^2,
+        columns = function() labelled + source)
+    expected_values <- list(labelled = values * 2, reverse = 3 - values,
+                            divide = values / 4, power = values^2,
+                            columns = values + values)
+    expected_storage <- c(labelled = "byte", reverse = "byte", divide = "float",
+                          power = "byte", columns = "byte")
+    for (operation in operations) invisible(operation())
+    for (name in names(operations)) {
+        observed <- .dtatools_numeric_entry_observe(operations[[name]])
+        expected <- c(construct = 0, computed = 0, scalar = 0, holds = 0)
+        if (.dtatools_numeric_entry_expected("computed")) expected[["computed"]] <- 1
+        expect_identical(observed$counts, expected, info = name)
+        expect_identical(as.double(observed$result), expected_values[[name]], info = name)
+        expect_identical(dta_storage_type(observed$result), expected_storage[[name]],
+                         info = name)
+        expect_false(inherits(observed$result, "haven_labelled"), info = name)
+    }
+    expect_identical(as.double(labelled), values)
+    expect_s3_class(labelled, "haven_labelled")
+})
+
+test_that("math on compact columns classifies an ordinary result", {
+    values <- rep(c(1, 4), length.out = 2048L)
+    labelled <- set_val_labels(dta_byte(values), One = 1, Four = 4)
+    source <- dta_byte(values)
+    operations <- list(abs = function() abs(source),
+                       sqrt = function() sqrt(labelled),
+                       log2 = function() log2(source),
+                       floor = function() floor(labelled))
+    expected_values <- list(abs = values, sqrt = sqrt(values),
+                            log2 = log2(values), floor = values)
+    for (operation in operations) invisible(operation())
+    for (name in names(operations)) {
+        observed <- .dtatools_numeric_entry_observe(operations[[name]])
+        expected <- c(construct = 0, computed = 0, scalar = 0, holds = 0)
+        if (.dtatools_numeric_entry_expected("computed")) expected[["computed"]] <- 1
+        expect_identical(observed$counts, expected, info = name)
+        expect_identical(as.double(observed$result), expected_values[[name]], info = name)
+        expect_identical(dta_storage_type(observed$result), "byte", info = name)
+        expect_false(inherits(observed$result, "haven_labelled"), info = name)
+    }
+    expect_identical(as.double(source), values)
+    expect_identical(as.double(labelled), values)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(source))
+})
+
 test_that("unknown numeric entry promises stay on the original forcing path", {
     values <- rep(c(1, 2), length.out = 2048L)
     source <- dta_double(values)
@@ -110,7 +165,12 @@ test_that("unknown numeric entry promises stay on the original forcing path", {
     for (name in names(operations)) {
         events <- character()
         observed <- .dtatools_numeric_entry_observe(operations[[name]])
-        expect_identical(observed$counts, c(construct = 0, computed = 0, scalar = 0, holds = 0), info = name)
+        # The scalar fallback settles its result before classification,
+        # so only that later step publishes.
+        expected <- c(construct = 0, computed = 0, scalar = 0, holds = 0)
+        if (name == "scalar" && .dtatools_numeric_entry_expected("computed"))
+            expected[["computed"]] <- 1
+        expect_identical(observed$counts, expected, info = name)
         expect_identical(events, unname(expected_events[[name]]), info = name)
         expect_identical(if (name == "holds") observed$result else as.double(observed$result),
                          if (name == "scalar") values + 1 else if (name == "holds") TRUE else values,
@@ -154,7 +214,9 @@ test_that("custom scalar readers retain their callbacks without entry publicatio
         original(x, ordinary)
     }, .package = "dtatools")
     observed <- .dtatools_numeric_entry_observe(function() source + 1)
-    expect_identical(observed$counts, c(construct = 0, computed = 0, scalar = 0, holds = 0))
+    expected <- c(construct = 0, computed = 0, scalar = 0, holds = 0)
+    if (.dtatools_numeric_entry_expected("computed")) expected[["computed"]] <- 1
+    expect_identical(observed$counts, expected)
     expect_identical(calls, 1L)
     expect_identical(as.double(observed$result), values + 1)
     expect_identical(as.double(source), values)
