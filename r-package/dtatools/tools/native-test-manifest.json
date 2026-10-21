@@ -16354,7 +16354,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "2f665a65f2292934a10d102a1630f50e54795f76c05f2987b6fd6d768f7ebd7b"
+          "sha256": "ce668f5f63b81b417eab095da342fc236a506f029855320ef6167175631f1c62"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -16415,6 +16415,10 @@
         {
           "path": "tests/testthat/test-codebook-facts.R",
           "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
+        },
+        {
+          "path": "tests/testthat/test-tab-byte-factor.R",
+          "sha256": "0ed41c5208a9fee86d46da3b40142a46d1e4349ae809959a5395aac7cf95c6df"
         }
       ],
       "blocks": [
@@ -17772,6 +17776,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "byte factorization reads raw storage as the general loop decodes it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 83,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "codebook level counts match tabulate() and is.na()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook groups variants by table in first-seen order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "labelbook finds gaps among the distinct whole codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
           "warnings": 0
         }
       ],

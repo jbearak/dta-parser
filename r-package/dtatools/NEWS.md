@@ -108,6 +108,14 @@
   narrower declaration such as `dta_string(x[rows], "str1")` to fit the
   widest value anywhere in the source.
 
+* `labelbook()` groups each value-label table's variables in one pass,
+  rather than finding the table by name for every labelled variable, which
+  scanned every table found so far. It also joins the tables' diagnostics
+  once and checks a table's codes for gaps without sorting them. On the
+  16,787-row, 5,360-column Senegal 2017 DHS women's file, which has a table
+  for each of 4,831 labelled variables, `labelbook(d)` falls from about
+  0.57 to 0.31 seconds. Results are unchanged.
+
 * `dta_append()` lines up the variables of its sources with `duplicated()`
   and `match()` over keys made of each name and its occurrence, rather than
   an environment lookup and a growing vector for each column. An ungrouped
@@ -144,6 +152,13 @@
   16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
   0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
   Results and warnings are unchanged.
+
+* When `tab()` or `codebook()` group a compact byte column into levels,
+  they mark the raw bytes present and write each row's level from a
+  256-entry table, rather than decoding each value and hashing it.
+  `codebook()` also counts each tabulation's levels and missing values in
+  one native pass. On a 16,787-row, 5,360-column DHS file, `codebook(d)`
+  falls from 2.2 to 1.6 seconds. Results are unchanged.
 
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
