@@ -8405,6 +8405,10 @@
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
           "sha256": "e324c77b9306e78cb9ad62e785603f43bb0416c591e3dc70906a350db63f73a4"
+        },
+        {
+          "path": "tests/testthat/test-gather-runs.R",
+          "sha256": "fcfe5e0198d2cd3e5387f47cc8009df751dc392e17b7191824fe50ef1d77e0d6"
         }
       ],
       "blocks": [
@@ -10718,6 +10722,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-gather-runs.R",
+          "test": "column gathers copy row runs across chunks and keep missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1044,
+          "warnings": 0
         }
       ],
       "children": [
