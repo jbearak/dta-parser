@@ -7,12 +7,16 @@
 
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
-  result's Stata storage natively. The R path had passed the result to that
-  step as an unevaluated call, which the native step never admits, so every
-  element went through R predicates. On the 1,274,250-row India 2021 DHS
-  births file, `b4 * 2` on the labelled sex column falls from about 0.056 to
-  0.013 seconds, `b4 / 2` from 0.119 to 0.013, and `b11 / 12` from 0.082 to
-  0.025. Results and errors are unchanged.
+  result's Stata storage natively. So do math functions such as `abs()`,
+  `log()`, and `exp()` on the byte, int, and long columns `read_dta()`
+  returns. The arithmetic path had passed its result to that step as an
+  unevaluated call. Base math had written its result into the column's data
+  view, which the native step can't size. Either way every element went
+  through R predicates. On the 1,274,250-row India 2021 DHS births file,
+  `b4 * 2` on the labelled sex column falls from about 0.056 to 0.013
+  seconds, `b4 / 2` from 0.119 to 0.013, `log(bord)` from 0.099 to 0.012,
+  and `mutate(d, y = round(b11 / 12))` from 0.144 to 0.055. Results and
+  errors are unchanged.
 
 * Every grouped verb on a dibble checks that its grouping metadata matches
   its rows. That check now reads the rows of all groups in one native pass

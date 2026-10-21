@@ -1795,7 +1795,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-entry-admission.R",
-          "sha256": "ee034b8605413e32275fe67cd5af7dcd61711881348bb154101c7c46083243df"
+          "sha256": "42e1ef49c2b3566e79a67431195d47242c1ce8c5ec37f5991edcacff9cbad2fc"
         },
         {
           "path": "tests/testthat/test-numeric-entry-callbacks.R",
@@ -3802,6 +3802,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "math on compact columns classifies an ordinary result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
           "warnings": 0
         },
         {
