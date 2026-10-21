@@ -282,6 +282,10 @@
         {
           "path": "tests/testthat/test-save-dta-callback-columns.R",
           "sha256": "7ab96fb7ed126b190b99b8f1ca1a39d592c870a7d541624ff369a9ce99184dd4"
+        },
+        {
+          "path": "tests/testthat/test-save-dta-strl-repeats.R",
+          "sha256": "e2c23f3d55ed8cb5b313c7e0de2c17eba8a469fa3957606f63554c0c34ec0c4f"
         }
       ],
       "blocks": [
@@ -1692,6 +1696,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-save-dta-strl-repeats.R",
+          "test": "strL repeats past the first string region keep one record each",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
