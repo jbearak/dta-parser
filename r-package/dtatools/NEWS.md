@@ -16,6 +16,15 @@
   first `summarise(group_by(d, caseid), n = n())` over its 494,019 women
   falls from about 187 to 34 seconds. Results are unchanged.
 
+* Grouped `slice()`, `slice_head()`, `slice_tail()`, `slice_min()`,
+  `slice_max()`, and `slice_sample()` on a dibble pass the list of each
+  group's rows to `vctrs::vec_c()` as one spliced argument, rather than
+  through a call that `rlang::exec()` built with one argument per group.
+  That call's cost grew with about the square of the number of groups. On
+  the first 100,000 rows of the India 2021 DHS births file,
+  `slice_head(group_by(d, caseid), n = 1)` over 42,739 women falls from
+  about 16 to 0.6 seconds. Results and errors are unchanged.
+
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
   from one by `keep_vars()` or `gen()`, warned that it dropped the row
