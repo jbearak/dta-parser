@@ -434,13 +434,20 @@ mtfrm.dta_temporal <- function(x) {
 
 .dta_identity_key <- function(x, kind, arg, native = FALSE) {
     if (identical(kind, "string")) {
+        # A compact dictionary string holds UTF-8 values and no NA. One
+        # ordinary copy of it spares match() a lookup through ALTREP for
+        # every comparison. Both operands always share a kind, so the key
+        # needs no kind prefix.
+        if (.is_unmaterialized_dictstring(x)) {
+            return(unname(vctrs::vec_c(as.character(x))))
+        }
         if (anyNA(x)) {
             stop(sprintf(
                 "`%s` contains `NA_character_`; use \"\" for Stata string missing",
                 arg
             ), call. = FALSE)
         }
-        return(paste0("s:", enc2utf8(as.character(x))))
+        return(unname(enc2utf8(as.character(x))))
     }
     values <- as.double(x)
     if (native && typeof(values) %in% c("double", "integer") &&

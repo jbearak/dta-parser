@@ -119,6 +119,30 @@
   narrower declaration such as `dta_string(x[rows], "str1")` to fit the
   widest value anywhere in the source.
 
+* `labelbook()` groups each value-label table's variables in one pass,
+  rather than finding the table by name for every labelled variable, which
+  scanned every table found so far. It also joins the tables' diagnostics
+  once and checks a table's codes for gaps without sorting them. On the
+  16,787-row, 5,360-column Senegal 2017 DHS women's file, which has a table
+  for each of 4,831 labelled variables, `labelbook(d)` falls from about
+  0.57 to 0.31 seconds. Results are unchanged.
+
+* `dta_match()`, `dta_in()`, `dta_identical()`, `dta_union()`,
+  `dta_intersect()`, `dta_setdiff()`, and `dta_setequal()` compare strings
+  as they are, rather than first pasting a prefix onto each one. A compact
+  string column from `read_dta()` or `read_arrow()` is copied once into an
+  ordinary vector, because `match()` slows down when it reads each value
+  through the compact column. On the 1,274,250-row `caseid` column of the
+  India 2021 DHS births file, matching it against every other row falls
+  from about 0.41 to 0.03 seconds, and `dta_union()` from 0.49 to 0.10
+  seconds. On an ordinary character vector holding the same values,
+  `dta_match()` falls from 0.16 to 0.02 seconds. An empty string operand
+  now matches nothing. Pasting the prefix onto an empty vector had given one
+  key, the prefix alone, which also stood for `""`. So
+  `dta_in("", character())` returned `TRUE`, `dta_setdiff(c("", "a"),
+  character())` dropped `""`, and `dta_union()` with an empty operand
+  failed. Other results are unchanged.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,
@@ -142,6 +166,13 @@
   16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
   0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
   Results and warnings are unchanged.
+
+* When `tab()` or `codebook()` group a compact byte column into levels,
+  they mark the raw bytes present and write each row's level from a
+  256-entry table, rather than decoding each value and hashing it.
+  `codebook()` also counts each tabulation's levels and missing values in
+  one native pass. On a 16,787-row, 5,360-column DHS file, `codebook(d)`
+  falls from 2.2 to 1.6 seconds. Results are unchanged.
 
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
