@@ -9,16 +9,70 @@ static SEXP group_rows_attribute(SEXP tag, SEXP value, void *context) {
     return NULL;
 }
 
-/* vctrs's `[[`, `as.list()` and `unlist()` hand back a list_of's elements
-   unchanged, so a plain list and an exact list_of without names read the
-   same. Only one of those, holding ordinary integer vectors, has facts:
-   list(rows, sizes, sorted), which are unlist(x, use.names = FALSE),
-   lengths(x), and whether no group is.unsorted(strictly = TRUE). Any other
-   value, including an empty list, whose unlist() is NULL, returns NULL so
-   the caller keeps its R expressions. Setting a long list's attributes can
-   wrap it in ALTREP, so elements are read through VECTOR_ELT(), as
-   unlist() and lengths() read them. */
-SEXP C_dtatools_group_rows_facts(SEXP x) {
+/* The R expressions dispatch on a list_of from base closures: vapply() calls
+   as.list(), lengths() calls length() on the list and `[[` on each element,
+   and unlist() and lengths() are generics themselves. From base, dispatch
+   looks in base's namespace, then base's S3 methods table, then the global
+   environment and the search path down to the base environment. No binding
+   may be active, since reading one would run its code. */
+static int group_rows_no_method(SEXP table, const char *name) {
+    SEXP symbol = Rf_install(name);
+    if (R_GetBindingType(symbol, R_BaseNamespace) != R_BindingTypeUnbound ||
+        R_GetBindingType(symbol, table) != R_BindingTypeUnbound) return 0;
+    for (SEXP env = R_GlobalEnv;; env = R_ParentEnv(env)) {
+        if (TYPEOF(env) != ENVSXP || env == R_EmptyEnv ||
+            R_GetBindingType(symbol, env) != R_BindingTypeUnbound) return 0;
+        if (env == R_BaseEnv) return 1;
+    }
+}
+
+/* The table's method comes before the global environment, so it is the one
+   dispatch finds. It must be the method vctrs defined when dtatools was
+   built. Namespace loading registers each method as a promise, which the
+   first dispatch forces; reading an unforced one would run code, so it
+   declines until the R expressions have dispatched. */
+static int group_rows_original_method(SEXP table, const char *name, SEXP original) {
+    SEXP symbol = Rf_install(name);
+    R_BindingType_t kind = R_GetBindingType(symbol, table);
+    if (R_GetBindingType(symbol, R_BaseNamespace) != R_BindingTypeUnbound ||
+        (kind != R_BindingTypeValue && kind != R_BindingTypeForced)) return 0;
+    SEXP method = R_getVarEx(symbol, table, FALSE, R_NilValue);
+    return TYPEOF(method) == CLOSXP && TYPEOF(original) == CLOSXP &&
+        R_compute_identical(method, original, IDENT_USE_CLOENV);
+}
+
+static int group_rows_methods_original(SEXP originals) {
+    static const char *absent[] = {
+        "unlist.vctrs_list_of", "unlist.vctrs_vctr", "unlist.list", "unlist.default",
+        "lengths.vctrs_list_of", "lengths.vctrs_vctr", "lengths.list", "lengths.default",
+        "length.vctrs_list_of", "length.vctrs_vctr", "length.list", "length.default"
+    };
+    SEXP name = Rf_install(".__S3MethodsTable__.");
+    R_BindingType_t kind = R_GetBindingType(name, R_BaseNamespace);
+    if (TYPEOF(originals) != VECSXP || XLENGTH(originals) != 2 ||
+        (kind != R_BindingTypeValue && kind != R_BindingTypeForced)) return 0;
+    SEXP table = R_getVarEx(name, R_BaseNamespace, FALSE, R_NilValue);
+    if (TYPEOF(table) != ENVSXP ||
+        !group_rows_original_method(table, "as.list.vctrs_list_of", VECTOR_ELT(originals, 0)) ||
+        !group_rows_original_method(table, "[[.vctrs_list_of", VECTOR_ELT(originals, 1)))
+        return 0;
+    for (size_t i = 0; i < sizeof(absent) / sizeof(absent[0]); i++)
+        if (!group_rows_no_method(table, absent[i])) return 0;
+    return 1;
+}
+
+/* vctrs's `[[` and `as.list()` hand back a list_of's elements unchanged, and
+   unlist(), lengths() and length() have no list_of method, so a plain list
+   and an exact list_of without names read the same while that holds.
+   `originals` holds vctrs's as.list() and `[[` methods for a list_of. Only
+   such a list, holding ordinary integer vectors, has facts: list(rows,
+   sizes, sorted), which are unlist(x, use.names = FALSE), lengths(x), and
+   whether no group is.unsorted(strictly = TRUE). Any other value, including
+   an empty list, whose unlist() is NULL, returns NULL so the caller keeps
+   its R expressions. Setting a long list's attributes can wrap it in
+   ALTREP, so elements are read through VECTOR_ELT(), as unlist() and
+   lengths() read them. */
+SEXP C_dtatools_group_rows_facts(SEXP x, SEXP originals) {
     if (TYPEOF(x) != VECSXP || Rf_isS4(x)) return R_NilValue;
     R_xlen_t groups = XLENGTH(x);
     if (groups == 0 || groups > INT_MAX) return R_NilValue;
@@ -30,7 +84,8 @@ SEXP C_dtatools_group_rows_facts(SEXP x) {
         for (int i = 0; i < 3; i++)
             if (strcmp(CHAR(STRING_ELT(classes, i)), wanted[i])) return R_NilValue;
         int count = 0;
-        if (R_mapAttrib(x, group_rows_attribute, &count) != NULL || count != 2)
+        if (R_mapAttrib(x, group_rows_attribute, &count) != NULL || count != 2 ||
+            !group_rows_methods_original(originals))
             return R_NilValue;
     }
     R_xlen_t total = 0;

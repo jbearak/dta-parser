@@ -31,6 +31,14 @@
     TRUE
 }
 
+# vctrs's as.list() and `[[` methods for a list_of, as defined when dtatools
+# was built. The native group row facts read a list_of's elements directly
+# only while dispatch from base finds these.
+.group_rows_list_of_methods <- list(
+    get("as.list.vctrs_list_of", asNamespace("vctrs")),
+    get("[[.vctrs_list_of", asNamespace("vctrs"))
+)
+
 .validate_group_metadata <- function(data, columns = .data_columns(data),
                                      names = base::names(columns), row_count = nrow(data)) {
     if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
@@ -49,11 +57,12 @@
                  call. = FALSE)
         }
         # One native pass reads the rows, sizes, and order of ordinary integer
-        # groups held in a plain list or a vctrs list_of, whose methods hand
-        # back its elements unchanged. With many groups this replaces a `[[`
-        # dispatch and two R calls per group. Any other `.rows` keeps the R
-        # expressions below.
-        facts <- .Call(C_dtatools_group_rows_facts, groups$.rows)
+        # groups held in a plain list, or in a vctrs list_of while dispatch
+        # finds vctrs's own methods, which hand back its elements unchanged.
+        # With many groups this replaces a `[[` dispatch and two R calls per
+        # group. Any other `.rows` keeps the R expressions below.
+        facts <- .Call(C_dtatools_group_rows_facts, groups$.rows,
+                       .group_rows_list_of_methods)
         if (!is.list(groups$.rows) || (is.null(facts) &&
             !all(vapply(groups$.rows, is.integer, logical(1))))) {
             stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",

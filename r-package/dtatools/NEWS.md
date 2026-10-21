@@ -10,9 +10,9 @@
   when they are ordinary integer vectors, as `group_by()` makes them, rather
   than calling the list's `[[` method, `is.integer()`, and `is.unsorted()`
   through R for each group. On the 1,274,250-row India 2021 DHS births file,
-  `group_by(d, caseid)` over its 494,019 women falls from about 0.78 to 0.22
-  seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.84
-  to 0.93 seconds. Results and errors are unchanged.
+  `group_by(d, caseid)` over its 494,019 women falls from about 0.72 to 0.21
+  seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
+  to 0.99 seconds. Results and errors are unchanged.
 
 * Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
   type a group's bare integer or double scalar result, such as `n()`, in one
