@@ -16308,6 +16308,10 @@
         {
           "path": "tests/testthat/test-dictstring-width.R",
           "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
+        },
+        {
+          "path": "tests/testthat/test-codebook-facts.R",
+          "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
         }
       ],
       "blocks": [
@@ -17633,6 +17637,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook facts of whole numbers match the R calls they replace",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook statistics and label coverage match the R calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
           "warnings": 0
         }
       ],

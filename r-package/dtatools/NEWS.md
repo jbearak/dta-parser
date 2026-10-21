@@ -389,6 +389,15 @@
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
 
+* `codebook()` tallies a numeric variable's observed values by value when
+  they are whole numbers whose range is at most their count plus 65,536.
+  One tally gives the distinct values in order of first appearance, the
+  minimum, maximum and smallest gap, and the type 2 quantiles, without
+  `unique()`, `sort()` or `quantile()`. Other values keep those calls, and
+  the results are unchanged. On a 42,944-row, 1,209-column DHS birth
+  history file it falls from 2.5 to 2.2 seconds, and on a 16,787-row,
+  5,360-column DHS file from 5.1 to 4.7 seconds.
+
 * `codebook()` copies a numeric variable's observed values out of compact
   storage once, so its statistics no longer decode every value on each
   pass. It groups a labelled variable's values once for both the value and
