@@ -116,18 +116,53 @@ static double egen_block_value(const egen_block_reader *reader, R_xlen_t index,
     return value;
 }
 
+/* One summary's running state. Values arrive in input order: Stata
+   accumulates at double precision, so 1e16 + 1 - 1e16 is zero. Extended
+   precision varies by architecture. */
+typedef struct {
+    double total, extreme;
+    R_xlen_t observed;
+    int extreme_missing, any_missing;
+} egen_summary_state;
+
+static inline void egen_summary_add(egen_summary_state *state, int op,
+                                    double value, int code) {
+    if (code >= 0) {
+        if (!state->any_missing || (op == 1 ? code < state->extreme_missing
+                                           : code > state->extreme_missing)) {
+            state->extreme_missing = code;
+        }
+        state->any_missing = 1;
+        return;
+    }
+    if (!state->observed ||
+        (op == 1 ? value < state->extreme : value > state->extreme)) {
+        state->extreme = value;
+    }
+    state->total += value;
+    state->observed++;
+}
+
+static double egen_summary_result(const egen_summary_state *state, int op,
+                                  int include) {
+    double result;
+    if (op == 0) result = state->observed ? state->total / state->observed : NA_REAL;
+    else if (op == 3) result = !state->observed && include ? NA_REAL : state->total;
+    else if (include && state->any_missing && (op == 2 || !state->observed)) {
+        result = egen_missing_result(state->extreme_missing);
+    } else result = state->observed ? state->extreme : NA_REAL;
+    if (!ISNAN(result) && !R_FINITE(result)) result = NA_REAL;
+    return result;
+}
+
 SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
                            SEXP allow_nan) {
     int op = Rf_asInteger(operation), include = Rf_asLogical(missing);
-    R_xlen_t size = XLENGTH(input), observed = 0;
+    R_xlen_t size = XLENGTH(input);
     egen_block_reader reader = {0};
     SEXP root = PROTECT(egen_capture_reader(input, &reader));
     egen_prepare_reader(&reader, root, size);
-    /* Stata accumulates in input order at double precision. In particular,
-       1e16 + 1 - 1e16 is zero. Extended precision varies by architecture. */
-    double total = 0.0;
-    double extreme = 0.0;
-    int extreme_missing = -1, any_missing = 0;
+    egen_summary_state state = {0.0, 0.0, 0, -1, 0};
     if (egen_block_readable(&reader) && !ALTREP(allow_nan)) {
         const R_xlen_t capacity = 2048;
         double *values = (double *) R_alloc((size_t) capacity, sizeof(double));
@@ -142,19 +177,7 @@ SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
                 int code = codes[offset];
                 double value = egen_block_value(&reader, start + offset,
                                                 values[offset], &code, permit_nan);
-                if (code >= 0) {
-                    if (!any_missing || (op == 1 ? code < extreme_missing
-                                                : code > extreme_missing)) {
-                        extreme_missing = code;
-                    }
-                    any_missing = 1;
-                    continue;
-                }
-                if (!observed || (op == 1 ? value < extreme : value > extreme)) {
-                    extreme = value;
-                }
-                total += value;
-                observed++;
+                egen_summary_add(&state, op, value, code);
             }
             start += length;
         }
@@ -164,31 +187,107 @@ SEXP C_dtatools_egen_summary(SEXP input, SEXP operation, SEXP missing,
             int code;
             double value = egen_scalar_value(&reader, row, &code,
                                             Rf_asLogical(allow_nan));
-            if (code >= 0) {
-                if (!any_missing || (op == 1 ? code < extreme_missing
-                                            : code > extreme_missing)) {
-                    extreme_missing = code;
-                }
-                any_missing = 1;
-                continue;
-            }
-            if (!observed || (op == 1 ? value < extreme : value > extreme)) {
-                extreme = value;
-            }
-            total += value;
-            observed++;
+            egen_summary_add(&state, op, value, code);
         }
     }
-    double result;
-    if (op == 0) result = observed ? total / observed : NA_REAL;
-    else if (op == 3) result = !observed && include ? NA_REAL : total;
-    else if (include && any_missing && (op == 2 || !observed)) {
-        result = egen_missing_result(extreme_missing);
-    } else result = observed ? extreme : NA_REAL;
-    if (!ISNAN(result) && !R_FINITE(result)) result = NA_REAL;
-    SEXP scalar = PROTECT(Rf_ScalarReal(result));
+    SEXP scalar = PROTECT(Rf_ScalarReal(egen_summary_result(&state, op, include)));
     UNPROTECT(2);
     return scalar;
+}
+
+/* Every group's summary, as C_dtatools_egen_summary() gives it for the
+   group's slice of `input`. One pass reads the rows in order and adds each
+   to its group, which is each group's own order since every group lists
+   its rows in increasing order. Returns the result for each row that a
+   group lists, in increasing row order, and those rows, or NULL rows when
+   the groups list every row. Returns NULL, before reading any value, unless
+   the groups are integer vectors of increasing rows of `input` that no two
+   groups share. */
+SEXP C_dtatools_egen_group_summary(SEXP input, SEXP groups, SEXP operation,
+                                   SEXP missing, SEXP allow_nan) {
+    R_xlen_t size = XLENGTH(input);
+    if (TYPEOF(groups) != VECSXP || size > INT_MAX) return R_NilValue;
+    R_xlen_t count = XLENGTH(groups);
+    if (count > INT_MAX) return R_NilValue;
+    int *group = (int *) R_alloc((size_t) (size ? size : 1), sizeof(int));
+    for (R_xlen_t row = 0; row < size; row++) group[row] = -1;
+    R_xlen_t covered = 0;
+    for (R_xlen_t g = 0; g < count; g++) {
+        if ((g & 16383) == 0) R_CheckUserInterrupt();
+        SEXP rows = VECTOR_ELT(groups, g);
+        if (TYPEOF(rows) != INTSXP || ALTREP(rows)) return R_NilValue;
+        const int *row = INTEGER(rows);
+        R_xlen_t length = XLENGTH(rows);
+        for (R_xlen_t i = 0; i < length; i++) {
+            if (row[i] < 1 || row[i] > size || (i && row[i] <= row[i - 1]) ||
+                group[row[i] - 1] >= 0) return R_NilValue;
+            group[row[i] - 1] = (int) g;
+        }
+        covered += length;
+    }
+    int op = Rf_asInteger(operation), include = Rf_asLogical(missing);
+    egen_summary_state *state = (egen_summary_state *) R_alloc(
+        (size_t) (count ? count : 1), sizeof(egen_summary_state));
+    for (R_xlen_t g = 0; g < count; g++) {
+        state[g] = (egen_summary_state) {0.0, 0.0, 0, -1, 0};
+    }
+    egen_block_reader reader = {0};
+    SEXP root = PROTECT(egen_capture_reader(input, &reader));
+    egen_prepare_reader(&reader, root, size);
+    if (egen_block_readable(&reader) && !ALTREP(allow_nan)) {
+        const R_xlen_t capacity = 2048;
+        double *values = (double *) R_alloc((size_t) capacity, sizeof(double));
+        int *codes = (int *) R_alloc((size_t) capacity, sizeof(int));
+        int permit_nan = Rf_asLogical(allow_nan);
+        egen_prepare_temporal(&reader);
+        for (R_xlen_t start = 0; start < size;) {
+            R_CheckUserInterrupt();
+            R_xlen_t length = size - start < capacity ? size - start : capacity;
+            numeric_reader_region(&reader.reader, start, length, values, codes);
+            for (R_xlen_t offset = 0; offset < length; offset++) {
+                int g = group[start + offset];
+                if (g < 0) continue;
+                int code = codes[offset];
+                double value = egen_block_value(&reader, start + offset,
+                                                values[offset], &code, permit_nan);
+                egen_summary_add(&state[g], op, value, code);
+            }
+            start += length;
+        }
+    } else {
+        for (R_xlen_t row = 0; row < size; row++) {
+            if ((row & 16383) == 0) R_CheckUserInterrupt();
+            int g = group[row];
+            if (g < 0) continue;
+            int code;
+            double value = egen_scalar_value(&reader, row, &code,
+                                            Rf_asLogical(allow_nan));
+            egen_summary_add(&state[g], op, value, code);
+        }
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP values = Rf_allocVector(REALSXP, covered);
+    SET_VECTOR_ELT(result, 0, values);
+    double *value = REAL(values);
+    double *summary = (double *) R_alloc((size_t) (count ? count : 1), sizeof(double));
+    for (R_xlen_t g = 0; g < count; g++) {
+        summary[g] = egen_summary_result(&state[g], op, include);
+    }
+    if (covered == size) {
+        for (R_xlen_t row = 0; row < size; row++) value[row] = summary[group[row]];
+    } else {
+        SEXP listed = Rf_allocVector(INTSXP, covered);
+        SET_VECTOR_ELT(result, 1, listed);
+        int *position = INTEGER(listed);
+        R_xlen_t next = 0;
+        for (R_xlen_t row = 0; row < size; row++) {
+            if (group[row] < 0) continue;
+            position[next] = (int) row + 1;
+            value[next++] = summary[group[row]];
+        }
+    }
+    UNPROTECT(2);
+    return result;
 }
 
 SEXP C_dtatools_egen_rows(SEXP columns, SEXP operation, SEXP missing,

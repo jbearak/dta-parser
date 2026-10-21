@@ -317,9 +317,13 @@ SEXP C_dtatools_settle_foreign_altrep(SEXP value) {
 
 /* R's attribute-only copy may wrap a large ALTREP in a generic metadata
    wrapper. Package string construction already owns its copy boundary; keep
-   that independent handle here so restoration retains the backing facts. */
+   that independent handle here so restoration retains the backing facts.
+   A compact dictionary string gets the isolating proxy that metadata copies
+   use, which still reads as compact; R's wrapper would hide the dictionary. */
 SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement) {
-    if (TYPEOF(value) != STRSXP || !owned_column(value)) return R_NilValue;
+    int compact = TYPEOF(value) == STRSXP &&
+        unmaterialized_dictstring_source(value) != R_NilValue;
+    if (TYPEOF(value) != STRSXP || (!owned_column(value) && !compact)) return R_NilValue;
     if (TYPEOF(name) != STRSXP || ALTREP(name) || ANY_ATTRIB(name) ||
         XLENGTH(name) != 1 || STRING_ELT(name, 0) == NA_STRING) return R_NilValue;
     /* names<- is generic and converts attributed names through as.character.
@@ -328,7 +332,9 @@ SEXP C_dtatools_owned_string_attribute(SEXP value, SEXP name, SEXP replacement) 
         (Rf_isObject(value) || (replacement != R_NilValue &&
          (TYPEOF(replacement) != STRSXP || ALTREP(replacement) || ANY_ATTRIB(replacement)))))
         return R_NilValue;
-    SEXP result = PROTECT(owned_fork(value));
+    SEXP result = PROTECT(compact
+        ? metadata_proxy(value, dtatools_metadata_string_class, 1)
+        : owned_fork(value));
     Rf_setAttrib(result, name, replacement);
     UNPROTECT(1);
     return result;

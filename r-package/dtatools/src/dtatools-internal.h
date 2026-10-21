@@ -524,6 +524,7 @@ DTATOOLS_INTERNAL int dtatools_write_string_region(
     char *error_message, size_t error_capacity
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_capture_string(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_blank_missing_strings(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_string(SEXP value, SEXP storage);
 DTATOOLS_INTERNAL SEXP C_dtatools_write_string_plan(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_factorize_numeric(
@@ -647,6 +648,9 @@ DTATOOLS_INTERNAL dictstring_data *dictstring_storage(SEXP value);
 DTATOOLS_INTERNAL SEXP dictstring_cache(SEXP value);
 DTATOOLS_INTERNAL SEXP unmaterialized_dictstring_source(SEXP value);
 DTATOOLS_INTERNAL SEXP dictstring_read_root(SEXP value);
+DTATOOLS_INTERNAL size_t dictstring_dictionary_width(SEXP root, int check_values);
+DTATOOLS_INTERNAL size_t dictstring_used_width(SEXP root, size_t dictionary_width);
+DTATOOLS_INTERNAL int dictstring_fill_values(SEXP value, SEXP target);
 DTATOOLS_INTERNAL SEXP reference_string_reader_private_cache(
     SEXP values, R_xlen_t read_count
 );
@@ -671,6 +675,7 @@ DTATOOLS_INTERNAL SEXP dictstring_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP dictstring_compact_copy(SEXP value);
 DTATOOLS_INTERNAL SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
 DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index);
+DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_width(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_deep_copy_value(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_contents(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_objects_found(SEXP values);
@@ -766,6 +771,8 @@ DTATOOLS_INTERNAL SEXP ephemeral_string_value(SEXP value, R_xlen_t index);
 DTATOOLS_INTERNAL SEXP C_dtatools_ephemeral_altstring(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_numeric_altrep(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_is_altrep(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_group_rows_facts(SEXP x, SEXP originals);
+DTATOOLS_INTERNAL SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes);
 DTATOOLS_INTERNAL SEXP metadata_proxy_state(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_source(SEXP value);
 DTATOOLS_INTERNAL SEXP metadata_proxy_owner(SEXP value);

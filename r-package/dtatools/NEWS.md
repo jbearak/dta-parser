@@ -5,6 +5,32 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Every grouped verb on a dibble checks that its grouping metadata matches
+  its rows. That check now reads the rows of all groups in one native pass
+  when they are ordinary integer vectors, as `group_by()` makes them, rather
+  than calling the list's `[[` method, `is.integer()`, and `is.unsorted()`
+  through R for each group. On the 1,274,250-row India 2021 DHS births file,
+  `group_by(d, caseid)` over its 494,019 women falls from about 0.72 to 0.21
+  seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
+  to 0.99 seconds. Results and errors are unchanged.
+
+* When a grouped verb on a dibble checks its grouping metadata, it compares
+  each row's numeric grouping key with its group's key in one native pass,
+  rather than repeating each group's key for every row and comparing the two
+  with vctrs. On the India 2021 DHS births file, `count(d, v024, b4)` falls
+  from about 0.10 to 0.05 seconds, grouped `mutate()` by state from 0.064 to
+  0.037 seconds, and `group_by(d, v024)` from 0.025 to 0.012 seconds.
+  Results and errors are unchanged.
+
+* A Stata string column replaces `NA` with `""` in one native pass when
+  vctrs restores, slices, or casts it, as `bind_rows()`, `vctrs::vec_c()`,
+  and joins that pad unmatched rows do. Assigning `""` through `[<-` had
+  copied a dtatools-owned string and then written each value through
+  ALTREP. On the India 2021 DHS births file, `vctrs::vec_c()` of its
+  1,274,250-row `caseid` column with itself falls from about 0.20 to 0.13
+  seconds, and a `full_join()` of its 724,115 women to their births' `caseid`
+  and `bidx` from 0.38 to 0.31 seconds. Results are unchanged.
+
 * Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
   type a group's bare integer or double scalar result, such as `n()`, in one
   native call, as `gen()` already did for a scalar. They had built its Stata
@@ -45,6 +71,29 @@
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
   from one by `keep_vars()` or `gen()`, warned that it dropped the row
   names.
+
+* A string column that `read_dta()` or `read_arrow()` keeps in compact
+  dictionary form now stays compact after `filter()`, `arrange()`, `[`, or
+  `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
+  R's generic attribute wrapper, which hid the dictionary, so the width check
+  that follows read every value through the wrapper. That width check, before
+  a cast into fixed Stata string storage, now reads byte lengths from the
+  dictionary rather than making a string for each value. When vctrs needs all
+  of a compact column's values at once, as `vctrs::vec_c()` does, they are
+  read from the dictionary directly rather than one at a time through R. On
+  the 1,274,250-row, 1,644-column India 2021 DHS births file, `filter()` falls
+  from about 0.51 to 0.44 seconds, `arrange()` from 0.57 to 0.47 seconds, and
+  taking every other row with `[` from 0.48 to 0.43 seconds. Joining the
+  births file's 1,274,250 rows to its 494,019 distinct `caseid` values,
+  `left_join()` falls from about 0.60 to 0.35 seconds and `dta_merge()` from
+  0.51 to 0.35 seconds. Saving 17 of its columns with `save_dta()` after
+  `arrange()` falls from about 0.08 to 0.01 seconds. Results are unchanged.
+
+* Width checks on a compact string column count only the values it holds.
+  A slice of a compact column shares its source's whole dictionary, so on
+  some slices of fewer than 64 rows, `dibble()` and `save_dta()` widened a
+  narrower declaration such as `dta_string(x[rows], "str1")` to fit the
+  widest value anywhere in the source.
 
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
@@ -292,6 +341,15 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `egen()` with `by`, `bysort`, or a `group_by()` table computes
+  `dta_mean()`, `dta_min()`, `dta_max()`, or `dta_total()` of one column
+  for every group in one native pass, rather than evaluating the
+  calculation once per group. Each group's values are read in the same
+  order as before, so the results are unchanged. On a 42,944-row DHS birth
+  history file, `egen(d, z = dta_mean(b2), by = caseid)` over 11,111 women
+  falls from 0.68 to 0.003 seconds, and on a 1,274,250-row file over
+  494,019 women from 38 to 0.15 seconds.
+
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
   5,360-column DHS file, a one-to-one merge that adds one variable falls
@@ -304,6 +362,17 @@
   `save_dta()` falls from 0.68 to 0.44 seconds, `save_arrow()` from 0.74 to
   0.46 seconds, and `datasig()` from 0.69 to 0.40 seconds. Files,
   signatures, errors, and warnings are unchanged.
+
+* `save_dta()` no longer writes every cell one at a time when one column
+  has no buffer the writer can read directly, such as an ordinary character
+  column made by `mutate()` or a column with Stata notes after `[`. Such a
+  column now fills its cells of each block of rows on the main thread, and
+  the other columns still fill theirs on worker threads. On the
+  1,274,250-row, 1,644-column India 2021 DHS birth history,
+  `save_dta(bh[, names(bh)])` falls from 34 to 1.4 seconds, and saving the
+  result of an `m:1` merge with four columns of the women file falls from
+  40 to 1.3 seconds. Files are unchanged. A strL column still sends the
+  dataset to the row-by-row writer.
 
 * `dta_byte()`, `dta_int()`, `dta_long()`, and `dta_float()` validate and
   encode values about three times faster. The native constructor checks for
@@ -319,6 +388,15 @@
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
+
+* `codebook()` tallies a numeric variable's observed values by value when
+  they are whole numbers whose range is at most their count plus 65,536.
+  One tally gives the distinct values in order of first appearance, the
+  minimum, maximum and smallest gap, and the type 2 quantiles, without
+  `unique()`, `sort()` or `quantile()`. Other values keep those calls, and
+  the results are unchanged. On a 42,944-row, 1,209-column DHS birth
+  history file it falls from 2.5 to 2.2 seconds, and on a 16,787-row,
+  5,360-column DHS file from 5.1 to 4.7 seconds.
 
 * `codebook()` copies a numeric variable's observed values out of compact
   storage once, so its statistics no longer decode every value on each
