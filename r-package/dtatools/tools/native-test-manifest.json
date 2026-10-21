@@ -6244,7 +6244,7 @@
         },
         {
           "path": "tests/testthat/test-copy-data.R",
-          "sha256": "d1b04a7b8cd151e87e9232ec933533c5c71d9a50c185d5b1c2a49a69a0a73e41"
+          "sha256": "6ad5b0480a32d72a1ffe3ae5662d79df733769221e1a6704eee2faec34db00ff"
         },
         {
           "path": "tests/testthat/test-owned-numeric-buffers.R",
@@ -6314,6 +6314,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-copy-data.R",
+          "test": "copy_data keeps automatic row names",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
           "warnings": 0
         },
         {
@@ -13224,7 +13232,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "ebca78e85f43168e89d1f1dab4dd8ca2439a50495fb607dc89a602713dcd3a06"
+          "sha256": "abcc5c3ef32f12093e14b07e09ad671b62e125825420542c03659b5d6f1e6f01"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -14105,6 +14113,114 @@
           "skip": "forbid",
           "min_pass": 1,
           "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "mixed compact summary types settle as vctrs folds them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary common typing keeps the first three chunks and each first type",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "the summary gate admits mixed compact chunks and declines their methods",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "grouped compact summaries match the summaries folded in full",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "storage promotion names each pair as the sorted key did",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 32,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "mixed storage folds call neither sort() nor paste()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "the summary gate declines mixed storages when promotion primitives change",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly of compact chunks matches the vctrs casts and combine",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "summary assembly declines compact chunks it cannot construct as the casts do",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "compact summary assembly matches the vctrs calls and isolates later writes",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a fresh session assembles compact summaries without building a double",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a fresh session's first grouped summaries take both native checks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-expressions.R",
@@ -16006,6 +16122,14 @@
         {
           "path": "tests/testthat/test-egen-block-kernels.R",
           "sha256": "46c9ce8b7182a72b314a55d54d7d6d00f358717df55782c3a39f2578846f7cd6"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-short-subsets.R",
+          "sha256": "bbf3e82ffe0602d3624bc90e0eb96be4ca0a6d2ffdcb143bc32077127e3754ef"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-shared-dictionary.R",
+          "sha256": "9a6a1ce2c5c9a53039aab3f46635706fb75ed634fd3e8864b6f8fb09d0993e27"
         }
       ],
       "blocks": [
@@ -17236,6 +17360,46 @@
           "skip": "forbid",
           "min_pass": 20,
           "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "empty subsets of compact strings leave the dictionary alone",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "casts into strL storage do not measure the values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "short subsets of compact strings are ordinary strings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 26,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-short-subsets.R",
+          "test": "an index that materializes the source while it is read still subsets",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 16,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-shared-dictionary.R",
+          "test": "compact subsets and copies keep the dictionary they share",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
         }
       ],
       "children": [],
@@ -17254,7 +17418,7 @@
         },
         {
           "path": "tests/testthat/test-summarize-varlist.R",
-          "sha256": "ae6a184cd808cd52d1f57cb0c2c5645fe1ff90540f895eca02bb6d787eb73a7d"
+          "sha256": "109067cae8abcf81f7704a92952bf425a44ee95fb076a7de0e4794c55e3977dd"
         },
         {
           "path": "tests/testthat/test-summarize.R",
@@ -17262,7 +17426,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "6658f0447f4b96f162b48a4086ae99e8e39551ad38d5d04b794e90c45e1bf0d2"
+          "sha256": "9ca53fcca5516402ff29d99d4dc792f8ff56bc6bd46a772d66d79d1018d835cf"
         }
       ],
       "blocks": [
@@ -17587,6 +17751,38 @@
           "warnings": 0
         },
         {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names reads tibble and dibble columns as their names do",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names keeps the observation check for other missing values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names keeps another class's column method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summarize-varlist.R",
+          "test": "a varlist of column names follows a dibble reordered while it is read",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
           "file": "test-summarize.R",
           "test": "where and rows select each group's calculation sample",
           "occurrence": 1,
@@ -17779,6 +17975,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "unit-weight scans of compact integer storage match the previous calculation",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 319,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "percentiles search ordered totals as the previous scan did",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 618,
           "warnings": 0
         }
       ],
