@@ -763,12 +763,23 @@ mod gather_tests {
             0,
             byte_missing,
         );
-        let ints: Vec<[u8; 2]> = (0..200_i16).map(|i| (i * 37).to_le_bytes()).collect();
+        // Int storage treats values above 32,740 as missing, and long storage
+        // values above 2,147,483,620. Every third row holds a missing code.
+        let ints: Vec<[u8; 2]> = (0..200_i16)
+            .map(|i| (if i % 3 == 0 { 32_750 + i % 10 } else { i * 37 }).to_le_bytes())
+            .collect();
         check::<2>(&ints, None, &rows, 1, |value| {
             i16::from_le_bytes(*value) > 32_740
         });
         let longs: Vec<[u8; 4]> = (0..200_i32)
-            .map(|i| (i * 1_000_003).to_le_bytes())
+            .map(|i| {
+                (if i % 3 == 0 {
+                    2_147_483_630 + i % 10
+                } else {
+                    i * 1_000_003
+                })
+                .to_le_bytes()
+            })
             .collect();
         check::<4>(&longs, None, &rows, 2, |value| {
             i32::from_le_bytes(*value) > 2_147_483_620
