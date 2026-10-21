@@ -403,10 +403,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 
     variables <- list(); tabulations <- list(); examples <- list(); diagnostics <- list()
     note_rows <- list(); missing_masks <- list(); all_missing <- NULL
+    data_names <- names(data)
     for (i in seq_along(positions)) {
         position <- positions[[i]]
-        name <- names(data)[[position]]
-        column <- selected[[position]]
+        name <- data_names[[position]]
+        # A dibble's `[[` scans every name for the position's, and its names
+        # are unique, so the position reads the same column.
+        column <- .append_source_column(selected, position)
         # One missing mask and one unique count serve the summary, the
         # diagnostics and the missing-value relationships.
         mask <- .codebook_missing(column)
@@ -500,14 +503,26 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
 .codebook_variable <- function(x, name, position, threshold, compact, mask) {
     supported <- is.atomic(x) && is.null(dim(x)) || is.factor(x)
     missing <- if (supported) mask else rep(FALSE, length(x))
-    observed <- x[!missing]
     numeric <- supported && (is.numeric(x) || is.logical(x)) && !is.factor(x)
-    # A slice of compact storage decodes each value as it is read, so the
-    # scans below share one ordinary copy of the observed values.
-    finite_observed <- if (numeric) c(.book_numeric_data(observed)) else double()
+    # The summaries read a Stata numeric's values only. A slice of compact
+    # storage decodes each value as it is read and vctrs restores metadata
+    # the summaries drop, so they subset the bare values instead.
+    stata_numeric <- numeric && inherits(x, "dta_numeric")
+    observed <- if (!stata_numeric) x[!missing]
+    # The scans below share one ordinary copy of the observed values. A
+    # subset of compact storage stays compact, and every scan of it would
+    # decode each value again, so c() decodes the subset once.
+    finite_observed <- if (stata_numeric) {
+        c(.book_numeric_data(x)[!missing])
+    } else if (numeric) c(.book_numeric_data(observed)) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
-    distinct <- if (numeric) unique(finite_observed) else NULL
+    # Integers over a modest range are tallied by value instead, and the
+    # tally also gives the order statistics below.
+    facts <- if (numeric) .Call(C_dtatools_codebook_facts, finite_observed)
+    distinct <- if (!is.null(facts)) facts[[1L]] else if (numeric) {
+        unique(finite_observed)
+    }
     unique_count <- if (!supported) NA_integer_ else if (numeric) {
         length(distinct)
     } else length(unique(observed))
@@ -531,18 +546,20 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     # Code 0 is system missing, codes a-z are .a through .z, and code 256
     # is a NaN that is neither; observed values have no code. `codes`
     # counts each code c at position c + 1.
-    codes <- if (is.numeric(x)) {
-        tabulate(.tab_missing_codes(x) + 1L, 257L)
-    } else integer(257L)
+    codes <- if (is.numeric(x)) .book_missing_code_counts(x) else integer(257L)
     stats <- rep(NA_real_, 10L)
     if (numeric && length(finite_observed)) {
-        q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
-                             names = FALSE, type = 2)
-        sorted <- sort(distinct)
-        unit <- if (length(sorted) < 2L) NA_real_ else min(diff(sorted))
-        stats <- c(min(finite_observed), max(finite_observed), unit,
-                   mean(finite_observed), if (length(finite_observed) > 1L) stats::sd(finite_observed) else NA,
-                   q)
+        # The minimum, maximum, smallest gap and quantiles, in that order.
+        ranked <- if (is.null(facts)) {
+            q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
+                                 names = FALSE, type = 2)
+            sorted <- sort(distinct)
+            unit <- if (length(sorted) < 2L) NA_real_ else min(diff(sorted))
+            c(min(finite_observed), max(finite_observed), unit, q)
+        } else facts[[2L]]
+        stats <- c(ranked[1:3], mean(finite_observed),
+                   if (length(finite_observed) > 1L) stats::sd(finite_observed) else NA,
+                   ranked[4:8])
     }
     labels <- attr(x, "labels", exact = TRUE)
     table_name <- attr(x, "value.label.name", exact = TRUE)
@@ -893,6 +910,13 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         if (!rlang::is_symbol(expr)) stop("unquoted ", kind, " selections must be names", call. = FALSE)
         rlang::as_name(expr)
     }, "")
+}
+
+# tabulate(.tab_missing_codes(x) + 1L, 257L), counted natively except for
+# a long vector.
+.book_missing_code_counts <- function(x) {
+    counts <- .Call(C_dtatools_missing_code_counts, x)
+    if (is.null(counts)) tabulate(.tab_missing_codes(x) + 1L, 257L) else counts
 }
 
 .book_codes <- function(x) {
