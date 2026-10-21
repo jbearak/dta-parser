@@ -524,6 +524,7 @@ DTATOOLS_INTERNAL int dtatools_write_string_region(
     char *error_message, size_t error_capacity
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_capture_string(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_blank_missing_strings(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_string(SEXP value, SEXP storage);
 DTATOOLS_INTERNAL SEXP C_dtatools_write_string_plan(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_factorize_numeric(

@@ -1723,7 +1723,7 @@
         },
         {
           "path": "tests/testthat/test-dta-string.R",
-          "sha256": "a4d2cc3b134ab0d56fac760415b8dd4e7fe7f4dace8de6cdd71b555cf3f4683e"
+          "sha256": "ee10f812d6c326c94ec93927c0ee98aa250fb48658c5236a291dc56f2ec0e2e8"
         },
         {
           "path": "tests/testthat/test-dta-numeric-summary.R",
@@ -2451,6 +2451,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-string.R",
+          "test": "missing strings are blanked natively as the R expression blanks them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         },
         {
