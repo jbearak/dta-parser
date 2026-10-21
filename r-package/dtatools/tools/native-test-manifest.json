@@ -6306,7 +6306,7 @@
       "files": [
         {
           "path": "tests/testthat/test-owned-atoms.R",
-          "sha256": "0c606f579d22b96453d6263ff328ed2756d62ef886fcdf737cbedaed4a7e6660"
+          "sha256": "5ab215395feaefb8217a2e2cdef203cd469dc972818c2cc4d797c9cf126a6151"
         },
         {
           "path": "tests/testthat/test-owned-columns.R",
@@ -6781,14 +6781,6 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
-          "warnings": 0
-        },
-        {
-          "file": "test-owned-atoms.R",
-          "test": "string metadata declines compact storage without changing its source",
-          "occurrence": 1,
-          "skip": "forbid",
-          "min_pass": 9,
           "warnings": 0
         },
         {
@@ -8257,6 +8249,57 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 62,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "string metadata keeps compact storage without changing its source",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "large compact string subsets keep their dictionary visible",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "dplyr row verbs keep large compact strings visible",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 8,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "narrowed declarations on compact subsets count only the values held",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "materializing a compact view reads its values from the dictionary",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-owned-atoms.R",
+          "test": "casting a compact string checks it without reading each value",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],
@@ -16215,6 +16258,10 @@
         {
           "path": "tests/testthat/test-egen-group-summary.R",
           "sha256": "b057a0c0e49c7d11c25e4ebac0ae0f083600fe606ee021907920734613e97c41"
+        },
+        {
+          "path": "tests/testthat/test-dictstring-width.R",
+          "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
         }
       ],
       "blocks": [
@@ -17524,6 +17571,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "compact string widths count the bytes of the values they hold",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-dictstring-width.R",
+          "test": "casts of compact strings into narrow storage keep their errors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         }
       ],

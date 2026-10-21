@@ -46,6 +46,29 @@
   from one by `keep_vars()` or `gen()`, warned that it dropped the row
   names.
 
+* A string column that `read_dta()` or `read_arrow()` keeps in compact
+  dictionary form now stays compact after `filter()`, `arrange()`, `[`, or
+  `vctrs::vec_slice()`. Restoring the column's attributes had put it inside
+  R's generic attribute wrapper, which hid the dictionary, so the width check
+  that follows read every value through the wrapper. That width check, before
+  a cast into fixed Stata string storage, now reads byte lengths from the
+  dictionary rather than making a string for each value. When vctrs needs all
+  of a compact column's values at once, as `vctrs::vec_c()` does, they are
+  read from the dictionary directly rather than one at a time through R. On
+  the 1,274,250-row, 1,644-column India 2021 DHS births file, `filter()` falls
+  from about 0.51 to 0.44 seconds, `arrange()` from 0.57 to 0.47 seconds, and
+  taking every other row with `[` from 0.48 to 0.43 seconds. Joining the
+  births file's 1,274,250 rows to its 494,019 distinct `caseid` values,
+  `left_join()` falls from about 0.60 to 0.35 seconds and `dta_merge()` from
+  0.51 to 0.35 seconds. Saving 17 of its columns with `save_dta()` after
+  `arrange()` falls from about 0.08 to 0.01 seconds. Results are unchanged.
+
+* Width checks on a compact string column count only the values it holds.
+  A slice of a compact column shares its source's whole dictionary, so on
+  some slices of fewer than 64 rows, `dibble()` and `save_dta()` widened a
+  narrower declaration such as `dta_string(x[rows], "str1")` to fit the
+  widest value anywhere in the source.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,
