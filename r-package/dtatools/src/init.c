@@ -451,6 +451,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_reference_state_valid",
      (DL_FUNC) &C_dtatools_reference_state_valid, 1},
     {"C_dtatools_shared_columns", (DL_FUNC) &C_dtatools_shared_columns, 1},
+    {"C_dtatools_reference_match", (DL_FUNC) &C_dtatools_reference_match, 3},
     {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
