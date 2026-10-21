@@ -706,7 +706,9 @@ test_that('public masks retain history and values bookkeeping callbacks', {
             lapply(c('names', 'length', 'attributes'), observe)
         }, libpath = .libPaths(),
         env = c(R_DISABLE_BYTECODE = if (disabled) '1' else NA_character_))
-        expect_identical(observed[[1L]]$calls, c(5L, 0L, 0L, 0L, 5L))
+        # `y = x + 1` reads no prior value, so only the bindings and the
+        # final values read the current names.
+        expect_identical(observed[[1L]]$calls, c(5L, 0L, 0L, 0L, 3L))
         # Initial capture registers its history at once; only the added
         # column reads its length.
         expect_identical(observed[[2L]]$calls, c(0L, 0L, 0L, 1L, 0L))

@@ -215,15 +215,18 @@ test_that('combination retains strict-validator trace callbacks', {
     expect_identical(as.double(observed$public$y), c(2, 3, 4, 5))
 })
 
-test_that("combination retains registered character methods used by metadata", {
+test_that("combination admits registered character methods its metadata never calls", {
     pieces <- .combine_warm()
+    native_expected <- .combine_profile_expected()
     calls <- 0L
     method <- function(x, ...) {
         calls <<- calls + 1L
         base::unique.default(x, ...)
     }
     .combine_with_method("unique", "character", method, function() {
-        declined <- .combine_attempt(pieces)
+        # Attribute planning matches names without unique(), so a character
+        # method neither runs on the R path nor blocks the native one.
+        native <- .combine_attempt(pieces)
         speculative <- calls
         calls <<- 0L
         expected <- vctrs::list_unchop(pieces)
@@ -231,12 +234,17 @@ test_that("combination retains registered character methods used by metadata", {
         calls <<- 0L
         actual <- .combine_dta_double(pieces)
         actual_calls <- calls
-        expect_null(declined)
         expect_identical(speculative, 0L)
-        expect_gt(expected_calls, 0L)
-        expect_identical(actual_calls, expected_calls)
+        expect_identical(expected_calls, 0L)
+        expect_identical(actual_calls, 0L)
         expect_identical(.combine_bits(actual), .combine_bits(expected))
         expect_identical(attributes(actual), attributes(expected))
+        if (native_expected) {
+            expect_identical(list(.combine_bits(native), attributes(native)),
+                             list(.combine_bits(expected), attributes(expected)))
+        } else {
+            expect_null(native)
+        }
     }, namespace = "base")
 })
 
@@ -793,6 +801,22 @@ test_that("public indexed combination admits five expressions in one run frame",
                      if (.combine_profile_expected()) 4000 else 0)
     for (i in 1:5) expect_identical(as.double(result[[paste0("y", i)]]),
                                    rep(c(1, 4, 2, 8), 25) + i)
+})
+
+test_that("public indexed combination admits grouped and rowwise row lists", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    withr::local_options(dtatools.generate_type = "double")
+    .combine_warm()
+    # More than 64 groups: unclass() would hand R's wrapper of the list_of.
+    data <- dibble(x = rep(c(1, 4, 2, 8), 50), g = rep(1:100, 2))
+    for (grouped in list(dplyr::group_by(data, g), dplyr::rowwise(data))) {
+        .Call(C_dtatools_native_copy_stats, TRUE)
+        result <- dplyr::mutate(grouped, y = x + 1)
+        counters <- .Call(C_dtatools_native_copy_stats, FALSE)
+        expect_identical(counters[["combine_copied_payload_bytes"]],
+                         if (.combine_profile_expected()) 1600 else 0)
+        expect_identical(as.double(result$y), rep(c(1, 4, 2, 8), 50) + 1)
+    }
 })
 
 test_that("combination namespace admission leaves active exports untouched", {

@@ -5,6 +5,85 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` on a dibble takes its native common type and
+  combine steps from a session's first call. Their checks compare each
+  function they skip with the package's own copy, and declined while any of
+  those functions was still waiting to be loaded. A session's first grouped
+  summary, and in a session that had not built a Stata numeric through the
+  R constructor every `summarise(n = n())`, then combined each group's
+  result through vctrs's R methods. dtatools now loads those functions when
+  it loads. On the 1,274,250-row India 2021 DHS births file, a session's
+  first `summarise(group_by(d, caseid), n = n())` over its 494,019 women
+  falls from about 187 to 34 seconds. Results are unchanged.
+
+* `copy_data()` keeps a dibble's automatic row names. It stored them as
+  explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
+  from one by `keep_vars()` or `gen()`, warned that it dropped the row
+  names.
+
+* `copy_data()` looks for environments, functions, bytecode, external
+  pointers, and weak references in one native pass over the columns and
+  their attributes, rather than an R call per value. On a 16,787-row,
+  5,360-column DHS file it falls from about 0.14 to 0.05 seconds. Results
+  and errors are unchanged.
+
+* `save_dta()`, `save_arrow()`, and `datasig()` remember up to 32 display
+  formats of each kind that passed their check in a write, so a later
+  column with one of those formats skips the check. A format that carries
+  attributes is still checked every time. They also skip the notes and
+  characteristics getters for columns that have neither, and read a
+  dibble's columns by position. On a 16,787-row, 5,360-column DHS file,
+  `save_dta()` falls from about 0.44 to 0.31 seconds, `save_arrow()` from
+  0.46 to 0.31 seconds, and `datasig()` from 0.41 to 0.26 seconds. Results,
+  errors, and warnings are unchanged.
+
+* Restoring a Stata numeric vector's attributes after vctrs slices, casts,
+  or combines it matches the attribute names directly, rather than through
+  `setdiff()` and `intersect()`, which check their arguments on every call.
+  `vctrs::vec_slice()` on one column takes about half as long. On a
+  16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
+  0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
+  Results and warnings are unchanged.
+
+* `summ()` with a varlist of column names, which includes the default of
+  every column, builds each variable's entry from its name and label,
+  rather than through the expansion that factor variables, interactions,
+  and time-series operators need. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 1.5 to 0.87 seconds.
+
+* `summ()` does less work for each variable. It copies a group's weights
+  once rather than once per variable, and skips the part of an unused
+  observation check that cannot fail. Without weights, it reads compact
+  byte, int, and long columns directly, sums them in integers, and with
+  `detail = TRUE` sorts their observed values by counting them. Detailed
+  percentiles find all nine positions with one search rather than nine
+  scans of the running totals. On a 16,787-row, 5,360-column DHS file,
+  `summ(d)` falls from 0.75 to 0.28 seconds and `summ(d, detail = TRUE)`
+  from 2.0 to 0.57 seconds. Results are unchanged.
+
+* Indexing an empty `byte`, `int`, `long`, or `float` Stata numeric returns
+  ordinary missing doubles, rather than compact storage of missing values.
+  vctrs starts each combined column this way from the zero-length common
+  type and then writes every input into it, so the compact result was
+  decoded again at once. On a 16,787-row, 5,360-column DHS file,
+  `bind_rows(d, d)` falls from 7.0 to 6.4 seconds.
+
+* Replacing a column of a dibble with `$<-`, `[[<-`, or `[<-`, and
+  `transform()`, `within()`, `group_modify()`, `summarise()`, and
+  `reframe()`, match the result's column names to the prior columns in
+  one pass, rather than scanning the names once per column. On a
+  5,360-column DHS file, `d$v012 <- d$v012 + 1` falls from 83 to 30
+  milliseconds.
+
+* Native arithmetic and summary admission compares dtatools' captured
+  helper closures with less work per call. Its comparison table clears only
+  its occupancy flags, a shared symbol or environment compares by identity
+  without the vector checks, and a helper found again in the base namespace
+  is not compared a second time. `x + 1` on a 16,787-value Stata double
+  falls from about 111 to 81 microseconds, and `mean()` on 10 values from
+  157 to 129. A grouped `summarise(m = mean(x))` over 10,000 groups falls
+  from 4.7 to 4.4 seconds.
+
 * `duplicated()`, `anyDuplicated()`, and `unique()` on a Stata numeric,
   date, or datetime vector compare the packed native key that `dta_match()`
   uses, rather than formatting each value as text. On 2 million doubles,
@@ -12,10 +91,35 @@
   `table()`, and `tab()` on 2 million bytes each save about 0.4 seconds.
   Results and errors are unchanged.
 
+* `duplicated()`, `anyDuplicated()`, and `unique()` on a dibble compare
+  rows through one integer key per row, built with `match()` one column
+  at a time, rather than through base's list of cells for every row,
+  which dispatched `[[` on each Stata value. On a 16,787-row, 5,360-column
+  DHS file with 500 rows repeated, `duplicated()` takes 0.6 seconds, where
+  base would take over an hour. Results are those of the base methods.
+  Columns the key cannot compare as base does, such as factors, dates, and
+  lists, still take the base methods.
+
+* `unique()` on a dibble no longer reads a column named `x` or `fromLast`
+  in place of its own argument. It deduplicated by that column alone.
+
+* `mean()` and `range()` on a Stata numeric compare each base R closure
+  they depend on once per call, rather than once for every binding that
+  holds it, when they check that base dispatch is unchanged. A `mean()` of
+  20 values falls from 161 to 44 microseconds. Over 10,000 groups of
+  100,000 rows, `gen(d, z = mean(x), by = g)` falls from 2.9 to 1.5 seconds,
+  and grouped `summarise()` and `mutate()` with `mean()` from 5.2 to 3.5
+  seconds.
+
 * `subset()` on a dibble selects its rows with the native gather that `[`
   on a dibble uses, rather than slicing one column at a time. On a
   16,787-row, 5,360-column DHS file, `subset(d, v012 > 30)` falls from
   about 0.6 to 0.1 seconds. Results, errors and warnings are unchanged.
+
+* `[` and `head()` on a dibble with Stata metadata check each column's
+  notes and characteristics without a function call per attribute name.
+  On a 16,787-row, 5,360-column DHS file, `head(d, 10)` falls from about
+  67 to 53 milliseconds.
 
 * `summ()` and `tab()` slice a column to each group only when `where`,
   `weights`, `subpop`, or `summarize` reads it, rather than slicing every
@@ -33,20 +137,97 @@
   the whole result column on every write. Appending a 5,360-column file to
   itself took 8.4 seconds and now takes 5.7.
 
+* A subset of a string column from `read_dta()` or `read_arrow()` that is
+  at most a sixteenth as long as the column's dictionary of distinct values
+  is built as ordinary strings, rather than over a copy of the whole
+  dictionary. vctrs takes an empty subset of each input it compares,
+  combines or casts, and a grouped verb slices each group's rows, so these
+  copies added up. A cast into `strL` storage also stops measuring the
+  width of each value, since `strL` holds any width, and a cast of a
+  compact column no longer scans it for `NA`, which its dictionary cannot
+  hold. On the India 2021 DHS birth history file, with 1,274,250 rows and
+  494,019 distinct `caseid` values, `caseid == ""` falls from 0.20 to 0.02
+  seconds, `codebook()` of `caseid` from 1.09 to 0.60, and a
+  `summarise(f = first(caseid))` grouped by cluster over the 14,526 rows
+  of 378 clusters from 96 to 0.16.
+
+* A compact subset or copy of a string column from `read_dta()` or
+  `read_arrow()` shares the column's dictionary of distinct values, rather
+  than rebuilding the dictionary's strings and hash table for itself. On
+  the India 2021 DHS birth history file, a subset of every other row of
+  `caseid` falls from 19 to 3 milliseconds, `filter(b2 >= 2010)` on three
+  columns from 54 to 31, and `arrange(desc(b2))` from 127 to 104.
+
 * Printing or formatting a dibble checks the classes of declared string
   columns only, rather than running a set operation on every column. On a
   5,360-column DHS file, printing falls from 0.25 to 0.21 seconds.
+
+* Grouped `summarise()` and `reframe()` stop folding an expression's
+  per-group results into a common type once the type settles. When there are
+  at least eight groups, every group returns a plain Stata double with the
+  same attributes, and the Stata numeric methods are unchanged, the first
+  three groups give the common type. Other results are folded over every
+  group as before. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` falls from 4.5 to 2.7 seconds, and
+  `summarise(s = sd(x))` from 3.1 to 1.3 seconds.
+
+* Grouped `summarise()` and `reframe()` combine per-group plain Stata
+  doubles natively, without casting each group's result to the common type
+  twice, when the Stata numeric methods are unchanged. On 100,000 rows in
+  10,000 groups, `summarise(s = sd(x))` falls from 1.3 to 0.55 seconds and
+  `summarise(m = mean(x))` from 2.7 to 1.9 seconds.
+
+* Grouped `summarise()` and `reframe()` also stop folding per-group results
+  into a common type once it settles when the groups return compact Stata
+  bytes, ints, longs or floats, or a mix of up to four Stata numeric storage
+  types. The mean of a byte column, a byte in groups where it is whole and a
+  float elsewhere, now settles too. On 100,000 rows in 10,000 groups,
+  `summarise(m = mean(x))` on a byte column falls from 4.5 to 2.8 seconds,
+  `summarise(m = max(x))` from 3.1 to 1.3 seconds, and
+  `summarise(k = n())` from 2.9 to 1.1 seconds.
+
+* Grouped `summarise()` and `reframe()` also combine per-group compact Stata
+  bytes, ints, longs and floats natively when each group's storage widens to
+  the common one, as a byte widens to an int or a float. Loading dtatools
+  now settles one lazily loaded base function that these checks read, so a
+  session that never builds a Stata double takes the native path too. On
+  100,000 rows in 10,000 groups, `summarise(m = max(x))` on a byte column
+  falls from 1.4 to 0.6 seconds, `summarise(k = n())` from 1.2 to 0.4
+  seconds, and `summarise(m = mean(x))` from 2.8 to 1.9 seconds.
 
 * dplyr verbs on wide dibbles set up their data mask in time linear in the
   number of columns. On a 5,360-column file, `filter()`, `mutate()`,
   `summarise()`, `count()` and `arrange()` each took 0.6 to 1.5 seconds and
   now take 0.03 to 0.12 seconds.
 
+* `mutate()` on a dibble reads only the prior values each new column uses,
+  rather than every column's value once per new column. On a 5,360-column
+  file, `mutate(d, across(1:1000, ~ .x))` falls from 2.9 to 0.25 seconds.
+
+* `dta_group_id()` and `dta_group_tag()` sort rows with a radix sort when
+  every key is an ordinary or dtatools numeric vector or a string column
+  from `read_dta()` or `read_arrow()`, rather than a merge sort that
+  compared keys. Such a string column now ranks its distinct values once and
+  sorts by those ranks, where it made an R string for every row and compared
+  strings. `egen()` passes such a column to its calculation without a slice
+  when it reads every row. On a 1,274,250-row DHS birth history,
+  `dta_group_id(caseid)`, with 494,019 distinct values, falls from 0.27 to
+  0.05 seconds, `dta_group_id(v001)` from 66 to 20 milliseconds, and
+  `egen(d, g = dta_group_id(caseid))` from 0.33 to 0.08 seconds.
+
 * `is.na()` and `is_missing()` scan compact numeric storage directly in typed
   blocks, including retained Arrow chunks and compact dates. Missing tags and
   IEEE NaNs keep their existing meanings, and scans leave inputs compact.
   Compact sums use direct typed blocks while preserving accumulation order
   across blocks and chunks.
+
+* `mutate()` on a dibble grouped with `group_by()` or `rowwise()` assembles
+  per-group Stata doubles natively, as it already did with `.by`. dplyr keeps
+  each group's rows in a `list_of`, which native assembly declined, so every
+  group's result went through vctrs. On 100,000 rows in 10,000 groups,
+  `mutate(y = x * 2)` falls from 3.1 to 0.6 seconds and `mutate(m = mean(x))`
+  from 4.6 to 2.5 seconds. On 10,000 rowwise rows, `mutate(s = a + b)` falls
+  from 3.3 to 0.6 seconds.
 
 * `dta_append()` skips reconciling a Stata numeric or string variable whose
   sources declare it identically apart from value labels. It takes an empty
@@ -56,11 +237,40 @@
   Appending a 5,360-column DHS file to itself falls from 5.3 to 2.6 seconds,
   and appending two copies of it on disk from 4.6 to 2.2 seconds.
 
+* `dta_append()` collects a byte, int, long or float variable as raw bytes
+  while its sources convert to compact storage of that type, rather than
+  decoding every source into doubles and encoding the result again.
+  Building a Stata numeric from compact storage of the same type copies
+  its bytes. Appending a 16,787-row, 5,360-column DHS file to itself falls
+  from 1.9 to 1.3 seconds and its peak memory from 1.6 to 0.5 GB, and
+  appending two copies of it on disk falls from 1.6 to 1.0 seconds.
+
+* `dta_append()` builds each byte, int, long or float column from one scan
+  of the bytes it collected, where it copied and scanned them twice, and the
+  column keeps those bytes as its storage. It also builds a double column
+  with the native constructor. The collected buffer now loses its marker
+  attributes before any other binding holds it. Removing them later had made
+  R wrap the shared buffer. Reading the wrapper's bytes copied them, and the
+  native double constructor declined the wrapper, so the slower R checks ran
+  instead. The scan of compact byte, int and long values counts in the
+  width of the values, which makes it about eight times faster on bytes.
+  The loops over columns drop references by assignment rather than with
+  `rm()`, which takes about 4.5 microseconds a call. Appending the
+  1,274,250-row, 1,644-column India 2021 DHS birth history to itself falls
+  from 4.1 to 1.0 seconds, a 16,787-row, 5,360-column DHS file from 1.0 to
+  0.75 seconds, and 20 double columns of 1,000,000 rows from 0.73 to 0.09
+  seconds.
+
 * `summ()` expands long varlists in linear rather than quadratic time,
   summarizes a full sample without copying each variable, and builds its
   statistics table once. Summarizing all 5,360 variables of a 16,787-row
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
+
+* `dta_merge()` gathers the result's columns by position rather than
+  looking each one up and appending it by name. On a 16,787-row,
+  5,360-column DHS file, a one-to-one merge that adds one variable falls
+  from 0.34 to 0.13 seconds.
 
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
@@ -133,6 +343,11 @@
   with no mappings is now reported as a table with no mappings rather than
   failing.
 
+* `labelbook()` checks the label text of every table in one pass when all
+  strings are valid in a UTF-8 locale, reads each table's codes once for
+  its signature and its duplicate check, and reads a dibble's columns by
+  position. On the same DHS file it falls from 0.9 to 0.6 seconds.
+
 * `read_dta()` and `read_arrow()` use direct object-identity checks while
   constructing dibbles, reducing setup work for wide tables. Scalar access
   to retained compact Arrow numerics reuses the current immutable chunk,
@@ -183,6 +398,10 @@
   instead of appended, with the same column-name spellings `egen()` accepts.
   A call that names both, or names a column that does not exist, changes
   nothing.
+* `tab()` builds the categories of an unlabelled numeric variable from its
+  distinct values, formatting each distinct value once rather than every
+  observation. On 1,000,000 rows, a one-way table falls from 0.27 to 0.08
+  seconds and a two-way table from 0.47 to 0.08 seconds.
 * `tab()` prints as Stata prints `tabulate`: a one-way table with
   frequency, percent, cumulative percent, and a total; a two-way table
   with row and column totals. New arguments carry `tabulate`'s options:

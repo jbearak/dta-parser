@@ -568,6 +568,7 @@ DTATOOLS_INTERNAL void write_numeric_missing(
 DTATOOLS_INTERNAL void write_numeric_observed(
     unsigned char *output, R_xlen_t index, int kind, double value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value);
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 );
@@ -602,7 +603,8 @@ DTATOOLS_INTERNAL int dtatools_numeric_decoration_admitted(
 );
 DTATOOLS_INTERNAL int dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies, int generation);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_execution_profile(SEXP probe);
-DTATOOLS_INTERNAL SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies);
+DTATOOLS_INTERNAL SEXP C_dtatools_metadata_dependencies_unchanged(SEXP frame, SEXP dependencies,
+                                                                  SEXP generation);
 DTATOOLS_INTERNAL SEXP C_dtatools_canonical_attribute_plan(SEXP source, SEXP state);
 DTATOOLS_INTERNAL SEXP C_dtatools_attribute_plan_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP dtatools_metadata_profile_from_state(SEXP state);
@@ -615,6 +617,13 @@ DTATOOLS_INTERNAL SEXP C_dtatools_try_combine_double(
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_combine_double_into_current(
     SEXP indexed, SEXP state, SEXP metadata_state
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_ptype_method(
+    SEXP state, SEXP metadata_state, SEXP reducer, SEXP routine_state
+);
+DTATOOLS_INTERNAL SEXP C_dtatools_settled_routine(SEXP ns, SEXP name);
+DTATOOLS_INTERNAL SEXP C_dtatools_summary_combine(
+    SEXP state, SEXP metadata_state, SEXP expected, SEXP routine_state
 );
 DTATOOLS_INTERNAL SEXP C_dtatools_construct_double(
     SEXP value, SEXP frame, SEXP dependencies
@@ -664,6 +673,7 @@ DTATOOLS_INTERNAL SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP ca
 DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index);
 DTATOOLS_INTERNAL SEXP C_dtatools_deep_copy_value(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_reference_contents(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_reference_objects_found(SEXP values);
 
 /* R-side helpers called by Rust. */
 /* Immutable Arrow views borrowed only for the duration of the caught C call.

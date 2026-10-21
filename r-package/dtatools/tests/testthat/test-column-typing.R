@@ -159,6 +159,36 @@ test_that("the dispatcher types a fresh column and promotes a replaced one", {
     expect_identical(dta_storage_type(replaced), "int")
 })
 
+test_that("retyping finds each prior column as `[[` does", {
+    latin1 <- iconv("\u00e9", "UTF-8", "latin1")
+    utf8 <- enc2utf8("\u00e9")
+    bytes <- rawToChar(as.raw(255L))
+    Encoding(bytes) <- "bytes"
+    prior <- dta_byte(c(1, 2))
+    attr(prior, "label") <- "Prior"
+    retype <- function(result_names, before_names) {
+        result <- as.data.frame(lapply(result_names, function(name) c(3, 4)))
+        names(result) <- result_names
+        before <- rep(list(prior), length(before_names))
+        names(before) <- before_names
+        out <- dtatools:::.retype_changed_columns(result, before, "mutate()")
+        unname(lapply(out, attr, "label"))
+    }
+    # A Latin-1 name finds its UTF-8 spelling, and an NA name finds
+    # nothing, even beside prior columns named "" and NA.
+    expect_identical(retype(c(utf8, NA), c(latin1, "", NA)),
+                     list("Prior", NULL))
+    # A bytes-encoded name after them leaves both lookups unchanged.
+    expect_identical(retype(c(utf8, "k"), c(latin1, "k", bytes)),
+                     list("Prior", "Prior"))
+    # Outside a UTF-8 locale, translation can write a name as escapes
+    # that match() would pair with a literal name `[[` keeps apart.
+    withr::local_locale(c(LC_CTYPE = "C"))
+    native <- rawToChar(as.raw(c(195L, 169L)))
+    expect_identical(retype(c(native, "x"), c("<c3><a9>", utf8)),
+                     list(NULL, NULL))
+})
+
 test_that("Stata string text and the declaration accessor are one rule each", {
     plain <- c("a", "b")
     expect_true(same_object(dtatools:::.stata_string_text(plain), plain))

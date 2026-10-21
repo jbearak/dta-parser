@@ -328,3 +328,110 @@ test_that("summarize supports temporal scales, fractional deltas and lagged fact
     expect_error(.summarize_varlist(data, "D.i.a", rep(TRUE, 5), time = "t"),
                  "only lag and lead")
 })
+
+test_that("a varlist of column names expands as the general expansion does", {
+    data <- data.frame(x = c(1, NA, 3, 4), check.names = FALSE)
+    data[["c.x"]] <- 1:4
+    data[["co.y"]] <- c(TRUE, FALSE, NA, TRUE)
+    data[["1o.z"]] <- letters[1:4]
+    data[["2o.co.w"]] <- factor(c("a", "b", "a", NA))
+    data$d <- as.Date("2020-01-01") + 0:3
+    data$n <- dta_double(c(1, NA, 3, 4))
+    data$g <- c(0, 1, 0, 1)
+    attr(data$x, "label") <- "Ex"
+    attr(data[["c.x"]], "label") <- ""
+    attr(data[["co.y"]], "label") <- NA_character_
+    attr(data[["1o.z"]], "label") <- c("two", "labels")
+    attr(data$d, "label") <- 5
+    specs <- c("x", "c.x", "co.y", "1o.z", "2o.co.w", "d", "n", "x")
+    # A trailing factor term sends the varlist through the general expansion.
+    general <- function(specs, ...) {
+        result <- .summarize_varlist(data, c(specs, "i.g"), ...)
+        lapply(result, head, length(specs))
+    }
+    for (sample in list(rep(TRUE, 4), c(TRUE, NA, FALSE, TRUE), rep(FALSE, 4))) {
+        expect_identical(.summarize_varlist(data, specs, sample),
+                         general(specs, sample))
+        expect_identical(.summarize_varlist(data, specs, sample, detail = TRUE),
+                         general(specs, sample, detail = TRUE))
+    }
+    expect_identical(.summarize_varlist(data, NULL, rep(TRUE, 4)),
+                     general(names(data), rep(TRUE, 4)))
+    expect_identical(.summarize_varlist(data, character(), rep(TRUE, 4)),
+                     general(character(), rep(TRUE, 4)))
+    result <- .summarize_varlist(data, specs, rep(TRUE, 4))
+    expect_identical(result$names,
+                     c("x", "x", "o.y", "1.z", "2.co.w", "d", "n", "x"))
+    expect_identical(result$headers,
+                     c("Ex", "x", "o.y", "1.z", "2.co.w", "d", "n", "Ex"))
+})
+
+test_that("a varlist of column names still reads each variable's missing values", {
+    data <- data.frame(x = 1:3)
+    data$a <- dta_double(c(1, NA, 3))
+    data$b <- dta_byte(c(1, 2, NA))
+    ns <- asNamespace("dtatools")
+    calls <- 0L
+    trace("is.na.dta_numeric", tracer = function() calls <<- calls + 1L,
+          where = ns, print = FALSE)
+    on.exit(untrace("is.na.dta_numeric", where = ns), add = TRUE)
+    result <- .summarize_varlist(data, c("a", "x", "b"), rep(TRUE, 3))
+    expect_identical(calls, 2L)
+    expect_identical(result$names, c("a", "x", "b"))
+})
+
+test_that("a varlist of column names reads tibble and dibble columns as their names do", {
+    tbl <- structure(
+        list(dta_byte(c(1, NA, 3)), c(2, 4, 6), 7:9, dta_int(c(10, 11, NA))),
+        names = c("a", "b", "a", ""),
+        class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -3L))
+    specs <- c("a", "b", "", "a")
+    result <- .summarize_varlist(tbl, specs, rep(TRUE, 3))
+    expect_identical(result$values, lapply(specs, function(name) tbl[[name]]))
+    data <- as_dibble(data.frame(a = dta_byte(c(1, NA, 3)), b = c(2, 4, 6),
+                                 c = dta_long(c(5, 6, 7))))
+    specs <- c("c", "a", "c", "b")
+    result <- .summarize_varlist(data, specs, rep(TRUE, 3))
+    expect_identical(result$values, lapply(specs, function(name) data[[name]]))
+    expect_identical(result$names, specs)
+})
+
+test_that("a varlist of column names keeps the observation check for other missing values", {
+    registerS3method("is.na", "dtatools_short_missing",
+                     function(x) logical(length(x) - 1L))
+    odd <- structure(c(1, 2, 3), class = "dtatools_short_missing")
+    frame <- data.frame(x = 1:3)
+    frame$odd <- odd
+    tbl <- structure(list(x = 1:3, odd = odd),
+                     class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -3L))
+    for (data in list(frame, tbl)) {
+        expect_warning(.summarize_varlist(data, c("x", "odd"), rep(TRUE, 3)),
+                       "longer object length")
+    }
+})
+
+test_that("a varlist of column names keeps another class's column method", {
+    registerS3method("[[", "dtatools_scaled_columns",
+                     function(x, i, ...) 10 * NextMethod())
+    data <- structure(list(value = c(1, 2, 3)),
+                      class = c("dtatools_scaled_columns", "tbl_df", "tbl", "data.frame"),
+                      row.names = c(NA, -3L))
+    result <- .summarize_varlist(data, "value", rep(TRUE, 3))
+    expect_identical(result$values, list(c(10, 20, 30)))
+    expect_identical(summ(data, value)$statistics$mean, 20)
+})
+
+test_that("a varlist of column names follows a dibble reordered while it is read", {
+    data <- dibble(a = c(1, 2, 3), b = c(10, 20, 30), c = c(4, 5, 6))
+    probe <- data$a
+    class(probe) <- "dtatools_reorder_probe"
+    data$a <- probe
+    registerS3method("is.na", "dtatools_reorder_probe", function(x) {
+        order_vars(data, c)
+        is.na(unclass(x))
+    })
+    result <- .summarize_varlist(data, c("a", "b", "c"), rep(TRUE, 3))
+    expect_identical(names(data), c("c", "a", "b"))
+    expect_identical(lapply(result$values, function(x) as.vector(unclass(x))),
+                     list(c(1, 2, 3), c(10, 20, 30), c(4, 5, 6)))
+})

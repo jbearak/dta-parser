@@ -351,10 +351,13 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     result
 }
 
+# Called once per column when a wide table is subset, so it avoids a
+# closure call per attribute name.
 .has_dta_metadata <- function(value) {
-    any(vapply(.dta_metadata_attribute_names, function(name) {
-        !is.null(attr(value, name, exact = TRUE))
-    }, logical(1)))
+    for (name in .dta_metadata_attribute_names) {
+        if (!is.null(attr(value, name, exact = TRUE))) return(TRUE)
+    }
+    FALSE
 }
 
 .dta_metadata_vector_class <- "dtatools_dta_metadata_vector"
