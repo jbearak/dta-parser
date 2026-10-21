@@ -315,6 +315,15 @@
   DHS file falls from 15.2 to 2.9 seconds, and with `detail = TRUE` from
   17.5 to 4.4 seconds.
 
+* `egen()` with `by`, `bysort`, or a `group_by()` table computes
+  `dta_mean()`, `dta_min()`, `dta_max()`, or `dta_total()` of one column
+  for every group in one native pass, rather than evaluating the
+  calculation once per group. Each group's values are read in the same
+  order as before, so the results are unchanged. On a 42,944-row DHS birth
+  history file, `egen(d, z = dta_mean(b2), by = caseid)` over 11,111 women
+  falls from 0.68 to 0.003 seconds, and on a 1,274,250-row file over
+  494,019 women from 38 to 0.15 seconds.
+
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
   5,360-column DHS file, a one-to-one merge that adds one variable falls

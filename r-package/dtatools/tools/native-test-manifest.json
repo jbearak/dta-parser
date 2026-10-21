@@ -16256,6 +16256,10 @@
           "sha256": "9a6a1ce2c5c9a53039aab3f46635706fb75ed634fd3e8864b6f8fb09d0993e27"
         },
         {
+          "path": "tests/testthat/test-egen-group-summary.R",
+          "sha256": "b057a0c0e49c7d11c25e4ebac0ae0f083600fe606ee021907920734613e97c41"
+        },
+        {
           "path": "tests/testthat/test-dictstring-width.R",
           "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
         }
@@ -17527,6 +17531,46 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries of one column match evaluation per group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 121,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries follow dplyr groups, empty groups and missing keys",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries raise the shadowing error of evaluation per group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "grouped summaries leave compact source columns untouched",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-egen-group-summary.R",
+          "test": "the grouped summary kernel declines groups it cannot read in order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         },
         {
