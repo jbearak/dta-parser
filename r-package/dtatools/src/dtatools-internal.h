@@ -852,6 +852,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP
 DTATOOLS_INTERNAL SEXP C_dtatools_patch_slot(SEXP data, SEXP location, SEXP rows,
                                 SEXP replacement, SEXP entry_shared);
 DTATOOLS_INTERNAL SEXP C_dtatools_shared_columns(SEXP columns);
+DTATOOLS_INTERNAL SEXP C_dtatools_reference_match(SEXP x, SEXP table, SEXP frames);
 DTATOOLS_INTERNAL SEXP C_dtatools_column_capacity(SEXP x);
 DTATOOLS_INTERNAL SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value);
 DTATOOLS_INTERNAL R_xlen_t column_append_blank_names_length(SEXP value);
