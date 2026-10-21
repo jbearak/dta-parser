@@ -13232,7 +13232,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "9e913a4b64e6718fbbea35a6c3970b3bb06ada0a3675ba2436eafbe61258e080"
+          "sha256": "abcc5c3ef32f12093e14b07e09ad671b62e125825420542c03659b5d6f1e6f01"
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
@@ -14206,6 +14206,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-summary.R",
+          "test": "a fresh session's first grouped summaries take both native checks",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
