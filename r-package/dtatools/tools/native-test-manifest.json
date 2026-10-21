@@ -282,6 +282,10 @@
         {
           "path": "tests/testthat/test-save-dta-callback-columns.R",
           "sha256": "7ab96fb7ed126b190b99b8f1ca1a39d592c870a7d541624ff369a9ce99184dd4"
+        },
+        {
+          "path": "tests/testthat/test-save-dta-strl-repeats.R",
+          "sha256": "e2c23f3d55ed8cb5b313c7e0de2c17eba8a469fa3957606f63554c0c34ec0c4f"
         }
       ],
       "blocks": [
@@ -1693,6 +1697,14 @@
           "skip": "forbid",
           "min_pass": 2,
           "warnings": 0
+        },
+        {
+          "file": "test-save-dta-strl-repeats.R",
+          "test": "strL repeats past the first string region keep one record each",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
         }
       ],
       "children": [
@@ -1723,7 +1735,7 @@
         },
         {
           "path": "tests/testthat/test-dta-string.R",
-          "sha256": "a4d2cc3b134ab0d56fac760415b8dd4e7fe7f4dace8de6cdd71b555cf3f4683e"
+          "sha256": "ee10f812d6c326c94ec93927c0ee98aa250fb48658c5236a291dc56f2ec0e2e8"
         },
         {
           "path": "tests/testthat/test-dta-numeric-summary.R",
@@ -2451,6 +2463,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 48,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-string.R",
+          "test": "missing strings are blanked natively as the R expression blanks them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
           "warnings": 0
         },
         {
@@ -8385,6 +8405,10 @@
         {
           "path": "tests/testthat/test-grouped-double-admission.R",
           "sha256": "e324c77b9306e78cb9ad62e785603f43bb0416c591e3dc70906a350db63f73a4"
+        },
+        {
+          "path": "tests/testthat/test-gather-runs.R",
+          "sha256": "fcfe5e0198d2cd3e5387f47cc8009df751dc392e17b7191824fe50ef1d77e0d6"
         }
       ],
       "blocks": [
@@ -10698,6 +10722,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-gather-runs.R",
+          "test": "column gathers copy row runs across chunks and keep missing counts",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1044,
+          "warnings": 0
         }
       ],
       "children": [
@@ -14918,6 +14950,10 @@
           "sha256": "11959bce37f2aeb61e1e5297e929d937896866b15d809878f71339014b8734ae"
         },
         {
+          "path": "tests/testthat/test-dta-merge-string-codes.R",
+          "sha256": "fbd8f607c5cecce7b3aab148971c9d8db942008e48a5c37a376048bf7824594b"
+        },
+        {
           "path": "tests/testthat/test-dta-compare-native.R",
           "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
         },
@@ -16225,6 +16261,38 @@
           "skip": "forbid",
           "min_pass": 10,
           "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "compact string keys get codes that are equal exactly when the values are",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "merges on compact string keys match merges on ordinary copies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 157,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "a key class with its own equality keeps its strings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "a compact key holding a NUL byte keeps its element error",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
         }
       ],
       "children": [],
@@ -16259,7 +16327,7 @@
         },
         {
           "path": "tests/testthat/test-codebooks.R",
-          "sha256": "81b89d29cda63cacc82b0d6608066fbe3216c565e20d002904fe55525b7900dd"
+          "sha256": "2f665a65f2292934a10d102a1630f50e54795f76c05f2987b6fd6d768f7ebd7b"
         },
         {
           "path": "tests/testthat/test-datasig.R",
@@ -16316,6 +16384,10 @@
         {
           "path": "tests/testthat/test-dictstring-width.R",
           "sha256": "c3873e0bd818ba63d20dffbcfb7ec1987fe006863aa9fbe018faa18c6971d34c"
+        },
+        {
+          "path": "tests/testthat/test-codebook-facts.R",
+          "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
         }
       ],
       "blocks": [
@@ -17641,6 +17713,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook facts of whole numbers match the R calls they replace",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 54,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebook-facts.R",
+          "test": "codebook statistics and label coverage match the R calls",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "native missing-code counts match the tabulated codes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 30,
+          "warnings": 0
+        },
+        {
+          "file": "test-codebooks.R",
+          "test": "codebook scans one ordinary copy of a compact column's observed values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
           "warnings": 0
         }
       ],

@@ -22,6 +22,15 @@
   0.037 seconds, and `group_by(d, v024)` from 0.025 to 0.012 seconds.
   Results and errors are unchanged.
 
+* A Stata string column replaces `NA` with `""` in one native pass when
+  vctrs restores, slices, or casts it, as `bind_rows()`, `vctrs::vec_c()`,
+  and joins that pad unmatched rows do. Assigning `""` through `[<-` had
+  copied a dtatools-owned string and then written each value through
+  ALTREP. On the India 2021 DHS births file, `vctrs::vec_c()` of its
+  1,274,250-row `caseid` column with itself falls from about 0.20 to 0.13
+  seconds, and a `full_join()` of its 724,115 women to their births' `caseid`
+  and `bidx` from 0.38 to 0.31 seconds. Results are unchanged.
+
 * Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
   type a group's bare integer or double scalar result, such as `n()`, in one
   native call, as `gen()` already did for a scalar. They had built its Stata
@@ -357,10 +366,27 @@
   falls from 0.68 to 0.003 seconds, and on a 1,274,250-row file over
   494,019 women from 38 to 0.15 seconds.
 
+* `dta_merge()` matches a string key that is a column from `read_dta()` or
+  `read_arrow()` on both sides through integer codes, one for each distinct
+  value, rather than through R strings. Rows get equal codes exactly when
+  their values are equal, so the merge matches the same rows. With five
+  columns of the 1,274,250-row India 2021 DHS birth history and four of the
+  724,115-row women file, a many-to-one merge on `caseid` falls from 0.51
+  to 0.26 seconds.
+
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
   5,360-column DHS file, a one-to-one merge that adds one variable falls
   from 0.34 to 0.13 seconds.
+
+* Gathering compact numeric columns by row, as `dta_merge()`, `filter()`,
+  `arrange()`, and `[` do, copies each value with a loop fixed to the
+  column's width and copies each run of 16 or more consecutive rows as one
+  block. Each column decides once, not once per row, how to test its values
+  for missing, and each worker takes the next column as it finishes one. On
+  the 1,274,250-row, 1,644-column India 2021 DHS birth history file, an
+  `m:1` merge on `caseid` falls from 0.78 to 0.35 seconds and
+  `arrange(b2)` from 0.46 to 0.29 seconds.
 
 * `save_dta()`, `save_arrow()`, and `datasig()` check each column's display
   format with one `regexpr()` call instead of `regmatches()` over
@@ -392,9 +418,27 @@
   5,360-column DHS file falls from 8.8 to 7.9 seconds. Results and errors
   are unchanged.
 
+* `save_dta()` no longer takes minutes to write a strL column from an
+  ordinary character vector of more than about 350,000 rows. Planning
+  rereads the first row of each repeated value. Past the first region of
+  string pointers, each reread refilled the region from that earlier row,
+  and the next row refilled it again. An earlier row is now read by
+  itself. Saving 500,000 rows of 20 DHS columns plus a note column that
+  holds either a 3,000-byte value or `"short"` falls from 190 to 0.33
+  seconds. Files are unchanged.
+
 * Compact numeric scalar reads forward directly to the native getter and
   resolve wrapper state once. Retained readers cache the entire current chunk
   for forward, reverse, and permuted access.
+
+* `codebook()` tallies a numeric variable's observed values by value when
+  they are whole numbers whose range is at most their count plus 65,536.
+  One tally gives the distinct values in order of first appearance, the
+  minimum, maximum and smallest gap, and the type 2 quantiles, without
+  `unique()`, `sort()` or `quantile()`. Other values keep those calls, and
+  the results are unchanged. On a 42,944-row, 1,209-column DHS birth
+  history file it falls from 2.5 to 2.2 seconds, and on a 16,787-row,
+  5,360-column DHS file from 5.1 to 4.7 seconds.
 
 * `codebook()` copies a numeric variable's observed values out of compact
   storage once, so its statistics no longer decode every value on each
@@ -405,6 +449,14 @@
   falls from 5.2 to 3.5 seconds, on 1,007,220 rows of 100 DHS variables
   from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
   8.3 to 6.7 seconds.
+
+* `codebook()` counts each numeric variable's missing codes in compiled
+  code, without building a code for every value. For a Stata numeric
+  variable it subsets the column's bare values and decodes the observed
+  ones once, rather than slicing the column through vctrs and decoding the
+  slice in every summary, and it reads a dibble's columns by position. On
+  a 16,787-row, 5,360-column DHS file, `codebook(compact = TRUE)` falls
+  from 1.5 to 1.2 seconds and `codebook()` from 2.6 to 2.2 seconds.
 
 * `codebook()` collects its problem rows as columns, where it built a data
   frame for each one, and counts each numeric variable's missing codes in

@@ -139,3 +139,39 @@ test_that("Stata string subset and restore padding use empty missing strings", {
         expect_error(value[1L] <- NA_character_, "NA_character_")
     }
 })
+
+test_that("missing strings are blanked natively as the R expression blanks them", {
+    blank <- function(x) .Call(dtatools:::C_dtatools_blank_missing_strings, x)
+    expected <- function(x) {
+        x[is.na(x)] <- ""
+        x
+    }
+    plain <- c(a = "a", b = NA, c = "ccc", d = NA)
+    expect_identical(blank(plain), expected(plain))
+    expect_false(dtatools:::.is_altrep(blank(plain)))
+    expect_identical(plain[["b"]], NA_character_)
+    owned <- .Call(dtatools:::C_dtatools_capture_column, plain)
+    expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, owned)))
+    result <- blank(owned)
+    expect_identical(result, expected(owned))
+    # The result stays owned and knows it holds no NA. The source keeps its NA.
+    expect_false(is.null(.Call(dtatools:::C_dtatools_owned_info, result)))
+    expect_true(.Call(dtatools:::C_dtatools_owned_no_na, result))
+    expect_identical(owned[["b"]], NA_character_)
+    # A retained writable pointer can add an NA after the facts were cached.
+    exposed <- .Call(dtatools:::C_dtatools_capture_column, c("a", "b"))
+    pointer <- .Call(dtatools:::C_dtatools_owned_pointer, exposed, TRUE)
+    .Call(dtatools:::C_dtatools_owned_string_width, exposed)
+    .Call(dtatools:::C_dtatools_owned_pointer_write, pointer, 2L, NA_character_)
+    expect_identical(blank(exposed), c("a", ""))
+    # Values without NA come back as the same object.
+    complete <- c("a", "b")
+    expect_identical(rlang::obj_address(blank(complete)), rlang::obj_address(complete))
+    expect_identical(blank(character()), character())
+    # Classed values and foreign ALTREP keep the R expression.
+    expect_null(blank(structure(c("a", NA), class = "other")))
+    expect_null(blank(1:2))
+    deferred <- as.character(seq_len(100L))
+    expect_true(dtatools:::.is_altrep(deferred))
+    expect_null(blank(deferred))
+})
