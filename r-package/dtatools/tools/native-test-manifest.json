@@ -1746,6 +1746,10 @@
           "sha256": "6d923e01224ae6aef2d2c8474aed1b409de90544cea0d84e73737fd19d460d13"
         },
         {
+          "path": "tests/testthat/test-compact-combine.R",
+          "sha256": "a0354144546e30499bae3bca26716271d30931467b9784e45e313ac5d5345d7e"
+        },
+        {
           "path": "tests/testthat/test-numeric-helper-profile.R",
           "sha256": "07c4c2bf3926c8cecc1a501ef5011f0c22ebc7e328ca195426b5f0c871b35763"
         },
@@ -4720,6 +4724,60 @@
           "skip": "forbid",
           "min_pass": 480,
           "warnings": 0
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "compact combination matches list_unchop() with and without indices",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "compact combination gives each result its own attribute vectors",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "compact combination declines pieces it cannot construct as the casts do",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 23,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "compact combination runs every cast of a replaced Stata method",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "grouped mutate and gen combine compact results as the R methods do",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 9,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-compact-combine.R",
+          "test": "a fresh session's first grouped mutate of a read file combines natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
@@ -8235,7 +8293,7 @@
         },
         {
           "path": "tests/testthat/test-mutation-fast.R",
-          "sha256": "70e0da2f967b05e3efefffe7a2a72fd7273c4fe312b3e63cddd4e0ef48586f71"
+          "sha256": "d13827e6565dcdb17ea57f0f064e6613fb3f6dec19479ebd9873a1e1d7874236"
         },
         {
           "path": "tests/testthat/test-generation-metadata.R",
@@ -10558,6 +10616,25 @@
           "skip": "forbid",
           "min_pass": 13,
           "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "bare scalars type natively as the R path types them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-mutation-fast.R",
+          "test": "grouped summaries type bare scalar results natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
@@ -12365,7 +12442,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-row-slice.R",
-          "sha256": "76744408be7742c9d0801f6155f798264395273be4c6ddd3d4ef1151dab8c332"
+          "sha256": "dde6fee584cb6db13316772a98ee2f30ca318cd48ef3080ee06af7a5ae090668"
         },
         {
           "path": "tests/testthat/test-slice-dta-rows.R",
@@ -12841,6 +12918,17 @@
           "warnings": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "min_pass_before_skip": 0,
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-dibble-row-slice.R",
+          "test": "S6-S08 slices of many groups take the rows of the typed-frame oracle",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 14,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
