@@ -5,6 +5,15 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Every grouped verb on a dibble checks that its grouping metadata matches
+  its rows. That check now reads the rows of all groups in one native pass
+  when they are ordinary integer vectors, as `group_by()` makes them, rather
+  than calling the list's `[[` method, `is.integer()`, and `is.unsorted()`
+  through R for each group. On the 1,274,250-row India 2021 DHS births file,
+  `group_by(d, caseid)` over its 494,019 women falls from about 0.72 to 0.21
+  seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
+  to 0.99 seconds. Results and errors are unchanged.
+
 * A Stata string column replaces `NA` with `""` in one native pass when
   vctrs restores, slices, or casts it, as `bind_rows()`, `vctrs::vec_c()`,
   and joins that pad unmatched rows do. Assigning `""` through `[<-` had
