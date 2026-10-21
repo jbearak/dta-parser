@@ -462,7 +462,12 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     finite_observed <- if (numeric) c(.book_numeric_data(observed)) else double()
     # Observed numeric values hold no missing codes, so their distinct
     # values are their distinct doubles, with -0 equal to 0 as in Stata.
-    distinct <- if (numeric) unique(finite_observed) else NULL
+    # Integers over a modest range are tallied by value instead, and the
+    # tally also gives the order statistics below.
+    facts <- if (numeric) .Call(C_dtatools_codebook_facts, finite_observed)
+    distinct <- if (!is.null(facts)) facts[[1L]] else if (numeric) {
+        unique(finite_observed)
+    }
     unique_count <- if (!supported) NA_integer_ else if (numeric) {
         length(distinct)
     } else length(unique(observed))
@@ -491,13 +496,17 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     } else integer(257L)
     stats <- rep(NA_real_, 10L)
     if (numeric && length(finite_observed)) {
-        q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
-                             names = FALSE, type = 2)
-        sorted <- sort(distinct)
-        unit <- if (length(sorted) < 2L) NA_real_ else min(diff(sorted))
-        stats <- c(min(finite_observed), max(finite_observed), unit,
-                   mean(finite_observed), if (length(finite_observed) > 1L) stats::sd(finite_observed) else NA,
-                   q)
+        # The minimum, maximum, smallest gap and quantiles, in that order.
+        ranked <- if (is.null(facts)) {
+            q <- stats::quantile(finite_observed, c(.1, .25, .5, .75, .9),
+                                 names = FALSE, type = 2)
+            sorted <- sort(distinct)
+            unit <- if (length(sorted) < 2L) NA_real_ else min(diff(sorted))
+            c(min(finite_observed), max(finite_observed), unit, q)
+        } else facts[[2L]]
+        stats <- c(ranked[1:3], mean(finite_observed),
+                   if (length(finite_observed) > 1L) stats::sd(finite_observed) else NA,
+                   ranked[4:8])
     }
     labels <- attr(x, "labels", exact = TRUE)
     table_name <- attr(x, "value.label.name", exact = TRUE)

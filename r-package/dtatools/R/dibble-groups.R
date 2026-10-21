@@ -116,8 +116,6 @@
                     call. = FALSE)
                 next
             }
-            if (is.null(expected_rows)) expected_rows <-
-                rep.int(seq_along(used), sizes[used])
             actual <- .gather_dta_columns(columns[name], as.integer(rows))[[1L]]
             key <- .gather_dta_columns(group_keys[name], used)[[1L]]
             # Cast compatible keys before taking equality proxies. Cast each
@@ -126,9 +124,18 @@
             pair <- vctrs::vec_cast_common(x = .grouping_key_value(actual),
                                            y = .grouping_key_value(key))
             actual <- vctrs::vec_proxy_equal(pair$x)
-            expected <- .gather_dta_columns(list(key = vctrs::vec_proxy_equal(pair$y)),
-                                             expected_rows)[[1L]]
-            if (!all(vctrs::vec_equal(actual, expected, na_equal = TRUE))) {
+            key <- vctrs::vec_proxy_equal(pair$y)
+            # Bare logical, integer and double proxies, or bare data frames
+            # of them, compare natively with each group's key in place of
+            # the expanded keys.
+            matched <- .Call(C_dtatools_group_keys_match, actual, key, sizes[used])
+            if (is.null(matched)) {
+                if (is.null(expected_rows)) expected_rows <-
+                    rep.int(seq_along(used), sizes[used])
+                expected <- .gather_dta_columns(list(key = key), expected_rows)[[1L]]
+                matched <- all(vctrs::vec_equal(actual, expected, na_equal = TRUE))
+            }
+            if (!matched) {
                 stop("`data` has grouping keys that do not match its rows; assign `data <- dplyr::ungroup(data)` and group again",
                      call. = FALSE)
             }
