@@ -31,6 +31,14 @@
     TRUE
 }
 
+# vctrs's as.list() and `[[` methods for a list_of, as defined when dtatools
+# was built. The native group row facts read a list_of's elements directly
+# only while dispatch from base finds these.
+.group_rows_list_of_methods <- list(
+    get("as.list.vctrs_list_of", asNamespace("vctrs")),
+    get("[[.vctrs_list_of", asNamespace("vctrs"))
+)
+
 .validate_group_metadata <- function(data, columns = .data_columns(data),
                                      names = base::names(columns), row_count = nrow(data)) {
     if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
@@ -48,13 +56,24 @@
             stop("`data` has malformed grouping metadata with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again",
                  call. = FALSE)
         }
-        if (!is.list(groups$.rows) ||
-            !all(vapply(groups$.rows, is.integer, logical(1)))) {
+        # One native pass reads the rows, sizes, and order of ordinary integer
+        # groups held in a plain list, or in a vctrs list_of while dispatch
+        # finds vctrs's own methods, which hand back its elements unchanged.
+        # With many groups this replaces a `[[` dispatch and two R calls per
+        # group. Any other `.rows` keeps the R expressions below.
+        facts <- .Call(C_dtatools_group_rows_facts, groups$.rows,
+                       .group_rows_list_of_methods)
+        if (!is.list(groups$.rows) || (is.null(facts) &&
+            !all(vapply(groups$.rows, is.integer, logical(1))))) {
             stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
                  call. = FALSE)
         }
         group_names <- setdiff(names(groups), ".rows")
-        rows <- unlist(groups$.rows, use.names = FALSE)
+        rows <- if (is.null(facts)) unlist(groups$.rows, use.names = FALSE) else facts[[1L]]
+        group_sizes <- function() if (is.null(facts)) lengths(groups$.rows) else facts[[2L]]
+        unsorted <- function() if (is.null(facts)) {
+            any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE))
+        } else !facts[[3L]]
         # Ordinary unclassed integer rows cannot dispatch comparison methods.
         # Preserve the original expression for every other flattened value.
         ordinary_rows <- is.integer(rows) && !is.object(rows) && !isS4(rows) &&
@@ -67,11 +86,11 @@
         } else any(base::tabulate(as.integer(rows), nbins = row_count) != 1L)
         if (anyNA(rows) || outside() ||
             !all(group_names %in% names) ||
-            any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||
+            unsorted() ||
             length(rows) != row_count ||
             incomplete() ||
             (inherits(data, "rowwise_df") &&
-             (!all(lengths(groups$.rows) == 1L) ||
+             (!all(group_sizes() == 1L) ||
               !identical(as.integer(rows), seq_len(row_count))))) {
             stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
                  call. = FALSE)
@@ -85,7 +104,7 @@
         # A complete partition is not enough: each key must describe every
         # row assigned to it. Otherwise grouped helpers silently compute on
         # the wrong observations after ordinary edits to grouping metadata.
-        sizes <- lengths(groups$.rows)
+        sizes <- group_sizes()
         used <- which(sizes > 0L)
         expected_rows <- NULL
         group_keys <- .data_columns(groups)
