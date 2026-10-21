@@ -5,6 +5,15 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Arithmetic that the native scalar route declines, such as on a column
+  with value labels or with `^`, `%%`, and `%/%`, now classifies its
+  result's Stata storage natively. The R path had passed the result to that
+  step as an unevaluated call, which the native step never admits, so every
+  element went through R predicates. On the 1,274,250-row India 2021 DHS
+  births file, `b4 * 2` on the labelled sex column falls from about 0.056 to
+  0.013 seconds, `b4 / 2` from 0.119 to 0.013, and `b11 / 12` from 0.082 to
+  0.025. Results and errors are unchanged.
+
 * Every grouped verb on a dibble checks that its grouping metadata matches
   its rows. That check now reads the rows of all groups in one native pass
   when they are ordinary integer vectors, as `group_by()` makes them, rather

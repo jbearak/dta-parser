@@ -1338,7 +1338,10 @@ vec_cast.logical.dta_numeric <- function(
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
     missing_operand <- .dta_read_is_na(args[[1L]]) | .dta_read_is_na(args[[2L]])
-    .dta_computed(.collapse_missing(result, missing_operand), minimum)
+    # Bind the collapsed values first. The native computed route reads only
+    # a settled argument and declines on an unevaluated call.
+    result <- .collapse_missing(result, missing_operand)
+    .dta_computed(result, minimum)
 }
 
 # Stata collapses a tagged missing operand to system missing `.` in
