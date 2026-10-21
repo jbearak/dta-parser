@@ -14926,6 +14926,10 @@
           "sha256": "11959bce37f2aeb61e1e5297e929d937896866b15d809878f71339014b8734ae"
         },
         {
+          "path": "tests/testthat/test-dta-merge-string-codes.R",
+          "sha256": "fbd8f607c5cecce7b3aab148971c9d8db942008e48a5c37a376048bf7824594b"
+        },
+        {
           "path": "tests/testthat/test-dta-compare-native.R",
           "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
         },
@@ -16216,6 +16220,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 10,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "compact string keys get codes that are equal exactly when the values are",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 15,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "merges on compact string keys match merges on ordinary copies",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 157,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "a key class with its own equality keeps its strings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-merge-string-codes.R",
+          "test": "a compact key holding a NUL byte keeps its element error",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],
