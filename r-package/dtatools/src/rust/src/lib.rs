@@ -5022,6 +5022,26 @@ impl<'a> RWriteSource<'a> {
         })
     }
 
+    /// Whether reading this column calls back into R, which only the main
+    /// R thread may do.
+    fn calls_r(&self) -> bool {
+        self.numeric_region.is_some() || self.string_region.is_some()
+    }
+
+    /// The row where this column's region cache ends, so reading any row
+    /// from the cache's start up to it calls no R code. `None` for a column
+    /// that never calls R.
+    fn cached_until(&self) -> Option<u64> {
+        if let Some(cache) = &self.numeric_region {
+            let region = cache.region.borrow();
+            return Some(region.start + region.values.len() as u64);
+        }
+        self.string_region.as_ref().map(|cache| {
+            let region = cache.region.borrow();
+            region.start + region.values.len() as u64
+        })
+    }
+
     fn callback_numeric_value_at(&self, row: u64) -> Result<(f64, c_int), RWriteError> {
         let cache = self
             .numeric_region
@@ -5352,6 +5372,28 @@ unsafe fn encode_direct_observation_column(
                 );
             }
         }
+        DtaType::FixedString(width) if source.descriptor.direct_string_data.is_null() => {
+            // An ordinary character column, read through R callbacks with
+            // the scalar writer's checks.
+            for offset in 0..rows {
+                let row = start + offset as u64;
+                let value = r_write_source_result(column, row, source.string_value_at(row))?;
+                if value.contains('\0') || value.len() > usize::from(width) {
+                    return Err(DtaWriteError::InvalidValue {
+                        column: column.name.to_string(),
+                        row,
+                        message: format!(
+                            "string must contain at most {width} UTF-8 bytes and no NUL"
+                        ),
+                    });
+                }
+                ptr::copy_nonoverlapping(
+                    value.as_ptr(),
+                    output.add(offset * row_width + column_offset),
+                    value.len(),
+                );
+            }
+        }
         DtaType::FixedString(width) => {
             let data = &*source
                 .descriptor
@@ -5406,19 +5448,15 @@ impl RWriteObservationSource<'_, '_> {
         r_write_source_result(&self.data.columns[column_index], row, result)
     }
 
+    /// Every column but a strL one can fill its cells of a row block by
+    /// itself. A column read through R callbacks fills them on this thread,
+    /// so one such column no longer sends the whole dataset to the scalar
+    /// writer.
     fn has_direct_observations(&self) -> bool {
         self.data
             .columns
             .iter()
-            .zip(self.sources)
-            .all(|(column, source)| match column.dta_type {
-                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-                    !source.descriptor.direct_numeric_values.is_null()
-                        || source.direct_owned.is_some()
-                }
-                DtaType::FixedString(_) => !source.descriptor.direct_string_data.is_null(),
-                DtaType::StrL => false,
-            })
+            .all(|column| !matches!(column.dta_type, DtaType::StrL))
     }
 
     fn append_direct_observation_rows(
@@ -5428,8 +5466,6 @@ impl RWriteObservationSource<'_, '_> {
         end: u64,
         available_parallelism: usize,
     ) -> Result<usize, DtaWriteError> {
-        let start_index =
-            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
         let rows = usize::try_from(end - start)
             .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
         let row_width = self
@@ -5458,32 +5494,99 @@ impl RWriteObservationSource<'_, '_> {
             offsets.push(offset);
             offset += write_type_width(&column.dta_type);
         }
+        let layout = ObservationLayout {
+            output,
+            start,
+            row_width,
+            offsets: &offsets,
+        };
+        if !self.sources.iter().any(RWriteSource::calls_r) {
+            return self.encode_observation_columns(&layout, start, end, available_parallelism);
+        }
 
-        let useful_for_size = region_bytes
+        // The row-by-row writer runs an R callback when a column's region
+        // cache misses, and its errors and the callback's effects on other
+        // columns show where it ran. So a row that may miss is encoded in
+        // column order, and the rows every cache then holds, which call no
+        // R code, are encoded column by column.
+        let mut workers = 1;
+        let mut row = start;
+        while row < end {
+            self.encode_observation_rows_in_order(&layout, row, row + 1)?;
+            row += 1;
+            let cached = self
+                .sources
+                .iter()
+                .filter_map(RWriteSource::cached_until)
+                .min()
+                .unwrap_or(end)
+                .min(end);
+            if cached > row {
+                match self.encode_observation_columns(&layout, row, cached, available_parallelism) {
+                    Ok(used) => workers = workers.max(used),
+                    Err(error) => {
+                        // Report the cell the row-by-row writer would have
+                        // failed on first.
+                        self.encode_observation_rows_in_order(&layout, row, cached)?;
+                        return Err(error);
+                    }
+                }
+                row = cached;
+            }
+        }
+        Ok(workers)
+    }
+
+    /// Encode rows `start..end` one row at a time, each in column order.
+    fn encode_observation_rows_in_order(
+        &self,
+        layout: &ObservationLayout<'_>,
+        start: u64,
+        end: u64,
+    ) -> Result<(), DtaWriteError> {
+        for row in start..end {
+            let region = layout.region(row, row + 1)?;
+            for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
+            {
+                unsafe {
+                    encode_direct_observation_column(column, source, region, layout.offsets[index])
+                }?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Encode rows `start..end` column by column. Workers take only the
+    /// columns whose buffers are exposed; a column read through R callbacks
+    /// is encoded on this thread after they finish.
+    fn encode_observation_columns(
+        &self,
+        layout: &ObservationLayout<'_>,
+        start: u64,
+        end: u64,
+        available_parallelism: usize,
+    ) -> Result<usize, DtaWriteError> {
+        let region = layout.region(start, end)?;
+        let (shared, local): (Vec<usize>, Vec<usize>) =
+            (0..self.data.columns.len()).partition(|&index| !self.sources[index].calls_r());
+        let useful_for_size = (region.rows * region.row_width)
             .div_ceil(DIRECT_OBSERVATION_BYTES_PER_WORKER)
             .max(1);
         let workers = available_parallelism
             .max(1)
-            .min(self.data.columns.len())
+            .min(shared.len().max(1))
             .min(useful_for_size);
         if workers <= 1 {
-            let region = DirectObservationRegion {
-                output: output as usize,
-                start,
-                start_index,
-                rows,
-                row_width,
-            };
             for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
             {
                 unsafe {
-                    encode_direct_observation_column(column, source, region, offsets[index])
+                    encode_direct_observation_column(column, source, region, layout.offsets[index])
                 }?;
             }
             return Ok(workers);
         }
 
-        let mut ordered = (0..self.data.columns.len()).collect::<Vec<_>>();
+        let mut ordered = shared;
         ordered.sort_unstable_by_key(|&index| {
             std::cmp::Reverse(write_type_width(&self.data.columns[index].dta_type))
         });
@@ -5502,17 +5605,10 @@ impl RWriteObservationSource<'_, '_> {
 
         let columns_address = self.data.columns.as_ptr() as usize;
         let sources_address = self.sources.as_ptr() as usize;
-        let region = DirectObservationRegion {
-            output: output as usize,
-            start,
-            start_index,
-            rows,
-            row_width,
-        };
+        let offsets = layout.offsets;
         std::thread::scope(|scope| -> Result<(), DtaWriteError> {
             let mut handles = Vec::with_capacity(workers);
             for assignment in assignments {
-                let offsets = &offsets;
                 handles.push(scope.spawn(move || -> Result<(), DtaWriteError> {
                     // The main R thread exposed the source buffers before spawning
                     // and keeps their protected owners live. Workers only read
@@ -5539,7 +5635,44 @@ impl RWriteObservationSource<'_, '_> {
             }
             Ok(())
         })?;
+        for index in local {
+            unsafe {
+                encode_direct_observation_column(
+                    &self.data.columns[index],
+                    &self.sources[index],
+                    region,
+                    offsets[index],
+                )
+            }?;
+        }
         Ok(workers)
+    }
+}
+
+/// Where a block of observation rows is encoded: its buffer, its first
+/// row, and each column's offset within a row.
+struct ObservationLayout<'a> {
+    output: *mut u8,
+    start: u64,
+    row_width: usize,
+    offsets: &'a [usize],
+}
+
+impl ObservationLayout<'_> {
+    fn region(&self, start: u64, end: u64) -> Result<DirectObservationRegion, DtaWriteError> {
+        let start_index =
+            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
+        let skipped = usize::try_from(start - self.start)
+            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
+        let rows = usize::try_from(end - start)
+            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
+        Ok(DirectObservationRegion {
+            output: unsafe { self.output.add(skipped * self.row_width) } as usize,
+            start,
+            start_index,
+            rows,
+            row_width: self.row_width,
+        })
     }
 }
 
@@ -5969,13 +6102,59 @@ mod tests {
         TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
     };
 
+    /// A numeric column that the stub callback below serves, recording the
+    /// threads that ask for its regions.
+    struct CallbackColumn {
+        values: Vec<f64>,
+        missing_codes: Vec<c_int>,
+        threads: std::sync::Mutex<Vec<std::thread::ThreadId>>,
+    }
+
+    /// Stands in for the R region callback. A null reader fails, and a test
+    /// reader points to a `CallbackColumn`.
     #[no_mangle]
     unsafe extern "C" fn dtatools_write_numeric_region(
-        _reader: *const c_void,
+        reader: *const c_void,
+        start: usize,
+        length: usize,
+        values: *mut f64,
+        missing_codes: *mut c_int,
+        _error_message: *mut c_char,
+        _error_capacity: usize,
+    ) -> c_int {
+        let Some(column) = reader.cast::<CallbackColumn>().as_ref() else {
+            return 0;
+        };
+        if start
+            .checked_add(length)
+            .is_none_or(|end| end > column.values.len())
+        {
+            return 0;
+        }
+        column
+            .threads
+            .lock()
+            .unwrap()
+            .push(std::thread::current().id());
+        ptr::copy_nonoverlapping(column.values.as_ptr().add(start), values, length);
+        ptr::copy_nonoverlapping(
+            column.missing_codes.as_ptr().add(start),
+            missing_codes,
+            length,
+        );
+        1
+    }
+
+    /// Stands in for the R character region callback, which these tests
+    /// never reach.
+    #[no_mangle]
+    unsafe extern "C" fn dtatools_write_string_region(
+        _values: super::Sexp,
         _start: usize,
         _length: usize,
-        _values: *mut f64,
-        _missing_codes: *mut c_int,
+        _ids: *mut u64,
+        _strings: *mut *const c_char,
+        _string_lengths: *mut usize,
         _error_message: *mut c_char,
         _error_capacity: usize,
     ) -> c_int {
@@ -6078,6 +6257,130 @@ mod tests {
                 "variant {variant}"
             );
             assert_eq!(source.numeric_replacements.get(), 0);
+        }
+    }
+
+    #[test]
+    fn callback_columns_join_direct_rows_on_the_calling_thread() {
+        use super::{encode_numeric, write_raw_numeric_to_ptr};
+        let rows = 300_000_usize;
+        let bytes: Vec<i8> = (0..rows).map(|row| (row % 90) as i8).collect();
+        let longs: Vec<c_int> = (0..rows).map(|row| row as c_int * 7).collect();
+        // Byte storage cannot hold 300 or 1.5, and code 256 is an untagged
+        // NaN, so those rows become counted system missings.
+        let callback = CallbackColumn {
+            values: (0..rows)
+                .map(|row| match row % 5 {
+                    0 => 300.0,
+                    1 => 1.5,
+                    _ => (row % 100) as f64,
+                })
+                .collect(),
+            missing_codes: (0..rows)
+                .map(|row| match row % 7 {
+                    0 => 0,
+                    1 => c_int::from(b'c'),
+                    2 => 256,
+                    _ => -1,
+                })
+                .collect(),
+            threads: Default::default(),
+        };
+        let mut callback_descriptor = direct_numeric_descriptor(0, ptr::null(), 0, 0.0, 1.0);
+        callback_descriptor.numeric_values = (&callback as *const CallbackColumn).cast();
+        let descriptors = [
+            direct_numeric_descriptor(0, bytes.as_ptr().cast(), 3, 0.0, 1.0),
+            callback_descriptor,
+            direct_numeric_descriptor(2, longs.as_ptr().cast(), 1, 0.0, 1.0),
+        ];
+        let dta_types = [DtaType::Byte, DtaType::Byte, DtaType::Long];
+        let row_width = 6;
+        let sources_for = |region_rows| {
+            descriptors
+                .iter()
+                .map(|descriptor| {
+                    RWriteSource::new(descriptor, rows as u64, region_rows, 1).unwrap()
+                })
+                .collect::<Vec<_>>()
+        };
+
+        // The scalar writer's order: each row's cells in column order,
+        // raw storage first.
+        let scalar = sources_for(4096);
+        let mut expected = vec![0_u8; rows * row_width];
+        for row in 0..rows {
+            let mut offset = row * row_width;
+            for (source, dta_type) in scalar.iter().zip(&dta_types) {
+                let value = match source.raw_numeric_value_at(row as u64).unwrap() {
+                    Some(value) => value,
+                    None => encode_numeric(
+                        dta_type,
+                        source.numeric_value_at(row as u64, dta_type).unwrap(),
+                    ),
+                };
+                unsafe { write_raw_numeric_to_ptr(expected.as_mut_ptr().add(offset), value) };
+                offset += dta_type.storage_width() as usize;
+            }
+        }
+        let expected_replacements: Vec<u64> = scalar
+            .iter()
+            .map(|source| source.numeric_replacements.get())
+            .collect();
+        assert!(expected_replacements[1] > 0);
+
+        // A region that holds every row leaves one stretch for workers after
+        // the first row; 4,096-row regions refill along the way.
+        for (parallelism, region_rows, expected_workers) in
+            [(1, 4096, 1), (4, 4096, 1), (4, rows, 2)]
+        {
+            callback.threads.lock().unwrap().clear();
+            let sources = sources_for(region_rows);
+            let columns = dta_types
+                .iter()
+                .enumerate()
+                .map(|(index, dta_type)| DtaWriteColumn {
+                    name: Cow::Owned(format!("x{index}")),
+                    dta_type: dta_type.clone(),
+                    format: Cow::Borrowed(""),
+                    label: Cow::Borrowed(""),
+                    has_value_labels: false,
+                    value_labels: Vec::new(),
+                    notes: Vec::new(),
+                    characteristics: Vec::new(),
+                    values: DtaWriteColumnValues::Source(&sources[index]),
+                })
+                .collect();
+            let data = DtaWriteData {
+                dataset_label: Cow::Borrowed(""),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
+                columns,
+            };
+            let observation_source = RWriteObservationSource {
+                data: &data,
+                sources: &sources,
+            };
+            assert!(observation_source.has_direct_observations());
+            let mut output = Vec::new();
+            let workers = observation_source
+                .append_direct_observation_rows(&mut output, 0, rows as u64, parallelism)
+                .unwrap();
+            // Only the two direct columns go to workers.
+            assert_eq!(workers, expected_workers);
+            assert!(
+                output == expected,
+                "{parallelism} workers, {region_rows} rows"
+            );
+            let replacements: Vec<u64> = sources
+                .iter()
+                .map(|source| source.numeric_replacements.get())
+                .collect();
+            assert_eq!(replacements, expected_replacements);
+            let threads = callback.threads.lock().unwrap();
+            assert!(!threads.is_empty());
+            assert!(threads
+                .iter()
+                .all(|&thread| thread == std::thread::current().id()));
         }
     }
 
