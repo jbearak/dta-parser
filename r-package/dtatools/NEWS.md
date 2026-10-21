@@ -298,7 +298,7 @@
   calculation once per group. Each group's values are read in the same
   order as before, so the results are unchanged. On a 42,944-row DHS birth
   history file, `egen(d, z = dta_mean(b2), by = caseid)` over 11,111 women
-  falls from 0.66 to 0.004 seconds, and on a 1,274,250-row file over
+  falls from 0.68 to 0.003 seconds, and on a 1,274,250-row file over
   494,019 women from 38 to 0.15 seconds.
 
 * `dta_merge()` gathers the result's columns by position rather than
