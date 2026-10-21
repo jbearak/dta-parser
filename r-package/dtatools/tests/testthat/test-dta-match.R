@@ -91,6 +91,50 @@ test_that("matching and sets support owned Stata strings", {
     expect_null(names(result))
 })
 
+test_that("matching and sets read compact strings as their values", {
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    values <- rep(c("a", "", "NA", "café", "b"), 30L)
+    save_dta(data.frame(s = values), path)
+    x <- read_dta(path)$s
+    expect_true(.is_unmaterialized_dictstring(x))
+
+    latin <- iconv(c("café", "", "zz", "NA"), "UTF-8", "latin1")
+    expect_identical(Encoding(latin[[1L]]), "latin1")
+    expect_identical(
+        dta_match(x, latin)[1:5], c(NA_integer_, 2L, 4L, 1L, NA_integer_)
+    )
+    expect_identical(dta_match(x, latin), dta_match(values, latin))
+    expect_identical(dta_match(latin, x), c(4L, 2L, NA_integer_, 3L))
+    expect_identical(
+        dta_match(x, latin, incomparables = ""),
+        dta_match(values, latin, incomparables = "")
+    )
+    expect_identical(dta_in(x, latin), dta_in(values, latin))
+    expect_identical(
+        as.character(dta_union(x, latin)), c("a", "", "NA", "café", "b", "zz")
+    )
+    expect_identical(as.character(dta_intersect(x, latin)), c("", "NA", "café"))
+    expect_identical(as.character(dta_setdiff(x, latin)), c("a", "b"))
+    expect_true(dta_setequal(x, rev(unique(values))))
+    expect_true(dta_identical(x, iconv(values, "UTF-8", "latin1")))
+    expect_error(
+        dta_identical(x, replace(values, 3L, NA_character_)), "NA_character_"
+    )
+    expect_true(.is_unmaterialized_dictstring(x))
+})
+
+test_that("an empty string operand matches nothing", {
+    expect_identical(dta_match(character(), c("", "b")), integer())
+    expect_identical(dta_in(c("a", ""), character()), c(FALSE, FALSE))
+    expect_identical(dta_union(character(), c("a", "b")), c("a", "b"))
+    expect_identical(dta_union(character(), NULL), character())
+    expect_identical(dta_intersect(character(), c("", "b")), character())
+    expect_identical(dta_intersect(c("", "a"), character()), character())
+    expect_identical(dta_setdiff(c("", "a"), character()), c("", "a"))
+    expect_identical(as.character(dta_union(dta_string(character()), "a")), "a")
+})
+
 test_that("union accepts bare tagged missings on either side", {
     left <- c(1, tagged_missing("a"))
     right <- dta_double(c(2, tagged_missing("b")))
