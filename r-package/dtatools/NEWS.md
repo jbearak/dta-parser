@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
+  type a group's bare integer or double scalar result, such as `n()`, in one
+  native call, as `gen()` already did for a scalar. They had built its Stata
+  attributes in R for every group. A value that Stata storage can't hold
+  still takes the R path and its error. On the 42,944-row Senegal 2017 DHS
+  births file, `count(d, caseid)` over its 11,111 women falls from about
+  0.48 to 0.34 seconds. Results and errors are unchanged.
+
 * Grouped `summarise()` on a dibble takes its native common type and
   combine steps from a session's first call. Their checks compare each
   function they skip with the package's own copy, and declined while any of
@@ -15,6 +23,23 @@
   it loads. On the 1,274,250-row India 2021 DHS births file, a session's
   first `summarise(group_by(d, caseid), n = n())` over its 494,019 women
   falls from about 187 to 34 seconds. Results are unchanged.
+
+* Grouped `mutate()` on a dibble, and grouped `gen()` and `repl()`, combine
+  per-group results stored as Stata bytes, ints, longs, or floats in one
+  native pass, as they already did for doubles, rather than casting each
+  group's result through vctrs's R methods. On the 1,274,250-row India 2021
+  DHS births file, `mutate(group_by(d, caseid), v = mean(b2))` over its
+  494,019 women falls from about 231 to 66 seconds, and `v = b2 + 1` from
+  about 252 to 46 seconds. Results are unchanged.
+
+* Grouped `slice()`, `slice_head()`, `slice_tail()`, `slice_min()`,
+  `slice_max()`, and `slice_sample()` on a dibble pass the list of each
+  group's rows to `vctrs::vec_c()` as one spliced argument, rather than
+  through a call that `rlang::exec()` built with one argument per group.
+  That call's cost grew with about the square of the number of groups. On
+  the first 100,000 rows of the India 2021 DHS births file,
+  `slice_head(group_by(d, caseid), n = 1)` over 42,739 women falls from
+  about 16 to 0.6 seconds. Results and errors are unchanged.
 
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
