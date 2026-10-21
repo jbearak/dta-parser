@@ -14,6 +14,14 @@
   seconds, and `arrange(g, b2, .by_group = TRUE)` on that grouping from 1.96
   to 0.99 seconds. Results and errors are unchanged.
 
+* When a grouped verb on a dibble checks its grouping metadata, it compares
+  each row's numeric grouping key with its group's key in one native pass,
+  rather than repeating each group's key for every row and comparing the two
+  with vctrs. On the India 2021 DHS births file, `count(d, v024, b4)` falls from about 0.10 to 0.05 seconds,
+  grouped `mutate()` by state from 0.064 to 0.036 seconds, and
+  `group_by(d, v024)` from 0.026 to 0.012 seconds. Results and errors are
+  unchanged.
+
 * Grouped `summarise()`, `reframe()`, `count()`, and `tally()` on a dibble
   type a group's bare integer or double scalar result, such as `n()`, in one
   native call, as `gen()` already did for a scalar. They had built its Stata
