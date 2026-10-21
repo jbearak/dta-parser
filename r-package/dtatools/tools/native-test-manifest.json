@@ -1807,7 +1807,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-entry-admission.R",
-          "sha256": "83276eb27a0deb5a60f0030cf02eab1575c1c63fd0e9c91b2b2c733143570379"
+          "sha256": "42e1ef49c2b3566e79a67431195d47242c1ce8c5ec37f5991edcacff9cbad2fc"
         },
         {
           "path": "tests/testthat/test-numeric-entry-callbacks.R",
@@ -3806,6 +3806,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "arithmetic the scalar route declines classifies its settled result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 22,
+          "warnings": 0
+        },
+        {
+          "file": "test-numeric-entry-admission.R",
+          "test": "math on compact columns classifies an ordinary result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 19,
           "warnings": 0
         },
         {
@@ -16372,6 +16388,10 @@
         {
           "path": "tests/testthat/test-codebook-facts.R",
           "sha256": "1e2a2aca9207e0e7206950daa867ab475e9be6fbb16999d8795c2ca55b4f680b"
+        },
+        {
+          "path": "tests/testthat/test-tab-byte-factor.R",
+          "sha256": "0ed41c5208a9fee86d46da3b40142a46d1e4349ae809959a5395aac7cf95c6df"
         }
       ],
       "blocks": [
@@ -17729,6 +17749,22 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "byte factorization reads raw storage as the general loop decodes it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 83,
+          "warnings": 0
+        },
+        {
+          "file": "test-tab-byte-factor.R",
+          "test": "codebook level counts match tabulate() and is.na()",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
           "warnings": 0
         },
         {

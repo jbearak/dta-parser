@@ -495,6 +495,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_is_tagged_missing",
      (DL_FUNC) &C_dtatools_is_tagged_missing, 2},
     {"C_dtatools_is_missing", (DL_FUNC) &C_dtatools_is_missing, 1},
+    {"C_dtatools_level_counts", (DL_FUNC) &C_dtatools_level_counts, 3},
     {"C_dtatools_factorize_numeric",
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",

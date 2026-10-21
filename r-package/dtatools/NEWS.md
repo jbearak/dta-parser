@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Arithmetic that the native scalar route declines, such as on a column
+  with value labels or with `^`, `%%`, and `%/%`, now classifies its
+  result's Stata storage natively. So do math functions such as `abs()`,
+  `log()`, and `exp()` on the byte, int, and long columns `read_dta()`
+  returns. The arithmetic path had passed its result to that step as an
+  unevaluated call. Base math had written its result into the column's data
+  view, which the native step can't size. Either way every element went
+  through R predicates. On the 1,274,250-row India 2021 DHS births file,
+  `b4 * 2` on the labelled sex column falls from about 0.056 to 0.013
+  seconds, `b4 / 2` from 0.119 to 0.013, `log(bord)` from 0.099 to 0.012,
+  and `mutate(d, y = round(b11 / 12))` from 0.144 to 0.055. Results and
+  errors are unchanged.
+
 * Every grouped verb on a dibble checks that its grouping metadata matches
   its rows. That check now reads the rows of all groups in one native pass
   when they are ordinary integer vectors, as `group_by()` makes them, rather
@@ -126,6 +139,13 @@
   16,787-row, 5,360-column DHS file, `print(d)` falls from about 0.23 to
   0.14 seconds and `dta_append(list(d, d))` from about 2.0 to 1.6 seconds.
   Results and warnings are unchanged.
+
+* When `tab()` or `codebook()` group a compact byte column into levels,
+  they mark the raw bytes present and write each row's level from a
+  256-entry table, rather than decoding each value and hashing it.
+  `codebook()` also counts each tabulation's levels and missing values in
+  one native pass. On a 16,787-row, 5,360-column DHS file, `codebook(d)`
+  falls from 2.2 to 1.6 seconds. Results are unchanged.
 
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
