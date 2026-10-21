@@ -30,7 +30,9 @@ test_that("metadata filtering retains nested environment tracer errors before ge
                  alias_names = names(alias), values = as.double(data$x),
                  groups = as.double(data$g))
         }
-        targets <- c(".dta_attribute_plan", ".generate_attributes")
+        # Attribute planning matches names without the set operations, so only
+        # generation reaches environment() here.
+        targets <- ".generate_attributes"
         records <- lapply(targets, inspect)
         names(records) <- targets
         list(records = records, restored = identical(get("environment", baseenv()), original))

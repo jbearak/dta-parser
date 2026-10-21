@@ -224,20 +224,22 @@ save_arrow <- function(data, path,
     .write_datetime_timezone(column)
 }
 
-.prepare_arrow_write_format <- function(column, name, kind) {
+.prepare_arrow_write_format <- function(column, name, kind, accepted = NULL) {
     if (is.null(attr(column, "format.stata", exact = TRUE))) return("")
-    .prepare_write_format(column, name, "", .write_format_category(kind))
+    .prepare_write_format(
+        column, name, "", .write_format_category(kind), accepted
+    )
 }
 
 # A Stata-typed column keeps its declared storage and Stata's default
 # display format in the Arrow profile, so both containers describe it the
 # same way. Values stay in R's epoch; the profile records the calendar.
-.prepare_arrow_write_dta <- function(column, name, adjust_tz) {
+.prepare_arrow_write_dta <- function(column, name, adjust_tz, accepted = NULL) {
     storage <- .write_stata_storage(column, name)
     temporal <- .write_temporal_kind(column)
     format <- .prepare_write_format(
         column, name, .write_default_numeric_format(storage, temporal),
-        temporal %||% "numeric"
+        temporal %||% "numeric", accepted
     )
     values <- if (identical(typeof(column), "double")) {
         column
@@ -273,10 +275,15 @@ save_arrow <- function(data, path,
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
-                                        value_label_index) {
-    .arrow_validate_dta_metadata_utf8(column, sprintf("Column `%s`", name))
-    characteristics <- dta_characteristics(column)
-    notes <- dta_notes(column)
+                                        value_label_index, accepted = NULL) {
+    # As for save_dta(), a column without notes or characteristics has
+    # nothing for these checks and getters to find.
+    described <- .write_column_described(column)
+    if (described) {
+        .arrow_validate_dta_metadata_utf8(column, sprintf("Column `%s`", name))
+        characteristics <- dta_characteristics(column)
+        notes <- dta_notes(column)
+    }
     variable_label <- .arrow_utf8(
         .write_variable_label(column, name),
         sprintf("Variable label for `%s`", name)
@@ -308,12 +315,12 @@ save_arrow <- function(data, path,
     }
 
     if (identical(kind, "stata")) {
-        prepared <- .prepare_arrow_write_dta(column, name, adjust_tz)
+        prepared <- .prepare_arrow_write_dta(column, name, adjust_tz, accepted)
         values <- prepared$values
         storage_code <- prepared$storage_code
         format <- prepared$format
     } else {
-        format <- .prepare_arrow_write_format(column, name, kind)
+        format <- .prepare_arrow_write_format(column, name, kind, accepted)
         if (identical(kind, "factor")) {
             levels <- levels(column)
             levels <- .arrow_utf8(
@@ -365,7 +372,7 @@ save_arrow <- function(data, path,
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         haven_labelled, string_storage, as.integer(value_label_index),
-        .arrow_dta_metadata_payload(notes, characteristics)
+        if (described) .arrow_dta_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "haven_labelled", "string_storage",
@@ -425,7 +432,7 @@ save_arrow <- function(data, path,
     for (index in seq_along(data)) {
         # Attribute names are unique, so this is their setdiff() without its
         # per-call overhead.
-        present <- names(attributes(data[[index]]))
+        present <- names(attributes(.append_source_column(data, index)))
         dropped <- present[!(present %in% .arrow_known_column_attributes(kinds[[index]]))]
         if (length(dropped)) {
             details <- c(details, sprintf(
@@ -493,10 +500,11 @@ save_arrow <- function(data, path,
         }
     )
     columns <- Map(
-        .prepare_arrow_write_column, data, data_names, kinds,
+        .prepare_arrow_write_column, .write_source_columns(data), data_names, kinds,
         value_label_index = value_label_plan$indices,
         MoreArgs = list(
-            adjust_tz = adjust_tz
+            adjust_tz = adjust_tz,
+            accepted = new.env(parent = emptyenv())
         )
     )
     specification <- list(
