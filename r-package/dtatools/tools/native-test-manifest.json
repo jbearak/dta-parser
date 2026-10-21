@@ -13344,7 +13344,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
-          "sha256": "5e64e697ffb81148ed6e2bbd0f7fb25c168367ad3e4648318b47f71bf1285765"
+          "sha256": "eaa84d4607bc3087c7f7f57fed2fc9ce8f24297db3631f13c153c0aaabf0243c"
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
@@ -13872,6 +13872,25 @@
           "skip": "forbid",
           "min_pass": 12,
           "warnings": 0
+        },
+        {
+          "file": "test-dibble-group-validation.R",
+          "test": "native group row facts give the R expressions' results",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-dibble-group-validation.R",
+          "test": "group validation errors are the same with rows read natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 17,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-dibble-summary.R",

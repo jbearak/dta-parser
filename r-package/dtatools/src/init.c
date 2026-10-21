@@ -412,6 +412,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_is_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
+    {"C_dtatools_group_rows_facts", (DL_FUNC) &C_dtatools_group_rows_facts, 1},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
     {"C_dtatools_mark_reference_data",

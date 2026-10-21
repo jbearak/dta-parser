@@ -151,3 +151,69 @@ test_that("bytes-encoded group attributes retain their existing error boundary",
         expect_identical(.group_validation_snapshot(attr(data, "groups")$g), expected_key)
     }
 })
+
+test_that("native group row facts give the R expressions' results", {
+    facts <- function(x) .Call(dtatools:::C_dtatools_group_rows_facts, x)
+    expected <- function(x) list(unlist(x, use.names = FALSE), lengths(x),
+        !any(vapply(x, is.unsorted, logical(1), strictly = TRUE)))
+    pairs <- lapply(seq_len(100L), function(i) c(2L * i - 1L, 2L * i))
+    # Setting the attributes of a list this long wraps it in ALTREP.
+    wrapped <- vctrs::new_list_of(pairs, ptype = integer())
+    expect_true(dtatools:::.is_altrep(wrapped))
+    for (x in list(list(c(1L, 3L), integer(), 2L), list(c(3L, 1L), 2L),
+                   list(c(1L, 1L)), list(c(NA_integer_, 2L)),
+                   vctrs::new_list_of(list(c(1L, 2L), 3L), ptype = integer()),
+                   wrapped)) {
+        expect_identical(facts(x), expected(x))
+    }
+    compact <- seq_len(3L)
+    expect_true(dtatools:::.is_altrep(compact))
+    for (x in list(list(), list(compact), list(c(a = 1L)), list(factor("a")),
+                   list(c(1, 2)), list(a = 1L),
+                   structure(list(1L), class = "other"),
+                   vctrs::new_list_of(list(1L), ptype = integer(), class = "extra"),
+                   structure(vctrs::new_list_of(list(1L), ptype = integer()),
+                             names = "a"))) {
+        expect_null(facts(x))
+    }
+})
+
+test_that("group validation errors are the same with rows read natively", {
+    skip_if_not_installed("dplyr")
+    data <- dplyr::group_by(as_dibble(data.frame(
+        g = rep(seq_len(100L), each = 2L), x = seq_len(200L))), g)
+    expect_false(is.null(.Call(dtatools:::C_dtatools_group_rows_facts,
+                               attr(data, "groups")$.rows)))
+    expect_silent(dtatools:::.validate_group_metadata(data))
+    damages <- list(
+        "malformed grouping metadata" = function(rows) {
+            rows[[1L]] <- c(2L, 1L); rows
+        },
+        "malformed grouping metadata" = function(rows) {
+            rows[[1L]] <- c(1L, 1L); rows[[2L]] <- c(2L, 3L, 4L); rows
+        },
+        "keys that do not match" = function(rows) {
+            rows[[1L]] <- 1L; rows[[2L]] <- c(2L, 3L, 4L); rows
+        }
+    )
+    for (index in seq_along(damages)) {
+        native <- data
+        attr(native, "groups")$.rows <- damages[[index]](attr(data, "groups")$.rows)
+        # A compact sequence in the last group sends the same rows through the
+        # R expressions.
+        fallback <- native
+        attr(fallback, "groups")$.rows[[100L]] <- 199:200
+        expect_false(is.null(.Call(dtatools:::C_dtatools_group_rows_facts,
+                                   attr(native, "groups")$.rows)))
+        expect_null(.Call(dtatools:::C_dtatools_group_rows_facts,
+                          attr(fallback, "groups")$.rows))
+        message <- names(damages)[[index]]
+        expect_error(dtatools:::.validate_group_metadata(native), message)
+        expect_error(dtatools:::.validate_group_metadata(fallback), message)
+        expect_identical(
+            tryCatch(dtatools:::.validate_group_metadata(native),
+                     error = conditionMessage),
+            tryCatch(dtatools:::.validate_group_metadata(fallback),
+                     error = conditionMessage))
+    }
+})
