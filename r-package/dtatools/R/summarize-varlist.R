@@ -276,7 +276,10 @@
 .summarize_literal_varlist <- function(data, specs, sample) {
     count <- length(specs)
     values <- vector("list", count)
-    output_names <- headers <- character(count)
+    headers <- character(count)
+    output_names <- sub("^co\\.", "o.", sub("^c\\.", "",
+        sub("^([0-9]+)o\\.", "\\1.", specs)))
+    plain_sample <- is.logical(sample) && is.null(attributes(sample))
     for (i in seq_len(count)) {
         variable <- specs[[i]]
         value <- data[[variable]]
@@ -285,12 +288,14 @@
             is.na(label)) label <- ""
         # The general expansion checks each variable for observations even
         # when, as here, the answer cannot change whether it is displayed.
-        any(sample & !is.na(value))
-        name <- sub("^co\\.", "o.", sub("^c\\.", "",
-            sub("^([0-9]+)o\\.", "\\1.", variable)))
+        # When is.na() returns a plain logical of the sample's length, the
+        # rest of the check can neither dispatch nor fail, so it is skipped.
+        missing <- is.na(value)
+        if (!plain_sample || !is.logical(missing) ||
+            length(missing) != length(sample) ||
+            !is.null(attributes(missing))) any(sample & !missing)
         values[i] <- list(value)
-        output_names[[i]] <- name
-        headers[[i]] <- if (nzchar(label)) label else name
+        headers[[i]] <- if (nzchar(label)) label else output_names[[i]]
     }
     list(values = values, names = output_names, headers = headers,
          factor_labels = character(count), factor_headers = character(count),
