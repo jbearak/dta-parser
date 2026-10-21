@@ -350,6 +350,14 @@
   falls from 0.68 to 0.003 seconds, and on a 1,274,250-row file over
   494,019 women from 38 to 0.15 seconds.
 
+* `dta_merge()` matches a string key that is a column from `read_dta()` or
+  `read_arrow()` on both sides through integer codes, one for each distinct
+  value, rather than through R strings. Rows get equal codes exactly when
+  their values are equal, so the merge matches the same rows. With five
+  columns of the 1,274,250-row India 2021 DHS birth history and four of the
+  724,115-row women file, a many-to-one merge on `caseid` falls from 0.51
+  to 0.26 seconds.
+
 * `dta_merge()` gathers the result's columns by position rather than
   looking each one up and appending it by name. On a 16,787-row,
   5,360-column DHS file, a one-to-one merge that adds one variable falls
@@ -416,6 +424,14 @@
   falls from 5.2 to 3.5 seconds, on 1,007,220 rows of 100 DHS variables
   from 6.7 to 5.9 seconds, and on a 16,787-row, 5,360-column DHS file from
   8.3 to 6.7 seconds.
+
+* `codebook()` counts each numeric variable's missing codes in compiled
+  code, without building a code for every value. For a Stata numeric
+  variable it subsets the column's bare values and decodes the observed
+  ones once, rather than slicing the column through vctrs and decoding the
+  slice in every summary, and it reads a dibble's columns by position. On
+  a 16,787-row, 5,360-column DHS file, `codebook(compact = TRUE)` falls
+  from 1.5 to 1.2 seconds and `codebook()` from 2.6 to 2.2 seconds.
 
 * `codebook()` collects its problem rows as columns, where it built a data
   frame for each one, and counts each numeric variable's missing codes in
