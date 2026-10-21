@@ -1338,7 +1338,10 @@ vec_cast.logical.dta_numeric <- function(
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
     missing_operand <- .dta_read_is_na(args[[1L]]) | .dta_read_is_na(args[[2L]])
-    .dta_computed(.collapse_missing(result, missing_operand), minimum)
+    # Bind the collapsed values first. The native computed route reads only
+    # a settled argument and declines on an unevaluated call.
+    result <- .collapse_missing(result, missing_operand)
+    .dta_computed(result, minimum)
 }
 
 # Stata collapses a tagged missing operand to system missing `.` in
@@ -1364,7 +1367,7 @@ vec_cast.logical.dta_numeric <- function(
 # function returns each tagged missing unchanged even though base `round()`
 # and `signif()` discard the NaN payload.
 .restore_missing <- function(result, source) {
-    where <- is.na(source)
+    where <- .dta_read_is_na(source)
     if (!is.numeric(result) || !any(where)) {
         return(result)
     }
@@ -1461,7 +1464,13 @@ chooseOpsMethod.dta_numeric <- function(x, y, mx, my, cl, reverse) {
 #' @export
 vec_math.dta_numeric <- function(.fn, .x, ...) {
     operation <- getExportedValue("base", .fn)
-    result <- suppressWarnings(operation(.dta_data(.x, ordinary = .fn == "range"), ...))
+    # Base math writes its result into an unreferenced operand. Bind the view
+    # so the result is an ordinary vector, which native classification can
+    # size; a materialized view declines there.
+    result <- suppressWarnings({
+        values <- .dta_data(.x, ordinary = .fn == "range")
+        operation(values, ...)
+    })
     if (length(.x) == 0L && .fn %in% c("min", "max", "range")) {
         return(result)
     }

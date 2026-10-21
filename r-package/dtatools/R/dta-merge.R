@@ -596,14 +596,42 @@ dta_merge <- function(x, y, by, relationship,
     list(value = values, code = codes, missing = TRUE)
 }
 
+# A string key read by read_dta() or read_arrow() on both sides matches
+# through integer codes that are equal exactly when the values' UTF-8 bytes
+# are equal, which is the equality vctrs gives these UTF-8 strings. Matching
+# depends only on equality, so the matched rows and their order are the same
+# as with the strings, without an R string for each value. Such a column
+# holds no NA, so the NA_character_ check has nothing to find. Only plain and
+# `dta_string` keys qualify, since another class may define its own equality
+# proxy. A value holding a NUL byte also returns NULL, so the strings keep
+# their "embedded nul" error.
+.dta_merge_string_codes <- function(x, y) {
+    if (!.dta_merge_bytewise_string(x) || !.dta_merge_bytewise_string(y))
+        return(NULL)
+    .Call(C_dtatools_dictstring_match_codes, x, y)
+}
+
+.dta_merge_bytewise_string <- function(key) {
+    classes <- attr(key, "class", exact = TRUE)
+    (is.null(classes) ||
+        identical(classes, c("dta_string", "vctrs_vctr", "character"))) &&
+        .is_unmaterialized_dictstring(key)
+}
+
 # Both proxy frames must have the same shape, so the code column is decided
 # per key name across the two sides.
 .dta_merge_key_frames <- function(keys, by) {
     x_columns <- list()
     y_columns <- list()
     for (name in by) {
-        x_half <- .dta_merge_key_half(keys[[name]]$x, paste0("x$", name))
-        y_half <- .dta_merge_key_half(keys[[name]]$y, paste0("y$", name))
+        codes <- .dta_merge_string_codes(keys[[name]]$x, keys[[name]]$y)
+        if (is.null(codes)) {
+            x_half <- .dta_merge_key_half(keys[[name]]$x, paste0("x$", name))
+            y_half <- .dta_merge_key_half(keys[[name]]$y, paste0("y$", name))
+        } else {
+            x_half <- list(value = codes[[1L]], missing = FALSE)
+            y_half <- list(value = codes[[2L]], missing = FALSE)
+        }
         with_code <- x_half$missing || y_half$missing
         value_name <- paste0(name, "..value")
         code_name <- paste0(name, "..code")

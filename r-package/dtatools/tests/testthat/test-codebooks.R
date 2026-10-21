@@ -460,6 +460,51 @@ test_that("codebook counts missing codes and NaN payloads in compact columns", {
     expect_error(codebook(data), "noncanonical NaN payload")
 })
 
+test_that("codebook scans one ordinary copy of a compact column's observed values", {
+    for (make in list(dta_byte, dta_int, dta_long, dta_float)) {
+        x <- make(c(3, NA, 1, tagged_missing("a"), 2, 1))
+        missing <- dtatools:::.codebook_missing(x)
+        summary <- dtatools:::.codebook_variable(x, "x", 1L, 9L, FALSE, missing)
+        expect_false(.Call(dtatools:::C_dtatools_is_altrep, summary$observed_values))
+        expect_identical(summary$observed_values, c(3, 1, 2, 1))
+        expect_identical(summary$distinct_values, c(3, 1, 2))
+    }
+})
+
+test_that("native missing-code counts match the tabulated codes", {
+    native <- function(x) .Call(dtatools:::C_dtatools_missing_code_counts, x)
+    tabulated <- function(x) tabulate(dtatools:::.tab_missing_codes(x) + 1L, 257L)
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    patch_numeric_fixture_row(path, 0L, list(x_float = .raw_little_integer(0x7fc00000, 4L)))
+    data <- read_dta(path)
+    # Rows past the first block of 4,096 decoded codes.
+    long <- tempfile(fileext = ".dta")
+    on.exit(unlink(long), add = TRUE)
+    pattern <- c(1, NA, tagged_missing("a"), 2.5, tagged_missing("z"), -0)
+    save_dta(dibble(
+        d = dta_double(rep(pattern, length.out = 10001L)),
+        b = dta_byte(rep(c(1, NA, 3, tagged_missing("q")), length.out = 10001L))
+    ), long)
+    columns <- c(as.list(data[c("x_byte", "x_int", "x_long", "x_float", "x_double")]),
+                 as.list(read_dta(long)))
+    for (name in names(columns)) {
+        x <- columns[[name]]
+        expect_identical(native(x), tabulated(x), info = name)
+        values <- dtatools:::.book_numeric_data(x)
+        expect_identical(native(values), tabulated(values), info = name)
+        expect_identical(native(x[-1L]), tabulated(x[-1L]), info = name)
+    }
+    expect_identical(native(columns$x_float)[[257L]], 1L)
+    expect_identical(sum(native(columns$d)), 5001L)
+    for (x in list(c(NaN, NA, 1, -Inf), c(1L, NA, NA), double(), integer())) {
+        expect_identical(native(x), tabulated(x))
+    }
+    expect_identical(dtatools:::.book_missing_code_counts(columns$d), tabulated(columns$d))
+    expect_error(native("a"), "missing-code classification requires a numeric vector")
+    expect_error(native(TRUE), "missing-code classification requires a numeric vector")
+})
+
 test_that("compact identity parts match the parts of the decoded values", {
     path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
     on.exit(unlink(path), add = TRUE)
