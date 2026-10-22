@@ -650,6 +650,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_construct_numeric_trusted(
 DTATOOLS_INTERNAL SEXP C_dtatools_computed_numeric(
     SEXP value, SEXP frame, SEXP storage_getter, SEXP dependencies
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_computed_values(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_scalar_arithmetic(
     SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies
 );

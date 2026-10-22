@@ -305,9 +305,13 @@ test_that("scalar admission keeps traced recycling and getter calls", {
     expect_identical(calls, 1L)
 })
 
+# Results under 2,048 values skip the R code below `.dta_computed()`'s native
+# calls, so the R code's guarantees are checked at that size (ADR 0050).
+.computed_rows <- 2048L
+
 test_that("computed arithmetic retains executable primitive tracers", {
     for (target in c("length", "list")) {
-        source <- dta_double(c(1, 2))
+        source <- dta_double(rep(c(1, 2), .computed_rows / 2L))
         invisible(source + 0)
         calls <- 0L
         trace(target, tracer = function() { calls <<- calls + 1L },
@@ -317,7 +321,7 @@ test_that("computed arithmetic retains executable primitive tracers", {
             scalar <- source + 0
             scalar_calls <- calls
             calls <- 0L
-            vector <- source + c(0, 0)
+            vector <- source + numeric(.computed_rows)
             vector_calls <- calls
             list(scalar = scalar, vector = vector,
                  calls = c(scalar = scalar_calls, vector = vector_calls))
@@ -327,8 +331,8 @@ test_that("computed arithmetic retains executable primitive tracers", {
         } else 2L
         expect_identical(observed$calls, c(scalar = expected, vector = expected),
                          info = target)
-        expect_identical(as.double(observed$scalar), c(1, 2))
-        expect_identical(as.double(observed$vector), c(1, 2))
+        expect_identical(as.double(observed$scalar), as.double(source))
+        expect_identical(as.double(observed$vector), as.double(source))
     }
 })
 
@@ -404,7 +408,7 @@ test_that("scalar arithmetic preserves nested recycling and warning callbacks", 
 })
 
 test_that("scalar arithmetic retains the final classed names assignment", {
-    source <- dta_double(c(1, 2))
+    source <- dta_double(rep(c(1, 2), .computed_rows / 2L))
     invisible(source + 1)
     invisible(source + 1)
     calls <- 0L
@@ -418,13 +422,13 @@ test_that("scalar arithmetic retains the final classed names assignment", {
     result <- source + 1
     expect_identical(calls, 1L)
     expect_true(attr(result, "setter_was_called", exact = TRUE))
-    expect_identical(as.double(result), c(2, 3))
+    expect_identical(as.double(result), as.double(source) + 1)
 })
 
 test_that("computed arithmetic declines replaced primitive predicates", {
     limit <- .Machine$double.xmax / 2
-    source <- dta_double(c(1, limit))
-    right <- c(0, limit)
+    source <- dta_double(rep(c(1, limit), .computed_rows / 2L))
+    right <- rep(c(0, limit), .computed_rows / 2L)
     invisible(source + right)
     invisible(source + limit)
     with_primitive <- function(name, replacement, expression) {
@@ -448,19 +452,20 @@ test_that("computed arithmetic declines replaced primitive predicates", {
         ))
         # These are the established R-path results under each replacement.
         missing <- identical(name, "is.finite")
+        pairs <- .computed_rows / 2L
         expect_identical(as.double(result$vector),
-                         if (missing) c(NA_real_, NA_real_) else c(1, limit * 2),
+                         rep(if (missing) c(NA_real_, NA_real_) else c(1, limit * 2), pairs),
                          info = name)
         expect_identical(as.double(result$scalar),
-                         if (missing) c(NA_real_, NA_real_) else c(limit, limit * 2),
+                         rep(if (missing) c(NA_real_, NA_real_) else c(limit, limit * 2), pairs),
                          info = name)
     }
 })
 
 test_that("computed arithmetic retains machine limit values and methods", {
-    source <- dta_double(c(1, 2))
+    source <- dta_double(rep(c(1, 2), .computed_rows / 2L))
     invisible(source + 0)
-    invisible(source + c(0, 0))
+    invisible(source + numeric(.computed_rows))
     with_machine <- function(machine, expression) {
         local_mocked_bindings(.Machine = machine, .package = "base")
         force(expression)
@@ -473,16 +478,17 @@ test_that("computed arithmetic retains machine limit values and methods", {
     }, envir = baseenv())
     withr::defer(rm(list = "$.dtatools_machine_limit", envir = table))
     result <- with_machine(structure(.Machine, class = "dtatools_machine_limit"), {
-        values <- list(source + 0, source + c(0, 0))
+        values <- list(source + 0, source + numeric(.computed_rows))
         list(values = values, calls = calls)
     })
     expect_identical(result$calls, 4L)
-    for (value in result$values) expect_identical(as.double(value), c(1, 2))
+    for (value in result$values) expect_identical(as.double(value), as.double(source))
 
     machine <- .Machine
     machine$double.xmax <- 2
-    result <- with_machine(machine, list(source + 0, source + c(0, 0)))
-    for (value in result) expect_identical(as.double(value), c(1, NA_real_))
+    result <- with_machine(machine, list(source + 0, source + numeric(.computed_rows)))
+    for (value in result) expect_identical(as.double(value),
+                                           rep(c(1, NA_real_), .computed_rows / 2L))
 })
 
 test_that("computed machine limit admission never reads foreign metadata", {

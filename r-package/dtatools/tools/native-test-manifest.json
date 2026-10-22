@@ -1767,7 +1767,7 @@
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
-          "sha256": "b2f310d554f48007aa4c28e430f02f36d9f03c61510f9a0117c5e31d75eed87f"
+          "sha256": "feaed7e5d7184a617d37ec603a8f647df792fda844b026d3d348c6051107b31b"
         },
         {
           "path": "tests/testthat/test-strict-double.R",
@@ -1786,8 +1786,12 @@
           "sha256": "260bad1d77ff96de80c548ce4fca827dd61f88a163bb119c19a5f02994231d77"
         },
         {
+          "path": "tests/testthat/test-computed-values.R",
+          "sha256": "2bf2909113fa8ecbf051394fefe8e3e1aefc37ca72dfe971c325ec45439d11dd"
+        },
+        {
           "path": "tests/testthat/test-numeric-helper-profile.R",
-          "sha256": "a64ea94b622ad60903270dd858a4f3c9f3424424b5f50d620e8efa6723179866"
+          "sha256": "e28e6fb7b218c046428df3ab86d26a32b4dd4f8d486c055fc8dee66af2cc6e4d"
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
@@ -1803,11 +1807,11 @@
         },
         {
           "path": "tests/testthat/test-numeric-decoration-callbacks.R",
-          "sha256": "1ecccc443563e4286069c89d7713afab9f530f32f45c17d8bf7522f680eb2220"
+          "sha256": "706c30d9c66472446a490fa62645a3da6f7393201a863e826ee35ad776e7d661"
         },
         {
           "path": "tests/testthat/test-numeric-decoration-profile.R",
-          "sha256": "dc39a124ceca4984cbe52700d4a9ddf237505505f4ff11c5ca66c8b47321b477"
+          "sha256": "b310545ff2d219c6c6b7617edbc7219e52788e14ace86d65bc0469cfa4d10283"
         },
         {
           "path": "tests/testthat/test-numeric-entry-admission.R",
@@ -1839,7 +1843,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-size-policy.R",
-          "sha256": "09ac5a6ff5d45aee363408f6617083cbc88ade9a1a35c545fe3d982284deea95"
+          "sha256": "f2adb0c740b1fc552b0e01369d6de7882cf91fd490e36cb1de5b7648bf055077"
         },
         {
           "path": "tests/testthat/test-proof-memo.R",
@@ -4995,6 +4999,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-values.R",
+          "test": "small computed results match the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 410,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-values.R",
+          "test": "computed results the native call does not cover run the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 21,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-values.R",
+          "test": "small computed results settle their arguments in the R code's order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-computed-values.R",
+          "test": "small computed results skip the R code's helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
           "warnings": 0
         }
       ],
@@ -8578,7 +8614,7 @@
         },
         {
           "path": "tests/testthat/test-repl-native-admission.R",
-          "sha256": "2da28665b6aa183505e4dce7a67bf574c86d66524c5b39999cdd3bb458ad5d20"
+          "sha256": "87b9021c3ffeeae548b423165d1cac4797e1aa7662f5ea9ce06591203134c511"
         },
         {
           "path": "tests/testthat/test-grouped-gen-native-admission.R",
@@ -8586,7 +8622,7 @@
         },
         {
           "path": "tests/testthat/test-plain-native-admission.R",
-          "sha256": "206fc43cd856816c5ed36923afb3eea940dbd2c6dfec65e0fe7f1b1f83fa883b"
+          "sha256": "38baa41185698a183b763238b5fbadb9b8cb99829ce6ffaef6fbac432bd7a8c9"
         },
         {
           "path": "tests/testthat/test-grouped-double-admission.R",

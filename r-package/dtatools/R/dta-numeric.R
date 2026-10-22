@@ -1353,6 +1353,11 @@ vec_cast.logical.dta_numeric <- function(
         C_dtatools_computed_numeric, NULL, NULL,
         .computed_storage_getter, .computed_numeric_dependencies
     ), .native_admission_return({ native <- native; native }))
+    # The code below in one native call for a double result the call above
+    # leaves here because it is small, such as one group's mean. It settles
+    # the other arguments in the order the code below forces them (ADR 0050).
+    .native_admission_if(.native_admission_call(C_dtatools_computed_values, result),
+        .native_admission_return({ native <- native; native }))
     if (typeof(result) == "logical" || typeof(result) == "complex") {
         return(result)
     }

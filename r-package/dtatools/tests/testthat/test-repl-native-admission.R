@@ -136,8 +136,9 @@ test_that("native generation honors public methods on canonical double sources",
             cc("C_dtatools_probe_direct_final_mode", native)
             cc("C_dtatools_probe_grouped_gen_mode", native)
             env <- new.env(parent = globalenv())
-            env$d <- as_dibble(tibble::tibble(x = dta_double(rep(1, 41L)),
-                g = dta_long(rep(c(1, 2), length.out = 41L))))
+            # Results under 2,048 values skip `names<-` methods (ADR 0050).
+            env$d <- as_dibble(tibble::tibble(x = dta_double(rep(1, 2048L)),
+                g = dta_long(rep(c(1, 2), length.out = 2048L))))
             where <- if (registered) get(".__S3MethodsTable__.", baseenv()) else
                 globalenv()
             previous <- get0(method, where, inherits = FALSE)

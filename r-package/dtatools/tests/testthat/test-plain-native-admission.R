@@ -579,7 +579,9 @@ test_that("plain bracket generation honors numeric limits changed between assign
                 options(old_options)
                 profile$snapshots <- saved
             }, add = TRUE)
-            d <- as_dibble(tibble::tibble(x = c(1, 2, 3, 4), spare = rep(7, 4L)))
+            # Results under 2,048 values no longer read `.Machine` (ADR 0050).
+            d <- as_dibble(tibble::tibble(x = rep(c(1, 2, 3, 4), 512L),
+                                          spare = rep(7, 2048L)))
             for (i in seq_along(d)) cc("C_dtatools_set_data_column", d, as.integer(i),
                 cc("C_dtatools_owned_plain_snapshot", .subset2(d, i)))
             stopifnot(!cc("C_dtatools_is_owned_double", .subset2(d, 1L)))
@@ -622,11 +624,12 @@ test_that("plain bracket generation honors numeric limits changed between assign
         case <- observed$cases[[step]]
         info <- paste("limit changed after RHS", step)
         expect_identical(case$native, case$ordinary, info = info)
-        expected_values <- rep(list(c(2, 3, NA_real_, NA_real_)), 5L)
-        expected_values[seq_len(step)] <- rep(list(c(2, 3, 4, 5)), step)
+        expected_values <- rep(list(rep(c(2, 3, NA_real_, NA_real_), 512L)), 5L)
+        expected_values[seq_len(step)] <- rep(list(rep(c(2, 3, 4, 5), 512L)), step)
         names(expected_values) <- targets
         expect_identical(case$native$values,
-            c(list(x = c(1, 2, 3, 4), spare = rep(7, 4L)), expected_values), info = info)
+            c(list(x = rep(c(1, 2, 3, 4), 512L), spare = rep(7, 2048L)), expected_values),
+            info = info)
         expect_identical(case$native$hits, 5L, info = info)
     }
 })
