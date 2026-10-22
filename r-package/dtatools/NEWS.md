@@ -5,6 +5,15 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* When a grouped `mutate()` on a dibble gives one value per group, as
+  `mean()` and `max()` do, the native combine now writes each value to its
+  group's rows. Before, each group's value was first recycled to the group's
+  size through vctrs, one call per group. Over the 42,739 women in the first
+  100,000 rows of the India 2021 DHS births file,
+  `mutate(d, m = max(bord), .by = caseid)` falls from about 2.50 to 1.85
+  seconds, and `mutate(d, m = mean(b2), .by = caseid)` from 3.24 to 2.55.
+  Results are unchanged.
+
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
   result's Stata storage natively. So do math functions such as `abs()`,
