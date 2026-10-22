@@ -12,12 +12,12 @@ one R call per group. For a Stata numeric that call reaches the package's
 caseid)` over the 42,739 women in the first 100,000 rows of the India 2021 DHS
 births file, the calls took about a fifth of the time.
 
-The mask now keeps a one-value result as it is when the result is a bare
-atomic vector, or a Stata numeric whose first class is `dta_numeric` and that
-is not temporal. `list_unchop()` recycles a size-one piece to its positions,
-and the native combiners now do the same, so the column is identical. The
-package's proxy and restore methods for Stata numerics change nothing that a
-later group's expression can read. Running them once at the combine, or not
+The mask now keeps the result as it is when the result is a bare atomic
+vector, or a Stata numeric whose first class is `dta_numeric` and that is not
+temporal. A result as long as its group skips the call too. `list_unchop()`
+recycles a size-one piece to its positions, and the native combiners now do
+the same, so the column is identical. The package's proxy and restore methods
+for Stata numerics change nothing that a later group's expression can read. Running them once at the combine, or not
 at all when the native combine proves them unchanged, gives the same values.
 A traced method sees fewer calls.
 

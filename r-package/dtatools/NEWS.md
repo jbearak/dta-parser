@@ -7,13 +7,15 @@
 
 * When a grouped `mutate()` on a dibble gives one value per group, as
   `mean()` and `max()` do, the native combine now writes each value to its
-  group's rows. Before, each group's value was first recycled to the group's
-  size through vctrs, one call per group. Over the 42,739 women in the first
-  100,000 rows of the India 2021 DHS births file,
-  `mutate(d, m = max(bord), .by = caseid)` falls from about 2.50 to 1.85
-  seconds, and `mutate(d, m = mean(b2), .by = caseid)` from 3.24 to 2.55.
-  Results are unchanged. The package's vctrs methods for Stata numerics no
-  longer run for each group, so a traced method sees fewer calls (ADR 0047).
+  group's rows. Before, each group's Stata numeric or bare result went
+  through `vctrs::vec_recycle()`, one call per group, even when it already
+  had the group's size. Over the 42,739 women in the first 100,000 rows of
+  the India 2021 DHS births file, `mutate(d, m = max(bord), .by = caseid)`
+  falls from about 2.50 to 1.82 seconds, `mutate(d, m = mean(b2), .by =
+  caseid)` from 2.32 to 1.65, and `mutate(d, m = b2 + 1, .by = caseid)` from
+  1.99 to 1.83. Results are unchanged. The package's vctrs methods for Stata
+  numerics no longer run for each group, so a traced method sees fewer calls
+  (ADR 0047).
 
 * Before a native route skips R code, it proves that each R function it
   skips is unchanged. It now remembers each proof and walks a function again
