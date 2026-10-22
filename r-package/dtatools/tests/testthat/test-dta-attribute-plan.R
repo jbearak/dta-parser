@@ -175,6 +175,11 @@ test_that("native restoration declines what the R code handles itself", {
     expect_null(native_restore(c(1, 2), callback_classes, "double"))
     expect_null(native_restore(c(1, 2), plain, .Call(C_dtatools_callback_character,
                                                      "double", function() NULL)))
+    callback_value <- c(1, 2)
+    attr(callback_value, "class") <- .Call(C_dtatools_callback_character,
+                                           "dtatools_value", function() NULL)
+    expect_true(.is_altrep(attr(callback_value, "class")))
+    expect_null(native_restore(callback_value, plain, "double"))
 })
 
 test_that("restoration reads the value's names once, after the R code's warnings", {

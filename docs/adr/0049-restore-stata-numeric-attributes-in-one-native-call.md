@@ -15,8 +15,8 @@ verbs restore each column once per group.
 `.restore_dta_metadata()` now starts with one native call that sets the same
 attributes in the same order. The call declines, and the R code runs, for an
 attribute the R code warns about, a storage or class vector it does not
-recognize, an ALTREP storage or class vector, whose reads can run R code, an
-S4 object, and a data.table. It evaluates `names(value)` in the R function's
+recognize, an ALTREP storage vector or ALTREP classes on the value or the
+prototype, whose reads can run R code, an S4 object, and a data.table. It evaluates `names(value)` in the R function's
 frame once, after building the class vector, where the R code forces it. A
 `names()` method therefore runs once either way, and after any warning.
 

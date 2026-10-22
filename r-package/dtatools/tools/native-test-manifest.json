@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "f251a21493626f20745fbb483bf959b36adf8feac945663aecc99c207c65237d"
+          "sha256": "1f5659c5515b46deb5a7bf39752ad57e69a8ef1bdb1c6db2a31b93343934383a"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",

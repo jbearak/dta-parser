@@ -502,15 +502,19 @@ static int restore_storage_class(const char *name, SEXP storages) {
    frame where the R code would. Return NULL, so the R code runs instead,
    for an attribute it warns about, a storage outside `storages`, classes
    without a storage class or with an NA, attributes, or an S4 flag of their
-   own, ALTREP storage or classes, whose reads can run R code, and S4 or
-   data.table values. */
+   own, ALTREP storage or classes of either argument, whose reads can run R
+   code, and S4 or data.table values. */
 SEXP C_dtatools_restore_numeric_metadata(
     SEXP value, SEXP prototype, SEXP storage, SEXP variables, SEXP storages
 ) {
-    if (TYPEOF(variables) != STRSXP || TYPEOF(storages) != STRSXP ||
-        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 || ALTREP(storage) ||
+    /* ALTREP checks come before any read of the vector's length or
+       elements, which could run R code ahead of the R path's warnings. */
+    if (TYPEOF(variables) != STRSXP || ALTREP(variables) ||
+        TYPEOF(storages) != STRSXP || ALTREP(storages) ||
+        TYPEOF(storage) != STRSXP || ALTREP(storage) || XLENGTH(storage) != 1 ||
         ANY_ATTRIB(storage) || STRING_ELT(storage, 0) == NA_STRING ||
         Rf_isS4(value) || Rf_isS4(prototype) ||
+        ALTREP(Rf_getAttrib(value, R_ClassSymbol)) ||
         Rf_inherits(value, "data.table")) {
         return R_NilValue;
     }
@@ -521,7 +525,7 @@ SEXP C_dtatools_restore_numeric_metadata(
     }
     SEXP prototype_classes = PROTECT(Rf_getAttrib(prototype, R_ClassSymbol));
     if (!known_storage || TYPEOF(prototype_classes) != STRSXP ||
-        XLENGTH(prototype_classes) == 0 || ALTREP(prototype_classes) ||
+        ALTREP(prototype_classes) || XLENGTH(prototype_classes) == 0 ||
         ANY_ATTRIB(prototype_classes) || Rf_isS4(prototype_classes)) {
         UNPROTECT(1);
         return R_NilValue;
