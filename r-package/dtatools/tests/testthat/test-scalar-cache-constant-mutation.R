@@ -35,6 +35,9 @@ test_that("scalar admission rechecks in-place compiled helper constants", {
     expect_identical(rlang::obj_address(.Internal(bodyCode(helper))), code_address)
     expect_identical(serialize(body(helper), NULL), source_before)
 
+    # An edit inside an existing object is outside the kept proofs (ADR 0046).
+    # Forget them, so a fresh walk must catch the changed constant.
+    .Primitive(".Call")(get("C_dtatools_test_forget_proofs", ns))
     actual <- capture()
     saved <- state$dependencies
     state$dependencies <- NULL

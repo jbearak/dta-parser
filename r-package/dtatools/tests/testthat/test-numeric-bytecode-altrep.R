@@ -50,6 +50,10 @@ test_that("compiled helper identity does not execute ALTREP bytecode constants",
         wrapped <- .Call("C_probe_altrep_integer", original)
         old <- .Call("C_probe_replace_constant", helper, index, wrapped)
         stopifnot(identical(old, original))
+        # Edits inside an existing object are outside the kept proofs
+        # (ADR 0046); forget them so each observation walks afresh.
+        forget <- function() .Call(dtatools:::C_dtatools_test_forget_proofs)
+        forget()
         invisible(.Call("C_probe_altrep_hits", TRUE))
         direct <- observe()
         direct_hits <- .Call("C_probe_altrep_hits", FALSE)
@@ -67,6 +71,7 @@ test_that("compiled helper identity does not execute ALTREP bytecode constants",
         previous_class <- .Call("C_probe_set_constant_attribute", helper,
                                 index, "class", class_altrep)
         stopifnot(identical(previous_class, old_class))
+        forget()
         .Call(dtatools:::C_dtatools_arm_callback_character, class_altrep, callback)
         hits <- 0L
         nested <- observe()

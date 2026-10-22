@@ -376,6 +376,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_numeric_proof_stats", (DL_FUNC) &C_dtatools_numeric_proof_stats, 1},
     {"C_dtatools_test_numeric_proof", (DL_FUNC) &C_dtatools_test_numeric_proof, 3},
     {"C_dtatools_test_numeric_old_proof", (DL_FUNC) &C_dtatools_test_numeric_old_proof, 2},
+    {"C_dtatools_test_forget_proofs", (DL_FUNC) &C_dtatools_test_forget_proofs, 0},
     {"C_dtatools_numeric_entry_state",
      (DL_FUNC) &C_dtatools_numeric_entry_state, 1},
     {"C_dtatools_double_combine_dependencies",
@@ -562,6 +563,7 @@ static const R_CallMethodDef CallEntries[] = {
 void attribute_visible R_init_dtatools(DllInfo *dll) {
     dtatools_probe_gen_primitive_init();
     initialize_numeric_size_gate();
+    initialize_proof_memo();
     initialize_owned_columns(dll);
     initialize_generated_real_reader();
     column_append_blank_names_class = R_make_altstring_class("dtatools_append_blank_names", "dtatools", dll);
@@ -705,4 +707,5 @@ void attribute_visible R_unload_dtatools(DllInfo *dll) {
     dtatools_probe_release_public_cache();
     dtatools_probe_plain_public_release();
     release_generated_real_reader();
+    release_proof_memo();
 }
