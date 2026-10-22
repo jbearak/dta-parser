@@ -170,7 +170,7 @@ dta_append <- function(sources, force = TRUE,
     kind <- .append_source_kind(source, index)
     schema <- switch(
         kind,
-        frame = vctrs::vec_slice(source, integer()),
+        frame = .append_frame_schema(source),
         dta = .append_read_dta_schema(source, output),
         arrow = .append_read_arrow_schema(source, output)
     )
@@ -191,6 +191,20 @@ dta_append <- function(sources, force = TRUE,
         kind = kind, source = source, index = index, schema = schema,
         rows = rows
     )
+}
+
+# A zero-row copy of a frame source, which holds each column's prototype.
+# An ungrouped dibble's columns are gathered natively, without the vctrs
+# methods that `vec_slice()` dispatches for each column. A grouped or
+# rowwise dibble keeps `vec_slice()`, since `slice_dta_rows()` would first
+# validate every group that the append then discards, and so does a dibble
+# with another class, which `slice_dta_rows()` refuses.
+.append_frame_schema <- function(source) {
+    if (is_dibble(source) && .plain_dibble_classes(source) &&
+        !inherits(source, c("grouped_df", "rowwise_df"))) {
+        return(slice_dta_rows(source, integer()))
+    }
+    vctrs::vec_slice(source, integer())
 }
 
 .append_read_dta_schema <- function(source, output) {
@@ -233,44 +247,30 @@ dta_append <- function(sources, force = TRUE,
 
 .append_build_plan <- function(schemas, force) {
     source_count <- length(schemas)
-    the_names <- character(0)
-    occurrences <- integer(0)
-    plan_lookup <- new.env(hash = TRUE, parent = emptyenv())
-    source_plans <- vector("list", source_count)
-    for (my_index in seq_len(source_count)) {
-        source_names <- names(schemas[[my_index]]$schema)
-        if (is.null(source_names)) source_names <- rep("", ncol(
-            schemas[[my_index]]$schema
-        ))
-        source_names[is.na(source_names)] <- ""
-        source_occurrences <- .append_name_occurrences(source_names)
-        source_plans[[my_index]] <- integer(length(source_names))
-        for (my_column in seq_along(source_names)) {
-            name_key <- paste0("x", enc2utf8(source_names[[my_column]]))
-            if (exists(name_key, plan_lookup, inherits = FALSE)) {
-                name_lookup <- get(name_key, plan_lookup, inherits = FALSE)
-            } else {
-                name_lookup <- new.env(hash = TRUE, parent = emptyenv())
-                assign(name_key, name_lookup, plan_lookup)
-            }
-            occurrence_key <- as.character(
-                source_occurrences[[my_column]]
-            )
-            if (exists(occurrence_key, name_lookup, inherits = FALSE)) {
-                plan_index <- get(
-                    occurrence_key, name_lookup, inherits = FALSE
-                )
-            } else {
-                the_names <- c(the_names, source_names[[my_column]])
-                occurrences <- c(
-                    occurrences, source_occurrences[[my_column]]
-                )
-                plan_index <- length(the_names)
-                assign(occurrence_key, plan_index, name_lookup)
-            }
-            source_plans[[my_index]][[my_column]] <- plan_index
+    # A variable is a name and its occurrence among the equal names of its
+    # source, so the second `x` of one source lines up with the second `x`
+    # of another. Plan indices follow first appearance across the sources.
+    # The occurrence leads each key, so the first colon ends it.
+    source_names <- lapply(schemas, function(my_schema) {
+        the_source_names <- names(my_schema$schema)
+        if (is.null(the_source_names)) {
+            the_source_names <- rep("", ncol(my_schema$schema))
         }
-    }
+        the_source_names[is.na(the_source_names)] <- ""
+        the_source_names
+    })
+    source_keys <- lapply(source_names, function(the_source_names) {
+        if (!length(the_source_names)) return(character(0))
+        paste0(
+            .append_name_occurrences(the_source_names), ":",
+            enc2utf8(the_source_names)
+        )
+    })
+    all_keys <- unlist(source_keys, use.names = FALSE)
+    first <- !duplicated(all_keys)
+    plan_keys <- all_keys[first]
+    the_names <- unlist(source_names, use.names = FALSE)[first]
+    source_plans <- lapply(source_keys, match, table = plan_keys)
     source_columns <- lapply(source_plans, function(plan_indices) {
         columns <- rep(NA_integer_, length(the_names))
         columns[plan_indices] <- seq_along(plan_indices)
@@ -469,18 +469,15 @@ dta_append <- function(sources, force = TRUE,
     .apply_haven_labelled_class(value, FALSE)
 }
 
+# Each name's count among the equal names up to and including it. A
+# stable order of each name's first position keeps equal names in place.
 .append_name_occurrences <- function(the_names) {
-    counts <- new.env(hash = TRUE, parent = emptyenv())
-    vapply(the_names, function(my_name) {
-        key <- paste0("x", enc2utf8(my_name))
-        occurrence <- if (exists(key, counts, inherits = FALSE)) {
-            get(key, counts, inherits = FALSE) + 1L
-        } else {
-            1L
-        }
-        assign(key, occurrence, counts)
-        occurrence
-    }, integer(1))
+    keys <- enc2utf8(the_names)
+    groups <- match(keys, keys)
+    ranked <- order(groups)
+    occurrences <- integer(length(keys))
+    occurrences[ranked] <- sequence(rle(groups[ranked])$lengths)
+    occurrences
 }
 
 .append_common_prototype <- function(left, right) {
@@ -607,6 +604,29 @@ dta_append <- function(sources, force = TRUE,
                         # writing the destination range in place.
                         buffers[plan_index] <- list(NULL)
                         values <- .append_buffer_values(writable)
+                        kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
+                        # A compact buffer takes the bytes behind the
+                        # values when they are compact storage of the same
+                        # kind. Otherwise it becomes the double buffer it
+                        # stands for, and this and later sources write
+                        # doubles. The calls must stay direct, as below.
+                        if (identical(kind, "compact")) {
+                            storage <- attr(buffer, "dtatools.storage", exact = TRUE)
+                            if (.Call(C_dtatools_append_write_compact, buffer,
+                                      offsets[[my_index]], rows, values,
+                                      match(storage, .dta_storage) - 1L)) {
+                                # Dropping a reference by assignment costs a
+                                # small fraction of the `rm()` call, which
+                                # these loops make for every column.
+                                values <- NULL
+                                buffers[[plan_index]] <- buffer
+                                next
+                            }
+                            buffer <- .Call(C_dtatools_append_compact_doubles,
+                                            buffer, match(storage, .dta_storage) - 1L)
+                            attr(buffer, "dtatools.buffer") <- "numeric"
+                            attr(buffer, "dtatools.storage") <- storage
+                        }
                         # A numeric range is copied natively, decoding a
                         # compact source in blocks; `[<-` reads it one
                         # element at a time. The call must stay direct:
@@ -615,7 +635,7 @@ dta_append <- function(sources, force = TRUE,
                                    offsets[[my_index]], rows, values)) {
                             buffer[span] <- values
                         }
-                        rm(values)
+                        values <- NULL
                         buffers[[plan_index]] <- buffer
                     }
                 }
@@ -647,10 +667,35 @@ dta_append <- function(sources, force = TRUE,
         # and every finished buffer would stay resident beside the
         # result until the whole frame was built.
         buffers[my_index] <- list(NULL)
+        kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
+        storage <- attr(buffer, "dtatools.storage", exact = TRUE)
+        # Only this binding holds the buffer now, so its attributes come
+        # off in place. In a function its argument would share the buffer,
+        # and R would wrap it. Reading the wrapper's bytes copies them, and
+        # the native double constructor declines a wrapper.
+        attributes(buffer) <- NULL
+        if (identical(kind, "compact")) {
+            # Called here, where this binding is the buffer's only
+            # reference, the column keeps the buffer's bytes rather than a
+            # copy, and rebinding `buffer` lets the buffer go.
+            code <- match(storage, .dta_storage) - 1L
+            column <- .Call(C_dtatools_append_compact_values, buffer, code,
+                            storage, .dta_storage_class(storage))
+            if (is.null(column)) {
+                # A value the scan refuses reaches the constructor as a
+                # double, which decides what to make of it.
+                buffer <- .Call(C_dtatools_append_compact_doubles, buffer, code)
+                kind <- "numeric"
+            } else {
+                buffer <- column
+                kind <- "column"
+            }
+            column <- NULL
+        }
         columns[[my_index]] <- .append_finish_buffer(
-            buffer, plan$prototypes[[my_index]]
+            buffer, kind, storage, plan$prototypes[[my_index]]
         )
-        rm(buffer)
+        buffer <- NULL
     }
     list(columns = columns, row_count = total_rows)
 }
@@ -670,6 +715,15 @@ dta_append <- function(sources, force = TRUE,
     }
     storage <- .declared_dta_storage(prototype)
     if (is.null(storage)) return(NULL)
+    # A compact storage starts as raw bytes, one to four a row rather than
+    # eight, while its sources are compact storage of the same kind.
+    if (storage %in% c("byte", "int", "long", "float")) {
+        buffer <- .Call(C_dtatools_append_compact_buffer,
+                        match(storage, .dta_storage) - 1L, total_rows)
+        attr(buffer, "dtatools.buffer") <- "compact"
+        attr(buffer, "dtatools.storage") <- storage
+        return(buffer)
+    }
     buffer <- rep(NA_real_, total_rows)
     attr(buffer, "dtatools.buffer") <- "numeric"
     attr(buffer, "dtatools.storage") <- storage
@@ -750,11 +804,16 @@ dta_append <- function(sources, force = TRUE,
     if (is.character(value)) as.character(value) else as.double(value)
 }
 
-.append_finish_buffer <- function(buffer, prototype) {
-    kind <- attr(buffer, "dtatools.buffer", exact = TRUE)
-    storage <- attr(buffer, "dtatools.storage", exact = TRUE)
-    attributes(buffer) <- NULL
+# `buffer` arrives without the attributes that held `kind` and `storage`.
+# A compact buffer arrives as the column built from its bytes, of kind
+# "column", with the attributes `.construct_dta_numeric()` gives a column.
+.append_finish_buffer <- function(buffer, kind, storage, prototype) {
     if (identical(kind, "string")) return(vctrs::vec_cast(buffer, prototype))
+    if (identical(kind, "column")) {
+        # The constructor's last step.
+        names(buffer) <- NULL
+        return(.restore_dta_variable_metadata(buffer, prototype, names = NULL))
+    }
     .restore_dta_variable_metadata(
         .construct_dta_numeric(buffer, NULL, storage), prototype,
         names = NULL

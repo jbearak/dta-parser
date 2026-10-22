@@ -154,3 +154,23 @@ test_that("S6-S07 seeded sampling matches the ordinary typed-frame oracle and RN
         expect_identical(dplyr::group_rows(actual), dplyr::group_rows(expected))
     }
 })
+
+test_that("S6-S08 slices of many groups take the rows of the typed-frame oracle", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    withr::local_seed(708)
+    size <- 6000L
+    data <- dplyr::group_by(dibble(id = seq_len(size), g = sample(2500L, size, TRUE),
+                                   x = sample(c(1:20, NA), size, TRUE)), g)
+    plain <- dtatools:::.reference_snapshot(data)
+    verbs <- list(
+        function(d) dplyr::slice(d, 1L), function(d) dplyr::slice(d, c(2, 1)),
+        function(d) dplyr::slice(d, -1L), function(d) dplyr::slice_head(d, n = 2),
+        function(d) dplyr::slice_tail(d, prop = 0.5), function(d) dplyr::slice_max(d, x),
+        function(d) dplyr::slice_min(d, x, n = 2, with_ties = FALSE))
+    for (index in seq_along(verbs)) {
+        actual <- verbs[[index]](data)
+        expected <- verbs[[index]](plain)
+        expect_identical(.s6_ids(actual), .s6_ids(expected), info = index)
+        expect_identical(dplyr::group_rows(actual), dplyr::group_rows(expected), info = index)
+    }
+})

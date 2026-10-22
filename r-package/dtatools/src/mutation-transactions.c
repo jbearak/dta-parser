@@ -1469,6 +1469,84 @@ SEXP C_dtatools_shared_columns(SEXP columns) {
     return result;
 }
 
+typedef struct {
+    uintptr_t address;
+    R_xlen_t position;
+} reference_entry;
+
+static int compare_reference_entries(const void *left, const void *right) {
+    const reference_entry *a = left;
+    const reference_entry *b = right;
+    if (a->address != b->address) return a->address < b->address ? -1 : 1;
+    return (a->position > b->position) - (a->position < b->position);
+}
+
+/* For each element of the list `x`, the 1-based position of the first
+   entry of `table` that is the same object, or NA. A `table` element
+   whose `frames` flag is TRUE is a data frame that contributes each of its
+   columns as an entry; any other element is one entry. This is `match()`
+   over `rlang::obj_address()` strings without formatting an address for
+   each element: the entries are sorted by address once, and each element
+   finds the earliest equal entry by binary search. */
+SEXP C_dtatools_reference_match(SEXP x, SEXP table, SEXP frames) {
+    if (TYPEOF(x) != VECSXP || TYPEOF(table) != VECSXP) {
+        Rf_error("`x` and `table` must be lists");
+    }
+    R_xlen_t table_length = XLENGTH(table);
+    if (frames != R_NilValue &&
+        (TYPEOF(frames) != LGLSXP || XLENGTH(frames) != table_length)) {
+        Rf_error("`frames` must be NULL or one logical value per `table` element");
+    }
+    R_xlen_t entry_count = 0;
+    for (R_xlen_t index = 0; index < table_length; index++) {
+        SEXP element = VECTOR_ELT(table, index);
+        if (frames != R_NilValue && LOGICAL(frames)[index] == TRUE) {
+            if (TYPEOF(element) != VECSXP) Rf_error("a `table` frame must be a list");
+            entry_count += XLENGTH(element);
+        } else {
+            entry_count++;
+        }
+    }
+    if (entry_count > INT_MAX) Rf_error("`table` has too many entries");
+    reference_entry *entries = (reference_entry *) R_alloc(
+        entry_count > 0 ? (size_t) entry_count : 1, sizeof(reference_entry));
+    R_xlen_t position = 0;
+    for (R_xlen_t index = 0; index < table_length; index++) {
+        SEXP element = VECTOR_ELT(table, index);
+        if (frames != R_NilValue && LOGICAL(frames)[index] == TRUE) {
+            R_xlen_t column_count = XLENGTH(element);
+            for (R_xlen_t column = 0; column < column_count; column++) {
+                entries[position].address = (uintptr_t) VECTOR_ELT(element, column);
+                entries[position].position = position;
+                position++;
+            }
+        } else {
+            entries[position].address = (uintptr_t) element;
+            entries[position].position = position;
+            position++;
+        }
+    }
+    qsort(entries, (size_t) entry_count, sizeof(reference_entry),
+          compare_reference_entries);
+    R_xlen_t length = XLENGTH(x);
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
+    int *matches = INTEGER(result);
+    for (R_xlen_t index = 0; index < length; index++) {
+        uintptr_t address = (uintptr_t) VECTOR_ELT(x, index);
+        R_xlen_t low = 0;
+        R_xlen_t high = entry_count;
+        while (low < high) {
+            R_xlen_t middle = low + (high - low) / 2;
+            if (entries[middle].address < address) low = middle + 1;
+            else high = middle;
+        }
+        matches[index] = low < entry_count && entries[low].address == address ?
+            (int) entries[low].position + 1 : NA_INTEGER;
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 /* Validate data.table's non-owning self-reference and names identity.
    The layout and validity rule come from data.table 1.18.6.1 src/assign.c,
    setselfref() and _selfrefok(), by its contributors under MPL-2.0;
@@ -2598,29 +2676,18 @@ SEXP C_dtatools_dictstring_cached_count(SEXP value) {
     return Rf_ScalarReal((double) count);
 }
 
-/* The widest UTF-8 byte length in a dictionary string's dictionary, read
+/* The widest UTF-8 byte length among a dictionary string's values, read
    without materializing the column, so a dibble can declare `str#`
    storage for an Arrow string while it stays compact. */
 SEXP C_dtatools_dictstring_max_width(SEXP value) {
-    SEXP source = unmaterialized_dictstring_source(value);
-    if (source == R_NilValue) {
+    SEXP root = PROTECT(dictstring_read_root(value));
+    if (root == R_NilValue) {
         Rf_error("value is not an unmaterialized dictionary string");
     }
-    dictstring_data *data = dictstring_storage(source);
-    SEXP cache = dictstring_cache(source);
-    R_xlen_t value_count = XLENGTH(cache);
-    size_t maximum = 0;
-    for (R_xlen_t id = 0; id < value_count; id++) {
-        if ((id & 16383) == 0) R_CheckUserInterrupt();
-        const char *bytes = NULL;
-        int length = 0;
-        if (!dtatools_dictstring_bytes(
-                data, (uint32_t) id, &bytes, &length
-            ) || bytes == NULL || length < 0) {
-            Rf_error("invalid dtatools string-dictionary value");
-        }
-        if ((size_t) length > maximum) maximum = (size_t) length;
-    }
+    size_t maximum = dictstring_used_width(
+        root, dictstring_dictionary_width(root, 0)
+    );
+    UNPROTECT(1);
     return Rf_ScalarReal((double) maximum);
 }
 
@@ -3699,6 +3766,63 @@ SEXP C_dtatools_missing_codes(SEXP value) {
         }
     } else {
         Rf_error("missing-code classification requires a numeric vector");
+    }
+
+    UNPROTECT(3);
+    return result;
+}
+
+/* tabulate(codes + 1L, 257L) for the codes C_dtatools_missing_codes()
+   gives, counted without allocating them. NULL for a long vector, whose
+   counts tabulate() would report differently. */
+SEXP C_dtatools_missing_code_counts(SEXP value) {
+    if (TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) {
+        Rf_error("missing-code classification requires a numeric vector");
+    }
+    numeric_data captured;
+    SEXP compact_root = PROTECT(TYPEOF(value) == REALSXP
+        ? numeric_missing_mask_capture(value, &captured) : R_NilValue);
+    SEXP payload = PROTECT(owned_real(value) ? owned_values(value) : value);
+    R_xlen_t length = XLENGTH(payload);
+    if (length > INT_MAX) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, 257));
+    int *counts = INTEGER(result);
+    memset(counts, 0, 257 * sizeof(int));
+
+    if (compact_root != R_NilValue) {
+        numeric_reader reader = {value, &captured, NULL, NULL, REALSXP};
+        int codes[4096];
+        for (R_xlen_t start = 0; start < length; start += 4096) {
+            if ((start & 16383) == 0) R_CheckUserInterrupt();
+            R_xlen_t count = length - start < 4096 ? length - start : 4096;
+            numeric_reader_region(&reader, start, count, NULL, codes);
+            for (R_xlen_t index = 0; index < count; index++) {
+                if (codes[index] >= 0 && codes[index] <= 256) counts[codes[index]]++;
+            }
+        }
+    } else if (TYPEOF(value) == REALSXP) {
+        const double *values = owned_real(value) ? (const double *) DATAPTR_RO(payload)
+            : (!ALTREP(value) ? REAL(value) : NULL);
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            double element = values != NULL ? values[index] : REAL_ELT(value, index);
+            int tag = tagged_na_tag_value(element);
+            if (tag != 0) {
+                if (tag <= 256) counts[tag]++;
+            } else if (ISNA(element)) {
+                counts[0]++;
+            } else if (ISNAN(element)) {
+                counts[256]++;
+            }
+        }
+    } else {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            if (INTEGER_ELT(value, index) == NA_INTEGER) counts[0]++;
+        }
     }
 
     UNPROTECT(3);

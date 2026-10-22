@@ -26,6 +26,7 @@ use dta_tools::{
 };
 
 mod arrow_ffi;
+mod dictstring_codes;
 mod double_compare;
 mod float_compare;
 mod native_pressure;
@@ -414,86 +415,180 @@ pub struct NumericGatherColumn {
     y_length: usize,
 }
 
-unsafe fn gathered_numeric_is_missing(column: NumericGatherColumn, value: *const u8) -> bool {
-    let kind = NumericKind::try_from(column.kind).expect("compact gather has a valid numeric kind");
-    let release =
-        u16::try_from(column.format_version).expect("compact gather has a valid format version");
-    let version =
-        FormatVersion::try_from(release).expect("compact gather has a supported format version");
-    match kind {
-        NumericKind::Byte => {
-            classify_byte_missing_for_version(value.cast::<i8>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Int => {
-            classify_int_missing_for_version(value.cast::<i16>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Long => {
-            classify_long_missing_for_version(value.cast::<i32>().read_unaligned(), version)
-                .is_some()
-        }
-        NumericKind::Float => {
-            let value = value.cast::<f32>().read_unaligned();
-            value.is_nan()
-                || classify_float_missing_bits_for_version(value.to_bits(), version).is_some()
+/// A compact column's missing-value test, parsed once per column so the row
+/// loop carries no `try_from` parsing.
+#[derive(Clone, Copy)]
+enum GatherMissing {
+    Byte(FormatVersion),
+    Int(FormatVersion),
+    Long(FormatVersion),
+    Float(FormatVersion),
+}
+
+impl GatherMissing {
+    fn new(column: NumericGatherColumn) -> Option<Self> {
+        let release = u16::try_from(column.format_version).ok()?;
+        let version = FormatVersion::try_from(release).ok()?;
+        Some(match NumericKind::try_from(column.kind).ok()? {
+            NumericKind::Byte => Self::Byte(version),
+            NumericKind::Int => Self::Int(version),
+            NumericKind::Long => Self::Long(version),
+            NumericKind::Float => Self::Float(version),
+        })
+    }
+
+    unsafe fn is_missing(self, value: *const u8) -> bool {
+        match self {
+            Self::Byte(version) => {
+                classify_byte_missing_for_version(value.cast::<i8>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Int(version) => {
+                classify_int_missing_for_version(value.cast::<i16>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Long(version) => {
+                classify_long_missing_for_version(value.cast::<i32>().read_unaligned(), version)
+                    .is_some()
+            }
+            Self::Float(version) => {
+                let value = value.cast::<f32>().read_unaligned();
+                value.is_nan()
+                    || classify_float_missing_bits_for_version(value.to_bits(), version).is_some()
+            }
         }
     }
+}
+
+/// Rows that read at least this many consecutive `x` values copy as blocks.
+const GATHER_MIN_RUN: usize = 16;
+
+/// The output ranges whose rows read at least `GATHER_MIN_RUN` consecutive
+/// `x` values. Every column of one gather shares the row plan, so the plan
+/// is scanned once rather than once for each column.
+fn gather_runs(x_rows: &[c_int]) -> Vec<(usize, usize)> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    while start < x_rows.len() {
+        if x_rows[start] < 0 {
+            start += 1;
+            continue;
+        }
+        let mut end = start + 1;
+        while end < x_rows.len()
+            && x_rows[end] >= 0
+            && i64::from(x_rows[end]) == i64::from(x_rows[end - 1]) + 1
+        {
+            end += 1;
+        }
+        if end - start >= GATHER_MIN_RUN {
+            runs.push((start, end));
+        }
+        start = end;
+    }
+    runs
 }
 
 unsafe fn gather_numeric_column(
     column: NumericGatherColumn,
     x_rows: &[c_int],
     y_rows: Option<&[c_int]>,
+    runs: &[(usize, usize)],
+) -> Option<()> {
+    match column.width {
+        1 => gather_numeric_width::<1>(column, x_rows, y_rows, runs),
+        2 => gather_numeric_width::<2>(column, x_rows, y_rows, runs),
+        4 => gather_numeric_width::<4>(column, x_rows, y_rows, runs),
+        8 => gather_numeric_width::<8>(column, x_rows, y_rows, runs),
+        _ => None,
+    }
+}
+
+/// Gather one column whose values are `W` bytes wide. Rows in `runs` copy
+/// as blocks, split where the source's storage regions end, and every other
+/// row copies alone. Missing values are counted as each row has always been
+/// counted: an absent row counts, and a copied value counts when the
+/// sources hold missing values and it is one.
+unsafe fn gather_numeric_width<const W: usize>(
+    column: NumericGatherColumn,
+    x_rows: &[c_int],
+    y_rows: Option<&[c_int]>,
+    runs: &[(usize, usize)],
 ) -> Option<()> {
     let x_read = owned_numeric::CompactRead::new(
         column.x_values as *const c_void,
         column.x_owner as *const c_void,
-        column.width,
+        W,
         column.x_length,
     )?;
     let y_read = if y_rows.is_some() {
         Some(owned_numeric::CompactRead::new(
             column.y_values as *const c_void,
             column.y_owner as *const c_void,
-            column.width,
+            W,
             column.y_length,
         )?)
+    } else {
+        None
+    };
+    let counting = column.missing_count != 0;
+    let classify = if counting && column.source_has_missing != 0 {
+        Some(GatherMissing::new(column)?)
     } else {
         None
     };
     let mut x_cursor = x_read.cursor();
     let mut y_cursor = y_read.as_ref().map(|read| read.cursor());
     let output = column.output as *mut u8;
+    let missing = column.missing.as_ptr();
+    let rows = x_rows.len();
     let mut missing_count = 0;
-    for (output_index, &x_index) in x_rows.iter().enumerate() {
-        let source = if x_index >= 0 {
-            x_cursor.at(x_index as usize)?
-        } else if let Some(cursor) = &mut y_cursor {
-            let y_index = y_rows.expect("paired gather requires y rows")[output_index];
-            if y_index >= 0 {
-                cursor.at(y_index as usize)?
+    let mut index = 0;
+    for &(run_start, run_end) in runs.iter().chain(std::iter::once(&(rows, rows))) {
+        while index < run_start {
+            let x_index = x_rows[index];
+            let target = output.add(index * W);
+            let source = if x_index >= 0 {
+                x_cursor.at(x_index as usize)?
+            } else if let Some(cursor) = &mut y_cursor {
+                let y_index = y_rows.expect("paired gather requires y rows")[index];
+                if y_index >= 0 {
+                    cursor.at(y_index as usize)?
+                } else {
+                    ptr::null()
+                }
             } else {
                 ptr::null()
+            };
+            if source.is_null() {
+                ptr::copy_nonoverlapping(missing, target, W);
+                if counting {
+                    missing_count += 1;
+                }
+            } else {
+                ptr::copy_nonoverlapping(source, target, W);
+                if classify.is_some_and(|classify| classify.is_missing(target)) {
+                    missing_count += 1;
+                }
             }
-        } else {
-            ptr::null()
-        };
-
-        let target = output.add(output_index * column.width);
-        if source.is_null() {
-            ptr::copy_nonoverlapping(column.missing.as_ptr(), target, column.width);
-        } else {
-            ptr::copy_nonoverlapping(source, target, column.width);
+            index += 1;
         }
-        if column.missing_count != 0
-            && (source.is_null()
-                || (column.source_has_missing != 0 && gathered_numeric_is_missing(column, target)))
-        {
-            missing_count += 1;
+        while index < run_end {
+            let (source, available) = x_cursor.run(x_rows[index] as usize)?;
+            let length = available.min(run_end - index);
+            let target = output.add(index * W);
+            ptr::copy_nonoverlapping(source, target, length * W);
+            if let Some(classify) = classify {
+                for offset in 0..length {
+                    if classify.is_missing(target.add(offset * W)) {
+                        missing_count += 1;
+                    }
+                }
+            }
+            index += length;
         }
     }
-    if column.missing_count != 0 {
+    if counting {
         (column.missing_count as *mut usize).write(missing_count);
     }
     Some(())
@@ -532,23 +627,28 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
         };
         // Grouped expression reads commonly gather one column at a time.
         // No column-level parallelism is available in that case.
+        let runs = gather_runs(x_rows);
         if column_count == 1 {
-            return unsafe { gather_numeric_column(columns[0], x_rows, y_rows) }.is_some();
+            return unsafe { gather_numeric_column(columns[0], x_rows, y_rows, &runs) }.is_some();
         }
         let workers = std::thread::available_parallelism()
             .map_or(1, usize::from)
             .min(column_count.max(1));
-        let columns_per_worker = column_count.div_ceil(workers);
 
+        // Columns differ in width, so each worker takes the next column as
+        // it finishes one rather than a fixed share of the columns.
         let ok = std::sync::atomic::AtomicBool::new(true);
+        let next = std::sync::atomic::AtomicUsize::new(0);
         std::thread::scope(|scope| {
-            for chunk in columns.chunks(columns_per_worker) {
-                let ok = &ok;
-                scope.spawn(move || {
-                    for &column in chunk {
-                        if unsafe { gather_numeric_column(column, x_rows, y_rows) }.is_none() {
-                            ok.store(false, std::sync::atomic::Ordering::Relaxed);
-                        }
+            for _ in 0..workers {
+                let (ok, next, runs) = (&ok, &next, &runs);
+                scope.spawn(move || loop {
+                    let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(&column) = columns.get(index) else {
+                        break;
+                    };
+                    if unsafe { gather_numeric_column(column, x_rows, y_rows, runs) }.is_none() {
+                        ok.store(false, std::sync::atomic::Ordering::Relaxed);
                     }
                 });
             }
@@ -559,6 +659,135 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
     match catch_unwind(AssertUnwindSafe(call)) {
         Ok(true) => 1,
         Ok(false) | Err(_) => 0,
+    }
+}
+
+#[cfg(test)]
+mod gather_tests {
+    use super::{gather_numeric_column, NumericGatherColumn};
+    use std::ffi::c_int;
+
+    /// Gather `rows` with the kernel and with one row at a time, and compare
+    /// the bytes and the missing count.
+    fn check<const W: usize>(
+        x: &[[u8; W]],
+        y: Option<(&[[u8; W]], &[c_int])>,
+        rows: &[c_int],
+        kind: c_int,
+        missing: impl Fn(&[u8; W]) -> bool,
+    ) {
+        let mut output = vec![[0_u8; W]; rows.len()];
+        let mut count = usize::MAX;
+        let mut pattern = [0_u8; 8];
+        pattern[..W].fill(0x65);
+        let column = NumericGatherColumn {
+            x_values: x.as_ptr() as usize,
+            y_values: y.map_or(0, |(values, _)| values.as_ptr() as usize),
+            output: output.as_mut_ptr() as usize,
+            width: W,
+            missing: pattern,
+            missing_count: if kind < 0 {
+                0
+            } else {
+                &mut count as *mut usize as usize
+            },
+            kind: kind.max(0),
+            format_version: if kind < 0 { 0 } else { 119 },
+            source_has_missing: c_int::from(
+                x.iter().any(&missing) || y.is_some_and(|(values, _)| values.iter().any(&missing)),
+            ),
+            x_owner: 0,
+            y_owner: 0,
+            x_length: x.len(),
+            y_length: y.map_or(0, |(values, _)| values.len()),
+        };
+        let runs = super::gather_runs(rows);
+        unsafe { gather_numeric_column(column, rows, y.map(|(_, rows)| rows), &runs) }.unwrap();
+        let mut expected = Vec::new();
+        let mut expected_count = 0;
+        for (index, &row) in rows.iter().enumerate() {
+            let value = if row >= 0 {
+                Some(x[row as usize])
+            } else {
+                y.and_then(|(values, y_rows)| {
+                    (y_rows[index] >= 0).then(|| values[y_rows[index] as usize])
+                })
+            };
+            let value = value.unwrap_or_else(|| {
+                expected_count += 1;
+                pattern[..W].try_into().unwrap()
+            });
+            if row >= 0 || y.is_some_and(|(_, y_rows)| y_rows[index] >= 0) {
+                expected_count += usize::from(missing(&value));
+            }
+            expected.push(value);
+        }
+        assert_eq!(output, expected);
+        if kind >= 0 {
+            assert_eq!(count, expected_count);
+        }
+    }
+
+    #[test]
+    fn column_gather_copies_runs_and_counts_like_single_rows() {
+        let rows: Vec<c_int> = (0..40)
+            .chain([-1, -1, -1])
+            .chain((60..90).rev())
+            .chain((100..200).step_by(3))
+            .chain([199, 0, 1, 2, -1, 3, 4])
+            .chain(150..200)
+            .collect();
+        let bytes: Vec<[u8; 1]> = (0..200)
+            .map(|i| [if i % 9 == 0 { 101 } else { (i % 90) as u8 }])
+            .collect();
+        // Byte storage from format 113 treats 101 through 127 as missing.
+        let byte_missing = |value: &[u8; 1]| (101..=127).contains(&(value[0] as i8));
+        check::<1>(&bytes, None, &rows, 0, byte_missing);
+        check::<1>(&bytes, None, &[], 0, byte_missing);
+        check::<1>(&bytes, None, &[-1, -1], 0, byte_missing);
+        let y_rows: Vec<c_int> = rows
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                if index % 4 == 0 {
+                    -1
+                } else {
+                    (index % 150) as c_int
+                }
+            })
+            .collect();
+        check::<1>(
+            &bytes,
+            Some((&bytes[..150], &y_rows)),
+            &rows,
+            0,
+            byte_missing,
+        );
+        // Int storage treats values above 32,740 as missing, and long storage
+        // values above 2,147,483,620. Every third row holds a missing code.
+        let ints: Vec<[u8; 2]> = (0..200_i16)
+            .map(|i| (if i % 3 == 0 { 32_750 + i % 10 } else { i * 37 }).to_le_bytes())
+            .collect();
+        check::<2>(&ints, None, &rows, 1, |value| {
+            i16::from_le_bytes(*value) > 32_740
+        });
+        let longs: Vec<[u8; 4]> = (0..200_i32)
+            .map(|i| {
+                (if i % 3 == 0 {
+                    2_147_483_630 + i % 10
+                } else {
+                    i * 1_000_003
+                })
+                .to_le_bytes()
+            })
+            .collect();
+        check::<4>(&longs, None, &rows, 2, |value| {
+            i32::from_le_bytes(*value) > 2_147_483_620
+        });
+        let doubles: Vec<[u8; 8]> = (0..200)
+            .map(|i| (f64::from(i) / 3.0).to_le_bytes())
+            .collect();
+        check::<8>(&doubles, None, &rows, -1, |_| false);
     }
 }
 
@@ -1808,14 +2037,21 @@ pub unsafe extern "C" fn dtatools_numeric_compare_patch(
     }
 }
 
-#[repr(C)]
-struct DictStringData {
-    value_ids: *mut u32,
-    length: usize,
+/// A dictionary's value strings with the views into them that
+/// `dtatools_dictstring_bytes` serves. No payload changes its dictionary, so
+/// the payloads that subsets and copies gather share their source's.
+struct SharedDictionary {
     value_views: Vec<(*const u8, usize)>,
     // Owns the string buffers referenced by `value_views`. Declared after the
     // views so it is dropped after them.
     _values: AHashMap<String, u32>,
+}
+
+#[repr(C)]
+struct DictStringData {
+    value_ids: *mut u32,
+    length: usize,
+    dictionary: std::sync::Arc<SharedDictionary>,
     // Native readers can outlive materialization of the original R handle.
     // Pins own this same immutable allocation without changing column sharing.
     references: std::sync::atomic::AtomicUsize,
@@ -1827,16 +2063,30 @@ impl DictStringData {
         values: AHashMap<String, u32>,
         value_views: Vec<(*const u8, usize)>,
     ) -> Self {
+        Self::over(
+            value_ids,
+            std::sync::Arc::new(SharedDictionary {
+                value_views,
+                _values: values,
+            }),
+        )
+    }
+
+    /// A payload whose rows are `value_ids` into `dictionary`.
+    fn over(value_ids: Vec<u32>, dictionary: std::sync::Arc<SharedDictionary>) -> Self {
         let ids = value_ids.into_boxed_slice();
         let length = ids.len();
         let value_ids = Box::into_raw(ids).cast::<u32>();
         Self {
             value_ids,
             length,
-            value_views,
-            _values: values,
+            dictionary,
             references: std::sync::atomic::AtomicUsize::new(1),
         }
+    }
+
+    fn value_views(&self) -> &[(*const u8, usize)] {
+        &self.dictionary.value_views
     }
 }
 
@@ -1881,7 +2131,7 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
         return 0;
     }
     let data = &*data.cast::<DictStringData>();
-    let Some(&(bytes, byte_length)) = data.value_views.get(id as usize) else {
+    let Some(&(bytes, byte_length)) = data.value_views().get(id as usize) else {
         return 0;
     };
     let Ok(byte_length) = c_int::try_from(byte_length) else {
@@ -1892,40 +2142,9 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
     1
 }
 
-/// A dictionary's value strings with the views into them that
-/// `dtatools_dictstring_bytes` serves.
-type Dictionary = (AHashMap<String, u32>, Vec<(*const u8, usize)>);
-
-/// An independent copy of a dictionary-string payload's dictionary. `None`
-/// when an allocation fails or an id has no value.
-fn clone_dictionary(source: &DictStringData) -> Option<Dictionary> {
-    let mut values = AHashMap::new();
-    if values.try_reserve(source._values.len()).is_err() {
-        return None;
-    }
-    for (value, &id) in &source._values {
-        let mut copy = String::new();
-        if copy.try_reserve_exact(value.len()).is_err() {
-            return None;
-        }
-        copy.push_str(value);
-        values.insert(copy, id);
-    }
-
-    let mut views = Vec::new();
-    if views.try_reserve_exact(values.len()).is_err() {
-        return None;
-    }
-    views.resize(values.len(), (ptr::null(), 0));
-    for (value, &id) in &values {
-        let slot = views.get_mut(id as usize)?;
-        *slot = (value.as_ptr(), value.len());
-    }
-    Some((values, views))
-}
-
 #[no_mangle]
 /// Clone a live dictionary-string payload for an independent R ALTREP vector.
+/// The clone owns its value ids and shares the immutable dictionary.
 ///
 /// # Safety
 ///
@@ -1942,16 +2161,14 @@ pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut 
         return ptr::null_mut();
     }
     ids.extend_from_slice(std::slice::from_raw_parts(source.value_ids, source.length));
-    let Some((values, views)) = clone_dictionary(source) else {
-        return ptr::null_mut();
-    };
-    Box::into_raw(Box::new(DictStringData::new(ids, values, views))).cast::<c_void>()
+    let dictionary = std::sync::Arc::clone(&source.dictionary);
+    Box::into_raw(Box::new(DictStringData::over(ids, dictionary))).cast::<c_void>()
 }
 
 #[no_mangle]
 /// Build a dictionary-string payload over `source`'s dictionary whose rows
 /// are the `count` value ids in `ids`, so an R subset of a compact string
-/// column stays compact.
+/// column stays compact. The two payloads share the dictionary.
 ///
 /// # Safety
 ///
@@ -1976,14 +2193,12 @@ pub unsafe extern "C" fn dtatools_dictstring_gather(
     }
     if row_ids
         .iter()
-        .any(|&id| id as usize >= source.value_views.len())
+        .any(|&id| id as usize >= source.value_views().len())
     {
         return ptr::null_mut();
     }
-    let Some((values, views)) = clone_dictionary(source) else {
-        return ptr::null_mut();
-    };
-    Box::into_raw(Box::new(DictStringData::new(row_ids, values, views))).cast::<c_void>()
+    let dictionary = std::sync::Arc::clone(&source.dictionary);
+    Box::into_raw(Box::new(DictStringData::over(row_ids, dictionary))).cast::<c_void>()
 }
 
 #[no_mangle]
@@ -4515,6 +4730,12 @@ struct RWriteStringRegion {
 struct RWriteStringRegionCache {
     rows: usize,
     region: RefCell<RWriteStringRegion>,
+    /// One row before `region`, read alone. strL planning rereads a
+    /// repeated value's first row, and refilling `region` from that row
+    /// would cost a whole region for each repeat.
+    lookback: RefCell<RWriteStringRegion>,
+    /// The row `lookback` served last, until `region` serves one.
+    looked_back: Cell<Option<u64>>,
 }
 
 #[derive(Clone, Copy)]
@@ -5030,9 +5251,31 @@ impl<'a> RWriteSource<'a> {
                 Box::new(RWriteStringRegionCache {
                     rows: string_region_rows.max(1),
                     region: RefCell::new(RWriteStringRegion::default()),
+                    lookback: RefCell::new(RWriteStringRegion::default()),
+                    looked_back: Cell::new(None),
                 })
             }),
             numeric_replacements: Cell::new(0),
+        })
+    }
+
+    /// Whether reading this column calls back into R, which only the main
+    /// R thread may do.
+    fn calls_r(&self) -> bool {
+        self.numeric_region.is_some() || self.string_region.is_some()
+    }
+
+    /// The row where this column's region cache ends, so reading any row
+    /// from the cache's start up to it calls no R code. `None` for a column
+    /// that never calls R.
+    fn cached_until(&self) -> Option<u64> {
+        if let Some(cache) = &self.numeric_region {
+            let region = cache.region.borrow();
+            return Some(region.start + region.values.len() as u64);
+        }
+        self.string_region.as_ref().map(|cache| {
+            let region = cache.region.borrow();
+            region.start + region.values.len() as u64
         })
     }
 
@@ -5150,7 +5393,25 @@ impl<'a> RWriteSource<'a> {
             .string_region
             .as_ref()
             .ok_or_else(|| "R character callback source is unavailable".to_owned())?;
-        let mut region = cache.region.borrow_mut();
+        // A later row read just after the lookback served one starts a
+        // forward scan, as the write pass and the pass over canonical strL
+        // rows make after planning, so it refills `region`. Planning reads
+        // a forward row between lookbacks, unless a hash matches several
+        // earlier values.
+        let restart = cache
+            .looked_back
+            .get()
+            .is_some_and(|previous| row > previous);
+        let behind = {
+            let region = cache.region.borrow();
+            !region.values.is_empty() && row < region.start && !restart
+        };
+        cache.looked_back.set(behind.then_some(row));
+        let (mut region, rows) = if behind {
+            (cache.lookback.borrow_mut(), 1)
+        } else {
+            (cache.region.borrow_mut(), cache.rows)
+        };
         let end = region
             .start
             .checked_add(region.values.len() as u64)
@@ -5158,7 +5419,7 @@ impl<'a> RWriteSource<'a> {
         if region.values.is_empty() || row < region.start || row >= end {
             let remaining = usize::try_from(self.row_count - row)
                 .map_err(|_| "R character region is too large".to_owned())?;
-            let length = remaining.min(cache.rows);
+            let length = remaining.min(rows);
             let has_ids = self.descriptor.dta_type == 2_050;
             region.ids.resize(if has_ids { length } else { 0 }, 0);
             region.values.resize(length, ptr::null());
@@ -5215,7 +5476,7 @@ impl<'a> RWriteSource<'a> {
         if !self.descriptor.direct_string_data.is_null() {
             let (data, id) = self.dictionary_value_id_at(index)?;
             let &(value, length) = data
-                .value_views
+                .value_views()
                 .get(id as usize)
                 .ok_or_else(|| "R string dictionary contains an invalid value ID".to_owned())?;
             let bytes = if length == 0 {
@@ -5366,6 +5627,28 @@ unsafe fn encode_direct_observation_column(
                 );
             }
         }
+        DtaType::FixedString(width) if source.descriptor.direct_string_data.is_null() => {
+            // An ordinary character column, read through R callbacks with
+            // the scalar writer's checks.
+            for offset in 0..rows {
+                let row = start + offset as u64;
+                let value = r_write_source_result(column, row, source.string_value_at(row))?;
+                if value.contains('\0') || value.len() > usize::from(width) {
+                    return Err(DtaWriteError::InvalidValue {
+                        column: column.name.to_string(),
+                        row,
+                        message: format!(
+                            "string must contain at most {width} UTF-8 bytes and no NUL"
+                        ),
+                    });
+                }
+                ptr::copy_nonoverlapping(
+                    value.as_ptr(),
+                    output.add(offset * row_width + column_offset),
+                    value.len(),
+                );
+            }
+        }
         DtaType::FixedString(width) => {
             let data = &*source
                 .descriptor
@@ -5382,7 +5665,7 @@ unsafe fn encode_direct_observation_column(
                 }
                 let id = ptr::read(data.value_ids.add(row_index));
                 let &(value, length) =
-                    data.value_views
+                    data.value_views()
                         .get(id as usize)
                         .ok_or_else(|| DtaWriteError::Source {
                             column: column.name.to_string(),
@@ -5420,19 +5703,15 @@ impl RWriteObservationSource<'_, '_> {
         r_write_source_result(&self.data.columns[column_index], row, result)
     }
 
+    /// Every column but a strL one can fill its cells of a row block by
+    /// itself. A column read through R callbacks fills them on this thread,
+    /// so one such column no longer sends the whole dataset to the scalar
+    /// writer.
     fn has_direct_observations(&self) -> bool {
         self.data
             .columns
             .iter()
-            .zip(self.sources)
-            .all(|(column, source)| match column.dta_type {
-                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-                    !source.descriptor.direct_numeric_values.is_null()
-                        || source.direct_owned.is_some()
-                }
-                DtaType::FixedString(_) => !source.descriptor.direct_string_data.is_null(),
-                DtaType::StrL => false,
-            })
+            .all(|column| !matches!(column.dta_type, DtaType::StrL))
     }
 
     fn append_direct_observation_rows(
@@ -5442,8 +5721,6 @@ impl RWriteObservationSource<'_, '_> {
         end: u64,
         available_parallelism: usize,
     ) -> Result<usize, DtaWriteError> {
-        let start_index =
-            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
         let rows = usize::try_from(end - start)
             .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
         let row_width = self
@@ -5472,32 +5749,99 @@ impl RWriteObservationSource<'_, '_> {
             offsets.push(offset);
             offset += write_type_width(&column.dta_type);
         }
+        let layout = ObservationLayout {
+            output,
+            start,
+            row_width,
+            offsets: &offsets,
+        };
+        if !self.sources.iter().any(RWriteSource::calls_r) {
+            return self.encode_observation_columns(&layout, start, end, available_parallelism);
+        }
 
-        let useful_for_size = region_bytes
+        // The row-by-row writer runs an R callback when a column's region
+        // cache misses, and its errors and the callback's effects on other
+        // columns show where it ran. So a row that may miss is encoded in
+        // column order, and the rows every cache then holds, which call no
+        // R code, are encoded column by column.
+        let mut workers = 1;
+        let mut row = start;
+        while row < end {
+            self.encode_observation_rows_in_order(&layout, row, row + 1)?;
+            row += 1;
+            let cached = self
+                .sources
+                .iter()
+                .filter_map(RWriteSource::cached_until)
+                .min()
+                .unwrap_or(end)
+                .min(end);
+            if cached > row {
+                match self.encode_observation_columns(&layout, row, cached, available_parallelism) {
+                    Ok(used) => workers = workers.max(used),
+                    Err(error) => {
+                        // Report the cell the row-by-row writer would have
+                        // failed on first.
+                        self.encode_observation_rows_in_order(&layout, row, cached)?;
+                        return Err(error);
+                    }
+                }
+                row = cached;
+            }
+        }
+        Ok(workers)
+    }
+
+    /// Encode rows `start..end` one row at a time, each in column order.
+    fn encode_observation_rows_in_order(
+        &self,
+        layout: &ObservationLayout<'_>,
+        start: u64,
+        end: u64,
+    ) -> Result<(), DtaWriteError> {
+        for row in start..end {
+            let region = layout.region(row, row + 1)?;
+            for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
+            {
+                unsafe {
+                    encode_direct_observation_column(column, source, region, layout.offsets[index])
+                }?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Encode rows `start..end` column by column. Workers take only the
+    /// columns whose buffers are exposed; a column read through R callbacks
+    /// is encoded on this thread after they finish.
+    fn encode_observation_columns(
+        &self,
+        layout: &ObservationLayout<'_>,
+        start: u64,
+        end: u64,
+        available_parallelism: usize,
+    ) -> Result<usize, DtaWriteError> {
+        let region = layout.region(start, end)?;
+        let (shared, local): (Vec<usize>, Vec<usize>) =
+            (0..self.data.columns.len()).partition(|&index| !self.sources[index].calls_r());
+        let useful_for_size = (region.rows * region.row_width)
             .div_ceil(DIRECT_OBSERVATION_BYTES_PER_WORKER)
             .max(1);
         let workers = available_parallelism
             .max(1)
-            .min(self.data.columns.len())
+            .min(shared.len().max(1))
             .min(useful_for_size);
         if workers <= 1 {
-            let region = DirectObservationRegion {
-                output: output as usize,
-                start,
-                start_index,
-                rows,
-                row_width,
-            };
             for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
             {
                 unsafe {
-                    encode_direct_observation_column(column, source, region, offsets[index])
+                    encode_direct_observation_column(column, source, region, layout.offsets[index])
                 }?;
             }
             return Ok(workers);
         }
 
-        let mut ordered = (0..self.data.columns.len()).collect::<Vec<_>>();
+        let mut ordered = shared;
         ordered.sort_unstable_by_key(|&index| {
             std::cmp::Reverse(write_type_width(&self.data.columns[index].dta_type))
         });
@@ -5516,17 +5860,10 @@ impl RWriteObservationSource<'_, '_> {
 
         let columns_address = self.data.columns.as_ptr() as usize;
         let sources_address = self.sources.as_ptr() as usize;
-        let region = DirectObservationRegion {
-            output: output as usize,
-            start,
-            start_index,
-            rows,
-            row_width,
-        };
+        let offsets = layout.offsets;
         std::thread::scope(|scope| -> Result<(), DtaWriteError> {
             let mut handles = Vec::with_capacity(workers);
             for assignment in assignments {
-                let offsets = &offsets;
                 handles.push(scope.spawn(move || -> Result<(), DtaWriteError> {
                     // The main R thread exposed the source buffers before spawning
                     // and keeps their protected owners live. Workers only read
@@ -5553,7 +5890,44 @@ impl RWriteObservationSource<'_, '_> {
             }
             Ok(())
         })?;
+        for index in local {
+            unsafe {
+                encode_direct_observation_column(
+                    &self.data.columns[index],
+                    &self.sources[index],
+                    region,
+                    offsets[index],
+                )
+            }?;
+        }
         Ok(workers)
+    }
+}
+
+/// Where a block of observation rows is encoded: its buffer, its first
+/// row, and each column's offset within a row.
+struct ObservationLayout<'a> {
+    output: *mut u8,
+    start: u64,
+    row_width: usize,
+    offsets: &'a [usize],
+}
+
+impl ObservationLayout<'_> {
+    fn region(&self, start: u64, end: u64) -> Result<DirectObservationRegion, DtaWriteError> {
+        let start_index =
+            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
+        let skipped = usize::try_from(start - self.start)
+            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
+        let rows = usize::try_from(end - start)
+            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
+        Ok(DirectObservationRegion {
+            output: unsafe { self.output.add(skipped * self.row_width) } as usize,
+            start,
+            start_index,
+            rows,
+            row_width: self.row_width,
+        })
     }
 }
 
@@ -5983,17 +6357,47 @@ mod tests {
         TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
     };
 
+    /// A numeric column that the stub callback below serves, recording the
+    /// threads that ask for its regions.
+    struct CallbackColumn {
+        values: Vec<f64>,
+        missing_codes: Vec<c_int>,
+        threads: std::sync::Mutex<Vec<std::thread::ThreadId>>,
+    }
+
+    /// Stands in for the R region callback. A null reader fails, and a test
+    /// reader points to a `CallbackColumn`.
     #[no_mangle]
     unsafe extern "C" fn dtatools_write_numeric_region(
-        _reader: *const c_void,
-        _start: usize,
-        _length: usize,
-        _values: *mut f64,
-        _missing_codes: *mut c_int,
+        reader: *const c_void,
+        start: usize,
+        length: usize,
+        values: *mut f64,
+        missing_codes: *mut c_int,
         _error_message: *mut c_char,
         _error_capacity: usize,
     ) -> c_int {
-        0
+        let Some(column) = reader.cast::<CallbackColumn>().as_ref() else {
+            return 0;
+        };
+        if start
+            .checked_add(length)
+            .is_none_or(|end| end > column.values.len())
+        {
+            return 0;
+        }
+        column
+            .threads
+            .lock()
+            .unwrap()
+            .push(std::thread::current().id());
+        ptr::copy_nonoverlapping(column.values.as_ptr().add(start), values, length);
+        ptr::copy_nonoverlapping(
+            column.missing_codes.as_ptr().add(start),
+            missing_codes,
+            length,
+        );
+        1
     }
 
     fn direct_numeric_descriptor(
@@ -6028,6 +6432,120 @@ mod tests {
         let mut descriptor = direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
         descriptor.direct_string_data = data;
         descriptor
+    }
+
+    /// A character column that the stub callback below serves, recording
+    /// each region it is asked for.
+    struct CallbackStrings {
+        values: Vec<String>,
+        regions: std::sync::Mutex<Vec<(usize, usize)>>,
+    }
+
+    /// Stands in for the R character region callback. A test column's ids
+    /// are its value's first index in `values` plus one.
+    #[no_mangle]
+    unsafe extern "C" fn dtatools_write_string_region(
+        values: super::Sexp,
+        start: usize,
+        length: usize,
+        ids: *mut u64,
+        strings: *mut *const c_char,
+        string_lengths: *mut usize,
+        _error_message: *mut c_char,
+        _error_capacity: usize,
+    ) -> c_int {
+        let Some(column) = values.cast::<CallbackStrings>().as_ref() else {
+            return 0;
+        };
+        if start
+            .checked_add(length)
+            .is_none_or(|end| end > column.values.len())
+        {
+            return 0;
+        }
+        column.regions.lock().unwrap().push((start, length));
+        for offset in 0..length {
+            let value = &column.values[start + offset];
+            if !ids.is_null() {
+                let first = column.values.iter().position(|other| other == value);
+                *ids.add(offset) = first.unwrap() as u64 + 1;
+            }
+            *strings.add(offset) = value.as_ptr().cast();
+            *string_lengths.add(offset) = value.len();
+        }
+        1
+    }
+
+    #[test]
+    fn earlier_string_rows_do_not_refill_the_forward_region() {
+        let rows = 1_000;
+        let column = CallbackStrings {
+            values: (0..rows)
+                .map(|row| {
+                    if row % 3 == 0 {
+                        "x".repeat(3_000)
+                    } else {
+                        format!("row {row}")
+                    }
+                })
+                .collect(),
+            regions: Default::default(),
+        };
+        let mut descriptor = direct_numeric_descriptor(2_050, ptr::null(), 0, 0.0, 1.0);
+        descriptor.string_values = (&column as *const CallbackStrings).cast_mut().cast();
+        let source = RWriteSource::new(&descriptor, rows as u64, 1, 64).unwrap();
+        // Read forward as strL planning does, rereading the first row of
+        // each repeated value.
+        for row in 0..rows {
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+            assert_eq!(
+                source.string_id_at(row as u64).unwrap(),
+                Some(if row % 3 == 0 { 1 } else { row as u64 + 1 })
+            );
+            if row % 3 == 0 && row > 0 {
+                assert_eq!(source.string_value_at(0).unwrap(), column.values[0]);
+            }
+        }
+        {
+            let regions = column.regions.lock().unwrap();
+            // 16 forward regions of up to 64 rows and one lookback of row 0.
+            assert_eq!(regions.len(), 17, "{regions:?}");
+            assert_eq!(
+                regions.iter().filter(|&&(_, length)| length == 1).count(),
+                1
+            );
+            assert!(regions.contains(&(0, 1)));
+        }
+        // A second forward pass, as the write pass makes, reads row 0 from
+        // the lookback and then refills whole regions from row 1.
+        column.regions.lock().unwrap().clear();
+        for row in 0..rows {
+            assert_eq!(source.string_id_at(row as u64).unwrap().is_some(), true);
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+        }
+        {
+            let regions = column.regions.lock().unwrap();
+            assert_eq!(regions.first(), Some(&(1, 64)), "{regions:?}");
+            assert_eq!(regions.len(), 16, "{regions:?}");
+        }
+        // So does a sparse forward pass, as writing the canonical values
+        // makes. Row 0 is still in the lookback.
+        column.regions.lock().unwrap().clear();
+        for row in (0..rows).step_by(2) {
+            assert_eq!(
+                source.string_value_at(row as u64).unwrap(),
+                column.values[row]
+            );
+        }
+        let regions = column.regions.lock().unwrap();
+        assert_eq!(regions.first(), Some(&(2, 64)), "{regions:?}");
+        assert_eq!(regions.len(), 16, "{regions:?}");
     }
 
     #[test]
@@ -6092,6 +6610,130 @@ mod tests {
                 "variant {variant}"
             );
             assert_eq!(source.numeric_replacements.get(), 0);
+        }
+    }
+
+    #[test]
+    fn callback_columns_join_direct_rows_on_the_calling_thread() {
+        use super::{encode_numeric, write_raw_numeric_to_ptr};
+        let rows = 300_000_usize;
+        let bytes: Vec<i8> = (0..rows).map(|row| (row % 90) as i8).collect();
+        let longs: Vec<c_int> = (0..rows).map(|row| row as c_int * 7).collect();
+        // Byte storage cannot hold 300 or 1.5, and code 256 is an untagged
+        // NaN, so those rows become counted system missings.
+        let callback = CallbackColumn {
+            values: (0..rows)
+                .map(|row| match row % 5 {
+                    0 => 300.0,
+                    1 => 1.5,
+                    _ => (row % 100) as f64,
+                })
+                .collect(),
+            missing_codes: (0..rows)
+                .map(|row| match row % 7 {
+                    0 => 0,
+                    1 => c_int::from(b'c'),
+                    2 => 256,
+                    _ => -1,
+                })
+                .collect(),
+            threads: Default::default(),
+        };
+        let mut callback_descriptor = direct_numeric_descriptor(0, ptr::null(), 0, 0.0, 1.0);
+        callback_descriptor.numeric_values = (&callback as *const CallbackColumn).cast();
+        let descriptors = [
+            direct_numeric_descriptor(0, bytes.as_ptr().cast(), 3, 0.0, 1.0),
+            callback_descriptor,
+            direct_numeric_descriptor(2, longs.as_ptr().cast(), 1, 0.0, 1.0),
+        ];
+        let dta_types = [DtaType::Byte, DtaType::Byte, DtaType::Long];
+        let row_width = 6;
+        let sources_for = |region_rows| {
+            descriptors
+                .iter()
+                .map(|descriptor| {
+                    RWriteSource::new(descriptor, rows as u64, region_rows, 1).unwrap()
+                })
+                .collect::<Vec<_>>()
+        };
+
+        // The scalar writer's order: each row's cells in column order,
+        // raw storage first.
+        let scalar = sources_for(4096);
+        let mut expected = vec![0_u8; rows * row_width];
+        for row in 0..rows {
+            let mut offset = row * row_width;
+            for (source, dta_type) in scalar.iter().zip(&dta_types) {
+                let value = match source.raw_numeric_value_at(row as u64).unwrap() {
+                    Some(value) => value,
+                    None => encode_numeric(
+                        dta_type,
+                        source.numeric_value_at(row as u64, dta_type).unwrap(),
+                    ),
+                };
+                unsafe { write_raw_numeric_to_ptr(expected.as_mut_ptr().add(offset), value) };
+                offset += dta_type.storage_width() as usize;
+            }
+        }
+        let expected_replacements: Vec<u64> = scalar
+            .iter()
+            .map(|source| source.numeric_replacements.get())
+            .collect();
+        assert!(expected_replacements[1] > 0);
+
+        // A region that holds every row leaves one stretch for workers after
+        // the first row; 4,096-row regions refill along the way.
+        for (parallelism, region_rows, expected_workers) in
+            [(1, 4096, 1), (4, 4096, 1), (4, rows, 2)]
+        {
+            callback.threads.lock().unwrap().clear();
+            let sources = sources_for(region_rows);
+            let columns = dta_types
+                .iter()
+                .enumerate()
+                .map(|(index, dta_type)| DtaWriteColumn {
+                    name: Cow::Owned(format!("x{index}")),
+                    dta_type: dta_type.clone(),
+                    format: Cow::Borrowed(""),
+                    label: Cow::Borrowed(""),
+                    has_value_labels: false,
+                    value_labels: Vec::new(),
+                    notes: Vec::new(),
+                    characteristics: Vec::new(),
+                    values: DtaWriteColumnValues::Source(&sources[index]),
+                })
+                .collect();
+            let data = DtaWriteData {
+                dataset_label: Cow::Borrowed(""),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
+                columns,
+            };
+            let observation_source = RWriteObservationSource {
+                data: &data,
+                sources: &sources,
+            };
+            assert!(observation_source.has_direct_observations());
+            let mut output = Vec::new();
+            let workers = observation_source
+                .append_direct_observation_rows(&mut output, 0, rows as u64, parallelism)
+                .unwrap();
+            // Only the two direct columns go to workers.
+            assert_eq!(workers, expected_workers);
+            assert!(
+                output == expected,
+                "{parallelism} workers, {region_rows} rows"
+            );
+            let replacements: Vec<u64> = sources
+                .iter()
+                .map(|source| source.numeric_replacements.get())
+                .collect();
+            assert_eq!(replacements, expected_replacements);
+            let threads = callback.threads.lock().unwrap();
+            assert!(!threads.is_empty());
+            assert!(threads
+                .iter()
+                .all(|&thread| thread == std::thread::current().id()));
         }
     }
 
@@ -6815,6 +7457,69 @@ mod tests {
                 1
             );
             dtatools_dictstring_free(data.cast());
+        }
+    }
+
+    #[test]
+    fn gathered_and_cloned_payloads_share_their_source_dictionary() {
+        let mut dictionary = AHashMap::new();
+        dictionary.insert("alpha".to_owned(), 0_u32);
+        dictionary.insert("beta".to_owned(), 1_u32);
+        let mut views = vec![(ptr::null(), 0); dictionary.len()];
+        for (value, &id) in &dictionary {
+            views[id as usize] = (value.as_ptr(), value.len());
+        }
+        let source = Box::into_raw(Box::new(DictStringData::new(
+            vec![0, 1, 0],
+            dictionary,
+            views,
+        )));
+        unsafe {
+            let rows = [1_u32, 1, 0];
+            let gathered =
+                super::dtatools_dictstring_gather(source.cast(), rows.as_ptr(), rows.len())
+                    .cast::<DictStringData>();
+            let cloned = super::dtatools_dictstring_clone(source.cast()).cast::<DictStringData>();
+            // Both calls return null when they decline, so read through checked references.
+            let gathered_data = gathered.as_ref().expect("the gather declined");
+            let cloned_data = cloned.as_ref().expect("the clone declined");
+            assert!(std::sync::Arc::ptr_eq(
+                &gathered_data.dictionary,
+                &(*source).dictionary
+            ));
+            assert!(std::sync::Arc::ptr_eq(
+                &cloned_data.dictionary,
+                &(*source).dictionary
+            ));
+            assert_eq!(
+                std::slice::from_raw_parts(gathered_data.value_ids, 3),
+                &rows
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(cloned_data.value_ids, 3),
+                &[0, 1, 0]
+            );
+            // An id outside the dictionary declines.
+            let outside = [2_u32];
+            assert!(
+                super::dtatools_dictstring_gather(source.cast(), outside.as_ptr(), 1).is_null()
+            );
+
+            // Each payload keeps the dictionary alive after the others are released.
+            dtatools_dictstring_free(source.cast());
+            dtatools_dictstring_free(cloned.cast());
+            let mut bytes = ptr::null();
+            let mut length = 0;
+            assert_eq!(
+                super::dtatools_dictstring_bytes(gathered.cast(), 1, &mut bytes, &mut length),
+                1
+            );
+            assert_eq!(
+                std::slice::from_raw_parts(bytes.cast::<u8>(), length as usize),
+                b"beta"
+            );
+            assert_eq!(std::sync::Arc::strong_count(&gathered_data.dictionary), 1);
+            dtatools_dictstring_free(gathered.cast());
         }
     }
 }

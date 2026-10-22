@@ -348,6 +348,121 @@ static double summary_total(const summary_accumulator *state) {
     return state->sum + state->correction;
 }
 
+/* An unweighted summ() passes weights of exactly 1. Each such weight adds 1
+   to the compensated total, which therefore stays the exact count, and
+   multiplying a value or a moment term by it changes nothing, so the scans
+   need not read the weights at all. */
+static int summary_unit_weights(SEXP weights) {
+    if (TYPEOF(weights) != REALSXP || ALTREP(weights)) return 0;
+    const double *w = REAL(weights);
+    R_xlen_t length = XLENGTH(weights);
+    /* Each block is checked whole, so the compiler can vectorize it. */
+    for (R_xlen_t start = 0; start < length; start += SUMMARY_BLOCK) {
+        R_xlen_t end = length - start < SUMMARY_BLOCK
+            ? length : start + SUMMARY_BLOCK;
+        int other = 0;
+        for (R_xlen_t i = start; i < end; i++) other |= w[i] != 1.0;
+        if (other) return 0;
+    }
+    return 1;
+}
+
+/* Byte, int and long storage holds integers, and a raw value at or above
+   the storage's first missing code is missing. When the row count times
+   the largest magnitude the storage holds is at most 2^53, every partial
+   sum of observed values is an integer a double holds exactly. Each
+   compensated step is then exact and the total is the integer sum, so
+   under unit weights the first pass sums in integers. Both passes read
+   the raw storage rather than decoding blocks of doubles and codes. */
+typedef struct {
+    int moments;
+    int detailed;
+    double mean;
+    int64_t count, sum, minimum, maximum;
+    summary_accumulator m2, m3, m4;
+} summary_integer_scan;
+
+#define SUMMARY_INTEGER_ROWS(TYPE, LIMIT)                                    \
+    do {                                                                    \
+        const unsigned char *bytes = span->values;                           \
+        TYPE limit = (LIMIT);                                                \
+        for (size_t begin = 0; begin < span->length; ) {                     \
+            size_t size = span->length - begin;                             \
+            if (size > 65536) size = 65536;                                 \
+            R_CheckUserInterrupt();                                         \
+            if (!scan->moments) {                                           \
+                int64_t count = 0, sum = 0;                                 \
+                int64_t minimum = scan->minimum, maximum = scan->maximum;   \
+                for (size_t i = begin; i < begin + size; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    int64_t value = raw;                                    \
+                    int observed = raw < limit;                             \
+                    count += observed;                                      \
+                    sum += observed ? value : 0;                            \
+                    minimum = observed && value < minimum ? value : minimum;\
+                    maximum = observed && value > maximum ? value : maximum;\
+                }                                                           \
+                scan->count += count;                                       \
+                scan->sum += sum;                                           \
+                scan->minimum = minimum;                                    \
+                scan->maximum = maximum;                                    \
+            } else {                                                        \
+                double mean = scan->mean;                                   \
+                int detailed = scan->detailed;                              \
+                summary_accumulator m2 = scan->m2, m3 = scan->m3;           \
+                summary_accumulator m4 = scan->m4;                          \
+                for (size_t i = begin; i < begin + size; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    if (raw >= limit) continue;                             \
+                    double centered = (double) raw - mean;                  \
+                    summary_accumulate(&m2, centered * centered);           \
+                    if (detailed) {                                         \
+                        summary_accumulate(&m3, R_pow(centered, 3.0));      \
+                        summary_accumulate(&m4, R_pow(centered, 4.0));      \
+                    }                                                       \
+                }                                                           \
+                scan->m2 = m2;                                              \
+                scan->m3 = m3;                                              \
+                scan->m4 = m4;                                              \
+            }                                                               \
+            begin += size;                                                  \
+        }                                                                   \
+    } while (0)
+
+static void summary_integer_span(
+    const numeric_data *span, size_t offset, void *context
+) {
+    (void) offset;
+    summary_integer_scan *scan = context;
+    int legacy = span->format_version <= 111;
+    switch (span->kind) {
+    case NUMERIC_BYTE:
+        SUMMARY_INTEGER_ROWS(int8_t, legacy ? 127 : 101);
+        break;
+    case NUMERIC_INT:
+        SUMMARY_INTEGER_ROWS(int16_t, legacy ? 32767 : 32741);
+        break;
+    default:
+        SUMMARY_INTEGER_ROWS(int32_t,
+            legacy ? INT32_MAX : INT32_C(2147483621));
+        break;
+    }
+}
+#undef SUMMARY_INTEGER_ROWS
+
+static int summary_integer_storage(
+    const numeric_data *storage, R_xlen_t length
+) {
+    if (storage == NULL || storage->temporal != 0) return 0;
+    double magnitude = storage->kind == NUMERIC_BYTE ? 128.0
+        : storage->kind == NUMERIC_INT ? 32768.0
+        : storage->kind == NUMERIC_LONG ? 2147483648.0 : 0.0;
+    return magnitude != 0.0 &&
+        (double) length * magnitude <= 9007199254740992.0;
+}
+
 /* Return count, weight total, weighted sum, extrema, and centered moment
    totals. R retains weight policy, percentile selection and result assembly. */
 SEXP C_dtatools_summarize_moments(
@@ -358,6 +473,7 @@ SEXP C_dtatools_summarize_moments(
     R_xlen_t length = XLENGTH(x);
     if (XLENGTH(weights) != length)
         Rf_error("summary weights must match the value count");
+    int unit = summary_unit_weights(weights);
     numeric_reader x_reader, w_reader;
     numeric_data x_storage, w_storage;
     PROTECT(summary_reader_capture(x, &x_reader, &x_storage));
@@ -366,11 +482,39 @@ SEXP C_dtatools_summarize_moments(
     double count = 0, minimum = R_PosInf, maximum = R_NegInf;
     double values[SUMMARY_BLOCK], w[SUMMARY_BLOCK];
     int codes[SUMMARY_BLOCK], w_codes[SUMMARY_BLOCK];
-    for (R_xlen_t start = 0; start < length; ) {
+    int detailed = Rf_asLogical(detail);
+    int integer = unit && summary_integer_storage(x_reader.storage, length);
+    summary_integer_scan scan = {
+        0, detailed, 0, 0, 0, INT64_MAX, INT64_MIN, {0}, {0}, {0}
+    };
+    if (integer) {
+        numeric_for_each_span(x_reader.storage, 0, (size_t) length,
+                              summary_integer_span, &scan);
+        count = (double) scan.count;
+        sum.sum = (double) scan.sum;
+        if (scan.count) {
+            minimum = (double) scan.minimum;
+            maximum = (double) scan.maximum;
+        }
+    }
+    for (R_xlen_t start = integer ? length : 0; start < length; ) {
         R_CheckUserInterrupt();
         R_xlen_t size = length - start < SUMMARY_BLOCK
             ? length - start : SUMMARY_BLOCK;
         numeric_reader_region(&x_reader, start, size, values, codes);
+        if (unit) {
+            for (R_xlen_t i = 0; i < size; i++) {
+                if (codes[i] < 0 && !R_FINITE(values[i]))
+                    Rf_errorcall(R_NilValue, "summary inputs must be finite or missing");
+                if (codes[i] >= 0) continue;
+                count++;
+                summary_accumulate(&sum, values[i]);
+                if (values[i] < minimum) minimum = values[i];
+                if (values[i] > maximum) maximum = values[i];
+            }
+            start += size;
+            continue;
+        }
         numeric_reader_region(&w_reader, start, size, w, w_codes);
         for (R_xlen_t i = 0; i < size; i++) {
             if (codes[i] < 0 && !R_FINITE(values[i]))
@@ -384,17 +528,39 @@ SEXP C_dtatools_summarize_moments(
         }
         start += size;
     }
-    double total_value = summary_total(&total), sum_value = summary_total(&sum);
+    double total_value = unit ? count : summary_total(&total);
+    double sum_value = summary_total(&sum);
     double mean = sum_value / total_value;
     summary_accumulator m2 = {0}, m3 = {0}, m4 = {0};
-    int detailed = Rf_asLogical(detail);
     if (count && total_value != 0 && R_FINITE(mean) &&
+        !Rf_asLogical(meanonly) && integer) {
+        scan.moments = 1;
+        scan.mean = mean;
+        numeric_for_each_span(x_reader.storage, 0, (size_t) length,
+                              summary_integer_span, &scan);
+        m2 = scan.m2;
+        m3 = scan.m3;
+        m4 = scan.m4;
+    } else if (count && total_value != 0 && R_FINITE(mean) &&
         !Rf_asLogical(meanonly)) {
         for (R_xlen_t start = 0; start < length; ) {
             R_CheckUserInterrupt();
             R_xlen_t size = length - start < SUMMARY_BLOCK
                 ? length - start : SUMMARY_BLOCK;
             numeric_reader_region(&x_reader, start, size, values, codes);
+            if (unit) {
+                for (R_xlen_t i = 0; i < size; i++) {
+                    if (codes[i] >= 0) continue;
+                    double centered = values[i] - mean;
+                    summary_accumulate(&m2, centered * centered);
+                    if (detailed) {
+                        summary_accumulate(&m3, R_pow(centered, 3.0));
+                        summary_accumulate(&m4, R_pow(centered, 4.0));
+                    }
+                }
+                start += size;
+                continue;
+            }
             numeric_reader_region(&w_reader, start, size, w, w_codes);
             for (R_xlen_t i = 0; i < size; i++) {
                 if (codes[i] >= 0 || w_codes[i] >= 0 || w[i] == 0) continue;
@@ -423,6 +589,111 @@ SEXP C_dtatools_summarize_moments(
     return result;
 }
 
+/* A detailed summary under unit weights sorts the observed values and gives
+   each a weight of 1. Integer storage whose observed values span a range
+   not much larger than their count is sorted by counting each value, which
+   reads the raw storage twice and orders nothing. */
+typedef struct {
+    int counting;
+    int64_t count, minimum, maximum;
+    R_xlen_t *counts;
+} summary_sort_scan;
+
+#define SUMMARY_SORT_ROWS(TYPE, LIMIT)                                       \
+    do {                                                                    \
+        const unsigned char *bytes = span->values;                           \
+        TYPE limit = (LIMIT);                                                \
+        for (size_t begin = 0; begin < span->length; ) {                     \
+            size_t size = span->length - begin;                             \
+            if (size > 65536) size = 65536;                                 \
+            R_CheckUserInterrupt();                                         \
+            if (!scan->counting) {                                          \
+                int64_t count = 0;                                          \
+                int64_t minimum = scan->minimum, maximum = scan->maximum;   \
+                for (size_t i = begin; i < begin + size; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    int64_t value = raw;                                    \
+                    int observed = raw < limit;                             \
+                    count += observed;                                      \
+                    minimum = observed && value < minimum ? value : minimum;\
+                    maximum = observed && value > maximum ? value : maximum;\
+                }                                                           \
+                scan->count += count;                                       \
+                scan->minimum = minimum;                                    \
+                scan->maximum = maximum;                                    \
+            } else {                                                        \
+                R_xlen_t *counts = scan->counts;                            \
+                int64_t minimum = scan->minimum;                            \
+                for (size_t i = begin; i < begin + size; i++) {             \
+                    TYPE raw;                                               \
+                    memcpy(&raw, bytes + i * sizeof(raw), sizeof(raw));     \
+                    if (raw < limit) counts[(int64_t) raw - minimum]++;     \
+                }                                                           \
+            }                                                               \
+            begin += size;                                                  \
+        }                                                                   \
+    } while (0)
+
+static void summary_sort_span(
+    const numeric_data *span, size_t offset, void *context
+) {
+    (void) offset;
+    summary_sort_scan *scan = context;
+    int legacy = span->format_version <= 111;
+    switch (span->kind) {
+    case NUMERIC_BYTE:
+        SUMMARY_SORT_ROWS(int8_t, legacy ? 127 : 101);
+        break;
+    case NUMERIC_INT:
+        SUMMARY_SORT_ROWS(int16_t, legacy ? 32767 : 32741);
+        break;
+    default:
+        SUMMARY_SORT_ROWS(int32_t, legacy ? INT32_MAX : INT32_C(2147483621));
+        break;
+    }
+}
+#undef SUMMARY_SORT_ROWS
+
+SEXP C_dtatools_summary_sorted(SEXP x, SEXP weights) {
+    if (TYPEOF(x) != REALSXP || !summary_scan_supported(x)) return R_NilValue;
+    R_xlen_t length = XLENGTH(x);
+    if (XLENGTH(weights) != length || !summary_unit_weights(weights))
+        return R_NilValue;
+    numeric_reader reader;
+    numeric_data storage;
+    PROTECT(summary_reader_capture(x, &reader, &storage));
+    if (!summary_integer_storage(reader.storage, length)) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    summary_sort_scan scan = {0, 0, INT64_MAX, INT64_MIN, NULL};
+    numeric_for_each_span(reader.storage, 0, (size_t) length,
+                          summary_sort_span, &scan);
+    int64_t range = scan.count ? scan.maximum - scan.minimum + 1 : 0;
+    if (range > scan.count + 65536) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) scan.count));
+    if (scan.count) {
+        scan.counts = (R_xlen_t *) R_alloc((size_t) range, sizeof(R_xlen_t));
+        memset(scan.counts, 0, (size_t) range * sizeof(R_xlen_t));
+        scan.counting = 1;
+        numeric_for_each_span(reader.storage, 0, (size_t) length,
+                              summary_sort_span, &scan);
+        double *out = REAL(result);
+        R_xlen_t position = 0;
+        for (int64_t value = 0; value < range; value++) {
+            double observed = (double) (scan.minimum + value);
+            for (R_xlen_t k = scan.counts[value]; k > 0; k--)
+                out[position++] = observed;
+        }
+    }
+    UNPROTECT(2);
+    return result;
+}
+
 /* Compensated accumulation is needed even on platforms where long double
    has double precision. In particular, 1e16 + 1 - 1e16 must retain the 1. */
 SEXP C_dtatools_summarize_sum(SEXP x) {
@@ -439,4 +710,46 @@ SEXP C_dtatools_summarize_sum(SEXP x) {
         sum = next;
     }
     return Rf_ScalarReal(sum + correction);
+}
+
+/* The first row of each level: for each code 1 to `count`, the 1-based
+   position of the first element of the integer codes `x` equal to it, or NA.
+   This is match(seq_len(count), x) without hashing every code, and it stops
+   once each level has a row. A long vector returns NULL, and the caller
+   matches as before. */
+SEXP C_dtatools_first_codes(SEXP x, SEXP count_value) {
+    if (TYPEOF(x) != INTSXP) Rf_error("Expected integer codes");
+    int count = Rf_asInteger(count_value);
+    if (count == NA_INTEGER || count < 0) Rf_error("Expected a level count");
+    R_xlen_t n = XLENGTH(x);
+    if (n > INT_MAX) return R_NilValue;
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, count));
+    int *first = INTEGER(result);
+    for (int level = 0; level < count; ++level) first[level] = NA_INTEGER;
+    int remaining = count;
+    int buffer[4096];
+    R_xlen_t next_interrupt = 0;
+    for (R_xlen_t start = 0; start < n && remaining > 0;) {
+        if (start >= next_interrupt) {
+            R_CheckUserInterrupt();
+            next_interrupt = start + 1048576;
+        }
+        /* An ALTREP class may copy less than the region asked for. Advance
+           by what it copied, and read one element when it copies none. */
+        R_xlen_t size = INTEGER_GET_REGION(x, start, 4096, buffer);
+        if (size <= 0) {
+            buffer[0] = INTEGER_ELT(x, start);
+            size = 1;
+        }
+        for (R_xlen_t offset = 0; offset < size && remaining > 0; ++offset) {
+            int code = buffer[offset];
+            if (code >= 1 && code <= count && first[code - 1] == NA_INTEGER) {
+                first[code - 1] = (int) (start + offset + 1);
+                --remaining;
+            }
+        }
+        start += size;
+    }
+    UNPROTECT(1);
+    return result;
 }

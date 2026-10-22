@@ -68,7 +68,11 @@
             if (any(positions > size)) stop("`rows` exceeds the group row count", call. = FALSE)
             keep <- intersect(keep, positions)
         }
-        selected <- full[sort(unique(keep))]
+        # Without `where` or `rows`, the sample is every row of the group in
+        # order. Group rows are distinct, so `sort(unique())` and `match()`
+        # would only rebuild the group and its positions.
+        whole <- !filtered && is.null(positions)
+        selected <- if (whole) full else full[sort(unique(keep))]
         w <- if (weighted) .tab_eval_vector(weights, view, extras, size, "weights") else rep(1, size)
         if (weighted) {
             w <- .summarize_numeric(w)
@@ -82,11 +86,18 @@
         }
         response <- if (has_summary)
             .tab_eval_vector(summary, view, extras, size, "summarize") else NULL
-        local <- match(selected, full)
+        local <- if (whole) seq_len(size) else match(selected, full)
         values <- lapply(inputs$values, function(z) .tab_slice(z, selected))
         names(values) <- inputs$names
-        result[[g]] <- .tab_compute(values, w[local], if (weighted) weight else NULL,
-            population[local], options, missing, display, selected, n, generate,
+        # The weights carry no attributes, and indexing a logical subpopulation
+        # by every position changes no value, so the whole sample takes both
+        # as they are.
+        if (!whole) {
+            w <- w[local]
+            population <- population[local]
+        }
+        result[[g]] <- .tab_compute(values, w, if (weighted) weight else NULL,
+            population, options, missing, display, selected, n, generate,
             if (has_summary) .tab_slice(response, local) else NULL,
             if (has_summary) rlang::as_label(summary) else NULL)
         if (!identical(collect, FALSE)) {
@@ -114,7 +125,9 @@
                          display, selected, n, generate, response, summary_name) {
     headers <- .tab_headers(values, names(values))
     widths <- vapply(values, .tab_string_width, integer(1))
-    valid <- !is.na(weights) & weights != 0
+    # Without weights, every row has weight 1.
+    valid <- if (is.null(weight)) rep(TRUE, length(weights)) else
+        !is.na(weights) & weights != 0
     if (identical(missing, "exclude")) for (value in values) {
         valid <- valid & !is.na(value)
         if (is.character(value)) valid <- valid & nzchar(value)
@@ -127,10 +140,13 @@
             stop("weights must be finite and nonnegative", call. = FALSE)
         .summarize_weights(weights[valid], weight)
     }
-    values <- lapply(values, function(z) .tab_slice(z, which(valid)))
-    weights <- weights[valid]
-    population <- population[valid]
-    selected <- selected[valid]
+    # When every row is valid, the subsets would copy each vector unchanged.
+    if (!all(valid)) {
+        values <- lapply(values, function(z) .tab_slice(z, which(valid)))
+        weights <- weights[valid]
+        population <- population[valid]
+        selected <- selected[valid]
+    }
     factors <- lapply(values, function(z) .tab_categories(z, missing, display))
     if (!is.null(summary_name)) {
         summary_options <- options
@@ -146,7 +162,7 @@
     level_names <- lapply(factors, levels)
     raw_levels <- Map(function(value, f) {
         if (is.factor(value)) return(levels(value))
-        out <- value[match(seq_len(nlevels(f)), as.integer(f))]
+        out <- value[.tab_first_rows(f)]
         if (inherits(out, c("Date", "POSIXct"))) return(.summarize_numeric(out))
         if (is.numeric(out)) return(as.double(unclass(out)))
         as.character(out)
@@ -155,9 +171,13 @@
         # Only the subpopulation contributes to the normalization denominator.
         weights <- weights / .summarize_sum(weights[population]) * sum(population)
     }
-    weights[!population] <- 0
+    whole_population <- all(population)
+    if (!whole_population) weights[!population] <- 0
     if (is.null(weight)) {
-        counts <- base::table(lapply(factors, function(z) z[population]), useNA = "no")
+        # table() reads only the levels and codes, which the whole
+        # subpopulation leaves as they are.
+        counts <- base::table(if (whole_population) factors else
+            lapply(factors, function(z) z[population]), useNA = "no")
     } else {
         counts <- array(0, dim = dimensions, dimnames = level_names)
         if (length(weights) && length(counts)) {
@@ -318,11 +338,24 @@ format.dta_tab_grouped <- function(x, ..., width = getOption("width", 80L)) {
     result
 }
 
+# The first row of each level of `category`, as
+# `match(seq_len(nlevels(category)), as.integer(category))` finds it, in one
+# pass over the codes that stops once every level has a row, rather than
+# through a hash table of every row's code.
+.tab_first_rows <- function(category) {
+    count <- nlevels(category)
+    first <- if (typeof(category) == "integer") {
+        .Call(C_dtatools_first_codes, category, count)
+    }
+    if (is.null(first)) first <- match(seq_len(count), as.integer(category))
+    first
+}
+
 .tab_category_text <- function(value, category, display, missing) {
     text <- levels(category)
     if ((!is.numeric(value) && !inherits(value, c("Date", "POSIXct"))) ||
         is.factor(value)) return(text)
-    first <- match(seq_len(nlevels(category)), as.integer(category))
+    first <- .tab_first_rows(category)
     raw <- value[first]
     observed <- !is.na(raw)
     fmt <- attr(value, "format.stata", exact = TRUE)
@@ -346,7 +379,7 @@ format.dta_tab_grouped <- function(x, ..., width = getOption("width", 80L)) {
     result <- rep(NA_character_, nlevels(category))
     labels <- attr(value, "labels", exact = TRUE)
     if (!.valid_tab_labels(labels) || is.factor(value)) return(result)
-    raw <- value[match(seq_len(nlevels(category)), as.integer(category))]
+    raw <- value[.tab_first_rows(category)]
     observed <- !is.na(raw)
     labels <- .tab_label_values(labels, value)
     result[observed] <- .tab_level_labels(labels, as.double(unclass(raw))[observed],

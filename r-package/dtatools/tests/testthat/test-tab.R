@@ -259,6 +259,35 @@ test_that("tab distinguishes all missing codes read by dtatools", {
     }
 })
 
+test_that("a whole sample tabulates as one that lists every row", {
+    category <- factor(c("c", NA, "a", "c", "e", "a"), levels = c("a", "b", "c", "d", "e"))
+    expect_identical(dtatools:::.tab_first_rows(category),
+        match(seq_len(nlevels(category)), as.integer(category)))
+    expect_identical(dtatools:::.tab_first_rows(factor(character())), integer())
+    first_codes <- get("C_dtatools_first_codes", asNamespace("dtatools"))
+    expect_identical(.Call(first_codes, c(0L, 7L, -1L, 2L, 2L, NA), 3L), c(NA, 4L, NA))
+    # First rows past the first 4096-code region, in a plain vector and in
+    # a compact sequence that ALTREP copies region by region.
+    codes <- c(rep(1L, 5000L), 2L, rep(1L, 9000L), 3L)
+    expect_identical(.Call(first_codes, codes, 4L), match(1:4, codes))
+    expect_identical(.Call(first_codes, 1:10000, 10000L), 1:10000)
+    expect_identical(.Call(first_codes, 10000:1, 3L), 10000:9998)
+
+    x <- dta_byte(c(1, 2, NA, 2, 1, 3, 3, 2))
+    attr(x, "labels") <- c(one = 1, two = 2)
+    data <- data.frame(x = x, y = c("a", "b", "a", "", "b", "a", NA, "a"),
+        w = c(1, 2, 0, 1, 3, 1, 2, 4), s = c(1, 0, 1, 1, 0, 1, 1, 1))
+    rows <- seq_len(nrow(data))
+    expect_identical(tab(x, data = data, display = "both", generate = "g"),
+        tab(x, data = data, display = "both", generate = "g", rows = rows))
+    expect_identical(tab(x, y, data = data, missing = TRUE),
+        tab(x, y, data = data, missing = TRUE, rows = rows))
+    expect_identical(tab(x, y, data = data, weights = w, subpop = s),
+        tab(x, y, data = data, weights = w, subpop = s, rows = rows))
+    expect_identical(tab(y, data = data, summarize = s, weights = w),
+        tab(y, data = data, summarize = s, weights = w, rows = rows))
+})
+
 test_that("tab validates its arguments", {
     expect_error(tab(), "nothing to tabulate")
     expect_error(tab(1:3, missing = NA), "`missing`")

@@ -168,8 +168,10 @@ dta_storage_type <- function(x) {
     .Primitive("{"), .Primitive(".External2")
 ) else NULL
 
-# Set operations on ordinary attribute names still enter these base helpers
-# and unique.character dispatch. Native metadata shortcuts share this profile.
+# Generation's set operations on ordinary attribute names enter these base
+# helpers and unique.character dispatch. Native metadata shortcuts share this
+# profile; attribute planning matches names without the set operations, and
+# its admission checks only the entries it reaches.
 .metadata_dependencies <- if (
     identical(as.character(getRversion()), "4.6.1") &&
     identical(as.character(R.version[["svn rev"]]), "90187")
@@ -191,6 +193,10 @@ dta_storage_type <- function(x) {
 .metadata_state$dependencies <- NULL
 
 .dta_storage <- c("byte", "int", "long", "float", "double")
+
+# The classes that name each storage. Restoring a column after a vctrs
+# slice, cast, or combination looks them up, so they are spelled once here.
+.dta_storage_classes <- paste0("dta_", .dta_storage)
 
 .dta_temporal_none <- 0L
 .dta_temporal_date <- 1L
@@ -517,6 +523,25 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_promote <- function(left, right) {
     if (identical(left, right)) return(left)
+    # Two storage names promote through switch(), in either order, without
+    # sort() or paste(). A grouped summary that settles its common type
+    # skips folds, and its check qualifies only this branch for them.
+    if (is.character(left) && length(left) == 1L &&
+        is.character(right) && length(right) == 1L) {
+        promoted <- switch(left,
+            byte = switch(right, int = "int", long = "long", float = "float",
+                          double = "double"),
+            int = switch(right, byte = "int", long = "long", float = "float",
+                         double = "double"),
+            long = switch(right, byte = "long", int = "long", float = "double",
+                          double = "double"),
+            float = switch(right, byte = "float", int = "float", long = "double",
+                           double = "double"),
+            double = switch(right, byte = "double", int = "double", long = "double",
+                            float = "double")
+        )
+        if (!is.null(promoted)) return(promoted)
+    }
     pair <- sort(c(left, right))
     key <- paste(pair, collapse = ":")
     switch(key,
@@ -536,8 +561,8 @@ as.logical.dta_numeric <- function(x, ...) {
 
 .dta_classes_from <- function(prototype, storage) {
     classes <- class(prototype)
-    storage_classes <- paste0("dta_", .dta_storage)
-    location <- classes %in% storage_classes
+    # `%in%` is this match() behind one more closure call.
+    location <- match(classes, .dta_storage_classes, 0L) > 0L
     if (any(location)) {
         classes[location] <- paste0("dta_", storage)
         return(classes)
@@ -561,7 +586,8 @@ as.logical.dta_numeric <- function(x, ...) {
 .restore_dta_variable_metadata <- function(value, prototype, names = names(value)) {
     source <- attributes(prototype)
     known <- c("names", "class", .dta_variable_attribute_names)
-    unknown <- setdiff(names(source), known)
+    source_names <- names(source)
+    unknown <- source_names[match(source_names, known, 0L) == 0L]
     if (length(unknown)) {
         warning(sprintf(
             "Dropped unknown attribute%s during Stata vector restoration: %s",
@@ -569,7 +595,7 @@ as.logical.dta_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    for (name in intersect(names(source), .dta_variable_attribute_names)) {
+    for (name in source_names[source_names %in% .dta_variable_attribute_names]) {
         owned <- if (is.character(value)) .set_dta_string_attribute(value, name, source[[name]])
         if (is.null(owned)) attr(value, name) <- source[[name]] else value <- owned
     }
@@ -585,9 +611,12 @@ as.logical.dta_numeric <- function(x, ...) {
     temporal = inherits(prototype, "dta_temporal"), labelled = FALSE
 ) {
     source <- attributes(prototype)
-    unknown <- setdiff(
-        names(source), c("names", "class", .dta_variable_attribute_names)
-    )
+    # Attribute names are unique, so matching them gives what setdiff() and
+    # intersect() would, without their per-call checks on every column.
+    source_names <- names(source)
+    unknown <- source_names[match(
+        source_names, c("names", "class", .dta_variable_attribute_names), 0L
+    ) == 0L]
     if (length(unknown)) {
         warning(sprintf(
             "Dropped unknown attribute%s during Stata vector restoration: %s",
@@ -595,7 +624,7 @@ as.logical.dta_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    desired <- source[intersect(names(source), .dta_variable_attribute_names)]
+    desired <- source[source_names[source_names %in% .dta_variable_attribute_names]]
     desired$stata.storage <- storage
     classes <- if (temporal) {
         class(prototype)
@@ -1313,7 +1342,10 @@ vec_cast.logical.dta_numeric <- function(
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
     missing_operand <- .dta_read_is_na(args[[1L]]) | .dta_read_is_na(args[[2L]])
-    .dta_computed(.collapse_missing(result, missing_operand), minimum)
+    # Bind the collapsed values first. The native computed route reads only
+    # a settled argument and declines on an unevaluated call.
+    result <- .collapse_missing(result, missing_operand)
+    .dta_computed(result, minimum)
 }
 
 # Stata collapses a tagged missing operand to system missing `.` in
@@ -1339,7 +1371,7 @@ vec_cast.logical.dta_numeric <- function(
 # function returns each tagged missing unchanged even though base `round()`
 # and `signif()` discard the NaN payload.
 .restore_missing <- function(result, source) {
-    where <- is.na(source)
+    where <- .dta_read_is_na(source)
     if (!is.numeric(result) || !any(where)) {
         return(result)
     }
@@ -1436,7 +1468,13 @@ chooseOpsMethod.dta_numeric <- function(x, y, mx, my, cl, reverse) {
 #' @export
 vec_math.dta_numeric <- function(.fn, .x, ...) {
     operation <- getExportedValue("base", .fn)
-    result <- suppressWarnings(operation(.dta_data(.x, ordinary = .fn == "range"), ...))
+    # Base math writes its result into an unreferenced operand. Bind the view
+    # so the result is an ordinary vector, which native classification can
+    # size; a materialized view declines there.
+    result <- suppressWarnings({
+        values <- .dta_data(.x, ordinary = .fn == "range")
+        operation(values, ...)
+    })
     if (length(.x) == 0L && .fn %in% c("min", "max", "range")) {
         return(result)
     }

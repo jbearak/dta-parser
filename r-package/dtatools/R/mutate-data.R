@@ -1599,6 +1599,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 }
 
 .mutation_group_slice <- function(column, rows) {
+    # Every row of a compact string needs no slice. A metadata copy is a
+    # private view over the same immutable ids and dictionary, so native
+    # readers such as dta_group_id() still see the ids, not a wrapped copy.
+    if (.is_unmaterialized_dictstring(column) && is.integer(rows) &&
+        length(rows) == length(column) && length(rows) &&
+        identical(rows[[1L]], 1L) && identical(rows[[length(rows)]], length(rows)) &&
+        isFALSE(is.unsorted(rows, strictly = TRUE))) {
+        return(.Call(C_dtatools_metadata_copy, column))
+    }
     # The vctrs fallback may invoke an R proxy that retains its input. Native
     # compact and declared-double gathering cannot expose that full read view.
     if (!.dta_merge_has_compact_storage(column) &&
@@ -2442,14 +2451,21 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
 # everything, as R does.
 .generated_column <- function(values, rows, row_count, caller = "gen()",
                               generate = FALSE, carry_metadata = TRUE) {
-    if (generate && !carry_metadata && is.null(attributes(values)) &&
+    if (is.null(attributes(values)) &&
         typeof(values) %in% c("integer", "double") && !.is_altrep(values) &&
-        length(values) == 1L) {
-        # Inspect the option without dispatch. Attributed or foreign values
-        # decline and reach the original validator once, below.
+        length(values) == 1L && (if (generate) !carry_metadata else
+            if (is.integer(values)) is.na(values) || values <= 2147483620L else
+            is.finite(values) && abs(values) <= 8e307)) {
+        # A bare scalar carries no metadata, so the container mapping
+        # differs from `generate` only in a double's storage. Under the
+        # mapping, an integer beyond Stata's long range or a missing or
+        # very large double keeps the R path, so any error still comes
+        # from `.generated_numeric()`. Inspect the option without dispatch.
+        # Attributed or foreign values decline and reach the original
+        # validator once, below.
         column <- .Call(C_dtatools_generate_scalar, values, rows, as.double(row_count),
-                        if (typeof(values) == "integer") "long" else
-                            getOption("dtatools.generate_type", "float"))
+                        if (typeof(values) == "integer") "long" else if (generate)
+                            getOption("dtatools.generate_type", "float") else "double")
         if (!is.null(column)) return(column)
     }
     message <- sprintf(
@@ -2608,9 +2624,15 @@ copy_data <- function(data) {
     snapshot_columns <- source$columns
     snapshot_attributes <- attributes(snapshot)
     reference_values <- c(snapshot_columns, unname(snapshot_attributes))
-    if (any(vapply(
-        reference_values, .contains_reference_object, logical(1)
-    ))) {
+    # The native walk answers as the R walk does, and leaves deep nesting and
+    # malformed pairlists to the R walk, which raises their errors.
+    found <- .Call(C_dtatools_reference_objects_found, reference_values)
+    if (is.na(found)) {
+        found <- any(vapply(
+            reference_values, .contains_reference_object, logical(1)
+        ))
+    }
+    if (found) {
         stop(
             paste0(
                 "`copy_data()` cannot isolate environments, functions, ",
@@ -2624,6 +2646,13 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
+    # attributes() expands automatic row names to 1:n, which the assignment
+    # stores as explicit row names. Keep the snapshot's compact form.
+    row_names <- .row_names_info(snapshot, 0L)
+    if (is.integer(row_names) && length(row_names) == 2L &&
+        is.na(row_names[[1L]])) {
+        attr(columns, "row.names") <- row_names
+    }
     .as_dibble(columns, "copy_data()")
 }
 

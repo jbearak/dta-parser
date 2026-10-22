@@ -1,6 +1,7 @@
 /* Compact dictionary strings: the dictstring_data ALTREP methods, the
    reference string reader shared with mutation, and the compact subset and
-   copy paths that keep a dictionary payload private to its result. */
+   copy paths, whose results own their value ids and share the immutable
+   dictionary. */
 #include "dtatools-internal.h"
 
 void dictstring_finalize(SEXP external) {
@@ -53,6 +54,59 @@ SEXP dictstring_read_root(SEXP value) {
     R_SetExternalPtrAddr(root, data);
     UNPROTECT(1);
     return root;
+}
+
+/* The widest value in bytes in a compact dictionary string's whole
+   dictionary, read through a pinned dictstring_read_root(). With
+   check_values, a value a Stata write cannot hold is an error. */
+size_t dictstring_dictionary_width(SEXP root, int check_values) {
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    size_t maximum = 0;
+    for (R_xlen_t id = 0; id < cardinality; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(data, (uint32_t) id, &bytes, &length) ||
+            bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if (check_values && memchr(bytes, 0, (size_t) length) != NULL) {
+            Rf_error("character values cannot contain NUL bytes");
+        }
+        if (check_values && (uint64_t) length > UINT64_C(2000000000)) {
+            Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
+        }
+        if ((size_t) length > maximum) maximum = (size_t) length;
+    }
+    return maximum;
+}
+
+/* The widest value in bytes among the values a compact dictionary string
+   holds. A subset keeps its source's whole dictionary, so values it no
+   longer holds must not count. The scan stops at the first value as wide as
+   dictionary_width, the whole dictionary's widest, which a column read whole
+   holds; it allocates nothing. */
+size_t dictstring_used_width(SEXP root, size_t dictionary_width) {
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    size_t maximum = 0;
+    for (size_t index = 0;
+         index < data->length && maximum < dictionary_width; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= cardinality) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+            bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if ((size_t) length > maximum) maximum = (size_t) length;
+    }
+    return maximum;
 }
 
 static SEXP dictstring_cached_value(
@@ -188,6 +242,32 @@ SEXP dictstring_value(SEXP value, R_xlen_t index) {
     return dictstring_cached_value(data, cache, id);
 }
 
+/* Fill target with a compact dictionary string's values in order, as reading
+   each element would, filling the shared cache the same way but without an
+   ALTREP dispatch per value. The pinned root keeps the ids and dictionary if
+   R code run by an allocation or an interrupt check materializes the source.
+   Returns 0, leaving target alone, when the value is not compact. */
+int dictstring_fill_values(SEXP value, SEXP target) {
+    SEXP root = PROTECT(dictstring_read_root(value));
+    if (root == R_NilValue) {
+        UNPROTECT(1);
+        return 0;
+    }
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    SEXP cache = R_ExternalPtrProtected(root);
+    if (TYPEOF(target) != STRSXP || (size_t) XLENGTH(target) != data->length) {
+        Rf_error("invalid dtatools string-vector length");
+    }
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(target, (R_xlen_t) index, dictstring_cached_value(
+            data, cache, data->value_ids[index]
+        ));
+    }
+    UNPROTECT(1);
+    return 1;
+}
+
 static SEXP dictstring_materialized_values(SEXP value, SEXP cache) {
     dictstring_data *data = dictstring_storage(value);
     R_xlen_t dictionary_length = XLENGTH(cache);
@@ -318,11 +398,35 @@ SEXP dictstring_compact_copy(SEXP value) {
     return result;
 }
 
+/* A dictionary value from the cache an earlier read filled, or made from
+   its bytes without storing it, so the read leaves the cache as it was. */
+static SEXP dictstring_peek_value(
+    dictstring_data *data, SEXP cache, uint32_t id
+) {
+    if ((R_xlen_t) id >= XLENGTH(cache)) {
+        Rf_error("invalid dtatools string-dictionary index");
+    }
+    SEXP cached = VECTOR_ELT(cache, (R_xlen_t) id);
+    if (cached != R_NilValue) return cached;
+    const char *bytes = NULL;
+    int length = 0;
+    if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+        bytes == NULL || length < 0) {
+        Rf_error("invalid dtatools string-dictionary value");
+    }
+    return Rf_mkCharLenCE(bytes, length, CE_UTF8);
+}
+
 /* `x[i]` on a compact dictionary string stays compact: the selected value
-   ids are gathered over a private copy of the dictionary, so the result
-   owns its payload and the source is untouched. An index outside the
-   vector would need `NA`, which the dictionary cannot hold, so such a
-   subset falls back to R's default and materializes. */
+   ids are gathered into a payload that shares the dictionary, so the result
+   owns its ids and the source is untouched. The result's cache still needs
+   a slot for each distinct value, so a subset of at most a sixteenth of the
+   dictionary's length is built as ordinary strings instead, which also
+   leave the source untouched. That covers the empty subset that
+   `vec_ptype()` takes on every vctrs operation, and the rows of each group
+   that a grouped verb slices. An index outside the vector would need `NA`,
+   which the dictionary cannot hold, so such a subset falls back to R's
+   default and materializes. */
 SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     (void) call;
     if (R_altrep_data2(value) != R_NilValue ||
@@ -331,14 +435,19 @@ SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
     }
     SEXP root = PROTECT(dictstring_read_root(value));
     dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    SEXP source_cache = R_ExternalPtrProtected(root);
+    R_xlen_t cardinality = XLENGTH(source_cache);
+    /* An ALTREP index can materialize `value` while reporting its length,
+       so the length is read only once the dictionary is pinned. */
     R_xlen_t length = XLENGTH(index);
+    int ordinary = length <= cardinality / 16;
     if ((size_t) length > SIZE_MAX / sizeof(uint32_t)) {
         Rf_error("compact dictionary-string subset is too long");
     }
-    SEXP ids = PROTECT(Rf_allocVector(
+    SEXP selected = PROTECT(ordinary ? Rf_allocVector(STRSXP, length) : Rf_allocVector(
         RAWSXP, (R_xlen_t) ((size_t) length * sizeof(uint32_t))
     ));
-    uint32_t *output = (uint32_t *) RAW(ids);
+    uint32_t *output = ordinary ? NULL : (uint32_t *) RAW(selected);
     for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t source = -1;
@@ -357,10 +466,17 @@ SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
             UNPROTECT(2);
             return NULL;
         }
-        output[i] = data->value_ids[source];
+        uint32_t id = data->value_ids[source];
+        if (ordinary) {
+            SET_STRING_ELT(selected, i, dictstring_peek_value(data, source_cache, id));
+        } else {
+            output[i] = id;
+        }
     }
-    SEXP source_cache = R_ExternalPtrProtected(root);
-    R_xlen_t cardinality = XLENGTH(source_cache);
+    if (ordinary) {
+        UNPROTECT(2);
+        return selected;
+    }
     SEXP cache = PROTECT(Rf_allocVector(VECSXP, cardinality));
     for (R_xlen_t id = 0; id < cardinality; id++) {
         if ((id & 16383) == 0) R_CheckUserInterrupt();
@@ -386,6 +502,44 @@ SEXP C_dtatools_dictstring_subset(SEXP value, SEXP index) {
     if (unmaterialized_dictstring_source(value) == R_NilValue) Rf_error("compact dictionary required");
     SEXP result = dictstring_extract_subset(unmaterialized_dictstring_source(value), index, R_NilValue);
     return result == NULL ? R_NilValue : result;
+}
+
+/* The widest value in bytes of an unmaterialized dictionary string, or NULL
+   for any other vector. Only the ids the vector holds count, since a subset
+   keeps its source's whole dictionary. Each distinct value's length is read
+   once from the dictionary, without making its string. An allocation or an
+   interrupt check can run R code that materializes the source, so the scan
+   reads a pinned dictionary. */
+SEXP C_dtatools_dictstring_width(SEXP value) {
+    SEXP root = PROTECT(dictstring_read_root(value));
+    if (root == R_NilValue) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(root);
+    R_xlen_t cardinality = XLENGTH(R_ExternalPtrProtected(root));
+    int *lengths = (int *) R_alloc((size_t) cardinality, sizeof(int));
+    for (R_xlen_t id = 0; id < cardinality; id++) lengths[id] = -1;
+    int widest = 0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= cardinality) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        if (lengths[id] < 0) {
+            const char *bytes = NULL;
+            int length = 0;
+            if (!dtatools_dictstring_bytes(data, id, &bytes, &length) ||
+                bytes == NULL || length < 0) {
+                Rf_error("invalid dtatools string-dictionary value");
+            }
+            lengths[id] = length;
+        }
+        if (lengths[id] > widest) widest = lengths[id];
+    }
+    UNPROTECT(1);
+    return Rf_ScalarInteger(widest);
 }
 
 SEXP C_dtatools_deep_copy_value(SEXP value) {

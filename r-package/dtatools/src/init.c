@@ -42,18 +42,25 @@ double owned_numeric_compatibility_bytes = 0.0;
 #include "egen-groups.h"
 
 SEXP C_dtatools_summarize_sum(SEXP x);
+SEXP C_dtatools_first_codes(SEXP x, SEXP count_value);
 SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm);
 SEXP C_dtatools_mean_admitted(SEXP frame);
 SEXP C_dtatools_range_admitted(SEXP frame);
 SEXP C_dtatools_numeric_range(SEXP values, SEXP na_rm);
 SEXP C_dtatools_summarize_moments(SEXP values, SEXP weights, SEXP detail, SEXP meanonly);
+SEXP C_dtatools_summary_sorted(SEXP x, SEXP weights);
 SEXP C_dtatools_append_write_doubles(SEXP buffer, SEXP offset, SEXP rows, SEXP values);
+SEXP C_dtatools_append_compact_buffer(SEXP kind, SEXP rows);
+SEXP C_dtatools_append_write_compact(SEXP buffer, SEXP offset, SEXP rows, SEXP value, SEXP kind);
+SEXP C_dtatools_append_compact_doubles(SEXP buffer, SEXP kind);
+SEXP C_dtatools_append_compact_values(SEXP buffer, SEXP kind, SEXP storage, SEXP class);
 SEXP C_dtatools_summary_scan_supported(SEXP value);
 SEXP C_dtatools_numeric_identity_key(SEXP values, SEXP argument);
 SEXP C_dtatools_identity_parts(SEXP values);
 SEXP C_dtatools_numeric_match_keys(SEXP x, SEXP table, SEXP nomatch, SEXP incomparables);
 SEXP C_dtatools_numeric_duplicated_keys(SEXP keys);
 SEXP C_dtatools_numeric_any_na(SEXP value, SEXP recursive);
+SEXP C_dtatools_codebook_facts(SEXP x);
 
 /* THROWAWAY unique-target function-entry floor. */
 SEXP C_dtatools_probe_unique_repl(SEXP data, SEXP shared, SEXP arguments,
@@ -179,18 +186,25 @@ SEXP C_dtatools_probe_bracket_pre_generation_hook(SEXP resolved);
 
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_summarize_sum", (DL_FUNC) &C_dtatools_summarize_sum, 1},
+    {"C_dtatools_first_codes", (DL_FUNC) &C_dtatools_first_codes, 2},
     {"C_dtatools_numeric_mean", (DL_FUNC) &C_dtatools_numeric_mean, 2},
     {"C_dtatools_mean_admitted", (DL_FUNC) &C_dtatools_mean_admitted, 1},
     {"C_dtatools_range_admitted", (DL_FUNC) &C_dtatools_range_admitted, 1},
     {"C_dtatools_numeric_range", (DL_FUNC) &C_dtatools_numeric_range, 2},
     {"C_dtatools_summarize_moments", (DL_FUNC) &C_dtatools_summarize_moments, 4},
+    {"C_dtatools_summary_sorted", (DL_FUNC) &C_dtatools_summary_sorted, 2},
     {"C_dtatools_append_write_doubles", (DL_FUNC) &C_dtatools_append_write_doubles, 4},
+    {"C_dtatools_append_compact_buffer", (DL_FUNC) &C_dtatools_append_compact_buffer, 2},
+    {"C_dtatools_append_write_compact", (DL_FUNC) &C_dtatools_append_write_compact, 5},
+    {"C_dtatools_append_compact_doubles", (DL_FUNC) &C_dtatools_append_compact_doubles, 2},
+    {"C_dtatools_append_compact_values", (DL_FUNC) &C_dtatools_append_compact_values, 4},
     {"C_dtatools_summary_scan_supported", (DL_FUNC) &C_dtatools_summary_scan_supported, 1},
     {"C_dtatools_numeric_identity_key", (DL_FUNC) &C_dtatools_numeric_identity_key, 2},
     {"C_dtatools_identity_parts", (DL_FUNC) &C_dtatools_identity_parts, 1},
     {"C_dtatools_numeric_match_keys", (DL_FUNC) &C_dtatools_numeric_match_keys, 4},
     {"C_dtatools_numeric_duplicated_keys", (DL_FUNC) &C_dtatools_numeric_duplicated_keys, 1},
     {"C_dtatools_numeric_any_na", (DL_FUNC) &C_dtatools_numeric_any_na, 2},
+    {"C_dtatools_codebook_facts", (DL_FUNC) &C_dtatools_codebook_facts, 1},
     {"C_dtatools_grouped_active_mutate", (DL_FUNC) &C_dtatools_grouped_active_mutate, 1},
     {"C_dtatools_grouped_mode", (DL_FUNC) &C_dtatools_grouped_mode, 1},
     {"C_dtatools_grouped_stats", (DL_FUNC) &C_dtatools_grouped_stats, 1},
@@ -312,11 +326,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_string_fits", (DL_FUNC) &C_dtatools_string_fits, 3},
     {"C_dtatools_owned_string_attribute", (DL_FUNC) &C_dtatools_owned_string_attribute, 3},
     {"C_dtatools_capture_string", (DL_FUNC) &C_dtatools_capture_string, 1},
+    {"C_dtatools_blank_missing_strings", (DL_FUNC) &C_dtatools_blank_missing_strings, 1},
     {"C_dtatools_construct_string", (DL_FUNC) &C_dtatools_construct_string, 2},
     {"C_dtatools_owned_utf8_ready", (DL_FUNC) &C_dtatools_owned_utf8_ready, 1},
     {"C_dtatools_owned_scan_stats", (DL_FUNC) &C_dtatools_owned_scan_stats, 1},
     {"C_dtatools_callback_length", (DL_FUNC) &C_dtatools_callback_length, 2},
     {"C_dtatools_dictstring_subset", (DL_FUNC) &C_dtatools_dictstring_subset, 2},
+    {"C_dtatools_dictstring_width", (DL_FUNC) &C_dtatools_dictstring_width, 1},
     {"C_dtatools_owned_subset", (DL_FUNC) &C_dtatools_owned_subset, 2},
     {"C_dtatools_gather_owned_discrete", (DL_FUNC) &C_dtatools_gather_owned_discrete, 2},
     {"C_dtatools_owned_set_string", (DL_FUNC) &C_dtatools_owned_set_string, 3},
@@ -326,6 +342,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_egen_group", (DL_FUNC) &dtatools_egen_group, 3},
     {"C_dtatools_egen_group_stats", (DL_FUNC) &C_dtatools_egen_group_stats, 1},
     {"C_dtatools_egen_summary", (DL_FUNC) &C_dtatools_egen_summary, 4},
+    {"C_dtatools_egen_group_summary",
+     (DL_FUNC) &C_dtatools_egen_group_summary, 5},
     {"C_dtatools_egen_rows", (DL_FUNC) &C_dtatools_egen_rows, 4},
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 7},
@@ -348,6 +366,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_write_string_plan, 1},
     {"C_dtatools_ephemeral_altstring",
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
+    {"C_dtatools_numeric_values_fit",
+     (DL_FUNC) &C_dtatools_numeric_values_fit, 2},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
     {"C_dtatools_try_mask_bindings",
@@ -365,7 +385,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_execution_profile",
      (DL_FUNC) &C_dtatools_metadata_execution_profile, 1},
     {"C_dtatools_metadata_dependencies_unchanged",
-     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 2},
+     (DL_FUNC) &C_dtatools_metadata_dependencies_unchanged, 3},
     {"C_dtatools_canonical_attribute_plan",
      (DL_FUNC) &C_dtatools_canonical_attribute_plan, 2},
     {"C_dtatools_attribute_plan_stats", (DL_FUNC) &C_dtatools_attribute_plan_stats, 1},
@@ -373,6 +393,12 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_try_combine_double, 5},
     {"C_dtatools_combine_double_into_current",
      (DL_FUNC) &C_dtatools_combine_double_into_current, 3},
+    {"C_dtatools_summary_ptype_method",
+     (DL_FUNC) &C_dtatools_summary_ptype_method, 4},
+    {"C_dtatools_settled_routine",
+     (DL_FUNC) &C_dtatools_settled_routine, 2},
+    {"C_dtatools_summary_combine",
+     (DL_FUNC) &C_dtatools_summary_combine, 4},
     {"C_dtatools_construct_double",
      (DL_FUNC) &C_dtatools_construct_double, 3},
     {"C_dtatools_double_fits",
@@ -387,13 +413,18 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
+    {"C_dtatools_dictstring_match_codes",
+     (DL_FUNC) &C_dtatools_dictstring_match_codes, 2},
     {"C_dtatools_replace_reference_columns",
      (DL_FUNC) &C_dtatools_replace_reference_columns, 5},
     {"C_dtatools_is_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
+    {"C_dtatools_group_rows_facts", (DL_FUNC) &C_dtatools_group_rows_facts, 2},
+    {"C_dtatools_group_keys_match", (DL_FUNC) &C_dtatools_group_keys_match, 3},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
+    {"C_dtatools_any_attribute", (DL_FUNC) &C_dtatools_any_attribute, 2},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
     {"C_dtatools_set_attribute", (DL_FUNC) &C_dtatools_set_attribute, 3},
@@ -401,6 +432,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_deep_copy_value, 1},
     {"C_dtatools_reference_contents",
      (DL_FUNC) &C_dtatools_reference_contents, 1},
+    {"C_dtatools_reference_objects_found",
+     (DL_FUNC) &C_dtatools_reference_objects_found, 1},
     {"C_dtatools_reference_row_reads",
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_inject_reference_write_interrupt",
@@ -419,6 +452,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_reference_state_valid",
      (DL_FUNC) &C_dtatools_reference_state_valid, 1},
     {"C_dtatools_shared_columns", (DL_FUNC) &C_dtatools_shared_columns, 1},
+    {"C_dtatools_reference_match", (DL_FUNC) &C_dtatools_reference_match, 3},
     {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
@@ -465,10 +499,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_is_tagged_missing",
      (DL_FUNC) &C_dtatools_is_tagged_missing, 2},
     {"C_dtatools_is_missing", (DL_FUNC) &C_dtatools_is_missing, 1},
+    {"C_dtatools_level_counts", (DL_FUNC) &C_dtatools_level_counts, 3},
     {"C_dtatools_factorize_numeric",
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
+    {"C_dtatools_missing_code_counts",
+     (DL_FUNC) &C_dtatools_missing_code_counts, 1},
     {"C_dtatools_dta_compare",
      (DL_FUNC) &C_dtatools_dta_compare, 5},
     {"C_dtatools_fused_compare_patch",

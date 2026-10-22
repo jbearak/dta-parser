@@ -41,6 +41,10 @@ dta_string <- function(x = character(), storage = NULL) {
     owned_width <- .Call(C_dtatools_owned_string_width, x)
     if (!is.null(owned_width)) return(owned_width)
     if (!length(x)) return(1L)
+    # A compact dictionary holds UTF-8 bytes, so its byte lengths are the
+    # widths below without making a string for each value.
+    dictionary_width <- .Call(C_dtatools_dictstring_width, x)
+    if (!is.null(dictionary_width)) return(dictionary_width)
     max(nchar(enc2utf8(x), type = "bytes"))
 }
 
@@ -59,10 +63,16 @@ dta_string <- function(x = character(), storage = NULL) {
 # Values as Stata string text: `NA` is `""`, Stata's only missing string
 # (see CONTEXT.md, "Stata string missing"). Values without `NA` come back
 # as they are, so a bare character vector is not copied. Every path that
-# admits an `NA` into a Stata string spells the rule through here.
+# admits an `NA` into a Stata string spells the rule through here. A compact
+# dictionary holds no `NA`, and scanning one for it would fill its cache with
+# a string for each distinct value. A classless ordinary or owned vector has
+# its `NA` replaced in one native pass rather than through `[<-`, which writes
+# each element of an owned vector through ALTREP.
 .stata_string_text <- function(values) {
     text <- as.character(values)
-    if (anyNA(text)) text[is.na(text)] <- ""
+    blanked <- .Call(C_dtatools_blank_missing_strings, text)
+    if (!is.null(blanked)) return(blanked)
+    if (!.is_unmaterialized_dictstring(text) && anyNA(text)) text[is.na(text)] <- ""
     text
 }
 
@@ -147,7 +157,13 @@ vec_proxy.dta_string <- function(x, ...) .dta_string_data(x)
 vec_restore.dta_string <- function(x, to, ...) {
     storage <- .declared_string_storage(to)
     value <- as.character(x)
-    if (!.is_unmaterialized_dictstring(value) && anyNA(value)) value[is.na(value)] <- ""
+    # As in `.stata_string_text()`. Keep the fallback assignment in this frame.
+    blanked <- .Call(C_dtatools_blank_missing_strings, value)
+    if (!is.null(blanked)) {
+        value <- blanked
+    } else if (!.is_unmaterialized_dictstring(value) && anyNA(value)) {
+        value[is.na(value)] <- ""
+    }
     .new_dta_string(value, storage, to)
 }
 
@@ -156,7 +172,12 @@ vec_restore.dta_string <- function(x, to, ...) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
     data <- .dta_string_data(x)
     result <- if (missing(i)) data[] else data[i]
-    if (!.is_unmaterialized_dictstring(result) && anyNA(result)) result[is.na(result)] <- ""
+    blanked <- .Call(C_dtatools_blank_missing_strings, result)
+    if (!is.null(blanked)) {
+        result <- blanked
+    } else if (!.is_unmaterialized_dictstring(result) && anyNA(result)) {
+        result[is.na(result)] <- ""
+    }
     .new_dta_string(result, .declared_string_storage(x), x)
 }
 
@@ -207,7 +228,10 @@ vec_ptype2.character.dta_string <- .dta_string_ptype2
 .cast_dta_string <- function(x, to) {
     storage <- .declared_string_storage(to)
     value <- .stata_string_text(x)
-    .normalize_dta_string_storage(storage, .dta_string_required_width(value))
+    # `strL` holds any width, so only other storage needs the widest value.
+    if (!identical(storage, "strL")) {
+        .normalize_dta_string_storage(storage, .dta_string_required_width(value))
+    }
     .new_dta_string(value, storage, to)
 }
 

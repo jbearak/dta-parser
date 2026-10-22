@@ -14,7 +14,13 @@
         keys <- groups[setdiff(names(groups), ".rows")]
         # .drop controls grouping restoration; it is not part of cur_group().
         attr(keys, ".drop") <- NULL
-        return(list(rows = groups$.rows, keys = keys, names = names(keys),
+        # dplyr keeps each group's rows in a vctrs list_of. Use them as a
+        # plain list, which `[[` reads directly and indexed double assembly
+        # accepts. Subsetting drops the class without dispatch and, unlike
+        # unclass(), never returns R's wrapper of a long shared list. Every
+        # result groups its rows afresh.
+        rows <- .subset(groups$.rows, seq_along(groups$.rows))
+        return(list(rows = rows, keys = keys, names = names(keys),
                     type = if (rowwise) "rowwise" else "grouped"))
     }
     vars <- if (rlang::quo_is_null(by)) character() else names(
