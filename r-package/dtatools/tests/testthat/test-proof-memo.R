@@ -37,8 +37,10 @@ test_that("a kept proof admits the original helper again but never a traced one"
     hits <- 0L
     suppressMessages(trace(".tab_missing_codes", tracer = function() hits <<- hits + 1L,
                            where = ns, print = FALSE))
-    traced <- .dtatools_numeric_entry_observe(operation)
-    suppressMessages(untrace(".tab_missing_codes", where = ns))
+    traced <- tryCatch(
+        .dtatools_numeric_entry_observe(operation),
+        finally = suppressMessages(untrace(".tab_missing_codes", where = ns))
+    )
     expect_identical(traced$counts[["scalar"]], 0)
     expect_true(hits > 0L)
     expect_identical(as.double(traced$result), values + 1)

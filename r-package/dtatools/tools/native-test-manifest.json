@@ -1839,7 +1839,7 @@
         },
         {
           "path": "tests/testthat/test-proof-memo.R",
-          "sha256": "dd7bc9d459742253a9a3a1274569f727f1e689ca5b41399f10d751e141f27709"
+          "sha256": "2628c7b10d04c35f42eb2e789daf1632b44ec2eb0998ad3348a494927dcb36d7"
         },
         {
           "path": "tests/testthat/test-folded-return-mutation.R",
