@@ -287,7 +287,8 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
             grouped = function() gen(
                 dibble(x = c(1, 2, 3, 4), g = c(1L, 1L, 2L, 2L)),
                 y = x + 1, by = g
-            )
+            ),
+            restore = function() source[1]
         )
         for (operation in operations) invisible(operation())
         original <- .Primitive(".Call")
@@ -296,11 +297,13 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
             "C_dtatools_construct_double", "C_dtatools_double_fits",
             "C_dtatools_canonical_attribute_plan",
             "C_dtatools_canonical_generate_attributes",
-            "C_dtatools_combine_double_into_current", "C_dtatools_try_mask_bindings"
+            "C_dtatools_combine_double_into_current", "C_dtatools_try_mask_bindings",
+            "C_dtatools_restore_numeric_metadata"
         )
         helpers <- c(".dta_arith_base", ".dta_computed", ".construct_dta_numeric",
                      ".dta_storage_holds", ".dta_attribute_plan", ".generate_attributes",
-                     ".mutation_gather_values", ".new_dibble_expression_mask")
+                     ".mutation_gather_values", ".new_dibble_expression_mask",
+                     ".restore_dta_metadata")
         records <- list()
         for (mode in c("installed", "decompiled")) {
             if (mode == "decompiled") for (name in helpers) {
@@ -339,7 +342,7 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
     }, args = list(.libPaths()))
     expected <- list(scalar = c(2, 3), computed = c(.5, 1), strict = c(1, 2),
                      holds = TRUE, metadata = attributes(dta_double(c(1, 2))),
-                     grouped = c(2, 3, 4, 5))
+                     grouped = c(2, 3, 4, 5), restore = 1)
     for (mode in names(observed)) for (name in names(expected)) {
         record <- observed[[mode]][[name]]
         expect_null(record$error, info = paste(mode, name))

@@ -457,6 +457,170 @@ SEXP C_dtatools_metadata_view(SEXP value) {
     return Rf_shallow_duplicate(value);
 }
 
+/* The variable attributes `.dta_attribute_plan()` keeps from a prototype, in
+   its order. There are at most as many as there are variable attribute
+   names, so a fixed array holds their tags. A protected list holds their
+   values, which allocation and copying must not lose if R code replaces the
+   prototype's attributes meanwhile. */
+#define RESTORE_PLAN_CAPACITY 32
+typedef struct {
+    SEXP variables;
+    SEXP tags[RESTORE_PLAN_CAPACITY];
+    SEXP values;
+    int count;
+} restore_attribute_plan;
+
+static SEXP restore_plan_visit(SEXP tag, SEXP value, void *data) {
+    restore_attribute_plan *plan = data;
+    if (tag == R_NamesSymbol || tag == R_ClassSymbol) return NULL;
+    const char *name = CHAR(PRINTNAME(tag));
+    for (R_xlen_t i = 0; i < XLENGTH(plan->variables); i++) {
+        if (strcmp(name, CHAR(STRING_ELT(plan->variables, i))) == 0) {
+            if (plan->count == RESTORE_PLAN_CAPACITY - 1) return R_NilValue;
+            plan->tags[plan->count] = tag;
+            SET_VECTOR_ELT(plan->values, plan->count, value);
+            plan->count++;
+            return NULL;
+        }
+    }
+    /* The R code warns about an unknown attribute. */
+    return R_NilValue;
+}
+
+static int restore_storage_class(const char *name, SEXP storages) {
+    if (strncmp(name, "dta_", 4) != 0) return 0;
+    for (R_xlen_t i = 0; i < XLENGTH(storages); i++) {
+        if (strcmp(name + 4, CHAR(STRING_ELT(storages, i))) == 0) return 1;
+    }
+    return 0;
+}
+
+/* `.restore_dta_metadata(value, prototype, storage)` in one call. `value`
+   takes the prototype's variable attributes in their order, `stata.storage`
+   set to `storage`, the prototype's classes with each storage class made
+   `storage`'s, and `names(value)`, which the call evaluates in the caller's
+   frame where the R code would. Return NULL, so the R code runs instead,
+   for an attribute it warns about, a storage outside `storages`, classes
+   without a storage class or with an NA, attributes, or an S4 flag of their
+   own, ALTREP storage or classes of either argument, whose reads can run R
+   code, and S4 or data.table values. */
+SEXP C_dtatools_restore_numeric_metadata(
+    SEXP value, SEXP prototype, SEXP storage, SEXP variables, SEXP storages
+) {
+    /* ALTREP checks come before any read of the vector's length or
+       elements, which could run R code ahead of the R path's warnings. */
+    if (TYPEOF(variables) != STRSXP || ALTREP(variables) ||
+        TYPEOF(storages) != STRSXP || ALTREP(storages) ||
+        TYPEOF(storage) != STRSXP || ALTREP(storage) || XLENGTH(storage) != 1 ||
+        ANY_ATTRIB(storage) || STRING_ELT(storage, 0) == NA_STRING ||
+        Rf_isS4(value) || Rf_isS4(prototype) ||
+        ALTREP(Rf_getAttrib(value, R_ClassSymbol)) ||
+        Rf_inherits(value, "data.table")) {
+        return R_NilValue;
+    }
+    const char *storage_name = CHAR(STRING_ELT(storage, 0));
+    int known_storage = 0;
+    for (R_xlen_t i = 0; i < XLENGTH(storages); i++) {
+        if (strcmp(storage_name, CHAR(STRING_ELT(storages, i))) == 0) known_storage = 1;
+    }
+    SEXP prototype_classes = PROTECT(Rf_getAttrib(prototype, R_ClassSymbol));
+    if (!known_storage || TYPEOF(prototype_classes) != STRSXP ||
+        ALTREP(prototype_classes) || XLENGTH(prototype_classes) == 0 ||
+        ANY_ATTRIB(prototype_classes) || Rf_isS4(prototype_classes)) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+
+    restore_attribute_plan plan;
+    plan.variables = variables;
+    plan.values = PROTECT(Rf_allocVector(VECSXP, RESTORE_PLAN_CAPACITY));
+    plan.count = 0;
+    if (R_mapAttrib(prototype, restore_plan_visit, &plan) != NULL) {
+        UNPROTECT(2);
+        return R_NilValue;
+    }
+    SEXP storage_symbol = Rf_install("stata.storage");
+    int has_storage = 0;
+    for (int i = 0; i < plan.count; i++) {
+        if (plan.tags[i] == storage_symbol) {
+            SET_VECTOR_ELT(plan.values, i, storage);
+            has_storage = 1;
+        }
+    }
+    if (!has_storage) {
+        plan.tags[plan.count] = storage_symbol;
+        SET_VECTOR_ELT(plan.values, plan.count, storage);
+        plan.count++;
+    }
+
+    /* `.dta_classes_from()`: a fresh class vector, as `[<-` on the
+       prototype's shared one would make. */
+    char replacement_name[64];
+    snprintf(replacement_name, sizeof(replacement_name), "dta_%s", storage_name);
+    R_xlen_t class_count = XLENGTH(prototype_classes);
+    SEXP classes = PROTECT(Rf_allocVector(STRSXP, class_count));
+    SEXP replacement = R_NilValue;
+    int located = 0, plain = 1;
+    for (R_xlen_t i = 0; plain && i < class_count; i++) {
+        SEXP element = STRING_ELT(prototype_classes, i);
+        if (element == NA_STRING) {
+            plain = 0;
+        } else if (restore_storage_class(CHAR(element), storages)) {
+            if (replacement == R_NilValue) {
+                replacement = PROTECT(Rf_mkChar(replacement_name));
+                SET_STRING_ELT(classes, i, replacement);
+                UNPROTECT(1);
+            } else {
+                SET_STRING_ELT(classes, i, replacement);
+            }
+            located = 1;
+        } else {
+            SET_STRING_ELT(classes, i, element);
+        }
+    }
+    if (!plain || !located) {
+        UNPROTECT(3);
+        return R_NilValue;
+    }
+    /* The R plan forces `names(value)` once, after its warnings and the
+       class vector, and nothing below declines. */
+    SEXP names_call = PROTECT(Rf_lang2(R_NamesSymbol, Rf_install("value")));
+    SEXP value_names = PROTECT(Rf_eval(names_call, R_GetCurrentEnv()));
+
+    /* With no attribute beyond storage, class and names, a value already
+       declaring both comes back as it is. A value without a class attribute
+       has an implicit class, which never names a storage class. Like the R
+       code, read the class only after comparing the storage, whose reads
+       can run R code that changes it. */
+    if (plan.count == 1) {
+        SEXP declared = PROTECT(Rf_getAttrib(value, storage_symbol));
+        int same = declared != R_NilValue &&
+            R_compute_identical(declared, storage, IDENT_USE_CLOENV);
+        UNPROTECT(1);
+        if (same) {
+            SEXP value_classes = PROTECT(Rf_getAttrib(value, R_ClassSymbol));
+            same = value_classes != R_NilValue &&
+                R_compute_identical(value_classes, classes, IDENT_USE_CLOENV);
+            UNPROTECT(1);
+        }
+        if (same) {
+            UNPROTECT(5);
+            return value;
+        }
+    }
+
+    /* `.replace_dta_attributes()`. */
+    SEXP result = PROTECT(C_dtatools_metadata_copy(value));
+    CLEAR_ATTRIB(result);
+    for (int i = 0; i < plan.count; i++) {
+        Rf_setAttrib(result, plan.tags[i], VECTOR_ELT(plan.values, i));
+    }
+    Rf_setAttrib(result, R_ClassSymbol, classes);
+    if (value_names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, value_names);
+    UNPROTECT(6);
+    return result;
+}
+
 /* Call-local read handles keep R validation from creating references to the
    physical column handle. They must cross metadata_copy before user evaluation.
    A compact view has a separate descriptor retaining the raw allocation, so a

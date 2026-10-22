@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "f09a7bca52781a2ea3000a94cf652f3890051ec83a02682b2bc2d65cf3f0d777"
+          "sha256": "c9216485e3887678edafdf593630e0fb628359f320a5b2cb1839dc542c03c36b"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "3f3f4154cb1acaae2dca702a2510fab28d12b9d5ed88372469e31657cf508a08"
+          "sha256": "b9d0ac41018211e507412832b7214c8c5fcfd9905cfb5a88debb369179c91eca"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -1787,7 +1787,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
-          "sha256": "07c4c2bf3926c8cecc1a501ef5011f0c22ebc7e328ca195426b5f0c871b35763"
+          "sha256": "a64ea94b622ad60903270dd858a4f3c9f3424424b5f50d620e8efa6723179866"
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
@@ -3100,6 +3100,46 @@
           "warnings": 0
         },
         {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration builds the R plan's attributes in its order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 34,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration returns a value that already has its storage and classes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration declines what the R code handles itself",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration reads the value's class after its storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "restoration reads the value's names once, after the R code's warnings",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
           "file": "test-double-combine.R",
           "test": "double combination preserves bytes, order and independent backing",
           "occurrence": 1,
@@ -3246,7 +3286,7 @@
           "test": "combination retains executable callbacks throughout its successful helper graph",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 168,
+          "min_pass": 162,
           "warnings": 0
         },
         {

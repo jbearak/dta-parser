@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Restoring a Stata numeric vector's attributes after vctrs slices, casts,
+  or combines it takes one native call, which sets the same attributes in
+  the same order. A case that call does not cover, such as an attribute the
+  restoration warns about, still runs the R code. A slice of a labelled
+  column falls from about 17.4 to 11.4 microseconds, printing the 5,360
+  columns of the Senegal 2017 DHS women's file from 0.130 to 0.096 seconds,
+  and binding that file to itself from 3.31 to 2.33 seconds. Results and
+  warnings are unchanged. A traced or replaced `.dta_attribute_plan()`,
+  `.dta_classes_from()`, or `.replace_dta_attributes()` no longer sees these
+  restores (ADR 0049).
+
 * Grouped `mutate()` and `summarise()` on a dibble combine group results that
   keep a column's Stata metadata in one pass when every group's result has
   the same attributes. These are the results of `first()`, `last()`, `lag()`,

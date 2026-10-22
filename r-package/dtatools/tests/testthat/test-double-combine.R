@@ -573,9 +573,11 @@ test_that('combination fallback preserves expressions and resolves operands once
 
 test_that('combination retains executable callbacks throughout its successful helper graph', {
     pieces <- .combine_warm()
+    # The native restore builds the class vector without .dta_classes_from(),
+    # so the vctrs path no longer reaches it (ADR 0049).
     package_helpers <- c(
         '.declared_dta_storage', '.dta_promote', '.dta_common_ptype', '.dta_ptype',
-        '.reconcile_dta_metadata', '.restore_dta_metadata', '.dta_classes_from',
+        '.reconcile_dta_metadata', '.restore_dta_metadata',
         '.dta_combine_value_labels', '.reconcile_dta_metadata_attributes',
         '.apply_haven_labelled_class', '.dta_snapshot', '.cast_to_dta',
         '.compact_dta_storage_matches', '.construct_dta_numeric', '.metadata_copy',
