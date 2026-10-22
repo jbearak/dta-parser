@@ -1787,7 +1787,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
-          "sha256": "07c4c2bf3926c8cecc1a501ef5011f0c22ebc7e328ca195426b5f0c871b35763"
+          "sha256": "a64ea94b622ad60903270dd858a4f3c9f3424424b5f50d620e8efa6723179866"
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
@@ -3121,6 +3121,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration reads the value's class after its storage",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {
