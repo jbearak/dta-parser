@@ -374,7 +374,11 @@
                                         if (identical(groups$type, "rowwise"))
                                             " Did you mean to wrap the result in `list()`?"))
                                 }
-                                value <- vctrs::vec_recycle(value, expected)
+                                # The combiners recycle a size-one chunk to its
+                                # rows, so only a lone group, which skips them,
+                                # recycles here.
+                                if (length(chunks) == 1L)
+                                    value <- vctrs::vec_recycle(value, expected)
                             }
                             chunks[id] <- list(if (is.null(value)) NULL else .metadata_copy(value))
                         }

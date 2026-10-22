@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "6d923e01224ae6aef2d2c8474aed1b409de90544cea0d84e73737fd19d460d13"
+          "sha256": "80b798e6c07b7bddee6a953cf282a4108f8de353481c26f7c270e9ae3b405085"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -3407,6 +3407,25 @@
           "skip": "forbid",
           "min_pass": 6,
           "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "indexed combination recycles a size-one piece as list_unchop() does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "real grouped dplyr mutation recycles size-one results in one payload",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-numeric-helper-profile.R",
