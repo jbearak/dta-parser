@@ -5,6 +5,21 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Arithmetic, summaries such as `mean()`, and math functions on Stata
+  numerics build a result of fewer than 2,048 values in one native call.
+  Such a result had gone through the package's R code for choosing its
+  storage, which took longer than the computation. `mean()` of a
+  three-value int falls from about 14.7 to 8.1 microseconds, and `x * 0.5`
+  on a three-value byte from 21.4 to 10.8. Grouped verbs make one such call
+  per group. Over the 42,739 women in the first 100,000 rows of the India
+  2021 DHS births file, `summarise(b, m = mean(b2), .by = caseid)` falls
+  from about 2.01 to 1.66 seconds, `mutate(b, m = mean(b2), .by = caseid)`
+  from 1.70 to 1.26, and `summarise(b, m = sum(b11, na.rm = TRUE), .by =
+  caseid)` from 2.34 to 1.91. Results are unchanged. For these small
+  results, a traced or replaced internal helper or base function that the
+  R code calls, a replaced `.Machine`, and a `names<-` method for the
+  package's classes no longer see the computation (ADR 0050).
+
 * Restoring a Stata numeric vector's attributes after vctrs slices, casts,
   or combines it takes one native call, which sets the same attributes in
   the same order. A case that call does not cover, such as an attribute the

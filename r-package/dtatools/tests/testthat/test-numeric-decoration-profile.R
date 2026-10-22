@@ -100,12 +100,13 @@ test_that("computed decoration preserves compact storage names setter callbacks"
             call = sys.call(-1L), encoded = exists("encoded", parent.frame(), inherits = FALSE))
         NextMethod()
     }
+    # Results under 2,048 values skip `names<-` methods (ADR 0050).
     for (storage in c("byte", "int", "long", "float")) {
-        source <- get(paste0("dta_", storage))(c(1, 2))
+        source <- get(paste0("dta_", storage))(rep(c(1, 2), 1024L))
         invisible(source + 1)
         .decoration_with_method(paste0("dta_", storage), replacement, function() {
             observed <- .decoration_observe(function() source + 1, records)
-            expect_identical(observed$values, c(2, 3))
+            expect_identical(observed$values, rep(c(2, 3), 1024L))
             expect_length(observed$calls, 1L)
             expect_true(observed$calls[[1L]]$encoded)
             previous <- .numeric_helper_state$dependencies

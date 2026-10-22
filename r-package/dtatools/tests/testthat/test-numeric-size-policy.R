@@ -312,7 +312,10 @@ test_that("size admission does not replace changed or self-untracing executing c
             trace(name, tracer = tracer, where = ns, print = FALSE)
             observed <- tryCatch(.numeric_size_observe(operations[[route]]),
                                  finally = replace(name, original))
-            local <- switch(route, scalar = "args", computed = "values",
+            # Under 2,048 values, `.dta_computed()` returns from its own native
+            # call before the R code's locals (ADR 0050).
+            local <- switch(route, scalar = "args",
+                            computed = if (size < 2048L) "native" else "values",
                             construct = "values", holds = "codes")
             expect_identical(observed$result, reference, info = paste(size, route))
             expect_identical(observed$counts[[route]], 0, info = paste(size, route))

@@ -8031,4 +8031,100 @@ SEXP C_dtatools_construct_numeric_trusted(
     return result;
 }
 
+/* `.dta_computed(result, minimum, temporal)` for what the native route
+   above leaves to the R code because of its size gate: a result with no
+   attributes and no temporal encoding. It takes the R code's steps in
+   order. Computational NaN, infinite and out-of-range values become system
+   missing, the storage is the first of the R code's candidates that holds
+   every observed value, and the R code's constructors build the vector.
+   It does not prove the helpers it skips, which ADR 0050 allows. Like the
+   route above, it binds the vector to `native` in the caller's frame and
+   returns TRUE. Return FALSE, so the R code runs, for anything else,
+   including a tag byte outside `.a` through `.z`. The R code reads the
+   result before it forces `temporal` and then `minimum`, so the call
+   forces them in the caller's frame only after the result and each of its
+   values qualify, and each only after the one before it does. */
+SEXP C_dtatools_computed_values(SEXP value) {
+    SEXP frame = R_GetCurrentEnv();
+    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) ||
+        Rf_isS4(value) || XLENGTH(value) >= numeric_size_minimum ||
+        !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
+    R_xlen_t length = XLENGTH(value);
+    for (R_xlen_t i = 0; i < length; i++) {
+        double element = REAL(value)[i];
+        int tag = ISNAN(element) ? tagged_na_tag_value(element) : 0;
+        if (tag != 0 && (tag < 'a' || tag > 'z')) return Rf_ScalarLogical(FALSE);
+    }
+    SEXP temporal = PROTECT(R_getVar(Rf_install("temporal"), frame, TRUE));
+    if (TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
+        Rf_isS4(temporal) || XLENGTH(temporal) != 1 || INTEGER(temporal)[0] != 0) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    SEXP minimum = PROTECT(R_getVar(Rf_install("minimum"), frame, TRUE));
+    int minimum_kind = computed_storage_kind(minimum);
+    UNPROTECT(1);
+    if (minimum_kind < 0) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    /* Scan again: forcing either argument can run R code. */
+    const double *input = REAL(value);
+    int changed = 0;
+    unsigned fits = (1U << (NUMERIC_DOUBLE + 1)) - 1;
+    for (R_xlen_t i = 0; i < length; i++) {
+        double element = input[i];
+        if (ISNAN(element)) {
+            int tag = tagged_na_tag_value(element);
+            if (tag != 0 && (tag < 'a' || tag > 'z')) {
+                UNPROTECT(1);
+                return Rf_ScalarLogical(FALSE);
+            }
+            if (tag == 0 && !ISNA(element)) changed = 1;
+        } else if (!R_FINITE(element) || fabs(element) > DBL_MAX / 2) {
+            changed = 1;
+        } else {
+            fits &= computed_fit(element);
+        }
+    }
+    /* `.dta_storage_candidates()`: long skips float. */
+    int kind = minimum_kind;
+    for (; kind < NUMERIC_DOUBLE; kind++) {
+        if (minimum_kind == NUMERIC_LONG && kind == NUMERIC_FLOAT) continue;
+        if (fits & (1U << kind)) break;
+    }
+    SEXP values = PROTECT(kind == NUMERIC_DOUBLE ? C_dtatools_metadata_copy(value) :
+        changed ? Rf_allocVector(REALSXP, length) : value);
+    SEXP codes = PROTECT(kind == NUMERIC_DOUBLE ? R_NilValue :
+        Rf_allocVector(INTSXP, length));
+    double *output = values == value ? NULL : REAL(values);
+    for (R_xlen_t i = 0; i < length; i++) {
+        double element = input[i];
+        int code = NA_INTEGER;
+        if (ISNAN(element)) {
+            int tag = tagged_na_tag_value(element);
+            code = tag;
+            if (tag == 0 && !ISNA(element)) element = NA_REAL;
+        } else if (!R_FINITE(element) || fabs(element) > DBL_MAX / 2) {
+            element = NA_REAL;
+            code = 0;
+        }
+        if (output != NULL) output[i] = element;
+        if (codes != R_NilValue) INTEGER(codes)[i] = code;
+    }
+    static const char *names[] = {"byte", "int", "long", "float", "double"};
+    SEXP storage = PROTECT(Rf_mkString(names[kind]));
+    SEXP payload = values;
+    if (kind != NUMERIC_DOUBLE) {
+        SEXP kind_value = PROTECT(Rf_ScalarInteger(kind));
+        payload = C_dtatools_construct_numeric_trusted(values, codes, kind_value, temporal);
+        UNPROTECT(1);
+    }
+    PROTECT(payload);
+    SEXP result = PROTECT(numeric_decorate_result(payload, storage));
+    SEXP status = numeric_result_commit(result, frame);
+    UNPROTECT(6);
+    return status;
+}
+
 #include "initial-capture.inc"

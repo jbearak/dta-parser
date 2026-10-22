@@ -1,5 +1,6 @@
 test_that("numeric decoration preserves replacement helper arguments and frames", {
-    source <- dta_double(c(1, 2))
+    # Results under 2,048 values skip the helper (ADR 0050).
+    source <- dta_double(rep(c(1, 2), 1024L))
     invisible(source + 1)
     state <- .numeric_helper_state
     saved <- state$dependencies
@@ -13,7 +14,7 @@ test_that("numeric decoration preserves replacement helper arguments and frames"
         original(storage)
     }
     local_mocked_bindings(.dta_storage_class = replacement, .package = "dtatools")
-    operations <- list(function() source + 1, function() source + c(1, 1),
+    operations <- list(function() source + 1, function() source + rep(1, length(source)),
                        function() dta_double(c(1, 2)))
     for (operation in operations) {
         state$dependencies <- NULL
@@ -23,6 +24,7 @@ test_that("numeric decoration preserves replacement helper arguments and frames"
         state$dependencies <- saved
         records <- list()
         actual <- operation()
+        expect_gt(length(expected_records), 0L)
         expect_identical(records, expected_records)
         expect_identical(as.double(actual), as.double(expected))
         expect_identical(attributes(actual), attributes(expected))
@@ -35,12 +37,13 @@ test_that("numeric decoration retains downstream primitive callback observations
         .libPaths(libraries)
         library(dtatools)
         ns <- asNamespace("dtatools")
-        source <- dta_double(c(1, 2))
+        # Results under 2,048 values skip these callbacks (ADR 0050).
+        source <- dta_double(rep(c(1, 2), 1024L))
         invisible(source + 1)
         state <- get(".numeric_helper_state", ns)
         saved <- state$dependencies
         operations <- list(scalar = function() source + 1,
-                           computed = function() source + c(1, 1),
+                           computed = function() source + rep(1, length(source)),
                            construct = function() dta_double(c(1, 2)))
         replace <- function(name, value) {
             unlockBinding(name, baseenv())
@@ -100,9 +103,10 @@ test_that("numeric decoration retains downstream primitive callback observations
         }
         results
     }, args = list(.libPaths()))
-    for (record in observations) {
-        expect_identical(record$records, record$expected_records)
-        expect_identical(record$actual, record$expected)
-        expect_gt(length(record$expected_records), 0L)
+    for (name in names(observations)) {
+        record <- observations[[name]]
+        expect_identical(record$records, record$expected_records, info = name)
+        expect_identical(record$actual, record$expected, info = name)
+        expect_gt(length(record$expected_records), 0L, label = name)
     }
 })

@@ -294,8 +294,8 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
         original <- .Primitive(".Call")
         introduced <- c(
             "C_dtatools_scalar_arithmetic", "C_dtatools_computed_numeric",
-            "C_dtatools_construct_double", "C_dtatools_double_fits",
-            "C_dtatools_canonical_attribute_plan",
+            "C_dtatools_computed_values", "C_dtatools_construct_double",
+            "C_dtatools_double_fits", "C_dtatools_canonical_attribute_plan",
             "C_dtatools_canonical_generate_attributes",
             "C_dtatools_combine_double_into_current", "C_dtatools_try_mask_bindings",
             "C_dtatools_restore_numeric_metadata"
