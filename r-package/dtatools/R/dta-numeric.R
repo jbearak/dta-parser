@@ -1192,7 +1192,7 @@ vec_cast.dta_numeric.dta_numeric <- function(
 # methods read only their inputs' attributes. So when that type has the
 # pieces' own attributes and folds with a third piece to itself, every
 # later fold returns it and every cast returns its piece unchanged. Return
-# that type, or NULL for any other pieces or when a fold signals. ADR 0047
+# that type, or NULL for any other pieces or when a fold signals. ADR 0048
 # lets the combiners below skip the per-group method calls this proves
 # redundant.
 .shared_dta_ptype <- function(pieces) {

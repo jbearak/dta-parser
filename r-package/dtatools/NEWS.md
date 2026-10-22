@@ -15,7 +15,7 @@
   seconds, and `mutate(b, m = lag(b2), .by = caseid)` from TODO to TODO.
   Results and warnings are unchanged. Those methods now run two or three
   times per combine, so a traced or replaced method sees fewer calls
-  (ADR 0047).
+  (ADR 0048).
 
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
