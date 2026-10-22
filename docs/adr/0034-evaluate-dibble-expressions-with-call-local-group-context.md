@@ -1,5 +1,5 @@
 ---
-status: proposed; the compatibility-method sentence is withdrawn by ADR-0036
+status: proposed; the compatibility-method sentence is withdrawn by ADR-0036; fixed-group captures are replaced by ADR-0045
 ---
 
 # Evaluate dibble expressions with call-local group context

@@ -5800,62 +5800,43 @@ static int mask_bindings_dependencies_same(
     return mask_bindings_factory_same(frame, reader_env, VECTOR_ELT(dependencies, count));
 }
 
-/* The only unevaluated expression admitted is this private factory's exact
-   default state$id in its own frame. Inspect through public binding APIs;
-   even a declined foreign name list must leave the group promise untouched. */
-static int mask_bindings_inputs(SEXP frame, SEXP reader_env, SEXP *current, SEXP *id) {
+/* Inspect settled state through public binding APIs. Even a declined
+   foreign name list must leave every state field untouched. */
+static int mask_bindings_inputs(SEXP frame, SEXP reader_env, SEXP *current) {
     if (!combine_plain_environment(frame) || !combine_plain_environment(reader_env) ||
         R_ParentEnv(frame) != reader_env) return 0;
-    SEXP state_symbol = Rf_install("state"), id_symbol = Rf_install("id");
-    SEXP current_symbol = Rf_install("current"), dollar_symbol = Rf_install("$");
+    SEXP state_symbol = Rf_install("state"), current_symbol = Rf_install("current");
     SEXP state = R_NilValue;
-    if (R_GetBindingType(state_symbol, frame) != R_BindingTypeUnbound ||
-        combine_peek_frame(reader_env, state_symbol, &state) != COMBINE_VALUE ||
-        !combine_plain_environment(state) ||
-        combine_peek_frame(state, current_symbol, current) != COMBINE_VALUE) return 0;
-    if (R_GetBindingType(id_symbol, frame) != R_BindingTypeDelayed)
-        return combine_peek_frame(frame, id_symbol, id) == COMBINE_VALUE;
-    if (R_DelayedBindingEnvironment(id_symbol, frame) != frame) return 0;
-    SEXP expression = R_DelayedBindingExpression(id_symbol, frame);
-    if (TYPEOF(expression) != LANGSXP || ANY_ATTRIB(expression) ||
-        TAG(expression) != R_NilValue || CAR(expression) != dollar_symbol) return 0;
-    SEXP rest = CDR(expression);
-    if (TYPEOF(rest) != LISTSXP || ANY_ATTRIB(rest) || TAG(rest) != R_NilValue ||
-        CAR(rest) != state_symbol) return 0;
-    rest = CDR(rest);
-    if (TYPEOF(rest) != LISTSXP || ANY_ATTRIB(rest) || TAG(rest) != R_NilValue ||
-        CAR(rest) != id_symbol || CDR(rest) != R_NilValue) return 0;
-    return combine_peek_frame(state, id_symbol, id) == COMBINE_VALUE;
+    return R_GetBindingType(state_symbol, frame) == R_BindingTypeUnbound &&
+        combine_peek_frame(reader_env, state_symbol, &state) == COMBINE_VALUE &&
+        combine_plain_environment(state) &&
+        combine_peek_frame(state, current_symbol, current) == COMBINE_VALUE;
 }
 
 static SEXP mask_bindings_construct(
     SEXP frame, SEXP reader_env, SEXP dependencies, SEXP *last_name
 ) {
-    SEXP current = R_NilValue, id = R_NilValue;
+    SEXP current = R_NilValue;
     if (!mask_bindings_dependencies_same(frame, reader_env, dependencies) ||
-        !mask_bindings_inputs(frame, reader_env, &current, &id)) return R_NilValue;
-    /* These exact objects are borrowed from mutable state, not .Call inputs.
-       Root them across allocation even if a finalizer replaces state fields. */
+        !mask_bindings_inputs(frame, reader_env, &current)) return R_NilValue;
+    /* This exact object is borrowed from mutable state, not a .Call input.
+       Root it across allocation even if a finalizer replaces state fields. */
     PROTECT(current);
-    PROTECT(id);
     if (TYPEOF(current) != VECSXP || ALTREP(current) ||
         Rf_isObject(current) || Rf_isS4(current) ||
-        R_mapAttrib(current, mask_bindings_current_attribute, NULL) != NULL ||
-        TYPEOF(id) != INTSXP || ALTREP(id) || ANY_ATTRIB(id) ||
-        Rf_isObject(id) || Rf_isS4(id) || XLENGTH(id) != 1 ||
-        INTEGER(id)[0] == NA_INTEGER || INTEGER(id)[0] < 0) {
-        UNPROTECT(2);
+        R_mapAttrib(current, mask_bindings_current_attribute, NULL) != NULL) {
+        UNPROTECT(1);
         return R_NilValue;
     }
     R_xlen_t width = XLENGTH(current);
     if (width > INT_MAX) {
-        UNPROTECT(2);
+        UNPROTECT(1);
         return R_NilValue;
     }
     SEXP names = PROTECT(Rf_getAttrib(current, R_NamesSymbol));
     if (TYPEOF(names) != STRSXP || ALTREP(names) || ANY_ATTRIB(names) ||
         Rf_isObject(names) || Rf_isS4(names) || XLENGTH(names) != width) {
-        UNPROTECT(3);
+        UNPROTECT(2);
         return R_NilValue;
     }
     /* Finish all ordinary-shape checks before creating the result environment.
@@ -5865,20 +5846,21 @@ static SEXP mask_bindings_construct(
         SEXP name = STRING_ELT(names, i);
         if (!mask_bindings_ascii_name(name) ||
             !combine_plain_environment(VECTOR_ELT(current, i))) {
-            UNPROTECT(3);
+            UNPROTECT(2);
             return R_NilValue;
         }
     }
     SEXP bindings = PROTECT(R_NewEnv(R_EmptyEnv, TRUE, width < 29 ? 29 : (int) width));
-    SEXP fixed_id = PROTECT(Rf_ScalarInteger(INTEGER(id)[0]));
     SEXP read_symbol = Rf_install("read");
     SEXP generation_symbol = Rf_install("generation"), name_symbol = Rf_install("name");
-    SEXP id_symbol = Rf_install("id");
     /* Retain the original factory's call and capture frame. A changed reader
        can inspect its argument expressions, including after construction.
        Forced bindings preserve both fixed values and substitute(..., frame)
-       without evaluating the original state access or any R constructor. */
-    SEXP body = PROTECT(Rf_lang4(read_symbol, generation_symbol, name_symbol, id_symbol));
+       without evaluating the original state access or any R constructor.
+       The group stays a state access that each read evaluates. */
+    SEXP id_expression = PROTECT(Rf_lang3(
+        Rf_install("$"), Rf_install("state"), Rf_install("id")));
+    SEXP body = PROTECT(Rf_lang4(read_symbol, generation_symbol, name_symbol, id_expression));
     SEXP current_expression = PROTECT(Rf_lang3(
         Rf_install("$"), Rf_install("state"), Rf_install("current")));
     SEXP generation_expression = PROTECT(Rf_lang3(
@@ -5890,13 +5872,12 @@ static SEXP mask_bindings_construct(
            not run previously installed active bindings. Never expose a partial
            result, including when two encodings resolve to the same symbol. */
         if (R_existsVarInFrame(bindings, symbol)) {
-            UNPROTECT(8);
+            UNPROTECT(7);
             return R_NilValue;
         }
         SEXP name = PROTECT(Rf_ScalarString(STRING_ELT(names, i)));
         SEXP capture = PROTECT(R_NewEnv(reader_env, FALSE, 0));
         /* Insert in reverse formal order, as in the original call frame. */
-        R_MakeForcedBinding(id_symbol, id_symbol, fixed_id, capture);
         R_MakeForcedBinding(name_symbol, name_symbol, name, capture);
         R_MakeForcedBinding(generation_symbol, generation_expression,
                             VECTOR_ELT(current, i), capture);
@@ -5906,7 +5887,7 @@ static SEXP mask_bindings_construct(
         *last_name = name;
         UNPROTECT(3);
     }
-    UNPROTECT(8);
+    UNPROTECT(7);
     return bindings;
 }
 
@@ -5935,61 +5916,38 @@ SEXP C_dtatools_try_mask_bindings(
     if (!combine_plain_environment(frame))
         return publish ? Rf_ScalarLogical(FALSE) : R_NilValue;
     if (reader_env == R_NilValue) reader_env = R_ParentEnv(frame);
-    SEXP symbol = Rf_install("bindings"), id_symbol = Rf_install("id");
-    SEXP name_symbol = Rf_install("name");
+    SEXP symbol = Rf_install("bindings"), name_symbol = Rf_install("name");
     if (!mask_bindings_name_slot_available(frame, name_symbol))
         return publish ? Rf_ScalarLogical(FALSE) : R_NilValue;
     if (publish && !mask_bindings_result_slot_available(frame, symbol))
         return Rf_ScalarLogical(FALSE);
-    SEXP current = R_NilValue, id = R_NilValue;
-    if (!mask_bindings_inputs(frame, reader_env, &current, &id))
+    SEXP current = R_NilValue;
+    if (!mask_bindings_inputs(frame, reader_env, &current))
         return publish ? Rf_ScalarLogical(FALSE) : R_NilValue;
     PROTECT(current);
-    PROTECT(id);
-    R_BindingType_t id_type = R_GetBindingType(id_symbol, frame);
-    SEXP expression = PROTECT(id_type == R_BindingTypeDelayed ?
-        R_DelayedBindingExpression(id_symbol, frame) :
-        id_type == R_BindingTypeForced ? R_ForcedBindingExpression(id_symbol, frame) : R_NilValue);
-    int settle = id_type == R_BindingTypeDelayed &&
-        TYPEOF(current) == VECSXP && !ALTREP(current) && XLENGTH(current) != 0;
-    if (settle && (R_EnvironmentIsLocked(frame) || R_BindingIsLocked(id_symbol, frame))) {
-        UNPROTECT(3);
-        return publish ? Rf_ScalarLogical(FALSE) : R_NilValue;
-    }
     SEXP name = R_NilValue;
     SEXP result = PROTECT(mask_bindings_construct(frame, reader_env, dependencies, &name));
     /* A declined partial construction need not retain its last capture. */
     if (result == R_NilValue) name = R_NilValue;
     PROTECT(name);
-    SEXP now_current = R_NilValue, now_id = R_NilValue;
-    /* Construction allocates. Recheck the exact default and its settled state
-       without evaluating any promise, entering an active binding or replacing
-       a locked binding installed in the meantime. */
+    SEXP now_current = R_NilValue;
+    /* Construction allocates. Recheck the settled state without evaluating
+       any promise, entering an active binding or replacing a locked binding
+       installed in the meantime. */
     int unchanged = result != R_NilValue &&
-        mask_bindings_inputs(frame, reader_env, &now_current, &now_id) &&
-        now_current == current && now_id == id &&
-        R_GetBindingType(id_symbol, frame) == id_type &&
-        (id_type != R_BindingTypeDelayed ||
-            R_DelayedBindingExpression(id_symbol, frame) == expression) &&
-        (id_type != R_BindingTypeForced ||
-            R_ForcedBindingExpression(id_symbol, frame) == expression) &&
-        (!settle || (!R_EnvironmentIsLocked(frame) && !R_BindingIsLocked(id_symbol, frame))) &&
+        mask_bindings_inputs(frame, reader_env, &now_current) &&
+        now_current == current &&
         mask_bindings_name_slot_available(frame, name_symbol) &&
         (!publish || mask_bindings_result_slot_available(frame, symbol));
     if (!unchanged) {
-        UNPROTECT(5);
+        UNPROTECT(3);
         return publish ? Rf_ScalarLogical(FALSE) : R_NilValue;
     }
-    /* The original nonempty loop forces make_mask's default id through the
-       first factory call. Settle that same expression and captured value only
-       after every declining check. R_MakeForcedBinding allocates its promise;
-       expression, value and completed result stay rooted across that commit. */
-    if (settle) R_MakeForcedBinding(id_symbol, expression, id, frame);
     /* R's for loop leaves its final scalar in the caller, or NULL for an
        empty sequence. The following new_data_mask callback can inspect it. */
     Rf_defineVar(name_symbol, name, frame);
     if (publish) Rf_defineVar(symbol, result, frame);
-    UNPROTECT(5);
+    UNPROTECT(3);
     return publish ? Rf_ScalarLogical(TRUE) : result;
 }
 

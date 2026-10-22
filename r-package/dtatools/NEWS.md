@@ -210,6 +210,19 @@
   one native pass. On a 16,787-row, 5,360-column DHS file, `codebook(d)`
   falls from 2.2 to 1.6 seconds. Results are unchanged.
 
+* Dibble verbs that evaluate expressions by group, such as `mutate()`,
+  `summarise()`, and `filter()`, build one set of column bindings and use it
+  for every group, rather than a binding for every column in each group.
+  Bindings read the group being evaluated, as dplyr's do. A closure, pronoun,
+  or quosure saved in one group and called in another now reads the current
+  group's rows, as it would on a tibble. It still reads each column as it
+  was when the capture was made. On a 16,787-row, 5,360-column DHS file with
+  400 clusters, `summarise(d, m = mean(v012), .by = v001)` falls from 0.47
+  to 0.06 seconds, and a `mutate()` of three expressions by cluster from 1.42
+  to 0.10 seconds. On the first 100,000 rows of the India 2021 DHS births
+  file, `filter(d, n() > 1, .by = caseid)` over 42,739 women falls from 0.73
+  to 0.36 seconds.
+
 * `summ()` with a varlist of column names, which includes the default of
   every column, builds each variable's entry from its name and label,
   rather than through the expansion that factor variables, interactions,

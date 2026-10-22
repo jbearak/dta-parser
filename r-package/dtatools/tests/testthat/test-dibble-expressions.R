@@ -346,7 +346,7 @@ test_that("diagnostics identify the actual expression entry point", {
 })
 
 
-test_that("within-call captures keep their original generation and group", {
+test_that("within-call captures keep their generation and read the current group", {
     skip_if_not_installed("dplyr", "1.2.1")
     input <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = c(1, 2, 3, 4)), g)
     closures <- list(); pronouns <- list(); quosures <- list()
@@ -362,9 +362,13 @@ test_that("within-call captures keep their original generation and group", {
         quosures[[id]] <<- rlang::quo(x)
         capture(x, paste0("g", id))
     }, x = x + 10, observed = {
-        expect_identical(as.double(closures[[1L]]()), c(1, 2))
-        expect_identical(as.double(pronouns[[1L]]$x), c(1, 2))
-        expect_identical(as.double(rlang::eval_tidy(quosures[[1L]])), c(1, 2))
+        # Captures from the first group read x as it was before x = x + 10,
+        # for whichever group is being evaluated now, as dplyr's do.
+        before <- if (dplyr::cur_group_id() == 1L) c(1, 2) else c(3, 4)
+        expect_identical(as.double(closures[[1L]]()), before)
+        expect_identical(as.double(pronouns[[1L]]$x), before)
+        expect_identical(as.double(rlang::eval_tidy(quosures[[1L]])), before)
+        # The first group forced this promise, which keeps that value.
         expect_identical(as.double(get("g1", promises)), c(1, 2))
         sum(closures[[dplyr::cur_group_id()]]())
     })
@@ -373,6 +377,49 @@ test_that("within-call captures keep their original generation and group", {
     # This promise was forced during evaluation, so it now holds a saved value.
     expect_identical(as.double(get("g1", promises)), c(1, 2))
     expect_error(dplyr::ungroup(input, renamed = g), "Can't rename")
+})
+
+test_that("captures from another group read the current group as in dplyr", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    plain <- tibble::tibble(g = c(1, 1, 2, 3), x = c(1, 2, 10, 100))
+    run <- function(data, verb) {
+        saved <- NULL
+        expression <- rlang::quo({
+            if (dplyr::cur_group_id() == 1L) saved <<- function() sum(x)
+            saved()
+        })
+        if (verb == "summarise") {
+            dplyr::summarise(data, s = !!expression, .by = g)$s
+        } else {
+            dplyr::mutate(data, s = !!expression, .by = g)$s
+        }
+    }
+    for (verb in c("summarise", "mutate")) {
+        expect_identical(as.double(run(as_dibble(plain), verb)), run(plain, verb), info = verb)
+    }
+})
+
+test_that("groups share one set of bindings until an expression changes a column", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- dibble(g = c(1, 1, 2), x = c(1, 2, 3), y = c(4, 5, 6))
+    parents <- list()
+    record <- function(env) {
+        parents[[length(parents) + 1L]] <<- parent.env(env)
+        0
+    }
+    result <- dplyr::mutate(data, a = record(environment()), b = record(environment()),
+                            y = NULL, c = record(environment()), .by = g)
+    expect_identical(names(result), c("g", "x", "a", "b", "c"))
+    expect_length(parents, 6L)
+    # Each expression's two groups share a set. Adding a, adding b and
+    # removing y each build the next set for the expression after them.
+    for (i in c(1L, 3L, 5L)) expect_identical(parents[[i]], parents[[i + 1L]])
+    expect_false(identical(parents[[1L]], parents[[3L]]))
+    expect_false(identical(parents[[3L]], parents[[5L]]))
+    expect_true(exists("a", parents[[3L]], inherits = FALSE))
+    expect_false(exists("b", parents[[3L]], inherits = FALSE))
+    expect_true(exists("y", parents[[3L]], inherits = FALSE))
+    expect_false(exists("y", parents[[5L]], inherits = FALSE))
 })
 
 test_that("removed and re-added column generations retain values and expire", {
