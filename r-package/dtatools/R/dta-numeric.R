@@ -1186,6 +1186,53 @@ vec_cast.dta_numeric.dta_numeric <- function(
     value
 }
 
+# Group results that share every attribute and carry Stata metadata, such
+# as first() or lag() of a labelled column, get the common type that vctrs
+# folds from the first two. The package's vec_ptype2() method reads only
+# its inputs' attributes, so when that type has the pieces' own attributes
+# and folds with a third piece to itself, every later fold returns it. Its
+# vec_cast() method rebuilds a piece from its values, so when construction
+# returns each value bit for bit, every cast returns its piece. Return
+# that type, or NULL for any other pieces or when a fold signals. ADR 0048
+# lets the combiners below skip the per-group method calls this proves
+# redundant.
+.shared_dta_ptype <- function(pieces) {
+    count <- length(pieces)
+    first <- if (count >= 2L) pieces[[1L]]
+    if (!identical(oldClass(first)[1L], "dta_numeric") || inherits(first, "dta_temporal"))
+        return(NULL)
+    reference <- attributes(first)
+    decorated <- setdiff(names(reference), c("class", "stata.storage"))
+    if (!length(decorated) || !all(decorated %in% .dta_variable_attribute_names))
+        return(NULL)
+    # identical() takes every NaN as one value unless told otherwise, and a
+    # tagged missing value label is a NaN whose payload names its code.
+    same <- function(x, y) identical(x, y, num.eq = FALSE, single.NA = FALSE,
+                                      attrib.as.set = FALSE)
+    kind <- match(reference[["stata.storage"]], .dta_storage) - 1L
+    if (length(kind) != 1L || is.na(kind)) return(NULL)
+    for (index in seq_len(count)) {
+        piece <- pieces[[index]]
+        if ((index > 1L && !same(attributes(piece), reference)) ||
+            !.Call(C_dtatools_numeric_values_kept, piece, kind)) return(NULL)
+    }
+    tryCatch({
+        ptype <- vctrs::vec_ptype_common(first, pieces[[2L]])
+        if (same(attributes(ptype), reference) &&
+            (count == 2L || same(vctrs::vec_ptype2(ptype, pieces[[3L]]), ptype)))
+            ptype
+    }, error = function(condition) NULL, warning = function(condition) NULL,
+    message = function(condition) NULL)
+}
+
+# What list_unchop() and vec_c() build from such pieces: their payloads,
+# placed by `indices` with a size-one piece recycled, restored to `ptype`.
+.combine_shared_dta <- function(pieces, ptype, indices = NULL) {
+    vctrs::vec_restore(
+        vctrs::list_unchop(lapply(pieces, .dta_snapshot), indices = indices), ptype
+    )
+}
+
 #' @export
 vec_cast.dta_numeric.double <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
