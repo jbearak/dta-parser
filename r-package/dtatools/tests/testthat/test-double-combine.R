@@ -96,6 +96,74 @@ test_that('double combination declines unsupported shapes before foreign reads',
     }
 })
 
+test_that('indexed combination recycles a size-one piece as list_unchop() does', {
+    .combine_warm()
+    pieces <- list(dta_double(2.5), dta_double(c(1, tagged_missing('b'))),
+                   dta_double(NA_real_), dta_double(7))
+    indices <- list(c(1L, 3L, 5L), c(2L, 4L), 6L, integer())
+    expected <- vctrs::list_unchop(pieces, indices = indices)
+    actual <- .combine_profile_result(pieces, indices)
+    expect_identical(.combine_bits(actual), .combine_bits(expected))
+    expect_identical(attributes(actual), attributes(expected))
+    expect_identical(as.double(actual), c(2.5, 1, 2.5, NA, 2.5, NA))
+    compact <- list(dta_int(3L), dta_int(c(4L, 5L)), dta_byte(1L))
+    rows <- list(c(2L, 5L), c(1L, 3L), 4L)
+    expect_identical(.combine_dta_double_indexed(compact, list(rows = rows)),
+                     vctrs::list_unchop(compact, indices = rows))
+    expect_null(.combine_attempt(list(dta_double(c(1, 2)), dta_double(3)),
+                                 list(1:3, 4L)))
+})
+
+test_that("real grouped dplyr mutation recycles size-one results in one payload", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    .combine_warm()
+    data <- dibble(x = rep(c(1, 4, 2, 8), 25), g = rep(1:10, 10))
+    .Call(C_dtatools_native_copy_stats, TRUE)
+    result <- dplyr::mutate(data, y = max(x) + 0.5, .by = g)
+    counters <- .Call(C_dtatools_native_copy_stats, FALSE)
+    native_expected <- .combine_profile_expected()
+    expected <- ave(as.double(data$x), data$g, FUN = max) + 0.5
+    expect_identical(as.double(result$y), expected)
+    expect_identical(dta_storage_type(result$y), "double")
+    expect_identical(counters[['combine_copied_payload_bytes']], if (native_expected) 800 else 0)
+    expect_identical(counters[['combine_root_r_bytes']],
+                     if (native_expected) 10 * .Machine$sizeof.pointer else 0)
+    whole <- dplyr::mutate(data, y = max(x) + 0.5)
+    expect_identical(as.double(whole$y), rep(8.5, 100))
+    # An empty group's max() of nothing contributes no rows and no cast.
+    levels <- factor(c("a", "a", "b"), levels = c("a", "b", "c"))
+    grouped <- dplyr::group_by(dibble(x = c(1, 2, 3), g = levels), g, .drop = FALSE)
+    kept <- suppressWarnings(dplyr::mutate(grouped, y = max(x)))
+    expect_identical(as.double(kept$y), c(2, 2, 3))
+    expect_identical(dta_storage_type(kept$y), "double")
+})
+
+test_that("a one-row data frame reused across groups keeps each group's values", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    skip_if_not_installed("data.table")
+    reused <- data.table::data.table(y = 0)
+    data <- dibble(x = c(1, 1, 2, 2), g = c(1, 1, 2, 2))
+    result <- dplyr::mutate(data, {
+        data.table::set(reused, 1L, "y", as.double(dplyr::cur_group_id()))
+        reused
+    }, .by = g)
+    expect_identical(as.double(result$y), c(1, 1, 2, 2))
+})
+
+test_that("another class's size-one group result recycles before the next group", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    restored <- 0
+    counted <- function(x) structure(x, class = "dtatools_test_counted")
+    restore <- function(x, to, ...) {
+        if (length(x) == 2L) restored <<- restored + 1
+        counted(unclass(x))
+    }
+    data <- dibble(x = c(1, 1, 2, 2), g = c(1, 1, 2, 2))
+    result <- .combine_with_method("vec_restore", "dtatools_test_counted", restore, function()
+        dplyr::mutate(data, y = counted(restored), .by = g))
+    expect_identical(unclass(result$y), c(0, 0, 1, 1))
+})
+
 test_that('strict combination leaves invalid-value diagnostics to vctrs', {
     pieces <- .combine_warm()
     invalid_tag <- readBin(as.raw(c(0xa2, 0x07, 0, 0, 0x41, 0, 0xf0, 0x7f)),

@@ -6833,9 +6833,9 @@ static int combine_double_plain_indices(SEXP value) {
         !Rf_isObject(value) && !Rf_isS4(value);
 }
 
-/* A valid index list is a partition of 1:total. Equal index/piece lengths,
-   which the caller checks, in-range positions and uniqueness imply complete
-   coverage; no second bitmap scan, integer gather plan or output
+/* A valid index list is a partition of 1:total. Index lengths that sum to
+   total, which the caller checks, in-range positions and uniqueness imply
+   complete coverage; no second bitmap scan, integer gather plan or output
    initialization is needed. */
 static int combine_indices_partition(SEXP indices, R_xlen_t total) {
     if (total == 0) return 1;
@@ -6912,14 +6912,16 @@ SEXP C_dtatools_try_combine_double(
         if (!combine_double_canonical_piece(piece)) return R_NilValue;
         SEXP source = owned_real(piece) ? owned_values(piece) : piece;
         if (TYPEOF(source) != REALSXP || ALTREP(source)) return R_NilValue;
-        R_xlen_t length = XLENGTH(source);
-        if (length > R_XLEN_T_MAX - total) return R_NilValue;
-        total += length;
+        R_xlen_t length = XLENGTH(source), span = length;
         if (indexed) {
             SEXP positions = VECTOR_ELT(indices, group);
-            if (!combine_double_plain_indices(positions) ||
-                XLENGTH(positions) != length) return R_NilValue;
+            if (!combine_double_plain_indices(positions)) return R_NilValue;
+            /* list_unchop() recycles a size-one piece to its positions. */
+            span = XLENGTH(positions);
+            if (span != length && length != 1) return R_NilValue;
         }
+        if (span > R_XLEN_T_MAX - total) return R_NilValue;
+        total += span;
     }
     if ((uint64_t) total > (uint64_t) SIZE_MAX / sizeof(double) ||
         total > INT_MAX) return R_NilValue;
@@ -6941,12 +6943,13 @@ SEXP C_dtatools_try_combine_double(
             return R_NilValue;
         }
         R_xlen_t length = XLENGTH(source);
-        if (length != XLENGTH(piece) || length > R_XLEN_T_MAX - rooted_total ||
-            (indexed && length != XLENGTH(VECTOR_ELT(indices, group)))) {
+        R_xlen_t span = indexed ? XLENGTH(VECTOR_ELT(indices, group)) : length;
+        if (length != XLENGTH(piece) || (span != length && length != 1) ||
+            span > R_XLEN_T_MAX - rooted_total) {
             UNPROTECT(1);
             return R_NilValue;
         }
-        rooted_total += length;
+        rooted_total += span;
     }
     if (rooted_total != total) {
         UNPROTECT(1);
@@ -6988,6 +6991,16 @@ SEXP C_dtatools_try_combine_double(
         const double *values = REAL(source);
         R_xlen_t length = XLENGTH(source);
         const int *locations = indexed ? INTEGER(VECTOR_ELT(indices, group)) : NULL;
+        R_xlen_t span = indexed ? XLENGTH(VECTOR_ELT(indices, group)) : length;
+        if (span != length) {
+            /* A recycled size-one piece fills every position of its group. */
+            for (R_xlen_t i = 0; i < span; i++) {
+                if ((i & 16383) == 0) R_CheckUserInterrupt();
+                memcpy(output + (R_xlen_t) locations[i] - 1, values, sizeof(double));
+            }
+            combine_copied_payload_bytes += (double) span * sizeof(double);
+            continue;
+        }
         for (R_xlen_t start = 0; start < length; ) {
             R_CheckUserInterrupt();
             R_xlen_t amount = length - start > 16384 ? 16384 : length - start;
@@ -7646,21 +7659,27 @@ static SEXP combine_compact(
         SEXP piece = VECTOR_ELT(pieces, i);
         int kind = -1;
         admitted = scalar_compact_numeric(piece, &kind) &&
-            !numeric_payload_retained(unmaterialized_numeric_read_storage(piece)) &&
-            XLENGTH(piece) <= INT_MAX - total;
+            !numeric_payload_retained(unmaterialized_numeric_read_storage(piece));
         if (admitted) {
             common = common < 0 ? kind : combine_compact_join(common, kind);
             admitted = common >= 0;
         }
+        R_xlen_t span = admitted ? XLENGTH(piece) : 0;
         if (admitted && indexed) {
             SEXP rows = VECTOR_ELT(indices, i);
-            admitted = combine_double_plain_indices(rows) && XLENGTH(rows) == XLENGTH(piece);
-            if (admitted) SET_VECTOR_ELT(positions, i, rows);
+            /* list_unchop() recycles a size-one piece to its positions. */
+            admitted = combine_double_plain_indices(rows) &&
+                (XLENGTH(rows) == XLENGTH(piece) || XLENGTH(piece) == 1);
+            if (admitted) {
+                SET_VECTOR_ELT(positions, i, rows);
+                span = XLENGTH(rows);
+            }
         }
+        admitted = admitted && span <= INT_MAX - total;
         if (admitted) {
             SET_VECTOR_ELT(checked, i, piece);
             kinds |= 1U << kind;
-            total += XLENGTH(piece);
+            total += span;
         }
     }
     admitted = admitted &&
@@ -7685,6 +7704,19 @@ static SEXP combine_compact(
         R_xlen_t length = XLENGTH(piece);
         (void) C_dtatools_metadata_copy(piece);
         const int *locations = indexed ? INTEGER(VECTOR_ELT(positions, i)) : NULL;
+        R_xlen_t span = indexed ? XLENGTH(VECTOR_ELT(positions, i)) : length;
+        if (span != length) {
+            /* A recycled size-one piece fills every position of its group. */
+            if (REAL_GET_REGION(piece, 0, 1, scratch) != 1) {
+                UNPROTECT(3);
+                return R_NilValue;
+            }
+            for (R_xlen_t j = 0; j < span; j++) {
+                if ((j & 16383) == 0) R_CheckUserInterrupt();
+                memcpy(output + locations[j] - 1, scratch, sizeof(double));
+            }
+            continue;
+        }
         for (R_xlen_t start = 0; start < length; ) {
             if ((start & 16383) == 0) R_CheckUserInterrupt();
             R_xlen_t amount = length - start > 2048 ? 2048 : length - start;
