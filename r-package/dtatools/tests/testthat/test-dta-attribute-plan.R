@@ -85,7 +85,7 @@ test_that("restoration matches attribute names as the set operations would", {
 
 native_restore <- function(value, prototype, storage) {
     .Call(C_dtatools_restore_numeric_metadata, value, prototype, storage,
-          names(value), .dta_variable_attribute_names, .dta_storage)
+          .dta_variable_attribute_names, .dta_storage)
 }
 
 test_that("native restoration builds the R plan's attributes in its order", {
@@ -168,20 +168,41 @@ test_that("native restoration declines what the R code handles itself", {
     attr(s4_classes, "class") <- asS4(class(plain))
     expect_null(native_restore(c(1, 2), s4_classes, "double"))
     expect_true(isS4(class(.restore_dta_metadata(c(1, 2), s4_classes, "double"))))
+    # Reading an ALTREP vector can run R code between the native reads.
+    callback_classes <- plain
+    attr(callback_classes, "class") <- .Call(C_dtatools_callback_character,
+                                             class(plain), function() NULL)
+    expect_null(native_restore(c(1, 2), callback_classes, "double"))
+    expect_null(native_restore(c(1, 2), plain, .Call(C_dtatools_callback_character,
+                                                     "double", function() NULL)))
 })
 
-test_that("a declined native restoration reads the value's names once", {
+test_that("restoration reads the value's names once, after the R code's warnings", {
     calls <- 0L
+    warned <- FALSE
     table <- get(".__S3MethodsTable__.", envir = baseenv())
     registerS3method("names", "dtatools_counted_names", function(x) {
         calls <<- calls + 1L
-        NULL
+        if (warned) c("a", "b")
     }, envir = baseenv())
     withr::defer(rm(list = "names.dtatools_counted_names", envir = table))
     unknown <- dta_double(c(1, 2))
     attr(unknown, "mystery") <- TRUE
     value <- structure(c(1, 2), class = "dtatools_counted_names")
-    expect_warning(.restore_dta_metadata(value, unknown, "double"),
-                   "Dropped unknown attribute", fixed = TRUE)
+    restored <- withCallingHandlers(
+        .restore_dta_metadata(value, unknown, "double"),
+        warning = function(condition) {
+            warned <<- TRUE
+            invokeRestart("muffleWarning")
+        })
+    expect_true(warned)
     expect_identical(calls, 1L)
+    expect_identical(attr(restored, "names"), c("a", "b"))
+
+    # The native call reads them once too.
+    calls <- 0L
+    restored <- .restore_dta_metadata(value, dta_double(c(1, 2)), "double")
+    expect_identical(calls, 1L)
+    expect_identical(attr(restored, "names"), c("a", "b"))
+    expect_identical(class(restored), .dta_storage_class("double"))
 })

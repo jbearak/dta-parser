@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "5aaf1b42b1f190f028a09d731b3496a0be62a04de04f56e9afe6934e73457b51"
+          "sha256": "f251a21493626f20745fbb483bf959b36adf8feac945663aecc99c207c65237d"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
@@ -3121,10 +3121,10 @@
         },
         {
           "file": "test-dta-attribute-plan.R",
-          "test": "a declined native restoration reads the value's names once",
+          "test": "restoration reads the value's names once, after the R code's warnings",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 2,
+          "min_pass": 6,
           "warnings": 0
         },
         {

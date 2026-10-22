@@ -498,17 +498,17 @@ static int restore_storage_class(const char *name, SEXP storages) {
 /* `.restore_dta_metadata(value, prototype, storage)` in one call. `value`
    takes the prototype's variable attributes in their order, `stata.storage`
    set to `storage`, the prototype's classes with each storage class made
-   `storage`'s, and `value_names`, the `names(value)` the R code reads.
-   Return NULL, so the R code runs instead, for an attribute it warns about,
-   a storage outside `storages`, classes without a storage class or with an
-   NA, attributes, or an S4 flag of their own, and S4 or data.table
-   values. */
+   `storage`'s, and `names(value)`, which the call evaluates in the caller's
+   frame where the R code would. Return NULL, so the R code runs instead,
+   for an attribute it warns about, a storage outside `storages`, classes
+   without a storage class or with an NA, attributes, or an S4 flag of their
+   own, ALTREP storage or classes, whose reads can run R code, and S4 or
+   data.table values. */
 SEXP C_dtatools_restore_numeric_metadata(
-    SEXP value, SEXP prototype, SEXP storage, SEXP value_names,
-    SEXP variables, SEXP storages
+    SEXP value, SEXP prototype, SEXP storage, SEXP variables, SEXP storages
 ) {
     if (TYPEOF(variables) != STRSXP || TYPEOF(storages) != STRSXP ||
-        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 ||
+        TYPEOF(storage) != STRSXP || XLENGTH(storage) != 1 || ALTREP(storage) ||
         ANY_ATTRIB(storage) || STRING_ELT(storage, 0) == NA_STRING ||
         Rf_isS4(value) || Rf_isS4(prototype) ||
         Rf_inherits(value, "data.table")) {
@@ -521,8 +521,8 @@ SEXP C_dtatools_restore_numeric_metadata(
     }
     SEXP prototype_classes = PROTECT(Rf_getAttrib(prototype, R_ClassSymbol));
     if (!known_storage || TYPEOF(prototype_classes) != STRSXP ||
-        XLENGTH(prototype_classes) == 0 || ANY_ATTRIB(prototype_classes) ||
-        Rf_isS4(prototype_classes)) {
+        XLENGTH(prototype_classes) == 0 || ALTREP(prototype_classes) ||
+        ANY_ATTRIB(prototype_classes) || Rf_isS4(prototype_classes)) {
         UNPROTECT(1);
         return R_NilValue;
     }
@@ -578,6 +578,10 @@ SEXP C_dtatools_restore_numeric_metadata(
         UNPROTECT(3);
         return R_NilValue;
     }
+    /* The R plan forces `names(value)` once, after its warnings and the
+       class vector, and nothing below declines. */
+    SEXP names_call = PROTECT(Rf_lang2(R_NamesSymbol, Rf_install("value")));
+    SEXP value_names = PROTECT(Rf_eval(names_call, R_GetCurrentEnv()));
 
     /* With no attribute beyond storage, class and names, a value already
        declaring both comes back as it is. A value without a class attribute
@@ -588,7 +592,7 @@ SEXP C_dtatools_restore_numeric_metadata(
         if (declared != R_NilValue && value_classes != R_NilValue &&
             R_compute_identical(declared, storage, IDENT_USE_CLOENV) &&
             R_compute_identical(value_classes, classes, IDENT_USE_CLOENV)) {
-            UNPROTECT(3);
+            UNPROTECT(5);
             return value;
         }
     }
@@ -601,7 +605,7 @@ SEXP C_dtatools_restore_numeric_metadata(
     }
     Rf_setAttrib(result, R_ClassSymbol, classes);
     if (value_names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, value_names);
-    UNPROTECT(4);
+    UNPROTECT(6);
     return result;
 }
 
