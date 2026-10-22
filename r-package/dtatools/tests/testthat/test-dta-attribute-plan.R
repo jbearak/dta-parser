@@ -182,6 +182,20 @@ test_that("native restoration declines what the R code handles itself", {
     expect_null(native_restore(callback_value, plain, "double"))
 })
 
+test_that("native restoration reads the value's class after its storage", {
+    skip_if_not_installed("data.table")
+    value <- c(1, 2)
+    storage <- .Call(C_dtatools_callback_character, "double", function() NULL)
+    attr(value, "stata.storage") <- storage
+    attr(value, "class") <- .dta_storage_class("double")
+    .Call(C_dtatools_arm_callback_character, storage, function() {
+        data.table::setattr(value, "class", "changed")
+    })
+    restored <- .restore_dta_metadata(value, dta_double(c(3, 4)), "double")
+    expect_identical(class(value), "changed")
+    expect_identical(class(restored), .dta_storage_class("double"))
+})
+
 test_that("restoration reads the value's names once, after the R code's warnings", {
     calls <- 0L
     warned <- FALSE

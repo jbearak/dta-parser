@@ -589,13 +589,21 @@ SEXP C_dtatools_restore_numeric_metadata(
 
     /* With no attribute beyond storage, class and names, a value already
        declaring both comes back as it is. A value without a class attribute
-       has an implicit class, which never names a storage class. */
+       has an implicit class, which never names a storage class. Like the R
+       code, read the class only after comparing the storage, whose reads
+       can run R code that changes it. */
     if (plan.count == 1) {
-        SEXP declared = Rf_getAttrib(value, storage_symbol);
-        SEXP value_classes = Rf_getAttrib(value, R_ClassSymbol);
-        if (declared != R_NilValue && value_classes != R_NilValue &&
-            R_compute_identical(declared, storage, IDENT_USE_CLOENV) &&
-            R_compute_identical(value_classes, classes, IDENT_USE_CLOENV)) {
+        SEXP declared = PROTECT(Rf_getAttrib(value, storage_symbol));
+        int same = declared != R_NilValue &&
+            R_compute_identical(declared, storage, IDENT_USE_CLOENV);
+        UNPROTECT(1);
+        if (same) {
+            SEXP value_classes = PROTECT(Rf_getAttrib(value, R_ClassSymbol));
+            same = value_classes != R_NilValue &&
+                R_compute_identical(value_classes, classes, IDENT_USE_CLOENV);
+            UNPROTECT(1);
+        }
+        if (same) {
             UNPROTECT(5);
             return value;
         }
