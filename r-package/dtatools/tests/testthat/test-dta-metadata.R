@@ -402,6 +402,27 @@ test_that("wide subsets restore only metadata-bearing variables", {
     )
 })
 
+test_that("the native metadata check answers as vapply() over each column", {
+    each <- dtatools:::.has_dta_metadata_each
+    one <- dtatools:::.has_dta_metadata
+    noted <- structure(1, notes = "a note")
+    numbered <- structure(2, stata.note.numbers = 1L)
+    characterized <- structure("x", stata.characteristics = c(role = "id"))
+    labelled <- structure(3, label = "not Stata metadata")
+    values <- list(a = noted, b = 1, c = numbered, d = NULL,
+                   e = characterized, f = labelled)
+    frame <- data.frame(p = 1:2, q = c("u", "v"))
+    attr(frame$q, "notes") <- "on q"
+    data <- dibble(x = dta_double(c(1, 2)), s = dta_string(c("a", "b")))
+    data <- set_dta_characteristic(data, "role", "key", variable = "x")
+    for (value in list(values, unname(values), list(), frame, data,
+                       tibble::as_tibble(frame))) {
+        expect_identical(each(value), vapply(value, one, logical(1)))
+    }
+    expect_identical(each(values), c(a = TRUE, b = FALSE, c = TRUE, d = FALSE,
+                                     e = TRUE, f = FALSE))
+})
+
 test_that("writers reject manually attached over-limit metadata safely", {
     data <- dibble(x = 1)
     expect_error(
