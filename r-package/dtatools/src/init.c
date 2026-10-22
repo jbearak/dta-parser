@@ -562,6 +562,7 @@ static const R_CallMethodDef CallEntries[] = {
 void attribute_visible R_init_dtatools(DllInfo *dll) {
     dtatools_probe_gen_primitive_init();
     initialize_numeric_size_gate();
+    initialize_proof_memo();
     initialize_owned_columns(dll);
     initialize_generated_real_reader();
     column_append_blank_names_class = R_make_altstring_class("dtatools_append_blank_names", "dtatools", dll);

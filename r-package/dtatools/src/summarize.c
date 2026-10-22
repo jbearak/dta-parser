@@ -54,8 +54,9 @@ static int summary_flag_known(SEXP frame) {
    environment and the base namespace share bindings, and both method chains
    pass through them. No R code runs between these comparisons, so no binding
    or closure can change, and a closure already found the same as an
-   expectation in this call is not walked again. Nothing is kept between
-   calls. A builtin is compared by address and needs no record. */
+   expectation in this call is not walked again. Across calls, the
+   comparator's own proof memo skips the walk. A builtin is compared by
+   address and needs no record. */
 #define ADMISSION_SAME_SLOTS 8
 
 typedef struct {

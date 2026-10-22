@@ -3693,6 +3693,52 @@ static int scalar_same_expression(SEXP left, SEXP right, int *remaining) {
     }
 }
 
+/* Proofs that a live function matches an expectation, kept across calls
+   (ADR 0046). R code cannot change a closure or bytecode object in place
+   once a second reference holds it: replacement, trace(), body<-, attr<-,
+   and environment<- all bind a new object, and this table is a second
+   reference. A pointer pair proven earlier is therefore the same proof as a
+   fresh walk. Each comparator has its own table, since their proofs differ.
+   The tables root both objects, so an address cannot be reused while its
+   entry stands. A slot holds one pair; a collision costs a fresh walk. */
+#define PROOF_MEMO_SLOTS 512
+enum proof_memo_kind {
+    PROOF_MEMO_SOURCE, PROOF_MEMO_EXECUTION, PROOF_MEMO_BODY, PROOF_MEMO_KINDS
+};
+static SEXP proof_memo_tables[PROOF_MEMO_KINDS];
+
+void initialize_proof_memo(void) {
+    for (int kind = 0; kind < PROOF_MEMO_KINDS; kind++) {
+        proof_memo_tables[kind] = Rf_allocVector(VECSXP, 2 * PROOF_MEMO_SLOTS);
+        R_PreserveObject(proof_memo_tables[kind]);
+    }
+}
+
+static R_xlen_t proof_memo_slot(SEXP actual, SEXP expected) {
+    uintptr_t a = (uintptr_t) actual, e = (uintptr_t) expected;
+    return (R_xlen_t) (((a >> 4) ^ (a >> 13) ^ (e >> 5) ^ (e >> 17)) &
+                       (PROOF_MEMO_SLOTS - 1));
+}
+
+static int proof_memo_holds(enum proof_memo_kind kind, SEXP actual, SEXP expected) {
+    SEXP table = proof_memo_tables[kind];
+    if (table == NULL || (TYPEOF(actual) != CLOSXP && TYPEOF(actual) != BCODESXP))
+        return 0;
+    R_xlen_t slot = proof_memo_slot(actual, expected);
+    return VECTOR_ELT(table, 2 * slot) == actual &&
+        VECTOR_ELT(table, 2 * slot + 1) == expected;
+}
+
+/* Called only after a successful walk. SET_VECTOR_ELT does not allocate. */
+static void proof_memo_record(enum proof_memo_kind kind, SEXP actual, SEXP expected) {
+    SEXP table = proof_memo_tables[kind];
+    if (table == NULL || (TYPEOF(actual) != CLOSXP && TYPEOF(actual) != BCODESXP))
+        return;
+    R_xlen_t slot = proof_memo_slot(actual, expected);
+    SET_VECTOR_ELT(table, 2 * slot, actual);
+    SET_VECTOR_ELT(table, 2 * slot + 1, expected);
+}
+
 static int scalar_same_function_bounded(SEXP actual, SEXP expected, int remaining) {
     if (TYPEOF(actual) != TYPEOF(expected)) return 0;
     if (TYPEOF(actual) == BUILTINSXP || TYPEOF(actual) == SPECIALSXP)
@@ -3707,11 +3753,14 @@ static int scalar_same_function_bounded(SEXP actual, SEXP expected, int remainin
 }
 
 static int scalar_same_function(SEXP actual, SEXP expected) {
-    return scalar_same_function_bounded(actual, expected, 512);
+    if (proof_memo_holds(PROOF_MEMO_SOURCE, actual, expected)) return 1;
+    if (!scalar_same_function_bounded(actual, expected, 512)) return 0;
+    proof_memo_record(PROOF_MEMO_SOURCE, actual, expected);
+    return 1;
 }
 
-/* A descriptor contains only trusted expected data, never a successful
-   verdict about a live function. Shipped expectations were deep-copied at
+/* A descriptor contains only trusted expected data; proven pairs live in the
+   proof memo, not here. Shipped expectations were deep-copied at
    build time. This native copy additionally owns independent literal vectors.
    All SEXP fields are rooted through the external pointer's protected pair:
    the expected profile and the literal-root list. No actual SEXP is retained. */
@@ -4135,12 +4184,15 @@ static int scalar_strict_equal(SEXP left, SEXP right, scalar_strict_memo *memo, 
 
 static int numeric_bytecode_identical_safe(SEXP left, SEXP right) {
     if (TYPEOF(left) != BCODESXP || TYPEOF(right) != BCODESXP) return 0;
+    if (proof_memo_holds(PROOF_MEMO_BODY, left, right)) return 1;
     scalar_strict_memo memo;
     memset(memo.occupied, 0, sizeof(memo.occupied));
     memo.remaining = 131072;
-    if (scalar_strict_equal(left, right, &memo, 0)) return 1;
     int remaining = 131072;
-    return numeric_bytecode_equal_plain(left, right, &remaining, 0);
+    if (!scalar_strict_equal(left, right, &memo, 0) &&
+        !numeric_bytecode_equal_plain(left, right, &remaining, 0)) return 0;
+    proof_memo_record(PROOF_MEMO_BODY, left, right);
+    return 1;
 }
 
 static int numeric_expected_function_same(
@@ -4185,8 +4237,8 @@ static int numeric_expected_lexical_find(SEXP env, SEXP symbol, SEXP *found) {
     return 0;
 }
 
-/* Scratch diagnostic seam uses the production comparator, without retaining
-   its verdict. The caller creates an independent trusted expected fixture. */
+/* Scratch diagnostic seam uses the production comparator, including its
+   proof memo. The caller creates an independent trusted expected fixture. */
 SEXP C_dtatools_test_numeric_proof(SEXP actual, SEXP external, SEXP index_value) {
     numeric_expected_profile *profile = numeric_expected_profile_get(external);
     if (profile == NULL || TYPEOF(index_value) != INTSXP || ALTREP(index_value) ||
@@ -4205,11 +4257,15 @@ SEXP C_dtatools_test_numeric_old_proof(SEXP actual, SEXP expected) {
    standard compiler output. Private AST-inconsistent bytecode is outside this
    compatibility contract. */
 int dtatools_execution_function_same(SEXP actual, SEXP expected) {
+    if (proof_memo_holds(PROOF_MEMO_EXECUTION, actual, expected)) return 1;
     if (!scalar_same_function_bounded(actual, expected, 4096)) return 0;
     if (TYPEOF(actual) != CLOSXP) return 1;
-    return TYPEOF(R_ClosureBody(actual)) == BCODESXP &&
-        TYPEOF(R_ClosureBody(expected)) == BCODESXP &&
-        numeric_bytecode_identical_safe(R_ClosureBody(actual), R_ClosureBody(expected));
+    if (TYPEOF(R_ClosureBody(actual)) != BCODESXP ||
+        TYPEOF(R_ClosureBody(expected)) != BCODESXP ||
+        !numeric_bytecode_identical_safe(R_ClosureBody(actual), R_ClosureBody(expected)))
+        return 0;
+    proof_memo_record(PROOF_MEMO_EXECUTION, actual, expected);
+    return 1;
 }
 
 /* The audited vctrs/rlang wrappers have source-reference-sensitive bytecode,
