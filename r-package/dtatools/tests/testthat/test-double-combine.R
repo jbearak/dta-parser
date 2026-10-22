@@ -130,6 +130,12 @@ test_that("real grouped dplyr mutation recycles size-one results in one payload"
                      if (native_expected) 10 * .Machine$sizeof.pointer else 0)
     whole <- dplyr::mutate(data, y = max(x) + 0.5)
     expect_identical(as.double(whole$y), rep(8.5, 100))
+    # An empty group's max() of nothing contributes no rows and no cast.
+    levels <- factor(c("a", "a", "b"), levels = c("a", "b", "c"))
+    grouped <- dplyr::group_by(dibble(x = c(1, 2, 3), g = levels), g, .drop = FALSE)
+    kept <- suppressWarnings(dplyr::mutate(grouped, y = max(x)))
+    expect_identical(as.double(kept$y), c(2, 2, 3))
+    expect_identical(dta_storage_type(kept$y), "double")
 })
 
 test_that('strict combination leaves invalid-value diagnostics to vctrs', {

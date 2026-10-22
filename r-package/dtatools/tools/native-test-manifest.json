@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "80b798e6c07b7bddee6a953cf282a4108f8de353481c26f7c270e9ae3b405085"
+          "sha256": "ceb8d1d5a11da920fdc6198de601b5f30800a0e76a5f393c0a5bdeedbd6e59d7"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
