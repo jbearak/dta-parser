@@ -1783,7 +1783,7 @@
         },
         {
           "path": "tests/testthat/test-shared-attribute-combine.R",
-          "sha256": "e6f752362c2d9add08f70546ff6943363d3644653e9ba97e50dd2caa2750a1db"
+          "sha256": "9878281fe1c39072e75fddbf82f176e28e1d3692e78549ff47ec6e199ee10570"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -4848,7 +4848,7 @@
           "test": "group results that share their attributes combine as vctrs does",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 9,
+          "min_pass": 3,
           "warnings": 0
         },
         {
@@ -4858,6 +4858,28 @@
           "skip": "forbid",
           "min_pass": 10,
           "warnings": 0
+        },
+        {
+          "file": "test-shared-attribute-combine.R",
+          "test": "grouped dplyr verbs combine shared group results in one pass",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-shared-attribute-combine.R",
+          "test": "grouped dplyr verbs keep vctrs's warnings for conflicting labels",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-proof-memo.R",

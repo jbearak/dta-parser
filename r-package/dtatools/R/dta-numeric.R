@@ -1204,13 +1204,17 @@ vec_cast.dta_numeric.dta_numeric <- function(
     decorated <- setdiff(names(reference), c("class", "stata.storage"))
     if (!length(decorated) || !all(decorated %in% .dta_variable_attribute_names))
         return(NULL)
+    # identical() takes every NaN as one value unless told otherwise, and a
+    # tagged missing value label is a NaN whose payload names its code.
+    same <- function(x, y) identical(x, y, num.eq = FALSE, single.NA = FALSE,
+                                      attrib.as.set = FALSE)
     for (index in seq.int(2L, count)) {
-        if (!identical(attributes(pieces[[index]]), reference)) return(NULL)
+        if (!same(attributes(pieces[[index]]), reference)) return(NULL)
     }
     tryCatch({
         ptype <- vctrs::vec_ptype_common(first, pieces[[2L]])
-        if (identical(attributes(ptype), reference) &&
-            (count == 2L || identical(vctrs::vec_ptype2(ptype, pieces[[3L]]), ptype)))
+        if (same(attributes(ptype), reference) &&
+            (count == 2L || same(vctrs::vec_ptype2(ptype, pieces[[3L]]), ptype)))
             ptype
     }, error = function(condition) NULL, warning = function(condition) NULL,
     message = function(condition) NULL)

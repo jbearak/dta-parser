@@ -11,6 +11,12 @@
     value <- code()
     list(value = value, hits = hits)
 }
+.shared_duplicated <- function() {
+    duplicated <- dta_double(c(1, 2, 1, 2))
+    attr(duplicated, "label") <- "duplicated codes"
+    attr(duplicated, "labels") <- c(a = 1, b = 1, c = 2)
+    duplicated
+}
 
 test_that("group results that share their attributes combine as vctrs does", {
     x <- .shared_labelled(c(1L, 2L, 2L, 1L, 2L, 1L))
@@ -22,7 +28,13 @@ test_that("group results that share their attributes combine as vctrs does", {
     expect_identical(.combine_shared_dta(pieces, ptype), vctrs::list_unchop(pieces))
     expect_identical(.combine_shared_dta(pieces, ptype, rows),
                      vctrs::list_unchop(pieces, indices = rows))
+})
 
+test_that("grouped dplyr verbs combine shared group results in one pass", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    x <- .shared_labelled(c(1L, 2L, 2L, 1L, 2L, 1L))
+    attr(x, "notes") <- "a note"
+    rows <- list(1L, 2:3, 4:6)
     data <- dibble(g = c(1, 2, 2, 3, 3, 3), x = x)
     mutated <- .shared_count(function()
         dplyr::mutate(data, f = dplyr::first(x), l = dplyr::lag(x), .by = g))
@@ -33,6 +45,7 @@ test_that("group results that share their attributes combine as vctrs does", {
     expect_identical(mutated$value$l, vctrs::list_unchop(lags, indices = rows))
 
     # A later expression reads each group's chunk as vctrs would cast it.
+    ptype <- vctrs::vec_ptype(x)
     summarised <- .shared_count(function()
         dplyr::summarise(data, f = dplyr::last(x),
                          order = paste(names(attributes(f)), collapse = ","), .by = g))
@@ -58,12 +71,24 @@ test_that("group results that differ or signal while folding take the vctrs path
     class(subclass) <- c("shared_subclass", class(x))
     expect_null(.shared_dta_ptype(list(subclass[1], subclass[2])))
 
-    # Two names for one code warn in every fold, so the warnings stay vctrs's.
-    duplicated <- dta_double(c(1, 2, 1, 2))
-    attr(duplicated, "label") <- "duplicated codes"
-    attr(duplicated, "labels") <- c(a = 1, b = 1, c = 2)
-    pieces <- list(duplicated[1], duplicated[2], duplicated[3], duplicated[4])
+    # identical() alone takes .a and .b for one value, but they are two codes.
+    tagged <- function(code) set_val_labels(set_var_label(dta_double(1), "v"),
+        .labels = c(yes = 1, Missing = tagged_missing(code)))
+    pieces <- list(tagged("a"), tagged("a"), tagged("a"), tagged("b"))
+    expect_true(identical(attributes(pieces[[1L]]), attributes(pieces[[4L]])))
     expect_null(.shared_dta_ptype(pieces))
+    expect_identical(missing_tag(val_labels(vctrs::vec_c(!!!pieces))),
+                     c(yes = NA, Missing = "a", Missing = "b"))
+
+    # Two names for one code warn in every fold.
+    duplicated <- .shared_duplicated()
+    expect_null(.shared_dta_ptype(lapply(1:4, function(i) duplicated[i])))
+})
+
+test_that("grouped dplyr verbs keep vctrs's warnings for conflicting labels", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    duplicated <- .shared_duplicated()
+    pieces <- lapply(1:4, function(i) duplicated[i])
     data <- dibble(g = c(1, 2, 3, 4), x = duplicated)
     summarised <- .shared_count(function()
         suppressWarnings(dplyr::summarise(data, f = dplyr::first(x), .by = g)))
