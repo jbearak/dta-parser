@@ -728,9 +728,19 @@ SEXP C_dtatools_first_codes(SEXP x, SEXP count_value) {
     for (int level = 0; level < count; ++level) first[level] = NA_INTEGER;
     int remaining = count;
     int buffer[4096];
-    for (R_xlen_t start = 0; start < n && remaining > 0; start += 4096) {
-        if (start % 1048576 == 0) R_CheckUserInterrupt();
+    R_xlen_t next_interrupt = 0;
+    for (R_xlen_t start = 0; start < n && remaining > 0;) {
+        if (start >= next_interrupt) {
+            R_CheckUserInterrupt();
+            next_interrupt = start + 1048576;
+        }
+        /* An ALTREP class may copy less than the region asked for. Advance
+           by what it copied, and read one element when it copies none. */
         R_xlen_t size = INTEGER_GET_REGION(x, start, 4096, buffer);
+        if (size <= 0) {
+            buffer[0] = INTEGER_ELT(x, start);
+            size = 1;
+        }
         for (R_xlen_t offset = 0; offset < size && remaining > 0; ++offset) {
             int code = buffer[offset];
             if (code >= 1 && code <= count && first[code - 1] == NA_INTEGER) {
@@ -738,6 +748,7 @@ SEXP C_dtatools_first_codes(SEXP x, SEXP count_value) {
                 --remaining;
             }
         }
+        start += size;
     }
     UNPROTECT(1);
     return result;

@@ -266,6 +266,12 @@ test_that("a whole sample tabulates as one that lists every row", {
     expect_identical(dtatools:::.tab_first_rows(factor(character())), integer())
     first_codes <- get("C_dtatools_first_codes", asNamespace("dtatools"))
     expect_identical(.Call(first_codes, c(0L, 7L, -1L, 2L, 2L, NA), 3L), c(NA, 4L, NA))
+    # First rows past the first 4096-code region, in a plain vector and in
+    # a compact sequence that ALTREP copies region by region.
+    codes <- c(rep(1L, 5000L), 2L, rep(1L, 9000L), 3L)
+    expect_identical(.Call(first_codes, codes, 4L), match(1:4, codes))
+    expect_identical(.Call(first_codes, 1:10000, 10000L), 1:10000)
+    expect_identical(.Call(first_codes, 10000:1, 3L), 10000:9998)
 
     x <- dta_byte(c(1, 2, NA, 2, 1, 3, 3, 2))
     attr(x, "labels") <- c(one = 1, two = 2)
