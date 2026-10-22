@@ -376,6 +376,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_numeric_proof_stats", (DL_FUNC) &C_dtatools_numeric_proof_stats, 1},
     {"C_dtatools_test_numeric_proof", (DL_FUNC) &C_dtatools_test_numeric_proof, 3},
     {"C_dtatools_test_numeric_old_proof", (DL_FUNC) &C_dtatools_test_numeric_old_proof, 2},
+    {"C_dtatools_test_forget_proofs", (DL_FUNC) &C_dtatools_test_forget_proofs, 0},
     {"C_dtatools_numeric_entry_state",
      (DL_FUNC) &C_dtatools_numeric_entry_state, 1},
     {"C_dtatools_double_combine_dependencies",

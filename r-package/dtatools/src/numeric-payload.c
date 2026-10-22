@@ -3739,6 +3739,19 @@ static void proof_memo_record(enum proof_memo_kind kind, SEXP actual, SEXP expec
     SET_VECTOR_ELT(table, 2 * slot + 1, expected);
 }
 
+/* Test seam. C code, or data.table::set() on a constant a helper returned,
+   can edit inside an existing object without binding a new one. ADR 0046
+   leaves such edits outside the kept proofs. Tests that make one forget the
+   kept proofs, to check that a fresh walk still catches it. */
+SEXP C_dtatools_test_forget_proofs(void) {
+    for (int kind = 0; kind < PROOF_MEMO_KINDS; kind++) {
+        SEXP table = proof_memo_tables[kind];
+        if (table == NULL) continue;
+        for (R_xlen_t i = 0; i < XLENGTH(table); i++) SET_VECTOR_ELT(table, i, R_NilValue);
+    }
+    return R_NilValue;
+}
+
 static int scalar_same_function_bounded(SEXP actual, SEXP expected, int remaining) {
     if (TYPEOF(actual) != TYPEOF(expected)) return 0;
     if (TYPEOF(actual) == BUILTINSXP || TYPEOF(actual) == SPECIALSXP)

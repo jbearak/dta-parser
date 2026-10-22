@@ -604,6 +604,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_expected_numeric_profile(SEXP profile, SEXP co
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_proof_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_proof(SEXP actual, SEXP proof, SEXP index);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_old_proof(SEXP actual, SEXP expected);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_forget_proofs(void);
 DTATOOLS_INTERNAL int dtatools_numeric_helpers_admitted(SEXP frame, unsigned route);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_state(SEXP expected);
 DTATOOLS_INTERNAL int dtatools_execution_frame_same(SEXP frame, SEXP expected);
