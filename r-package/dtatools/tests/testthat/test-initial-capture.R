@@ -400,6 +400,9 @@ test_that("initial capture expected profiles remain independent of public source
             route <- if (name == ".begin_dibble_result") "shell" else "batch"
             record <- tryCatch({
                 data.table::set(holder, i = 1L, j = "value", value = paste0("changed_", old))
+                # Edits inside an existing object are outside the kept
+                # proofs (ADR 0046); forget them so this run walks afresh.
+                .Call(dtatools:::C_dtatools_test_forget_proofs)
                 changed <- !identical(source_before, serialize(body(actual), NULL))
                 independent <- identical(profile_before, serialize(profile, NULL))
                 invisible(.initial_capture_test_counts(TRUE))

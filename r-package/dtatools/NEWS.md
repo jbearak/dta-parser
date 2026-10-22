@@ -15,6 +15,16 @@
   Results are unchanged. The package's vctrs methods for Stata numerics no
   longer run for each group, so a traced method sees fewer calls (ADR 0047).
 
+* Before a native route skips R code, it proves that each R function it
+  skips is unchanged. It now remembers each proof and walks a function again
+  only when its binding holds a different object, as after `trace()` or a
+  replacement. Calls made once per group gain most. Over the 42,739 women in
+  the first 100,000 rows of the India 2021 DHS births file,
+  `mutate(d, m = mean(b2), .by = caseid)` falls from about 3.18 to 2.29
+  seconds. On the Senegal 2017 DHS women's file,
+  `summarise(d, m = mean(v012), .by = v001)` falls from 0.058 to 0.049
+  seconds. Results are unchanged.
+
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
   result's Stata storage natively. So do math functions such as `abs()`,
