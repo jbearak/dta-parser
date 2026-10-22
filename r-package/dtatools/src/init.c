@@ -42,6 +42,7 @@ double owned_numeric_compatibility_bytes = 0.0;
 #include "egen-groups.h"
 
 SEXP C_dtatools_summarize_sum(SEXP x);
+SEXP C_dtatools_first_codes(SEXP x, SEXP count_value);
 SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm);
 SEXP C_dtatools_mean_admitted(SEXP frame);
 SEXP C_dtatools_range_admitted(SEXP frame);
@@ -185,6 +186,7 @@ SEXP C_dtatools_probe_bracket_pre_generation_hook(SEXP resolved);
 
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_summarize_sum", (DL_FUNC) &C_dtatools_summarize_sum, 1},
+    {"C_dtatools_first_codes", (DL_FUNC) &C_dtatools_first_codes, 2},
     {"C_dtatools_numeric_mean", (DL_FUNC) &C_dtatools_numeric_mean, 2},
     {"C_dtatools_mean_admitted", (DL_FUNC) &C_dtatools_mean_admitted, 1},
     {"C_dtatools_range_admitted", (DL_FUNC) &C_dtatools_range_admitted, 1},

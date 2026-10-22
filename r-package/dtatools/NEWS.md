@@ -80,6 +80,17 @@
   `slice_head(group_by(d, caseid), n = 1)` over 42,739 women falls from
   about 16 to 0.6 seconds. Results and errors are unchanged.
 
+* `tab()`, `tab1()`, and `tab2()` copy less on large data. Without `where`
+  or `rows`, they take each group's rows as the sample, rather than
+  rebuilding it through `sort(unique())` and `match()`. When they drop no
+  row for a missing value or a zero or missing weight, they use the inputs
+  as they are rather than copying subsets. They find the first row of each
+  category, which its label and value come from, in one native pass that
+  stops once every category has a row. On the 1,274,250-row India 2021 DHS
+  births file, `tab(v024, data = bh)` falls from about 0.083 to 0.025
+  seconds and `tab(v024, b4, data = bh)` from 0.12 to 0.036. Results are
+  unchanged.
+
 * `copy_data()` keeps a dibble's automatic row names. It stored them as
   explicit row names 1 to n, so `save_arrow()` on a copy, or on a table made
   from one by `keep_vars()` or `gen()`, warned that it dropped the row

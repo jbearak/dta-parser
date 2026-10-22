@@ -711,3 +711,45 @@ SEXP C_dtatools_summarize_sum(SEXP x) {
     }
     return Rf_ScalarReal(sum + correction);
 }
+
+/* The first row of each level: for each code 1 to `count`, the 1-based
+   position of the first element of the integer codes `x` equal to it, or NA.
+   This is match(seq_len(count), x) without hashing every code, and it stops
+   once each level has a row. A long vector returns NULL, and the caller
+   matches as before. */
+SEXP C_dtatools_first_codes(SEXP x, SEXP count_value) {
+    if (TYPEOF(x) != INTSXP) Rf_error("Expected integer codes");
+    int count = Rf_asInteger(count_value);
+    if (count == NA_INTEGER || count < 0) Rf_error("Expected a level count");
+    R_xlen_t n = XLENGTH(x);
+    if (n > INT_MAX) return R_NilValue;
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, count));
+    int *first = INTEGER(result);
+    for (int level = 0; level < count; ++level) first[level] = NA_INTEGER;
+    int remaining = count;
+    int buffer[4096];
+    R_xlen_t next_interrupt = 0;
+    for (R_xlen_t start = 0; start < n && remaining > 0;) {
+        if (start >= next_interrupt) {
+            R_CheckUserInterrupt();
+            next_interrupt = start + 1048576;
+        }
+        /* An ALTREP class may copy less than the region asked for. Advance
+           by what it copied, and read one element when it copies none. */
+        R_xlen_t size = INTEGER_GET_REGION(x, start, 4096, buffer);
+        if (size <= 0) {
+            buffer[0] = INTEGER_ELT(x, start);
+            size = 1;
+        }
+        for (R_xlen_t offset = 0; offset < size && remaining > 0; ++offset) {
+            int code = buffer[offset];
+            if (code >= 1 && code <= count && first[code - 1] == NA_INTEGER) {
+                first[code - 1] = (int) (start + offset + 1);
+                --remaining;
+            }
+        }
+        start += size;
+    }
+    UNPROTECT(1);
+    return result;
+}
