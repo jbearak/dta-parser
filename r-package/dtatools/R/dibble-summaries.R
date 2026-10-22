@@ -236,14 +236,17 @@
                         x = "Can't combine NULL and non NULL results."))
                 }
                 mask$set_group(0L)
-                ptype <- .dibble_summary_ptype(chunks, name, groups, size)
+                # Chunks that share their attributes are their own casts.
+                shared <- .shared_dta_ptype(chunks)
+                ptype <- if (is.null(shared)) .dibble_summary_ptype(chunks, name, groups, size) else shared
                 # A settled native combine assigns the casts to chunks and
                 # the combined vector to result. A decline runs the vctrs calls.
-                result <- .native_admission_call(C_dtatools_select_branch,
-                    .native_admission_branches(.summary_combine(chunks, ptype), result, {
-                        chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
-                        vctrs::vec_c(!!!chunks, .ptype = ptype)
-                    }), .native_admission_if)
+                result <- if (!is.null(shared)) .combine_shared_dta(chunks, shared) else
+                    .native_admission_call(C_dtatools_select_branch,
+                        .native_admission_branches(.summary_combine(chunks, ptype), result, {
+                            chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
+                            vctrs::vec_c(!!!chunks, .ptype = ptype)
+                        }), .native_admission_if)
                 install <- function(target, pieces, value) {
                     binding_chunks <- pieces
                     if (identical(groups$type, "rowwise") &&

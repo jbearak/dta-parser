@@ -5225,15 +5225,20 @@ static int numeric_constructor_missing_offset(double element) {
    C_dtatools_replacement_fits(): a system missing or `.a` through `.z`, or
    an observed value in the storage's range, integral for byte, int and
    long and exact in single precision for float. Construction returns such
-   values unchanged. Regions are read as construction reads them, so
-   compact backing is decoded a block at a time and stays compact. */
-SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value) {
+   values equal, and with `bitwise` set, the same bit for bit: then a
+   missing value outside double storage must have the layout
+   numeric_missing_value() gives its code, since compact storage decodes it
+   so, and byte, int and long, which store -0 as 0, reject -0. Regions are
+   read as construction reads them, so compact backing is decoded a block
+   at a time and stays compact. */
+static SEXP numeric_values_fit(SEXP value, SEXP kind_value, int bitwise) {
     if (TYPEOF(value) != REALSXP || TYPEOF(kind_value) != INTSXP ||
         XLENGTH(kind_value) != 1 || INTEGER(kind_value)[0] < NUMERIC_BYTE ||
         INTEGER(kind_value)[0] > NUMERIC_DOUBLE) {
         Rf_error("invalid Stata numeric fit probe");
     }
     int kind = INTEGER(kind_value)[0];
+    int compact = bitwise && kind != NUMERIC_DOUBLE;
     double float_maximum = numeric_float_observed_limit();
     double scratch[2048];
     R_xlen_t length = XLENGTH(value);
@@ -5246,10 +5251,18 @@ SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value) {
                 ? REAL_ELT(value, index) : elements[index - start];
             if (isnan(element)) {
                 int tag = tagged_na_tag_value(element);
-                if ((tag >= 'a' && tag <= 'z') ||
-                    (tag == 0 && numeric_constructor_is_na(element))) continue;
-                return Rf_ScalarLogical(FALSE);
+                int offset = tag >= 'a' && tag <= 'z' ? tag - 'a' + 1
+                    : tag == 0 && numeric_constructor_is_na(element) ? 0 : -1;
+                if (offset < 0) return Rf_ScalarLogical(FALSE);
+                if (compact) {
+                    double decoded = numeric_missing_value(offset);
+                    if (memcmp(&decoded, &element, sizeof(element)) != 0)
+                        return Rf_ScalarLogical(FALSE);
+                }
+                continue;
             }
+            if (compact && kind != NUMERIC_FLOAT && element == 0.0 &&
+                signbit(element)) return Rf_ScalarLogical(FALSE);
             int finite = isfinite(element) != 0;
             int integral = finite && element == trunc(element);
             int fits = kind == NUMERIC_BYTE
@@ -5266,6 +5279,14 @@ SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value) {
         }
     }
     return Rf_ScalarLogical(TRUE);
+}
+
+SEXP C_dtatools_numeric_values_fit(SEXP value, SEXP kind_value) {
+    return numeric_values_fit(value, kind_value, 0);
+}
+
+SEXP C_dtatools_numeric_values_kept(SEXP value, SEXP kind_value) {
+    return numeric_values_fit(value, kind_value, 1);
 }
 
 /* Encode one region inside C_dtatools_construct_numeric(), whose locals this
