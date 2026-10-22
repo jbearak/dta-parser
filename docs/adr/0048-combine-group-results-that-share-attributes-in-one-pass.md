@@ -30,16 +30,21 @@ must carry only Stata variable attributes, at least one of them besides its
 storage. The combiners compute the common type of the first two results with
 `vec_ptype_common()`. That type must have the results' own attributes in the
 same order, and `vec_ptype2()` of the type and the third result must return
-the type. These comparisons are bit for bit, because `identical()` alone
+the type, and every value of every result must fit its storage exactly.
+The attribute comparisons are bit for bit, because `identical()` alone
 takes every NaN for one value, and value labels for `.a` and `.b` are two
 NaNs. Then the combiners take each result's payload, place them with
 `list_unchop()`, and restore the type with `vec_restore()`. A fold that
 signals an error, warning, or message sends the results down the vctrs path.
 Two names for one value-label code therefore still warn once per fold.
 
-The package's `vec_ptype2()` and `vec_cast()` methods read only attributes.
-So every later fold sees the inputs of the fold checked and returns the same
-type, and every cast returns its result unchanged. The combined vector is
+The package's `vec_ptype2()` method reads only attributes, so every later
+fold sees the inputs of the fold checked and returns the same type. Its
+`vec_cast()` method rebuilds a result from its values. That returns the
+values unchanged when each one fits the storage exactly, so every cast
+returns its result unchanged. A `float` result whose buffer was written
+with a value single precision cannot hold, through `data.table::set()` for
+example, would round in the cast and takes the vctrs path. The combined vector is
 identical to the one vctrs builds. `summarise()` keeps each group's result as
 that group's binding for later expressions, where it had kept the cast, and
 the two are identical.

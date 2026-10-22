@@ -1188,13 +1188,14 @@ vec_cast.dta_numeric.dta_numeric <- function(
 
 # Group results that share every attribute and carry Stata metadata, such
 # as first() or lag() of a labelled column, get the common type that vctrs
-# folds from the first two. The package's vec_ptype2() and vec_cast()
-# methods read only their inputs' attributes. So when that type has the
-# pieces' own attributes and folds with a third piece to itself, every
-# later fold returns it and every cast returns its piece unchanged. Return
-# that type, or NULL for any other pieces or when a fold signals. ADR 0048
-# lets the combiners below skip the per-group method calls this proves
-# redundant.
+# folds from the first two. The package's vec_ptype2() method reads only
+# its inputs' attributes, so when that type has the pieces' own attributes
+# and folds with a third piece to itself, every later fold returns it. Its
+# vec_cast() method rebuilds a piece from its values, which returns them
+# unchanged when each one fits the storage exactly, so every cast then
+# returns its piece. Return that type, or NULL for any other pieces or when
+# a fold signals. ADR 0048 lets the combiners below skip the per-group
+# method calls this proves redundant.
 .shared_dta_ptype <- function(pieces) {
     count <- length(pieces)
     first <- if (count >= 2L) pieces[[1L]]
@@ -1208,8 +1209,12 @@ vec_cast.dta_numeric.dta_numeric <- function(
     # tagged missing value label is a NaN whose payload names its code.
     same <- function(x, y) identical(x, y, num.eq = FALSE, single.NA = FALSE,
                                       attrib.as.set = FALSE)
-    for (index in seq.int(2L, count)) {
-        if (!same(attributes(pieces[[index]]), reference)) return(NULL)
+    kind <- match(reference[["stata.storage"]], .dta_storage) - 1L
+    if (length(kind) != 1L || is.na(kind)) return(NULL)
+    for (index in seq_len(count)) {
+        piece <- pieces[[index]]
+        if ((index > 1L && !same(attributes(piece), reference)) ||
+            !.Call(C_dtatools_numeric_values_fit, piece, kind)) return(NULL)
     }
     tryCatch({
         ptype <- vctrs::vec_ptype_common(first, pieces[[2L]])

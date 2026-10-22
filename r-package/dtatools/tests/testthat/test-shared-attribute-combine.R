@@ -11,6 +11,12 @@
     value <- code()
     list(value = value, hits = hits)
 }
+# A float whose buffer holds 0.1 itself, as `data.table::set()` can leave
+# one, rather than the single-precision value the constructor stores.
+.shared_unrounded <- function() {
+    structure(0.1, stata.storage = "float", label = "v",
+              class = .dta_storage_class("float"))
+}
 .shared_duplicated <- function() {
     duplicated <- dta_double(c(1, 2, 1, 2))
     attr(duplicated, "label") <- "duplicated codes"
@@ -83,6 +89,23 @@ test_that("group results that differ or signal while folding take the vctrs path
     # Two names for one code warn in every fold.
     duplicated <- .shared_duplicated()
     expect_null(.shared_dta_ptype(lapply(1:4, function(i) duplicated[i])))
+
+    # The cast rounds a float value that single precision cannot hold.
+    rounded <- set_var_label(dta_float(c(0.1, 2)), "v")[1:2]
+    expect_identical(attributes(rounded), attributes(.shared_unrounded()))
+    expect_false(is.null(.shared_dta_ptype(list(rounded, rounded))))
+    expect_null(.shared_dta_ptype(list(rounded, .shared_unrounded())))
+})
+
+test_that("a later summary expression reads a float group result as cast", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    unrounded <- .shared_unrounded()
+    data <- dibble(g = c(1, 2))
+    summarised <- .shared_count(function()
+        dplyr::summarise(data, f = unrounded, z = as.double(f), .by = g))
+    expect_identical(summarised$hits, 0L)
+    expect_identical(as.double(summarised$value$f), rep(as.double(dta_float(0.1)), 2))
+    expect_identical(as.double(summarised$value$z), as.double(summarised$value$f))
 })
 
 test_that("grouped dplyr verbs keep vctrs's warnings for conflicting labels", {
