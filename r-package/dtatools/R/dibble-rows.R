@@ -3,12 +3,7 @@
 # grouping nor reference-container dispatch can occur inside this module.
 .gather_dta_columns <- function(columns, locations, fallback = "vctrs") {
     if (!length(columns)) return(columns)
-    storage <- vapply(columns, function(column) {
-        value <- .declared_dta_storage(column)
-        if (is.null(value)) "" else value
-    }, character(1))
-    native <- vapply(columns, .dta_merge_has_compact_storage, logical(1)) |
-        storage == "double"
+    native <- .gather_dta_native(columns)
     result <- vector("list", length(columns))
     names(result) <- names(columns)
     if (any(native)) {
@@ -41,6 +36,24 @@
         }
     }
     result
+}
+
+# Which columns `.gather_dta_columns()` gathers as Stata numerics.
+.gather_dta_native <- function(columns) {
+    storage <- vapply(columns, function(column) {
+        value <- .declared_dta_storage(column)
+        if (is.null(value)) "" else value
+    }, character(1))
+    vapply(columns, .dta_merge_has_compact_storage, logical(1)) |
+        storage == "double"
+}
+
+# `lapply(rows, function(index) .gather_dta_columns(list(value = value),
+# index)[[1L]])` in one native call, or NULL where it declines (ADR 0051).
+.split_dta_column <- function(value, rows) {
+    native <- .gather_dta_native(list(value = value))
+    if (!is.vector(rows) || is.object(rows)) rows <- as.list(rows)
+    .Call(C_dtatools_split_column, value, rows, any(native))
 }
 
 .ungrouped_result_frame <- function(columns, metadata, row_names) {

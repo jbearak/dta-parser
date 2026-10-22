@@ -418,6 +418,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
+    {"C_dtatools_split_column", (DL_FUNC) &C_dtatools_split_column, 3},
     {"C_dtatools_dictstring_match_codes",
      (DL_FUNC) &C_dtatools_dictstring_match_codes, 2},
     {"C_dtatools_replace_reference_columns",
