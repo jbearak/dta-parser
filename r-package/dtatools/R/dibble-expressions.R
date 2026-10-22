@@ -374,7 +374,22 @@
                                         if (identical(groups$type, "rowwise"))
                                             " Did you mean to wrap the result in `list()`?"))
                                 }
-                                value <- vctrs::vec_recycle(value, expected)
+                                # The combiners recycle a size-one chunk to its
+                                # rows, so a bare vector, or a Stata numeric
+                                # whose proxy and restore methods no later
+                                # group can observe, waits for them (ADR 0047).
+                                # A lone group skips them, and an empty group's
+                                # value, such as max() of nothing, must not
+                                # reach a cast, so those recycle here. So do
+                                # other classes, whose methods may have effects
+                                # a later group reads, and data frames, whose
+                                # copy below shares columns with later writes.
+                                deferred <- length(chunks) > 1L && expected > 0L &&
+                                    if (is.object(value))
+                                        identical(oldClass(value)[1L], "dta_numeric") &&
+                                            !inherits(value, "dta_temporal")
+                                    else is.atomic(value) && is.null(dim(value))
+                                if (!deferred) value <- vctrs::vec_recycle(value, expected)
                             }
                             chunks[id] <- list(if (is.null(value)) NULL else .metadata_copy(value))
                         }

@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "6d923e01224ae6aef2d2c8474aed1b409de90544cea0d84e73737fd19d460d13"
+          "sha256": "3f3f4154cb1acaae2dca702a2510fab28d12b9d5ed88372469e31657cf508a08"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -3415,6 +3415,47 @@
           "skip": "forbid",
           "min_pass": 6,
           "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "indexed combination recycles a size-one piece as list_unchop() does",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "real grouped dplyr mutation recycles size-one results in one payload",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "a one-row data frame reused across groups keeps each group's values",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "another class's size-one group result recycles before the next group",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-numeric-helper-profile.R",
