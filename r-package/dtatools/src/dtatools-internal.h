@@ -424,6 +424,8 @@ DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_arithmetic_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_materialization_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL void initialize_numeric_size_gate(void);
+DTATOOLS_INTERNAL void initialize_proof_memo(void);
+DTATOOLS_INTERNAL void release_proof_memo(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_size_minimum(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_size_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_size_gate(SEXP route);
@@ -603,6 +605,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_expected_numeric_profile(SEXP profile, SEXP co
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_proof_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_proof(SEXP actual, SEXP proof, SEXP index);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_old_proof(SEXP actual, SEXP expected);
+DTATOOLS_INTERNAL SEXP C_dtatools_test_forget_proofs(void);
 DTATOOLS_INTERNAL int dtatools_numeric_helpers_admitted(SEXP frame, unsigned route);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_state(SEXP expected);
 DTATOOLS_INTERNAL int dtatools_execution_frame_same(SEXP frame, SEXP expected);

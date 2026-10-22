@@ -1838,8 +1838,12 @@
           "sha256": "09ac5a6ff5d45aee363408f6617083cbc88ade9a1a35c545fe3d982284deea95"
         },
         {
+          "path": "tests/testthat/test-proof-memo.R",
+          "sha256": "2628c7b10d04c35f42eb2e789daf1632b44ec2eb0998ad3348a494927dcb36d7"
+        },
+        {
           "path": "tests/testthat/test-folded-return-mutation.R",
-          "sha256": "9634ed7aa7df87e8e5ebff43fd554bf847bf78f4b31388a0b87fba92e055e933"
+          "sha256": "20abbc4f8fea5285ef9c8f29c954e359c2d1705d9c6e142a1cde5bd1c26c0d1d"
         },
         {
           "path": "tests/testthat/test-numeric-secondary-inputs.R",
@@ -1855,11 +1859,11 @@
         },
         {
           "path": "tests/testthat/test-scalar-cache-constant-mutation.R",
-          "sha256": "dd2775d6ece0f02da9d4a7b91011d5b58685dffe1fffc261f43cfa32785c5f33"
+          "sha256": "d415800fb630ba21fce08bc42c46dc3d83106ed38df26d1d30f2e3d1fe01e0a9"
         },
         {
           "path": "tests/testthat/test-numeric-bytecode-altrep.R",
-          "sha256": "c806e2d64bf65c95a438e08a3a63c2f13a1d60260015029da25aba87729b9352"
+          "sha256": "166d3d1396903942753b3bfd84e46e2de321116dea645aadb3334b94d855fc40"
         },
         {
           "path": "tests/testthat/test-altrep-scalar-arithmetic.R",
@@ -4834,6 +4838,22 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-proof-memo.R",
+          "test": "a kept proof never covers a closure that R code has changed",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
+        },
+        {
+          "file": "test-proof-memo.R",
+          "test": "a kept proof admits the original helper again but never a traced one",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
         }
       ],
       "children": [
@@ -13463,7 +13483,7 @@
         },
         {
           "path": "tests/testthat/test-initial-capture.R",
-          "sha256": "674aa249d029d9edd3be9b90bfc48600c5863d01d00269c9c9682f740d214d97"
+          "sha256": "7603ae97911485d1356e6b49795b462168cda827d61b6ae12a21df6e92ff814d"
         },
         {
           "path": "tests/testthat/test-initial-capture-names.R",

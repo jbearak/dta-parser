@@ -52,6 +52,9 @@ test_that("returned folded constants retain fresh numeric execution comparison",
         positive <- capture(operation)
         mutated <- tryCatch({
             data.table::set(holder, i = 1L, j = "value", value = "double")
+            # An edit inside an existing object is outside the kept proofs
+            # (ADR 0046). Forget them, so a fresh walk must catch it.
+            .Primitive(".Call")(get("C_dtatools_test_forget_proofs", namespace))
             # Observe the live helper before any computed operation runs.
             before_operation <- unserialize(serialize(helper("long"), NULL))
             holder_value <- unserialize(serialize(holder$value, NULL))
