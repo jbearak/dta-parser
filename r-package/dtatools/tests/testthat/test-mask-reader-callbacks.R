@@ -9,7 +9,8 @@ test_that("mask readers retain argument expressions for executable tracers", {
         deparse(substitute(generation)), deparse(substitute(name)),
         deparse(substitute(id)), sep = "/"))), where = reader, print = FALSE)
     withr::defer(untrace("read", where = reader))
-    expect_error(mask$evaluate(rlang::quo(x), 1L), "generation/name/id", fixed = TRUE)
+    # Each read evaluates the current group, so the reader sees its expression.
+    expect_error(mask$evaluate(rlang::quo(x), 1L), "generation/name/state$id", fixed = TRUE)
 })
 
 test_that("public masks retain reader replacement after binding construction", {
@@ -22,11 +23,12 @@ test_that("public masks retain reader replacement after binding construction", {
         reader <- if (exists("state", capture, inherits = FALSE)) capture else
             parent.env(capture)
         captured_expressions <- list(substitute(generation, capture),
-                                     substitute(name, capture), substitute(id, capture))
+                                     substitute(name, capture))
         replacement <- function(generation, name, id) {
             expressions <- list(substitute(generation), substitute(name), substitute(id))
-            if (identical(expressions, alist(generation, name, id)) &&
-                identical(captured_expressions, alist(state$current[[name]], name, id))) {
+            if (identical(expressions, alist(generation, name, state$id)) &&
+                identical(captured_expressions, alist(state$current[[name]], name)) &&
+                !exists("id", capture, inherits = FALSE)) {
                 c(10, 20)
             } else c(30, 40)
         }

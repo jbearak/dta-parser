@@ -2,9 +2,9 @@
     frame <- new.env(parent = baseenv())
     frame$read <- function(generation, name, id) list(generation, name, id)
     frame$.metadata_state <- .metadata_state
-    factory <- utils::removeSource(function(generation, name, id) {
-        force(generation); force(name); force(id)
-        function() read(generation, name, id)
+    factory <- utils::removeSource(function(generation, name) {
+        force(generation); force(name)
+        function() read(generation, name, state$id)
     })
     environment(factory) <- frame
     frame$binding <- compiler::cmpfun(factory)
@@ -16,7 +16,6 @@
     state$id <- id
     reader$state <- state
     frame <- new.env(parent = reader)
-    delayedAssign('id', state$id, eval.env = frame, assign.env = frame)
     list(frame = frame, reader = reader, state = state)
 }
 .mask_binding_attempt <- function(current, id = 1L, reader = .mask_binding_frame(),
@@ -25,7 +24,7 @@
     .Call(C_dtatools_try_mask_bindings, context$frame, context$reader, dependencies)
 }
 
-test_that('native bindings capture fixed generations names and groups', {
+test_that('native bindings capture fixed generations and names and read the group', {
     supported <- .dtatools_execution_profile_expected()
     frame <- .mask_binding_frame()
     generations <- setNames(lapply(1:100, function(i) new.env(parent = emptyenv())),
@@ -39,8 +38,10 @@ test_that('native bindings capture fixed generations names and groups', {
         generations[[1L]] <- new.env(parent = emptyenv())
         expect_identical(bindings[['a b']], list(saved, 'a b', 3L))
         expect_identical(bindings[['read']], list(generations[[2L]], 'read', 3L))
+        frame$state$id <- 4L
+        expect_identical(bindings[['read']], list(generations[[2L]], 'read', 4L))
         frame$read <- function(generation, name, id) list('new reader', generation, name, id)
-        expect_identical(bindings[['a b']], list('new reader', saved, 'a b', 3L))
+        expect_identical(bindings[['a b']], list('new reader', saved, 'a b', 4L))
     } else {
         expect_null(bindings)
     }
@@ -81,9 +82,6 @@ test_that('native binding admission declines unsupported containers and names', 
                      setNames(list(first, second), c('x', 'x')),
                      setNames(list(first), ''), setNames(list(first), NA_character_))) {
         expect_null(.mask_binding_attempt(bad))
-    }
-    for (id in list(NA_integer_, -1L, 1, integer(), structure(1L, note = TRUE))) {
-        expect_null(.mask_binding_attempt(current, id))
     }
     calls <- 0L
     foreign <- .Call(C_dtatools_callback_character, c('x', 'y'), function() {
@@ -167,7 +165,7 @@ test_that('non-ASCII binding names retain the original reader path', {
     expect_error(saved(), 'Obsolete data mask')
 })
 
-test_that('changed constructors run before the fallback group promise is forced', {
+test_that('bindings from changed constructors read the group at each read', {
     groups <- list(rows = list(1L, 2L), names = 'g',
                    keys = tibble::tibble(g = 1:2), type = 'grouped')
     for (key in c('new.env', 'makeActiveBinding')) {
@@ -201,7 +199,7 @@ test_that('long ASCII names retain the original symbol-conversion diagnostics', 
     expect_identical(actual, legacy)
 })
 
-test_that('foreign names run before a declined binding attempt forces its group', {
+test_that('a declined binding attempt runs foreign names callbacks once', {
     groups <- list(rows = list(1L, 2L), names = 'g',
                    keys = tibble::tibble(g = 1:2), type = 'grouped')
     mask <- .new_dibble_expression_mask(list(x = dta_double(c(10, 20))),
@@ -228,6 +226,7 @@ test_that('foreign names run before a declined binding attempt forces its group'
 })
 
 test_that('binding admission leaves unfamiliar promises and state fields untouched', {
+    supported <- .dtatools_execution_profile_expected()
     current <- list(x = new.env(parent = emptyenv()))
     attempts <- 0L
     unexpected <- function() { attempts <<- attempts + 1L; stop('unexpected read') }
@@ -244,31 +243,32 @@ test_that('binding admission leaves unfamiliar promises and state fields untouch
             rm(list = name, envir = location)
             makeActiveBinding(name, unexpected, location)
         }
-        expect_null(.Call(C_dtatools_try_mask_bindings, context$frame,
-                          context$reader, .mask_bindings_expected))
+        bindings <- .Call(C_dtatools_try_mask_bindings, context$frame,
+                          context$reader, .mask_bindings_expected)
+        # Construction never reads the group. Each binding reads it later.
+        if (supported && target %in% c('id', 'state_id')) {
+            expect_true(is.environment(bindings), info = target)
+        } else {
+            expect_null(bindings, info = target)
+        }
         expect_identical(attempts, 0L)
     }
 })
 
-test_that("binding admission accepts settled IDs and settles successful default IDs", {
+test_that("native bindings read the group when they are read", {
     supported <- .dtatools_execution_profile_expected()
     current <- list(x = new.env(parent = emptyenv()))
     context <- .mask_binding_context(current, 1L)
     bindings <- .Call(C_dtatools_try_mask_bindings, context$frame,
                       context$reader, .mask_bindings_expected)
-    if (supported) expect_true(is.environment(bindings)) else expect_null(bindings)
-    context$state$id <- 2L
-    # A nonempty successful loop forces the caller's default id as well as
-    # every capture's id. A declined attempt leaves that promise untouched.
-    expect_identical(context$frame$id, if (supported) 1L else 2L)
-    if (supported) expect_identical(bindings$x[[3L]], 1L)
-    direct <- .Call(C_dtatools_try_mask_bindings, context$frame,
-                    context$reader, .mask_bindings_expected)
-    if (supported) expect_identical(direct$x[[3L]], 1L) else expect_null(direct)
-    assign('id', 3L, context$frame)
-    direct <- .Call(C_dtatools_try_mask_bindings, context$frame,
-                    context$reader, .mask_bindings_expected)
-    if (supported) expect_identical(direct$x[[3L]], 3L) else expect_null(direct)
+    if (supported) {
+        expect_identical(bindings$x[[3L]], 1L)
+        context$state$id <- 2L
+        expect_identical(bindings$x[[3L]], 2L)
+    } else {
+        expect_null(bindings)
+    }
+    expect_false(exists('id', context$frame, inherits = FALSE))
 })
 
 test_that('foreign initial names cannot interrupt mask expiration', {
@@ -394,7 +394,7 @@ test_that('public masks preserve executable nested constructor callbacks', {
             data <- dibble(x = c(1, 2, 3))
             calls <- 0L
             target <- if (key == 'as.name') quote(as.name(sym)) else
-                quote(binding(state$current[[name]], name, id))
+                quote(binding(state$current[[name]], name))
             record <- compiler::cmpfun(function() {
                 if (any(vapply(sys.calls(), identical, logical(1), target)))
                     calls <<- calls + 1L
@@ -421,7 +421,7 @@ test_that('public masks preserve executable nested constructor callbacks', {
             result <- dplyr::mutate(data, y = x + 1)
             list(calls = calls, values = as.double(result$y))
         }, args = list(key, replace), libpath = .libPaths())
-        expect_identical(observed$calls, if (key == 'as.name') 1L else 3L,
+        expect_identical(observed$calls, if (key == 'as.name') 1L else 2L,
                          info = paste(key, if (replace) 'replaced' else 'traced'))
         expect_identical(observed$values, c(2, 3, 4))
     }
@@ -533,7 +533,6 @@ test_that('canonical masks admit their actual local binding factory', {
     # Probe admission separately using the actual local binding factory.
     reader <- environment(mask$evaluate)
     frame <- new.env(parent = reader)
-    delayedAssign('id', state$id, eval.env = frame, assign.env = frame)
     native <- .Call(C_dtatools_try_mask_bindings, frame, reader, .mask_bindings_expected)
     if (supported) {
         expect_true(is.environment(native))
@@ -542,10 +541,10 @@ test_that('canonical masks admit their actual local binding factory', {
     }
     expect_identical(parent.env(environment(getter)), reader)
     expect_null(formals(getter))
-    expect_identical(body(getter), quote(read(generation, name, id)))
+    expect_identical(body(getter), quote(read(generation, name, state$id)))
     expect_identical(substitute(generation, environment(getter)), quote(state$current[[name]]))
     expect_identical(substitute(name, environment(getter)), quote(name))
-    expect_identical(substitute(id, environment(getter)), quote(id))
+    expect_false(exists('id', environment(getter), inherits = FALSE))
     expect_identical(as.double(bindings$x), 1)
 })
 
@@ -614,7 +613,8 @@ test_that('public masks add no predicates when their enclosing helper is interpr
             lapply(c('is.null', 'isTRUE', 'identical'), observe)
         }, libpath = .libPaths(),
         env = c(R_DISABLE_BYTECODE = if (disabled) '1' else NA_character_))
-        expect_identical(observed[[1L]]$calls, c(setup = 1L, bindings = 0L))
+        # Each of the two groups checks once whether the bindings exist.
+        expect_identical(observed[[1L]]$calls, c(setup = 1L, bindings = 2L))
         expect_identical(observed[[2L]]$calls, c(setup = 0L, bindings = 0L))
         expect_identical(observed[[3L]]$calls, c(setup = 1L, bindings = 0L))
         for (result in observed) expect_identical(result$values, c(2, 3, 4))
@@ -631,7 +631,7 @@ test_that('production mask status commits only to an absent local result binding
         context$reader$dependencies <- .mask_bindings_expected
         context$reader$slot <- slot
         context$state$callbacks <- 0L
-        attempt <- eval(quote(function(id = state$id) {
+        attempt <- eval(quote(function() {
             # Assign through a separate probe so complex assignment does not
             # create a local state binding in the production-like frame.
             probe$frame <- environment()
@@ -706,9 +706,9 @@ test_that('public masks retain history and values bookkeeping callbacks', {
             lapply(c('names', 'length', 'attributes'), observe)
         }, libpath = .libPaths(),
         env = c(R_DISABLE_BYTECODE = if (disabled) '1' else NA_character_))
-        # `y = x + 1` reads no prior value, so only the bindings and the
-        # final values read the current names.
-        expect_identical(observed[[1L]]$calls, c(5L, 0L, 0L, 0L, 3L))
+        # `y = x + 1` reads no prior value, so only the bindings, built
+        # once for both groups, and the final values read the current names.
+        expect_identical(observed[[1L]]$calls, c(5L, 0L, 0L, 0L, 2L))
         # Initial capture registers its history at once; only the added
         # column reads its length.
         expect_identical(observed[[2L]]$calls, c(0L, 0L, 0L, 1L, 0L))
@@ -717,82 +717,36 @@ test_that('public masks retain history and values bookkeeping callbacks', {
     }
 })
 
-test_that("public mask constructors see the original forced group argument", {
+test_that("public mask constructors see one set of bindings for every group", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(10, 20), g = c(1, 2))
     original <- rlang::new_data_mask
-    events <- integer()
+    bottoms <- list()
     replacement <- function(bottom, top = bottom) {
-        frame <- parent.frame()
-        if (exists("id", frame, inherits = FALSE)) {
-            state <- get("state", parent.env(frame), inherits = FALSE)
-            previous <- state$id
-            state$id <- previous + 1L
-            current <- get("id", frame, inherits = FALSE)
-            events <<- c(events, current)
-            state$id <- previous
+        if (identical(sys.call(-1L), quote(make_mask()))) {
+            bottoms[[length(bottoms) + 1L]] <<- bottom
         }
-        result <- original(bottom, top)
-        if (exists("current", inherits = FALSE)) result$.observed_group <- current
-        result
+        original(bottom, top)
     }
     local_mocked_bindings(new_data_mask = replacement, .package = "rlang")
-    result <- dplyr::mutate(data, y = x + .observed_group, .by = g)
-    expect_identical(events, c(1L, 2L))
-    expect_identical(as.double(result$y), c(11, 22))
+    result <- dplyr::mutate(data, y = x + 1, .by = g)
+    expect_length(bottoms, 2L)
+    expect_identical(bottoms[[1L]], bottoms[[2L]])
+    expect_identical(as.double(result$y), c(11, 21))
     expect_identical(as.double(data$x), c(10, 20))
 })
 
-test_that("successful nonempty native masks settle only their default group promise", {
+test_that("empty native masks build and duplicate names decline", {
     supported <- .dtatools_execution_profile_expected()
     current <- list(x = new.env(parent = emptyenv()))
-    for (kind in c("default", "forced", "value", "locked forced", "locked value")) {
-        context <- .mask_binding_context(current, 3L)
-        if (kind %in% c("forced", "locked forced")) force(context$frame$id)
-        if (kind %in% c("value", "locked value")) assign("id", 3L, context$frame)
-        if (startsWith(kind, "locked")) lockBinding("id", context$frame)
-        expression <- substitute(id, context$frame)
-        bindings <- .Call(C_dtatools_try_mask_bindings, context$frame,
-                          context$reader, .mask_bindings_expected)
-        if (supported) {
-            expect_true(is.environment(bindings), info = kind)
-            expect_identical(bindings$x[[3L]], 3L, info = kind)
-        } else expect_null(bindings, info = kind)
-        expect_identical(substitute(id, context$frame), expression, info = kind)
-        context$state$id <- 7L
-        expect_identical(context$frame$id,
-                         if (kind == "default" && !supported) 7L else 3L,
-                         info = kind)
-    }
-})
-
-test_that("empty and declined native masks leave group promises untouched", {
-    supported <- .dtatools_execution_profile_expected()
-    current <- list(x = new.env(parent = emptyenv()))
-    for (kind in c("empty", "duplicate", "unknown expression", "locked default", "active")) {
-        value <- switch(kind, empty = setNames(list(), character()),
-                        duplicate = setNames(c(current, current), c("x", "x")), current)
+    for (kind in c("empty", "duplicate")) {
+        value <- if (kind == "empty") setNames(list(), character()) else
+            setNames(c(current, current), c("x", "x"))
         context <- .mask_binding_context(value, 1L)
-        calls <- 0L
-        if (kind == "unknown expression") delayedAssign("id", {
-            calls <<- calls + 1L
-            context$state$id
-        }, assign.env = context$frame)
-        if (kind == "locked default") lockBinding("id", context$frame)
-        if (kind == "active") {
-            rm("id", envir = context$frame)
-            makeActiveBinding("id", function() {
-                calls <<- calls + 1L
-                context$state$id
-            }, context$frame)
-        }
         bindings <- .Call(C_dtatools_try_mask_bindings, context$frame,
                           context$reader, .mask_bindings_expected)
-        expect_identical(calls, 0L, info = kind)
         if (kind == "empty" && supported) expect_true(is.environment(bindings)) else
             expect_null(bindings, info = kind)
-        context$state$id <- 7L
-        expect_identical(context$frame$id, 7L, info = kind)
     }
 })
 
@@ -803,7 +757,7 @@ test_that("public mask constructors see the original final loop name", {
     observations <- list()
     replacement <- function(bottom, top = bottom) {
         frame <- parent.frame()
-        is_mask <- exists("id", frame, inherits = FALSE)
+        is_mask <- identical(sys.call(-1L), quote(make_mask()))
         if (is_mask) {
             present <- exists("name", frame, inherits = FALSE)
             name <- if (present) get("name", frame, inherits = FALSE) else "missing"
@@ -861,7 +815,5 @@ test_that("native masks preserve loop names and decline unsafe name bindings", {
             if (slot %in% c("value", "forced", "locked"))
                 expect_identical(context$frame$name, "old")
         }
-        context$state$id <- 7L
-        expect_identical(context$frame$id, if (admitted && !empty) 3L else 7L)
     }
 })
