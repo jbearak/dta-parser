@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "ceb8d1d5a11da920fdc6198de601b5f30800a0e76a5f393c0a5bdeedbd6e59d7"
+          "sha256": "9dccda4d0686a7974cb81f3f7cce2dc8cd46cbf4482a25aee21d9da376e07fd7"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -3422,6 +3422,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-double-combine.R",
+          "test": "a one-row data frame reused across groups keeps each group's values",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 1,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",

@@ -138,6 +138,18 @@ test_that("real grouped dplyr mutation recycles size-one results in one payload"
     expect_identical(dta_storage_type(kept$y), "double")
 })
 
+test_that("a one-row data frame reused across groups keeps each group's values", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    skip_if_not_installed("data.table")
+    reused <- data.table::data.table(y = 0)
+    data <- dibble(x = c(1, 1, 2, 2), g = c(1, 1, 2, 2))
+    result <- dplyr::mutate(data, {
+        data.table::set(reused, 1L, "y", as.double(dplyr::cur_group_id()))
+        reused
+    }, .by = g)
+    expect_identical(as.double(result$y), c(1, 1, 2, 2))
+})
+
 test_that('strict combination leaves invalid-value diagnostics to vctrs', {
     pieces <- .combine_warm()
     invalid_tag <- readBin(as.raw(c(0xa2, 0x07, 0, 0, 0x41, 0, 0xf0, 0x7f)),

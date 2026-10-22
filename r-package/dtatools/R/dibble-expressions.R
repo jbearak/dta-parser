@@ -375,10 +375,12 @@
                                             " Did you mean to wrap the result in `list()`?"))
                                 }
                                 # The combiners recycle a size-one chunk to its
-                                # rows. A lone group skips them, and an empty
+                                # rows. A lone group skips them, an empty
                                 # group's value, such as max() of nothing, must
-                                # not reach a cast, so those two recycle here.
-                                if (length(chunks) == 1L || expected == 0L)
+                                # not reach a cast, and a data frame's copy
+                                # below shares its columns with a later group's
+                                # writes, so those three recycle here.
+                                if (length(chunks) == 1L || expected == 0L || is.data.frame(value))
                                     value <- vctrs::vec_recycle(value, expected)
                             }
                             chunks[id] <- list(if (is.null(value)) NULL else .metadata_copy(value))
