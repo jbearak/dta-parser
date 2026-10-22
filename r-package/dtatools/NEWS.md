@@ -154,6 +154,20 @@
   0.052 to 0.045, and `left_join()` from 0.066 to 0.053. Results are
   unchanged.
 
+* Subsetting a table with `[`, as `head()` does, checks which columns
+  carry Stata notes or characteristics in one native pass, rather than
+  with an R call for each column. So do `set_dta_metadata()` and the note
+  and characteristic setters, such as `add_dta_note()`. On a 16,787-row,
+  5,360-column DHS file, `head(d)` falls from about 0.037 to 0.031 seconds
+  and `d[1:10, ]` from 0.039 to 0.033. Results are unchanged.
+
+* Restoring a Stata numeric vector's classes after vctrs slices, casts, or
+  combines it reads the storage classes from a fixed table, rather than
+  spelling them with `paste0()` on every call. `vctrs::vec_slice()` on one
+  labelled column takes about 5% less time, and on a 16,787-row,
+  5,360-column DHS file `print(d)` falls from about 0.135 to 0.130
+  seconds.
+
 * `copy_data()` looks for environments, functions, bytecode, external
   pointers, and weak references in one native pass over the columns and
   their attributes, rather than an R call per value. On a 16,787-row,

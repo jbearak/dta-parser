@@ -5013,7 +5013,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dta-metadata.R",
-          "sha256": "8a45a7fbfb8cef27e29589d351aa16e4d7d83a57cb412dc8e605a4f13158d5a7"
+          "sha256": "e55e506bdef39b6863a630ac0509a8b75abd186958ea1b4ba518049d9afe7f7a"
         },
         {
           "path": "tests/testthat/test-explicit-metadata.R",
@@ -5202,6 +5202,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-metadata.R",
+          "test": "the native metadata check answers as vapply() over each column",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         },
         {

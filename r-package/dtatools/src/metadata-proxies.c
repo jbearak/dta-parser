@@ -813,6 +813,38 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
     return object;
 }
 
+// Whether each element of the list `x` holds any of the ordinary attributes
+// named in `names`, as `vapply()` over `attr(element, name, exact = TRUE)`
+// for each name would answer, with `x`'s names on the result as `vapply()`
+// gives them. An ALTREP list may return an element that nothing else
+// holds, so each element stays protected while its attributes are read.
+SEXP C_dtatools_any_attribute(SEXP x, SEXP names) {
+    if (TYPEOF(x) != VECSXP || TYPEOF(names) != STRSXP) {
+        Rf_error("`x` must be a list and `names` a character vector");
+    }
+    R_xlen_t name_count = XLENGTH(names);
+    SEXP *symbols = (SEXP *) R_alloc(name_count > 0 ? (size_t) name_count : 1,
+                                     sizeof(SEXP));
+    for (R_xlen_t index = 0; index < name_count; index++) {
+        symbols[index] = Rf_install(CHAR(STRING_ELT(names, index)));
+    }
+    R_xlen_t length = XLENGTH(x);
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        SEXP element = PROTECT(VECTOR_ELT(x, index));
+        int found = 0;
+        for (R_xlen_t name = 0; name < name_count && !found; name++) {
+            found = Rf_getAttrib(element, symbols[name]) != R_NilValue;
+        }
+        LOGICAL(result)[index] = found;
+        UNPROTECT(1);
+    }
+    SEXP element_names = Rf_getAttrib(x, R_NamesSymbol);
+    if (element_names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, element_names);
+    UNPROTECT(1);
+    return result;
+}
+
 // copy_data() refuses values that hold an environment, function, bytecode,
 // external pointer or weak reference among their elements or attributes.
 // This walk answers as .contains_reference_object() does, 1 or 0, and gives

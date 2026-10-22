@@ -422,6 +422,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_group_keys_match", (DL_FUNC) &C_dtatools_group_keys_match, 3},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
+    {"C_dtatools_any_attribute", (DL_FUNC) &C_dtatools_any_attribute, 2},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
     {"C_dtatools_set_attribute", (DL_FUNC) &C_dtatools_set_attribute, 3},
