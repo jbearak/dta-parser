@@ -491,6 +491,16 @@ test_that("registered bare mean methods precede na.rm evaluation", {
     }
 })
 
+test_that("bare mean methods in the global environment precede the native mean", {
+    x <- dta_int(1:3)
+    for (method in c("mean.numeric", "mean.double")) {
+        assign(method, function(x, ...) 17, envir = globalenv())
+        result <- tryCatch(as.double(mean(x)), finally = rm(list = method, envir = globalenv()))
+        expect_identical(result, 17, info = method)
+    }
+    expect_identical(as.double(mean(x)), 2)
+})
+
 test_that("mean declines active and delayed S3 bindings without reading them", {
     table <- get(".__S3MethodsTable__.", asNamespace("base"), inherits = FALSE)
     run <- function(mode, reference) {
