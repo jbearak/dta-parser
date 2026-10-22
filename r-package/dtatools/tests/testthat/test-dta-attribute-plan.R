@@ -164,4 +164,24 @@ test_that("native restoration declines what the R code handles itself", {
     expect_null(native_restore(c(1, 2), named_classes, "double"))
     expect_null(native_restore(c(1, 2), structure(c(1, 2), stata.storage = "double"), "double"))
     expect_null(native_restore(structure(c(1, 2), class = "data.table"), plain, "double"))
+    s4_classes <- plain
+    attr(s4_classes, "class") <- asS4(class(plain))
+    expect_null(native_restore(c(1, 2), s4_classes, "double"))
+    expect_true(isS4(class(.restore_dta_metadata(c(1, 2), s4_classes, "double"))))
+})
+
+test_that("a declined native restoration reads the value's names once", {
+    calls <- 0L
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    registerS3method("names", "dtatools_counted_names", function(x) {
+        calls <<- calls + 1L
+        NULL
+    }, envir = baseenv())
+    withr::defer(rm(list = "names.dtatools_counted_names", envir = table))
+    unknown <- dta_double(c(1, 2))
+    attr(unknown, "mystery") <- TRUE
+    value <- structure(c(1, 2), class = "dtatools_counted_names")
+    expect_warning(.restore_dta_metadata(value, unknown, "double"),
+                   "Dropped unknown attribute", fixed = TRUE)
+    expect_identical(calls, 1L)
 })

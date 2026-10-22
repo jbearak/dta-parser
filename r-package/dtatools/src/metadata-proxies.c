@@ -501,7 +501,8 @@ static int restore_storage_class(const char *name, SEXP storages) {
    `storage`'s, and `value_names`, the `names(value)` the R code reads.
    Return NULL, so the R code runs instead, for an attribute it warns about,
    a storage outside `storages`, classes without a storage class or with an
-   NA or attributes of their own, and S4 or data.table values. */
+   NA, attributes, or an S4 flag of their own, and S4 or data.table
+   values. */
 SEXP C_dtatools_restore_numeric_metadata(
     SEXP value, SEXP prototype, SEXP storage, SEXP value_names,
     SEXP variables, SEXP storages
@@ -520,7 +521,8 @@ SEXP C_dtatools_restore_numeric_metadata(
     }
     SEXP prototype_classes = PROTECT(Rf_getAttrib(prototype, R_ClassSymbol));
     if (!known_storage || TYPEOF(prototype_classes) != STRSXP ||
-        XLENGTH(prototype_classes) == 0 || ANY_ATTRIB(prototype_classes)) {
+        XLENGTH(prototype_classes) == 0 || ANY_ATTRIB(prototype_classes) ||
+        Rf_isS4(prototype_classes)) {
         UNPROTECT(1);
         return R_NilValue;
     }

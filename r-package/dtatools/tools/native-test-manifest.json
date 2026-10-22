@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "6d1364a256e65ed10a062d5f0d8d3b05a65524817e86bc2cab1a2a4a53563818"
+          "sha256": "5aaf1b42b1f190f028a09d731b3496a0be62a04de04f56e9afe6934e73457b51"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "6e23a5b81788eb1725ac7b161ff8364be4053d24eccea757c9d3ceee24e3a636"
+          "sha256": "b9d0ac41018211e507412832b7214c8c5fcfd9905cfb5a88debb369179c91eca"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -3117,6 +3117,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 12,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "a declined native restoration reads the value's names once",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
           "warnings": 0
         },
         {
