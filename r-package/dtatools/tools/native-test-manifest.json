@@ -1783,7 +1783,7 @@
         },
         {
           "path": "tests/testthat/test-shared-attribute-combine.R",
-          "sha256": "9878281fe1c39072e75fddbf82f176e28e1d3692e78549ff47ec6e199ee10570"
+          "sha256": "260bad1d77ff96de80c548ce4fca827dd61f88a163bb119c19a5f02994231d77"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -4917,6 +4917,25 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 2,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-shared-attribute-combine.R",
+          "test": "the kept-values check matches what construction returns",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 165,
+          "warnings": 0
+        },
+        {
+          "file": "test-shared-attribute-combine.R",
+          "test": "a later summary expression reads a group result as cast",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",

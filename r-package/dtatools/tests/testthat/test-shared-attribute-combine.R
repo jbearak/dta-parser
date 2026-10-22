@@ -11,11 +11,11 @@
     value <- code()
     list(value = value, hits = hits)
 }
-# A float whose buffer holds 0.1 itself, as `data.table::set()` can leave
-# one, rather than the single-precision value the constructor stores.
-.shared_unrounded <- function() {
-    structure(0.1, stata.storage = "float", label = "v",
-              class = .dta_storage_class("float"))
+# A labelled Stata numeric whose buffer holds `value` itself, as
+# `data.table::set()` can leave one, though construction would change it.
+.shared_uncast <- function(value = 0.1, storage = "float") {
+    structure(value, stata.storage = storage, label = "v",
+              class = .dta_storage_class(storage))
 }
 .shared_duplicated <- function() {
     duplicated <- dta_double(c(1, 2, 1, 2))
@@ -90,22 +90,60 @@ test_that("group results that differ or signal while folding take the vctrs path
     duplicated <- .shared_duplicated()
     expect_null(.shared_dta_ptype(lapply(1:4, function(i) duplicated[i])))
 
-    # The cast rounds a float value that single precision cannot hold.
+    # The cast rounds a float value that single precision cannot hold, and
+    # byte storage holds no -0.
     rounded <- set_var_label(dta_float(c(0.1, 2)), "v")[1:2]
-    expect_identical(attributes(rounded), attributes(.shared_unrounded()))
+    expect_identical(attributes(rounded), attributes(.shared_uncast()))
     expect_false(is.null(.shared_dta_ptype(list(rounded, rounded))))
-    expect_null(.shared_dta_ptype(list(rounded, .shared_unrounded())))
+    expect_null(.shared_dta_ptype(list(rounded, .shared_uncast())))
+    zero <- .shared_uncast(-0, "byte")
+    expect_null(.shared_dta_ptype(list(zero, zero)))
+    zero <- .shared_uncast(-0, "double")
+    expect_false(is.null(.shared_dta_ptype(list(zero, zero))))
 })
 
-test_that("a later summary expression reads a float group result as cast", {
+test_that("the kept-values check matches what construction returns", {
+    bits <- function(high, low) {
+        readBin(writeBin(c(as.integer(low), as.integer(high)), raw(), size = 4L,
+                         endian = "little"), "double", endian = "little")
+    }
+    raw_values <- function(x) writeBin(as.double(unclass(x)), raw())
+    cases <- list(
+        c(1, 2), -127, 100, -128, 101, 1.5, -32767, 32740, -32768, 32741,
+        2147483620, 2147483621, -2147483647, 1.1, 3.4e38,
+        2^126 * (2 - 2^-23), 2^-140, Inf, -Inf, NaN, NA_real_, -0, c(0, -0), 1e308,
+        unclass(tagged_missing("a")), unclass(tagged_missing("z")),
+        bits(0x7ff80000L, 1954L), bits(-0x00100000L, 1954L),
+        bits(0x7ff00000L, 1955L), bits(0x7ff8007bL, 1954L), bits(0x7ff00041L, 1954L),
+        c(1, NaN), c(NA, 1.5)
+    )
+    for (values in cases) {
+        for (kind in 0:4) {
+            constructed <- tryCatch(
+                .construct_dta_numeric(values, NULL, .dta_storage[[kind + 1L]]),
+                error = function(condition) NULL)
+            kept <- !is.null(constructed) &&
+                identical(raw_values(constructed), raw_values(values))
+            expect_identical(.Call(C_dtatools_numeric_values_kept, values, kind), kept)
+        }
+    }
+})
+
+test_that("a later summary expression reads a group result as cast", {
     skip_if_not_installed("dplyr", "1.2.1")
-    unrounded <- .shared_unrounded()
+    unrounded <- .shared_uncast()
     data <- dibble(g = c(1, 2))
     summarised <- .shared_count(function()
         dplyr::summarise(data, f = unrounded, z = as.double(f), .by = g))
     expect_identical(summarised$hits, 0L)
     expect_identical(as.double(summarised$value$f), rep(as.double(dta_float(0.1)), 2))
     expect_identical(as.double(summarised$value$z), as.double(summarised$value$f))
+
+    zero <- .shared_uncast(-0, "byte")
+    summarised <- .shared_count(function()
+        dplyr::summarise(data, f = zero, negative = 1 / as.double(f) < 0, .by = g))
+    expect_identical(summarised$hits, 0L)
+    expect_identical(as.logical(summarised$value$negative), c(FALSE, FALSE))
 })
 
 test_that("grouped dplyr verbs keep vctrs's warnings for conflicting labels", {

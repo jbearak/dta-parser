@@ -30,7 +30,8 @@ must carry only Stata variable attributes, at least one of them besides its
 storage. The combiners compute the common type of the first two results with
 `vec_ptype_common()`. That type must have the results' own attributes in the
 same order, and `vec_ptype2()` of the type and the third result must return
-the type, and every value of every result must fit its storage exactly.
+the type, and construction at the storage must return every value of every
+result bit for bit.
 The attribute comparisons are bit for bit, because `identical()` alone
 takes every NaN for one value, and value labels for `.a` and `.b` are two
 NaNs. Then the combiners take each result's payload, place them with
@@ -40,11 +41,12 @@ Two names for one value-label code therefore still warn once per fold.
 
 The package's `vec_ptype2()` method reads only attributes, so every later
 fold sees the inputs of the fold checked and returns the same type. Its
-`vec_cast()` method rebuilds a result from its values. That returns the
-values unchanged when each one fits the storage exactly, so every cast
-returns its result unchanged. A `float` result whose buffer was written
-with a value single precision cannot hold, through `data.table::set()` for
-example, would round in the cast and takes the vctrs path. The combined vector is
+`vec_cast()` method rebuilds a result from its values, so when construction
+returns them bit for bit, every cast returns its result unchanged.
+`data.table::set()` can write values into a result's buffer that
+construction changes. A `float` holding 0.1 rounds, byte, int and long store
+-0 as 0, and compact storage writes each missing value in one layout per
+code. Such a result takes the vctrs path. The combined vector is
 identical to the one vctrs builds. `summarise()` keeps each group's result as
 that group's binding for later expressions, where it had kept the cast, and
 the two are identical.

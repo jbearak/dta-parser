@@ -1191,11 +1191,11 @@ vec_cast.dta_numeric.dta_numeric <- function(
 # folds from the first two. The package's vec_ptype2() method reads only
 # its inputs' attributes, so when that type has the pieces' own attributes
 # and folds with a third piece to itself, every later fold returns it. Its
-# vec_cast() method rebuilds a piece from its values, which returns them
-# unchanged when each one fits the storage exactly, so every cast then
-# returns its piece. Return that type, or NULL for any other pieces or when
-# a fold signals. ADR 0048 lets the combiners below skip the per-group
-# method calls this proves redundant.
+# vec_cast() method rebuilds a piece from its values, so when construction
+# returns each value bit for bit, every cast returns its piece. Return
+# that type, or NULL for any other pieces or when a fold signals. ADR 0048
+# lets the combiners below skip the per-group method calls this proves
+# redundant.
 .shared_dta_ptype <- function(pieces) {
     count <- length(pieces)
     first <- if (count >= 2L) pieces[[1L]]
@@ -1214,7 +1214,7 @@ vec_cast.dta_numeric.dta_numeric <- function(
     for (index in seq_len(count)) {
         piece <- pieces[[index]]
         if ((index > 1L && !same(attributes(piece), reference)) ||
-            !.Call(C_dtatools_numeric_values_fit, piece, kind)) return(NULL)
+            !.Call(C_dtatools_numeric_values_kept, piece, kind)) return(NULL)
     }
     tryCatch({
         ptype <- vctrs::vec_ptype_common(first, pieces[[2L]])
