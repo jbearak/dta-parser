@@ -3714,6 +3714,15 @@ void initialize_proof_memo(void) {
     }
 }
 
+/* An unloaded DLL leaves no roots behind for the objects its tables kept. */
+void release_proof_memo(void) {
+    for (int kind = 0; kind < PROOF_MEMO_KINDS; kind++) {
+        if (proof_memo_tables[kind] == NULL) continue;
+        R_ReleaseObject(proof_memo_tables[kind]);
+        proof_memo_tables[kind] = NULL;
+    }
+}
+
 static R_xlen_t proof_memo_slot(SEXP actual, SEXP expected) {
     uintptr_t a = (uintptr_t) actual, e = (uintptr_t) expected;
     return (R_xlen_t) (((a >> 4) ^ (a >> 13) ^ (e >> 5) ^ (e >> 17)) &

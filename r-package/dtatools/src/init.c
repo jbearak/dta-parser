@@ -707,4 +707,5 @@ void attribute_visible R_unload_dtatools(DllInfo *dll) {
     dtatools_probe_release_public_cache();
     dtatools_probe_plain_public_release();
     release_generated_real_reader();
+    release_proof_memo();
 }
