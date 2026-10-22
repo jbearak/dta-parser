@@ -150,6 +150,20 @@ test_that("a one-row data frame reused across groups keeps each group's values",
     expect_identical(as.double(result$y), c(1, 1, 2, 2))
 })
 
+test_that("another class's size-one group result recycles before the next group", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    restored <- 0
+    counted <- function(x) structure(x, class = "dtatools_test_counted")
+    restore <- function(x, to, ...) {
+        if (length(x) == 2L) restored <<- restored + 1
+        counted(unclass(x))
+    }
+    data <- dibble(x = c(1, 1, 2, 2), g = c(1, 1, 2, 2))
+    result <- .combine_with_method("vec_restore", "dtatools_test_counted", restore, function()
+        dplyr::mutate(data, y = counted(restored), .by = g))
+    expect_identical(unclass(result$y), c(0, 0, 1, 1))
+})
+
 test_that('strict combination leaves invalid-value diagnostics to vctrs', {
     pieces <- .combine_warm()
     invalid_tag <- readBin(as.raw(c(0xa2, 0x07, 0, 0, 0x41, 0, 0xf0, 0x7f)),

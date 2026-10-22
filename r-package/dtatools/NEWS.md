@@ -12,7 +12,8 @@
   100,000 rows of the India 2021 DHS births file,
   `mutate(d, m = max(bord), .by = caseid)` falls from about 2.50 to 1.85
   seconds, and `mutate(d, m = mean(b2), .by = caseid)` from 3.24 to 2.55.
-  Results are unchanged.
+  Results are unchanged. The package's vctrs methods for Stata numerics no
+  longer run for each group, so a traced method sees fewer calls (ADR 0047).
 
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
