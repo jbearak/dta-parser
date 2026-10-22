@@ -5,6 +5,18 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `mutate()` and `summarise()` on a dibble combine group results that
+  keep a column's Stata metadata in one pass when every group's result has
+  the same attributes. These are the results of `first()`, `last()`, `lag()`,
+  `lead()`, and indexing on a labelled column. The verbs had called the
+  package's `vec_ptype2()` and `vec_cast()` methods for every group. On the
+  first 100,000 rows of the India 2021 DHS births file, with 42,739 women,
+  `summarise(b, m = first(b2), .by = caseid)` falls from about TODO to TODO
+  seconds, and `mutate(b, m = lag(b2), .by = caseid)` from TODO to TODO.
+  Results and warnings are unchanged. Those methods now run two or three
+  times per combine, so a traced or replaced method sees fewer calls
+  (ADR 0047).
+
 * Arithmetic that the native scalar route declines, such as on a column
   with value labels or with `^`, `%%`, and `%/%`, now classifies its
   result's Stata storage natively. So do math functions such as `abs()`,

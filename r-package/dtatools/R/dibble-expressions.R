@@ -389,7 +389,9 @@
                         if (item$named) pending[name] <- list(NULL)
                         next
                     }
+                    shared <- if (is.null(preserved)) .shared_dta_ptype(chunks)
                     value <- if (!is.null(preserved)) preserved else if (length(chunks) == 1L) chunks[[1L]] else
+                        if (!is.null(shared)) .combine_shared_dta(chunks, shared, mask$rows) else
                         .native_admission_call(
                             C_dtatools_select_branch,
                             .native_admission_branches(
