@@ -1763,7 +1763,7 @@
         },
         {
           "path": "tests/testthat/test-dta-attribute-plan.R",
-          "sha256": "f09a7bca52781a2ea3000a94cf652f3890051ec83a02682b2bc2d65cf3f0d777"
+          "sha256": "6d1364a256e65ed10a062d5f0d8d3b05a65524817e86bc2cab1a2a4a53563818"
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
@@ -1775,7 +1775,7 @@
         },
         {
           "path": "tests/testthat/test-double-combine.R",
-          "sha256": "6d923e01224ae6aef2d2c8474aed1b409de90544cea0d84e73737fd19d460d13"
+          "sha256": "6e23a5b81788eb1725ac7b161ff8364be4053d24eccea757c9d3ceee24e3a636"
         },
         {
           "path": "tests/testthat/test-compact-combine.R",
@@ -3096,6 +3096,30 @@
           "warnings": 0
         },
         {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration builds the R plan's attributes in its order",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 34,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration returns a value that already has its storage and classes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-dta-attribute-plan.R",
+          "test": "native restoration declines what the R code handles itself",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 12,
+          "warnings": 0
+        },
+        {
           "file": "test-double-combine.R",
           "test": "double combination preserves bytes, order and independent backing",
           "occurrence": 1,
@@ -3242,7 +3266,7 @@
           "test": "combination retains executable callbacks throughout its successful helper graph",
           "occurrence": 1,
           "skip": "forbid",
-          "min_pass": 168,
+          "min_pass": 162,
           "warnings": 0
         },
         {

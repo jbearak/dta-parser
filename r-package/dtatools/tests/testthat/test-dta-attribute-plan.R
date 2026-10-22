@@ -82,3 +82,86 @@ test_that("restoration matches attribute names as the set operations would", {
     bare <- dta_double(c(3, 4))
     expect_identical(.restore_dta_variable_metadata(bare, c(1, 2), names = NULL), bare)
 })
+
+native_restore <- function(value, prototype, storage) {
+    .Call(C_dtatools_restore_numeric_metadata, value, prototype, storage,
+          names(value), .dta_variable_attribute_names, .dta_storage)
+}
+
+test_that("native restoration builds the R plan's attributes in its order", {
+    by_plan <- function(value, prototype, storage) {
+        .replace_dta_attributes(value, .dta_attribute_plan(
+            prototype, storage, result_names = names(value), temporal = FALSE
+        ))
+    }
+    labelled <- dta_byte(c(1, 2, NA, 2))
+    val_labels(labelled) <- c(yes = 1, no = 2)
+    var_label(labelled) <- "Answer"
+    attr(labelled, "format.stata") <- "%8.0g"
+    named <- dta_int(c(1, 300))
+    names(named) <- c("a", "b")
+    # Variable attributes on either side of the class, and a storage class
+    # in the middle of the class vector.
+    reordered <- structure(c(1, 2), label = "L",
+        class = c("custom", "dta_numeric", "dta_double", "vctrs_vctr", "double"),
+        format.stata = "%9.0g", stata.storage = "double")
+    unstored <- reordered
+    attr(unstored, "stata.storage") <- NULL
+    cases <- list(
+        list(vctrs::vec_slice(vctrs::vec_proxy(labelled), c(2L, 1L)), labelled, "byte"),
+        list(vctrs::vec_slice(vctrs::vec_proxy(labelled), integer()), labelled, "byte"),
+        list(vctrs::vec_proxy(labelled), labelled, "int"),
+        list(vctrs::vec_slice(vctrs::vec_proxy(named), 2L), named, "int"),
+        list(c(3, 4), reordered, "double"),
+        list(c(3, 4), reordered, "float"),
+        list(c(3, 4), unstored, "long"),
+        list(dta_long(c(5, 6)), labelled, "long")
+    )
+    for (case in cases) {
+        restored <- do.call(native_restore, case)
+        expect_false(is.null(restored))
+        expected <- do.call(by_plan, case)
+        expect_identical(names(attributes(restored)), names(attributes(expected)))
+        expect_identical(serialize(restored, NULL), serialize(expected, NULL))
+        expect_identical(do.call(.restore_dta_metadata, case), expected)
+    }
+    expect_identical(names(attributes(native_restore(c(3, 4), unstored, "long"))),
+                     c("label", "format.stata", "stata.storage", "class"))
+    expect_identical(class(native_restore(c(3, 4), reordered, "float")),
+        c("custom", "dta_numeric", "dta_float", "vctrs_vctr", "double"))
+})
+
+test_that("native restoration returns a value that already has its storage and classes", {
+    value <- dta_byte(c(1, 2))
+    expect_identical(native_restore(value, value, "byte"), value)
+    # A plain attribute to set sends it through the copy instead.
+    labelled <- value
+    var_label(labelled) <- "Label"
+    restored <- native_restore(value, labelled, "byte")
+    expect_identical(var_label(restored), "Label")
+    expect_null(var_label(value))
+})
+
+test_that("native restoration declines what the R code handles itself", {
+    plain <- dta_double(c(1, 2))
+    unknown <- plain
+    attr(unknown, "mystery") <- TRUE
+    expect_null(native_restore(c(1, 2), unknown, "double"))
+    expect_warning(.restore_dta_metadata(c(1, 2), unknown, "double"),
+                   "Dropped unknown attribute during Stata vector restoration: mystery",
+                   fixed = TRUE)
+    for (storage in list("strL", NA_character_, c("double", "double"), 1,
+                         structure("double", note = TRUE))) {
+        expect_null(native_restore(c(1, 2), plain, storage))
+    }
+    no_storage_class <- structure(c(1, 2), stata.storage = "double",
+        class = c("dta_numeric", "vctrs_vctr", "double"))
+    expect_null(native_restore(c(1, 2), no_storage_class, "double"))
+    expect_identical(class(.restore_dta_metadata(c(1, 2), no_storage_class, "double")),
+                     .dta_storage_class("double"))
+    named_classes <- plain
+    attr(named_classes, "class") <- structure(class(plain), names = letters[1:4])
+    expect_null(native_restore(c(1, 2), named_classes, "double"))
+    expect_null(native_restore(c(1, 2), structure(c(1, 2), stata.storage = "double"), "double"))
+    expect_null(native_restore(structure(c(1, 2), class = "data.table"), plain, "double"))
+})

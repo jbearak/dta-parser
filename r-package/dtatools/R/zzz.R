@@ -253,6 +253,11 @@
         for (name in c(names(.metadata_dependencies), "environment",
                        ".generate_attributes", ".dta_attribute_plan")) get(name)
     }
+    # The native restore skips these helpers, so no call might force their
+    # lazy bindings, which the combine and summary checks read unforced.
+    for (name in c(".dta_attribute_plan", ".dta_classes_from", ".dta_storage_class",
+                   ".replace_dta_attributes", ".declared_dta_storage",
+                   ".metadata_copy", ".repair_data_table_container")) get(name)
     .numeric_helper_state$dependencies <- if (!is.null(.metadata_state$dependencies)) {
         .numeric_helper_dependencies
     } else NULL

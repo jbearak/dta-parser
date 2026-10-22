@@ -824,6 +824,10 @@ DTATOOLS_INTERNAL SEXP metadata_string_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_copy(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_view(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_any_attribute(SEXP x, SEXP names);
+DTATOOLS_INTERNAL SEXP C_dtatools_restore_numeric_metadata(
+    SEXP value, SEXP prototype, SEXP storage, SEXP value_names,
+    SEXP variables, SEXP storages
+);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutation_views(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_release_mutation_views(SEXP columns);
 DTATOOLS_INTERNAL SEXP C_dtatools_expose_mutation_column(SEXP value);

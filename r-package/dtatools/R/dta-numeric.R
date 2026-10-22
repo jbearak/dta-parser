@@ -642,6 +642,13 @@ as.logical.dta_numeric <- function(x, ...) {
 }
 
 .restore_dta_metadata <- function(value, prototype, storage) {
+    # The code below in one native call, which returns NULL for every case
+    # where the code below warns or the native call does not follow it.
+    restored <- .Call(
+        C_dtatools_restore_numeric_metadata, value, prototype, storage,
+        names(value), .dta_variable_attribute_names, .dta_storage
+    )
+    if (!is.null(restored)) return(restored)
     desired <- .dta_attribute_plan(
         prototype, storage, result_names = names(value), temporal = FALSE
     )

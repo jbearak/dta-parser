@@ -5,6 +5,14 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Restoring a Stata numeric vector's attributes after vctrs slices, casts,
+  or combines it takes one native call, which sets the same attributes in
+  the same order. A case that call does not cover, such as an attribute the
+  restoration warns about, still runs the R code. TODO numbers. Results and
+  warnings are unchanged. A traced or replaced `.dta_attribute_plan()`,
+  `.dta_classes_from()`, or `.replace_dta_attributes()` no longer sees these
+  restores (ADR 0049).
+
 * Before a native route skips R code, it proves that each R function it
   skips is unchanged. It now remembers each proof and walks a function again
   only when its binding holds a different object, as after `trace()` or a
