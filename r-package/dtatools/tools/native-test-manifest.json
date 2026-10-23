@@ -12764,6 +12764,10 @@
         {
           "path": "tests/testthat/test-slice-dta-rows.R",
           "sha256": "60b0d5e4faab6ac1a572925e37a146bf9a063c9cd483d56d7871a40b6987519f"
+        },
+        {
+          "path": "tests/testthat/test-split-column.R",
+          "sha256": "5507f4a2b3d1a291b64da66a81f24ee07074ad5ce9fc15bcbe7ba4abb306a884"
         }
       ],
       "blocks": [
@@ -13618,6 +13622,33 @@
           "skip": "forbid",
           "min_pass": 5,
           "warnings": 0
+        },
+        {
+          "file": "test-split-column.R",
+          "test": "a column splits into the chunks the per-group gathers give",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 37,
+          "warnings": 0
+        },
+        {
+          "file": "test-split-column.R",
+          "test": "the split declines what the per-group gathers leave to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 8,
+          "warnings": 0
+        },
+        {
+          "file": "test-split-column.R",
+          "test": "grouped verbs read each column with one split",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [

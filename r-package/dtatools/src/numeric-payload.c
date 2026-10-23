@@ -3123,6 +3123,53 @@ SEXP C_dtatools_gather_numeric_columns(
     return result;
 }
 
+/* `.gather_dta_columns(list(value = value), index)[[1L]]` for each `index`
+   in `rows`, through the gathers it calls, given its `native` verdict for
+   the column. A grouped verb reads each column this way once per group.
+   Return NULL where the owned discrete gather declines, so the R code
+   gathers every group itself (ADR 0051). Decline at once for an ALTREP
+   column or row vector the package does not own, whose reads can run R
+   code, so the R code reads it as often as before. The gathers run no R
+   code otherwise, so redoing groups this call gathered has no other
+   effect. */
+SEXP C_dtatools_split_column(SEXP value, SEXP rows, SEXP native) {
+    if (TYPEOF(rows) != VECSXP || TYPEOF(native) != LGLSXP ||
+        XLENGTH(native) != 1 || LOGICAL(native)[0] == NA_LOGICAL ||
+        (ALTREP(value) && !owned_column(value) &&
+         unmaterialized_numeric_read_storage(value) == NULL)) return R_NilValue;
+    R_xlen_t count = XLENGTH(rows);
+    for (R_xlen_t i = 0; i < count; i++) {
+        SEXP index = VECTOR_ELT(rows, i);
+        if (ALTREP(index) && !owned_column(index)) return R_NilValue;
+    }
+    SEXP numeric = PROTECT(Rf_allocVector(VECSXP, 1));
+    SET_VECTOR_ELT(numeric, 0, value);
+    SEXP discrete = PROTECT(Rf_allocVector(VECSXP, 1));
+    SET_VECTOR_ELT(discrete, 0, value);
+    Rf_setAttrib(discrete, R_NamesSymbol, Rf_mkString("value"));
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t i = 0; i < count; i++) {
+        const void *vmax = vmaxget();
+        SEXP index = VECTOR_ELT(rows, i), chunk = R_NilValue;
+        if (LOGICAL(native)[0])
+            chunk = VECTOR_ELT(C_dtatools_gather_numeric_columns(
+                numeric, R_NilValue, index, R_NilValue), 0);
+        if (chunk == R_NilValue) {
+            SEXP gathered = C_dtatools_gather_owned_discrete(discrete, index);
+            if (gathered == R_NilValue) {
+                UNPROTECT(3);
+                return R_NilValue;
+            }
+            chunk = VECTOR_ELT(gathered, 0);
+        }
+        SET_VECTOR_ELT(result, i, chunk);
+        vmaxset(vmax);
+    }
+    Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(rows, R_NamesSymbol));
+    UNPROTECT(3);
+    return result;
+}
+
 typedef struct {
     void *data;
     SEXP backing;

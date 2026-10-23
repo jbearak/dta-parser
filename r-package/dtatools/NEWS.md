@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped verbs on a dibble split each Stata numeric column they read into
+  its groups in one native call. They had gathered each group's rows with a
+  separate call to an R helper that decided again, for every group, how to
+  gather the column. Over the 42,739 women in the first 100,000 rows of the
+  India 2021 DHS births file, `summarise(b, m = mean(b2), .by = caseid)`
+  falls from about 1.58 to 1.22 seconds, `mutate(b, m = mean(b2), .by =
+  caseid)` from 1.26 to 0.95, and `filter(b, b2 == max(b2), .by = caseid)`
+  from 1.79 to 1.50. Results are unchanged. When the split applies, a
+  traced or replaced `.gather_dta_columns()` no longer sees the read, and
+  the helpers it decides with see one call per column read instead of one
+  per group. When the split declines, as for strings, those helpers see one
+  more call per column read before the per-group calls (ADR 0051).
+
 * Arithmetic, summaries such as `mean()`, and math functions on Stata
   numerics build a result of fewer than 2,048 values in one native call.
   Such a result had gone through the package's R code for choosing its
