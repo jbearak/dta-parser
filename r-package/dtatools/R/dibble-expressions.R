@@ -365,11 +365,16 @@
                         for (id in seq_along(mask$rows)) {
                             value <- mask$evaluate(quo, id)
                             if (!is.null(value)) {
-                                if (!vctrs::obj_is_vector(value)) {
+                                # A bare vector or a package Stata numeric
+                                # is a vector of its length, which the
+                                # native call returns without its
+                                # vec_proxy() method (ADR 0052).
+                                actual <- .Call(C_dtatools_chunk_size, value)
+                                if (is.null(actual) && !vctrs::obj_is_vector(value)) {
                                     rlang::abort(paste0("`", name, "` must be a vector."))
                                 }
                                 expected <- length(mask$rows[[id]])
-                                actual <- vctrs::vec_size(value)
+                                if (is.null(actual)) actual <- vctrs::vec_size(value)
                                 if (actual != expected && actual != 1L) {
                                     rlang::abort(paste0("`", name, "` must be size ", expected,
                                         " or 1, not ", actual, ".",

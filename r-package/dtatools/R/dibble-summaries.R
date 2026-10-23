@@ -205,6 +205,7 @@
                 quo <- adapter$expand_summary(original, mask$helpers, original_name, index)
                 typable <- .mask_expression_typable(original, context$columns)
                 chunks <- vector("list", length(mask$rows))
+                known <- rep.int(NA_integer_, length(mask$rows))
                 for (id in seq_along(mask$rows)) {
                     value <- mask$with_group(id, function(evaluate) {
                         value <- evaluate(quo)
@@ -223,6 +224,11 @@
                             value
                         } else .retyped_column(value, prior(name), length(value), caller)
                     })
+                    # A bare vector or a package Stata numeric is a vector
+                    # of its length, which the native call returns without
+                    # its vec_proxy() method (ADR 0052).
+                    measured <- .Call(C_dtatools_chunk_size, value)
+                    if (!is.null(measured)) known[[id]] <- measured else
                     if (!is.null(value) && !vctrs::obj_is_vector(value)) {
                         rlang::abort(paste0("`", name, "` must be a vector."))
                     }
@@ -247,7 +253,7 @@
                             chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
                             vctrs::vec_c(!!!chunks, .ptype = ptype)
                         }), .native_admission_if)
-                install <- function(target, pieces, value) {
+                install <- function(target, pieces, value, sizes = NULL) {
                     binding_chunks <- pieces
                     if (identical(groups$type, "rowwise") &&
                         all(vapply(pieces, function(x) vctrs::obj_is_list(x) &&
@@ -257,12 +263,12 @@
                     mask$add(target, value, binding_chunks)
                     records[[length(records) + 1L]] <<- list(name = target,
                         chunks = pieces, result = value, quo = original,
-                        original_name = original_name)
+                        original_name = original_name, sizes = sizes)
                 }
                 if (!nzchar(original_name) && is.data.frame(result)) {
                     for (target in names(result)) install(target,
                         lapply(chunks, .subset2, target), result[[target]])
-                } else install(name, chunks, result)
+                } else install(name, chunks, result, known)
             }
             count <- nrow(groups$keys)
             sizes <- rep.int(1L, count)
@@ -272,8 +278,19 @@
                 chunk_sizes[[record_index]] <- numeric(count)
                 original <- record$quo
                 original_name <- record$original_name
+                known <- record$sizes
+                # When every group's size is known to be one, no check can
+                # fail, and the mask ends at the last group as the loop
+                # leaves it.
+                if (!reframe && length(known) == count && !anyNA(known) &&
+                    all(known == 1L)) {
+                    chunk_sizes[[record_index]] <- as.double(known)
+                    if (count) mask$set_group(count)
+                    next
+                }
                 for (id in seq_len(count)) {
-                    actual <- vctrs::vec_size(record$chunks[[id]])
+                    actual <- if (!is.null(known) && !is.na(known[[id]])) known[[id]] else
+                        vctrs::vec_size(record$chunks[[id]])
                     chunk_sizes[[record_index]][[id]] <- actual
                     mask$set_group(id)
                     if (!reframe && actual != 1L) {

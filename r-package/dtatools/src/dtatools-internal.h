@@ -438,6 +438,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_owned_no_na(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_set_string(SEXP value, SEXP index, SEXP replacement);
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_subset(SEXP value, SEXP index);
 DTATOOLS_INTERNAL SEXP C_dtatools_gather_owned_discrete(SEXP columns, SEXP locations);
+DTATOOLS_INTERNAL SEXP C_dtatools_chunk_size(SEXP value);
 DTATOOLS_INTERNAL int dtatools_adopt_atomic(SEXP values, SEXP *result);
 DTATOOLS_INTERNAL SEXP C_dtatools_callback_double(SEXP values, SEXP callback, SEXP element);
 DTATOOLS_INTERNAL SEXP C_dtatools_callback_integer(SEXP values, SEXP callback);
