@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Compact Stata numerics built from R's own bytes, by the `dta_*()`
+  constructors, computed results such as `mean()`, subsets, gathers,
+  copies, `dta_append()` and unserialization, keep their descriptor on R's
+  heap and register no finalizer. R scans every finalizer at each
+  collection, so a grouped verb, which keeps one such result per group,
+  had made each collection slower. Over the 42,739 women in the first
+  100,000 rows of the India 2021 DHS births file, `summarise(b, m =
+  mean(b2), x = max(bord), .by = caseid)` falls from about 3.07 to 2.59
+  seconds and `summarise(b, m = max(bord), .by = caseid)` from 1.51 to
+  1.33. Results are unchanged.
+
 * Grouped verbs on a dibble split each Stata numeric column they read into
   its groups in one native call. They had gathered each group's rows with a
   separate call to an R helper that decided again, for every group, how to
