@@ -1,5 +1,7 @@
 .typed_fast <- function(value, row_count = length(value)) {
-    .Call(C_dtatools_typed_column_fast, value, environment())
+    typed <- .Call(C_dtatools_typed_column_fast, value)
+    if (is.raw(typed)) typed <- .Call(C_dtatools_typed_scalar_fast, value, row_count)
+    typed
 }
 .typed_facts <- function(x) list(
     value = x, attributes = attributes(x), altrep = .is_altrep(x),
@@ -47,7 +49,7 @@ test_that("the shortcut leaves other values to the R code", {
         integer_beyond = 2147483621L, nan = NaN, infinite = Inf, double_na = NA_real_,
         double_beyond = 8.1e307, double_below = -9e307, integers = 1:2, doubles = c(1.5, 2), named = c(a = 1),
         character = "a", string = dta_string("a"), s4 = asS4(1), foreign = foreign,
-        date = Sys.Date(), datetime = Sys.time(), list = list(1), complex = 1i,
+        date = Sys.Date(), datetime = Sys.time(), list = list(1), complex = 1i, raw = raw(0),
         haven = structure(1, labels = c(a = 1), class = c("haven_labelled",
                                                                           "vctrs_vctr", "double"))
     )
@@ -62,8 +64,22 @@ test_that("the shortcut leaves other values to the R code", {
             tryCatch(.typed_column(value, length(value), "summarise()"), error = conditionMessage)
         ), info = name)
     }
-    expect_null(.typed_fast(1L, "1"))
-    expect_null(.typed_fast(1L, c(1, 2)))
+    # The scalar call takes only a count the R code would accept unchanged.
+    # The R code rejects `NULL` and the missing, negative, fractional and
+    # infinite counts with its own error, and reads the others through
+    # `as.double()`.
+    counts <- list(character = "1", vector = c(1, 2), null = NULL, missing = NA_integer_,
+                   negative = -1, fraction = 2.5, infinite = Inf, classed = dta_int(1))
+    for (name in names(counts)) {
+        count <- counts[[name]]
+        expect_null(.typed_fast(1L, count), info = name)
+        expect_null(.typed_fast(1.5, count), info = name)
+        expect_identical(
+            tryCatch(.retyped_column(1L, NULL, count, "summarise()"), error = function(e)
+                list(conditionMessage(e), conditionCall(e))),
+            tryCatch(.typed_column(1L, count, "summarise()"), error = function(e)
+                list(conditionMessage(e), conditionCall(e))), info = name)
+    }
     # R and C can parse 8e307 a unit apart, so either path may type the
     # limit. Both give the same column.
     for (value in c(8e307, -8e307)) expect_true(.typed_same(

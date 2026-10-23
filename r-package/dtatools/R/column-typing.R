@@ -171,8 +171,10 @@
     if (is.null(prior)) {
         # A typed value and a bare scalar take one native call, which gives
         # what `.typed_column()` would without its R helpers (ADR 0053).
-        # It forces `row_count` only for a scalar it types.
-        typed <- .Call(C_dtatools_typed_column_fast, value, environment())
+        # It returns an empty raw vector for a scalar that needs `row_count`,
+        # which is forced only then.
+        typed <- .Call(C_dtatools_typed_column_fast, value)
+        if (is.raw(typed)) typed <- .Call(C_dtatools_typed_scalar_fast, value, row_count)
         if (!is.null(typed)) return(typed)
         return(.typed_column(value, row_count, caller))
     }
