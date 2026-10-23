@@ -5,6 +5,18 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` and `mutate()` find the size of each group's result
+  in one native call when it is a bare vector or a Stata numeric. They had
+  called `vctrs::obj_is_vector()` and `vctrs::vec_size()`, which run
+  `vec_proxy.dta_numeric()` in R for each group. `summarise()` also skips
+  its second size check when every group's result has size one. Over the
+  42,739 women in the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 1.22 to 0.93
+  seconds, `mutate(b, m = mean(b2), .by = caseid)` from 0.95 to 0.75, and
+  `summarise(b, n = n(), .by = caseid)` from 0.87 to 0.61. Results and error
+  messages are unchanged. A `vec_proxy.dta_numeric()` defined in the global
+  environment no longer sees these checks (ADR 0052).
+
 * Grouped verbs on a dibble split each Stata numeric column they read into
   its groups in one native call. They had gathered each group's rows with a
   separate call to an R helper that decided again, for every group, how to
