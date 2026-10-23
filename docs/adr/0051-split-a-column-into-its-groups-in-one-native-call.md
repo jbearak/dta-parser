@@ -30,10 +30,13 @@ already gathered has no effect beyond time. A verdict of `NA`, which makes
 the R code fail, also returns `NULL`, so the error comes from the R code.
 Rowwise reads keep the R code.
 
-The decision now runs once per column instead of once per group, so a traced
-or replaced `.gather_dta_columns()`, `.declared_dta_storage()` or
-`.dta_merge_has_compact_storage()`, or a base function they call, sees one
-call per column read where it saw one per group. This replaces, for these
+When the split applies, the mask does not call `.gather_dta_columns()` for
+the column, and the decision's helpers, `.declared_dta_storage()` and
+`.dta_merge_has_compact_storage()`, and the base functions they call run once
+per column read where they ran once per group. When the split declines, the
+decision has already run once, and the R code then calls
+`.gather_dta_columns()` for each group as before, so a traced or replaced
+helper sees one more call per column read. This replaces, for these
 reads, the practice that a native route proves every R function it skips
 unchanged. The maintainer approved changing decisions that block measured
 speedups on 2026-10-22.
