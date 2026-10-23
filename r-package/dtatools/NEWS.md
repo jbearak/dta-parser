@@ -9,9 +9,9 @@
   it is an atomic vector, and checks once per expression instead of once
   per group whether the result replaces a column. Over the 42,739 women in
   the first 100,000 rows of the India 2021 DHS births file,
-  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.84 to 0.70
-  seconds, `summarise(b, m = max(bord), .by = caseid)` from 1.10 to 0.94,
-  and `summarise(b, n = n(), k = n(), .by = caseid)` from 1.48 to 1.14.
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.83 to 0.69
+  seconds, `summarise(b, m = max(bord), .by = caseid)` from 1.10 to 0.92,
+  and `summarise(b, n = n(), k = n(), .by = caseid)` from 1.17 to 0.87.
   Results are unchanged. A traced or replaced `.metadata_copy()` no longer
   sees these copies (ADR 0055).
 
