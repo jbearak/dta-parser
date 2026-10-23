@@ -610,7 +610,7 @@ static SEXP arithmetic_adopt_backing(SEXP backing, R_xlen_t length,
                                      int kind, size_t missing_count) {
     SEXP result = PROTECT(kind == NUMERIC_DOUBLE
         ? owned_adopt_real(backing)
-        : numeric_from_backing_managed(backing, (size_t) length, kind, 0, 119,
+        : numeric_from_backing(backing, (size_t) length, kind, 0, 119,
                                        missing_count));
     if (kind == NUMERIC_DOUBLE) {
         owned_flags(result)[OWNED_NO_NA] = missing_count == 0;

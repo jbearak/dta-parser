@@ -276,6 +276,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_owned_numeric_info", (DL_FUNC) &C_dtatools_owned_numeric_info, 1},
     {"C_dtatools_numeric_domain_info", (DL_FUNC) &C_dtatools_numeric_domain_info, 1},
     {"C_dtatools_numeric_facts_info", (DL_FUNC) &C_dtatools_numeric_facts_info, 1},
+    {"C_dtatools_numeric_descriptor_managed", (DL_FUNC) &C_dtatools_numeric_descriptor_managed, 1},
     {"C_dtatools_test_numeric_freeze_checkpoint", (DL_FUNC) &C_dtatools_test_numeric_freeze_checkpoint, 2},
     {"C_dtatools_native_copy_stats", (DL_FUNC) &C_dtatools_native_copy_stats, 1},
     {"C_dtatools_numeric_entry_stats", (DL_FUNC) &C_dtatools_numeric_entry_stats, 1},
