@@ -13707,6 +13707,10 @@
           "sha256": "abcc5c3ef32f12093e14b07e09ad671b62e125825420542c03659b5d6f1e6f01"
         },
         {
+          "path": "tests/testthat/test-chunk-size.R",
+          "sha256": "286144009d6273c430153cbbca6b55e6b5e073549365f589553d8741215ed91c"
+        },
+        {
           "path": "tests/testthat/test-dibble-group-validation.R",
           "sha256": "712b7b60cd8a509f7a569601ff9a23248a78f0830ca84d2e5ad7990b70581093"
         },
@@ -15191,6 +15195,44 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 1,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-chunk-size.R",
+          "test": "the native size matches vctrs for the results it covers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 60,
+          "warnings": 0
+        },
+        {
+          "file": "test-chunk-size.R",
+          "test": "the native size leaves other values to vctrs",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 17,
+          "warnings": 0
+        },
+        {
+          "file": "test-chunk-size.R",
+          "test": "grouped verbs size bare and Stata numeric results without vctrs",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-chunk-size.R",
+          "test": "grouped verbs report sizes and non-vectors as before",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 7,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
