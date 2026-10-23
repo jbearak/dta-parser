@@ -11,9 +11,9 @@
   through several R helpers that decide its Stata type, and grouped verbs
   type one result per group. Over the 42,739 women in the first 100,000
   rows of the India 2021 DHS births file, `summarise(b, n = n(), .by =
-  caseid)` falls from about 0.65 to 0.49 seconds, `summarise(b, k = 2.5,
-  .by = caseid)` from 0.53 to 0.39, and `summarise(b, n = n(), k = n(),
-  .by = caseid)` from 1.62 to 1.33. Results are unchanged. A traced or
+  caseid)` falls from about 0.60 to 0.45 seconds, `summarise(b, k = 2.5,
+  .by = caseid)` from 0.52 to 0.38, and `summarise(b, n = n(), k = n(),
+  .by = caseid)` from 1.48 to 1.17. Results are unchanged. A traced or
   replaced `.typed_column()`, or a helper it calls, no longer sees these
   results (ADR 0053).
 
