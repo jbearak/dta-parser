@@ -2405,42 +2405,20 @@ SEXP numeric_max(SEXP value, Rboolean na_rm) {
     return numeric_extreme(value, na_rm, 0);
 }
 
-SEXP numeric_from_backing(
-    SEXP backing, size_t length, int kind, int temporal,
+/* The external pointer for compact storage whose bytes are fresh plain
+   bytes in `backing`, an R raw vector it protects. The descriptor lives on
+   R's heap beside them, so it needs no finalizer, unlike a descriptor with a
+   native owner, which needs its Rust destructor. A finalizer would keep the
+   payload alive for an extra collection, and R scans every registered
+   finalizer at each collection, so a grouped verb holding one compact result
+   per group paid for all of them at every collection it ran. Serialization
+   continues to emit ordinary raw bytes. The caller protects the result. */
+static SEXP numeric_managed_external(
+    SEXP backing, void *values, size_t length, int kind, int temporal,
     int format_version, size_t missing_count
 ) {
-    /* backing may be rooted only by a public handle whose finalizer or
-       materialization clears that root during external-pointer allocation. */
-    PROTECT(backing);
-    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
-    void *data = dtatools_numeric_alloc(
-        RAW(backing), length, kind, temporal, missing_count
-    );
-    if (data == NULL) {
+    if (kind < NUMERIC_BYTE || kind > NUMERIC_FLOAT || temporal < 0 || temporal > 2)
         Rf_error("could not allocate compact Stata numeric storage");
-    }
-    R_SetExternalPtrAddr(external, data);
-    numeric_data *numeric = (numeric_data *) data;
-    numeric->format_version = format_version;
-    if (missing_count == SIZE_MAX) {
-        numeric->missing_count = numeric_count_missing(numeric);
-    }
-    SEXP result = PROTECT(R_new_altrep(
-        dtatools_numeric_class, external, R_NilValue
-    ));
-    UNPROTECT(3);
-    return result;
-}
-
-/* Adopt only freshly produced plain bytes. A native-owner descriptor still
-   needs its Rust destructor. This descriptor and its payload are both R-owned,
-   so registering a finalizer would unnecessarily keep the payload alive for
-   an extra collection. Serialization continues to emit ordinary raw bytes. */
-static SEXP numeric_from_backing_managed(
-    SEXP backing, size_t length, int kind, int temporal,
-    int format_version, size_t missing_count
-) {
     PROTECT(backing);
     if (numeric_managed_descriptor_symbol == NULL)
         numeric_managed_descriptor_symbol = Rf_install("dtatools.numeric_descriptor");
@@ -2449,7 +2427,7 @@ static SEXP numeric_from_backing_managed(
     ));
     numeric_data *data = numeric_managed_descriptor_pointer(descriptor);
     numeric_data initial = {
-        .values = RAW(backing), .length = length, .kind = kind,
+        .values = values, .length = length, .kind = kind,
         .temporal = temporal, .format_version = format_version,
         .missing_count = missing_count, .native_owner = NULL,
         .scalar_values = NULL, .scalar_start = 0, .scalar_end = 0,
@@ -2460,12 +2438,35 @@ static SEXP numeric_from_backing_managed(
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
     Rf_setAttrib(external, numeric_managed_descriptor_symbol, descriptor);
     R_SetExternalPtrAddr(external, data);
+    UNPROTECT(3);
+    return external;
+}
+
+SEXP numeric_from_backing(
+    SEXP backing, size_t length, int kind, int temporal,
+    int format_version, size_t missing_count
+) {
+    SEXP external = PROTECT(numeric_managed_external(
+        backing, RAW(backing), length, kind, temporal, format_version, missing_count
+    ));
+    numeric_data *data = (numeric_data *) R_ExternalPtrAddr(external);
     if (missing_count == SIZE_MAX) data->missing_count = numeric_count_missing(data);
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));
-    UNPROTECT(4);
+    UNPROTECT(2);
     return result;
+}
+
+/* Test-only: whether the descriptor of a compact numeric, or of the one a
+   metadata proxy wraps, lives on R's heap, so that no finalizer was
+   registered for it. NA for any other value. */
+SEXP C_dtatools_numeric_descriptor_managed(SEXP value) {
+    SEXP source = numeric_base_source(value);
+    if (source == R_NilValue) return Rf_ScalarLogical(NA_LOGICAL);
+    return Rf_ScalarLogical(numeric_managed_descriptor_symbol != NULL &&
+        Rf_getAttrib(R_altrep_data1(source), numeric_managed_descriptor_symbol) !=
+            R_NilValue);
 }
 
 SEXP numeric_compact_copy(const numeric_data *data) {
@@ -5471,13 +5472,10 @@ static int compact_numeric_scan(
 static SEXP compact_numeric_from_scan(
     SEXP backing, size_t length, int kind, const compact_numeric_facts *facts
 ) {
-    void *data = dtatools_numeric_alloc(
-        RAW(backing), length, kind, 0, facts->missing_count
-    );
-    if (data == NULL) {
-        Rf_error("could not allocate compact Stata numeric storage");
-    }
-    numeric_data *storage = data;
+    SEXP external = PROTECT(numeric_managed_external(
+        backing, RAW(backing), length, kind, 0, 119, facts->missing_count
+    ));
+    numeric_data *storage = (numeric_data *) R_ExternalPtrAddr(external);
     storage->zero_count = facts->zero_count;
     storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
     if (kind == NUMERIC_FLOAT) {
@@ -5487,8 +5485,6 @@ static SEXP compact_numeric_from_scan(
         storage->domain_flags |= NUMERIC_DOMAIN_STRICT_MODERN_FLOAT |
             NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
     }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     SEXP result = R_new_altrep(dtatools_numeric_class, external, R_NilValue);
     UNPROTECT(1);
     return result;
@@ -5670,16 +5666,12 @@ SEXP C_dtatools_construct_numeric(
         }
     }
 
-    void *data = dtatools_numeric_alloc(
-        output, (size_t) length, kind, temporal, missing_count
-    );
-    if (data == NULL) {
-        UNPROTECT(1);
-        Rf_error("could not allocate compact Stata numeric storage");
-    }
+    SEXP external = PROTECT(numeric_managed_external(
+        backing, output, (size_t) length, kind, temporal, 119, missing_count
+    ));
     /* Facts describe final encoded bytes, before publishing the descriptor. */
     if (temporal == 0) {
-        numeric_data *storage = data;
+        numeric_data *storage = (numeric_data *) R_ExternalPtrAddr(external);
         storage->zero_count = zero_count;
         storage->domain_flags = NUMERIC_DOMAIN_ZERO_COUNT_KNOWN;
         if (kind == NUMERIC_FLOAT) {
@@ -5689,8 +5681,6 @@ SEXP C_dtatools_construct_numeric(
                 NUMERIC_DOMAIN_FLOAT_BOUNDS_KNOWN;
         }
     }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));
@@ -8076,15 +8066,9 @@ SEXP C_dtatools_construct_numeric_trusted(
         write_numeric_missing(output, index, kind, offset);
     }
 
-    void *data = dtatools_numeric_alloc(
-        output, (size_t) length, kind, temporal, missing_count
-    );
-    if (data == NULL) {
-        UNPROTECT(1);
-        Rf_error("could not allocate compact Stata numeric storage");
-    }
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP external = PROTECT(numeric_managed_external(
+        backing, output, (size_t) length, kind, temporal, 119, missing_count
+    ));
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));

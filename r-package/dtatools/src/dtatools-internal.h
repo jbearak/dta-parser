@@ -900,6 +900,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_freeze(SEXP value, SEXP chunk_ro
 DTATOOLS_INTERNAL SEXP C_dtatools_owned_numeric_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_domain_info(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_facts_info(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_numeric_descriptor_managed(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_numeric_freeze_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL SEXP C_dtatools_force_altrep_materialization(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement);

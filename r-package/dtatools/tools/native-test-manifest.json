@@ -1734,6 +1734,10 @@
           "sha256": "5229c289cd862c5c3fce9bfca85e6fb572fe1a55ae3b8826edb2755a2ecda473"
         },
         {
+          "path": "tests/testthat/test-compact-descriptors.R",
+          "sha256": "33ddffb695845419e0bba67b7993440d8bb8319b298ce03610e7f7a225d91dfa"
+        },
+        {
           "path": "tests/testthat/test-dta-string.R",
           "sha256": "ee10f812d6c326c94ec93927c0ee98aa250fb48658c5236a291dc56f2ec0e2e8"
         },
@@ -5031,6 +5035,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-descriptors.R",
+          "test": "compact numerics built from R bytes keep their descriptor on R's heap",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 14,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-descriptors.R",
+          "test": "reader columns keep the native owner their finalizer releases",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-compact-descriptors.R",
+          "test": "compact numerics with R-owned descriptors keep their values",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],
