@@ -17,6 +17,15 @@
   messages are unchanged. A `vec_proxy.dta_numeric()` defined in the global
   environment no longer sees these checks (ADR 0052).
 
+* `mean()` and `range()` on Stata numerics look up the names their checks
+  need once per session instead of on every call, and `mean()` checks for
+  user-defined `mean.numeric()` and `mean.double()` methods in the global
+  environment once instead of twice. `mean()` of a three-value int falls
+  from about 8.0 to 6.7 microseconds. Over the 42,739 women in the first
+  100,000 rows of the India 2021 DHS births file, `mutate(b, m = mean(b2),
+  .by = caseid)` falls from about 1.29 to 1.21 seconds. Results are
+  unchanged.
+
 * Grouped verbs on a dibble split each Stata numeric column they read into
   its groups in one native call. They had gathered each group's rows with a
   separate call to an R helper that decided again, for every group, how to

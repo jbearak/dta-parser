@@ -423,6 +423,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_native_copy_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_numeric_entry_stats(SEXP reset);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_arithmetic_checkpoint(SEXP mode, SEXP token);
 DTATOOLS_INTERNAL SEXP C_dtatools_test_materialization_checkpoint(SEXP mode, SEXP token);
+DTATOOLS_INTERNAL void initialize_numeric_symbols(void);
 DTATOOLS_INTERNAL void initialize_numeric_size_gate(void);
 DTATOOLS_INTERNAL void initialize_proof_memo(void);
 DTATOOLS_INTERNAL void release_proof_memo(void);
