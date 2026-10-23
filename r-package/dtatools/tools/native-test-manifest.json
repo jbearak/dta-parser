@@ -13771,7 +13771,7 @@
         },
         {
           "path": "tests/testthat/test-initial-capture.R",
-          "sha256": "7603ae97911485d1356e6b49795b462168cda827d61b6ae12a21df6e92ff814d"
+          "sha256": "4a6e637e65c0d48a2d2e19a101c24b18873ab644481839d3f648919e286b2f6f"
         },
         {
           "path": "tests/testthat/test-initial-capture-names.R",
@@ -13784,6 +13784,10 @@
         {
           "path": "tests/testthat/test-grouped-native-lifecycle.R",
           "sha256": "0b22eca94faf97f769cfe7c82aa77e72420824d2980f2619975242e4a28ca87e"
+        },
+        {
+          "path": "tests/testthat/test-group-capture.R",
+          "sha256": "053c61f9509e7fbd811dad9945785bff118f2d7df3dc69872b96bb89d8fc0030"
         }
       ],
       "blocks": [
@@ -15280,6 +15284,33 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 7,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-group-capture.R",
+          "test": "atomic values capture as `.metadata_copy()` copies them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 72,
+          "warnings": 0
+        },
+        {
+          "file": "test-group-capture.R",
+          "test": "other values keep the R capture",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 11,
+          "warnings": 0
+        },
+        {
+          "file": "test-group-capture.R",
+          "test": "a summary that replaces a column types it against that column",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",

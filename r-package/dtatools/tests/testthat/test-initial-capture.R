@@ -120,7 +120,10 @@ test_that("initial capture retains replaced and executable traced helper callbac
             list(value = value, counts = .initial_capture_test_counts(), hits = hits)
         }, finally = .initial_capture_test_set(where, helper, original))
         info <- paste(helper, mode)
-        expect_true(observed$hits > 0L, info = info)
+        # Every column is atomic, and an atomic column takes `.metadata_copy()`
+        # in one native call, without the helper (ADR 0055).
+        if (helper == ".metadata_copy") expect_identical(observed$hits, 0L, info = info)
+        else expect_true(observed$hits > 0L, info = info)
         expect_identical(observed$counts[[paste0(targets[[helper]], "_admitted")]], 0, info = info)
         expect_identical(lapply(observed$value, as.double), lapply(columns, as.double), info = info)
     }

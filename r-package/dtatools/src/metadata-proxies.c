@@ -438,6 +438,25 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
     return Rf_shallow_duplicate(value);
 }
 
+/* `.capture_dibble_nested()` of an atomic vector, which is `.metadata_copy()`:
+   the copy above, then a data.table repair that applies only to a value of
+   that class. R_NilValue leaves the value to the R code: lists, reference
+   types such as environments and functions, S4 objects, and objects whose
+   class names data.table or is an ALTREP vector, whose reads could run a
+   provider's code that the R code would then run again (ADR 0055). */
+SEXP C_dtatools_capture_atomic(SEXP value) {
+    switch (TYPEOF(value)) {
+    case LGLSXP: case INTSXP: case REALSXP: case CPLXSXP: case STRSXP: case RAWSXP:
+        break;
+    default:
+        return R_NilValue;
+    }
+    if (Rf_isS4(value) || (Rf_isObject(value) &&
+        (ALTREP(Rf_getAttrib(value, R_ClassSymbol)) || Rf_inherits(value, "data.table"))))
+        return R_NilValue;
+    return C_dtatools_metadata_copy(value);
+}
+
 /**
  * Create a metadata view for internal reads without isolating native backing.
  * Use C_dtatools_metadata_copy when later explicit writes need isolation.
