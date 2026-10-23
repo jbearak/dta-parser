@@ -569,6 +569,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_gather_numeric(
 DTATOOLS_INTERNAL SEXP C_dtatools_gather_numeric_columns(
     SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_split_column(SEXP value, SEXP rows, SEXP native);
 DTATOOLS_INTERNAL SEXP C_dtatools_dictstring_match_codes(SEXP x, SEXP y);
 DTATOOLS_INTERNAL int dtatools_make_numeric(
     void *data, SEXP backing, int *transferred, SEXP *result

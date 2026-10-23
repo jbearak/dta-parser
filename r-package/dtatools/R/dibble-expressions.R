@@ -159,7 +159,9 @@
         generation$used <- TRUE
         if (is.null(generation$chunks)) {
             value <- generation$value
-            generation$chunks <- if (identical(groups$type, "ungrouped")) list(value) else
+            chunks <- if (identical(groups$type, "ungrouped")) list(value) else
+                if (!rowwise) .split_dta_column(value, rows)
+            generation$chunks <- if (!is.null(chunks)) chunks else
                 lapply(rows, function(index) {
                     if (rowwise && vctrs::obj_is_list(value)) {
                         if (!length(value)) {
