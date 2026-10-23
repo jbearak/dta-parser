@@ -168,7 +168,16 @@
 # result enters it, so a later expression sees the Stata column the
 # result will hold (ADR 0034).
 .retyped_column <- function(value, prior, row_count, caller) {
-    if (is.null(prior)) return(.typed_column(value, row_count, caller))
+    if (is.null(prior)) {
+        # A typed value takes one native call and a bare scalar two, which
+        # give what `.typed_column()` would without its R helpers (ADR 0053).
+        # The first returns an empty raw vector for a scalar that needs
+        # `row_count`, which is forced only then.
+        typed <- .Call(C_dtatools_typed_column_fast, value)
+        if (is.raw(typed)) typed <- .Call(C_dtatools_typed_scalar_fast, value, row_count)
+        if (!is.null(typed)) return(typed)
+        return(.typed_column(value, row_count, caller))
+    }
     .promoted_column(value, prior, row_count, caller)
 }
 

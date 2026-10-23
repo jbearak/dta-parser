@@ -844,6 +844,8 @@ DTATOOLS_INTERNAL SEXP C_dtatools_set_values_fast(SEXP data, SEXP frame);
 DTATOOLS_INTERNAL SEXP C_dtatools_peek_promote(SEXP frame);
 DTATOOLS_INTERNAL SEXP C_dtatools_patch_scalar(SEXP data, SEXP name, SEXP rows, SEXP value, SEXP promote);
 DTATOOLS_INTERNAL SEXP C_dtatools_generate_scalar(SEXP value, SEXP rows, SEXP count, SEXP storage);
+DTATOOLS_INTERNAL SEXP C_dtatools_typed_column_fast(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_typed_scalar_fast(SEXP value, SEXP count);
 DTATOOLS_INTERNAL SEXP C_dtatools_mutation_name_location(SEXP data, SEXP name);
 DTATOOLS_INTERNAL SEXP C_dtatools_physical_column_count(SEXP data);
 DTATOOLS_INTERNAL SEXP C_dtatools_mark_reference_data(
