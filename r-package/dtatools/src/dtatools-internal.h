@@ -827,6 +827,7 @@ DTATOOLS_INTERNAL SEXP metadata_proxy(
 DTATOOLS_INTERNAL SEXP metadata_real_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP metadata_string_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_copy(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_capture_atomic(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_view(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_any_attribute(SEXP x, SEXP names);
 DTATOOLS_INTERNAL SEXP C_dtatools_restore_numeric_metadata(
