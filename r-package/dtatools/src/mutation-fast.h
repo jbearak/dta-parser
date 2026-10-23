@@ -180,4 +180,45 @@ SEXP C_dtatools_generate_scalar(SEXP value, SEXP rows, SEXP count, SEXP storage)
     return result;
 }
 
+/* `.typed_column()` for the values a grouped verb's expressions usually
+   return, without its R helpers (ADR 0053). A Stata numeric, temporal or
+   factor, and a bare logical, are typed already and come back as they are.
+   A bare integer or double scalar that `.generated_column()` would hand to
+   C_dtatools_generate_scalar() takes that call, as a long or a double. NULL
+   for anything else, including S4 objects, which the R code types. So is a
+   class vector that is ALTREP, since reading one can run its provider's code,
+   which the R code would then run again. The row count is `row_count` in the
+   caller's frame. Like `.generated_column()`, the call forces it only after
+   the value qualifies, so a declined value, such as a foreign ALTREP vector
+   whose length the call site passes, keeps the R code's order. */
+SEXP C_dtatools_typed_column_fast(SEXP value, SEXP frame) {
+    if (Rf_isS4(value) || (Rf_isObject(value) && ALTREP(Rf_getAttrib(value, R_ClassSymbol))))
+        return R_NilValue;
+    if (Rf_inherits(value, "dta_numeric") || Rf_inherits(value, "dta_temporal") ||
+        Rf_inherits(value, "factor") || (TYPEOF(value) == LGLSXP && !Rf_isObject(value)))
+        return value;
+    if (!mutation_plain_numeric(value) || TYPEOF(value) == LGLSXP || XLENGTH(value) != 1 ||
+        TYPEOF(frame) != ENVSXP) return R_NilValue;
+    if (TYPEOF(value) == INTSXP) {
+        int number = INTEGER(value)[0];
+        if (number != NA_INTEGER && number > 2147483620) return R_NilValue;
+    } else {
+        double number = REAL(value)[0];
+        if (!R_FINITE(number) || fabs(number) > 8e307) return R_NilValue;
+    }
+    static SEXP row_count_symbol = NULL;
+    if (row_count_symbol == NULL) row_count_symbol = Rf_install("row_count");
+    SEXP count = PROTECT(R_getVar(row_count_symbol, frame, FALSE));
+    if ((TYPEOF(count) != INTSXP && TYPEOF(count) != REALSXP) || ALTREP(count) ||
+        ANY_ATTRIB(count) || XLENGTH(count) != 1) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    SEXP rows = PROTECT(Rf_ScalarReal(Rf_asReal(count)));
+    SEXP storage = PROTECT(Rf_mkString(TYPEOF(value) == INTSXP ? "long" : "double"));
+    SEXP result = C_dtatools_generate_scalar(value, R_NilValue, rows, storage);
+    UNPROTECT(3);
+    return result;
+}
+
 #endif

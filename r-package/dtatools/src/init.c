@@ -310,6 +310,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_peek_promote", (DL_FUNC) &C_dtatools_peek_promote, 1},
     {"C_dtatools_patch_scalar", (DL_FUNC) &C_dtatools_patch_scalar, 5},
     {"C_dtatools_generate_scalar", (DL_FUNC) &C_dtatools_generate_scalar, 4},
+    {"C_dtatools_typed_column_fast", (DL_FUNC) &C_dtatools_typed_column_fast, 2},
     {"C_dtatools_mutation_name_location", (DL_FUNC) &C_dtatools_mutation_name_location, 2},
     {"C_dtatools_physical_column_count", (DL_FUNC) &C_dtatools_physical_column_count, 1},
     {"C_dtatools_callback_double", (DL_FUNC) &C_dtatools_callback_double, 3},

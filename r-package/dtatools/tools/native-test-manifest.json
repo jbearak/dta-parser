@@ -1882,6 +1882,10 @@
           "sha256": "5cac1351cd23bce6e7c7c828afecbe94adac2e539b73e10dcb9e0a22c0c4eeb1"
         },
         {
+          "path": "tests/testthat/test-typed-column-fast.R",
+          "sha256": "ff4f4504da71a002c3691994addbe39b8e1674ac8ceba720f4cd5ac8f31c5d67"
+        },
+        {
           "path": "tests/testthat/test-owned-finite-double.R",
           "sha256": "df59fa43230d7b0290f1de18e316cadc89b401e99fe575a6b94244004a8e4726"
         },
@@ -5031,6 +5035,49 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-typed-column-fast.R",
+          "test": "typed values and bare scalars match the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 47,
+          "warnings": 0
+        },
+        {
+          "file": "test-typed-column-fast.R",
+          "test": "the shortcut leaves other values to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 42,
+          "warnings": 0
+        },
+        {
+          "file": "test-typed-column-fast.R",
+          "test": "grouped summaries type bare and Stata numeric results without the R helpers",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-typed-column-fast.R",
+          "test": "a typed value leaves its row count unread",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-typed-column-fast.R",
+          "test": "the shortcut reads no foreign class vector",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
