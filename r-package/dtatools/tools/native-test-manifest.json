@@ -18118,7 +18118,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "8400e594b910f3328014a2a4518f8ba8dfcc37ab6722c083c0b31e000c74f067"
+          "sha256": "eb7b32ddc3ca00224af5966e377b0fd967005a13b3a7692a750b30ea8610abea"
         }
       ],
       "blocks": [
