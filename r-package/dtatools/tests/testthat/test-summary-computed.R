@@ -1,3 +1,6 @@
+# The mean admission declines while base's lazy bindings of mean() and
+# mean.default() are unforced. One bare mean forces them.
+invisible(mean(c(1, 2)))
 .summary_fast <- function(x, generic, na.rm = FALSE) {
     force(x)
     if (generic == "mean") .Call(C_dtatools_mean_computed, environment())
@@ -106,6 +109,38 @@ test_that("mean() of an operand forced after its admission keeps the R code", {
         dta_int(c(1, 3))
     })
     expect_identical(as.double(result), 17)
+})
+
+test_that("the compact mean checks the mean methods but not their base helpers", {
+    compact <- dta_int(c(1, 2, NA))
+    double <- dta_double(c(1, 2, NA))
+    # mean.default() calls isTRUE(na.rm). The full admission declines while
+    # it is traced, so the R code calls mean() on a double's values, but the
+    # compact mean no longer checks it (ADR 0057).
+    hits <- 0L
+    suppressMessages(trace("isTRUE", tracer = function() hits <<- hits + 1L,
+                           where = baseenv(), print = FALSE))
+    withr::defer(suppressMessages(untrace("isTRUE", where = baseenv())))
+    # Expectations can call isTRUE() themselves, so the hits are read first.
+    fast <- .summary_fast(compact, "mean", na.rm = TRUE)
+    hits <- 0L
+    result <- mean(compact, na.rm = TRUE)
+    compact_hits <- hits
+    hits <- 0L
+    double_result <- mean(double, na.rm = TRUE)
+    double_hits <- hits
+    expect_false(is.null(fast))
+    expect_identical(compact_hits, 0L)
+    expect_true(.summary_same(result, fast, .summary_r(compact, "mean", TRUE)))
+    expect_identical(as.double(double_result), 1.5)
+    expect_gt(double_hits, 0L)
+    # A mean method in the global environment still takes the call.
+    skip_if(exists("mean.numeric", envir = globalenv(), inherits = FALSE),
+            "the global environment defines mean.numeric()")
+    assign("mean.numeric", function(x, ...) 17, envir = globalenv())
+    withr::defer(rm("mean.numeric", envir = globalenv()))
+    expect_null(.summary_fast(compact, "mean", na.rm = TRUE))
+    expect_identical(as.double(mean(compact, na.rm = TRUE)), 17)
 })
 
 test_that("the shortcuts read no foreign class or names vector", {
