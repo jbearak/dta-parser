@@ -567,6 +567,7 @@ static const R_CallMethodDef CallEntries[] = {
  * reference ownership and column-sharing checks are registered .Call entries.
  */
 void attribute_visible R_init_dtatools(DllInfo *dll) {
+    initialize_numeric_symbols();
     dtatools_probe_gen_primitive_init();
     initialize_numeric_size_gate();
     initialize_proof_memo();

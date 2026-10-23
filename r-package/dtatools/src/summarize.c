@@ -25,8 +25,17 @@ static SEXP mean_lookup(SEXP env, SEXP symbol) {
     return R_NilValue;
 }
 
+/* The admissions run once or twice per call of mean() or range(), often
+   once per group. Installing a name hashes it and searches the symbol
+   table, so each name is installed once. Symbols are never collected. */
+static SEXP summary_symbol(SEXP *slot, const char *name) {
+    if (*slot == NULL) *slot = Rf_install(name);
+    return *slot;
+}
+
 static int summary_flag_known(SEXP frame) {
-    SEXP expression = Rf_install("na.rm"), env = frame;
+    static SEXP na_rm = NULL;
+    SEXP expression = summary_symbol(&na_rm, "na.rm"), env = frame;
     for (int depth = 0; depth < 64; depth++) {
         if (TYPEOF(expression) != SYMSXP) {
             return TYPEOF(expression) == LGLSXP && !ALTREP(expression) &&
@@ -51,8 +60,8 @@ static int summary_flag_known(SEXP frame) {
 }
 
 /* One admission reaches the same live closure several times: the base
-   environment and the base namespace share bindings, and both method chains
-   pass through them. No R code runs between these comparisons, so no binding
+   environment and the base namespace share bindings, and each method chain
+   passes through them. No R code runs between these comparisons, so no binding
    or closure can change, and a closure already found the same as an
    expectation in this call is not walked again. Across calls, the
    comparator's own proof memo skips the walk. A builtin is compared by
@@ -77,9 +86,13 @@ static int admission_function_same(admission_same *same, SEXP actual, SEXP expec
     return 1;
 }
 
-static int mean_method_chain(admission_same *same, SEXP env, SEXP symbol, SEXP expected) {
+/* Sets *global when the walk passes the global environment, whose own walk
+   would then repeat this one's tail. */
+static int mean_method_chain(admission_same *same, SEXP env, SEXP symbol, SEXP expected,
+                             int *global) {
     for (int depth = 0; depth < 32; depth++) {
         if (env == R_EmptyEnv) return 1;
+        if (env == R_GlobalEnv) *global = 1;
         SEXP value = R_NilValue;
         int status = mean_peek_frame(env, symbol, &value);
         if (status < 0 || (status == 1 &&
@@ -97,8 +110,9 @@ SEXP C_dtatools_mean_admitted(SEXP frame) {
         "is.logical", "is.na", "length", "!", "[", "&&", "||", "if",
         "{", "<-", ">", "!=", "==", ".Internal", "UseMethod"
     };
+    static SEXP symbols[20], dependency_symbol, value_symbol, table_symbol, method_symbols[3];
     SEXP dependencies = PROTECT(mean_lookup(frame,
-        Rf_install(".numeric_mean_dependencies")));
+        summary_symbol(&dependency_symbol, ".numeric_mean_dependencies")));
     if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
         ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 20) {
         UNPROTECT(1);
@@ -107,30 +121,32 @@ SEXP C_dtatools_mean_admitted(SEXP frame) {
     admission_same same = {.count = 0};
     int admitted = 1;
     for (int i = 0; i < 20 && admitted; i++) {
-        SEXP symbol = Rf_install(functions[i]);
+        SEXP symbol = summary_symbol(&symbols[i], functions[i]);
         SEXP current = mean_lookup(i == 0 ? frame : R_BaseEnv, symbol);
         admitted = admission_function_same(&same, current, VECTOR_ELT(dependencies, i)) &&
             admission_function_same(&same, mean_lookup(R_BaseNamespace, symbol),
                                     VECTOR_ELT(dependencies, i));
     }
     SEXP value = R_NilValue;
-    int captured = mean_peek_frame(frame, Rf_install("value"), &value);
+    int captured = mean_peek_frame(frame, summary_symbol(&value_symbol, "value"), &value);
     if (captured < 0 || (captured == 1 &&
         (TYPEOF(value) != REALSXP || Rf_isObject(value) || Rf_isS4(value) ||
          Rf_getAttrib(value, R_ClassSymbol) != R_NilValue ||
          Rf_getAttrib(value, R_DimSymbol) != R_NilValue))) admitted = 0;
-    SEXP table = mean_lookup(R_BaseNamespace, Rf_install(".__S3MethodsTable__."));
+    SEXP table = mean_lookup(R_BaseNamespace,
+        summary_symbol(&table_symbol, ".__S3MethodsTable__."));
     if (TYPEOF(table) != ENVSXP) admitted = 0;
     static const char *methods[] = {"mean.double", "mean.numeric", "mean.default"};
     for (int i = 0; i < 3 && admitted; i++) {
-        SEXP symbol = Rf_install(methods[i]);
+        SEXP symbol = summary_symbol(&method_symbols[i], methods[i]);
         SEXP expected = i == 2 ? VECTOR_ELT(dependencies, 1) : R_NilValue;
         SEXP method = R_NilValue;
         int status = mean_peek_frame(table, symbol, &method);
         admitted = status >= 0 && (status == 0 ||
             (expected != R_NilValue && admission_function_same(&same, method, expected)));
-        if (admitted) admitted = mean_method_chain(&same, frame, symbol, expected) &&
-            mean_method_chain(&same, R_GlobalEnv, symbol, expected);
+        int global = 0;
+        if (admitted) admitted = mean_method_chain(&same, frame, symbol, expected, &global) &&
+            (global || mean_method_chain(&same, R_GlobalEnv, symbol, expected, &global));
     }
     UNPROTECT(1);
     return Rf_ScalarLogical(admitted);
@@ -142,8 +158,9 @@ SEXP C_dtatools_range_admitted(SEXP frame) {
         "range", "range.default", ".rangeNum", "is.numeric", "is.finite",
         "is.na", "c", "min", "max", "!", "[", "if", "{", "<-"
     };
+    static SEXP symbols[14], dependency_symbol, operation_symbol, arguments_symbol;
     SEXP dependencies = PROTECT(mean_lookup(frame,
-        Rf_install(".numeric_range_dependencies")));
+        summary_symbol(&dependency_symbol, ".numeric_range_dependencies")));
     if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
         ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 14) {
         UNPROTECT(1);
@@ -152,18 +169,20 @@ SEXP C_dtatools_range_admitted(SEXP frame) {
     admission_same same = {.count = 0};
     int admitted = 1;
     for (int i = 0; i < 14 && admitted; i++) {
-        SEXP symbol = Rf_install(functions[i]);
+        SEXP symbol = summary_symbol(&symbols[i], functions[i]);
         admitted = admission_function_same(&same, mean_lookup(R_BaseEnv, symbol),
                                            VECTOR_ELT(dependencies, i)) &&
             admission_function_same(&same, mean_lookup(R_BaseNamespace, symbol),
                                     VECTOR_ELT(dependencies, i));
     }
     SEXP operation = R_NilValue;
-    if (mean_peek_frame(frame, Rf_install("operation"), &operation) != 1 ||
+    if (mean_peek_frame(frame, summary_symbol(&operation_symbol, "operation"),
+                        &operation) != 1 ||
         !admission_function_same(&same, operation, VECTOR_ELT(dependencies, 0)))
         admitted = 0;
     SEXP arguments = R_NilValue;
-    if (mean_peek_frame(frame, Rf_install("arguments"), &arguments) != 1 ||
+    if (mean_peek_frame(frame, summary_symbol(&arguments_symbol, "arguments"),
+                        &arguments) != 1 ||
         TYPEOF(arguments) != VECSXP || ALTREP(arguments)) admitted = 0;
     if (admitted) for (R_xlen_t i = 0; i < XLENGTH(arguments); i++) {
         SEXP value = VECTOR_ELT(arguments, i);

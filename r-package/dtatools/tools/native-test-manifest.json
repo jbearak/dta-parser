@@ -18118,7 +18118,7 @@
         },
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
-          "sha256": "9ca53fcca5516402ff29d99d4dc792f8ff56bc6bd46a772d66d79d1018d835cf"
+          "sha256": "eb7b32ddc3ca00224af5966e377b0fd967005a13b3a7692a750b30ea8610abea"
         }
       ],
       "blocks": [
@@ -18683,6 +18683,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 618,
+          "warnings": 0
+        },
+        {
+          "file": "test-native-summary-kernels.R",
+          "test": "bare mean methods in the global environment precede the native mean",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
