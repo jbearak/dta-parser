@@ -92,6 +92,9 @@ test_that("the shortcut reads no foreign class vector", {
     attr(value, "class") <- .Call(C_dtatools_callback_character, c("probe", "list"),
                                   function() reads <<- reads + 1L)
     expect_true(.is_altrep(attr(value, "class")))
+    # Setting the class read it, which spent the probe's one callback.
+    .Call(C_dtatools_arm_callback_character, attr(value, "class", exact = TRUE),
+          function() reads <<- reads + 1L)
     reads <- 0L
     expect_null(.typed_fast(value))
     expect_identical(reads, 0L)

@@ -1887,7 +1887,7 @@
         },
         {
           "path": "tests/testthat/test-typed-column-fast.R",
-          "sha256": "caf5fff0c33430aceb2defd3e05685eb1196335bb3812ce8c7cab4dae18a95d1"
+          "sha256": "2aacf8b61f641cfb2ac68c12c783f63bc32256f43b28d88a2541d8652c1b0801"
         },
         {
           "path": "tests/testthat/test-owned-finite-double.R",
