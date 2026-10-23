@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `mean()`, `min()`, `max()` and `sum()` of one Stata byte, int, long or
+  float vector in dtatools' compact form, as columns read from a file are,
+  compute their result in one native call. They had captured the values
+  and built the result through several R helpers, and `min()`, `max()` and
+  `sum()` also listed and reduced their inputs in R. Over the 42,739 women
+  in the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.83 to 0.63
+  seconds, `summarise(b, m = max(bord), .by = caseid)` from 1.10 to 0.53,
+  and `mutate(b, m = mean(b2), .by = caseid)` from 0.61 to 0.41. Results,
+  warnings and errors are unchanged. A traced or replaced `.dta_data()`,
+  `.dta_computed()` or another helper of these methods no longer sees these
+  calls (ADR 0054).
+
 * Verbs on a dibble type a new result in one native call when it is a
   Stata numeric, temporal or factor value or a bare logical, and in two
   when it is a bare integer or double scalar such as `n()` or a constant.

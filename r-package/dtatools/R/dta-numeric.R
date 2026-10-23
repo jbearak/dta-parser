@@ -1555,6 +1555,12 @@ Math.dta_numeric <- function(x, ...) {
 
 #' @export
 Summary.dta_numeric <- function(..., na.rm = FALSE) {
+    if (...length() == 1L) {
+        # One compact Stata numeric's min(), max() or sum() takes one native
+        # call, which gives what the code below would (ADR 0054).
+        result <- .Call(C_dtatools_summary_computed, ..1, .Generic, environment())
+        if (!is.null(result)) return(result)
+    }
     inputs <- list(...)
     declared <- Filter(
         function(value) inherits(value, "dta_numeric"), inputs
@@ -1607,6 +1613,10 @@ summary.dta_numeric <- function(object, ...) {
 #' @export
 mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
     if (...length() == 0L && .Call(C_dtatools_mean_admitted, environment())) {
+        # A compact Stata numeric takes one native call, which gives what the
+        # code below would (ADR 0054).
+        result <- .Call(C_dtatools_mean_computed, environment())
+        if (!is.null(result)) return(result)
         value <- .dta_data(x)
         # Capture can invoke a foreign provider. Recheck dispatch before
         # touching na.rm, which a custom method may deliberately leave lazy.

@@ -293,6 +293,101 @@ SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm) {
     return Rf_ScalarReal((double) sum);
 }
 
+/* Forces na.rm, as the R code does, once summary_flag_known() has shown
+   that settling it runs no R code. NULL for anything but TRUE or FALSE. */
+static SEXP summary_flag(SEXP frame) {
+    static SEXP na_rm = NULL;
+    SEXP flag = R_getVar(summary_symbol(&na_rm, "na.rm"), frame, TRUE);
+    return TYPEOF(flag) == LGLSXP && !ALTREP(flag) && !ANY_ATTRIB(flag) &&
+        XLENGTH(flag) == 1 && LOGICAL(flag)[0] != NA_LOGICAL ? flag : NULL;
+}
+
+/* `.collapse_missing()` and then `.dta_computed()` at the storage x
+   declares, for a fresh scalar. */
+static SEXP summary_computed_result(SEXP value, SEXP x) {
+    static SEXP storage = NULL;
+    if (ISNAN(REAL(value)[0])) REAL(value)[0] = NA_REAL;
+    return numeric_computed_small(value,
+        Rf_getAttrib(x, summary_symbol(&storage, "stata.storage")));
+}
+
+static int summary_class_is(SEXP classes, R_xlen_t i, const char *expected) {
+    SEXP name = STRING_ELT(classes, i);
+    return name != NA_STRING && strcmp(CHAR(name), expected) == 0;
+}
+
+/* The R code's capture calls `names()`, which dispatches on x's class, and
+   sets the names it gets on the captured values, which reads their length.
+   It runs no R code when x has the classes the package gives a compact
+   Stata numeric, with haven_labelled when it carries value labels, and
+   names that are not ALTREP. A subclass can define a `names()` method, and
+   an ALTREP class or names vector runs its provider's code, either of which
+   could change what the R code does next, so the calls decline them. */
+static int summary_capture_inert(SEXP x) {
+    static const char *storages[] = {"dta_byte", "dta_int", "dta_long", "dta_float"};
+    SEXP classes = Rf_getAttrib(x, R_ClassSymbol);
+    R_xlen_t count = TYPEOF(classes) == STRSXP && !ALTREP(classes) ? XLENGTH(classes) : 0;
+    if ((count != 4 && count != 5) || !summary_class_is(classes, 0, "dta_numeric") ||
+        (count == 5 && !summary_class_is(classes, 2, "haven_labelled")) ||
+        !summary_class_is(classes, count - 2, "vctrs_vctr") ||
+        !summary_class_is(classes, count - 1, "double") ||
+        ALTREP(Rf_getAttrib(x, R_NamesSymbol))) return 0;
+    for (int i = 0; i < 4; i++) if (summary_class_is(classes, 1, storages[i])) return 1;
+    return 0;
+}
+
+/* mean() of a compact Stata numeric, read directly or through metadata
+   proxies, once C_dtatools_mean_admitted() admits the call. It gives what
+   mean.dta_numeric() builds from its capture: the mean, then
+   `.collapse_missing()` and `.dta_computed()`. Capturing such a vector runs
+   no R code, so the admission the R code repeats after its capture still
+   holds. It reads x from the frame and declines while x is a promise, as in
+   a direct call of the method, since forcing x could change what the
+   admission saw, and unless summary_capture_inert() holds. R_NilValue
+   leaves the call to the R code (ADR 0054). */
+SEXP C_dtatools_mean_computed(SEXP frame) {
+    static SEXP x_symbol = NULL;
+    SEXP x = R_NilValue;
+    if (mean_peek_frame(frame, summary_symbol(&x_symbol, "x"), &x) != 1 ||
+        TYPEOF(x) != REALSXP || numeric_base_source(x) == R_NilValue ||
+        !summary_capture_inert(x) || !summary_flag_known(frame)) return R_NilValue;
+    SEXP flag = summary_flag(frame);
+    if (flag == NULL) return R_NilValue;
+    SEXP value = PROTECT(C_dtatools_numeric_mean(x, flag));
+    SEXP result = value == R_NilValue ? R_NilValue : summary_computed_result(value, x);
+    UNPROTECT(1);
+    return result;
+}
+
+/* min(), max() or sum() of one compact Stata numeric. The R code captures x
+   in a metadata view, and the primitive calls the view's ALTREP method,
+   which reads x with the kernel called here. The result then takes
+   `.collapse_missing()` and `.dta_computed()`. R_NilValue leaves the call to
+   the R code: for a metadata proxy, whose view the method reads another
+   way, unless summary_capture_inert() holds, for an empty vector, whose min()
+   and max() warn, and for a vector with no observed value under na.rm
+   (ADR 0054). */
+SEXP C_dtatools_summary_computed(SEXP x, SEXP generic, SEXP frame) {
+    if (TYPEOF(generic) != STRSXP || ALTREP(generic) || ANY_ATTRIB(generic) ||
+        XLENGTH(generic) != 1) return R_NilValue;
+    const char *name = CHAR(STRING_ELT(generic, 0));
+    int operation = strcmp(name, "sum") == 0 ? 0 : strcmp(name, "min") == 0 ? 1 :
+        strcmp(name, "max") == 0 ? 2 : -1;
+    if (operation < 0 || TYPEOF(x) != REALSXP || !ALTREP(x) ||
+        !R_altrep_inherits(x, dtatools_numeric_class) || R_altrep_data2(x) != R_NilValue ||
+        !summary_capture_inert(x) || !summary_flag_known(frame)) return R_NilValue;
+    SEXP flag = summary_flag(frame);
+    if (flag == NULL) return R_NilValue;
+    Rboolean remove = (Rboolean) LOGICAL(flag)[0];
+    SEXP value = operation == 0 ? numeric_sum(x, remove) :
+        operation == 1 ? numeric_min(x, remove) : numeric_max(x, remove);
+    if (value == NULL) return R_NilValue;
+    PROTECT(value);
+    SEXP result = summary_computed_result(value, x);
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtatools_numeric_range(SEXP inputs, SEXP na_rm) {
     if (TYPEOF(inputs) != VECSXP) return R_NilValue;
     R_xlen_t count = XLENGTH(inputs);
