@@ -5,6 +5,9 @@
 # it is discarded after publication and never becomes an ownership registry.
 # Cyclic payloads are rejected before public vector assembly traverses them.
 .capture_dibble_nested <- function(value) {
+    # An atomic vector takes `.metadata_copy()` in one native call (ADR 0055).
+    captured <- .Call(C_dtatools_capture_atomic, value)
+    if (!is.null(captured)) return(captured)
     if (is.environment(value) || is.function(value) ||
         typeof(value) %in% c("externalptr", "weakref", "bytecode")) return(value)
     if (typeof(value) != "list") return(.metadata_copy(value))

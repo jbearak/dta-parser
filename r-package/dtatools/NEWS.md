@@ -15,6 +15,16 @@
   1.05. Results are unchanged. A traced or replaced `identical()` no longer
   sees these scans (ADR 0056).
 
+* Grouped `summarise()` copies each group's result in one native call when
+  it is an atomic vector, and checks once per expression instead of once
+  per group whether the result replaces a column. Over the 42,739 women in
+  the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.83 to 0.69
+  seconds, `summarise(b, m = max(bord), .by = caseid)` from 1.10 to 0.92,
+  and `summarise(b, n = n(), k = n(), .by = caseid)` from 1.17 to 0.87.
+  Results are unchanged. A traced or replaced `.metadata_copy()` no longer
+  sees these copies (ADR 0055).
+
 * Verbs on a dibble type a new result in one native call when it is a
   Stata numeric, temporal or factor value or a bare logical, and in two
   when it is a bare integer or double scalar such as `n()` or a constant.
