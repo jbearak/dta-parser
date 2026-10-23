@@ -5,6 +5,16 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` scans its results' attributes in one native call
+  when it looks for the results that can change their common type. It had
+  looped over the results in R, up to twice per expression, calling
+  `attributes()` and `identical()` for each one. Over the 42,739 women in
+  the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, m = max(bord), .by = caseid)` falls from about 1.10 to 1.05
+  seconds and `summarise(b, n = n(), k = n(), .by = caseid)` from 1.16 to
+  1.05. Results are unchanged. A traced or replaced `identical()` no longer
+  sees these scans (ADR 0056).
+
 * Verbs on a dibble type a new result in one native call when it is a
   Stata numeric, temporal or factor value or a bare logical, and in two
   when it is a bare integer or double scalar such as `n()` or a constant.

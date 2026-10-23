@@ -91,6 +91,14 @@
 # attributes as their "firsts". NULL past four distinct sets, or when the
 # check would fold more often than the chunks it skips.
 .summary_ptype_kept <- function(chunks) {
+    # One native call scans the chunks when `attributes()` would return
+    # each one's attributes as stored (ADR 0056).
+    kept <- .Call(C_dtatools_summary_ptype_kept, chunks)
+    if (!is.logical(kept)) return(kept)
+    .summary_ptype_kept_r(chunks)
+}
+
+.summary_ptype_kept_r <- function(chunks) {
     seen <- list()
     firsts <- integer()
     for (index in seq_along(chunks)) {

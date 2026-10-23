@@ -404,6 +404,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_summary_ptype_method, 4},
     {"C_dtatools_settled_routine",
      (DL_FUNC) &C_dtatools_settled_routine, 2},
+    {"C_dtatools_summary_ptype_kept", (DL_FUNC) &C_dtatools_summary_ptype_kept, 1},
     {"C_dtatools_summary_combine",
      (DL_FUNC) &C_dtatools_summary_combine, 4},
     {"C_dtatools_construct_double",
