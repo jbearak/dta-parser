@@ -491,6 +491,19 @@ test_that("registered bare mean methods precede na.rm evaluation", {
     }
 })
 
+test_that("bare mean methods in the global environment precede the native mean", {
+    x <- dta_int(1:3)
+    methods <- c("mean.numeric", "mean.double")
+    # The helper restores any method the global environment already has.
+    for (method in methods) {
+        .native_summary_binding(globalenv(), method, function(x, ...) 17,
+            expect_identical(as.double(mean(x)), 17, info = method))
+    }
+    skip_if(any(vapply(c(methods, "mean.default"), exists, NA, envir = globalenv(),
+                       inherits = FALSE)), "the global environment defines a mean method")
+    expect_identical(as.double(mean(x)), 2)
+})
+
 test_that("mean declines active and delayed S3 bindings without reading them", {
     table <- get(".__S3MethodsTable__.", asNamespace("base"), inherits = FALSE)
     run <- function(mode, reference) {

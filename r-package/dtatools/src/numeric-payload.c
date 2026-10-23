@@ -41,6 +41,20 @@ static int numeric_size_minimum = 2048;
 static SEXP numeric_size_symbols[4];
 static double numeric_size_counts[4][3];
 
+/* Names the native routes look up on every call, often once per group.
+   Installing a name hashes it and searches the symbol table, so these are
+   installed once at load. Symbols are never collected. */
+static SEXP numeric_native_symbol, numeric_storage_symbol, numeric_temporal_symbol,
+    numeric_minimum_symbol, numeric_result_symbol;
+
+void initialize_numeric_symbols(void) {
+    numeric_native_symbol = Rf_install("native");
+    numeric_storage_symbol = Rf_install("stata.storage");
+    numeric_temporal_symbol = Rf_install("temporal");
+    numeric_minimum_symbol = Rf_install("minimum");
+    numeric_result_symbol = Rf_install("result");
+}
+
 void initialize_numeric_size_gate(void) {
     static const char *names[] = {"x", "y", "result", "doubles"};
     for (int i = 0; i < 4; i++) numeric_size_symbols[i] = Rf_install(names[i]);
@@ -459,7 +473,7 @@ int materialized_numeric_storage(
          !R_altrep_inherits(value, dtatools_metadata_real_class))) {
         return 0;
     }
-    SEXP declared = Rf_getAttrib(value, Rf_install("stata.storage"));
+    SEXP declared = Rf_getAttrib(value, numeric_storage_symbol);
     if (TYPEOF(declared) != STRSXP || XLENGTH(declared) != 1) return 0;
     const char *name = CHAR(STRING_ELT(declared, 0));
     int kind = strcmp(name, "byte") == 0 ? NUMERIC_BYTE :
@@ -3639,7 +3653,7 @@ static SEXP numeric_decorate_result(SEXP payload, SEXP storage) {
     SET_STRING_ELT(classes, 1, Rf_mkChar(storage_classes[kind]));
     SET_STRING_ELT(classes, 2, Rf_mkChar("vctrs_vctr"));
     SET_STRING_ELT(classes, 3, Rf_mkChar("double"));
-    Rf_setAttrib(payload, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(payload, numeric_storage_symbol, storage);
     Rf_setAttrib(payload, R_ClassSymbol, classes);
     UNPROTECT(3);
     return payload;
@@ -3704,10 +3718,10 @@ static SEXP computed_minimum_expression(
 
 static SEXP computed_minimum(SEXP frame, SEXP storage_getter) {
     /* Intern names before borrowing any value from a delayed binding. */
-    SEXP minimum_symbol = Rf_install("minimum");
+    SEXP minimum_symbol = numeric_minimum_symbol;
     SEXP getter_symbol = Rf_install(".declared_dta_storage");
     SEXP argument_symbol = Rf_install("x");
-    SEXP storage_symbol = Rf_install("stata.storage");
+    SEXP storage_symbol = numeric_storage_symbol;
     return computed_minimum_expression(minimum_symbol, frame, storage_getter,
         getter_symbol, argument_symbol, storage_symbol, 16);
 }
@@ -4575,7 +4589,7 @@ static int scalar_finite_value(SEXP value, double *number) {
    audited R build and is used only at these direct closure .Call sites. */
 static int numeric_result_slot_available(SEXP frame) {
     return TYPEOF(frame) == ENVSXP && !R_EnvironmentIsLocked(frame) &&
-        R_GetBindingType(Rf_install("native"), frame) == R_BindingTypeUnbound;
+        R_GetBindingType(numeric_native_symbol, frame) == R_BindingTypeUnbound;
 }
 
 /* Early production admission reads only payloads whose original coercion,
@@ -4595,7 +4609,7 @@ static SEXP numeric_result_commit(SEXP value, SEXP frame) {
         UNPROTECT(1);
         return Rf_ScalarLogical(FALSE);
     }
-    Rf_defineVar(Rf_install("native"), value, frame);
+    Rf_defineVar(numeric_native_symbol, value, frame);
     UNPROTECT(1);
     return Rf_ScalarLogical(TRUE);
 }
@@ -5010,7 +5024,7 @@ static SEXP C_dtatools_scalar_arithmetic_impl(
         : scalar_arithmetic_result(vector, scalar, reverse, *operator == '+'));
     if (result != R_NilValue) {
         R_getVar(Rf_install("op"), frame, TRUE);
-        R_getVar(Rf_install("minimum"), frame, TRUE);
+        R_getVar(numeric_minimum_symbol, frame, TRUE);
     }
     UNPROTECT(4);
     return result;
@@ -5093,7 +5107,7 @@ SEXP C_dtatools_scalar_arithmetic(SEXP left, SEXP right, SEXP frame, SEXP storag
     R_getVar(Rf_install("x"), frame, TRUE);
     R_getVar(Rf_install("y"), frame, TRUE);
     R_getVar(Rf_install("op"), frame, TRUE);
-    R_getVar(Rf_install("minimum"), frame, TRUE);
+    R_getVar(numeric_minimum_symbol, frame, TRUE);
     SEXP status = numeric_result_commit(result, frame);
     if (LOGICAL(status)[0]) numeric_scalar_successes++;
     UNPROTECT(5);
@@ -5110,7 +5124,7 @@ static SEXP C_dtatools_computed_numeric_impl(
     if (!computed_dependencies_unchanged(frame, dependencies) ||
         !dtatools_numeric_helpers_admitted(frame, DTATOOLS_NUMERIC_COMPUTED))
         return R_NilValue;
-    SEXP temporal = computed_peek(Rf_install("temporal"), frame, 16);
+    SEXP temporal = computed_peek(numeric_temporal_symbol, frame, 16);
     if (TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
         Rf_isObject(temporal) || Rf_isS4(temporal) ||
         XLENGTH(temporal) != 1 || INTEGER(temporal)[0] != 0) return R_NilValue;
@@ -5186,8 +5200,8 @@ static SEXP C_dtatools_computed_numeric_impl(
     /* Explicit-frame callers retain their original settlement contract.
        Early production instead settles result first in its caller below. */
     if (settle_arguments) {
-        R_getVar(Rf_install("temporal"), frame, TRUE);
-        R_getVar(Rf_install("minimum"), frame, TRUE);
+        R_getVar(numeric_temporal_symbol, frame, TRUE);
+        R_getVar(numeric_minimum_symbol, frame, TRUE);
     }
     UNPROTECT(4);
     return result;
@@ -5202,7 +5216,7 @@ SEXP C_dtatools_computed_numeric(SEXP value, SEXP frame, SEXP storage_getter, SE
     if (!numeric_size_admitted(frame, DTATOOLS_NUMERIC_COMPUTED)) return Rf_ScalarLogical(FALSE);
     if (!dtatools_numeric_entry_frame_admitted(frame, DTATOOLS_NUMERIC_COMPUTED) ||
         !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
-    value = PROTECT(computed_peek(Rf_install("result"), frame, 16));
+    value = PROTECT(computed_peek(numeric_result_symbol, frame, 16));
     if (!numeric_entry_bare_double(value) ||
         !dtatools_numeric_decoration_admitted(frame, DTATOOLS_NUMERIC_COMPUTED,
                                                R_NilValue)) {
@@ -5224,9 +5238,9 @@ SEXP C_dtatools_computed_numeric(SEXP value, SEXP frame, SEXP storage_getter, SE
     /* All declining checks finish before original promise chains settle.
        Keep the result formal's input and its expression, including forwarded
        caller promises, while matching the original policy forcing order. */
-    R_getVar(Rf_install("result"), frame, TRUE);
-    R_getVar(Rf_install("temporal"), frame, TRUE);
-    R_getVar(Rf_install("minimum"), frame, TRUE);
+    R_getVar(numeric_result_symbol, frame, TRUE);
+    R_getVar(numeric_temporal_symbol, frame, TRUE);
+    R_getVar(numeric_minimum_symbol, frame, TRUE);
     SEXP status = numeric_result_commit(result, frame);
     if (LOGICAL(status)[0]) numeric_computed_successes++;
     UNPROTECT(3);
@@ -5799,7 +5813,7 @@ SEXP C_dtatools_append_compact_values(
     }
     PROTECT(backing);
     SEXP result = PROTECT(compact_numeric_from_scan(backing, length, kind, &facts));
-    Rf_setAttrib(result, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(result, numeric_storage_symbol, storage);
     Rf_setAttrib(result, R_ClassSymbol, class);
     UNPROTECT(2);
     return result;
@@ -6542,7 +6556,7 @@ static int combine_dependencies_valid(SEXP record, R_xlen_t length) {
     if (Rf_isObject(classes) || Rf_isS4(classes) ||
         Rf_isObject(storage) || Rf_isS4(storage) ||
         scalar_double_attribute(R_ClassSymbol, classes, &seen) != NULL ||
-        scalar_double_attribute(Rf_install("stata.storage"), storage, &seen) != NULL)
+        scalar_double_attribute(numeric_storage_symbol, storage, &seen) != NULL)
         return 0;
     SEXP profile = VECTOR_ELT(record, 6);
     if (TYPEOF(profile) != STRSXP || ALTREP(profile) || ANY_ATTRIB(profile) ||
@@ -6942,7 +6956,7 @@ static int combine_double_canonical_piece(SEXP value) {
     /* scalar_canonical_double checks exact values and ordinary attributes.
        Also reject malformed object/S4 flags on the attribute vectors. */
     SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
-    SEXP storage = Rf_getAttrib(value, Rf_install("stata.storage"));
+    SEXP storage = Rf_getAttrib(value, numeric_storage_symbol);
     return !Rf_isObject(classes) && !Rf_isS4(classes) &&
         !Rf_isObject(storage) && !Rf_isS4(storage);
 }
@@ -7083,7 +7097,7 @@ SEXP C_dtatools_try_combine_double(
        Public by-reference edits must not reach another result or the profile. */
     SEXP classes = PROTECT(Rf_duplicate(VECTOR_ELT(dependencies, 4)));
     SEXP storage = PROTECT(Rf_duplicate(VECTOR_ELT(dependencies, 5)));
-    Rf_setAttrib(result, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(result, numeric_storage_symbol, storage);
     Rf_setAttrib(result, R_ClassSymbol, classes);
     UNPROTECT(5);
     return result;
@@ -7408,7 +7422,7 @@ static int summary_cast_unchanged(SEXP piece) {
    class vector. Later dots read these chunks, so none may share its class
    with another group or with the value a group returned. */
 static SEXP summary_fresh_casts(SEXP chunks, SEXP ptype) {
-    SEXP storage_symbol = Rf_install("stata.storage");
+    SEXP storage_symbol = numeric_storage_symbol;
     SEXP storage = PROTECT(Rf_getAttrib(ptype, storage_symbol));
     R_xlen_t count = XLENGTH(chunks);
     SEXP casts = PROTECT(Rf_allocVector(VECSXP, count));
@@ -7433,7 +7447,7 @@ static int summary_compact_ptype(SEXP ptype, int *kind) {
         (ALTREP(ptype) && !R_altrep_inherits(ptype, dtatools_numeric_class) &&
          !R_altrep_inherits(ptype, dtatools_metadata_real_class)) ||
         XLENGTH(ptype) != 0) return 0;
-    int found = computed_storage_kind(Rf_getAttrib(ptype, Rf_install("stata.storage")));
+    int found = computed_storage_kind(Rf_getAttrib(ptype, numeric_storage_symbol));
     if (found < NUMERIC_BYTE || found > NUMERIC_FLOAT) return 0;
     scalar_compact_attribute_state state = {found, 0};
     if (R_mapAttrib(ptype, scalar_compact_attribute, &state) != NULL || state.seen != 3U)
@@ -7464,7 +7478,7 @@ static SEXP summary_compact_value(SEXP values, SEXP kind, SEXP storage, int comm
     SET_STRING_ELT(classes, 1, Rf_mkChar(storage_classes[common]));
     SET_STRING_ELT(classes, 2, Rf_mkChar("vctrs_vctr"));
     SET_STRING_ELT(classes, 3, Rf_mkChar("double"));
-    Rf_setAttrib(value, Rf_install("stata.storage"), storage);
+    Rf_setAttrib(value, numeric_storage_symbol, storage);
     Rf_setAttrib(value, R_ClassSymbol, classes);
     UNPROTECT(3);
     return value;
@@ -7542,7 +7556,7 @@ static SEXP summary_combine_compact(
         UNPROTECT(4);
         return R_NilValue;
     }
-    SEXP storage = PROTECT(Rf_getAttrib(ptype, Rf_install("stata.storage")));
+    SEXP storage = PROTECT(Rf_getAttrib(ptype, numeric_storage_symbol));
     SEXP kind = PROTECT(Rf_ScalarInteger(common));
     SEXP casts = PROTECT(Rf_allocVector(VECSXP, count));
     SEXP values = PROTECT(Rf_allocVector(REALSXP, total));
@@ -7596,7 +7610,7 @@ SEXP C_dtatools_summary_combine(
 ) {
     SEXP frame = R_GetCurrentEnv();
     SEXP chunks_symbol = Rf_install("chunks"), ptype_symbol = Rf_install("ptype");
-    SEXP target = Rf_install("result");
+    SEXP target = numeric_result_symbol;
     if (!combine_plain_environment(frame) ||
         R_GetBindingType(chunks_symbol, frame) != R_BindingTypeDelayed ||
         R_GetBindingType(ptype_symbol, frame) != R_BindingTypeDelayed ||
@@ -7920,7 +7934,7 @@ SEXP C_dtatools_construct_double(SEXP value, SEXP frame, SEXP dependencies) {
     value = PROTECT(computed_peek(Rf_install("x"), frame, 16));
     SEXP size = PROTECT(computed_peek(Rf_install(".size"), frame, 16));
     SEXP storage = PROTECT(computed_peek(Rf_install("storage"), frame, 16));
-    SEXP temporal = PROTECT(computed_peek(Rf_install("temporal"), frame, 16));
+    SEXP temporal = PROTECT(computed_peek(numeric_temporal_symbol, frame, 16));
     if (!numeric_entry_bare_double(value) || size != R_NilValue ||
         computed_storage_kind(storage) != NUMERIC_DOUBLE ||
         TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
@@ -7947,7 +7961,7 @@ SEXP C_dtatools_construct_double(SEXP value, SEXP frame, SEXP dependencies) {
     R_getVar(Rf_install("x"), frame, TRUE);
     R_getVar(Rf_install(".size"), frame, TRUE);
     R_getVar(Rf_install("storage"), frame, TRUE);
-    R_getVar(Rf_install("temporal"), frame, TRUE);
+    R_getVar(numeric_temporal_symbol, frame, TRUE);
     SEXP status = numeric_result_commit(result, frame);
     if (LOGICAL(status)[0]) numeric_construct_successes++;
     UNPROTECT(6);
@@ -8086,13 +8100,13 @@ SEXP C_dtatools_computed_values(SEXP value) {
         int tag = ISNAN(element) ? tagged_na_tag_value(element) : 0;
         if (tag != 0 && (tag < 'a' || tag > 'z')) return Rf_ScalarLogical(FALSE);
     }
-    SEXP temporal = PROTECT(R_getVar(Rf_install("temporal"), frame, TRUE));
+    SEXP temporal = PROTECT(R_getVar(numeric_temporal_symbol, frame, TRUE));
     if (TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
         Rf_isS4(temporal) || XLENGTH(temporal) != 1 || INTEGER(temporal)[0] != 0) {
         UNPROTECT(1);
         return Rf_ScalarLogical(FALSE);
     }
-    SEXP minimum = PROTECT(R_getVar(Rf_install("minimum"), frame, TRUE));
+    SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
     int minimum_kind = computed_storage_kind(minimum);
     UNPROTECT(1);
     if (minimum_kind < 0) {
