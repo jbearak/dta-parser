@@ -18267,6 +18267,10 @@
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
           "sha256": "eb7b32ddc3ca00224af5966e377b0fd967005a13b3a7692a750b30ea8610abea"
+        },
+        {
+          "path": "tests/testthat/test-summary-computed.R",
+          "sha256": "fce6d04e8387cd4e41e4b94805d8e76fca3cd290c2913e445fde2467dd41b956"
         }
       ],
       "blocks": [
@@ -18839,6 +18843,57 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "one compact numeric's mean, min, max and sum match the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 315,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts leave other summaries to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 31,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "grouped summaries of compact numerics skip the R helpers",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "mean() of an operand forced after its admission keeps the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts read no foreign class or names vector",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts take only the package's classes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         }
       ],
