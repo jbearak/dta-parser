@@ -5,17 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
-* Verbs on a dibble type a new result in one native call when it is a Stata
-  numeric, temporal or factor value, a bare logical, or a bare integer or
-  double scalar such as `n()` or a constant. Each such result had gone
-  through several R helpers that decide its Stata type, and grouped verbs
-  type one result per group. Over the 42,739 women in the first 100,000
-  rows of the India 2021 DHS births file, `summarise(b, n = n(), .by =
-  caseid)` falls from about 0.60 to 0.45 seconds, `summarise(b, k = 2.5,
-  .by = caseid)` from 0.52 to 0.38, and `summarise(b, n = n(), k = n(),
-  .by = caseid)` from 1.48 to 1.17. Results are unchanged. A traced or
-  replaced `.typed_column()`, or a helper it calls, no longer sees these
-  results (ADR 0053).
+* Verbs on a dibble type a new result in one native call when it is a
+  Stata numeric, temporal or factor value or a bare logical, and in two
+  when it is a bare integer or double scalar such as `n()` or a constant.
+  Each such result had gone through several R helpers that decide its
+  Stata type, and grouped verbs type one result per group. Over the 42,739
+  women in the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, n = n(), .by = caseid)` falls from about 0.60 to 0.45
+  seconds, `summarise(b, k = 2.5, .by = caseid)` from 0.52 to 0.38, and
+  `summarise(b, n = n(), k = n(), .by = caseid)` from 1.48 to 1.17.
+  Results are unchanged. A traced or replaced `.typed_column()`, or a
+  helper it calls, no longer sees these results (ADR 0053).
 
 * Compact Stata numerics built from R's own bytes, by the `dta_*()`
   constructors, computed results such as `mean()`, subsets, gathers,

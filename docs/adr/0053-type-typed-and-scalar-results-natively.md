@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Type typed and scalar results in one native call
+# Type typed and scalar results natively
 
 A grouped `summarise()` types each group's result with `.retyped_column()`.
 With no prior column of the result's name, that calls `.typed_column()`. A
