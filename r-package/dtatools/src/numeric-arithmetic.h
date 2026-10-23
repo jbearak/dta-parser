@@ -79,17 +79,18 @@ static int arithmetic_promoted_kind(int left, int right) {
 }
 
 static int arithmetic_operator_unchanged(SEXP frame, int operation) {
-    if (operation == '+' || operation == '-') return 1;
+    static const char operators[] = "*/+-";
+    const char *position = operation == 0 ? NULL : strchr(operators, operation);
+    if (position == NULL) return 0;
     SEXP dependencies = computed_peek(
         Rf_install(".numeric_binary_dependencies"), frame, 16
     );
     if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
-        ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 2) return 0;
-    SEXP expected = VECTOR_ELT(dependencies, operation == '*' ? 0 : 1);
+        ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 4) return 0;
+    SEXP expected = VECTOR_ELT(dependencies, position - operators);
     if (TYPEOF(expected) != BUILTINSXP) return 0;
-    SEXP actual = computed_dependency_value(
-        Rf_install(operation == '*' ? "*" : "/"), R_BaseEnv, 16
-    );
+    char name[2] = {(char) operation, '\0'};
+    SEXP actual = computed_dependency_value(Rf_install(name), R_BaseEnv, 16);
     return actual == expected;
 }
 
@@ -763,4 +764,6 @@ static SEXP numeric_arithmetic_extension(
     UNPROTECT(2);
     return status;
 }
+#include "numeric-arithmetic-small.h"
+
 #endif

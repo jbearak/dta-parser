@@ -658,6 +658,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_computed_values(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_scalar_arithmetic(
     SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_arithmetic_small(void);
 
 /* Dictionary-backed strings. */
 DTATOOLS_INTERNAL void dictstring_finalize(SEXP external);

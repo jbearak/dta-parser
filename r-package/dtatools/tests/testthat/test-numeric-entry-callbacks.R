@@ -82,7 +82,8 @@ test_that("constructor conversion retains the original completed caller frame", 
 })
 
 test_that("scalar data callbacks retain all original local assignment callbacks", {
-    source <- dta_double(c(1, 2))
+    # Operands under 2,048 values never reach the R code (ADR 0059).
+    source <- dta_double(rep(c(1, 2), 1024L))
     invisible(source + 1)
     ns <- asNamespace("dtatools")
     original <- get(".dta_data", ns)
@@ -101,11 +102,12 @@ test_that("scalar data callbacks retain all original local assignment callbacks"
         observed <- tryCatch({ source + 1; "success" }, error = conditionMessage)
         expect_identical(observed, paste("scalar callback", slot), info = slot)
     }
-    expect_identical(as.double(source), c(1, 2))
+    expect_identical(as.double(source), rep(c(1, 2), 1024L))
 })
 
 test_that("self restoring scalar callbacks retain their later local assignments", {
-    source <- dta_double(c(1, 2))
+    # Operands under 2,048 values never reach the R code (ADR 0059).
+    source <- dta_double(rep(c(1, 2), 1024L))
     invisible(source + 1)
     ns <- asNamespace("dtatools")
     original <- get(".dta_data", ns)
@@ -122,11 +124,12 @@ test_that("self restoring scalar callbacks retain their later local assignments"
     observed <- tryCatch({ source + 1; "success" }, error = conditionMessage)
     expect_identical(observed, "self restoring args callback")
     expect_identical(get(".dta_data", ns), original)
-    expect_identical(as.double(source), c(1, 2))
+    expect_identical(as.double(source), rep(c(1, 2), 1024L))
 })
 
 test_that("self restoring scalar callbacks retain the original completed caller frame", {
-    source <- dta_double(c(1, 2))
+    # Operands under 2,048 values never reach the R code (ADR 0059).
+    source <- dta_double(rep(c(1, 2), 1024L))
     invisible(source + 1)
     ns <- asNamespace("dtatools")
     original <- get(".dta_data", ns)
@@ -139,16 +142,17 @@ test_that("self restoring scalar callbacks retain the original completed caller 
     }
     .numeric_entry_replace(".dta_data", replacement, ns)
     result <- source + 1
-    expected <- list(args = list(c(1, 2), c(1, 1)), operation = .Primitive("+"),
-                     result = c(2, 3), missing_operand = c(FALSE, FALSE))
+    expected <- list(args = list(rep(c(1, 2), 1024L), rep(1, 2048L)),
+                     operation = .Primitive("+"), result = rep(c(2, 3), 1024L),
+                     missing_operand = rep(FALSE, 2048L))
     observed <- lapply(names(expected), function(name) {
         get0(name, retained, inherits = FALSE, ifnotfound = "absent local")
     })
     names(observed) <- names(expected)
     expect_identical(observed, expected)
-    expect_identical(as.double(result), c(2, 3))
+    expect_identical(as.double(result), rep(c(2, 3), 1024L))
     expect_identical(get(".dta_data", ns), original)
-    expect_identical(as.double(source), c(1, 2))
+    expect_identical(as.double(source), rep(c(1, 2), 1024L))
 })
 
 test_that("computed conversion preserves all original local assignment callbacks", {

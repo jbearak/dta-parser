@@ -422,6 +422,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_computed_values, 1},
     {"C_dtatools_scalar_arithmetic",
      (DL_FUNC) &C_dtatools_scalar_arithmetic, 5},
+    {"C_dtatools_arithmetic_small", (DL_FUNC) &C_dtatools_arithmetic_small, 0},
     {"C_dtatools_gather_numeric",
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
