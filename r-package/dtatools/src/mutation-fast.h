@@ -180,4 +180,60 @@ SEXP C_dtatools_generate_scalar(SEXP value, SEXP rows, SEXP count, SEXP storage)
     return result;
 }
 
+/* A bare integer or double scalar that `.generated_column()` would hand to
+   C_dtatools_generate_scalar(). */
+static int typed_scalar_qualifies(SEXP value) {
+    if (!mutation_plain_numeric(value) || TYPEOF(value) == LGLSXP || XLENGTH(value) != 1)
+        return 0;
+    if (TYPEOF(value) == INTSXP) {
+        int number = INTEGER(value)[0];
+        return number == NA_INTEGER || number <= 2147483620;
+    }
+    double number = REAL(value)[0];
+    return R_FINITE(number) && fabs(number) <= 8e307;
+}
+
+/* `.typed_column()` for the values a grouped verb's expressions usually
+   return, without its R helpers (ADR 0053). A Stata numeric, temporal or
+   factor, and a bare logical, are typed already and come back as they are.
+   A bare scalar that `typed_scalar_qualifies()` gets an empty raw vector,
+   which tells the caller to force the row count and pass it to
+   C_dtatools_typed_scalar_fast(). Like `.generated_column()`, the caller
+   forces the count only after the value qualifies, so a declined value,
+   such as a foreign ALTREP vector whose length the call site passes, keeps
+   the R code's order. NULL for anything else, including S4 objects, which
+   the R code types. So is a class vector that is ALTREP, since reading one
+   can run its provider's code, which the R code would then run again. */
+SEXP C_dtatools_typed_column_fast(SEXP value) {
+    if (Rf_isS4(value) || (Rf_isObject(value) && ALTREP(Rf_getAttrib(value, R_ClassSymbol))))
+        return R_NilValue;
+    if (Rf_inherits(value, "dta_numeric") || Rf_inherits(value, "dta_temporal") ||
+        Rf_inherits(value, "factor") || (TYPEOF(value) == LGLSXP && !Rf_isObject(value)))
+        return value;
+    if (!typed_scalar_qualifies(value)) return R_NilValue;
+    static SEXP wanted = NULL;
+    if (wanted == NULL) {
+        wanted = Rf_allocVector(RAWSXP, 0);
+        R_PreserveObject(wanted);
+    }
+    return wanted;
+}
+
+/* The scalar's typed column: C_dtatools_generate_scalar() as a long or a
+   double, the storage `.generated_column()` names. NULL for a count that is
+   not a bare, finite, nonnegative whole number, which the R code converts
+   with `as.double()` or rejects with its own error. */
+SEXP C_dtatools_typed_scalar_fast(SEXP value, SEXP count) {
+    if (!typed_scalar_qualifies(value) || (TYPEOF(count) != INTSXP && TYPEOF(count) != REALSXP) ||
+        ALTREP(count) || ANY_ATTRIB(count) || XLENGTH(count) != 1) return R_NilValue;
+    double rows_double = Rf_asReal(count);
+    if (!R_FINITE(rows_double) || rows_double < 0 || rows_double != trunc(rows_double) ||
+        rows_double > (double) R_XLEN_T_MAX) return R_NilValue;
+    SEXP rows = PROTECT(Rf_ScalarReal(rows_double));
+    SEXP storage = PROTECT(Rf_mkString(TYPEOF(value) == INTSXP ? "long" : "double"));
+    SEXP result = C_dtatools_generate_scalar(value, R_NilValue, rows, storage);
+    UNPROTECT(2);
+    return result;
+}
+
 #endif
