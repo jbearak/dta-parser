@@ -10,12 +10,22 @@
   pass as numeric keys, when every key is ASCII or missing. It had repeated
   each group's key for every row and compared the two with vctrs. Each
   grouped verb checks its input, the frame it evaluates and its result, so
-  the saving repeats. Over
-  the 42,739 women in the first 100,000 rows of the India 2021 DHS births
-  file, the check of `group_by(b, caseid)` falls from about 0.044 to
-  0.011 seconds, `count(b, caseid)` from 0.45 to 0.36 and
-  `summarise(group_by(b, caseid), m = mean(b2))` from 0.54 to 0.42.
-  Results and errors are unchanged.
+  the saving repeats. Over the 42,739 women in the first 100,000 rows of the
+  India 2021 DHS births file, the check of `group_by(b, caseid)` falls from
+  about 0.044 to 0.011 seconds, `count(b, caseid)` from 0.45 to 0.36 and
+  `summarise(group_by(b, caseid), m = mean(b2))` from 0.54 to 0.42. Results
+  and errors are unchanged.
+
+* Grouped verbs build the `.data` pronoun once per set of columns instead of
+  once per group, pass `rlang::eval_tidy()` the frame its default would look
+  up for each group, and capture a grouped summary's atomic results in one
+  native call. Over the 42,739 women in the first 100,000 rows of the India
+  2021 DHS births file, `summarise(b, k = 2.5, .by = caseid)` falls from
+  about 0.27 to 0.24 seconds and
+  `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from 0.98 to
+  0.91. Results are unchanged. A traced or replaced `rlang::as_data_pronoun()`
+  sees one call per set of columns, and a traced `rlang::caller_env()` or
+  `.capture_dibble_nested()` no longer sees each group (ADR 0058).
 
 * `mean()` of a Stata byte, int, long or float vector in dtatools' compact
   form no longer checks, before its native call, that the base functions
