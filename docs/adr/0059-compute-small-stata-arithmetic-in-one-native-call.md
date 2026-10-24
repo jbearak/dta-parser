@@ -13,7 +13,7 @@ missing with `.collapse_missing()`, and builds the result with
 `.dta_computed()`. Its native routes prove those helpers unchanged, so the
 size gate of ADR 0050 leaves operands under 2,048 values to the R code. That
 covers each group's operands in a grouped verb. `x + 1` on a three-value int
-took about 10.3 microseconds, and `.dta_arith_base()` took about 40% of
+took about 10.5 microseconds, and `.dta_arith_base()` took about 40% of
 `mutate(b, m = b2 + 1, .by = caseid)` over the 42,739 women in the first
 100,000 rows of the India 2021 DHS births file.
 
@@ -37,11 +37,10 @@ that changes an operand, it never leaves the R code to compute the result
 again after that point. Where it cannot build the result for that `minimum`,
 it passes the values and the value `minimum` returned to `.dta_computed()`,
 quoting a symbol or call, since R code run by `minimum` can also rebind it.
-Where R code run by `minimum` has
-bound `native` in the helper's frame, so it cannot bind its result there, it
-returns the result from that frame through the `return` primitive that
-`.native_admission_return()` names. `x + 1` on a three-value int takes about
-4.0 microseconds.
+Where R code run by `minimum` has bound `native` in the helper's frame, so it
+cannot bind its result there, it returns the result from that frame through
+the `return` primitive that `.native_admission_return()` names. `x + 1` on a
+three-value int takes about 4.2 microseconds.
 
 The call does not prove what it skips. For operands under 2,048 values, a
 traced or replaced `.dta_data()`, `.metadata_view()`, `.dta_read_is_na()`,
