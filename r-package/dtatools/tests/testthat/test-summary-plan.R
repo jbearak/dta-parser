@@ -530,6 +530,28 @@ test_that("size plans decline what the loop would see differently", {
         expect_true(result$same, info = deparse(code))
         expect_identical(result$planned, 0L, info = deparse(code))
     }
+    # Classed expressions, whose length() method counts its calls.
+    assign("length.plan_literal", function(x) {
+        state$calls <- state$calls + 1L
+        length(unclass(x))
+    }, envir = table)
+    withr::defer(rm("length.plan_literal", envir = table))
+    literal <- structure(5, class = "plan_literal")
+    call <- structure(quote(dplyr::n()), class = "plan_literal")
+    summary <- structure(quote(mean(int)), class = "plan_literal")
+    for (code in list(
+        quote(dplyr::summarise(data, k = !!literal, .by = g)),
+        quote(dplyr::summarise(data, k = !!call, .by = g)),
+        quote(dplyr::summarise(data, k = !!summary, .by = g)))) {
+        counted <- call("{", quote(state$calls <- 0L),
+                        call("tryCatch", code, error = quote(function(e) NULL)),
+                        quote(state$calls))
+        result <- .plan_compare(.plan_global_call(counted, data = data, state = state,
+                                                  literal = literal, call = call,
+                                                  summary = summary))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
     # ALTREP rows, whose Length method could run R code. Rows of two or more
     # are compact sequences.
     compact <- dplyr::group_by(data, g)

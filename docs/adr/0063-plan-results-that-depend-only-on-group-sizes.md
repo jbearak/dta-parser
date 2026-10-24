@@ -41,6 +41,10 @@ to `.size_planned()`:
   `reframe()`. A `mutate()` already recycles a literal to the whole table
   before it chops it. A literal calls nothing, so it needs no admission.
 
+An expression with a class declines before anything reads it, here and in
+the summary plan of ADR 0061, since its `[[` and `length()` methods would
+run R code the loop does not.
+
 `C_dtatools_size_plan()` repeats the admission and builds each later
 group's result as the loop would. For `mutate()`, that is the group's size,
 or its rows' positions in the group, which the loop then combines. For a

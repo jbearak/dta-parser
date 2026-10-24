@@ -209,7 +209,10 @@
     sized <- .size_planned(quo, mask, groups, combined)
     if (!is.null(sized)) return(sized)
     expression <- rlang::quo_get_expr(quo)
-    if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
+    # A classed expression's `[[` and length() methods would run R code the
+    # loop does not.
+    if (!is.call(expression) || is.object(expression) ||
+        !is.symbol(expression[[1L]])) return(NULL)
     generic <- as.character(expression[[1L]])
     if (!generic %in% c("mean", "sum", "min", "max")) return(NULL)
     arguments <- as.list(expression)[-1L]
@@ -249,6 +252,9 @@
 # it reaches here, and row_number() in a summary returns more than one value.
 .size_planned <- function(quo, mask, groups, combined) {
     expression <- rlang::quo_get_expr(quo)
+    # A classed expression's `[[` and length() methods would run R code the
+    # loop does not.
+    if (is.object(expression)) return(NULL)
     namespace <- NULL
     if (is.call(expression)) {
         if (length(expression) != 1L || is.null(.size_plan_dependencies) ||
@@ -268,7 +274,7 @@
                        mask$helpers, namespace, .size_plan_dependencies)
         if (is.null(found) || any(vapply(found, isdebugged, logical(1)))) return(NULL)
     } else if (combined || !(is.double(expression) || is.integer(expression)) ||
-               length(expression) != 1L || !is.null(attributes(expression))) {
+               !is.null(attributes(expression)) || length(expression) != 1L) {
         return(NULL)
     }
     # The mutate() loop recycles an empty group's result itself, which the
