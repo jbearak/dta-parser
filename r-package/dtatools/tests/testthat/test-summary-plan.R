@@ -177,6 +177,39 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     check(in_env(), planned = 1L)
 })
 
+test_that("mutate() plans a summary of one column across groups", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_data()
+    columns <- setdiff(names(data), "g")
+    planned <- 0L
+    for (column in columns) for (generic in c("mean", "min", "max", "sum"))
+        for (na.rm in list(NULL, TRUE)) {
+            call <- if (is.null(na.rm)) rlang::call2(generic, rlang::sym(column)) else
+                rlang::call2(generic, rlang::sym(column), na.rm = na.rm)
+            result <- .plan_compare(.plan_global(
+                dplyr::mutate(data, m = !!call, .by = g), data = data, call = call))
+            expect_true(result$same, info = paste(column, generic, deparse(na.rm)))
+            planned <- planned + result$planned
+        }
+    expect_gt(planned, 40L)
+    taken <- function(code) .plan_compare(.plan_global_call(substitute(code), data = data))
+    # A result may replace its column, and later expressions read it.
+    result <- taken(dplyr::mutate(data, int = mean(int), d = int * 2, k = max(int), .by = g))
+    expect_true(result$same)
+    expect_identical(result$planned, 2L)
+    result <- taken(dplyr::mutate(dplyr::group_by(data, g), m = mean(byte), .keep = "used"))
+    expect_true(result$same)
+    expect_identical(result$planned, 1L)
+    # One group, and an empty group, recycle each result in the loop.
+    result <- taken(dplyr::mutate(data, m = mean(int)))
+    expect_true(result$same)
+    expect_identical(result$planned, 0L)
+    empty <- dplyr::group_by(dplyr::mutate(data, f = factor(g, levels = 1:7)), f, .drop = FALSE)
+    result <- .plan_compare(.plan_global(dplyr::mutate(empty, m = mean(int)), empty = empty))
+    expect_true(result$same)
+    expect_identical(result$planned, 0L)
+})
+
 test_that("later expressions see planned results as the loop builds them", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- .plan_data()
