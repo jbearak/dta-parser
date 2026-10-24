@@ -16,11 +16,11 @@ seconds, and `summarise(b, k = 2.5, .by = caseid)`, with nothing to compute,
 took 0.27.
 
 `.dibble_summary_columns()` now first passes each expression to
-`.summary_planned()`. When the expression is `mean()`, `min()`, `max()` or
-`sum()` of one column, with `na.rm` left out or given as a logical, and the
-result does not replace a column, it asks `C_dtatools_summary_plan_admitted()`
-whether each group's evaluation would end in the package method's native
-result with no R code on the way:
+`.summary_planned()`, and so does a grouped `mutate()`, whose loop works the
+same way. When the expression is `mean()`, `min()`, `max()` or `sum()` of
+one column, with `na.rm` left out or given as a logical, it asks
+`C_dtatools_summary_plan_admitted()` whether each group's evaluation would
+end in the package method's native result with no R code on the way:
 
 - The generic R finds from the quosure's environment is base's, as the
   frozen copies have it, and no column carries its name.
@@ -44,13 +44,17 @@ rest of the summary runs as before. It declines, and the loop runs, when
 any chunk would leave its group to the R code: a column that is not
 compact, such as a double, an empty group's or an all-missing group's
 `min()` or `max()`, which warn, and a metadata proxy that `min()`, `max()`
-or `sum()` reads another way. The same summary now takes about 0.12
-seconds.
+or `sum()` reads another way. A `summarise()` result that replaces a
+column keeps the loop, since each group reads the column's prior value, and
+so does a `mutate()` with one group or an empty group, whose results the
+loop recycles itself. The same summary now takes about 0.12 seconds, and
+`mutate(b, m = mean(b2), .by = caseid)` falls from about 0.37 to 0.06.
 
 The plan does not prove what it skips. A traced or replaced
-`mask$with_group()`, `rlang::eval_tidy()`, `.retyped_column()` or
-`.capture_dibble_nested()` no longer sees a planned expression's groups,
-and the mask keeps no binding set or data mask for them. A replaced or
-traced generic or method, a method defined where R would find it first, and
-a debugged generic or method still take the loop. The maintainer approved
-changing decisions that block measured speedups on 2026-10-22.
+`mask$with_group()`, `rlang::eval_tidy()`, `.retyped_column()`,
+`.capture_dibble_nested()` or `.metadata_copy()` no longer sees a planned
+expression's groups, and the mask keeps no binding set or data mask for
+them. A replaced or traced generic or method, a method defined where R would
+find it first, and a debugged generic or method still take the loop. The
+maintainer approved changing decisions that block measured speedups on
+2026-10-22.
