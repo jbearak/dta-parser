@@ -9,7 +9,7 @@ After ADR 0062, a grouped summary of one column's `mean()`, `min()`,
 Expressions whose results depend only on the groups' sizes still ran the
 loop: `n()`, `row_number()` and a literal number. Over the 42,739 women in
 the first 100,000 rows of the India 2021 DHS births file,
-`summarise(b, n = n(), .by = caseid)` took about 0.31 seconds,
+`summarise(b, n = n(), .by = caseid)` took about 0.30 seconds,
 `summarise(b, k = 2.5, .by = caseid)` 0.24 and
 `mutate(b, r = row_number(), .by = caseid)` 0.25, most of it in the loop's
 steps for each group. `count()` and `tally()` summarise
@@ -60,7 +60,7 @@ ALTREP. The loop measures each group's rows in turn, and a `length()`
 method or an ALTREP Length method could run R code, so the plan declines
 before it reads them. The summary plan of ADR 0061 now checks a
 `mutate()`'s groups the same way, instead of with `lengths()`. The `n()`
-summary now takes about 0.08 seconds, the literal's 0.07 and the
+summary now takes about 0.07 seconds, the literal's 0.06 and the
 `mutate()` 0.02.
 
 As in ADR 0061, the plan does not prove what it skips. A traced or replaced
