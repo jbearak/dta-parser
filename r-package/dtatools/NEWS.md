@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` scans its results' attributes in one native call
+  when it looks for the results that can change their common type. It had
+  looped over the results in R, up to twice per expression, calling
+  `attributes()` and `identical()` for each one. Over the 42,739 women in
+  the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, s = sum(b11, na.rm = TRUE), .by = caseid)` falls from about
+  0.49 to 0.41 seconds and
+  `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from 1.05 to
+  0.98. Results are unchanged. A traced or replaced `identical()` no longer
+  sees these scans (ADR 0056).
+
 * `mean()`, `min()`, `max()` and `sum()` of one Stata byte, int, long or
   float vector in dtatools' compact form, as columns read from a file are,
   compute their result in one native call. They had captured the values
