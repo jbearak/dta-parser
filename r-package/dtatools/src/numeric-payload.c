@@ -8172,4 +8172,6 @@ SEXP C_dtatools_computed_values(SEXP value) {
     return status;
 }
 
+#include "numeric-compare-direct.h"
+
 #include "initial-capture.inc"

@@ -15377,6 +15377,10 @@
           "sha256": "fbd8f607c5cecce7b3aab148971c9d8db942008e48a5c37a376048bf7824594b"
         },
         {
+          "path": "tests/testthat/test-compare-direct.R",
+          "sha256": ""
+        },
+        {
           "path": "tests/testthat/test-dta-compare-native.R",
           "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
         },

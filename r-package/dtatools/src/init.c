@@ -520,6 +520,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_missing_code_counts, 1},
     {"C_dtatools_dta_compare",
      (DL_FUNC) &C_dtatools_dta_compare, 5},
+    {"C_dtatools_compare_direct", (DL_FUNC) &C_dtatools_compare_direct, 0},
     {"C_dtatools_fused_compare_patch",
      (DL_FUNC) &C_dtatools_fused_compare_patch, 8},
     {"C_bracket_s3_guard", (DL_FUNC) &C_bracket_s3_guard, 4},
