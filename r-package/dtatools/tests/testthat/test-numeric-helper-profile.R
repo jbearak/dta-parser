@@ -22,7 +22,9 @@ test_that("numeric kernel diagnostics retain canonical compiled route contracts"
     # testthat clones package bindings; synthetic inspection frames must use
     # the actual lexical namespace used by the production helper closures.
     environment(attempt) <- asNamespace("dtatools")
-    invisible(dta_double(c(1, 2)) + 1)
+    # Operands under 2,048 values skip the R code that settles the scalar
+    # route's helpers (ADR 0059).
+    invisible(dta_double(rep(c(1, 2), 1024L)) + 1)
     invisible(get(".dta_storage_holds", asNamespace("dtatools"))(c(1, 2), "double"))
     actual <- attempt()
     if (!supported) {
@@ -98,7 +100,8 @@ test_that("scalar profile rejects changed standard compiled wrapper code", {
     actual <- .dtatools_child_r("numeric-recompiled-wrapper", function(libraries) {
         .libPaths(libraries)
         library(dtatools)
-        source <- dta_double(c(1, 2))
+        # Operands under 2,048 values never reach the R code (ADR 0059).
+        source <- dta_double(rep(c(1, 2), 1024L))
         invisible(source + 1)
         replacement <- compiler::cmpfun(base::withCallingHandlers,
                                         options = list(optimize = 0L))
@@ -122,11 +125,12 @@ test_that("scalar profile rejects changed standard compiled wrapper code", {
     }, args = list(.libPaths()), timeout = 20)
     expect_identical(actual$calls, actual$expected)
     expect_gt(actual$expected, 0L)
-    expect_identical(actual$result, c(2, 3))
+    expect_identical(actual$result, rep(c(2, 3), 1024L))
 })
 
 test_that("scalar recycling preserves functions reached by ordinary recompilation", {
-    source <- dta_double(c(1, 2))
+    # Operands under 2,048 values never reach the R code (ADR 0059).
+    source <- dta_double(rep(c(1, 2), 1024L))
     invisible(source + 1)
     vctrs_ns <- asNamespace("vctrs")
     original_recycle <- get("vec_recycle_common", vctrs_ns)
@@ -288,12 +292,15 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
                 dibble(x = c(1, 2, 3, 4), g = c(1L, 1L, 2L, 2L)),
                 y = x + 1, by = g
             ),
-            restore = function() source[1]
+            restore = function() source[1],
+            compare = function() source == 1
         )
         for (operation in operations) invisible(operation())
         original <- .Primitive(".Call")
         introduced <- c(
-            "C_dtatools_scalar_arithmetic", "C_dtatools_computed_numeric",
+            "C_dtatools_scalar_arithmetic", "C_dtatools_arithmetic_small",
+            "C_dtatools_compare_direct",
+            "C_dtatools_computed_numeric",
             "C_dtatools_computed_values", "C_dtatools_construct_double",
             "C_dtatools_double_fits", "C_dtatools_canonical_attribute_plan",
             "C_dtatools_canonical_generate_attributes",
@@ -342,7 +349,8 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
     }, args = list(.libPaths()))
     expected <- list(scalar = c(2, 3), computed = c(.5, 1), strict = c(1, 2),
                      holds = TRUE, metadata = attributes(dta_double(c(1, 2))),
-                     grouped = c(2, 3, 4, 5), restore = 1)
+                     grouped = c(2, 3, 4, 5), restore = 1,
+                     compare = c(TRUE, FALSE))
     for (mode in names(observed)) for (name in names(expected)) {
         record <- observed[[mode]][[name]]
         expect_null(record$error, info = paste(mode, name))
