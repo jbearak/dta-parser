@@ -10,9 +10,10 @@
   looped over the results in R, up to twice per expression, calling
   `attributes()` and `identical()` for each one. Over the 42,739 women in
   the first 100,000 rows of the India 2021 DHS births file,
-  `summarise(b, m = max(bord), .by = caseid)` falls from about 1.10 to 1.05
-  seconds and `summarise(b, n = n(), k = n(), .by = caseid)` from 1.16 to
-  1.05. Results are unchanged. A traced or replaced `identical()` no longer
+  `summarise(b, s = sum(b11, na.rm = TRUE), .by = caseid)` falls from about
+  0.49 to 0.41 seconds and
+  `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from 1.05 to
+  0.98. Results are unchanged. A traced or replaced `identical()` no longer
   sees these scans (ADR 0056).
 
 * `mean()`, `min()`, `max()` and `sum()` of one Stata byte, int, long or
