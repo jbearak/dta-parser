@@ -18413,7 +18413,7 @@
         },
         {
           "path": "tests/testthat/test-summary-computed.R",
-          "sha256": "fce6d04e8387cd4e41e4b94805d8e76fca3cd290c2913e445fde2467dd41b956"
+          "sha256": "19eb016d0361356ee3d0fdd4f0b03ddae762fffcc0b3d53ec2157f04ccbc65e7"
         }
       ],
       "blocks": [
@@ -19037,6 +19037,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 9,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the compact mean checks the mean methods but not their base helpers",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
           "warnings": 0
         }
       ],

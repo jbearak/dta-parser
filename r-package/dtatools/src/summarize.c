@@ -103,8 +103,13 @@ static int mean_method_chain(admission_same *same, SEXP env, SEXP symbol, SEXP e
     return 0;
 }
 
-SEXP C_dtatools_mean_admitted(SEXP frame) {
-    if (!summary_flag_known(frame)) return Rf_ScalarLogical(FALSE);
+/* Whether mean(value, na.rm = na.rm) in frame reaches the frozen generic
+   and mean.default(), with na.rm settled. With helpers, every base function
+   mean.default() calls must be unchanged too, and a captured value must be
+   a bare double. The compact mean in C_dtatools_mean_computed() checks the
+   generic and the methods only (ADR 0057). */
+static int mean_admission(SEXP frame, int helpers) {
+    if (!summary_flag_known(frame)) return 0;
     static const char *functions[] = {
         "mean", "mean.default", "isTRUE", "is.numeric", "is.complex",
         "is.logical", "is.na", "length", "!", "[", "&&", "||", "if",
@@ -116,11 +121,11 @@ SEXP C_dtatools_mean_admitted(SEXP frame) {
     if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
         ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 20) {
         UNPROTECT(1);
-        return Rf_ScalarLogical(FALSE);
+        return 0;
     }
     admission_same same = {.count = 0};
     int admitted = 1;
-    for (int i = 0; i < 20 && admitted; i++) {
+    for (int i = 0; i < (helpers ? 20 : 1) && admitted; i++) {
         SEXP symbol = summary_symbol(&symbols[i], functions[i]);
         SEXP current = mean_lookup(i == 0 ? frame : R_BaseEnv, symbol);
         admitted = admission_function_same(&same, current, VECTOR_ELT(dependencies, i)) &&
@@ -128,7 +133,8 @@ SEXP C_dtatools_mean_admitted(SEXP frame) {
                                     VECTOR_ELT(dependencies, i));
     }
     SEXP value = R_NilValue;
-    int captured = mean_peek_frame(frame, summary_symbol(&value_symbol, "value"), &value);
+    int captured = helpers ?
+        mean_peek_frame(frame, summary_symbol(&value_symbol, "value"), &value) : 0;
     if (captured < 0 || (captured == 1 &&
         (TYPEOF(value) != REALSXP || Rf_isObject(value) || Rf_isS4(value) ||
          Rf_getAttrib(value, R_ClassSymbol) != R_NilValue ||
@@ -149,7 +155,11 @@ SEXP C_dtatools_mean_admitted(SEXP frame) {
             (global || mean_method_chain(&same, R_GlobalEnv, symbol, expected, &global));
     }
     UNPROTECT(1);
-    return Rf_ScalarLogical(admitted);
+    return admitted;
+}
+
+SEXP C_dtatools_mean_admitted(SEXP frame) {
+    return Rf_ScalarLogical(mean_admission(frame, 1));
 }
 
 SEXP C_dtatools_range_admitted(SEXP frame) {
@@ -337,12 +347,13 @@ static int summary_capture_inert(SEXP x) {
 }
 
 /* mean() of a compact Stata numeric, read directly or through metadata
-   proxies, once C_dtatools_mean_admitted() admits the call. It gives what
-   mean.dta_numeric() builds from its capture: the mean, then
-   `.collapse_missing()` and `.dta_computed()`. Capturing such a vector runs
-   no R code, so the admission the R code repeats after its capture still
-   holds. It reads x from the frame and declines while x is a promise, as in
-   a direct call of the method, since forcing x could change what the
+   proxies. It gives what mean.dta_numeric() builds from its capture: the
+   mean, then `.collapse_missing()` and `.dta_computed()`. It admits the call
+   when the mean generic and methods are the frozen ones, without the base
+   functions mean.default() calls (ADR 0057). Capturing such a vector runs
+   no R code, so the admission the R code repeats after its capture would
+   still hold. It reads x from the frame and declines while x is a promise,
+   as in a direct call of the method, since forcing x could change what the
    admission saw, and unless summary_capture_inert() holds. R_NilValue
    leaves the call to the R code (ADR 0054). */
 SEXP C_dtatools_mean_computed(SEXP frame) {
@@ -350,7 +361,7 @@ SEXP C_dtatools_mean_computed(SEXP frame) {
     SEXP x = R_NilValue;
     if (mean_peek_frame(frame, summary_symbol(&x_symbol, "x"), &x) != 1 ||
         TYPEOF(x) != REALSXP || numeric_base_source(x) == R_NilValue ||
-        !summary_capture_inert(x) || !summary_flag_known(frame)) return R_NilValue;
+        !summary_capture_inert(x) || !mean_admission(frame, 0)) return R_NilValue;
     SEXP flag = summary_flag(frame);
     if (flag == NULL) return R_NilValue;
     SEXP value = PROTECT(C_dtatools_numeric_mean(x, flag));

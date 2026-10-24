@@ -1620,11 +1620,14 @@ summary.dta_numeric <- function(object, ...) {
 
 #' @export
 mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
-    if (...length() == 0L && .Call(C_dtatools_mean_admitted, environment())) {
+    if (...length() == 0L) {
         # A compact Stata numeric takes one native call, which gives what the
-        # code below would (ADR 0054).
+        # code below would (ADR 0054). It checks the mean generic and methods
+        # but not the base functions mean.default() calls (ADR 0057).
         result <- .Call(C_dtatools_mean_computed, environment())
         if (!is.null(result)) return(result)
+    }
+    if (...length() == 0L && .Call(C_dtatools_mean_admitted, environment())) {
         value <- .dta_data(x)
         # Capture can invoke a foreign provider. Recheck dispatch before
         # touching na.rm, which a custom method may deliberately leave lazy.

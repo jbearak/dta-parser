@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `mean()` of a Stata byte, int, long or float vector in dtatools' compact
+  form no longer checks, before its native call, that the base functions
+  `mean.default()` calls are unchanged. That check took about half of the
+  call's admission. It still checks the `mean()` generic and methods. Over
+  the 42,739 women in the first 100,000 rows of the India 2021 DHS births
+  file, `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.45 to
+  0.41 seconds and `mutate(b, m = mean(b2), .by = caseid)` from 0.41 to
+  0.37. Results are unchanged. A traced or replaced `isTRUE()`, `is.na()`
+  or another base function that `mean.default()` calls no longer sees these
+  means (ADR 0057).
+
 * `==`, `!=`, `<`, `<=`, `>` and `>=` on a Stata numeric that is not a date
   or time run in one native call when the other operand is a number or a
   Stata numeric or double vector of the same length. They had converted a
