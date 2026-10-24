@@ -13743,7 +13743,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-expressions.R",
-          "sha256": "be83f522fb52e1a17b5bc071001b8f641e8b5af5477e4e3bd547b2943113e9ed"
+          "sha256": "60c6843f36108d4eb0d0ce41ec4cb256aa429611bdbf2371b9720b4b94171267"
         },
         {
           "path": "tests/testthat/test-dibble-callbacks.R",
@@ -13787,7 +13787,7 @@
         },
         {
           "path": "tests/testthat/test-group-capture.R",
-          "sha256": "053c61f9509e7fbd811dad9945785bff118f2d7df3dc69872b96bb89d8fc0030"
+          "sha256": "30e0a581cdd41a70db72dbd47343b787059274275cb43b188be0860ca83c5b58"
         }
       ],
       "blocks": [
@@ -14826,6 +14826,17 @@
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
+          "file": "test-dibble-expressions.R",
+          "test": "groups share one data pronoun until an expression changes a column",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
           "file": "test-mask-bindings.R",
           "test": "native binding admission declines unsupported containers and names",
           "occurrence": 1,
@@ -15315,6 +15326,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-group-capture.R",
+          "test": "a group's results capture in one call as lapply() captures them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 55,
+          "warnings": 0
         }
       ],
       "children": [
@@ -18267,6 +18286,10 @@
         {
           "path": "tests/testthat/test-native-summary-kernels.R",
           "sha256": "eb7b32ddc3ca00224af5966e377b0fd967005a13b3a7692a750b30ea8610abea"
+        },
+        {
+          "path": "tests/testthat/test-summary-computed.R",
+          "sha256": "fce6d04e8387cd4e41e4b94805d8e76fca3cd290c2913e445fde2467dd41b956"
         }
       ],
       "blocks": [
@@ -18839,6 +18862,57 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "one compact numeric's mean, min, max and sum match the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 315,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts leave other summaries to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 31,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "grouped summaries of compact numerics skip the R helpers",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "mean() of an operand forced after its admission keeps the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts read no foreign class or names vector",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 13,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-computed.R",
+          "test": "the shortcuts take only the package's classes",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 9,
           "warnings": 0
         }
       ],

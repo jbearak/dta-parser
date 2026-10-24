@@ -551,6 +551,7 @@ DTATOOLS_INTERNAL int numeric_no_na(SEXP value);
 DTATOOLS_INTERNAL SEXP numeric_sum(SEXP value, Rboolean na_rm);
 DTATOOLS_INTERNAL SEXP numeric_min(SEXP value, Rboolean na_rm);
 DTATOOLS_INTERNAL SEXP numeric_max(SEXP value, Rboolean na_rm);
+DTATOOLS_INTERNAL SEXP numeric_computed_small(SEXP value, SEXP minimum);
 DTATOOLS_INTERNAL SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
     int format_version, size_t missing_count
