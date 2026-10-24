@@ -13,6 +13,10 @@ MANIFEST = json.loads((PACKAGE / "tools/native-test-manifest.json").read_text(en
 RUNNER_SPEC = importlib.util.spec_from_file_location("run_r_native", Path(__file__).with_name("run-r-native.py"))
 RUNNER = importlib.util.module_from_spec(RUNNER_SPEC)
 RUNNER_SPEC.loader.exec_module(RUNNER)
+REFRESH_SPEC = importlib.util.spec_from_file_location(
+    "refresh_r_native_manifest", Path(__file__).with_name("refresh-r-native-manifest.py"))
+REFRESH = importlib.util.module_from_spec(REFRESH_SPEC)
+REFRESH_SPEC.loader.exec_module(REFRESH)
 
 
 class NativeManifestTests(unittest.TestCase):
@@ -50,6 +54,18 @@ class NativeManifestTests(unittest.TestCase):
         for item in sources:
             with self.subTest(path=item["path"]):
                 self.assertEqual(hashlib.sha256((PACKAGE / item["path"]).read_bytes()).hexdigest(), item["sha256"])
+
+    def test_tests_guarded_by_a_forbidden_package_must_skip_natively(self):
+        # The native lanes run without these packages, so such a test skips
+        # there, even after a guard for a package the lanes install.
+        for family in MANIFEST["families"]:
+            for block in family["blocks"]:
+                guard = REFRESH.optional_package(PACKAGE / "tests/testthat" / block["file"], block["test"])
+                if guard is None:
+                    continue
+                with self.subTest(file=block["file"], test=block["test"]):
+                    self.assertEqual(block["skip"], "require")
+                    self.assertEqual(block.get("skip_message"), f"Reason: {{{guard}}} is not installed")
 
     def test_literal_child_requests_are_declared_in_their_family(self):
         request = re.compile(r"\.dtatools_child_r(_bg)?\(\s*(['\"])([^'\"\n]+)\2")

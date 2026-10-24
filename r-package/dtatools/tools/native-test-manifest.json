@@ -19009,9 +19009,12 @@
           "file": "test-summary-plan.R",
           "test": "a one-shot debugger stops in the first group",
           "occurrence": 1,
-          "skip": "forbid",
+          "skip": "require",
           "min_pass": 6,
-          "warnings": 0
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         },
         {
           "file": "test-summary-plan.R",
@@ -19081,8 +19084,8 @@
         {
           "id": "summary-plan-debugonce",
           "kind": "r",
-          "minimum": 1,
-          "maximum": 1,
+          "minimum": 0,
+          "maximum": 0,
           "completion": "complete",
           "allow_error": false
         },
