@@ -38,18 +38,19 @@ invisible(max(dta_int(c(1, 2))))
     planned <- 0L
     warnings <- character()
     original <- dtatools:::.summary_planned
-    replacement <- if (plan) function(quo, mask, groups) {
-        result <- original(quo, mask, groups)
+    replacement <- if (plan) function(...) {
+        result <- original(...)
         planned <<- planned + !is.null(result)
         result
-    } else function(quo, mask, groups) NULL
+    } else function(...) NULL
     testthat::local_mocked_bindings(.summary_planned = replacement, .package = "dtatools")
     outcome <- tryCatch(withCallingHandlers(list(value = .plan_strip(run())),
         warning = function(condition) {
             warnings <<- c(warnings, conditionMessage(condition))
             invokeRestart("muffleWarning")
         }), error = function(condition) list(error = conditionMessage(condition)))
-    list(outcome = serialize(outcome, NULL), warnings = warnings, planned = planned)
+    list(outcome = serialize(outcome, NULL), warnings = warnings, planned = planned,
+         error = !is.null(outcome$error))
 }
 
 # Whether the summary gives the same value, warnings and errors with the
@@ -57,7 +58,8 @@ invisible(max(dta_int(c(1, 2))))
 .plan_compare <- function(run) {
     planned <- .plan_run(run)
     looped <- .plan_run(run, plan = FALSE)
-    list(same = identical(planned[1:2], looped[1:2]), planned = planned$planned)
+    list(same = identical(planned[1:2], looped[1:2]), planned = planned$planned,
+         error = planned$error)
 }
 
 # A function whose quosures are made in a child of the global environment,
@@ -87,6 +89,7 @@ test_that("planned summaries give what the group loop gives", {
             result <- .plan_compare(run)
             info <- paste(column, generic, form, by)
             expect_true(result$same, info = info)
+            expect_false(result$error, info = info)
             planned <- planned + result$planned
         }
     expect_gt(planned, 100L)
@@ -120,10 +123,11 @@ test_that("compact columns take the plan and others keep the loop", {
 test_that("summaries whose groups could evaluate differently keep the loop", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- .plan_data()
-    check <- function(run, planned = 0L) {
+    check <- function(run, planned = 0L, error = FALSE) {
         result <- .plan_compare(run)
         expect_true(result$same)
         expect_identical(result$planned, planned)
+        expect_identical(result$error, error)
     }
     summary <- quote(dplyr::summarise(data, m = mean(int), h = max(byte), .by = g))
     in_env <- function(...) {
@@ -147,7 +151,7 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     check(active, planned = 1L)
     # A missing argument where the call looks for its function is an error.
     missing_generic <- function(mean) dplyr::summarise(data, m = mean(int), .by = g)
-    check(function() missing_generic())
+    check(function() missing_generic(), error = TRUE)
     # A column named for the generic or a method is read while R looks for it.
     named <- data
     named$mean <- data$int
@@ -189,6 +193,7 @@ test_that("mutate() plans a summary of one column across groups", {
             result <- .plan_compare(.plan_global(
                 dplyr::mutate(data, m = !!call, .by = g), data = data, call = call))
             expect_true(result$same, info = paste(column, generic, deparse(na.rm)))
+            expect_false(result$error, info = paste(column, generic, deparse(na.rm)))
             planned <- planned + result$planned
         }
     expect_gt(planned, 40L)
@@ -218,4 +223,8 @@ test_that("later expressions see planned results as the loop builds them", {
         data = data))
     expect_true(result$same)
     expect_gte(result$planned, 2L)
+    result <- .plan_compare(.plan_global(dplyr::reframe(data, m = mean(int),
+        h = max(byte), .by = g), data = data))
+    expect_true(result$same)
+    expect_identical(result$planned, 2L)
 })

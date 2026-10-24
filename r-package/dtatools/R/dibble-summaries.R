@@ -196,8 +196,11 @@
 # its native result (ADR 0061). It returns the captured results and their
 # sizes as the group loop builds them, or NULL, and the loop runs. It reads
 # the column only after the call finds the generic and method the groups
-# would call and neither is being debugged.
-.summary_planned <- function(quo, mask, groups) {
+# would call and neither is being debugged. With `combined`, for mutate(),
+# it also declines unless there is more than one group and none is empty,
+# since only then do the loop's results wait for the combiners to recycle
+# them.
+.summary_planned <- function(quo, mask, groups, combined = FALSE) {
     if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
     expression <- rlang::quo_get_expr(quo)
     if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
@@ -213,6 +216,7 @@
     column <- arguments[[1L]]
     if (!is.symbol(column)) return(NULL)
     column <- as.character(column)
+    if (combined && (length(mask$rows) < 2L || !all(lengths(mask$rows) > 0L))) return(NULL)
     # A column named for the generic or a method would be read while R
     # looks for them in the mask.
     current <- mask$helpers$current_vars()

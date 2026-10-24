@@ -361,13 +361,11 @@
                     } else if (constant) {
                         value <- vctrs::vec_recycle(rlang::quo_get_expr(quo), size)
                         chunks <- vctrs::vec_chop(value, mask$rows)
-                    } else if (length(mask$rows) > 1L && all(lengths(mask$rows) > 0L) &&
-                               !is.null(planned <- .summary_planned(quo, mask, groups))) {
+                    } else if (!is.null(planned <- .summary_planned(quo, mask, groups,
+                                                                     combined = TRUE))) {
                         # A summary of one column takes one native call for
-                        # every group, which gives what the loop would. Its
-                        # results wait for the combiners to recycle them, as
-                        # the loop's do with more than one group and none
-                        # empty (ADR 0061).
+                        # every group, which gives what the loop would (ADR
+                        # 0061).
                         chunks <- planned$chunks
                         mask$set_group(length(mask$rows))
                     } else {
