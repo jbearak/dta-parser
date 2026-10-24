@@ -14,9 +14,9 @@ numeric, `as.double()` runs `as.double.dta_numeric()`, which copies the vector
 with `.dta_snapshot()`. It then calls `C_dtatools_dta_compare()` up to three
 ways: with the right operand as the scalar, with the left one as the scalar
 and the operator flipped, and with two vectors of one length. The first result
-it gets is the comparison. `x == max(x)` on a three-value int took about 9
-microseconds, nearly all of it in those R steps, and `filter(b, b2 == max(b2),
-.by = caseid)` makes one such comparison per group.
+it gets is the comparison. `x == 2016` on three values of an int column took
+about 4.6 microseconds, most of it in those R steps, and `filter(b, b2 ==
+max(b2), .by = caseid)` makes one such comparison per group.
 
 `Ops.dta_numeric()` now first calls `C_dtatools_compare_direct()`. It reads
 `.Generic`, `e1` and `e2` from the method's frame. For the six comparisons, it
@@ -36,7 +36,7 @@ Results are unchanged. A traced or replaced `.dta_compare()`,
 `as.double.dta_numeric()`, `.dta_snapshot()` or `.metadata_copy()` no longer
 sees these comparisons, nor do the base functions they call, such as
 `getOption()`, `length()` and `inherits()`, or a `length()` method defined for
-the package's classes. Temporal values, and the comparisons inside `mutate()`
-that call `.dta_compare()` directly, keep the R code. This extends the
-practice of ADR 0050 to comparisons. The maintainer approved changing
-decisions that block measured speedups on 2026-10-22.
+the package's classes. Temporal values keep the R code, as does the fallback
+of an ungrouped `mutate()`'s fused comparison, which calls `.dta_compare()`
+directly. This extends the practice of ADR 0050 to comparisons. The maintainer
+approved changing decisions that block measured speedups on 2026-10-22.

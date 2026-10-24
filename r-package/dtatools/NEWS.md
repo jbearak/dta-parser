@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* `==`, `!=`, `<`, `<=`, `>` and `>=` on a Stata numeric that is not a date
+  or time run in one native call when the other operand is a number or a
+  Stata numeric or double vector of the same length. They had converted a
+  length-one operand, settled the thread option and tried the comparison
+  kernel up to three ways through several R helpers. `x == 2016` on a
+  three-value int falls from about 4.6 to 0.9 microseconds. Over the 42,739
+  women in the first 100,000 rows of the India 2021 DHS births file,
+  `filter(b, b2 == max(b2), .by = caseid)` falls from about 0.93 to 0.54
+  seconds and `mutate(b, k = b11 >= 24, .by = caseid)` from 0.50 to 0.30.
+  Results, warnings and errors are unchanged. A traced or replaced
+  `.dta_compare()` or another helper of these comparisons no longer sees
+  these calls (ADR 0060).
+
 * Grouped `summarise()` scans its results' attributes in one native call
   when it looks for the results that can change their common type. It had
   looped over the results in R, up to twice per expression, calling
