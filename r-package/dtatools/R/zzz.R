@@ -195,6 +195,7 @@
     .numeric_binary_dependencies
     .numeric_mean_dependencies
     .numeric_range_dependencies
+    .summary_plan_dependencies
     complete <- FALSE
     on.exit({
         if (!complete) {

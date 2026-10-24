@@ -94,18 +94,21 @@ OPTIONAL_GUARD = re.compile(r'skip_if_not_installed\(\s*"([^"]+)"')
 
 
 def optional_package(path, title):
-    """The forbidden package a test's skip_if_not_installed() guard names, if any.
+    """The first forbidden package a test's skip_if_not_installed() guards name, if any.
 
-    The guard is looked for between the test's opening line and the next
-    test_that() call, so a file-level guard does not count."""
+    Guards are looked for between the test's opening line and the next
+    test_that() call, so a file-level guard does not count. A guard for a
+    package the native lanes install, such as callr, may come first."""
     text = path.read_text(encoding="utf-8")
     starts = list(TEST_START.finditer(text))
     for index, match in enumerate(starts):
         if match.group(1).encode().decode("unicode_escape") != title:
             continue
         end = starts[index + 1].start() if index + 1 < len(starts) else len(text)
-        guard = OPTIONAL_GUARD.search(text, match.end(), end)
-        return guard.group(1) if guard and guard.group(1) in NATIVE_FORBIDDEN else None
+        for guard in OPTIONAL_GUARD.finditer(text, match.end(), end):
+            if guard.group(1) in NATIVE_FORBIDDEN:
+                return guard.group(1)
+        return None
     return None
 
 
