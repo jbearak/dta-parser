@@ -21,9 +21,9 @@
   those groups would reach the package's method and its native result. They
   had evaluated the expression once per group in a data mask. Over the
   42,739 women in the first 100,000 rows of the India 2021 DHS births file,
-  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.41 to 0.14
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.38 to 0.10
   seconds, `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from
-  0.94 to 0.21 and `mutate(b, m = mean(b2), .by = caseid)` from 0.37 to
+  0.88 to 0.25 and `mutate(b, m = mean(b2), .by = caseid)` from 0.35 to
   0.07. Results, warnings and errors are unchanged. The first group still
   runs through the loop. A traced or replaced `rlang::eval_tidy()` or
   another step of the group loop no longer sees the later groups (ADR 0061).

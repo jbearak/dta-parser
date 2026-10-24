@@ -208,6 +208,20 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     check(in_env(), planned = 1L)
 })
 
+test_that("S4 chunks keep the loop", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    # Their S4 methods dispatch before the S3 method the plan stands in for.
+    data <- dibble(g = rep(1:3, each = 2), x = asS4(dta_int(1:6)))
+    for (code in list(quote(dplyr::summarise(data, m = max(x), .by = g)),
+                      quote(dplyr::summarise(data, m = mean(x), .by = g)),
+                      quote(dplyr::mutate(data, m = sum(x), .by = g)))) {
+        result <- .plan_compare(.plan_global_call(code, data = data))
+        expect_true(result$same, info = deparse(code))
+        expect_false(result$error, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+})
+
 test_that("other columns split in the first group's evaluation", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = rep(1:2, each = 2),
