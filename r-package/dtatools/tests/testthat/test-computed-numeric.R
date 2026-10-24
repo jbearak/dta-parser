@@ -52,7 +52,9 @@ test_that("scalar debugger stops follow native admission or public fallback", {
 })
 
 test_that("scalar kernel uses actual settled operands and isolates its result", {
-    invisible(dta_double(c(1, 2)) + 1)
+    # Settle the helpers on 2,048 values, since smaller operands skip the R
+    # code that settles them (ADR 0059).
+    invisible(dta_double(rep(c(1, 2), 1024L)) + 1)
     attempt <- function(left, right, x = dta_double(c(1, 2)), y = 1, op = "+") {
         force(x); force(y); force(op)
         minimum <- "double"
@@ -97,6 +99,9 @@ test_that("scalar kernel uses actual settled operands and isolates its result", 
 })
 
 test_that("scalar arithmetic keeps operands settled before a source callback", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     original <- .dta_data
     calls <- 0L
@@ -296,6 +301,9 @@ test_that("scalar admission preserves delayed operator and recycling order", {
 })
 
 test_that("scalar admission keeps traced recycling and getter calls", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     calls <- 0L
     trace("vec_recycle_common", tracer = function() { calls <<- calls + 1L },
           where = asNamespace("vctrs"), print = FALSE)
@@ -337,6 +345,9 @@ test_that("computed arithmetic retains executable primitive tracers", {
 })
 
 test_that("scalar fallback reads classed recycled arguments only once per use", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     invisible(source + 1)
     reads <- integer()
@@ -372,6 +383,9 @@ test_that("scalar native decline does not touch a foreign operand", {
 })
 
 test_that("scalar arithmetic runs operand names methods before admission", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     events <- character()
     table <- get(".__S3MethodsTable__.", envir = baseenv())
@@ -390,6 +404,9 @@ test_that("scalar arithmetic runs operand names methods before admission", {
 })
 
 test_that("scalar arithmetic preserves nested recycling and warning callbacks", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     invisible(source + 1)
     for (name in c("withCallingHandlers", "parent.frame", "list2")) {
