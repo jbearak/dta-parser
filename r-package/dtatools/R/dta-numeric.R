@@ -1655,6 +1655,12 @@ mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
     base::is.finite, base::is.na, base::c, base::min, base::max, base::`!`,
     base::`[`, base::`if`, base::`{`, base::`<-`)
 
+# The methods a planned grouped summary skips, and the primitives that sum(),
+# min() and max() name, frozen when the package is built, so the plan never
+# takes a replacement for them (ADR 0061).
+.summary_plan_dependencies <- list(mean.dta_numeric, Summary.dta_numeric,
+    .Primitive("sum"), .Primitive("min"), .Primitive("max"))
+
 #' @export
 median.dta_numeric <- function(x, na.rm = FALSE, ...) {
     result <- suppressWarnings(stats::median(

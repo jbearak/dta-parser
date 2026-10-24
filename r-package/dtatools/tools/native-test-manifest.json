@@ -18433,6 +18433,10 @@
         {
           "path": "tests/testthat/test-summary-computed.R",
           "sha256": "19eb016d0361356ee3d0fdd4f0b03ddae762fffcc0b3d53ec2157f04ccbc65e7"
+        },
+        {
+          "path": "tests/testthat/test-summary-plan.R",
+          "sha256": "2cc554df3c17fa38bfbc8587d80741c8b00f8e99653d459d4e777dc5ca883ae6"
         }
       ],
       "blocks": [
@@ -19065,9 +19069,106 @@
           "skip": "forbid",
           "min_pass": 7,
           "warnings": 0
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "planned summaries give what the group loop gives",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 579,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "compact columns take the plan and others keep the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 5,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "summaries whose groups could evaluate differently keep the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 60,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "mutate() plans a summary of one column across groups",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 137,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "later expressions see planned results as the loop builds them",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 4,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "other columns split in the first group's evaluation",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a one-shot debugger stops in the first group",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "S4 chunks keep the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 9,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "summary-plan-debugonce",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     }
   ],

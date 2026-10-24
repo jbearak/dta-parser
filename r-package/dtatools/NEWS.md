@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` and `mutate()` compute `mean()`, `min()`, `max()` or
+  `sum()` of one Stata byte, int, long or float column in dtatools' compact
+  form for every group after the first in one native call, when each of
+  those groups would reach the package's method and its native result. They
+  had evaluated the expression once per group in a data mask. Over the
+  42,739 women in the first 100,000 rows of the India 2021 DHS births file,
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.38 to 0.10
+  seconds, `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from
+  0.88 to 0.25 and `mutate(b, m = mean(b2), .by = caseid)` from 0.35 to
+  0.07. Results, warnings and errors are unchanged. The first group still
+  runs through the loop. A traced or replaced `rlang::eval_tidy()` or
+  another step of the group loop no longer sees the later groups (ADR 0061).
+
 * Grouped verbs build the `.data` pronoun once per set of columns instead of
   once per group, pass `rlang::eval_tidy()` the frame its default would look
   up for each group, and capture a grouped summary's atomic results in one
@@ -15,6 +28,7 @@
   0.91. Results are unchanged. A traced or replaced `rlang::as_data_pronoun()`
   sees one call per set of columns, and a traced `rlang::caller_env()` or
   `.capture_dibble_nested()` no longer sees each group (ADR 0058).
+
 * `mean()` of a Stata byte, int, long or float vector in dtatools' compact
   form no longer checks, before its native call, that the base functions
   `mean.default()` calls are unchanged. That check took about half of the

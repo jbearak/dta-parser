@@ -289,6 +289,8 @@
              generation <- state$current[[name]]
              read(generation, name, -1L)
          },
+         # A column's group chunks once a group has read it, else NULL.
+         cached = function(name) state$current[[name]]$chunks,
          used = function() vapply(state$current, function(x) x$used, logical(1)),
          current_id = function() state$id,
          set_group = function(id) { state$id <- as.integer(id) }, forget = forget)
@@ -369,6 +371,15 @@
                         chunks <- vctrs::vec_chop(value, mask$rows)
                     } else {
                         for (id in seq_along(mask$rows)) {
+                            # After the first group, a summary of one column
+                            # can take one native call for the rest, which
+                            # gives what the loop would (ADR 0061).
+                            if (id == 2L && !is.null(planned <- .summary_planned(
+                                quo, mask, groups, combined = TRUE))) {
+                                chunks[-1L] <- planned$chunks
+                                mask$set_group(length(mask$rows))
+                                break
+                            }
                             value <- mask$evaluate(quo, id)
                             if (!is.null(value)) {
                                 # A bare vector or a package Stata numeric
