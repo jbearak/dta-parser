@@ -24,7 +24,7 @@
             generation <- new.env(parent = emptyenv())
             generation$value <- .capture_dibble_nested(value)
             generation$chunks <- if (is.null(chunks)) NULL else
-                lapply(chunks, .capture_dibble_nested)
+                .capture_dibble_chunks(chunks)
             if (positions) generation$positions <- TRUE
             generation$used <- FALSE
             state$current[[name]] <- generation

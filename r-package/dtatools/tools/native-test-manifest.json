@@ -1771,7 +1771,7 @@
         },
         {
           "path": "tests/testthat/test-computed-numeric.R",
-          "sha256": "feaed7e5d7184a617d37ec603a8f647df792fda844b026d3d348c6051107b31b"
+          "sha256": "0d73e3d0929ddd48a3d7c6bbeace9ce525a21b4c5c79c303b47e2131f47c3846"
         },
         {
           "path": "tests/testthat/test-strict-double.R",
@@ -1794,20 +1794,24 @@
           "sha256": "2bf2909113fa8ecbf051394fefe8e3e1aefc37ca72dfe971c325ec45439d11dd"
         },
         {
+          "path": "tests/testthat/test-arithmetic-small.R",
+          "sha256": "13c39845085ebc7a16eafc1c795df87db924e8bce5a9280c626c134ec362fd62"
+        },
+        {
           "path": "tests/testthat/test-numeric-helper-profile.R",
-          "sha256": "e28e6fb7b218c046428df3ab86d26a32b4dd4f8d486c055fc8dee66af2cc6e4d"
+          "sha256": "8449916af6107206d18caa469261c5f8b2b04cf8f800813f42db63a944bc2921"
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
-          "sha256": "f676ab957562c3194f31e7c3953610940a010f99203fc622b59fec0a8b772d7c"
+          "sha256": "cb05250645caf8b1120a85a990756b459cc687aac291c51d097e295365a5bd38"
         },
         {
           "path": "tests/testthat/test-scalar-export-admission.R",
-          "sha256": "0be00e4a74f81b4c0cd5a638c0ee4c65d8bb0b27eb21290f4da2716fe2b32c9a"
+          "sha256": "bccd056748aa7cfc515a0ecf84d74cfa8729716e22ddb18d13c6783c914db9c5"
         },
         {
           "path": "tests/testthat/test-numeric-eager-inputs.R",
-          "sha256": "d64e7348a177b5952783e6856e96a9d9153251df0f8faed5f9377347ea45a6a8"
+          "sha256": "b32042ab72017352b3fd71bb485d5fd9573e21ea5bd19e659df64cad0363b9a9"
         },
         {
           "path": "tests/testthat/test-numeric-decoration-callbacks.R",
@@ -1823,7 +1827,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-entry-callbacks.R",
-          "sha256": "fd03d7b56a0d206fe8d53984bdfeecbc3c3a56ffec732132894663867c2a213b"
+          "sha256": "ac60d610f8a57c3709ad15431a76e25033ad87a9a0ef7cc806439142a0fcc865"
         },
         {
           "path": "tests/testthat/test-native-control-callbacks.R",
@@ -1847,7 +1851,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-size-policy.R",
-          "sha256": "f2adb0c740b1fc552b0e01369d6de7882cf91fd490e36cb1de5b7648bf055077"
+          "sha256": "7a58a54c05d0f8604c7bf5a05fddfb27cceeff759cc1fd66e9b03f119bffd92d"
         },
         {
           "path": "tests/testthat/test-proof-memo.R",
@@ -1879,7 +1883,7 @@
         },
         {
           "path": "tests/testthat/test-altrep-scalar-arithmetic.R",
-          "sha256": "6cebe15eb2a544bc5e5600118cc0ade6acd63cdc7c4d77749bda671e68973e04"
+          "sha256": "0c3eb757adaabb7718c98a3d1312cc21d8c4d368f843db90c5d18a0bcddcb81e"
         },
         {
           "path": "tests/testthat/test-column-typing.R",
@@ -5106,6 +5110,78 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "one native call gives what the R code gives for small operands",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 2,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "operators give the same results with and without the native call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 704,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "small Stata arithmetic skips the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 5,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "other operators, operands and sizes leave the call to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 43,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "the call checks base's operators and its own frame",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that changes an operand keeps the values computed before it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "operands settle before a minimum that rebinds what they forward",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that binds the result slot keeps the computed result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that rebinds itself gives the value it returned",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
           "warnings": 0
         }
       ],
@@ -13743,7 +13819,7 @@
       "files": [
         {
           "path": "tests/testthat/test-dibble-expressions.R",
-          "sha256": "be83f522fb52e1a17b5bc071001b8f641e8b5af5477e4e3bd547b2943113e9ed"
+          "sha256": "60c6843f36108d4eb0d0ce41ec4cb256aa429611bdbf2371b9720b4b94171267"
         },
         {
           "path": "tests/testthat/test-dibble-callbacks.R",
@@ -13791,7 +13867,7 @@
         },
         {
           "path": "tests/testthat/test-group-capture.R",
-          "sha256": "053c61f9509e7fbd811dad9945785bff118f2d7df3dc69872b96bb89d8fc0030"
+          "sha256": "30e0a581cdd41a70db72dbd47343b787059274275cb43b188be0860ca83c5b58"
         }
       ],
       "blocks": [
@@ -14830,6 +14906,17 @@
           "skip_message": "Reason: {dplyr} is not installed"
         },
         {
+          "file": "test-dibble-expressions.R",
+          "test": "groups share one data pronoun until an expression changes a column",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
           "file": "test-mask-bindings.R",
           "test": "native binding admission declines unsupported containers and names",
           "occurrence": 1,
@@ -15346,6 +15433,14 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-group-capture.R",
+          "test": "a group's results capture in one call as lapply() captures them",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 55,
+          "warnings": 0
         }
       ],
       "children": [
@@ -15406,6 +15501,10 @@
         {
           "path": "tests/testthat/test-dta-merge-string-codes.R",
           "sha256": "fbd8f607c5cecce7b3aab148971c9d8db942008e48a5c37a376048bf7824594b"
+        },
+        {
+          "path": "tests/testthat/test-compare-direct.R",
+          "sha256": "c373ec909b6c59b4f59a52eb4b1f4891e8f416b268aefc3149f7746374b1f3b9"
         },
         {
           "path": "tests/testthat/test-dta-compare-native.R",
@@ -16773,6 +16872,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "comparisons give what the R code gives",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "compact comparisons take one call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "other operands leave comparisons to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 35,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "the thread option settles as the R code settles it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
           "warnings": 0
         }
       ],
