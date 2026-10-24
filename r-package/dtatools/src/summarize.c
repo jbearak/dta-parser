@@ -571,6 +571,9 @@ SEXP C_dtatools_summary_plan_admitted(SEXP generic, SEXP env, SEXP top, SEXP fra
 static int plan_chunk_value(SEXP x, int operation, Rboolean remove, double *decoded) {
     static SEXP storage = NULL;
     double value;
+    /* An S4 object's methods dispatch before the S3 method the plan
+       stands in for. */
+    if (Rf_isS4(x)) return -2;
     int computed = operation < 0 ?
         mean_chunk_supported(x) && numeric_mean_value(x, remove, &value) :
         summary_chunk_supported(x) && (operation == 0 ?

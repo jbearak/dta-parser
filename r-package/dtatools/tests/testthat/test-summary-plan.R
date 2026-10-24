@@ -212,10 +212,14 @@ test_that("S4 chunks keep the loop", {
     skip_if_not_installed("dplyr", "1.2.1")
     # Their S4 methods dispatch before the S3 method the plan stands in for.
     data <- dibble(g = rep(1:3, each = 2), x = asS4(dta_int(1:6)))
+    # Eight groups or more would build the combined vector (ADR 0062).
+    wide <- dibble(g = rep(1:9, each = 2), x = asS4(dta_int(1:18)))
     for (code in list(quote(dplyr::summarise(data, m = max(x), .by = g)),
                       quote(dplyr::summarise(data, m = mean(x), .by = g)),
-                      quote(dplyr::mutate(data, m = sum(x), .by = g)))) {
-        result <- .plan_compare(.plan_global_call(code, data = data))
+                      quote(dplyr::mutate(data, m = sum(x), .by = g)),
+                      quote(dplyr::summarise(wide, m = max(x), .by = g)),
+                      quote(dplyr::summarise(wide, m = mean(x), .by = g)))) {
+        result <- .plan_compare(.plan_global_call(code, data = data, wide = wide))
         expect_true(result$same, info = deparse(code))
         expect_false(result$error, info = deparse(code))
         expect_identical(result$planned, 0L, info = deparse(code))
