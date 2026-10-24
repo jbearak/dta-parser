@@ -35,12 +35,13 @@ invisible(max(dta_int(c(1, 2))))
 # Runs a summary with the plan, counting the expressions it takes, or with
 # the plan replaced by one that always declines.
 .plan_run <- function(run, plan = TRUE) {
-    planned <- 0L
+    planned <- assembled <- 0L
     warnings <- character()
     original <- dtatools:::.summary_planned
     replacement <- if (plan) function(...) {
         result <- original(...)
         planned <<- planned + !is.null(result)
+        assembled <<- assembled + !is.null(result$result)
         result
     } else function(...) NULL
     testthat::local_mocked_bindings(.summary_planned = replacement, .package = "dtatools")
@@ -50,7 +51,7 @@ invisible(max(dta_int(c(1, 2))))
             invokeRestart("muffleWarning")
         }), error = function(condition) list(error = conditionMessage(condition)))
     list(outcome = serialize(outcome, NULL), warnings = warnings, planned = planned,
-         error = !is.null(outcome$error))
+         error = !is.null(outcome$error), assembled = assembled)
 }
 
 # Whether the summary gives the same value, warnings and errors with the
@@ -59,7 +60,7 @@ invisible(max(dta_int(c(1, 2))))
     planned <- .plan_run(run)
     looped <- .plan_run(run, plan = FALSE)
     list(same = identical(planned[1:2], looped[1:2]), planned = planned$planned,
-         error = planned$error)
+         error = planned$error, assembled = planned$assembled)
 }
 
 # A function whose quosures are made in a child of the global environment,
@@ -302,4 +303,86 @@ test_that("later expressions see planned results as the loop builds them", {
         h = max(byte), .by = g), data = data))
     expect_true(result$same)
     expect_identical(result$planned, 2L)
+})
+
+# ADR 0062: with eight groups or more, the plan builds the combined vector
+# of compact results without the results themselves.
+.plan_wide <- function() dibble(
+    g = rep(1:12, c(1, 2, 3, 2, 1, 4, 2, 3, 1, 2, 3, 2)),
+    byte = dta_byte(c(4, -1, 7, NA, 3, 2, 100, -100, tagged_missing("a"), 5, 1, 0,
+                      2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9)),
+    int = dta_int(c(30000, -2, 7, 8, NA, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                    13, 14, 15, 16, 17, 18, 19, 20, 21)),
+    long = dta_long(c(2e9, -1, 2e9, 0, 5, NA, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                      12, 13, 14, 15, 16, 17, 18, 19, 20)),
+    float = dta_float(c(0.5, 1.25, -3, NA, tagged_missing("b"), 2.5, 1e30, 1e30,
+                        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2,
+                        1.3, 1.4, 1.5, 1.6, 1.7, 1.8)),
+    labelled = set_val_labels(dta_byte(rep(c(1, 2, NA), length.out = 26)),
+                              c(low = 1, high = 2)),
+    described = set_var_labels(dta_int(seq(-12, 13)), "a label"),
+    whole = dta_int(rep(c(4, 8, 12, 16), length.out = 26)),
+    huge = dta_float(rep(1.5e38, 26)),
+    double = dta_double(seq(0.25, 6.5, by = 0.25))
+)
+
+test_that("summaries of eight groups or more build the combined vector", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_wide()
+    columns <- setdiff(names(data), "g")
+    forms <- list(missing = NULL, true = TRUE, false = FALSE)
+    assembled <- 0L
+    for (column in columns) for (generic in c("mean", "min", "max", "sum"))
+        for (form in names(forms)) for (by in c("by", "group_by")) {
+            call <- if (is.null(forms[[form]])) rlang::call2(generic, rlang::sym(column)) else
+                rlang::call2(generic, rlang::sym(column), na.rm = forms[[form]])
+            run <- switch(by,
+                by = .plan_global(dplyr::summarise(data, m = !!call, .by = g),
+                                  data = data, call = call),
+                group_by = .plan_global(dplyr::summarise(dplyr::group_by(data, g), m = !!call),
+                                        data = data, call = call))
+            result <- .plan_compare(run)
+            info <- paste(column, generic, form, by)
+            expect_true(result$same, info = info)
+            expect_false(result$error, info = info)
+            assembled <- assembled + result$assembled
+        }
+    expect_gt(assembled, 80L)
+    # Later expressions read the combined vector one group at a time.
+    result <- .plan_compare(.plan_global(dplyr::summarise(data, m = mean(int),
+        d = m * 2, k = max(m), j = mean(m), n = dplyr::n(), s = sum(m) + dplyr::cur_group_id(),
+        .by = g), data = data))
+    expect_true(result$same)
+    expect_false(result$error)
+    expect_gte(result$assembled, 3L)
+})
+
+test_that("results the combine would leave to vctrs keep their group results", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_wide()
+    check <- function(run, planned, assembled = 0L) {
+        result <- .plan_compare(run)
+        expect_true(result$same)
+        expect_false(result$error)
+        expect_identical(result$planned, planned)
+        expect_identical(result$assembled, assembled)
+    }
+    # Fewer than eight groups.
+    check(.plan_global(dplyr::summarise(data, m = mean(int), .by = whole),
+                       data = data), planned = 1L)
+    # A long mean that is not whole is a double, which is not compact.
+    check(.plan_global(dplyr::summarise(data, m = mean(long), .by = g), data = data),
+          planned = 1L)
+    # A float sum past float's range is a double too.
+    check(.plan_global(dplyr::summarise(data, s = sum(huge), .by = g), data = data),
+          planned = 1L)
+    # reframe() reads each result.
+    check(.plan_global(dplyr::reframe(data, m = mean(int), .by = g), data = data),
+          planned = 1L)
+    # A common type method in the global environment.
+    assign("vec_ptype2.dta_numeric.dta_numeric",
+           dtatools:::vec_ptype2.dta_numeric.dta_numeric, envir = globalenv())
+    withr::defer(rm("vec_ptype2.dta_numeric.dta_numeric", envir = globalenv()))
+    check(.plan_global(dplyr::summarise(data, m = mean(int), .by = g), data = data),
+          planned = 1L)
 })
