@@ -6,9 +6,9 @@ status: accepted
 
 After ADR 0061, `summarise(b, m = mean(b2), .by = caseid)` over the 42,739
 women in the first 100,000 rows of the India 2021 DHS births file took
-about 0.14 seconds. The plan's native call took about 60% of that, most of
-it in garbage collection, since it builds a compact vector for each
-group's result and a metadata copy of each. The steps after it then fold
+about 0.10 seconds, 0.03 of it in garbage collection. The plan's native
+call builds a compact vector for each group's result and a metadata copy
+of each. The steps after it then fold
 the results' common type, cast each result to it and combine the casts,
 and the mask captures each cast for later expressions to read. Each of
 those steps builds another object per group.
