@@ -848,13 +848,15 @@ SEXP C_dtatools_size_plan(SEXP rows, SEXP expression, SEXP combined, SEXP env,
             return R_NilValue;
         }
         PROTECT(typed);
+        /* The size is read before the capture allocates. */
         SEXP measured = C_dtatools_chunk_size(typed);
-        SEXP captured = measured == R_NilValue ? R_NilValue : C_dtatools_capture_atomic(typed);
+        int length = measured == R_NilValue ? -1 : INTEGER(measured)[0];
+        SEXP captured = length < 0 ? R_NilValue : C_dtatools_capture_atomic(typed);
         if (captured == R_NilValue) {
             UNPROTECT(5);
             return R_NilValue;
         }
-        INTEGER(known)[i] = INTEGER(measured)[0];
+        INTEGER(known)[i] = length;
         SET_VECTOR_ELT(results, i, captured);
         UNPROTECT(2);
     }
