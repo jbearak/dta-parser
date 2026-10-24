@@ -2388,12 +2388,12 @@ static SEXP numeric_extreme(
     SEXP value, Rboolean na_rm, int minimum
 ) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
+    numeric_data *data = numeric_read_storage(value);
+    /* Under na.rm, a vector with no observed value has no extreme, and its
+       exact missing count shows that without a scan. */
+    if (na_rm && data->missing_count == data->length) return NULL;
     double result;
-    if (!numeric_extreme_storage(
-            numeric_read_storage(value), na_rm, minimum, &result
-        )) {
-        return NULL;
-    }
+    if (!numeric_extreme_storage(data, na_rm, minimum, &result)) return NULL;
     return Rf_ScalarReal(result);
 }
 
@@ -8076,44 +8076,12 @@ SEXP C_dtatools_construct_numeric_trusted(
     return result;
 }
 
-/* `.dta_computed(result, minimum, temporal)` for what the native route
-   above leaves to the R code because of its size gate: a result with no
-   attributes and no temporal encoding. It takes the R code's steps in
-   order. Computational NaN, infinite and out-of-range values become system
-   missing, the storage is the first of the R code's candidates that holds
-   every observed value, and the R code's constructors build the vector.
-   It does not prove the helpers it skips, which ADR 0050 allows. Like the
-   route above, it binds the vector to `native` in the caller's frame and
-   returns TRUE. Return FALSE, so the R code runs, for anything else,
-   including a tag byte outside `.a` through `.z`. The R code reads the
-   result before it forces `temporal` and then `minimum`, so the call
-   forces them in the caller's frame only after the result and each of its
-   values qualify, and each only after the one before it does. */
-SEXP C_dtatools_computed_values(SEXP value) {
-    SEXP frame = R_GetCurrentEnv();
-    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) ||
-        Rf_isS4(value) || XLENGTH(value) >= numeric_size_minimum ||
-        !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
+/* The vector `.dta_computed()` builds from a short bare double with no
+   temporal encoding, at the first storage from minimum_kind on that holds
+   every observed value, or R_NilValue for a tag byte outside `.a` through
+   `.z`. */
+static SEXP computed_values_build(SEXP value, int minimum_kind, SEXP temporal) {
     R_xlen_t length = XLENGTH(value);
-    for (R_xlen_t i = 0; i < length; i++) {
-        double element = REAL(value)[i];
-        int tag = ISNAN(element) ? tagged_na_tag_value(element) : 0;
-        if (tag != 0 && (tag < 'a' || tag > 'z')) return Rf_ScalarLogical(FALSE);
-    }
-    SEXP temporal = PROTECT(R_getVar(numeric_temporal_symbol, frame, TRUE));
-    if (TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
-        Rf_isS4(temporal) || XLENGTH(temporal) != 1 || INTEGER(temporal)[0] != 0) {
-        UNPROTECT(1);
-        return Rf_ScalarLogical(FALSE);
-    }
-    SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
-    int minimum_kind = computed_storage_kind(minimum);
-    UNPROTECT(1);
-    if (minimum_kind < 0) {
-        UNPROTECT(1);
-        return Rf_ScalarLogical(FALSE);
-    }
-    /* Scan again: forcing either argument can run R code. */
     const double *input = REAL(value);
     int changed = 0;
     unsigned fits = (1U << (NUMERIC_DOUBLE + 1)) - 1;
@@ -8121,10 +8089,7 @@ SEXP C_dtatools_computed_values(SEXP value) {
         double element = input[i];
         if (ISNAN(element)) {
             int tag = tagged_na_tag_value(element);
-            if (tag != 0 && (tag < 'a' || tag > 'z')) {
-                UNPROTECT(1);
-                return Rf_ScalarLogical(FALSE);
-            }
+            if (tag != 0 && (tag < 'a' || tag > 'z')) return R_NilValue;
             if (tag == 0 && !ISNA(element)) changed = 1;
         } else if (!R_FINITE(element) || fabs(element) > DBL_MAX / 2) {
             changed = 1;
@@ -8166,10 +8131,72 @@ SEXP C_dtatools_computed_values(SEXP value) {
         UNPROTECT(1);
     }
     PROTECT(payload);
-    SEXP result = PROTECT(numeric_decorate_result(payload, storage));
+    SEXP result = numeric_decorate_result(payload, storage);
+    UNPROTECT(4);
+    return result;
+}
+
+/* `.dta_computed(result, minimum, temporal)` for what the native route
+   above leaves to the R code because of its size gate: a result with no
+   attributes and no temporal encoding. It takes the R code's steps in
+   order. Computational NaN, infinite and out-of-range values become system
+   missing, the storage is the first of the R code's candidates that holds
+   every observed value, and the R code's constructors build the vector.
+   It does not prove the helpers it skips, which ADR 0050 allows. Like the
+   route above, it binds the vector to `native` in the caller's frame and
+   returns TRUE. Return FALSE, so the R code runs, for anything else,
+   including a tag byte outside `.a` through `.z`. The R code reads the
+   result before it forces `temporal` and then `minimum`, so the call
+   forces them in the caller's frame only after the result and each of its
+   values qualify, and each only after the one before it does. */
+SEXP C_dtatools_computed_values(SEXP value) {
+    SEXP frame = R_GetCurrentEnv();
+    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) ||
+        Rf_isS4(value) || XLENGTH(value) >= numeric_size_minimum ||
+        !numeric_result_slot_available(frame)) return Rf_ScalarLogical(FALSE);
+    R_xlen_t length = XLENGTH(value);
+    for (R_xlen_t i = 0; i < length; i++) {
+        double element = REAL(value)[i];
+        int tag = ISNAN(element) ? tagged_na_tag_value(element) : 0;
+        if (tag != 0 && (tag < 'a' || tag > 'z')) return Rf_ScalarLogical(FALSE);
+    }
+    SEXP temporal = PROTECT(R_getVar(numeric_temporal_symbol, frame, TRUE));
+    if (TYPEOF(temporal) != INTSXP || ALTREP(temporal) || ANY_ATTRIB(temporal) ||
+        Rf_isS4(temporal) || XLENGTH(temporal) != 1 || INTEGER(temporal)[0] != 0) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
+    int minimum_kind = computed_storage_kind(minimum);
+    UNPROTECT(1);
+    if (minimum_kind < 0) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    /* Scan again: forcing either argument can run R code. */
+    SEXP result = computed_values_build(value, minimum_kind, temporal);
+    if (result == R_NilValue) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(FALSE);
+    }
+    PROTECT(result);
     SEXP status = numeric_result_commit(result, frame);
-    UNPROTECT(6);
+    UNPROTECT(2);
     return status;
+}
+
+/* The vector `.dta_computed(value, minimum)` returns for a short bare double,
+   or R_NilValue where `C_dtatools_computed_values()` would leave it to the R
+   code. Callers pass a value and a storage that no R code can change. */
+SEXP numeric_computed_small(SEXP value, SEXP minimum) {
+    if (TYPEOF(value) != REALSXP || ALTREP(value) || ANY_ATTRIB(value) ||
+        Rf_isS4(value) || XLENGTH(value) >= numeric_size_minimum) return R_NilValue;
+    int minimum_kind = computed_storage_kind(minimum);
+    if (minimum_kind < 0) return R_NilValue;
+    SEXP temporal = PROTECT(Rf_ScalarInteger(0));
+    SEXP result = computed_values_build(value, minimum_kind, temporal);
+    UNPROTECT(1);
+    return result;
 }
 
 #include "initial-capture.inc"
