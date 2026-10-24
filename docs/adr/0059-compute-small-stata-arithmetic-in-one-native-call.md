@@ -31,8 +31,10 @@ attribute, for unequal lengths other than one and for empty operands, while an
 operand or the operator is a promise that would evaluate a call, while the
 size gate's test hook is at 0, and when base binds the operator to anything
 but the primitive in `.numeric_binary_dependencies`. As the R code does, it
-forces the operator and then `minimum` after computing. `x + 1` on a
-three-value int takes about 4.0 microseconds.
+forces the operator and then `minimum` after computing. Where it cannot build
+the result for that `minimum`, it passes the values to `.dta_computed()`, as
+the R code does, since forcing `minimum` can run R code that changes an
+operand. `x + 1` on a three-value int takes about 4.0 microseconds.
 
 The call does not prove what it skips. For operands under 2,048 values, a
 traced or replaced `.dta_data()`, `.metadata_view()`, `.dta_read_is_na()`,

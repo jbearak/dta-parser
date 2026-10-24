@@ -176,10 +176,28 @@ test_that("other operators, operands and sizes leave the call to the R code", {
     expect_null(native(stop("forced"), x, 2, "double"))
     # As in the R code, `minimum` is forced after the values are computed.
     expect_error(native("+", x, 2, stop("minimum forced")), "minimum forced")
-    expect_null(native("+", x, 2, "short"))
+    # A storage the call cannot build goes to `.dta_computed()`, as in the R code.
+    expect_identical(tryCatch(native("+", x, 2, "short"), error = conditionMessage),
+                     tryCatch(.small_arithmetic_r("+", x, 2, "short"),
+                              error = conditionMessage))
     prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
     withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     expect_null(native("+", x, 2, "double"))
+})
+
+test_that("a minimum that changes an operand keeps the values computed before it", {
+    invisible(dta_double(c(1, 2)) + 1)
+    # The call reads `x` before it forces `minimum`, as the R code does. A
+    # named storage leaves the result to `.dta_computed()`, which gets those
+    # values instead of a rerun on the changed `x`.
+    run <- function(helper) {
+        x <- dta_int(1)
+        helper("+", x, 1, { x <- dta_int(100); c(storage = "int") })
+    }
+    expected <- run(.small_arithmetic_r)
+    expect_identical(as.double(expected), 2)
+    expect_true(.small_arithmetic_same(run(.small_arithmetic_native), expected))
+    expect_true(.small_arithmetic_same(run(dtatools:::.dta_arith_base), expected))
 })
 
 test_that("the call checks base's operators and its own frame", {

@@ -10,9 +10,11 @@
    builds a small one. It reads the operands and the operator in the
    caller's frame without forcing them and declines while any of them is an
    unevaluated call. As the R code does, it forces the operator and then
-   `minimum` after computing. It does not prove the helpers it skips. Like
-   the routes above, it binds the result to `native` in the caller's frame
-   and returns TRUE, or returns FALSE, so the R code runs. */
+   `minimum` after computing, and where it cannot build the result for that
+   `minimum`, it calls `.dta_computed()` with the values. It does not prove
+   the helpers it skips. Like the routes above, it binds the result to
+   `native` in the caller's frame and returns TRUE, or returns FALSE, so
+   the R code runs. */
 static int arithmetic_class_is(SEXP classes, R_xlen_t i, const char *expected) {
     SEXP name = STRING_ELT(classes, i);
     return name != NA_STRING && strcmp(CHAR(name), expected) == 0;
@@ -105,8 +107,18 @@ SEXP C_dtatools_arithmetic_small(void) {
     }
     R_getVar(op_symbol, frame, TRUE);
     SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
-    SEXP built = numeric_computed_small(result, minimum);
+    SEXP built = PROTECT(numeric_computed_small(result, minimum));
+    if (built == R_NilValue) {
+        /* Forcing `minimum` can run R code, which could change an operand,
+           so finish as the R code does, from the values computed before. */
+        static SEXP computed_symbol = NULL;
+        if (computed_symbol == NULL) computed_symbol = Rf_install(".dta_computed");
+        SEXP call = PROTECT(Rf_lang3(computed_symbol, result, numeric_minimum_symbol));
+        built = Rf_eval(call, frame);
+        UNPROTECT(2);
+        PROTECT(built);
+    }
     SEXP status = numeric_result_commit(built, frame);
-    UNPROTECT(7);
+    UNPROTECT(8);
     return status;
 }
