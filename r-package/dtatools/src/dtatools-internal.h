@@ -659,6 +659,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_computed_values(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_scalar_arithmetic(
     SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_arithmetic_small(void);
 
 /* Dictionary-backed strings. */
 DTATOOLS_INTERNAL void dictstring_finalize(SEXP external);
@@ -930,6 +931,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_fused_patch_slot(
 DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_compare_direct(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_code_counts(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(

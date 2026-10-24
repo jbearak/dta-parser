@@ -16,6 +16,30 @@
   or another base function that `mean.default()` calls no longer sees these
   means (ADR 0057).
 
+* `==`, `!=`, `<`, `<=`, `>` and `>=` on a Stata numeric that is not a date
+  or time run in one native call when the other operand is a number or a
+  Stata numeric or double vector of the same length. They had converted a
+  length-one operand, settled the thread option and tried the comparison
+  kernel up to three ways through several R helpers. `x == 2016` on a
+  three-value int falls from about 4.6 to 0.9 microseconds. Over the 42,739
+  women in the first 100,000 rows of the India 2021 DHS births file,
+  `filter(b, b2 == max(b2), .by = caseid)` falls from about 0.93 to 0.54
+  seconds and `mutate(b, k = b11 >= 24, .by = caseid)` from 0.50 to 0.30.
+  Results, warnings and errors are unchanged. A traced or replaced
+  `.dta_compare()` or another helper of these comparisons no longer sees
+  these calls (ADR 0060).
+
+* `+`, `-`, `*` and `/` on a Stata numeric of fewer than 2,048 values, such
+  as each group's column in a grouped verb, compute their result in one
+  native call. They had captured the values and built the result through
+  several R helpers. `x + 1` on a three-value int falls from about 10.5 to
+  4.2 microseconds. Over the 42,739 women in the first 100,000 rows of the
+  India 2021 DHS births file, `mutate(b, m = b2 + 1, .by = caseid)` falls
+  from about 0.84 to 0.52 seconds and
+  `mutate(b, m = (b2 - b4) / 12, .by = caseid)` from 1.52 to 0.90. Results
+  are unchanged. A traced or replaced `.dta_data()`, `.dta_computed()` or
+  another helper of this arithmetic no longer sees these calls (ADR 0059).
+
 * Grouped `summarise()` scans its results' attributes in one native call
   when it looks for the results that can change their common type. It had
   looped over the results in R, up to twice per expression, calling

@@ -1,4 +1,7 @@
 test_that("arithmetic respects a minimum promise replaced by a payload callback", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     value <- dta_double(c(1, 2))
     invisible(value + 1)
     events <- character()
@@ -184,6 +187,9 @@ test_that("minimum getter bindings stay lazy until the original evaluation", {
 })
 
 test_that("arithmetic settles captured operator and minimum promises without changing expressions", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     invisible(source + 1)
     invisible(source + c(1, 1))
@@ -258,6 +264,9 @@ test_that("computed results settle captured temporal and minimum promise chains"
 })
 
 test_that("public numeric operations retain the original computed helper call signature", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 4))
     invisible(source + 1)
     original <- .dta_computed
