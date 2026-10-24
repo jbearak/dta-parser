@@ -9,11 +9,12 @@
   each row's string grouping key with its group's key in the same native
   pass as numeric keys, when every key is ASCII or missing. It had repeated
   each group's key for every row and compared the two with vctrs. Each
-  grouped verb checks its input and its result, so the saving repeats. Over
+  grouped verb checks its input, the frame it evaluates and its result, so
+  the saving repeats. Over
   the 42,739 women in the first 100,000 rows of the India 2021 DHS births
-  file, the check of `group_by(b, caseid)` falls from about CHECK_OLD to
-  CHECK_NEW seconds, `count(b, caseid)` from COUNT_OLD to COUNT_NEW and
-  `summarise(group_by(b, caseid), m = mean(b2))` from SUMM_OLD to SUMM_NEW.
+  file, the check of `group_by(b, caseid)` falls from about 0.044 to
+  0.011 seconds, `count(b, caseid)` from 0.45 to 0.36 and
+  `summarise(group_by(b, caseid), m = mean(b2))` from 0.54 to 0.42.
   Results and errors are unchanged.
 
 * `mean()` of a Stata byte, int, long or float vector in dtatools' compact
