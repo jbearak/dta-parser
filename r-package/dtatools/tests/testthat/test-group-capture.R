@@ -48,6 +48,36 @@ test_that("other values keep the R capture", {
     expect_identical(reads, 0L)
 })
 
+test_that("a group's results capture in one call as lapply() captures them", {
+    same <- function(x, y) identical(x, y, num.eq = FALSE, single.NA = FALSE,
+                                     attrib.as.set = FALSE)
+    lists <- list(
+        atomic = list(dta_int(c(1, NA)), mean(dta_int(c(1, 2))), 1L, "a", Sys.Date()),
+        named = list(a = 1, b = dta_byte(2)), empty = list(),
+        first = list(NULL, 1, 2), middle = list(1, data.frame(x = 1), 2, list(3)),
+        last = list(1, 2, new.env()), matrix = matrix(list(1, 2, 3, 4), 2L)
+    )
+    for (name in names(lists)) {
+        chunks <- lists[[name]]
+        expected <- lapply(chunks, .capture_dibble_nested)
+        captured <- .capture_dibble_chunks(chunks)
+        expect_identical(names(captured), names(expected), info = name)
+        expect_identical(length(captured), length(expected), info = name)
+        for (index in seq_along(chunks)) {
+            expect_true(same(.capture_facts(captured[[index]]),
+                             .capture_facts(expected[[index]])), info = name)
+            # Atomic chunks come back as copies, as the R code makes them.
+            if (is.atomic(chunks[[index]]) && !is.null(chunks[[index]]))
+                expect_false(rlang::obj_address(captured[[index]]) ==
+                             rlang::obj_address(chunks[[index]]), info = name)
+        }
+    }
+    # The call takes the chunks up to the first it declines.
+    expect_identical(.Call(C_dtatools_capture_atomic_list, lists$middle)[[2L]], 1)
+    expect_null(.Call(C_dtatools_capture_atomic_list, structure(list(1), class = "probe")))
+    expect_null(.Call(C_dtatools_capture_atomic_list, 1:3))
+})
+
 test_that("a summary that replaces a column types it against that column", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(g = c(1, 1, 2), x = dta_byte(c(1, 2, 3)), y = dta_int(c(4, 5, 6)))
