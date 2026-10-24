@@ -576,7 +576,10 @@ SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP
         if (i % 4096 == 4095) R_CheckUserInterrupt();
         SEXP x = VECTOR_ELT(chunks, i + 1);
         SEXP value = R_NilValue;
-        if (operation < 0 ? mean_chunk_supported(x) : summary_chunk_supported(x))
+        /* An S4 object's methods dispatch before the S3 method the plan
+           stands in for. */
+        if (!Rf_isS4(x) && (operation < 0 ? mean_chunk_supported(x) :
+                            summary_chunk_supported(x)))
             value = operation < 0 ? mean_chunk(x, flag) : summary_chunk(x, operation, remove);
         if (value == R_NilValue) {
             UNPROTECT(3);

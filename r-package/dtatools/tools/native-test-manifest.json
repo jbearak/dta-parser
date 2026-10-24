@@ -18436,7 +18436,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "5362538325d8633ba66495993fd7b5684a96625688eb7b33c20e0196c3edbf3d"
+          "sha256": "2cc554df3c17fa38bfbc8587d80741c8b00f8e99653d459d4e777dc5ca883ae6"
         }
       ],
       "blocks": [
@@ -19142,6 +19142,17 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "S4 chunks keep the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 9,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
