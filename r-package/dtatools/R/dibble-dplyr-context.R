@@ -75,3 +75,22 @@
              invisible(NULL)
          })
 }
+
+# ADR 0063: the formals and bodies of the dplyr 1.2.1 functions a planned
+# n() or row_number() skips, then the primitives they call and `::`, recorded when
+# the package was built. The records hold no environment, so reading them
+# loads no namespace. The plan checks that each function belongs to dplyr's
+# namespace, or to base's for `%||%`.
+.size_plan_dependencies <- if (requireNamespace("dplyr", quietly = TRUE) &&
+    identical(as.character(getNamespaceVersion("dplyr")), "1.2.1")) local({
+    namespace <- asNamespace("dplyr")
+    record <- function(name) {
+        f <- get(name, envir = namespace)
+        list(formals(f), body(f))
+    }
+    list(record("n"), record("row_number"), record("peek_mask"), record("context_peek"),
+         record("context_peek_bare"), record("%||%"),
+         list(.Primitive("$"), .Primitive("[["), .Primitive("seq_len"),
+              .Primitive("missing"), .Primitive("is.null"), .Primitive("if"),
+              .Primitive("{"), .Primitive("::")))
+}) else NULL

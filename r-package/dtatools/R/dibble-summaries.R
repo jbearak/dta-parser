@@ -205,6 +205,8 @@
 .summary_planned <- function(quo, mask, groups, combined = FALSE, first = NULL,
                              caller = NULL) {
     if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
+    sized <- .size_planned(quo, mask, groups, combined)
+    if (!is.null(sized)) return(sized)
     expression <- rlang::quo_get_expr(quo)
     if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
     generic <- as.character(expression[[1L]])
@@ -238,6 +240,40 @@
     .Call(C_dtatools_summary_plan, chunks, generic, env, top, environment(), first, caller,
           list(.double_combine_state, .metadata_state, .summary_ptype_dependencies,
                .summary_combine_dependencies, .summary_routine_state))
+}
+
+# n(), row_number() in a mutate(), and a literal number in a summarise(),
+# whose results depend only on the groups' sizes, for every group after the
+# first in one native call (ADR 0063). A mutate() recycles a literal before
+# it reaches here, and row_number() in a summary returns more than one value.
+.size_planned <- function(quo, mask, groups, combined) {
+    expression <- rlang::quo_get_expr(quo)
+    namespace <- NULL
+    if (is.call(expression)) {
+        if (length(expression) != 1L || is.null(.size_plan_dependencies) ||
+            !isNamespaceLoaded("dplyr")) return(NULL)
+        head <- expression[[1L]]
+        # count() and tally() summarise `dplyr::n()`.
+        qualified <- is.call(head) && length(head) == 3L &&
+            identical(head[[1L]], quote(`::`)) && identical(head[[2L]], quote(dplyr))
+        if (qualified) head <- head[[3L]]
+        if (!is.symbol(head)) return(NULL)
+        generic <- as.character(head)
+        if (!generic %in% c("n", if (combined) "row_number")) return(NULL)
+        # A column named for the function would be read while R looks for it.
+        if ((if (qualified) "::" else generic) %in% mask$helpers$current_vars()) return(NULL)
+        namespace <- asNamespace("dplyr")
+        found <- .Call(C_dtatools_size_plan_admitted, expression, rlang::quo_get_env(quo),
+                       mask$helpers, namespace, .size_plan_dependencies)
+        if (is.null(found) || any(vapply(found, isdebugged, logical(1)))) return(NULL)
+    } else if (combined || !(is.double(expression) || is.integer(expression)) ||
+               length(expression) != 1L || !is.null(attributes(expression))) {
+        return(NULL)
+    }
+    # The mutate() loop recycles an empty group's result itself.
+    if (combined && !all(lengths(mask$rows) > 0L)) return(NULL)
+    .Call(C_dtatools_size_plan, mask$rows, expression, combined, rlang::quo_get_env(quo),
+          mask$helpers, namespace, .size_plan_dependencies)
 }
 
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {

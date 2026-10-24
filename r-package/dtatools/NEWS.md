@@ -5,6 +5,19 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()`, `reframe()` and `mutate()` compute `n()`, and
+  `mutate()` computes `row_number()`, for every group after the first in
+  one native call, when the call reaches dplyr 1.2.1's functions. A grouped
+  summary does the same for a literal number. They had evaluated the
+  expression once per group. Over the 42,739 women in the first 100,000
+  rows of the India 2021 DHS births file, `summarise(b, n = n(), .by =
+  caseid)` falls from about N_OLD to N_NEW seconds, `count(b, caseid)` from
+  C_OLD to C_NEW, `summarise(b, k = 2.5, .by = caseid)` from K_OLD to K_NEW
+  and `mutate(b, r = row_number(), .by = caseid)` from R_OLD to R_NEW.
+  Results, warnings and errors are unchanged. A traced or replaced
+  `rlang::eval_tidy()` or another step of the group loop no longer sees the
+  later groups (ADR 0063).
+
 * Grouped `summarise()` builds the combined column of a planned `mean()`,
   `min()`, `max()` or `sum()` directly when it has at least eight groups and
   every group's result fits a byte, int, long or float, instead of building

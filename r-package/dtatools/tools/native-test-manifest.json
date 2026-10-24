@@ -18305,7 +18305,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "42740e0823ba30e7e8c5dd76e7da2ce8b2a078b787df2a6d8ef5e9d1cbf555b3"
+          "sha256": "b83aaf9846449d4f50decfb18492d3393357b140f57a891f15f2745b155aa2b6"
         }
       ],
       "blocks": [
@@ -19034,11 +19034,60 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "size results give what the group loop gives",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 51,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "size plans decline what the loop would see differently",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 24,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a traced or replaced dplyr function keeps the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a one-shot debugger in n() stops in the first group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         }
       ],
       "children": [
         {
           "id": "summary-plan-debugonce",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "size-plan-debugonce",
           "kind": "r",
           "minimum": 1,
           "maximum": 1,
