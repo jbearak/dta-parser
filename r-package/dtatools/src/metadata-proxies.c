@@ -457,6 +457,28 @@ SEXP C_dtatools_capture_atomic(SEXP value) {
     return C_dtatools_metadata_copy(value);
 }
 
+/* `lapply(chunks, .capture_dibble_nested)` for a plain list, in order, as
+   far as C_dtatools_capture_atomic() takes each chunk (ADR 0058). Returns
+   the captures, with NULL from the first declined chunk on, and how many
+   chunks it took. NULL leaves the whole list to the R code. */
+SEXP C_dtatools_capture_atomic_list(SEXP chunks) {
+    if (TYPEOF(chunks) != VECSXP || ALTREP(chunks) || Rf_isObject(chunks))
+        return R_NilValue;
+    R_xlen_t count = XLENGTH(chunks), taken = 0;
+    SEXP captured = PROTECT(Rf_allocVector(VECSXP, count));
+    for (; taken < count; taken++) {
+        if ((taken & 16383) == 0) R_CheckUserInterrupt();
+        SEXP capture = C_dtatools_capture_atomic(VECTOR_ELT(chunks, taken));
+        if (capture == R_NilValue) break;
+        SET_VECTOR_ELT(captured, taken, capture);
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(result, 0, captured);
+    SET_VECTOR_ELT(result, 1, Rf_ScalarReal((double) taken));
+    UNPROTECT(2);
+    return result;
+}
+
 /**
  * Create a metadata view for internal reads without isolating native backing.
  * Use C_dtatools_metadata_copy when later explicit writes need isolation.
