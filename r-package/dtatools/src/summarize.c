@@ -586,11 +586,14 @@ static int plan_chunk_value(SEXP x, int operation, Rboolean remove, double *deco
 
 /* The combined vector of a summary's results when the first group's result
    and every later one is compact (ADR 0062), or R_NilValue, with nothing
-   built, when one is not or summary_planned_combine() declines. *declined
-   is set when a later chunk's call declines, so the whole plan does. */
+   built, when one is not or summary_planned_combine() declines. Its checks
+   that read no later result come first, so a decline there computes none.
+   *declined is set when a later chunk's call declines, so the whole plan
+   does. */
 static SEXP plan_combined(SEXP chunks, int operation, Rboolean remove, SEXP first,
                           SEXP caller, SEXP states, int *declined) {
     R_xlen_t count = XLENGTH(chunks);
+    if (!summary_planned_combine_admitted(caller, first, count, states)) return R_NilValue;
     SEXP values = PROTECT(Rf_allocVector(REALSXP, count));
     unsigned kinds = 0;
     for (R_xlen_t i = 1; i < count; i++) {

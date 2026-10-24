@@ -559,6 +559,9 @@ DTATOOLS_INTERNAL int numeric_extreme_value(
 );
 DTATOOLS_INTERNAL int computed_scalar_compact(double value, int minimum_kind, double *decoded);
 DTATOOLS_INTERNAL int computed_storage_kind_of(SEXP storage);
+DTATOOLS_INTERNAL int summary_planned_combine_admitted(
+    SEXP caller, SEXP first, R_xlen_t count, SEXP states
+);
 DTATOOLS_INTERNAL SEXP summary_planned_combine(
     SEXP caller, SEXP first, SEXP values, unsigned kinds, SEXP states
 );

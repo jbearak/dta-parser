@@ -347,14 +347,15 @@ test_that("summaries of eight groups or more build the combined vector", {
             expect_false(result$error, info = info)
             assembled <- assembled + result$assembled
         }
-    expect_gt(assembled, 80L)
+    # Elsewhere the combine's dependency profiles are NULL, and it declines.
+    if (.dtatools_numeric_entry_expected()) expect_gt(assembled, 80L)
     # Later expressions read the combined vector one group at a time.
     result <- .plan_compare(.plan_global(dplyr::summarise(data, m = mean(int),
         d = m * 2, k = max(m), j = mean(m), n = dplyr::n(), s = sum(m) + dplyr::cur_group_id(),
         .by = g), data = data))
     expect_true(result$same)
     expect_false(result$error)
-    expect_gte(result$assembled, 3L)
+    if (.dtatools_numeric_entry_expected()) expect_gte(result$assembled, 3L)
 })
 
 test_that("results the combine would leave to vctrs keep their group results", {

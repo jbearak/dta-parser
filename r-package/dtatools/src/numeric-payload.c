@@ -7701,94 +7701,116 @@ static int combine_compact_join(int left, int right) {
     return -1;
 }
 
-/* The combined vector a grouped summary builds from planned results (ADR
-   0062), without the later results themselves. `first` is the first
-   group's result, which the loop built. From the second element on,
-   `values` holds each later group's result as its compact vector reads it
-   back, and bit k of `kinds` marks a later result of compact storage k,
-   each with only its storage and class. The first result must be a compact
-   vector of one value, or a metadata proxy over one, with only its storage
-   and class, as scalar_compact_numeric() admits, whose payload no native
-   owner retains, as summary_combine_compact() requires. The R code folds the results' common
-   type, which for such pieces is the storage .dta_promote() joins, then
-   casts each result to it and combines the casts. The combined vector is
-   what summary_combine_compact() constructs from the values in the joined
-   storage, with that storage vector and a new class vector. Both steps
-   take the native routes only while C_dtatools_summary_ptype_method() and
-   summary_combine_compact() admit them, so this makes their checks, except
-   those of each piece, which the caller made, and of the assignments,
-   which the R code makes in caller, the frame that calls vctrs. Return
-   R_NilValue, so the caller builds the results, when a check declines,
-   when the storages join at double, and for fewer than eight groups,
-   where both steps leave the results to vctrs. */
-SEXP summary_planned_combine(SEXP caller, SEXP first, SEXP values, unsigned kinds,
-                             SEXP states) {
-    static const char *storage_classes[] = {
-        "dta_byte", "dta_int", "dta_long", "dta_float"
-    };
-    static const char *storage_names[] = {"byte", "int", "long", "float"};
+/* The checks summary_planned_combine() makes before it reads the later
+   results, which are all but those of their storages. `count` is the number
+   of groups. The first result must be a compact vector of one value, or a
+   metadata proxy over one, with only its storage and class, as
+   scalar_compact_numeric() admits, whose payload no native owner retains,
+   as summary_combine_compact() requires. Return the first result's compact
+   storage, with *dependencies set to the combine's dependency list, or -1
+   when a check declines, and for fewer than eight groups, where both steps
+   leave the results to vctrs. A caller checks this before it computes the
+   later results, so a decline computes none twice. */
+static int planned_combine_admission(SEXP caller, SEXP first, R_xlen_t count, SEXP states,
+                                     SEXP *dependencies) {
     int first_kind = -1;
-    if (TYPEOF(values) != REALSXP || XLENGTH(values) < 8 ||
-        !scalar_compact_numeric(first, &first_kind) || XLENGTH(first) != 1 ||
-        numeric_payload_retained(unmaterialized_numeric_read_storage(first)) ||
-        REAL_GET_REGION(first, 0, 1, REAL(values)) != 1) return R_NilValue;
-    kinds |= 1U << first_kind;
+    if (count < 8 || !scalar_compact_numeric(first, &first_kind) || XLENGTH(first) != 1 ||
+        numeric_payload_retained(unmaterialized_numeric_read_storage(first))) return -1;
     if (!combine_plain_list(states) || XLENGTH(states) != 5 ||
         !combine_plain_environment(caller) ||
         !combine_assignment_available(caller, Rf_install("chunks")) ||
-        !combine_assignment_available(caller, numeric_result_symbol)) return R_NilValue;
-    int common = -1, storages = 0;
-    for (int kind = NUMERIC_BYTE; kind <= NUMERIC_FLOAT; kind++) {
-        if (!(kinds & (1U << kind))) continue;
-        storages++;
-        common = common < 0 ? kind : combine_compact_join(common, kind);
-        if (common < 0) return R_NilValue;
-    }
-    if (kinds >> (NUMERIC_FLOAT + 1)) return R_NilValue;
+        !combine_assignment_available(caller, numeric_result_symbol)) return -1;
     SEXP state = VECTOR_ELT(states, 0), metadata_state = VECTOR_ELT(states, 1);
     SEXP reducer = VECTOR_ELT(states, 2), combiner = VECTOR_ELT(states, 3);
     SEXP routine_state = VECTOR_ELT(states, 4);
-    SEXP dependencies, metadata, routines;
+    SEXP metadata, routines;
     if (combine_peek_frame(routine_state, Rf_install("routines"), &routines) != COMBINE_VALUE ||
         !summary_reducer_unchanged(caller, reducer, routines) ||
         !summary_combiner_unchanged(caller, combiner, routines) ||
-        combine_peek_frame(state, Rf_install("dependencies"), &dependencies) != COMBINE_VALUE)
-        return R_NilValue;
-    PROTECT(dependencies);
+        combine_peek_frame(state, Rf_install("dependencies"), dependencies) != COMBINE_VALUE)
+        return -1;
+    PROTECT(*dependencies);
     if (combine_peek_frame(metadata_state, Rf_install("dependencies"), &metadata) != COMBINE_VALUE ||
-        !combine_dependencies_valid(dependencies, 11)) {
+        !combine_dependencies_valid(*dependencies, 11)) {
         UNPROTECT(1);
-        return R_NilValue;
+        return -1;
     }
     PROTECT(metadata);
-    SEXP combine = PROTECT(combine_exported_function(caller, dependencies));
+    SEXP combine = PROTECT(combine_exported_function(caller, *dependencies));
     int admitted = combine != R_UnboundValue &&
-        dtatools_metadata_dependencies_unchanged(VECTOR_ELT(dependencies, 1), metadata, 0) &&
-        combine_dispatch_unchanged(dependencies, combine) &&
-        dtatools_numeric_helpers_admitted(VECTOR_ELT(dependencies, 1),
+        dtatools_metadata_dependencies_unchanged(VECTOR_ELT(*dependencies, 1), metadata, 0) &&
+        combine_dispatch_unchanged(*dependencies, combine) &&
+        dtatools_numeric_helpers_admitted(VECTOR_ELT(*dependencies, 1),
                                           DTATOOLS_NUMERIC_CONSTRUCT);
-    for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
-        if (kinds & (1U << kind))
-            admitted = combine_storage_methods_absent(dependencies, storage_classes[kind]);
-    }
-    if (admitted && storages > 1)
-        admitted = summary_promotion_unchanged(VECTOR_ELT(dependencies, 1), reducer);
     /* The fold calls the method the ptype check finds: vctrs' registered
        one, which the dispatch check compares, when the global environment
        has none. */
     if (admitted) {
         SEXP name = Rf_install("vec_ptype2.dta_numeric.dta_numeric"), method;
         admitted = combine_peek_frame(R_GlobalEnv, name, &method) == COMBINE_ABSENT &&
-            combine_peek_frame(VECTOR_ELT(dependencies, 7), name, &method) == COMBINE_VALUE;
+            combine_peek_frame(VECTOR_ELT(*dependencies, 7), name, &method) == COMBINE_VALUE;
     }
+    UNPROTECT(3);
+    return admitted ? first_kind : -1;
+}
+
+int summary_planned_combine_admitted(SEXP caller, SEXP first, R_xlen_t count, SEXP states) {
+    SEXP dependencies = R_NilValue;
+    return planned_combine_admission(caller, first, count, states, &dependencies) >= 0;
+}
+
+/* The combined vector a grouped summary builds from planned results (ADR
+   0062), without the later results themselves. `first` is the first
+   group's result, which the loop built. From the second element on,
+   `values` holds each later group's result as its compact vector reads it
+   back, and bit k of `kinds` marks a later result of compact storage k,
+   each with only its storage and class. The R code folds the results'
+   common type, which for such pieces is the storage .dta_promote() joins,
+   then casts each result to it and combines the casts. The combined vector
+   is what summary_combine_compact() constructs from the values in the
+   joined storage, with that storage vector and a new class vector. Both
+   steps take the native routes only while C_dtatools_summary_ptype_method()
+   and summary_combine_compact() admit them, so this makes their checks,
+   except those of each piece, which the caller made, and of the
+   assignments, which the R code makes in caller, the frame that calls
+   vctrs. It repeats planned_combine_admission(), which the caller made
+   before computing the values. Return R_NilValue, so the caller builds the
+   results, when a check declines and when the storages join at double. */
+SEXP summary_planned_combine(SEXP caller, SEXP first, SEXP values, unsigned kinds,
+                             SEXP states) {
+    static const char *storage_classes[] = {
+        "dta_byte", "dta_int", "dta_long", "dta_float"
+    };
+    static const char *storage_names[] = {"byte", "int", "long", "float"};
+    if (TYPEOF(values) != REALSXP) return R_NilValue;
+    SEXP dependencies = R_NilValue;
+    int first_kind = planned_combine_admission(caller, first, XLENGTH(values), states,
+                                               &dependencies);
+    PROTECT(dependencies);
+    if (first_kind < 0 || REAL_GET_REGION(first, 0, 1, REAL(values)) != 1) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+    kinds |= 1U << first_kind;
+    int common = -1, storages = 0, admitted = !(kinds >> (NUMERIC_FLOAT + 1));
+    for (int kind = NUMERIC_BYTE; admitted && kind <= NUMERIC_FLOAT; kind++) {
+        if (!(kinds & (1U << kind))) continue;
+        storages++;
+        common = common < 0 ? kind : combine_compact_join(common, kind);
+        admitted = common >= 0 &&
+            combine_storage_methods_absent(dependencies, storage_classes[kind]);
+    }
+    if (admitted && storages > 1)
+        admitted = summary_promotion_unchanged(VECTOR_ELT(dependencies, 1),
+                                               VECTOR_ELT(states, 2));
     if (!admitted) {
-        UNPROTECT(3);
+        UNPROTECT(1);
         return R_NilValue;
     }
     SEXP storage = PROTECT(Rf_mkString(storage_names[common]));
     SEXP kind = PROTECT(Rf_ScalarInteger(common));
     SEXP result = summary_compact_value(values, kind, storage, common);
-    UNPROTECT(5);
+    UNPROTECT(3);
     return result;
 }
 
