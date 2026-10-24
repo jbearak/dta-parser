@@ -11,9 +11,9 @@
   summary does the same for a literal number. They had evaluated the
   expression once per group. Over the 42,739 women in the first 100,000
   rows of the India 2021 DHS births file, `summarise(b, n = n(), .by =
-  caseid)` falls from about 0.34 to 0.09 seconds, `count(b, caseid)` from
-  0.45 to 0.20, `summarise(b, k = 2.5, .by = caseid)` from 0.28 to 0.09
-  and `mutate(b, r = row_number(), .by = caseid)` from 0.27 to 0.02.
+  caseid)` falls from about 0.31 to 0.08 seconds, `count(b, caseid)` from
+  0.42 to 0.18, `summarise(b, k = 2.5, .by = caseid)` from 0.24 to 0.07
+  and `mutate(b, r = row_number(), .by = caseid)` from 0.25 to 0.02.
   Results, warnings and errors are unchanged. A traced or replaced
   `rlang::eval_tidy()` or another step of the group loop no longer sees the
   later groups (ADR 0063).

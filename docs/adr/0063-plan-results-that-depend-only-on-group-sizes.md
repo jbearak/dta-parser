@@ -9,10 +9,10 @@ After ADR 0062, a grouped summary of one column's `mean()`, `min()`,
 Expressions whose results depend only on the groups' sizes still ran the
 loop: `n()`, `row_number()` and a literal number. Over the 42,739 women in
 the first 100,000 rows of the India 2021 DHS births file,
-`summarise(b, n = n(), .by = caseid)` took about 0.34 seconds,
-`summarise(b, k = 2.5, .by = caseid)` 0.28 and
-`mutate(b, r = row_number(), .by = caseid)` 0.27, nearly all of it in the
-loop's steps for each group. `count()` and `tally()` summarise
+`summarise(b, n = n(), .by = caseid)` took about 0.31 seconds,
+`summarise(b, k = 2.5, .by = caseid)` 0.24 and
+`mutate(b, r = row_number(), .by = caseid)` 0.25, most of it in the loop's
+steps for each group. `count()` and `tally()` summarise
 `dplyr::n()`.
 
 Before the second group, `.summary_planned()` now passes such an expression
@@ -49,8 +49,8 @@ value, through `C_dtatools_typed_column_fast()` and
 `C_dtatools_typed_scalar_fast()`, then measured and captured. It declines,
 and the loop goes on, for a literal those calls leave to the R code, such
 as `NA_real_`, and for a `mutate()` with an empty group, whose results the
-loop recycles itself. The `n()` summary now takes about 0.09 seconds, the
-literal's 0.09 and the `mutate()` 0.02.
+loop recycles itself. The `n()` summary now takes about 0.08 seconds, the
+literal's 0.07 and the `mutate()` 0.02.
 
 As in ADR 0061, the plan does not prove what it skips. A traced or replaced
 `mask$with_group()`, `rlang::eval_tidy()`, `.retyped_column()`,
