@@ -252,14 +252,15 @@
 # it reaches here, and row_number() in a summary returns more than one value.
 .size_planned <- function(quo, mask, groups, combined) {
     expression <- rlang::quo_get_expr(quo)
-    # A classed expression's `[[` and length() methods would run R code the
-    # loop does not.
+    # A classed expression's or call head's `[[` and length() methods would
+    # run R code the loop does not.
     if (is.object(expression)) return(NULL)
     namespace <- NULL
     if (is.call(expression)) {
         if (length(expression) != 1L || is.null(.size_plan_dependencies) ||
             !isNamespaceLoaded("dplyr")) return(NULL)
         head <- expression[[1L]]
+        if (is.object(head)) return(NULL)
         # count() and tally() summarise `dplyr::n()`.
         qualified <- is.call(head) && length(head) == 3L &&
             identical(head[[1L]], quote(`::`)) && identical(head[[2L]], quote(dplyr))
@@ -274,7 +275,9 @@
                        mask$helpers, namespace, .size_plan_dependencies)
         if (is.null(found) || any(vapply(found, isdebugged, logical(1)))) return(NULL)
     } else if (combined || !(is.double(expression) || is.integer(expression)) ||
-               !is.null(attributes(expression)) || length(expression) != 1L) {
+               !is.null(attributes(expression))) {
+        # The native call measures a literal after declining an ALTREP one,
+        # whose Length method could run R code.
         return(NULL)
     }
     # The mutate() loop recycles an empty group's result itself, which the
