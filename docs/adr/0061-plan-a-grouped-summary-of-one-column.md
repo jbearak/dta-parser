@@ -11,9 +11,9 @@ evaluates the expression in it, `.retyped_column()` types the result,
 it. For `mean(b2)` of a compact Stata numeric, the expression itself takes
 one native call since ADR 0054, so these steps cost most of the time:
 `summarise(b, m = mean(b2), .by = caseid)` over the 42,739 women in the
-first 100,000 rows of the India 2021 DHS births file took about 0.43
-seconds, and `summarise(b, k = 2.5, .by = caseid)`, with nothing to compute,
-took 0.27.
+first 100,000 rows of the India 2021 DHS births file took about 0.41 seconds
+with ADR 0057, and `summarise(b, k = 2.5, .by = caseid)`, with nothing to
+compute, took 0.27.
 
 The first group still runs through the loop, which reads the column's group
 chunks and stops in a debugger that `debugonce()` armed for the generic or
@@ -52,8 +52,8 @@ another way. A `summarise()` result that replaces a column keeps the loop,
 since each group reads the column's prior value, and so does a `mutate()`
 with an empty group, whose results the loop recycles itself. An ungrouped
 summary has one group and keeps the loop. The same summary now takes about
-0.12 seconds, and `mutate(b, m = mean(b2), .by = caseid)` falls from about
-0.37 to 0.06.
+0.14 seconds, and `mutate(b, m = mean(b2), .by = caseid)` falls from about
+0.37 to 0.07.
 
 The plan does not prove what it skips. A traced or replaced
 `mask$with_group()`, `rlang::eval_tidy()`, `.retyped_column()`,
