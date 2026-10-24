@@ -1795,7 +1795,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-small.R",
-          "sha256": "9cc98ebbeb197eeaab01f0eafd5ecfc73da9d25bbc4d9e8d29a16c42be4cfc09"
+          "sha256": "13c39845085ebc7a16eafc1c795df87db924e8bce5a9280c626c134ec362fd62"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",

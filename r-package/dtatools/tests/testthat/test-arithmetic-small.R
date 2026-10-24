@@ -41,7 +41,7 @@ environment(.small_arithmetic_native) <- asNamespace("dtatools")
 )
 
 .small_arithmetic_bare <- function() list(
-    double = c(2, 0, Inf, NaN, -0),
+    bare_double = c(2, 0, Inf, NaN, -0),
     zero = 0,
     huge = 1e308,
     not_a_number = NaN,
