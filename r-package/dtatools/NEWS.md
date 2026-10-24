@@ -5,6 +5,16 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped `summarise()` builds the combined column of a planned `mean()`,
+  `min()`, `max()` or `sum()` directly when it has at least eight groups and
+  every group's result fits a byte, int, long or float, instead of building
+  each group's result, folding their common type and combining them. Over
+  the 42,739 women in the first 100,000 rows of the India 2021 DHS births
+  file, `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.14 to
+  0.02 seconds. Results, warnings and errors are unchanged. A traced or
+  replaced `vctrs::vec_c()` or another step of the combine no longer sees
+  these summaries (ADR 0062).
+
 * Grouped `summarise()` and `mutate()` compute `mean()`, `min()`, `max()` or
   `sum()` of one Stata byte, int, long or float column in dtatools' compact
   form for every group after the first in one native call, when each of
