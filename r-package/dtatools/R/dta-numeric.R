@@ -1398,6 +1398,10 @@ vec_cast.logical.dta_numeric <- function(
 }
 
 .dta_arith_base <- function(op, x, y, minimum) {
+    # Operands under the size gate take one native call, which gives what
+    # the code below would (ADR 0059).
+    .native_admission_if(.native_admission_call(C_dtatools_arithmetic_small),
+        .native_admission_return({ native <- native; native }))
     .native_admission_if(.native_admission_call(
         C_dtatools_scalar_arithmetic, NULL, NULL, NULL,
         .computed_storage_getter, .scalar_arith_dependencies

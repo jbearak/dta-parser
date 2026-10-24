@@ -18,6 +18,17 @@
   `.dta_compare()` or another helper of these comparisons no longer sees
   these calls (ADR 0060).
 
+* `+`, `-`, `*` and `/` on a Stata numeric of fewer than 2,048 values, such
+  as each group's column in a grouped verb, compute their result in one
+  native call. They had captured the values and built the result through
+  several R helpers. `x + 1` on a three-value int falls from about 10.5 to
+  4.2 microseconds. Over the 42,739 women in the first 100,000 rows of the
+  India 2021 DHS births file, `mutate(b, m = b2 + 1, .by = caseid)` falls
+  from about 0.84 to 0.52 seconds and
+  `mutate(b, m = (b2 - b4) / 12, .by = caseid)` from 1.52 to 0.90. Results
+  are unchanged. A traced or replaced `.dta_data()`, `.dta_computed()` or
+  another helper of this arithmetic no longer sees these calls (ADR 0059).
+
 * Grouped `summarise()` scans its results' attributes in one native call
   when it looks for the results that can change their common type. It had
   looped over the results in R, up to twice per expression, calling
