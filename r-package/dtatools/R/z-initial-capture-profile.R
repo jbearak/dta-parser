@@ -20,11 +20,12 @@
         identical(expression, quote(.Call(ffi_new_weakref, key, value, finalizer, on_quit))))
     list(
         compiled(.begin_dibble_result), compiled(.new_dibble_expression_mask),
-        compiled(function(name, value, chunks = NULL) {
+        compiled(function(name, value, chunks = NULL, positions = FALSE) {
             generation <- new.env(parent = emptyenv())
             generation$value <- .capture_dibble_nested(value)
             generation$chunks <- if (is.null(chunks)) NULL else
                 .capture_dibble_chunks(chunks)
+            if (positions) generation$positions <- TRUE
             generation$used <- FALSE
             state$current[[name]] <- generation
             if (!name %in% state$names) state$names <- c(state$names, name)

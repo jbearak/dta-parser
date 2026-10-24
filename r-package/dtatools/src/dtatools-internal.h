@@ -553,6 +553,18 @@ DTATOOLS_INTERNAL SEXP numeric_sum(SEXP value, Rboolean na_rm);
 DTATOOLS_INTERNAL SEXP numeric_min(SEXP value, Rboolean na_rm);
 DTATOOLS_INTERNAL SEXP numeric_max(SEXP value, Rboolean na_rm);
 DTATOOLS_INTERNAL SEXP numeric_computed_small(SEXP value, SEXP minimum);
+DTATOOLS_INTERNAL int numeric_sum_value(SEXP value, Rboolean na_rm, double *result);
+DTATOOLS_INTERNAL int numeric_extreme_value(
+    SEXP value, Rboolean na_rm, int minimum, double *result
+);
+DTATOOLS_INTERNAL int computed_scalar_compact(double value, int minimum_kind, double *decoded);
+DTATOOLS_INTERNAL int computed_storage_kind_of(SEXP storage);
+DTATOOLS_INTERNAL int summary_planned_combine_admitted(
+    SEXP caller, SEXP first, R_xlen_t count, SEXP states
+);
+DTATOOLS_INTERNAL SEXP summary_planned_combine(
+    SEXP caller, SEXP first, SEXP values, unsigned kinds, SEXP states
+);
 DTATOOLS_INTERNAL SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
     int format_version, size_t missing_count

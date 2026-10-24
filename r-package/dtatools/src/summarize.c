@@ -240,10 +240,11 @@ static SEXP summary_reader_capture(
 }
 
 /* Keep R's ordered extended-precision mean, including its rescaled overflow
-   path and correction pass. Missing removal is fused into each read pass. */
-SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm) {
-    if (TYPEOF(x) != REALSXP || !summary_scan_supported(x)) return R_NilValue;
-    int remove = Rf_asLogical(na_rm);
+   path and correction pass. Missing removal is fused into each read pass.
+   Set *result and return 1, or return 0 for a vector the scan does not
+   read. */
+static int numeric_mean_value(SEXP x, int remove, double *result) {
+    if (TYPEOF(x) != REALSXP || !summary_scan_supported(x)) return 0;
     numeric_reader reader;
     numeric_data storage;
     PROTECT(summary_reader_capture(x, &reader, &storage));
@@ -266,7 +267,8 @@ SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm) {
     }
     if ((!remove && missing) || count == 0) {
         UNPROTECT(1);
-        return Rf_ScalarReal(count == 0 && (remove || !missing) ? R_NaN : NA_REAL);
+        *result = count == 0 && (remove || !missing) ? R_NaN : NA_REAL;
+        return 1;
     }
     int finite_sum = R_FINITE((double) sum);
     if (finite_sum) {
@@ -300,7 +302,14 @@ SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm) {
         sum += finite_sum ? correction / count : correction;
     }
     UNPROTECT(1);
-    return Rf_ScalarReal((double) sum);
+    *result = (double) sum;
+    return 1;
+}
+
+SEXP C_dtatools_numeric_mean(SEXP x, SEXP na_rm) {
+    double result;
+    return numeric_mean_value(x, Rf_asLogical(na_rm), &result) ?
+        Rf_ScalarReal(result) : R_NilValue;
 }
 
 /* Forces na.rm, as the R code does, once summary_flag_known() has shown
@@ -556,7 +565,57 @@ SEXP C_dtatools_summary_plan_admitted(SEXP generic, SEXP env, SEXP top, SEXP fra
    later groups as the loop builds them, or NULL, with nothing computed
    that the loop would not also compute, when the admission declines or any
    chunk would leave its group to the R code. */
-SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP frame) {
+/* What a later chunk's result reads back as and its compact storage, as
+   mean_chunk() or summary_chunk() would build it, or -1 where it would be a
+   double vector, or -2 where those calls, and so the plan, decline. */
+static int plan_chunk_value(SEXP x, int operation, Rboolean remove, double *decoded) {
+    static SEXP storage = NULL;
+    double value;
+    /* An S4 object's methods dispatch before the S3 method the plan
+       stands in for. */
+    if (Rf_isS4(x)) return -2;
+    int computed = operation < 0 ?
+        mean_chunk_supported(x) && numeric_mean_value(x, remove, &value) :
+        summary_chunk_supported(x) && (operation == 0 ?
+            numeric_sum_value(x, remove, &value) :
+            numeric_extreme_value(x, remove, operation == 1, &value));
+    if (!computed) return -2;
+    /* `.collapse_missing()` */
+    if (ISNAN(value)) value = NA_REAL;
+    return computed_scalar_compact(value,
+        computed_storage_kind_of(Rf_getAttrib(x, summary_symbol(&storage, "stata.storage"))),
+        decoded);
+}
+
+/* The combined vector of a summary's results when the first group's result
+   and every later one is compact (ADR 0062), or R_NilValue, with nothing
+   built, when one is not or summary_planned_combine() declines. Its checks
+   that read no later result come first, so a decline there computes none.
+   *declined is set when a later chunk's call declines, so the whole plan
+   does. */
+static SEXP plan_combined(SEXP chunks, int operation, Rboolean remove, SEXP first,
+                          SEXP caller, SEXP states, int *declined) {
+    R_xlen_t count = XLENGTH(chunks);
+    if (!summary_planned_combine_admitted(caller, first, count, states)) return R_NilValue;
+    SEXP values = PROTECT(Rf_allocVector(REALSXP, count));
+    unsigned kinds = 0;
+    for (R_xlen_t i = 1; i < count; i++) {
+        if (i % 4096 == 4095) R_CheckUserInterrupt();
+        int kind = plan_chunk_value(VECTOR_ELT(chunks, i), operation, remove, REAL(values) + i);
+        if (kind < 0) {
+            *declined = kind == -2;
+            UNPROTECT(1);
+            return R_NilValue;
+        }
+        kinds |= 1U << kind;
+    }
+    SEXP result = summary_planned_combine(caller, first, values, kinds, states);
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP frame,
+                             SEXP first, SEXP caller, SEXP states) {
     SEXP found[2] = {R_NilValue, R_NilValue};
     if (TYPEOF(chunks) != VECSXP || ALTREP(chunks) ||
         !summary_plan_admission(generic, env, top, frame, found)) return R_NilValue;
@@ -569,6 +628,23 @@ SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP
     if (count < 1) {
         UNPROTECT(1);
         return R_NilValue;
+    }
+    if (first != R_NilValue) {
+        int declined = 0;
+        SEXP combined = PROTECT(plan_combined(chunks, operation, remove, first, caller,
+                                              states, &declined));
+        if (declined || combined != R_NilValue) {
+            SEXP result = R_NilValue;
+            if (!declined) {
+                result = PROTECT(Rf_allocVector(VECSXP, 1));
+                SET_VECTOR_ELT(result, 0, combined);
+                Rf_setAttrib(result, R_NamesSymbol, Rf_mkString("result"));
+                UNPROTECT(1);
+            }
+            UNPROTECT(2);
+            return result;
+        }
+        UNPROTECT(1);
     }
     SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
     SEXP known = PROTECT(Rf_allocVector(INTSXP, count));

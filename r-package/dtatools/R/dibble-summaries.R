@@ -197,10 +197,13 @@
 # group runs through the loop, which reads the column and stops in a
 # debugger a one-shot `debugonce()` set. It returns the captured results and
 # their sizes for the later groups as the loop builds them, or NULL, and the
-# loop goes on. With `combined`, for mutate(), it also declines when a group
-# is empty, since only when none is do the loop's results wait for the
-# combiners to recycle them.
-.summary_planned <- function(quo, mask, groups, combined = FALSE) {
+# loop goes on. Given the first group's result, `first`, and the frame that
+# combines the results, `caller`, it can instead return the combined vector
+# as `result` (ADR 0062). With `combined`, for mutate(), it also declines
+# when a group is empty, since only when none is do the loop's results wait
+# for the combiners to recycle them.
+.summary_planned <- function(quo, mask, groups, combined = FALSE, first = NULL,
+                             caller = NULL) {
     if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
     expression <- rlang::quo_get_expr(quo)
     if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
@@ -232,7 +235,9 @@
     top <- topenv(env)
     found <- .Call(C_dtatools_summary_plan_admitted, generic, env, top, environment())
     if (is.null(found) || isdebugged(found[[1L]]) || isdebugged(found[[2L]])) return(NULL)
-    .Call(C_dtatools_summary_plan, chunks, generic, env, top, environment())
+    .Call(C_dtatools_summary_plan, chunks, generic, env, top, environment(), first, caller,
+          list(.double_combine_state, .metadata_state, .summary_ptype_dependencies,
+               .summary_combine_dependencies, .summary_routine_state))
 }
 
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
@@ -262,14 +267,31 @@
                 # The mask's columns change only after the groups run, so
                 # whether the result replaces one is known before (ADR 0055).
                 replaces <- name %in% mask$helpers$current_vars()
+                install <- function(target, pieces, value, sizes = NULL) {
+                    binding_chunks <- pieces
+                    if (identical(groups$type, "rowwise") &&
+                        all(vapply(pieces, function(x) vctrs::obj_is_list(x) &&
+                            length(x) == 1L, logical(1)))) {
+                        binding_chunks <- lapply(pieces, .subset2, 1L)
+                    }
+                    mask$add(target, value, binding_chunks, positions = is.null(pieces))
+                    records[[length(records) + 1L]] <<- list(name = target,
+                        chunks = pieces, result = value, quo = original,
+                        original_name = original_name, sizes = sizes)
+                }
+                assembled <- NULL
                 for (id in seq_along(mask$rows)) {
                     # After the first group, a summary of one column can take
                     # one native call for the rest, which gives what the loop
-                    # would (ADR 0061).
+                    # would (ADR 0061), or the vector the steps below combine
+                    # from it (ADR 0062).
                     if (id == 2L && !replaces &&
-                        !is.null(planned <- .summary_planned(quo, mask, groups))) {
-                        chunks[-1L] <- planned$chunks
-                        known[-1L] <- planned$known
+                        !is.null(planned <- .summary_planned(quo, mask, groups,
+                            first = if (!reframe) chunks[[1L]], caller = environment()))) {
+                        if (!is.null(planned$result)) assembled <- planned$result else {
+                            chunks[-1L] <- planned$chunks
+                            known[-1L] <- planned$known
+                        }
                         # The loop leaves the mask at its last group.
                         mask$set_group(length(mask$rows))
                         break
@@ -303,6 +325,13 @@
                     }
                     chunks[id] <- list(if (is.null(value)) NULL else .capture_dibble_nested(value))
                 }
+                if (!is.null(assembled)) {
+                    # Each result has size one, and the mask splits the
+                    # combined vector into them when a later expression reads it.
+                    mask$set_group(0L)
+                    install(name, NULL, assembled, rep.int(1L, length(mask$rows)))
+                    next
+                }
                 nulls <- vapply(chunks, is.null, logical(1))
                 if (all(nulls)) next
                 if (any(nulls)) {
@@ -322,18 +351,6 @@
                             chunks <- vctrs::vec_cast_common(!!!chunks, .to = ptype)
                             vctrs::vec_c(!!!chunks, .ptype = ptype)
                         }), .native_admission_if)
-                install <- function(target, pieces, value, sizes = NULL) {
-                    binding_chunks <- pieces
-                    if (identical(groups$type, "rowwise") &&
-                        all(vapply(pieces, function(x) vctrs::obj_is_list(x) &&
-                            length(x) == 1L, logical(1)))) {
-                        binding_chunks <- lapply(pieces, .subset2, 1L)
-                    }
-                    mask$add(target, value, binding_chunks)
-                    records[[length(records) + 1L]] <<- list(name = target,
-                        chunks = pieces, result = value, quo = original,
-                        original_name = original_name, sizes = sizes)
-                }
                 if (!nzchar(original_name) && is.data.frame(result)) {
                     for (target in names(result)) install(target,
                         lapply(chunks, .subset2, target), result[[target]])

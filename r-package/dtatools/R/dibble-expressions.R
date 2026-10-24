@@ -78,11 +78,14 @@
     rows <- groups$rows
     if (!length(rows)) rows <- list(integer())
     rowwise <- identical(groups$type, "rowwise")
-    add <- function(name, value, chunks = NULL) {
+    add <- function(name, value, chunks = NULL, positions = FALSE) {
         generation <- new.env(parent = emptyenv())
         generation$value <- .capture_dibble_nested(value)
         generation$chunks <- if (is.null(chunks)) NULL else
             .capture_dibble_chunks(chunks)
+        # A summary's combined vector, which the plan built without its
+        # groups' results, splits into one value per group (ADR 0062).
+        if (positions) generation$positions <- TRUE
         generation$used <- FALSE
         state$current[[name]] <- generation
         if (!name %in% state$names) state$names <- c(state$names, name)
@@ -160,10 +163,11 @@
         generation$used <- TRUE
         if (is.null(generation$chunks)) {
             value <- generation$value
+            split <- if (isTRUE(generation$positions)) as.list(seq_along(rows)) else rows
             chunks <- if (identical(groups$type, "ungrouped")) list(value) else
-                if (!rowwise) .split_dta_column(value, rows)
+                if (!rowwise) .split_dta_column(value, split)
             generation$chunks <- if (!is.null(chunks)) chunks else
-                lapply(rows, function(index) {
+                lapply(split, function(index) {
                     if (rowwise && vctrs::obj_is_list(value)) {
                         if (!length(value)) {
                             ptype <- attr(value, "ptype", exact = TRUE)
@@ -276,9 +280,9 @@
         groups <<- rows <<- NULL
     }
     list(helpers = helpers, evaluate = evaluate, with_group = with_group,
-         add = function(name, value, chunks = NULL) {
+         add = function(name, value, chunks = NULL, positions = FALSE) {
              state$bindings <- NULL
-             add(name, value, chunks)
+             add(name, value, chunks, positions)
          },
          remove = function(name) {
              state$bindings <- NULL

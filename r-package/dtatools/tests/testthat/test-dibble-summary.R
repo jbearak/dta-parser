@@ -1020,6 +1020,7 @@ test_that("a fresh session's first grouped summaries take both native checks", {
         record <- new.env()
         record$settled <- logical()
         record$combined <- logical()
+        record$planned <- logical()
         suppressMessages({
             trace(".summary_ptype_settles", where = asNamespace("dtatools"), print = FALSE,
                 exit = bquote(assign("settled", c(get("settled", envir = .(record)),
@@ -1027,6 +1028,9 @@ test_that("a fresh session's first grouped summaries take both native checks", {
             trace(".summary_combine", where = asNamespace("dtatools"), print = FALSE,
                 exit = bquote(assign("combined", c(get("combined", envir = .(record)),
                     isTRUE(returnValue())), envir = .(record))))
+            trace(".summary_planned", where = asNamespace("dtatools"), print = FALSE,
+                exit = bquote(assign("planned", c(get("planned", envir = .(record)),
+                    !is.null(returnValue()$result)), envir = .(record))))
         })
         # Only native generation builds the counts, and a read file's columns
         # come from the reader, so neither runs the R constructor.
@@ -1035,25 +1039,31 @@ test_that("a fresh session's first grouped summaries take both native checks", {
             values <- list(as.double(dplyr::summarise(data, n = dplyr::n())$n))
         } else {
             data <- dplyr::group_by(read_dta(path, col_select = c("make", "weight")), make)
+            # The summary of max() builds its combined vector (ADR 0062). The
+            # reframe() builds each group's result, so both checks run.
             values <- list(as.double(dplyr::summarise(data, n = dplyr::n())$n),
-                           as.double(dplyr::summarise(data, w = max(weight))$w))
+                           as.double(dplyr::summarise(data, w = max(weight))$w),
+                           as.double(dplyr::reframe(data, w = max(weight))$w))
         }
-        list(settled = record$settled, combined = record$combined, values = values)
+        list(settled = record$settled, combined = record$combined,
+             planned = record$planned, values = values)
     }
     expected <- .dtatools_numeric_entry_expected()
     counted <- callr::r(first_summaries, args = list(package_path = package_path,
         load_package = load_dtatools_for_subprocess, path = NULL), libpath = .libPaths())
     expect_identical(counted$settled, expected)
     expect_identical(counted$combined, expected)
+    expect_identical(counted$planned, FALSE)
     expect_identical(counted$values, list(rep(2, 10)))
     auto <- fixture("auto_v118.dta")
     read <- callr::r(first_summaries, args = list(package_path = package_path,
         load_package = load_dtatools_for_subprocess, path = auto), libpath = .libPaths())
-    expect_identical(read$settled, rep(expected, 2L))
-    expect_identical(read$combined, rep(expected, 2L))
+    expect_identical(read$planned, c(FALSE, expected, FALSE))
+    expect_identical(read$settled, rep(expected, 3L - expected))
+    expect_identical(read$combined, rep(expected, 3L - expected))
     weights <- read_dta(auto, col_select = c("make", "weight"))
-    expect_identical(read$values, list(rep(1, 74),
-        as.double(weights$weight)[order(weights$make)]))
+    weight <- as.double(weights$weight)[order(weights$make)]
+    expect_identical(read$values, list(rep(1, 74), weight, weight))
 })
 
 test_that("declined summary common typing runs the original compiled call", {
