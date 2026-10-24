@@ -480,6 +480,27 @@ test_that("size plans decline what the loop would see differently", {
         expect_true(result$same, info = deparse(code))
         expect_identical(result$planned, 0L, info = deparse(code))
     }
+    # Classed row vectors, which the loop measures with a length() method
+    # that can read the mask.
+    classed <- dplyr::group_by(data, g)
+    groups <- attr(classed, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, structure, class = "plan_rows"),
+                                       ptype = integer())
+    attr(classed, "groups") <- groups
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    assign("length.plan_rows", function(x) {
+        size <- length(unclass(x))
+        masked <- tryCatch(dplyr::cur_group_id(), error = function(e) NULL)
+        if (is.null(masked)) size else size + 10L
+    }, envir = table)
+    withr::defer(rm("length.plan_rows", envir = table))
+    sizes <- .plan_compare(.plan_global(dplyr::summarise(classed, n = dplyr::n()),
+                                        classed = classed))
+    expect_true(sizes$same)
+    expect_identical(sizes$planned, 0L)
+    # Outside the mask, the method gives each group's size.
+    expect_identical(as.integer(dplyr::summarise(classed, n = dplyr::n())$n),
+                     lengths(groups$.rows) + 10L)
 })
 
 test_that("a traced or replaced dplyr function keeps the loop", {

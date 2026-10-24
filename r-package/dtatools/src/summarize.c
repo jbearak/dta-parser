@@ -823,8 +823,11 @@ SEXP C_dtatools_size_plan(SEXP rows, SEXP expression, SEXP combined, SEXP env,
     R_xlen_t count = XLENGTH(rows) - 1;
     for (R_xlen_t i = 0; i <= count; i++) {
         SEXP group = VECTOR_ELT(rows, i);
-        if (TYPEOF(group) != INTSXP || XLENGTH(group) > INT_MAX ||
-            (mutate && XLENGTH(group) == 0)) return R_NilValue;
+        /* The loop measures a group's rows with length(), which dispatches
+           on a classed vector. */
+        if (TYPEOF(group) != INTSXP || Rf_isObject(group) || Rf_isS4(group) ||
+            XLENGTH(group) > INT_MAX || (mutate && XLENGTH(group) == 0))
+            return R_NilValue;
     }
     SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
     SEXP known = PROTECT(Rf_allocVector(INTSXP, count));
