@@ -5,6 +5,17 @@
   Use `summ()` for Stata's `summarize` command, with the same arguments and
   return value.
 
+* Grouped verbs build the `.data` pronoun once per set of columns instead of
+  once per group, pass `rlang::eval_tidy()` the frame its default would look
+  up for each group, and capture a grouped summary's atomic results in one
+  native call. Over the 42,739 women in the first 100,000 rows of the India
+  2021 DHS births file, `summarise(b, k = 2.5, .by = caseid)` falls from
+  about 0.27 to 0.24 seconds and
+  `summarise(b, m = mean(b2), x = max(bord), .by = caseid)` from 0.98 to
+  0.91. Results are unchanged. A traced or replaced `rlang::as_data_pronoun()`
+  sees one call per set of columns, and a traced `rlang::caller_env()` or
+  `.capture_dibble_nested()` no longer sees each group (ADR 0058).
+
 * Grouped `summarise()` scans its results' attributes in one native call
   when it looks for the results that can change their common type. It had
   looped over the results in R, up to twice per expression, calling
