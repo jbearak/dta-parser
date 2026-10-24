@@ -137,20 +137,27 @@ SEXP C_dtatools_group_rows_facts(SEXP x, SEXP originals) {
 static int group_key_readable(SEXP x) {
     for (int depth = 0; depth < 64; depth++) {
         if (!ALTREP(x) || owned_column(x)) return 1;
-        if (TYPEOF(x) != REALSXP) return 0;
-        if (R_altrep_inherits(x, dtatools_numeric_class)) return 1;
-        if (!R_altrep_inherits(x, dtatools_metadata_real_class)) return 0;
+        if (TYPEOF(x) == STRSXP) {
+            /* A compact string column reads its dictionary. */
+            if (R_altrep_inherits(x, dtatools_dictstring_class)) return 1;
+            if (!R_altrep_inherits(x, dtatools_metadata_string_class)) return 0;
+        } else {
+            if (TYPEOF(x) != REALSXP) return 0;
+            if (R_altrep_inherits(x, dtatools_numeric_class)) return 1;
+            if (!R_altrep_inherits(x, dtatools_metadata_real_class)) return 0;
+        }
         SEXP materialized = R_altrep_data2(x);
         x = materialized != R_NilValue ? materialized : metadata_proxy_source(x);
     }
     return 0;
 }
 
-/* A bare logical, integer or double column whose values are read without
-   running R code. */
+/* A bare logical, integer, double or character column whose values are read
+   without running R code. */
 static int group_key_column(SEXP x) {
     int type = TYPEOF(x);
-    if ((type != LGLSXP && type != INTSXP && type != REALSXP) || ANY_ATTRIB(x))
+    if ((type != LGLSXP && type != INTSXP && type != REALSXP && type != STRSXP) ||
+        ANY_ATTRIB(x))
         return 0;
     return group_key_readable(x);
 }
@@ -229,6 +236,37 @@ static int group_key_column_matches(SEXP actual, SEXP key, const int *sizes,
                                     R_xlen_t groups) {
     int type = TYPEOF(actual);
     R_xlen_t total = XLENGTH(actual), group = 0, left = groups ? sizes[0] : 0;
+    if (type == STRSXP) {
+        /* vctrs translates strings to UTF-8 before it compares them, which
+           leaves NA and ASCII strings as they are, and R keeps one copy of
+           each ASCII string, so two of those are equal exactly when they are
+           the same element. A translation can fail, so any other string
+           declines, even after a mismatch. The keys are held in a vector,
+           since reading a compact string can collect an unreferenced one. */
+        SEXP keys = PROTECT(Rf_allocVector(STRSXP, groups));
+        for (R_xlen_t i = 0; i < groups; i++) {
+            SEXP value = STRING_ELT(key, i);
+            if (value != NA_STRING && !Rf_charIsASCII(value)) {
+                UNPROTECT(1);
+                return -1;
+            }
+            SET_STRING_ELT(keys, i, value);
+        }
+        int matched = 1;
+        for (R_xlen_t i = 0; i < total; i++) {
+            if (i % GROUP_KEY_BLOCK == 0) R_CheckUserInterrupt();
+            while (left == 0) left = sizes[++group];
+            SEXP value = STRING_ELT(actual, i);
+            if (value != NA_STRING && !Rf_charIsASCII(value)) {
+                UNPROTECT(1);
+                return -1;
+            }
+            if (value != STRING_ELT(keys, group)) matched = 0;
+            left--;
+        }
+        UNPROTECT(1);
+        return matched;
+    }
     if (type == REALSXP) {
         double *keys = (double *) R_alloc(groups ? groups : 1, sizeof(double));
         double buffer[GROUP_KEY_BLOCK];
@@ -265,11 +303,12 @@ static int group_key_column_matches(SEXP actual, SEXP key, const int *sizes,
 
 /* all(vctrs::vec_equal(actual, expected, na_equal = TRUE)), where expected
    repeats the i-th value of `key` sizes[i] times, without building expected.
-   `actual` and `key` are equality proxies: bare logical, integer or double
-   columns, or bare data frames of them with the same names and column types,
-   which vctrs compares column by column without dispatch. NULL declines any
-   other proxy, or sizes that do not cover `actual`, so the caller builds
-   expected and asks vctrs. */
+   `actual` and `key` are equality proxies: bare logical, integer, double or
+   character columns, or bare data frames of them with the same ASCII names
+   and column types, which vctrs compares column by column without dispatch. NULL
+   declines any other proxy, sizes that do not cover `actual`, and strings
+   the comparison above declines, so the caller builds expected and asks
+   vctrs. */
 SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes) {
     SEXP actual_columns = PROTECT(group_key_columns(actual));
     SEXP key_columns = PROTECT(group_key_columns(key));
@@ -285,8 +324,13 @@ SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes) {
         SEXP key_names = Rf_getAttrib(key, R_NamesSymbol);
         int same = TYPEOF(actual_names) == STRSXP && TYPEOF(key_names) == STRSXP &&
             XLENGTH(actual_names) == count && XLENGTH(key_names) == count;
-        for (R_xlen_t i = 0; same && i < count; i++)
-            same = STRING_ELT(actual_names, i) == STRING_ELT(key_names, i);
+        /* vctrs translates the names too, which fails for strings marked
+           bytes. */
+        for (R_xlen_t i = 0; same && i < count; i++) {
+            SEXP name = STRING_ELT(actual_names, i);
+            same = name == STRING_ELT(key_names, i) && name != NA_STRING &&
+                Rf_charIsASCII(name);
+        }
         if (!same) {
             UNPROTECT(2);
             return R_NilValue;
@@ -308,10 +352,21 @@ SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes) {
             return R_NilValue;
         }
     }
+    /* vctrs translates every string column before it compares any column,
+       so a mismatch in one column still reads the others. */
     int matched = 1;
-    for (R_xlen_t i = 0; matched == 1 && i < count; i++)
-        matched = group_key_column_matches(VECTOR_ELT(actual_columns, i),
-                                           VECTOR_ELT(key_columns, i), size, groups);
+    for (R_xlen_t i = 0; matched >= 0 && i < count; i++) {
+        int column = group_key_column_matches(VECTOR_ELT(actual_columns, i),
+                                              VECTOR_ELT(key_columns, i), size, groups);
+        if (column <= 0) matched = column;
+        if (matched == 0) {
+            /* Only string columns can still decline. */
+            int strings = 0;
+            for (R_xlen_t j = i + 1; j < count; j++)
+                strings |= TYPEOF(VECTOR_ELT(actual_columns, j)) == STRSXP;
+            if (!strings) break;
+        }
+    }
     UNPROTECT(2);
     return matched < 0 ? R_NilValue : Rf_ScalarLogical(matched);
 }
