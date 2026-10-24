@@ -671,6 +671,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_computed_values(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_scalar_arithmetic(
     SEXP left, SEXP right, SEXP frame, SEXP storage_getter, SEXP dependencies
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_arithmetic_small(void);
 
 /* Dictionary-backed strings. */
 DTATOOLS_INTERNAL void dictstring_finalize(SEXP external);
@@ -842,6 +843,7 @@ DTATOOLS_INTERNAL SEXP metadata_real_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP metadata_string_duplicate(SEXP value, Rboolean deep);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_copy(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_capture_atomic(SEXP value);
+DTATOOLS_INTERNAL SEXP C_dtatools_capture_atomic_list(SEXP chunks);
 DTATOOLS_INTERNAL SEXP C_dtatools_metadata_view(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_any_attribute(SEXP x, SEXP names);
 DTATOOLS_INTERNAL SEXP C_dtatools_restore_numeric_metadata(
@@ -942,6 +944,7 @@ DTATOOLS_INTERNAL SEXP C_dtatools_fused_patch_slot(
 DTATOOLS_INTERNAL SEXP C_dtatools_dta_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 );
+DTATOOLS_INTERNAL SEXP C_dtatools_compare_direct(void);
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_codes(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_missing_code_counts(SEXP value);
 DTATOOLS_INTERNAL SEXP C_dtatools_replace_reference_columns(

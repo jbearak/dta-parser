@@ -8349,4 +8349,6 @@ SEXP numeric_computed_small(SEXP value, SEXP minimum) {
     return result;
 }
 
+#include "numeric-compare-direct.h"
+
 #include "initial-capture.inc"

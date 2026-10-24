@@ -1,7 +1,8 @@
 test_that("compact Stata numerics use the typed scalar producer", {
     skip_if_not(exists("C_dtatools_numeric_entry_stats", asNamespace("dtatools")))
-    # Settle the one-time helper profile before observing the compact route.
-    invisible(dta_double(c(1, 2)) + 1)
+    # Settle the one-time helper profile before observing the compact route,
+    # on 2,048 values, since smaller operands skip the R code (ADR 0059).
+    invisible(dta_double(rep(c(1, 2), 1024L)) + 1)
     ns <- asNamespace("dtatools")
     counter <- function(reset = FALSE) .Primitive(".Call")(
         get("C_dtatools_numeric_entry_stats", ns, inherits = FALSE), reset

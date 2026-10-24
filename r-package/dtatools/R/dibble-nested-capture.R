@@ -66,3 +66,17 @@
     }
     capture(value)
 }
+
+# `lapply(chunks, .capture_dibble_nested)` for a group's results. One native
+# call captures the atomic chunks in order, and the R code captures the rest
+# from the first chunk the call declines (ADR 0058).
+.capture_dibble_chunks <- function(chunks) {
+    native <- .Call(C_dtatools_capture_atomic_list, chunks)
+    if (is.null(native)) return(lapply(chunks, .capture_dibble_nested))
+    captured <- native[[1L]]
+    taken <- native[[2L]]
+    for (index in seq_len(length(chunks) - taken) + taken)
+        captured[index] <- list(.capture_dibble_nested(chunks[[index]]))
+    names(captured) <- names(chunks)
+    captured
+}

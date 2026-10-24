@@ -50,7 +50,10 @@ test_that("numeric size boundaries retain small fallback and large native public
                              if (route == "holds") NULL else "double", info = info)
             if (size < 2048L) {
                 expect_identical(observed$proof, c(functions = 0, closures = 0), info = info)
-                expect_identical(observed$size[[paste0(route, ".small")]], 1, info = info)
+                # `.dta_arith_base()` computes small operands before the scalar
+                # route checks their size (ADR 0059).
+                expect_identical(observed$size[[paste0(route, ".small")]],
+                                 if (route == "scalar") 0 else 1, info = info)
             } else {
                 expect_true(observed$size[[paste0(route, ".continue")]] >= 1, info = info)
                 # Scalar repeats use live binding and closure-component checks
@@ -312,9 +315,10 @@ test_that("size admission does not replace changed or self-untracing executing c
             trace(name, tracer = tracer, where = ns, print = FALSE)
             observed <- tryCatch(.numeric_size_observe(operations[[route]]),
                                  finally = replace(name, original))
-            # Under 2,048 values, `.dta_computed()` returns from its own native
-            # call before the R code's locals (ADR 0050).
-            local <- switch(route, scalar = "args",
+            # Under 2,048 values, `.dta_arith_base()` and `.dta_computed()`
+            # return from their own native calls before the R code's locals
+            # (ADR 0050, ADR 0059).
+            local <- switch(route, scalar = if (size < 2048L) "native" else "args",
                             computed = if (size < 2048L) "native" else "values",
                             construct = "values", holds = "codes")
             expect_identical(observed$result, reference, info = paste(size, route))

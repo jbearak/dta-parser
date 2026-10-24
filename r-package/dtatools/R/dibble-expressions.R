@@ -73,6 +73,7 @@
     state$names <- character()
     state$current <- list()
     state$bindings <- NULL
+    state$pronoun <- NULL
     state$mask <- NULL
     rows <- groups$rows
     if (!length(rows)) rows <- list(integer())
@@ -81,7 +82,7 @@
         generation <- new.env(parent = emptyenv())
         generation$value <- .capture_dibble_nested(value)
         generation$chunks <- if (is.null(chunks)) NULL else
-            lapply(chunks, .capture_dibble_nested)
+            .capture_dibble_chunks(chunks)
         # A summary's combined vector, which the plan built without its
         # groups' results, splits into one value per group (ADR 0062).
         if (positions) generation$positions <- TRUE
@@ -202,9 +203,12 @@
                 }), .native_admission_if
             )
             state$bindings <- bindings
+            # The pronoun only wraps the bindings, so every group's mask can
+            # share the one built with them (ADR 0058).
+            state$pronoun <- rlang::as_data_pronoun(bindings)
         }
         mask <- rlang::new_data_mask(state$bindings)
-        mask$.data <- rlang::as_data_pronoun(state$bindings)
+        mask$.data <- state$pronoun
         mask
     }
     values <- function(vars = names(state$current)) {
@@ -250,7 +254,9 @@
         state$id <- as.integer(id)
         state$mask <- make_mask()
         mask <- state$mask
-        action(function(quo) rlang::eval_tidy(quo, mask))
+        # The frame is what eval_tidy()'s `caller_env()` default would
+        # find, without its calls in every group (ADR 0058).
+        action(function(quo) rlang::eval_tidy(quo, mask, environment()))
     }
     evaluate <- function(quo, id) {
         with_group(id, function(evaluate) evaluate(quo))
@@ -270,7 +276,7 @@
             }
         }
         state$generations <- state$current <- list()
-        state$bindings <- state$mask <- NULL
+        state$bindings <- state$pronoun <- state$mask <- NULL
         groups <<- rows <<- NULL
     }
     list(helpers = helpers, evaluate = evaluate, with_group = with_group,

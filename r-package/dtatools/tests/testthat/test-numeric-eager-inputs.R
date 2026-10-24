@@ -27,6 +27,9 @@ test_that("strict construction retains custom conversion local reads", {
 })
 
 test_that("scalar admission leaves active operands to original recycling", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     invisible(source + 2)
     original <- get(".dta_data", asNamespace("dtatools"))
@@ -63,6 +66,9 @@ test_that("scalar admission leaves active operands to original recycling", {
 })
 
 test_that("recycling errors precede active numeric operand errors", {
+    # Operands under 2,048 values otherwise skip the R code (ADR 0059).
+    prior <- .Call(C_dtatools_test_numeric_size_minimum, 0L)
+    withr::defer(.Call(C_dtatools_test_numeric_size_minimum, prior))
     source <- dta_double(c(1, 2))
     original <- get(".dta_data", asNamespace("dtatools"))
     observe <- function() {
