@@ -206,15 +206,18 @@
                 typable <- .mask_expression_typable(original, context$columns)
                 chunks <- vector("list", length(mask$rows))
                 known <- rep.int(NA_integer_, length(mask$rows))
+                # The mask's columns change only after the groups run, so
+                # whether the result replaces one is known before (ADR 0055).
+                replaces <- name %in% mask$helpers$current_vars()
                 for (id in seq_along(mask$rows)) {
                     value <- mask$with_group(id, function(evaluate) {
                         value <- evaluate(quo)
                         if (is.null(value) || !typable) return(value)
-                        prior <- function(target) {
-                            if (target %in% mask$helpers$current_vars())
-                                mask$helpers$current_cols(target)[[target]] else NULL
-                        }
                         if (is.data.frame(value)) {
+                            prior <- function(target) {
+                                if (target %in% mask$helpers$current_vars())
+                                    mask$helpers$current_cols(target)[[target]] else NULL
+                            }
                             if (!nzchar(original_name)) {
                                 value <- .metadata_copy(value)
                                 for (target in names(value)) value[[target]] <-
@@ -222,7 +225,9 @@
                                         length(value[[target]]), caller)
                             }
                             value
-                        } else .retyped_column(value, prior(name), length(value), caller)
+                        } else .retyped_column(value,
+                            if (replaces) mask$helpers$current_cols(name)[[name]],
+                            length(value), caller)
                     })
                     # A bare vector or a package Stata numeric is a vector
                     # of its length, which the native call returns without
