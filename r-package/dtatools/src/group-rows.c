@@ -304,8 +304,8 @@ static int group_key_column_matches(SEXP actual, SEXP key, const int *sizes,
 /* all(vctrs::vec_equal(actual, expected, na_equal = TRUE)), where expected
    repeats the i-th value of `key` sizes[i] times, without building expected.
    `actual` and `key` are equality proxies: bare logical, integer, double or
-   character columns, or bare data frames of them with the same names and
-   column types, which vctrs compares column by column without dispatch. NULL
+   character columns, or bare data frames of them with the same ASCII names
+   and column types, which vctrs compares column by column without dispatch. NULL
    declines any other proxy, sizes that do not cover `actual`, and strings
    the comparison above declines, so the caller builds expected and asks
    vctrs. */
@@ -324,8 +324,13 @@ SEXP C_dtatools_group_keys_match(SEXP actual, SEXP key, SEXP sizes) {
         SEXP key_names = Rf_getAttrib(key, R_NamesSymbol);
         int same = TYPEOF(actual_names) == STRSXP && TYPEOF(key_names) == STRSXP &&
             XLENGTH(actual_names) == count && XLENGTH(key_names) == count;
-        for (R_xlen_t i = 0; same && i < count; i++)
-            same = STRING_ELT(actual_names, i) == STRING_ELT(key_names, i);
+        /* vctrs translates the names too, which fails for strings marked
+           bytes. */
+        for (R_xlen_t i = 0; same && i < count; i++) {
+            SEXP name = STRING_ELT(actual_names, i);
+            same = name == STRING_ELT(key_names, i) && name != NA_STRING &&
+                Rf_charIsASCII(name);
+        }
         if (!same) {
             UNPROTECT(2);
             return R_NilValue;

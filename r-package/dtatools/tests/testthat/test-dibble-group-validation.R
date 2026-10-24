@@ -379,4 +379,12 @@ test_that("native group key matching gives vec_equal's result", {
                            data.frame(n = c(1, 3), s = c("x", bytes)), c(1L, 1L)))) {
         expect_null(match_keys(case[[1L]], case[[2L]], case[[3L]]))
     }
+    # It translates a frame's names too, whatever its columns.
+    for (columns in list(list(n = c(1, 1)), list(n = c(1, 1), s = c("x", "x")))) {
+        frame <- data.frame(columns)
+        names(frame)[[1L]] <- bytes
+        key_frame <- frame[1L, , drop = FALSE]
+        expect_error(expected(frame, key_frame, 2L), "bytes")
+        expect_null(match_keys(frame, key_frame, 2L))
+    }
 })
