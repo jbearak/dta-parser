@@ -201,7 +201,8 @@
 # combines the results, `caller`, it can instead return the combined vector
 # as `result` (ADR 0062). With `combined`, for mutate(), it also declines
 # when a group is empty, since only when none is do the loop's results wait
-# for the combiners to recycle them.
+# for the combiners to recycle them, and when a group's rows have a class or
+# are ALTREP, whose length could run R code before the loop would.
 .summary_planned <- function(quo, mask, groups, combined = FALSE, first = NULL,
                              caller = NULL) {
     if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
@@ -224,7 +225,7 @@
     # The mask's pronouns and R's `..1` take names that begin with a dot,
     # which no Stata variable does.
     if (startsWith(column, ".")) return(NULL)
-    if (combined && !all(lengths(mask$rows) > 0L)) return(NULL)
+    if (combined && !.Call(C_dtatools_plan_rows, mask$rows, TRUE)) return(NULL)
     # A column named for the generic or a method would be read while R
     # looks for them in the mask.
     current <- mask$helpers$current_vars()
@@ -270,8 +271,8 @@
                length(expression) != 1L || !is.null(attributes(expression))) {
         return(NULL)
     }
-    # The mutate() loop recycles an empty group's result itself.
-    if (combined && !all(lengths(mask$rows) > 0L)) return(NULL)
+    # The mutate() loop recycles an empty group's result itself, which the
+    # native call checks.
     .Call(C_dtatools_size_plan, mask$rows, expression, combined, rlang::quo_get_env(quo),
           mask$helpers, namespace, .size_plan_dependencies)
 }

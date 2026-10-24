@@ -792,6 +792,27 @@ SEXP C_dtatools_size_plan_admitted(SEXP expression, SEXP env, SEXP helpers,
     return result;
 }
 
+/* Whether every group's rows are a bare integer vector, and, with
+   `nonempty`, none is empty. A classed vector's length() and an ALTREP
+   vector's Length method could run R code while the first group is active,
+   so they decline before either is read. */
+static int plan_rows_plain(SEXP rows, int nonempty) {
+    if (TYPEOF(rows) != VECSXP || ALTREP(rows)) return 0;
+    for (R_xlen_t i = 0; i < XLENGTH(rows); i++) {
+        SEXP group = VECTOR_ELT(rows, i);
+        if (TYPEOF(group) != INTSXP || ALTREP(group) || Rf_isObject(group) ||
+            Rf_isS4(group) || XLENGTH(group) > INT_MAX ||
+            (nonempty && XLENGTH(group) == 0)) return 0;
+    }
+    return 1;
+}
+
+SEXP C_dtatools_plan_rows(SEXP rows, SEXP nonempty) {
+    return Rf_ScalarLogical(TYPEOF(nonempty) == LGLSXP && XLENGTH(nonempty) == 1 &&
+                            LOGICAL(nonempty)[0] != NA_LOGICAL &&
+                            plan_rows_plain(rows, LOGICAL(nonempty)[0]));
+}
+
 /* A literal number a size plan takes: a bare double or integer scalar. */
 static int size_literal(SEXP value) {
     return (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP) && !ALTREP(value) &&
@@ -821,14 +842,7 @@ SEXP C_dtatools_size_plan(SEXP rows, SEXP expression, SEXP combined, SEXP env,
                                  &rank, found) || (rank && !mutate)) return R_NilValue;
     } else if (mutate || !size_literal(expression)) return R_NilValue;
     R_xlen_t count = XLENGTH(rows) - 1;
-    for (R_xlen_t i = 0; i <= count; i++) {
-        SEXP group = VECTOR_ELT(rows, i);
-        /* The loop measures a group's rows with length(), which dispatches
-           on a classed vector. */
-        if (TYPEOF(group) != INTSXP || Rf_isObject(group) || Rf_isS4(group) ||
-            XLENGTH(group) > INT_MAX || (mutate && XLENGTH(group) == 0))
-            return R_NilValue;
-    }
+    if (!plan_rows_plain(rows, mutate)) return R_NilValue;
     SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
     SEXP known = PROTECT(Rf_allocVector(INTSXP, count));
     SEXP one = PROTECT(Rf_ScalarInteger(1));

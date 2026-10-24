@@ -18436,7 +18436,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "f3ddc05d1d8609e813f5f20a1ec6decc82c8b5470206ed39f886b4cc83bdc2ba"
+          "sha256": "5f9560eec14dc5eeb8f128c804dfb775dfdbb8d40adee2652b9f57c425519755"
         }
       ],
       "blocks": [

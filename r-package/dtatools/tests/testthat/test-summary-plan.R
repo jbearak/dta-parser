@@ -501,6 +501,49 @@ test_that("size plans decline what the loop would see differently", {
     # Outside the mask, the method gives each group's size.
     expect_identical(as.integer(dplyr::summarise(classed, n = dplyr::n())$n),
                      lengths(groups$.rows) + 10L)
+    # A method that counts its calls sees as many with the plan as with the
+    # loop. The mutate() fails when vctrs unchops its results by the classed
+    # rows, after every group.
+    state <- new.env()
+    assign("length.plan_count", function(x) {
+        state$calls <- state$calls + 1L
+        length(unclass(x))
+    }, envir = table)
+    withr::defer(rm("length.plan_count", envir = table))
+    counted <- dplyr::group_by(data, g)
+    groups <- attr(counted, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, structure, class = "plan_count"),
+                                       ptype = integer())
+    attr(counted, "groups") <- groups
+    for (code in list(
+        quote({
+            state$calls <- 0L
+            tryCatch(dplyr::mutate(counted, n = dplyr::n()), error = function(e) NULL)
+            state$calls
+        }),
+        quote({
+            state$calls <- 0L
+            tryCatch(dplyr::mutate(counted, m = mean(int)), error = function(e) NULL)
+            state$calls
+        }))) {
+        result <- .plan_compare(.plan_global_call(code, counted = counted, state = state))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+    # ALTREP rows, whose Length method could run R code. Rows of two or more
+    # are compact sequences.
+    compact <- dplyr::group_by(data, g)
+    groups <- attr(compact, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, function(rows)
+        if (length(rows) > 1L) rows[[1L]]:rows[[length(rows)]] else rows), ptype = integer())
+    attr(compact, "groups") <- groups
+    for (code in list(quote(dplyr::summarise(compact, n = dplyr::n())),
+                      quote(dplyr::mutate(compact, r = dplyr::row_number())),
+                      quote(dplyr::mutate(compact, m = mean(int))))) {
+        result <- .plan_compare(.plan_global_call(code, compact = compact))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
 })
 
 test_that("a traced or replaced dplyr function keeps the loop", {

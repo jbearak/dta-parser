@@ -49,9 +49,13 @@ value, through `C_dtatools_typed_column_fast()` and
 `C_dtatools_typed_scalar_fast()`, then measured and captured. It declines,
 and the loop goes on, for a literal those calls leave to the R code, such
 as `NA_real_`, for a `mutate()` with an empty group, whose results the
-loop recycles itself, and for a group whose rows have a class, which the
-loop measures with a `length()` method. The `n()` summary now takes about
-0.08 seconds, the literal's 0.07 and the `mutate()` 0.02.
+loop recycles itself, and for a group whose rows have a class or are
+ALTREP. The loop measures each group's rows in turn, and a `length()`
+method or an ALTREP Length method could run R code, so the plan declines
+before it reads them. The summary plan of ADR 0061 now checks a
+`mutate()`'s groups the same way, instead of with `lengths()`. The `n()`
+summary now takes about 0.08 seconds, the literal's 0.07 and the
+`mutate()` 0.02.
 
 As in ADR 0061, the plan does not prove what it skips. A traced or replaced
 `mask$with_group()`, `rlang::eval_tidy()`, `.retyped_column()`,
