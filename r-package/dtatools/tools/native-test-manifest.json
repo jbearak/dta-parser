@@ -13754,6 +13754,10 @@
           "sha256": "abcc5c3ef32f12093e14b07e09ad671b62e125825420542c03659b5d6f1e6f01"
         },
         {
+          "path": "tests/testthat/test-summary-ptype-kept.R",
+          "sha256": "0c09bb76d22a35b22ac45bd6e0d96de31cf8db9255f4f8e1ccbe09f9e0e5b8ff"
+        },
+        {
           "path": "tests/testthat/test-chunk-size.R",
           "sha256": "286144009d6273c430153cbbca6b55e6b5e073549365f589553d8741215ed91c"
         },
@@ -15295,6 +15299,33 @@
           "occurrence": 1,
           "skip": "require",
           "min_pass": 7,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-ptype-kept.R",
+          "test": "the native scan matches the R scan",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 75,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-ptype-kept.R",
+          "test": "row names, dimensions and other types leave the scan to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 18,
+          "warnings": 0
+        },
+        {
+          "file": "test-summary-ptype-kept.R",
+          "test": "grouped summaries scan their chunks natively",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 2,
           "warnings": 0,
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
