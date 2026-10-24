@@ -30,11 +30,16 @@ operators, for operands with names or a subclass, for a bare operand with any
 attribute, for unequal lengths other than one and for empty operands, while an
 operand or the operator is a promise that would evaluate a call, while the
 size gate's test hook is at 0, and when base binds the operator to anything
-but the primitive in `.numeric_binary_dependencies`. As the R code does, it
-forces the operator and then `minimum` after computing. Where it cannot build
-the result for that `minimum`, it passes the values to `.dta_computed()`, as
-the R code does, since forcing `minimum` can run R code that changes an
-operand. `x + 1` on a three-value int takes about 4.0 microseconds.
+but the primitive in `.numeric_binary_dependencies`. Before computing, it
+forces the operands and then the operator, in the R code's order. It forces
+`minimum` after computing, as the R code does, and since that can run R code
+that changes an operand, it never leaves the R code to compute the result
+again after that point. Where it cannot build the result for that `minimum`,
+it passes the values to `.dta_computed()`. Where R code run by `minimum` has
+bound `native` in the helper's frame, so it cannot bind its result there, it
+returns the result from that frame through the `return` primitive that
+`.native_admission_return()` names. `x + 1` on a three-value int takes about
+4.0 microseconds.
 
 The call does not prove what it skips. For operands under 2,048 values, a
 traced or replaced `.dta_data()`, `.metadata_view()`, `.dta_read_is_na()`,

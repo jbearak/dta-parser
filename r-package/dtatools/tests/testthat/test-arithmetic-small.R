@@ -200,6 +200,49 @@ test_that("a minimum that changes an operand keeps the values computed before it
     expect_true(.small_arithmetic_same(run(dtatools:::.dta_arith_base), expected))
 })
 
+test_that("operands settle before a minimum that rebinds what they forward", {
+    invisible(dta_double(c(1, 2)) + 1)
+    # The R code forces `x` before `minimum`, so the storage comes from the
+    # byte the promise forwarded when the call began.
+    run <- function(helper) {
+        source <- dta_byte(1)
+        forward <- function(x) helper("+", x, 1, {
+            source <<- dta_double(100)
+            .declared_dta_storage(x)
+        })
+        forward(source)
+    }
+    expected <- run(.small_arithmetic_r)
+    expect_identical(dta_storage_type(expected), "byte")
+    expect_true(.small_arithmetic_same(run(.small_arithmetic_native), expected))
+    expect_true(.small_arithmetic_same(run(dtatools:::.dta_arith_base), expected))
+})
+
+test_that("a minimum that binds the result slot keeps the computed result", {
+    invisible(dta_double(c(1, 2)) + 1)
+    # R code run by `minimum` binds `native` in the helper's frame and
+    # rebinds `x` there. The call returns its result from the frame rather
+    # than leave the R code to compute it again from the new `x`.
+    helper_frame <- function() {
+        frames <- Filter(function(frame) all(vapply(c("op", "x", "y", "minimum"),
+            exists, NA, envir = frame, inherits = FALSE)), sys.frames())
+        frames[[length(frames)]]
+    }
+    run <- function(helper) {
+        x <- dta_int(1)
+        helper("+", x, 1, {
+            frame <- helper_frame()
+            assign("native", "reserved", envir = frame)
+            assign("x", dta_int(100), envir = frame)
+            "int"
+        })
+    }
+    expected <- run(.small_arithmetic_r)
+    expect_identical(as.double(expected), 2)
+    expect_true(.small_arithmetic_same(run(.small_arithmetic_native), expected))
+    expect_true(.small_arithmetic_same(run(dtatools:::.dta_arith_base), expected))
+})
+
 test_that("the call checks base's operators and its own frame", {
     invisible(dta_double(c(1, 2)) + 1)
     x <- dta_int(c(1, 2, 3))

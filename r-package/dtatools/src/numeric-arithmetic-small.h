@@ -7,14 +7,16 @@
    one as `vctrs::vec_recycle_common()` does, applies the operator, makes
    each position where either operand is missing system missing, as
    `.collapse_missing()` does, and builds the result as `.dta_computed()`
-   builds a small one. It reads the operands and the operator in the
-   caller's frame without forcing them and declines while any of them is an
-   unevaluated call. As the R code does, it forces the operator and then
-   `minimum` after computing, and where it cannot build the result for that
-   `minimum`, it calls `.dta_computed()` with the values. It does not prove
-   the helpers it skips. Like the routes above, it binds the result to
-   `native` in the caller's frame and returns TRUE, or returns FALSE, so
-   the R code runs. */
+   builds a small one. It peeks at the operands and the operator in the
+   caller's frame, declines while any of them is a promise that would
+   evaluate a call, and forces them in the R code's order before computing.
+   It forces `minimum` after computing, as the R code does. Where it cannot
+   build the result for that `minimum`, it calls `.dta_computed()` with the
+   values, and where R code run by `minimum` has bound `native` in the
+   frame, it returns the result from the frame, so the R code never
+   computes it again. It does not prove the helpers it skips. Like the
+   routes above, it binds the result to `native` in the caller's frame and
+   returns TRUE, or returns FALSE, so the R code runs. */
 static int arithmetic_class_is(SEXP classes, R_xlen_t i, const char *expected) {
     SEXP name = STRING_ELT(classes, i);
     return name != NA_STRING && strcmp(CHAR(name), expected) == 0;
@@ -82,6 +84,15 @@ SEXP C_dtatools_arithmetic_small(void) {
         UNPROTECT(3);
         return Rf_ScalarLogical(FALSE);
     }
+    /* Settle the operands and then the operator, in the R code's order,
+       before R code run by `minimum` could rebind what their promises
+       forward to. Each peek followed only values and symbols, so forcing
+       runs no R code and finds the values peeked. */
+    if (R_getVar(x_symbol, frame, TRUE) != x || R_getVar(y_symbol, frame, TRUE) != y ||
+        R_getVar(op_symbol, frame, TRUE) != op) {
+        UNPROTECT(3);
+        return Rf_ScalarLogical(FALSE);
+    }
     PROTECT(numeric_payload_root(x));
     PROTECT(numeric_payload_root(y));
     numeric_reader x_reader = numeric_reader_create(x, x_length);
@@ -105,7 +116,6 @@ SEXP C_dtatools_arithmetic_small(void) {
         output[i] = operation == '+' ? a + b : operation == '-' ? a - b :
             operation == '*' ? a * b : a / b;
     }
-    R_getVar(op_symbol, frame, TRUE);
     SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
     SEXP built = PROTECT(numeric_computed_small(result, minimum));
     if (built == R_NilValue) {
@@ -117,6 +127,19 @@ SEXP C_dtatools_arithmetic_small(void) {
         built = Rf_eval(call, frame);
         UNPROTECT(2);
         PROTECT(built);
+    }
+    if (!numeric_result_slot_available(frame)) {
+        /* R code run by `minimum` bound `native` in the frame. Return the
+           result from the frame, as `.native_admission_return()` does in
+           the R code, instead of letting the R code compute it again. */
+        static SEXP return_symbol = NULL;
+        if (return_symbol == NULL) return_symbol = Rf_install(".native_admission_return");
+        SEXP jump = computed_peek(return_symbol, frame, 16);
+        if (TYPEOF(jump) == SPECIALSXP) {
+            SEXP call = PROTECT(Rf_lang2(jump, built));
+            Rf_eval(call, frame);
+            UNPROTECT(1);
+        }
     }
     SEXP status = numeric_result_commit(built, frame);
     UNPROTECT(8);

@@ -1795,7 +1795,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-small.R",
-          "sha256": "58902c6a1630bc01aa780f49ed5058f037cd847ffca13217b8e797537da11df5"
+          "sha256": "4eb98ad18a54471247d5595cb05e58d90838e9f5c4cac45a40403498b7bc7453"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -5150,6 +5150,30 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 4,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that changes an operand keeps the values computed before it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "operands settle before a minimum that rebinds what they forward",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that binds the result slot keeps the computed result",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 3,
           "warnings": 0
         }
       ],
