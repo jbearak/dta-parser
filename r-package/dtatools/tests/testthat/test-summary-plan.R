@@ -440,8 +440,9 @@ test_that("size results give what the group loop gives", {
         info <- paste(deparse(code), collapse = " ")
         expect_true(result$same, info = info)
         expect_false(result$error, info = info)
-        # Elsewhere the dplyr records are NULL, and the calls decline.
-        if (.size_plan_built() || !grepl("n\\(|row_number", info))
+        # Elsewhere the dplyr records are NULL, and the calls decline, as do
+        # count() and tally(), which summarise `dplyr::n()`.
+        if (.size_plan_built() || !grepl("n\\(|row_number|count\\(|tally\\(", info))
             expect_gte(result$planned, 1L)
     }
 })
