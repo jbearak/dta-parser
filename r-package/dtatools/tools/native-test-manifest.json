@@ -13751,7 +13751,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-summary.R",
-          "sha256": "abcc5c3ef32f12093e14b07e09ad671b62e125825420542c03659b5d6f1e6f01"
+          "sha256": "36656f6d70e3178652f6cfada864f9e50669d8c0b989da623d7d417c37b64af1"
         },
         {
           "path": "tests/testthat/test-summary-ptype-kept.R",
@@ -18305,7 +18305,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "5362538325d8633ba66495993fd7b5684a96625688eb7b33c20e0196c3edbf3d"
+          "sha256": "81e87f175507793862735031f3ed9d955929c7e6c9cf2a257517fa54c6e55814"
         }
       ],
       "blocks": [
@@ -19012,6 +19012,28 @@
           "skip": "forbid",
           "min_pass": 6,
           "warnings": 0
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "summaries of eight groups or more build the combined vector",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 436,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "results the combine would leave to vctrs keep their group results",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 20,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
         }
       ],
       "children": [
