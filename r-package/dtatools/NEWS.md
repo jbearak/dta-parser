@@ -25,9 +25,22 @@
   the 42,739 women in the first 100,000 rows of the India 2021 DHS births
   file, `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.10 to
   0.02 seconds and `summarise(b, m = mean(b2), x = max(bord), .by = caseid)`
-  from 0.25 to 0.06. Results, warnings and errors are unchanged. A traced or
+  from 0.19 to 0.04. Results, warnings and errors are unchanged. A traced or
   replaced `vctrs::vec_c()` or another step of the combine no longer sees
   these summaries (ADR 0062).
+
+* When a grouped verb on a dibble checks its grouping metadata, it compares
+  each row's string grouping key with its group's key in the same native
+  pass as numeric keys, when every key is ASCII or missing. It had repeated
+  each group's key for every row and compared the two with vctrs. Each
+  grouped verb checks its input, the frame it evaluates and its result, so
+  the saving repeats. Over the 42,739 women in the first 100,000 rows of the
+  India 2021 DHS births file, the check of `group_by(b, caseid)` falls from
+  about 0.044 to 0.011 seconds, `count(b, caseid)` from 0.42 to 0.33 and
+  `summarise(group_by(b, caseid), m = mean(b2))` from 0.15 to 0.11. Results
+  and errors are unchanged, except that a grouping key whose equality proxy
+  is a data frame with a column name marked `bytes` now raises vctrs's
+  encoding error, which the native comparison of numeric keys had skipped.
 
 * Grouped `summarise()` and `mutate()` compute `mean()`, `min()`, `max()` or
   `sum()` of one Stata byte, int, long or float column in dtatools' compact

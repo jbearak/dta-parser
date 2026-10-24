@@ -125,9 +125,9 @@
                                            y = .grouping_key_value(key))
             actual <- vctrs::vec_proxy_equal(pair$x)
             key <- vctrs::vec_proxy_equal(pair$y)
-            # Bare logical, integer and double proxies, or bare data frames
-            # of them, compare natively with each group's key in place of
-            # the expanded keys.
+            # Bare logical, integer, double and character proxies, or bare
+            # data frames of them, compare natively with each group's key in
+            # place of the expanded keys.
             matched <- .Call(C_dtatools_group_keys_match, actual, key, sizes[used])
             if (is.null(matched)) {
                 if (is.null(expected_rows)) expected_rows <-

@@ -13839,7 +13839,7 @@
         },
         {
           "path": "tests/testthat/test-dibble-group-validation.R",
-          "sha256": "712b7b60cd8a509f7a569601ff9a23248a78f0830ca84d2e5ad7990b70581093"
+          "sha256": "9118a90abaf5ca75e652a2b805f9c3a2a38434681114ad99625007cb381d5bc4"
         },
         {
           "path": "tests/testthat/test-mask-bindings.R",
