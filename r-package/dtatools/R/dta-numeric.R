@@ -924,6 +924,10 @@ vec_proxy_order.dta_numeric <- function(x, ...) {
 
 #' @export
 Ops.dta_numeric <- function(e1, e2) {
+    # Comparisons the native kernel takes run in one call, which gives what
+    # the code below would (ADR 0060).
+    .native_admission_if(.native_admission_call(C_dtatools_compare_direct),
+        .native_admission_return({ native <- native; native }))
     if (!.Generic %in% c("==", "!=", "<", "<=", ">", ">=")) {
         return(NextMethod())
     }

@@ -1799,7 +1799,7 @@
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
-          "sha256": "326578bc05b99de884341ffbecaff5adb327af682817c7e64ba9d6ad40cc40b8"
+          "sha256": "8449916af6107206d18caa469261c5f8b2b04cf8f800813f42db63a944bc2921"
         },
         {
           "path": "tests/testthat/test-computed-minimum-admission.R",
@@ -15484,6 +15484,10 @@
           "sha256": "fbd8f607c5cecce7b3aab148971c9d8db942008e48a5c37a376048bf7824594b"
         },
         {
+          "path": "tests/testthat/test-compare-direct.R",
+          "sha256": "c373ec909b6c59b4f59a52eb4b1f4891e8f416b268aefc3149f7746374b1f3b9"
+        },
+        {
           "path": "tests/testthat/test-dta-compare-native.R",
           "sha256": "27f6cd3071057646d61f8aa8b73c64819f7c0af2b6f80ae1e480dc19abbe16eb"
         },
@@ -16849,6 +16853,38 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "comparisons give what the R code gives",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 1,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "compact comparisons take one call",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 7,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "other operands leave comparisons to the R code",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 35,
+          "warnings": 0
+        },
+        {
+          "file": "test-compare-direct.R",
+          "test": "the thread option settles as the R code settles it",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 24,
           "warnings": 0
         }
       ],
