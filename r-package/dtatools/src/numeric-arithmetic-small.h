@@ -119,13 +119,25 @@ SEXP C_dtatools_arithmetic_small(void) {
     SEXP minimum = PROTECT(R_getVar(numeric_minimum_symbol, frame, TRUE));
     SEXP built = PROTECT(numeric_computed_small(result, minimum));
     if (built == R_NilValue) {
-        /* Forcing `minimum` can run R code, which could change an operand,
-           so finish as the R code does, from the values computed before. */
-        static SEXP computed_symbol = NULL;
+        /* Forcing `minimum` can run R code, which could change an operand
+           or rebind `minimum`, so finish as the R code does, from the
+           values computed before and the value `minimum` gave. */
+        static SEXP computed_symbol = NULL, quote_symbol = NULL;
         if (computed_symbol == NULL) computed_symbol = Rf_install(".dta_computed");
-        SEXP call = PROTECT(Rf_lang3(computed_symbol, result, numeric_minimum_symbol));
+        if (quote_symbol == NULL) quote_symbol = Rf_install("quote");
+        SEXP argument = minimum;
+        switch (TYPEOF(minimum)) {
+        case SYMSXP: case LANGSXP: case PROMSXP: case DOTSXP: case BCODESXP:
+            /* Base's `quote()` keeps a value `eval()` would evaluate. */
+            argument = Rf_lang2(R_getVar(quote_symbol, R_BaseEnv, FALSE), minimum);
+            break;
+        default:
+            break;
+        }
+        PROTECT(argument);
+        SEXP call = PROTECT(Rf_lang3(computed_symbol, result, argument));
         built = Rf_eval(call, frame);
-        UNPROTECT(2);
+        UNPROTECT(3);
         PROTECT(built);
     }
     if (!numeric_result_slot_available(frame)) {

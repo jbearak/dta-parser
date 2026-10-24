@@ -35,7 +35,9 @@ forces the operands and then the operator, in the R code's order. It forces
 `minimum` after computing, as the R code does, and since that can run R code
 that changes an operand, it never leaves the R code to compute the result
 again after that point. Where it cannot build the result for that `minimum`,
-it passes the values to `.dta_computed()`. Where R code run by `minimum` has
+it passes the values and the value `minimum` returned to `.dta_computed()`,
+quoting a symbol or call, since R code run by `minimum` can also rebind it.
+Where R code run by `minimum` has
 bound `native` in the helper's frame, so it cannot bind its result there, it
 returns the result from that frame through the `return` primitive that
 `.native_admission_return()` names. `x + 1` on a three-value int takes about

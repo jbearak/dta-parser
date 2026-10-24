@@ -1795,7 +1795,7 @@
         },
         {
           "path": "tests/testthat/test-arithmetic-small.R",
-          "sha256": "4eb98ad18a54471247d5595cb05e58d90838e9f5c4cac45a40403498b7bc7453"
+          "sha256": "9cc98ebbeb197eeaab01f0eafd5ecfc73da9d25bbc4d9e8d29a16c42be4cfc09"
         },
         {
           "path": "tests/testthat/test-numeric-helper-profile.R",
@@ -5174,6 +5174,14 @@
           "occurrence": 1,
           "skip": "forbid",
           "min_pass": 3,
+          "warnings": 0
+        },
+        {
+          "file": "test-arithmetic-small.R",
+          "test": "a minimum that rebinds itself gives the value it returned",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 10,
           "warnings": 0
         }
       ],

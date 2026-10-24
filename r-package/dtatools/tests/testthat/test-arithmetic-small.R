@@ -200,6 +200,34 @@ test_that("a minimum that changes an operand keeps the values computed before it
     expect_true(.small_arithmetic_same(run(dtatools:::.dta_arith_base), expected))
 })
 
+test_that("a minimum that rebinds itself gives the value it returned", {
+    invisible(dta_double(c(1, 2)) + 1)
+    # The R code forces `minimum` once and passes `.dta_computed()` the value
+    # it returned, not what it bound. Values the result's storage cannot take
+    # leave the result to `.dta_computed()`, which must get that value too.
+    helper_frame <- function() {
+        frames <- Filter(function(frame) all(vapply(c("op", "x", "y", "minimum"),
+            exists, NA, envir = frame, inherits = FALSE)), sys.frames())
+        frames[[length(frames)]]
+    }
+    run <- function(helper, value) {
+        x <- dta_int(1)
+        helper("+", x, 1, {
+            assign("minimum", "double", envir = helper_frame())
+            value
+        })
+    }
+    for (value in list(c(storage = "int"), quote(int), quote(stop("evaluated")))) {
+        expected <- .small_arithmetic_outcome(function() run(.small_arithmetic_r, value))
+        native <- .small_arithmetic_outcome(function() run(.small_arithmetic_native, value))
+        expect_false(is.null(native))
+        helper <- .small_arithmetic_outcome(function() run(dtatools:::.dta_arith_base, value))
+        expect_true(.small_arithmetic_same(native, expected))
+        expect_true(.small_arithmetic_same(helper, expected))
+    }
+    expect_identical(dta_storage_type(run(.small_arithmetic_r, c(storage = "int"))), "int")
+})
+
 test_that("operands settle before a minimum that rebinds what they forward", {
     invisible(dta_double(c(1, 2)) + 1)
     # The R code forces `x` before `minimum`, so the storage comes from the
