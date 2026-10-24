@@ -292,7 +292,8 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
                 dibble(x = c(1, 2, 3, 4), g = c(1L, 1L, 2L, 2L)),
                 y = x + 1, by = g
             ),
-            restore = function() source[1]
+            restore = function() source[1],
+            compare = function() source == 1
         )
         for (operation in operations) invisible(operation())
         original <- .Primitive(".Call")
@@ -348,7 +349,8 @@ test_that("native admissions add no callbacks to replaced .Call bindings", {
     }, args = list(.libPaths()))
     expected <- list(scalar = c(2, 3), computed = c(.5, 1), strict = c(1, 2),
                      holds = TRUE, metadata = attributes(dta_double(c(1, 2))),
-                     grouped = c(2, 3, 4, 5), restore = 1)
+                     grouped = c(2, 3, 4, 5), restore = 1,
+                     compare = c(TRUE, FALSE))
     for (mode in names(observed)) for (name in names(expected)) {
         record <- observed[[mode]][[name]]
         expect_null(record$error, info = paste(mode, name))
