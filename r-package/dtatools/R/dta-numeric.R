@@ -1647,6 +1647,10 @@ mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
     base::is.finite, base::is.na, base::c, base::min, base::max, base::`!`,
     base::`[`, base::`if`, base::`{`, base::`<-`)
 
+# The methods a planned grouped summary skips, frozen when the package is
+# built, so the plan never takes a replacement for the method (ADR 0061).
+.summary_plan_dependencies <- list(mean.dta_numeric, Summary.dta_numeric)
+
 #' @export
 median.dta_numeric <- function(x, na.rm = FALSE, ...) {
     result <- suppressWarnings(stats::median(

@@ -346,6 +346,24 @@ static int summary_capture_inert(SEXP x) {
     return 0;
 }
 
+/* x is a vector the compact mean reads: a compact Stata numeric, read
+   directly or through metadata proxies, that summary_capture_inert() holds
+   for. */
+static int mean_chunk_supported(SEXP x) {
+    return TYPEOF(x) == REALSXP && numeric_base_source(x) != R_NilValue &&
+        summary_capture_inert(x);
+}
+
+/* The compact mean of such an x for a settled flag: the mean, then
+   `.collapse_missing()` and `.dta_computed()`. R_NilValue where the R code
+   computes it. */
+static SEXP mean_chunk(SEXP x, SEXP flag) {
+    SEXP value = PROTECT(C_dtatools_numeric_mean(x, flag));
+    SEXP result = value == R_NilValue ? R_NilValue : summary_computed_result(value, x);
+    UNPROTECT(1);
+    return result;
+}
+
 /* mean() of a compact Stata numeric, read directly or through metadata
    proxies. It gives what mean.dta_numeric() builds from its capture: the
    mean, then `.collapse_missing()` and `.dta_computed()`. It admits the call
@@ -360,12 +378,39 @@ SEXP C_dtatools_mean_computed(SEXP frame) {
     static SEXP x_symbol = NULL;
     SEXP x = R_NilValue;
     if (mean_peek_frame(frame, summary_symbol(&x_symbol, "x"), &x) != 1 ||
-        TYPEOF(x) != REALSXP || numeric_base_source(x) == R_NilValue ||
-        !summary_capture_inert(x) || !mean_admission(frame, 0)) return R_NilValue;
+        !mean_chunk_supported(x) || !mean_admission(frame, 0)) return R_NilValue;
     SEXP flag = summary_flag(frame);
     if (flag == NULL) return R_NilValue;
-    SEXP value = PROTECT(C_dtatools_numeric_mean(x, flag));
-    SEXP result = value == R_NilValue ? R_NilValue : summary_computed_result(value, x);
+    return mean_chunk(x, flag);
+}
+
+/* 0, 1 or 2 for "sum", "min" or "max", and -1 for anything else. */
+static int summary_operation(SEXP generic) {
+    if (TYPEOF(generic) != STRSXP || ALTREP(generic) || ANY_ATTRIB(generic) ||
+        XLENGTH(generic) != 1) return -1;
+    const char *name = CHAR(STRING_ELT(generic, 0));
+    return strcmp(name, "sum") == 0 ? 0 : strcmp(name, "min") == 0 ? 1 :
+        strcmp(name, "max") == 0 ? 2 : -1;
+}
+
+/* x is a vector whose min(), max() or sum() the kernel reads: a compact
+   Stata numeric that is not a metadata proxy and that
+   summary_capture_inert() holds for. */
+static int summary_chunk_supported(SEXP x) {
+    return TYPEOF(x) == REALSXP && ALTREP(x) &&
+        R_altrep_inherits(x, dtatools_numeric_class) && R_altrep_data2(x) == R_NilValue &&
+        summary_capture_inert(x);
+}
+
+/* The kernel's result for such an x, then `.collapse_missing()` and
+   `.dta_computed()`. R_NilValue for an empty vector and for one with no
+   observed value under na.rm, which the R code computes. */
+static SEXP summary_chunk(SEXP x, int operation, Rboolean remove) {
+    SEXP value = operation == 0 ? numeric_sum(x, remove) :
+        operation == 1 ? numeric_min(x, remove) : numeric_max(x, remove);
+    if (value == NULL) return R_NilValue;
+    PROTECT(value);
+    SEXP result = summary_computed_result(value, x);
     UNPROTECT(1);
     return result;
 }
@@ -379,23 +424,176 @@ SEXP C_dtatools_mean_computed(SEXP frame) {
    and max() warn, and for a vector with no observed value under na.rm
    (ADR 0054). */
 SEXP C_dtatools_summary_computed(SEXP x, SEXP generic, SEXP frame) {
-    if (TYPEOF(generic) != STRSXP || ALTREP(generic) || ANY_ATTRIB(generic) ||
-        XLENGTH(generic) != 1) return R_NilValue;
-    const char *name = CHAR(STRING_ELT(generic, 0));
-    int operation = strcmp(name, "sum") == 0 ? 0 : strcmp(name, "min") == 0 ? 1 :
-        strcmp(name, "max") == 0 ? 2 : -1;
-    if (operation < 0 || TYPEOF(x) != REALSXP || !ALTREP(x) ||
-        !R_altrep_inherits(x, dtatools_numeric_class) || R_altrep_data2(x) != R_NilValue ||
-        !summary_capture_inert(x) || !summary_flag_known(frame)) return R_NilValue;
+    int operation = summary_operation(generic);
+    if (operation < 0 || !summary_chunk_supported(x) || !summary_flag_known(frame))
+        return R_NilValue;
     SEXP flag = summary_flag(frame);
     if (flag == NULL) return R_NilValue;
-    Rboolean remove = (Rboolean) LOGICAL(flag)[0];
-    SEXP value = operation == 0 ? numeric_sum(x, remove) :
-        operation == 1 ? numeric_min(x, remove) : numeric_max(x, remove);
-    if (value == NULL) return R_NilValue;
-    PROTECT(value);
-    SEXP result = summary_computed_result(value, x);
+    return summary_chunk(x, operation, (Rboolean) LOGICAL(flag)[0]);
+}
+
+/* Walks from env to stop, inclusive, as R looks up a function: the first
+   binding that holds a function ends the walk and sets *found, and a binding
+   that holds anything else is passed over. *found stays R_NilValue when no
+   binding holds one. Returns 0 when the lookup would run R code, for a
+   promise or an active binding, or signal an error, for a missing argument
+   where a function call looks for its function. */
+static int plan_walk(SEXP env, SEXP stop, SEXP symbol, int call, SEXP *found) {
+    *found = R_NilValue;
+    for (int depth = 0; depth < 128; depth++) {
+        if (env == R_EmptyEnv) return stop == R_EmptyEnv;
+        if (TYPEOF(env) != ENVSXP || Rf_isObject(env) || Rf_isS4(env)) return 0;
+        R_BindingType_t kind = R_GetBindingType(symbol, env);
+        if (kind == R_BindingTypeValue || kind == R_BindingTypeForced) {
+            SEXP value = R_getVarEx(symbol, env, FALSE, R_NilValue);
+            if (call && value == R_MissingArg) return 0;
+            if (Rf_isFunction(value)) {
+                *found = value;
+                return 1;
+            }
+        } else if (kind != R_BindingTypeUnbound) return 0;
+        if (env == stop) return 1;
+        env = R_ParentEnv(env);
+    }
+    return 0;
+}
+
+/* The method R_LookupMethod() finds for a call from env, whose topenv() is
+   top: a function bound from env through top, else the base S3 table's
+   entry, else a function bound after top. Past top this walks every
+   environment to the empty one, which covers both orders R can search them
+   in, so a function found there can only mean the plan declines. */
+static int plan_method(SEXP env, SEXP top, SEXP table, SEXP symbol, SEXP *found) {
+    if (!plan_walk(env, top, symbol, 0, found)) return 0;
+    if (*found != R_NilValue) return 1;
+    R_BindingType_t kind = R_GetBindingType(symbol, table);
+    if (kind == R_BindingTypeValue || kind == R_BindingTypeForced) {
+        *found = R_getVarEx(symbol, table, FALSE, R_NilValue);
+        return 1;
+    }
+    if (kind != R_BindingTypeUnbound) return 0;
+    return plan_walk(R_ParentEnv(top), R_EmptyEnv, symbol, 0, found);
+}
+
+/* Whether every group's evaluation of `generic(column)`, with na.rm as frame
+   binds it, would end in the package method's native result, with no R
+   code on the way (ADR 0061). The generic found from env must be base's, as
+   the frozen copies have it. Dispatch on a chunk's first class must find the
+   frozen mean.dta_numeric(), or, for the Summary group, no method for the
+   generic itself and then the frozen Summary.dta_numeric(). The mean method
+   then makes the admission its native call makes. found[0] and found[1] get
+   the generic and the method, whose debugging the caller checks. */
+static int summary_plan_admission(SEXP generic, SEXP env, SEXP top, SEXP frame, SEXP *found) {
+    static SEXP dependency_symbol, mean_dependency_symbol, table_symbol;
+    int operation = summary_operation(generic), mean = 0;
+    if (operation < 0) {
+        if (TYPEOF(generic) != STRSXP || ALTREP(generic) || ANY_ATTRIB(generic) ||
+            XLENGTH(generic) != 1 || strcmp(CHAR(STRING_ELT(generic, 0)), "mean") != 0)
+            return 0;
+        mean = 1;
+    }
+    if (TYPEOF(env) != ENVSXP || TYPEOF(top) != ENVSXP || !summary_flag_known(frame)) return 0;
+    SEXP dependencies = PROTECT(mean_lookup(frame,
+        summary_symbol(&dependency_symbol, ".summary_plan_dependencies")));
+    SEXP mean_dependencies = PROTECT(mean_lookup(frame,
+        summary_symbol(&mean_dependency_symbol, ".numeric_mean_dependencies")));
+    SEXP table = mean_lookup(R_BaseNamespace,
+        summary_symbol(&table_symbol, ".__S3MethodsTable__."));
+    if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
+        ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 2 ||
+        TYPEOF(mean_dependencies) != VECSXP || ALTREP(mean_dependencies) ||
+        XLENGTH(mean_dependencies) < 1 || TYPEOF(table) != ENVSXP) {
+        UNPROTECT(2);
+        return 0;
+    }
+    SEXP symbol = Rf_installChar(STRING_ELT(generic, 0));
+    SEXP expected = mean ? VECTOR_ELT(mean_dependencies, 0) :
+        mean_lookup(R_BaseNamespace, symbol);
+    admission_same same = {.count = 0};
+    int admitted = (mean || TYPEOF(expected) == BUILTINSXP) &&
+        plan_walk(env, R_EmptyEnv, symbol, 1, &found[0]) &&
+        found[0] != R_NilValue && admission_function_same(&same, found[0], expected);
+    char name[32];
+    if (admitted && !mean) {
+        snprintf(name, sizeof(name), "%s.dta_numeric", CHAR(STRING_ELT(generic, 0)));
+        SEXP own = R_NilValue;
+        admitted = plan_method(env, top, table, Rf_install(name), &own) && own == R_NilValue;
+    }
+    if (admitted) {
+        found[1] = R_NilValue;
+        admitted = plan_method(env, top, table,
+            Rf_install(mean ? "mean.dta_numeric" : "Summary.dta_numeric"), &found[1]) &&
+            found[1] != R_NilValue &&
+            admission_function_same(&same, found[1], VECTOR_ELT(dependencies, mean ? 0 : 1));
+    }
+    if (admitted && mean) admitted = mean_admission(frame, 0);
+    UNPROTECT(2);
+    return admitted;
+}
+
+/* The generic and method a planned summary would call, for the caller to
+   check before it reads the column, or NULL when summary_plan_admission()
+   declines. */
+SEXP C_dtatools_summary_plan_admitted(SEXP generic, SEXP env, SEXP top, SEXP frame) {
+    SEXP found[2] = {R_NilValue, R_NilValue};
+    if (!summary_plan_admission(generic, env, top, frame, found)) return R_NilValue;
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(result, 0, found[0]);
+    SET_VECTOR_ELT(result, 1, found[1]);
     UNPROTECT(1);
+    return result;
+}
+
+/* `generic(column)` for every group of a grouped summary at once (ADR
+   0061). For each of the column's group chunks it computes what the
+   method's native call returns, then the size and the capture the group
+   loop takes: C_dtatools_chunk_size() and `.capture_dibble_nested()`, which
+   for these results is C_dtatools_capture_atomic(). It repeats the
+   admission, since reading the column could have run R code, and returns
+   list(chunks, known) as the loop builds them, or NULL, with nothing
+   computed that the loop would not also compute, when the admission
+   declines or any chunk would leave its group to the R code. */
+SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP frame) {
+    SEXP found[2] = {R_NilValue, R_NilValue};
+    if (TYPEOF(chunks) != VECSXP || ALTREP(chunks) ||
+        !summary_plan_admission(generic, env, top, frame, found)) return R_NilValue;
+    int operation = summary_operation(generic);
+    SEXP flag = summary_flag(frame);
+    if (flag == NULL) return R_NilValue;
+    PROTECT(flag);
+    Rboolean remove = (Rboolean) LOGICAL(flag)[0];
+    R_xlen_t count = XLENGTH(chunks);
+    SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
+    SEXP known = PROTECT(Rf_allocVector(INTSXP, count));
+    for (R_xlen_t i = 0; i < count; i++) {
+        if (i % 4096 == 4095) R_CheckUserInterrupt();
+        SEXP x = VECTOR_ELT(chunks, i);
+        SEXP value = R_NilValue;
+        if (operation < 0 ? mean_chunk_supported(x) : summary_chunk_supported(x))
+            value = operation < 0 ? mean_chunk(x, flag) : summary_chunk(x, operation, remove);
+        if (value == R_NilValue) {
+            UNPROTECT(3);
+            return R_NilValue;
+        }
+        PROTECT(value);
+        SEXP size = C_dtatools_chunk_size(value);
+        if (size != R_NilValue) INTEGER(known)[i] = INTEGER(size)[0];
+        SEXP captured = size == R_NilValue ? R_NilValue : C_dtatools_capture_atomic(value);
+        if (captured == R_NilValue) {
+            UNPROTECT(4);
+            return R_NilValue;
+        }
+        SET_VECTOR_ELT(results, i, captured);
+        UNPROTECT(1);
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(names, 0, Rf_mkChar("chunks"));
+    SET_STRING_ELT(names, 1, Rf_mkChar("known"));
+    SET_VECTOR_ELT(result, 0, results);
+    SET_VECTOR_ELT(result, 1, known);
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(5);
     return result;
 }
 

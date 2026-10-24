@@ -190,6 +190,42 @@
     invisible(NULL)
 }
 
+# `mean()`, `min()`, `max()` or `sum()` of one column, with `na.rm` left
+# out or given as a logical, takes one native call over the column's group
+# chunks when each group's evaluation would reach the package's method and
+# its native result (ADR 0061). It returns the captured results and their
+# sizes as the group loop builds them, or NULL, and the loop runs. It reads
+# the column only after the call finds the generic and method the groups
+# would call and neither is being debugged.
+.summary_planned <- function(quo, mask, groups) {
+    if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
+    expression <- rlang::quo_get_expr(quo)
+    if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
+    generic <- as.character(expression[[1L]])
+    if (!generic %in% c("mean", "sum", "min", "max")) return(NULL)
+    arguments <- as.list(expression)[-1L]
+    labels <- rlang::names2(arguments)
+    na.rm <- FALSE
+    if (length(arguments) == 2L && identical(labels, c("", "na.rm")) &&
+        is.logical(arguments[[2L]])) {
+        na.rm <- arguments[[2L]]
+    } else if (length(arguments) != 1L || nzchar(labels[[1L]])) return(NULL)
+    column <- arguments[[1L]]
+    if (!is.symbol(column)) return(NULL)
+    column <- as.character(column)
+    # A column named for the generic or a method would be read while R
+    # looks for them in the mask.
+    current <- mask$helpers$current_vars()
+    looked_up <- c(generic, paste0(generic, ".dta_numeric"),
+                   if (generic != "mean") "Summary.dta_numeric")
+    if (!column %in% current || any(looked_up %in% current)) return(NULL)
+    env <- rlang::quo_get_env(quo)
+    top <- topenv(env)
+    found <- .Call(C_dtatools_summary_plan_admitted, generic, env, top, environment())
+    if (is.null(found) || isdebugged(found[[1L]]) || isdebugged(found[[2L]])) return(NULL)
+    .Call(C_dtatools_summary_plan, mask$resolve(column), generic, env, top, environment())
+}
+
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {
     caller <- if (reframe) "reframe()" else "summarise()"
     mask <- .new_dibble_expression_mask(context$columns, groups, size, caller)
@@ -217,7 +253,15 @@
                 # The mask's columns change only after the groups run, so
                 # whether the result replaces one is known before (ADR 0055).
                 replaces <- name %in% mask$helpers$current_vars()
-                for (id in seq_along(mask$rows)) {
+                # A summary of one column can take one native call for every
+                # group, which gives what the loop would (ADR 0061).
+                planned <- if (!replaces) .summary_planned(quo, mask, groups)
+                if (!is.null(planned)) {
+                    chunks <- planned$chunks
+                    known <- planned$known
+                    # The loop leaves the mask at its last group.
+                    mask$set_group(length(mask$rows))
+                } else for (id in seq_along(mask$rows)) {
                     value <- mask$with_group(id, function(evaluate) {
                         value <- evaluate(quo)
                         if (is.null(value) || !typable) return(value)
