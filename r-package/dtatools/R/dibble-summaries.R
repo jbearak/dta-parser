@@ -201,12 +201,18 @@
 # combines the results, `caller`, it can instead return the combined vector
 # as `result` (ADR 0062). With `combined`, for mutate(), it also declines
 # when a group is empty, since only when none is do the loop's results wait
-# for the combiners to recycle them.
+# for the combiners to recycle them, and when a group's rows have a class or
+# are ALTREP, whose length could run R code before the loop would.
 .summary_planned <- function(quo, mask, groups, combined = FALSE, first = NULL,
                              caller = NULL) {
     if (identical(groups$type, "rowwise") || !rlang::is_quosure(quo)) return(NULL)
+    sized <- .size_planned(quo, mask, groups, combined)
+    if (!is.null(sized)) return(sized)
     expression <- rlang::quo_get_expr(quo)
-    if (!is.call(expression) || !is.symbol(expression[[1L]])) return(NULL)
+    # A classed expression's `[[` and length() methods would run R code the
+    # loop does not.
+    if (!is.call(expression) || is.object(expression) ||
+        !is.symbol(expression[[1L]])) return(NULL)
     generic <- as.character(expression[[1L]])
     if (!generic %in% c("mean", "sum", "min", "max")) return(NULL)
     arguments <- as.list(expression)[-1L]
@@ -222,7 +228,7 @@
     # The mask's pronouns and R's `..1` take names that begin with a dot,
     # which no Stata variable does.
     if (startsWith(column, ".")) return(NULL)
-    if (combined && !all(lengths(mask$rows) > 0L)) return(NULL)
+    if (combined && !.Call(C_dtatools_plan_rows, mask$rows, TRUE)) return(NULL)
     # A column named for the generic or a method would be read while R
     # looks for them in the mask.
     current <- mask$helpers$current_vars()
@@ -238,6 +244,46 @@
     .Call(C_dtatools_summary_plan, chunks, generic, env, top, environment(), first, caller,
           list(.double_combine_state, .metadata_state, .summary_ptype_dependencies,
                .summary_combine_dependencies, .summary_routine_state))
+}
+
+# n(), row_number() in a mutate(), and a literal number in a summarise(),
+# whose results depend only on the groups' sizes, for every group after the
+# first in one native call (ADR 0063). A mutate() recycles a literal before
+# it reaches here, and row_number() in a summary returns more than one value.
+.size_planned <- function(quo, mask, groups, combined) {
+    expression <- rlang::quo_get_expr(quo)
+    # A classed expression's or call head's `[[` and length() methods would
+    # run R code the loop does not.
+    if (is.object(expression)) return(NULL)
+    namespace <- NULL
+    if (is.call(expression)) {
+        if (length(expression) != 1L || is.null(.size_plan_dependencies) ||
+            !isNamespaceLoaded("dplyr")) return(NULL)
+        head <- expression[[1L]]
+        if (is.object(head)) return(NULL)
+        # count() and tally() summarise `dplyr::n()`.
+        qualified <- is.call(head) && length(head) == 3L &&
+            identical(head[[1L]], quote(`::`)) && identical(head[[2L]], quote(dplyr))
+        if (qualified) head <- head[[3L]]
+        if (!is.symbol(head)) return(NULL)
+        generic <- as.character(head)
+        if (!generic %in% c("n", if (combined) "row_number")) return(NULL)
+        # A column named for the function would be read while R looks for it.
+        if ((if (qualified) "::" else generic) %in% mask$helpers$current_vars()) return(NULL)
+        namespace <- asNamespace("dplyr")
+        found <- .Call(C_dtatools_size_plan_admitted, expression, rlang::quo_get_env(quo),
+                       mask$helpers, namespace, .size_plan_dependencies)
+        if (is.null(found) || any(vapply(found, isdebugged, logical(1)))) return(NULL)
+    } else if (combined || !(is.double(expression) || is.integer(expression)) ||
+               !is.null(attributes(expression))) {
+        # The native call measures a literal after declining an ALTREP one,
+        # whose Length method could run R code.
+        return(NULL)
+    }
+    # The mutate() loop recycles an empty group's result itself, which the
+    # native call checks.
+    .Call(C_dtatools_size_plan, mask$rows, expression, combined, rlang::quo_get_env(quo),
+          mask$helpers, namespace, .size_plan_dependencies)
 }
 
 .dibble_summary_columns <- function(context, groups, size, dots, reframe) {

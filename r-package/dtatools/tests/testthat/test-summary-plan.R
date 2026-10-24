@@ -405,3 +405,226 @@ test_that("results the combine would leave to vctrs keep their group results", {
     check(.plan_global(dplyr::summarise(data, m = mean(int), .by = g), data = data),
           planned = 1L)
 })
+
+# ADR 0063: n(), row_number() in mutate() and a literal number in
+# summarise(), whose results depend only on the groups' sizes, take one
+# native call for every group after the first.
+.size_plan_built <- function() !is.null(dtatools:::.size_plan_dependencies)
+
+test_that("size results give what the group loop gives", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_data()
+    empty <- dplyr::group_by(dplyr::mutate(data, f = factor(g, levels = 1:7)), f,
+                             .drop = FALSE)
+    cases <- list(
+        quote(dplyr::summarise(data, n = n(), .by = g)),
+        quote(dplyr::summarise(data, n = dplyr::n(), .by = g)),
+        quote(dplyr::summarise(dplyr::group_by(data, g), n = n())),
+        quote(dplyr::summarise(data, k = 2.5, .by = g)),
+        quote(dplyr::summarise(data, k = 3L, .by = g)),
+        quote(dplyr::summarise(data, k = 1e300, n = n(), .by = g)),
+        quote(dplyr::summarise(empty, n = n(), k = 2.5)),
+        quote(dplyr::summarise(data, n = n(), d = n * 2, k = max(n), .by = g)),
+        quote(dplyr::reframe(data, n = n(), .by = g)),
+        quote(dplyr::count(data, g)),
+        quote(dplyr::count(data, g, name = "total")),
+        quote(dplyr::tally(dplyr::group_by(data, g))),
+        quote(dplyr::mutate(data, n = n(), .by = g)),
+        quote(dplyr::mutate(data, r = row_number(), .by = g)),
+        quote(dplyr::mutate(data, r = dplyr::row_number(), n = dplyr::n(), .by = g)),
+        quote(dplyr::mutate(dplyr::group_by(data, g), r = row_number(), .keep = "used")),
+        quote(dplyr::mutate(data, r = row_number(), s = r * 2, .by = g)))
+    for (code in cases) {
+        result <- .plan_compare(.plan_global_call(code, data = data, empty = empty,
+            n = dplyr::n, row_number = dplyr::row_number))
+        info <- paste(deparse(code), collapse = " ")
+        expect_true(result$same, info = info)
+        expect_false(result$error, info = info)
+        # Elsewhere the dplyr records are NULL, and the calls decline, as do
+        # count() and tally(), which summarise `dplyr::n()`.
+        if (.size_plan_built() || !grepl("n\\(|row_number|count\\(|tally\\(", info))
+            expect_gte(result$planned, 1L)
+    }
+})
+
+test_that("size plans decline what the loop would see differently", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_data()
+    check <- function(run, planned = 0L) {
+        result <- .plan_compare(run)
+        expect_true(result$same)
+        expect_identical(result$planned, planned)
+    }
+    # Another function of the name, where R finds it first.
+    check(.plan_global(dplyr::summarise(data, n = n(), .by = g), data = data,
+                       n = function() 7L))
+    check(.plan_global(dplyr::mutate(data, r = row_number(), .by = g), data = data,
+                       row_number = function() 7L))
+    # A column named for the function, which the lookup reads.
+    named <- dplyr::mutate(data, n = 1)
+    check(.plan_global(dplyr::summarise(named, k = n(), .by = g), named = named,
+                       n = dplyr::n))
+    # One group, and a mutate() with an empty group, which recycles its results.
+    check(.plan_global(dplyr::summarise(data, n = dplyr::n()), data = data))
+    empty <- dplyr::group_by(dplyr::mutate(data, f = factor(g, levels = 1:7)), f,
+                             .drop = FALSE)
+    check(.plan_global(dplyr::mutate(empty, n = dplyr::n()), empty = empty))
+    # Results that are not a size or a typed scalar keep the loop.
+    for (code in list(quote(dplyr::summarise(data, k = "a", .by = g)),
+                      quote(dplyr::summarise(data, k = TRUE, .by = g)),
+                      quote(dplyr::summarise(data, k = NA_real_, .by = g)),
+                      quote(dplyr::summarise(data, k = -1, .by = g)),
+                      quote(dplyr::summarise(data, k = dplyr::n(1), .by = g)),
+                      quote(dplyr::summarise(data, r = base::nrow(data), .by = g)),
+                      quote(dplyr::mutate(data, k = 2.5, .by = g)))) {
+        result <- .plan_compare(.plan_global_call(code, data = data))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+    # Classed row vectors, which the loop measures with a length() method
+    # that can read the mask.
+    classed <- dplyr::group_by(data, g)
+    groups <- attr(classed, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, structure, class = "plan_rows"),
+                                       ptype = integer())
+    attr(classed, "groups") <- groups
+    table <- get(".__S3MethodsTable__.", envir = baseenv())
+    assign("length.plan_rows", function(x) {
+        size <- length(unclass(x))
+        masked <- tryCatch(dplyr::cur_group_id(), error = function(e) NULL)
+        if (is.null(masked)) size else size + 10L
+    }, envir = table)
+    withr::defer(rm("length.plan_rows", envir = table))
+    sizes <- .plan_compare(.plan_global(dplyr::summarise(classed, n = dplyr::n()),
+                                        classed = classed))
+    expect_true(sizes$same)
+    expect_identical(sizes$planned, 0L)
+    # Outside the mask, the method gives each group's size.
+    expect_identical(as.integer(dplyr::summarise(classed, n = dplyr::n())$n),
+                     lengths(groups$.rows) + 10L)
+    # A method that counts its calls sees as many with the plan as with the
+    # loop. The mutate() fails when vctrs unchops its results by the classed
+    # rows, after every group.
+    state <- new.env()
+    assign("length.plan_count", function(x) {
+        state$calls <- state$calls + 1L
+        length(unclass(x))
+    }, envir = table)
+    withr::defer(rm("length.plan_count", envir = table))
+    counted <- dplyr::group_by(data, g)
+    groups <- attr(counted, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, structure, class = "plan_count"),
+                                       ptype = integer())
+    attr(counted, "groups") <- groups
+    for (code in list(
+        quote({
+            state$calls <- 0L
+            tryCatch(dplyr::mutate(counted, n = dplyr::n()), error = function(e) NULL)
+            state$calls
+        }),
+        quote({
+            state$calls <- 0L
+            tryCatch(dplyr::mutate(counted, m = mean(int)), error = function(e) NULL)
+            state$calls
+        }))) {
+        result <- .plan_compare(.plan_global_call(code, counted = counted, state = state))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+    # Classed expressions, whose length() method counts its calls.
+    assign("length.plan_literal", function(x) {
+        state$calls <- state$calls + 1L
+        length(unclass(x))
+    }, envir = table)
+    withr::defer(rm("length.plan_literal", envir = table))
+    literal <- structure(5, class = "plan_literal")
+    call <- structure(quote(dplyr::n()), class = "plan_literal")
+    summary <- structure(quote(mean(int)), class = "plan_literal")
+    head <- as.call(list(structure(quote(dplyr::n), class = "plan_literal")))
+    for (code in list(
+        quote(dplyr::summarise(data, k = !!literal, .by = g)),
+        quote(dplyr::summarise(data, k = !!call, .by = g)),
+        quote(dplyr::summarise(data, k = !!summary, .by = g)),
+        quote(dplyr::summarise(data, k = !!head, .by = g)))) {
+        counted <- call("{", quote(state$calls <- 0L),
+                        call("tryCatch", code, error = quote(function(e) NULL)),
+                        quote(state$calls))
+        result <- .plan_compare(.plan_global_call(counted, data = data, state = state,
+                                                  literal = literal, call = call,
+                                                  summary = summary, head = head))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+    # ALTREP rows, whose Length method could run R code. Rows of two or more
+    # are compact sequences.
+    compact <- dplyr::group_by(data, g)
+    groups <- attr(compact, "groups")
+    groups$.rows <- vctrs::new_list_of(lapply(groups$.rows, function(rows)
+        if (length(rows) > 1L) rows[[1L]]:rows[[length(rows)]] else rows), ptype = integer())
+    attr(compact, "groups") <- groups
+    for (code in list(quote(dplyr::summarise(compact, n = dplyr::n())),
+                      quote(dplyr::mutate(compact, r = dplyr::row_number())),
+                      quote(dplyr::mutate(compact, m = mean(int))))) {
+        result <- .plan_compare(.plan_global_call(code, compact = compact))
+        expect_true(result$same, info = deparse(code))
+        expect_identical(result$planned, 0L, info = deparse(code))
+    }
+})
+
+test_that("a traced or replaced dplyr function keeps the loop", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- .plan_data()
+    namespace <- asNamespace("dplyr")
+    counter <- new.env()
+    counter$calls <- 0L
+    suppressMessages(trace("peek_mask", where = namespace, print = FALSE,
+        tracer = bquote(assign("calls", get("calls", envir = .(counter)) + 1L,
+                               envir = .(counter)))))
+    traced <- .plan_compare(.plan_global(dplyr::summarise(data, n = dplyr::n(), .by = g),
+                                         data = data))
+    suppressMessages(untrace("peek_mask", where = namespace))
+    expect_true(traced$same)
+    expect_identical(traced$planned, 0L)
+    # Both runs call it once for each of the six groups.
+    expect_identical(counter$calls, 12L)
+    if (!.size_plan_built()) return()
+    found <- .Call(dtatools:::C_dtatools_size_plan_admitted, quote(dplyr::n()),
+                   globalenv(), list(), namespace, dtatools:::.size_plan_dependencies)
+    # Outside a grouped verb, dplyr's context holds no mask of this one.
+    expect_null(found)
+    records <- dtatools:::.size_plan_dependencies
+    expect_identical(records[[1L]], list(formals(dplyr::n), body(dplyr::n)))
+    expect_identical(records[[2L]],
+                     list(formals(dplyr::row_number), body(dplyr::row_number)))
+})
+
+test_that("a one-shot debugger in n() stops in the first group", {
+    skip_if_not_installed("callr")
+    skip_if_not_installed("dplyr", "1.2.1")
+    records <- .dtatools_child_r("size-plan-debugonce", function(libraries) {
+        .libPaths(libraries)
+        library(dtatools)
+        data <- dibble(g = rep(1:3, each = 2), x = dta_int(1:6))
+        invisible(dplyr::summarise(data, n = dplyr::n(), .by = g))
+        namespace <- asNamespace("dplyr")
+        targets <- list(dplyr::n, namespace$peek_mask, dplyr::row_number)
+        calls <- list(quote(dplyr::summarise(data, n = dplyr::n(), .by = g)),
+                      quote(dplyr::summarise(data, n = dplyr::n(), .by = g)),
+                      quote(dplyr::mutate(data, r = dplyr::row_number(), .by = g)))
+        lapply(seq_along(targets), function(i) {
+            lines <- utils::capture.output({
+                debugonce(targets[[i]])
+                cat("BEFORE_SUMMARY\n")
+                value <- tryCatch(eval(calls[[i]]), error = identity)
+                cat("AFTER_SUMMARY\n")
+            })
+            list(lines = lines)
+        })
+    }, args = list(.libPaths()), timeout = 20)
+    for (record in records) {
+        entry <- grep("^debugging in:", record$lines)
+        expect_length(entry, 1L)
+        expect_true(all(entry > match("BEFORE_SUMMARY", record$lines) &
+                        entry < match("AFTER_SUMMARY", record$lines)))
+    }
+})

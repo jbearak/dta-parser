@@ -683,6 +683,217 @@ SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP
     return result;
 }
 
+/* ADR 0063. A closure R would call where a size plan calls none: it has the
+   formals and body that `record`, list(formals, body), froze when the package
+   was built, the environment env, and no attributes, which a traced closure
+   carries. */
+static int size_closure_same(SEXP actual, SEXP record, SEXP env) {
+    return TYPEOF(actual) == CLOSXP && !ANY_ATTRIB(actual) && R_ClosureEnv(actual) == env &&
+        TYPEOF(record) == VECSXP && XLENGTH(record) == 2 &&
+        R_compute_identical(R_ClosureFormals(actual), VECTOR_ELT(record, 0), 16) &&
+        R_compute_identical(R_ClosureExpr(actual), VECTOR_ELT(record, 1), 16);
+}
+
+/* The function a call of `name` from env finds, or R_NilValue when the
+   lookup would run R code or find none. */
+static SEXP size_function(SEXP env, const char *name) {
+    SEXP found = R_NilValue;
+    return plan_walk(env, R_EmptyEnv, Rf_install(name), 1, &found) ? found : R_NilValue;
+}
+
+/* The function `dplyr::name` gives from dplyr's loaded namespace: the
+   binding its export table names, which the `::` primitive reads without
+   R code, or R_NilValue. */
+static SEXP size_exported(SEXP namespace, const char *name) {
+    SEXP info = R_NilValue, exports = R_NilValue, internal = R_NilValue, value = R_NilValue;
+    if (mean_peek_frame(namespace, R_NamespaceEnvSymbol, &info) != 1 ||
+        mean_peek_frame(info, Rf_install("exports"), &exports) != 1 ||
+        mean_peek_frame(exports, Rf_install(name), &internal) != 1 ||
+        TYPEOF(internal) != STRSXP || XLENGTH(internal) != 1 ||
+        STRING_ELT(internal, 0) == NA_STRING ||
+        mean_peek_frame(namespace, Rf_installChar(STRING_ELT(internal, 0)), &value) != 1)
+        return R_NilValue;
+    return value;
+}
+
+/* Whether a call of n(), or of row_number() without arguments, either one
+   bare or as `dplyr::n()`, from env would return each group's size, or its
+   rows' positions in the group, as dplyr 1.2.1 computes them from the
+   grouped verb's mask, with no other R code on the way (ADR 0063). The
+   function the call finds, and the dplyr functions it calls, `peek_mask()`,
+   `context_peek()` and `context_peek_bare()`, must have the frozen formals
+   and bodies and dplyr's namespace, as must base's `%||%`, which dplyr's
+   namespace finds, and the primitives they call, and `::` for a qualified
+   call, must be base's. dplyr's context must hold `helpers`, this mask's
+   helpers, whose get_current_group_size() gives the group's size. Sets
+   *rank for row_number() and found[0..5] to the closures, whose debugging
+   the caller checks: the function called, then n() for row_number(), then
+   the others. */
+static int size_plan_admission(SEXP expression, SEXP env, SEXP helpers, SEXP namespace,
+                               SEXP dependencies, int *rank, SEXP *found) {
+    static const char *primitives[] = {"$", "[[", "seq_len", "missing", "is.null", "if", "{"};
+    if (TYPEOF(expression) != LANGSXP || CDR(expression) != R_NilValue ||
+        TYPEOF(env) != ENVSXP || TYPEOF(namespace) != ENVSXP ||
+        !R_IsNamespaceEnv(namespace) || TYPEOF(dependencies) != VECSXP ||
+        ALTREP(dependencies) || XLENGTH(dependencies) != 7) return 0;
+    SEXP head = CAR(expression), symbol = head, expected = VECTOR_ELT(dependencies, 6);
+    int qualified = TYPEOF(head) == LANGSXP;
+    if (qualified) {
+        /* `dplyr::name`, with both names symbols. */
+        if (CAR(head) != Rf_install("::") || TYPEOF(CDR(head)) != LISTSXP ||
+            CADR(head) != Rf_install("dplyr") || TYPEOF(CDDR(head)) != LISTSXP ||
+            CDR(CDDR(head)) != R_NilValue) return 0;
+        symbol = CADDR(head);
+    }
+    if (TYPEOF(symbol) != SYMSXP) return 0;
+    const char *name = CHAR(PRINTNAME(symbol));
+    *rank = strcmp(name, "row_number") == 0;
+    if (!*rank && strcmp(name, "n") != 0) return 0;
+    SEXP spec = R_NamespaceEnvSpec(namespace);
+    if (TYPEOF(spec) != STRSXP || XLENGTH(spec) < 1 ||
+        strcmp(CHAR(STRING_ELT(spec, 0)), "dplyr") != 0 ||
+        TYPEOF(expected) != VECSXP || XLENGTH(expected) != 8) return 0;
+    /* From dplyr's namespace the walk reaches base's namespace, whose
+       bindings base's `%||%` reads, unless dplyr's own bindings or imports
+       hold another function by these names. */
+    for (int i = 0; i < 7; i++)
+        if (size_function(namespace, primitives[i]) != VECTOR_ELT(expected, i)) return 0;
+    if (qualified && size_function(env, "::") != VECTOR_ELT(expected, 7)) return 0;
+    found[0] = qualified ? size_exported(namespace, name) : size_function(env, name);
+    if (!size_closure_same(found[0], VECTOR_ELT(dependencies, *rank), namespace)) return 0;
+    found[1] = *rank ? size_function(namespace, "n") : found[0];
+    found[2] = size_function(namespace, "peek_mask");
+    found[3] = size_function(namespace, "context_peek");
+    found[4] = size_function(namespace, "context_peek_bare");
+    found[5] = size_function(namespace, "%||%");
+    if (!size_closure_same(found[1], VECTOR_ELT(dependencies, 0), namespace) ||
+        !size_closure_same(found[2], VECTOR_ELT(dependencies, 2), namespace) ||
+        !size_closure_same(found[3], VECTOR_ELT(dependencies, 3), namespace) ||
+        !size_closure_same(found[4], VECTOR_ELT(dependencies, 4), namespace) ||
+        !size_closure_same(found[5], VECTOR_ELT(dependencies, 5), R_BaseNamespace))
+        return 0;
+    SEXP context = R_NilValue, mask = R_NilValue;
+    return mean_peek_frame(namespace, Rf_install("context_env"), &context) == 1 &&
+        TYPEOF(context) == ENVSXP &&
+        mean_peek_frame(context, Rf_install("mask"), &mask) == 1 && mask == helpers;
+}
+
+/* The closures a planned n() or row_number() would call, for the caller to
+   check before the plan, or NULL when size_plan_admission() declines. */
+SEXP C_dtatools_size_plan_admitted(SEXP expression, SEXP env, SEXP helpers,
+                                   SEXP namespace, SEXP dependencies) {
+    SEXP found[6] = {R_NilValue, R_NilValue, R_NilValue, R_NilValue, R_NilValue, R_NilValue};
+    int rank = 0;
+    if (!size_plan_admission(expression, env, helpers, namespace, dependencies, &rank, found))
+        return R_NilValue;
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 6));
+    for (int i = 0; i < 6; i++) SET_VECTOR_ELT(result, i, found[i]);
+    UNPROTECT(1);
+    return result;
+}
+
+/* Whether every group's rows are a bare integer vector, and, with
+   `nonempty`, none is empty. A classed vector's length() and an ALTREP
+   vector's Length method could run R code while the first group is active,
+   so they decline before either is read. */
+static int plan_rows_plain(SEXP rows, int nonempty) {
+    if (TYPEOF(rows) != VECSXP || ALTREP(rows)) return 0;
+    for (R_xlen_t i = 0; i < XLENGTH(rows); i++) {
+        SEXP group = VECTOR_ELT(rows, i);
+        if (TYPEOF(group) != INTSXP || ALTREP(group) || Rf_isObject(group) ||
+            Rf_isS4(group) || XLENGTH(group) > INT_MAX ||
+            (nonempty && XLENGTH(group) == 0)) return 0;
+    }
+    return 1;
+}
+
+SEXP C_dtatools_plan_rows(SEXP rows, SEXP nonempty) {
+    return Rf_ScalarLogical(TYPEOF(nonempty) == LGLSXP && XLENGTH(nonempty) == 1 &&
+                            LOGICAL(nonempty)[0] != NA_LOGICAL &&
+                            plan_rows_plain(rows, LOGICAL(nonempty)[0]));
+}
+
+/* A literal number a size plan takes: a bare double or integer scalar. */
+static int size_literal(SEXP value) {
+    return (TYPEOF(value) == REALSXP || TYPEOF(value) == INTSXP) && !ALTREP(value) &&
+        !ANY_ATTRIB(value) && XLENGTH(value) == 1;
+}
+
+/* The results of `expression` for every group of a grouped verb after the
+   first, which the loop has evaluated, at once (ADR 0063). The expression is
+   n(), row_number() for a mutate(), whose admission this repeats, since the
+   caller's checks run R code, or a literal number for a summarise(). A
+   mutate()'s chunk is each group's size or positions, as the loop copies
+   them. A summarise()'s chunk is the result typed as `.retyped_column()`
+   types a new column's, through C_dtatools_typed_column_fast() and
+   C_dtatools_typed_scalar_fast() with the result's length, then measured
+   and captured as the loop does. Returns list(chunks, known) for the later
+   groups, or NULL when the admission or a native call declines. */
+SEXP C_dtatools_size_plan(SEXP rows, SEXP expression, SEXP combined, SEXP env,
+                          SEXP helpers, SEXP namespace, SEXP dependencies) {
+    int rank = 0;
+    if (TYPEOF(rows) != VECSXP || ALTREP(rows) || XLENGTH(rows) < 2 ||
+        TYPEOF(combined) != LGLSXP || XLENGTH(combined) != 1 ||
+        LOGICAL(combined)[0] == NA_LOGICAL) return R_NilValue;
+    int mutate = LOGICAL(combined)[0];
+    if (TYPEOF(expression) == LANGSXP) {
+        SEXP found[6];
+        if (!size_plan_admission(expression, env, helpers, namespace, dependencies,
+                                 &rank, found) || (rank && !mutate)) return R_NilValue;
+    } else if (mutate || !size_literal(expression)) return R_NilValue;
+    R_xlen_t count = XLENGTH(rows) - 1;
+    if (!plan_rows_plain(rows, mutate)) return R_NilValue;
+    SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
+    SEXP known = PROTECT(Rf_allocVector(INTSXP, count));
+    SEXP one = PROTECT(Rf_ScalarInteger(1));
+    for (R_xlen_t i = 0; i < count; i++) {
+        if (i % 4096 == 4095) R_CheckUserInterrupt();
+        int size = (int) XLENGTH(VECTOR_ELT(rows, i + 1));
+        SEXP value;
+        if (TYPEOF(expression) != LANGSXP) value = expression;
+        else if (!rank) value = Rf_ScalarInteger(size);
+        else {
+            value = Rf_allocVector(INTSXP, size);
+            int *position = INTEGER(value);
+            for (int j = 0; j < size; j++) position[j] = j + 1;
+        }
+        PROTECT(value);
+        if (mutate) {
+            SET_VECTOR_ELT(results, i, value);
+            INTEGER(known)[i] = rank ? size : 1;
+            UNPROTECT(1);
+            continue;
+        }
+        SEXP typed = C_dtatools_typed_column_fast(value);
+        if (TYPEOF(typed) == RAWSXP) typed = C_dtatools_typed_scalar_fast(value, one);
+        if (typed == R_NilValue) {
+            UNPROTECT(4);
+            return R_NilValue;
+        }
+        PROTECT(typed);
+        /* The size is read before the capture allocates. */
+        SEXP measured = C_dtatools_chunk_size(typed);
+        int length = measured == R_NilValue ? -1 : INTEGER(measured)[0];
+        SEXP captured = length < 0 ? R_NilValue : C_dtatools_capture_atomic(typed);
+        if (captured == R_NilValue) {
+            UNPROTECT(5);
+            return R_NilValue;
+        }
+        INTEGER(known)[i] = length;
+        SET_VECTOR_ELT(results, i, captured);
+        UNPROTECT(2);
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(names, 0, Rf_mkChar("chunks"));
+    SET_STRING_ELT(names, 1, Rf_mkChar("known"));
+    SET_VECTOR_ELT(result, 0, results);
+    SET_VECTOR_ELT(result, 1, known);
+    Rf_setAttrib(result, R_NamesSymbol, names);
+    UNPROTECT(5);
+    return result;
+}
+
 SEXP C_dtatools_numeric_range(SEXP inputs, SEXP na_rm) {
     if (TYPEOF(inputs) != VECSXP) return R_NilValue;
     R_xlen_t count = XLENGTH(inputs);

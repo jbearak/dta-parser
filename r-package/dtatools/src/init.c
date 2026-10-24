@@ -48,6 +48,11 @@ SEXP C_dtatools_mean_admitted(SEXP frame);
 SEXP C_dtatools_mean_computed(SEXP frame);
 SEXP C_dtatools_summary_computed(SEXP x, SEXP generic, SEXP frame);
 SEXP C_dtatools_summary_plan_admitted(SEXP generic, SEXP env, SEXP top, SEXP frame);
+SEXP C_dtatools_size_plan_admitted(SEXP expression, SEXP env, SEXP helpers,
+                                   SEXP namespace, SEXP dependencies);
+SEXP C_dtatools_plan_rows(SEXP rows, SEXP nonempty);
+SEXP C_dtatools_size_plan(SEXP rows, SEXP expression, SEXP combined, SEXP env,
+                          SEXP helpers, SEXP namespace, SEXP dependencies);
 SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP frame,
                              SEXP first, SEXP caller, SEXP states);
 SEXP C_dtatools_range_admitted(SEXP frame);
@@ -198,6 +203,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_summary_computed", (DL_FUNC) &C_dtatools_summary_computed, 3},
     {"C_dtatools_summary_plan_admitted", (DL_FUNC) &C_dtatools_summary_plan_admitted, 4},
     {"C_dtatools_summary_plan", (DL_FUNC) &C_dtatools_summary_plan, 8},
+    {"C_dtatools_size_plan_admitted", (DL_FUNC) &C_dtatools_size_plan_admitted, 5},
+    {"C_dtatools_plan_rows", (DL_FUNC) &C_dtatools_plan_rows, 2},
+    {"C_dtatools_size_plan", (DL_FUNC) &C_dtatools_size_plan, 7},
     {"C_dtatools_range_admitted", (DL_FUNC) &C_dtatools_range_admitted, 1},
     {"C_dtatools_numeric_range", (DL_FUNC) &C_dtatools_numeric_range, 2},
     {"C_dtatools_summarize_moments", (DL_FUNC) &C_dtatools_summarize_moments, 4},

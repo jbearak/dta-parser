@@ -18436,7 +18436,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "fbc9addc29a2fa56171334f4339a912423a4e612d36018c14c1f6f4204a550b3"
+          "sha256": "94d4c4ad6a906ed89b5cc7b829255d608cba09711672a0b716e70a4a1ef7ecdd"
         }
       ],
       "blocks": [
@@ -19171,6 +19171,50 @@
         },
         {
           "file": "test-summary-plan.R",
+          "test": "size results give what the group loop gives",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 51,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "size plans decline what the loop would see differently",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 24,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a traced or replaced dplyr function keeps the loop",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a one-shot debugger in n() stops in the first group",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 6,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
           "test": "S4 chunks keep the loop",
           "occurrence": 1,
           "skip": "require",
@@ -19184,6 +19228,14 @@
       "children": [
         {
           "id": "summary-plan-debugonce",
+          "kind": "r",
+          "minimum": 0,
+          "maximum": 0,
+          "completion": "complete",
+          "allow_error": false
+        },
+        {
+          "id": "size-plan-debugonce",
           "kind": "r",
           "minimum": 0,
           "maximum": 0,
