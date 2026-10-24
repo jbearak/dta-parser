@@ -22,8 +22,8 @@
   and built the result through several R helpers, and `min()`, `max()` and
   `sum()` also listed and reduced their inputs in R. Over the 42,739 women
   in the first 100,000 rows of the India 2021 DHS births file,
-  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.83 to 0.63
-  seconds, `summarise(b, m = max(bord), .by = caseid)` from 1.10 to 0.53,
+  `summarise(b, m = mean(b2), .by = caseid)` falls from about 0.68 to 0.48
+  seconds, `summarise(b, m = max(bord), .by = caseid)` from 0.92 to 0.40,
   and `mutate(b, m = mean(b2), .by = caseid)` from 0.61 to 0.41. Results,
   warnings and errors are unchanged. A traced or replaced `.dta_data()`,
   `.dta_computed()` or another helper of these methods no longer sees these
