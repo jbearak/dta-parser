@@ -312,7 +312,16 @@ test_that("native group key matching gives vec_equal's result", {
         list(proxy(dta_double(c(1, 1, NA, tagged_missing("a")))),
              proxy(dta_double(c(1, tagged_missing("b"), tagged_missing("a")))), c(2L, 1L, 1L)),
         list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 4))), c(2L, 1L)),
-        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 5))), c(2L, 1L))
+        list(proxy(dta_byte(c(3, 3, 4))), proxy(dta_byte(c(3, 5))), c(2L, 1L)),
+        # ASCII strings and NA compare as R keeps them, one copy of each.
+        list(c("a", "a", NA, "b"), c("a", NA, "b"), c(2L, 1L, 1L)),
+        list(c("a", "b", NA, "b"), c("a", NA, "b"), c(2L, 1L, 1L)),
+        list(c("NA", NA), c(NA_character_, NA_character_), c(1L, 1L)),
+        list(c("", ""), "", 2L),
+        list(data.frame(n = c(1, 1, 2), s = c("x", "x", "y")),
+             data.frame(n = c(1, 2), s = c("x", "y")), c(2L, 1L)),
+        list(data.frame(n = c(1, 1, 2), s = c("x", "z", "y")),
+             data.frame(n = c(1, 2), s = c("x", "y")), c(2L, 1L))
     )
     for (case in cases) {
         expect_identical(match_keys(case[[1L]], case[[2L]], case[[3L]]),
@@ -320,6 +329,16 @@ test_that("native group key matching gives vec_equal's result", {
     }
     # Groups listing no rows contribute no values.
     expect_true(match_keys(c(1L, 3L), c(1L, 2L, 3L), c(1L, 0L, 1L)))
+    # A read file's compact strings, directly and through a metadata view.
+    make <- read_dta(fixture("auto_v118.dta"), col_select = "make")$make
+    expect_true(.Call(dtatools:::C_dtatools_is_altrep, make))
+    values <- vctrs::vec_proxy_equal(dtatools:::.grouping_key_value(make))
+    expect_true(.Call(dtatools:::C_dtatools_is_altrep, values))
+    expect_true(match_keys(values, values, rep.int(1L, length(values))))
+    expect_false(match_keys(values, rev(values), rep.int(1L, length(values))))
+    view <- dtatools:::.metadata_copy(values)
+    expect_true(.Call(dtatools:::C_dtatools_is_altrep, view))
+    expect_true(match_keys(view, values, rep.int(1L, length(values))))
     # Anything else keeps vctrs's comparison.
     frame <- proxy(dta_double(c(1, 1)))
     key_frame <- proxy(dta_double(1))
@@ -327,7 +346,8 @@ test_that("native group key matching gives vec_equal's result", {
         list(c(a = 1L, b = 1L), 1L, 2L),
         list(structure(c(1L, 1L), class = "other"), 1L, 2L),
         list(c(1L, 1L), 1, 2L),
-        list(c("a", "a"), "a", 2L),
+        list(c("a", "a"), 1L, 2L),
+        list(structure(c("a", "a"), names = c("x", "y")), "a", 2L),
         list(seq_len(2L), 1L, 2L),
         list(c(1L, 1L), 1L, 3L),
         list(c(1L, 1L), 1L, NA_integer_),
@@ -341,5 +361,30 @@ test_that("native group key matching gives vec_equal's result", {
     )
     for (case in declined) {
         expect_null(match_keys(case[[1L]], case[[2L]], case[[3L]]))
+    }
+    # vctrs translates other strings to UTF-8 first, which can make unequal
+    # elements equal or fail, even after a mismatch, so they keep its call.
+    latin1 <- "caf\xe9"
+    Encoding(latin1) <- "latin1"
+    utf8 <- enc2utf8(latin1)
+    bytes <- "caf\xe9"
+    Encoding(bytes) <- "bytes"
+    expect_true(expected(c(latin1, utf8), utf8, 2L))
+    expect_error(expected(c("a", bytes), c("b", bytes), c(1L, 1L)), "bytes")
+    for (case in list(list(c(latin1, utf8), utf8, 2L),
+                      list(c(utf8, utf8), utf8, 2L),
+                      list(c("a", bytes), c("b", bytes), c(1L, 1L)),
+                      list(c("a", "b"), c("a", bytes), c(1L, 1L)),
+                      list(data.frame(n = c(1, 2), s = c("x", bytes)),
+                           data.frame(n = c(1, 3), s = c("x", bytes)), c(1L, 1L)))) {
+        expect_null(match_keys(case[[1L]], case[[2L]], case[[3L]]))
+    }
+    # It translates a frame's names too, whatever its columns.
+    for (columns in list(list(n = c(1, 1)), list(n = c(1, 1), s = c("x", "x")))) {
+        frame <- data.frame(columns)
+        names(frame)[[1L]] <- bytes
+        key_frame <- frame[1L, , drop = FALSE]
+        expect_error(expected(frame, key_frame, 2L), "bytes")
+        expect_null(match_keys(frame, key_frame, 2L))
     }
 })
