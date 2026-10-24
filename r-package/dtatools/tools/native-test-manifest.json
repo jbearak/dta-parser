@@ -18305,7 +18305,7 @@
         },
         {
           "path": "tests/testthat/test-summary-plan.R",
-          "sha256": "a5836dba46ae358b6d2ec042135d101477ad8e0648ca4931c8f1ed912859d3b7"
+          "sha256": "5362538325d8633ba66495993fd7b5684a96625688eb7b33c20e0196c3edbf3d"
         }
       ],
       "blocks": [
@@ -18993,9 +18993,37 @@
           "min_pass_before_skip": 0,
           "reason": "Optional dplyr comparison retained in the present-dependency suite.",
           "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "other columns split in the first group's evaluation",
+          "occurrence": 1,
+          "skip": "require",
+          "min_pass": 3,
+          "warnings": 0,
+          "min_pass_before_skip": 0,
+          "reason": "Optional dplyr comparison retained in the present-dependency suite.",
+          "skip_message": "Reason: {dplyr} is not installed"
+        },
+        {
+          "file": "test-summary-plan.R",
+          "test": "a one-shot debugger stops in the first group",
+          "occurrence": 1,
+          "skip": "forbid",
+          "min_pass": 6,
+          "warnings": 0
         }
       ],
-      "children": [],
+      "children": [
+        {
+          "id": "summary-plan-debugonce",
+          "kind": "r",
+          "minimum": 1,
+          "maximum": 1,
+          "completion": "complete",
+          "allow_error": false
+        }
+      ],
       "forks": []
     }
   ],

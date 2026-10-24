@@ -478,11 +478,13 @@ static int plan_method(SEXP env, SEXP top, SEXP table, SEXP symbol, SEXP *found)
 /* Whether every group's evaluation of `generic(column)`, with na.rm as frame
    binds it, would end in the package method's native result, with no R
    code on the way (ADR 0061). The generic found from env must be base's, as
-   the frozen copies have it. Dispatch on a chunk's first class must find the
-   frozen mean.dta_numeric(), or, for the Summary group, no method for the
-   generic itself and then the frozen Summary.dta_numeric(). The mean method
-   then makes the admission its native call makes. found[0] and found[1] get
-   the generic and the method, whose debugging the caller checks. */
+   the frozen copies have it: the closure for mean, and for the others the
+   primitive their name gave when the package was built. Dispatch on a
+   chunk's first class must find the frozen mean.dta_numeric(), or, for the
+   Summary group, no method for the generic itself and then the frozen
+   Summary.dta_numeric(). The mean method then makes the admission its
+   native call makes. found[0] and found[1] get the generic and the method,
+   whose debugging the caller checks. */
 static int summary_plan_admission(SEXP generic, SEXP env, SEXP top, SEXP frame, SEXP *found) {
     static SEXP dependency_symbol, mean_dependency_symbol, table_symbol;
     int operation = summary_operation(generic), mean = 0;
@@ -500,7 +502,7 @@ static int summary_plan_admission(SEXP generic, SEXP env, SEXP top, SEXP frame, 
     SEXP table = mean_lookup(R_BaseNamespace,
         summary_symbol(&table_symbol, ".__S3MethodsTable__."));
     if (TYPEOF(dependencies) != VECSXP || ALTREP(dependencies) ||
-        ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 2 ||
+        ANY_ATTRIB(dependencies) || XLENGTH(dependencies) != 5 ||
         TYPEOF(mean_dependencies) != VECSXP || ALTREP(mean_dependencies) ||
         XLENGTH(mean_dependencies) < 1 || TYPEOF(table) != ENVSXP) {
         UNPROTECT(2);
@@ -508,7 +510,7 @@ static int summary_plan_admission(SEXP generic, SEXP env, SEXP top, SEXP frame, 
     }
     SEXP symbol = Rf_installChar(STRING_ELT(generic, 0));
     SEXP expected = mean ? VECTOR_ELT(mean_dependencies, 0) :
-        mean_lookup(R_BaseNamespace, symbol);
+        VECTOR_ELT(dependencies, 2 + operation);
     admission_same same = {.count = 0};
     int admitted = (mean || TYPEOF(expected) == BUILTINSXP) &&
         plan_walk(env, R_EmptyEnv, symbol, 1, &found[0]) &&
@@ -544,15 +546,16 @@ SEXP C_dtatools_summary_plan_admitted(SEXP generic, SEXP env, SEXP top, SEXP fra
     return result;
 }
 
-/* `generic(column)` for every group of a grouped summary at once (ADR
-   0061). For each of the column's group chunks it computes what the
-   method's native call returns, then the size and the capture the group
-   loop takes: C_dtatools_chunk_size() and `.capture_dibble_nested()`, which
-   for these results is C_dtatools_capture_atomic(). It repeats the
-   admission, since reading the column could have run R code, and returns
-   list(chunks, known) as the loop builds them, or NULL, with nothing
-   computed that the loop would not also compute, when the admission
-   declines or any chunk would leave its group to the R code. */
+/* `generic(column)` for every group of a grouped summary after the first,
+   which the loop has evaluated, at once (ADR 0061). For each of the
+   column's later group chunks it computes what the method's native call
+   returns, then the size and the capture the group loop takes:
+   C_dtatools_chunk_size() and `.capture_dibble_nested()`, which for these
+   results is C_dtatools_capture_atomic(). It repeats the admission, since
+   the caller's checks run R code, and returns list(chunks, known) for the
+   later groups as the loop builds them, or NULL, with nothing computed
+   that the loop would not also compute, when the admission declines or any
+   chunk would leave its group to the R code. */
 SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP frame) {
     SEXP found[2] = {R_NilValue, R_NilValue};
     if (TYPEOF(chunks) != VECSXP || ALTREP(chunks) ||
@@ -562,12 +565,16 @@ SEXP C_dtatools_summary_plan(SEXP chunks, SEXP generic, SEXP env, SEXP top, SEXP
     if (flag == NULL) return R_NilValue;
     PROTECT(flag);
     Rboolean remove = (Rboolean) LOGICAL(flag)[0];
-    R_xlen_t count = XLENGTH(chunks);
+    R_xlen_t count = XLENGTH(chunks) - 1;
+    if (count < 1) {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
     SEXP results = PROTECT(Rf_allocVector(VECSXP, count));
     SEXP known = PROTECT(Rf_allocVector(INTSXP, count));
     for (R_xlen_t i = 0; i < count; i++) {
         if (i % 4096 == 4095) R_CheckUserInterrupt();
-        SEXP x = VECTOR_ELT(chunks, i);
+        SEXP x = VECTOR_ELT(chunks, i + 1);
         SEXP value = R_NilValue;
         if (operation < 0 ? mean_chunk_supported(x) : summary_chunk_supported(x))
             value = operation < 0 ? mean_chunk(x, flag) : summary_chunk(x, operation, remove);

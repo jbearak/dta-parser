@@ -1,6 +1,6 @@
 # ADR 0061: a grouped summary of one column's mean(), min(), max() or sum()
-# takes one native call for every group when each group would reach the
-# package's method and its native result.
+# takes one native call for every group after the first when each later
+# group would reach the package's method and its native result.
 
 # The plan declines while base's lazy bindings of mean() and mean.default(),
 # or the S3 registrations of the package's methods, are unforced. A mean and
@@ -142,9 +142,13 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     check(in_env(Summary.dta_numeric = function(..., na.rm = FALSE) 96), planned = 1L)
     # A binding that is not a function is passed over, as R passes it.
     check(in_env(mean = 5, max = "max"), planned = 2L)
-    # A promise or active binding on the way would run R code.
+    # An active binding on the way would run R code. A promise would too,
+    # but the first group forces it.
     lazy <- in_env()
     delayedAssign("mean", base::mean, assign.env = environment(lazy)$env)
+    check(lazy, planned = 2L)
+    lazy <- in_env()
+    delayedAssign("mean", function(x, ...) 99, assign.env = environment(lazy)$env)
     check(lazy, planned = 1L)
     active <- in_env()
     makeActiveBinding("mean.dta_numeric", function() NULL, environment(active)$env)
@@ -161,6 +165,28 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     named$Summary.dta_numeric <- data$int
     check(.plan_global(dplyr::summarise(named, m = mean(int), h = max(byte), .by = g),
                        named = named), planned = 1L)
+    # The mask's pronouns and R's dots shadow columns that take their names.
+    dotted <- data
+    dotted$.env <- data$int
+    check(.plan_global(dplyr::summarise(dotted, m = mean(.env), .by = g), dotted = dotted))
+    dotted <- data
+    dotted$..1 <- data$int
+    wrapper <- function(...) dplyr::summarise(dotted, m = mean(..1), .by = g)
+    check(function() wrapper(dta_int(5)))
+    # A primitive rebound in base is what the groups call. The expectations
+    # wait until it is restored, since they call max() too.
+    restore <- function() {
+        assign("max", .Primitive("max"), envir = baseenv())
+        lockBinding("max", baseenv())
+    }
+    unlockBinding("max", baseenv())
+    withr::defer(if (bindingIsLocked("max", baseenv())) NULL else restore())
+    assign("max", .Primitive("min"), envir = baseenv())
+    rebound <- .plan_compare(in_env())
+    restore()
+    expect_true(rebound$same)
+    expect_identical(rebound$planned, 1L)
+    expect_false(rebound$error)
     # Other forms of the call.
     flag <- TRUE
     for (code in list(
@@ -179,6 +205,55 @@ test_that("summaries whose groups could evaluate differently keep the loop", {
     assign("max.dta_numeric", function(..., na.rm = FALSE) 95, envir = table)
     withr::defer(rm("max.dta_numeric", envir = table))
     check(in_env(), planned = 1L)
+})
+
+test_that("other columns split in the first group's evaluation", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- dibble(g = rep(1:2, each = 2),
+                   x = vctrs::new_vctr(as.double(1:4), class = "plan_custom"))
+    table <- asNamespace("vctrs")[[".__S3MethodsTable__."]]
+    registerS3method("vec_restore", "plan_custom", function(x, to, ...)
+        vctrs::new_vctr(vctrs::vec_data(x) + 10 * dplyr::cur_group_id(),
+                        class = "plan_custom"), envir = asNamespace("vctrs"))
+    withr::defer(rm("vec_restore.plan_custom", envir = table))
+    result <- .plan_compare(.plan_global(dplyr::summarise(data, m = mean(x), .by = g),
+                                         data = data))
+    expect_true(result$same)
+    expect_false(result$error)
+    expect_identical(result$planned, 0L)
+})
+
+test_that("a one-shot debugger stops in the first group", {
+    skip_if_not_installed("callr")
+    skip_if_not_installed("dplyr", "1.2.1")
+    records <- .dtatools_child_r("summary-plan-debugonce", function(libraries) {
+        .libPaths(libraries)
+        library(dtatools)
+        data <- dibble(g = rep(1:3, each = 2), x = dta_int(1:6))
+        invisible(dplyr::summarise(data, m = mean(x), h = max(x), .by = g))
+        targets <- list(base::mean, utils::getS3method("mean", "dta_numeric"),
+                        utils::getS3method("Summary", "dta_numeric"))
+        calls <- list(quote(mean(x)), quote(mean(x)), quote(max(x)))
+        lapply(seq_along(targets), function(i) {
+            lines <- utils::capture.output({
+                debugonce(targets[[i]])
+                cat("BEFORE_SUMMARY\n")
+                value <- tryCatch(eval(rlang::expr(dplyr::summarise(data, m = !!calls[[i]],
+                                                                   .by = g))),
+                                  error = identity)
+                cat("AFTER_SUMMARY\n")
+                invisible(tryCatch(max(dta_int(1:2)) + mean(dta_int(1:2)), error = identity))
+                cat("AFTER_EXPLICIT_CALL\n")
+            })
+            list(lines = lines)
+        })
+    }, args = list(.libPaths()), timeout = 20)
+    for (record in records) {
+        entry <- grep("^debugging in:", record$lines)
+        expect_length(entry, 1L)
+        expect_true(all(entry > match("BEFORE_SUMMARY", record$lines) &
+                        entry < match("AFTER_SUMMARY", record$lines)))
+    }
 })
 
 test_that("mutate() plans a summary of one column across groups", {
