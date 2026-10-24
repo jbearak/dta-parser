@@ -422,6 +422,26 @@ test_that("groups share one set of bindings until an expression changes a column
     expect_false(exists("y", parents[[5L]], inherits = FALSE))
 })
 
+test_that("groups share one data pronoun until an expression changes a column", {
+    skip_if_not_installed("dplyr", "1.2.1")
+    data <- dibble(g = c(1, 1, 2), x = c(1, 2, 3))
+    pronouns <- list()
+    record <- function(pronoun) {
+        pronouns[[length(pronouns) + 1L]] <<- pronoun
+        pronoun$x[[1L]]
+    }
+    result <- dplyr::summarise(data, a = record(.data), b = record(.data) + a, .by = g)
+    expect_identical(as.double(result$a), c(1, 3))
+    expect_identical(as.double(result$b), c(2, 6))
+    # Each expression's groups share the pronoun of its set of bindings, and
+    # adding `a` builds the next set (ADR 0058).
+    addresses <- vapply(pronouns, rlang::obj_address, "")
+    expect_length(addresses, 4L)
+    expect_identical(addresses[[1L]], addresses[[2L]])
+    expect_identical(addresses[[3L]], addresses[[4L]])
+    expect_false(addresses[[1L]] == addresses[[3L]])
+})
+
 test_that("removed and re-added column generations retain values and expire", {
     skip_if_not_installed("dplyr", "1.2.1")
     data <- dibble(x = c(1, 2), y = c(3, 4))
