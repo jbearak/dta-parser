@@ -1,0 +1,8 @@
+[package]
+name = "dta"
+description = "Read and write Stata .dta files"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
