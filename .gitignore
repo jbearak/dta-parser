@@ -1,0 +1,7 @@
+target/
+node_modules/
+.venv/
+*.Rcheck/
+bench/data/
+.DS_Store
+.claude/
