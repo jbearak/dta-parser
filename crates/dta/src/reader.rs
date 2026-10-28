@@ -251,7 +251,7 @@ impl<S: Source> Reader<S> {
                     used += decoded_row;
                     for &c in columns.iter().filter(|&&c| self.meta.variables[c].storage == StorageType::StrL) {
                         let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
-                        used = used.saturating_add(self.strl_entry(&cell)?.map_or(0, |e| 3 * e.len as usize));
+                        used = used.saturating_add(self.strl_entry(&cell)?.map_or(0, |e| (e.len as usize).saturating_mul(3)));
                     }
                     take += 1;
                 }
