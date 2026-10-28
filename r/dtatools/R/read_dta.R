@@ -6,6 +6,8 @@
 #'   columns when `NULL`. Columns come back in the order selected.
 #' @param encoding Text encoding of files older than release 118:
 #'   `"windows-1252"` (the default), `"latin1"` or `"utf-8"`.
+#' @param skip Rows to skip at the start.
+#' @param n_max The most rows to read; `Inf` for all.
 #' @return A dibble (see [dibble()]): numeric columns are `dta_num`
 #'   vectors; string columns are character vectors.
 #'
@@ -18,7 +20,9 @@
 #'   code per row, so R makes one string per distinct value, and [tab()],
 #'   [dta_group_id()] and [is_missing()] work on the codes.
 #' @export
-read_dta <- function(file, col_select = NULL, encoding = NULL) {
+read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max = Inf) {
+  if (!is.numeric(skip) || length(skip) != 1 || is.na(skip) || skip < 0) stop("skip must be a number >= 0")
+  if (!is.numeric(n_max) || length(n_max) != 1 || is.na(n_max) || n_max < 0) stop("n_max must be a number >= 0")
   file <- normalizePath(file, mustWork = TRUE)
   meta <- .Call(C_dta_meta, file, encoding)
   names <- meta$names
@@ -35,9 +39,10 @@ read_dta <- function(file, col_select = NULL, encoding = NULL) {
     }
     cols <- unname(tidyselect::eval_select(select, stats::setNames(as.list(cols), names)))
   }
-  values <- .Call(C_dta_read, file, as.integer(cols - 1L), encoding)
+  values <- .Call(C_dta_read, file, as.integer(cols - 1L), floor(skip), floor(n_max), encoding)
   names(values) <- names[cols]
-  out <- tibble::new_tibble(values, nrow = meta$nobs, class = "dibble")
+  rows <- min(max(meta$nobs - floor(skip), 0), floor(n_max))
+  out <- tibble::new_tibble(values, nrow = rows, class = "dibble")
   attr(out, "label") <- nonempty(meta$label)
   attr(out, "notes") <- if (length(meta$notes)) meta$notes
   out

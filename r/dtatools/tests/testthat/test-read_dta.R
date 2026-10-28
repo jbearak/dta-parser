@@ -67,3 +67,23 @@ test_that("col_select takes names or tidyselect, in the order given", {
   expect_named(read_dta(path, col_select = c(row, num)), c("row", "num"))
   expect_named(read_dta(path, col_select = c("row", "row")), "row")
 })
+
+test_that("skip and n_max read a window of rows", {
+  for (path in fixtures()) {
+    full <- read_dta(path)
+    n <- nrow(full)
+    for (w in list(c(0, Inf), c(1, 2), c(n - 1, 5), c(n + 3, 1), c(0, 0))) {
+      part <- read_dta(path, skip = w[[1]], n_max = w[[2]])
+      rows <- seq_len(n)[seq_len(n) > w[[1]]]
+      rows <- rows[seq_len(min(length(rows), w[[2]]))]
+      label <- paste(basename(path), w[[1]], w[[2]])
+      expect_identical(nrow(part), length(rows), label = label)
+      for (name in names(full)) {
+        expect_identical(as.vector(part[[name]]), as.vector(full[[name]][rows]), label = paste(label, name))
+        if (is.numeric(full[[name]])) expect_identical(dta_codes(part[[name]]), dta_codes(full[[name]][rows]))
+      }
+    }
+  }
+  expect_error(read_dta(fixtures()[[1]], skip = -1), "skip")
+  expect_error(read_dta(fixtures()[[1]], n_max = NA), "n_max")
+})

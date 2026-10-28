@@ -277,7 +277,8 @@ fn set_attributes(x: Sexp, var: &Variable, set: Option<&ValueLabelSet>) -> Res<(
 }
 
 /// The columns at 0-based `cols`, all rows, as element 0 of `holder`
-/// (a list). Checks for Ctrl-C between chunks.
+/// (a list), from row `skip` (0-based), at most `n_max` rows. Checks for
+/// Ctrl-C between chunks.
 ///
 /// # Safety
 /// The pointers come from init.c; `cols` holds `ncols` ints.
@@ -286,6 +287,8 @@ pub unsafe extern "C" fn dtatools_read(
     path: *const c_char,
     cols: *const c_int,
     ncols: isize,
+    skip: f64,
+    n_max: f64,
     encoding: *const c_char,
     holder: Sexp,
     err: *mut c_char,
@@ -302,7 +305,10 @@ pub unsafe extern "C" fn dtatools_read(
         let mut reader = open(&path, encoding)?;
         let sets = reader.value_labels()?;
         let meta = reader.metadata().clone();
-        let nobs = usize::try_from(meta.nobs).map_err(|_| Fail::Message("too many rows".into()))?;
+        // The rows wanted, clamped to the file (R checked they are >= 0).
+        let start = (skip as u64).min(meta.nobs);
+        let count = if n_max.is_finite() { (n_max as u64).min(meta.nobs - start) } else { meta.nobs - start };
+        let nobs = usize::try_from(count).map_err(|_| Fail::Message("too many rows".into()))?;
         let out = alloc_elt(holder, 0, VECSXP, cols.len())?;
         let limits = DictLimits::from_env();
         let mut targets = Vec::with_capacity(cols.len());
@@ -321,7 +327,7 @@ pub unsafe extern "C" fn dtatools_read(
         }
         // A failure inside the chunk callback, kept so an R error stays one.
         let mut failed: Option<Fail> = None;
-        let result = reader.read_chunks(&cols, 0, meta.nobs, None, |first, chunk| {
+        let result = reader.read_chunks(&cols, start, count, None, |first, chunk| {
             if unsafe { dtatools_interrupted() } != 0 {
                 failed = Some(Fail::Message("interrupted".into()));
                 return Err(dta::Error::new("interrupted"));

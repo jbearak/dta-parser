@@ -1,0 +1,13 @@
+[package]
+name = "pyo3s"
+version = "0.1.0"
+edition = "2021"
+[lib]
+name = "pyo3s"
+crate-type = ["cdylib"]
+[dependencies]
+pyo3 = { version = "0.27", features = ["extension-module"] }
+[profile.release]
+lto = true
+codegen-units = 1
+[workspace]

@@ -29,6 +29,35 @@ export function isMissing(value: unknown): value is Missing {
   return typeof value === "object" && value !== null && "missing" in value;
 }
 
+// The doubles Stata itself stores for `.` to `.z`: finite, increasing,
+// and above every number Stata stores (code 1 is `.`).
+const KEY_BITS = new DataView(new ArrayBuffer(8));
+const MISSING_KEYS = Float64Array.from({ length: 27 }, (_, k) => {
+  KEY_BITS.setBigUint64(0, 0x7fe0000000000000n + (BigInt(k) << 40n));
+  return KEY_BITS.getFloat64(0);
+});
+
+/**
+ * A number that sorts and compares as Stata does: a number is itself, and
+ * `.` < `.a` < ... < `.z` come after every number. Use it to sort, group or
+ * compare with missing values in Stata's order:
+ * `rows.sort((a, b) => stataKey(a) - stataKey(b))`.
+ */
+export function stataKey(value: number | Missing): number {
+  if (typeof value === "number") return Number.isNaN(value) ? MISSING_KEYS[0] : value;
+  return MISSING_KEYS[MISSING_NAMES.indexOf(value.missing)];
+}
+
+/** `stataKey` for every value of a NumberColumn. */
+export function stataKeys(column: NumberColumn): Float64Array {
+  const out = new Float64Array(column.values.length);
+  for (let i = 0; i < out.length; i++) {
+    const code = column.missing[i];
+    out[i] = code === 0 ? column.values[i] : MISSING_KEYS[code - 1];
+  }
+  return out;
+}
+
 /** One cell: a number, a string, a binary strL, or a missing value. */
 export type Cell = number | string | Uint8Array | Missing;
 
