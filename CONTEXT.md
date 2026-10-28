@@ -47,3 +47,8 @@ A string column dtatools has read but whose values are still the bytes
 from the file; R strings are made from them when the values are used.
 Once all are made, the column is *made*.
 _Avoid_: lazy column, deferred strings (R's name for its own)
+
+**Dictionary column**:
+A packed column stored as its distinct values plus a code per row,
+because few of its values are distinct.
+_Avoid_: factor (a different R type), categorical

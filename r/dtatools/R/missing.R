@@ -17,6 +17,8 @@
 #' @return A logical vector as long as `x`.
 #' @export
 is_missing <- function(x) {
+  dict <- if (is.character(x)) dictionary(x)
+  if (!is.null(dict)) return((dict$values == "")[dict$codes + 1L])
   if (is.character(x)) return(unname(!is.na(x) & x == ""))
   dta_codes(x) > 0
 }

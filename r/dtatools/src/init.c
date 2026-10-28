@@ -59,17 +59,19 @@ int dtatools_alloc_attr(SEXP x, const char *name, int type, R_xlen_t n, SEXP *ou
 }
 
 // A new packed string column (strings.c), stored as element i of parent.
-SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, SEXP *bytes, SEXP *ends);
+SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *bytes,
+                         SEXP *ends, SEXP *codes);
 
-struct packed { SEXP parent; R_xlen_t i, nbytes, n; SEXP *bytes, *ends; };
+struct packed { SEXP parent; R_xlen_t i, nbytes, n, rows; SEXP *bytes, *ends, *codes; };
 
 static SEXP do_packed(void *p) {
   struct packed *a = p;
-  return dtatools_new_packed(a->parent, a->i, a->nbytes, a->n, a->bytes, a->ends);
+  return dtatools_new_packed(a->parent, a->i, a->nbytes, a->n, a->rows, a->bytes, a->ends, a->codes);
 }
 
-int dtatools_packed_elt(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, SEXP *out, SEXP *bytes, SEXP *ends) {
-  struct packed a = {parent, i, nbytes, n, bytes, ends};
+int dtatools_packed_elt(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *out, SEXP *bytes,
+                        SEXP *ends, SEXP *codes) {
+  struct packed a = {parent, i, nbytes, n, rows, bytes, ends, codes};
   return try_r(do_packed, &a, out);
 }
 
@@ -172,6 +174,7 @@ SEXP dtatools_codes(SEXP x);
 SEXP dtatools_keys(SEXP x, SEXP keep_na);
 SEXP dtatools_missing(SEXP codes);
 SEXP dtatools_packed_state(SEXP x);
+SEXP dtatools_dictionary(SEXP x);
 void dtatools_init_packed(DllInfo *dll);
 
 static const R_CallMethodDef routines[] = {
@@ -179,6 +182,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_keys", (DL_FUNC) &dtatools_keys, 2},
   {"dta_missing", (DL_FUNC) &dtatools_missing, 1},
   {"dta_packed_state", (DL_FUNC) &dtatools_packed_state, 1},
+  {"dta_dictionary", (DL_FUNC) &dtatools_dictionary, 1},
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 3},
   {"dta_write", (DL_FUNC) &write, 2},

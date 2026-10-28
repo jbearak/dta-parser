@@ -24,7 +24,7 @@ measure() {  # label, command...
   done
   printf "| %s | %s | %s |\n" "$label" "$(median < "$log.times")" "$(median < "$log.rss")"
 }
-cat "$dir/long.dta" "$dir/wide.dta" > /dev/null
+cat "$dir/long.dta" "$dir/wide.dta" "$dir/groups.dta" > /dev/null
 printf "| read | seconds | peak RSS MB |\n|---|---|---|\n"
 for tool in dtatools haven readstata13; do
   measure "long.dta, all 12 variables: $tool" Rscript bench/read_case.R "$tool" full "$dir/long.dta"
@@ -35,6 +35,9 @@ measure "long.dta, all, then every string compared: dtatools" Rscript bench/read
 measure "long.dta, all, then every string compared: pandas" python3 bench/read_case.py touch "$dir/long.dta"
 measure "long.dta, all, then every string compared: npm" node bench/read_case.mjs touch "$dir/long.dta"
 measure "long.dta, all, then head() and a filter: dtatools" Rscript bench/read_case.R dtatools head "$dir/long.dta"
+for task in read group tab again; do
+  measure "groups.dta, $task: dtatools" Rscript bench/fresh_case.R "$task" "$dir/groups.dta"
+done
 for tool in dtatools haven readstata13; do
   measure "wide.dta, 5 of 400 variables: $tool" Rscript bench/read_case.R "$tool" five "$dir/wide.dta"
 done

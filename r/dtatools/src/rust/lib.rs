@@ -8,7 +8,9 @@
 //! already reachable (a list element or an attribute) as soon as it is
 //! made, so nothing here needs PROTECT.
 
+use std::collections::HashMap;
 use std::ffi::{c_char, c_int, c_void, CStr};
+use std::hash::{BuildHasherDefault, Hasher};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use dta::{
@@ -39,14 +41,17 @@ extern "C" {
     fn dtatools_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtatools_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtatools_set_strings(x: Sexp, first: isize, bytes: *const u8, ends: *const usize, n: isize) -> c_int;
+    #[allow(clippy::too_many_arguments)]
     fn dtatools_packed_elt(
         parent: Sexp,
         i: isize,
         nbytes: isize,
         n: isize,
+        rows: isize,
         out: *mut Sexp,
         bytes: *mut Sexp,
         ends: *mut Sexp,
+        codes: *mut Sexp,
     ) -> c_int;
     fn RAW(x: Sexp) -> *mut u8;
     fn dtatools_interrupted() -> c_int;
@@ -81,16 +86,24 @@ fn alloc_elt(parent: Sexp, i: usize, kind: c_int, n: usize) -> Res<Sexp> {
     Ok(out)
 }
 
-/// A packed string column (see strings.c) holding `bytes`, the UTF-8
-/// text of its values, and `ends`, each value's end offset, as element
-/// `i` of the list `parent`.
-fn packed_elt(parent: Sexp, i: usize, bytes: &[u8], ends: &[f64]) -> Res<Sexp> {
-    let (mut x, mut b, mut e) = (std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
-    let n = ends.len();
-    status(unsafe { dtatools_packed_elt(parent, i as isize, bytes.len() as isize, n as isize, &mut x, &mut b, &mut e) })?;
+/// A packed string column (see strings.c), as element `i` of the list
+/// `parent`, holding the gathered strings.
+fn packed_elt(parent: Sexp, i: usize, s: &Strings) -> Res<Sexp> {
+    let (mut x, mut b, mut e, mut c) =
+        (std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
+    let n = s.ends.len();
+    let rows = s.dict.as_ref().map_or(-1, |d| d.codes.len() as isize);
+    status(unsafe {
+        dtatools_packed_elt(parent, i as isize, s.bytes.len() as isize, n as isize, rows, &mut x, &mut b, &mut e, &mut c)
+    })?;
     unsafe {
-        std::slice::from_raw_parts_mut(RAW(b), bytes.len()).copy_from_slice(bytes);
-        std::slice::from_raw_parts_mut(REAL(e), n).copy_from_slice(ends);
+        std::slice::from_raw_parts_mut(RAW(b), s.bytes.len()).copy_from_slice(&s.bytes);
+        for (d, &end) in std::slice::from_raw_parts_mut(REAL(e), n).iter_mut().zip(&s.ends) {
+            *d = end as f64;
+        }
+        if let Some(d) = &s.dict {
+            std::slice::from_raw_parts_mut(INTEGER(c), d.codes.len()).copy_from_slice(&d.codes);
+        }
     }
     Ok(x)
 }
@@ -291,6 +304,7 @@ pub unsafe extern "C" fn dtatools_read(
         let meta = reader.metadata().clone();
         let nobs = usize::try_from(meta.nobs).map_err(|_| Fail::Message("too many rows".into()))?;
         let out = alloc_elt(holder, 0, VECSXP, cols.len())?;
+        let limits = DictLimits::from_env();
         let mut targets = Vec::with_capacity(cols.len());
         for (k, &c) in cols.iter().enumerate() {
             let var = meta.variables.get(c).ok_or_else(|| Fail::Message(format!("there is no column {}", c + 1)))?;
@@ -301,7 +315,7 @@ pub unsafe extern "C" fn dtatools_read(
                 set_attributes(x, var, sets.iter().find(|s| s.name == var.value_labels))?;
                 Target::Numbers(x)
             } else {
-                Target::Strings { bytes: Vec::new(), ends: Vec::with_capacity(nobs) }
+                Target::Strings(Strings::new(limits, nobs))
             };
             targets.push((target, var));
         }
@@ -321,8 +335,8 @@ pub unsafe extern "C" fn dtatools_read(
                         }
                         Ok(())
                     }
-                    (Target::Strings { bytes: all, ends: all_ends }, Column::Strings { bytes, ends, binary }) => {
-                        gather(&var.name, all, all_ends, bytes, ends, binary)
+                    (Target::Strings(s), Column::Strings { bytes, ends, binary }) => {
+                        s.gather(&var.name, bytes, ends, binary)
                     }
                     _ => Err(Fail::Message("internal: column kinds differ".into())),
                 };
@@ -339,9 +353,13 @@ pub unsafe extern "C" fn dtatools_read(
             (Ok(_), None) => {}
         }
         for (k, (target, var)) in targets.into_iter().enumerate() {
-            if let Target::Strings { bytes, ends } = target {
-                let x = packed_elt(out, k, &bytes, &ends)?;
-                drop((bytes, ends));
+            if let Target::Strings(mut s) = target {
+                if let Some(d) = &mut s.dict {
+                    d.table = HashMap::default();
+                    d.next = Vec::new();
+                }
+                let x = packed_elt(out, k, &s)?;
+                drop(s);
                 set_attributes(x, var, None)?;
             }
         }
@@ -353,37 +371,265 @@ pub unsafe extern "C" fn dtatools_read(
 enum Target {
     /// The R double vector it fills.
     Numbers(Sexp),
-    /// Its text so far, and each value's end offset in it.
-    Strings { bytes: Vec<u8>, ends: Vec<f64> },
+    /// The strings gathered so far.
+    Strings(Strings),
 }
 
-/// Append a chunk of a string column to `all` and `all_ends`, checking
-/// that R can hold every value.
-fn gather(
-    name: &str,
-    all: &mut Vec<u8>,
-    all_ends: &mut Vec<f64>,
-    bytes: &[u8],
-    ends: &[usize],
-    binary: &[bool],
-) -> Res<()> {
-    if binary.iter().any(|&b| b) {
-        return Err(Fail::Message(format!("{name} holds binary strLs, which dtatools does not read")));
+/// When a string column stops building a dictionary (see `Strings`).
+#[derive(Clone, Copy)]
+struct DictLimits {
+    /// Rows seen before the share of distinct values is judged.
+    window: usize,
+    /// The most distinct values a dictionary may hold.
+    limit: usize,
+}
+
+impl DictLimits {
+    /// The defaults, or smaller values from `DTATOOLS_DICT_WINDOW` and
+    /// `DTATOOLS_DICT_LIMIT`, which the tests set.
+    fn from_env() -> Self {
+        let get = |name: &str, default: usize| {
+            std::env::var(name).ok().and_then(|v| v.parse().ok()).map_or(default, |v: usize| v.min(default))
+        };
+        DictLimits { window: get("DTATOOLS_DICT_WINDOW", 65_536), limit: get("DTATOOLS_DICT_LIMIT", i32::MAX as usize) }
     }
-    if bytes.contains(&0) {
-        return Err(Fail::Message(format!("{name} holds a string with an embedded nul, which R cannot hold")));
+}
+
+/// A string column's text as it is read. While `dict` is set, `bytes`
+/// and `ends` hold the distinct values in order of first appearance and
+/// `dict.codes` each row's index among them, so R will make one string
+/// per distinct value. A column whose values are mostly distinct gives
+/// the dictionary up: `bytes` and `ends` then hold every row's value.
+struct Strings {
+    bytes: Vec<u8>,
+    ends: Vec<usize>,
+    dict: Option<Dict>,
+    limits: DictLimits,
+    /// The column's row count, to reserve per-row vectors once.
+    rows: usize,
+}
+
+struct Dict {
+    codes: Vec<i32>,
+    /// Recently seen values by their quick hash's top bits: a hit skips
+    /// the table (most rows, when there are few distinct values).
+    front: Vec<Front>,
+    /// A value's hash to the newest entry with that hash; `next` chains
+    /// to older entries with the same hash (`NONE` ends a chain).
+    table: HashMap<u64, u32, BuildHasherDefault<Mixed>>,
+    next: Vec<u32>,
+}
+
+const NONE: u32 = u32::MAX;
+
+/// A front cache slot: a dictionary index, and for a value of at most
+/// eight bytes its bytes as a word, so a hit needs no other memory.
+#[derive(Clone, Copy)]
+struct Front {
+    index: u32,
+    len: u32,
+    word: u64,
+}
+/// The longest chain a lookup may walk; a longer one (only a file built
+/// to make values collide) makes the column give up its dictionary.
+const MAX_CHAIN: usize = 32;
+/// Slots in `Dict::front`.
+const FRONT: usize = 4096;
+
+impl Strings {
+    fn new(limits: DictLimits, rows: usize) -> Self {
+        let dict = Dict { codes: Vec::with_capacity(rows), front: vec![Front { index: NONE, len: 0, word: 0 }; FRONT], table: HashMap::default(), next: Vec::new() };
+        Strings { bytes: Vec::new(), ends: Vec::new(), dict: Some(dict), limits, rows }
     }
-    let base = all.len();
-    let mut from = 0;
-    for &end in ends {
-        if end - from > i32::MAX as usize {
-            return Err(Fail::Message(format!("{name} holds a string longer than R allows")));
+
+    fn value(&self, i: usize) -> &[u8] {
+        let from = if i == 0 { 0 } else { self.ends[i - 1] };
+        &self.bytes[from..self.ends[i]]
+    }
+
+    fn push(&mut self, v: &[u8]) {
+        self.bytes.extend_from_slice(v);
+        self.ends.push(self.bytes.len());
+    }
+
+    /// Append a chunk, checking that R can hold every value.
+    fn gather(&mut self, name: &str, bytes: &[u8], ends: &[usize], binary: &[bool]) -> Res<()> {
+        if binary.iter().any(|&b| b) {
+            return Err(Fail::Message(format!("{name} holds binary strLs, which dtatools does not read")));
         }
-        from = end;
-        all_ends.push((base + end) as f64);
+        if bytes.contains(&0) {
+            return Err(Fail::Message(format!("{name} holds a string with an embedded nul, which R cannot hold")));
+        }
+        let mut from = 0;
+        for (k, &end) in ends.iter().enumerate() {
+            if end - from > i32::MAX as usize {
+                return Err(Fail::Message(format!("{name} holds a string longer than R allows")));
+            }
+            if self.dict.is_none() {
+                // Plain: the rest of the chunk in one copy.
+                let base = self.bytes.len() - from;
+                for (j, &e) in ends[k..].iter().enumerate() {
+                    let start = if k + j == 0 { 0 } else { ends[k + j - 1] };
+                    if e - start > i32::MAX as usize {
+                        return Err(Fail::Message(format!("{name} holds a string longer than R allows")));
+                    }
+                    self.ends.push(base + e);
+                }
+                self.bytes.extend_from_slice(&bytes[from..]);
+                return Ok(());
+            }
+            let v = &bytes[from..end];
+            from = end;
+            if !self.add_coded(v) {
+                self.push(v);
+            }
+        }
+        Ok(())
     }
-    all.extend_from_slice(bytes);
-    Ok(())
+
+    /// Add a row through the dictionary; false if the dictionary was
+    /// given up, leaving the row to be added plain.
+    fn add_coded(&mut self, v: &[u8]) -> bool {
+        let word = if v.len() <= 8 { short_word(v) } else { 0 };
+        let quick = quick_hash(v, word);
+        let slot = (quick.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> (64 - FRONT.trailing_zeros())) as usize;
+        let cached = self.dict.as_ref().expect("a dictionary").front[slot];
+        let short = v.len() <= 8;
+        if cached.index != NONE
+            && cached.len as usize == v.len()
+            && (if short { cached.word == word } else { self.value(cached.index as usize) == v })
+        {
+            self.dict.as_mut().expect("a dictionary").codes.push(cached.index as i32);
+            return true;
+        }
+        let entry = |index: u32| Front { index, len: v.len() as u32, word };
+        let hash = mix(quick);
+        let found = match self.lookup(v, hash) {
+            Some(found) => found,
+            None => {
+                self.give_up();
+                return false;
+            }
+        };
+        let d = self.dict.as_mut().expect("a dictionary");
+        if let Some(index) = found {
+            d.front[slot] = entry(index);
+            d.codes.push(index as i32);
+            return true;
+        }
+        // A new distinct value.
+        let (rows, distinct) = (d.codes.len() + 1, self.ends.len() + 1);
+        if distinct > self.limits.limit || (rows >= self.limits.window && distinct * 2 > rows) {
+            self.give_up();
+            return false;
+        }
+        let index = self.ends.len() as u32;
+        d.next.push(d.table.insert(hash, index).unwrap_or(NONE));
+        d.front[slot] = entry(index);
+        d.codes.push(index as i32);
+        self.push(v);
+        true
+    }
+
+    /// The dictionary index of `v`: `Some(None)` if it is new, `None` if
+    /// the chain to walk is too long.
+    fn lookup(&self, v: &[u8], hash: u64) -> Option<Option<u32>> {
+        let d = self.dict.as_ref().expect("a dictionary");
+        let mut at = d.table.get(&hash).copied().unwrap_or(NONE);
+        for _ in 0..=MAX_CHAIN {
+            if at == NONE {
+                return Some(None);
+            }
+            if self.value(at as usize) == v {
+                return Some(Some(at));
+            }
+            at = d.next[at as usize];
+        }
+        None
+    }
+
+    /// Replace the dictionary by every row's value, written out plain.
+    fn give_up(&mut self) {
+        let d = self.dict.take().expect("a dictionary");
+        let mut plain = Strings {
+            bytes: Vec::new(),
+            ends: Vec::with_capacity(self.rows),
+            dict: None,
+            limits: self.limits,
+            rows: self.rows,
+        };
+        for &c in &d.codes {
+            plain.push(self.value(c as usize));
+        }
+        self.bytes = plain.bytes;
+        self.ends = plain.ends;
+    }
+}
+
+/// A quick hash of a value, eight bytes at a time (multiply and rotate,
+/// as rustc's FxHash, like the writer's). Its low bits are weak; `mix`
+/// it for a table, or take its top bits after a multiply.
+/// `word` is `short_word(v)` when `v` is at most eight bytes.
+fn quick_hash(v: &[u8], word: u64) -> u64 {
+    let mut h = v.len() as u64;
+    let mut add = |w: u64| h = (h.rotate_left(5) ^ w).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    if v.len() <= 8 {
+        add(word);
+        return h;
+    }
+    let mut chunks = v.chunks_exact(8);
+    for c in &mut chunks {
+        add(u64::from_le_bytes(c.try_into().unwrap_or_default()));
+    }
+    add(short_word(chunks.remainder()));
+    h
+}
+
+/// The bytes of `v` (at most eight) as a little-endian word, zero-padded:
+/// two values of one length are equal exactly when their words are.
+fn short_word(v: &[u8]) -> u64 {
+    let n = v.len();
+    let u16_at = |i: usize| u16::from_le_bytes([v[i], v[i + 1]]) as u64;
+    let u32_at = |i: usize| u32::from_le_bytes([v[i], v[i + 1], v[i + 2], v[i + 3]]) as u64;
+    match n {
+        0 => 0,
+        1 => v[0] as u64,
+        2 => u16_at(0),
+        3 => u16_at(0) | (v[2] as u64) << 16,
+        // Two overlapping reads; the overlap holds the same bytes.
+        4..=7 => u32_at(0) | u32_at(n - 4) << (8 * (n - 4)),
+        _ => u64::from_le_bytes([v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]]),
+    }
+}
+
+/// MurmurHash3's 64-bit finalizer: every bit of the result depends on
+/// every bit of `h`.
+fn mix(mut h: u64) -> u64 {
+    h ^= h >> 33;
+    h = h.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    h ^= h >> 33;
+    h = h.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+    h ^ (h >> 33)
+}
+
+/// A hasher for keys that are already hashes.
+#[derive(Default)]
+struct Mixed(u64);
+
+impl Hasher for Mixed {
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.0 = (self.0 << 8) | b as u64;
+        }
+    }
+
+    fn write_u64(&mut self, n: u64) {
+        self.0 = n;
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
 }
 
 /// The missing code of an R double: 0 for a number, 1 for `.` (NA_real_

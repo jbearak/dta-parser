@@ -42,36 +42,59 @@ passes over every byte of the file.
 
 | read | seconds | peak RSS MB |
 |---|---|---|
-| long.dta, all 12 variables: dtatools | 0.45 | 1447 |
-| long.dta, all 12 variables: haven | 19.61 | 2107 |
-| long.dta, all 12 variables: readstata13 | 18.49 | 2102 |
+| long.dta, all 12 variables: dtatools | 0.47 | 1278 |
+| long.dta, all 12 variables: haven | 19.49 | 2107 |
+| long.dta, all 12 variables: readstata13 | 18.62 | 2102 |
 | long.dta, all 12 variables: pandas | 2.40 | 3962 |
-| long.dta, all 12 variables: npm | 2.20 | 1902 |
-| long.dta, all, then every string compared: dtatools | 5.15 | 2112 |
-| long.dta, all, then every string compared: pandas | 2.73 | 3962 |
-| long.dta, all, then every string compared: npm | 2.28 | 1926 |
-| long.dta, all, then head() and a filter: dtatools | 0.57 | 1536 |
+| long.dta, all 12 variables: npm | 2.19 | 1925 |
+| long.dta, all, then every string compared: dtatools | 5.02 | 1969 |
+| long.dta, all, then every string compared: pandas | 2.75 | 3962 |
+| long.dta, all, then every string compared: npm | 2.30 | 1925 |
+| long.dta, all, then head() and a filter: dtatools | 0.55 | 1291 |
 | wide.dta, 5 of 400 variables: dtatools | 0.24 | 154 |
-| wide.dta, 5 of 400 variables: haven | 1.76 | 176 |
+| wide.dta, 5 of 400 variables: haven | 1.75 | 176 |
 | wide.dta, 5 of 400 variables: readstata13 | 1.21 | 150 |
 | wide.dta, 5 of 400 variables: pandas | 2.80 | 9285 |
 | wide.dta, 5 of 400 variables: npm | 0.22 | 254 |
 | wide.dta, 200 rows at the start: npm | 0.005 | 57 |
-| wide.dta, 200 rows at the end: npm | 0.004 | 57 |
+| wide.dta, 200 rows at the end: npm | 0.005 | 57 |
 
 dtatools returns string columns packed (ADR 0010): their text stays as
 read, and R strings are made when values are used. So its plain read
-of `long.dta` is 5× faster than npm's and 43× faster than haven's, and
+of `long.dta` is 4.7× faster than npm's and 41× faster than haven's, and
 looking at and filtering the data stays cheap. But every other tool
 makes its strings inside the read, so the like-for-like number is the
 read followed by a comparison over every string. There dtatools takes
-5.15 s, 2.3× npm and 1.9× pandas, still 3.8× faster than haven's
+5.02 s, 2.2× npm and 1.8× pandas, still 3.9× faster than haven's
 plain read. Nearly all of that is R adding 10M distinct strings, in
 random order, to its global string table (about 4 s on this machine,
 with no garbage collection running). Python and V8 strings are not
 interned, so pandas and npm do not pay it.
 
 Before strings were packed, dtatools read `long.dta` in 5.50 s.
+
+### Survey-shaped string columns (`bench/fresh_case.R`)
+
+`groups.dta` (from `make_large.R`): 15M rows, a string column of 300
+values in random order and a byte column of 5 values plus `.`. Each task
+starts from a fresh read, so no strings are made yet; "again" times a
+second `dta_group_id` after a first. Before is dtatools at ad40bba
+(packed columns, ADR 0010); after adds dictionary columns (ADR 0011).
+Medians of five fresh processes.
+
+| task | before s | before MB | after s | after MB |
+|---|---|---|---|---|
+| read | 0.34 | 952 | 0.33 | 344 |
+| read, then `dta_group_id(s, a, missing = TRUE)` | 2.23 | 2210 | 1.24 | 1660 |
+| read, then `tab(s)` | 1.27 | 1594 | 0.36 | 344 |
+| a second `dta_group_id` | 1.25 | 2327 | 0.79 | 1662 |
+
+A dictionary column holds each distinct value once plus a code per row,
+so R makes 300 strings instead of 15M, and `tab`, `dta_group_id` and
+`is_missing` work on the codes. A column whose values are mostly
+distinct, like `long.dta`'s `s2`, gives the dictionary up after 65,536
+rows and reads as before; the full read of `long.dta` stayed at
+0.46–0.47 s.
 
 The downstream workload, 3 of 302 variables from an 11.8 GB
 release-115 file with 15.1M rows (warm cache), takes 0.8 s and 464 MB

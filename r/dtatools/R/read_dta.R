@@ -14,6 +14,9 @@
 #'   looking at, slicing or filtering a few rows stays cheap; the first
 #'   operation over every value of a column with many distinct values
 #'   (`==`, `unique()`, sorting, grouping) pays the cost of making them.
+#'   A column with few distinct values is kept as those values and a
+#'   code per row, so R makes one string per distinct value, and [tab()],
+#'   [dta_group_id()] and [is_missing()] work on the codes.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL) {
   file <- normalizePath(file, mustWork = TRUE)
