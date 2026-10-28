@@ -350,3 +350,4 @@ export function writeDta(data: WriteDataset): Uint8Array {
   }
   return out;
 }
+export { formatValue } from "./format";
