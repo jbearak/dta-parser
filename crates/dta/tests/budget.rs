@@ -50,3 +50,13 @@ fn a_strl_larger_than_the_budget_is_still_read_whole() {
     assert_eq!(n, 1);
     assert_eq!(got, vec![3000]);
 }
+
+#[test]
+fn the_budget_allows_for_text_growing_when_decoded() {
+    // haven_113's text is str10, read as Windows-1252: a row can decode to
+    // 30 bytes of UTF-8 plus its offset, so a 20-byte budget takes one row.
+    let mut r = open("haven_113.dta");
+    let col = r.metadata().variables.iter().position(|v| v.name == "text").unwrap();
+    let n = r.read_chunks(&[col], 0, 6, Some(20), |_, _| Ok(())).unwrap();
+    assert_eq!(n, 1);
+}

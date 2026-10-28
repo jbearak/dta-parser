@@ -217,12 +217,14 @@ impl<S: Source> Reader<S> {
         if has_strls && self.strls.is_none() {
             self.strls = Some(self.index_strls()?);
         }
-        // Decoded bytes per row, not counting strL payloads.
+        // Decoded bytes per row, not counting strL payloads. Text can grow
+        // up to 3x when decoded to UTF-8 (a Windows-1252 byte, or an
+        // invalid byte replaced by U+FFFD).
         let word = std::mem::size_of::<usize>();
         let decoded_row: usize = columns
             .iter()
             .map(|&c| match self.meta.variables[c].storage {
-                StorageType::Str(w) => w as usize + word,
+                StorageType::Str(w) => 3 * w as usize + word,
                 StorageType::StrL => 1 + word,
                 _ => 9,
             })
@@ -249,7 +251,7 @@ impl<S: Source> Reader<S> {
                     used += decoded_row;
                     for &c in columns.iter().filter(|&&c| self.meta.variables[c].storage == StorageType::StrL) {
                         let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
-                        used += self.strl_entry(&cell)?.map_or(0, |e| e.len as usize);
+                        used = used.saturating_add(self.strl_entry(&cell)?.map_or(0, |e| 3 * e.len as usize));
                     }
                     take += 1;
                 }
@@ -390,7 +392,14 @@ impl<S: Source> Reader<S> {
         for cell in refs {
             let mut is_binary = false;
             if let Some(entry) = self.strl_entry(cell)? {
-                payload.resize(entry.len as usize, 0);
+                // A strL can declare up to 4 GiB; in wasm that may not fit,
+                // which must be an error, not a trap.
+                let len = entry.len as usize;
+                let room = len.saturating_mul(3);
+                if payload.try_reserve(len.saturating_sub(payload.len())).is_err() || bytes.try_reserve(room).is_err() {
+                    return Err(Error::new(format!("a strL of {len} bytes is too large to read here")));
+                }
+                payload.resize(len, 0);
                 self.source.read_at(entry.offset, &mut payload)?;
                 is_binary = entry.binary;
                 if is_binary {
@@ -511,7 +520,9 @@ impl<S: Source> Reader<S> {
             let Some(rest) = usize::try_from(off).ok().and_then(|o| txt.get(o..)) else {
                 return Err(Error::at(base, "value label text offset out of range"));
             };
-            let code = int_code(val as i64, missing::LONG_MISSING as i64, self.layout.extended_missing);
+            // Before 113 only the type's maximum is missing, as in `decode`.
+            let first = if self.layout.extended_missing { missing::LONG_MISSING } else { i32::MAX };
+            let code = int_code(val as i64, first as i64, self.layout.extended_missing);
             labels.push(ValueLabel {
                 value: if code == 0 { val as f64 } else { f64::NAN },
                 missing: code,
