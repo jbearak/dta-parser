@@ -32,31 +32,33 @@ warm; writes end in the cache either way.
 Files from `bench/make_large.R`, written by dtatools with a fixed seed:
 `long.dta` (10M rows, 12 variables of every storage type, 0.74 GB) and
 `wide.dta` (1.5M rows, 400 doubles, 4.8 GB, past 4 GiB). readstata13
-0.11.0, pandas 3.0.5, Node 26. The page cache was warm. A cold-cache run
+0.11.0, pandas 3.0.5, Node 26. Timings start after each tool's packages are loaded
+and stop when the read returns (for npm, opening the file is inside).
+The page cache was warm. A cold-cache run
 needs `purge`, which needs admin rights this machine's runs did not have.
 Rows are stored row-major, so even a 5-variable read passes over every
 byte of the file.
 
 | read | seconds | peak RSS MB |
 |---|---|---|
-| long.dta, all 12 variables: dtatools | 5.49 | 1706 |
-| long.dta, all 12 variables: haven | 19.70 | 2128 |
-| long.dta, all 12 variables: readstata13 | 18.02 | 2084 |
-| long.dta, all 12 variables: pandas | 2.51 | 3962 |
-| long.dta, all 12 variables: npm | 2.21 | 1913 |
-| wide.dta, 5 of 400 variables: dtatools | 0.29 | 158 |
-| wide.dta, 5 of 400 variables: haven | 1.84 | 178 |
-| wide.dta, 5 of 400 variables: readstata13 | 1.24 | 147 |
-| wide.dta, 5 of 400 variables: pandas | 2.79 | 9286 |
+| long.dta, all 12 variables: dtatools | 5.50 | 1761 |
+| long.dta, all 12 variables: haven | 19.46 | 2107 |
+| long.dta, all 12 variables: readstata13 | 18.26 | 2102 |
+| long.dta, all 12 variables: pandas | 2.46 | 3962 |
+| long.dta, all 12 variables: npm | 2.15 | 1915 |
+| wide.dta, 5 of 400 variables: dtatools | 0.24 | 154 |
+| wide.dta, 5 of 400 variables: haven | 1.75 | 176 |
+| wide.dta, 5 of 400 variables: readstata13 | 1.20 | 150 |
+| wide.dta, 5 of 400 variables: pandas | 2.80 | 9285 |
 | wide.dta, 5 of 400 variables: npm | 0.22 | 254 |
-| wide.dta, 200 rows at the start: npm | 0.004 | 57 |
+| wide.dta, 200 rows at the start: npm | 0.005 | 57 |
 | wide.dta, 200 rows at the end: npm | 0.004 | 57 |
 
 Of dtatools' 5.5 s on `long.dta`, 4.6 s go to one variable of 10M
 distinct strings. That is R making 10M new strings, which haven and
 readstata13 pay too. The other 11 variables take 0.55 s. Against the
 plan's target of 1.5× the fastest full read: within R, dtatools reads
-3.3–3.6× faster than haven and readstata13. Across languages, R's
+3.3–3.5× faster than haven and readstata13. Across languages, R's
 string cost puts it outside 1.5× of npm and pandas on this file. The npm
 package reads fastest of all five.
 
@@ -73,8 +75,8 @@ of 300 values.
 |---|---|
 | `dta_group_tag(a, s, missing = TRUE)` | 0.80 |
 | `dta_group_id(a, s, missing = TRUE)` | 0.69 |
-| `tab(a, missing = TRUE)` | 0.25 |
-| `unique(a)` | 0.09 |
+| `tab(a, missing = TRUE)` | 0.24 |
+| `unique(a)` | 0.10 |
 | `a == 3` | 0.05 |
 
 All of them work on one order key per value (ADR 0009). Grouping is a

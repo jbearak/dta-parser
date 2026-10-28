@@ -4,6 +4,9 @@
 args <- commandArgs(trailingOnly = TRUE)
 tool <- args[[1]]; task <- args[[2]]; file <- args[[3]]
 cols <- c("V1", "V100", "V200", "V300", "V400")
+# Load packages before the clock starts, as the Python and JS runs do.
+invisible(loadNamespace(tool))
+invisible(loadNamespace("tidyselect"))
 elapsed <- system.time(switch(paste(tool, task),
   "dtatools full" = dtatools::read_dta(file),
   "dtatools five" = dtatools::read_dta(file, col_select = cols),

@@ -3,7 +3,11 @@
 # writes, with dtatools, haven, readstata13, pandas and the npm package.
 # Each read is a fresh process under /usr/bin/time; the page cache is
 # warm (each file is read once first).
-# Run from the repository root, with dtatools installed and js built:
+# Needs: dtatools, haven and readstata13 installed in R; a python3 with
+# pandas (pip install pandas); the npm package built (scripts/build-wasm.sh,
+# then npm ci && npm run build in js/). Make the files first with
+#   Rscript bench/make_large.R <dir>
+# then run from the repository root:
 #   sh bench/read.sh <dir>
 set -e
 dir=$1
