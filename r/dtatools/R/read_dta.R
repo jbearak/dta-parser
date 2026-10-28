@@ -16,7 +16,15 @@ read_dta <- function(file, col_select = NULL, encoding = NULL) {
   cols <- seq_along(names)
   select <- rlang::enquo(col_select)
   if (!rlang::quo_is_null(select)) {
-    cols <- unname(tidyselect::eval_select(select, stats::setNames(as.list(cols), names)))
+    # A character vector, literal or in a variable, selects by name;
+    # anything else (all_of(), starts_with(), ...) goes to tidyselect.
+    chosen <- tryCatch(rlang::eval_tidy(select), error = function(e) NULL, warning = function(w) NULL)
+    if (is.character(chosen)) {
+      cols <- match(chosen, names)
+      if (anyNA(cols)) stop("read_dta: no column named ", paste(chosen[is.na(cols)], collapse = ", "))
+    } else {
+      cols <- unname(tidyselect::eval_select(select, stats::setNames(as.list(cols), names)))
+    }
   }
   values <- .Call(C_dta_read, file, as.integer(cols - 1L), encoding)
   names(values) <- names[cols]
