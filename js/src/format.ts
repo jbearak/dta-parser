@@ -22,9 +22,11 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  * - `%g` approximates Stata's choice of digits. `%tC` is treated as
  *   `%tc` (leap seconds are not counted).
  * - Date masks take `CC`, `YY`, `NN`, `nn`, `DD`, `dd`, `Mon`, `mon`,
- *   `Month`, `month`, `HH`, `hh`, `MM`, `SS`, `.s`, `.ss` and `.sss`.
+ *   `Month`, `month`, `HH`, `hh`, `MM`, `SS`, `.s`, `.ss`, `.sss`, and
+ *   for weekly, quarterly and half-yearly dates `WW`, `ww`, `q` and `h`.
  *   `_` stands for a space, `!x` for a literal `x`, and any other
- *   character is copied.
+ *   character is copied. Pieces a unit lacks (the day of a %tm) are left
+ *   out. The older `%d` formats show as `%td` does, whatever their mask.
  *
  * An unrecognised format falls back to the plain number.
  */
@@ -37,9 +39,9 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
   if (!Number.isFinite(cell)) return ".";
 
   const time = TIME.exec(format);
-  if (time && (format.startsWith("%t") || format.startsWith("%d") || format.startsWith("%-t"))) {
-    return formatTime(cell, time[2], time[3]);
-  }
+  if (time && (format.startsWith("%t") || format.startsWith("%-t"))) return formatTime(cell, time[2], time[3]);
+  // The older %d formats: their masks are shown as %td's default.
+  if (format.startsWith("%d")) return formatTime(cell, "d", "");
   const num = NUMBER.exec(format);
   if (num) {
     const width = num[3] ? Number(num[3]) : 9;
@@ -60,7 +62,11 @@ function general(v: number, width: number, digits: number): string {
     const [mantissa, power] = exponential(v, Math.max(0, precision - 1)).split("e");
     return `${trimZeros(mantissa)}e${power}`;
   }
-  return trimZeros(v.toPrecision(precision));
+  const text = v.toPrecision(precision);
+  if (!text.includes("e")) return trimZeros(text);
+  // toPrecision may round up into an exponent (9999999999.5 to 1.0e+10).
+  const [mantissa, power] = text.split("e");
+  return `${trimZeros(mantissa)}e${power.replace(/^([+-])(\d)$/, "$10$2")}`;
 }
 
 function exponential(v: number, digits: number): string {
@@ -81,54 +87,85 @@ function commas(s: string): string {
 
 const pad = (n: number, width = 2) => String(n).padStart(width, "0");
 
+/** The pieces of a date a mask can show; units without them leave them out. */
+interface When {
+  year: number;
+  month?: number; // 0 to 11
+  day?: number;
+  hour?: number;
+  minute?: number;
+  second?: number;
+  ms?: number;
+  quarter?: number;
+  half?: number;
+  week?: number;
+}
+
 function formatTime(v: number, unit: string, mask: string): string {
+  const year = (per: number) => 1960 + Math.floor(Math.floor(v) / per);
   switch (unit) {
     case "d":
-      return dateTime(new Date(EPOCH + Math.round(v) * DAY_MS), mask || "DDmonCCYY");
+      return render(fromDate(new Date(EPOCH + Math.round(v) * DAY_MS)), mask || "DDmonCCYY");
     case "c":
     case "C":
-      return dateTime(new Date(EPOCH + v), mask || "DDmonCCYY_HH:MM:SS");
+      // Whole milliseconds, as pandas reads them.
+      return render(fromDate(new Date(EPOCH + Math.floor(v))), mask || "DDmonCCYY_HH:MM:SS");
     case "w":
-      return `${1960 + Math.floor(v / 52)}w${mod(v, 52) + 1}`;
+      return render({ year: year(52), week: mod(v, 52) + 1 }, mask || "CCYY!www");
     case "m":
-      return `${1960 + Math.floor(v / 12)}m${mod(v, 12) + 1}`;
+      return render({ year: year(12), month: mod(v, 12) }, mask || "CCYY!mnn");
     case "q":
-      return `${1960 + Math.floor(v / 4)}q${mod(v, 4) + 1}`;
+      return render({ year: year(4), quarter: mod(v, 4) + 1 }, mask || "CCYY!qq");
     case "h":
-      return `${1960 + Math.floor(v / 2)}h${mod(v, 2) + 1}`;
+      return render({ year: year(2), half: mod(v, 2) + 1 }, mask || "CCYY!hh");
     default:
-      return String(Math.round(v));
+      return render({ year: Math.round(v) }, mask || "CCYY");
   }
+}
+
+function fromDate(t: Date): When {
+  return {
+    year: t.getUTCFullYear(),
+    month: t.getUTCMonth(),
+    day: t.getUTCDate(),
+    hour: t.getUTCHours(),
+    minute: t.getUTCMinutes(),
+    second: t.getUTCSeconds(),
+    ms: t.getUTCMilliseconds(),
+  };
 }
 
 function mod(a: number, b: number): number {
   return ((Math.floor(a) % b) + b) % b;
 }
 
-const MASK = /^(\.sss|\.ss|\.s|Month|month|Mon|mon|CC|YY|NN|nn|DD|dd|HH|hh|MM|SS|!.|_)/;
+const MASK = /^(\.sss|\.ss|\.s|Month|month|Mon|mon|CC|YY|NN|nn|DD|dd|HH|hh|MM|SS|WW|ww|q|h|!.|_)/;
 
-function dateTime(t: Date, mask: string): string {
-  const year = t.getUTCFullYear();
-  const month = t.getUTCMonth();
-  const ms = t.getUTCMilliseconds();
+function render(w: When, mask: string): string {
+  const opt = (n: number | undefined, f: (n: number) => string) => (n === undefined ? "" : f(n));
+  const name = (n: number | undefined, len?: number) => opt(n, (m) => MONTHS[m].slice(0, len));
   const parts: Record<string, string> = {
-    CC: pad(Math.floor(year / 100)),
-    YY: pad(year % 100),
-    NN: pad(month + 1),
-    nn: String(month + 1),
-    DD: pad(t.getUTCDate()),
-    dd: String(t.getUTCDate()),
-    Mon: MONTHS[month].slice(0, 3),
-    mon: MONTHS[month].slice(0, 3).toLowerCase(),
-    Month: MONTHS[month],
-    month: MONTHS[month].toLowerCase(),
-    HH: pad(t.getUTCHours()),
-    hh: String(t.getUTCHours()),
-    MM: pad(t.getUTCMinutes()),
-    SS: pad(t.getUTCSeconds()),
-    ".s": `.${Math.floor(ms / 100)}`,
-    ".ss": `.${pad(Math.floor(ms / 10))}`,
-    ".sss": `.${pad(ms, 3)}`,
+    CC: pad(Math.floor(w.year / 100)),
+    YY: pad(mod(w.year, 100)),
+    NN: opt(w.month, (m) => pad(m + 1)),
+    nn: opt(w.month, (m) => String(m + 1)),
+    DD: opt(w.day, pad),
+    dd: opt(w.day, String),
+    Mon: name(w.month, 3),
+    mon: name(w.month, 3).toLowerCase(),
+    Month: name(w.month),
+    month: name(w.month).toLowerCase(),
+    HH: opt(w.hour, pad),
+    hh: opt(w.hour, String),
+    MM: opt(w.minute, pad),
+    SS: opt(w.second, pad),
+    ".s": opt(w.ms, (ms) => `.${Math.floor(ms / 100)}`),
+    ".ss": opt(w.ms, (ms) => `.${pad(Math.floor(ms / 10))}`),
+    ".sss": opt(w.ms, (ms) => `.${pad(ms, 3)}`),
+    WW: opt(w.week, pad),
+    ww: opt(w.week, String),
+    q: opt(w.quarter, String),
+    h: opt(w.half, String),
     _: " ",
   };
   let out = "";

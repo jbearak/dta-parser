@@ -5,7 +5,7 @@ Node, synchronously. The format is implemented once, in Rust, and runs
 here as an embedded wasm module.
 
 ```ts
-import { openDta, formatValue, MISSING, isMissing } from "@jbearak/dta-parser";
+import { openDta, formatValue, MISSING, type Missing } from "@jbearak/dta-parser";
 import { openDtaFile, writeDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");       // or openDta(bytes)
@@ -19,7 +19,7 @@ r.close();
 
 writeDtaFile("out.dta", {
   label: "Example",
-  valueLabels: { yesno: new Map([[0, "No"], [1, "Yes"], [MISSING[".d"], "Don't know"]]) },
+  valueLabels: { yesno: new Map<number | Missing, string>([[0, "No"], [1, "Yes"], [MISSING[".d"], "Don't know"]]) },
   variables: [
     { name: "answer", type: "byte", values: [1, 0, MISSING[".d"]], valueLabels: "yesno" },
     { name: "note", values: ["a", "b", "c"] },

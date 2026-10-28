@@ -15,6 +15,8 @@ test("numbers by %f, %g, %e, with and without commas", () => {
   assert.equal(formatValue(0.000012345, "%9.0g"), "1.2345e-05");
   assert.equal(formatValue(123456.789, "%10.3e"), "1.235e+05");
   assert.equal(formatValue(2.5, "%9.3g"), "2.5");
+  assert.equal(formatValue(9999999999.5, "%12.0g"), "1e+10");
+  assert.equal(formatValue(-1234.5, "%12.2fc"), "-1,234.50");
 });
 
 test("missing values and labels", () => {
@@ -44,4 +46,12 @@ test("dates and times, default and masked", () => {
   assert.equal(formatValue(3, "%th"), "1961h2");
   assert.equal(formatValue(2024, "%ty"), "2024");
   assert.equal(formatValue(22949, "%tdDD!/NN!/CCYY"), "31/10/2022");
+  assert.equal(formatValue(999.5, "%tcHH:MM:SS.sss"), "00:00:00.999");
+  assert.equal(formatValue(0, "%tmCCYY"), "1960");
+  assert.equal(formatValue(757, "%tmMon_CCYY"), "Feb 2023");
+  assert.equal(formatValue(5, "%tqCCYY_!qq"), "1961 q2");
+  assert.equal(formatValue(-1, "%twCCYY-WW"), "1959-52");
+  assert.equal(formatValue(-3, "%td"), "29dec1959");
+  // The older %d formats show as %td.
+  assert.equal(formatValue(22949, "%dD_m_Y"), "31oct2022");
 });
