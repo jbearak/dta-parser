@@ -14,9 +14,9 @@ test_that("comparisons follow Stata and never return NA", {
   expect_identical(x == TRUE, c(TRUE, FALSE, FALSE, FALSE, FALSE))
 })
 
-test_that("arithmetic gives plain doubles, every code as NA", {
-  expect_identical(x + 1, c(2, NA, NA, NA, 6))
-  expect_false(inherits(x * 2, "dta_num"))
+test_that("arithmetic gives new dta_num values, every code as . (test-stata-math.R)", {
+  expect_identical(numbers(x + 1), c(2, NA, NA, NA, 6))
+  expect_s3_class(x * 2, "dta_num")
 })
 
 test_that("subsetting, c, rep, unique and %in% keep codes and attributes", {
