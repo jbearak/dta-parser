@@ -54,4 +54,16 @@ impl StorageType {
             _ => return None,
         })
     }
+
+    pub(crate) fn code_117(self) -> u16 {
+        match self {
+            StorageType::Str(n) => n,
+            StorageType::StrL => 32768,
+            StorageType::Double => 65526,
+            StorageType::Float => 65527,
+            StorageType::Long => 65528,
+            StorageType::Int => 65529,
+            StorageType::Byte => 65530,
+        }
+    }
 }
