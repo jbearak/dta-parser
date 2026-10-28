@@ -85,7 +85,7 @@ Ops.dta_num <- function(e1, e2) {
     # Stata's comparisons: never NA; missing values above every number.
     return(get(.Generic)(dta_keys(e1), dta_keys(e2)))
   }
-  plain <- function(e) if (inherits(e, "dta_num")) numbers(e) else e
+  plain <- function(e) if (inherits(e, "dta_num")) named_numbers(e) else e
   if (.Generic %in% c("&", "|", "!")) {
     # As in Stata, a value is true when nonzero or missing (R's NA too).
     truthy <- function(e) {
@@ -101,29 +101,37 @@ Ops.dta_num <- function(e1, e2) {
   # Arithmetic: R's operation on the numbers, but any missing operand,
   # and any result Stata cannot hold (NaN, Inf), is `.`. (R's own rules
   # give NA^0 == 1 and 1^NA == 1.)
-  if (missing(e2)) return(stata_number(get(.Generic)(plain(e1)), e1))
+  if (missing(e2)) return(stata_number(get(.Generic)(plain(e1))))
   a <- plain(e1)
   b <- plain(e2)
   r <- get(.Generic)(a, b)
   r[is.na(a) | is.na(b)] <- NA
-  stata_number(r, if (length(r) == length(e1)) e1 else e2)
+  stata_number(r)
 }
 
 # R's function on the numbers (so round() is R's, to digits), with
 # missing values as Stata's: `.` in, or NaN or Inf out, gives `.`. Stata
 # gives `.` without a warning where R warns "NaNs produced".
 #' @export
-Math.dta_num <- function(x, ...) stata_number(suppressWarnings(get(.Generic)(numbers(x), ...)), x)
+Math.dta_num <- function(x, ...) stata_number(suppressWarnings(get(.Generic)(named_numbers(x), ...)))
+
+# The numbers with their names, so R's operations name results as usual.
+named_numbers <- function(x) {
+  v <- numbers(x)
+  names(v) <- names(x)
+  v
+}
 
 # A new dta_num from the result of arithmetic: every NA, NaN or Inf is `.`
 # (an NA without a letter), as in Stata. No labels, label or format; the
-# names of `like`, as R would keep them.
-stata_number <- function(x, like) {
+# names R gave the result.
+stata_number <- function(x) {
+  nm <- names(x)
   x <- as.double(x)
   attributes(x) <- NULL
   x[!is.finite(x)] <- NA_real_
   out <- dta_num(x)
-  names(out) <- names(like)
+  names(out) <- nm
   out
 }
 

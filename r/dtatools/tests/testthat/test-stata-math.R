@@ -37,6 +37,12 @@ test_that("a plain operand on the left keeps the operation's direction", {
   named <- dta_num(c(1, NA))
   names(named) <- c("a", "b")
   expect_identical(names(named + 1), c("a", "b"))
+  expect_identical(names(c(1, 2) + named), c("a", "b"))
+  expect_identical(names(dta_num(c(1, 2)) + c(a = 3, b = 4)), c("a", "b"))
+  one <- dta_num(8)
+  names(one) <- "a"
+  expect_null(names(log(one, base = c(2, 4, 8))))
+  expect_identical(shown(log(one, base = c(2, 4, 8))), c("3", "1.5", "1"))
 })
 
 test_that("results Stata cannot hold are .", {

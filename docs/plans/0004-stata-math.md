@@ -63,7 +63,8 @@ not run). Concretely:
   uses its own rules (the result may keep the first operand's class);
   documented, not changed.
 - **Limits:** finite values above Stata's largest double (about
-  8.99e307) stay numbers here; Stata would hold them as missing.
+  8.99e307) stay numbers here; Stata would hold them as missing. A
+  matrix operand gives a plain `dta_num` vector (no `dim`).
 
 The facts about Stata used here are general knowledge about its
 missing values (arithmetic and functions of missing give `.`, missing
