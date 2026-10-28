@@ -1,7 +1,7 @@
 // @jbearak/dta-parser/node: read .dta files from disk.
 
 import * as fs from "node:fs";
-import { DtaReader, type Options } from "@jbearak/dta-parser";
+import { DtaReader, writeDtaTo, type Options, type WriteDataset } from "@jbearak/dta-parser";
 
 /**
  * Open a .dta file by path, or by a file descriptor the caller owns and
@@ -27,4 +27,20 @@ export function openDtaFile(file: string | number, options: Options = {}): DtaRe
     if (owned) fs.closeSync(fd);
     throw e;
   }
+}
+
+/** Write a .dta file (release 118) to `path`, streaming it to disk. */
+export function writeDtaFile(path: string, data: WriteDataset): void {
+  const fd = fs.openSync(path, "w");
+  try {
+    writeDtaTo(data, (bytes) => {
+      let done = 0;
+      while (done < bytes.length) done += fs.writeSync(fd, bytes, done, bytes.length - done);
+    });
+  } catch (e) {
+    fs.closeSync(fd);
+    fs.rmSync(path, { force: true });
+    throw e;
+  }
+  fs.closeSync(fd);
 }

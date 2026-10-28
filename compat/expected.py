@@ -81,8 +81,13 @@ def dump(path: str) -> dict:
     }
 
 
-paths = sys.argv[1:] or sorted(glob.glob("compat/fixtures/*.dta"))
-for path in paths:
+def main() -> None:
+    paths = sys.argv[1:] or sorted(glob.glob("compat/fixtures/*.dta"))
+    for path in paths:
+        write(path)
+
+
+def write(path: str) -> None:
     stem = os.path.splitext(os.path.basename(path))[0]
     try:
         result = dump(path)
@@ -91,3 +96,7 @@ for path in paths:
     with open(f"compat/expected/{stem}.pandas.json", "w") as f:
         json.dump(result, f, indent=2, ensure_ascii=False, allow_nan=False)
         f.write("\n")
+
+
+if __name__ == "__main__":
+    main()

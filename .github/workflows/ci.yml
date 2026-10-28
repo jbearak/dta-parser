@@ -51,3 +51,31 @@ jobs:
           cd "$RUNNER_TEMP"
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtatools_*.tar.gz
       - run: Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
+
+  # Files written by dtatools and by the npm package read back in pandas
+  # as their originals do (haven and readstata13 are checked in the R
+  # tests).
+  readback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: r/dtatools
+      - run: pip install pandas
+      - run: R CMD INSTALL r/dtatools
+      - run: scripts/build-wasm.sh && cd js && npm ci && npm run build
+      - run: Rscript compat/readback.R "$RUNNER_TEMP/r" && python3 compat/readback.py "$RUNNER_TEMP/r"
+      - run: node compat/readback.mjs "$RUNNER_TEMP/js" && python3 compat/readback.py "$RUNNER_TEMP/js"

@@ -7,6 +7,7 @@
 //! second copy of the data.
 
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 use std::io::Write;
 
 use crate::error::{Error, Result};
@@ -66,19 +67,24 @@ pub fn write(data: &Dataset, out: impl Write) -> Result<()> {
 }
 
 /// What the first pass learns.
-struct Plan {
+struct Plan<'a> {
     types: Vec<StorageType>,
     row_len: usize,
     strl_bytes: u64,
     /// For each strL variable (empty for others), the first row holding
-    /// each row's text: identical texts share one strL entry.
-    strl_first: Vec<Vec<usize>>,
+    /// each distinct text: identical texts share one strL entry. Keys
+    /// borrow the caller's data, so this costs a table entry per
+    /// distinct text and nothing per row.
+    strl_first: Vec<HashMap<&'a [u8], usize, BuildHasherDefault<FastHash>>>,
+    /// For each strL variable, the rows whose text is written to the
+    /// strL section (the first of each distinct text), in order.
+    strl_rows: Vec<Vec<usize>>,
     value_labels: Vec<u8>,
     characteristics: Vec<u8>,
 }
 
-impl Plan {
-    fn new(data: &Dataset) -> Result<Plan> {
+impl<'a> Plan<'a> {
+    fn new(data: &Dataset<'a>) -> Result<Plan<'a>> {
         let k = data.variables.len();
         if k > 32767 {
             return Err(Error::new(format!("release 118 holds at most 32,767 variables, not {k}")));
@@ -90,8 +96,10 @@ impl Plan {
         let mut types = Vec::with_capacity(k);
         let mut strl_bytes = 0u64;
         let mut strl_first = Vec::with_capacity(k);
+        let mut strl_rows = Vec::with_capacity(k);
         for (i, v) in data.variables.iter().enumerate() {
-            strl_first.push(Vec::new());
+            strl_first.push(HashMap::default());
+            strl_rows.push(Vec::new());
             check_name(&v.name)?;
             check_text(&format!("the label of {}", v.name), &v.label, 80, VAR_LABEL_LEN - 1)?;
             if v.format.len() >= FORMAT_LEN {
@@ -111,28 +119,36 @@ impl Plan {
                     v.storage
                 }
                 Values::Strings(get) => {
-                    let mut longest = 0;
-                    for row in 0..data.nobs {
-                        let s = get(row);
-                        if std::str::from_utf8(s).is_err() {
-                            return Err(Error::new(format!("{} row {} is not valid UTF-8", v.name, row + 1)));
-                        }
-                        longest = longest.max(s.len());
-                    }
+                    let not_utf8 = |row: usize| Error::new(format!("{} row {} is not valid UTF-8", v.name, row + 1));
+                    let longest = (0..data.nobs).map(|row| get(row).len()).max().unwrap_or(0);
                     if longest > STRN_MAX || v.storage == StorageType::StrL {
                         if data.nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
                             return Err(Error::new("too many rows or variables for strLs in release 118"));
                         }
-                        let mut seen = HashMap::new();
-                        let first: Vec<usize> = (0..data.nobs).map(|row| *seen.entry(get(row)).or_insert(row)).collect();
-                        for (row, &f) in first.iter().enumerate() {
-                            if f == row {
-                                strl_bytes += gso_len(get(row).len()) as u64;
+                        // Each distinct text is checked and counted once.
+                        let mut first = HashMap::default();
+                        let mut recent = RecentTexts::new();
+                        for row in 0..data.nobs {
+                            let s = get(row);
+                            if recent.get(s).is_some() {
+                                continue;
                             }
+                            let f = *first.entry(s).or_insert_with(|| {
+                                strl_rows[i].push(row);
+                                row
+                            });
+                            if f == row {
+                                std::str::from_utf8(s).map_err(|_| not_utf8(row))?;
+                                strl_bytes += gso_len(s.len()) as u64;
+                            }
+                            recent.put(s, f);
                         }
                         strl_first[i] = first;
                         StorageType::StrL
                     } else {
+                        for row in 0..data.nobs {
+                            std::str::from_utf8(get(row)).map_err(|_| not_utf8(row))?;
+                        }
                         StorageType::Str(longest.max(1) as u16)
                     }
                 }
@@ -144,6 +160,7 @@ impl Plan {
             row_len,
             strl_bytes,
             strl_first,
+            strl_rows,
             value_labels: value_labels(&data.value_labels)?,
             characteristics: characteristics(&data.characteristics)?,
         })
@@ -241,6 +258,7 @@ impl Plan {
         }
         let rows_per_chunk = (ROWS_BYTES / self.row_len).max(1);
         let mut buf = Vec::with_capacity(rows_per_chunk.min(data.nobs) * self.row_len);
+        let mut recent: Vec<RecentTexts> = self.types.iter().map(|_| RecentTexts::new()).collect();
         let mut row = 0;
         while row < data.nobs {
             let n = rows_per_chunk.min(data.nobs - row);
@@ -252,9 +270,15 @@ impl Plan {
                             let (value, code) = get(r);
                             encode(&mut buf, t, value, code);
                         }
-                        (Values::Strings(_), StorageType::StrL) => {
+                        (Values::Strings(get), StorageType::StrL) => {
                             // A reference to (variable, observation), 2 + 6 bytes.
-                            let o = self.strl_first[j][r] as u64 + 1;
+                            let s = get(r);
+                            let first = recent[j].get(s).unwrap_or_else(|| {
+                                let f = self.strl_first[j][s];
+                                recent[j].put(s, f);
+                                f
+                            });
+                            let o = first as u64 + 1;
                             buf.extend_from_slice(&(j as u16 + 1).to_le_bytes());
                             buf.extend_from_slice(&o.to_le_bytes()[..6]);
                         }
@@ -276,7 +300,7 @@ impl Plan {
     fn write_strls(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
         for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
             let (Values::Strings(get), StorageType::StrL) = (&v.values, t) else { continue };
-            for r in (0..data.nobs).filter(|&r| self.strl_first[j][r] == r) {
+            for &r in &self.strl_rows[j] {
                 let s = get(r);
                 let mut head = Vec::with_capacity(20);
                 head.extend_from_slice(b"GSO");
@@ -458,4 +482,64 @@ fn characteristics(chars: &[Characteristic]) -> Result<Vec<u8>> {
         out.extend_from_slice(b"</ch>");
     }
     Ok(out)
+}
+
+/// A fast hash for strL texts, which can be kilobytes each: eight bytes
+/// at a time, multiply and rotate (as rustc's FxHash). Not resistant to
+/// crafted collisions, which do not matter for data a caller writes.
+#[derive(Default)]
+struct FastHash(u64);
+
+impl Hasher for FastHash {
+    fn write(&mut self, bytes: &[u8]) {
+        let mut chunks = bytes.chunks_exact(8);
+        for c in &mut chunks {
+            self.add(u64::from_le_bytes(c.try_into().unwrap_or_default()));
+        }
+        for &b in chunks.remainder() {
+            self.add(b as u64);
+        }
+    }
+
+    fn write_usize(&mut self, n: usize) {
+        self.add(n as u64);
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+
+impl FastHash {
+    fn add(&mut self, word: u64) {
+        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+}
+
+/// Texts seen lately, by address and length. Callers such as R hand over
+/// one text many times at the same address, so a row whose text is here
+/// skips hashing it. Texts stay put while the writer runs, so the same
+/// address and length means the same text.
+struct RecentTexts(Vec<(usize, usize, usize)>);
+
+impl RecentTexts {
+    const SLOTS: usize = 1024;
+
+    fn new() -> Self {
+        RecentTexts(vec![(0, 0, usize::MAX); Self::SLOTS])
+    }
+
+    fn slot(s: &[u8]) -> usize {
+        ((s.as_ptr() as usize >> 3) ^ s.len()) % Self::SLOTS
+    }
+
+    /// The first row holding `s`, if `s` was seen here.
+    fn get(&self, s: &[u8]) -> Option<usize> {
+        let (addr, len, first) = self.0[Self::slot(s)];
+        (addr == s.as_ptr() as usize && len == s.len() && first != usize::MAX).then_some(first)
+    }
+
+    fn put(&mut self, s: &[u8], first: usize) {
+        self.0[Self::slot(s)] = (s.as_ptr() as usize, s.len(), first);
+    }
 }

@@ -94,6 +94,7 @@ int dtatools_interrupted(void) {
 int dtatools_meta(const char *path, const char *encoding, SEXP holder, char *err, size_t err_len);
 int dtatools_read(const char *path, const int *cols, R_xlen_t ncols, const char *encoding, SEXP holder,
                   char *err, size_t err_len);
+int dtatools_write(const char *path, SEXP spec, char *err, size_t err_len);
 
 static const char *string_arg(SEXP x, const char *what) {
   if (!Rf_isString(x) || XLENGTH(x) < 1 || STRING_ELT(x, 0) == NA_STRING) Rf_error("%s must be a string", what);
@@ -125,9 +126,20 @@ static SEXP read(SEXP path, SEXP cols, SEXP encoding) {
   return finish(dtatools_read(p, INTEGER(cols), XLENGTH(cols), enc, holder, err, sizeof err), holder, err);
 }
 
+static SEXP write(SEXP path, SEXP spec) {
+  const char *p = string_arg(path, "file");
+  if (TYPEOF(spec) != VECSXP) Rf_error("internal: the write spec must be a list");
+  char err[1024] = "";
+  int status = dtatools_write(p, spec, err, sizeof err);
+  if (status == 2) R_ContinueUnwind(token);
+  if (status == 1) Rf_error("%s", err);
+  return R_NilValue;
+}
+
 static const R_CallMethodDef routines[] = {
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 3},
+  {"dta_write", (DL_FUNC) &write, 2},
   {NULL, NULL, 0}
 };
 

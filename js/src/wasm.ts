@@ -16,12 +16,28 @@ interface Exports {
   dta_characteristics(handle: number): number;
   dta_read(handle: number, cols: number, ncols: number, start: number, count: number): number;
   dta_column_part(handle: number, k: number, part: number): number;
+  dta_write_begin(nobs: number): void;
+  dta_write_numbers(meta: number, metaLen: number, storage: number, values: number, missing: number): number;
+  dta_write_strings(meta: number, metaLen: number, bytes: number, bytesLen: number, ends: number): number;
+  dta_write_labels(
+    name: number,
+    nameLen: number,
+    n: number,
+    values: number,
+    missing: number,
+    texts: number,
+    textsLen: number,
+    ends: number,
+  ): number;
+  dta_write_finish(file: number, info: number, infoLen: number): number;
 }
 
 /** Fills `into` with the file's bytes starting at `offset`. */
 export type ReadAt = (into: Uint8Array, offset: number) => void;
 
 const files = new Map<number, ReadAt>();
+/** Where the file being written goes; takes each run of bytes. */
+const sinks = new Map<number, (bytes: Uint8Array) => void>();
 let nextFile = 1;
 
 // Synchronous compile and instantiate: Node allows it for any size, and
@@ -33,6 +49,14 @@ const imports = {
     host_read(file: number, ptr: number, len: number, offset: number): number {
       try {
         files.get(file)!(new Uint8Array(wasm.memory.buffer, ptr, len), offset);
+        return 0;
+      } catch {
+        return 1;
+      }
+    },
+    host_write(file: number, ptr: number, len: number): number {
+      try {
+        sinks.get(file)!(new Uint8Array(wasm.memory.buffer, ptr, len));
         return 0;
       } catch {
         return 1;
@@ -154,4 +178,70 @@ export function part(
 
 export function forget(read: ReadAt): void {
   for (const [file, r] of files) if (r === read) files.delete(file);
+}
+
+const utf8Encoder = new TextEncoder();
+
+/** Copy `data` into module memory; returns its address. Free with `free`. */
+function put(data: Uint8Array | Float64Array | Uint32Array): number {
+  const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  const ptr = wasm.dta_alloc(bytes.length);
+  new Uint8Array(wasm.memory.buffer, ptr, bytes.length).set(bytes);
+  return ptr;
+}
+
+/** One column or label set to write, already in the module's terms. */
+export type WritePart =
+  | { kind: "numbers"; meta: string; storage: number; values: Float64Array; missing: Uint8Array }
+  | { kind: "strings"; meta: string; bytes: Uint8Array; ends: Uint32Array }
+  | { kind: "labels"; name: string; values: Float64Array; missing: Uint8Array; texts: Uint8Array; ends: Uint32Array };
+
+/**
+ * Build a dataset of `nobs` rows from `parts` in the module and write it
+ * to `sink`. `info` is the data label, timestamp and notes.
+ */
+export function write(nobs: number, parts: WritePart[], info: string[], sink: (bytes: Uint8Array) => void): void {
+  guard(() => {
+    wasm.dta_write_begin(nobs);
+    for (const part of parts) {
+      const owned: [number, number][] = [];
+      const own = (data: Uint8Array | Float64Array | Uint32Array) => {
+        const ptr = put(data);
+        owned.push([ptr, data.byteLength]);
+        return ptr;
+      };
+      let ok: number;
+      if (part.kind === "numbers") {
+        const meta = utf8Encoder.encode(part.meta);
+        ok = wasm.dta_write_numbers(own(meta), meta.length, part.storage, own(part.values), own(part.missing));
+      } else if (part.kind === "strings") {
+        const meta = utf8Encoder.encode(part.meta);
+        ok = wasm.dta_write_strings(own(meta), meta.length, own(part.bytes), part.bytes.length, own(part.ends));
+      } else {
+        const name = utf8Encoder.encode(part.name);
+        ok = wasm.dta_write_labels(
+          own(name),
+          name.length,
+          part.values.length,
+          own(part.values),
+          own(part.missing),
+          own(part.texts),
+          part.texts.length,
+          own(part.ends),
+        );
+      }
+      for (const [ptr, len] of owned) wasm.dta_free(ptr, len);
+      check(ok);
+    }
+    const file = nextFile++;
+    sinks.set(file, sink);
+    const bytes = utf8Encoder.encode(info.join("\0"));
+    const ptr = put(bytes);
+    try {
+      check(wasm.dta_write_finish(file, ptr, bytes.length));
+    } finally {
+      wasm.dta_free(ptr, bytes.length);
+      sinks.delete(file);
+    }
+  });
 }

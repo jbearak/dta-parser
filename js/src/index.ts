@@ -240,3 +240,100 @@ export function openDta(bytes: Uint8Array, options: Options = {}): DtaReader {
     options,
   );
 }
+
+/** A variable to write. */
+export interface WriteVariable {
+  name: string;
+  /**
+   * Numbers, with `null` or a `Missing` for missing values, or strings.
+   * Strings become strN, or strL beyond 2045 bytes.
+   */
+  values: readonly (number | Missing | null)[] | readonly string[];
+  /** Storage type of a numeric variable; default double. */
+  type?: "byte" | "int" | "long" | "float" | "double";
+  /** Display format; default the storage type's. */
+  format?: string;
+  label?: string;
+  /** Name of a value label set in `WriteDataset.valueLabels`. */
+  valueLabels?: string;
+}
+
+export interface WriteDataset {
+  variables: readonly WriteVariable[];
+  /** Data label. */
+  label?: string;
+  /** Value label sets by name. */
+  valueLabels?: Readonly<Record<string, ValueLabels>>;
+  notes?: readonly string[];
+  /** Written as the file's timestamp; default now. */
+  timestamp?: Date;
+}
+
+const STORAGE = { byte: 0, int: 1, long: 2, float: 3, double: 4 } as const;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const encoder = new TextEncoder();
+
+/** UTF-8 bytes of `texts`, end to end, with each one's end offset. */
+function packTexts(texts: readonly string[]): { bytes: Uint8Array; ends: Uint32Array } {
+  const parts = texts.map((t) => encoder.encode(t));
+  const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  const ends = new Uint32Array(parts.length);
+  let at = 0;
+  parts.forEach((p, i) => {
+    bytes.set(p, at);
+    at += p.length;
+    ends[i] = at;
+  });
+  return { bytes, ends };
+}
+
+/** Numbers and their missing codes, as the module takes them. */
+function packNumbers(values: readonly (number | Missing | null)[]): { values: Float64Array; missing: Uint8Array } {
+  const out = { values: new Float64Array(values.length), missing: new Uint8Array(values.length) };
+  values.forEach((v, i) => {
+    if (typeof v === "number") out.values[i] = v;
+    else out.missing[i] = v === null ? 1 : MISSING_NAMES.indexOf(v.missing) + 1;
+  });
+  return out;
+}
+
+/**
+ * Write a .dta file (release 118), handing its bytes to `sink` in order.
+ * A value that does not fit its storage type is an error.
+ */
+export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void): void {
+  const nobs = data.variables[0]?.values.length ?? 0;
+  const parts: wasm.WritePart[] = data.variables.map((v) => {
+    if (v.values.length !== nobs) throw new RangeError(`${v.name} has ${v.values.length} values, not ${nobs}`);
+    const meta = [v.name, v.format ?? "", v.label ?? "", v.valueLabels ?? ""].join("\0");
+    if (v.type === undefined && v.values.some((x) => typeof x === "string")) {
+      if (!v.values.every((x) => typeof x === "string")) throw new TypeError(`${v.name} mixes strings and numbers`);
+      return { kind: "strings", meta, ...packTexts(v.values as readonly string[]) };
+    }
+    const storage = STORAGE[v.type ?? "double"];
+    if (storage === undefined) throw new TypeError(`${v.name}: unknown type ${v.type}`);
+    return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
+  });
+  for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
+    const keys = [...labels.keys()];
+    const { bytes: texts, ends } = packTexts([...labels.values()]);
+    parts.push({ kind: "labels", name, ...packNumbers(keys), texts, ends });
+  }
+  const t = data.timestamp ?? new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${pad(t.getDate())} ${MONTHS[t.getMonth()]} ${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  wasm.write(nobs, parts, [data.label ?? "", stamp, ...(data.notes ?? [])], sink);
+}
+
+/** Write a .dta file (release 118) into memory. */
+export function writeDta(data: WriteDataset): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  writeDtaTo(data, (bytes) => chunks.push(bytes.slice()));
+  const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let at = 0;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
+}

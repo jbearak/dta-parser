@@ -11,17 +11,30 @@
 use std::ffi::{c_char, c_int, c_void, CStr};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use dta::{missing, Column, Encoding, FileSource, Options, Reader, ValueLabelSet, Variable};
+use dta::{
+    missing, Characteristic, Column, Dataset, Encoding, FileSource, Options, Reader, StorageType, ValueLabel,
+    ValueLabelSet, Values, Variable, WriteVariable,
+};
 
 type Sexp = *mut c_void;
 
 const STRSXP: c_int = 16;
 const REALSXP: c_int = 14;
 const VECSXP: c_int = 19;
+const INTSXP: c_int = 13;
+const LGLSXP: c_int = 10;
 
 extern "C" {
-    // An R function that cannot raise an error.
+    // R functions that cannot raise an error.
     fn REAL(x: Sexp) -> *mut f64;
+    fn VECTOR_ELT(x: Sexp, i: isize) -> Sexp;
+    fn STRING_ELT(x: Sexp, i: isize) -> Sexp;
+    fn R_CHAR(x: Sexp) -> *const c_char;
+    fn Rf_xlength(x: Sexp) -> isize;
+    fn TYPEOF(x: Sexp) -> c_int;
+    fn INTEGER(x: Sexp) -> *mut c_int;
+    fn LOGICAL(x: Sexp) -> *mut c_int;
+    static R_NaString: Sexp;
     // The shims in init.c; each returns 0, or 1 if R raised an error.
     fn dtatools_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtatools_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
@@ -298,5 +311,146 @@ pub unsafe extern "C" fn dtatools_read(
             (Err(e), None) => Err(e.into()),
             (Ok(_), None) => Ok(()),
         }
+    })
+}
+
+/// The missing code of an R double: 0 for a number, 1 for `.` (NA_real_
+/// or any other NaN), 2 to 27 for a tagged `.a` to `.z`.
+fn r_code(x: f64) -> u8 {
+    if !x.is_nan() {
+        return 0;
+    }
+    let bits = x.to_bits();
+    let tag = ((bits >> 32) & 0xff) as u8;
+    if bits as u32 == 1954 && tag.is_ascii_lowercase() {
+        tag - b'a' + 2
+    } else {
+        missing::SYSTEM
+    }
+}
+
+/// The bytes of element `i` of a character vector; `""` for `NA`. R
+/// strings hold no NUL. The writer checks they are UTF-8.
+///
+/// # Safety
+/// `x` is a character vector with more than `i` elements, alive for 'a.
+unsafe fn r_string<'a>(x: Sexp, i: usize) -> &'a [u8] {
+    let s = STRING_ELT(x, i as isize);
+    if s == R_NaString {
+        b""
+    } else {
+        // R keeps each string's length, so no strlen over long texts.
+        std::slice::from_raw_parts(R_CHAR(s) as *const u8, Rf_xlength(s).max(0) as usize)
+    }
+}
+
+/// # Safety
+/// `x` is a character vector, alive for 'a.
+unsafe fn r_strings<'a>(x: Sexp) -> Vec<&'a str> {
+    (0..Rf_xlength(x).max(0) as usize).map(|i| std::str::from_utf8(r_string(x, i)).unwrap_or("")).collect()
+}
+
+/// Write the data frame `spec` describes (see save_dta.R) to `path`.
+///
+/// # Safety
+/// `spec` is the list save_dta builds; `path` a NUL-terminated string.
+#[no_mangle]
+pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *mut c_char, err_len: usize) -> c_int {
+    let path = c_str(path).unwrap_or_default();
+    guard(err, err_len, || {
+        let elt = |i: isize| unsafe { VECTOR_ELT(spec, i) };
+        let (columns, names, storage, formats, labels, label_sets) = (elt(0), elt(1), elt(2), elt(3), elt(4), elt(5));
+        let (sets, data_label, timestamp, notes) = (elt(6), elt(7), elt(8), elt(9));
+        let names = r_strings(names);
+        let storage = r_strings(storage);
+        let (formats, labels, label_sets) = (r_strings(formats), r_strings(labels), r_strings(label_sets));
+        let nobs = if names.is_empty() { 0 } else { Rf_xlength(VECTOR_ELT(columns, 0)).max(0) as usize };
+
+        let mut variables = Vec::with_capacity(names.len());
+        for (i, name) in names.iter().enumerate() {
+            let col = VECTOR_ELT(columns, i as isize);
+            if Rf_xlength(col).max(0) as usize != nobs {
+                return Err(Fail::Message("columns differ in length".into()));
+            }
+            let (storage, values) = if TYPEOF(col) == STRSXP {
+                (StorageType::Str(1), Values::Strings(Box::new(move |r| unsafe { r_string(col, r) })))
+            } else {
+                let storage = match storage[i] {
+                    "byte" => StorageType::Byte,
+                    "int" => StorageType::Int,
+                    "long" => StorageType::Long,
+                    "float" => StorageType::Float,
+                    "double" => StorageType::Double,
+                    other => return Err(Fail::Message(format!("{name}: unknown storage type \"{other}\""))),
+                };
+                // Integers and logicals are read in place; their NA is `.`.
+                let values: Values = match TYPEOF(col) {
+                    INTSXP | LGLSXP => {
+                        let p = if TYPEOF(col) == INTSXP { INTEGER(col) } else { LOGICAL(col) };
+                        let x = std::slice::from_raw_parts(p, nobs);
+                        Values::Numbers(Box::new(move |r| {
+                            if x[r] == c_int::MIN { (f64::NAN, missing::SYSTEM) } else { (x[r] as f64, 0) }
+                        }))
+                    }
+                    REALSXP => {
+                        let x = std::slice::from_raw_parts(REAL(col), nobs);
+                        Values::Numbers(Box::new(move |r| (x[r], r_code(x[r]))))
+                    }
+                    _ => return Err(Fail::Message(format!("{name}: cannot write this column type"))),
+                };
+                (storage, values)
+            };
+            variables.push(WriteVariable {
+                name: name.to_string(),
+                storage,
+                format: formats[i].to_string(),
+                label: labels[i].to_string(),
+                value_labels: label_sets[i].to_string(),
+                values,
+            });
+        }
+
+        let mut value_labels = Vec::new();
+        for s in 0..Rf_xlength(sets).max(0) {
+            let set = VECTOR_ELT(sets, s);
+            let name = r_strings(VECTOR_ELT(set, 0)).first().copied().unwrap_or("").to_string();
+            let codes = VECTOR_ELT(set, 1);
+            let codes = std::slice::from_raw_parts(REAL(codes), Rf_xlength(codes).max(0) as usize);
+            let texts = r_strings(VECTOR_ELT(set, 2));
+            let labels = codes
+                .iter()
+                .zip(texts)
+                .map(|(&v, t)| ValueLabel { value: v, missing: r_code(v), text: t.to_string() })
+                .collect();
+            value_labels.push(ValueLabelSet { name, labels });
+        }
+
+        let notes = r_strings(notes);
+        let mut characteristics = Vec::new();
+        if !notes.is_empty() {
+            let note = |n: usize, value: &str| Characteristic {
+                variable: "_dta".into(),
+                name: format!("note{n}"),
+                value: value.into(),
+            };
+            characteristics.push(note(0, &notes.len().to_string()));
+            characteristics.extend(notes.iter().enumerate().map(|(i, v)| note(i + 1, v)));
+        }
+
+        let data = Dataset {
+            nobs,
+            label: r_strings(data_label).first().copied().unwrap_or("").to_string(),
+            timestamp: r_strings(timestamp).first().copied().unwrap_or("").to_string(),
+            variables,
+            value_labels,
+            characteristics,
+            sort_order: Vec::new(),
+        };
+        let file = std::fs::File::create(&path).map_err(|e| Fail::Message(format!("{path}: {e}")))?;
+        if let Err(e) = dta::write(&data, file) {
+            let _ = std::fs::remove_file(&path);
+            return Err(Fail::Message(format!("{path}: {e}")));
+        }
+        Ok(())
     })
 }
