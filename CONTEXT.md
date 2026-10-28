@@ -41,3 +41,9 @@ variable. Notes are characteristics.
 A long string stored outside the row data in the strL section. It is
 either text or binary.
 _Avoid_: GSO (the on-disk record's name)
+
+**Packed column**:
+A string column dtatools has read but whose values are still the bytes
+from the file; R strings are made from them when the values are used.
+Once all are made, the column is *made*.
+_Avoid_: lazy column, deferred strings (R's name for its own)

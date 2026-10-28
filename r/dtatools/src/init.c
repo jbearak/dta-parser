@@ -58,6 +58,21 @@ int dtatools_alloc_attr(SEXP x, const char *name, int type, R_xlen_t n, SEXP *ou
   return try_r(do_alloc_attr, &a, out);
 }
 
+// A new packed string column (strings.c), stored as element i of parent.
+SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, SEXP *bytes, SEXP *ends);
+
+struct packed { SEXP parent; R_xlen_t i, nbytes, n; SEXP *bytes, *ends; };
+
+static SEXP do_packed(void *p) {
+  struct packed *a = p;
+  return dtatools_new_packed(a->parent, a->i, a->nbytes, a->n, a->bytes, a->ends);
+}
+
+int dtatools_packed_elt(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, SEXP *out, SEXP *bytes, SEXP *ends) {
+  struct packed a = {parent, i, nbytes, n, bytes, ends};
+  return try_r(do_packed, &a, out);
+}
+
 // Set x[first + i] to the UTF-8 string bytes[ends[i-1]..ends[i]], for i
 // in 0..n. R cannot hold a NUL in a string; one makes this an R error.
 struct set_strings { SEXP x; R_xlen_t first; const char *bytes; const size_t *ends; R_xlen_t n; };
@@ -156,11 +171,14 @@ static SEXP write(SEXP path, SEXP spec) {
 SEXP dtatools_codes(SEXP x);
 SEXP dtatools_keys(SEXP x, SEXP keep_na);
 SEXP dtatools_missing(SEXP codes);
+SEXP dtatools_packed_state(SEXP x);
+void dtatools_init_packed(DllInfo *dll);
 
 static const R_CallMethodDef routines[] = {
   {"dta_codes", (DL_FUNC) &dtatools_codes, 1},
   {"dta_keys", (DL_FUNC) &dtatools_keys, 2},
   {"dta_missing", (DL_FUNC) &dtatools_missing, 1},
+  {"dta_packed_state", (DL_FUNC) &dtatools_packed_state, 1},
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 3},
   {"dta_write", (DL_FUNC) &write, 2},
@@ -170,6 +188,7 @@ static const R_CallMethodDef routines[] = {
 void R_init_dtatools(DllInfo *dll) {
   token = R_MakeUnwindCont();
   R_PreserveObject(token);
+  dtatools_init_packed(dll);
   R_registerRoutines(dll, NULL, routines, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);
