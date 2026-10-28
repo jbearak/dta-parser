@@ -1,6 +1,6 @@
 # Plan: dta-parser
 
-Status: under review (round 2).
+Status: approved by Sol 6.1 and Sonnet 5.5 after five review rounds.
 
 ## What we are building
 
@@ -13,7 +13,7 @@ packages on top of it:
   repository; nothing from it is copied here).
 
 Out of scope: data manipulation in R (`gen`, `replace` and the like), a
-general Stata-typed data frame, Arrow IPC (the user agreed it is scope
+general Stata-typed data frame beyond the small dibble below, Arrow IPC (the user agreed it is scope
 creep; table-viewer must get it elsewhere), `.dta` 102 and 103 (haven
 cannot read them), and writing anything but release 118.
 
@@ -56,7 +56,7 @@ None writes today; the user wants the npm package to write anyway (user
 decision), through the same core writer.
 
 **dtatools consumer:** a suite that reads a handful of columns out of
-`.dta` 118 files of 5–12 GB, groups and compares codes with Stata
+release-115 `.dta` files of 5–12 GB (15M rows, 300 variables), groups and compares codes with Stata
 semantics, and writes small fixtures that Stata reads on another machine.
 It calls `read_dta` (with `col_select` as a character vector or a
 tidyselect expression), `save_dta`, `is_missing`, `is_tagged_missing`,
@@ -101,19 +101,34 @@ push parser that walks every row in file order and calls back per value.
 It has no random access to a row window, no way to skip unselected
 columns' decoding cheaply, and no lazy strL access, which are what the
 viewers and the 12 GB projection reads need. Its current CRAN build
-misreads ≤108 value labels and 119 strLs. haven's write path converts the
-whole data frame through it, which is the memory cost the user wants
-beaten. Wrapping it would still leave the random-access layer, the
-writer streaming and the wasm build to write, in C.
+misreads ≤108 value labels and 119 strLs. Wrapping it would still leave
+the random-access layer and the wasm build to write, in C. Whether our
+writer beats haven's (which goes through ReadStat) on time and memory is
+for the benchmarks to show, not assumed.
 
 **Why Rust:** the readers parse untrusted files inside editors, and every
 length and offset in a `.dta` file is attacker-controlled; Rust makes
 bounds checks the default. One source compiles to wasm32 and to a C
 static library. The core has no crate dependencies, so a reader can
-follow all of it and the R build needs only `cargo`. Rust panics never
-cross the FFI boundary: every FFI entry point wraps its body in
-`catch_unwind` and returns a status (aborting would take down the R
-session), and the C glue calls `Rf_error` only after Rust has returned.
+follow all of it and the R build needs only `cargo`. In R, neither
+panics nor R errors cross Rust frames. Every entry point wraps its body in
+`catch_unwind` and returns a status. Rust never calls an R function that
+can raise an error (allocation, building strings, setting attributes)
+directly: it calls small C shims that run the R call under
+`R_UnwindProtect`, catch the jump, and return a status, so Rust drops its
+state normally; the top-level C wrapper then resumes R's error with
+`R_ContinueUnwind`, or calls `Rf_error` for our own errors. Strings are
+built a chunk at a time inside one protected call, so the hot loop pays
+for protection once per chunk, not per value. A test forces an R error
+mid-read (an embedded NUL in a strL, which R cannot hold) and checks the
+session carries on. Ctrl-C works during long reads: between chunks the Rust side
+asks R, through `R_ToplevelExec` (which cannot jump), whether an
+interrupt is pending, and stops with an error if so. In wasm, panics
+abort (a trap); damaged input gives errors, not panics, and if a trap
+happens anyway the glue drops that module instance, so every reader it
+held reports itself closed, and the next open makes a new instance. The
+JS functions wasm imports catch their own exceptions and return an error
+code, so no JS exception unwinds through wasm frames.
 
 **Why wasm, synchronously, without wasm-bindgen:** one implementation for
 both languages, as the user asked. The module is embedded in the
@@ -154,19 +169,28 @@ strLs or characteristics until asked. Modules:
   plus offsets; strLs resolved through `strl`. Rows are read in chunks of
   about 8 MiB and only the selected columns are decoded, so reading 10
   columns of a 12 GB file streams it once in bounded memory.
-- `strl`: on first use, one sequential scan of the GSO section records
-  each entry's `(v, o) → (offset, length, kind)`, payloads not included;
-  payloads are read only for the rows asked for. Text and binary are
+- `strl`: on first use, one sequential scan of the GSO section, read
+  through a 1 MiB window, records each entry's `(v, o) → (offset, length,
+  kind)`, payloads not included; payloads are read only for the rows asked
+  for. Window reads are constant-time after that one-off scan. Text and binary are
   kept apart.
 - `labels` (≤105 layout and 108+ layout), `chars` (characteristics;
   notes are the `_dta` `noteN` entries).
 - `encoding`: 118+ is UTF-8. Older files decode as Windows-1252 by default
   (haven's choice; ADR), with Latin-1 and UTF-8 as options.
-- `writer`: writes 118 from columns to a `Sink`. One pass sizes string
-  widths and value-label tables; the map's offsets are then computable,
-  so the file is written front to back in one pass, rows built into an
-  8 MiB buffer at a time. Peak memory is that buffer plus the caller's
-  columns: no row-major copy of the data, no per-cell objects.
+- `writer`: writes 118 to any `std::io::Write`. Its input is a pull
+  interface: each variable gives a function from row to value (numbers
+  with their missing code, or UTF-8 text), so R hands over its vectors
+  without copying them. One pass checks every value against its storage
+  type and sizes strings and strLs (identical strLs in a variable share
+  one entry, as haven writes them); the map's offsets are then known, so
+  the file is written front to back, rows built into an 8 MiB buffer at
+  a time. In R, peak memory is that buffer, R's own vectors, and for each
+  strL variable a hash table of its distinct texts (borrowed from R, so
+  about 24 bytes per distinct text; nothing per row). In npm,
+  JavaScript columns are copied into wasm memory first, so a write there
+  holds the data twice; no TypeScript consumer writes, so that is
+  accepted for 1.0.
 
 Errors are one enum with a byte offset and a message. Nothing panics on
 bad input: `cargo test` runs every fixture truncated at many points and
@@ -195,13 +219,47 @@ writeDtaFile(path, dataset)               // streams through the core writer
 formatValue(cell, format, labels?)        // %w.d{f,g,e,fc,gc}, %s, %t{d,c,C,w,m,q,h,y} with masks
 ```
 
-`count` per call is capped (default 1M rows) so a call's buffers stay
-small; callers loop. `Missing` values are frozen singletons
+The glue reads into wasm a block of rows at a time. Each read call
+stops after the row at which its decoded output (values, missing codes,
+string bytes and offsets, strL payloads) passes 64 MiB, or at 2^20 rows,
+and says how many rows it read; `readColumns` loops until done. So module
+memory is bounded by 64 MiB plus one row, however wide the read or large
+the strLs. A single row too large for wasm memory is a checked error, not
+a trap. Tests read every column of a wide fixture, and a strL larger than
+the budget. `Missing` values are frozen singletons
 (`MISSING[".a"]`), so `===` works. A short `docs/migration.md` maps each
 consumer's 0.x calls to 1.0 (all now synchronous; Arrow no longer here)
 without touching the consumers.
 
 ### dtatools (`r/dtatools/`, R ≥ 4.2, version 1.0.0)
+
+**The dibble** (user decision). `read_dta` returns a *dibble*: a tibble
+subclass (class `dibble`) whose numeric columns are `dta_num`.
+`dibble(...)` builds one from plain columns, so tests can make fixtures
+without setting classes: doubles become `dta_num` with storage `double`,
+integers `long`, logicals `byte`; `.a`–`.z` written inline, such as
+`c(1, NA, dtatools::.d)`, keep their codes because the codes live in the
+doubles; character columns stay character; `dta_num` columns keep their
+labels and storage. `dta_num(x, labels = NULL, label = NULL, storage =
+NULL)` makes one column with value labels, a variable label or a chosen
+storage type. `as_dibble()` converts a data frame. That is all: no verbs,
+no `gen`/`replace`; subsetting and dplyr come from tibble and the vctrs
+methods below.
+
+Conversion rules: `dibble()` follows `tibble()` for names and
+recycling, and is the one place that converts. A factor becomes
+character; a `Date` becomes `dta_num` (days since 1960-01-01, format
+`%td`); a haven `labelled` column becomes `dta_num` with its labels and
+variable label; any other class is an error. Assigning into a dibble
+(`$<-`, `[[<-`, `[<-`) stores the value as given; `as_dibble()` applies
+the same rules to a whole data frame.
+
+The bridge is a small Rust crate inside the package that builds R
+vectors through R's C API directly (about fifteen functions), filling
+them chunk by chunk from the core and setting their attributes there, so
+R never copies a column; one C file registers the routines. (The first
+draft of this plan shared the wasm C ABI; building R objects in Rust cut
+the slice's peak memory by 40%. ADR 0007.)
 
 **Representation.** Numeric columns are double vectors of class
 `dta_num`. `.` is `NA_real_`; `.a`–`.z` are NA doubles carrying the
@@ -211,16 +269,21 @@ interoperate). Attributes: `label`, `format`, `storage`
 convention) and `label_set` (the value-label set's name, so shared sets
 round-trip). String columns are character vectors with `label` and
 `format`. Data-frame attributes: `label` and `notes`. `read_dta` returns
-a base `data.frame`, columns in `col_select` order. Every numeric storage
+a dibble, columns in `col_select` order. Every numeric storage
 type is double in R, since integers cannot carry `.a`–`.z`. Dates stay
 numbers. A binary strL is an error in `read_dta`.
 
-**One key.** A single C function maps a vector to Stata order keys:
-numbers unchanged, `.` … `.z` to 27 distinct finite doubles above the
-largest value Stata stores. Everything else is base R on the keys:
+**One key.** A single native function maps a vector to Stata order
+keys: numbers unchanged, `.` … `.z` to 27 distinct finite doubles above
+the largest value Stata stores. For matching (`mtfrm`), `.` stays `NA`
+and only `.a`–`.z` become finite keys, so `x %in% NA` finds `.` as base R
+would, and `.a` never matches `NA`. Everything else is base R on the keys:
 comparisons (`Ops`; arithmetic returns plain doubles with missings as
 `NA`), `mtfrm` (so `%in%`/`match` keep codes apart), `xtfrm` (sort,
-order), `unique`, `duplicated`, and the set and group helpers.
+order), `unique`, `duplicated`, and the set and group helpers. `format`
+and `print` show `.`, `.a`, ... and `as.character` gives the same text.
+`Math` and `Summary` (`max`, `sum`) fall through to base R on the
+doubles, treating every code as `NA`.
 
 **Where the class holds, and where it does not.** `[`, `c` (when a
 `dta_num` comes first), `unique`, `rep`, `as.data.frame`, data-frame
@@ -231,11 +294,17 @@ the payload survives, and every dtatools function (`is_missing`,
 reads codes from plain doubles too, but base `==`, `unique` and `%in%`
 on such a plain vector see only `NA`. This is documented in the package.
 
-**dplyr** (user decision): `vec_proxy`/`vec_restore` keep attributes;
+**vctrs methods.** tibble and vctrs are in Imports, and the methods are
+registered when the package loads: tibble's own `[` slices every column
+through vctrs, so the dibble needs them for plain subsetting, not only
+for dplyr (user decision: dplyr is supported). `vec_proxy`/`vec_restore`
+keep attributes;
 `vec_ptype2`/`vec_cast` between `dta_num` and double; and
 `vec_proxy_equal`/`vec_proxy_compare` return the keys, so `group_by`
 keeps `.a` and `.b` apart and arranges in Stata order. Tested with
-`filter`, `mutate`, `group_by` + `summarise`/`mutate`.
+`dibble[lgl, , drop = FALSE]`, `[[`, `$` and `rlang::eval_tidy(quote(x ==
+.a), dibble)` keeping codes and labels, and with `filter`, `mutate`,
+`group_by` + `summarise`/`mutate`.
 
 **Functions:** `read_dta(file, col_select = NULL, encoding = NULL)`;
 `save_dta(data, file)`; `is_missing(x)`; `is_tagged_missing(x, tag)`;
@@ -270,7 +339,11 @@ makes a binary for the same OS and architecture.
   it cannot write a version, that version falls to the next rule).
   Only where none of those can write a version and byte order (e.g.
   big-endian before 114) do we use files from pandas' test suite
-  (BSD-3), listed with provenance in `compat/fixtures/README.md`.
+  (BSD-3), listed with provenance in `compat/fixtures/README.md`. pandas
+  (102–119) and readstata13 (102–121) read every release we read, so
+  every release has an oracle independent of ReadStat (for value labels
+  in releases up to 108, readstata13 only: pandas does not read them
+  there).
 - **Expected values** come from open-source readers: `compat/expected.R`
   (haven, readstata13) and `compat/expected.py` (pandas) dump values,
   missing codes and metadata to JSON committed beside each fixture. The
@@ -284,9 +357,11 @@ makes a binary for the same OS and architecture.
   checked against whichever reader does expose it, or round-trip only.
 - **Writer:** files written from R and from npm are read by haven,
   pandas and readstata13 and compared value for value, with metadata
-  each reader exposes. A structural test compares our 118 output with
-  haven's and pandas' 118 output for the same table: section order, map
-  offsets, field widths and padding, ignoring the timestamp. The Stata
+  each reader exposes. A structural test reads haven's and pandas' 118
+  fixtures and writes them again with the same storage types: haven's
+  file comes back byte for byte, pandas' up to the data (pandas writes
+  empty strLs as a bare (0, 0) reference). Every read-back also checks
+  the map's offsets against each section's tags. The Stata
   round trip is the user's, on the Stata machine.
 - **dtatools:** testthat tests of the semantics above, the dplyr verbs,
   and `read_dta` vs haven on every fixture; then the downstream suite as
@@ -302,37 +377,46 @@ makes a binary for the same OS and architecture.
 mixed types) and a wide file over 4 GiB. `bench/run.*` measures full
 reads, 5-column reads, writes and grouping (`dta_group_tag` on 10M rows),
 with peak RSS from `/usr/bin/time -l`: dtatools vs haven vs readstata13,
-npm vs pandas. Targets: reads within 1.5× of the fastest; writes faster
-than haven and with lower peak RSS. Results and machine details go in
-`bench/RESULTS.md`. The large files are generated, not committed.
+npm vs pandas. Targets: column-subset reads of a large file faster than
+haven's `col_select` and readstata13's `select.cols`, with lower peak RSS
+(measured in the slice on the 11.8 GB release-115 file: 3 columns of
+15.1M rows in 0.9 s and 463 MB, against haven's 15.7 s and 492 MB); a
+window of rows costs the same wherever it starts; full reads within
+1.5× of the fastest; writes faster than haven and with lower peak RSS,
+measured separately for numeric data, strN data, a strL column with
+many repeated texts, one with all-distinct texts, and several strL
+columns at once. Results and machine details go in
+`bench/RESULTS.md`, with the page cache both warm and cold (purged before
+each cold run): rows are stored row-major, so a column-subset read still
+reads every byte, and the cold figure is the one I/O bounds. The large files are generated, not committed.
 
 ## ADRs
 
-1. Rust core with C ABI; wasm for npm, staticlib for R; not ReadStat.
+1. Rust core shared by wasm and R; not ReadStat.
 2. Synchronous, columnar npm API.
-3. The `dta_num` representation and the order key.
-4. Stata comparison semantics in R; `tab` names.
-5. Text encoding default for pre-118 files.
-6. Writer: release 118 only, streaming.
-7. Oracle per field where open-source readers disagree.
-8. Fixture source per version.
+3. The `dta_num` representation and the dibble.
+4. Text encoding default for pre-118 files.
+5. Oracle per field where open-source readers disagree.
+6. Fixture source per version.
+7. The R bridge builds R objects in Rust.
+8. Writer: release 118 only, streaming.
+9. Stata comparison semantics in R, the order key, `tab` names.
 
 ## Pull requests
 
 1. Scaffold: AGENTS.md, this plan, ADR 1, Cargo workspace, CI skeleton.
-2. Vertical slice: core reader for 117–119 (numbers, strings, missing
-   values, labels), the C ABI, a minimal R `read_dta` and a minimal wasm
-   `openDtaFile` in an esbuild bundle; check selected-column time and
-   peak RSS on the generated >4 GiB file. This proves the architecture
-   before the rest is built.
-3. Core: strLs, notes, characteristics, sort order; compat fixtures and
-   expected JSON for 113–119.
-4. Core reader for 104–111.
-5. Core writer (118) and read-back; R `save_dta`; npm `writeDtaFile`.
-6. dtatools: `dta_num` methods, missing-value functions, labels, sets,
+2. Vertical slice (built): the core reader for 104–119 (the real files
+   are 115), compat fixtures and expected JSON for 113–119, a minimal R
+   `read_dta` with the column representation, and a minimal wasm reader
+   in an esbuild bundle, measured on the 11.8 GB file.
+3. Fixtures and oracles for 104–111 and big-endian files; R interrupts;
+   wasm trap recovery.
+4. Core writer (118) and read-back; R `save_dta`; npm `writeDtaFile`;
+   write benchmarks against haven.
+5. dtatools: the dibble, `dta_num` methods, missing-value functions, labels, sets,
    groups, `tab`, dplyr; downstream suite green.
-7. npm: full API, `formatValue`, migration notes.
-8. Benchmarks.
+6. npm: full API, `formatValue`, migration notes.
+7. Benchmarks.
 
 ## Open question for the user
 
