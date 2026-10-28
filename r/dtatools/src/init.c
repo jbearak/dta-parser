@@ -109,8 +109,8 @@ int dtatools_interrupted(void) {
 // Implemented in Rust: each fills element 0 of `holder` and returns 0,
 // 1 with a message in err, or 2 when an R error is waiting in `token`.
 int dtatools_meta(const char *path, const char *encoding, SEXP holder, char *err, size_t err_len);
-int dtatools_read(const char *path, const int *cols, R_xlen_t ncols, const char *encoding, SEXP holder,
-                  char *err, size_t err_len);
+int dtatools_read(const char *path, const int *cols, R_xlen_t ncols, double skip, double n_max, const char *encoding,
+                  SEXP holder, char *err, size_t err_len);
 int dtatools_write(const char *path, SEXP spec, char *err, size_t err_len);
 
 static const char *string_arg(SEXP x, const char *what) {
@@ -134,13 +134,15 @@ static SEXP meta(SEXP path, SEXP encoding) {
   return finish(dtatools_meta(p, enc, holder, err, sizeof err), holder, err);
 }
 
-static SEXP read(SEXP path, SEXP cols, SEXP encoding) {
+static SEXP read(SEXP path, SEXP cols, SEXP skip, SEXP n_max, SEXP encoding) {
   const char *p = string_arg(path, "file");
   const char *enc = Rf_isNull(encoding) ? NULL : string_arg(encoding, "encoding");
   if (TYPEOF(cols) != INTSXP) Rf_error("column indices must be integers");
+  double s = Rf_asReal(skip), n = Rf_asReal(n_max);
+  if (ISNAN(s) || s < 0 || ISNAN(n) || n < 0) Rf_error("skip and n_max must be numbers >= 0");
   SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
   char err[1024] = "";
-  return finish(dtatools_read(p, INTEGER(cols), XLENGTH(cols), enc, holder, err, sizeof err), holder, err);
+  return finish(dtatools_read(p, INTEGER(cols), XLENGTH(cols), s, n, enc, holder, err, sizeof err), holder, err);
 }
 
 // ALTREP vectors (compact sequences, deferred strings) build their data
@@ -184,7 +186,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_packed_state", (DL_FUNC) &dtatools_packed_state, 1},
   {"dta_dictionary", (DL_FUNC) &dtatools_dictionary, 1},
   {"dta_meta", (DL_FUNC) &meta, 2},
-  {"dta_read", (DL_FUNC) &read, 3},
+  {"dta_read", (DL_FUNC) &read, 5},
   {"dta_write", (DL_FUNC) &write, 2},
   {NULL, NULL, 0}
 };

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/dta", "crates/dta-ffi"]
-exclude = ["r"]
+exclude = ["r", "bench"]
 
 [profile.release]
 lto = true
