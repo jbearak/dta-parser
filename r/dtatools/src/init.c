@@ -153,7 +153,14 @@ static SEXP write(SEXP path, SEXP spec) {
   return R_NilValue;
 }
 
+SEXP dtatools_codes(SEXP x);
+SEXP dtatools_keys(SEXP x, SEXP keep_na);
+SEXP dtatools_missing(SEXP codes);
+
 static const R_CallMethodDef routines[] = {
+  {"dta_codes", (DL_FUNC) &dtatools_codes, 1},
+  {"dta_keys", (DL_FUNC) &dtatools_keys, 2},
+  {"dta_missing", (DL_FUNC) &dtatools_missing, 1},
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 3},
   {"dta_write", (DL_FUNC) &write, 2},

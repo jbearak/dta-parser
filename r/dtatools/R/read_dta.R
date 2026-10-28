@@ -6,8 +6,8 @@
 #'   columns when `NULL`. Columns come back in the order selected.
 #' @param encoding Text encoding of files older than release 118:
 #'   `"windows-1252"` (the default), `"latin1"` or `"utf-8"`.
-#' @return A data frame. Numeric columns are `dta_num` vectors; string
-#'   columns are character vectors.
+#' @return A dibble (see [dibble()]): numeric columns are `dta_num`
+#'   vectors; string columns are character vectors.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL) {
   file <- normalizePath(file, mustWork = TRUE)
@@ -20,8 +20,10 @@ read_dta <- function(file, col_select = NULL, encoding = NULL) {
   }
   values <- .Call(C_dta_read, file, as.integer(cols - 1L), encoding)
   names(values) <- names[cols]
-  structure(values, class = "data.frame", row.names = .set_row_names(meta$nobs),
-            label = nonempty(meta$label), notes = if (length(meta$notes)) meta$notes)
+  out <- tibble::new_tibble(values, nrow = meta$nobs, class = "dibble")
+  attr(out, "label") <- nonempty(meta$label)
+  attr(out, "notes") <- if (length(meta$notes)) meta$notes
+  out
 }
 
 nonempty <- function(x) if (nzchar(x)) x
