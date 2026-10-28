@@ -1,9 +1,9 @@
 [package]
 name = "dta-ffi"
 description = "C ABI over the dta crate, for the wasm and R bindings"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.82"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]

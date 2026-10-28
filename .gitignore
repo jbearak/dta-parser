@@ -5,3 +5,5 @@ node_modules/
 bench/data/
 .DS_Store
 .claude/
+.rlib/
+r/*.tar.gz

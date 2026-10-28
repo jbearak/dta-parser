@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/dta", "crates/dta-ffi"]
-
-[workspace.package]
-version = "1.0.0"
-edition = "2021"
-rust-version = "1.80"
+exclude = ["r"]
 
 [profile.release]
 lto = true

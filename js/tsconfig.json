@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "strict": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "paths": { "@jbearak/dta-parser": ["./src/index.ts"] }
+  },
+  "include": ["src"]
+}

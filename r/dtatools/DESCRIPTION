@@ -1,0 +1,17 @@
+Package: dtatools
+Title: Read and Write Stata Files with Stata's Missing Values
+Version: 1.0.0
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
+Description: Reads and writes Stata .dta files through the dta-parser
+    library, keeping Stata's extended missing values, value labels and
+    comparison rules.
+Depends: R (>= 4.2)
+Imports:
+    rlang,
+    tidyselect
+Suggests:
+    haven,
+    testthat (>= 3.0.0)
+SystemRequirements: Cargo (Rust's package manager), rustc
+Encoding: UTF-8
+Config/testthat/edition: 3
