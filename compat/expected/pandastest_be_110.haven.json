@@ -1,0 +1,108 @@
+{
+  "reader": "haven 2.5.5",
+  "release": null,
+  "nobs": 3,
+  "data_label": "",
+  "timestamp": null,
+  "variables": [
+    {
+      "name": "index",
+      "type": null,
+      "format": "%8.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "i8",
+      "type": null,
+      "format": "%8.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "i16",
+      "type": null,
+      "format": "%8.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "i32",
+      "type": null,
+      "format": "%12.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "f",
+      "type": null,
+      "format": "%9.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "d",
+      "type": null,
+      "format": "%12.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "dt",
+      "type": null,
+      "format": "%dD_m_Y",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "s10",
+      "type": null,
+      "format": "%10s",
+      "label": "",
+      "labels": []
+    }
+  ],
+  "values": {
+    "index": [
+      1,
+      2,
+      3
+    ],
+    "i8": [
+      -1,
+      0,
+      1
+    ],
+    "i16": [
+      -1025,
+      0,
+      1025
+    ],
+    "i32": [
+      -8388609,
+      0,
+      8388609
+    ],
+    "f": [
+      -0.10000000149011612,
+      -0.20000000298023224,
+      -0.30000001192092896
+    ],
+    "d": [
+      0.10000000000000001,
+      0.20000000000000001,
+      0.29999999999999999
+    ],
+    "dt": [
+      14610,
+      14611,
+      14612
+    ],
+    "s10": [
+      "abcdefghij",
+      "abcdefghij",
+      "abcdefghij"
+    ]
+  },
+  "notes": null
+}

@@ -1,0 +1,123 @@
+{
+  "reader": "readstata13 0.11.0",
+  "release": 111,
+  "nobs": 5,
+  "data_label": "ReadStat fixture",
+  "timestamp": "28 Oct 2026 16:29",
+  "variables": [
+    {
+      "name": "b",
+      "type": "byte",
+      "format": "%8.0g",
+      "label": "A byte",
+      "value_labels": "yesno",
+      "labels": [
+        [
+          -5,
+          "Refused"
+        ],
+        [
+          0,
+          "No"
+        ],
+        [
+          1,
+          "Yes"
+        ]
+      ]
+    },
+    {
+      "name": "i",
+      "type": "int",
+      "format": "%8.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "l",
+      "type": "long",
+      "format": "%12.0g",
+      "label": "A long",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "f",
+      "type": "float",
+      "format": "%9.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "d",
+      "type": "double",
+      "format": "%10.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "s",
+      "type": "str8",
+      "format": "%-9s",
+      "label": "A string",
+      "value_labels": "",
+      "labels": []
+    }
+  ],
+  "values": {
+    "b": [
+      1,
+      0,
+      -5,
+      100,
+      1
+    ],
+    "i": [
+      1000,
+      -32000,
+      {
+        "missing": "."
+      },
+      127,
+      32000
+    ],
+    "l": [
+      1,
+      -2000000000,
+      2000000000,
+      {
+        "missing": "."
+      },
+      32767
+    ],
+    "f": [
+      1.5,
+      {
+        "missing": "."
+      },
+      0,
+      1.0000000150474662e+30,
+      3
+    ],
+    "d": [
+      0.33333333333333331,
+      -1.0000000000000001e+300,
+      0,
+      2.5,
+      {
+        "missing": "."
+      }
+    ],
+    "s": [
+      "abc",
+      "",
+      "eight ch",
+      "x y",
+      "z"
+    ]
+  },
+  "characteristics": []
+}

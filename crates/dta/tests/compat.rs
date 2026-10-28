@@ -14,6 +14,10 @@ use serde_json::{json, Value};
 /// (reader, fixture name prefix, field): why that reader's value is not
 /// an oracle there. See docs/adr/0005-oracles.md.
 const KNOWN: &[(&str, &str, &str, &str)] = &[
+    ("haven", "readstat_104", "b.labels", "haven 2.5.5 reads value labels before 108 with the 108 layout"),
+    ("haven", "readstat_108", "b.labels", "haven 2.5.5 misreads release 108 value label tables"),
+    ("readstata13", "readstat_104", "b.labels", "readstata13 does not read value labels before 108"),
+    ("readstata13", "readstat_105", "b.labels", "readstata13 does not read value labels before 108"),
     ("haven", "haven_", "text", "haven 2.5.5 drops trailing blanks from strN values"),
     ("pandas", "haven_113", "text", LATIN1),
     ("pandas", "haven_114", "text", LATIN1),

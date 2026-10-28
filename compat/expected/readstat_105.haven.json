@@ -1,0 +1,4 @@
+{
+  "reader": "haven",
+  "error": "Failed to parse /Users/jmb/repos/dta-parser.new/compat/fixtures/readstat_105.dta: Unable to allocate memory."
+}

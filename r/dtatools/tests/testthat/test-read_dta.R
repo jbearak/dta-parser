@@ -14,6 +14,13 @@ test_that("read_dta matches haven on every fixture", {
   for (path in fixtures()) {
     name <- basename(path)
     ours <- read_dta(path)
+    # haven 2.5.5 cannot read release 105 value labels at all, and reads
+    # those of 104 and 108 as empty; pandas and readstata13 are the
+    # oracles there (crates/dta/tests/compat.rs).
+    if (name == "readstat_105.dta") {
+      expect_error(haven::read_dta(path))
+      next
+    }
     theirs <- haven::read_dta(path)
     expect_identical(names(ours), names(theirs), label = name)
     expect_identical(attr(ours, "label"), attr(theirs, "label", exact = TRUE), label = name)
@@ -34,6 +41,7 @@ test_that("read_dta matches haven on every fixture", {
       if (inherits(y, "Date")) y <- as.numeric(y - as.Date("1960-01-01"))
       expect_identical(as.vector(unclass(x)), as.vector(unclass(y)), label = what)
       expect_identical(tags(x), tags(y), label = what)
+      if (name %in% c("readstat_104.dta", "readstat_108.dta") && col == "b") next
       expect_identical(names(attr(x, "labels")), names(attr(y, "labels")), label = what)
       expect_identical(tags(attr(x, "labels")), tags(attr(y, "labels")), label = what)
     }

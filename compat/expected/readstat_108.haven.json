@@ -1,0 +1,104 @@
+{
+  "reader": "haven 2.5.5",
+  "release": null,
+  "nobs": 5,
+  "data_label": "ReadStat fixture",
+  "timestamp": null,
+  "variables": [
+    {
+      "name": "b",
+      "type": null,
+      "format": "%8.0g",
+      "label": "A byte",
+      "labels": []
+    },
+    {
+      "name": "i",
+      "type": null,
+      "format": "%8.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "l",
+      "type": null,
+      "format": "%12.0g",
+      "label": "A long",
+      "labels": []
+    },
+    {
+      "name": "f",
+      "type": null,
+      "format": "%9.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "d",
+      "type": null,
+      "format": "%10.0g",
+      "label": "",
+      "labels": []
+    },
+    {
+      "name": "s",
+      "type": null,
+      "format": "%-9s",
+      "label": "A string",
+      "labels": []
+    }
+  ],
+  "values": {
+    "b": [
+      1,
+      0,
+      -5,
+      100,
+      1
+    ],
+    "i": [
+      1000,
+      -32000,
+      {
+        "missing": "."
+      },
+      127,
+      32000
+    ],
+    "l": [
+      1,
+      -2000000000,
+      2000000000,
+      {
+        "missing": "."
+      },
+      32767
+    ],
+    "f": [
+      1.5,
+      {
+        "missing": "."
+      },
+      0,
+      1.0000000150474662e+30,
+      3
+    ],
+    "d": [
+      0.33333333333333331,
+      -1.0000000000000001e+300,
+      0,
+      2.5,
+      {
+        "missing": "."
+      }
+    ],
+    "s": [
+      "abc",
+      "",
+      "eight ch",
+      "x y",
+      "z"
+    ]
+  },
+  "notes": null
+}
