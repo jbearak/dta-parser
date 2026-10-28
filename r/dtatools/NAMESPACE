@@ -1,2 +1,3 @@
 useDynLib(dtatools, .registration = TRUE, .fixes = "C_")
 export(read_dta)
+export(save_dta)
