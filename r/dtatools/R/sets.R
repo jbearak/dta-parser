@@ -45,6 +45,27 @@ dta_setdiff <- function(x, y) {
   x[keep]
 }
 
+# A string column read_dta stored as a dictionary (src/strings.c):
+# list(values, codes), its distinct values and each row's 0-based code;
+# NULL for any other vector. Lets tab() and dta_group_id() work on codes
+# without making a string per row.
+dictionary <- function(x) {
+  dict <- .Call(C_dta_dictionary, x)
+  if (!is.null(dict)) names(dict) <- c("values", "codes")
+  dict
+}
+
+# Keys that sort and compare as character x does under radix order
+# (byte order): for a dictionary column, each value's rank among the
+# distinct values.
+string_keys <- function(x) {
+  dict <- dictionary(x)
+  if (is.null(dict)) return(x)
+  rank <- integer(length(dict$values))
+  rank[order(dict$values, method = "radix")] <- seq_along(dict$values)
+  rank[dict$codes + 1L]
+}
+
 group_columns <- function(...) {
   cols <- list(...)
   if (length(cols) == 1 && is.data.frame(cols[[1]])) cols <- as.list(cols[[1]])
@@ -56,7 +77,7 @@ group_columns <- function(...) {
 #' @export
 dta_group_id <- function(..., missing = FALSE) {
   cols <- group_columns(...)
-  keys <- lapply(cols, function(x) if (is.character(x)) x else dta_keys(x))
+  keys <- lapply(cols, function(x) if (is.character(x)) string_keys(x) else dta_keys(x))
   n <- length(keys[[1]])
   if (n == 0) return(integer())
   ord <- do.call(order, c(unname(keys), method = "radix"))
@@ -93,6 +114,16 @@ dta_group_tag <- function(..., missing = FALSE) {
 #' @rdname dta_sets
 #' @export
 tab <- function(x, missing = FALSE) {
+  dict <- if (is.character(x)) dictionary(x)
+  if (!is.null(dict)) {
+    # As table() would: distinct values in sort() order, with counts.
+    counts <- tabulate(dict$codes + 1L, length(dict$values))
+    keep <- counts > 0 & (missing | dict$values != "")
+    values <- dict$values[keep]
+    if (!length(values)) return(integer())  # as table() of nothing
+    o <- order(values)
+    return(stats::setNames(counts[keep][o], values[o]))
+  }
   if (is.character(x)) {
     if (!missing) x <- x[x != ""]
     counts <- table(x)

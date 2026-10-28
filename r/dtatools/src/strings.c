@@ -7,10 +7,14 @@
 //
 // A column is an ALTREP character vector in one of two states:
 //
-// - packed: data1 is list(bytes, ends), a raw vector of the text and a
-//   double vector of each value's end offset; data2 is R_NilValue or a
-//   cache, a character vector holding the strings made so far and
-//   NA_STRING where none is made yet (Stata strings are never NA).
+// - packed: data1 is list(bytes, ends, codes). bytes is a raw vector of
+//   text and ends a double vector of each value's end offset. With codes
+//   R_NilValue they hold every row's value; with codes an integer vector
+//   (0-based, one per row) they hold a dictionary of the distinct values,
+//   so R makes one string per distinct value, not per row. data2 is
+//   R_NilValue or a cache, a character vector with a slot per value in
+//   bytes holding the strings made so far, and NA_STRING where none is
+//   made yet (Stata strings are never NA).
 // - made: data1 is R_NilValue and data2 holds every string; the column is
 //   an ordinary character vector behind one indirection. It may hold NAs
 //   assigned since.
@@ -28,9 +32,17 @@ static R_altrep_class_t packed_class;
 #define PACKED(x) (R_altrep_data1(x) != R_NilValue)
 #define BYTES(x) VECTOR_ELT(R_altrep_data1(x), 0)
 #define ENDS(x) VECTOR_ELT(R_altrep_data1(x), 1)
+#define CODES(x) VECTOR_ELT(R_altrep_data1(x), 2)
 
 static R_xlen_t packed_length(SEXP x) {
-  return PACKED(x) ? XLENGTH(ENDS(x)) : XLENGTH(R_altrep_data2(x));
+  if (!PACKED(x)) return XLENGTH(R_altrep_data2(x));
+  return CODES(x) != R_NilValue ? XLENGTH(CODES(x)) : XLENGTH(ENDS(x));
+}
+
+// The cache slot of row i of a packed column.
+static R_xlen_t slot_of(SEXP x, R_xlen_t i) {
+  SEXP codes = CODES(x);
+  return codes == R_NilValue ? i : INTEGER(codes)[i];
 }
 
 // The cache, allocated and attached on first use.
@@ -45,7 +57,7 @@ static SEXP cache_of(SEXP x) {
   return cache;
 }
 
-// The string at i of a packed column, made and cached if need be.
+// The string in slot i of a packed column, made and cached if need be.
 static SEXP packed_make(SEXP x, SEXP cache, R_xlen_t i) {
   SEXP s = STRING_ELT(cache, i);
   if (s != NA_STRING) return s;
@@ -60,7 +72,7 @@ static SEXP packed_make(SEXP x, SEXP cache, R_xlen_t i) {
 
 static SEXP packed_elt(SEXP x, R_xlen_t i) {
   if (!PACKED(x)) return STRING_ELT(R_altrep_data2(x), i);
-  return packed_make(x, cache_of(x), i);
+  return packed_make(x, cache_of(x), slot_of(x, i));
 }
 
 // Make every string, then drop the packed text.
@@ -72,6 +84,16 @@ static void *packed_dataptr(SEXP x, Rboolean writeable) {
     SEXP cache = cache_of(x);
     R_xlen_t n = XLENGTH(cache);
     for (R_xlen_t i = 0; i < n; i++) packed_make(x, cache, i);
+    SEXP codes = CODES(x);
+    if (codes != R_NilValue) {
+      // Every row's string is one of the dictionary's, already made.
+      R_xlen_t rows = XLENGTH(codes);
+      SEXP full = PROTECT(Rf_allocVector(STRSXP, rows));
+      const int *code = INTEGER(codes);
+      for (R_xlen_t i = 0; i < rows; i++) SET_STRING_ELT(full, i, STRING_ELT(cache, code[i]));
+      R_set_altrep_data2(x, full);
+      UNPROTECT(1);
+    }
     R_set_altrep_data1(x, R_NilValue);
   }
   return (void *) STRING_PTR_RO(R_altrep_data2(x));
@@ -101,26 +123,58 @@ static SEXP packed_duplicate(SEXP x, Rboolean deep) {
 }
 
 // A new packed column of n values and nbytes bytes of text, stored as
-// element i of parent; *bytes and *ends receive its vectors to fill.
-SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, SEXP *bytes, SEXP *ends) {
-  SEXP data = PROTECT(Rf_allocVector(VECSXP, 2));
+// element i of parent; *bytes and *ends receive its vectors to fill. With
+// rows >= 0 the values are a dictionary and *codes receives an integer
+// vector of rows codes to fill; with rows < 0, *codes is R_NilValue.
+SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *bytes,
+                         SEXP *ends, SEXP *codes) {
+  SEXP data = PROTECT(Rf_allocVector(VECSXP, 3));
   *bytes = SET_VECTOR_ELT(data, 0, Rf_allocVector(RAWSXP, nbytes));
   *ends = SET_VECTOR_ELT(data, 1, Rf_allocVector(REALSXP, n));
+  *codes = rows < 0 ? R_NilValue : SET_VECTOR_ELT(data, 2, Rf_allocVector(INTSXP, rows));
   SEXP x = SET_VECTOR_ELT(parent, i, R_new_altrep(packed_class, data, R_NilValue));
   UNPROTECT(1);
   return x;
 }
 
-// For the tests: -2 for a vector that is not a packed column, -1 for a
-// made one, and for a packed one the number of strings made so far.
+// For a packed column with a dictionary, list(values, codes): its
+// distinct values as a character vector and each row's 0-based code
+// (shared with the column, so not to be modified). NULL for anything else.
+SEXP dtatools_dictionary(SEXP x) {
+  if (!ALTREP(x) || !R_altrep_inherits(x, packed_class) || !PACKED(x) || CODES(x) == R_NilValue)
+    return R_NilValue;
+  SEXP cache = cache_of(x);
+  for (R_xlen_t i = 0; i < XLENGTH(cache); i++) packed_make(x, cache, i);
+  SEXP out = PROTECT(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(out, 0, Rf_duplicate(cache));
+  SEXP codes = CODES(x);
+  MARK_NOT_MUTABLE(codes);
+  SET_VECTOR_ELT(out, 1, codes);
+  UNPROTECT(1);
+  return out;
+}
+
+// For the tests: c(state, dictionary). state is -2 for a vector that is
+// not a packed column, -1 for a made one, and for a packed one the number
+// of cache slots made so far; dictionary is 1 for a packed column with a
+// dictionary, else 0.
 SEXP dtatools_packed_state(SEXP x) {
-  if (!ALTREP(x) || !R_altrep_inherits(x, packed_class)) return Rf_ScalarReal(-2);
-  if (!PACKED(x)) return Rf_ScalarReal(-1);
-  SEXP cache = R_altrep_data2(x);
-  double made = 0;
-  if (cache != R_NilValue)
-    for (R_xlen_t i = 0; i < XLENGTH(cache); i++) made += STRING_ELT(cache, i) != NA_STRING;
-  return Rf_ScalarReal(made);
+  SEXP out = PROTECT(Rf_allocVector(REALSXP, 2));
+  double *o = REAL(out);
+  o[0] = -2;
+  o[1] = 0;
+  if (ALTREP(x) && R_altrep_inherits(x, packed_class)) {
+    o[0] = -1;
+    if (PACKED(x)) {
+      SEXP cache = R_altrep_data2(x);
+      o[0] = 0;
+      if (cache != R_NilValue)
+        for (R_xlen_t i = 0; i < XLENGTH(cache); i++) o[0] += STRING_ELT(cache, i) != NA_STRING;
+      o[1] = CODES(x) != R_NilValue;
+    }
+  }
+  UNPROTECT(1);
+  return out;
 }
 
 void dtatools_init_packed(DllInfo *dll) {

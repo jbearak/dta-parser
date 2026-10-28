@@ -3,6 +3,8 @@
 #   Rscript bench/make_large.R <dir>
 #   long.dta: 10M rows, 12 variables of every storage type (about 0.6 GB)
 #   wide.dta: 1.5M rows, 400 doubles (about 4.8 GB, past 4 GiB)
+#   groups.dta: 15M rows shaped like survey data: a str20 column of 300
+#   values in random order and a byte column of 5 values plus `.`
 dir <- commandArgs(trailingOnly = TRUE)[[1]]
 dir.create(dir, showWarnings = FALSE)
 set.seed(1)
@@ -23,3 +25,12 @@ rm(long); invisible(gc())
 n <- 1.5e6
 wide <- as.data.frame(matrix(rnorm(n * 400), n, 400))
 dtatools::save_dta(wide, file.path(dir, "wide.dta"))
+rm(wide); invisible(gc())
+
+set.seed(2)
+n <- 1.5e7
+groups <- dtatools::dibble(
+  s = sample(sprintf("survey %03d of 300", 1:300), n, TRUE),
+  a = dtatools::dta_num(sample(c(1:5, NA), n, TRUE), storage = "byte")
+)
+dtatools::save_dta(groups, file.path(dir, "groups.dta"))
