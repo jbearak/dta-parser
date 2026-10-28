@@ -63,3 +63,20 @@ package reads fastest of all five.
 The downstream workload, 3 of 302 variables from an 11.8 GB
 release-115 file with 15.1M rows (warm cache), takes 0.8 s and 464 MB
 with dtatools, against 15.7 s and 492 MB with haven.
+
+## Grouping and comparing (`Rscript bench/group_case.R`)
+
+10M rows: a `dta_num` column of 50 values plus `.`, and a string column
+of 300 values.
+
+| operation | seconds |
+|---|---|
+| `dta_group_tag(a, s, missing = TRUE)` | 0.80 |
+| `dta_group_id(a, s, missing = TRUE)` | 0.69 |
+| `tab(a, missing = TRUE)` | 0.25 |
+| `unique(a)` | 0.09 |
+| `a == 3` | 0.05 |
+
+All of them work on one order key per value (ADR 0009). Grouping is a
+single radix `order()` over the keys followed by a pass for run
+boundaries; rows are never pasted together.
