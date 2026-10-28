@@ -21,13 +21,26 @@ pub enum Values<'a> {
     Numbers(Box<dyn Fn(usize) -> (f64, u8) + 'a>),
     /// UTF-8 text.
     Strings(Box<dyn Fn(usize) -> &'a [u8] + 'a>),
+    /// strLs, each UTF-8 text or, where the flag is true, binary bytes.
+    StrLs(Box<dyn Fn(usize) -> (&'a [u8], bool) + 'a>),
+}
+
+impl<'a> Values<'a> {
+    /// A string row's bytes and whether they are binary.
+    fn string(&self, row: usize) -> (&'a [u8], bool) {
+        match self {
+            Values::Strings(get) => (get(row), false),
+            Values::StrLs(get) => get(row),
+            Values::Numbers(_) => (&[], false),
+        }
+    }
 }
 
 pub struct WriteVariable<'a> {
     pub name: String,
     /// The storage type of a numeric variable. String variables are
     /// sized by the writer: strN for the longest value up to 2045 bytes,
-    /// strL beyond that.
+    /// strL beyond that or for [`Values::StrLs`].
     pub storage: StorageType,
     /// Display format; empty for the default of the storage type.
     pub format: String,
@@ -66,6 +79,9 @@ pub fn write(data: &Dataset, out: impl Write) -> Result<()> {
     Ok(())
 }
 
+/// A strL's bytes and whether they are binary.
+type StrlText<'a> = (&'a [u8], bool);
+
 /// What the first pass learns.
 struct Plan<'a> {
     types: Vec<StorageType>,
@@ -75,7 +91,7 @@ struct Plan<'a> {
     /// each distinct text: identical texts share one strL entry. Keys
     /// borrow the caller's data, so this costs a table entry per
     /// distinct text and nothing per row.
-    strl_first: Vec<HashMap<&'a [u8], usize, BuildHasherDefault<FastHash>>>,
+    strl_first: Vec<HashMap<StrlText<'a>, usize, BuildHasherDefault<FastHash>>>,
     /// For each strL variable, the rows whose text is written to the
     /// strL section (the first of each distinct text), in order.
     strl_rows: Vec<Vec<usize>>,
@@ -118,17 +134,18 @@ impl<'a> Plan<'a> {
                     }
                     v.storage
                 }
-                Values::Strings(get) => {
+                values => {
                     // Text must be UTF-8 without NULs: readers stop a string at a NUL.
-                    let check = |s: &[u8], row: usize| {
-                        if s.contains(&0) || std::str::from_utf8(s).is_err() {
+                    let check = |(s, binary): (&[u8], bool), row: usize| {
+                        if !binary && (s.contains(&0) || std::str::from_utf8(s).is_err()) {
                             Err(Error::new(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
                         } else {
                             Ok(())
                         }
                     };
-                    let longest = (0..data.nobs).map(|row| get(row).len()).max().unwrap_or(0);
-                    if longest > STRN_MAX || v.storage == StorageType::StrL {
+                    let longest = (0..data.nobs).map(|row| values.string(row).0.len()).max().unwrap_or(0);
+                    let strl = matches!(values, Values::StrLs(_)) || v.storage == StorageType::StrL;
+                    if longest > STRN_MAX || strl {
                         if data.nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
                             return Err(Error::new("too many rows or variables for strLs in release 118"));
                         }
@@ -136,7 +153,7 @@ impl<'a> Plan<'a> {
                         let mut first = HashMap::default();
                         let mut recent = RecentTexts::new();
                         for row in 0..data.nobs {
-                            let s = get(row);
+                            let s = values.string(row);
                             if recent.get(s).is_some() {
                                 continue;
                             }
@@ -146,7 +163,7 @@ impl<'a> Plan<'a> {
                             });
                             if f == row {
                                 check(s, row)?;
-                                strl_bytes += gso_len(s.len()) as u64;
+                                strl_bytes += gso_len(s) as u64;
                             }
                             recent.put(s, f);
                         }
@@ -154,7 +171,7 @@ impl<'a> Plan<'a> {
                         StorageType::StrL
                     } else {
                         for row in 0..data.nobs {
-                            check(get(row), row)?;
+                            check(values.string(row), row)?;
                         }
                         StorageType::Str(longest.max(1) as u16)
                     }
@@ -279,12 +296,12 @@ impl<'a> Plan<'a> {
                             let (value, code) = get(r);
                             encode(&mut buf, t, value, code);
                         }
-                        (Values::Strings(get), StorageType::StrL) => {
+                        (values, StorageType::StrL) => {
                             // A reference to (variable, observation), 2 + 6 bytes.
-                            let s = get(r);
+                            let s = values.string(r);
                             let cache = recent[j].as_mut().expect("strL variables have a cache");
                             let first = cache.get(s).unwrap_or_else(|| {
-                                let f = self.strl_first[j][s];
+                                let f = self.strl_first[j][&s];
                                 cache.put(s, f);
                                 f
                             });
@@ -292,8 +309,8 @@ impl<'a> Plan<'a> {
                             buf.extend_from_slice(&(j as u16 + 1).to_le_bytes());
                             buf.extend_from_slice(&o.to_le_bytes()[..6]);
                         }
-                        (Values::Strings(get), StorageType::Str(w)) => {
-                            let s = get(r);
+                        (values, StorageType::Str(w)) => {
+                            let s = values.string(r).0;
                             buf.extend_from_slice(s);
                             buf.resize(buf.len() + w as usize - s.len(), 0);
                         }
@@ -309,27 +326,32 @@ impl<'a> Plan<'a> {
 
     fn write_strls(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
         for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
-            let (Values::Strings(get), StorageType::StrL) = (&v.values, t) else { continue };
+            if *t != StorageType::StrL {
+                continue;
+            }
             for &r in &self.strl_rows[j] {
-                let s = get(r);
+                let (s, binary) = v.values.string(r);
                 let mut head = Vec::with_capacity(20);
                 head.extend_from_slice(b"GSO");
                 head.extend_from_slice(&(j as u32 + 1).to_le_bytes());
                 head.extend_from_slice(&(r as u64 + 1).to_le_bytes());
-                head.push(130); // text, ending with a NUL
-                head.extend_from_slice(&(s.len() as u32 + 1).to_le_bytes());
+                // Binary is stored as is; text ends with a NUL.
+                head.push(if binary { 129 } else { 130 });
+                head.extend_from_slice(&(s.len() as u32 + !binary as u32).to_le_bytes());
                 out.write_all(&head)?;
                 out.write_all(s)?;
-                out.write_all(&[0])?;
+                if !binary {
+                    out.write_all(&[0])?;
+                }
             }
         }
         Ok(())
     }
 }
 
-/// Bytes a text strL of `len` bytes takes in the strL section.
-fn gso_len(len: usize) -> usize {
-    3 + 4 + 8 + 1 + 4 + len + 1
+/// Bytes a strL takes in the strL section.
+fn gso_len((s, binary): (&[u8], bool)) -> usize {
+    3 + 4 + 8 + 1 + 4 + s.len() + !binary as usize
 }
 
 fn encode(buf: &mut Vec<u8>, t: StorageType, value: f64, code: u8) {
@@ -537,13 +559,13 @@ impl FastHash {
 /// one text many times at the same address, so a row whose text is here
 /// skips hashing it. Texts stay put while the writer runs, so the same
 /// address and length means the same text.
-struct RecentTexts(Vec<(usize, usize, usize)>);
+struct RecentTexts(Vec<(usize, usize, bool, usize)>);
 
 impl RecentTexts {
     const SLOTS: usize = 1024;
 
     fn new() -> Self {
-        RecentTexts(vec![(0, 0, usize::MAX); Self::SLOTS])
+        RecentTexts(vec![(0, 0, false, usize::MAX); Self::SLOTS])
     }
 
     fn slot(s: &[u8]) -> usize {
@@ -551,12 +573,12 @@ impl RecentTexts {
     }
 
     /// The first row holding `s`, if `s` was seen here.
-    fn get(&self, s: &[u8]) -> Option<usize> {
-        let (addr, len, first) = self.0[Self::slot(s)];
-        (addr == s.as_ptr() as usize && len == s.len() && first != usize::MAX).then_some(first)
+    fn get(&self, (s, binary): (&[u8], bool)) -> Option<usize> {
+        let (addr, len, b, first) = self.0[Self::slot(s)];
+        (addr == s.as_ptr() as usize && len == s.len() && b == binary && first != usize::MAX).then_some(first)
     }
 
-    fn put(&mut self, s: &[u8], first: usize) {
-        self.0[Self::slot(s)] = (s.as_ptr() as usize, s.len(), first);
+    fn put(&mut self, (s, binary): (&[u8], bool), first: usize) {
+        self.0[Self::slot(s)] = (s.as_ptr() as usize, s.len(), binary, first);
     }
 }

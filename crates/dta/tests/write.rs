@@ -185,3 +185,34 @@ fn values_outside_the_storage_type_are_errors() {
     assert!(one_column(StorageType::Double, f64::from_bits(0x7fdf_ffff_ffff_ffff)).is_ok());
     assert!(one_column(StorageType::Double, f64::from_bits(0x7fe0_0000_0000_0000)).is_err());
 }
+
+#[test]
+fn binary_strls_read_back_as_binary() {
+    let rows: [(&[u8], bool); 5] =
+        [(b"text", false), (b"\0\xff\x01", true), (b"text", true), (b"", false), (b"\0\xff\x01", true)];
+    let data = Dataset {
+        nobs: rows.len(),
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "s".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| rows[i])),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+    let mut reader = Reader::open(Bytes(out), Options::default()).unwrap();
+    assert_eq!(reader.metadata().variables[0].storage, StorageType::StrL);
+    let column = &reader.read(&[0], 0, rows.len() as u64).unwrap()[0];
+    let Column::Strings { binary, .. } = column else { panic!("not strings") };
+    for (i, &(bytes, is_binary)) in rows.iter().enumerate() {
+        assert_eq!((column.bytes(i), binary[i]), (bytes, is_binary), "row {i}");
+    }
+}
