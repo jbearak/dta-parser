@@ -1,6 +1,6 @@
 [package]
 name = "dta-ffi"
-description = "C ABI over the dta crate, for the wasm and R bindings"
+description = "C ABIs over the dta crate: wasm for npm, native for Julia"
 version = "1.0.0"
 edition = "2021"
 license = "GPL-3.0-only"
@@ -11,3 +11,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 dta = { path = "../dta" }
+
+[dev-dependencies]
+serde_json = "1"
