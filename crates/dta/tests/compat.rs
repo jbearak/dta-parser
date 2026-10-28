@@ -14,6 +14,10 @@ use serde_json::{json, Value};
 /// (reader, fixture name prefix, field): why that reader's value is not
 /// an oracle there. See docs/adr/0005-oracles.md.
 const KNOWN: &[(&str, &str, &str, &str)] = &[
+    ("haven", "readstat_104", "b.labels", "haven 2.5.5 reads value labels before 108 with the 108 layout"),
+    ("haven", "readstat_108", "b.labels", "haven 2.5.5 misreads release 108 value label tables"),
+    ("readstata13", "readstat_104", "b.labels", "readstata13 does not read value labels before 108"),
+    ("readstata13", "readstat_105", "b.labels", "readstata13 does not read value labels before 108"),
     ("haven", "haven_", "text", "haven 2.5.5 drops trailing blanks from strN values"),
     ("pandas", "haven_113", "text", LATIN1),
     ("pandas", "haven_114", "text", LATIN1),
@@ -107,6 +111,18 @@ fn compare(stem: &str, reader: &str, ours: &Value, theirs: &Value, failures: &mu
             check(&format!("{name}.{field}"), &a[field], &b[field]);
         }
         let mut theirs_values = theirs["values"][name].clone();
+        if reader == "readstata13" && ours["release"].as_u64() < Some(113) {
+            // readstata13 leaves a pre-113 missing value as the stored
+            // sentinel, the type's largest value.
+            let sentinels = [127.0, 32767.0, 2147483647.0, 1.7014118346046923e38, 8.988465674311579e307];
+            if let Value::Array(cells) = &mut theirs_values {
+                for c in cells.iter_mut() {
+                    if c.as_f64().is_some_and(|x| sentinels.contains(&x)) {
+                        *c = json!({"missing": "."});
+                    }
+                }
+            }
+        }
         if reader == "readstata13" {
             // readstata13 reads an empty strL as NA.
             if let Value::Array(cells) = &mut theirs_values {

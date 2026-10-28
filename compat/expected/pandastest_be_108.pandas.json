@@ -1,0 +1,115 @@
+{
+  "reader": "pandas 3.0.5",
+  "release": 108,
+  "nobs": 3,
+  "data_label": "",
+  "timestamp": "",
+  "variables": [
+    {
+      "name": "index",
+      "type": "byte",
+      "format": "%8.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "i8",
+      "type": "byte",
+      "format": "%8.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "i16",
+      "type": "int",
+      "format": "%8.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "i32",
+      "type": "long",
+      "format": "%12.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "f",
+      "type": "float",
+      "format": "%9.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "d",
+      "type": "double",
+      "format": "%12.0g",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "dt",
+      "type": "long",
+      "format": "%dD_m_Y",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    },
+    {
+      "name": "s10",
+      "type": "str10",
+      "format": "%10s",
+      "label": "",
+      "value_labels": "",
+      "labels": []
+    }
+  ],
+  "values": {
+    "index": [
+      1,
+      2,
+      3
+    ],
+    "i8": [
+      -1,
+      0,
+      1
+    ],
+    "i16": [
+      -1025,
+      0,
+      1025
+    ],
+    "i32": [
+      -8388609,
+      0,
+      8388609
+    ],
+    "f": [
+      -0.10000000149011612,
+      -0.20000000298023224,
+      -0.30000001192092896
+    ],
+    "d": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "dt": [
+      14610,
+      14611,
+      14612
+    ],
+    "s10": [
+      "abcdefghij",
+      "abcdefghij",
+      "abcdefghij"
+    ]
+  }
+}

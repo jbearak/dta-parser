@@ -18,3 +18,10 @@ tests:
 - **pandas decodes text before 118 as Latin-1** (see ADR 0004).
 - **readstata13 reads an empty strL as `NA`** where the others read `""`.
   We read `""`.
+- **Value labels before 108**: haven 2.5.5 fails on 105 and reads 104 as
+  empty; readstata13 does not read them; pandas reads them, and is the
+  oracle there. haven also reads 108's tables as empty.
+- **readstata13 returns pre-113 missing values as the stored sentinel**
+  (the type's largest value); the test maps those to `.`.
+
+`compat/README.md` lists, per release, which readers are the oracle.

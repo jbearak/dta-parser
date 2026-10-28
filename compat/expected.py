@@ -55,7 +55,8 @@ def dump(path: str) -> dict:
         typlist = reader._typlist
         lbllist = reader._lbllist
         data_label = reader.data_label
-        timestamp = reader.time_stamp
+        # Release 104 has no timestamp.
+        timestamp = reader.time_stamp if release >= 105 else None
     variables = []
     for i, name in enumerate(data.columns):
         set_name = lbllist[i]
