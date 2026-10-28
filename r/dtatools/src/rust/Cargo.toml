@@ -1,0 +1,19 @@
+[package]
+name = "dtatools"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+path = "lib.rs"
+
+[dependencies]
+dta = { path = "dta" }
+
+# Not part of the dta-parser workspace.
+[workspace]
+
+[profile.release]
+lto = true
+codegen-units = 1

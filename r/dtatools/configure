@@ -1,0 +1,19 @@
+#!/bin/sh
+# Copy the shared Rust core into the package when building from a
+# checkout of dta-parser; a source tarball already carries it.
+set -e
+if [ -d ../../crates/dta ]; then
+  rm -rf src/rust/dta
+  mkdir -p src/rust/dta
+  cp -R ../../crates/dta/src src/rust/dta/
+  # The core's test-only dependencies are not needed to build it.
+  sed '/^\[dev-dependencies\]/,$d' ../../crates/dta/Cargo.toml > src/rust/dta/Cargo.toml
+fi
+if [ ! -d src/rust/dta ]; then
+  echo "dtatools: the Rust core (src/rust/dta) is missing" >&2
+  exit 1
+fi
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "dtatools: building needs cargo; see https://rustup.rs" >&2
+  exit 1
+fi

@@ -1,0 +1,14 @@
+LIBDIR = rust/target/release
+PKG_LIBS = -L$(LIBDIR) -ldtatools
+
+all: $(SHLIB)
+
+$(SHLIB): rustlib
+
+rustlib:
+	cd rust && cargo build --release --lib --target-dir target
+
+.PHONY: rustlib
+
+clean:
+	rm -rf $(SHLIB) $(OBJECTS) rust/target
