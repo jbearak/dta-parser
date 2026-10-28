@@ -1,6 +1,6 @@
 # Plan: R, TypeScript, Python and Julia, at parity, with proof
 
-Status: draft, revised after review round 3.
+Status: approved by Sol 6.1 and Sonnet 5.5 after four review rounds.
 
 ## Goal
 
@@ -28,7 +28,7 @@ generated man pages.
 | `.`, `.a`–`.z` kept per value, through the operations listed below, and written back | ✓ `dta_num` | ✓ codes | new | new (not through DataFrames `vcat`) |
 | binary strLs | — (an error) | ✓ `Uint8Array` | new (`bytes`) | new (`Vector{UInt8}`) |
 | text encoding option before 118 | ✓ | ✓ | new | new |
-| `%td`, `%tc`, `%tC` as dates (opt out) | — (numbers) | `formatValue` | new | new |
+| `%td`, `%tc` as dates (opt out; `%tC` stays numbers with its format) | — (numbers) | `formatValue` | new | new |
 | write release 118 with all of the above | ✓ | ✓ | new | new |
 | a key that sorts and compares as Stata does | ✓ | **new** | new | new |
 | Stata comparisons, arithmetic, logic on columns; `tab`, group ids, sets, dibble | ✓ | — | — | — |
@@ -84,8 +84,8 @@ group by, Tables.jl):
   double use `float64`); with any `.a`–`.z` it is a `StataArray`, a
   pandas ExtensionArray holding values and a `uint8` code per row, so
   codes follow their rows through the operations listed above
-  (prototype: 70 lines). Strings are `object` columns of `str` (binary strLs:
-  `bytes`). Metadata is `df.attrs["dta"]` (per-column labels, formats,
+  (prototype: 70 lines). Strings use pandas' default string dtype (`object` on pandas
+  2.2, `str` on 3.x; binary strLs: `bytes` in an `object` column). Metadata is `df.attrs["dta"]` (per-column labels, formats,
   storage, value labels; dataset label, notes, characteristics, sort
   order), which is column-keyed, not row-positional. Dates convert unless
   `dates=False`: `%td` to `datetime64[s]`, `%tc` to `datetime64[ms]`,
@@ -93,7 +93,7 @@ group by, Tables.jl):
   round-trips exactly and none is `.a`–`.z`; otherwise it stays numbers
   with its format. `%tC` (which counts leap seconds) always stays
   numbers with its format, since a leap-second-free timestamp would be
-  off by up to 27 seconds. Strings use pandas' default string dtype.
+  off by up to 27 seconds.
   Python 3.10 to 3.14 (CI tests the oldest and newest), the numpy and
   pandas releases that support each (pandas 2.2 and 3.x); free-threaded
   Python is not supported (abi3 wheels).
