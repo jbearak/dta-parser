@@ -87,6 +87,9 @@ fn every_fixture_round_trips() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/fixtures");
     for entry in fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "dta") {
+            continue;
+        }
         let bytes = fs::read(&path).unwrap();
         let written = rewrite(bytes.clone(), "28 Oct 2026 14:38");
         let mut a = Reader::open(Bytes(bytes), Options::default()).unwrap();
