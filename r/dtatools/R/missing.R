@@ -5,6 +5,13 @@
 #' to `.z`, or for the letters in `tag`. Both read the codes from any
 #' numeric vector, so they work on plain doubles such as `c(NA, .i)`.
 #'
+#' `%in%` and `match()` keep the codes apart only when both sides are
+#' `dta_num` or plain numbers: base R transforms only classed values for
+#' matching, so in `x %in% c(1, .a)` (a plain double, since `c()` takes
+#' its class from `1`) the `.a` is just `NA`. Put a code first,
+#' `c(.a, 1)`, or use [dta_setdiff()] and friends, which read the codes
+#' from plain doubles too.
+#'
 #' @param x A vector.
 #' @param tag Letters, such as `"g"`; NULL for any of them.
 #' @return A logical vector as long as `x`.

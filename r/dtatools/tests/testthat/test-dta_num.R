@@ -41,6 +41,24 @@ test_that("plain doubles with codes (c(NA, .i)) work with dtatools functions", {
   expect_identical(names(tab(plain, missing = TRUE)), c(".", ".i"))
 })
 
+test_that("c() takes recursive and use.names as arguments, not values", {
+  y <- c(dta_num(c(a = 1)), b = 2, use.names = FALSE)
+  expect_identical(as.vector(unclass(y)), c(1, 2))
+  expect_null(names(y))
+  expect_identical(length(c(dta_num(1), 2, recursive = TRUE)), 2L)
+})
+
+test_that("matching keeps codes apart when both sides are dta_num", {
+  x <- dta_num(c(NA, .a, 1))
+  expect_identical(x %in% c(.a, 1), c(FALSE, TRUE, TRUE))
+  expect_identical(c(.a, 1) %in% x, c(TRUE, TRUE))
+})
+
+test_that("an empty dta_num formats and prints", {
+  expect_identical(format(dta_num()), character())
+  expect_silent(capture.output(print(dta_num())))
+})
+
 test_that("printing shows the codes", {
   expect_identical(format(x)[3], ".d")
   expect_output(print(x), "\\.d")

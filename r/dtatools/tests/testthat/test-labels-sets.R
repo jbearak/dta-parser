@@ -30,6 +30,15 @@ test_that("dta_setequal and dta_setdiff keep codes apart", {
   expect_identical(as.character(dta_setdiff(x, c(0, NA, .g))), c("1", ".d", "2"))
   expect_identical(dta_setdiff(c("a", "b", "a"), "b"), "a")
   expect_true(dta_setequal(c("India 2021", "x"), c("x", "India 2021")))
+  # Against character values, numbers compare as Stata writes them.
+  expect_identical(length(dta_setdiff(c(NA, .a), character())), 2L)
+  expect_false(dta_setequal(c(NA, .a), NA_character_))
+  expect_true(dta_setequal(c(NA, .a), c(".", ".a")))
+})
+
+test_that("an NA string is a group of its own and does not spoil later groups", {
+  expect_identical(dta_group_id(c(1, 1, 2), c("a", NA, "b")), c(1L, 2L, 3L))
+  expect_identical(dta_group_tag(c(1, 1, 2), c("a", NA, "b")), c(1L, 1L, 1L))
 })
 
 test_that("dta_group_id numbers groups in sorted order; missing values are NA unless missing = TRUE", {

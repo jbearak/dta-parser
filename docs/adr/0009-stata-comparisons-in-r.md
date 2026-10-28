@@ -21,3 +21,12 @@ Arithmetic is not Stata's: it returns plain doubles with every code as
 `tab()` returns a named integer vector of counts in Stata's order. The
 names are the values as Stata writes them (`1`, `1.5`, `.`, `.a`), not
 their value labels, so a failure message names the code.
+
+One limit follows from base R and cannot be fixed inside dtatools.
+`match()` transforms only classed values, and `c()` takes its class
+from its first argument. So in `x %in% c(1, .a)` the table is a plain
+double whose `.a` is just `NA`. Putting a code first (`c(.a, 1)`) keeps
+the table a `dta_num`. `dta_setdiff()` and the other helpers read codes
+from plain doubles and are not affected. The downstream tests match
+against plain numbers or against tables that begin with a code, and
+both work.

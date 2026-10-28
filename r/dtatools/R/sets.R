@@ -22,8 +22,12 @@
 #' @name dta_sets
 NULL
 
-# What two values compare by: the text for character vectors, else keys.
-set_keys <- function(x, character) if (character) as.character(x) else dta_keys(x)
+# What two values compare by: keys, or, when either side is character,
+# text, with numbers written as Stata writes codes (so .a stays .a).
+set_keys <- function(x, character) {
+  if (!character) return(dta_keys(x))
+  if (is.character(x)) x else code_text(x)
+}
 
 #' @rdname dta_sets
 #' @export
@@ -61,7 +65,11 @@ dta_group_id <- function(..., missing = FALSE) {
   starts[1] <- TRUE
   for (k in keys) {
     s <- k[ord]
-    starts[-1] <- starts[-1] | s[-1] != s[-n]
+    a <- s[-1]
+    b <- s[-n]
+    # NA (only possible in character columns) is a value of its own.
+    same <- (is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & a == b)
+    starts[-1] <- starts[-1] | !same
   }
   id <- integer(n)
   id[ord] <- cumsum(starts)

@@ -91,15 +91,15 @@ Ops.dta_num <- function(e1, e2) {
 rep.dta_num <- function(x, ...) restore(NextMethod(), x)
 
 #' @export
-c.dta_num <- function(...) {
-  parts <- lapply(list(...), function(x) if (inherits(x, "dta_num")) unclass(x) else x)
-  out <- unlist(lapply(parts, function(x) {
-    names <- names(x)
+c.dta_num <- function(..., recursive = FALSE, use.names = TRUE) {
+  parts <- lapply(list(...), function(x) {
+    names <- if (use.names) names(x)
+    x <- unclass(x)
     attributes(x) <- NULL
     names(x) <- names
     x
-  }))
-  restore(out, ..1)
+  })
+  restore(unlist(parts, use.names = use.names), ..1)
 }
 
 #' @export
@@ -121,7 +121,7 @@ as.character.dta_num <- function(x, ...) code_text(x)
 format.dta_num <- function(x, ...) {
   out <- format(numbers(x), ...)
   codes <- dta_codes(x)
-  out[codes > 0] <- format(MISSING_NAMES[codes[codes > 0]], width = max(nchar(out)))
+  if (any(codes > 0)) out[codes > 0] <- format(MISSING_NAMES[codes[codes > 0]], width = max(nchar(out)))
   names(out) <- names(x)
   out
 }
