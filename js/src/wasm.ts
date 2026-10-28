@@ -26,8 +26,10 @@ let nextFile = 1;
 
 // Synchronous compile and instantiate: Node allows it for any size, and
 // it keeps the whole API synchronous.
-const instance = new WebAssembly.Instance(new WebAssembly.Module(wasmBytes), {
+const module = new WebAssembly.Module(wasmBytes);
+const imports = {
   env: {
+    // Never lets a JavaScript exception unwind through wasm frames.
     host_read(file: number, ptr: number, len: number, offset: number): number {
       try {
         files.get(file)!(new Uint8Array(wasm.memory.buffer, ptr, len), offset);
@@ -37,8 +39,33 @@ const instance = new WebAssembly.Instance(new WebAssembly.Module(wasmBytes), {
       }
     },
   },
-});
-const wasm = instance.exports as unknown as Exports;
+};
+let wasm = new WebAssembly.Instance(module, imports).exports as unknown as Exports;
+
+/**
+ * Counts module instances. A trap (a bug: damaged files give errors, not
+ * traps) leaves an instance unusable, so we replace it; readers opened on
+ * the old one see the count change and report themselves closed.
+ */
+let generation = 0;
+
+export function currentGeneration(): number {
+  return generation;
+}
+
+function guard<T>(f: () => T): T {
+  try {
+    return f();
+  } catch (e) {
+    if (e instanceof WebAssembly.RuntimeError) {
+      generation++;
+      files.clear();
+      wasm = new WebAssembly.Instance(module, imports).exports as unknown as Exports;
+      throw new Error(`dta-parser failed (${e.message}); files it had open are now closed`);
+    }
+    throw e;
+  }
+}
 
 const utf8 = new TextDecoder("utf-8");
 
@@ -64,7 +91,7 @@ export function open(read: ReadAt, length: number, encoding: EncodingName): numb
   const file = nextFile++;
   files.set(file, read);
   try {
-    return check(wasm.dta_open(file, length, ENCODINGS[encoding]));
+    return guard(() => check(wasm.dta_open(file, length, ENCODINGS[encoding])));
   } catch (e) {
     files.delete(file);
     throw e;
@@ -72,30 +99,35 @@ export function open(read: ReadAt, length: number, encoding: EncodingName): numb
 }
 
 export function close(handle: number): void {
-  wasm.dta_close(handle);
+  guard(() => wasm.dta_close(handle));
 }
 
 export function metadataJson(handle: number): string {
-  return resultText(wasm.dta_metadata(handle));
+  return guard(() => resultText(wasm.dta_metadata(handle)));
 }
 
 export function valueLabelsJson(handle: number): string {
-  return resultText(wasm.dta_value_labels(handle));
+  return guard(() => resultText(wasm.dta_value_labels(handle)));
 }
 
 export function characteristicsJson(handle: number): string {
-  return resultText(wasm.dta_characteristics(handle));
+  return guard(() => resultText(wasm.dta_characteristics(handle)));
 }
 
-/** Read rows into the handle; then `part` copies the buffers out. */
-export function read(handle: number, columns: number[], start: number, count: number): void {
-  const ptr = wasm.dta_alloc(columns.length * 4);
-  try {
+/**
+ * Read up to `count` rows into the handle; then `part` copies the
+ * buffers out. Returns how many rows were read: the module stops once a
+ * read holds 64 MiB.
+ */
+export function read(handle: number, columns: number[], start: number, count: number): number {
+  return guard(() => {
+    const ptr = wasm.dta_alloc(columns.length * 4);
     new Uint32Array(wasm.memory.buffer, ptr, columns.length).set(columns);
-    check(wasm.dta_read(handle, ptr, columns.length, start, count));
-  } finally {
+    const n = wasm.dta_read(handle, ptr, columns.length, start, count);
     wasm.dta_free(ptr, columns.length * 4);
-  }
+    if (n < 0) check(0);
+    return n;
+  });
 }
 
 /** A copy of part `part` of read column `k` (see dta_column_part). */
@@ -108,14 +140,16 @@ export function part(
   kind: 0 | 1 | 2,
   as: "f64" | "u8" | "u32",
 ): Float64Array | Uint8Array | Uint32Array {
-  const ptr = check(wasm.dta_column_part(handle, k, kind));
-  const n = wasm.dta_result_len();
-  // Views are made after the call, since a call can grow (and so
-  // replace) the module's memory.
-  const buffer = wasm.memory.buffer;
-  if (as === "f64") return new Float64Array(buffer, ptr, n).slice();
-  if (as === "u32") return new Uint32Array(buffer, ptr, n).slice();
-  return new Uint8Array(buffer, ptr, n).slice();
+  return guard(() => {
+    const ptr = check(wasm.dta_column_part(handle, k, kind));
+    const n = wasm.dta_result_len();
+    // Views are made after the call, since a call can grow (and so
+    // replace) the module's memory.
+    const buffer = wasm.memory.buffer;
+    if (as === "f64") return new Float64Array(buffer, ptr, n).slice();
+    if (as === "u32") return new Uint32Array(buffer, ptr, n).slice();
+    return new Uint8Array(buffer, ptr, n).slice();
+  });
 }
 
 export function forget(read: ReadAt): void {

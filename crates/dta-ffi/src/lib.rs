@@ -188,21 +188,41 @@ pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
     })
 }
 
-/// Read `count` rows from `start` of the `ncols` variables listed (u32
-/// indices) at `cols`. The columns stay in the handle for
-/// `dta_column_part` until the next read. Returns 1, or 0 on failure.
+/// Read up to `count` rows from `start` of the `ncols` variables listed
+/// (u32 indices) at `cols`, stopping after the row at which the decoded
+/// output reaches 64 MiB, so module memory stays bounded. The columns
+/// stay in the handle for `dta_column_part` until the next read. Returns
+/// the number of rows read, or -1 on failure.
 ///
 /// # Safety
 /// `cols` must point to `ncols` u32 values.
 #[no_mangle]
-pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64) -> u32 {
+pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64) -> f64 {
     let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
-    call(0, |state| {
+    call(-1.0, |state| {
         let handle = handle(state, h)?;
-        handle.columns = handle.reader.read(&cols, start as u64, count as u64).map_err(|e| e.to_string())?;
-        Ok(1)
+        let Handle { reader, columns } = handle;
+        columns.clear();
+        let mut first = true;
+        let n = reader
+            .read_chunks(&cols, start as u64, count as u64, Some(BUDGET), |_, chunk| {
+                if first {
+                    *columns = chunk.to_vec();
+                    first = false;
+                } else {
+                    for (all, part) in columns.iter_mut().zip(chunk) {
+                        all.append(part);
+                    }
+                }
+                Ok(())
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(n as f64)
     })
 }
+
+/// Decoded bytes one read may hold in module memory (plus one row).
+const BUDGET: usize = 64 << 20;
 
 /// A buffer of read column `k`: `part` 0 is the f64 values or the
 /// string bytes, 1 the missing codes (u8) or the string ends (u32), 2

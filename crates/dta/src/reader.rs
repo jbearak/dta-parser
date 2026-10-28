@@ -40,7 +40,7 @@ impl Column {
         self.len() == 0
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         match self {
             Column::Numbers { values, missing } => {
                 values.clear();
@@ -55,7 +55,7 @@ impl Column {
     }
 
     /// Add `other`'s rows to the end of this column.
-    fn append(&mut self, other: &Column) {
+    pub fn append(&mut self, other: &Column) {
         match (self, other) {
             (Column::Numbers { values, missing }, Column::Numbers { values: v, missing: m }) => {
                 values.extend_from_slice(v);
@@ -115,6 +115,9 @@ const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 /// Rows are read this many bytes at a time.
 const CHUNK: usize = 8 << 20;
 
+/// The strL section is scanned through a window this large.
+const WINDOW: u64 = 1 << 20;
+
 /// An open `.dta` file. Opening reads only the header and descriptors;
 /// data, value labels, strLs and characteristics are read when asked for.
 pub struct Reader<S: Source> {
@@ -168,7 +171,7 @@ impl<S: Source> Reader<S> {
     /// `columns` (indices into the variable list, in any order).
     pub fn read(&mut self, columns: &[usize], start: u64, count: u64) -> Result<Vec<Column>> {
         let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
-        self.read_chunks(columns, start, count, |_, chunk| {
+        self.read_chunks(columns, start, count, None, |_, chunk| {
             for (all, part) in out.iter_mut().zip(chunk) {
                 all.append(part);
             }
@@ -182,13 +185,19 @@ impl<S: Source> Reader<S> {
     /// they belong without holding a second copy of the whole read.
     /// `f` gets the first row of the chunk, counted from `start`, and one
     /// column per entry of `columns`.
+    ///
+    /// With a `budget` in bytes, the read stops after the row at which the
+    /// decoded output (values, missing codes, string bytes and offsets,
+    /// strL payloads) reaches it, so the caller holds at most the budget
+    /// plus one row. Returns how many rows were read.
     pub fn read_chunks(
         &mut self,
         columns: &[usize],
         start: u64,
         count: u64,
+        budget: Option<usize>,
         mut f: impl FnMut(usize, &[Column]) -> Result<()>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let nvar = self.meta.variables.len();
         if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
             return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
@@ -202,19 +211,51 @@ impl<S: Source> Reader<S> {
         }
         let count = usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))?;
         if count == 0 {
-            return Ok(());
+            return Ok(0);
+        }
+        let has_strls = columns.iter().any(|&c| self.meta.variables[c].storage == StorageType::StrL);
+        if has_strls && self.strls.is_none() {
+            self.strls = Some(self.index_strls()?);
+        }
+        // Decoded bytes per row, not counting strL payloads.
+        let word = std::mem::size_of::<usize>();
+        let decoded_row: usize = columns
+            .iter()
+            .map(|&c| match self.meta.variables[c].storage {
+                StorageType::Str(w) => w as usize + word,
+                StorageType::StrL => 1 + word,
+                _ => 9,
+            })
+            .sum();
+        let mut rows_per_chunk = (CHUNK / self.row_len.max(1)).max(1);
+        if let Some(budget) = budget {
+            rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
         }
         let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
         let mut refs: Vec<[u8; 8]> = Vec::new();
-        // A row of zero width (no variables) still has `count` rows.
-        let rows_per_chunk = (CHUNK / self.row_len.max(1)).max(1);
         let mut buf = vec![0u8; rows_per_chunk.min(count) * self.row_len];
         let mut done = 0;
+        let mut used = 0usize;
         while done < count {
-            let n = rows_per_chunk.min(count - done);
-            let bytes = &mut buf[..n * self.row_len];
+            let mut n = rows_per_chunk.min(count - done);
             let offset = self.sections.data + (start + done as u64) * self.row_len as u64;
-            self.source.read_at(offset, bytes)?;
+            self.source.read_at(offset, &mut buf[..n * self.row_len])?;
+            if let Some(budget) = budget {
+                // Stop after the row that reaches the budget; strL
+                // payload sizes come from the index, before reading them.
+                let mut take = 0;
+                while take < n && used < budget {
+                    let row = &buf[take * self.row_len..(take + 1) * self.row_len];
+                    used += decoded_row;
+                    for &c in columns.iter().filter(|&&c| self.meta.variables[c].storage == StorageType::StrL) {
+                        let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
+                        used += self.strl_entry(&cell)?.map_or(0, |e| e.len as usize);
+                    }
+                    take += 1;
+                }
+                n = take;
+            }
+            let bytes = &buf[..n * self.row_len];
             for (k, &c) in columns.iter().enumerate() {
                 chunk[k].clear();
                 let cells = Cells { rows: bytes, row_len: self.row_len, offset: self.offsets[c] };
@@ -229,8 +270,11 @@ impl<S: Source> Reader<S> {
             }
             f(done, &chunk)?;
             done += n;
+            if budget.is_some_and(|b| used >= b) {
+                break;
+            }
         }
-        Ok(())
+        Ok(done as u64)
     }
 
     fn empty_column(&self, c: usize) -> Column {
@@ -315,6 +359,26 @@ impl<S: Source> Reader<S> {
         (uint(&cell[..v_len], order) as u32, uint(&cell[v_len..], order))
     }
 
+    /// The strL entry a cell points to; None for the empty reference.
+    fn strl_entry(&self, cell: &[u8; 8]) -> Result<Option<StrlEntry>> {
+        let key = self.strl_key(cell, self.layout.strl_v_len);
+        if key == (0, 0) {
+            return Ok(None);
+        }
+        let index = self.strls.as_ref().ok_or_else(|| Error::new("strLs not indexed"))?;
+        // haven 2.5.5 writes 119 cells with the 118 split (ADR 0005).
+        let found = index
+            .get(&key)
+            .or_else(|| (self.layout.release == 119).then(|| index.get(&self.strl_key(cell, 2))).flatten());
+        match found {
+            Some(e) => Ok(Some(*e)),
+            None => Err(Error::new(format!(
+                "a strL refers to variable {} observation {}, which the strL section lacks",
+                key.0, key.1
+            ))),
+        }
+    }
+
     fn resolve_strls(&mut self, refs: &[[u8; 8]], out: &mut Column) -> Result<()> {
         if self.strls.is_none() {
             self.strls = Some(self.index_strls()?);
@@ -323,25 +387,9 @@ impl<S: Source> Reader<S> {
         binary.reserve(refs.len());
         let enc = self.meta.encoding;
         let mut payload = Vec::new();
-        let index = self.strls.take().unwrap_or_default();
-        let result = (|| {
         for cell in refs {
             let mut is_binary = false;
-            let key = self.strl_key(cell, self.layout.strl_v_len);
-            if key != (0, 0) {
-                // haven 2.5.5 writes 119 cells with the 118 split (ADR 0005).
-                let found = index.get(&key).or_else(|| {
-                    (self.layout.release == 119).then(|| index.get(&self.strl_key(cell, 2))).flatten()
-                });
-                let entry = match found {
-                    Some(e) => *e,
-                    None => {
-                        return Err(Error::new(format!(
-                            "a strL refers to variable {} observation {}, which the strL section lacks",
-                            key.0, key.1
-                        )))
-                    }
-                };
+            if let Some(entry) = self.strl_entry(cell)? {
                 payload.resize(entry.len as usize, 0);
                 self.source.read_at(entry.offset, &mut payload)?;
                 is_binary = entry.binary;
@@ -357,26 +405,30 @@ impl<S: Source> Reader<S> {
             binary.push(is_binary);
         }
         Ok(())
-        })();
-        self.strls = Some(index);
-        result
     }
 
-    /// One pass over the strL section, recording where each entry's
-    /// payload is. Payloads themselves are read only when asked for.
+    /// One pass over the strL section, through a 1 MiB window,
+    /// recording where each entry's payload is. Payloads themselves are
+    /// read only when asked for.
     fn index_strls(&mut self) -> Result<HashMap<(u32, u64), StrlEntry>> {
         let (start, end) = self.sections.strls;
         let o_len = if self.layout.release == 117 { 4 } else { 8 };
         let head_len = 3 + 4 + o_len + 1 + 4;
         let mut index = HashMap::new();
+        let mut window: Vec<u8> = Vec::new();
+        let mut window_at = start;
         let mut pos = start;
-        let mut head = vec![0u8; head_len];
         while pos < end {
             if end - pos < head_len as u64 {
                 return Err(Error::at(pos, "truncated strL entry"));
             }
-            self.source.read_at(pos, &mut head)?;
-            let mut c = Cursor::new(&head, pos, self.meta.byte_order);
+            if pos + head_len as u64 > window_at + window.len() as u64 {
+                let len = (end - pos).min(WINDOW);
+                window = read_vec(&mut self.source, pos, len)?;
+                window_at = pos;
+            }
+            let at = (pos - window_at) as usize;
+            let mut c = Cursor::new(&window[at..at + head_len], pos, self.meta.byte_order);
             c.tag("GSO")?;
             let v = c.u32()?;
             let o = c.uint(o_len)?;

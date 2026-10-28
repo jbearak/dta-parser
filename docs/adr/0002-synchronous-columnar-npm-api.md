@@ -18,7 +18,9 @@ Reads are columnar (`readColumns` returns typed arrays per variable), and
 
 ## Consequences
 
-The wasm module holds at most 2^20 rows of the columns being read at a
-time, so its memory stays bounded however large the file is. A wasm trap
-(which should not happen: damaged files give errors) would leave the module
-unusable for the life of the process.
+Each call into the wasm module stops after the row at which its decoded
+output reaches 64 MiB (or at 2^20 rows), so module memory is bounded by
+that plus one row, however wide the read or large the strLs. A wasm trap
+should not happen, because damaged files give errors. If one does, the
+glue replaces the module instance, and readers opened on the old instance
+report themselves closed.

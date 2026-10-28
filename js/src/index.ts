@@ -92,7 +92,7 @@ export interface Options {
   encoding?: EncodingName;
 }
 
-/** Rows read per call into the wasm module, to bound its memory. */
+/** Most rows asked of the wasm module per call; it also stops at 64 MiB. */
 const BLOCK = 1 << 20;
 
 const utf8 = new TextDecoder("utf-8");
@@ -102,6 +102,7 @@ export class DtaReader {
   readonly info: Info;
   readonly variables: readonly Variable[];
   private handle: number;
+  private readonly generation: number;
   private readonly read: ReadAt;
   private labels?: Map<string, ValueLabels>;
   private readonly onClose?: () => void;
@@ -111,6 +112,7 @@ export class DtaReader {
     this.read = read;
     this.onClose = onClose;
     this.handle = wasm.open(read, length, options.encoding ?? "windows-1252");
+    this.generation = wasm.currentGeneration();
     const meta = JSON.parse(wasm.metadataJson(this.handle));
     this.variables = Object.freeze(meta.variables.map((v: Variable) => Object.freeze(v)));
     this.info = Object.freeze({
@@ -125,7 +127,7 @@ export class DtaReader {
   }
 
   private get open(): number {
-    if (this.handle === 0) throw new Error("the file is closed");
+    if (this.handle === 0 || this.generation !== wasm.currentGeneration()) throw new Error("the file is closed");
     return this.handle;
   }
 
@@ -180,9 +182,8 @@ export class DtaReader {
         ? { kind: "string", values: new Array<string | Uint8Array>(count) }
         : { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) },
     );
-    for (let done = 0; done < count; done += BLOCK) {
-      const n = Math.min(BLOCK, count - done);
-      wasm.read(this.open, indices, start + done, n);
+    for (let done = 0; done < count; ) {
+      const n = wasm.read(this.open, indices, start + done, Math.min(BLOCK, count - done));
       out.forEach((column, k) => {
         if (column.kind === "number") {
           column.values.set(wasm.part(this.handle, k, 0, "f64"), done);
@@ -199,6 +200,7 @@ export class DtaReader {
           }
         }
       });
+      done += n;
     }
     return out;
   }
@@ -219,7 +221,7 @@ export class DtaReader {
 
   close(): void {
     if (this.handle !== 0) {
-      wasm.close(this.handle);
+      if (this.generation === wasm.currentGeneration()) wasm.close(this.handle);
       wasm.forget(this.read);
       this.handle = 0;
       this.onClose?.();
