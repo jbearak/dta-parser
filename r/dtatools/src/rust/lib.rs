@@ -39,6 +39,16 @@ extern "C" {
     fn dtatools_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtatools_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtatools_set_strings(x: Sexp, first: isize, bytes: *const u8, ends: *const usize, n: isize) -> c_int;
+    fn dtatools_packed_elt(
+        parent: Sexp,
+        i: isize,
+        nbytes: isize,
+        n: isize,
+        out: *mut Sexp,
+        bytes: *mut Sexp,
+        ends: *mut Sexp,
+    ) -> c_int;
+    fn RAW(x: Sexp) -> *mut u8;
     fn dtatools_interrupted() -> c_int;
 }
 
@@ -69,6 +79,20 @@ fn alloc_elt(parent: Sexp, i: usize, kind: c_int, n: usize) -> Res<Sexp> {
     let mut out = std::ptr::null_mut();
     status(unsafe { dtatools_alloc_elt(parent, i as isize, kind, n as isize, &mut out) })?;
     Ok(out)
+}
+
+/// A packed string column (see strings.c) holding `bytes`, the UTF-8
+/// text of its values, and `ends`, each value's end offset, as element
+/// `i` of the list `parent`.
+fn packed_elt(parent: Sexp, i: usize, bytes: &[u8], ends: &[f64]) -> Res<Sexp> {
+    let (mut x, mut b, mut e) = (std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
+    let n = ends.len();
+    status(unsafe { dtatools_packed_elt(parent, i as isize, bytes.len() as isize, n as isize, &mut x, &mut b, &mut e) })?;
+    unsafe {
+        std::slice::from_raw_parts_mut(RAW(b), bytes.len()).copy_from_slice(bytes);
+        std::slice::from_raw_parts_mut(REAL(e), n).copy_from_slice(ends);
+    }
+    Ok(x)
 }
 
 /// A new vector, attached to `x` as attribute `name`.
@@ -270,10 +294,16 @@ pub unsafe extern "C" fn dtatools_read(
         let mut targets = Vec::with_capacity(cols.len());
         for (k, &c) in cols.iter().enumerate() {
             let var = meta.variables.get(c).ok_or_else(|| Fail::Message(format!("there is no column {}", c + 1)))?;
-            let kind = if var.storage.is_numeric() { REALSXP } else { STRSXP };
-            let x = alloc_elt(out, k, kind, nobs)?;
-            set_attributes(x, var, sets.iter().find(|s| s.name == var.value_labels))?;
-            targets.push((x, var.name.as_str()));
+            // Numeric columns are filled in place; string columns gather
+            // their text here and become packed columns after the read.
+            let target = if var.storage.is_numeric() {
+                let x = alloc_elt(out, k, REALSXP, nobs)?;
+                set_attributes(x, var, sets.iter().find(|s| s.name == var.value_labels))?;
+                Target::Numbers(x)
+            } else {
+                Target::Strings { bytes: Vec::new(), ends: Vec::with_capacity(nobs) }
+            };
+            targets.push((target, var));
         }
         // A failure inside the chunk callback, kept so an R error stays one.
         let mut failed: Option<Fail> = None;
@@ -282,22 +312,19 @@ pub unsafe extern "C" fn dtatools_read(
                 failed = Some(Fail::Message("interrupted".into()));
                 return Err(dta::Error::new("interrupted"));
             }
-            for ((x, name), column) in targets.iter().zip(chunk) {
-                let step = match column {
-                    Column::Numbers { values, missing } => {
+            for ((target, var), column) in targets.iter_mut().zip(chunk) {
+                let step = match (target, column) {
+                    (Target::Numbers(x), Column::Numbers { values, missing }) => {
                         let dst = unsafe { std::slice::from_raw_parts_mut(REAL(*x).add(first), values.len()) };
                         for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
                             *d = r_double(v, m);
                         }
                         Ok(())
                     }
-                    Column::Strings { bytes, ends, binary } => {
-                        if binary.iter().any(|&b| b) {
-                            Err(Fail::Message(format!("{name} holds binary strLs, which dtatools does not read")))
-                        } else {
-                            set_strings(*x, first, bytes, ends)
-                        }
+                    (Target::Strings { bytes: all, ends: all_ends }, Column::Strings { bytes, ends, binary }) => {
+                        gather(&var.name, all, all_ends, bytes, ends, binary)
                     }
+                    _ => Err(Fail::Message("internal: column kinds differ".into())),
                 };
                 if let Err(fail) = step {
                     failed = Some(fail);
@@ -307,11 +334,56 @@ pub unsafe extern "C" fn dtatools_read(
             Ok(())
         });
         match (result, failed) {
-            (_, Some(fail)) => Err(fail),
-            (Err(e), None) => Err(e.into()),
-            (Ok(_), None) => Ok(()),
+            (_, Some(fail)) => return Err(fail),
+            (Err(e), None) => return Err(e.into()),
+            (Ok(_), None) => {}
         }
+        for (k, (target, var)) in targets.into_iter().enumerate() {
+            if let Target::Strings { bytes, ends } = target {
+                let x = packed_elt(out, k, &bytes, &ends)?;
+                drop((bytes, ends));
+                set_attributes(x, var, None)?;
+            }
+        }
+        Ok(())
     })
+}
+
+/// Where a column read by `dtatools_read` goes.
+enum Target {
+    /// The R double vector it fills.
+    Numbers(Sexp),
+    /// Its text so far, and each value's end offset in it.
+    Strings { bytes: Vec<u8>, ends: Vec<f64> },
+}
+
+/// Append a chunk of a string column to `all` and `all_ends`, checking
+/// that R can hold every value.
+fn gather(
+    name: &str,
+    all: &mut Vec<u8>,
+    all_ends: &mut Vec<f64>,
+    bytes: &[u8],
+    ends: &[usize],
+    binary: &[bool],
+) -> Res<()> {
+    if binary.iter().any(|&b| b) {
+        return Err(Fail::Message(format!("{name} holds binary strLs, which dtatools does not read")));
+    }
+    if bytes.contains(&0) {
+        return Err(Fail::Message(format!("{name} holds a string with an embedded nul, which R cannot hold")));
+    }
+    let base = all.len();
+    let mut from = 0;
+    for &end in ends {
+        if end - from > i32::MAX as usize {
+            return Err(Fail::Message(format!("{name} holds a string longer than R allows")));
+        }
+        from = end;
+        all_ends.push((base + end) as f64);
+    }
+    all.extend_from_slice(bytes);
+    Ok(())
 }
 
 /// The missing code of an R double: 0 for a number, 1 for `.` (NA_real_

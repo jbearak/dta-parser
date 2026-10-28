@@ -8,6 +8,12 @@
 #'   `"windows-1252"` (the default), `"latin1"` or `"utf-8"`.
 #' @return A dibble (see [dibble()]): numeric columns are `dta_num`
 #'   vectors; string columns are character vectors.
+#'
+#'   String columns come back packed: they hold the text as read and
+#'   make each R string when it is first used. Reading is fast and
+#'   looking at, slicing or filtering a few rows stays cheap; the first
+#'   operation over every value of a column with many distinct values
+#'   (`==`, `unique()`, sorting, grouping) pays the cost of making them.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL) {
   file <- normalizePath(file, mustWork = TRUE)

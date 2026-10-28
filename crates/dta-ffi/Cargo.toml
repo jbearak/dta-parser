@@ -3,6 +3,7 @@ name = "dta-ffi"
 description = "C ABI over the dta crate, for the wasm and R bindings"
 version = "1.0.0"
 edition = "2021"
+license = "GPL-3.0-only"
 rust-version = "1.82"
 
 [lib]

@@ -32,35 +32,46 @@ warm; writes end in the cache either way.
 Files from `bench/make_large.R`, written by dtatools with a fixed seed:
 `long.dta` (10M rows, 12 variables of every storage type, 0.74 GB) and
 `wide.dta` (1.5M rows, 400 doubles, 4.8 GB, past 4 GiB). readstata13
-0.11.0, pandas 3.0.5, Node 26. Timings start after each tool's packages are loaded
-and stop when the read returns (for npm, opening the file is inside).
-The page cache was warm. A cold-cache run
-needs `purge`, which needs admin rights this machine's runs did not have.
-Rows are stored row-major, so even a 5-variable read passes over every
-byte of the file.
+0.11.0, pandas 3.0.5 (Python string storage; pyarrow is not installed),
+Node 26. Each row is the median of five fresh processes. Timings start
+after each tool's packages are loaded and stop when the read returns
+(for npm, opening the file is inside). The page cache was warm. A
+cold-cache run needs `purge`, which needs admin rights this machine's
+runs did not have. Rows are stored row-major, so even a 5-variable read
+passes over every byte of the file.
 
 | read | seconds | peak RSS MB |
 |---|---|---|
-| long.dta, all 12 variables: dtatools | 5.50 | 1761 |
-| long.dta, all 12 variables: haven | 19.46 | 2107 |
-| long.dta, all 12 variables: readstata13 | 18.26 | 2102 |
-| long.dta, all 12 variables: pandas | 2.46 | 3962 |
-| long.dta, all 12 variables: npm | 2.15 | 1915 |
+| long.dta, all 12 variables: dtatools | 0.45 | 1447 |
+| long.dta, all 12 variables: haven | 19.61 | 2107 |
+| long.dta, all 12 variables: readstata13 | 18.49 | 2102 |
+| long.dta, all 12 variables: pandas | 2.40 | 3962 |
+| long.dta, all 12 variables: npm | 2.20 | 1902 |
+| long.dta, all, then every string compared: dtatools | 5.15 | 2112 |
+| long.dta, all, then every string compared: pandas | 2.73 | 3962 |
+| long.dta, all, then every string compared: npm | 2.28 | 1926 |
+| long.dta, all, then head() and a filter: dtatools | 0.57 | 1536 |
 | wide.dta, 5 of 400 variables: dtatools | 0.24 | 154 |
-| wide.dta, 5 of 400 variables: haven | 1.75 | 176 |
-| wide.dta, 5 of 400 variables: readstata13 | 1.20 | 150 |
+| wide.dta, 5 of 400 variables: haven | 1.76 | 176 |
+| wide.dta, 5 of 400 variables: readstata13 | 1.21 | 150 |
 | wide.dta, 5 of 400 variables: pandas | 2.80 | 9285 |
 | wide.dta, 5 of 400 variables: npm | 0.22 | 254 |
 | wide.dta, 200 rows at the start: npm | 0.005 | 57 |
 | wide.dta, 200 rows at the end: npm | 0.004 | 57 |
 
-Of dtatools' 5.5 s on `long.dta`, 4.6 s go to one variable of 10M
-distinct strings. That is R making 10M new strings, which haven and
-readstata13 pay too. The other 11 variables take 0.55 s. Against the
-plan's target of 1.5× the fastest full read: within R, dtatools reads
-3.3–3.5× faster than haven and readstata13. Across languages, R's
-string cost puts it outside 1.5× of npm and pandas on this file. The npm
-package reads fastest of all five.
+dtatools returns string columns packed (ADR 0010): their text stays as
+read, and R strings are made when values are used. So its plain read
+of `long.dta` is 5× faster than npm's and 43× faster than haven's, and
+looking at and filtering the data stays cheap. But every other tool
+makes its strings inside the read, so the like-for-like number is the
+read followed by a comparison over every string. There dtatools takes
+5.15 s, 2.3× npm and 1.9× pandas, still 3.8× faster than haven's
+plain read. Nearly all of that is R adding 10M distinct strings, in
+random order, to its global string table (about 4 s on this machine,
+with no garbage collection running). Python and V8 strings are not
+interned, so pandas and npm do not pay it.
+
+Before strings were packed, dtatools read `long.dta` in 5.50 s.
 
 The downstream workload, 3 of 302 variables from an 11.8 GB
 release-115 file with 15.1M rows (warm cache), takes 0.8 s and 464 MB

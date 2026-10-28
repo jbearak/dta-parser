@@ -3,6 +3,7 @@ name = "dta"
 description = "Read and write Stata .dta files"
 version = "1.0.0"
 edition = "2021"
+license = "GPL-3.0-only"
 rust-version = "1.82"
 
 [dependencies]

@@ -1,9 +1,9 @@
-# An R error raised while read_dta builds its result (here R refusing a
-# string with a NUL in it) comes back as an ordinary R error, and the
-# session carries on. dtatools must not let R's error jump through its
-# Rust code; see the comments in src/init.c.
+# A string R cannot hold (here one with a NUL in it) is an ordinary error
+# at read time, and the session carries on. Errors raised partway through
+# a read must not jump through dtatools' Rust code; see the comments in
+# src/init.c.
 
-test_that("an R error mid-read is an ordinary error", {
+test_that("an error mid-read is an ordinary error", {
   path <- file.path(fixture_dir, "haven_118.dta")
   skip_if_not(file.exists(path))
   bytes <- readBin(path, "raw", file.size(path))

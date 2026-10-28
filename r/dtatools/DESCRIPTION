@@ -5,6 +5,7 @@ Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak
 Description: Reads and writes Stata .dta files through the dta-parser
     library, keeping Stata's extended missing values, value labels and
     comparison rules.
+License: GPL-3
 Depends: R (>= 4.2)
 Imports:
     rlang,
