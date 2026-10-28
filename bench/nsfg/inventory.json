@@ -1,0 +1,1143 @@
+[
+ {
+  "cycle": "",
+  "file": "Datasets/NSFG/.cache",
+  "size": 0,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/.cache",
+  "role": "excluded",
+  "sha256": null,
+  "excluded": "zero-byte server artifact (the listing shows it; fetching it gives 404); not data"
+ },
+ {
+  "cycle": "",
+  "file": "Datasets/NSFG/.cache+",
+  "size": 0,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/.cache+",
+  "role": "excluded",
+  "sha256": null,
+  "excluded": "zero-byte server artifact (the listing shows it; fetching it gives 404); not data"
+ },
+ {
+  "cycle": "1973 (Cycle 1)",
+  "file": "Datasets/NSFG/1973NSFGData.dat",
+  "size": 19838925,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1973NSFGData.dat",
+  "role": "data",
+  "sha256": "63cf5824d0fd4ba0a4db2261fa8b2311638ce9cfbea18fdfcee0913de23ce0a4"
+ },
+ {
+  "cycle": "1976 (Cycle 2)",
+  "file": "Datasets/NSFG/1976NSFGData.dat",
+  "size": 31716306,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1976NSFGData.dat",
+  "role": "data",
+  "sha256": "8fc69cb207866f7572d0d416711bc9aa20d7af598135648ff7329cb8d60d15c8"
+ },
+ {
+  "cycle": "1982 (Cycle 3)",
+  "file": "Datasets/NSFG/1982NSFGData.dat",
+  "size": 32648974,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1982NSFGData.dat",
+  "role": "data",
+  "sha256": "056be91d9ad52c8cdad7ba5b2b790304c02141c6a351798b8be53983295d1a69"
+ },
+ {
+  "cycle": "1988 (Cycle 4)",
+  "file": "Datasets/NSFG/1988FemRespData.dat",
+  "size": 30022850,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1988FemRespData.dat",
+  "role": "data",
+  "sha256": "04e06e5c84a3a959f4b12a2ee3e974dc56e997da70a9b179fda71b9f6f331756"
+ },
+ {
+  "cycle": "1988 (Cycle 4)",
+  "file": "Datasets/NSFG/1988PregData.dat",
+  "size": 55991727,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1988PregData.dat",
+  "role": "data",
+  "sha256": "e80d003d81561d06bff9224583cc2508748a0313b9d13cb1c7147f9390ff2456"
+ },
+ {
+  "cycle": "1995 (Cycle 5)",
+  "file": "Datasets/NSFG/1995FemRespData.dat",
+  "size": 141726902,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1995FemRespData.dat",
+  "role": "data",
+  "sha256": "700bf310d51e975f3b465842d0cd5ed7b9b7c8ac4ab579ef6ec3e5c9d0cfa56d"
+ },
+ {
+  "cycle": "1995 (Cycle 5)",
+  "file": "Datasets/NSFG/1995PregData.dat",
+  "size": 8916776,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/1995PregData.dat",
+  "role": "data",
+  "sha256": "2c86e649ce7c62c7b9ab3b8a75bed4f07d151dfb7ac1b86bf72cc0e51ccefe34"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/2002FemPreg.dat",
+  "size": 6089664,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2002FemPreg.dat",
+  "role": "data",
+  "sha256": "b9a76bd0337c3d1f5572a353020d4308548468110bc42a976d27499ce217deb0"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/2002FemResp.dat",
+  "size": 37664704,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2002FemResp.dat",
+  "role": "data",
+  "sha256": "d63bc94891ebd58072ee01017c4693b5d7150cf85aa79bc9d365a6e8dd328d5d"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/2002HHvars.dat",
+  "size": 289133,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2002HHvars.dat",
+  "role": "data",
+  "sha256": "84a60f8ed71d7304a2fa68f55f7698ca00d863c26d5c00a0afe95c09224e2a68"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/2002Male.dat",
+  "size": 14719936,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2002Male.dat",
+  "role": "data",
+  "sha256": "b750a716889105738f2f314b98fa016df008dc4b585bff24962b441d7e61f248"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/2002curr_ins.dat",
+  "size": 150852,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2002curr_ins.dat",
+  "role": "excluded",
+  "sha256": "84a4f748be042e17b5c9236aa24ed5bed6b6283db880a47eacdab1b10b279028",
+  "excluded": "fixed-width copy of c6_curr_ins.sas7bdat, with no layout program; the sas7bdat is converted and its row count is checked against this file"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/2006_2010_FemPreg.dat",
+  "size": 11557488,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2006_2010_FemPreg.dat",
+  "role": "data",
+  "sha256": "cc2cb066a9e73ded8ccf1a9a11fb2498ff78e48afc7bdf87dd776295a8193469"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/2006_2010_FemResp.dat",
+  "size": 76780587,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2006_2010_FemResp.dat",
+  "role": "data",
+  "sha256": "8ef438f59afc6266c9d288142191b14ecb9bb72f965e60f592a2fa1c24b19174"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/2006_2010_Male.dat",
+  "size": 47281635,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2006_2010_Male.dat",
+  "role": "data",
+  "sha256": "fbb5d226b5493fd07a9f87ff917a779dbef42538aa764320ce39a0d7c5629426"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/2011_2013_FemPregData.dat",
+  "size": 4580640,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2011_2013_FemPregData.dat",
+  "role": "data",
+  "sha256": "4dcd528d2ed1bd4bfd90a22d043397d7bd0295b5e67f40672fe1b0e987b544ab"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/2011_2013_FemRespData.dat",
+  "size": 27769758,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2011_2013_FemRespData.dat",
+  "role": "data",
+  "sha256": "ae9b0a7eb8d816d01ddb2c2263c4d249d91102cfcae8fcbdbf8c0413c6c8415d"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/2011_2013_MaleData.dat",
+  "size": 22327155,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2011_2013_MaleData.dat",
+  "role": "data",
+  "sha256": "9df68074ab360a889c5d0995ce35d7e38e8b0a09489d1f29562a00026e9f1d13"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/2011_2019_FemaleWgtData.dat",
+  "size": 2345490,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2011_2019_FemaleWgtData.dat",
+  "role": "data",
+  "sha256": "2fddeeb75099fd83b8e61691328562bba4d2a526ff3d6a5d53f6f859061309ce"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/2011_2019_MaleWgtData.dat",
+  "size": 1944834,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2011_2019_MaleWgtData.dat",
+  "role": "data",
+  "sha256": "fc6b0af15a2281fc747cbbcbda51d3a3fda0917ec462fbf63f73420735689dff"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/2013_2015_FemPregData.dat",
+  "size": 4473124,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2013_2015_FemPregData.dat",
+  "role": "data",
+  "sha256": "97ed5f5549ff421c918e431ddf20f018ce50db774d1ee2129afd9ab0565a343a"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/2013_2015_FemRespData.dat",
+  "size": 28979415,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2013_2015_FemRespData.dat",
+  "role": "data",
+  "sha256": "56471e497101c1daf24009f5325f7bd7950dd8bdfa86bfca4137f149e2c2808f"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/2013_2015_MaleData.dat",
+  "size": 20191386,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2013_2015_MaleData.dat",
+  "role": "data",
+  "sha256": "1452c35869a82cf90ac925dc8685c3741b9dd4fd7a035af77c8f37d2133e2d90"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/2015_2017_FemPregData.dat",
+  "size": 3591928,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2015_2017_FemPregData.dat",
+  "role": "data",
+  "sha256": "9995a17e0e1f4235d671a59aa7a586cfc7702569cc765ffaa5ebc9e0f747271f"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/2015_2017_FemRespData.dat",
+  "size": 25120742,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2015_2017_FemRespData.dat",
+  "role": "data",
+  "sha256": "27e6e281eaf11d54cbab6c7b60ab284f822e40da630d825f7a00765c83eef173"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/2015_2017_MaleData.dat",
+  "size": 18936340,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2015_2017_MaleData.dat",
+  "role": "data",
+  "sha256": "c10250d2832b18cb83a138398d0a2edc7bcc1461b53f861708ad9f1bc71d534e"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/2017_2019_FemPregData.dat",
+  "size": 2574180,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2017_2019_FemPregData.dat",
+  "role": "data",
+  "sha256": "ca7ab5cd728169cf12020adee811949ee1c808fb0a0a8ca546c0dcae2d2023ed"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/2017_2019_FemRespData.dat",
+  "size": 23581440,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2017_2019_FemRespData.dat",
+  "role": "data",
+  "sha256": "84494c833b85b93954164c56288aa7ccafe6c469eae33fa6a8f2a7f60f9400fc"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/2017_2019_MaleData.dat",
+  "size": 21287334,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/2017_2019_MaleData.dat",
+  "role": "data",
+  "sha256": "1e11d5a59d3c6a4ab8e50c67a1c67524bc33c8bb839330154c6db759e83c2506"
+ },
+ {
+  "cycle": "1995 (Cycle 5)",
+  "file": "Datasets/NSFG/C5FieldworkData.asc",
+  "size": 15960000,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/C5FieldworkData.asc",
+  "role": "excluded",
+  "sha256": "461663c26f4f61ee601631771a7045c38431a6e4e6d19e0743543b550d379203",
+  "excluded": "a Cycle 5 (1995) fieldwork file, by its name: 14,000 fixed-width records with no layout anywhere in CDC's directories (no .dct, SAS or SPSS program names it), so its columns cannot be named"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/HHPARTYPNEWASC.DAT",
+  "size": 150852,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/HHPARTYPNEWASC.DAT",
+  "role": "excluded",
+  "sha256": "c00202fb18ee03c24ea3f3996ed9c7c400c8a8f3695e8af97c0c2bc3c3f94dab",
+  "excluded": "fixed-width copy of hhpartypnew.sas7bdat, with no layout program; the sas7bdat is converted and its row count is checked against this file"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/c6_curr_ins.sas7bdat",
+  "size": 312320,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/c6_curr_ins.sas7bdat",
+  "role": "data",
+  "sha256": "81ed6263fd6fe98b1b9ff5dc128bc090f4bb6ac2f76afa0f17ca7cb04e4c0b22"
+ },
+ {
+  "cycle": "1976 (Cycle 2)",
+  "file": "Datasets/NSFG/cyc2psu.sas7bdat",
+  "size": 214016,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/cyc2psu.sas7bdat",
+  "role": "data",
+  "sha256": "32d71d0abb6d9d2d9ff5c10885df6c1ab44c9ad16926f1ad5d2f0d69398c5842"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/hhpartypnew.sas7bdat",
+  "size": 312320,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/hhpartypnew.sas7bdat",
+  "role": "data",
+  "sha256": "ab2cff505c0c2cf46e3fd6d4af79e46bfde102dc699c7c76bcee86167d338e08"
+ },
+ {
+  "cycle": "1973 (Cycle 1)",
+  "file": "Datasets/NSFG/sas/1973FemRespSetup.sas",
+  "size": 148750,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1973FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "f2f5ef21de7653829c4b80f659d4ffd74f6b2eb3b6e10a80dfc7990cb3c419a9"
+ },
+ {
+  "cycle": "1976 (Cycle 2)",
+  "file": "Datasets/NSFG/sas/1976FemRespSetup.sas",
+  "size": 582092,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1976FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "1c1ba09de9530c7b6b50026d81558e423034900e38849c2323db330cc1236185"
+ },
+ {
+  "cycle": "1976 (Cycle 2)",
+  "file": "Datasets/NSFG/sas/1976PregSetup.sas",
+  "size": 20638,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1976PregSetup.sas",
+  "role": "sas program",
+  "sha256": "b0ba117dad9954aeba405f6bd79d6ac3953975a04c6d034f0bcee60a6075bb7a"
+ },
+ {
+  "cycle": "1982 (Cycle 3)",
+  "file": "Datasets/NSFG/sas/1982FemRespSetup.sas",
+  "size": 362083,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1982FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "6a27ca4d9e9930c81705ef258e99cab7d6a335c5e8d9e746416aa2d89e061caa"
+ },
+ {
+  "cycle": "1982 (Cycle 3)",
+  "file": "Datasets/NSFG/sas/1982PregSetup.sas",
+  "size": 121114,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1982PregSetup.sas",
+  "role": "sas program",
+  "sha256": "1edd55ae1ee1f8f9fcaa6ce5e8708a22ac6be8985da31f64eb55f4e999b5ab5c"
+ },
+ {
+  "cycle": "1988 (Cycle 4)",
+  "file": "Datasets/NSFG/sas/1988FemRespSetup.sas",
+  "size": 612193,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1988FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "8214197672bd533ea61d9f2d381bbe13c21e9e12568e4f8730dc2e6956ac4c2e"
+ },
+ {
+  "cycle": "1988 (Cycle 4)",
+  "file": "Datasets/NSFG/sas/1988PregSetup.sas",
+  "size": 254202,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1988PregSetup.sas",
+  "role": "sas program",
+  "sha256": "41fb79de452dd45c279d4772a3e92ff32f8b01e5c06867120f8bffa302e60c6d"
+ },
+ {
+  "cycle": "1995 (Cycle 5)",
+  "file": "Datasets/NSFG/sas/1995FemPregFile.sas",
+  "size": 110642,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1995FemPregFile.sas",
+  "role": "sas program",
+  "sha256": "63a5fff0cac2050b455651fefdb39b5cfa06fe33a841d0fd567fee78e2b7ccb4"
+ },
+ {
+  "cycle": "1995 (Cycle 5)",
+  "file": "Datasets/NSFG/sas/1995FemRespSetup.sas",
+  "size": 1483811,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/1995FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "0235b7aa7de4465e85415a3d91f3206b8a18c3124e1d3947b6913c8dcc2aedb5"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemPregInput.sas",
+  "size": 6665,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemPregInput.sas",
+  "role": "sas program",
+  "sha256": "f6d70267b5ca719490ff9ffe3b5b380396b6098e5a5149bfae32f7b2073cb13d"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemPregValueLabel.sas",
+  "size": 20758,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemPregValueLabel.sas",
+  "role": "sas program",
+  "sha256": "9462a91635d996aca0da456d52271065dd2fc801aa6779ae7c442a8b4a29417b"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemPregVarLabel.sas",
+  "size": 17740,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemPregVarLabel.sas",
+  "role": "sas program",
+  "sha256": "c0942692af0c71d514691a865c94a69d2a9f5fef0d3a96d82f5aeea738873efc"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemRespInput.sas",
+  "size": 80085,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemRespInput.sas",
+  "role": "sas program",
+  "sha256": "60a344d5f1a9eea52c5bfa6afc3c4a30c0fd736c53c5795dbf3699fb15ee1967"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemRespValueLabel.sas",
+  "size": 140331,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemRespValueLabel.sas",
+  "role": "sas program",
+  "sha256": "2bc850b6a4d247fd1747709ad38cb3c0f366dfe8ab32d6fd151cfde1ab0e6772"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002FemRespVarLabel.sas",
+  "size": 224816,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002FemRespVarLabel.sas",
+  "role": "sas program",
+  "sha256": "4b26d227de3f7fa5af7bfea1479d3c6de8a6d2fd4c6c2c4710581a76b2fedbfe"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002HHvars.SAS",
+  "size": 2729,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002HHvars.SAS",
+  "role": "sas program",
+  "sha256": "0950ddefd353fe4afc6c00333cc5d5d0c4f1b1585db982a179c6f88de112edbf"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002MaleInput.sas",
+  "size": 51656,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002MaleInput.sas",
+  "role": "sas program",
+  "sha256": "491ecec224d4710c8df15a4e6c9d386a524f1a98023ef5bcf3a9668839b6863c"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002MaleValueLabel.sas",
+  "size": 101769,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002MaleValueLabel.sas",
+  "role": "sas program",
+  "sha256": "58f51444b7515182e63233a5139955ce6feb09fa85cb14e681647f52e42e433a"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/sas/2002MaleVarLabel.sas",
+  "size": 163994,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2002MaleVarLabel.sas",
+  "role": "sas program",
+  "sha256": "902931f21d5bc47d40792a0274829e0b4f9b52448daa243484011dd72178e0d0"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/sas/2006_2010_FemPregSetup.sas",
+  "size": 67865,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2006_2010_FemPregSetup.sas",
+  "role": "sas program",
+  "sha256": "962a3682f5ceb430f684a15275e73f33c5afe14caef9b9ae6c5071392b919f54"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/sas/2006_2010_FemRespSetup.sas",
+  "size": 661221,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2006_2010_FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "c7de854558a852eb7cc82e6a9a31dac7edcb7c77749fa24315b7dcad40c83e90"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/sas/2006_2010_MaleSetup.sas",
+  "size": 507611,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2006_2010_MaleSetup.sas",
+  "role": "sas program",
+  "sha256": "ba4ac67141dd31f0650979a7a437a5594e42a19aa2ee59633b058560fbb0ea24"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/sas/2011_2013_FemPregSetup.sas",
+  "size": 63497,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2011_2013_FemPregSetup.sas",
+  "role": "sas program",
+  "sha256": "3d0043fdcfeb25fb4fb1928df2e25acbd13e862a5b7d0c893a252221942834c6"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/sas/2011_2013_FemRespSetup.sas",
+  "size": 719240,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2011_2013_FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "a07688d9765ef31c399aec3870f74accffad4d5cc3d397dc3fd621caf065d9f9"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/sas/2011_2013_MaleSetup.sas",
+  "size": 580783,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2011_2013_MaleSetup.sas",
+  "role": "sas program",
+  "sha256": "bfa53305335fdf5a38ab55ba7b5dd5714103e03df01df49780bc4961a00a66d2"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/sas/2011_2019_FemaleWgtSetup.sas",
+  "size": 1778,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2011_2019_FemaleWgtSetup.sas",
+  "role": "sas program",
+  "sha256": "44a516dedc810beaef881349e12ea9ea87a9105382c7b4f8887685909b963321"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/sas/2011_2019_MaleWgtSetup.sas",
+  "size": 1777,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2011_2019_MaleWgtSetup.sas",
+  "role": "sas program",
+  "sha256": "151cc64afcc116aa11de926f1d7f41702ac399c3ac32a347135f0a2e2a706002"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/sas/2013_2015_FemPregSetup.sas",
+  "size": 60061,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2013_2015_FemPregSetup.sas",
+  "role": "sas program",
+  "sha256": "5274d7b2081bd18ac0d17d004dd7b52af438fb70a9c5b9a6340c100c6d3647b1"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/sas/2013_2015_FemRespSetup.sas",
+  "size": 561170,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2013_2015_FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "78bb9d054be71bd00304273d51cd3a8c83d2cb1efd8609039fdc9cf6106b7ddc"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/sas/2013_2015_MaleSetup.sas",
+  "size": 528044,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2013_2015_MaleSetup.sas",
+  "role": "sas program",
+  "sha256": "8eebcff21a7e157adba245163fdb3e870b2ddd27179a075ba16dcc6e77d807f5"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/sas/2015_2017_FemPregSetup.sas",
+  "size": 58169,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2015_2017_FemPregSetup.sas",
+  "role": "sas program",
+  "sha256": "7ec8f9920b2c8bd23aaf059bd32d0fbec7ff9cfa95dce75da7797b14abd3f5f4"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/sas/2015_2017_FemRespSetup.sas",
+  "size": 541277,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2015_2017_FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "9144d9a3f28048796b23426640b6bed68da909f78d7544b5e68bff18aaad96be"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/sas/2015_2017_MaleSetup.sas",
+  "size": 545322,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2015_2017_MaleSetup.sas",
+  "role": "sas program",
+  "sha256": "bf3dba5e419fe26c960c8b4011ab729dd65e0f8bbd16344f116627093debdbc0"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/sas/2017_2019_FemPregSetup.sas",
+  "size": 45294,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2017_2019_FemPregSetup.sas",
+  "role": "sas program",
+  "sha256": "6b98874495b3d4664ad337b66defb845b3963b0ddef30195cca16c77d337ed01"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/sas/2017_2019_FemRespSetup.sas",
+  "size": 479642,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2017_2019_FemRespSetup.sas",
+  "role": "sas program",
+  "sha256": "414ee8e7247c3bd984230d339ffa871fe7362490518585bcf70573e16bd42eac"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/sas/2017_2019_MaleSetup.sas",
+  "size": 542914,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/sas/2017_2019_MaleSetup.sas",
+  "role": "sas program",
+  "sha256": "7d103e488ced7c094f97e0d245a1ee8d49824774d979e61d89402e7dfb31a0d8"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/spss/2002FemRespSetup.sps",
+  "size": 1362147,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2002FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "336cd0fd3af678a53d3dfa522245cf202006e8e7eba3261e3c2499f2626dad50",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/spss/2002MaleRespSetup.sps",
+  "size": 421301,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2002MaleRespSetup.sps",
+  "role": "spss program",
+  "sha256": "aad6315565b26cc7c93bff72c6bb20ebdcd9967f62f2b6bae6c3c345619a8d15",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/spss/2002PregSetup.sps",
+  "size": 54660,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2002PregSetup.sps",
+  "role": "spss program",
+  "sha256": "a313e2905ec6403d3e8b6a756abbbcfaec50b7ace1c8799cdf44b6bde818564c",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/spss/2006_2010_FemPregSetup.sps",
+  "size": 46679,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2006_2010_FemPregSetup.sps",
+  "role": "spss program",
+  "sha256": "b11dd0dac5deedb0dcacb076395e5654c13ed58ce24334e525a45c79c87996b4",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/spss/2006_2010_FemRespSetup.sps",
+  "size": 476197,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2006_2010_FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "31ac32f1addc28c5e564b9bd138dba4c5605727fdf99df22d8695611690932b0",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/spss/2006_2010_MaleSetup.sps",
+  "size": 371578,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2006_2010_MaleSetup.sps",
+  "role": "spss program",
+  "sha256": "71f8c92e38e233af7afe00f0f49a727158267ae764c6102727f87fe8881b16fa",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/spss/2011_2013_FemPregSetup.sps",
+  "size": 46862,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2011_2013_FemPregSetup.sps",
+  "role": "spss program",
+  "sha256": "566679b1e22bed1fb99356686dc84fb0385ad7c665f0b45ecda38a31d72f4c7a",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/spss/2011_2013_FemRespSetup.sps",
+  "size": 541988,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2011_2013_FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "62d90d053f8fda61b2003c6499997d5368dc9567e5595bb124926eb3cc58fc7e",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/spss/2011_2013_MaleSetup.sps",
+  "size": 454217,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2011_2013_MaleSetup.sps",
+  "role": "spss program",
+  "sha256": "4833201df299ddc19623381e1452a87768974e167e316c0d96938e3eb770e3ab",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/spss/2011_2019_FemaleWgtSetup.sps",
+  "size": 2487,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2011_2019_FemaleWgtSetup.sps",
+  "role": "spss program",
+  "sha256": "6bab8297a744da57d116b7ccdea94b5bd68f7b28009ca99c906bef40be6be80a",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/spss/2011_2019_MaleWgtSetup.sps",
+  "size": 2482,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2011_2019_MaleWgtSetup.sps",
+  "role": "spss program",
+  "sha256": "08d9a30374fe5fddd495b6399b66bb38aa678c509449658a3accf58ae3f312a2",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/spss/2013_2015_FemPregSetup.sps",
+  "size": 45324,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2013_2015_FemPregSetup.sps",
+  "role": "spss program",
+  "sha256": "8b7a78b2ea08ac3a78f85d8a85fb94c32d5691ae8199676c41ec515782c9eb1b",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/spss/2013_2015_FemRespSetup.sps",
+  "size": 415251,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2013_2015_FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "02b26917daec03c52d8f505a72382d66b04c0e39457cc35ac43784dc9aba3b6d",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/spss/2013_2015_MaleSetup.sps",
+  "size": 396218,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2013_2015_MaleSetup.sps",
+  "role": "spss program",
+  "sha256": "bb6a87da8e2c2eff0179a588fba53d37ea0931e23f34c403f3e749c59bce1eaf",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/spss/2015_2017_FemPregSetup.sps",
+  "size": 42979,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2015_2017_FemPregSetup.sps",
+  "role": "spss program",
+  "sha256": "743247d5cbc89debb8995b9f3005a9c4441293440f5a7fac8342d9677e2bc87a",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/spss/2015_2017_FemRespSetup.sps",
+  "size": 396326,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2015_2017_FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "5eef4731eb732565ae1d0fc0f802563264cfa7e15cf03002ad75ed039b8f681c",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/spss/2015_2017_MaleSetup.sps",
+  "size": 408281,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2015_2017_MaleSetup.sps",
+  "role": "spss program",
+  "sha256": "cdcc8bc3d2c9e458d59e4d241ef7d3f655390fb46000a0d9ae26a7c5b2ecd2d1",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/spss/2017_2019_FemPregSetup.sps",
+  "size": 34949,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2017_2019_FemPregSetup.sps",
+  "role": "spss program",
+  "sha256": "9ec48502663491c74c216f12112d9977cf2f011a4e14097870fb2c91bc55ec7f",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/spss/2017_2019_FemRespSetup.sps",
+  "size": 364379,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2017_2019_FemRespSetup.sps",
+  "role": "spss program",
+  "sha256": "cc185317af0508abce953a44666b42b05c4a73ffa0869bf18c701b4cc2c6f9f9",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/spss/2017_2019_MaleSetup.sps",
+  "size": 419209,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/spss/2017_2019_MaleSetup.sps",
+  "role": "spss program",
+  "sha256": "b88f145213cd8163f7525c7fe5bf800fe6e08bea3c72242677664b04ad42bbe0",
+  "note": "listed only; the Stata and SAS programs give the same layouts"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002FemPreg.dct",
+  "size": 28607,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002FemPreg.dct",
+  "role": "stata dictionary",
+  "sha256": "feaec091f260c08dd7b137557ed7132440030a12992026501ed5769640ba0ceb"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002FemPreg.do",
+  "size": 36203,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002FemPreg.do",
+  "role": "stata label program",
+  "sha256": "862c83991f6848714c73d57a15a5e423189ab4e1f0439fe30d86a1cdc40062b0"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002FemResp.dct",
+  "size": 364811,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002FemResp.dct",
+  "role": "stata dictionary",
+  "sha256": "1058302db9682356c0e9ab13a2b0c420e30b3449376854be437973b42af515f1"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002FemResp.do",
+  "size": 1085310,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002FemResp.do",
+  "role": "stata label program",
+  "sha256": "2030a1161298c6127f58e11480d93f0f0e556da656369467478896a6c95d1b38"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002Male.dct",
+  "size": 251963,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002Male.dct",
+  "role": "stata dictionary",
+  "sha256": "809f3996a5eba12e29bc436a927cff3456cad3a01d3756b706c47c2ff61f931f"
+ },
+ {
+  "cycle": "2002 (Cycle 6)",
+  "file": "Datasets/NSFG/stata/2002Male.do",
+  "size": 259829,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2002Male.do",
+  "role": "stata label program",
+  "sha256": "e45a8715e587cc31e5bdaa6f5f621d73b52f9ab3bbb892ef431ec56ccf5c5a8a"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_FemPregSetup.dct",
+  "size": 34178,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_FemPregSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "a6ca747600587ebf72485a140c860ff4c475192510f7191f718b03ae3be1faca"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_FemPregSetup.do",
+  "size": 54110,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_FemPregSetup.do",
+  "role": "stata label program",
+  "sha256": "a7ce131816f15b867aa8426b2d70b65b0204d4b021d9aaf4ad1b1036d7f42dc9"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_FemRespSetup.dct",
+  "size": 462948,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_FemRespSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "38ded5ecedbcaa1e5397bb065b8460e87177e272ed092f4dac9bf84b2a768cee"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_FemRespSetup.do",
+  "size": 1339588,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_FemRespSetup.do",
+  "role": "stata label program",
+  "sha256": "03455ce9e6ca6977415298c409c38b0d479183c1a346918e969161fca65ea7f8"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_MaleSetup.dct",
+  "size": 362107,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_MaleSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "55b769f38246a313b7e9c85aa19190a1265245fe78109326d1de6184b641da7e"
+ },
+ {
+  "cycle": "2006–2010",
+  "file": "Datasets/NSFG/stata/2006_2010_MaleSetup.do",
+  "size": 540823,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2006_2010_MaleSetup.do",
+  "role": "stata label program",
+  "sha256": "6d6c9922fcbdb3572b52acf17ef558f504887f611cf3c8bd65a06fc94e0dadc6"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_FemPregSetup.dct",
+  "size": 33261,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_FemPregSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "7c2048ee3b98706a4493cd41657a3c134e2a595e41f3762d0f25fd1f00e1ebc4"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_FemPregSetup.do",
+  "size": 37790,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_FemPregSetup.do",
+  "role": "stata label program",
+  "sha256": "d781d76ce52dfca181699df014d8499d663db0a0967c503e7166d1db6a77a9f6"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_FemRespSetup.dct",
+  "size": 385090,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_FemRespSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "c0308c70e9805af09803f18408188d2911b58263730575f8e1afdbbea7fc2dec"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_FemRespSetup.do",
+  "size": 497516,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_FemRespSetup.do",
+  "role": "stata label program",
+  "sha256": "55dd7adf093e0f64e048a683d611b65374de792e006780d72c2b7c7221ea10df"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_MaleSetup.dct",
+  "size": 405066,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_MaleSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "bf8486813ae3f9b76ceb3f1f07cb217b685c3bc9449baa7556b96130a28f63fa"
+ },
+ {
+  "cycle": "2011–2013",
+  "file": "Datasets/NSFG/stata/2011_2013_MaleSetup.do",
+  "size": 331980,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2013_MaleSetup.do",
+  "role": "stata label program",
+  "sha256": "a48c351a32ccf20ee4db91307b65927cbf9f8aa061b81161fb301fed26fcc7f9"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/stata/2011_2019_FemaleWgtSetup.dct",
+  "size": 1100,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2019_FemaleWgtSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "e52a8171015bfe9da26a46301e5860a1a10d4f3ed9af464be0b45342e7a07466"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/stata/2011_2019_FemaleWgtSetup.do",
+  "size": 2274,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2019_FemaleWgtSetup.do",
+  "role": "stata label program",
+  "sha256": "b910e7c2319f8201e717ddb84a8cc5be43fe51b0db5aeaba1785ca117828bbc7"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/stata/2011_2019_MaleWgtSetup.dct",
+  "size": 1098,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2019_MaleWgtSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "3f83b55759ddd955a4b321d64eafdf87db04e7d182a1dcc7c86d1a75c2b1242e"
+ },
+ {
+  "cycle": "2011–2019",
+  "file": "Datasets/NSFG/stata/2011_2019_MaleWgtSetup.do",
+  "size": 2271,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2011_2019_MaleWgtSetup.do",
+  "role": "stata label program",
+  "sha256": "50e9232e0f712c6f4d827ee1999e9ac6b2bf35a9818e8a17e592f9b630af45cd"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_FemPregSetup.dct",
+  "size": 33400,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_FemPregSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "aecf35055db8be854b524ac6664ef49532757dc4b13776a7b6e6e11c50623815"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_FemPregSetup.do",
+  "size": 52637,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_FemPregSetup.do",
+  "role": "stata label program",
+  "sha256": "d94fd44e032cbc1d98908777e0cf6f2173fe32f74b610cd7d3fbcac9942ca141"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_FemRespSetup.dct",
+  "size": 397214,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_FemRespSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "6b21a07beab268d79e6aafe2dbd87a8b64daacc0b8a1f66530ea7df96329087f"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_FemRespSetup.do",
+  "size": 791477,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_FemRespSetup.do",
+  "role": "stata label program",
+  "sha256": "56efadcdec6fcc865d2866f406250da3fcbd43c63f88697fde53b55245b9c98d"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_MaleSetup.dct",
+  "size": 387535,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_MaleSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "a888494cb4308a31c0d8af772d2e579f1be3263fc537d0d4a55e3298734a71ed"
+ },
+ {
+  "cycle": "2013–2015",
+  "file": "Datasets/NSFG/stata/2013_2015_MaleSetup.do",
+  "size": 545233,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2013_2015_MaleSetup.do",
+  "role": "stata label program",
+  "sha256": "b0b7c1f2775d0ee1fc56574390f43b5a02508977863aaa4535b6bf83a2db6b22"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_FemPregSetup.dct",
+  "size": 29769,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_FemPregSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "db6ed2420fc68106987ae5d254be9b59c8815c7a73ad42c7ed014a45c4785046"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_FemPregSetup.do",
+  "size": 50110,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_FemPregSetup.do",
+  "role": "stata label program",
+  "sha256": "3be5e590445d24a05fcec5dd42b7e0a18c38c25ed7142ae91e7ffd5005d09410"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_FemRespSetup.dct",
+  "size": 374989,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_FemRespSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "698c51ee88fe62b64660c21e303158e1dfa6353db6d7e359676c6206741623aa"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_FemRespSetup.do",
+  "size": 766550,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_FemRespSetup.do",
+  "role": "stata label program",
+  "sha256": "b9b7cf18b01d876ca960b407d40f1ac7cd68273b043d03a6da2698118ffe87b7"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_MaleSetup.dct",
+  "size": 390474,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_MaleSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "ebc15d876d6c7cfc20a492a4561152d6435dfe911cfbc66114e3be94166ee59a"
+ },
+ {
+  "cycle": "2015–2017",
+  "file": "Datasets/NSFG/stata/2015_2017_MaleSetup.do",
+  "size": 541576,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2015_2017_MaleSetup.do",
+  "role": "stata label program",
+  "sha256": "7f1e195cf8dd01fe9c62f24073df64221b5b70194f09211bd4b99ed8ee58b227"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_FemPregSetup.dct",
+  "size": 20405,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_FemPregSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "983a7ffcbe90f5043288d9a1600d7b7aba09de79f88443099c39e04c66e004ab"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_FemPregSetup.do",
+  "size": 42877,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_FemPregSetup.do",
+  "role": "stata label program",
+  "sha256": "f700b20f1d01ec8f82b5f4f0b05fe006f628e2a3f224cb9f4ed40c59868aee27"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_FemRespSetup.dct",
+  "size": 326787,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_FemRespSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "d204b4ed1d0d432655e07a69d60adafa440e04dadc685beb6f73a2ddcae5c9e5"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_FemRespSetup.do",
+  "size": 721900,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_FemRespSetup.do",
+  "role": "stata label program",
+  "sha256": "e836d388bb20fed25926db198f148af2a4d72f21ae7b5b4a21916bdfc1fc23d6"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_MaleSetup.dct",
+  "size": 402579,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_MaleSetup.dct",
+  "role": "stata dictionary",
+  "sha256": "50cfbb0e3c46b216fe4274d6e36c64cca430c79a97eedaff707f7704605e97a2"
+ },
+ {
+  "cycle": "2017–2019",
+  "file": "Datasets/NSFG/stata/2017_2019_MaleSetup.do",
+  "size": 566525,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG/stata/2017_2019_MaleSetup.do",
+  "role": "stata label program",
+  "sha256": "cfd432820ef8823cddb99a807ffa13e918526ee3eaeb5e764674f54eb0444ec7"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-FemPregPUFData.sas7bdat",
+  "size": 7299072,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-FemPregPUFData.sas7bdat",
+  "role": "data",
+  "sha256": "c55562924c1cf6c6f0be2b7cb264fd7febf5dbfd76bb024c6e3b63ab843bbac5"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-FemPregPUFData.zip",
+  "size": 287269,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-FemPregPUFData.zip",
+  "role": "excluded",
+  "sha256": "fbfc973265e57568984f59b0fd14a8fe659e150e0261f3f4abc2327f33dd672d",
+  "excluded": "CSV copy of the matching sas7bdat (converted from that); its row count is checked against the sas7bdat"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-FemRespPUFData.sas7bdat",
+  "size": 86384640,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-FemRespPUFData.sas7bdat",
+  "role": "data",
+  "sha256": "a4666d3e35234cde35c17d411c665597b62e2c076c7c48c7a21b3bc49a343315"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-FemRespPUFData.zip",
+  "size": 2541378,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-FemRespPUFData.zip",
+  "role": "excluded",
+  "sha256": "ef9f0ec715ce7909b50f1ea67958166b2cd1ad3482c4b083174898ec8c7ceaaa",
+  "excluded": "CSV copy of the matching sas7bdat (converted from that); its row count is checked against the sas7bdat"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-MaleRespPUFData.sas7bdat",
+  "size": 41287680,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-MaleRespPUFData.sas7bdat",
+  "role": "data",
+  "sha256": "3262fd49174fbb834e0102f60e0aacfd9b069045f26ef808e3a2c9d76fa00c9e"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-MaleRespPUFData.zip",
+  "size": 1157874,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-MaleRespPUFData.zip",
+  "role": "excluded",
+  "sha256": "949f330a67a37d3e8906492fb404a9e8c669850ff75369777036dfbb31f44073",
+  "excluded": "CSV copy of the matching sas7bdat (converted from that); its row count is checked against the sas7bdat"
+ },
+ {
+  "cycle": "2022–2023",
+  "file": "nsfg/NSFG-2022-2023-PUFData-SASFiles.zip",
+  "size": 7838633,
+  "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/nsfg/NSFG-2022-2023-PUFData-SASFiles.zip",
+  "role": "excluded",
+  "sha256": "cb8cdcfb6d77c058989dfb70897ad6ee71bb9019bd82ac2bb6f80cc6b746defe",
+  "excluded": "a zip of the three 2022–2023 sas7bdat files that are also published unzipped (converted from those)"
+ }
+]
