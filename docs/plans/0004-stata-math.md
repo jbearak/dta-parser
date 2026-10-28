@@ -1,6 +1,6 @@
 # Plan: arithmetic, math and logic on dta_num as Stata does them
 
-Status: draft, revised after review round 1.
+Status: approved by Sol 6.1 and Sonnet 5.5 (plan and code, three rounds).
 
 ## Problem
 
