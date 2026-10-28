@@ -126,9 +126,26 @@ static SEXP read(SEXP path, SEXP cols, SEXP encoding) {
   return finish(dtatools_read(p, INTEGER(cols), XLENGTH(cols), enc, holder, err, sizeof err), holder, err);
 }
 
+// ALTREP vectors (compact sequences, deferred strings) build their data
+// when it is first touched, which can allocate and so raise an R error.
+// Touch everything here, before Rust borrows it; the data then stays.
+static void materialize(SEXP x) {
+  switch (TYPEOF(x)) {
+  case REALSXP: (void) REAL(x); break;
+  case INTSXP: (void) INTEGER(x); break;
+  case LGLSXP: (void) LOGICAL(x); break;
+  case STRSXP: (void) STRING_PTR_RO(x); break;
+  case VECSXP:
+    for (R_xlen_t i = 0; i < XLENGTH(x); i++) materialize(VECTOR_ELT(x, i));
+    break;
+  default: break;
+  }
+}
+
 static SEXP write(SEXP path, SEXP spec) {
   const char *p = string_arg(path, "file");
   if (TYPEOF(spec) != VECSXP) Rf_error("internal: the write spec must be a list");
+  materialize(spec);
   char err[1024] = "";
   int status = dtatools_write(p, spec, err, sizeof err);
   if (status == 2) R_ContinueUnwind(token);

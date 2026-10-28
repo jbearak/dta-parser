@@ -79,4 +79,8 @@ test("a value outside its type is an error, and writeDtaFile leaves no file", ()
   assert.throws(() => writeDtaFile(path, { variables: [{ name: "x", type: "int", values: [1.5] }] }), /does not fit/);
   assert.equal(existsSync(path), false);
   assert.throws(() => writeDta({ variables: [{ name: "x", values: ["a", 1] }] }), /mixes/);
+  assert.throws(() => writeDta({ variables: [{ name: "x", type: "double", values: ["a", "b"] }] }), /holds strings/);
+  assert.throws(() => writeDta({ variables: [{ name: "x", label: "left\0right", values: [1] }] }), /NUL/);
+  assert.throws(() => writeDta({ notes: ["a\0b"], variables: [{ name: "x", values: [1] }] }), /NUL/);
+  assert.throws(() => writeDta({ variables: [{ name: "s", values: ["a\0b"] }] }), /without NULs/);
 });

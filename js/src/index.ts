@@ -302,19 +302,31 @@ function packNumbers(values: readonly (number | Missing | null)[]): { values: Fl
  * A value that does not fit its storage type is an error.
  */
 export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void): void {
+  // Fields cross into the module separated by NULs, so none may hold one.
+  const field = (text: string | undefined, what: string): string => {
+    if (text?.includes("\0")) throw new TypeError(`${what} contains a NUL`);
+    return text ?? "";
+  };
   const nobs = data.variables[0]?.values.length ?? 0;
   const parts: wasm.WritePart[] = data.variables.map((v) => {
     if (v.values.length !== nobs) throw new RangeError(`${v.name} has ${v.values.length} values, not ${nobs}`);
-    const meta = [v.name, v.format ?? "", v.label ?? "", v.valueLabels ?? ""].join("\0");
+    const meta = [
+      field(v.name, "a variable name"),
+      field(v.format, `the format of ${v.name}`),
+      field(v.label, `the label of ${v.name}`),
+      field(v.valueLabels, `the value label set of ${v.name}`),
+    ].join("\0");
     if (v.type === undefined && v.values.some((x) => typeof x === "string")) {
       if (!v.values.every((x) => typeof x === "string")) throw new TypeError(`${v.name} mixes strings and numbers`);
       return { kind: "strings", meta, ...packTexts(v.values as readonly string[]) };
     }
     const storage = STORAGE[v.type ?? "double"];
     if (storage === undefined) throw new TypeError(`${v.name}: unknown type ${v.type}`);
+    if (v.values.some((x) => typeof x === "string")) throw new TypeError(`${v.name} is ${v.type} but holds strings`);
     return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
   });
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
+    field(name, "a value label set name");
     const keys = [...labels.keys()];
     const { bytes: texts, ends } = packTexts([...labels.values()]);
     parts.push({ kind: "labels", name, ...packNumbers(keys), texts, ends });
@@ -322,7 +334,8 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
   const t = data.timestamp ?? new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${pad(t.getDate())} ${MONTHS[t.getMonth()]} ${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
-  wasm.write(nobs, parts, [data.label ?? "", stamp, ...(data.notes ?? [])], sink);
+  const notes = (data.notes ?? []).map((n) => field(n, "a note"));
+  wasm.write(nobs, parts, [field(data.label, "the data label"), stamp, ...notes], sink);
 }
 
 /** Write a .dta file (release 118) into memory. */

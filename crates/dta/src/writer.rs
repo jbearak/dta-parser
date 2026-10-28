@@ -119,7 +119,14 @@ impl<'a> Plan<'a> {
                     v.storage
                 }
                 Values::Strings(get) => {
-                    let not_utf8 = |row: usize| Error::new(format!("{} row {} is not valid UTF-8", v.name, row + 1));
+                    // Text must be UTF-8 without NULs: readers stop a string at a NUL.
+                    let check = |s: &[u8], row: usize| {
+                        if s.contains(&0) || std::str::from_utf8(s).is_err() {
+                            Err(Error::new(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
+                        } else {
+                            Ok(())
+                        }
+                    };
                     let longest = (0..data.nobs).map(|row| get(row).len()).max().unwrap_or(0);
                     if longest > STRN_MAX || v.storage == StorageType::StrL {
                         if data.nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
@@ -138,7 +145,7 @@ impl<'a> Plan<'a> {
                                 row
                             });
                             if f == row {
-                                std::str::from_utf8(s).map_err(|_| not_utf8(row))?;
+                                check(s, row)?;
                                 strl_bytes += gso_len(s.len()) as u64;
                             }
                             recent.put(s, f);
@@ -147,7 +154,7 @@ impl<'a> Plan<'a> {
                         StorageType::StrL
                     } else {
                         for row in 0..data.nobs {
-                            std::str::from_utf8(get(row)).map_err(|_| not_utf8(row))?;
+                            check(get(row), row)?;
                         }
                         StorageType::Str(longest.max(1) as u16)
                     }
@@ -258,7 +265,9 @@ impl<'a> Plan<'a> {
         }
         let rows_per_chunk = (ROWS_BYTES / self.row_len).max(1);
         let mut buf = Vec::with_capacity(rows_per_chunk.min(data.nobs) * self.row_len);
-        let mut recent: Vec<RecentTexts> = self.types.iter().map(|_| RecentTexts::new()).collect();
+        // Address caches for strL variables only.
+        let mut recent: Vec<Option<RecentTexts>> =
+            self.types.iter().map(|&t| (t == StorageType::StrL).then(RecentTexts::new)).collect();
         let mut row = 0;
         while row < data.nobs {
             let n = rows_per_chunk.min(data.nobs - row);
@@ -273,9 +282,10 @@ impl<'a> Plan<'a> {
                         (Values::Strings(get), StorageType::StrL) => {
                             // A reference to (variable, observation), 2 + 6 bytes.
                             let s = get(r);
-                            let first = recent[j].get(s).unwrap_or_else(|| {
+                            let cache = recent[j].as_mut().expect("strL variables have a cache");
+                            let first = cache.get(s).unwrap_or_else(|| {
                                 let f = self.strl_first[j][s];
-                                recent[j].put(s, f);
+                                cache.put(s, f);
                                 f
                             });
                             let o = first as u64 + 1;
@@ -361,8 +371,15 @@ fn check_value(v: &WriteVariable, (value, code): (f64, u8), row: usize) -> Resul
         StorageType::Byte => (-127.0, 100.0, true),
         StorageType::Int => (-32767.0, 32740.0, true),
         StorageType::Long => (-2_147_483_647.0, 2_147_483_620.0, true),
-        StorageType::Float => (-1.701_411_7e38, 1.701_411_7e38, false),
-        _ => (-8.988_465_674_311_579e307, 8.988_465_674_311_579e307, false),
+        // The largest float and double below the bits of `.`.
+        StorageType::Float => {
+            let max = f32::from_bits(missing::FLOAT_MISSING - 1) as f64;
+            (-max, max, false)
+        }
+        _ => {
+            let max = f64::from_bits(missing::DOUBLE_MISSING - 1);
+            (-max, max, false)
+        }
     };
     if !(lo..=hi).contains(&value) || (integer && value.fract() != 0.0) {
         return Err(Error::new(format!(

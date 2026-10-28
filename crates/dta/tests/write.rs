@@ -120,6 +120,30 @@ fn every_fixture_round_trips() {
     }
 }
 
+#[test]
+fn text_with_a_nul_is_an_error() {
+    for text in ["a\0b", &format!("{}\0", "x".repeat(3000))] {
+        let data = Dataset {
+            nobs: 1,
+            label: String::new(),
+            timestamp: String::new(),
+            variables: vec![WriteVariable {
+                name: "s".into(),
+                storage: StorageType::Str(1),
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::Strings(Box::new(move |_| text.as_bytes())),
+            }],
+            value_labels: vec![],
+            characteristics: vec![],
+            sort_order: vec![],
+        };
+        let err = write(&data, Vec::new()).unwrap_err();
+        assert!(err.message.contains("without NULs"), "{err}");
+    }
+}
+
 fn one_column(storage: StorageType, value: f64) -> dta::Result<Vec<u8>> {
     let data = Dataset {
         nobs: 1,
@@ -151,4 +175,10 @@ fn values_outside_the_storage_type_are_errors() {
     assert!(one_column(StorageType::Float, 1e39).is_err());
     assert!(one_column(StorageType::Double, f64::NAN).is_err());
     assert!(one_column(StorageType::Double, f64::INFINITY).is_err());
+    // The largest values below the missing range are fine; the next are not.
+    assert!(one_column(StorageType::Float, f32::from_bits(0x7eff_ffff) as f64).is_ok());
+    assert!(one_column(StorageType::Float, -(f32::from_bits(0x7eff_ffff) as f64)).is_ok());
+    assert!(one_column(StorageType::Float, f32::from_bits(0x7f00_0000) as f64).is_err());
+    assert!(one_column(StorageType::Double, f64::from_bits(0x7fdf_ffff_ffff_ffff)).is_ok());
+    assert!(one_column(StorageType::Double, f64::from_bits(0x7fe0_0000_0000_0000)).is_err());
 }

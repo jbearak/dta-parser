@@ -15,7 +15,7 @@ texts (borrowed from the caller, hashed eight bytes at a time) finds
 them. A small cache keyed by address skips rehashing the texts R hands
 over repeatedly at one address. The benchmarks in `bench/RESULTS.md` show
 dtatools faster than haven in every case, with 0–9 MB of memory over the
-data, where haven uses 10–421 MB.
+data, where haven uses 9–668 MB.
 
 ## Considered options
 

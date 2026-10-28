@@ -11,7 +11,8 @@ texts <- function(n, len, distinct) {
   pool <- vapply(seq_len(distinct), function(i) {
     paste(sample(c(letters, " "), len, replace = TRUE), collapse = "")
   }, "")
-  pool[sample.int(distinct, n, replace = TRUE)]
+  # Every text once when all are to be distinct; otherwise drawn at random.
+  if (distinct == n) sample(pool) else pool[sample.int(distinct, n, replace = TRUE)]
 }
 
 data <- switch(case,

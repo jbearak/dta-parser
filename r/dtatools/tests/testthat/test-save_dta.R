@@ -99,3 +99,11 @@ test_that("notes and labels on missing codes round-trip", {
   expect_identical(names(attr(again$x, "labels")), c("Yes", "No", "Don't know"))
   expect_identical(unname(tags(attr(again$x, "labels"))), c(NA, NA, "d"))
 })
+
+test_that("ALTREP columns (compact sequences, deferred strings) are written", {
+  data <- data.frame(i = 1:5, d = as.double(1:5))
+  data$s <- as.character(1:5)  # a deferred string vector
+  again <- read_dta(roundtrip(data))
+  expect_identical(as.vector(unclass(again$i)), as.double(1:5))
+  expect_identical(as.vector(again$s), as.character(1:5))
+})
