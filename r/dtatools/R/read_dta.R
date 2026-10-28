@@ -6,8 +6,8 @@
 #'   columns when `NULL`. Columns come back in the order selected.
 #' @param encoding Text encoding of files older than release 118:
 #'   `"windows-1252"` (the default), `"latin1"` or `"utf-8"`.
-#' @return A data frame. Numeric columns are `dta_num` vectors; string
-#'   columns are character vectors.
+#' @return A dibble (see [dibble()]): numeric columns are `dta_num`
+#'   vectors; string columns are character vectors.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL) {
   file <- normalizePath(file, mustWork = TRUE)
@@ -16,12 +16,22 @@ read_dta <- function(file, col_select = NULL, encoding = NULL) {
   cols <- seq_along(names)
   select <- rlang::enquo(col_select)
   if (!rlang::quo_is_null(select)) {
+    # A variable holding names, as in col_select = cols, goes through
+    # all_of(), which is what tidyselect asks for, unless a column has
+    # the variable's name (tidyselect's precedence).
+    expr <- rlang::quo_get_expr(select)
+    if (rlang::is_symbol(expr) && !(rlang::as_string(expr) %in% names)) {
+      value <- tryCatch(rlang::eval_tidy(select), error = function(e) NULL)
+      if (is.character(value)) select <- rlang::quo(tidyselect::all_of(!!value))
+    }
     cols <- unname(tidyselect::eval_select(select, stats::setNames(as.list(cols), names)))
   }
   values <- .Call(C_dta_read, file, as.integer(cols - 1L), encoding)
   names(values) <- names[cols]
-  structure(values, class = "data.frame", row.names = .set_row_names(meta$nobs),
-            label = nonempty(meta$label), notes = if (length(meta$notes)) meta$notes)
+  out <- tibble::new_tibble(values, nrow = meta$nobs, class = "dibble")
+  attr(out, "label") <- nonempty(meta$label)
+  attr(out, "notes") <- if (length(meta$notes)) meta$notes
+  out
 }
 
 nonempty <- function(x) if (nzchar(x)) x

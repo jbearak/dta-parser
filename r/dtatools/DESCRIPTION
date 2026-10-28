@@ -8,9 +8,13 @@ Description: Reads and writes Stata .dta files through the dta-parser
 Depends: R (>= 4.2)
 Imports:
     rlang,
-    tidyselect
+    tibble,
+    tidyselect,
+    vctrs
 Suggests:
+    dplyr,
     haven,
+    readstata13,
     testthat (>= 3.0.0)
 SystemRequirements: Cargo (Rust's package manager), rustc
 Encoding: UTF-8

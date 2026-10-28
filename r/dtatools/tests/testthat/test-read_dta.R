@@ -55,4 +55,15 @@ test_that("col_select takes names or tidyselect, in the order given", {
   expect_named(read_dta(path, col_select = tidyselect::all_of(c("day", "num"))), c("day", "num"))
   expect_named(read_dta(path, col_select = tidyselect::starts_with("t")), "text")
   expect_identical(nrow(read_dta(path, col_select = "row")), 6L)
+  wanted <- c("num", "row")
+  expect_silent(got <- read_dta(path, col_select = wanted))
+  expect_named(got, wanted)
+  expect_error(read_dta(path, col_select = c("row", "nope")), "nope")
+  # tidyselect's rules still hold: a column beats a variable of its name,
+  # and a column chosen twice comes back once.
+  row <- "num"
+  expect_named(read_dta(path, col_select = row), "row")
+  num <- "text"
+  expect_named(read_dta(path, col_select = c(row, num)), c("row", "num"))
+  expect_named(read_dta(path, col_select = c("row", "row")), "row")
 })

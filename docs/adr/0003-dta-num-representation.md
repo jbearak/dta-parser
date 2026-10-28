@@ -22,3 +22,14 @@ agrees bit for bit with haven on values.
 Base R treats every code as `NA`, so dtatools' own functions must read the
 codes from the payload. They do so for plain doubles too, not just
 `dta_num`.
+
+## The dibble
+
+`read_dta` returns a *dibble*, a tibble subclass whose numeric columns
+are `dta_num`. You asked for it so that tests can build fixtures without
+setting classes. `dibble(...)` converts plain columns (doubles, integers,
+logicals, factors, `Date`, haven `labelled`) by fixed rules, and is the
+only place that converts. Assignment stores values as given. It has no
+verbs. tibble's `[` slices every column through vctrs, so the vctrs
+methods for `dta_num` are registered at load (tibble and vctrs are in
+Imports) and serve plain subsetting as well as dplyr.
