@@ -88,11 +88,25 @@ from_readstata13 <- function(path) {
         lapply(unname(table), label_code), names(table))
     )
   })
-  values <- lapply(names(d), function(name) {
+  # Before 113, readstata13 leaves a missing value as the stored
+  # sentinel: the integer type's maximum, or for floats and doubles the
+  # bit pattern of `.` and anything above it. Map those to `.` by the
+  # variable's own storage type.
+  old_missing <- function(x, type) {
+    if (a$version >= 113) return(rep(FALSE, length(x)))
+    switch(type,
+      byte = x == 127, int = x == 32767, long = x == 2147483647,
+      float = x >= 2^127, double = x >= 2^1023,
+      rep(FALSE, length(x)))
+  }
+  values <- lapply(seq_along(d), function(j) {
+    name <- names(d)[[j]]
     x <- d[[name]]
     m <- a$missing[[name]]
+    sentinel <- if (is.character(x)) logical(length(x)) else old_missing(x, vars[[j]]$type) %in% TRUE
     lapply(seq_along(x), function(i) {
       if (is.character(x)) return(x[[i]])
+      if (sentinel[[i]]) return(list(missing = "."))
       if (!is.na(x[[i]])) return(x[[i]])
       list(missing = missing_name(if (is.null(m) || is.na(m[[i]])) 0 else m[[i]]))
     })

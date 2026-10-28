@@ -3,7 +3,7 @@
   "release": 110,
   "nobs": 5,
   "data_label": "ReadStat fixture",
-  "timestamp": "28 Oct 2026 16:15",
+  "timestamp": "28 Oct 2026 16:29",
   "variables": [
     {
       "name": "b",
@@ -81,7 +81,7 @@
       {
         "missing": "."
       },
-      7,
+      127,
       32000
     ],
     "l": [
@@ -91,7 +91,7 @@
       {
         "missing": "."
       },
-      42
+      32767
     ],
     "f": [
       1.5,

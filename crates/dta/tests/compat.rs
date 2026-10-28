@@ -111,18 +111,6 @@ fn compare(stem: &str, reader: &str, ours: &Value, theirs: &Value, failures: &mu
             check(&format!("{name}.{field}"), &a[field], &b[field]);
         }
         let mut theirs_values = theirs["values"][name].clone();
-        if reader == "readstata13" && ours["release"].as_u64() < Some(113) {
-            // readstata13 leaves a pre-113 missing value as the stored
-            // sentinel, the type's largest value.
-            let sentinels = [127.0, 32767.0, 2147483647.0, 1.7014118346046923e38, 8.988465674311579e307];
-            if let Value::Array(cells) = &mut theirs_values {
-                for c in cells.iter_mut() {
-                    if c.as_f64().is_some_and(|x| sentinels.contains(&x)) {
-                        *c = json!({"missing": "."});
-                    }
-                }
-            }
-        }
         if reader == "readstata13" {
             // readstata13 reads an empty strL as NA.
             if let Value::Array(cells) = &mut theirs_values {

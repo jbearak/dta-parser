@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
 
     CHECK(readstat_begin_writing_dta(w, &fd, 5));
     const int8_t bs[] = {1, 0, -5, 100, 1};
-    const int16_t is[] = {1000, -32000, 0, 7, 32000};
-    const int32_t ls[] = {1, -2000000000, 2000000000, 0, 42};
+    const int16_t is[] = {1000, -32000, 0, 127, 32000};  /* 127 is the byte sentinel */
+    const int32_t ls[] = {1, -2000000000, 2000000000, 0, 32767};  /* the int sentinel */
     const float fs[] = {1.5f, -2.25f, 0.0f, 1e30f, 3.0f};
     const double ds[] = {1.0 / 3.0, -1e300, 0.0, 2.5, 123456789.125};
     const char *ss[] = {"abc", "", "eight ch", "x y", "z"};

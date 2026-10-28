@@ -22,6 +22,7 @@ tests:
   empty; readstata13 does not read them; pandas reads them, and is the
   oracle there. haven also reads 108's tables as empty.
 - **readstata13 returns pre-113 missing values as the stored sentinel**
-  (the type's largest value); the test maps those to `.`.
+  (the type's largest value); `compat/expected.R` maps those to `.` by
+  each variable's storage type.
 
 `compat/README.md` lists, per release, which readers are the oracle.

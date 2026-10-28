@@ -38,10 +38,11 @@ test's `KNOWN` list (see `docs/adr/0005-oracles.md`):
 - haven 2.5.5 fails on 105 value labels, reads 104 and 108 value labels as
   empty, drops trailing blanks, and splits 119 strL references as in 118;
 - readstata13 does not read value labels before 108, returns pre-113
-  missing values as the stored sentinel (the test maps those to `.`), and
-  reads an empty strL as `NA`;
+  missing values as the stored sentinel (`compat/expected.R` maps those
+  to `.` by each variable's storage type), and reads an empty strL as
+  `NA`;
 - pandas decodes text before 118 as Latin-1, not Windows-1252.
 
-Notes and characteristics: haven 2.5.5 reports notes and readstata13
-reports characteristics, so those are compared where present. Sort order
-is checked by writing and reading back.
+Notes are compared where haven reports them. readstata13's
+characteristics are recorded in `expected/` but not yet compared, and
+sort order is read but not yet checked against any reader.
