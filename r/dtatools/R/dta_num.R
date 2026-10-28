@@ -15,6 +15,15 @@ MISSING_NAMES <- c(".", paste0(".", letters))
 #'   by default `long` for integers, `byte` for logicals, else `double`.
 #' @param format Display format, such as `"%9.0g"`.
 #' @return A `dta_num` vector.
+#' @details When either operand is a `dta_num`, missing values behave as
+#'   in Stata, and R's `NA` on the other side counts as `.`. Comparisons
+#'   never give NA and put missing values above every number (`.` < `.a`
+#'   < ... < `.z`). Arithmetic and math functions are R's on the numbers
+#'   (so `round(x, 1)` rounds to one digit, `%%` is R's), but give `.` for
+#'   any missing operand and for results Stata cannot hold (`NaN`, `Inf`),
+#'   as a new `dta_num` without labels. In `&`, `|` and `!` a value is true
+#'   when it is nonzero or missing. `sum()`, `mean()`, `max()` and the
+#'   like keep R's rules.
 #' @export
 dta_num <- function(x = double(), labels = NULL, label = NULL, storage = NULL, format = NULL) {
   if (!is.numeric(x) && !is.logical(x)) stop("dta_num: x must be numeric or logical")
@@ -60,6 +69,7 @@ dta_keys <- function(x, keep_na = FALSE) .Call(C_dta_keys, x, keep_na)
 code_text <- function(x) {
   v <- numbers(x)
   codes <- dta_codes(x)
+  v <- v + 0  # -0 shows as 0
   out <- ifelse(is.finite(v) & v == round(v) & abs(v) < 1e15, sprintf("%.0f", v), as.character(v))
   out[codes > 0] <- MISSING_NAMES[codes[codes > 0]]
   out
@@ -75,10 +85,54 @@ Ops.dta_num <- function(e1, e2) {
     # Stata's comparisons: never NA; missing values above every number.
     return(get(.Generic)(dta_keys(e1), dta_keys(e2)))
   }
-  # Arithmetic and logic work on the numbers; every missing code is NA.
-  if (missing(e2)) return(get(.Generic)(numbers(e1)))
-  plain <- function(e) if (inherits(e, "dta_num")) numbers(e) else e
-  get(.Generic)(plain(e1), plain(e2))
+  plain <- function(e) if (inherits(e, "dta_num")) named_numbers(e) else e
+  if (.Generic %in% c("&", "|", "!")) {
+    # As in Stata, a value is true when nonzero or missing (R's NA too).
+    truthy <- function(e) {
+      v <- plain(e)
+      if (!is.numeric(v) && !is.logical(v)) {
+        stop("dtatools: ", .Generic, " needs numbers or logicals, not ", class(e)[[1]], call. = FALSE)
+      }
+      is.na(v) | v != 0
+    }
+    if (missing(e2)) return(!truthy(e1))
+    return(get(.Generic)(truthy(e1), truthy(e2)))
+  }
+  # Arithmetic: R's operation on the numbers, but any missing operand,
+  # and any result Stata cannot hold (NaN, Inf), is `.`. (R's own rules
+  # give NA^0 == 1 and 1^NA == 1.)
+  if (missing(e2)) return(stata_number(get(.Generic)(plain(e1))))
+  a <- plain(e1)
+  b <- plain(e2)
+  r <- get(.Generic)(a, b)
+  r[is.na(a) | is.na(b)] <- NA
+  stata_number(r)
+}
+
+# R's function on the numbers (so round() is R's, to digits), with
+# missing values as Stata's: `.` in, or NaN or Inf out, gives `.`. Stata
+# gives `.` without a warning where R warns "NaNs produced".
+#' @export
+Math.dta_num <- function(x, ...) stata_number(suppressWarnings(get(.Generic)(named_numbers(x), ...)))
+
+# The numbers with their names, so R's operations name results as usual.
+named_numbers <- function(x) {
+  v <- numbers(x)
+  names(v) <- names(x)
+  v
+}
+
+# A new dta_num from the result of arithmetic: every NA, NaN or Inf is `.`
+# (an NA without a letter), as in Stata. No labels, label or format; the
+# names R gave the result.
+stata_number <- function(x) {
+  nm <- names(x)
+  x <- as.double(x)
+  attributes(x) <- NULL
+  x[!is.finite(x)] <- NA_real_
+  out <- dta_num(x)
+  names(out) <- nm
+  out
 }
 
 #' @export

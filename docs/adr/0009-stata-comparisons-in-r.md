@@ -15,8 +15,7 @@ NaN payload. It reads plain doubles as well as `dta_num`, which is how
 For `match()` (`%in%`), `.` keeps the key `NA`, so `x %in% NA` finds `.`
 as base R would, and `.a` never matches `NA`.
 
-Arithmetic is not Stata's: it returns plain doubles with every code as
-`NA`. The downstream tests do no arithmetic on codes.
+Arithmetic, math functions and logic follow Stata too; see ADR 0012.
 
 `tab()` returns a named integer vector of counts in Stata's order. The
 names are the values as Stata writes them (`1`, `1.5`, `.`, `.a`), not
