@@ -347,6 +347,8 @@ class StataArray(ExtensionArray):
                 result = np.var(values, ddof=ddof) if name == "var" else np.std(values, ddof=ddof)
                 if name == "sem":
                     result = result / np.sqrt(len(values))
+        elif name in ("sum", "prod") and np.count_nonzero(self._codes == 0) < kwargs.get("min_count", 0):
+            result = np.nan
         elif name in ops:
             if len(values) == 0 and name in ("min", "max", "mean", "median"):
                 result = np.nan

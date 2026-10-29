@@ -268,3 +268,19 @@ def test_a_frame_without_rows_or_columns(tmp_path):
     back = read_dta(written(empty, tmp_path))
     assert len(back) == 0 and list(back.columns) == ["x", "s"]
     assert len(read_dta(written(pd.DataFrame(index=range(3)), tmp_path))) == 3
+
+
+def test_a_failed_write_leaves_the_existing_file(tmp_path):
+    path = tmp_path / "keep.dta"
+    dp.write_dta(pd.DataFrame({"x": [1.5, 2.5]}), path)
+    before = path.read_bytes()
+    with pytest.raises(Exception):
+        dp.write_dta(pd.DataFrame({"x": [float("inf")]}), path)
+    assert path.read_bytes() == before
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_dates_too_far_from_1960_are_an_error(tmp_path):
+    far = pd.DataFrame({"t": np.array(["1000000000-01-01T00:00:01"], dtype="datetime64[s]")})
+    with pytest.raises(ValueError, match="cannot be written exactly"):
+        dp.write_dta(far, tmp_path / "far.dta")

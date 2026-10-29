@@ -169,3 +169,11 @@ def test_construction_and_conversion():
         StataArray([1.0], [28])
     assert s.array.equals(s.array.copy())
     assert not s.array.equals(StataArray._from_sequence([1, None, missing.b, 2.5], dtype="stata[int]"))
+
+
+def test_sum_and_prod_honour_min_count():
+    s = pd.Series(StataArray([1.0, np.nan], [0, 2]))
+    assert np.isnan(s.sum(min_count=2))
+    assert s.sum(min_count=1) == 1.0
+    assert np.isnan(s.prod(min_count=2))
+    assert np.isnan(pd.Series([1.0, np.nan]).sum(min_count=2))  # pandas' own rule

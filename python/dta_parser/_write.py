@@ -98,6 +98,11 @@ def _datetimes(name, series, meta):
             raise ValueError(f"column {name!r}: times finer than a millisecond cannot be written")
         ms = present // _FINE[unit]
     elif unit in _COARSE:
+        # Stata's times are milliseconds in a double: refuse what would
+        # overflow int64 milliseconds or lose precision as a double.
+        limit = (2**53 - 2**40) // _COARSE[unit]  # room for the shift to 1960
+        if np.any(np.abs(present) > limit):
+            raise ValueError(f"column {name!r}: dates this far from 1960 cannot be written exactly")
         ms = present * _COARSE[unit]
     else:
         raise TypeError(f"column {name!r}: cannot write datetime64[{unit}]")

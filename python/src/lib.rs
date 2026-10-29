@@ -426,12 +426,18 @@ fn write(
     let characteristics =
         characteristics.into_iter().map(|(variable, name, value)| Characteristic { variable, name, value }).collect();
     let data = Dataset { nobs, label, timestamp, variables, value_labels, characteristics, sort_order };
-    let file = std::fs::File::create(path).map_err(|e| fail(format!("{path}: {e}")))?;
+    // Write beside the target and rename, so a failed write leaves any
+    // existing file as it was.
+    let tmp = format!("{path}.{}.tmp", std::process::id());
+    let file = std::fs::File::create(&tmp).map_err(|e| fail(format!("{path}: {e}")))?;
     if let Err(e) = dta::write(&data, file) {
-        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(&tmp);
         return Err(fail(format!("{path}: {e}")));
     }
-    Ok(())
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        fail(format!("{path}: {e}"))
+    })
 }
 
 #[pymodule]
