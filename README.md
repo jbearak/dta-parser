@@ -7,9 +7,13 @@ TypeScript, with one implementation of the format underneath all four.
   **writes release 118**, which Stata 14 and later, haven, pandas and
   ReadStat read.
 - **Keeps Stata's missing values `.a` to `.z`** per value, through
-  filtering, sorting and merging, and writes them back. Other readers
-  turn them into one `NA`, `NaN`, `missing` or `null`, which loses the
-  reason a survey answer is missing (`.d` "don't know", `.r` "refused").
+  filtering, sorting and merging, and writes them back. Of the other
+  readers, haven keeps them too (as tagged NAs); readstata13, pandas and
+  pyreadstat return one `NA`/`NaN` unless asked (`missing.type = TRUE`,
+  `convert_missing=True`, `user_missing=True`), and then in a separate or
+  slower form; ReadStatTables.jl and statfmt keep only one missing value. One missing
+  value loses the reason an answer is missing (`.d` "don't know", `.r`
+  "refused"). See [missing values](docs/guide/missing-values.md).
 - **Keeps the metadata**: variable labels, value labels (including labels
   on `.a` to `.z`), display formats, storage types, the data label and
   notes; and, in Python, Julia and TypeScript, characteristics, the sort
@@ -132,9 +136,11 @@ the table says how.
 | Stata comparisons, arithmetic and logic on columns; `tab`, group ids, sets | ✓ | | | |
 
 **Round trips.** In every language, reading a file and writing what was
-read gives the same values, missing codes, storage types, labels, value
-labels, display formats and notes, within the table above. Text from a
-file older than release 118 comes back as UTF-8.
+read gives the same values, missing codes, numeric storage types,
+labels, value labels, display formats and notes, within the table above.
+String columns come back as narrow as their values allow (and in R and
+TypeScript a short strL as a fixed-width string). Text from a file older
+than release 118 comes back as UTF-8.
 
 ## Repository
 

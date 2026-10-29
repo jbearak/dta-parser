@@ -290,8 +290,8 @@ save_dta(df, "out.dta")
 
 `save_dta(data, file)` writes any data frame as release 118 and returns
 `file` invisibly. A dibble from `read_dta` writes back with its values,
-missing codes, storage types, variable labels, value labels, display
-formats, data label and notes.
+missing codes, numeric storage types, variable labels, value labels, display
+formats, data label and notes. String columns are written as narrow as their values allow ([storage types](guide/storage-types.md)).
 
 How columns map to storage types:
 

@@ -8,8 +8,8 @@ in the file. There are five numeric types and two kinds of string.
 | byte | 1-byte integer | −127 to 100 | 101 to 127 |
 | int | 2-byte integer | −32,767 to 32,740 | 32,741 to 32,767 |
 | long | 4-byte integer | −2,147,483,647 to 2,147,483,620 | 2,147,483,621 to 2,147,483,647 |
-| float | 4-byte IEEE float | about ±1.7 × 10^38, 7 significant digits | the top 27 values below infinity |
-| double | 8-byte IEEE float | about ±8.98 × 10^307 | the top 27 values below infinity |
+| float | 4-byte IEEE float | about ±1.7 × 10^38, 7 significant digits | a range of large positive values; 27 of them, spaced apart, are `.` to `.z` |
+| double | 8-byte IEEE float | about ±8.98 × 10^307 | a range of large positive values; 27 of them, spaced apart, are `.` to `.z` |
 | str1 to str2045 | fixed-width text, that many bytes | | |
 | strL | text or binary of any length, stored once per distinct value | | |
 
@@ -61,6 +61,15 @@ from the values:
 R and TypeScript differ in one way: they do not shrink integers. In R
 an integer column is long and a double column is double unless its
 `storage` attribute says otherwise; in TypeScript a numeric column is
-double unless you set `type`. A value that does not fit the chosen type
-is an error in every language: dta-parser never truncates or rounds a
-number to make it fit.
+double unless you set `type`. A value outside the chosen type's range is
+an error in every language, and integer types never truncate. Float
+storage is the exception: a double written as float is rounded to the
+nearest float, as any 4-byte float would hold it, so `0.1` reads back as
+`0.10000000149011612`. Choose float only for values that are floats
+already (or where 7 significant digits are enough).
+
+Fixed-width string columns are written as wide as their longest value
+needs, not as wide as they were read: a `str100` column whose values
+are all short comes back narrower. In R and TypeScript a text strL short
+enough for a fixed-width string is written as one (see
+[strLs](strls.md)).

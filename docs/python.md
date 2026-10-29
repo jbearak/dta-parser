@@ -343,8 +343,8 @@ dp.write_dta(df, "out.dta")
 
 `write_dta(df, path, *, label=None, variable_labels=None, timestamp=None)`
 writes release 118. A frame from `read_dta` writes back with its
-values, missing codes, storage types, variable labels, value labels,
-display formats, notes, characteristics and sort order. The index is not
+values, missing codes, numeric storage types, variable labels, value labels,
+display formats, notes, characteristics and sort order. String columns are written as narrow as their values allow ([storage types](guide/storage-types.md)). The index is not
 written; call `df.reset_index()` first to keep it.
 
 Columns without metadata get a storage type from their dtype:

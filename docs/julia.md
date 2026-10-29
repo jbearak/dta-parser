@@ -309,8 +309,8 @@ write_dta("out.dta", df)
 
 `write_dta(path, table; ...)` writes any Tables.jl table as release 118
 and returns `path`. A `DtaTable`, or a DataFrame made from one, writes
-back with its values, missing codes, storage types, labels, value
-labels, formats, notes, characteristics and sort order.
+back with its values, missing codes, numeric storage types, labels, value
+labels, formats, notes, characteristics and sort order. String columns are written as narrow as their values allow ([storage types](guide/storage-types.md)).
 
 Columns map to storage types:
 
