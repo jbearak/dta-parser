@@ -23,7 +23,9 @@ writeDtaFile("out.dta", {
   variables: [
     { name: "answer", type: "byte", values: [1, 0, MISSING[".d"]], valueLabels: "yesno" },
     { name: "note", values: ["a", "b", "c"] },
+    { name: "blob", values: [new Uint8Array([0, 1]), "text", ""] }, // a Uint8Array is a binary strL
   ],
+  // also: notes, characteristics, sortedBy, timestamp (a Date, or text as r.info.timestamp)
 });
 ```
 

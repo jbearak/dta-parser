@@ -22,8 +22,16 @@ for (const name of readdirSync("compat/fixtures").filter((f) => f.endsWith(".dta
   const variables = r.variables.map((v, i) => {
     const c = cols[i];
     const common = { name: v.name, format: v.format, label: v.label, valueLabels: valueLabels[v.valueLabels] ? v.valueLabels : undefined };
-    if (c.kind === "string") return { ...common, values: c.values };
+    if (c.kind === "string") return { ...common, type: v.type === "strL" ? "strL" : undefined, values: c.values };
     return { ...common, type: v.type, values: Array.from(c.values, (x, k) => (c.missing[k] ? missingValue(c.missing[k]) : x)) };
   });
-  writeDtaFile(join(out, name), { label: r.info.label, notes: r.notes(), variables, valueLabels });
+  writeDtaFile(join(out, name), {
+    label: r.info.label,
+    notes: r.notes(),
+    characteristics: r.characteristics(),
+    sortedBy: r.info.sortedBy,
+    timestamp: r.info.timestamp,
+    variables,
+    valueLabels,
+  });
 }
