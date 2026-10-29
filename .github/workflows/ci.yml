@@ -52,6 +52,30 @@ jobs:
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtatools_*.tar.gz
       - run: Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
 
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: cargo clippy --manifest-path python/Cargo.toml --all-targets -- -D warnings
+      # Build the abi3 wheel and install it, so the tests import what a
+      # user would install, not the source tree.
+      - run: pip install maturin
+      - run: maturin build --release --out dist
+        working-directory: python
+      - run: pip install python/dist/*.whl pytest pyreadstat
+      - run: python -m pytest python/tests
+
   # Files written by dtatools and by the npm package read back in pandas
   # as their originals do (haven and readstata13 are checked in the R
   # tests).
