@@ -428,8 +428,7 @@ fn write(
     let data = Dataset { nobs, label, timestamp, variables, value_labels, characteristics, sort_order };
     // Write beside the target and rename, so a failed write leaves any
     // existing file as it was.
-    let tmp = format!("{path}.{}.tmp", std::process::id());
-    let file = std::fs::File::create(&tmp).map_err(|e| fail(format!("{path}: {e}")))?;
+    let (tmp, file) = create_beside(path).map_err(|e| fail(format!("{path}: {e}")))?;
     if let Err(e) = dta::write(&data, file) {
         let _ = std::fs::remove_file(&tmp);
         return Err(fail(format!("{path}: {e}")));
@@ -438,6 +437,21 @@ fn write(
         let _ = std::fs::remove_file(&tmp);
         fail(format!("{path}: {e}"))
     })
+}
+
+/// A new file beside `path` that no one else has: created exclusively
+/// (so neither an existing file nor a symlink at the name is touched).
+fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
+    let pid = std::process::id();
+    for n in 0..1000 {
+        let tmp = format!("{path}.{pid}.{n}.tmp");
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {
+            Ok(file) => return Ok((tmp, file)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Err(std::io::Error::other("no free name for a temporary file"))
 }
 
 #[pymodule]

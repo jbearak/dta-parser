@@ -284,3 +284,13 @@ def test_dates_too_far_from_1960_are_an_error(tmp_path):
     far = pd.DataFrame({"t": np.array(["1000000000-01-01T00:00:01"], dtype="datetime64[s]")})
     with pytest.raises(ValueError, match="cannot be written exactly"):
         dp.write_dta(far, tmp_path / "far.dta")
+
+
+def test_a_write_leaves_files_at_temporary_names_alone(tmp_path):
+    path = tmp_path / "out.dta"
+    import os
+    bystander = tmp_path / f"out.dta.{os.getpid()}.0.tmp"
+    bystander.write_bytes(b"keep me")
+    dp.write_dta(pd.DataFrame({"x": [1.0]}), path)
+    assert bystander.read_bytes() == b"keep me"
+    assert read_dta(path)["x"].tolist() == [1.0]
