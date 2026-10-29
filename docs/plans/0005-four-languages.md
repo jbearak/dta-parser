@@ -63,13 +63,14 @@ checked separately from metadata.
   defaults the rest; docs list this.
 - Julia: bulk operations on a `DtaColumn`: slicing and indexing by
   ranges, vectors or masks, `view`, `copy`, `similar`, `sort`/`permute`,
-  `subset`, `groupby`/`combine`, Tables.jl conversion, `vcat` of two
-  `DtaColumn`s, and assigning a `DtaColumn` slice into another. A single
-  element reads as `missing`, so element-wise copying (`b[i] = a[i]`)
-  keeps `.` but not the letter; `stata_code(col, i)` and
-  `set_stata_code!(col, i, code)` read and write it. DataFrames' `vcat`
-  of tables builds a plain vector (`.` kept, letters dropped). Both
-  documented.
+  `subset`, `select`/`transform` on a grouped DataFrame and the views of
+  its groups, Tables.jl conversion, `vcat` of two `DtaColumn`s, and
+  assigning a `DtaColumn` slice into another. A single element reads as
+  `missing`, so element-wise copying (`b[i] = a[i]`) keeps `.` but not
+  the letter; `stata_code(col, i)` and `set_stata_code!(col, i, code)`
+  read and write it. DataFrames' `combine` on groups and `vcat` of
+  tables collect into vectors DataFrames allocates, so they build plain
+  vectors (`.` kept, letters dropped). All documented.
 
 ## Representations
 
