@@ -166,7 +166,7 @@ Each call seeks to its first row, so the loop reads every row once.
 
 ## Metadata
 
-Everything the file says about itself is in `df.attrs["dta"]`, a plain
+Everything the file says about itself is in `df.attrs["dta"]`, a
 `dict`:
 
 ```python
@@ -204,6 +204,13 @@ loses its entry. When you write such a frame, columns without an entry
 get their storage type from the dtype and no label; see
 [Write a file](#write-a-file). To keep the metadata across a merge,
 copy it back: `merged.attrs = left.attrs`.
+
+The frames and columns pandas derives from `df` share its
+`attrs["dta"]`, so a change to it shows in all of them. pandas would
+otherwise copy it for each one, which for a file of thousands of
+variables takes milliseconds per column. To change one frame's metadata
+alone, give it its own copy first:
+`sub.attrs["dta"] = df.attrs["dta"].copy()`.
 
 ## Missing values
 

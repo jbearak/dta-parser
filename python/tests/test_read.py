@@ -61,6 +61,20 @@ def test_metadata_is_in_attrs():
     assert list(meta["columns"]) == list(df.columns)
 
 
+def test_derived_frames_share_the_metadata():
+    # pandas deep-copies attrs for every column and frame it derives;
+    # wide files made that cost milliseconds per column.
+    df = read_dta(FIXTURES / "haven_118.dta")
+    meta = df.attrs["dta"]
+    assert df["num"].attrs["dta"] is meta
+    assert df.iloc[:2].attrs["dta"] is meta
+    own = df.iloc[:2].copy()
+    own.attrs["dta"] = meta.copy()
+    own.attrs["dta"]["columns"]["num"]["label"] = "changed"
+    assert meta["columns"]["num"]["label"] == "A double with extended missing values"
+    assert own.attrs["dta"]["columns"]["num"]["label"] == "changed"
+
+
 def test_read_meta_reads_no_data():
     meta = read_meta(FIXTURES / "haven_118.dta")
     assert meta["nobs"] == 6
