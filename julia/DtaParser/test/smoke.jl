@@ -14,3 +14,8 @@ using DtaParser, Test
     @test stata_code(t.x, 2) == 2
     @test t.s == ["a", "é", "中文"]
 end
+
+@testset "precompile workload" begin
+    # It runs while the package precompiles; it must work on its own too.
+    @test DtaParser.workload() === nothing
+end
