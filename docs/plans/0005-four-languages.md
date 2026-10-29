@@ -294,11 +294,11 @@ writing labels, scored 0–3 for findability, correctness, completeness
 and clarity). The rubric fixes, before any judging, which tasks are
 common (every library supports them) and which only ours supports (such
 as keeping `.a`). The pass is decided on the common tasks, each scoring
-at least 2; the others are scored and published separately. Competitor docs pinned by
+at least 2; the others are scored and published separately. Other libraries' docs pinned by
 version or commit: haven, readstata13, pandas' Stata I/O, pyreadstat,
 ReadStatTables.jl, statfmt. Sonnet and Terra each score blind,
-order-randomised pairs (ours vs one competitor per language). Pass:
-both judges score ours higher than every competitor in its language
+order-randomised pairs (ours vs one other library per language). Pass:
+both judges score ours higher than every other library in its language
 on the common tasks, with no common task below 2. At most three rounds; transcripts and any
 disagreement are published in `docs/judging/`. Plus one fresh agent per
 language given only our docs completes the ten tasks.
@@ -317,7 +317,7 @@ language given only our docs completes the ten tasks.
 
 ## Risks
 
-- Competitor readers may fail on old releases or big files: reported.
+- Other readers may fail on old releases or big files: reported.
 - NSFG dictionaries vary by cycle: the inventory makes failures
   visible.
 - pandas' and DataFrames' internals may change: the representation

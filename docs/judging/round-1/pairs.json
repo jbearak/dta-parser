@@ -4,42 +4,42 @@
   "pairs": [
     {
       "language": "R",
-      "competitor": "haven",
+      "other": "haven",
       "ours": "B",
       "prompt": "r-haven.md",
       "chars": 96855
     },
     {
       "language": "R",
-      "competitor": "readstata13",
+      "other": "readstata13",
       "ours": "B",
       "prompt": "r-readstata13.md",
       "chars": 108322
     },
     {
       "language": "Python",
-      "competitor": "pandas",
+      "other": "pandas",
       "ours": "B",
       "prompt": "python-pandas.md",
       "chars": 92082
     },
     {
       "language": "Python",
-      "competitor": "pyreadstat",
+      "other": "pyreadstat",
       "ours": "B",
       "prompt": "python-pyreadstat.md",
       "chars": 123264
     },
     {
       "language": "Julia",
-      "competitor": "ReadStatTables",
+      "other": "ReadStatTables",
       "ours": "B",
       "prompt": "julia-ReadStatTables.md",
       "chars": 99890
     },
     {
       "language": "TypeScript",
-      "competitor": "statfmt",
+      "other": "statfmt",
       "ours": "A",
       "prompt": "typescript-statfmt.md",
       "chars": 117848

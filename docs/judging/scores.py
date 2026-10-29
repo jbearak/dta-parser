@@ -20,7 +20,7 @@ def scores(path):
 def main(round_dir):
     pairs = json.load(open(os.path.join(round_dir, "pairs.json")))["pairs"]
     passed = True
-    print("| judge | pair | ours | competitor | lowest common task of ours | pass |")
+    print("| judge | pair | ours | other library | lowest common task of ours | pass |")
     print("|---|---|---|---|---|---|")
     for judge in ("sonnet", "terra"):
         for p in pairs:
@@ -33,7 +33,7 @@ def main(round_dir):
             low = min(common, key=lambda t: mean(t, ours))
             ok = ours_total > their_total and mean(low, ours) >= 2
             passed &= ok
-            print(f"| {judge} | {p['language']}: {p['competitor']} | {ours_total:.2f} | {their_total:.2f} "
+            print(f"| {judge} | {p['language']}: {p['other']} | {ours_total:.2f} | {their_total:.2f} "
                   f"| {low}: {mean(low, ours):.2f} | {'yes' if ok else 'no'} |")
     print(f"\nRound {'passes' if passed else 'fails'}.")
 
