@@ -8,3 +8,5 @@ bench/data/
 .rlib*/
 r/*.tar.gz
 __pycache__/
+python/dta_parser/_native*.so
+python/dta_parser/_native*.pyd
