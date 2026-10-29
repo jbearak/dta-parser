@@ -15,6 +15,11 @@
 #' @param x A vector.
 #' @param tag Letters, such as `"g"`; NULL for any of them.
 #' @return A logical vector as long as `x`.
+#' @examples
+#' x <- c(1, NA, .a, .z)
+#' is_missing(x)
+#' is_tagged_missing(x)
+#' is_tagged_missing(x, "z")
 #' @export
 is_missing <- function(x) {
   dict <- if (is.character(x)) dictionary(x)
@@ -30,6 +35,24 @@ is_tagged_missing <- function(x, tag = NULL) {
   if (is.null(tag)) return(codes >= 2)
   codes %in% (match(tag, letters) + 1)
 }
+
+#' Stata's extended missing values `.a` to `.z`
+#'
+#' `.a`, `.b`, ..., `.z` are the 26 extended missing values, each a
+#' one-element [dta_num()]. Write them where you would write a number:
+#' `c(1, NA, .d)` is a column holding 1, `.` and `.d`, and
+#' `x[i] <- .r` makes a value `.r`. Each is an `NA` with its letter
+#' stored in the bits of the `NA` (as in haven's `tagged_na()`), so base R
+#' sees `NA` and dtatools sees the letter.
+#'
+#' @format A `dta_num` of length 1.
+#' @seealso [is_tagged_missing()], [dta_num()]
+#' @examples
+#' x <- dta_num(c(1, NA, .d))
+#' is_tagged_missing(x, "d")
+#' @name extended-missing
+#' @aliases .a .b .c .d .e .f .g .h .i .j .k .l .m .n .o .p .q .r .s .t .u .v .w .x .y .z
+NULL
 
 # `.a` to `.z`, as one-element dta_num vectors. Built in plain R at
 # install time: NA_real_ with the letter in bits 32 to 39.

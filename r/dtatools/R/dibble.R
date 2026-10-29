@@ -15,6 +15,8 @@
 #' @param ... Columns, as for `tibble::tibble()`.
 #' @param x A data frame.
 #' @return A dibble.
+#' @examples
+#' dibble(x = c(1, NA, .d), when = as.Date("2024-03-01"), s = "a")
 #' @export
 dibble <- function(...) as_dibble(tibble::tibble(...))
 

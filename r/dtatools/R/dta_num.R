@@ -24,6 +24,11 @@ MISSING_NAMES <- c(".", paste0(".", letters))
 #'   as a new `dta_num` without labels. In `&`, `|` and `!` a value is true
 #'   when it is nonzero or missing. `sum()`, `mean()`, `max()` and the
 #'   like keep R's rules.
+#' @examples
+#' x <- dta_num(c(1, 5, NA, .d), labels = c(Low = 1, High = 5), label = "Score")
+#' x > 3          # missing values are above every number, as in Stata
+#' sort(x)        # 1 5 . .d
+#' x + 1          # any missing operand gives .
 #' @export
 dta_num <- function(x = double(), labels = NULL, label = NULL, storage = NULL, format = NULL) {
   if (!is.numeric(x) && !is.logical(x)) stop("dta_num: x must be numeric or logical")

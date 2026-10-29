@@ -25,6 +25,7 @@ export function missingValue(code: number): Missing {
   return MISSING[MISSING_NAMES[code - 1]];
 }
 
+/** Whether a cell is a missing value (`.` or `.a` to `.z`) rather than a number, string or bytes. */
 export function isMissing(value: unknown): value is Missing {
   return typeof value === "object" && value !== null && "missing" in value;
 }
@@ -61,6 +62,7 @@ export function stataKeys(column: NumberColumn): Float64Array {
 /** One cell: a number, a string, a binary strL, or a missing value. */
 export type Cell = number | string | Uint8Array | Missing;
 
+/** One variable's descriptor, as the file stores it. */
 export interface Variable {
   name: string;
   /** Storage type: byte, int, long, float, double, str1 to str2045, or strL. */
@@ -73,6 +75,7 @@ export interface Variable {
   valueLabels: string;
 }
 
+/** What the file's header says about it. */
 export interface Info {
   /** The .dta release, such as 114 or 118. */
   release: number;
@@ -104,11 +107,13 @@ export interface StringColumn {
   values: (string | Uint8Array)[];
 }
 
+/** One variable's values, as `readColumns` returns them. */
 export type Column = NumberColumn | StringColumn;
 
 /** Value label set: maps a value, or a missing value, to its text. */
 export type ValueLabels = Map<number | Missing, string>;
 
+/** A characteristic: named text attached to the dataset or to a variable. Notes are characteristics named `note1`, `note2`, .... */
 export interface Characteristic {
   /** `_dta` for the dataset, or a variable's name. */
   variable: string;
@@ -116,6 +121,7 @@ export interface Characteristic {
   value: string;
 }
 
+/** Options for opening a file. */
 export interface Options {
   /** Encoding of text in files before release 118; default windows-1252. */
   encoding?: EncodingName;
@@ -175,6 +181,7 @@ export class DtaReader {
     return this.labels.get(name);
   }
 
+  /** Every characteristic in the file, including the notes, in file order. */
   characteristics(): Characteristic[] {
     return JSON.parse(wasm.characteristicsJson(this.open));
   }
@@ -248,6 +255,7 @@ export class DtaReader {
     return rows;
   }
 
+  /** Release the file (and close it, if `openDtaFile` opened it by path). Further reads throw. */
   close(): void {
     if (this.handle !== 0) {
       if (this.generation === wasm.currentGeneration()) wasm.close(this.handle);
@@ -292,6 +300,7 @@ export interface WriteVariable {
   valueLabels?: string;
 }
 
+/** A dataset to write: its variables, in order, and dataset-level metadata. */
 export interface WriteDataset {
   variables: readonly WriteVariable[];
   /** Data label. */

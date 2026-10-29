@@ -14,6 +14,15 @@ jobs:
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
+  # Relative links and anchors in the Markdown docs. The docs' code
+  # examples run in each language's own job (test-docs.R, test_docs.py,
+  # docs.jl, docs.test.mjs).
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 docs/check/check_links.py
+
   npm:
     runs-on: ubuntu-latest
     steps:

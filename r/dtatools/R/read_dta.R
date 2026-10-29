@@ -29,6 +29,14 @@
 #'   the data is sorted by). With `col_select`, characteristics keep only
 #'   those of the columns read and `_dta`'s, and the sort order only its
 #'   leading keys that were read. [save_dta()] writes them all back.
+#' @seealso [save_dta()] to write. The repository's `docs/r.md` is a
+#'   guide with recipes.
+#' @examples
+#' path <- tempfile(fileext = ".dta")
+#' save_dta(dibble(id = 1:3, income = c(2100, .d, NA)), path)
+#' df <- read_dta(path)
+#' df$income
+#' read_dta(path, col_select = income, skip = 1, n_max = 1)
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max = Inf) {
   if (!is.numeric(skip) || length(skip) != 1 || is.na(skip) || skip < 0) stop("skip must be a number >= 0")
