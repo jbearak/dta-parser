@@ -24,6 +24,15 @@ labels come from each column's \code{labels} attribute, under its
 \code{label_set} name (or the column's name); \code{.a} to \code{.z} may be labelled.
 A value that does not fit its storage type is an error.
 }
+\details{
+The data frame's attributes give the file's metadata, as \code{\link[=read_dta]{read_dta()}}
+leaves them: \code{label}, \code{notes}, \code{characteristics} (a data frame with
+character columns \code{variable}, \code{name}, \code{value}; those of variables not
+in \code{data} are dropped), \code{sort_order} (column names; only its leading
+keys found in \code{data} are written) and \code{timestamp}, written as given.
+Without a \code{timestamp} attribute the file is stamped with the current
+time, so a file read without a timestamp comes back with one.
+}
 \examples{
 df <- dibble(
   id = 1:3,

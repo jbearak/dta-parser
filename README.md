@@ -16,8 +16,7 @@ TypeScript, with one implementation of the format underneath all four.
   "refused"). See [missing values](docs/guide/missing-values.md).
 - **Keeps the metadata**: variable labels, value labels (including labels
   on `.a` to `.z`), display formats, storage types, the data label and
-  notes; and, in Python, Julia and TypeScript, characteristics, the sort
-  order and the timestamp.
+  notes, characteristics, the sort order and the timestamp.
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -125,10 +124,10 @@ the table says how.
 | read releases 104 to 119, both byte orders | ✓ | ✓ | ✓ | ✓ |
 | select columns; a row range | ✓ | ✓ | ✓ | ✓ |
 | storage types, variable labels, display formats, data label, notes | ✓ | ✓ | ✓ | ✓ |
-| timestamp, characteristics, sort order | not read | ✓ | ✓ | read, not written |
+| timestamp, characteristics, sort order | ✓ | ✓ | ✓ | ✓ |
 | value labels, including labels on `.a` to `.z` | ✓ | ✓ | ✓ | ✓ |
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `StataArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
-| binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read (`Uint8Array`) |
+| binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
 | `%td`, `%tc` as dates | numbers with their format | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |

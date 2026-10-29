@@ -181,9 +181,17 @@ To get the metadata without the data, read no rows:
 `read_dta("survey.dta", n_max = 0)` gives a zero-row dibble with every
 attribute above.
 
-dtatools does not read the file's timestamp, characteristics other than
-notes, or sort order. Use the Python, Julia or TypeScript package if you
-need them.
+The file's timestamp, characteristics and sort order are attributes of
+the data frame too:
+
+| attribute | holds |
+|---|---|
+| `timestamp` | the file's text, such as `"28 Oct 2026 14:38"` (`NULL` if none) |
+| `characteristics` | a data frame with character columns `variable`, `name` and `value`; `variable` is `"_dta"` for the dataset's own; notes are not among them (`NULL` if none) |
+| `sort_order` | the names of the columns the data is sorted by (`NULL` if none) |
+
+With `col_select`, characteristics keep only those of the columns read
+and `_dta`'s, and the sort order only its leading keys that were read.
 
 `dta_num` columns keep their attributes through subsetting, `c()`,
 `rep()` and dplyr verbs. Arithmetic gives a new `dta_num` without labels
@@ -298,7 +306,9 @@ save_dta(df, "out.dta")
 `save_dta(data, file)` writes any data frame as release 118 and returns
 `file` invisibly. A dibble from `read_dta` writes back with its values,
 missing codes, numeric storage types, variable labels, value labels, display
-formats, data label and notes. String columns are written as narrow as their values allow ([storage types](guide/storage-types.md)).
+formats, data label, notes, characteristics and sort order. The
+`timestamp` attribute is written as given; without one, the file gets
+the current time. String columns are written as narrow as their values allow ([storage types](guide/storage-types.md)).
 
 How columns map to storage types:
 

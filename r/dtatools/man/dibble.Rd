@@ -26,8 +26,9 @@ logicals \code{byte}; \code{.a} to \code{.z} written inline (\code{c(1, NA, .d)}
 their codes; a factor becomes character; a \code{Date} becomes days since
 1960-01-01 with format \verb{\%td}; a haven \code{labelled} column keeps its
 labels; character columns stay character. Any other class is an
-error. \code{as_dibble()} converts a data frame by the same rules.
-Assigning into a dibble stores values as given.
+error. \code{as_dibble()} converts a data frame by the same rules, keeping
+its \code{label}, \code{timestamp}, \code{notes}, \code{characteristics} and \code{sort_order}
+attributes (see \code{\link[=read_dta]{read_dta()}}). Assigning into a dibble stores values as given.
 }
 \examples{
 dibble(x = c(1, NA, .d), when = as.Date("2024-03-01"), s = "a")

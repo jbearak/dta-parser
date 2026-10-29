@@ -17,9 +17,9 @@ part of the file.
 | value label sets | `labelbook(df)` | `attrs["dta"]["value_labels"]` | `metadata(t, "value_labels")` | `reader.valueLabels(name)` |
 | data label | `attr(df, "label")` | `attrs["dta"]["label"]` | `metadata(t, "label")` | `info.label` |
 | notes | `attr(df, "notes")` | `attrs["dta"]["notes"]` | `metadata(t, "notes")` | `reader.notes()` |
-| characteristics | not read | `attrs["dta"]["characteristics"]` | `metadata(t, "characteristics")` | `reader.characteristics()` |
-| sort order | not read | `attrs["dta"]["sort_order"]` | `metadata(t, "sorted_by")` | `info.sortedBy` |
-| timestamp | not read | `attrs["dta"]["timestamp"]` | `metadata(t, "timestamp")` | `info.timestamp` |
+| characteristics | `attr(df, "characteristics")` | `attrs["dta"]["characteristics"]` | `metadata(t, "characteristics")` | `reader.characteristics()` |
+| sort order | `attr(df, "sort_order")` | `attrs["dta"]["sort_order"]` | `metadata(t, "sorted_by")` | `info.sortedBy` |
+| timestamp | `attr(df, "timestamp")` | `attrs["dta"]["timestamp"]` | `metadata(t, "timestamp")` | `info.timestamp` |
 | release, byte order, encoding | not read | `attrs["dta"]["release"]`, `["byte_order"]`, `["encoding"]` | `metadata(t, "release")` ... | `info.release`, `info.byteOrder`, `info.encoding` |
 | `%td`, `%tc` | numbers with the format | `datetime64` | `Date`, `DateTime` | numbers; `formatValue` |
 | binary strL | an error | `bytes` | `Vector{UInt8}` | `Uint8Array` |
@@ -28,18 +28,17 @@ part of the file.
 
 In every language, reading a file and writing what was read gives back
 the same values, missing codes, storage types, variable labels, value
-labels, display formats and notes. Python and Julia also keep
-characteristics and the sort order. Text from a file older than release
+labels, display formats, notes, characteristics and the sort order. Text from a file older than release
 118 comes back as UTF-8 in release 118. The bytes of the file may
 differ (release, padding, the timestamp), but every reader sees the same
 data.
 
 Exceptions:
 
-- R does not read characteristics, the sort order or binary strLs, so it
-  cannot write them back.
-- TypeScript does not write characteristics, the sort order or binary
-  strLs.
+- R does not read binary strLs, so it cannot write them back.
+- If you write only some of the columns, characteristics of the others
+  are dropped, and the sort order keeps only its leading keys that are
+  written (data sorted by a, b, c is still sorted by a, not by a and c).
 - R and TypeScript write short text as `strN` even if it was a strL.
 - Metadata in Python lives in `df.attrs`, which pandas drops in some
   operations; see the [Python page](../python.md#metadata).

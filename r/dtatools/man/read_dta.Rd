@@ -32,6 +32,16 @@ operation over every value of a column with many distinct values
 A column with few distinct values is kept as those values and a
 code per row, so R makes one string per distinct value, and \code{\link[=tab]{tab()}},
 \code{\link[=dta_group_id]{dta_group_id()}} and \code{\link[=is_missing]{is_missing()}} work on the codes.
+
+The file's metadata is in attributes, each \code{NULL} when the file has
+none: \code{label} (the data label), \code{timestamp} (as the file has it, such
+as \code{"28 Oct 2026 14:38"}), \code{notes} (a character vector),
+\code{characteristics} (a data frame of character columns \code{variable},
+\code{name} and \code{value}; \code{variable} is \code{"_dta"} for the dataset's own;
+notes are not among them) and \code{sort_order} (the names of the columns
+the data is sorted by). With \code{col_select}, characteristics keep only
+those of the columns read and \verb{_dta}'s, and the sort order only its
+leading keys that were read. \code{\link[=save_dta]{save_dta()}} writes them all back.
 }
 \description{
 Read a Stata .dta file

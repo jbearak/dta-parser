@@ -369,15 +369,17 @@ stream or an upload). The dataset:
 | `label` | data label |
 | `valueLabels` | value label sets by name: `Map` from number or `MISSING` value to text |
 | `notes` | the dataset's notes |
-| `timestamp` | a `Date` for the file's time stamp; default now |
+| `timestamp` | a `Date`, or text written as given (such as `info.timestamp` of a file read); default now |
+| `characteristics` | as `characteristics()` returns them; those of variables not written, and `_dta` notes (`notes` gives those), are left out |
+| `sortedBy` | names of the variables the data is sorted by; only the leading names among the variables written are kept |
 
 Each variable:
 
 | field | meaning |
 |---|---|
 | `name` | 1 to 32 letters, digits or `_`, not starting with a digit |
-| `values` | numbers, with `null` or a `MISSING` value for missing; or strings |
-| `type` | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` (the default) for numbers; leave it out for strings |
+| `values` | numbers, with `null` or a `MISSING` value for missing; or strings, among which a `Uint8Array` is a binary strL |
+| `type` | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` (the default) for numbers; for strings, leave it out or give `"strL"` to write strL whatever the length |
 | `format` | display format such as `"%9.2f"` or `"%td"`; default the type's |
 | `label` | variable label |
 | `valueLabels` | name of a set in `valueLabels` |
@@ -386,9 +388,7 @@ Strings are written as `strN` (N the longest value in bytes) up to
 2045 bytes and as strLs beyond, each distinct strL stored once.
 Stata has no missing string; write `""`. A number that does not fit
 its type (300 in a byte, 1.5 in an int, a value in the range Stata
-reserves for missing codes) throws an error naming the variable. The
-writer does not write characteristics other than notes, the sort order,
-or binary strLs.
+reserves for missing codes) throws an error naming the variable.
 
 To write back what you read, pass each variable's `type`, `format`,
 `label` and `valueLabels` from `r.variables`, and the sets from
