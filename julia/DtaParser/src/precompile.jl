@@ -7,10 +7,11 @@ function workload()
     path, io = mktemp()
     close(io)
     try
-        # Every storage type, with and without missing values.
-        table = (b=Int8[1, 2], i=Int16[1, 2], l=Int32[1, 2], f=Float32[1, 2], x=[1.5, 2.0],
-                 bm=DtaColumn(Int8[1, 0], UInt8[0, 1]), im=DtaColumn(Int16[1, 0], UInt8[0, 2]),
-                 lm=DtaColumn(Int32[1, 0], UInt8[0, 1]), fm=DtaColumn(Float32[1, 0], UInt8[0, 1]),
+        # Every storage type, with and without missing values (integers
+        # large enough not to fit a smaller type).
+        table = (b=Int8[1, 2], i=Int16[1, 1000], l=Int32[1, 100_000], f=Float32[1, 2], x=[1.5, 2.0],
+                 bm=DtaColumn(Int8[1, 0], UInt8[0, 1]), im=DtaColumn(Int16[1000, 0], UInt8[0, 2]),
+                 lm=DtaColumn(Int32[100_000, 0], UInt8[0, 1]), fm=DtaColumn(Float32[1, 0], UInt8[0, 1]),
                  xm=[1.5, NaN], s=["a", "bc"], day=[Date(2024, 1, 1), Date(2024, 1, 2)],
                  time=[DateTime(2024, 1, 1, 12), DateTime(2024, 1, 2)])
         write_dta(path, table; label="workload", value_labels=Dict("yn" => Dict(1 => "yes", ".a" => "no answer")),

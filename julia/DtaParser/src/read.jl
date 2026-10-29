@@ -119,8 +119,13 @@ end
 
 # The metadata JSON, as table and column metadata.
 function metadata_of(doc)
-    vars = doc["variables"]
-    names = [Symbol(v["name"]) for v in vars]
+    vars = doc["variables"]::Vector{Any}
+    # Loops over indices: a comprehension or zip over the JSON's Vector{Any}
+    # left Base code to compile on the first call (about 40 ms).
+    names = Vector{Symbol}(undef, length(vars))
+    for i in eachindex(vars)
+        names[i] = Symbol(vars[i]["name"])
+    end
     sets = Dict{String,Dict{Float64,String}}()
     for s in doc["valueLabels"]
         sets[s["name"]] = label_set(s["labels"])
@@ -138,8 +143,8 @@ function metadata_of(doc)
     )
     colmeta = Dict{Symbol,Dict{String,Any}}()
     sizehint!(colmeta, length(vars))
-    for (n, v) in zip(names, vars)
-        colmeta[n] = column_meta(v)
+    for i in eachindex(vars)
+        colmeta[names[i]] = column_meta(vars[i])
     end
     names, meta, colmeta
 end
