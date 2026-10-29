@@ -278,7 +278,13 @@ function write_dta(path::AbstractString, table; label=nothing, notes=nothing, ti
     present = Set(String.(names))
     chars = [Dict("variable" => string(c.variable), "name" => string(c.name), "value" => string(c.value))
              for c in tmeta("characteristics", []) if string(c.variable) == "_dta" || string(c.variable) in present]
-    sorted = [findfirst(==(Symbol(s)), names) for s in tmeta("sorted_by", Symbol[])]
+    # The leading sort keys whose columns are written.
+    sorted = Int[]
+    for s in tmeta("sorted_by", Symbol[])
+        i = findfirst(==(Symbol(s)), names)
+        i === nothing && break
+        push!(sorted, i)
+    end
     doc = Dict(
         "label" => string(something(label, tmeta("label", ""))),
         "timestamp" => string(something(timestamp, stata_timestamp(Dates.now()))),

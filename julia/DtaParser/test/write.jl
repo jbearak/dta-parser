@@ -153,3 +153,34 @@ end
     @test !isfile(p)
     @test_throws ArgumentError write_dta(p, 42)
 end
+
+@testset "a selection keeps only the leading sort keys it read" begin
+    dir = mktempdir()
+    path = joinpath(dir, "sorted.dta")
+    df = DataFrame(a = [1, 2], b = [2, 1])
+    metadata!(df, "sorted_by", [:a, :b])
+    write_dta(path, df)
+    @test DataAPI.metadata(read_dta(path), "sorted_by") == [:a, :b]
+    @test DataAPI.metadata(read_dta(path; cols = [:a]), "sorted_by") == [:a]
+    @test DataAPI.metadata(read_dta(path; cols = [:b]), "sorted_by") == Symbol[]
+    write_dta(joinpath(dir, "b.dta"), read_dta(path; cols = [:b]))
+    @test DataAPI.metadata(read_dta(joinpath(dir, "b.dta")), "sorted_by") == Symbol[]
+end
+
+@testset "column metadata keys by position" begin
+    dir = mktempdir()
+    path = joinpath(dir, "keys.dta")
+    write_dta(path, (x = [1.0],))
+    t = read_dta(path)
+    @test collect(DataAPI.colmetadatakeys(t, 1)) == collect(DataAPI.colmetadatakeys(t, :x))
+end
+
+@testset "a write leaves files at temporary names alone" begin
+    dir = mktempdir()
+    path = joinpath(dir, "out.dta")
+    bystander = joinpath(dir, "out.dta.$(getpid()).0.tmp")
+    write(bystander, "keep me")
+    write_dta(path, (x = [1.0],))
+    @test read(bystander, String) == "keep me"
+    @test collect(read_dta(path)[:x]) == [1.0]
+end

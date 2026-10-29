@@ -181,7 +181,10 @@ function read_dta(path::AbstractString; cols=nothing, skip::Integer=0, n_max::Un
             end
         end
         kept = Dict(n => colmeta[n] for n in names)
-        meta["sorted_by"] = filter(in(Set(names)), meta["sorted_by"])
+        # The rows stay sorted by the leading sort keys that were read.
+        sorted_by = meta["sorted_by"]
+        cut = findfirst(!in(Set(names)), sorted_by)
+        meta["sorted_by"] = cut === nothing ? sorted_by : sorted_by[1:cut-1]
         DtaTable(names, columns, count, meta, kept)
     end
 end

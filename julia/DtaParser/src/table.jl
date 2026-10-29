@@ -63,7 +63,7 @@ function DataAPI.metadata(t::DtaTable, key::AbstractString, default; style::Bool
     v = get(getfield(t, :meta), key, default)
     style ? (v, :note) : v
 end
-DataAPI.colmetadatakeys(t::DtaTable, col) = keys(getfield(t, :colmeta)[Symbol(col)])
+DataAPI.colmetadatakeys(t::DtaTable, col) = keys(getfield(t, :colmeta)[colname(t, col)])
 DataAPI.colmetadatakeys(t::DtaTable) = (n => keys(getfield(t, :colmeta)[n]) for n in getfield(t, :names))
 function DataAPI.colmetadata(t::DtaTable, col, key::AbstractString; style::Bool=false)
     v = getfield(t, :colmeta)[colname(t, col)][key]

@@ -497,10 +497,7 @@ pub unsafe extern "C" fn dta_write(
         };
         // Write beside the target and rename, so a failed write leaves
         // any file already there alone.
-        let mut name = target.file_name().ok_or("the path names no file")?.to_os_string();
-        name.push(format!(".{}.tmp", std::process::id()));
-        let tmp = target.with_file_name(name);
-        let file = File::create(&tmp).map_err(|e| format!("{}: {e}", tmp.display()))?;
+        let (tmp, file) = create_beside(&target)?;
         let written = dta::write(&data, file).map_err(|e| e.to_string());
         let renamed = written.and_then(|_| std::fs::rename(&tmp, &target).map_err(|e| format!("{}: {e}", target.display())));
         if renamed.is_err() {
@@ -508,6 +505,23 @@ pub unsafe extern "C" fn dta_write(
         }
         renamed.map(|_| 0)
     })
+}
+
+/// A new file beside `target` that no other call has: created exclusively,
+/// so an existing file or symlink at a name is never opened or removed.
+fn create_beside(target: &std::path::Path) -> Result<(std::path::PathBuf, File), String> {
+    let base = target.file_name().ok_or("the path names no file")?.to_os_string();
+    for n in 0..1000 {
+        let mut name = base.clone();
+        name.push(format!(".{}.{n}.tmp", std::process::id()));
+        let tmp = target.with_file_name(name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {
+            Ok(file) => return Ok((tmp, file)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(format!("{}: {e}", tmp.display())),
+        }
+    }
+    Err(format!("{}: no free name for a temporary file", target.display()))
 }
 
 #[cfg(test)]
