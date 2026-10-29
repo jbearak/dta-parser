@@ -51,6 +51,27 @@ end
     @test_throws ArgumentError read_dta(p; n_max=-1)
 end
 
+@testset "dates" begin
+    dir = mktempdir()
+    p = joinpath(dir, "dates.dta")
+    days = Float64[0, 1, -1, 20000]
+    ms = Float64[0, 1.5e12, -86_400_000, 1]
+    write_dta(p, (d=days, tc=ms, tC=ms, frac=[0.5, 1, 2, 3], ext=DtaColumn(days, UInt8[0, 0, 2, 0]),
+                  dot=DtaColumn(days, UInt8[0, 1, 0, 0]), left=days, old=days);
+              column_formats=Dict(:d => "%td", :tc => "%tc", :tC => "%tC", :frac => "%td", :ext => "%td",
+                                  :dot => "%tdCCYY-NN-DD", :left => "%-td", :old => "%d"))
+    t = read_dta(p)
+    @test t.d == Date(1960) .+ Day.([0, 1, -1, 20000])
+    @test t.tc == [DateTime(1960), DateTime(1960) + Millisecond(1.5e12), DateTime(1959, 12, 31), DateTime(1960) + Millisecond(1)]
+    @test t.tC == ms
+    @test t.frac isa Vector{Float64}
+    @test t.ext isa DtaColumn
+    @test isequal(t.dot, [Date(1960), missing, Date(1959, 12, 31), Date(2014, 10, 4)])
+    @test t.left == t.d && t.old == t.d
+    @test DataAPI.colmetadata(t, :dot, "format") == "%tdCCYY-NN-DD"
+    @test read_dta(p; dates=false).d == days
+end
+
 @testset "errors and encodings" begin
     @test_throws DtaParser.DtaError read_dta("/no/such/file.dta")
     err = try

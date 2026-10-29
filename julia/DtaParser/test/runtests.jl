@@ -10,4 +10,5 @@ codes_of(c) = [stata_code(c, i) for i in eachindex(c)]
     include("read.jl")
     include("compat.jl")
     include("dataframes.jl")
+    include("write.jl")
 end
