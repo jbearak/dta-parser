@@ -1,0 +1,22 @@
+[package]
+name = "dta-parser-python"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+rust-version = "1.82"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+dta = { path = "../crates/dta" }
+pyo3 = { version = "0.27", features = ["extension-module", "abi3-py310"] }
+
+# Not part of the dta-parser workspace.
+[workspace]
+
+[profile.release]
+lto = true
+codegen-units = 1

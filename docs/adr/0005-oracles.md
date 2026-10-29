@@ -24,5 +24,12 @@ tests:
 - **readstata13 returns pre-113 missing values as the stored sentinel**
   (the type's largest value); `compat/expected.R` maps those to `.` by
   each variable's storage type.
+- **pyreadstat** (used by the Python tests, read live rather than from
+  `compat/expected`) wraps ReadStat like haven, so it reads haven's 119
+  strL references with the 119 layout and finds no text.
+- **pandas 2** (which the Python tests meet on Python 3.10) reads the one
+  missing value of int and long before 113 as `.z`, reads 105 and 108
+  value labels as empty, and cannot read 104, 110 or big-endian 118 and
+  119 files. pandas 3 has none of these.
 
 `compat/README.md` lists, per release, which readers are the oracle.

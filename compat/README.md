@@ -3,7 +3,9 @@
 `fixtures/` holds small `.dta` files made without Stata. `expected/` holds
 what haven, readstata13 and pandas read from each one, as JSON. The Rust
 tests (`crates/dta/tests/compat.rs`), the npm tests and the R tests compare
-dta-parser against them.
+dta-parser against them. The Python tests (`python/tests/test_compat.py`)
+read each fixture with pandas and pyreadstat as they run and compare
+against those.
 
 To regenerate, from the repository root:
 
