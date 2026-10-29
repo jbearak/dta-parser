@@ -16,7 +16,6 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 
 const require = createRequire(import.meta.url);
 const ours = reader === "ours" ? require("../../js/dist/node.js") : null;
-const oursIndex = reader === "ours" ? require("../../js/dist/index.js") : null;
 // The checks re-read written files with statfmt.
 const statfmt = reader === "statfmt" || tasks === "check" ? await import(path.join(here, "../node/node_modules/@irbisadm/statfmt/dist/index.js")) : null;
 const loaded = Date.now() / 1000;
@@ -57,20 +56,17 @@ function oursMeta(p) {
   }
 }
 
-// Writing takes values as arrays, with a Missing for each missing value.
+// Columns go back as readColumns gave them, with the file's metadata.
 function oursWrite(result, meta, dst) {
   const variables = result.columns.map((c, i) => {
     const v = meta.variables[i];
-    let values;
-    if (c.kind === "string") values = c.values;
-    else {
-      values = Array.from(c.values);
-      for (let k = 0; k < values.length; k++) if (c.missing[k]) values[k] = oursIndex.missingValue(c.missing[k]);
-    }
-    const type = v.type.startsWith("str") ? undefined : v.type;
-    return { name: v.name, values, type, format: v.format, label: v.label, valueLabels: v.valueLabels };
+    const type = v.type.startsWith("str") ? (v.type === "strL" ? "strL" : undefined) : v.type;
+    return { name: v.name, values: c.values, missing: c.missing, type, format: v.format, label: v.label,
+             valueLabels: v.valueLabels };
   });
-  ours.writeDtaFile(dst, { variables, label: meta.info.label, valueLabels: meta.sets, notes: meta.notes });
+  ours.writeDtaFile(dst, { variables, label: meta.info.label, valueLabels: meta.sets, notes: meta.notes,
+                           characteristics: meta.characteristics, sortedBy: meta.info.sortedBy,
+                           timestamp: meta.info.timestamp });
 }
 
 const STRING = 0, STRING_REF = 6;
