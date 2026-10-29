@@ -8,7 +8,7 @@ The user wants dta-parser to serve R, TypeScript, Python and Julia with
 feature and performance parity, within reason; to benchmark every
 implementation for speed and peak memory against the existing
 open-source readers in its language, on synthetic files, each public-use
-NSFG file and the India DHS files; and documentation that both Claude
+NSFG file and five DHS surveys; and documentation that both Claude
 Sonnet and GPT Terra judge better than that of the other open-source
 Stata readers.
 
@@ -216,11 +216,15 @@ and a build-and-smoke job on Windows (cdylib names, UTF-8 paths).
   against CDC's SAS input programs where both exist; any file that
   fails conversion is listed with its error. Written as `.dta` by
   **pandas** (release 118), an independent implementation.
-- India DHS: the user's copies (1992, 1998, 2006, 2016, 2021; women's
-  and birth-history recodes; up to 5.2 GB), from `DTA_DHS_DIR`. The
-  user asked for them. They are inputs only, never fixtures or oracles,
-  never committed (their licence bars redistribution); RESULTS shows
-  release, size, rows and variables only. ADR 0013 records this.
+- DHS: the women's and birth-history recodes of one survey per DHS
+  Program region, each near the median size of the user's 322 local
+  surveys (Senegal 2019, Turkey 2013, Tajikistan 2017, Myanmar 2016,
+  Dominican Republic 2013; 22 to 72 MB, release 113), from
+  `DTA_DHS_DIR`. They replace the India rounds first planned (up to
+  5.2 GB), which are not typical. They are inputs only, never fixtures
+  or oracles, never committed (their licence bars redistribution);
+  RESULTS shows country, round, recode, release, size, rows and
+  variables only. ADR 0013 records this.
 
 **Readers** (versions pinned in RESULTS):
 

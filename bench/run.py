@@ -12,7 +12,8 @@ Files (never committed):
   synthetic  long, wide, groups and long_114/117/119 in BENCH_DIR
              (bench/make_large.R, bench/make_release_variants.py)
   nsfg       every .dta in NSFG_DIR (bench/nsfg/make.py)
-  dhs        India <year>/{wm,bh}.dta under DTA_DHS_DIR, read only (ADR 0013)
+  dhs        <survey>/{wm,bh}.dta under DTA_DHS_DIR for the five surveys in
+             DHS_SURVEYS, read only (ADR 0013)
 
 Tasks: 1 full read; 2 full read, then a pass over every value (sum of
 numbers, count of missing values, total string length); 3 five named
@@ -24,8 +25,10 @@ Method: each file is read once first (page cache warm). Files over
 (three over 1 GB). Smaller files: one process per task times a warm-up
 call, then up to 20 calls (stopping after 60 s once three ran; a warm-up
 over 60 s is the only run); peak RSS from one more fresh process with one
-call. Every process has 20 minutes. A reader that times out on a file is
-not run on that family's larger files.
+call (a warm-up over 60 s is that run). Every process has 20 minutes. A
+reader that times out on a file is not run on that family's larger
+files. StatFiles, which can only slice a full read, is not timed on
+tasks 3 and 4 where its full read took over 60 s.
 
 Every measurement is cached under --out (default
 /private/tmp/claude-501/bench-out); delete a file there to run it again.
@@ -77,7 +80,20 @@ TASKS = {1: "full read", 2: "read + pass", 3: "5 columns", 4: "1,000 rows", 5: "
 # Tasks that read the whole file whatever is asked, per reader: skipped
 # where that reader's full read timed out.
 FULL_READS = {"statfiles": {2, 3, 4, 6}, "statfmt": {2, 3, 6}}
-FAMILIES = {"synthetic": "Synthetic", "nsfg": "NSFG (public use)", "dhs": "India DHS"}
+# Tasks a reader can only do as its full read plus a slice: not run again
+# where its full read took over a minute.
+NO_SELECTION = {"statfiles": {3, 4}}
+SLOW = 60
+FAMILIES = {"synthetic": "Synthetic", "nsfg": "NSFG (public use)", "dhs": "DHS"}
+# One survey per DHS Program region, each near the median size of the
+# local copies (ADR 0013).
+DHS_SURVEYS = {
+    "Senegal 2019": "Sub-Saharan Africa",
+    "Turkey 2013": "North Africa, West Asia and Europe",
+    "Tajikistan 2017": "Central Asia",
+    "Myanmar 2016": "South and Southeast Asia",
+    "Dominican Republic 2013": "Latin America and the Caribbean",
+}
 
 
 # ---------------------------------------------------------------- files
@@ -94,12 +110,13 @@ def find_files():
         files.append({"family": "nsfg", "key": p.stem, "path": p, "label": p.stem})
     dhs = os.environ.get("DTA_DHS_DIR")
     if dhs:
-        for year in (1992, 1998, 2006, 2016, 2021):
+        for survey, region in DHS_SURVEYS.items():
             for recode in ("wm", "bh"):
-                p = Path(dhs) / f"India {year}" / f"{recode}.dta"
+                p = Path(dhs) / survey / f"{recode}.dta"
                 if p.exists():
-                    files.append({"family": "dhs", "key": f"dhs-{year}-{recode}", "path": p,
-                                  "label": f"{year} {recode}"})
+                    key = "dhs-" + survey.lower().replace(" ", "-") + f"-{recode}"
+                    files.append({"family": "dhs", "key": key, "path": p, "label": f"{survey} {recode}",
+                                  "region": region})
     for f in files:
         meta = dta_parser.read_meta(str(f["path"]))
         names = list(meta["columns"])
@@ -188,12 +205,18 @@ def measure(lang, reader, f, task, out):
         return {"mode": "loop", **e}
     m = {"mode": "loop", "times": e["times"], "first": e.get("first"), "startup": [r["startup"]],
          "checksum": e.get("checksum"), "version": r["version"]}
+    if e.get("first") is not None and e["times"] == [e["first"]]:
+        # One call over 60 s made that process a fresh single run already.
+        m["rss"] = [r["rss"]]
+        return m
     fresh = launch(lang, reader, f, str(task), 1, out)
     m["rss"] = [fresh["rss"]] if "error" not in task_entry(fresh) else []
     return m
 
 
-def run_all(files, out):
+def run_all(files, out, chosen=None):
+    """Measure and check every reader on `files`, or only the (language,
+    reader) pairs in `chosen`."""
     slow = set()  # (family, lang, reader) that timed out on a smaller file
     for f in files:
         print(f"{f['family']} {f['label']}: {f['size'] / MB:,.0f} MB", flush=True)
@@ -202,17 +225,22 @@ def run_all(files, out):
                 pass
         for lang, spec in LANGS.items():
             for reader in spec["readers"]:
+                if chosen is not None and (lang, reader) not in chosen:
+                    continue
                 base = out / "raw" / f["key"] / f"{lang}-{reader}"
                 if (f["family"], lang, reader) in slow:
                     for task in TASKS:
                         cached(base / f"{task}.json", lambda: {"error": "not run: timed out on a smaller file",
                                                                "skipped": True})
                     continue
-                full_timed_out = False
+                full_timed_out = full_slow = False
                 for task in TASKS:
                     def make():
                         if full_timed_out and task in FULL_READS.get(reader, {2, 6}):
                             return {"error": "not run: the full read timed out", "skipped": True}
+                        if full_slow and task in NO_SELECTION.get(reader, ()):
+                            return {"error": "not run: it is the full read plus a slice, and the full read "
+                                             f"took over {SLOW} s", "skipped": True}
                         t = time.time()
                         m = measure(lang, reader, f, task, out)
                         result = m["error"][:120] if "error" in m else f"{statistics.median(m['times']):.4g} s"
@@ -222,6 +250,8 @@ def run_all(files, out):
                     if task == 1 and m.get("timeout"):
                         full_timed_out = True
                         slow.add((f["family"], lang, reader))
+                    if task == 1 and m.get("times") and statistics.median(m["times"]) > SLOW:
+                        full_slow = True
                 if full_timed_out:
                     cached(base / "check.json", lambda: {"error": "not run: the full read timed out"})
                     continue
@@ -605,9 +635,12 @@ def write_report(files, out):
             continue
         private = fam == "dhs"
         lines += [f"## {FAMILIES[fam]}", ""]
-        lines += ["| file | release | MB | rows | variables |", "|---|---|---|---|---|"]
+        region = fam == "dhs"
+        lines += ["| file | " + ("region | " if region else "") + "release | MB | rows | variables |",
+                  "|---|" + ("---|" if region else "") + "---|---|---|---|"]
         for f in fam_files:
-            lines.append(f"| {f['label']} | {f['release']} | {f['size'] / MB:,.0f} | {f['nobs']:,} | {f['nvars']:,} |")
+            lines.append(f"| {f['label']} | " + (f"{f['region']} | " if region else "")
+                         + f"{f['release']} | {f['size'] / MB:,.0f} | {f['nobs']:,} | {f['nvars']:,} |")
         lines += ["", f"![{FAMILIES[fam]}](charts/{fam}.svg)", "",
                   "Time: for ours, the geometric mean of its seconds over the files; for the others, the "
                   "geometric mean of their time over ours (above 1× means ours is faster).", "",
@@ -618,6 +651,11 @@ def write_report(files, out):
         (BENCH / "results" / f"{fam}.md").write_text(
             f"# {FAMILIES[fam]}: every file\n\nGenerated by `bench/run.py`.\n\n"
             + detail_tables(fam_files, out, private))
+
+    surveys = by_family["nsfg"] + by_family["dhs"]
+    if surveys:  # the README's chart
+        charts.write(BENCH / "charts" / "headline.svg", "NSFG and DHS files", chart_data(surveys, out),
+                     tasks=(1, 2, 3))
 
     lines += ["## Correctness", ""]
     lines += correctness_section(files, out)
@@ -680,21 +718,77 @@ def correctness_section(files, out):
     return lines
 
 
+def pick_readers(names):
+    """--readers: "ours" for ours in every language, or Language-reader
+    pairs such as Python-ours."""
+    chosen = set()
+    for name in names:
+        for lang, spec in LANGS.items():
+            for reader in spec["readers"]:
+                if name in (reader, f"{lang}-{reader}"):
+                    chosen.add((lang, reader))
+    if not chosen:
+        sys.exit(f"--readers: no reader called {' or '.join(names)}")
+    return chosen
+
+
+def installed_versions():
+    """The other readers' installed versions, asked of each language."""
+    found = {}
+    r = subprocess.run(["Rscript", "-e", 'for (p in c("haven", "readstata13")) cat(p, format(packageVersion(p)), "\\n")'],
+                       capture_output=True, text=True).stdout
+    for line in r.splitlines():
+        name, version = line.split()
+        found[("R", name)] = version
+    from importlib.metadata import version
+    found[("Python", "pandas")] = version("pandas")
+    found[("Python", "pyreadstat")] = version("pyreadstat")
+    jl = subprocess.run(["julia", "--project=bench/julia", "-e",
+                         "using ReadStatTables, StatFiles; println(pkgversion(ReadStatTables), \" \", pkgversion(StatFiles))"],
+                        cwd=ROOT, capture_output=True, text=True).stdout.split()
+    if len(jl) == 2:
+        found[("Julia", "readstattables")], found[("Julia", "statfiles")] = jl
+    package = BENCH / "node" / "node_modules" / "@irbisadm" / "statfmt" / "package.json"
+    found[("TypeScript", "statfmt")] = json.loads(package.read_text())["version"]
+    return found
+
+
+def check_versions(files, out):
+    """Whether the cached measurements of the other readers were made with
+    the versions installed now; prints any that were not."""
+    cached_versions = versions(out, files)
+    stale = [(k, v, cached_versions[k]) for k, v in installed_versions().items()
+             if k in cached_versions and cached_versions[k] != v]
+    for (lang, reader), now, then in stale:
+        print(f"{lang} {reader}: measured with {then}, installed now {now}; not re-run", flush=True)
+    return not stale
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--family", nargs="*", choices=list(FAMILIES))
     ap.add_argument("--file", nargs="*", help="file keys, such as long or 2002_Male")
     ap.add_argument("--out", default="/private/tmp/claude-501/bench-out")
     ap.add_argument("--report", action="store_true", help="only rebuild RESULTS.md from the cache")
+    ap.add_argument("--readers", nargs="*",
+                    help="re-measure only these readers on the chosen files (ours, or pairs such as "
+                         "Python-ours), dropping their cached results first; the others' stay")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     files = find_files()
     chosen = [f for f in files if (not args.family or f["family"] in args.family)
               and (not args.file or f["key"] in args.file)]
+    readers = pick_readers(args.readers) if args.readers else None
+    if readers and not args.report:
+        check_versions(files, out)
+        for f in chosen:
+            for lang, reader in readers:
+                for p in (out / "raw" / f["key"] / f"{lang}-{reader}").glob("*.json"):
+                    p.unlink()
     if not args.report:
         start = time.time()
-        run_all(chosen, out)
+        run_all(chosen, out, readers)
         print(f"done in {(time.time() - start) / 3600:.2f} h", flush=True)
     sys.path.insert(0, str(BENCH))
     write_report(files, out)
