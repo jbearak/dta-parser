@@ -112,7 +112,8 @@ pub struct Characteristic {
 /// The bits of 2^333.
 const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 
-/// Rows are read this many bytes at a time.
+/// Rows are read this many bytes at a time, and decoded this many bytes
+/// at a time.
 const CHUNK: usize = 8 << 20;
 
 /// The strL section is scanned through a window this large.
@@ -229,7 +230,9 @@ impl<S: Source> Reader<S> {
                 _ => 9,
             })
             .sum();
-        let mut rows_per_chunk = (CHUNK / self.row_len.max(1)).max(1);
+        // A byte decodes to 9 bytes (a double and a missing code), so size
+        // chunks by whichever is larger, the rows or their decoding.
+        let mut rows_per_chunk = (CHUNK / self.row_len.max(decoded_row).max(1)).max(1);
         if let Some(budget) = budget {
             rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
         }

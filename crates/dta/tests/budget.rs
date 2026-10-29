@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use dta::{Bytes, Column, Options, Reader};
+use dta::{write, Bytes, Column, Dataset, Options, Reader, StorageType, Values, WriteVariable};
 
 fn open(name: &str) -> Reader<Bytes<Vec<u8>>> {
     let bytes = fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/fixtures").join(name)).unwrap();
@@ -59,4 +59,43 @@ fn the_budget_allows_for_text_growing_when_decoded() {
     let col = r.metadata().variables.iter().position(|v| v.name == "text").unwrap();
     let n = r.read_chunks(&[col], 0, 6, Some(20), |_, _| Ok(())).unwrap();
     assert_eq!(n, 1);
+}
+
+#[test]
+fn a_chunk_of_bytes_decodes_to_about_8_mib() {
+    // 500 byte variables over 4,000 rows: 2 MB as stored, 18 MB decoded
+    // (a double and a missing code per value). Chunks are sized by the
+    // decoded size, so the reader holds about 8 MiB of them at a time.
+    let (nvar, nobs) = (500, 4000);
+    let data = Dataset {
+        nobs,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: (0..nvar)
+            .map(|k| WriteVariable {
+                name: format!("v{k}"),
+                storage: StorageType::Byte,
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::Numbers(Box::new(|i| ((i % 100) as f64, 0))),
+            })
+            .collect(),
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut bytes = Vec::new();
+    write(&data, &mut bytes).unwrap();
+    let mut r = Reader::open(Bytes(bytes), Options::default()).unwrap();
+    let all: Vec<usize> = (0..nvar).collect();
+    let mut largest = 0;
+    let n = r
+        .read_chunks(&all, 0, nobs as u64, None, |_, chunk| {
+            largest = largest.max(chunk[0].len());
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(n, nobs as u64);
+    assert!(largest * nvar * 9 <= 8 << 20, "a chunk of {largest} rows decodes to {} bytes", largest * nvar * 9);
 }
