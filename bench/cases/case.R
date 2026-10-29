@@ -10,7 +10,10 @@ tmp <- dirname(normalizePath(out_path, mustWork = FALSE))
 
 pkg <- c(ours = "dtatools", haven = "haven", readstata13 = "readstata13")[[reader]]
 invisible(loadNamespace(pkg))
-if (reader == "haven") invisible(loadNamespace("tidyselect"))
+# haven loads tibble and vctrs with itself; dtatools loads them on its
+# first read. Load them before the clock for both, and tidyselect, which
+# both use to select columns.
+if (reader %in% c("ours", "haven")) for (ns in c("tibble", "vctrs", "tidyselect")) invisible(loadNamespace(ns))
 loaded <- as.numeric(Sys.time())
 
 # Seconds, to the microsecond (proc.time() counts milliseconds).
