@@ -203,7 +203,8 @@ fn guard(err: *mut c_char, err_len: usize, f: impl FnOnce() -> Res<()>) -> c_int
     1
 }
 
-/// The header, descriptors, notes and value label sets of a file, as
+/// The header, descriptors, notes, value label sets and characteristics
+/// (all of them, notes included) of a file, as
 /// element 0 of `holder`.
 ///
 /// # Safety
@@ -221,12 +222,13 @@ pub unsafe extern "C" fn dtatools_meta(
     guard(err, err_len, || {
         let mut reader = open(&path, encoding)?;
         let notes = reader.notes()?;
+        let chars = reader.characteristics()?;
         let sets = reader.value_labels()?;
         let meta = reader.metadata();
         let vars = &meta.variables;
         let names = [
             "release", "nobs", "label", "timestamp", "names", "storage", "formats", "var_labels", "label_sets",
-            "sort_order", "notes", "value_labels",
+            "sort_order", "notes", "value_labels", "characteristics",
         ];
         let out = named_list(holder, 0, &names)?;
         doubles_elt(out, 0, &[meta.release as f64])?;
@@ -248,6 +250,10 @@ pub unsafe extern "C" fn dtatools_meta(
             doubles_elt(entry, 0, &codes)?;
             strings_elt(entry, 1, &set.labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())?;
         }
+        let list = named_list(out, 12, &["variable", "name", "value"])?;
+        strings_elt(list, 0, &chars.iter().map(|c| c.variable.as_str()).collect::<Vec<_>>())?;
+        strings_elt(list, 1, &chars.iter().map(|c| c.name.as_str()).collect::<Vec<_>>())?;
+        strings_elt(list, 2, &chars.iter().map(|c| c.value.as_str()).collect::<Vec<_>>())?;
         Ok(())
     })
 }
@@ -685,6 +691,7 @@ pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *m
         let elt = |i: isize| unsafe { VECTOR_ELT(spec, i) };
         let (columns, names, storage, formats, labels, label_sets) = (elt(0), elt(1), elt(2), elt(3), elt(4), elt(5));
         let (sets, data_label, timestamp, notes) = (elt(6), elt(7), elt(8), elt(9));
+        let (chars, sort_order) = (elt(10), elt(11));
         let names = r_strings(names);
         let storage = r_strings(storage);
         let (formats, labels, label_sets) = (r_strings(formats), r_strings(labels), r_strings(label_sets));
@@ -750,7 +757,14 @@ pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *m
         }
 
         let notes = r_strings(notes);
-        let mut characteristics = Vec::new();
+        let (char_vars, char_names, char_values) =
+            (r_strings(VECTOR_ELT(chars, 0)), r_strings(VECTOR_ELT(chars, 1)), r_strings(VECTOR_ELT(chars, 2)));
+        let mut characteristics: Vec<Characteristic> = char_vars
+            .iter()
+            .zip(&char_names)
+            .zip(&char_values)
+            .map(|((v, n), x)| Characteristic { variable: v.to_string(), name: n.to_string(), value: x.to_string() })
+            .collect();
         if !notes.is_empty() {
             let note = |n: usize, value: &str| Characteristic {
                 variable: "_dta".into(),
@@ -761,6 +775,11 @@ pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *m
             characteristics.extend(notes.iter().enumerate().map(|(i, v)| note(i + 1, v)));
         }
 
+        // 0-based indices; save_dta checked them.
+        let sort_order: Vec<usize> = match Rf_xlength(sort_order).max(0) as usize {
+            0 => Vec::new(),
+            n => std::slice::from_raw_parts(INTEGER(sort_order), n).iter().map(|&i| i as usize).collect(),
+        };
         let data = Dataset {
             nobs,
             label: r_strings(data_label).first().copied().unwrap_or("").to_string(),
@@ -768,7 +787,7 @@ pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *m
             variables,
             value_labels,
             characteristics,
-            sort_order: Vec::new(),
+            sort_order,
         };
         let file = std::fs::File::create(&path).map_err(|e| Fail::Message(format!("{path}: {e}")))?;
         if let Err(e) = dta::write(&data, file) {

@@ -8,8 +8,9 @@
 #' their codes; a factor becomes character; a `Date` becomes days since
 #' 1960-01-01 with format `%td`; a haven `labelled` column keeps its
 #' labels; character columns stay character. Any other class is an
-#' error. `as_dibble()` converts a data frame by the same rules.
-#' Assigning into a dibble stores values as given.
+#' error. `as_dibble()` converts a data frame by the same rules, keeping
+#' its `label`, `timestamp`, `notes`, `characteristics` and `sort_order`
+#' attributes (see [read_dta()]). Assigning into a dibble stores values as given.
 #'
 #' @param ... Columns, as for `tibble::tibble()`.
 #' @param x A data frame.
@@ -20,13 +21,12 @@ dibble <- function(...) as_dibble(tibble::tibble(...))
 #' @rdname dibble
 #' @export
 as_dibble <- function(x) {
-  label <- attr(x, "label", exact = TRUE)
-  notes <- attr(x, "notes", exact = TRUE)
+  keep <- c("label", "timestamp", "notes", "characteristics", "sort_order")
+  meta <- lapply(keep, function(a) attr(x, a, exact = TRUE))
   cols <- lapply(names(x), function(name) dta_column(x[[name]], name))
   names(cols) <- names(x)
   out <- tibble::new_tibble(cols, nrow = nrow(x), class = "dibble")
-  attr(out, "label") <- label
-  attr(out, "notes") <- notes
+  for (i in seq_along(keep)) attr(out, keep[[i]]) <- meta[[i]]
   out
 }
 

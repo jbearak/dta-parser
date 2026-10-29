@@ -23,6 +23,15 @@ test_that("every fixture survives read_dta, save_dta, read_dta", {
     what <- basename(fixture)
     expect_identical(names(again), names(original), label = what)
     expect_identical(attr(again, "label"), attr(original, "label"), label = what)
+    for (a in c("notes", "characteristics", "sort_order")) {
+      expect_identical(attr(again, a), attr(original, a), label = paste(what, a))
+    }
+    # A file without a timestamp gets the writer's (the current time).
+    if (is.null(attr(original, "timestamp"))) {
+      expect_match(attr(again, "timestamp"), "^\\d\\d [A-Z][a-z]{2} \\d{4} \\d\\d:\\d\\d$", label = what)
+    } else {
+      expect_identical(attr(again, "timestamp"), attr(original, "timestamp"), label = what)
+    }
     for (col in names(original)) {
       x <- original[[col]]
       y <- again[[col]]
@@ -98,6 +107,81 @@ test_that("notes and labels on missing codes round-trip", {
   expect_identical(attr(again, "label"), "Data")
   expect_identical(names(attr(again$x, "labels")), c("Yes", "No", "Don't know"))
   expect_identical(unname(tags(attr(again$x, "labels"))), c(NA, NA, "d"))
+})
+
+with_metadata <- function() {
+  data <- dibble(a = c(1, 1, 2), b = c(1, 2, 1), c = c("x", "y", "z"))
+  attr(data, "timestamp") <- "05 Mar 2024 09:07"
+  attr(data, "notes") <- c("first", "second")
+  attr(data, "characteristics") <- data.frame(
+    variable = c("_dta", "a", "b", "c"),
+    name = c("origin", "note1", "source", "unit"),
+    value = c("test", "about a", "survey", "kg")
+  )
+  attr(data, "sort_order") <- c("a", "b")
+  data
+}
+
+test_that("timestamp, notes, characteristics and sort order round-trip", {
+  data <- with_metadata()
+  again <- read_dta(roundtrip(data))
+  for (a in c("timestamp", "notes", "characteristics", "sort_order")) {
+    expect_identical(attr(again, a), attr(data, a), label = a)
+  }
+  # and again, from what read_dta returned
+  twice <- read_dta(roundtrip(again))
+  for (a in c("timestamp", "notes", "characteristics", "sort_order")) {
+    expect_identical(attr(twice, a), attr(data, a), label = a)
+  }
+  # readstata13, independent of us, reads the same timestamp and
+  # characteristics (notes among them, as the file holds them).
+  skip_if_not_installed("readstata13")
+  r <- readstata13::read.dta13(roundtrip(data))
+  expect_identical(attr(r, "time.stamp"), "05 Mar 2024 09:07")
+  theirs <- vapply(attr(r, "expansion.fields"), paste, "", collapse = "|")
+  ours <- c(do.call(paste, c(attr(data, "characteristics"), sep = "|")),
+            "_dta|note0|2", "_dta|note1|first", "_dta|note2|second")
+  expect_setequal(theirs, ours)
+})
+
+test_that("selecting columns keeps their characteristics and the leading sort keys", {
+  path <- roundtrip(with_metadata())
+  b_c <- read_dta(path, col_select = c("c", "b"))
+  expect_identical(attr(b_c, "characteristics"),
+                   data.frame(variable = c("_dta", "b", "c"), name = c("origin", "source", "unit"),
+                              value = c("test", "survey", "kg")))
+  expect_null(attr(b_c, "sort_order"))  # sorted by a first, which is gone
+  a_c <- read_dta(path, col_select = c("a", "c"))
+  expect_identical(attr(a_c, "sort_order"), "a")
+  expect_identical(attr(a_c, "characteristics")$variable, c("_dta", "a", "c"))
+  expect_identical(attr(a_c, "notes"), c("first", "second"))
+  # save_dta applies the same rule to columns dropped after reading.
+  data <- with_metadata()
+  data$a <- NULL
+  again <- read_dta(roundtrip(data))
+  expect_null(attr(again, "sort_order"))
+  expect_identical(attr(again, "characteristics")$variable, c("_dta", "b", "c"))
+  data <- with_metadata()
+  data$b <- NULL
+  expect_identical(attr(read_dta(roundtrip(data)), "sort_order"), "a")
+})
+
+test_that("a file without metadata reads as NULL attributes, and save_dta stamps the time", {
+  again <- read_dta(roundtrip(data.frame(x = 1)))
+  expect_null(attr(again, "characteristics"))
+  expect_null(attr(again, "sort_order"))
+  expect_null(attr(again, "notes"))
+  expect_match(attr(again, "timestamp"), "^\\d\\d [A-Z][a-z]{2} \\d{4} \\d\\d:\\d\\d$")
+})
+
+test_that("as_dibble keeps the dataset's attributes", {
+  data <- with_metadata()
+  plain <- as.data.frame(data)
+  for (a in c("timestamp", "notes", "characteristics", "sort_order")) attr(plain, a) <- attr(data, a)
+  back <- as_dibble(plain)
+  for (a in c("timestamp", "notes", "characteristics", "sort_order")) {
+    expect_identical(attr(back, a), attr(data, a), label = a)
+  }
 })
 
 test_that("ALTREP columns (compact sequences, deferred strings) are written", {
