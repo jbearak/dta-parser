@@ -9,25 +9,27 @@ from html import escape
 TASK_NAMES = {1: "full read", 2: "read + pass", 3: "5 columns", 4: "1,000 rows", 5: "metadata", 6: "write"}
 # Categorical slots 1 and 2 of the reference palette, light and dark.
 SERIES = [("#2a78d6", "#3987e5"), ("#eb6834", "#d95926")]
-LO, HI = 0.1, 1000.0
+LO, HI = 0.01, 10000.0
 
 STYLE = """
-svg { --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --grid: #e4e3df;
-      --s1: #2a78d6; --s2: #eb6834; font-family: -apple-system, system-ui, sans-serif; }
+svg { font-family: -apple-system, system-ui, sans-serif; }
+.bg { fill: #fcfcfb; } .t { fill: #0b0b0b; } .t2 { fill: #52514e; }
+.grid { stroke: #e4e3df; stroke-width: 1; } .one { stroke: #52514e; stroke-width: 1.5; }
+.s0 { fill: #2a78d6; } .s1 { fill: #eb6834; }
 @media (prefers-color-scheme: dark) {
-  svg { --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --grid: #3a3a37; --s1: #3987e5; --s2: #d95926; }
+  .bg { fill: #1a1a19; } .t { fill: #f0efec; } .t2 { fill: #c3c2b7; }
+  .grid { stroke: #3a3a37; } .one { stroke: #c3c2b7; }
+  .s0 { fill: #3987e5; } .s1 { fill: #d95926; }
 }
-.bg { fill: var(--surface); } .t { fill: var(--ink); } .t2 { fill: var(--ink2); }
-.grid { stroke: var(--grid); stroke-width: 1; } .one { stroke: var(--ink2); stroke-width: 1.5; }
-.s0 { fill: var(--s1); } .s1 { fill: var(--s2); }
 """
 
 
-def write(path, title, data):
-    """data: {language: {reader name: {task: ratio or None}}}."""
-    left, width, bar, gap = 110, 520, 7, 2
+def write(path, title, data, tasks=TASK_NAMES):
+    """data: {language: {reader name: {task: ratio or None}}}; one row per
+    task in `tasks`."""
+    left, width, bar, gap = 120, 600, 7, 2
     row = 2 * bar + gap + 10
-    panel = 6 * row + 56
+    panel = len(tasks) * row + 56
     height = 50 + panel * len(data) + 20
     total = left + width + 70
 
@@ -51,12 +53,13 @@ def write(path, title, data):
             out.append(f'<text class="t2" x="{lx + 14}" y="{y0 + 12}" font-size="12">{escape(name)}</text>')
             lx += 24 + 7 * len(name)
         top = y0 + 24
-        for tick in (0.1, 1, 10, 100, 1000):
+        for tick in (0.01, 0.1, 1, 10, 100, 1000, 10000):
             out.append(f'<line class="{"one" if tick == 1 else "grid"}" x1="{x(tick):.1f}" x2="{x(tick):.1f}" '
-                       f'y1="{top - 4}" y2="{top + 6 * row}"/>')
-            out.append(f'<text class="t2" x="{x(tick):.1f}" y="{top + 6 * row + 14}" font-size="11" '
+                       f'y1="{top - 4}" y2="{top + len(tasks) * row}"/>')
+            out.append(f'<text class="t2" x="{x(tick):.1f}" y="{top + len(tasks) * row + 14}" font-size="11" '
                        f'text-anchor="middle">{tick:g}×</text>')
-        for i, (task, task_name) in enumerate(TASK_NAMES.items()):
+        for i, task in enumerate(tasks):
+            task_name = TASK_NAMES[task]
             ty = top + i * row
             out.append(f'<text class="t2" x="{left - 8}" y="{ty + bar + 4}" font-size="12" '
                        f'text-anchor="end">{task}. {task_name}</text>')
@@ -70,7 +73,7 @@ def write(path, title, data):
                 a, b = sorted((x(1), x(r)))
                 out.append(f'<rect class="s{k}" x="{a:.1f}" y="{by}" width="{max(b - a, 1.5):.1f}" height="{bar}" rx="2">'
                            f"<title>{escape(lang)}, {escape(name)}, task {task}: {r:.3g}× ours</title></rect>")
-                label = f"{r:.2g}×"
+                label = f"{r:.2g}×" if r < 100 else f"{r:,.0f}×"
                 tx, anchor = (b + 4, "start") if r >= 1 else (a - 4, "end")
                 out.append(f'<text class="t" x="{tx:.1f}" y="{by + bar}" font-size="10" text-anchor="{anchor}">{label}</text>')
         y0 += panel
