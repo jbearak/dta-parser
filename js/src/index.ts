@@ -275,11 +275,16 @@ export interface WriteVariable {
   name: string;
   /**
    * Numbers, with `null` or a `Missing` for missing values, or strings.
-   * Strings become strN, or strL beyond 2045 bytes.
+   * Strings become strN, or strL beyond 2045 bytes. A Uint8Array is a
+   * binary strL, and makes the variable strL; it may sit among strings,
+   * as `StringColumn.values` holds them.
    */
-  values: readonly (number | Missing | null)[] | readonly string[];
-  /** Storage type of a numeric variable; default double. */
-  type?: "byte" | "int" | "long" | "float" | "double";
+  values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[];
+  /**
+   * Storage type of a numeric variable; default double. `strL` makes a
+   * string variable strL whatever its length.
+   */
+  type?: "byte" | "int" | "long" | "float" | "double" | "strL";
   /** Display format; default the storage type's. */
   format?: string;
   label?: string;
@@ -294,17 +299,34 @@ export interface WriteDataset {
   /** Value label sets by name. */
   valueLabels?: Readonly<Record<string, ValueLabels>>;
   notes?: readonly string[];
-  /** Written as the file's timestamp; default now. */
-  timestamp?: Date;
+  /**
+   * The file's timestamp: a Date, or text written as given (such as
+   * `info.timestamp` of a file read); default now.
+   */
+  timestamp?: Date | string;
+  /**
+   * Characteristics, as `characteristics()` reads them. Those of
+   * variables not written are left out, and so are `_dta` notes
+   * (`note0`, `note1`, ...): `notes` gives those.
+   */
+  characteristics?: readonly Characteristic[];
+  /**
+   * Names of the variables the data is sorted by, as `info.sortedBy`.
+   * Only the leading names among the variables written are kept: data
+   * sorted by a, b and c is still sorted by a without b, but not by a and c.
+   */
+  sortedBy?: readonly string[];
 }
 
 const STORAGE = { byte: 0, int: 1, long: 2, float: 3, double: 4 } as const;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const encoder = new TextEncoder();
 
-/** UTF-8 bytes of `texts`, end to end, with each one's end offset. */
-function packTexts(texts: readonly string[]): { bytes: Uint8Array; ends: Uint32Array } {
-  const parts = texts.map((t) => encoder.encode(t));
+const isText = (x: unknown): x is string | Uint8Array => typeof x === "string" || x instanceof Uint8Array;
+
+/** UTF-8 bytes of `texts` (a Uint8Array as it is), end to end, with each one's end offset. */
+function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uint8Array; ends: Uint32Array } {
+  const parts = texts.map((t) => (typeof t === "string" ? encoder.encode(t) : t));
   const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   const ends = new Uint32Array(parts.length);
   let at = 0;
@@ -345,13 +367,16 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
       field(v.label, `the label of ${v.name}`),
       field(v.valueLabels, `the value label set of ${v.name}`),
     ].join("\0");
-    if (v.type === undefined && v.values.some((x) => typeof x === "string")) {
-      if (!v.values.every((x) => typeof x === "string")) throw new TypeError(`${v.name} mixes strings and numbers`);
-      return { kind: "strings", meta, ...packTexts(v.values as readonly string[]) };
+    if (v.type === "strL" || (v.type === undefined && v.values.some(isText))) {
+      if (!v.values.every(isText)) throw new TypeError(`${v.name} mixes strings and numbers`);
+      const values = v.values as readonly (string | Uint8Array)[];
+      const strL = v.type === "strL" || values.some((x) => x instanceof Uint8Array);
+      const binary = strL ? Uint8Array.from(values, (x) => (x instanceof Uint8Array ? 1 : 0)) : undefined;
+      return { kind: "strings", meta, ...packTexts(values), binary };
     }
     const storage = STORAGE[v.type ?? "double"];
     if (storage === undefined) throw new TypeError(`${v.name}: unknown type ${v.type}`);
-    if (v.values.some((x) => typeof x === "string")) throw new TypeError(`${v.name} is ${v.type} but holds strings`);
+    if (v.values.some(isText)) throw new TypeError(`${v.name} is ${v.type} but holds strings`);
     return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
   });
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
@@ -360,9 +385,34 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     const { bytes: texts, ends } = packTexts([...labels.values()]);
     parts.push({ kind: "labels", name, ...packNumbers(keys), texts, ends });
   }
+  const names = data.variables.map((v) => v.name);
+  const kept = new Set([...names, "_dta"]);
+  const chars = (data.characteristics ?? []).filter(
+    (c) => kept.has(c.variable) && !(c.variable === "_dta" && /^note[0-9]+$/.test(c.name)),
+  );
+  if (chars.length) {
+    const text = chars
+      .flatMap((c) => [
+        field(c.variable, "a characteristic's variable"),
+        field(c.name, "a characteristic's name"),
+        field(c.value, `characteristic ${c.variable}[${c.name}]`),
+      ])
+      .join("\0");
+    parts.push({ kind: "characteristics", text });
+  }
+  const sorted: number[] = [];
+  for (const name of data.sortedBy ?? []) {
+    const i = names.indexOf(name);
+    if (i < 0) break;
+    sorted.push(i);
+  }
+  if (sorted.length) parts.push({ kind: "sortOrder", indices: Uint32Array.from(sorted) });
   const t = data.timestamp ?? new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const stamp = `${pad(t.getDate())} ${MONTHS[t.getMonth()]} ${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  const stamp =
+    typeof t === "string"
+      ? field(t, "the timestamp")
+      : `${pad(t.getDate())} ${MONTHS[t.getMonth()]} ${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
   const notes = (data.notes ?? []).map((n) => field(n, "a note"));
   wasm.write(nobs, parts, [field(data.label, "the data label"), stamp, ...notes], sink);
 }
