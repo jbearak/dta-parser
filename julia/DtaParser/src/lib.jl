@@ -2,6 +2,7 @@
 
 const ABI_VERSION = 1
 
+# cargo names the library dta_ffi.dll on Windows, libdta_ffi.* elsewhere.
 const libname = Sys.iswindows() ? "dta_ffi.dll" : Sys.isapple() ? "libdta_ffi.dylib" : "libdta_ffi.so"
 
 # Symbols, looked up when the package loads.
@@ -11,7 +12,7 @@ const LOAD_ERROR = Ref{String}("")
 
 function library_path()
     path = get(ENV, "DTA_PARSER_LIB", "")
-    isempty(path) ? joinpath(@__DIR__, "..", "deps", "usr", "lib", libname) : path
+    normpath(isempty(path) ? joinpath(@__DIR__, "..", "deps", "usr", "lib", libname) : abspath(path))
 end
 
 function __init__()

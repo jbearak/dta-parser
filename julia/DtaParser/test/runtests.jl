@@ -6,6 +6,7 @@ fixture(name) = joinpath(FIXTURES, name)
 codes_of(c) = [stata_code(c, i) for i in eachindex(c)]
 
 @testset "DtaParser" begin
+    include("smoke.jl")
     include("column.jl")
     include("read.jl")
     include("compat.jl")
