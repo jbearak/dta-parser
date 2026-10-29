@@ -32,8 +32,8 @@ language supports it; otherwise it is **ours-only** there. The pass is
 decided on common tasks. Ours-only tasks are scored and published too,
 but do not decide the pass.
 
-The classification below comes from each competitor's documentation and
-source at the pinned version (see "Pinned competitor documentation").
+The classification below comes from each other library's documentation and
+source at the pinned version (see "Pinned documentation of the other libraries").
 
 | # | R (haven, readstata13) | Python (pandas, pyreadstat) | Julia (ReadStatTables.jl) | TypeScript (@irbisadm/statfmt) |
 |---|---|---|---|---|
@@ -100,7 +100,7 @@ Our documentation passes when, for **both** judges and in **every**
 language:
 
 1. our common total is higher than the common total of every
-   competitor in that language; and
+   other library in that language; and
 2. each of our common tasks has a task score of at least 2.
 
 Ties fail. A judge's scores stand as given; we do not average the two
@@ -115,7 +115,7 @@ judges.
   `docs/typescript.md`), and the API reference (R: `r/dtatools/man/`;
   Python and Julia: the docstrings; TypeScript: the TSDoc in
   `js/src/`). The commit is recorded with each round.
-- Competitors: the documentation at the pinned version below: README,
+- Other libraries: the documentation at the pinned version below: README,
   user guide or vignettes, and the reference entries for the functions
   that read and write `.dta` files and handle labels, dates and
   missing values.
@@ -126,7 +126,7 @@ since removing them breaks the examples; judges are told not to use
 outside knowledge of any library.
 
 **Pairs and order.** Each judge scores pairs: ours against one
-competitor in the same language (R: two pairs; Python: two; Julia: one;
+other library in the same language (R: two pairs; Python: two; Julia: one;
 TypeScript: one). Which library is A is decided per pair by a coin flip
 from a seeded random number generator; the seed and the outcomes are
 published with the round. Each pair is judged in a fresh session with
@@ -141,7 +141,7 @@ of reason for each score below 3.
 recorded in each transcript.
 
 **Rounds.** At most three. After a round that fails, we may revise our
-documentation (never the competitors' bundles or this rubric) and judge
+documentation (never the other libraries' bundles or this rubric) and judge
 again with new coin flips. Every round's prompts, bundles' commit or
 version, raw responses, score tables and any disagreement between the
 judges are published in `docs/judging/round-N/`.
@@ -152,7 +152,7 @@ above) and a scratch directory, and does all ten tasks, writing the
 `.dta` files it reads. Its transcript and whether each task succeeded
 are published with the round. This check is reported, not scored.
 
-## Pinned competitor documentation
+## Pinned documentation of the other libraries
 
 Versions are those installed on the machine where the benchmarks run
 (R via `packageVersion()`, Python in the benchmark environment, Julia

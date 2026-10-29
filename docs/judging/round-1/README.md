@@ -1,13 +1,13 @@
 # Judging round 1
 
 Round 1 of the protocol in [rubric.md](../rubric.md). **It passes**:
-both judges score ours above every competitor in every language on the
+both judges score ours above every other library in every language on the
 common tasks, and no common task of ours scores below 2.
 
 ## Setup
 
 - **Our docs:** commit `b4dade433b516519099d4d0179a73a1cf3a227c0`.
-- **Competitor docs:** the pinned versions in the rubric.
+- **Other libraries' docs:** the pinned versions in the rubric.
 - **Judges:**
   - Claude Sonnet (`claude-sonnet-5-5`, through Claude Code's `sonnet` model);
   - GPT Terra (`gpt-6.1-terra`, reasoning effort high, through Codex).
@@ -17,11 +17,11 @@ common tasks, and no common task of ours scores below 2.
 
 The prompts are built by [bundle.py](../bundle.py):
 
-    python docs/judging/bundle.py COMPETITORS OUT 20261028
+    python docs/judging/bundle.py OTHERS OUT 20261028
 
-COMPETITORS holds checkouts of the pinned competitor versions. The prompts
+OTHERS holds checkouts of the other libraries at their pinned versions. The prompts
 themselves are not committed, since most of their text is the
-competitors' documentation.
+other libraries' documentation.
 
 Two departures from the protocol's wording:
 
@@ -37,7 +37,7 @@ from them with [scores.py](../scores.py).
 Common totals: the sum of task scores over the common tasks (nine in R,
 Python and Julia; seven in TypeScript; at most 27 and 21).
 
-| judge | pair | ours | competitor | lowest common task of ours | pass |
+| judge | pair | ours | other library | lowest common task of ours | pass |
 |---|---|---|---|---|---|
 | sonnet | R: haven | 26.50 | 16.50 | 1: 2.75 | yes |
 | sonnet | R: readstata13 | 26.75 | 20.25 | 5: 2.75 | yes |
@@ -58,7 +58,7 @@ The judges' common totals for ours differ by at most 3.5 points (R
 against readstata13: Sonnet 26.75, Terra 23.25). Terra gave findability
 2 more often, because the answers are on the language page, one link
 from the README. On no task did the judges' scores for ours differ by a
-whole point or more. For competitors, they differed that much only on
+whole point or more. For the other libraries, they differed that much only on
 ReadStatTables.jl:
 
 - **Task 3:** Sonnet 1.00, Terra 0.00.

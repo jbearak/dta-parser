@@ -1,8 +1,8 @@
 """Build the blinded judging bundles described in rubric.md.
 
-    python docs/judging/bundle.py COMPETITORS OUT SEED
+    python docs/judging/bundle.py OTHERS OUT SEED
 
-COMPETITORS holds the pinned competitor sources (one directory per
+OTHERS holds the pinned sources of the other libraries (one directory per
 library, as named below); OUT receives one prompt file per pair and
 `pairs.json` with the coin flips. Needs R (for Rd to text), the
 benchmark Python environment (pandas and pyreadstat docstrings) and a
@@ -125,7 +125,7 @@ def py_live_docs(objects):
     return "\n".join(parts)
 
 
-def competitor(name, root):
+def other(name, root):
     d = os.path.join(root, name)
     if name == "haven":
         files = ["README.md", "vignettes/semantics.Rmd"]
@@ -189,8 +189,8 @@ def main(root, out, seed):
         our_letter, their_letter = ("Library A", "Library B") if ours_first else ("Library B", "Library A")
         mine = blind(blind(ours(language), OUR_NAMES, our_letter), names, their_letter) if names else \
             blind(ours(language), OUR_NAMES, our_letter)
-        theirs = blind(blind(competitor(name, root), names, their_letter), OUR_NAMES, our_letter) if names else \
-            competitor(name, root)
+        theirs = blind(blind(other(name, root), names, their_letter), OUR_NAMES, our_letter) if names else \
+            other(name, root)
         a, b = (mine, theirs) if ours_first else (theirs, mine)
         prompt = (
             f"You are judging the documentation of two {language} libraries that read and write Stata .dta "
@@ -209,7 +209,7 @@ def main(root, out, seed):
         path = os.path.join(out, f"{language.lower()}-{name}.md")
         with open(path, "w", encoding="utf-8") as f:
             f.write(prompt)
-        flips.append({"language": language, "competitor": name, "ours": "A" if ours_first else "B",
+        flips.append({"language": language, "other": name, "ours": "A" if ours_first else "B",
                       "prompt": os.path.basename(path), "chars": len(prompt)})
     commit = subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     with open(os.path.join(out, "pairs.json"), "w") as f:
