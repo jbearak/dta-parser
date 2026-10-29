@@ -66,7 +66,8 @@ if isfile(DOCS_PAGE)
             page = read(DOCS_PAGE, String)
             for name in names(DtaParser)
                 name === :DtaParser && continue
-                @test Base.Docs.hasdoc(DtaParser, name)
+                # Base.Docs.hasdoc needs Julia 1.11; this works on 1.10 too.
+                @test haskey(Base.Docs.meta(DtaParser), Base.Docs.Binding(DtaParser, name))
                 @test occursin("`$name", page) || occursin("$name(", page)
             end
         end
