@@ -76,6 +76,54 @@ jobs:
       - run: pip install python/dist/*.whl pytest pyreadstat
       - run: python -m pytest python/tests
 
+  # One abi3 wheel per supported platform, each installed into a fresh
+  # venv and smoke-tested. Nothing is published.
+  wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64, manylinux: "2014" }
+          - { os: ubuntu-latest, target: aarch64, manylinux: "2014" }
+          - { os: macos-latest, target: aarch64, manylinux: auto }
+          - { os: windows-latest, target: x64, manylinux: auto }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # On Linux this builds in a manylinux2014 container (a cross one for
+      # aarch64).
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --out dist
+          working-directory: python
+      - name: Smoke-test the wheel in a fresh venv
+        if: matrix.target != 'aarch64' || runner.os != 'Linux'
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          if [ -f "$RUNNER_TEMP/venv/Scripts/python.exe" ]; then
+            py="$RUNNER_TEMP/venv/Scripts/python.exe"
+          else
+            py="$RUNNER_TEMP/venv/bin/python"
+          fi
+          "$py" -m pip install python/dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$py" "$GITHUB_WORKSPACE/python/tests/smoke.py"
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.target == 'aarch64' && runner.os == 'Linux'
+        with:
+          platforms: arm64
+      - name: Smoke-test the wheel in a fresh venv on arm64 (QEMU)
+        if: matrix.target == 'aarch64' && runner.os == 'Linux'
+        run: |
+          docker run --rm --platform linux/arm64 -v "$GITHUB_WORKSPACE:/w:ro" -w /tmp python:3.12-slim \
+            bash -c 'python -m venv /tmp/venv && /tmp/venv/bin/pip install /w/python/dist/*.whl && /tmp/venv/bin/python /w/python/tests/smoke.py'
+
   # Files written by dtatools and by the npm package read back in pandas
   # as their originals do (haven and readstata13 are checked in the R
   # tests).
