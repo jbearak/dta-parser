@@ -261,11 +261,23 @@ def do_statements(text):
             continue
         buf.append(line)
         if ";" in line:
-            joined = " ".join(buf)
-            parts = joined.split(";")
+            parts = split_unquoted(" ".join(buf))
             out.extend(p.strip() for p in parts[:-1] if p.strip())
             buf = [parts[-1]] if parts[-1].strip() else []
     return out
+
+
+def split_unquoted(text):
+    """Split on semicolons outside double quotes (labels may hold them)."""
+    parts, start, quoted = [], 0, False
+    for i, ch in enumerate(text):
+        if ch == '"':
+            quoted = not quoted
+        elif ch == ";" and not quoted:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
 
 
 def parse_do(path):

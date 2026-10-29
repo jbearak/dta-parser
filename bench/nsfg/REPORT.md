@@ -2,7 +2,7 @@
 
 Made by `bench/nsfg/make.py` from CDC's public-use NSFG files (inventory: `inventory.json`). The .dta files are written by pandas 3.1.0 (`DataFrame.to_stata`, release 118) and are not committed.
 
-Files listed by CDC: 139 (916.6 MB). Data files: 36; converted: 36; failed: 0. Output: 485.4 MB of .dta. Run time: 96 s.
+Files listed by CDC: 139 (916.6 MB). Data files: 36; converted: 36; failed: 0. Output: 485.5 MB of .dta. Run time: 105 s.
 
 | cycle | output | source | rows | vars | .dta size | status |
 |---|---|---|---:|---:|---:|---|
