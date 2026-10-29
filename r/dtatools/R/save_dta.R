@@ -20,6 +20,16 @@
 #' @param data A data frame, such as one `read_dta` returned.
 #' @param file Path to write.
 #' @return `file`, invisibly.
+#' @examples
+#' df <- dibble(
+#'   id = 1:3,
+#'   smoker = dta_num(c(1, 0, .d), storage = "byte", label = "Smokes daily",
+#'                    labels = c(No = 0, Yes = 1, "Don't know" = .d))
+#' )
+#' attr(df, "label") <- "Smoking"
+#' path <- tempfile(fileext = ".dta")
+#' save_dta(df, path)
+#' val_label(read_dta(path)$smoker, c(0, 1, .d))
 #' @export
 save_dta <- function(data, file) {
   stopifnot(is.data.frame(data))

@@ -19,6 +19,13 @@
 #' @param x,y Vectors.
 #' @param ... Vectors of the same length, or one data frame.
 #' @param missing Whether missing values count as values.
+#' @examples
+#' x <- c(2, .a, 1, NA, 2, .a)
+#' tab(x, missing = TRUE)
+#' dta_group_id(x)
+#' dta_group_id(x, missing = TRUE)
+#' dta_group_tag(x)
+#' dta_setdiff(c(.a, .b, 1), .b)
 #' @name dta_sets
 NULL
 

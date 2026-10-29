@@ -9,6 +9,11 @@
 #' @param values Codes to look up.
 #' @return See above. `labelbook()` returns `list(mappings = <data.frame>)`
 #'   with columns `variable`, `label_set`, `code`, `code_text` and `text`.
+#' @examples
+#' x <- dta_num(c(1, 2, .d), labels = c(Yes = 1, No = 2, "Don't know" = .d))
+#' val_labels(x)
+#' val_label(x, x)
+#' labelbook(dibble(x = x))$mappings
 #' @export
 val_labels <- function(x) {
   labels <- attr(x, "labels", exact = TRUE)
