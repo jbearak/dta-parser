@@ -124,6 +124,39 @@ jobs:
           docker run --rm --platform linux/arm64 -v "$GITHUB_WORKSPACE:/w:ro" -w /tmp python:3.12-slim \
             bash -c 'python -m venv /tmp/venv && /tmp/venv/bin/pip install /w/python/dist/*.whl && /tmp/venv/bin/python /w/python/tests/smoke.py'
 
+  # The rust job's `cargo test --workspace` already runs the C ABI tests
+  # (crates/dta-ffi/tests/capi.rs). Here Pkg.build runs deps/build.jl,
+  # which builds the library with cargo.
+  julia:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        julia: ["1.10", "1"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia }}
+      - uses: julia-actions/cache@v2
+      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
+
+  # Windows: the native library builds (dta_ffi.dll), loads, and reads
+  # and writes a path with non-ASCII characters.
+  julia-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release -p dta-ffi
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
+      - run: julia --project=julia/DtaParser julia/DtaParser/test/smoke.jl
+
   # Files written by dtatools and by the npm package read back in pandas
   # as their originals do (haven and readstata13 are checked in the R
   # tests).

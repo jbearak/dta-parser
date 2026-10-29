@@ -10,3 +10,6 @@ r/*.tar.gz
 __pycache__/
 python/dta_parser/_native*.so
 python/dta_parser/_native*.pyd
+julia/DtaParser/deps/usr/
+julia/DtaParser/deps/build.log
+julia/**/Manifest.toml
