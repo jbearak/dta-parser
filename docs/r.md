@@ -139,7 +139,8 @@ part$id   # 3 4 5
 ```
 
 `skip` rows are skipped, then at most `n_max` are read (`Inf`, the
-default, for all). Rows past the end give fewer rows or an empty tibble
+default, for all). So rows `k` to `m`, counting from 1, are
+`skip = k - 1, n_max = m - k + 1`. Rows past the end give fewer rows or an empty tibble
 with the right columns. The reader seeks to row `skip`, so reading a
 window near the end of a large file costs no more than one at the
 start. To process a large file in pieces:
@@ -175,6 +176,10 @@ attr(df$comment, "format")     # "%-18s"
 | `storage` | a numeric column | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` |
 | `labels` | a numeric column | its value labels: the codes, named by their text |
 | `label_set` | a numeric column | the name of its value label set |
+
+To get the metadata without the data, read no rows:
+`read_dta("survey.dta", n_max = 0)` gives a zero-row dibble with every
+attribute above.
 
 dtatools does not read the file's timestamp, characteristics other than
 notes, or sort order. Use the Python, Julia or TypeScript package if you
@@ -274,7 +279,9 @@ clock <- dta_num(c(0, 1.7e12), format = "%tc")
 as.POSIXct(unclass(clock) / 1000, origin = "1960-01-01", tz = "UTC")
 ```
 
-Any missing value becomes `NA`. The other formats count months (`%tm`),
+`unclass()` comes first because `as.Date()` does not accept a
+`dta_num`. Any missing value becomes `NA`. dtatools has no switch to
+turn dates into `Date` on read. The other formats count months (`%tm`),
 quarters (`%tq`), half-years (`%th`) or weeks (`%tw`) since 1960; for
 example `%tm` month `m` is year `1960 + m %/% 12`, month `m %% 12 + 1`.
 
@@ -397,7 +404,7 @@ so most code carries over. The differences:
 | `haven::read_dta(file)` | `read_dta(file)`; numeric columns are `dta_num` |
 | `labelled` columns with a `labels` attribute | `dta_num` with a `labels` attribute; `label_set` names the set |
 | `%td` columns as `Date`, `%tc` as `POSIXct` | numbers with their `format`; see [Dates](#dates) |
-| `as_factor(x)` | `factor(val_label(x, x), levels = ...)`; see [Value labels](#value-labels) |
+| `as_factor(x)` | `factor(val_label(x, x), levels = ...)`; see [Value labels](#value-labels). `haven::as_factor()` does not accept a `dta_num` |
 | `tagged_na("d")` | `.d` |
 | `na_tag(x)` | `is_tagged_missing(x, "d")`; `na_tag()` still works on the numbers |
 | `is_tagged_na(x)` | `is_tagged_missing(x)` |

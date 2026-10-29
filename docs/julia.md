@@ -42,9 +42,14 @@ Pkg.build("DtaParser")      # runs cargo; takes a minute the first time
 Pkg.add("DataFrames")       # optional: for DataFrame(t)
 ```
 
+Run this from the directory you cloned into (the path is relative to
+it), in the environment you want DtaParser in: your project's, after
+`Pkg.activate("path/to/project")`, or the default one.
+
 DtaParser depends on Tables.jl and DataAPI.jl. DataFrames (1.4 or
 later) is optional: when it is loaded, `DataFrame(t)` carries the
-labels across as metadata.
+labels across as metadata. CategoricalArrays.jl is needed only for the
+categorical recipe under [Value labels](#value-labels).
 
 ## The example file
 
@@ -212,6 +217,9 @@ set_stata_code!(df.income, 4, 20)             # make row 4 .s
 count(ismissing, df.income)                   # 3
 ```
 
+The letter `c` has code `c - 'a' + 2` (`.a` is 2, `.d` is 5, `.z` is
+27), and code `k` is the letter `'a' + k - 2`.
+
 `stata_code(col, i)` reads a code (on any vector: `missing` is 1 there),
 and `set_stata_code!(col, i, code)` sets one; code 0 makes the stored
 value visible again.
@@ -277,7 +285,8 @@ CategoricalArrays.jl):
 ```julia norun
 using CategoricalArrays
 levels_in_order = [labels[k] for k in sort(collect(keys(labels)))]
-region = categorical([labels[x] for x in t.region]; levels = levels_in_order)
+text(x) = ismissing(x) ? missing : get(labels, x, string(x))
+region = categorical(text.(t.region); levels = union(levels_in_order, skipmissing(text.(t.region))))
 ```
 
 ## Dates
@@ -291,6 +300,7 @@ t = read_dta("survey.dta")
 eltype(t.interviewed)                                # Date
 dayname(t.interviewed[1])                            # "Friday"
 raw = read_dta("survey.dta"; dates = false)
+eltype(raw.interviewed)                              # Int32: the column's storage type (long)
 raw.interviewed[1]                                   # 23436, days since 1960-01-01
 Date(1960) + Day(raw.interviewed[1])                 # 2024-03-01
 ```

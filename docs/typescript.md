@@ -113,6 +113,10 @@ Call `close()` when done: it frees the reader's memory inside the
 WebAssembly module and closes a file opened by path. Reads after
 `close()` throw "the file is closed".
 
+TypeScript has no standard table type, so the package has none either:
+you get columns of typed arrays, or rows of cells, and can hand either
+to the table library you use.
+
 There are two ways to get data:
 
 - **`readColumns(columns, { start, count })`** returns one column object
@@ -297,7 +301,8 @@ to the formatted number; see the next section.
 
 Dates are numbers in the file: `%td` counts days since 1 January 1960,
 `%tc` milliseconds since then (see the [guide](guide/dates.md)). The
-package returns the numbers, so nothing is lost, and gives
+package always returns the numbers (there is no option to convert
+them), so nothing is lost, and gives
 `formatValue(cell, format, labels?)` to show a value as Stata would:
 
 ```ts
@@ -493,6 +498,13 @@ past the last row; compute `count` from `r.info.nobs`.
 
 **`RangeError: no variable "incme"`.** A name in `columns` is not in
 the file; check `r.variables`.
+
+**`scripts/build-wasm.sh` fails, or `js/build/dta.wasm` is missing.** The
+WebAssembly target must be installed for the toolchain that builds it:
+run `rustup target add wasm32-unknown-unknown` with the same `rustup`
+default (or `RUSTUP_TOOLCHAIN`) the script uses, then rerun it.
+`npm run build` embeds the existing `js/build/dta.wasm` and does not rebuild it, so run
+the script again after changing Rust code.
 
 **"the file is closed".** You called a method after `close()`.
 

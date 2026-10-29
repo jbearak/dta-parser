@@ -63,10 +63,15 @@ an integer column is long and a double column is double unless its
 `storage` attribute says otherwise; in TypeScript a numeric column is
 double unless you set `type`. A value outside the chosen type's range is
 an error in every language, and integer types never truncate. Float
-storage is the exception: a double written as float is rounded to the
-nearest float, as any 4-byte float would hold it, so `0.1` reads back as
-`0.10000000149011612`. Choose float only for values that are floats
-already (or where 7 significant digits are enough).
+storage is the exception in R and TypeScript: a double written as float
+(`storage = "float"` in R, `type: "float"` in TypeScript) is rounded to
+the nearest float, as any 4-byte float would hold it, so `0.1` reads
+back as `0.10000000149011612`. Choose float only for values that are
+floats already (or where 7 significant digits are enough). Python and
+Julia never round. They write float for `float32`/`Float32` columns; a
+64-bit column is written as double (in Python, as float when its
+`storage` in `attrs` says float and every value is exactly a float). To
+get float storage, convert the column to 32-bit floats first.
 
 Fixed-width string columns are written as wide as their longest value
 needs, not as wide as they were read: a `str100` column whose values

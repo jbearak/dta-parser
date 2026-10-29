@@ -23,7 +23,8 @@ What follows from that:
   only those rows: the reader computes where row `skip` starts and seeks
   there, so 1,000 rows from the end of a large file cost the same as
   1,000 from the start.
-- **Metadata only** (`read_meta`, or opening a file in TypeScript) reads
+- **Metadata only** (`read_meta` in Python and Julia, `read_dta(n_max = 0)`
+  in R, or opening a file in TypeScript) reads
   the header, the variable descriptors, and then jumps to the value
   labels; it never reads the rows.
 - **Files over 4 GiB** read the same way; nothing is mapped into memory

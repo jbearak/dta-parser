@@ -258,6 +258,12 @@ in Stata. **What loses them.** Arithmetic (`income + 1` is a `float64`
 column with `NaN`), `fillna`, `astype`, and anything else that goes
 through numpy: the letters become `NaN`, which writes as `.`.
 
+**Comparisons.** `>`, `<` and `==` on a `StataArray` follow pandas, not
+Stata: a missing value compares false with everything (`income > 1000`
+is false where `income` is `.a`). For Stata's rule, where missing values
+are larger than every number, compare keys:
+`dp.stata_keys(df["income"]) > 1000`.
+
 **Sorting.** `sort_values` on a `StataArray` puts missing values last,
 in Stata's order: numbers, `.`, `.a`, ..., `.z`. To sort by several
 columns, pass `key=dp.stata_keys`, which turns each numeric column into
@@ -473,7 +479,8 @@ Latin-1 (pass `encoding="latin1"` to match pandas).
 | `meta.variable_to_label` | `{c: m["value_labels"] for c, m in df.attrs["dta"]["columns"].items() if m["value_labels"]}` |
 | `meta.value_labels` | `df.attrs["dta"]["value_labels"]` |
 | `meta.file_label`, `meta.number_rows` | `attrs["dta"]["label"]`; `read_meta(path)["nobs"]` |
-| `meta.original_variable_types` | `attrs["dta"]["columns"][c]["storage"]` |
+| `meta.original_variable_types` (display formats) | `attrs["dta"]["columns"][c]["format"]` |
+| `meta.readstat_variable_types` | `attrs["dta"]["columns"][c]["storage"]` (Stata's own names: `byte`, `int`, `long`, `float`, `double`, `strN`, `strL`) |
 | `pyreadstat.write_dta(df, path, file_label=..., column_labels=...)` | `dp.write_dta(df, path, label=..., variable_labels=...)` |
 | `variable_value_labels={"col": {1: "a"}}` | `attrs["dta"]["value_labels"]` and each column's `value_labels` |
 | `missing_user_values` | write a `StataArray` with the codes |
@@ -487,6 +494,11 @@ you run Python from inside `dta-parser/python`. Change directory.
 
 **`pip install` fails with "cargo not found" or a Rust error.** Install
 Rust from [rustup.rs](https://rustup.rs) and open a new shell.
+
+**`pip install` cannot reach PyPI.** pip downloads maturin to build the
+extension. Without network access, install maturin some other way and
+build without isolation:
+`pip install --no-build-isolation ./dta-parser/python`.
 
 **`ValueError: unsupported .dta release`.** The file is not a `.dta`
 file, or is a release older than 104 or newer than 119. See

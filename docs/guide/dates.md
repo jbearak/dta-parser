@@ -18,7 +18,7 @@ start of 1 January 1960:
 A format may continue with a mask that changes only how the value is
 shown, as in `%tdCCYY-NN-DD`; the number means the same.
 
-Negative numbers are before 1960. `.` and `.a` to `.z` are missing
+For every format but `%ty`, negative numbers are before 1960. `.` and `.a` to `.z` are missing
 dates.
 
 ## What each language does
