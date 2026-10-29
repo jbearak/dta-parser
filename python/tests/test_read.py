@@ -159,3 +159,23 @@ def test_dates_convert_unless_asked_not_to():
         None if pd.isna(b) else pd.Timestamp(b) for b in theirs
     ]
 
+
+def test_dates_stay_numbers_with_extended_missing_values_or_fractions(tmp_path):
+    df = pd.DataFrame({
+        "d": dp.StataArray([0.0, 1.0, np.nan], [0, 0, 2]),
+        "half": [0.5, 1.0, 2.0],
+        "ms": [1.0, 2.0, 3.0],
+        "leap": [0.0, 1000.0, np.nan],
+    })
+    df.attrs["dta"] = {"columns": {
+        "d": {"format": "%td"}, "half": {"format": "%td"}, "ms": {"format": "%tc"}, "leap": {"format": "%tC"},
+    }}
+    path = tmp_path / "dates.dta"
+    dp.write_dta(df, path)
+    back = read_dta(path)
+    assert isinstance(back["d"].array, StataArray)
+    assert back["half"].dtype == np.float64
+    assert back["ms"].dtype == "datetime64[ms]"
+    assert back["ms"][0] == pd.Timestamp("1960-01-01 00:00:00.001")
+    assert back["leap"].dtype == np.float64
+    assert back.attrs["dta"]["columns"]["leap"]["format"] == "%tC"

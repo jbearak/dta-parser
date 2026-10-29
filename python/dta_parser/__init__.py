@@ -3,6 +3,7 @@
 from . import missing
 from ._array import StataArray, StataDtype, missing_codes, stata_key, stata_keys
 from ._read import read_dta, read_meta
+from ._write import write_dta
 from .missing import MissingValue
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "read_meta",
     "stata_key",
     "stata_keys",
+    "write_dta",
 ]
