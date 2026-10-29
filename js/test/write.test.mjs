@@ -82,6 +82,24 @@ test("every fixture survives readColumns, writeDta, readColumns", () => {
   }
 });
 
+test("number columns write back as readColumns gives them", () => {
+  for (const name of readdirSync(new URL("fixtures/", compat)).filter((f) => f.endsWith(".dta"))) {
+    const r = openDta(readFileSync(new URL(`fixtures/${name}`, compat)));
+    const cols = r.readColumns(r.variables.map((_, i) => i));
+    const variables = r.variables.map((v, i) =>
+      cols[i].kind === "number"
+        ? { name: v.name, type: v.type, values: cols[i].values, missing: cols[i].missing }
+        : { name: v.name, type: v.type === "strL" ? "strL" : undefined, values: cols[i].values },
+    );
+    const again = openDta(writeDta({ variables }));
+    assert.deepEqual(again.readColumns(again.variables.map((_, i) => i)), cols, name);
+  }
+  assert.throws(
+    () => writeDta({ variables: [{ name: "x", values: new Float64Array(2), missing: new Uint8Array(1) }] }),
+    /missing codes/,
+  );
+});
+
 /** A file with every kind of metadata and a strL column holding binary values. */
 function withEverything() {
   return writeDta({
