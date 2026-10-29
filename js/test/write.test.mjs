@@ -54,12 +54,110 @@ test("every fixture survives readColumns, writeDta, readColumns", () => {
       valueLabels: valueLabels[v.valueLabels] ? v.valueLabels : undefined,
       ...(cols[i].kind === "number"
         ? { type: v.type, values: Array.from(cols[i].values, (x, k) => (cols[i].missing[k] ? missingValue(cols[i].missing[k]) : x)) }
-        : { values: cols[i].values }),
+        : { type: v.type === "strL" ? "strL" : undefined, values: cols[i].values }),
     }));
-    const again = openDta(writeDta({ label: r.info.label, variables, valueLabels }));
+    const again = openDta(
+      writeDta({
+        label: r.info.label,
+        variables,
+        valueLabels,
+        notes: r.notes(),
+        characteristics: r.characteristics(),
+        sortedBy: r.info.sortedBy,
+        timestamp: r.info.timestamp,
+      }),
+    );
     assert.deepEqual(again.readColumns(again.variables.map((_, i) => i)), cols, name);
     for (const set of Object.keys(valueLabels)) assert.deepEqual(again.valueLabels(set), valueLabels[set], name);
+    assert.deepEqual(
+      again.variables.map((v) => [v.name, v.format, v.label, v.type.startsWith("str") ? v.type === "strL" : v.type]),
+      r.variables.map((v) => [v.name, v.format, v.label, v.type.startsWith("str") ? v.type === "strL" : v.type]),
+      name,
+    );
+    assert.equal(again.info.label, r.info.label, name);
+    assert.equal(again.info.timestamp, r.info.timestamp, name);
+    assert.deepEqual(again.info.sortedBy, r.info.sortedBy, name);
+    assert.deepEqual(again.notes(), r.notes(), name);
+    assert.deepEqual(again.characteristics(), r.characteristics(), name);
   }
+});
+
+/** A file with every kind of metadata and a strL column holding binary values. */
+function withEverything() {
+  return writeDta({
+    timestamp: "05 Mar 2024 09:07",
+    notes: ["first", "second"],
+    characteristics: [
+      { variable: "_dta", name: "origin", value: "test" },
+      { variable: "a", name: "unit", value: "kg" },
+      { variable: "gone", name: "x", value: "dropped: no such variable" },
+      { variable: "_dta", name: "note1", value: "dropped: notes come from notes" },
+    ],
+    sortedBy: ["a", "b"],
+    variables: [
+      { name: "a", type: "byte", values: [1, 1, 2] },
+      { name: "b", type: "byte", values: [1, 2, 1] },
+      { name: "blob", values: [new Uint8Array([0, 1, 2, 255]), "text", new Uint8Array()] },
+      { name: "short", type: "strL", values: ["x", "", "z"] },
+    ],
+  });
+}
+
+test("timestamp, notes, characteristics, sort order and binary strLs read back", () => {
+  const r = openDta(withEverything());
+  assert.equal(r.info.timestamp, "05 Mar 2024 09:07");
+  assert.deepEqual(r.info.sortedBy, ["a", "b"]);
+  assert.deepEqual(r.notes(), ["first", "second"]);
+  assert.deepEqual(
+    r.characteristics().filter((c) => !c.name.startsWith("note")),
+    [{ variable: "_dta", name: "origin", value: "test" }, { variable: "a", name: "unit", value: "kg" }],
+  );
+  assert.deepEqual(r.variables.map((v) => v.type), ["byte", "byte", "strL", "strL"]);
+  const [blob, short] = r.readColumns(["blob", "short"]);
+  assert.deepEqual(blob.values, [new Uint8Array([0, 1, 2, 255]), "text", new Uint8Array()]);
+  assert.deepEqual(short.values, ["x", "", "z"]);
+  // and once more through readColumns and writeDta
+  const cols = r.readColumns(r.variables.map((_, i) => i));
+  const again = openDta(
+    writeDta({
+      timestamp: r.info.timestamp,
+      notes: r.notes(),
+      characteristics: r.characteristics(),
+      sortedBy: r.info.sortedBy,
+      variables: r.variables.map((v, i) => ({
+        name: v.name,
+        type: v.type,
+        values: cols[i].kind === "number" ? Array.from(cols[i].values) : cols[i].values,
+      })),
+    }),
+  );
+  assert.deepEqual(again.readColumns(again.variables.map((_, i) => i)), cols);
+  assert.deepEqual(again.characteristics(), r.characteristics());
+  assert.deepEqual(again.info.sortedBy, r.info.sortedBy);
+  assert.equal(again.info.timestamp, r.info.timestamp);
+});
+
+test("writing some variables keeps their characteristics and the leading sort keys", () => {
+  const r = openDta(withEverything());
+  const write = (names) => {
+    const cols = r.readColumns(names);
+    return openDta(
+      writeDta({
+        characteristics: r.characteristics(),
+        sortedBy: r.info.sortedBy,
+        variables: names.map((name, i) => ({
+          name,
+          values: cols[i].kind === "number" ? Array.from(cols[i].values) : cols[i].values,
+        })),
+      }),
+    );
+  };
+  const b = write(["b", "short"]);
+  assert.deepEqual(b.info.sortedBy, []);
+  assert.deepEqual(b.characteristics().map((c) => c.variable), ["_dta"]);
+  const a = write(["a", "short"]);
+  assert.deepEqual(a.info.sortedBy, ["a"]);
+  assert.deepEqual(a.characteristics().map((c) => c.variable), ["_dta", "a"]);
 });
 
 test("a strL larger than one read's budget still reads", () => {
@@ -83,4 +181,14 @@ test("a value outside its type is an error, and writeDtaFile leaves no file", ()
   assert.throws(() => writeDta({ variables: [{ name: "x", label: "left\0right", values: [1] }] }), /NUL/);
   assert.throws(() => writeDta({ notes: ["a\0b"], variables: [{ name: "x", values: [1] }] }), /NUL/);
   assert.throws(() => writeDta({ variables: [{ name: "s", values: ["a\0b"] }] }), /without NULs/);
+  assert.throws(() => writeDta({ variables: [{ name: "s", values: [new Uint8Array([1]), 2] }] }), /mixes/);
+  assert.throws(() => writeDta({ variables: [{ name: "x", type: "strL", values: [1] }] }), /mixes/);
+  assert.throws(
+    () => writeDta({ characteristics: [{ variable: "x", name: "a", value: "b\0c" }], variables: [{ name: "x", values: [1] }] }),
+    /NUL/,
+  );
+  assert.throws(() => writeDta({ timestamp: "a\0b", variables: [{ name: "x", values: [1] }] }), /NUL/);
+  // A NUL in a binary strL is fine.
+  const r = openDta(writeDta({ variables: [{ name: "s", values: [new Uint8Array([0, 0])] }] }));
+  assert.deepEqual(r.readColumns(["s"])[0].values, [new Uint8Array([0, 0])]);
 });

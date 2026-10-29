@@ -267,6 +267,8 @@ impl std::io::Write for HostSink {
 enum WriteData {
     Numbers(Vec<f64>, Vec<u8>),
     Strings(Vec<u8>, Vec<u32>),
+    /// strLs: bytes, ends, and per row 1 if binary.
+    StrLs(Vec<u8>, Vec<u32>, Vec<u8>),
 }
 
 struct WriteColumn {
@@ -283,6 +285,8 @@ struct WriteState {
     nobs: usize,
     columns: Vec<WriteColumn>,
     sets: Vec<dta::ValueLabelSet>,
+    characteristics: Vec<dta::Characteristic>,
+    sort_order: Vec<usize>,
 }
 
 thread_local! {
@@ -348,10 +352,14 @@ pub unsafe extern "C" fn dta_write_numbers(
     })
 }
 
-/// Add a string column: UTF-8 `bytes` and `nobs` end offsets.
+/// Add a string column: `bytes` and `nobs` end offsets. With `binary`
+/// null, the values are UTF-8 text, written as strN or, beyond 2045
+/// bytes, strL. Otherwise the column is strL and `binary` holds `nobs`
+/// flags: 1 where the value is binary bytes, 0 where it is UTF-8 text.
 ///
 /// # Safety
-/// The pointers hold the stated lengths.
+/// The pointers hold the stated lengths; `binary` is null or holds
+/// `nobs` bytes.
 #[no_mangle]
 pub unsafe extern "C" fn dta_write_strings(
     meta: *const u8,
@@ -359,6 +367,7 @@ pub unsafe extern "C" fn dta_write_strings(
     bytes: *const u8,
     bytes_len: usize,
     ends: *const u32,
+    binary: *const u8,
 ) -> u32 {
     call(0, |_| {
         let f = fields(&copy(meta, meta_len))?;
@@ -368,7 +377,13 @@ pub unsafe extern "C" fn dta_write_strings(
             if ends.iter().any(|&e| e as usize > bytes_len) || ends.windows(2).any(|p| p[0] > p[1]) {
                 return Err("string offsets out of order".into());
             }
-            let column = column(&f, dta::StorageType::Str(1), WriteData::Strings(copy(bytes, bytes_len), ends))?;
+            let bytes = copy(bytes, bytes_len);
+            let (storage, data) = if binary.is_null() {
+                (dta::StorageType::Str(1), WriteData::Strings(bytes, ends))
+            } else {
+                (dta::StorageType::StrL, WriteData::StrLs(bytes, ends, copy(binary, w.nobs)))
+            };
+            let column = column(&f, storage, data)?;
             w.columns.push(column);
             Ok(1)
         })
@@ -420,8 +435,44 @@ pub unsafe extern "C" fn dta_write_labels(
     })
 }
 
+/// Add characteristics: `text` holds NUL-separated variable, name and
+/// value, three fields per characteristic.
+///
+/// # Safety
+/// `text` holds `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn dta_write_characteristics(text: *const u8, len: usize) -> u32 {
+    call(0, |_| {
+        let f = fields(&copy(text, len))?;
+        if f.len() % 3 != 0 {
+            return Err("expected three fields per characteristic".into());
+        }
+        let chars = f.chunks_exact(3).map(|c| dta::Characteristic {
+            variable: c[0].clone(),
+            name: c[1].clone(),
+            value: c[2].clone(),
+        });
+        WRITE.with(|w| w.borrow_mut().characteristics.extend(chars));
+        Ok(1)
+    })
+}
+
+/// Set the sort order: `n` 0-based variable indices.
+///
+/// # Safety
+/// `indices` holds `n` u32 values.
+#[no_mangle]
+pub unsafe extern "C" fn dta_write_sort_order(indices: *const u32, n: usize) -> u32 {
+    call(0, |_| {
+        let order = copy(indices, n).into_iter().map(|i| i as usize).collect();
+        WRITE.with(|w| w.borrow_mut().sort_order = order);
+        Ok(1)
+    })
+}
+
 /// Write the dataset to host file `file`. `info` holds NUL-separated
-/// data label, timestamp, then the notes. Returns 1, or 0 on failure.
+/// data label, timestamp, then the notes, which follow the
+/// characteristics added. Returns 1, or 0 on failure.
 ///
 /// # Safety
 /// `info` holds `info_len` bytes.
@@ -431,7 +482,7 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
         let info = fields(&copy(info, info_len))?;
         let state = WRITE.with(|w| std::mem::take(&mut *w.borrow_mut()));
         let notes: Vec<&String> = info.iter().skip(2).collect();
-        let mut characteristics = Vec::new();
+        let mut characteristics = state.characteristics;
         if !notes.is_empty() {
             let note = |n: usize, value: &str| dta::Characteristic {
                 variable: "_dta".into(),
@@ -456,6 +507,10 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
                         let start = if i == 0 { 0 } else { e[i - 1] as usize };
                         &b[start..e[i] as usize]
                     })),
+                    WriteData::StrLs(b, e, binary) => dta::Values::StrLs(Box::new(move |i| {
+                        let start = if i == 0 { 0 } else { e[i - 1] as usize };
+                        (&b[start..e[i] as usize], binary[i] != 0)
+                    })),
                 },
             })
             .collect();
@@ -466,7 +521,7 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
             variables,
             value_labels: state.sets.clone(),
             characteristics,
-            sort_order: Vec::new(),
+            sort_order: state.sort_order,
         };
         dta::write(&data, HostSink(file)).map_err(|e| e.to_string())?;
         Ok(1)

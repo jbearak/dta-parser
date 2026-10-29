@@ -9,6 +9,14 @@
 #' `label_set` name (or the column's name); `.a` to `.z` may be labelled.
 #' A value that does not fit its storage type is an error.
 #'
+#' The data frame's attributes give the file's metadata, as [read_dta()]
+#' leaves them: `label`, `notes`, `characteristics` (a data frame with
+#' character columns `variable`, `name`, `value`; those of variables not
+#' in `data` are dropped), `sort_order` (column names; only its leading
+#' keys found in `data` are written) and `timestamp`, written as given.
+#' Without a `timestamp` attribute the file is stamped with the current
+#' time, so a file read without a timestamp comes back with one.
+#'
 #' @param data A data frame, such as one `read_dta` returned.
 #' @param file Path to write.
 #' @return `file`, invisibly.
@@ -48,6 +56,10 @@ save_dta <- function(data, file) {
     sets[[set]] <- entry
   }
   notes <- enc2utf8(attr(data, "notes", exact = TRUE) %||% character())
+  chars <- kept_characteristics(attr(data, "characteristics", exact = TRUE), names(data))
+  chars <- lapply(c("variable", "name", "value"), function(n) enc2utf8(as.character(chars[[n]])))
+  keys <- kept_sort_order(attr(data, "sort_order", exact = TRUE), names(data))
+  timestamp <- attr(data, "timestamp", exact = TRUE) %||% stata_timestamp(Sys.time())
   spec <- list(
     columns = unname(columns),
     names = enc2utf8(names(data)),
@@ -57,8 +69,10 @@ save_dta <- function(data, file) {
     label_sets = label_sets,
     sets = unname(sets),
     data_label = enc2utf8(attr(data, "label", exact = TRUE) %||% ""),
-    timestamp = stata_timestamp(Sys.time()),
-    notes = notes
+    timestamp = enc2utf8(timestamp),
+    notes = notes,
+    characteristics = chars,
+    sort_order = match(keys, names(data)) - 1L
   )
   .Call(C_dta_write, path.expand(file), spec)
   invisible(file)

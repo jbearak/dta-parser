@@ -18,7 +18,7 @@ interface Exports {
   dta_column_part(handle: number, k: number, part: number): number;
   dta_write_begin(nobs: number): void;
   dta_write_numbers(meta: number, metaLen: number, storage: number, values: number, missing: number): number;
-  dta_write_strings(meta: number, metaLen: number, bytes: number, bytesLen: number, ends: number): number;
+  dta_write_strings(meta: number, metaLen: number, bytes: number, bytesLen: number, ends: number, binary: number): number;
   dta_write_labels(
     name: number,
     nameLen: number,
@@ -29,6 +29,8 @@ interface Exports {
     textsLen: number,
     ends: number,
   ): number;
+  dta_write_characteristics(text: number, len: number): number;
+  dta_write_sort_order(indices: number, n: number): number;
   dta_write_finish(file: number, info: number, infoLen: number): number;
 }
 
@@ -193,8 +195,12 @@ function put(data: Uint8Array | Float64Array | Uint32Array): number {
 /** One column or label set to write, already in the module's terms. */
 export type WritePart =
   | { kind: "numbers"; meta: string; storage: number; values: Float64Array; missing: Uint8Array }
-  | { kind: "strings"; meta: string; bytes: Uint8Array; ends: Uint32Array }
-  | { kind: "labels"; name: string; values: Float64Array; missing: Uint8Array; texts: Uint8Array; ends: Uint32Array };
+  // `binary` makes the column strL: 1 where a value is binary bytes.
+  | { kind: "strings"; meta: string; bytes: Uint8Array; ends: Uint32Array; binary?: Uint8Array }
+  | { kind: "labels"; name: string; values: Float64Array; missing: Uint8Array; texts: Uint8Array; ends: Uint32Array }
+  // NUL-separated variable, name and value of each characteristic.
+  | { kind: "characteristics"; text: string }
+  | { kind: "sortOrder"; indices: Uint32Array };
 
 /**
  * Build a dataset of `nobs` rows from `parts` in the module and write it
@@ -216,7 +222,13 @@ export function write(nobs: number, parts: WritePart[], info: string[], sink: (b
         ok = wasm.dta_write_numbers(own(meta), meta.length, part.storage, own(part.values), own(part.missing));
       } else if (part.kind === "strings") {
         const meta = utf8Encoder.encode(part.meta);
-        ok = wasm.dta_write_strings(own(meta), meta.length, own(part.bytes), part.bytes.length, own(part.ends));
+        const binary = part.binary ? own(part.binary) : 0;
+        ok = wasm.dta_write_strings(own(meta), meta.length, own(part.bytes), part.bytes.length, own(part.ends), binary);
+      } else if (part.kind === "characteristics") {
+        const text = utf8Encoder.encode(part.text);
+        ok = wasm.dta_write_characteristics(own(text), text.length);
+      } else if (part.kind === "sortOrder") {
+        ok = wasm.dta_write_sort_order(own(part.indices), part.indices.length);
       } else {
         const name = utf8Encoder.encode(part.name);
         ok = wasm.dta_write_labels(

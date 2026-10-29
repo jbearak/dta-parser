@@ -19,6 +19,16 @@
 #'   A column with few distinct values is kept as those values and a
 #'   code per row, so R makes one string per distinct value, and [tab()],
 #'   [dta_group_id()] and [is_missing()] work on the codes.
+#'
+#'   The file's metadata is in attributes, each `NULL` when the file has
+#'   none: `label` (the data label), `timestamp` (as the file has it, such
+#'   as `"28 Oct 2026 14:38"`), `notes` (a character vector),
+#'   `characteristics` (a data frame of character columns `variable`,
+#'   `name` and `value`; `variable` is `"_dta"` for the dataset's own;
+#'   notes are not among them) and `sort_order` (the names of the columns
+#'   the data is sorted by). With `col_select`, characteristics keep only
+#'   those of the columns read and `_dta`'s, and the sort order only its
+#'   leading keys that were read. [save_dta()] writes them all back.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max = Inf) {
   if (!is.numeric(skip) || length(skip) != 1 || is.na(skip) || skip < 0) stop("skip must be a number >= 0")
@@ -44,8 +54,34 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
   rows <- min(max(meta$nobs - floor(skip), 0), floor(n_max))
   out <- tibble::new_tibble(values, nrow = rows, class = "dibble")
   attr(out, "label") <- nonempty(meta$label)
+  attr(out, "timestamp") <- nonempty(meta$timestamp)
   attr(out, "notes") <- if (length(meta$notes)) meta$notes
+  chars <- as.data.frame(meta$characteristics, stringsAsFactors = FALSE)
+  attr(out, "characteristics") <- kept_characteristics(chars, names(out))
+  attr(out, "sort_order") <- kept_sort_order(names[meta$sort_order], names(out))
   out
+}
+
+# The characteristics of the variables in `names`, and the dataset's
+# other than notes (the `notes` attribute holds those); NULL if none.
+kept_characteristics <- function(chars, names) {
+  if (is.null(chars)) return(NULL)
+  if (!is.data.frame(chars) || !all(c("variable", "name", "value") %in% names(chars))) {
+    stop("characteristics must be a data frame with columns variable, name and value")
+  }
+  note <- chars$variable == "_dta" & grepl("^note[0-9]+$", chars$name)
+  chars <- chars[chars$variable %in% c("_dta", names) & !note, c("variable", "name", "value"), drop = FALSE]
+  rownames(chars) <- NULL
+  if (nrow(chars)) chars
+}
+
+# The leading keys of a sort order that are among `names`: data sorted
+# by a, b, c is still sorted by a once b is dropped, but not by a then c.
+# NULL if none.
+kept_sort_order <- function(keys, names) {
+  gone <- which(!(keys %in% names))
+  if (length(gone)) keys <- keys[seq_len(gone[[1]] - 1)]
+  if (length(keys)) keys
 }
 
 nonempty <- function(x) if (nzchar(x)) x
