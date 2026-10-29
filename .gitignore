@@ -7,3 +7,4 @@ bench/data/
 .claude/
 .rlib*/
 r/*.tar.gz
+__pycache__/
