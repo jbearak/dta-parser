@@ -27,7 +27,7 @@ test("an esbuild CommonJS bundle works", async () => {
     bundle: true,
     format: "cjs",
     platform: "node",
-    target: "node20",
+    target: "node24",
     absWorkingDir: dir,
     preserveSymlinks: true,
   });

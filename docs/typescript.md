@@ -31,7 +31,7 @@ section.
 ## Install
 
 Version 1.0, described here, is not on npm yet; npm has 0.x, a
-different API. Build it from a checkout. You need Node 20 or later, and
+different API. Build it from a checkout. You need Node 24 or later, and
 Rust with the WebAssembly target to build:
 
 ```sh
@@ -110,8 +110,19 @@ opening. `openDta(bytes)` reads a `Uint8Array` already in memory (in a
 browser, for example).
 
 Call `close()` when done: it frees the reader's memory inside the
-WebAssembly module and closes a file opened by path. Reads after
-`close()` throw "the file is closed".
+WebAssembly module and closes a file opened by path (never a file
+descriptor you passed in). Reads after `close()` throw "the file is
+closed". Or declare the reader with `using`, and it closes at the end of
+the block:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+{
+  using r = openDtaFile("survey.dta");
+  console.log(r.info.nobs);   // 3
+}
+```
 
 TypeScript has no standard table type, so the package has none either:
 you get columns of typed arrays, or rows of cells, and can hand either
@@ -327,6 +338,11 @@ except to choose how many digits `%g` shows, and treats `%tC` like `%tc`
 (no leap seconds). A labelled value shows its label; a missing value
 shows `.`, `.a` and so on, or its label.
 
+`formatValue` is also at `@jbearak/dta-parser/format`, with `MISSING`,
+`missingValue`, `isMissing` and their types, without the WebAssembly
+module or any Node built-in, so a webview or browser bundle can format
+cells it was sent without being allowed to run WebAssembly.
+
 To get a JavaScript `Date`:
 
 ```ts
@@ -534,16 +550,22 @@ From `@jbearak/dta-parser`:
   opens any source given a `ReadAt` function `(into, offset) => void`
   that fills `into` from byte `offset`. Members: `info`, `variables`,
   `readColumns(columns, range?)`, `readRows(start, count, columns?)`,
-  `valueLabels(name)`, `notes()`, `characteristics()`, `close()`.
+  `valueLabels(name)`, `notes()`, `characteristics()`, `close()`, and
+  `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
 - `stataKey(cell)`, `stataKeys(column)`: Stata's sort order as numbers.
 - `formatValue(cell, format, labels?)`: show a value as its display
   format says.
-- Types: `Missing`, `Cell`, `Variable`, `Info`, `NumberColumn`,
+- Types: `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
   `StringColumn`, `Column`, `ValueLabels`, `Characteristic`, `Options`
   (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.
+
+From `@jbearak/dta-parser/format` (no WebAssembly, no Node built-ins):
+
+- `formatValue`, `MISSING`, `missingValue`, `isMissing`, and the types
+  `Cell`, `Missing`, `MissingName`, `ValueLabels`, as above.
 
 From `@jbearak/dta-parser/node`:
 

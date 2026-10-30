@@ -5,30 +5,10 @@ import type { EncodingName, ReadAt } from "./wasm";
 
 export type { EncodingName, ReadAt };
 
-/** A Stata missing value: `.` or `.a` to `.z`. */
-export interface Missing {
-  readonly missing: string;
-}
+import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 
-const MISSING_NAMES = [".", ...Array.from("abcdefghijklmnopqrstuvwxyz", (c) => `.${c}`)];
-
-/**
- * The 27 missing values, one frozen object each, so `===` compares them:
- * `MISSING["."]`, `MISSING[".a"]`, ... `MISSING[".z"]`.
- */
-export const MISSING: Readonly<Record<string, Missing>> = Object.freeze(
-  Object.fromEntries(MISSING_NAMES.map((name) => [name, Object.freeze({ missing: name })])),
-);
-
-/** The missing value for a code in a NumberColumn's `missing` array (1 to 27). */
-export function missingValue(code: number): Missing {
-  return MISSING[MISSING_NAMES[code - 1]];
-}
-
-/** Whether a cell is a missing value (`.` or `.a` to `.z`) rather than a number, string or bytes. */
-export function isMissing(value: unknown): value is Missing {
-  return typeof value === "object" && value !== null && "missing" in value;
-}
+export { MISSING, isMissing, missingValue };
+export type { Cell, Missing, MissingName, ValueLabels };
 
 // The doubles Stata itself stores for `.` to `.z`: finite, increasing,
 // and above every number Stata stores (code 1 is `.`).
@@ -58,9 +38,6 @@ export function stataKeys(column: NumberColumn): Float64Array {
   }
   return out;
 }
-
-/** One cell: a number, a string, a binary strL, or a missing value. */
-export type Cell = number | string | Uint8Array | Missing;
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {
@@ -109,9 +86,6 @@ export interface StringColumn {
 
 /** One variable's values, as `readColumns` returns them. */
 export type Column = NumberColumn | StringColumn;
-
-/** Value label set: maps a value, or a missing value, to its text. */
-export type ValueLabels = Map<number | Missing, string>;
 
 /** A characteristic: named text attached to the dataset or to a variable. Notes are characteristics named `note1`, `note2`, .... */
 export interface Characteristic {
@@ -263,6 +237,14 @@ export class DtaReader {
       this.handle = 0;
       this.onClose?.();
     }
+  }
+
+  /**
+   * `close()`, so `using r = openDtaFile(path)` closes the reader at the
+   * end of its block. A file descriptor the caller passed in stays open.
+   */
+  [Symbol.dispose](): void {
+    this.close();
   }
 }
 

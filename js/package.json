@@ -14,21 +14,36 @@
     "./node": {
       "types": "./dist/node.d.ts",
       "default": "./dist/node.js"
+    },
+    "./format": {
+      "types": "./dist/format-entry.d.ts",
+      "default": "./dist/format.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "node": [
+        "dist/node.d.ts"
+      ],
+      "format": [
+        "dist/format-entry.d.ts"
+      ]
     }
   },
   "files": [
     "dist"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.json",
     "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
+    "@types/node": "^24.0.0",
     "esbuild": "^0.28.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-5": "npm:typescript@^5.9.3"
   }
 }

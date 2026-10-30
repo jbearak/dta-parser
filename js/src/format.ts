@@ -1,6 +1,6 @@
 // Display formats: render a cell as its variable's %-format says.
 
-import type { Cell, ValueLabels } from "./index";
+import type { Cell, ValueLabels } from "./values";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_MS = 86_400_000;

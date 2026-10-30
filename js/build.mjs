@@ -2,7 +2,10 @@
 // consumers have no .wasm file to locate.
 import { build } from "esbuild";
 
-const common = { bundle: true, format: "cjs", target: "node20", platform: "node", loader: { ".wasm": "binary" } };
+const common = { bundle: true, format: "cjs", target: "node24", platform: "node", loader: { ".wasm": "binary" } };
 await build({ ...common, entryPoints: ["src/index.ts"], outfile: "dist/index.js" });
 // The Node entry point uses the main one rather than embedding a second copy.
 await build({ ...common, entryPoints: ["src/node.ts"], outfile: "dist/node.js", external: ["@jbearak/dta-parser"] });
+// The formatting entry point has no wasm and no Node built-ins, so a
+// webview or browser bundle can use it.
+await build({ ...common, platform: "neutral", entryPoints: ["src/format-entry.ts"], outfile: "dist/format.js" });
