@@ -332,11 +332,11 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
 
 #[no_mangle]
 pub extern "C" fn dta_close(h: u32) {
-    call((), |state| {
-        if let Some(slot) = state.handles.get_mut(h.wrapping_sub(1) as usize) {
+    // Frees, so it runs even when memory is too short for the reserve.
+    STATE.with(|cell| {
+        if let Some(slot) = cell.borrow_mut().handles.get_mut(h.wrapping_sub(1) as usize) {
             *slot = None;
         }
-        Ok(())
     })
 }
 
@@ -469,7 +469,7 @@ pub unsafe extern "C" fn dta_read(
                 Column::Strings { bytes, ends, binary } => Some(
                     match (flags & DICTIONARY != 0).then(|| dict.code(bytes, ends, binary)).flatten() {
                         Some((codes, new_bytes, new_utf16)) => Strings::Coded { codes, new_bytes, new_utf16 },
-                        None => strings::plain(bytes, ends, binary),
+                        None => strings::plain(bytes, ends, binary).ok_or_else(|| too_large(bytes.len()))?,
                     },
                 ),
             });
@@ -484,11 +484,12 @@ const DICTIONARY: u32 = 2;
 /// Free the dictionaries of the read that just ended.
 #[no_mangle]
 pub extern "C" fn dta_read_end(h: u32) {
-    call((), |state| {
-        let handle = handle(state, h)?;
-        handle.dicts = Vec::new();
-        handle.strings = Vec::new();
-        Ok(())
+    // Frees, so it runs even when memory is too short for the reserve.
+    STATE.with(|cell| {
+        if let Some(Some(handle)) = cell.borrow_mut().handles.get_mut(h.wrapping_sub(1) as usize) {
+            handle.dicts = Vec::new();
+            handle.strings = Vec::new();
+        }
     })
 }
 

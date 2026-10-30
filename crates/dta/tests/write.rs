@@ -315,7 +315,7 @@ fn a_budgeted_read_ends_before_its_text_passes_the_limit() {
 /// passes the cap.
 #[test]
 fn previews_cut_on_characters_and_record_stored_lengths() {
-    let texts = ["", "abc", "€uro€", "😀x", "aaaaaaaaaa", "é", "MALFORMED"];
+    let texts = ["", "abc", "€uro€", "😀x", "aaaaaaaaaa", "é", "BADLEADxx", "MALFORMED"];
     let values: &'static [String] = texts.iter().map(|t| t.to_string()).collect::<Vec<_>>().leak();
     let n = values.len();
     let column = |name: &str, storage| WriteVariable {
@@ -341,9 +341,15 @@ fn previews_cut_on_characters_and_record_stored_lengths() {
     };
     let mut file = Vec::new();
     write(&data, &mut file).unwrap();
-    // Make the last value malformed UTF-8 in both columns: "MA\xFF\x80\xE2\x82RMED".
+    // Make the last values malformed UTF-8 in both columns:
+    // "MA\xFF\x80\xE2\x82RMED", and "\xE0\x80ADLEADxx", whose E0 80 is
+    // invalid from its second byte (E0 needs A0 to BF), so a cut after it
+    // keeps it.
     for at in file.windows(9).enumerate().filter(|(_, w)| *w == b"MALFORMED").map(|(i, _)| i).collect::<Vec<_>>() {
         file[at + 2..at + 6].copy_from_slice(b"\xFF\x80\xE2\x82");
+    }
+    for at in file.windows(9).enumerate().filter(|(_, w)| *w == b"BADLEADxx").map(|(i, _)| i).collect::<Vec<_>>() {
+        file[at..at + 2].copy_from_slice(b"\xE0\x80");
     }
     let full = Reader::open(Bytes(file.clone()), Options::default()).unwrap().read(&[0, 1], 0, n as u64).unwrap();
     for cap in 0..=12usize {
@@ -359,7 +365,10 @@ fn previews_cut_on_characters_and_record_stored_lengths() {
             for i in 0..n {
                 let whole = std::str::from_utf8(full[k].bytes(i)).unwrap();
                 let cut = std::str::from_utf8(cols[k].bytes(i)).unwrap();
-                let raw_len = if i == n - 1 { 9 } else { values[i].len() };
+                let raw_len = values[i].len();
+                if i == n - 2 && cap == 2 {
+                    assert_eq!(cut, "\u{FFFD}\u{FFFD}", "column {k}: an invalid E0 80 is kept");
+                }
                 assert_eq!(stored[i] as usize, raw_len, "column {k} row {i} cap {cap}");
                 assert!(whole.starts_with(cut), "column {k} row {i} cap {cap}: {cut:?} is not a prefix of {whole:?}");
                 assert_eq!(cut != whole, raw_len > cap, "column {k} row {i} cap {cap}: {cut:?} / {whole:?}");

@@ -130,6 +130,25 @@ test("calls end before a column's text passes the string limit; one longer value
   survivorReads();
 });
 
+test("a large text strL after a binary one is DTA_TOO_LARGE, not a trap", { skip }, () => {
+  const bytes = ordinary.writeDta({ variables: [{ name: "l", type: "strL", values: [Uint8Array.of(1), "t".repeat(35 << 20)] }] });
+  const r = capped.openDta(bytes);
+  assert.throws(() => r.readColumns(["l"]), tooLarge);
+  r.close();
+  survivorReads();
+});
+
+test("a large malformed UTF-8 strL is DTA_TOO_LARGE, not a trap", { skip }, () => {
+  const bytes = ordinary.writeDta({ variables: [{ name: "l", type: "strL", values: ["MARK" + "\xff".repeat(0) + "m".repeat(30 << 20)] }] });
+  // Make the value malformed: its "MARK" becomes 4 bytes that are not UTF-8.
+  const at = Buffer.from(bytes).indexOf("MARK");
+  bytes.set([0xff, 0xfe, 0xfd, 0xfc], at);
+  const r = capped.openDta(bytes);
+  assert.throws(() => r.readColumns(["l"]), tooLarge);
+  r.close();
+  survivorReads();
+});
+
 test("with no memory for the reserve, calls fail cleanly, then work again", { skip }, () => {
   const held = [];
   for (let size = 16 << 20; size >= 64 << 10; ) {

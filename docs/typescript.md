@@ -604,7 +604,7 @@ went wrong without matching its message:
 | `DTA_CORRUPT` | the file is damaged, or is not a .dta file | `Error` |
 | `DTA_TOO_LARGE` | the file is fine, but a value or read does not fit in memory | `Error` |
 | `DTA_IO` | reading the file, or writing the output, failed; `cause` holds what your `ReadAt` or sink threw | `Error` |
-| `DTA_INVALID` | an argument is wrong: an unknown encoding, or data that cannot be written | `Error`, `TypeError` or `RangeError` |
+| `DTA_INVALID` | an argument is wrong: an unknown encoding, or data that cannot be written | `TypeError` or `RangeError` |
 | `DTA_OUT_OF_RANGE` | a variable or rows the file does not have | `RangeError` |
 | `DTA_CLOSED` | the reader was closed | `Error` |
 | `DTA_INTERNAL` | a bug in dta-parser; please report it | `Error` |

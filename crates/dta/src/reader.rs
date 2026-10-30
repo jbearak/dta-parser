@@ -775,11 +775,21 @@ impl<S: Source> Reader<S> {
                         }
                         stored_len = bytes.len() - at;
                         if std::str::from_utf8(&bytes[at..]).is_err() {
-                            // Rare: invalid bytes become U+FFFD, as everywhere.
-                            let raw = bytes.split_off(at);
-                            let fixed = String::from_utf8_lossy(&raw);
+                            // Rare: invalid bytes become U+FFFD, as everywhere,
+                            // in room reserved fallibly for exactly that.
+                            let raw = &bytes[at..];
+                            let size: usize = raw.utf8_chunks().map(|c| c.valid().len() + if c.invalid().is_empty() { 0 } else { 3 }).sum();
+                            let mut fixed = Vec::new();
+                            fixed.try_reserve_exact(size).map_err(|_| too_large())?;
+                            for chunk in raw.utf8_chunks() {
+                                fixed.extend_from_slice(chunk.valid().as_bytes());
+                                if !chunk.invalid().is_empty() {
+                                    fixed.extend_from_slice("\u{FFFD}".as_bytes());
+                                }
+                            }
+                            bytes.truncate(at);
                             bytes.try_reserve_exact(fixed.len()).map_err(|_| too_large())?;
-                            bytes.extend_from_slice(fixed.as_bytes());
+                            bytes.extend_from_slice(&fixed);
                         }
                     }
                 } else {
@@ -1301,7 +1311,8 @@ fn back_up(cut: &[u8], enc: Encoding) -> &[u8] {
         return cut;
     }
     for back in 1..=cut.len().min(3) {
-        let b = cut[cut.len() - back];
+        let at = cut.len() - back;
+        let b = cut[at];
         if b & 0xC0 == 0x80 {
             continue;
         }
@@ -1311,7 +1322,20 @@ fn back_up(cut: &[u8], enc: Encoding) -> &[u8] {
             0xF0..=0xF4 => 4,
             _ => return cut,
         };
-        return if back < needs { &cut[..cut.len() - back] } else { cut };
+        // The second byte's range depends on the lead (no overlong forms,
+        // surrogates or code points past U+10FFFF); a sequence already
+        // invalid is kept, to decode as a full read decodes it.
+        let second = match b {
+            0xE0 => 0xA0..=0xBF,
+            0xED => 0x80..=0x9F,
+            0xF0 => 0x90..=0xBF,
+            0xF4 => 0x80..=0x8F,
+            _ => 0x80..=0xBF,
+        };
+        if back > 1 && !second.contains(&cut[at + 1]) {
+            return cut;
+        }
+        return if back < needs { &cut[..at] } else { cut };
     }
     cut
 }

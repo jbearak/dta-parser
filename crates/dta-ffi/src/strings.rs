@@ -189,14 +189,29 @@ impl Dict {
     }
 }
 
-/// The plain form of a call's string column.
-pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Strings {
+/// The plain form of a call's string column, or None if module memory
+/// is too short for it (the text rows' copy, when binary rows are left
+/// out, can be as large as a strL).
+pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Option<Strings> {
     let any_binary = binary.iter().any(|&b| b);
     if !any_binary && bytes.is_ascii() {
-        return Strings::Plain { text: None, utf16: None };
+        return Some(Strings::Plain { text: None, utf16: None });
     }
-    let mut utf16 = Vec::with_capacity(ends.len());
-    let mut text = any_binary.then(Vec::new);
+    let mut utf16 = Vec::new();
+    utf16.try_reserve_exact(ends.len()).ok()?;
+    let mut text = None;
+    if any_binary {
+        let (mut start, mut size) = (0, 0);
+        for (i, &end) in ends.iter().enumerate() {
+            if !binary[i] {
+                size += end - start;
+            }
+            start = end;
+        }
+        let mut copy = Vec::new();
+        copy.try_reserve_exact(size).ok()?;
+        text = Some(copy);
+    }
     let (mut start, mut units) = (0, 0u32);
     for (i, &end) in ends.iter().enumerate() {
         let value = &bytes[start..end];
@@ -209,7 +224,7 @@ pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Strings {
         utf16.push(units);
         start = end;
     }
-    Strings::Plain { text, utf16: Some(utf16) }
+    Some(Strings::Plain { text, utf16: Some(utf16) })
 }
 
 #[cfg(test)]

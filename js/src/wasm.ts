@@ -122,7 +122,7 @@ function guard<T>(f: () => T): T {
   // while it waits on a ReadAt callback or a write sink, so those may
   // not call back into the package.
   if (depth > 0) {
-    throw dtaError("DTA_INVALID", "dta-parser was called from inside a ReadAt callback or write sink; call it after that returns");
+    throw dtaError("DTA_INVALID", "dta-parser was called from inside a ReadAt callback or write sink; call it after that returns", undefined, TypeError);
   }
   depth++;
   try {
@@ -152,7 +152,10 @@ function check<T extends number>(result: T): T {
     const code = CODES[kind - 1] ?? "DTA_INTERNAL";
     const cause = code === "DTA_IO" ? hostError : undefined;
     hostError = undefined;
-    throw dtaError(code, message || "dta-parser failed", cause, code === "DTA_OUT_OF_RANGE" ? RangeError : Error);
+    // Arguments the module rejects (data that cannot be written) are
+    // values outside what the format holds: RangeError.
+    const errorClass = code === "DTA_OUT_OF_RANGE" || code === "DTA_INVALID" ? RangeError : Error;
+    throw dtaError(code, message || "dta-parser failed", cause, errorClass);
   }
   return result;
 }

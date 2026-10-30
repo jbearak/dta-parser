@@ -51,6 +51,11 @@ test("data that cannot be written is DTA_INVALID", () => {
   assert.throws(() => writeDta(short), code("DTA_INVALID", RangeError));
 });
 
+test("a value its storage cannot hold is a DTA_INVALID RangeError", () => {
+  const bad = { variables: [{ name: "b", type: "byte", values: [1000] }] };
+  assert.throws(() => writeDta(bad), code("DTA_INVALID", RangeError));
+});
+
 test("a variable or rows outside the file are DTA_OUT_OF_RANGE", () => {
   const r = openDta(bytes);
   assert.throws(() => r.readColumns(["no_such_variable"]), code("DTA_OUT_OF_RANGE", RangeError));
