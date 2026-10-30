@@ -159,7 +159,8 @@ To build, test or change anything, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-dta-parser relies on these open-source projects:
+dta-parser learns from, tests against and measures itself against these
+open-source projects:
 
 - **What we know of the format** comes mainly from the code and
   documentation of [ReadStat](https://github.com/WizardMac/ReadStat)

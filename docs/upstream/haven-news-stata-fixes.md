@@ -36,7 +36,10 @@ worth a line each under "Updated to ReadStat dev (0dc2aee)":
 3. **Value labels in format 104, 105 and 108 files are read.** 2.5.5
    returned no labels for 104 and 108 and failed on 105 with "Unable to
    allocate memory". haven can't write these releases, so there is no
-   haven-only example; ReadStat's commit 69d8f91 describes the layouts.
+   haven-only example below. We saw it with small files written by
+   ReadStat's own writer (at 1434a07) for each release, holding a
+   three-label set that pandas reads; haven `main` reads the same
+   labels. ReadStat's commit 69d8f91 describes the layouts.
 
 ```r
 library(haven)

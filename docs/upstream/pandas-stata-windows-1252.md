@@ -3,9 +3,10 @@
 Not filed. For <https://github.com/pandas-dev/pandas/issues>, as a new
 issue with the bug report template. No existing report found: searching
 the tracker for "read_stata encoding", "read_stata cp1252", "read_stata
-windows-1252" and "stata encoding" turns up only #4626 (2013, about the
-old `encoding` keyword) and #37693 (2020, a question closed without the
-file).
+windows-1252", "stata encoding", "stata latin1" and "dta cp1252" turns
+up nothing about Windows-1252. The nearest are #4626 (2013, about the
+old `encoding` keyword), #7286 (2014, writing non-Latin-1 text) and
+#37693 (2020, a question closed without the file).
 
 ---
 
@@ -25,16 +26,15 @@ Latin-1, so Windows-1252 characters (€, “ ”, –) become control character
 ```python
 import pandas as pd
 
-# pandas writes text in releases before 118 as Latin-1, so U+0093, U+0094
-# and U+0080 are stored as the single bytes 0x93, 0x94 and 0x80: the bytes
-# Windows-1252 uses for “, ” and €.
-df = pd.DataFrame({"s": ["\x93café\x94", "\x80 5"]})
-df.to_stata("cp1252.dta", version=117, write_index=False)
-
+# Write a release 117 file with placeholders, then put in the
+# bytes a Windows-1252 writer would store: 0x93 and 0x94 for “ and ”,
+# 0x80 for €.
+pd.DataFrame({"s": ["{café}", "~ 5"]}).to_stata("cp1252.dta", version=117, write_index=False)
 with open("cp1252.dta", "rb") as f:
     raw = f.read()
-print(raw[raw.find(b"caf") - 1 : raw.find(b"caf") + 5])
-# b'\x93caf\xe9\x94'
+raw = raw.replace(b"{caf\xe9}", b"\x93caf\xe9\x94").replace(b"~ 5", b"\x80 5")
+with open("cp1252.dta", "wb") as f:
+    f.write(raw)
 
 print([ascii(s) for s in pd.read_stata("cp1252.dta")["s"]])
 # ["'\\x93caf\\xe9\\x94'", "'\\x80 5'"]
@@ -54,9 +54,9 @@ quotes, en and em dashes, the euro sign, the ellipsis. Text from such a
 file comes back from `read_stata` with control characters in their
 place (`'\x93café\x94'` above).
 
-The example builds the file with `to_stata`, because pandas' writer
-stores U+0080 to U+009F as those single bytes, but the bytes are what a
-file from another source would contain.
+The example writes placeholder characters with `to_stata` and then puts
+the Windows-1252 bytes in place, so the file holds what another writer
+would have stored.
 
 ### Expected Behavior
 
