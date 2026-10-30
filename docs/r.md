@@ -480,6 +480,12 @@ class(df$interviewed) # "Date"
 tibble keeps `label` and `notes`. dtaparser does not write files; use
 dtatools' `save_dta()`.
 
+## Threads
+
+Reading and writing large files uses up to three threads: workers decode and fill numeric columns while R makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
+
+Set `options(dtaparser.threads = 1)` to use one thread, or another number to change the most; the `DTA_THREADS` environment variable does the same when the option is unset. Under `R CMD check` (`_R_CHECK_LIMIT_CORES_` set), at most two are used.
+
 ## Troubleshooting
 
 **Installation fails with "dtaparser: building needs cargo".** Install

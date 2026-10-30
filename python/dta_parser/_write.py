@@ -237,6 +237,10 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
     label: the data label (default attrs["dta"]["label"]).
     variable_labels: a dict of column name to label, over attrs.
     timestamp: a datetime or text for the file's timestamp; default now.
+
+    The arrays are read in place, by up to three threads on large frames
+    (DTA_THREADS sets the most): nothing may change them, from Python or
+    from another thread, until write_dta returns.
     """
     if not isinstance(df, pd.DataFrame):
         raise TypeError("write_dta writes a pandas DataFrame")

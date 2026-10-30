@@ -430,6 +430,12 @@ What changes: numeric columns keep their storage type (`Int8` rather
 than a wider type), dates are `Date`/`DateTime`, labelled columns stay
 numbers, and old files decode as Windows-1252 unless you say otherwise.
 
+## Threads
+
+Reading and writing large files uses up to three threads, which decode the rows; Julia receives the chunks in order on the calling task. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work. They are the library's own threads, not Julia's, so `julia -t` does not change them.
+
+Set the `DTA_THREADS` environment variable to `1` to use one thread, or to another number to change the most; it is read at each call. While `write_dta` runs, nothing may change the arrays it writes.
+
 ## Troubleshooting
 
 **`Pkg.build` fails, or "could not load library".** Building needs

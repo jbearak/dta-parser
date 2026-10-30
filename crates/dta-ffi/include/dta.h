@@ -167,6 +167,12 @@ int64_t dta_read(dta_file *file, const uint32_t *cols, size_t ncols, uint64_t st
  *
  * The file is written beside `path` and renamed into place, so a failed
  * write leaves an existing file alone. Returns 0, or -1 on failure.
+ *
+ * The columns' buffers are read in place, by up to three threads on
+ * large data (the environment variable DTA_THREADS sets the most), and
+ * must not change until dta_write returns. dta_read's callback is called
+ * on the calling thread, chunk by chunk in row order, even when the rows
+ * are decoded on other threads.
  */
 int dta_write(const char *path, uint64_t nrows, const dta_column *columns, size_t ncols, const char *meta_json,
               char *err, size_t err_len);
