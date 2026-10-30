@@ -170,7 +170,7 @@ Machine: Apple M4 Max, 128 GB, macOS 26.7.1. R 4.6.1, Python 3.14.7, Julia 1.13.
 
 | language | reader | version | options |
 |---|---|---|---|
-| R | dtatools | 1.1.0 | `read_dta()`; strings come back packed, so task 2 pays for making them |
+| R | dtatools | 1.0.0 | `read_dta()`; strings come back packed, so task 2 pays for making them |
 | R | haven | 2.5.5 | `read_dta()`; converts `%td`/`%tc` (no option not to); converted back for checks |
 | R | readstata13 | 0.11.0 | `read.dta13(convert.factors = FALSE, convert.dates = FALSE)`; task 5 reads one row (no metadata-only read) |
 | Python | dta_parser | 0.1.0 | `read_dta(dates=False)` |
