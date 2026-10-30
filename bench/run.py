@@ -511,6 +511,11 @@ def family_rss_summary(fam_files, out):
     return "\n".join([head, "|---|---|" + "---|" * len(TASKS), *rows])
 
 
+EXCEPTIONS = {"AttributeError", "TypeError", "ValueError", "KeyError", "IndexError", "OverflowError",
+              "RuntimeError", "NotImplementedError", "UnicodeDecodeError", "ArgumentError", "MethodError",
+              "BoundsError", "InexactError", "ErrorException", "RangeError"}
+
+
 def error_kind(msg):
     """A DHS error as a fixed category: a reader's own message can quote
     a variable's name or a value, which ADR 0013 keeps out of reports."""
@@ -526,8 +531,12 @@ def error_kind(msg):
     code = re.match(r"exit (-?\d+)", msg)
     if code:
         return f"exited with code {code.group(1)}"
-    kind = re.search(r"\b([A-Z][A-Za-z]*(?:Error|Exception))\b", msg)
-    return f"failed with {kind.group(1)} (message withheld: DHS file)" if kind else "failed (message withheld: DHS file)"
+    # Only a known exception name, and only where a message starts with it
+    # (after the harness's "exit N: "), so nothing quoted from the file.
+    kind = re.match(r"(?:exit -?\d+: )?(?:Error: )?(\w+)[:(]", msg)
+    if kind and kind.group(1) in EXCEPTIONS:
+        return f"failed with {kind.group(1)} (message withheld: DHS file)"
+    return "failed (message withheld: DHS file)"
 
 
 def detail_tables(fam_files, out, private):
