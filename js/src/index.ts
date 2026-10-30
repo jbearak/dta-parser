@@ -137,6 +137,21 @@ const BLOCK = Number((globalThis as { process?: { env?: Record<string, string | 
 // ignoreBOM: a value that starts with U+FEFF keeps it.
 const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
 
+/**
+ * Closes the module handles of readers dropped without `close()`, so the
+ * module can give its memory back; a file opened by path is closed too,
+ * and a file descriptor the caller passed in never is (as `close()`).
+ */
+const unclosed = new FinalizationRegistry((held: { handle: number; generation: number; read: ReadAt; onClose?: () => void }) => {
+  try {
+    if (held.generation === wasm.currentGeneration()) wasm.close(held.handle);
+  } catch {
+    // Nothing to report to: the reader is gone.
+  }
+  wasm.forget(held.read);
+  held.onClose?.();
+});
+
 /** An open .dta file. Reads happen only when asked for. */
 export class DtaReader {
   readonly info: Info;
@@ -153,7 +168,15 @@ export class DtaReader {
     this.onClose = onClose;
     this.handle = wasm.open(read, length, options.encoding ?? "windows-1252");
     this.generation = wasm.currentGeneration();
-    const meta = JSON.parse(wasm.metadataJson(this.handle));
+    let meta;
+    try {
+      meta = JSON.parse(wasm.metadataJson(this.handle));
+    } catch (e) {
+      wasm.close(this.handle);
+      wasm.forget(read);
+      throw e;
+    }
+    unclosed.register(this, { handle: this.handle, generation: this.generation, read, onClose }, this);
     this.variables = Object.freeze(meta.variables.map((v: Variable) => Object.freeze(v)));
     this.info = Object.freeze({
       release: meta.release,
@@ -346,6 +369,7 @@ export class DtaReader {
   close(): void {
     if (this.handle !== 0) {
       if (this.generation === wasm.currentGeneration()) wasm.close(this.handle);
+      unclosed.unregister(this);
       wasm.forget(this.read);
       this.handle = 0;
       this.onClose?.();

@@ -388,6 +388,13 @@ generation changed and RSS dropped. Readers keep their instance's generation and
 - Target: after reading the 500 MB strL and closing, RSS (after
   `--expose-gc` GC) returns to within 50 MB of where it was.
 
+  Outcome (implemented, macOS, Node 26): the module's memory is all
+  given back (one `WebAssembly.Memory` alive, 1 MiB; 0.x and this
+  branch before M4 kept 1,910 MiB). RSS stays 485 MiB above the start:
+  that is the 500M-character string's pages, freed by V8 (heap back to
+  4 MB) but not yet taken back by the OS; a bare `TextDecoder.decode`
+  of the same bytes, with no dta-parser, leaves the same 478 MiB.
+
 **M5. Previews (Sight's D2).** `readColumns` takes `maxStringBytes`
 (a whole number, 0 allowed), counted in **stored bytes**: each
 string reads at most `maxStringBytes` bytes as stored in the file and

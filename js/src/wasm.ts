@@ -82,9 +82,10 @@ const imports = {
 let wasm = new WebAssembly.Instance(module, imports).exports as unknown as Exports;
 
 /**
- * Counts module instances. A trap (a bug: damaged files give errors, not
- * traps) leaves an instance unusable, so we replace it; readers opened on
- * the old one see the count change and report themselves closed.
+ * Counts module instances. We replace an instance when a trap (a bug:
+ * damaged files give errors, not traps) leaves it unusable, and to give
+ * memory back (wasm memory never shrinks): readers opened on the old
+ * one see the count change and report themselves closed.
  */
 let generation = 0;
 
@@ -92,17 +93,46 @@ export function currentGeneration(): number {
   return generation;
 }
 
+/** Readers open on this instance; it is replaced only when none are. */
+let openHandles = 0;
+/** Calls into the module running now: at most one (no re-entry). */
+let depth = 0;
+/** Memory past which an instance is replaced once nothing uses it. */
+let replaceAbove = 256 * 2 ** 20;
+
+function replaceInstance(): void {
+  generation++;
+  files.clear();
+  openHandles = 0;
+  wasm = new WebAssembly.Instance(module, imports).exports as unknown as Exports;
+}
+
+/**
+ * Give the instance's memory back if it has grown past `replaceAbove`
+ * and no reader is open on it and no call is running.
+ */
+function maybeReplace(): void {
+  if (openHandles === 0 && depth === 0 && wasm.memory.buffer.byteLength > replaceAbove) replaceInstance();
+}
+
 function guard<T>(f: () => T): T {
+  // The module's state is in use for the whole of a call, including
+  // while it waits on a ReadAt callback or a write sink, so those may
+  // not call back into the package.
+  if (depth > 0) {
+    throw dtaError("DTA_INVALID", "dta-parser was called from inside a ReadAt callback or write sink; call it after that returns");
+  }
+  depth++;
   try {
     return f();
   } catch (e) {
     if (e instanceof WebAssembly.RuntimeError) {
-      generation++;
-      files.clear();
-      wasm = new WebAssembly.Instance(module, imports).exports as unknown as Exports;
+      replaceInstance();
       throw dtaError("DTA_INTERNAL", `dta-parser failed (${e.message}); files it had open are now closed`, e);
     }
     throw e;
+  } finally {
+    depth--;
   }
 }
 
@@ -141,15 +171,20 @@ export function open(read: ReadAt, length: number, encoding: EncodingName): numb
   const file = nextFile++;
   files.set(file, read);
   try {
-    return guard(() => check(wasm.dta_open(file, length, ENCODINGS[encoding])));
+    const handle = guard(() => check(wasm.dta_open(file, length, ENCODINGS[encoding])));
+    openHandles++;
+    return handle;
   } catch (e) {
     files.delete(file);
     throw e;
   }
 }
 
+/** Close a handle of the current instance; may then replace it (see maybeReplace). */
 export function close(handle: number): void {
   guard(() => wasm.dta_close(handle));
+  openHandles--;
+  maybeReplace();
 }
 
 export function metadataJson(handle: number): string {
@@ -265,6 +300,7 @@ export function write(nobs: number, parts: WritePart[], info: string[], sink: (b
       throw e;
     }
   });
+  maybeReplace();
 }
 
 function writeParts(nobs: number, parts: WritePart[], info: string[], sink: (bytes: Uint8Array) => void): void {
@@ -335,5 +371,14 @@ export const test = {
   },
   memoryBytes(): number {
     return wasm.memory.buffer.byteLength;
+  },
+  replaceAbove(bytes: number): void {
+    replaceAbove = bytes;
+  },
+  openHandles(): number {
+    return openHandles;
+  },
+  generation(): number {
+    return generation;
   },
 };

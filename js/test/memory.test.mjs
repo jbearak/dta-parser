@@ -160,6 +160,8 @@ test("past 2 GiB of module memory, reads and writes still work", async () => {
     loader: { ".wasm": "binary" },
   });
   const big = require(out);
+  // Keep this instance, filler and all, rather than give its memory back.
+  big.test.replaceAbove(Infinity);
   // One allocation cannot pass 2 GiB (isize::MAX in wasm32), so two.
   const filler = Math.floor(1.1 * 2 ** 30);
   const held = [big.test.alloc(filler), big.test.alloc(filler)];
@@ -177,5 +179,97 @@ test("past 2 GiB of module memory, reads and writes still work", async () => {
     }
   } finally {
     for (const p of held) big.test.free(p, filler);
+  }
+});
+
+test("calls from inside a ReadAt callback or sink are DTA_INVALID; the outer call finishes", { skip }, () => {
+  const bytes = ordinary.writeDta({ variables: [{ name: "x", values: Float64Array.of(4, 5, 6) }] });
+  const nested = [];
+  let inner;
+  const r = new capped.DtaReader((into, offset) => {
+    if (inner) {
+      for (const call of [() => capped.openDta(small), () => inner.readColumns(["x"]), () => inner.close(), () => capped.writeDta({ variables: [{ name: "y", values: [1] }] })]) {
+        try {
+          call();
+          nested.push("ran");
+        } catch (e) {
+          nested.push(e.code);
+        }
+      }
+    }
+    into.set(bytes.subarray(offset, offset + into.length));
+  }, bytes.length);
+  inner = r;
+  assert.deepEqual(Array.from(r.readColumns(["x"])[0].values), [4, 5, 6]);
+  assert.ok(nested.length >= 4 && nested.every((c) => c === "DTA_INVALID"), nested.join());
+  r.close();
+});
+
+test("a write sink that calls the package gets DTA_INVALID; the write finishes", { skip }, () => {
+  const codes = [];
+  const chunks = [];
+  capped.writeDtaTo({ variables: [{ name: "y", values: [1, 2] }] }, (b) => {
+    try {
+      capped.openDta(small);
+    } catch (e) {
+      codes.push(e.code);
+    }
+    chunks.push(b.slice());
+  });
+  assert.ok(codes.length > 0 && codes.every((c) => c === "DTA_INVALID"));
+  const back = ordinary.openDta(Buffer.concat(chunks));
+  assert.deepEqual(back.readRows(0, 2), [[1], [2]]);
+});
+
+test("closing the last reader after a large read replaces the module instance", { skip }, () => {
+  const bytes = ordinary.writeDta({ variables: [{ name: "l", type: "strL", values: ["a".repeat(8 << 20)] }] });
+  capped.test.replaceAbove(4 << 20);
+  try {
+    survivor.close();
+    const before = capped.test.generation();
+    const a = capped.openDta(bytes);
+    const b = capped.openDta(bytes);
+    assert.equal(a.readColumns(["l"])[0].values[0].length, 8 << 20);
+    assert.ok(capped.test.memoryBytes() > 8 << 20);
+    a.close();
+    assert.equal(capped.test.generation(), before, "another reader is still open");
+    b.close();
+    assert.equal(capped.test.generation(), before + 1);
+    assert.ok(capped.test.memoryBytes() < 4 << 20, `${capped.test.memoryBytes()} bytes after replacing`);
+    assert.equal(capped.test.openHandles(), 0);
+  } finally {
+    capped.test.replaceAbove(256 << 20);
+    survivor = capped.openDta(small);
+  }
+  survivorReads();
+});
+
+test("a reader dropped without close() releases its handle, never a borrowed fd", { skip }, async () => {
+  const { setFlagsFromString } = await import("node:v8");
+  const { runInNewContext } = await import("node:vm");
+  const fs = await import("node:fs");
+  setFlagsFromString("--expose-gc");
+  const gc = runInNewContext("gc");
+  const path = join(mkdtempSync(join(tmpdir(), "dta-fd-")), "small.dta");
+  fs.writeFileSync(path, small);
+  const fd = fs.openSync(path, "r");
+  const { openDtaFile } = require("../dist/node.js");
+  try {
+    const handles = capped.test.openHandles();
+    (() => {
+      const read = (into, offset) => fs.readSync(fd, into, 0, into.length, offset);
+      new capped.DtaReader(read, small.length).readColumns(["x"]);
+      openDtaFile(fd).readColumns(["x"]);
+    })();
+    assert.equal(capped.test.openHandles(), handles + 1);
+    for (let i = 0; i < 20 && capped.test.openHandles() > handles; i++) {
+      gc();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(capped.test.openHandles(), handles, "the dropped reader's handle was released");
+    const buf = Buffer.alloc(4);
+    assert.equal(fs.readSync(fd, buf, 0, 4, 0), 4, "the borrowed fd is still open");
+  } finally {
+    fs.closeSync(fd);
   }
 });

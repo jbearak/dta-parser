@@ -112,8 +112,12 @@ browser, for example).
 Call `close()` when done: it frees the reader's memory inside the
 WebAssembly module and closes a file opened by path (never a file
 descriptor you passed in). Reads after `close()` throw "the file is
-closed". Or declare the reader with `using`, and it closes at the end of
-the block:
+closed". Close readers you are done with: the WebAssembly module's
+memory only grows, so when the last open reader closes after a large
+read, the package starts a fresh module and gives that memory back (a
+reader you drop without closing is closed when it is garbage collected,
+which may be much later). Or declare the reader with `using`, and it
+closes at the end of the block:
 
 ```ts
 import { openDtaFile } from "@jbearak/dta-parser/node";
@@ -581,6 +585,11 @@ default (or `RUSTUP_TOOLCHAIN`) the script uses, then rerun it.
 the script again after changing Rust code.
 
 **"the file is closed".** You called a method after `close()`.
+
+**"dta-parser was called from inside a ReadAt callback or write
+sink".** A `ReadAt` function passed to `new DtaReader`, or a sink
+passed to `writeDtaTo`, may not call the package while it runs; do that
+work after the outer call returns.
 
 **Accented letters are wrong.** The file is older than release 118;
 pass `{ encoding: "latin1" }` or `{ encoding: "utf-8" }`.
