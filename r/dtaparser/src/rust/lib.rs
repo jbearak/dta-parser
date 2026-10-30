@@ -269,14 +269,14 @@ enum Mode {
     PlainDates,
 }
 
-/// What an R numeric column holds.
+/// What an R numeric column holds. Doubles of every kind keep `.a` to
+/// `.z` in the payload (`r_double`).
 #[derive(Clone, Copy)]
 enum Kind {
-    /// Doubles with missing codes in the payload (mode 1).
-    Tagged,
-    /// Integers, every missing value NA.
+    /// Integers, every missing value NA. Plain mode only, until a chunk
+    /// holds `.a` to `.z` (`promote`).
     Integer,
-    /// Doubles, every missing value NA.
+    /// Doubles.
     Double,
     /// Days since 1970, class `Date`.
     Date,
@@ -290,7 +290,7 @@ const DAYS_1960_TO_1970: f64 = 3653.0;
 impl Kind {
     fn of(mode: Mode, var: &Variable, labelled: bool) -> Kind {
         if mode == Mode::Stata {
-            return Kind::Tagged;
+            return Kind::Double;
         }
         if mode == Mode::PlainDates && !labelled {
             // `%td` and `%tc`, left-aligned or not; `%d...` is the old name
@@ -322,7 +322,6 @@ impl Kind {
 
 /// Fill rows `first..` of the R vector `x` of kind `kind`.
 fn fill(x: Sexp, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
-    let na = f64::from_bits(NA_BITS);
     if let Kind::Integer = kind {
         let dst = unsafe { std::slice::from_raw_parts_mut(INTEGER(x).add(first), values.len()) };
         for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
@@ -335,8 +334,7 @@ fn fill(x: Sexp, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
     let dst = unsafe { std::slice::from_raw_parts_mut(REAL(x).add(first), values.len()) };
     for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
         *d = match (kind, m) {
-            (Kind::Tagged, _) => r_double(v, m),
-            (_, 1..) => na,
+            (_, 1..) => r_double(v, m),
             (Kind::Date, _) => v - DAYS_1960_TO_1970,
             (Kind::DateTime, _) => v / 1000.0 - DAYS_1960_TO_1970 * 86_400.0,
             _ => v,
@@ -344,20 +342,49 @@ fn fill(x: Sexp, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
     }
 }
 
+/// Whether a chunk of an integer column holds `.a` to `.z`, which an R
+/// integer cannot.
+fn has_letters(kind: Kind, missing: &[u8]) -> bool {
+    matches!(kind, Kind::Integer) && missing.iter().any(|&m| m > missing::SYSTEM)
+}
+
+/// Replace the plain integer column at element `k` of `out`, whose rows
+/// `..first` are filled, by doubles with the same values, so later rows
+/// can keep `.a` to `.z`. Returns the new column.
+fn promote(
+    out: Sexp,
+    k: usize,
+    x: Sexp,
+    first: usize,
+    nobs: usize,
+    var: &Variable,
+    set: Option<&ValueLabelSet>,
+) -> Res<Sexp> {
+    // `x` stays in `out` until this allocation replaces it, and nothing
+    // allocates while it is copied.
+    let y = alloc_elt(out, k, REALSXP, nobs)?;
+    let src = unsafe { std::slice::from_raw_parts(INTEGER(x), first) };
+    let dst = unsafe { std::slice::from_raw_parts_mut(REAL(y), first) };
+    for (d, &v) in dst.iter_mut().zip(src) {
+        *d = if v == i32::MIN { f64::from_bits(NA_BITS) } else { v as f64 };
+    }
+    set_plain_attributes(y, var, Kind::Double, set)?;
+    Ok(y)
+}
+
 /// Plain mode's attributes: `label` when there is one, `labels` (the
-/// non-missing codes, named by their text) on a labelled column, and the
-/// class of a date or datetime.
+/// codes, `.a` to `.z` tagged, named by their text) on a labelled
+/// column, and the class of a date or datetime.
 fn set_plain_attributes(x: Sexp, var: &Variable, kind: Kind, set: Option<&ValueLabelSet>) -> Res<()> {
     if !var.label.is_empty() {
         string_attr(x, c"label", &var.label)?;
     }
     if let Some(set) = set {
-        let labels: Vec<&ValueLabel> = set.labels.iter().filter(|l| l.missing == 0).collect();
-        let codes = alloc_attr(x, c"labels", REALSXP, labels.len())?;
-        let values: Vec<f64> = labels.iter().map(|l| l.value).collect();
+        let codes = alloc_attr(x, c"labels", REALSXP, set.labels.len())?;
+        let values: Vec<f64> = set.labels.iter().map(|l| r_double(l.value, l.missing)).collect();
         unsafe { std::slice::from_raw_parts_mut(REAL(codes), values.len()) }.copy_from_slice(&values);
-        let texts = alloc_attr(codes, c"names", STRSXP, labels.len())?;
-        set_strs(texts, &labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())?;
+        let texts = alloc_attr(codes, c"names", STRSXP, set.labels.len())?;
+        set_strs(texts, &set.labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())?;
     }
     match kind {
         Kind::Date => string_attr(x, c"class", "Date")?,
@@ -444,18 +471,19 @@ pub unsafe extern "C" fn dtaparser_read(
             // their text here and become packed columns after the read.
             let target = if var.storage.is_numeric() {
                 let mut set = sets.iter().find(|s| s.name == var.value_labels);
-                // Plain mode reads every missing value as NA, so a set that
-                // labels only missing values labels nothing it returns.
-                if mode != Mode::Stata {
-                    set = set.filter(|s| s.labels.iter().any(|l| l.missing == 0));
+                // A set that labels only missing values does not stop a
+                // date being a date in plain mode, and is dropped there.
+                let labelled = set.is_some_and(|s| s.labels.iter().any(|l| l.missing == 0));
+                let kind = Kind::of(mode, var, labelled);
+                if matches!(kind, Kind::Date | Kind::DateTime) {
+                    set = None;
                 }
-                let kind = Kind::of(mode, var, set.is_some());
                 let x = alloc_elt(out, k, kind.sexptype(), nobs)?;
                 match mode {
                     Mode::Stata => set_attributes(x, var, set)?,
                     _ => set_plain_attributes(x, var, kind, set)?,
                 }
-                Target::Numbers(x, kind)
+                Target::Numbers(x, kind, set)
             } else {
                 Target::Strings(Strings::new(limits, nobs))
             };
@@ -468,11 +496,18 @@ pub unsafe extern "C" fn dtaparser_read(
                 failed = Some(Fail::Message("interrupted".into()));
                 return Err(dta::Error::new("interrupted"));
             }
-            for ((target, var), column) in targets.iter_mut().zip(chunk) {
+            for (k, ((target, var), column)) in targets.iter_mut().zip(chunk).enumerate() {
                 let step = match (target, column) {
-                    (Target::Numbers(x, kind), Column::Numbers { values, missing }) => {
-                        fill(*x, *kind, first, values, missing);
-                        Ok(())
+                    (Target::Numbers(x, kind, set), Column::Numbers { values, missing }) => {
+                        let promoted = if has_letters(*kind, missing) {
+                            promote(out, k, *x, first, nobs, var, *set).map(|y| {
+                                *x = y;
+                                *kind = Kind::Double;
+                            })
+                        } else {
+                            Ok(())
+                        };
+                        promoted.map(|()| fill(*x, *kind, first, values, missing))
                     }
                     (Target::Strings(s), Column::Strings { bytes, ends, binary }) => {
                         s.gather(&var.name, bytes, ends, binary)
@@ -510,9 +545,9 @@ pub unsafe extern "C" fn dtaparser_read(
 }
 
 /// Where a column read by `dtaparser_read` goes.
-enum Target {
-    /// The R vector it fills, and what it holds.
-    Numbers(Sexp, Kind),
+enum Target<'a> {
+    /// The R vector it fills, what it holds, and its value labels.
+    Numbers(Sexp, Kind, Option<&'a ValueLabelSet>),
     /// The strings gathered so far.
     Strings(Strings),
 }

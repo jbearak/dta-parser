@@ -2,11 +2,10 @@
 # for values (AGENTS.md); where dtaparser differs from haven on purpose,
 # the test says so and checks dtaparser's rule on its own.
 
-# x without attributes or class, haven's tagged NAs made plain.
+# x without attributes or class.
 plain <- function(x) {
   x <- unclass(x)
   attributes(x) <- NULL
-  if (is.double(x)) x[is.na(x)] <- NA
   x
 }
 
@@ -16,7 +15,7 @@ test_that("read_dta matches haven on every fixture", {
     name <- basename(path)
     # haven 2.5.5 cannot read release 105 value labels at all.
     if (name == "readstat_105.dta") next
-    ours <- read_dta(path)
+    ours <- read_dta(path, warn_extended_missing = FALSE)
     theirs <- haven::read_dta(path)
     expect_s3_class(ours, "tbl_df")
     expect_false(inherits(ours, "dibble"))
@@ -44,7 +43,8 @@ test_that("read_dta matches haven on every fixture", {
       if (name %in% c("readstat_104.dta", "readstat_108.dta") && col == "b") next
       # On purpose: labels on missing values alone make no factor.
       if (inherits(y, "haven_labelled") && !any(!is.na(attr(y, "labels")))) {
-        expect_equal(as.double(plain(x)), plain(y), label = what)
+        expect_identical(as.double(plain(x)), plain(y), label = what)
+        expect_identical(attr(x, "labels", exact = TRUE), attr(y, "labels", exact = TRUE), label = what)
         next
       }
       if (inherits(y, "haven_labelled")) {
@@ -61,9 +61,13 @@ test_that("read_dta matches haven on every fixture", {
       if (inherits(y, "Date") || inherits(y, "POSIXct")) {
         expect_identical(class(x), class(y), label = what)
         expect_equal(plain(x), plain(y), label = what)
+        expect_identical(haven::na_tag(plain(x)), haven::na_tag(plain(y)), label = what)
         next
       }
+      # .a to .z keep their letters, as in haven; integer columns
+      # without them stay integers.
       expect_equal(as.double(plain(x)), plain(y), label = what)
+      expect_identical(haven::na_tag(as.double(plain(x))), haven::na_tag(plain(y)), label = what)
     }
   }
 })
@@ -86,16 +90,41 @@ test_that("byte, int and long are integers; float and double doubles", {
   expect_identical(x$none, rep(NA_integer_, 3))
 })
 
-test_that("every missing value is NA, with R's rules", {
+test_that("every missing value is NA, with R's rules, and .a to .z keep their letter", {
   skip_if_not_installed("haven")
   tagged <- c(1, 9, NA, haven::tagged_na("a"), haven::tagged_na("z"))
-  path <- write_fixture(d = col(tagged, "double"), l = col(tagged, "long"))
+  path <- write_fixture(d = col(tagged, "double"), l = col(tagged, "long"), f = col(tagged, "float"),
+                        td = col(tagged, "long", "%td"))
   x <- read_dta(path)
-  expect_identical(is.na(x$d), c(FALSE, FALSE, TRUE, TRUE, TRUE))
-  expect_false(any(haven::is_tagged_na(x$d)))
-  expect_identical(x$l, c(1L, 9L, NA, NA, NA))
-  expect_identical(x$d > 5, c(FALSE, TRUE, NA, NA, NA))
-  expect_identical(x$l > 5, c(FALSE, TRUE, NA, NA, NA))
+  for (name in c("d", "l", "f")) {
+    expect_identical(is.na(x[[name]]), c(FALSE, FALSE, TRUE, TRUE, TRUE), label = name)
+    expect_identical(x[[name]] > 5, c(FALSE, TRUE, NA, NA, NA), label = name)
+    expect_identical(haven::na_tag(x[[name]]), c(NA, NA, NA, "a", "z"), label = name)
+  }
+  # A long column with .a to .z is read as doubles, to hold the letters.
+  expect_type(x$l, "double")
+  expect_identical(x$l, tagged)
+  expect_s3_class(x$td, "Date")
+  expect_identical(haven::na_tag(unclass(x$td)), c(NA, NA, NA, "a", "z"))
+})
+
+test_that("integer columns become doubles only where .a to .z are read", {
+  skip_if_not_installed("haven")
+  # Chunks are about 8 MiB of decoded values (9 bytes a row a column), so
+  # the letter comes chunks after the first and the switch to doubles
+  # copies the rows read before it.
+  n <- 1e6
+  late <- c(NA, seq_len(n - 2), haven::tagged_na("b"))
+  path <- write_fixture(late = col(late, "long"), dot = col(rep(c(1, NA), n / 2), "byte"),
+                        sys = col(c(seq_len(n - 1), NA) + 0, "long"))
+  x <- read_dta(path)
+  expect_type(x$late, "double")
+  expect_identical(x$late, late)
+  expect_identical(haven::na_tag(x$late[n]), "b")
+  expect_type(x$dot, "integer")
+  expect_type(x$sys, "integer")
+  # The rows read decide: without the last row the column stays integer.
+  expect_type(read_dta(path, n_max = n - 1)$late, "integer")
 })
 
 test_that("strings are character, packed, with \"\" as stored", {

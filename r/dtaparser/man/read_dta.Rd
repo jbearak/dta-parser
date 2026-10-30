@@ -11,7 +11,8 @@ read_dta(
   skip = 0,
   n_max = Inf,
   factors = TRUE,
-  dates = TRUE
+  dates = TRUE,
+  warn_extended_missing = TRUE
 )
 }
 \arguments{
@@ -32,24 +33,33 @@ columns when \code{NULL}. Columns come back in the order selected.}
 
 \item{dates}{Whether columns with date and datetime formats become
 \code{Date} and \code{POSIXct}.}
+
+\item{warn_extended_missing}{Whether to warn when \code{factors = TRUE}
+turns \code{.a} to \code{.z} into plain \code{NA}.}
 }
 \value{
 A tibble. Byte, int and long columns are integers; float and
 double columns are doubles; string columns are character. Every
 missing value, \code{.} and \code{.a} to \code{.z} alike, is \code{NA}, so R's rules
-apply (\code{x > 5} is \code{NA} where \code{x} is missing). Strings are as stored:
-Stata's missing string is \code{""}.
+apply (\code{x > 5} is \code{NA} where \code{x} is missing). In doubles, \code{.a} to
+\code{.z} keep their letter as haven's tagged NAs do: \code{haven::na_tag()}
+gives it back. An integer column holding any of them in the rows
+read is a double instead, so its type can depend on \code{skip} and
+\code{n_max}. Strings are as stored: Stata's missing string is \code{""}.
 
 With \code{factors = TRUE}, a column with value labels on any non-missing
 value is a factor whose
 levels are, in order of value, the labelled codes and the unlabelled
 values read (as \code{as.character()} of the integer or double); codes
-with the same text share a level, and labelled missing values are
-\code{NA}. With \code{factors = FALSE} it keeps its numbers and has a \code{labels}
-attribute: the codes named by their text.
+with the same text share a level, and missing values, labelled or
+not, are \code{NA}. A factor cannot keep \code{.a} to \code{.z}, so this warns
+when it loses them (see \code{warn_extended_missing}). With
+\code{factors = FALSE} the column keeps its numbers and has a \code{labels}
+attribute: the codes, \code{.a} to \code{.z} among them, named by their text.
 
-Labels on missing values alone are dropped, since those values are
-\code{NA}.
+A column whose labels are all on missing values keeps its numbers
+and its \code{labels} attribute either way (a date column stays a date
+and drops them).
 
 With \code{dates = TRUE}, a column without such value labels whose format
 starts with \verb{\%td}, \verb{\%-td} or \verb{\%d} is a \code{Date}, and one whose format
@@ -65,6 +75,7 @@ value of a column pays the cost instead. A column with few distinct
 values is kept as those values and a code per row.
 
 haven differs in a few places: it reads every number as a double,
+gives labelled columns class \code{haven_labelled},
 reads \verb{\%-td} and \verb{\%-tc} as numbers and \verb{\%tC} as \code{POSIXct}, and its
 \code{as_factor()} keeps labelled missing values as levels.
 }

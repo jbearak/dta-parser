@@ -467,10 +467,10 @@ class(df$interviewed) # "Date"
 
 | in the file | dtaparser |
 |---|---|
-| byte, int, long | integer |
+| byte, int, long | integer; double if the rows read hold `.a` to `.z` |
 | float, double | double |
-| `.` and `.a` to `.z` | `NA` (the letters are not kept) |
-| value labels | a factor; levels in order of value, unlabelled values as their number. `factors = FALSE` keeps numbers and a `labels` attribute |
+| `.` and `.a` to `.z` | `NA`; in doubles `.a` to `.z` keep their letter as haven's tagged NAs (`haven::na_tag()`) |
+| value labels | a factor; levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it). `factors = FALSE` keeps numbers and a `labels` attribute, labels on `.a` to `.z` included |
 | `%td`, `%d...` | `Date` (`dates = FALSE` keeps numbers) |
 | `%tc` | `POSIXct` in UTC; `%tC`, which counts leap seconds, stays numbers |
 | strN, strL text | character, packed as in dtatools; `""` stays `""` |

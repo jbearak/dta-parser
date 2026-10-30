@@ -35,7 +35,7 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | language | package | docs | returns |
 |---|---|---|---|
 | R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
-| R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, factors, `Date`), every missing value `NA` |
+| R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, factors, `Date`), every missing value `NA`, `.a` to `.z` as haven's tagged NAs |
 | Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
@@ -178,8 +178,8 @@ open-source projects:
   (the pandas development team, BSD-3-Clause). The Rust core in
   `crates/dta` is our own implementation and contains no code from
   either.
-- **Tagged missing values in R**: dtatools stores `.a` to `.z` inside
-  `NA` with the same bits as `tagged_na()` in
+- **Tagged missing values in R**: dtatools and dtaparser store `.a` to
+  `.z` inside `NA` with the same bits as `tagged_na()` in
   [haven](https://github.com/tidyverse/haven) (Hadley Wickham, Evan
   Miller, Danny Smith), so the values pass between the two packages
   unchanged ([missing values](docs/guide/missing-values.md)).

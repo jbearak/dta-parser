@@ -10,7 +10,8 @@ Depends: R (>= 4.2)
 Imports:
     rlang,
     tibble,
-    tidyselect
+    tidyselect,
+    utils
 Suggests:
     haven,
     testthat (>= 3.0.0)
