@@ -453,9 +453,11 @@ impl<S: Source> Reader<S> {
         let mut used = 0usize;
         // Each column's text so far this call, in decoded bytes (at least
         // its UTF-16 units), against `max_text_units`.
-        let mut text = vec![0usize; columns.len()];
+        // Only string columns need looking at row by row.
+        let strings: Vec<usize> = columns.iter().copied().filter(|&c| !self.meta.variables[c].storage.is_numeric()).collect();
+        let mut text = vec![0usize; strings.len()];
         let mut text_full = false;
-        let mut row_text = Vec::with_capacity(columns.len());
+        let mut row_text = Vec::with_capacity(strings.len());
         while done < count {
             let mut n = rows_per_chunk.min(count - done);
             let offset = self.sections.data + (start + done as u64) * self.row_len as u64;
@@ -464,11 +466,16 @@ impl<S: Source> Reader<S> {
                 // Stop after the row that reaches the budget; strL
                 // payload sizes come from the index, before reading them.
                 let mut take = 0;
-                while take < n && used < budget {
+                if strings.is_empty() {
+                    // Every row decodes to the same size.
+                    take = n.min(budget.saturating_sub(used).div_ceil(decoded_row.max(1)));
+                    used = used.saturating_add(take.saturating_mul(decoded_row));
+                }
+                while !strings.is_empty() && take < n && used < budget {
                     let row = &buf[take * self.row_len..(take + 1) * self.row_len];
                     let mut row_bytes = decoded_row;
                     row_text.clear();
-                    for &c in columns {
+                    for &c in &strings {
                         row_text.push(match self.meta.variables[c].storage {
                             StorageType::Str(w) => 3 * w as usize,
                             StorageType::StrL => {
