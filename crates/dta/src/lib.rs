@@ -18,7 +18,7 @@ mod writer;
 
 pub use cursor::ByteOrder;
 pub use encoding::Encoding;
-pub use error::{Error, Result};
+pub use error::{Error, ErrorKind, Result};
 pub use header::{Metadata, Variable};
 pub use reader::{Characteristic, Column, Options, Reader, ValueLabel, ValueLabelSet};
 pub use source::{Bytes, FileSource, SharedSource, Source};

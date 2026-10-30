@@ -9,12 +9,14 @@
 //! the message. Results larger than a number (JSON, column buffers) are
 //! left in module memory: the call returns a pointer, `dta_result_len`
 //! gives the length, and the bytes stay valid until the next call on the
-//! same handle. Panics are caught and reported as errors.
+//! same handle. Panics are caught and reported as errors. `dta_error_kind`
+//! says what sort of error the last one was, so JavaScript can give it a
+//! code without reading the message.
 
 use std::cell::RefCell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use dta::{Column, Encoding, Options, Reader, Source};
+use dta::{Column, Encoding, ErrorKind, Options, Reader, Source};
 
 use crate::json;
 
@@ -41,7 +43,7 @@ impl Source for HostFile {
         }
         match unsafe { host_read(self.id, buf.as_mut_ptr(), buf.len(), offset as f64) } {
             0 => Ok(()),
-            _ => Err(dta::Error::at(offset, "the file could not be read")),
+            _ => Err(dta::Error::at(offset, "the file could not be read").of(ErrorKind::Io)),
         }
     }
 }
@@ -55,6 +57,7 @@ struct Handle {
 struct State {
     handles: Vec<Option<Handle>>,
     error: String,
+    error_kind: u32,
     result: Vec<u8>,
     result_len: usize,
 }
@@ -63,31 +66,76 @@ thread_local! {
     static STATE: RefCell<State> = RefCell::new(State::default());
 }
 
+/// An error for JavaScript: its kind (see `dta_error_kind`) and message.
+struct Fail {
+    kind: u32,
+    message: String,
+}
+
+// The kinds `dta_error_kind` returns.
+const CORRUPT: u32 = 1;
+const TOO_LARGE: u32 = 2;
+const IO: u32 = 3;
+const INVALID: u32 = 4;
+const OUT_OF_RANGE: u32 = 5;
+const INTERNAL: u32 = 6;
+const CLOSED: u32 = 7;
+
+impl From<dta::Error> for Fail {
+    fn from(e: dta::Error) -> Self {
+        let kind = match e.kind {
+            ErrorKind::Corrupt => CORRUPT,
+            ErrorKind::TooLarge => TOO_LARGE,
+            ErrorKind::Io => IO,
+            ErrorKind::Invalid => INVALID,
+            ErrorKind::OutOfRange => OUT_OF_RANGE,
+            ErrorKind::Internal => INTERNAL,
+        };
+        Fail { kind, message: e.to_string() }
+    }
+}
+
+/// A plain message is a mistake in what JavaScript passed.
+impl From<String> for Fail {
+    fn from(message: String) -> Self {
+        Fail { kind: INVALID, message }
+    }
+}
+
+impl From<&str> for Fail {
+    fn from(message: &str) -> Self {
+        message.to_string().into()
+    }
+}
+
 /// Run `f` on the state, turning an error or a panic into `fail`.
-fn call<T>(fail: T, f: impl FnOnce(&mut State) -> Result<T, String>) -> T {
+fn call<T>(fail: T, f: impl FnOnce(&mut State) -> Result<T, Fail>) -> T {
     STATE.with(|cell| {
         let mut state = cell.borrow_mut();
         state.error.clear();
+        state.error_kind = 0;
         match catch_unwind(AssertUnwindSafe(|| f(&mut state))) {
             Ok(Ok(v)) => v,
-            Ok(Err(message)) => {
-                state.error = message;
+            Ok(Err(e)) => {
+                state.error = e.message;
+                state.error_kind = e.kind;
                 fail
             }
             Err(_) => {
                 state.error = "internal error in dta-parser".into();
+                state.error_kind = INTERNAL;
                 fail
             }
         }
     })
 }
 
-fn handle(state: &mut State, h: u32) -> Result<&mut Handle, String> {
+fn handle(state: &mut State, h: u32) -> Result<&mut Handle, Fail> {
     state
         .handles
         .get_mut(h.wrapping_sub(1) as usize)
         .and_then(Option::as_mut)
-        .ok_or_else(|| "the file is closed".to_string())
+        .ok_or_else(|| Fail { kind: CLOSED, message: "the file is closed".into() })
 }
 
 /// Leave `bytes` as the result and return a pointer to it.
@@ -121,6 +169,14 @@ pub extern "C" fn dta_error() -> *const u8 {
     })
 }
 
+/// The kind of the last error: 1 a damaged file, 2 too large to read
+/// here, 3 the file or output failed, 4 a bad argument, 5 a variable
+/// or rows outside the file, 6 a bug, 7 a closed file.
+#[no_mangle]
+pub extern "C" fn dta_error_kind() -> u32 {
+    STATE.with(|cell| cell.borrow().error_kind)
+}
+
 #[no_mangle]
 pub extern "C" fn dta_result_len() -> usize {
     STATE.with(|cell| cell.borrow().result_len)
@@ -139,7 +195,7 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
             _ => return Err("unknown encoding".into()),
         };
         let source = HostFile { id: file, len: len as u64 };
-        let reader = Reader::open(source, Options { encoding, ..Options::default() }).map_err(|e| e.to_string())?;
+        let reader = Reader::open(source, Options { encoding, ..Options::default() })?;
         state.handles.push(Some(Handle { reader, columns: Vec::new() }));
         Ok(state.handles.len() as u32)
     })
@@ -168,7 +224,7 @@ pub extern "C" fn dta_metadata(h: u32) -> *const u8 {
 #[no_mangle]
 pub extern "C" fn dta_value_labels(h: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
-        let sets = handle(state, h)?.reader.value_labels().map_err(|e| e.to_string())?;
+        let sets = handle(state, h)?.reader.value_labels()?;
         Ok(result(state, json::value_labels(&sets).into_bytes()))
     })
 }
@@ -177,7 +233,7 @@ pub extern "C" fn dta_value_labels(h: u32) -> *const u8 {
 #[no_mangle]
 pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
-        let chars = handle(state, h)?.reader.characteristics().map_err(|e| e.to_string())?;
+        let chars = handle(state, h)?.reader.characteristics()?;
         Ok(result(state, json::characteristics(&chars).into_bytes()))
     })
 }
@@ -223,7 +279,7 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
                 }
                 Ok(())
             })
-            .map_err(|e| e.to_string())?;
+            ?;
         Ok(n as f64)
     })
 }
@@ -403,7 +459,7 @@ pub unsafe extern "C" fn dta_write_strings(
     })
 }
 
-fn column(f: &[String], storage: dta::StorageType, data: WriteData) -> Result<WriteColumn, String> {
+fn column(f: &[String], storage: dta::StorageType, data: WriteData) -> Result<WriteColumn, Fail> {
     let [name, format, label, value_labels] = f else { return Err("expected four fields".into()) };
     Ok(WriteColumn {
         name: name.clone(),
@@ -536,7 +592,7 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
             characteristics,
             sort_order: state.sort_order,
         };
-        dta::write(&data, HostSink(file)).map_err(|e| e.to_string())?;
+        dta::write(&data, HostSink(file))?;
         Ok(1)
     })
 }

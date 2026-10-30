@@ -13,7 +13,7 @@ use std::io::Write;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
 use crate::threads::panic_message;
 use crate::missing::{self, DOUBLE_MISSING, FLOAT_MISSING, LONG_MISSING};
 use crate::reader::{Characteristic, ValueLabelSet};
@@ -184,11 +184,11 @@ impl<'a> Plan<'a> {
     fn new(data: &Dataset<'a>, threads: usize) -> Result<Plan<'a>> {
         let k = data.variables.len();
         if k > 32767 {
-            return Err(Error::new(format!("release 118 holds at most 32,767 variables, not {k}")));
+            return Err(Error::invalid(format!("release 118 holds at most 32,767 variables, not {k}")));
         }
         check_text("the data label", &data.label, 80, 320)?;
         if data.sort_order.iter().any(|&s| s >= k) {
-            return Err(Error::new("the sort order names a variable that does not exist"));
+            return Err(Error::invalid("the sort order names a variable that does not exist"));
         }
         let mut errors: Vec<Option<Error>> = data.variables.iter().map(|v| check_metadata(v).err()).collect();
         // What workers may see of each numeric column: no string closure,
@@ -213,7 +213,7 @@ impl<'a> Plan<'a> {
                 let j = next.fetch_add(1, Ordering::Relaxed);
                 let Some(&(i, fill, name, storage)) = numeric.get(j) else { return found };
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| check_numbers(name, storage, fill, nobs)))
-                    .unwrap_or_else(|p| Err(Error::new(format!("{name}: {}", panic_message(&*p)))));
+                    .unwrap_or_else(|p| Err(Error::new(format!("{name}: {}", panic_message(&*p))).of(ErrorKind::Internal)));
                 if let Err(e) = result {
                     found.push((i, e));
                 }
@@ -291,7 +291,7 @@ impl<'a> Plan<'a> {
         head.extend_from_slice(b"</label><timestamp>");
         let stamp = data.timestamp.as_bytes();
         if stamp.len() > 255 {
-            return Err(Error::new("the timestamp is too long"));
+            return Err(Error::invalid("the timestamp is too long"));
         }
         head.push(stamp.len() as u8);
         head.extend_from_slice(stamp);
@@ -430,7 +430,7 @@ impl<'a> Plan<'a> {
                 .count();
             if workers == 0 {
                 drop(guard);
-                return Err(Error::new("could not start a writer thread"));
+                return Err(Error::new("could not start a writer thread").of(ErrorKind::Internal));
             }
             let mut row = 0;
             let mut block_no = 0;
@@ -541,13 +541,13 @@ fn check_metadata(v: &WriteVariable) -> Result<()> {
     check_name(&v.name)?;
     check_text(&format!("the label of {}", v.name), &v.label, 80, VAR_LABEL_LEN - 1)?;
     if v.format.len() >= FORMAT_LEN {
-        return Err(Error::new(format!("the format of {} is too long", v.name)));
+        return Err(Error::invalid(format!("the format of {} is too long", v.name)));
     }
     if !v.value_labels.is_empty() {
         check_name(&v.value_labels)?;
     }
     if matches!(v.values, Values::Numbers(_)) && !v.storage.is_numeric() {
-        return Err(Error::new(format!("{} has numbers but storage {}", v.name, v.storage.name())));
+        return Err(Error::invalid(format!("{} has numbers but storage {}", v.name, v.storage.name())));
     }
     Ok(())
 }
@@ -558,7 +558,7 @@ fn plan_strings<'a>(i: usize, v: &WriteVariable<'a>, nobs: usize) -> Result<Stri
     // Text must be UTF-8 without NULs: readers stop a string at a NUL.
     let check = |(s, binary): (&[u8], bool), row: usize| {
         if !binary && (s.contains(&0) || std::str::from_utf8(s).is_err()) {
-            Err(Error::new(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
+            Err(Error::invalid(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
         } else {
             Ok(())
         }
@@ -568,7 +568,7 @@ fn plan_strings<'a>(i: usize, v: &WriteVariable<'a>, nobs: usize) -> Result<Stri
     let mut plan = StringPlan { storage: StorageType::StrL, strl_bytes: 0, strl_first: HashMap::default(), strl_rows: Vec::new() };
     if longest > STRN_MAX || strl {
         if nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
-            return Err(Error::new("too many rows or variables for strLs in release 118"));
+            return Err(Error::invalid("too many rows or variables for strLs in release 118"));
         }
         // Each distinct text is checked and counted once.
         let mut recent = RecentTexts::new();
@@ -687,7 +687,7 @@ impl Shared {
                 return Ok(());
             }
             if p.stop {
-                return Err(Error::new("the write was stopped"));
+                return Err(Error::new("the write was stopped").of(ErrorKind::Io));
             }
             p = self.block_done.wait(p).unwrap_or_else(std::sync::PoisonError::into_inner);
         }
@@ -732,7 +732,7 @@ impl Shared {
             match filled {
                 Ok(()) => p.done += 1,
                 Err(payload) => {
-                    p.failed = Some(Error::new(format!("a writer thread failed: {}", panic_message(&*payload))));
+                    p.failed = Some(Error::new(format!("a writer thread failed: {}", panic_message(&*payload))).of(ErrorKind::Internal));
                     p.stop = true;
                 }
             }
@@ -885,10 +885,10 @@ impl Bounds {
 /// An error unless `value` fits `storage`.
 fn check_value(name: &str, storage: StorageType, (value, code): (f64, u8), row: usize) -> Result<()> {
     if code > missing::LAST {
-        return Err(Error::new(format!("{} row {}: {} is not a missing code", name, row + 1, code)));
+        return Err(Error::invalid(format!("{} row {}: {} is not a missing code", name, row + 1, code)));
     }
     if !Bounds::of(storage).allows(value, code) {
-        return Err(Error::new(format!(
+        return Err(Error::invalid(format!(
             "{} row {}: {} does not fit storage type {}",
             name,
             row + 1,
@@ -907,13 +907,13 @@ fn check_name(name: &str) -> Result<()> {
     if ok {
         Ok(())
     } else {
-        Err(Error::new(format!("\"{name}\" is not a valid Stata name")))
+        Err(Error::invalid(format!("\"{name}\" is not a valid Stata name")))
     }
 }
 
 fn check_text(what: &str, text: &str, max_chars: usize, max_bytes: usize) -> Result<()> {
     if text.chars().count() > max_chars || text.len() > max_bytes || text.contains('\0') {
-        return Err(Error::new(format!("{what} is longer than {max_chars} characters or has a NUL")));
+        return Err(Error::invalid(format!("{what} is longer than {max_chars} characters or has a NUL")));
     }
     Ok(())
 }
@@ -947,8 +947,8 @@ fn value_labels(sets: &[ValueLabelSet]) -> Result<Vec<u8>> {
                 0 if l.value.fract() == 0.0 && (-2_147_483_647.0..=2_147_483_620.0).contains(&l.value) => {
                     l.value as i32
                 }
-                0 => return Err(Error::new(format!("value label {} in {} is not an integer Stata can label", l.value, set.name))),
-                missing::SYSTEM => return Err(Error::new(format!("{} labels `.`, which Stata does not allow", set.name))),
+                0 => return Err(Error::invalid(format!("value label {} in {} is not an integer Stata can label", l.value, set.name))),
+                missing::SYSTEM => return Err(Error::invalid(format!("{} labels `.`, which Stata does not allow", set.name))),
                 code => LONG_MISSING + (code - 1) as i32,
             };
             check_text(&format!("a label in {}", set.name), &l.text, 32000, 32000)?;
@@ -956,7 +956,7 @@ fn value_labels(sets: &[ValueLabelSet]) -> Result<Vec<u8>> {
         }
         entries.sort_by_key(|&(v, _)| v);
         if entries.windows(2).any(|w| w[0].0 == w[1].0) {
-            return Err(Error::new(format!("{} labels a value twice", set.name)));
+            return Err(Error::invalid(format!("{} labels a value twice", set.name)));
         }
         let mut text = Vec::new();
         let mut offsets = Vec::with_capacity(entries.len());
@@ -994,7 +994,7 @@ fn characteristics(chars: &[Characteristic]) -> Result<Vec<u8>> {
         }
         check_name(&c.name)?;
         if c.value.contains('\0') {
-            return Err(Error::new(format!("characteristic {}[{}] has a NUL", c.variable, c.name)));
+            return Err(Error::invalid(format!("characteristic {}[{}] has a NUL", c.variable, c.name)));
         }
         out.extend_from_slice(b"<ch>");
         out.extend_from_slice(&((2 * NAME_LEN + c.value.len() + 1) as u32).to_le_bytes());

@@ -507,6 +507,32 @@ each 0.x call to its 1.0 replacement.
 
 WebAssembly runs on one thread, so the npm package reads and writes on one thread. The R, Python and Julia packages use up to three on large files.
 
+## Errors
+
+Every error the package throws has a `code`, so you can act on what
+went wrong without matching its message:
+
+| `code` | means | class |
+|---|---|---|
+| `DTA_CORRUPT` | the file is damaged, or is not a .dta file | `Error` |
+| `DTA_TOO_LARGE` | the file is fine, but a value or read does not fit in memory | `Error` |
+| `DTA_IO` | reading the file, or writing the output, failed; `cause` holds what your `ReadAt` or sink threw | `Error` |
+| `DTA_INVALID` | an argument is wrong: an unknown encoding, or data that cannot be written | `Error`, `TypeError` or `RangeError` |
+| `DTA_OUT_OF_RANGE` | a variable or rows the file does not have | `RangeError` |
+| `DTA_CLOSED` | the reader was closed | `Error` |
+| `DTA_INTERNAL` | a bug in dta-parser; please report it | `Error` |
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+import type { DtaError } from "@jbearak/dta-parser";
+
+try {
+  openDtaFile("survey.dta").readColumns(["no_such_variable"]);
+} catch (e) {
+  console.log((e as DtaError).code);   // DTA_OUT_OF_RANGE
+}
+```
+
 ## Troubleshooting
 
 **"unsupported .dta release".** The file is not a `.dta` file, or its
@@ -557,7 +583,8 @@ From `@jbearak/dta-parser`:
 - `stataKey(cell)`, `stataKeys(column)`: Stata's sort order as numbers.
 - `formatValue(cell, format, labels?)`: show a value as its display
   format says.
-- Types: `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
+- Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
+  under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
   `StringColumn`, `Column`, `ValueLabels`, `Characteristic`, `Options`
   (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::cursor::{uint, until_nul, ByteOrder, Cursor};
 use crate::encoding::Encoding;
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
 use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
@@ -413,16 +413,17 @@ impl<S: Source> Reader<S> {
     fn check(&self, columns: &[usize], start: u64, count: u64) -> Result<usize> {
         let nvar = self.meta.variables.len();
         if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
-            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
+            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")).of(ErrorKind::OutOfRange));
         }
         if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
             return Err(Error::new(format!(
                 "rows {start} to {} are past the {} rows in the file",
                 start.saturating_add(count),
                 self.meta.nobs
-            )));
+            ))
+            .of(ErrorKind::OutOfRange));
         }
-        usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))
+        usize::try_from(count).map_err(|_| Error::new("too many rows for one read").of(ErrorKind::TooLarge))
     }
 
     /// A column with room for `rows`, so decoding a chunk never regrows it.
@@ -477,7 +478,7 @@ impl<S: Source> Reader<S> {
                 let len = entry.len as usize;
                 let room = len.saturating_mul(3);
                 if payload.try_reserve(len.saturating_sub(payload.len())).is_err() || bytes.try_reserve(room).is_err() {
-                    return Err(Error::new(format!("a strL of {len} bytes is too large to read here")));
+                    return Err(Error::new(format!("a strL of {len} bytes is too large to read here")).of(ErrorKind::TooLarge));
                 }
                 payload.resize(len, 0);
                 self.source.read_at(entry.offset, &mut payload)?;
@@ -882,7 +883,7 @@ impl ParallelRead<'_> {
             let finished = catch_unwind(AssertUnwindSafe(|| self.process(n, buf, each))).unwrap_or_else(|p| Finished {
                 buf: self.new_buf(),
                 upto: 0,
-                error: Some(Error::new(format!("a reader thread failed: {}", panic_message(&*p)))),
+                error: Some(Error::new(format!("a reader thread failed: {}", panic_message(&*p))).of(ErrorKind::Internal)),
             });
             shared.lock().finished.insert(n, finished);
             shared.arrived.notify_one();

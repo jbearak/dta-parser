@@ -1,9 +1,10 @@
 // @jbearak/dta-parser: read Stata .dta files, synchronously.
 
 import * as wasm from "./wasm";
+import { dtaError, isAllocationFailure, type DtaError, type ErrorCode } from "./errors";
 import type { EncodingName, ReadAt } from "./wasm";
 
-export type { EncodingName, ReadAt };
+export type { DtaError, EncodingName, ErrorCode, ReadAt };
 
 import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 
@@ -136,7 +137,7 @@ export class DtaReader {
   }
 
   private get open(): number {
-    if (this.handle === 0 || this.generation !== wasm.currentGeneration()) throw new Error("the file is closed");
+    if (this.handle === 0 || this.generation !== wasm.currentGeneration()) throw dtaError("DTA_CLOSED", "the file is closed");
     return this.handle;
   }
 
@@ -171,7 +172,7 @@ export class DtaReader {
   private index(column: number | string): number {
     const i = typeof column === "number" ? column : this.variables.findIndex((v) => v.name === column);
     if (!Number.isInteger(i) || i < 0 || i >= this.variables.length) {
-      throw new RangeError(`no variable ${JSON.stringify(column)}`);
+      throw dtaError("DTA_OUT_OF_RANGE", `no variable ${JSON.stringify(column)}`, undefined, RangeError);
     }
     return i;
   }
@@ -185,13 +186,19 @@ export class DtaReader {
     const start = range.start ?? 0;
     const count = range.count ?? this.info.nobs - start;
     if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 0 || start + count > this.info.nobs) {
-      throw new RangeError(`rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`);
+      throw dtaError("DTA_OUT_OF_RANGE", `rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`, undefined, RangeError);
     }
-    const out: Column[] = indices.map((i) =>
-      /^str/.test(this.variables[i].type)
-        ? { kind: "string", values: new Array<string | Uint8Array>(count) }
-        : { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) },
-    );
+    let out: Column[];
+    try {
+      out = indices.map((i) =>
+        /^str/.test(this.variables[i].type)
+          ? { kind: "string", values: new Array<string | Uint8Array>(count) }
+          : { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) },
+      );
+    } catch (e) {
+      if (isAllocationFailure(e)) throw dtaError("DTA_TOO_LARGE", `${count} rows of ${indices.length} variables do not fit in memory`, e);
+      throw e;
+    }
     for (let done = 0; done < count; ) {
       const n = wasm.read(this.open, indices, start + done, Math.min(BLOCK, count - done));
       out.forEach((column, k) => {
@@ -366,12 +373,12 @@ function packNumbers(values: readonly (number | Missing | null)[]): { values: Fl
 export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void): void {
   // Fields cross into the module separated by NULs, so none may hold one.
   const field = (text: string | undefined, what: string): string => {
-    if (text?.includes("\0")) throw new TypeError(`${what} contains a NUL`);
+    if (text?.includes("\0")) throw dtaError("DTA_INVALID", `${what} contains a NUL`, undefined, TypeError);
     return text ?? "";
   };
   const nobs = data.variables[0]?.values.length ?? 0;
   const parts: wasm.WritePart[] = data.variables.map((v) => {
-    if (v.values.length !== nobs) throw new RangeError(`${v.name} has ${v.values.length} values, not ${nobs}`);
+    if (v.values.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${v.values.length} values, not ${nobs}`, undefined, RangeError);
     const meta = [
       field(v.name, "a variable name"),
       field(v.format, `the format of ${v.name}`),
@@ -380,21 +387,21 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     ].join("\0");
     if (v.values instanceof Float64Array) {
       const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
-      if (storage === undefined) throw new TypeError(`${v.name}: a Float64Array cannot be ${v.type}`);
+      if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: a Float64Array cannot be ${v.type}`, undefined, TypeError);
       const missing = v.missing ?? new Uint8Array(nobs);
-      if (missing.length !== nobs) throw new RangeError(`${v.name} has ${missing.length} missing codes, not ${nobs}`);
+      if (missing.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${missing.length} missing codes, not ${nobs}`, undefined, RangeError);
       return { kind: "numbers", meta, storage, values: v.values, missing };
     }
     if (v.type === "strL" || (v.type === undefined && v.values.some(isText))) {
-      if (!v.values.every(isText)) throw new TypeError(`${v.name} mixes strings and numbers`);
+      if (!v.values.every(isText)) throw dtaError("DTA_INVALID", `${v.name} mixes strings and numbers`, undefined, TypeError);
       const values = v.values as readonly (string | Uint8Array)[];
       const strL = v.type === "strL" || values.some((x) => x instanceof Uint8Array);
       const binary = strL ? Uint8Array.from(values, (x) => (x instanceof Uint8Array ? 1 : 0)) : undefined;
       return { kind: "strings", meta, ...packTexts(values), binary };
     }
     const storage = STORAGE[v.type ?? "double"];
-    if (storage === undefined) throw new TypeError(`${v.name}: unknown type ${v.type}`);
-    if (v.values.some(isText)) throw new TypeError(`${v.name} is ${v.type} but holds strings`);
+    if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: unknown type ${v.type}`, undefined, TypeError);
+    if (v.values.some(isText)) throw dtaError("DTA_INVALID", `${v.name} is ${v.type} but holds strings`, undefined, TypeError);
     return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
   });
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
