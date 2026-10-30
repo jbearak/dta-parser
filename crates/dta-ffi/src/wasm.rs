@@ -139,7 +139,7 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
             _ => return Err("unknown encoding".into()),
         };
         let source = HostFile { id: file, len: len as u64 };
-        let reader = Reader::open(source, Options { encoding }).map_err(|e| e.to_string())?;
+        let reader = Reader::open(source, Options { encoding, ..Options::default() }).map_err(|e| e.to_string())?;
         state.handles.push(Some(Handle { reader, columns: Vec::new() }));
         Ok(state.handles.len() as u32)
     })

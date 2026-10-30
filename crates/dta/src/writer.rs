@@ -116,8 +116,19 @@ pub struct WriteOptions {
 }
 
 impl Default for WriteOptions {
+    /// With `DTA_TEST_SMALL_CHUNKS=1` in the environment, blocks and
+    /// slabs are tiny and every write may go parallel (see [`Options`]).
+    ///
+    /// [`Options`]: crate::Options
     fn default() -> Self {
-        WriteOptions { threads: 0, parallel_bytes: 16 << 20, block_bytes: 8 << 20, slab_bytes: 256 << 10, panic_on_slab: None }
+        let small = crate::threads::small_for_tests();
+        WriteOptions {
+            threads: 0,
+            parallel_bytes: if small { 0 } else { 16 << 20 },
+            block_bytes: if small { 4096 } else { 8 << 20 },
+            slab_bytes: if small { 512 } else { 256 << 10 },
+            panic_on_slab: None,
+        }
     }
 }
 

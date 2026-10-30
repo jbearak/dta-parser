@@ -157,7 +157,7 @@ pub unsafe extern "C" fn dta_open(path_: *const c_char, encoding: *const c_char,
             }
         };
         let source = FileSource::open(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-        let reader = Reader::open(source, Options { encoding }).map_err(|e| e.to_string())?;
+        let reader = Reader::open(source, Options { encoding, ..Options::default() }).map_err(|e| e.to_string())?;
         Ok(Box::into_raw(Box::new(DtaFile { reader })))
     })
 }

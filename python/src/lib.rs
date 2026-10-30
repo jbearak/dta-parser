@@ -8,6 +8,9 @@
 
 use std::ffi::c_char;
 use std::slice;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi;
@@ -29,7 +32,7 @@ fn open(path: &str, encoding: Option<&str>) -> PyResult<Reader<FileSource>> {
         None => Encoding::default(),
     };
     let source = FileSource::open(path).map_err(|e| fail(format!("{path}: {e}")))?;
-    Reader::open(source, Options { encoding }).map_err(|e| fail(format!("{path}: {e}")))
+    Reader::open(source, Options { encoding, ..Options::default() }).map_err(|e| fail(format!("{path}: {e}")))
 }
 
 /// The header, descriptors, value labels and characteristics of a file.
@@ -89,49 +92,124 @@ fn read(
         let vars = &reader.metadata().variables;
         cols.iter().map(|&c| vars.get(c).map(|v| v.storage)).collect::<Option<_>>().ok_or_else(|| fail("no such column"))?
     };
-    let mut flags = vec![0u8; cols.len()];
+    // The largest missing code per column; workers raise it.
+    let flags: Vec<AtomicU8> = cols.iter().map(|_| AtomicU8::new(0)).collect();
     let mut recent: Vec<Recent> = cols.iter().map(|_| Recent::new()).collect();
-    // A Python error raised while making strings, kept to re-raise.
-    let mut raised: Option<PyErr> = None;
+    // A Python error raised while making strings or by a signal handler,
+    // kept to re-raise.
+    let raised: Mutex<Option<PyErr>> = Mutex::new(None);
+    // Numbers go straight into their arrays, on the reader's workers
+    // when it uses them: the arrays are _read.py's, not yet visible to
+    // other Python code, and each chunk's rows are its own.
+    let each = |k: usize, first: usize, column: &Column| {
+        let Column::Numbers { values, missing } = column else { return Ok(false) };
+        let (a, b) = targets[k];
+        unsafe {
+            put_numbers(storage[k], a, first, values);
+            // The codes array starts as zeros; a missing value's code is
+            // its own.
+            slice::from_raw_parts_mut((b as *mut u8).add(first), missing.len()).copy_from_slice(missing);
+        }
+        let largest = missing.iter().copied().max().unwrap_or(0);
+        if largest > 0 {
+            flags[k].fetch_max(largest, Ordering::Relaxed);
+        }
+        Ok(true)
+    };
+    // When workers fill the arrays, touch each of their pages here first:
+    // page faults taken by several threads at once cost more CPU in the
+    // kernel than the same faults taken by one (wide.dta at four
+    // threads: 1.25x the CPU of one thread without this).
+    if reader.threads_for(&cols, count, None) > 1 {
+        let rows = usize::try_from(count).unwrap_or(0);
+        for (k, &(a, b)) in targets.iter().enumerate() {
+            if storage[k].is_numeric() {
+                unsafe {
+                    touch(a, rows * array_width(storage[k]));
+                    touch(b, rows);
+                }
+            }
+        }
+    }
+    let mut last_poll = Instant::now();
     let result = py.detach(|| {
-        reader.read_chunks(&cols, start, count, None, |first, chunk| {
-            for (k, column) in chunk.iter().enumerate() {
-                let (a, b) = targets[k];
-                match column {
-                    Column::Numbers { values, missing } => unsafe {
-                        put_numbers(storage[k], a, first, values);
-                        let codes = slice::from_raw_parts_mut((b as *mut u8).add(first), missing.len());
-                        for (i, &m) in missing.iter().enumerate() {
-                            if m != 0 {
-                                codes[i] = m;
-                                flags[k] = flags[k].max(m);
+        reader.read_chunks_with(
+            &cols,
+            start,
+            count,
+            None,
+            &each,
+            |first, chunk, taken, upto| {
+                for (k, column) in chunk.iter().enumerate().take(upto) {
+                    if taken[k] {
+                        continue;
+                    }
+                    match column {
+                        Column::Numbers { .. } => {
+                            each(k, first, column)?;
+                        }
+                        Column::Strings { binary, .. } => {
+                            let out = targets[k].0 as *mut *mut ffi::PyObject;
+                            let made = Python::attach(|py| unsafe { put_strings(py, out, first, column, &mut recent[k]) });
+                            if let Err(e) = made {
+                                *raised.lock().unwrap_or_else(|p| p.into_inner()) = Some(e);
+                                return Err(dta::Error::new("a string could not be made"));
                             }
-                        }
-                    },
-                    Column::Strings { binary, .. } => {
-                        let out = a as *mut *mut ffi::PyObject;
-                        let made = Python::attach(|py| unsafe { put_strings(py, out, first, column, &mut recent[k]) });
-                        if let Err(e) = made {
-                            raised = Some(e);
-                            return Err(dta::Error::new("a string could not be made"));
-                        }
-                        if binary.contains(&true) {
-                            flags[k] = 1;
+                            if binary.contains(&true) {
+                                flags[k].fetch_max(1, Ordering::Relaxed);
+                            }
                         }
                     }
                 }
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+            // Signals (Ctrl-C), checked at most every 100 ms: taking the
+            // GIL can wait on other Python threads.
+            || {
+                if last_poll.elapsed() < Duration::from_millis(100) {
+                    return Ok(());
+                }
+                last_poll = Instant::now();
+                match Python::attach(|py| py.check_signals()) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        *raised.lock().unwrap_or_else(|p| p.into_inner()) = Some(e);
+                        Err(dta::Error::new("interrupted"))
+                    }
+                }
+            },
+        )
     });
     for r in &mut recent {
         unsafe { r.clear() };
     }
-    if let Some(e) = raised {
+    if let Some(e) = raised.into_inner().unwrap_or_else(|p| p.into_inner()) {
         return Err(e);
     }
     result.map_err(|e| fail(format!("{path}: {e}")))?;
-    Ok(flags)
+    Ok(flags.into_iter().map(AtomicU8::into_inner).collect())
+}
+
+/// Bytes per value of a numeric array of storage type `t` (see `put_numbers`).
+fn array_width(t: StorageType) -> usize {
+    match t {
+        StorageType::Byte => 1,
+        StorageType::Int => 2,
+        StorageType::Long | StorageType::Float => 4,
+        _ => 8,
+    }
+}
+
+/// Write each 4 KiB page of the `len` bytes at `addr` once, keeping its
+/// contents, so that later writes take no page fault.
+///
+/// # Safety
+/// `addr` holds `len` writable bytes no one else is using.
+unsafe fn touch(addr: usize, len: usize) {
+    let p = addr as *mut u8;
+    for at in (0..len).step_by(4096) {
+        std::ptr::write_volatile(p.add(at), std::ptr::read_volatile(p.add(at)));
+    }
 }
 
 /// Copy a chunk's numbers into the array at `addr` from row `first`, in
@@ -153,8 +231,14 @@ unsafe fn put_numbers(storage: StorageType, addr: usize, first: usize, values: &
         StorageType::Byte => put!(i8, 0),
         StorageType::Int => put!(i16, 0),
         StorageType::Long => put!(i32, 0),
-        StorageType::Float => put!(f32, f32::NAN),
-        _ => put!(f64, f64::NAN),
+        // NaN stays NaN in a float: a plain conversion, or a copy.
+        StorageType::Float => {
+            let out = slice::from_raw_parts_mut((addr as *mut f32).add(first), values.len());
+            for (o, &v) in out.iter_mut().zip(values) {
+                *o = v as f32;
+            }
+        }
+        _ => slice::from_raw_parts_mut((addr as *mut f64).add(first), values.len()).copy_from_slice(values),
     }
 }
 

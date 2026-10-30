@@ -1,4 +1,4 @@
-//! Time one task with 1, 2, 4 and 8 threads (plan 0007): wall time, user
+//! Time one task with 1, 2, 4 and 8 threads and the default (plan 0007): wall time, user
 //! and system CPU time of the task alone (getrusage before and after),
 //! the median of five runs.
 //!
@@ -35,8 +35,7 @@ fn median(mut runs: Vec<(f64, f64, f64)>) -> (f64, f64, f64) {
 }
 
 fn read(path: &str, threads: usize, columns: Option<usize>) {
-    let mut r = Reader::open(FileSource::open(path).unwrap(), Options::default()).unwrap();
-    let _ = threads; // reads gain threads in the next stage
+    let mut r = Reader::open(FileSource::open(path).unwrap(), Options { threads, ..Options::default() }).unwrap();
     let meta = r.metadata().clone();
     let k = columns.unwrap_or(meta.variables.len()).min(meta.variables.len());
     let cols: Vec<usize> = (0..k).collect();
@@ -93,7 +92,8 @@ fn run(path: &str, task: &str) {
     println!("{path} {task}");
     println!("threads  wall s  user s  sys s  cpu/1-thread  speedup");
     let mut base = None;
-    for threads in [1, 2, 4, 8] {
+    // 0 is the default count, with its limits.
+    for threads in [1, 2, 4, 8, 0] {
         let runs = (0..5)
             .map(|_| {
                 measure(|| match (task, &loaded) {
@@ -105,7 +105,8 @@ fn run(path: &str, task: &str) {
             .collect();
         let (wall, user, sys) = median(runs);
         let (w1, c1) = *base.get_or_insert((wall, user + sys));
-        println!("{threads:>7}  {wall:>6.3}  {user:>6.3}  {sys:>5.3}  {:>12.2}  {:>7.2}", (user + sys) / c1, w1 / wall);
+        let label = if threads == 0 { "default".to_string() } else { threads.to_string() };
+        println!("{label:>7}  {wall:>6.3}  {user:>6.3}  {sys:>5.3}  {:>12.2}  {:>7.2}", (user + sys) / c1, w1 / wall);
     }
     let _ = std::fs::remove_file(out);
 }

@@ -15,7 +15,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use dta::{
     missing, Characteristic, Column, Dataset, Encoding, FileSource, Options, Reader, StorageType, ValueLabel,
-    ValueLabelSet, Values, Variable, WriteVariable,
+    ValueLabelSet, Values, Variable, WriteOptions, WriteVariable,
 };
 
 type Sexp = *mut c_void;
@@ -176,7 +176,7 @@ unsafe fn c_str(s: *const c_char) -> Option<String> {
     (!s.is_null()).then(|| CStr::from_ptr(s).to_string_lossy().into_owned())
 }
 
-fn open(path: &str, encoding: Option<String>) -> Res<Reader<FileSource>> {
+fn open(path: &str, encoding: Option<String>, threads: usize) -> Res<Reader<FileSource>> {
     let encoding = match encoding {
         Some(name) => {
             Encoding::from_name(&name).ok_or_else(|| Fail::Message(format!("unknown encoding \"{name}\"")))?
@@ -184,7 +184,7 @@ fn open(path: &str, encoding: Option<String>) -> Res<Reader<FileSource>> {
         None => Encoding::default(),
     };
     let source = FileSource::open(path).map_err(|e| Fail::Message(format!("{path}: {e}")))?;
-    Reader::open(source, Options { encoding }).map_err(|e| Fail::Message(format!("{path}: {e}")))
+    Reader::open(source, Options { encoding, threads, ..Options::default() }).map_err(|e| Fail::Message(format!("{path}: {e}")))
 }
 
 /// Run `f`; 0 if it succeeded, 1 with a message in `err`, 2 if an R
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn dtaparser_meta(
     let path = c_str(path).unwrap_or_default();
     let encoding = c_str(encoding);
     guard(err, err_len, || {
-        let mut reader = open(&path, encoding)?;
+        let mut reader = open(&path, encoding, 1)?;
         let notes = reader.notes()?;
         let chars = reader.characteristics()?;
         let sets = reader.value_labels()?;
@@ -333,7 +333,23 @@ fn fill(x: Sexp, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
         }
         return;
     }
-    let dst = unsafe { std::slice::from_raw_parts_mut(REAL(x).add(first), values.len()) };
+    fill_doubles(Doubles(unsafe { REAL(x) }), kind, first, values, missing);
+}
+
+/// The data of a double column, taken on the R thread before a read so
+/// that workers can fill it without calling R.
+#[derive(Clone, Copy)]
+struct Doubles(*mut f64);
+
+// SAFETY: workers write disjoint rows (one chunk each) of a vector that
+// stays alive and in place for the read: it is reachable from `holder`,
+// R runs no code meanwhile, and only integer columns are ever replaced.
+unsafe impl Send for Doubles {}
+unsafe impl Sync for Doubles {}
+
+/// Fill rows `first..` of the double column at `x` of kind `kind`.
+fn fill_doubles(x: Doubles, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
+    let dst = unsafe { std::slice::from_raw_parts_mut(x.0.add(first), values.len()) };
     for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
         *d = match (kind, m) {
             (_, 1..) => r_double(v, m),
@@ -439,6 +455,7 @@ pub unsafe extern "C" fn dtaparser_read(
     n_max: f64,
     encoding: *const c_char,
     mode: c_int,
+    threads: c_int,
     holder: Sexp,
     err: *mut c_char,
     err_len: usize,
@@ -457,7 +474,7 @@ pub unsafe extern "C" fn dtaparser_read(
             .iter()
             .map(|&i| usize::try_from(i).map_err(|_| Fail::Message("negative column index".into())))
             .collect::<Res<_>>()?;
-        let mut reader = open(&path, encoding)?;
+        let mut reader = open(&path, encoding, threads.max(0) as usize)?;
         let sets = reader.value_labels()?;
         let meta = reader.metadata().clone();
         // The rows wanted, clamped to the file (R checked they are >= 0).
@@ -491,14 +508,50 @@ pub unsafe extern "C" fn dtaparser_read(
             };
             targets.push((target, var));
         }
-        // A failure inside the chunk callback, kept so an R error stays one.
-        let mut failed: Option<Fail> = None;
-        let result = reader.read_chunks(&cols, start, count, None, |first, chunk| {
+        // Double columns are filled by the reader's workers; integer
+        // columns (which may need promoting, an R allocation) and strings
+        // on this thread.
+        let doubles: Vec<Option<(Doubles, Kind)>> = targets
+            .iter()
+            .map(|(t, _)| match t {
+                Target::Numbers(x, kind, _) if !matches!(kind, Kind::Integer) => Some((Doubles(unsafe { REAL(*x) }), *kind)),
+                _ => None,
+            })
+            .collect();
+        // When workers fill them, touch each page of the double columns
+        // here first: page faults taken by several threads at once cost
+        // more CPU in the kernel than the same faults taken by one
+        // (wide.dta at four threads: 1.24x the CPU of one thread without
+        // this, 1.08x with it).
+        let parallel = reader.threads_for(&cols, count, None) > 1;
+        for (x, _) in doubles.iter().flatten().filter(|_| parallel) {
+            let v = unsafe { std::slice::from_raw_parts_mut(x.0, nobs) };
+            for page in v.chunks_mut(512) {
+                page[0] = 0.0;
+            }
+        }
+        let each = |k: usize, first: usize, column: &Column| {
+            Ok(match (doubles[k], column) {
+                (Some((x, kind)), Column::Numbers { values, missing }) => {
+                    fill_doubles(x, kind, first, values, missing);
+                    true
+                }
+                _ => false,
+            })
+        };
+        let poll = || {
             if unsafe { dtaparser_interrupted() } != 0 {
-                failed = Some(Fail::Message("interrupted".into()));
                 return Err(dta::Error::new("interrupted"));
             }
-            for (k, ((target, var), column)) in targets.iter_mut().zip(chunk).enumerate() {
+            Ok(())
+        };
+        // A failure inside the chunk callback, kept so an R error stays one.
+        let mut failed: Option<Fail> = None;
+        let result = reader.read_chunks_with(&cols, start, count, None, &each, |first, chunk, taken, upto| {
+            for (k, ((target, var), column)) in targets.iter_mut().zip(chunk).enumerate().take(upto) {
+                if taken[k] {
+                    continue;
+                }
                 let step = match (target, column) {
                     (Target::Numbers(x, kind, set), Column::Numbers { values, missing }) => {
                         let promoted = if has_letters(*kind, missing) {
@@ -522,7 +575,7 @@ pub unsafe extern "C" fn dtaparser_read(
                 }
             }
             Ok(())
-        });
+        }, poll);
         match (result, failed) {
             (_, Some(fail)) => return Err(fail),
             (Err(e), None) => return Err(e.into()),
@@ -880,7 +933,13 @@ unsafe fn r_strings<'a>(x: Sexp) -> Vec<&'a str> {
 /// # Safety
 /// `spec` is the list save_dta builds; `path` a NUL-terminated string.
 #[no_mangle]
-pub unsafe extern "C" fn dtaparser_write(path: *const c_char, spec: Sexp, err: *mut c_char, err_len: usize) -> c_int {
+pub unsafe extern "C" fn dtaparser_write(
+    path: *const c_char,
+    spec: Sexp,
+    threads: c_int,
+    err: *mut c_char,
+    err_len: usize,
+) -> c_int {
     let path = c_str(path).unwrap_or_default();
     guard(err, err_len, || {
         let elt = |i: isize| unsafe { VECTOR_ELT(spec, i) };
@@ -985,7 +1044,8 @@ pub unsafe extern "C" fn dtaparser_write(path: *const c_char, spec: Sexp, err: *
             sort_order,
         };
         let file = std::fs::File::create(&path).map_err(|e| Fail::Message(format!("{path}: {e}")))?;
-        if let Err(e) = dta::write(&data, file) {
+        let options = WriteOptions { threads: threads.max(0) as usize, ..WriteOptions::default() };
+        if let Err(e) = dta::write_with(&data, file, &options) {
             let _ = std::fs::remove_file(&path);
             return Err(Fail::Message(format!("{path}: {e}")));
         }

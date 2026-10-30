@@ -21,6 +21,6 @@ pub use encoding::Encoding;
 pub use error::{Error, Result};
 pub use header::{Metadata, Variable};
 pub use reader::{Characteristic, Column, Options, Reader, ValueLabel, ValueLabelSet};
-pub use source::{Bytes, FileSource, Source};
+pub use source::{Bytes, FileSource, SharedSource, Source};
 pub use types::StorageType;
 pub use writer::{write, write_with, Dataset, Values, WriteOptions, WriteVariable, BLOCK};
