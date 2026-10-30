@@ -22,10 +22,13 @@ TypeScript, with one implementation of the format underneath all four.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
   each language calls directly; [bench/RESULTS.md](bench/RESULTS.md)
   compares it with haven, readstata13, pandas, pyreadstat,
-  ReadStatTables.jl and @irbisadm/statfmt.
+  ReadStatTables.jl, StatFiles.jl and @irbisadm/statfmt.
 
-*Benchmark chart: to come with the rewritten
-[bench/RESULTS.md](bench/RESULTS.md).*
+![Time of the other readers over ours on the NSFG and DHS files](bench/charts/headline.svg)
+
+*The other readers' time over ours, per language, on the 36 NSFG and 10
+DHS files (geometric mean; right of 1× means ours is faster). Details
+in [bench/RESULTS.md](bench/RESULTS.md).*
 
 ## Packages
 

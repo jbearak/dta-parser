@@ -57,6 +57,12 @@ function json_value(s, i)
 end
 
 function json_string(s, i)
+    # Most strings have no escapes: copy them in one go.
+    j = i + 1
+    while (c = codeunit(s, j)) != UInt8('"') && c != UInt8('\\')
+        j += 1
+    end
+    c == UInt8('"') && return GC.@preserve(s, unsafe_string(pointer(s, i + 1), j - i - 1)), j + 1
     io = IOBuffer()
     i += 1
     while true

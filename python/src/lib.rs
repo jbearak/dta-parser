@@ -172,8 +172,10 @@ impl Recent {
     const SLOTS: usize = 1024;
     const LONGEST: usize = 64;
 
+    /// Empty until the first string: every column gets one, and 32 KiB
+    /// each came to about 100 MB on a file of 3,000 numeric variables.
     fn new() -> Self {
-        Recent { slots: vec![(0, Vec::new()); Self::SLOTS], lookups: 0, hits: 0 }
+        Recent { slots: Vec::new(), lookups: 0, hits: 0 }
     }
 
     /// A new reference to a `str` of `b`, or NULL with a Python error set.
@@ -186,6 +188,9 @@ impl Recent {
             return make();
         }
         self.lookups += 1;
+        if self.slots.is_empty() {
+            self.slots = vec![(0, Vec::new()); Self::SLOTS];
+        }
         let slot = &mut self.slots[hash(b) % Self::SLOTS];
         if slot.0 != 0 && slot.1 == b {
             self.hits += 1;

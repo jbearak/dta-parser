@@ -1,0 +1,8 @@
+{
+  "name": "dta-parser-bench",
+  "private": true,
+  "description": "Benchmark-only dependencies: the other npm .dta reader",
+  "dependencies": {
+    "@irbisadm/statfmt": "0.1.1"
+  }
+}

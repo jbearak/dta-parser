@@ -112,7 +112,8 @@ pub struct Characteristic {
 /// The bits of 2^333.
 const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 
-/// Rows are read this many bytes at a time.
+/// Rows are read this many bytes at a time, and decoded this many bytes
+/// at a time.
 const CHUNK: usize = 8 << 20;
 
 /// The strL section is scanned through a window this large.
@@ -170,7 +171,9 @@ impl<S: Source> Reader<S> {
     /// Read `count` rows starting at row `start` of the variables at
     /// `columns` (indices into the variable list, in any order).
     pub fn read(&mut self, columns: &[usize], start: u64, count: u64) -> Result<Vec<Column>> {
-        let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
+        // Check the request before reserving room for it.
+        let rows = self.check(columns, start, count)?;
+        let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows)).collect();
         self.read_chunks(columns, start, count, None, |_, chunk| {
             for (all, part) in out.iter_mut().zip(chunk) {
                 all.append(part);
@@ -198,18 +201,7 @@ impl<S: Source> Reader<S> {
         budget: Option<usize>,
         mut f: impl FnMut(usize, &[Column]) -> Result<()>,
     ) -> Result<u64> {
-        let nvar = self.meta.variables.len();
-        if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
-            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
-        }
-        if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
-            return Err(Error::new(format!(
-                "rows {start} to {} are past the {} rows in the file",
-                start.saturating_add(count),
-                self.meta.nobs
-            )));
-        }
-        let count = usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))?;
+        let count = self.check(columns, start, count)?;
         if count == 0 {
             return Ok(0);
         }
@@ -229,11 +221,13 @@ impl<S: Source> Reader<S> {
                 _ => 9,
             })
             .sum();
-        let mut rows_per_chunk = (CHUNK / self.row_len.max(1)).max(1);
+        // A byte decodes to 9 bytes (a double and a missing code), so size
+        // chunks by whichever is larger, the rows or their decoding.
+        let mut rows_per_chunk = (CHUNK / self.row_len.max(decoded_row).max(1)).max(1);
         if let Some(budget) = budget {
             rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
         }
-        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
+        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows_per_chunk.min(count))).collect();
         let mut refs: Vec<[u8; 8]> = Vec::new();
         let mut buf = vec![0u8; rows_per_chunk.min(count) * self.row_len];
         let mut done = 0;
@@ -279,11 +273,29 @@ impl<S: Source> Reader<S> {
         Ok(done as u64)
     }
 
-    fn empty_column(&self, c: usize) -> Column {
+    /// The number of rows `count` as a usize, or an error if a column or
+    /// a row of the request is not in the file.
+    fn check(&self, columns: &[usize], start: u64, count: u64) -> Result<usize> {
+        let nvar = self.meta.variables.len();
+        if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
+            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
+        }
+        if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
+            return Err(Error::new(format!(
+                "rows {start} to {} are past the {} rows in the file",
+                start.saturating_add(count),
+                self.meta.nobs
+            )));
+        }
+        usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))
+    }
+
+    /// A column with room for `rows`, so decoding a chunk never regrows it.
+    fn empty_column(&self, c: usize, rows: usize) -> Column {
         if self.meta.variables[c].storage.is_numeric() {
-            Column::Numbers { values: Vec::new(), missing: Vec::new() }
+            Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) }
         } else {
-            Column::Strings { bytes: Vec::new(), ends: Vec::new(), binary: Vec::new() }
+            Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() }
         }
     }
 

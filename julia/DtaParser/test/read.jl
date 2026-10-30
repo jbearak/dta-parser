@@ -90,3 +90,18 @@ end
     write(notdta, "not a dta file")
     @test_throws DtaParser.DtaError read_dta(notdta)
 end
+
+@testset "metadata JSON strings, with and without escapes" begin
+    doc = DtaParser.parse_json("""{"plain": "a b", "esc": "say \\"hi\\"\\n\\u00e9", "utf8": "café", "empty": ""}""")
+    @test doc["plain"] == "a b"
+    @test doc["esc"] == "say \"hi\"\né"
+    @test doc["utf8"] == "café"
+    @test doc["empty"] == ""
+    # Labels with quotes and accents come through read_meta.
+    path = joinpath(mktempdir(), "labels.dta")
+    write_dta(path, (x=[1.0],); label="the \"data\" café", column_labels=Dict(:x => "x \\ y"))
+    m = read_meta(path)
+    @test m["label"] == "the \"data\" café"
+    @test m["columns"][1]["label"] == "x \\ y"
+    @test m["columns"][1]["name"] == "x"
+end

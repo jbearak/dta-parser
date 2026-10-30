@@ -61,6 +61,40 @@ def test_metadata_is_in_attrs():
     assert list(meta["columns"]) == list(df.columns)
 
 
+def test_derived_frames_share_the_metadata():
+    # pandas deep-copies attrs for every column and frame it derives;
+    # wide files made that cost milliseconds per column.
+    df = read_dta(FIXTURES / "haven_118.dta")
+    meta = df.attrs["dta"]
+    assert df["num"].attrs["dta"] is meta
+    assert df.iloc[:2].attrs["dta"] is meta
+    own = df.iloc[:2].copy()
+    own.attrs["dta"] = meta.copy()
+    own.attrs["dta"]["columns"]["num"]["label"] = "changed"
+    assert meta["columns"]["num"]["label"] == "A double with extended missing values"
+    assert own.attrs["dta"]["columns"]["num"]["label"] == "changed"
+
+
+def test_many_numeric_columns_take_little_memory_beyond_the_frame(tmp_path):
+    # Each column used to get a 32 KiB string cache, strings or not: 64 MB
+    # for these 2,000 byte variables of 100 rows.
+    import subprocess
+    import sys
+
+    path = tmp_path / "wide.dta"
+    dp.write_dta(pd.DataFrame({f"v{k}": np.arange(100, dtype=np.int8) for k in range(2000)}), path)
+    code = (
+        "import resource, sys, dta_parser as dp\n"
+        "before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
+        "dp.read_dta(sys.argv[1])\n"
+        "after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
+        "print((after - before) / (1 if sys.platform == 'darwin' else 1 / 1024))\n"
+    )
+    grown = float(subprocess.run([sys.executable, "-c", code, str(path)], capture_output=True, text=True,
+                                 check=True).stdout)
+    assert grown < 30e6, f"peak memory grew {grown / 1e6:.0f} MB"
+
+
 def test_read_meta_reads_no_data():
     meta = read_meta(FIXTURES / "haven_118.dta")
     assert meta["nobs"] == 6

@@ -378,7 +378,8 @@ Each variable:
 | field | meaning |
 |---|---|
 | `name` | 1 to 32 letters, digits or `_`, not starting with a digit |
-| `values` | numbers, with `null` or a `MISSING` value for missing; or strings, among which a `Uint8Array` is a binary strL |
+| `values` | numbers, with `null` or a `MISSING` value for missing; or strings, among which a `Uint8Array` is a binary strL; or a `Float64Array`, as a `NumberColumn` holds them |
+| `missing` | with a `Float64Array`: each value's missing code, as `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a` to `.z`) |
 | `type` | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` (the default) for numbers; for strings, leave it out or give `"strL"` to write strL whatever the length |
 | `format` | display format such as `"%9.2f"` or `"%td"`; default the type's |
 | `label` | variable label |
@@ -400,18 +401,17 @@ below does this.
 ### Copy a file, keeping its labels
 
 ```ts
-import { missingValue, type Missing, type ValueLabels, type WriteVariable } from "@jbearak/dta-parser";
+import { type ValueLabels, type WriteVariable } from "@jbearak/dta-parser";
 import { openDtaFile, writeDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
 const columns = r.readColumns(r.variables.map((_, i) => i));
 const variables: WriteVariable[] = r.variables.map((v, i) => {
   const c = columns[i];
-  const values = c.kind === "number"
-    ? Array.from(c.values, (x, k) => (c.missing[k] ? missingValue(c.missing[k]) : x))
-    : (c.values as string[]);
-  const type = c.kind === "number" ? (v.type as WriteVariable["type"]) : undefined;
-  return { name: v.name, type, format: v.format, label: v.label, valueLabels: v.valueLabels, values };
+  const meta = { name: v.name, format: v.format, label: v.label, valueLabels: v.valueLabels };
+  return c.kind === "number"
+    ? { ...meta, type: v.type as WriteVariable["type"], values: c.values, missing: c.missing }
+    : { ...meta, values: c.values };
 });
 const valueLabels: Record<string, ValueLabels> = {};
 for (const v of r.variables) {

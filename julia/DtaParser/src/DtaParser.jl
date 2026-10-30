@@ -19,5 +19,6 @@ include("column.jl")
 include("table.jl")
 include("read.jl")
 include("write.jl")
+include("precompile.jl")
 
 end

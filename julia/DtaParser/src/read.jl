@@ -96,13 +96,39 @@ function read_rows!(f::File, cols::Vector{UInt32}, start::Int, count::Int, build
     n
 end
 
+# One value label set from the JSON, and one column's metadata: loops in
+# functions of their own, which run several times faster than generators
+# over the JSON's untyped values.
+function label_set(labels)
+    set = Dict{Float64,String}()
+    sizehint!(set, length(labels))
+    for pair in labels
+        set[stata_key(pair[1])] = pair[2]
+    end
+    set
+end
+
+function column_meta(v)
+    d = Dict{String,Any}()
+    d["label"] = v["label"]
+    d["format"] = v["format"]
+    d["storage"] = v["type"]
+    d["value_labels"] = v["valueLabels"]
+    d
+end
+
 # The metadata JSON, as table and column metadata.
 function metadata_of(doc)
-    vars = doc["variables"]
-    names = [Symbol(v["name"]) for v in vars]
+    vars = doc["variables"]::Vector{Any}
+    # Loops over indices: a comprehension or zip over the JSON's Vector{Any}
+    # left Base code to compile on the first call (about 40 ms).
+    names = Vector{Symbol}(undef, length(vars))
+    for i in eachindex(vars)
+        names[i] = Symbol(vars[i]["name"])
+    end
     sets = Dict{String,Dict{Float64,String}}()
     for s in doc["valueLabels"]
-        sets[s["name"]] = Dict{Float64,String}(stata_key(v) => text for (v, text) in s["labels"])
+        sets[s["name"]] = label_set(s["labels"])
     end
     meta = Dict{String,Any}(
         "label" => doc["label"],
@@ -115,10 +141,11 @@ function metadata_of(doc)
         "sorted_by" => [names[Int(i)+1] for i in doc["sortedBy"]],
         "value_labels" => sets,
     )
-    colmeta = Dict{Symbol,Dict{String,Any}}(
-        Symbol(v["name"]) => Dict{String,Any}(
-            "label" => v["label"], "format" => v["format"], "storage" => v["type"], "value_labels" => v["valueLabels"])
-        for v in vars)
+    colmeta = Dict{Symbol,Dict{String,Any}}()
+    sizehint!(colmeta, length(vars))
+    for i in eachindex(vars)
+        colmeta[names[i]] = column_meta(vars[i])
+    end
     names, meta, colmeta
 end
 
@@ -133,7 +160,7 @@ function read_meta(path::AbstractString; encoding=nothing)
     doc = with_file(f -> parse_json(meta_json(f)), path, encoding)
     names, meta, colmeta = metadata_of(doc)
     meta["nrows"] = Int(doc["nobs"])
-    meta["columns"] = [merge(Dict{String,Any}("name" => String(n)), colmeta[n]) for n in names]
+    meta["columns"] = [(c = colmeta[n]; c["name"] = String(n); c) for n in names]
     meta
 end
 

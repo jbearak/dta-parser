@@ -287,7 +287,14 @@ export interface WriteVariable {
    * binary strL, and makes the variable strL; it may sit among strings,
    * as `StringColumn.values` holds them.
    */
-  values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[];
+  values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[] | Float64Array;
+  /**
+   * With a Float64Array of values, each one's missing code as
+   * `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a` to
+   * `.z`); none missing when absent. So a column `readColumns` returned
+   * writes back as it is, without an array of values or `Missing`s.
+   */
+  missing?: Uint8Array;
   /**
    * Storage type of a numeric variable; default double. `strL` makes a
    * string variable strL whatever its length.
@@ -333,18 +340,31 @@ const encoder = new TextEncoder();
 
 const isText = (x: unknown): x is string | Uint8Array => typeof x === "string" || x instanceof Uint8Array;
 
-/** UTF-8 bytes of `texts` (a Uint8Array as it is), end to end, with each one's end offset. */
+/**
+ * UTF-8 bytes of `texts` (a Uint8Array as it is), end to end, with each
+ * one's end offset. Encoded straight into one buffer, grown as needed: an
+ * array per string cost about 100 bytes each, gigabytes for 10M strings.
+ */
 function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uint8Array; ends: Uint32Array } {
-  const parts = texts.map((t) => (typeof t === "string" ? encoder.encode(t) : t));
-  const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  const ends = new Uint32Array(parts.length);
+  let bytes = new Uint8Array(texts.reduce((n, t) => n + t.length, 0) + 64);
+  const ends = new Uint32Array(texts.length);
   let at = 0;
-  parts.forEach((p, i) => {
-    bytes.set(p, at);
-    at += p.length;
+  texts.forEach((t, i) => {
+    // A UTF-16 unit is at most 3 bytes of UTF-8.
+    const most = typeof t === "string" ? 3 * t.length : t.length;
+    if (at + most > bytes.length) {
+      const grown = new Uint8Array(Math.max(2 * bytes.length, at + most));
+      grown.set(bytes.subarray(0, at));
+      bytes = grown;
+    }
+    if (typeof t === "string") at += encoder.encodeInto(t, bytes.subarray(at)).written;
+    else {
+      bytes.set(t, at);
+      at += t.length;
+    }
     ends[i] = at;
   });
-  return { bytes, ends };
+  return { bytes: bytes.subarray(0, at), ends };
 }
 
 /** Numbers and their missing codes, as the module takes them. */
@@ -376,6 +396,13 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
       field(v.label, `the label of ${v.name}`),
       field(v.valueLabels, `the value label set of ${v.name}`),
     ].join("\0");
+    if (v.values instanceof Float64Array) {
+      const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
+      if (storage === undefined) throw new TypeError(`${v.name}: a Float64Array cannot be ${v.type}`);
+      const missing = v.missing ?? new Uint8Array(nobs);
+      if (missing.length !== nobs) throw new RangeError(`${v.name} has ${missing.length} missing codes, not ${nobs}`);
+      return { kind: "numbers", meta, storage, values: v.values, missing };
+    }
     if (v.type === "strL" || (v.type === undefined && v.values.some(isText))) {
       if (!v.values.every(isText)) throw new TypeError(`${v.name} mixes strings and numbers`);
       const values = v.values as readonly (string | Uint8Array)[];

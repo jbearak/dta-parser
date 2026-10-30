@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 
@@ -26,6 +27,21 @@ def date_kind(fmt):
     if re.match(r"%-?tc", fmt):
         return "tc"
     return None
+
+
+class DtaInfo(dict):
+    """The dict in `df.attrs["dta"]`. pandas deep-copies `attrs` into every
+    frame and column it derives (`df[c]`, `df.loc[...]`, `sort_values`),
+    which for a file of thousands of variables costs milliseconds each
+    time; this dict is shared instead. Give a frame its own with
+    `sub.attrs["dta"] = df.attrs["dta"].copy()`."""
+
+    def __deepcopy__(self, memo):
+        return self
+
+    def copy(self):
+        """A deep copy: one frame's metadata to change without the others'."""
+        return DtaInfo(copy.deepcopy(dict(self)))
 
 
 def _open_path(path):
@@ -224,5 +240,5 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
     df = pd.DataFrame(data, copy=False)
     if not data:
         df = pd.DataFrame(index=pd.RangeIndex(count))
-    df.attrs["dta"] = _info(raw, cols)
+    df.attrs["dta"] = DtaInfo(_info(raw, cols))
     return df
