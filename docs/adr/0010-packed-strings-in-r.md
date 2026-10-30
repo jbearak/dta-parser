@@ -40,3 +40,6 @@ Considered and rejected:
 
 `save_dta` still reads a packed column through its strings, making them.
 Writing the packed bytes directly is possible if a workload needs it.
+
+Since ADR 0016, the bridge and the packed string columns live in
+dtaparser, which dtatools imports.

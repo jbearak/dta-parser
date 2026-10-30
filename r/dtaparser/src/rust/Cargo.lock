@@ -7,8 +7,8 @@ name = "dta"
 version = "1.0.0"
 
 [[package]]
-name = "dtatools"
-version = "1.0.0"
+name = "dtaparser"
+version = "0.1.0"
 dependencies = [
  "dta",
 ]

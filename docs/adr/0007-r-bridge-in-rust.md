@@ -27,3 +27,6 @@ asks R, through `R_ToplevelExec`, whether the user pressed Ctrl-C.
   column, which doubled peak memory in the slice.
 - **extendr.** It solves the same problems but brings a large dependency
   and macros. The bridge here is about 300 lines.
+
+Since ADR 0016, the bridge and the packed string columns live in
+dtaparser, which dtatools imports.

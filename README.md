@@ -34,10 +34,15 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 
 | language | package | docs | returns |
 |---|---|---|---|
-| R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` |
+| R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
+| R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, factors, `Date`), every missing value `NA` |
 | Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
+
+In R, `dtatools` is for testing Stata pipelines, where Stata's rules
+for missing values matter; `dtaparser` is for analysing data under R's
+rules. dtatools imports dtaparser.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust
@@ -132,7 +137,7 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `StataArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| `%td`, `%tc` as dates | numbers with their format | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
+| `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `stata_key`, `stata_keys` | `stata_key` | `stataKey`, `stataKeys` |
 | Stata comparisons, arithmetic and logic on columns; `tab`, group ids, sets | ✓ | | | |
@@ -150,7 +155,8 @@ than release 118 comes back as UTF-8.
 |---|---|
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
 | `crates/dta-ffi` | the WebAssembly interface (for TypeScript) and C interface (for Julia) |
-| `r/dtatools` | the R package |
+| `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
+| `r/dtatools` | the R package with Stata's rules, built on dtaparser |
 | `python` | the Python package |
 | `julia/DtaParser` | the Julia package |
 | `js` | the npm package |

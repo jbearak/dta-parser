@@ -32,7 +32,8 @@ people and by coding agents alike:
 |---|---|---|
 | `crates/dta` | the format: reader (releases 104 to 119) and release 118 writer | Rust |
 | `crates/dta-ffi` | the WebAssembly interface for the npm package, and the C interface (`include/dta.h`) for Julia | Rust |
-| `r/dtatools` | the R package; its bridge to the core is in `src/rust` | R, Rust, C |
+| `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
+| `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
 | `python` | the Python package, a PyO3 extension | Python, Rust |
 | `julia/DtaParser` | the Julia package, over the C interface | Julia |
 | `js` | the npm package, over the WebAssembly module | TypeScript |
@@ -65,16 +66,19 @@ scripts/build-wasm.sh
 cd js && npm ci && npm run build && npm test
 ```
 
-**R package** (R 4.2 or later, with testthat, haven, readstata13 and
-dplyr for the tests):
+**R packages** (R 4.2 or later, with testthat, haven, readstata13 and
+dplyr for the tests). dtatools imports dtaparser, so install dtaparser
+first:
 
 ```sh
+R CMD INSTALL r/dtaparser
 R CMD INSTALL r/dtatools
+Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
 Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
 ```
 
-`scripts/build-r-package.sh` makes the self-contained source tarball
-that CI installs.
+`scripts/build-r-package.sh` makes the source tarballs that CI
+installs; dtaparser's carries its own copy of the Rust core.
 
 **Python package** (Python 3.10 or later):
 
@@ -140,14 +144,16 @@ both places.
 
 ### R help pages
 
-`r/dtatools/man/` is generated from the roxygen comments in
-`r/dtatools/R/`; do not edit it by hand. After changing a comment,
-install the package and regenerate the pages (roxygen2 8 or later):
+Each package's `man/` is generated from the roxygen comments in its
+`R/`; do not edit it by hand. After changing a comment, install the
+package and regenerate the pages (roxygen2 8 or later):
 
 ```sh
 R CMD INSTALL r/dtatools
 Rscript -e 'roxygen2::roxygenise("r/dtatools", roclets = "rd", load_code = roxygen2::load_installed)'
 ```
+
+The same commands with `r/dtaparser` regenerate dtaparser's.
 
 `roclets = "rd"` leaves `NAMESPACE` alone; it is written by hand.
 
