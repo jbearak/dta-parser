@@ -104,14 +104,18 @@ fn read(
     let each = |k: usize, first: usize, column: &Column| {
         let Column::Numbers { values, missing } = column else { return Ok(false) };
         let (a, b) = targets[k];
-        unsafe {
-            put_numbers(storage[k], a, first, values);
-            // The codes array starts as zeros; a missing value's code is
-            // its own.
-            slice::from_raw_parts_mut((b as *mut u8).add(first), missing.len()).copy_from_slice(missing);
-        }
+        unsafe { put_numbers(storage[k], a, first, values) };
+        // The codes array starts as zeros, whose pages numpy has not
+        // touched; write only the codes of missing values, so a column
+        // with few of them costs little memory.
         let largest = missing.iter().copied().max().unwrap_or(0);
         if largest > 0 {
+            let codes = unsafe { slice::from_raw_parts_mut((b as *mut u8).add(first), missing.len()) };
+            for (c, &m) in codes.iter_mut().zip(missing) {
+                if m != 0 {
+                    *c = m;
+                }
+            }
             flags[k].fetch_max(largest, Ordering::Relaxed);
         }
         Ok(true)
@@ -122,12 +126,9 @@ fn read(
     // threads: 1.25x the CPU of one thread without this).
     if reader.threads_for(&cols, count, None) > 1 {
         let rows = usize::try_from(count).unwrap_or(0);
-        for (k, &(a, b)) in targets.iter().enumerate() {
+        for (k, &(a, _)) in targets.iter().enumerate() {
             if storage[k].is_numeric() {
-                unsafe {
-                    touch(a, rows * array_width(storage[k]));
-                    touch(b, rows);
-                }
+                unsafe { touch(a, rows * array_width(storage[k])) };
             }
         }
     }
@@ -201,8 +202,7 @@ fn array_width(t: StorageType) -> usize {
 }
 
 /// Write a zero to each 4 KiB page of the `len` bytes at `addr`, so that
-/// later writes take no page fault. The read overwrites every value, and
-/// the code arrays start as zeros.
+/// later writes take no page fault. The read overwrites every value.
 ///
 /// # Safety
 /// `addr` holds `len` writable bytes no one else is using.
