@@ -159,7 +159,7 @@ To build, test or change anything, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-dta-parser learns from, tests against and measures itself against these
+dta-parser learns from, tests against and compares itself with these
 open-source projects:
 
 - **What we know of the format** comes mainly from the code and
@@ -193,9 +193,6 @@ open-source projects:
   Anthoff) and [@irbisadm/statfmt](https://github.com/irbisadm/statfmt)
   (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
   documentation with that of each of them except StatFiles.jl.
-
-[docs/upstream](docs/upstream/README.md) holds drafts of reports for
-bugs our tests found in some of these projects.
 
 ## License
 
