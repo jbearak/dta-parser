@@ -26,6 +26,11 @@ decisions in `docs/adr/`.
   official Stata documentation, and never copy text from it; write in
   your own words. Copy open-source code only if its license allows, with
   credit.
+- Never file issues, pull requests or comments in another project
+  without the user's approval of that specific report. A reader that
+  differs from ours is usually fixed upstream already or making a
+  defensible choice; see "Before reporting a difference to another
+  project" in `compat/README.md`.
 - Work only in this repository. Other repositories may be read only as
   described below, and never pushed to.
 
