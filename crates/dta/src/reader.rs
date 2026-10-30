@@ -9,7 +9,7 @@ use crate::error::{Error, ErrorKind, Result};
 use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
-use crate::source::{read_vec, SharedSource, Source};
+use crate::source::{ensure_room, read_vec, SharedSource, Source};
 use crate::strl_index::{self, StrlEntry, StrlIndex};
 use crate::threads::panic_message;
 use crate::types::StorageType;
@@ -292,7 +292,11 @@ impl<S: Source> Reader<S> {
                 return read.run(each, &mut rest, &mut poll).map(|()| count as u64);
             }
         }
-        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows_per_chunk.min(count))).collect();
+        // The chunk's raw rows and their decoding (strL payloads are
+        // reserved fallibly as they are read).
+        let rows = rows_per_chunk.min(count);
+        ensure_room(rows.saturating_mul(self.row_len.saturating_add(decoded_row)).saturating_mul(2))?;
+        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows)).collect();
         let none_taken = vec![false; columns.len()];
         let decoder = self.decoder();
         let mut refs: Vec<[u8; 8]> = Vec::new();
@@ -543,6 +547,9 @@ impl<S: Source> Reader<S> {
     pub fn value_labels(&mut self) -> Result<Vec<ValueLabelSet>> {
         let (start, end) = self.sections.value_labels;
         let section = read_vec(&mut self.source, start, end - start)?;
+        // Each label costs at most its 8 bytes of offset and value, as a
+        // `ValueLabel`, and its text decoded (three times its bytes).
+        ensure_room(section.len().saturating_mul(8))?;
         let sets = self.label_sets(&section, start, self.layout.name_len);
         // Release 108 tables name their set in 9 bytes, as pandas,
         // readstata13 and ReadStat (writer, and reader since dev 69d8f91)
@@ -631,6 +638,7 @@ impl<S: Source> Reader<S> {
     pub fn characteristics(&mut self) -> Result<Vec<Characteristic>> {
         let (start, end) = self.sections.characteristics;
         let section = read_vec(&mut self.source, start, end - start)?;
+        ensure_room(section.len().saturating_mul(4))?;
         let mut c = Cursor::new(&section, start, self.meta.byte_order);
         let name_len = self.layout.name_len;
         let enc = self.meta.encoding;

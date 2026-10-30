@@ -13,7 +13,7 @@ use crate::cursor::{ByteOrder, Cursor};
 use crate::encoding::Encoding;
 use crate::error::{Error, Result};
 use crate::header::{text, Layout, Metadata, Parsed, Sections, Variable};
-use crate::source::{read_vec, Source};
+use crate::source::{ensure_room, read_vec, Source};
 use crate::types::StorageType;
 
 pub(crate) const RELEASES: [u16; 8] = [104, 105, 108, 110, 111, 113, 114, 115];
@@ -96,6 +96,7 @@ pub(crate) fn parse_binary<S: Source + ?Sized>(src: &mut S, encoding: Encoding) 
         + k * layout.name_len as u64
         + k * layout.var_label_len as u64;
     let block = read_vec(src, fixed as u64, size)?;
+    ensure_room((size as usize).saturating_mul(3).saturating_add(nvar.saturating_mul(256)))?;
     let mut c = Cursor::new(&block, fixed as u64, order);
     let mut types = Vec::with_capacity(nvar);
     for _ in 0..nvar {

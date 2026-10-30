@@ -13,13 +13,87 @@
 //! says what sort of error the last one was, so JavaScript can give it a
 //! code without reading the message.
 
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicPtr, Ordering};
 
-use dta::{Column, Encoding, ErrorKind, Options, Reader, Source};
+use dta::{Column, Encoding, ErrorKind, Options, Reader, Source, StorageType};
 
 use crate::json;
 use crate::strings::{self, Dict, Strings};
+
+// Running out of module memory must be an error, not a trap (plan 0008
+// M2): large allocations are fallible (`try_reserve`, room checks), and
+// a 1 MiB reserve, freed the first time any allocation fails, leaves
+// room for the small ones that report the failure. Each call takes the
+// reserve back before it starts.
+
+const RESERVE_BYTES: usize = 1 << 20;
+static RESERVE: AtomicPtr<u8> = AtomicPtr::new(std::ptr::null_mut());
+
+fn reserve_layout() -> Layout {
+    Layout::from_size_align(RESERVE_BYTES, 16).unwrap_or(Layout::new::<u8>())
+}
+
+/// Free the reserve, if held; true if it was.
+fn release_reserve() -> bool {
+    let r = RESERVE.swap(std::ptr::null_mut(), Ordering::Relaxed);
+    if r.is_null() {
+        return false;
+    }
+    unsafe { System.dealloc(r, reserve_layout()) };
+    true
+}
+
+/// Hold the reserve again; false if memory is too short for it.
+fn take_reserve() -> bool {
+    if !RESERVE.load(Ordering::Relaxed).is_null() {
+        return true;
+    }
+    let p = unsafe { System.alloc(reserve_layout()) };
+    RESERVE.store(p, Ordering::Relaxed);
+    !p.is_null()
+}
+
+struct WithReserve;
+
+unsafe impl GlobalAlloc for WithReserve {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let p = System.alloc(layout);
+        if p.is_null() && release_reserve() {
+            System.alloc(layout)
+        } else {
+            p
+        }
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        let p = System.alloc_zeroed(layout);
+        if p.is_null() && release_reserve() {
+            System.alloc_zeroed(layout)
+        } else {
+            p
+        }
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        let p = System.realloc(ptr, layout, new_size);
+        if p.is_null() && release_reserve() {
+            System.realloc(ptr, layout, new_size)
+        } else {
+            p
+        }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        System.dealloc(ptr, layout)
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: WithReserve = WithReserve;
 
 #[link(wasm_import_module = "env")]
 extern "C" {
@@ -58,17 +132,49 @@ struct Handle {
     strings: Vec<Option<Strings>>,
 }
 
-#[derive(Default)]
 struct State {
     handles: Vec<Option<Handle>>,
-    error: String,
+    /// Static when there was no memory to make a message.
+    error: Cow<'static, str>,
     error_kind: u32,
+    /// Most decoded bytes a read call holds (`BUDGET`; tests lower it).
+    budget: usize,
+    /// Bytes per decoded chunk for readers opened from now (0: the
+    /// core's default; tests lower it).
+    chunk_bytes: usize,
     result: Vec<u8>,
     result_len: usize,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        State {
+            handles: Vec::new(),
+            error: Cow::Borrowed(""),
+            error_kind: 0,
+            budget: BUDGET,
+            chunk_bytes: 0,
+            result: Vec::new(),
+            result_len: 0,
+        }
+    }
+}
+
 thread_local! {
     static STATE: RefCell<State> = RefCell::new(State::default());
+}
+
+/// Test builds only (`--features test-hooks`): lower the read budget and
+/// the chunk size of readers opened from now, so small files exercise
+/// what large ones do.
+#[cfg(feature = "test-hooks")]
+#[no_mangle]
+pub extern "C" fn dta_test_set(budget: usize, chunk_bytes: usize) {
+    STATE.with(|cell| {
+        let mut state = cell.borrow_mut();
+        state.budget = budget;
+        state.chunk_bytes = chunk_bytes;
+    })
 }
 
 /// An error for JavaScript: its kind (see `dta_error_kind`) and message.
@@ -117,17 +223,22 @@ impl From<&str> for Fail {
 fn call<T>(fail: T, f: impl FnOnce(&mut State) -> Result<T, Fail>) -> T {
     STATE.with(|cell| {
         let mut state = cell.borrow_mut();
-        state.error.clear();
+        state.error = Cow::Borrowed("");
         state.error_kind = 0;
+        if !take_reserve() {
+            state.error = Cow::Borrowed("module memory is full; close readers or read less at once");
+            state.error_kind = TOO_LARGE;
+            return fail;
+        }
         match catch_unwind(AssertUnwindSafe(|| f(&mut state))) {
             Ok(Ok(v)) => v,
             Ok(Err(e)) => {
-                state.error = e.message;
+                state.error = Cow::Owned(e.message);
                 state.error_kind = e.kind;
                 fail
             }
             Err(_) => {
-                state.error = "internal error in dta-parser".into();
+                state.error = Cow::Borrowed("internal error in dta-parser");
                 state.error_kind = INTERNAL;
                 fail
             }
@@ -152,7 +263,11 @@ fn result(state: &mut State, bytes: Vec<u8>) -> *const u8 {
 
 #[no_mangle]
 pub extern "C" fn dta_alloc(len: usize) -> *mut u8 {
-    let mut v = Vec::<u8>::with_capacity(len.max(1));
+    // Null when memory is short; JavaScript checks.
+    let mut v = Vec::<u8>::new();
+    if v.try_reserve_exact(len.max(1)).is_err() {
+        return std::ptr::null_mut();
+    }
     let p = v.as_mut_ptr();
     std::mem::forget(v);
     p
@@ -168,9 +283,10 @@ pub unsafe extern "C" fn dta_free(ptr: *mut u8, len: usize) {
 #[no_mangle]
 pub extern "C" fn dta_error() -> *const u8 {
     STATE.with(|cell| {
+        // No copy: there may be no memory to make one.
         let mut state = cell.borrow_mut();
-        let message = state.error.clone().into_bytes();
-        result(&mut state, message)
+        state.result_len = state.error.len();
+        state.error.as_ptr()
     })
 }
 
@@ -200,7 +316,9 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
             _ => return Err("unknown encoding".into()),
         };
         let source = HostFile { id: file, len: len as u64 };
-        let reader = Reader::open(source, Options { encoding, ..Options::default() })?;
+        let defaults = Options::default();
+        let chunk_bytes = if state.chunk_bytes > 0 { state.chunk_bytes } else { defaults.chunk_bytes };
+        let reader = Reader::open(source, Options { encoding, chunk_bytes, ..defaults })?;
         state.handles.push(Some(Handle { reader, columns: Vec::new(), dicts: Vec::new(), strings: Vec::new() }));
         Ok(state.handles.len() as u32)
     })
@@ -220,6 +338,11 @@ pub extern "C" fn dta_close(h: u32) {
 #[no_mangle]
 pub extern "C" fn dta_metadata(h: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
+        let meta = handle(state, h)?.reader.metadata();
+        // JSON escapes a byte into at most six.
+        let texts = meta.label.len() + meta.timestamp.len()
+            + meta.variables.iter().map(|v| v.name.len() + v.format.len() + v.label.len() + v.value_labels.len() + 24).sum::<usize>();
+        ensure_room(texts.saturating_mul(6).saturating_add(256))?;
         let bytes = json::metadata(handle(state, h)?.reader.metadata()).into_bytes();
         Ok(result(state, bytes))
     })
@@ -230,6 +353,8 @@ pub extern "C" fn dta_metadata(h: u32) -> *const u8 {
 pub extern "C" fn dta_value_labels(h: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
         let sets = handle(state, h)?.reader.value_labels()?;
+        let texts: usize = sets.iter().map(|s| s.name.len() + s.labels.iter().map(|l| l.text.len() + 12).sum::<usize>() + 16).sum();
+        ensure_room(texts.saturating_mul(6).saturating_add(256))?;
         Ok(result(state, json::value_labels(&sets).into_bytes()))
     })
 }
@@ -239,6 +364,8 @@ pub extern "C" fn dta_value_labels(h: u32) -> *const u8 {
 pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
         let chars = handle(state, h)?.reader.characteristics()?;
+        let texts: usize = chars.iter().map(|c| c.variable.len() + c.name.len() + c.value.len() + 12).sum();
+        ensure_room(texts.saturating_mul(6).saturating_add(256))?;
         Ok(result(state, json::characteristics(&chars).into_bytes()))
     })
 }
@@ -259,8 +386,21 @@ pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
 pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64, flags: u32) -> f64 {
     let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
     call(-1.0, |state| {
+        let budget = state.budget;
         let handle = handle(state, h)?;
         let Handle { reader, columns, dicts, strings } = handle;
+        // Room for this call's columns and what it hands JavaScript.
+        let meta = reader.metadata();
+        let per_row: usize = cols
+            .iter()
+            .map(|&c| match meta.variables.get(c).map(|v| v.storage) {
+                Some(StorageType::Str(w)) => 3 * w as usize + 16,
+                Some(StorageType::StrL) => 32,
+                _ => 9,
+            })
+            .sum();
+        let rows_bytes = (count as usize).saturating_mul(per_row).min(budget.saturating_add(per_row));
+        ensure_room(rows_bytes.saturating_mul(2))?;
         strings.clear();
         if flags & NEW_READ != 0 || dicts.len() != cols.len() {
             dicts.clear();
@@ -270,10 +410,10 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
         // Room for the rows this call can return (the budget allows about
         // BUDGET / 9 numbers), so appending chunks does not regrow the
         // columns and leave freed copies in module memory.
-        let rows = (count as usize).min(BUDGET / (9 * cols.len()).max(1) + 1);
+        let rows = (count as usize).min(budget / (9 * cols.len()).max(1) + 1);
         let mut first = true;
         let n = reader
-            .read_chunks(&cols, start as u64, count as u64, Some(BUDGET), |_, chunk| {
+            .read_chunks(&cols, start as u64, count as u64, Some(budget), |_, chunk| {
                 if first {
                     *columns = chunk
                         .iter()
@@ -429,12 +569,26 @@ thread_local! {
 
 /// # Safety
 /// `ptr` points to `len` readable elements of T.
-unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Vec<T> {
-    if len == 0 {
-        Vec::new()
-    } else {
-        std::slice::from_raw_parts(ptr, len).to_vec()
+unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Result<Vec<T>, Fail> {
+    let mut v = Vec::new();
+    if len > 0 {
+        v.try_reserve_exact(len).map_err(|_| too_large(len * std::mem::size_of::<T>()))?;
+        v.extend_from_slice(std::slice::from_raw_parts(ptr, len));
     }
+    Ok(v)
+}
+
+fn too_large(bytes: usize) -> Fail {
+    Fail { kind: TOO_LARGE, message: format!("{bytes} bytes do not fit in module memory") }
+}
+
+/// Room for allocations of up to `bytes` that follow (see
+/// `dta::Source`'s `ensure_room`; this one is for the module's own).
+fn ensure_room(bytes: usize) -> Result<(), Fail> {
+    let mut probe: Vec<u8> = Vec::new();
+    probe.try_reserve_exact(bytes).map_err(|_| too_large(bytes))?;
+    std::hint::black_box(&probe);
+    Ok(())
 }
 
 /// Fields separated by NUL: name, format, label, value label set name.
@@ -465,7 +619,7 @@ pub unsafe extern "C" fn dta_write_numbers(
     missing: *const u8,
 ) -> u32 {
     call(0, |_| {
-        let f = fields(&copy(meta, meta_len))?;
+        let f = fields(&copy(meta, meta_len)?)?;
         let storage = [
             dta::StorageType::Byte,
             dta::StorageType::Int,
@@ -479,7 +633,7 @@ pub unsafe extern "C" fn dta_write_numbers(
         WRITE.with(|w| {
             let mut w = w.borrow_mut();
             let n = w.nobs;
-            let column = column(&f, storage, WriteData::Numbers(copy(values, n), copy(missing, n)))?;
+            let column = column(&f, storage, WriteData::Numbers(copy(values, n)?, copy(missing, n)?))?;
             w.columns.push(column);
             Ok(1)
         })
@@ -504,18 +658,18 @@ pub unsafe extern "C" fn dta_write_strings(
     binary: *const u8,
 ) -> u32 {
     call(0, |_| {
-        let f = fields(&copy(meta, meta_len))?;
+        let f = fields(&copy(meta, meta_len)?)?;
         WRITE.with(|w| {
             let mut w = w.borrow_mut();
-            let ends = copy(ends, w.nobs);
+            let ends = copy(ends, w.nobs)?;
             if ends.iter().any(|&e| e as usize > bytes_len) || ends.windows(2).any(|p| p[0] > p[1]) {
                 return Err("string offsets out of order".into());
             }
-            let bytes = copy(bytes, bytes_len);
+            let bytes = copy(bytes, bytes_len)?;
             let (storage, data) = if binary.is_null() {
                 (dta::StorageType::Str(1), WriteData::Strings(bytes, ends))
             } else {
-                (dta::StorageType::StrL, WriteData::StrLs(bytes, ends, copy(binary, w.nobs)))
+                (dta::StorageType::StrL, WriteData::StrLs(bytes, ends, copy(binary, w.nobs)?))
             };
             let column = column(&f, storage, data)?;
             w.columns.push(column);
@@ -553,9 +707,9 @@ pub unsafe extern "C" fn dta_write_labels(
     ends: *const u32,
 ) -> u32 {
     call(0, |_| {
-        let name = String::from_utf8(copy(name, name_len)).map_err(|_| "label set names must be UTF-8")?;
-        let (values, codes, ends) = (copy(values, n), copy(missing, n), copy(ends, n));
-        let texts = String::from_utf8(copy(texts, texts_len)).map_err(|_| "labels must be UTF-8")?;
+        let name = String::from_utf8(copy(name, name_len)?).map_err(|_| "label set names must be UTF-8")?;
+        let (values, codes, ends) = (copy(values, n)?, copy(missing, n)?, copy(ends, n)?);
+        let texts = String::from_utf8(copy(texts, texts_len)?).map_err(|_| "labels must be UTF-8")?;
         let mut labels = Vec::with_capacity(n);
         let mut from = 0;
         for i in 0..n {
@@ -577,7 +731,7 @@ pub unsafe extern "C" fn dta_write_labels(
 #[no_mangle]
 pub unsafe extern "C" fn dta_write_characteristics(text: *const u8, len: usize) -> u32 {
     call(0, |_| {
-        let f = fields(&copy(text, len))?;
+        let f = fields(&copy(text, len)?)?;
         if f.len() % 3 != 0 {
             return Err("expected three fields per characteristic".into());
         }
@@ -598,7 +752,7 @@ pub unsafe extern "C" fn dta_write_characteristics(text: *const u8, len: usize) 
 #[no_mangle]
 pub unsafe extern "C" fn dta_write_sort_order(indices: *const u32, n: usize) -> u32 {
     call(0, |_| {
-        let order = copy(indices, n).into_iter().map(|i| i as usize).collect();
+        let order = copy(indices, n)?.into_iter().map(|i| i as usize).collect();
         WRITE.with(|w| w.borrow_mut().sort_order = order);
         Ok(1)
     })
@@ -613,7 +767,7 @@ pub unsafe extern "C" fn dta_write_sort_order(indices: *const u32, n: usize) -> 
 #[no_mangle]
 pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: usize) -> u32 {
     call(0, |_| {
-        let info = fields(&copy(info, info_len))?;
+        let info = fields(&copy(info, info_len)?)?;
         let state = WRITE.with(|w| std::mem::take(&mut *w.borrow_mut()));
         let notes: Vec<&String> = info.iter().skip(2).collect();
         let mut characteristics = state.characteristics;
@@ -657,6 +811,10 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
             characteristics,
             sort_order: state.sort_order,
         };
+        // The writer's own tables: a row number per strL row, and one
+        // entry per distinct strL.
+        let strls = data.variables.iter().filter(|v| v.storage == StorageType::StrL).count();
+        ensure_room(data.nobs.saturating_mul(strls).saturating_mul(64).saturating_add(4 << 20))?;
         dta::write(&data, HostSink(file))?;
         Ok(1)
     })

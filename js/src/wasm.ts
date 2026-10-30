@@ -36,6 +36,8 @@ interface Exports {
   dta_write_characteristics(text: number, len: number): number;
   dta_write_sort_order(indices: number, n: number): number;
   dta_write_finish(file: number, info: number, infoLen: number): number;
+  /** Test builds only. */
+  dta_test_set?(budget: number, chunkBytes: number): void;
 }
 
 /** Fills `into` with the file's bytes starting at `offset`. */
@@ -173,7 +175,7 @@ export const DICTIONARY = 2;
 
 export function read(handle: number, columns: number[], start: number, count: number, flags: number): number {
   return guard(() => {
-    const ptr = wasm.dta_alloc(columns.length * 4) >>> 0;
+    const ptr = alloc(columns.length * 4);
     new Uint32Array(wasm.memory.buffer, ptr, columns.length).set(columns);
     const n = wasm.dta_read(handle, ptr, columns.length, start, count, flags);
     wasm.dta_free(ptr, columns.length * 4);
@@ -224,10 +226,17 @@ export function forget(read: ReadAt): void {
 
 const utf8Encoder = new TextEncoder();
 
+/** Room for `len` bytes in module memory, or DTA_TOO_LARGE. */
+function alloc(len: number): number {
+  const ptr = wasm.dta_alloc(len) >>> 0;
+  if (ptr === 0) throw dtaError("DTA_TOO_LARGE", `${len} bytes do not fit in module memory`);
+  return ptr;
+}
+
 /** Copy `data` into module memory; returns its address. Free with `free`. */
 function put(data: Uint8Array | Float64Array | Uint32Array): number {
   const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  const ptr = wasm.dta_alloc(bytes.length) >>> 0;
+  const ptr = alloc(bytes.length);
   new Uint8Array(wasm.memory.buffer, ptr, bytes.length).set(bytes);
   return ptr;
 }
@@ -248,15 +257,27 @@ export type WritePart =
  */
 export function write(nobs: number, parts: WritePart[], info: string[], sink: (bytes: Uint8Array) => void): void {
   guard(() => {
-    wasm.dta_write_begin(nobs);
-    for (const part of parts) {
-      const owned: [number, number][] = [];
-      const own = (data: Uint8Array | Float64Array | Uint32Array) => {
-        const ptr = put(data);
-        owned.push([ptr, data.byteLength]);
-        return ptr;
-      };
-      let ok: number;
+    try {
+      writeParts(nobs, parts, info, sink);
+    } catch (e) {
+      // Drop the half-built dataset and the copies it holds.
+      if (!(e instanceof WebAssembly.RuntimeError)) wasm.dta_write_begin(0);
+      throw e;
+    }
+  });
+}
+
+function writeParts(nobs: number, parts: WritePart[], info: string[], sink: (bytes: Uint8Array) => void): void {
+  wasm.dta_write_begin(nobs);
+  for (const part of parts) {
+    const owned: [number, number][] = [];
+    const own = (data: Uint8Array | Float64Array | Uint32Array) => {
+      const ptr = put(data);
+      owned.push([ptr, data.byteLength]);
+      return ptr;
+    };
+    let ok: number;
+    try {
       if (part.kind === "numbers") {
         const meta = utf8Encoder.encode(part.meta);
         ok = wasm.dta_write_numbers(own(meta), meta.length, part.storage, own(part.values), own(part.missing));
@@ -282,18 +303,37 @@ export function write(nobs: number, parts: WritePart[], info: string[], sink: (b
           own(part.ends),
         );
       }
-      for (const [ptr, len] of owned) wasm.dta_free(ptr, len);
-      check(ok);
-    }
-    const file = nextFile++;
-    sinks.set(file, sink);
-    const bytes = utf8Encoder.encode(info.join("\0"));
-    const ptr = put(bytes);
-    try {
-      check(wasm.dta_write_finish(file, ptr, bytes.length));
     } finally {
-      wasm.dta_free(ptr, bytes.length);
-      sinks.delete(file);
+      for (const [ptr, len] of owned) wasm.dta_free(ptr, len);
     }
-  });
+    check(ok);
+  }
+  const file = nextFile++;
+  sinks.set(file, sink);
+  const bytes = utf8Encoder.encode(info.join("\0"));
+  const ptr = put(bytes);
+  try {
+    check(wasm.dta_write_finish(file, ptr, bytes.length));
+  } finally {
+    wasm.dta_free(ptr, bytes.length);
+    sinks.delete(file);
+  }
 }
+
+// Test builds only (js/test/memory.test.mjs bundles src with
+// build/dta-test.wasm): lower the read budget and chunk size, and take
+// or give back module memory.
+export const test = {
+  set(budget: number, chunkBytes: number): void {
+    wasm.dta_test_set!(budget, chunkBytes);
+  },
+  alloc(len: number): number {
+    return wasm.dta_alloc(len) >>> 0;
+  },
+  free(ptr: number, len: number): void {
+    wasm.dta_free(ptr, len);
+  },
+  memoryBytes(): number {
+    return wasm.memory.buffer.byteLength;
+  },
+};

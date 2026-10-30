@@ -12,5 +12,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [dependencies]
 dta = { path = "../dta" }
 
+[features]
+# Test builds of the wasm module: `dta_test_set` lowers the read budget
+# and chunk size. Never in the published module.
+test-hooks = []
+
 [dev-dependencies]
 serde_json = "1"
