@@ -32,12 +32,19 @@ end
 if ccall(:jl_generating_output, Cint, ()) == 1
     __init__()
     # Mark what the workload compiles, even in Base, for the package's cache
-    # (as PrecompileTools does).
-    ccall(:jl_tag_newly_inferred_enable, Cvoid, ())
+    # (as PrecompileTools does). Julia 1.10 has no such tagging; there the
+    # workload still caches the package's own code.
+    tag = try
+        cglobal(:jl_tag_newly_inferred_enable)
+        true
+    catch
+        false
+    end
+    tag && ccall(:jl_tag_newly_inferred_enable, Cvoid, ())
     try
         isempty(FNS) || workload()
     finally
-        ccall(:jl_tag_newly_inferred_disable, Cvoid, ())
+        tag && ccall(:jl_tag_newly_inferred_disable, Cvoid, ())
     end
     # The library's addresses belong to this process; __init__ finds them again.
     empty!(FNS)
