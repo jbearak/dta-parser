@@ -19,6 +19,27 @@ pub fn utf16_len(bytes: &[u8]) -> usize {
     bytes.iter().map(|&b| if b & 0xC0 == 0x80 { 0 } else if b >= 0xF0 { 2 } else { 1 }).sum()
 }
 
+/// `a == b`, without a call to memcmp for the short values most string
+/// columns hold (wasm's memcmp is a plain loop behind a call).
+#[inline]
+fn same(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    if a.len() <= 16 {
+        let word = |s: &[u8], from: usize| {
+            let mut w = [0u8; 8];
+            let end = s.len().min(from + 8);
+            if from < end {
+                w[..end - from].copy_from_slice(&s[from..end]);
+            }
+            u64::from_le_bytes(w)
+        };
+        return word(a, 0) == word(b, 0) && word(a, 8) == word(b, 8);
+    }
+    a == b
+}
+
 fn hash(bytes: &[u8]) -> u64 {
     const K: u64 = 0x9E37_79B9_7F4A_7C15;
     let mut h = bytes.len() as u64;
@@ -91,7 +112,7 @@ impl Dict {
                 }
                 s => {
                     let code = (s - 1) as usize;
-                    if self.hashes[code] == h && self.value(code) == value {
+                    if self.hashes[code] == h && same(self.value(code), value) {
                         return Some(code as u32);
                     }
                 }

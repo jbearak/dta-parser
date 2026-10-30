@@ -455,6 +455,7 @@ impl<S: Source> Reader<S> {
         // its UTF-16 units), against `max_text_units`.
         let mut text = vec![0usize; columns.len()];
         let mut text_full = false;
+        let mut row_text = Vec::with_capacity(columns.len());
         while done < count {
             let mut n = rows_per_chunk.min(count - done);
             let offset = self.sections.data + (start + done as u64) * self.row_len as u64;
@@ -466,7 +467,7 @@ impl<S: Source> Reader<S> {
                 while take < n && used < budget {
                     let row = &buf[take * self.row_len..(take + 1) * self.row_len];
                     let mut row_bytes = decoded_row;
-                    let mut row_text = Vec::with_capacity(columns.len());
+                    row_text.clear();
                     for &c in columns {
                         row_text.push(match self.meta.variables[c].storage {
                             StorageType::Str(w) => 3 * w as usize,
