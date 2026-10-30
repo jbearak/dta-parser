@@ -182,8 +182,8 @@ open-source projects:
   [ReadStatTables.jl](https://github.com/junyuan-chen/ReadStatTables.jl)
   (Junyuan Chen). See [compat/README.md](compat/README.md) and
   [ADR 0005](docs/adr/0005-oracles.md).
-- **Test fixtures**: ReadStat's writer makes the files for releases 104
-  to 111 (`compat/make_legacy_fixtures.sh`), haven and pandas write the
+- **Test fixtures**: ReadStat's writer makes the files for releases
+  104, 105, 108, 110 and 111 (`compat/make_legacy_fixtures.sh`), haven and pandas write the
   rest, and the big-endian files for releases 104 to 113 come from
   pandas' test suite ([compat/fixtures/README.md](compat/fixtures/README.md)).
 - **Benchmarks and documentation**: the

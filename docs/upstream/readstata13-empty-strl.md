@@ -9,8 +9,7 @@ issue (no existing report found by searching the tracker for "strl",
 **Title:** `read.dta13()` reads an empty strL as `NA`
 
 Thank you for readstata13. We use it as one of the reference readers in
-our tests for a `.dta` reader, and found one case where it reads a value
-differently from other readers.
+our tests for a `.dta` reader, and found one case that looks like a bug.
 
 A strL holding the empty string is stored in the data as the reference
 (v, o) = (0, 0), with no GSO record. `read.dta13()` returns `NA` for it

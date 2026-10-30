@@ -21,10 +21,8 @@ ReadStat's `dev` branch fixed them in September 2026, and haven `main`
 yet in a CRAN release. So no bug report is needed; the draft only asks
 haven to mention them in NEWS.
 
-The reproductions make their own data, so they don't depend on this
-repository's fixtures. The exception is haven's value labels in
-releases 104 to 108, which haven can't write; we saw that with files
-from ReadStat's writer, as the draft says.
+The reproductions make their own data or download public files from
+pandas' test suite, so they don't depend on this repository's fixtures.
 
 All five reproduced, so none was dropped.
 
@@ -39,4 +37,6 @@ Two more readstata13 entries in compat/README.md were outside this set:
 - **Pre-113 missing values as stored sentinels.** With
   `missing.type = TRUE`, readstata13 0.11.0 returns 32767, 2147483647,
   1.7e38 and 8.99e307 for missing values in a release 110 file (with
-  the default, `NA`). This reproduces, and could be drafted next.
+  the default, `NA`). It also warns that `missing.type` applies only to
+  version 8 files and later, so this is a documented limit; a report
+  would ask for `NA` there rather than the stored value.
