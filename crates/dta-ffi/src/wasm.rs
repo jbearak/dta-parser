@@ -197,16 +197,29 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
         let handle = handle(state, h)?;
         let Handle { reader, columns } = handle;
         columns.clear();
+        // Room for the rows this call can return (the budget allows about
+        // BUDGET / 9 numbers), so appending chunks does not regrow the
+        // columns and leave freed copies in module memory.
+        let rows = (count as usize).min(BUDGET / (9 * cols.len()).max(1) + 1);
         let mut first = true;
         let n = reader
             .read_chunks(&cols, start as u64, count as u64, Some(BUDGET), |_, chunk| {
                 if first {
-                    *columns = chunk.to_vec();
+                    *columns = chunk
+                        .iter()
+                        .map(|c| match c {
+                            Column::Numbers { .. } => {
+                                Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) }
+                            }
+                            Column::Strings { .. } => {
+                                Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() }
+                            }
+                        })
+                        .collect();
                     first = false;
-                } else {
-                    for (all, part) in columns.iter_mut().zip(chunk) {
-                        all.append(part);
-                    }
+                }
+                for (all, part) in columns.iter_mut().zip(chunk) {
+                    all.append(part);
                 }
                 Ok(())
             })
