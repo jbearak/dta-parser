@@ -50,6 +50,22 @@ impl Encoding {
         }
     }
 
+    /// The length `decode_into` gives `bytes` in a single-byte
+    /// encoding (UTF-8 text is its own length when valid).
+    pub(crate) fn decoded_len(self, bytes: &[u8]) -> usize {
+        match self {
+            Encoding::Utf8 => bytes.len(),
+            Encoding::Latin1 | Encoding::Windows1252 => bytes
+                .iter()
+                .map(|&b| match (self, b) {
+                    (_, 0..=0x7f) => 1,
+                    (Encoding::Windows1252, 0x80..=0x9f) => WINDOWS_1252[(b - 0x80) as usize].len_utf8(),
+                    _ => 2,
+                })
+                .sum(),
+        }
+    }
+
     pub(crate) fn decode(self, bytes: &[u8]) -> String {
         let mut out = Vec::with_capacity(bytes.len());
         self.decode_into(bytes, &mut out);

@@ -56,9 +56,11 @@ pub enum Strings {
     /// Codes for every row of the call, and the values first seen in it
     /// (UTF-8 bytes and cumulative UTF-16 ends).
     Coded { codes: Vec<u32>, new_bytes: Vec<u8>, new_utf16: Vec<u32> },
-    /// Every row: text bytes (binary rows left out) with cumulative UTF-16
-    /// ends, and binary rows' bytes with cumulative byte ends.
-    Plain { text: Option<Vec<u8>>, utf16: Vec<u32>, binary: Vec<u8>, binary_ends: Vec<u32> },
+    /// Every row: text bytes with cumulative UTF-16 ends. With binary
+    /// rows, `text` is a copy of the text rows alone; JavaScript takes
+    /// the binary rows from the column's own bytes, by its byte ends, so
+    /// a large binary strL is not copied.
+    Plain { text: Option<Vec<u8>>, utf16: Vec<u32> },
 }
 
 impl Dict {
@@ -169,26 +171,19 @@ pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Strings {
     let mut utf16 = Vec::with_capacity(ends.len());
     let any_binary = binary.iter().any(|&b| b);
     let mut text = any_binary.then(Vec::new);
-    let mut binary_bytes = Vec::new();
-    let mut binary_ends = Vec::new();
     let (mut start, mut units) = (0, 0u32);
     for (i, &end) in ends.iter().enumerate() {
         let value = &bytes[start..end];
-        if any_binary && binary[i] {
-            binary_bytes.extend_from_slice(value);
-        } else {
+        if !(any_binary && binary[i]) {
             units += if value.is_ascii() { value.len() as u32 } else { utf16_len(value) as u32 };
             if let Some(text) = text.as_mut() {
                 text.extend_from_slice(value);
             }
         }
         utf16.push(units);
-        if any_binary {
-            binary_ends.push(binary_bytes.len() as u32);
-        }
         start = end;
     }
-    Strings::Plain { text, utf16, binary: binary_bytes, binary_ends }
+    Strings::Plain { text, utf16 }
 }
 
 #[cfg(test)]

@@ -289,6 +289,14 @@ export class DtaReader {
         }
         done += n;
       }
+    } catch (e) {
+      // A backstop: the module ends calls before a column's text passes
+      // V8's longest string, but if a decode still cannot make one,
+      // that is a value too large, not a bug.
+      if (e instanceof RangeError && !("code" in e) && /string length/i.test(e.message)) {
+        throw dtaError("DTA_TOO_LARGE", "a string is longer than JavaScript allows", e);
+      }
+      throw e;
     } finally {
       wasm.readEnd(handle);
     }
@@ -309,15 +317,14 @@ export class DtaReader {
       }
       return;
     }
+    // Binary rows come from the column's own bytes, by its byte ends.
     const flags = binary.slice();
     const bytes = wasm.part(handle, k, 3, "u8");
     const ends = wasm.part(handle, k, 4, "u32");
     let from = 0;
-    let fromByte = 0;
     for (let i = 0; i < n; i++) {
-      values[at + i] = flags[i] ? bytes.slice(fromByte, ends[i]) : text.substring(from, utf16[i]);
+      values[at + i] = flags[i] ? bytes.slice(i === 0 ? 0 : ends[i - 1], ends[i]) : text.substring(from, utf16[i]);
       from = utf16[i];
-      fromByte = ends[i];
     }
   }
 

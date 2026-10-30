@@ -142,6 +142,9 @@ struct State {
     /// Bytes per decoded chunk for readers opened from now (0: the
     /// core's default; tests lower it).
     chunk_bytes: usize,
+    /// Longest string JavaScript can make, in UTF-16 units, for readers
+    /// opened from now (tests lower it).
+    string_limit: usize,
     result: Vec<u8>,
     result_len: usize,
 }
@@ -154,6 +157,7 @@ impl Default for State {
             error_kind: 0,
             budget: BUDGET,
             chunk_bytes: 0,
+            string_limit: STRING_LIMIT,
             result: Vec::new(),
             result_len: 0,
         }
@@ -164,16 +168,17 @@ thread_local! {
     static STATE: RefCell<State> = RefCell::new(State::default());
 }
 
-/// Test builds only (`--features test-hooks`): lower the read budget and
-/// the chunk size of readers opened from now, so small files exercise
-/// what large ones do.
+/// Test builds only (`--features test-hooks`): lower the read budget, and
+/// the chunk size and string limit of readers opened from now, so small
+/// files exercise what large ones do.
 #[cfg(feature = "test-hooks")]
 #[no_mangle]
-pub extern "C" fn dta_test_set(budget: usize, chunk_bytes: usize) {
+pub extern "C" fn dta_test_set(budget: usize, chunk_bytes: usize, string_limit: usize) {
     STATE.with(|cell| {
         let mut state = cell.borrow_mut();
         state.budget = budget;
         state.chunk_bytes = chunk_bytes;
+        state.string_limit = string_limit;
     })
 }
 
@@ -318,7 +323,8 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
         let source = HostFile { id: file, len: len as u64 };
         let defaults = Options::default();
         let chunk_bytes = if state.chunk_bytes > 0 { state.chunk_bytes } else { defaults.chunk_bytes };
-        let reader = Reader::open(source, Options { encoding, chunk_bytes, ..defaults })?;
+        let max_text_units = Some(state.string_limit);
+        let reader = Reader::open(source, Options { encoding, chunk_bytes, max_text_units, ..defaults })?;
         state.handles.push(Some(Handle { reader, columns: Vec::new(), dicts: Vec::new(), strings: Vec::new() }));
         Ok(state.handles.len() as u32)
     })
@@ -411,29 +417,16 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
         // BUDGET / 9 numbers), so appending chunks does not regrow the
         // columns and leave freed copies in module memory.
         let rows = (count as usize).min(budget / (9 * cols.len()).max(1) + 1);
-        let mut first = true;
-        let n = reader
-            .read_chunks(&cols, start as u64, count as u64, Some(budget), |_, chunk| {
-                if first {
-                    *columns = chunk
-                        .iter()
-                        .map(|c| match c {
-                            Column::Numbers { .. } => {
-                                Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) }
-                            }
-                            Column::Strings { .. } => {
-                                Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() }
-                            }
-                        })
-                        .collect();
-                    first = false;
-                }
-                for (all, part) in columns.iter_mut().zip(chunk) {
-                    all.append(part);
-                }
-                Ok(())
+        *columns = cols
+            .iter()
+            .map(|&c| match meta.variables.get(c).map(|v| v.storage.is_numeric()) {
+                Some(false) => Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() },
+                _ => Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) },
             })
-            ?;
+            .collect();
+        // Decoded straight into the call's columns, so a large strL is
+        // not held twice.
+        let n = reader.read_into(&cols, start as u64, count as u64, Some(budget), columns)?;
         for (column, dict) in columns.iter().zip(dicts.iter_mut()) {
             strings.push(match column {
                 Column::Numbers { .. } => None,
@@ -479,11 +472,14 @@ pub extern "C" fn dta_column_mode(h: u32, k: usize) -> u32 {
 /// Decoded bytes one read may hold in module memory (plus one row).
 const BUDGET: usize = 64 << 20;
 
+/// V8's longest string, in UTF-16 units: 2^29 - 24.
+const STRING_LIMIT: usize = (1 << 29) - 24;
+
 /// A buffer of read column `k`. Numbers: `part` 0 the f64 values, 1
 /// the missing codes (u8). Plain strings: 0 the text bytes, 1 the
 /// cumulative UTF-16 ends (u32, one per row), 2 the binary flags (u8,
-/// strLs only), 3 the binary rows' bytes, 4 their cumulative ends (u32,
-/// one per row). Dictionary codes: 0 the new values' bytes, 1 their
+/// strLs only), 3 every row's bytes as decoded (for the binary rows), 4
+/// their cumulative byte ends (u32, one per row). Dictionary codes: 0 the new values' bytes, 1 their
 /// cumulative UTF-16 ends, 5 the codes (u32, one per row). Returns a
 /// pointer; `dta_result_len` gives the element count.
 #[no_mangle]
@@ -501,8 +497,8 @@ pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
             }
             (_, Some(Strings::Plain { utf16, .. }), 1) => (utf16.as_ptr() as *const u8, utf16.len()),
             (Column::Strings { binary, .. }, Some(Strings::Plain { .. }), 2) => (binary.as_ptr() as *const u8, binary.len()),
-            (_, Some(Strings::Plain { binary, .. }), 3) => (binary.as_ptr(), binary.len()),
-            (_, Some(Strings::Plain { binary_ends, .. }), 4) => (binary_ends.as_ptr() as *const u8, binary_ends.len()),
+            (Column::Strings { bytes, .. }, Some(Strings::Plain { .. }), 3) => (bytes.as_ptr(), bytes.len()),
+            (Column::Strings { ends, .. }, Some(Strings::Plain { .. }), 4) => (ends.as_ptr() as *const u8, ends.len()),
             (_, Some(Strings::Coded { new_bytes, .. }), 0) => (new_bytes.as_ptr(), new_bytes.len()),
             (_, Some(Strings::Coded { new_utf16, .. }), 1) => (new_utf16.as_ptr() as *const u8, new_utf16.len()),
             (_, Some(Strings::Coded { codes, .. }), 5) => (codes.as_ptr() as *const u8, codes.len()),

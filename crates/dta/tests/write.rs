@@ -248,3 +248,63 @@ fn two_strls_with_one_id_are_an_error() {
     assert_eq!(err.kind, dta::ErrorKind::Corrupt);
     assert!(err.message.contains("two strLs"), "{err}");
 }
+
+fn strls(values: Vec<String>) -> Vec<u8> {
+    let n = values.len();
+    let values: &'static [String] = values.leak();
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "s".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| (values[i].as_bytes(), false))),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+    out
+}
+
+/// plan 0008 M3: with `max_text_units` (the wasm module's JavaScript
+/// limit), a longer text strL is TooLarge; its UTF-16 length is counted
+/// in 1 MiB pieces, across which three-byte characters split.
+#[test]
+fn a_text_strl_longer_than_one_string_is_too_large() {
+    let value = "€".repeat(700_000) + "😀";
+    let units = value.encode_utf16().count();
+    let file = strls(vec![value.clone()]);
+    for (max, ok) in [(units - 1, false), (units, true)] {
+        let options = Options { max_text_units: Some(max), ..Options::default() };
+        let got = Reader::open(Bytes(file.clone()), options).unwrap().read(&[0], 0, 1);
+        match got {
+            Ok(columns) => assert!(ok && columns[0].bytes(0) == value.as_bytes(), "max {max}"),
+            Err(e) => assert!(!ok && e.kind == dta::ErrorKind::TooLarge, "max {max}: {e}"),
+        }
+    }
+}
+
+/// A call ends before the row that would take a column's text past
+/// `max_text_units`, so JavaScript can decode it as one string; a call's
+/// first row is always taken.
+#[test]
+fn a_budgeted_read_ends_before_its_text_passes_the_limit() {
+    let file = strls((0..10).map(|i| format!("{i}").repeat(100)).collect());
+    let options = Options { max_text_units: Some(250), ..Options::default() };
+    let mut reader = Reader::open(Bytes(file), options).unwrap();
+    let mut rows = Vec::new();
+    let mut start = 0;
+    while start < 10 {
+        let n = reader.read_chunks(&[0], start, 10 - start, Some(1 << 20), |_, _| Ok(())).unwrap();
+        rows.push(n);
+        start += n;
+    }
+    assert_eq!(rows, [2, 2, 2, 2, 2]);
+}

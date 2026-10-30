@@ -1,6 +1,7 @@
 //! Time and peak memory of reading a strL column (plan 0008 M1):
 //! `cargo run --release --example strls -- write <path> <rows>` writes
-//! a file of `rows` distinct strLs; `... -- read <path>` reads it.
+//! a file of `rows` distinct strLs; `... -- one <path> <bytes> text|binary`
+//! a file of one strL that long; `... -- read <path>` reads either.
 //! Unix only (peak RSS from getrusage).
 
 #[cfg(unix)]
@@ -8,6 +9,29 @@ fn main() {
     use dta::{FileSource, Options, Reader, StorageType, Values, WriteVariable};
     let args: Vec<String> = std::env::args().collect();
     let path = &args[2];
+    if args[1] == "one" {
+        let len: usize = args[3].parse().unwrap();
+        let binary = args[4] == "binary";
+        let value: &'static [u8] = vec![b'a'; len].leak();
+        let data = dta::Dataset {
+            nobs: 1,
+            label: String::new(),
+            timestamp: String::new(),
+            variables: vec![WriteVariable {
+                name: "s".into(),
+                storage: StorageType::StrL,
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::StrLs(Box::new(move |_| (value, binary))),
+            }],
+            value_labels: vec![],
+            characteristics: vec![],
+            sort_order: vec![],
+        };
+        dta::write(&data, std::io::BufWriter::new(std::fs::File::create(path).unwrap())).unwrap();
+        return;
+    }
     if args[1] == "write" {
         let rows: usize = args[3].parse().unwrap();
         let data = dta::Dataset {

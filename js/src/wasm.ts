@@ -37,7 +37,7 @@ interface Exports {
   dta_write_sort_order(indices: number, n: number): number;
   dta_write_finish(file: number, info: number, infoLen: number): number;
   /** Test builds only. */
-  dta_test_set?(budget: number, chunkBytes: number): void;
+  dta_test_set?(budget: number, chunkBytes: number, stringLimit: number): void;
 }
 
 /** Fills `into` with the file's bytes starting at `offset`. */
@@ -324,8 +324,8 @@ function writeParts(nobs: number, parts: WritePart[], info: string[], sink: (byt
 // build/dta-test.wasm): lower the read budget and chunk size, and take
 // or give back module memory.
 export const test = {
-  set(budget: number, chunkBytes: number): void {
-    wasm.dta_test_set!(budget, chunkBytes);
+  set(budget: number, chunkBytes: number, stringLimit = (1 << 29) - 24): void {
+    wasm.dta_test_set!(budget, chunkBytes, stringLimit);
   },
   alloc(len: number): number {
     return wasm.dta_alloc(len) >>> 0;

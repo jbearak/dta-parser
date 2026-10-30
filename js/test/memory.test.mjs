@@ -115,6 +115,21 @@ test("a write too large is DTA_TOO_LARGE", { skip }, () => {
   survivorReads();
 });
 
+test("calls end before a column's text passes the string limit; one longer value is DTA_TOO_LARGE", { skip }, () => {
+  const values = Array.from({ length: 10 }, (_, i) => `${i}`.repeat(300));
+  const bytes = ordinary.writeDta({ variables: [{ name: "l", type: "strL", values: [...values, "€".repeat(1200)] }] });
+  capped.test.set(1 << 20, 4096, 1000);
+  try {
+    const r = capped.openDta(bytes);
+    assert.deepEqual(r.readColumns(["l"], { count: 10 })[0].values, values);
+    assert.throws(() => r.readColumns(["l"], { start: 10, count: 1 }), tooLarge);
+    r.close();
+  } finally {
+    capped.test.set(1 << 20, 4096);
+  }
+  survivorReads();
+});
+
 test("with no memory for the reserve, calls fail cleanly, then work again", { skip }, () => {
   const held = [];
   for (let size = 16 << 20; size >= 64 << 10; ) {

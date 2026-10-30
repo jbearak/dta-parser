@@ -248,6 +248,9 @@ in cache, then copying it, costs the same as decoding into 64 MiB. So
 the core keeps `read_chunks`. Setting from a view of module memory
 instead of `.slice()` then `.set()` took the full read from 2,114–2,134
 to 1,908–1,932 ms (best of 2, three alternating runs each): 10%.
+M3 then brought `read_into` back for memory, not speed: decoding a
+500 MB strL into a chunk and appending it to the call's column held it
+twice (RSS +1,439 MiB; +962 MiB without the copy).
 
 ### M. wasm memory
 
