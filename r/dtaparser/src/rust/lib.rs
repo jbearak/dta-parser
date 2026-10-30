@@ -55,6 +55,8 @@ extern "C" {
     ) -> c_int;
     fn RAW(x: Sexp) -> *mut u8;
     fn dtaparser_interrupted() -> c_int;
+    // strings.c: a packed column's parts, without making R strings.
+    fn dtaparser_packed_parts(x: Sexp, bytes: *mut Sexp, ends: *mut Sexp, codes: *mut Sexp) -> c_int;
 }
 
 /// Why a call failed: our own message, or an R error waiting in init.c.
@@ -839,6 +841,34 @@ unsafe fn r_string<'a>(x: Sexp, i: usize) -> &'a [u8] {
     }
 }
 
+/// The rows of the character vector `x` for the writer. A column
+/// dtaparser read and has not made is read from its packed text, so no
+/// R string is made and it stays packed; a made one through its plain
+/// vector; any other through `STRING_ELT` (init.c materialised it).
+///
+/// # Safety
+/// `x` is a character vector of `nobs` rows, alive for 'a.
+unsafe fn string_values<'a>(x: Sexp, nobs: usize) -> Values<'a> {
+    let (mut bytes, mut ends, mut codes) = (std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
+    match dtaparser_packed_parts(x, &mut bytes, &mut ends, &mut codes) {
+        1 => {
+            let n = Rf_xlength(ends).max(0) as usize;
+            let ends = std::slice::from_raw_parts(REAL(ends) as *const f64, n);
+            let len = Rf_xlength(bytes).max(0) as usize;
+            let text = if len == 0 { &[][..] } else { std::slice::from_raw_parts(RAW(bytes) as *const u8, len) };
+            let codes = (TYPEOF(codes) == INTSXP).then(|| std::slice::from_raw_parts(INTEGER(codes) as *const c_int, nobs));
+            Values::Strings(Box::new(move |r| {
+                // read_dta wrote the codes and ends, so they are in range.
+                let j = codes.map_or(r, |c| c[r] as usize);
+                let from = if j == 0 { 0 } else { ends[j - 1] as usize };
+                &text[from..ends[j] as usize]
+            }))
+        }
+        2 => Values::Strings(Box::new(move |r| unsafe { r_string(bytes, r) })),
+        _ => Values::Strings(Box::new(move |r| unsafe { r_string(x, r) })),
+    }
+}
+
 /// # Safety
 /// `x` is a character vector, alive for 'a.
 unsafe fn r_strings<'a>(x: Sexp) -> Vec<&'a str> {
@@ -869,7 +899,7 @@ pub unsafe extern "C" fn dtaparser_write(path: *const c_char, spec: Sexp, err: *
                 return Err(Fail::Message("columns differ in length".into()));
             }
             let (storage, values) = if TYPEOF(col) == STRSXP {
-                (StorageType::Str(1), Values::Strings(Box::new(move |r| unsafe { r_string(col, r) })))
+                (StorageType::Str(1), string_values(col, nobs))
             } else {
                 let storage = match storage[i] {
                     "byte" => StorageType::Byte,

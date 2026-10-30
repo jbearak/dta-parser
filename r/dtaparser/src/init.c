@@ -169,10 +169,21 @@ static void materialize(SEXP x) {
   }
 }
 
+int dtaparser_packed_parts(SEXP x, SEXP *bytes, SEXP *ends, SEXP *codes);
+
 static SEXP write(SEXP path, SEXP spec) {
   const char *p = string_arg(path, "file");
-  if (TYPEOF(spec) != VECSXP) Rf_error("internal: the write spec must be a list");
-  materialize(spec);
+  if (TYPEOF(spec) != VECSXP || XLENGTH(spec) < 1 || TYPEOF(VECTOR_ELT(spec, 0)) != VECSXP)
+    Rf_error("internal: the write spec must be a list starting with the columns");
+  // Data columns that are packed stay packed: Rust reads their text
+  // (lib.rs, dtaparser_write). Everything else, including a packed
+  // vector anywhere outside spec[[1]], is materialised as before.
+  SEXP columns = VECTOR_ELT(spec, 0), unused;
+  for (R_xlen_t i = 0; i < XLENGTH(columns); i++) {
+    SEXP col = VECTOR_ELT(columns, i);
+    if (dtaparser_packed_parts(col, &unused, &unused, &unused) == 0) materialize(col);
+  }
+  for (R_xlen_t i = 1; i < XLENGTH(spec); i++) materialize(VECTOR_ELT(spec, i));
   char err[1024] = "";
   int status = dtaparser_write(p, spec, err, sizeof err);
   if (status == 2) R_ContinueUnwind(token);

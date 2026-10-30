@@ -154,6 +154,23 @@ SEXP dtaparser_dictionary(SEXP x) {
   return out;
 }
 
+// The parts of a column the writer can read without making R strings:
+// 1 for a packed column, with *bytes, *ends and *codes as in data1 (the
+// codes R_NilValue without a dictionary); 2 for a made one, with its
+// ordinary character vector in *bytes; 0 for any other vector. Calls no
+// R function that allocates or raises an error.
+int dtaparser_packed_parts(SEXP x, SEXP *bytes, SEXP *ends, SEXP *codes) {
+  if (!ALTREP(x) || !R_altrep_inherits(x, packed_class)) return 0;
+  if (!PACKED(x)) {
+    *bytes = R_altrep_data2(x);
+    return 2;
+  }
+  *bytes = BYTES(x);
+  *ends = ENDS(x);
+  *codes = CODES(x);
+  return 1;
+}
+
 // For the tests: c(state, dictionary). state is -2 for a vector that is
 // not a packed column, -1 for a made one, and for a packed one the number
 // of cache slots made so far; dictionary is 1 for a packed column with a
