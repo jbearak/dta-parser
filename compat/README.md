@@ -34,7 +34,7 @@ has at least one independent oracle for values and for value labels:
 | 115 | haven | pandas, readstata13, haven | pandas, readstata13, haven |
 | 119 | haven; pandas (both byte orders) | pandas, readstata13 (strLs); haven for its own files | pandas, readstata13, haven |
 
-Where a reader is wrong, its value is skipped, with the reason, in the
+Where a reader differs, its value is skipped, with the reason, in the
 test's `KNOWN` list (see `docs/adr/0005-oracles.md`):
 
 - haven 2.5.5 fails on 105 value labels, reads 104 and 108 value labels as
@@ -44,6 +44,9 @@ test's `KNOWN` list (see `docs/adr/0005-oracles.md`):
   to `.` by each variable's storage type), and reads an empty strL as
   `NA`;
 - pandas decodes text before 118 as Latin-1, not Windows-1252.
+
+None of these is an open bug in that project; see
+[docs/other-readers.md](../docs/other-readers.md).
 
 Notes are compared where haven reports them. readstata13's
 characteristics are recorded in `expected/` but not yet compared, and

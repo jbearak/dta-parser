@@ -26,6 +26,12 @@ decisions in `docs/adr/`.
   official Stata documentation, and never copy text from it; write in
   your own words. Copy open-source code only if its license allows, with
   credit.
+- If you think you have found a bug in another project (haven,
+  ReadStat, readstata13, pandas or any other), read
+  `docs/other-readers.md` first: the differences found so far were
+  either fixed upstream already or defensible choices. Never file an
+  issue, pull request or comment in another project without the user's
+  approval of that specific report.
 - Work only in this repository. Other repositories may be read only as
   described below, and never pushed to.
 

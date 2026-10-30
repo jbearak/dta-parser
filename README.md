@@ -157,6 +157,43 @@ than release 118 comes back as UTF-8.
 
 To build, test or change anything, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Acknowledgements
+
+dta-parser learns from, tests against and compares itself with these
+open-source projects:
+
+- **What we know of the format** comes mainly from the code and
+  documentation of [ReadStat](https://github.com/WizardMac/ReadStat)
+  (Evan Miller and contributors, MIT) and of pandas' Stata reader and
+  writer, [`pandas/io/stata.py`](https://github.com/pandas-dev/pandas/blob/main/pandas/io/stata.py)
+  (the pandas development team, BSD-3-Clause). The Rust core in
+  `crates/dta` is our own implementation and contains no code from
+  either.
+- **Tagged missing values in R**: dtatools stores `.a` to `.z` inside
+  `NA` with the same bits as `tagged_na()` in
+  [haven](https://github.com/tidyverse/haven) (Hadley Wickham, Evan
+  Miller, Danny Smith), so the values pass between the two packages
+  unchanged ([missing values](docs/guide/missing-values.md)).
+- **Reference readers**: the tests check what we read against haven,
+  [readstata13](https://github.com/sjewo/readstata13) (Jan Marvin
+  Garbuszus, Sebastian Jeworutzki), pandas and
+  [pyreadstat](https://github.com/Roche/pyreadstat) (Otto Fajardo), and
+  the Julia tests against
+  [ReadStatTables.jl](https://github.com/junyuan-chen/ReadStatTables.jl)
+  (Junyuan Chen). See [compat/README.md](compat/README.md) and
+  [ADR 0005](docs/adr/0005-oracles.md).
+- **Test fixtures**: ReadStat's writer makes the files for releases
+  104, 105, 108, 110 and 111 (`compat/make_legacy_fixtures.sh`),
+  haven and pandas write the rest, and the big-endian files for
+  releases 104 to 113 come from pandas' test suite ([compat/fixtures/README.md](compat/fixtures/README.md)).
+- **Benchmarks and documentation**: the
+  [benchmark plan](docs/plans/0005-four-languages.md) measures our speed
+  against haven, readstata13, pandas, pyreadstat, ReadStatTables.jl,
+  [StatFiles.jl](https://github.com/queryverse/StatFiles.jl) (David
+  Anthoff) and [@irbisadm/statfmt](https://github.com/irbisadm/statfmt)
+  (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
+  documentation with that of each of them except StatFiles.jl.
+
 ## License
 
 GPL-3.0 (see [LICENSE](LICENSE)). Some test fixtures come from pandas'
