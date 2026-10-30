@@ -12,6 +12,7 @@ mod legacy;
 pub mod missing;
 mod reader;
 mod source;
+mod strl_index;
 pub mod threads;
 mod types;
 mod writer;

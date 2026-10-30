@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -10,6 +10,7 @@ use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
 use crate::source::{read_vec, SharedSource, Source};
+use crate::strl_index::{self, StrlEntry, StrlIndex};
 use crate::threads::panic_message;
 use crate::types::StorageType;
 
@@ -163,16 +164,10 @@ pub struct Reader<S: Source> {
     /// Where each variable starts within a row.
     offsets: Vec<usize>,
     row_len: usize,
-    strls: Option<HashMap<(u32, u64), StrlEntry>>,
+    strls: Option<StrlIndex>,
     options: Options,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct StrlEntry {
-    offset: u64,
-    len: u32,
-    binary: bool,
-}
 
 impl<S: Source> Reader<S> {
     pub fn open(mut source: S, options: Options) -> Result<Self> {
@@ -437,9 +432,9 @@ impl<S: Source> Reader<S> {
 
     /// The (variable, observation) a strL cell points to, with the
     /// variable number in the first `v_len` bytes.
-    fn strl_key(&self, cell: &[u8; 8], v_len: usize) -> (u32, u64) {
+    fn strl_key(&self, cell: &[u8; 8], v_len: usize) -> (u64, u64) {
         let order = self.meta.byte_order;
-        (uint(&cell[..v_len], order) as u32, uint(&cell[v_len..], order))
+        (uint(&cell[..v_len], order), uint(&cell[v_len..], order))
     }
 
     /// The strL entry a cell points to; None for the empty reference.
@@ -449,12 +444,11 @@ impl<S: Source> Reader<S> {
             return Ok(None);
         }
         let index = self.strls.as_ref().ok_or_else(|| Error::new("strLs not indexed"))?;
+        let get = |(v, o): (u64, u64)| strl_index::key(v, o).and_then(|k| index.get(k));
         // haven 2.5.5 writes 119 cells with the 118 split (ADR 0005).
-        let found = index
-            .get(&key)
-            .or_else(|| (self.layout.release == 119).then(|| index.get(&self.strl_key(cell, 2))).flatten());
+        let found = get(key).or_else(|| (self.layout.release == 119).then(|| get(self.strl_key(cell, 2))).flatten());
         match found {
-            Some(e) => Ok(Some(*e)),
+            Some(e) => Ok(Some(e)),
             None => Err(Error::new(format!(
                 "a strL refers to variable {} observation {}, which the strL section lacks",
                 key.0, key.1
@@ -500,11 +494,11 @@ impl<S: Source> Reader<S> {
     /// One pass over the strL section, through a 1 MiB window,
     /// recording where each entry's payload is. Payloads themselves are
     /// read only when asked for.
-    fn index_strls(&mut self) -> Result<HashMap<(u32, u64), StrlEntry>> {
+    fn index_strls(&mut self) -> Result<StrlIndex> {
         let (start, end) = self.sections.strls;
         let o_len = if self.layout.release == 117 { 4 } else { 8 };
         let head_len = 3 + 4 + o_len + 1 + 4;
-        let mut index = HashMap::new();
+        let mut index = StrlIndex::default();
         let mut window: Vec<u8> = Vec::new();
         let mut window_at = start;
         let mut pos = start;
@@ -533,13 +527,15 @@ impl<S: Source> Reader<S> {
                 130 => false,
                 _ => return Err(Error::at(pos, format!("unknown strL type {kind}"))),
             };
-            // Two strLs with one id would show one's text in the other's
-            // cells, so the file is damaged.
-            if index.insert((v, o), StrlEntry { offset: payload, len, binary }).is_some() {
-                return Err(Error::at(pos, format!("two strLs are both variable {v} observation {o}")));
-            }
+            let Some(key) = strl_index::key(v as u64, o) else {
+                return Err(Error::at(pos, format!("strL variable {v} observation {o} is out of range")));
+            };
+            index.push(key, StrlEntry { offset: payload, len, binary })?;
             pos = payload + len as u64;
         }
+        // Two strLs with one id would show one's text in the other's
+        // cells, so `finish` rejects the file.
+        index.finish(start)?;
         Ok(index)
     }
 
