@@ -171,7 +171,8 @@ impl<S: Source> Reader<S> {
     /// Read `count` rows starting at row `start` of the variables at
     /// `columns` (indices into the variable list, in any order).
     pub fn read(&mut self, columns: &[usize], start: u64, count: u64) -> Result<Vec<Column>> {
-        let rows = usize::try_from(count).unwrap_or(0);
+        // Check the request before reserving room for it.
+        let rows = self.check(columns, start, count)?;
         let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows)).collect();
         self.read_chunks(columns, start, count, None, |_, chunk| {
             for (all, part) in out.iter_mut().zip(chunk) {
@@ -200,18 +201,7 @@ impl<S: Source> Reader<S> {
         budget: Option<usize>,
         mut f: impl FnMut(usize, &[Column]) -> Result<()>,
     ) -> Result<u64> {
-        let nvar = self.meta.variables.len();
-        if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
-            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
-        }
-        if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
-            return Err(Error::new(format!(
-                "rows {start} to {} are past the {} rows in the file",
-                start.saturating_add(count),
-                self.meta.nobs
-            )));
-        }
-        let count = usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))?;
+        let count = self.check(columns, start, count)?;
         if count == 0 {
             return Ok(0);
         }
@@ -281,6 +271,23 @@ impl<S: Source> Reader<S> {
             }
         }
         Ok(done as u64)
+    }
+
+    /// The number of rows `count` as a usize, or an error if a column or
+    /// a row of the request is not in the file.
+    fn check(&self, columns: &[usize], start: u64, count: u64) -> Result<usize> {
+        let nvar = self.meta.variables.len();
+        if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
+            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
+        }
+        if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
+            return Err(Error::new(format!(
+                "rows {start} to {} are past the {} rows in the file",
+                start.saturating_add(count),
+                self.meta.nobs
+            )));
+        }
+        usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))
     }
 
     /// A column with room for `rows`, so decoding a chunk never regrows it.

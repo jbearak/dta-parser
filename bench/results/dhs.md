@@ -272,33 +272,33 @@ Each cell: median seconds / peak RSS MB. Startup (process start to packages load
 
 ## Errors
 
-- Dominican Republic 2013 bh, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Dominican Republic 2013 bh, StatFiles.jl, task 6: StatFiles has no writer
-- Dominican Republic 2013 bh, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Dominican Republic 2013 wm, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Dominican Republic 2013 wm, StatFiles.jl, task 6: StatFiles has no writer
-- Dominican Republic 2013 wm, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Myanmar 2016 bh, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Myanmar 2016 bh, StatFiles.jl, task 6: StatFiles has no writer
-- Myanmar 2016 bh, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Myanmar 2016 wm, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Myanmar 2016 wm, StatFiles.jl, task 6: StatFiles has no writer
-- Myanmar 2016 wm, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Senegal 2019 bh, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Senegal 2019 bh, StatFiles.jl, task 6: StatFiles has no writer
-- Senegal 2019 bh, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Senegal 2019 wm, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Senegal 2019 wm, StatFiles.jl, task 6: StatFiles has no writer
-- Senegal 2019 wm, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Tajikistan 2017 bh, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Tajikistan 2017 bh, StatFiles.jl, task 6: StatFiles has no writer
-- Tajikistan 2017 bh, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Tajikistan 2017 wm, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Tajikistan 2017 wm, StatFiles.jl, task 6: StatFiles has no writer
-- Tajikistan 2017 wm, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Turkey 2013 bh, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Turkey 2013 bh, StatFiles.jl, task 6: StatFiles has no writer
-- Turkey 2013 bh, pyreadstat, task 6: AttributeError: … object has no attribute …
-- Turkey 2013 wm, StatFiles.jl, task 5: StatFiles has no metadata-only read
-- Turkey 2013 wm, StatFiles.jl, task 6: StatFiles has no writer
-- Turkey 2013 wm, pyreadstat, task 6: AttributeError: … object has no attribute …
+- Dominican Republic 2013 bh, StatFiles.jl, task 5: not supported by this reader
+- Dominican Republic 2013 bh, StatFiles.jl, task 6: not supported by this reader
+- Dominican Republic 2013 bh, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Dominican Republic 2013 wm, StatFiles.jl, task 5: not supported by this reader
+- Dominican Republic 2013 wm, StatFiles.jl, task 6: not supported by this reader
+- Dominican Republic 2013 wm, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Myanmar 2016 bh, StatFiles.jl, task 5: not supported by this reader
+- Myanmar 2016 bh, StatFiles.jl, task 6: not supported by this reader
+- Myanmar 2016 bh, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Myanmar 2016 wm, StatFiles.jl, task 5: not supported by this reader
+- Myanmar 2016 wm, StatFiles.jl, task 6: not supported by this reader
+- Myanmar 2016 wm, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Senegal 2019 bh, StatFiles.jl, task 5: not supported by this reader
+- Senegal 2019 bh, StatFiles.jl, task 6: not supported by this reader
+- Senegal 2019 bh, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Senegal 2019 wm, StatFiles.jl, task 5: not supported by this reader
+- Senegal 2019 wm, StatFiles.jl, task 6: not supported by this reader
+- Senegal 2019 wm, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Tajikistan 2017 bh, StatFiles.jl, task 5: not supported by this reader
+- Tajikistan 2017 bh, StatFiles.jl, task 6: not supported by this reader
+- Tajikistan 2017 bh, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Tajikistan 2017 wm, StatFiles.jl, task 5: not supported by this reader
+- Tajikistan 2017 wm, StatFiles.jl, task 6: not supported by this reader
+- Tajikistan 2017 wm, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Turkey 2013 bh, StatFiles.jl, task 5: not supported by this reader
+- Turkey 2013 bh, StatFiles.jl, task 6: not supported by this reader
+- Turkey 2013 bh, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)
+- Turkey 2013 wm, StatFiles.jl, task 5: not supported by this reader
+- Turkey 2013 wm, StatFiles.jl, task 6: not supported by this reader
+- Turkey 2013 wm, pyreadstat, task 6: failed with AttributeError (message withheld: DHS file)

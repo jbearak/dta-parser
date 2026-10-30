@@ -511,6 +511,25 @@ def family_rss_summary(fam_files, out):
     return "\n".join([head, "|---|---|" + "---|" * len(TASKS), *rows])
 
 
+def error_kind(msg):
+    """A DHS error as a fixed category: a reader's own message can quote
+    a variable's name or a value, which ADR 0013 keeps out of reports."""
+    low = msg.lower()
+    # The harness's own fixed messages hold nothing from the file.
+    for fixed in ("has no metadata", "has no writer", "no api"):
+        if fixed in low:
+            return "not supported by this reader"
+    if "timed out" in low:
+        return "timed out"
+    if "memory" in low or "alloc" in low:
+        return "out of memory"
+    code = re.match(r"exit (-?\d+)", msg)
+    if code:
+        return f"exited with code {code.group(1)}"
+    kind = re.search(r"\b([A-Z][A-Za-z]*(?:Error|Exception))\b", msg)
+    return f"failed with {kind.group(1)} (message withheld: DHS file)" if kind else "failed (message withheld: DHS file)"
+
+
 def detail_tables(fam_files, out, private):
     parts = []
     for lang, spec in LANGS.items():
@@ -535,8 +554,8 @@ def detail_tables(fam_files, out, private):
                     m = load(out, f, lang, r, task)
                     if m and "error" in m and not m.get("skipped"):
                         msg = m["error"]
-                        if private:  # no names or values from DHS files in messages
-                            msg = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "…", msg)
+                        if private:
+                            msg = error_kind(msg)
                         errors.append(f"- {f['label']}, {spec['readers'][r]}, task {task}: {msg.strip()[:300]}")
     if errors:
         parts.append("## Errors\n\n" + "\n".join(sorted(set(errors))) + "\n")
@@ -707,7 +726,7 @@ def correctness_section(files, out):
                     elif status == "not compared":
                         msg = info if isinstance(info, str) else ""
                         if fam == "dhs":
-                            msg = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "…", msg)
+                            msg = error_kind(msg)
                         details.append(f"- {f['label']}, {lang}, {spec['readers'][reader]}, {item}: not compared ({msg.strip()[:200]})")
         lines += [f"### {FAMILIES[fam]}", "",
                   "Ours against each reader (write: each writer's file re-read by the open-source reader). "

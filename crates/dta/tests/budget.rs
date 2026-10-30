@@ -99,3 +99,11 @@ fn a_chunk_of_bytes_decodes_to_about_8_mib() {
     assert_eq!(n, nobs as u64);
     assert!(largest * nvar * 9 <= 8 << 20, "a chunk of {largest} rows decodes to {} bytes", largest * nvar * 9);
 }
+
+#[test]
+fn an_impossible_request_is_an_error_before_anything_is_reserved() {
+    let mut r = open("pandas_118_le.dta");
+    assert!(r.read(&[0], 0, u64::MAX).is_err());
+    assert!(r.read(&[0], 1, r.metadata().nobs).is_err());
+    assert!(r.read(&[usize::MAX], 0, 1).is_err());
+}
