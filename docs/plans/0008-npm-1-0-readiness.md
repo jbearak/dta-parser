@@ -363,8 +363,11 @@ text strL throws `DTA_TOO_LARGE` without growing module memory.
   and then. Opens are counted in `wasm.open` and closes in `wasm.close`, with
 `try`/`finally`, so a reader whose constructor fails after the open
 (metadata or JSON) closes its handle and is not counted. A reader dropped without `close()` is caught by a `FinalizationRegistry`
-that closes its handle, and does nothing if the handle belongs to an
-older instance generation; until it runs, it keeps the instance, and the docs
+that releases its module handle (and closes the file only if the
+package opened it from a path, exactly as `close()` and
+`Symbol.dispose` do: a borrowed fd is never closed), and does nothing
+if the handle belongs to an older instance generation. A test drops a
+reader on a borrowed fd, forces collection, and reads the fd after; until it runs, it keeps the instance, and the docs
 say to `close()` or `using`. The 256 MiB threshold has a test-only
 override, so CI's swap test reads an 8 MiB strL in the test module
 with the threshold lowered to 4 MiB, then asserts the
@@ -636,6 +639,11 @@ publish:
      comparison, with only the documented differences;
    - table-viewer, with Arrow removed (the user's decision): its test
      suite and VS Code integration tests;
-   - Sight: its browser tests and smoke test on VS Code 1.123.
+   - Sight: the Sight thread reruns its probe suite (parity with 0.6 on
+     every cell of five fixtures; missing codes and labels; borrowed fds
+     in workers; strL index and size limits; memory release; loading in
+     VS Code's Node 24 runtime, main thread and worker) on the packed
+     tarball, extended to M5, M6 and E, and reports. Sight's own browser
+     and smoke tests gate 1.1, after its port to the 1.x API.
 4. docs/typescript.md documents every option, return shape and error
    code above, with an example each.
