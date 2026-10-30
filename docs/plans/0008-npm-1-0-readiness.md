@@ -484,14 +484,20 @@ Bugs, fixed in 1.0:
 
 Checked, not changed (documented in docs/migration.md as differences
 from 0.x):
-- **Release 108 label-table names.** table-viewer expected 33 bytes;
-  pandas reads 9 (`io/stata.py`, the `_format_version == 108` branch of
-  its value-label reader), as we do. Before 1.0 the stage also checks
-  ReadStat's reader; we change only if it and pandas both say 33.
+- **Release 108 label-table names.** table-viewer expected 33 bytes.
+  The open-source readers disagree: pandas (`io/stata.py`, the
+  `_format_version == 108` branch of its value-label reader) and
+  readstata13 (`src/read_pre13_dta.cpp`, `lbllen = 9` for 107–108) read
+  9, as we do; ReadStat (`src/stata/readstat_dta.c`, 33 for 105–117)
+  reads 33. We keep 9 and, when a table does not add up read that way,
+  retry it with 33, so files written either way read. Tested with a
+  108 file written each way; docs/other-readers.md records the
+  difference.
 - **A repeated label-set name keeps the last table** (0.x kept the
   first). pandas also keeps the last (it fills a dict).
 - **Lenient reads** of type-130 strLs that are empty or lack a final
-  NUL, label text without a NUL, and a map whose end-of-file offset is
+  NUL, label text without a NUL, a label whose text offset equals the text
+block's length (it reads as ""), and a map whose end-of-file offset is
   past the end. Each reads what is there; none can return another
   value's data. 0.x rejected them.
 
