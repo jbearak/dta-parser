@@ -1,0 +1,4 @@
+src/rust/dta/
+src/rust/target/
+src/*.o
+src/*.so

@@ -197,6 +197,25 @@ open-source projects:
   (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
   documentation with that of each of them except StatFiles.jl.
 
+## R packages
+
+`dtaparser` reads a `.dta` file into a tibble of standard R types:
+integers, doubles, character, factors for labelled columns, `Date` and
+`POSIXct` for date formats. Every missing value is `NA`, so R's rules
+apply. Use it to analyse data.
+
+`dtatools` reads into a dibble whose numeric columns keep Stata's
+missing values (`.a` to `.z`) and compare as Stata does, so `x > 5` is
+TRUE where `x` is missing. It also writes files. It exists for testing
+Stata pipelines with testthat, and it imports dtaparser.
+
+Neither is on CRAN. Building dtaparser needs Rust's `cargo`. Install
+dtaparser first:
+
+    scripts/build-r-package.sh
+    R CMD INSTALL r/dtaparser_*.tar.gz
+    R CMD INSTALL r/dtatools_*.tar.gz
+
 ## License
 
 GPL-3.0 (see [LICENSE](LICENSE)). Some test fixtures come from pandas'

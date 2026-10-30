@@ -49,16 +49,20 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+      # dtatools imports dtaparser, which is on no registry, so resolve
+      # dtaparser's dependencies and add dtatools' others by hand.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: r/dtatools
-          extra-packages: any::haven, any::testthat
-      # Build the self-contained source package, then install it from
-      # outside the checkout, as a user without the repository would.
+          working-directory: r/dtaparser
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13
+      # Build the source packages, then install them from outside the
+      # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh
       - run: |
           cd "$RUNNER_TEMP"
+          R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtatools_*.tar.gz
+      - run: Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
       - run: Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
 
   python:
@@ -187,9 +191,10 @@ jobs:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: r/dtatools
+          working-directory: r/dtaparser
+          extra-packages: any::vctrs
       - run: pip install pandas
-      - run: R CMD INSTALL r/dtatools
+      - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/dtatools
       - run: scripts/build-wasm.sh && cd js && npm ci && npm run build
       - run: Rscript compat/readback.R "$RUNNER_TEMP/r" && python3 compat/readback.py "$RUNNER_TEMP/r"
       - run: node compat/readback.mjs "$RUNNER_TEMP/js" && python3 compat/readback.py "$RUNNER_TEMP/js"

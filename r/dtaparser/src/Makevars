@@ -1,5 +1,5 @@
 LIBDIR = rust/target/release
-PKG_LIBS = -L$(LIBDIR) -ldtatools
+PKG_LIBS = -L$(LIBDIR) -ldtaparser
 
 all: $(SHLIB)
 

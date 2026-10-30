@@ -126,7 +126,7 @@ static SEXP packed_duplicate(SEXP x, Rboolean deep) {
 // element i of parent; *bytes and *ends receive its vectors to fill. With
 // rows >= 0 the values are a dictionary and *codes receives an integer
 // vector of rows codes to fill; with rows < 0, *codes is R_NilValue.
-SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *bytes,
+SEXP dtaparser_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *bytes,
                          SEXP *ends, SEXP *codes) {
   SEXP data = PROTECT(Rf_allocVector(VECSXP, 3));
   *bytes = SET_VECTOR_ELT(data, 0, Rf_allocVector(RAWSXP, nbytes));
@@ -140,7 +140,7 @@ SEXP dtatools_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R
 // For a packed column with a dictionary, list(values, codes): its
 // distinct values as a character vector and each row's 0-based code
 // (shared with the column, so not to be modified). NULL for anything else.
-SEXP dtatools_dictionary(SEXP x) {
+SEXP dtaparser_dictionary(SEXP x) {
   if (!ALTREP(x) || !R_altrep_inherits(x, packed_class) || !PACKED(x) || CODES(x) == R_NilValue)
     return R_NilValue;
   SEXP cache = cache_of(x);
@@ -158,7 +158,7 @@ SEXP dtatools_dictionary(SEXP x) {
 // not a packed column, -1 for a made one, and for a packed one the number
 // of cache slots made so far; dictionary is 1 for a packed column with a
 // dictionary, else 0.
-SEXP dtatools_packed_state(SEXP x) {
+SEXP dtaparser_packed_state(SEXP x) {
   SEXP out = PROTECT(Rf_allocVector(REALSXP, 2));
   double *o = REAL(out);
   o[0] = -2;
@@ -177,8 +177,8 @@ SEXP dtatools_packed_state(SEXP x) {
   return out;
 }
 
-void dtatools_init_packed(DllInfo *dll) {
-  packed_class = R_make_altstring_class("packed_strings", "dtatools", dll);
+void dtaparser_init_packed(DllInfo *dll) {
+  packed_class = R_make_altstring_class("packed_strings", "dtaparser", dll);
   R_set_altrep_Length_method(packed_class, packed_length);
   R_set_altrep_Duplicate_method(packed_class, packed_duplicate);
   R_set_altvec_Dataptr_method(packed_class, packed_dataptr);

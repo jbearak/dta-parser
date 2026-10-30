@@ -1,7 +1,7 @@
 # dta-parser
 
 Reads and writes Stata `.dta` files for TypeScript tools (npm) and for R
-(dtatools).
+(dtaparser, and dtatools on top of it).
 
 ## Language
 
@@ -43,7 +43,7 @@ either text or binary.
 _Avoid_: GSO (the on-disk record's name)
 
 **Packed column**:
-A string column dtatools has read but whose values are still the bytes
+A string column dtaparser has read but whose values are still the bytes
 from the file; R strings are made from them when the values are used.
 Once all are made, the column is *made*.
 _Avoid_: lazy column, deferred strings (R's name for its own)
@@ -52,3 +52,18 @@ _Avoid_: lazy column, deferred strings (R's name for its own)
 A packed column stored as its distinct values plus a code per row,
 because few of its values are distinct.
 _Avoid_: factor (a different R type), categorical
+
+**dtaparser**:
+The R package that reads files into standard R types (integers,
+factors, `Date`; every missing value `NA`) and holds the Rust bridge
+that dtatools reads and writes through.
+
+**dtatools**:
+The R package that reads files into dibbles, whose `dta_num` columns
+follow Stata's rules for missing values. It exists for a testthat suite.
+_Avoid_: using dtatools to analyse data (use dtaparser)
+
+**Plain mode**:
+How dtaparser's bridge fills columns for its own `read_dta`: integers
+for byte, int and long, `NA` for every missing value, dates converted.
+Its other mode fills dtatools' `dta_num` columns.

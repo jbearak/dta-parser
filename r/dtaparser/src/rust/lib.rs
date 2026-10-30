@@ -1,4 +1,4 @@
-//! dtatools' bridge from R to the dta core.
+//! dtaparser's bridge from R to the dta core.
 //!
 //! Rust never calls an R function that can raise an error: allocation,
 //! building strings and setting attributes go through the C shims in
@@ -38,11 +38,11 @@ extern "C" {
     fn LOGICAL(x: Sexp) -> *mut c_int;
     static R_NaString: Sexp;
     // The shims in init.c; each returns 0, or 1 if R raised an error.
-    fn dtatools_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
-    fn dtatools_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
-    fn dtatools_set_strings(x: Sexp, first: isize, bytes: *const u8, ends: *const usize, n: isize) -> c_int;
+    fn dtaparser_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
+    fn dtaparser_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
+    fn dtaparser_set_strings(x: Sexp, first: isize, bytes: *const u8, ends: *const usize, n: isize) -> c_int;
     #[allow(clippy::too_many_arguments)]
-    fn dtatools_packed_elt(
+    fn dtaparser_packed_elt(
         parent: Sexp,
         i: isize,
         nbytes: isize,
@@ -54,7 +54,7 @@ extern "C" {
         codes: *mut Sexp,
     ) -> c_int;
     fn RAW(x: Sexp) -> *mut u8;
-    fn dtatools_interrupted() -> c_int;
+    fn dtaparser_interrupted() -> c_int;
 }
 
 /// Why a call failed: our own message, or an R error waiting in init.c.
@@ -82,7 +82,7 @@ fn status(code: c_int) -> Res<()> {
 /// A new vector, stored as element `i` of the list `parent`.
 fn alloc_elt(parent: Sexp, i: usize, kind: c_int, n: usize) -> Res<Sexp> {
     let mut out = std::ptr::null_mut();
-    status(unsafe { dtatools_alloc_elt(parent, i as isize, kind, n as isize, &mut out) })?;
+    status(unsafe { dtaparser_alloc_elt(parent, i as isize, kind, n as isize, &mut out) })?;
     Ok(out)
 }
 
@@ -94,7 +94,7 @@ fn packed_elt(parent: Sexp, i: usize, s: &Strings) -> Res<Sexp> {
     let n = s.ends.len();
     let rows = s.dict.as_ref().map_or(-1, |d| d.codes.len() as isize);
     status(unsafe {
-        dtatools_packed_elt(parent, i as isize, s.bytes.len() as isize, n as isize, rows, &mut x, &mut b, &mut e, &mut c)
+        dtaparser_packed_elt(parent, i as isize, s.bytes.len() as isize, n as isize, rows, &mut x, &mut b, &mut e, &mut c)
     })?;
     unsafe {
         std::slice::from_raw_parts_mut(RAW(b), s.bytes.len()).copy_from_slice(&s.bytes);
@@ -111,13 +111,13 @@ fn packed_elt(parent: Sexp, i: usize, s: &Strings) -> Res<Sexp> {
 /// A new vector, attached to `x` as attribute `name`.
 fn alloc_attr(x: Sexp, name: &CStr, kind: c_int, n: usize) -> Res<Sexp> {
     let mut out = std::ptr::null_mut();
-    status(unsafe { dtatools_alloc_attr(x, name.as_ptr(), kind, n as isize, &mut out) })?;
+    status(unsafe { dtaparser_alloc_attr(x, name.as_ptr(), kind, n as isize, &mut out) })?;
     Ok(out)
 }
 
 /// Fill `x[first..]` with strings given as bytes and end offsets.
 fn set_strings(x: Sexp, first: usize, bytes: &[u8], ends: &[usize]) -> Res<()> {
-    status(unsafe { dtatools_set_strings(x, first as isize, bytes.as_ptr(), ends.as_ptr(), ends.len() as isize) })
+    status(unsafe { dtaparser_set_strings(x, first as isize, bytes.as_ptr(), ends.as_ptr(), ends.len() as isize) })
 }
 
 fn set_strs<S: AsRef<str>>(x: Sexp, v: &[S]) -> Res<()> {
@@ -192,7 +192,7 @@ fn guard(err: *mut c_char, err_len: usize, f: impl FnOnce() -> Res<()>) -> c_int
         Ok(Ok(())) => return 0,
         Ok(Err(Fail::R)) => return 2,
         Ok(Err(Fail::Message(m))) => m,
-        Err(_) => "internal error in dtatools".to_string(),
+        Err(_) => "internal error in dtaparser".to_string(),
     };
     let bytes = message.as_bytes();
     let n = bytes.len().min(err_len.saturating_sub(1));
@@ -210,7 +210,7 @@ fn guard(err: *mut c_char, err_len: usize, f: impl FnOnce() -> Res<()>) -> c_int
 /// # Safety
 /// The pointers come from init.c.
 #[no_mangle]
-pub unsafe extern "C" fn dtatools_meta(
+pub unsafe extern "C" fn dtaparser_meta(
     path: *const c_char,
     encoding: *const c_char,
     holder: Sexp,
@@ -258,8 +258,121 @@ pub unsafe extern "C" fn dtatools_meta(
     })
 }
 
-/// The attributes `read_dta` documents: `label` and `format` on every
-/// column; `storage`, `labels`, `label_set` and class `dta_num` on
+/// How `dtaparser_read` builds columns, from its `mode` argument.
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    /// 0: plain R types, dates as numbers.
+    Plain,
+    /// 1: dtatools' columns (`set_attributes`).
+    Stata,
+    /// 2: plain R types, dates as `Date` and `POSIXct`.
+    PlainDates,
+}
+
+/// What an R numeric column holds.
+#[derive(Clone, Copy)]
+enum Kind {
+    /// Doubles with missing codes in the payload (mode 1).
+    Tagged,
+    /// Integers, every missing value NA.
+    Integer,
+    /// Doubles, every missing value NA.
+    Double,
+    /// Days since 1970, class `Date`.
+    Date,
+    /// Seconds since 1970, class `POSIXct` in UTC.
+    DateTime,
+}
+
+/// Days from 1960-01-01, where Stata counts from, to 1970-01-01.
+const DAYS_1960_TO_1970: f64 = 3653.0;
+
+impl Kind {
+    fn of(mode: Mode, var: &Variable, labelled: bool) -> Kind {
+        if mode == Mode::Stata {
+            return Kind::Tagged;
+        }
+        if mode == Mode::PlainDates && !labelled {
+            // `%td` and `%tc`, left-aligned or not; `%d...` is the old name
+            // for `%td`. `%tC` (with leap seconds) stays numbers.
+            let f = var.format.strip_prefix('%').unwrap_or("");
+            let f = f.strip_prefix('-').unwrap_or(f);
+            if f.starts_with("td") || f.starts_with('d') {
+                return Kind::Date;
+            }
+            if f.starts_with("tc") {
+                return Kind::DateTime;
+            }
+        }
+        match var.storage {
+            StorageType::Byte | StorageType::Int | StorageType::Long => Kind::Integer,
+            _ => Kind::Double,
+        }
+    }
+
+    /// R's type for the column.
+    fn sexptype(self) -> c_int {
+        if let Kind::Integer = self {
+            INTSXP
+        } else {
+            REALSXP
+        }
+    }
+}
+
+/// Fill rows `first..` of the R vector `x` of kind `kind`.
+fn fill(x: Sexp, kind: Kind, first: usize, values: &[f64], missing: &[u8]) {
+    let na = f64::from_bits(NA_BITS);
+    if let Kind::Integer = kind {
+        let dst = unsafe { std::slice::from_raw_parts_mut(INTEGER(x).add(first), values.len()) };
+        for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
+            // Stata's integer types hold no value outside i32 that is not
+            // missing, and none equal to R's NA (i32::MIN).
+            *d = if m == 0 { v as i32 } else { i32::MIN };
+        }
+        return;
+    }
+    let dst = unsafe { std::slice::from_raw_parts_mut(REAL(x).add(first), values.len()) };
+    for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
+        *d = match (kind, m) {
+            (Kind::Tagged, _) => r_double(v, m),
+            (_, 1..) => na,
+            (Kind::Date, _) => v - DAYS_1960_TO_1970,
+            (Kind::DateTime, _) => v / 1000.0 - DAYS_1960_TO_1970 * 86_400.0,
+            _ => v,
+        };
+    }
+}
+
+/// Plain mode's attributes: `label` when there is one, `labels` (the
+/// non-missing codes, named by their text) on a labelled column, and the
+/// class of a date or datetime.
+fn set_plain_attributes(x: Sexp, var: &Variable, kind: Kind, set: Option<&ValueLabelSet>) -> Res<()> {
+    if !var.label.is_empty() {
+        string_attr(x, c"label", &var.label)?;
+    }
+    if let Some(set) = set {
+        let labels: Vec<&ValueLabel> = set.labels.iter().filter(|l| l.missing == 0).collect();
+        let codes = alloc_attr(x, c"labels", REALSXP, labels.len())?;
+        let values: Vec<f64> = labels.iter().map(|l| l.value).collect();
+        unsafe { std::slice::from_raw_parts_mut(REAL(codes), values.len()) }.copy_from_slice(&values);
+        let texts = alloc_attr(codes, c"names", STRSXP, labels.len())?;
+        set_strs(texts, &labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())?;
+    }
+    match kind {
+        Kind::Date => string_attr(x, c"class", "Date")?,
+        Kind::DateTime => {
+            let class = alloc_attr(x, c"class", STRSXP, 2)?;
+            set_strs(class, &["POSIXct", "POSIXt"])?;
+            string_attr(x, c"tzone", "UTC")?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// The attributes dtatools' `read_dta` documents: `label` and `format` on
+/// every column; `storage`, `labels`, `label_set` and class `dta_num` on
 /// numeric ones. Set here rather than in R so R does not copy the
 /// column to change them.
 fn set_attributes(x: Sexp, var: &Variable, set: Option<&ValueLabelSet>) -> Res<()> {
@@ -283,19 +396,20 @@ fn set_attributes(x: Sexp, var: &Variable, set: Option<&ValueLabelSet>) -> Res<(
 }
 
 /// The columns at 0-based `cols`, all rows, as element 0 of `holder`
-/// (a list), from row `skip` (0-based), at most `n_max` rows. Checks for
-/// Ctrl-C between chunks.
+/// (a list), from row `skip` (0-based), at most `n_max` rows, built as
+/// `mode` says (see `Mode`). Checks for Ctrl-C between chunks.
 ///
 /// # Safety
 /// The pointers come from init.c; `cols` holds `ncols` ints.
 #[no_mangle]
-pub unsafe extern "C" fn dtatools_read(
+pub unsafe extern "C" fn dtaparser_read(
     path: *const c_char,
     cols: *const c_int,
     ncols: isize,
     skip: f64,
     n_max: f64,
     encoding: *const c_char,
+    mode: c_int,
     holder: Sexp,
     err: *mut c_char,
     err_len: usize,
@@ -304,6 +418,12 @@ pub unsafe extern "C" fn dtatools_read(
     let encoding = c_str(encoding);
     let cols = std::slice::from_raw_parts(cols, ncols.max(0) as usize).to_vec();
     guard(err, err_len, || {
+        let mode = match mode {
+            0 => Mode::Plain,
+            1 => Mode::Stata,
+            2 => Mode::PlainDates,
+            _ => return Err(Fail::Message("internal: unknown read mode".into())),
+        };
         let cols: Vec<usize> = cols
             .iter()
             .map(|&i| usize::try_from(i).map_err(|_| Fail::Message("negative column index".into())))
@@ -323,9 +443,14 @@ pub unsafe extern "C" fn dtatools_read(
             // Numeric columns are filled in place; string columns gather
             // their text here and become packed columns after the read.
             let target = if var.storage.is_numeric() {
-                let x = alloc_elt(out, k, REALSXP, nobs)?;
-                set_attributes(x, var, sets.iter().find(|s| s.name == var.value_labels))?;
-                Target::Numbers(x)
+                let set = sets.iter().find(|s| s.name == var.value_labels);
+                let kind = Kind::of(mode, var, set.is_some());
+                let x = alloc_elt(out, k, kind.sexptype(), nobs)?;
+                match mode {
+                    Mode::Stata => set_attributes(x, var, set)?,
+                    _ => set_plain_attributes(x, var, kind, set)?,
+                }
+                Target::Numbers(x, kind)
             } else {
                 Target::Strings(Strings::new(limits, nobs))
             };
@@ -334,17 +459,14 @@ pub unsafe extern "C" fn dtatools_read(
         // A failure inside the chunk callback, kept so an R error stays one.
         let mut failed: Option<Fail> = None;
         let result = reader.read_chunks(&cols, start, count, None, |first, chunk| {
-            if unsafe { dtatools_interrupted() } != 0 {
+            if unsafe { dtaparser_interrupted() } != 0 {
                 failed = Some(Fail::Message("interrupted".into()));
                 return Err(dta::Error::new("interrupted"));
             }
             for ((target, var), column) in targets.iter_mut().zip(chunk) {
                 let step = match (target, column) {
-                    (Target::Numbers(x), Column::Numbers { values, missing }) => {
-                        let dst = unsafe { std::slice::from_raw_parts_mut(REAL(*x).add(first), values.len()) };
-                        for ((d, &v), &m) in dst.iter_mut().zip(values).zip(missing) {
-                            *d = r_double(v, m);
-                        }
+                    (Target::Numbers(x, kind), Column::Numbers { values, missing }) => {
+                        fill(*x, *kind, first, values, missing);
                         Ok(())
                     }
                     (Target::Strings(s), Column::Strings { bytes, ends, binary }) => {
@@ -372,17 +494,20 @@ pub unsafe extern "C" fn dtatools_read(
                 }
                 let x = packed_elt(out, k, &s)?;
                 drop(s);
-                set_attributes(x, var, None)?;
+                match mode {
+                    Mode::Stata => set_attributes(x, var, None)?,
+                    _ => set_plain_attributes(x, var, Kind::Double, None)?,
+                }
             }
         }
         Ok(())
     })
 }
 
-/// Where a column read by `dtatools_read` goes.
+/// Where a column read by `dtaparser_read` goes.
 enum Target {
-    /// The R double vector it fills.
-    Numbers(Sexp),
+    /// The R vector it fills, and what it holds.
+    Numbers(Sexp, Kind),
     /// The strings gathered so far.
     Strings(Strings),
 }
@@ -397,13 +522,13 @@ struct DictLimits {
 }
 
 impl DictLimits {
-    /// The defaults, or smaller values from `DTATOOLS_DICT_WINDOW` and
-    /// `DTATOOLS_DICT_LIMIT`, which the tests set.
+    /// The defaults, or smaller values from `DTAPARSER_DICT_WINDOW` and
+    /// `DTAPARSER_DICT_LIMIT`, which the tests set.
     fn from_env() -> Self {
         let get = |name: &str, default: usize| {
             std::env::var(name).ok().and_then(|v| v.parse().ok()).map_or(default, |v: usize| v.min(default))
         };
-        DictLimits { window: get("DTATOOLS_DICT_WINDOW", 65_536), limit: get("DTATOOLS_DICT_LIMIT", i32::MAX as usize) }
+        DictLimits { window: get("DTAPARSER_DICT_WINDOW", 65_536), limit: get("DTAPARSER_DICT_LIMIT", i32::MAX as usize) }
     }
 }
 
@@ -467,7 +592,7 @@ impl Strings {
     /// Append a chunk, checking that R can hold every value.
     fn gather(&mut self, name: &str, bytes: &[u8], ends: &[usize], binary: &[bool]) -> Res<()> {
         if binary.iter().any(|&b| b) {
-            return Err(Fail::Message(format!("{name} holds binary strLs, which dtatools does not read")));
+            return Err(Fail::Message(format!("{name} holds binary strLs, which dtaparser does not read")));
         }
         if bytes.contains(&0) {
             return Err(Fail::Message(format!("{name} holds a string with an embedded nul, which R cannot hold")));
@@ -685,7 +810,7 @@ unsafe fn r_strings<'a>(x: Sexp) -> Vec<&'a str> {
 /// # Safety
 /// `spec` is the list save_dta builds; `path` a NUL-terminated string.
 #[no_mangle]
-pub unsafe extern "C" fn dtatools_write(path: *const c_char, spec: Sexp, err: *mut c_char, err_len: usize) -> c_int {
+pub unsafe extern "C" fn dtaparser_write(path: *const c_char, spec: Sexp, err: *mut c_char, err_len: usize) -> c_int {
     let path = c_str(path).unwrap_or_default();
     guard(err, err_len, || {
         let elt = |i: isize| unsafe { VECTOR_ELT(spec, i) };
