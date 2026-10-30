@@ -41,7 +41,7 @@ The same happens with `version = 117` and `version = 119`.
   references
   ([R/read.R#L353-L354](https://github.com/sjewo/readstata13/blob/5c02468ef1213c86b7a86260ec6f83f7e40d7d60/R/read.R#L353-L354)).
   The references are built as `v_o`
-  ([src/read_data.cpp#L167](https://github.com/sjewo/readstata13/blob/5c02468ef1213c86b7a86260ec6f83f7e40d7d60/src/read_data.cpp#L167)),
+  ([src/read_data.cpp#L166-L167](https://github.com/sjewo/readstata13/blob/5c02468ef1213c86b7a86260ec6f83f7e40d7d60/src/read_data.cpp#L166-L167)),
   so the empty reference is `"0_0"` and that lookup finds nothing.
 - pandas writes `""` as (0, 0) and reads (0, 0) as `""`
   ([pandas/io/stata.py#L3294](https://github.com/pandas-dev/pandas/blob/092d58891fe0effeb8adf0635c52d3c6a7270670/pandas/io/stata.py#L3294),
