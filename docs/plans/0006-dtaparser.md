@@ -100,7 +100,10 @@ read_dta(file, col_select = NULL, encoding = NULL, skip = 0, n_max = Inf,
 `file`, `col_select`, `encoding`, `skip` and `n_max` mean what they mean
 in dtatools. It returns a tibble. Every numeric missing value, `.` and
 `.a` to `.z` alike, is R's `NA`; there is no way to get the letters
-back (dtatools is the package for that). Strings stay as stored: Stata
+back (dtatools is the package for that). (Changed by ADR 0017: doubles
+keep `.a` to `.z` as tagged NAs, an integer column holding them is read
+as doubles, labels on them stay in `labels`, and factors warn when they
+lose them.) Strings stay as stored: Stata
 has no missing string other than `""`, and haven also reads `""` as
 `""`.
 

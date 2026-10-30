@@ -55,7 +55,8 @@ _Avoid_: factor (a different R type), categorical
 
 **dtaparser**:
 The R package that reads files into standard R types (integers,
-factors, `Date`; every missing value `NA`) and holds the Rust bridge
+factors, `Date`; every missing value `NA`, with `.a` to `.z` keeping
+their letter in doubles) and holds the Rust bridge
 that dtatools reads and writes through.
 
 **dtatools**:
@@ -65,5 +66,6 @@ _Avoid_: using dtatools to analyse data (use dtaparser)
 
 **Plain mode**:
 How dtaparser's bridge fills columns for its own `read_dta`: integers
-for byte, int and long, `NA` for every missing value, dates converted.
+for byte, int and long (doubles once they hold `.a` to `.z`), `NA` for
+every missing value with the letter kept in doubles, dates converted.
 Its other mode fills dtatools' `dta_num` columns.

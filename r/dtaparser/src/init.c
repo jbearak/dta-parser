@@ -11,6 +11,8 @@
 
 #include <setjmp.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
@@ -178,6 +180,21 @@ static SEXP write(SEXP path, SEXP spec) {
   return R_NilValue;
 }
 
+// Whether a double vector holds a tagged NA for .a to .z: R's NA (low
+// word 1954) with a letter in bits 32 to 39, as lib.rs writes them.
+static SEXP has_letters(SEXP x) {
+  if (TYPEOF(x) != REALSXP) return Rf_ScalarLogical(FALSE);
+  const double *p = REAL_RO(x);
+  for (R_xlen_t i = 0, n = XLENGTH(x); i < n; i++) {
+    if (!ISNAN(p[i])) continue;
+    uint64_t bits;
+    memcpy(&bits, &p[i], sizeof bits);
+    unsigned tag = (unsigned) ((bits >> 32) & 0xff);
+    if ((uint32_t) bits == 1954 && tag >= 'a' && tag <= 'z') return Rf_ScalarLogical(TRUE);
+  }
+  return Rf_ScalarLogical(FALSE);
+}
+
 SEXP dtaparser_packed_state(SEXP x);
 SEXP dtaparser_dictionary(SEXP x);
 void dtaparser_init_packed(DllInfo *dll);
@@ -188,6 +205,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 6},
   {"dta_write", (DL_FUNC) &write, 2},
+  {"dta_has_letters", (DL_FUNC) &has_letters, 1},
   {NULL, NULL, 0}
 };
 
