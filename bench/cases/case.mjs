@@ -89,7 +89,10 @@ function statfmtWrite(ds, dst) {
     format: v.format ?? undefined, valueLabels: v.valueLabelsName ?? undefined,
   }));
   const bytes = statfmt.writeDta({ variables, rows: ds.rows, valueLabelSets, fileLabel: ds.metadata.fileLabel ?? undefined, version: 118 });
-  fs.writeFileSync(dst, bytes);
+  // In pieces: one writeFileSync stops at 2 GiB.
+  const fd = fs.openSync(dst, "w");
+  for (let at = 0; at < bytes.length;) at += fs.writeSync(fd, bytes, at, Math.min(bytes.length - at, 1 << 30));
+  fs.closeSync(fd);
 }
 
 const readers = {
