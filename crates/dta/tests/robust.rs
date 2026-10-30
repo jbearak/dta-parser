@@ -95,3 +95,25 @@ fn errors_say_what_kind_they_are() {
     let ok = dta::Dataset { variables: vec![dta::WriteVariable { name: "x".into(), ..data.variables.into_iter().next().unwrap() }], ..data };
     assert_eq!(dta::write(&ok, Full).unwrap_err().kind, ErrorKind::Io);
 }
+
+/// readstat_108.dta with its label table's set name widened from 9 to
+/// 33 bytes, as ReadStat's reader expects for release 108.
+#[test]
+fn release_108_label_names_of_33_bytes_read() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/fixtures");
+    let bytes = fs::read(dir.join("readstat_108.dta")).unwrap();
+    let at = bytes.windows(9).position(|w| w == b"/\0\0\0yesno").expect("the label table");
+    let mut wide = bytes[..at + 4].to_vec();
+    let mut name = b"yesno".to_vec();
+    name.resize(33, 0);
+    wide.extend_from_slice(&name);
+    wide.extend_from_slice(&bytes[at + 4 + 9..]);
+    for file in [bytes, wide] {
+        let mut reader = Reader::open(Bytes(file), Options::default()).unwrap();
+        let sets = reader.value_labels().unwrap();
+        assert_eq!(sets.len(), 1);
+        assert_eq!(sets[0].name, "yesno");
+        let texts: Vec<&str> = sets[0].labels.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, ["Refused", "No", "Yes"]);
+    }
+}

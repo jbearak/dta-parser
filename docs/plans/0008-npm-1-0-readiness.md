@@ -488,11 +488,12 @@ Bugs, fixed in 1.0:
 Checked, not changed (documented in docs/migration.md as differences
 from 0.x):
 - **Release 108 label-table names.** table-viewer expected 33 bytes.
-  The open-source readers disagree: pandas (`io/stata.py`, the
-  `_format_version == 108` branch of its value-label reader) and
-  readstata13 (`src/read_pre13_dta.cpp`, `lbllen = 9` for 107–108) read
-  9, as we do; ReadStat (`src/stata/readstat_dta.c`, 33 for 105–117)
-  reads 33. We keep 9 and, when a table does not add up read that way,
+  pandas (`io/stata.py`, the
+  `_format_version == 108` branch of its value-label reader),
+  readstata13 (`src/read_pre13_dta.cpp`, `lbllen = 9` for 107–108) and
+  ReadStat's writer read and write 9, as we do; ReadStat's released
+  reader takes 33 (`src/stata/readstat_dta.c` on master, 105–117), which
+  its `dev` branch fixed to 9 (the 108 row of docs/other-readers.md). We keep 9 and, when a table does not add up read that way,
   retry it with 33, so files written either way read. Tested with a
   108 file written each way; docs/other-readers.md records the
   difference.

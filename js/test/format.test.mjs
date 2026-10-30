@@ -55,3 +55,36 @@ test("dates and times, default and masked", () => {
   // The older %d formats show as %td.
   assert.equal(formatValue(22949, "%dD_m_Y"), "31oct2022");
 });
+
+test("dates floor, as haven does; negative years keep their sign", () => {
+  assert.equal(formatValue(0.5, "%td"), "01jan1960");
+  assert.equal(formatValue(1234.5678, "%td"), "19may1963");
+  assert.equal(formatValue(-0.25, "%tdCCYY-NN-DD"), "1959-12-31");
+  assert.equal(formatValue(-1, "%ty"), "-0001");
+  assert.equal(formatValue(-29, "%ty"), "-0029");
+  assert.equal(formatValue(2024.7, "%ty"), "2024");
+});
+
+test("values a format cannot show fall back to the plain number", () => {
+  assert.equal(formatValue(123456789, "%td"), "123456789");
+  assert.equal(formatValue(-312267684937, "%td"), "-3.12268e+11");
+  assert.equal(formatValue(1e300, "%tdCCYY-NN-DD"), "1e+300");
+  assert.equal(formatValue(8.7e15, "%tc"), "8.7e+15");
+  assert.equal(formatValue(1.5, "%9.101f"), "1.5");
+});
+
+test("formatValue never throws", () => {
+  let seed = 11;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
+  const units = ["%td", "%tc", "%tC", "%tw", "%tm", "%tq", "%th", "%ty", "%d", "%tdCCYY-NN-DD_HH:MM:SS.sss", "%tcMonth_dd,_CCYY!h"];
+  const numeric = () => `%${rnd() < 0.2 ? "-" : ""}${Math.floor(rnd() * 400)}.${Math.floor(rnd() * 400)}${"fge"[Math.floor(rnd() * 3)]}${rnd() < 0.3 ? "c" : ""}`;
+  for (let i = 0; i < 100_000; i++) {
+    const v = (rnd() - 0.5) * 10 ** Math.floor(rnd() * 600 - 300);
+    const format = rnd() < 0.5 ? units[i % units.length] : numeric();
+    const text = formatValue(rnd() < 0.5 ? Math.round(v) : v, format);
+    assert.equal(typeof text, "string");
+  }
+  for (const v of [Number.MAX_VALUE, -Number.MAX_VALUE, Number.MIN_VALUE, -0, 2 ** 53]) {
+    for (const f of [...units, "%9.0g", "%400.300f", "%1.0e", "%0.0gc"]) assert.equal(typeof formatValue(v, f), "string");
+  }
+});

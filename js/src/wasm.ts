@@ -102,7 +102,8 @@ function guard<T>(f: () => T): T {
   }
 }
 
-const utf8 = new TextDecoder("utf-8");
+// ignoreBOM: a value that starts with U+FEFF keeps it.
+const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
 
 /** The codes of `dta_error_kind`'s kinds, 1 to 7. */
 const CODES: ErrorCode[] = ["DTA_CORRUPT", "DTA_TOO_LARGE", "DTA_IO", "DTA_INVALID", "DTA_OUT_OF_RANGE", "DTA_INTERNAL", "DTA_CLOSED"];

@@ -105,7 +105,8 @@ export interface Options {
 /** Most rows asked of the wasm module per call; it also stops at 64 MiB. */
 const BLOCK = 1 << 20;
 
-const utf8 = new TextDecoder("utf-8");
+// ignoreBOM: a value that starts with U+FEFF keeps it.
+const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
 
 /** An open .dta file. Reads happen only when asked for. */
 export class DtaReader {

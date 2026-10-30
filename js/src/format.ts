@@ -4,8 +4,6 @@ import type { Cell, ValueLabels } from "./values";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_MS = 86_400_000;
-/** 1960-01-01, Stata's day 0, as a Unix time in milliseconds. */
-const EPOCH = Date.UTC(1960, 0, 1);
 
 const NUMBER = /^%(-|~)?(0)?(\d+)?(?:\.(\d+))?([fge])(c)?$/;
 const STRING = /^%(-|~)?(\d+)?s$/;
@@ -28,7 +26,9 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  *   character is copied. Pieces a unit lacks (the day of a %tm) are left
  *   out. The older `%d` formats show as `%td` does, whatever their mask.
  *
- * An unrecognised format falls back to the plain number.
+ * An unrecognised format, a date outside JavaScript's date range, or a
+ * format asking for more digits than JavaScript can show falls back to
+ * the plain number (as `%9.0g` shows it). `formatValue` never throws.
  */
 export function formatValue(cell: Cell, format: string, labels?: ValueLabels): string {
   const key = typeof cell === "object" && cell !== null && "missing" in cell ? cell : typeof cell === "number" ? cell : undefined;
@@ -37,7 +37,14 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
   if (cell instanceof Uint8Array) return `<${cell.length} bytes>`;
   if (typeof cell !== "number") return cell.missing;
   if (!Number.isFinite(cell)) return ".";
+  try {
+    return formatNumber(cell, format);
+  } catch {
+    return general(cell, 9, 0);
+  }
+}
 
+function formatNumber(cell: number, format: string): string {
   const time = TIME.exec(format);
   if (time && (format.startsWith("%t") || format.startsWith("%-t"))) return formatTime(cell, time[2], time[3]);
   // The older %d formats: their masks are shown as %td's default.
@@ -49,13 +56,17 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
     const text = num[5] === "f" ? cell.toFixed(digits ?? 0) : num[5] === "e" ? exponential(cell, digits ?? 0) : general(cell, width, digits ?? 0);
     return num[6] ? commas(text) : text;
   }
-  if (STRING.test(format)) return String(cell);
   return String(cell);
 }
 
 /** `%w.dg`: `d` significant digits, or, with `d` 0, as many as fit in `w`. */
 function general(v: number, width: number, digits: number): string {
-  if (digits === 0 && Number.isInteger(v) && String(v).length <= width) return String(v);
+  if (digits === 0) {
+    // Fast path: a number JavaScript writes in fewer than `width`
+    // characters has no more significant digits than `%g` would keep.
+    const plain = String(v);
+    if (Number.isInteger(v) ? plain.length <= width : plain.length < width && Math.abs(v) >= 1e-4 && !plain.includes("e")) return plain;
+  }
   const precision = digits > 0 ? digits : Math.max(1, Math.min(width - (v < 0 ? 3 : 2), 15));
   const exponent = v === 0 ? 0 : Math.floor(Math.log10(Math.abs(v)));
   if (exponent < -4 || exponent >= Math.max(precision, width - 1)) {
@@ -101,15 +112,29 @@ interface When {
   week?: number;
 }
 
+/** JavaScript's date range, in days either side of 1970 (so of 1960, near enough). */
+const MAX_DAYS = 100_000_000;
+
 function formatTime(v: number, unit: string, mask: string): string {
   const year = (per: number) => 1960 + Math.floor(Math.floor(v) / per);
   switch (unit) {
     case "d":
-      return render(fromDate(new Date(EPOCH + Math.round(v) * DAY_MS)), mask || "DDmonCCYY");
+      return render(civil(Math.floor(v)), mask || "DDmonCCYY");
     case "c":
-    case "C":
+    case "C": {
       // Whole milliseconds, as pandas reads them.
-      return render(fromDate(new Date(EPOCH + Math.floor(v))), mask || "DDmonCCYY_HH:MM:SS");
+      const ms = Math.floor(v);
+      const days = Math.floor(ms / DAY_MS);
+      const w = civil(days);
+      let rest = ms - days * DAY_MS;
+      w.hour = Math.floor(rest / 3_600_000);
+      rest -= w.hour * 3_600_000;
+      w.minute = Math.floor(rest / 60_000);
+      rest -= w.minute * 60_000;
+      w.second = Math.floor(rest / 1000);
+      w.ms = rest - w.second * 1000;
+      return render(w, mask || "DDmonCCYY_HH:MM:SS");
+    }
     case "w":
       return render({ year: year(52), week: mod(v, 52) + 1 }, mask || "CCYY!www");
     case "m":
@@ -119,20 +144,27 @@ function formatTime(v: number, unit: string, mask: string): string {
     case "h":
       return render({ year: year(2), half: mod(v, 2) + 1 }, mask || "CCYY!hh");
     default:
-      return render({ year: Math.round(v) }, mask || "CCYY");
+      return render({ year: Math.floor(v) }, mask || "CCYY");
   }
 }
 
-function fromDate(t: Date): When {
-  return {
-    year: t.getUTCFullYear(),
-    month: t.getUTCMonth(),
-    day: t.getUTCDate(),
-    hour: t.getUTCHours(),
-    minute: t.getUTCMinutes(),
-    second: t.getUTCSeconds(),
-    ms: t.getUTCMilliseconds(),
-  };
+/**
+ * The calendar date `days` after 1 January 1960 (the proleptic
+ * Gregorian calendar, as JavaScript's Date uses), by the usual
+ * days-to-civil arithmetic on 400-year eras. Throws outside the range a
+ * JavaScript Date covers, so such values show as plain numbers.
+ */
+function civil(days: number): When {
+  if (!(Math.abs(days) <= MAX_DAYS)) throw new RangeError("date out of range");
+  const z = days - 3653 + 719_468; // days since 0000-03-01
+  const era = Math.floor(z / 146_097);
+  const doe = z - era * 146_097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36_524) - Math.floor(doe / 146_096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const day = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const month = mp < 10 ? mp + 2 : mp - 10;
+  return { year: yoe + era * 400 + (month < 2 ? 1 : 0), month, day };
 }
 
 function mod(a: number, b: number): number {
@@ -141,42 +173,51 @@ function mod(a: number, b: number): number {
 
 const MASK = /^(\.sss|\.ss|\.s|Month|month|Mon|mon|CC|YY|NN|nn|DD|dd|HH|hh|MM|SS|WW|ww|q|h|!.|_)/;
 
-function render(w: When, mask: string): string {
-  const opt = (n: number | undefined, f: (n: number) => string) => (n === undefined ? "" : f(n));
-  const name = (n: number | undefined, len?: number) => opt(n, (m) => MONTHS[m].slice(0, len));
-  const parts: Record<string, string> = {
-    CC: pad(Math.floor(w.year / 100)),
-    YY: pad(mod(w.year, 100)),
-    NN: opt(w.month, (m) => pad(m + 1)),
-    nn: opt(w.month, (m) => String(m + 1)),
-    DD: opt(w.day, pad),
-    dd: opt(w.day, String),
-    Mon: name(w.month, 3),
-    mon: name(w.month, 3).toLowerCase(),
-    Month: name(w.month),
-    month: name(w.month).toLowerCase(),
-    HH: opt(w.hour, pad),
-    hh: opt(w.hour, String),
-    MM: opt(w.minute, pad),
-    SS: opt(w.second, pad),
-    ".s": opt(w.ms, (ms) => `.${Math.floor(ms / 100)}`),
-    ".ss": opt(w.ms, (ms) => `.${pad(Math.floor(ms / 10))}`),
-    ".sss": opt(w.ms, (ms) => `.${pad(ms, 3)}`),
-    WW: opt(w.week, pad),
-    ww: opt(w.week, String),
-    q: opt(w.quarter, String),
-    h: opt(w.half, String),
-    _: " ",
-  };
-  let out = "";
+/** A mask split into pieces, once per mask: a piece name, or `=` and literal text. */
+const compiled = new Map<string, string[]>();
+
+function pieces(mask: string): string[] {
+  let out = compiled.get(mask);
+  if (out) return out;
+  out = [];
   for (let rest = mask; rest.length > 0; ) {
     const m = MASK.exec(rest);
-    if (!m) {
-      out += rest[0];
-      rest = rest.slice(1);
-    } else {
-      out += m[1].startsWith("!") ? m[1][1] : parts[m[1]];
-      rest = rest.slice(m[1].length);
+    const piece = !m ? `=${rest[0]}` : m[1].startsWith("!") ? `=${m[1][1]}` : m[1] === "_" ? "= " : m[1];
+    out.push(piece);
+    rest = rest.slice(m ? m[1].length : 1);
+  }
+  if (compiled.size < 1000) compiled.set(mask, out);
+  return out;
+}
+
+function render(w: When, mask: string): string {
+  // A negative year shows its sign once, before the century.
+  const y = Math.abs(w.year);
+  let out = "";
+  for (const p of pieces(mask)) {
+    switch (p) {
+      case "CC": out += (w.year < 0 ? "-" : "") + pad(Math.floor(y / 100)); break;
+      case "YY": out += pad(y % 100); break;
+      case "NN": if (w.month !== undefined) out += pad(w.month + 1); break;
+      case "nn": if (w.month !== undefined) out += String(w.month + 1); break;
+      case "DD": if (w.day !== undefined) out += pad(w.day); break;
+      case "dd": if (w.day !== undefined) out += String(w.day); break;
+      case "Mon": if (w.month !== undefined) out += MONTHS[w.month].slice(0, 3); break;
+      case "mon": if (w.month !== undefined) out += MONTHS[w.month].slice(0, 3).toLowerCase(); break;
+      case "Month": if (w.month !== undefined) out += MONTHS[w.month]; break;
+      case "month": if (w.month !== undefined) out += MONTHS[w.month].toLowerCase(); break;
+      case "HH": if (w.hour !== undefined) out += pad(w.hour); break;
+      case "hh": if (w.hour !== undefined) out += String(w.hour); break;
+      case "MM": if (w.minute !== undefined) out += pad(w.minute); break;
+      case "SS": if (w.second !== undefined) out += pad(w.second); break;
+      case ".s": if (w.ms !== undefined) out += `.${Math.floor(w.ms / 100)}`; break;
+      case ".ss": if (w.ms !== undefined) out += `.${pad(Math.floor(w.ms / 10))}`; break;
+      case ".sss": if (w.ms !== undefined) out += `.${pad(w.ms, 3)}`; break;
+      case "WW": if (w.week !== undefined) out += pad(w.week); break;
+      case "ww": if (w.week !== undefined) out += String(w.week); break;
+      case "q": if (w.quarter !== undefined) out += String(w.quarter); break;
+      case "h": if (w.half !== undefined) out += String(w.half); break;
+      default: out += p.slice(1);
     }
   }
   return out;

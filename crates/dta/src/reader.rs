@@ -533,7 +533,11 @@ impl<S: Source> Reader<S> {
                 130 => false,
                 _ => return Err(Error::at(pos, format!("unknown strL type {kind}"))),
             };
-            index.insert((v, o), StrlEntry { offset: payload, len, binary });
+            // Two strLs with one id would show one's text in the other's
+            // cells, so the file is damaged.
+            if index.insert((v, o), StrlEntry { offset: payload, len, binary }).is_some() {
+                return Err(Error::at(pos, format!("two strLs are both variable {v} observation {o}")));
+            }
             pos = payload + len as u64;
         }
         Ok(index)
@@ -543,7 +547,21 @@ impl<S: Source> Reader<S> {
     pub fn value_labels(&mut self) -> Result<Vec<ValueLabelSet>> {
         let (start, end) = self.sections.value_labels;
         let section = read_vec(&mut self.source, start, end - start)?;
-        let mut c = Cursor::new(&section, start, self.meta.byte_order);
+        let sets = self.label_sets(&section, start, self.layout.name_len);
+        // Release 108 tables name their set in 9 bytes, as pandas,
+        // readstata13 and ReadStat (writer, and reader since dev 69d8f91)
+        // have it. Released ReadStat read 33, so a file written to match
+        // that is read too.
+        match sets {
+            Err(e) if self.layout.release == 108 => self.label_sets(&section, start, 33).map_err(|_| e),
+            sets => sets,
+        }
+    }
+
+    /// The value label sets in `section` (which starts at byte `start`),
+    /// with set names `name_len` bytes long.
+    fn label_sets(&self, section: &[u8], start: u64, name_len: usize) -> Result<Vec<ValueLabelSet>> {
+        let mut c = Cursor::new(section, start, self.meta.byte_order);
         let enc = self.meta.encoding;
         let release = self.layout.release;
         let mut sets = Vec::new();
@@ -557,7 +575,7 @@ impl<S: Source> Reader<S> {
             }
             let at = c.offset();
             let len = usize::try_from(c.i32()?).map_err(|_| Error::at(at, "negative value label table length"))?;
-            let name = text(c.bytes(self.layout.name_len)?, enc);
+            let name = text(c.bytes(name_len)?, enc);
             c.skip(3)?;
             let table = c.bytes(len)?;
             sets.push(ValueLabelSet { name, labels: self.label_table(table, c.offset() - len as u64)? });

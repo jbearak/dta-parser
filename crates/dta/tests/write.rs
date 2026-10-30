@@ -216,3 +216,35 @@ fn binary_strls_read_back_as_binary() {
         assert_eq!((column.bytes(i), binary[i]), (bytes, is_binary), "row {i}");
     }
 }
+
+#[test]
+fn two_strls_with_one_id_are_an_error() {
+    let rows: [(&[u8], bool); 3] = [(b"first", false), (b"second", false), (b"third", false)];
+    let data = Dataset {
+        nobs: rows.len(),
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "s".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| rows[i])),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+    Reader::open(Bytes(out.clone()), Options::default()).unwrap().read(&[0], 0, 3).unwrap();
+    // Give the third strL the first one's (v, o): 4 + 8 bytes after "GSO".
+    let gso: Vec<usize> = out.windows(3).enumerate().filter(|(_, w)| *w == b"GSO").map(|(i, _)| i).collect();
+    assert_eq!(gso.len(), 3);
+    let id = out[gso[0] + 3..gso[0] + 15].to_vec();
+    out[gso[2] + 3..gso[2] + 15].copy_from_slice(&id);
+    let err = Reader::open(Bytes(out), Options::default()).unwrap().read(&[0], 0, 3).unwrap_err();
+    assert_eq!(err.kind, dta::ErrorKind::Corrupt);
+    assert!(err.message.contains("two strLs"), "{err}");
+}
