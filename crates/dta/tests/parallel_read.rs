@@ -132,7 +132,7 @@ struct Failing {
 
 impl SharedSource for Failing {
     fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
-        if offset + buf.len() as u64 > self.fail_at && offset >= self.fail_at - 4096 {
+        if offset + buf.len() as u64 > self.fail_at && offset >= self.fail_at.saturating_sub(4096) {
             return Err(Error::at(offset, "test read failure"));
         }
         let start = offset as usize;
@@ -205,6 +205,28 @@ fn a_failed_read_of_rows_is_returned_after_the_rows_before_it() {
     });
     assert!(message.starts_with("test read failure"), "{message}");
     assert!(rows > 0 && rows < 5000, "{rows}");
+}
+
+#[test]
+fn a_failed_first_chunk_calls_no_callback() {
+    let bytes = file(5000);
+    // Fail the shared reads of the first rows: the first chunk's read.
+    let data = bytes.windows(6).position(|w| w == b"<data>").unwrap() + 6;
+    let fail_at = data as u64 + 1;
+    let (message, calls) = within_time(move || {
+        let mut r = Reader::open(Failing { bytes, fail_at }, parallel()).unwrap();
+        let mut calls = 0;
+        let e = r
+            .read_chunks(&[0, 1], 0, 5000, None, |_, _| {
+                calls += 1;
+                Ok(())
+            })
+            .unwrap_err()
+            .to_string();
+        (e, calls)
+    });
+    assert!(message.starts_with("test read failure"), "{message}");
+    assert_eq!(calls, 0);
 }
 
 #[test]

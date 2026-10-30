@@ -200,15 +200,16 @@ fn array_width(t: StorageType) -> usize {
     }
 }
 
-/// Write each 4 KiB page of the `len` bytes at `addr` once, keeping its
-/// contents, so that later writes take no page fault.
+/// Write a zero to each 4 KiB page of the `len` bytes at `addr`, so that
+/// later writes take no page fault. The read overwrites every value, and
+/// the code arrays start as zeros.
 ///
 /// # Safety
 /// `addr` holds `len` writable bytes no one else is using.
 unsafe fn touch(addr: usize, len: usize) {
     let p = addr as *mut u8;
     for at in (0..len).step_by(4096) {
-        std::ptr::write_volatile(p.add(at), std::ptr::read_volatile(p.add(at)));
+        std::ptr::write_volatile(p.add(at), 0);
     }
 }
 

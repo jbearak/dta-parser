@@ -237,7 +237,10 @@ impl<S: Source> Reader<S> {
         budget: Option<usize>,
         mut f: impl FnMut(usize, &[Column]) -> Result<()>,
     ) -> Result<u64> {
-        self.read_chunks_with(columns, start, count, budget, &|_, _, _| Ok(false), |first, chunk, _, _| f(first, chunk), || Ok(()))
+        // A chunk whose rows failed to read comes with `upto` 0; `f` sees
+        // only whole chunks, as a serial read gives them.
+        let whole = |first, chunk: &[Column], _: &[bool], upto| if upto == chunk.len() { f(first, chunk) } else { Ok(()) };
+        self.read_chunks_with(columns, start, count, budget, &|_, _, _| Ok(false), whole, || Ok(()))
     }
 
     /// [`Reader::read_chunks`] that may decode chunks on worker threads
