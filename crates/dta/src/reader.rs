@@ -171,7 +171,8 @@ impl<S: Source> Reader<S> {
     /// Read `count` rows starting at row `start` of the variables at
     /// `columns` (indices into the variable list, in any order).
     pub fn read(&mut self, columns: &[usize], start: u64, count: u64) -> Result<Vec<Column>> {
-        let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
+        let rows = usize::try_from(count).unwrap_or(0);
+        let mut out: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows)).collect();
         self.read_chunks(columns, start, count, None, |_, chunk| {
             for (all, part) in out.iter_mut().zip(chunk) {
                 all.append(part);
@@ -236,7 +237,7 @@ impl<S: Source> Reader<S> {
         if let Some(budget) = budget {
             rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
         }
-        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c)).collect();
+        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows_per_chunk.min(count))).collect();
         let mut refs: Vec<[u8; 8]> = Vec::new();
         let mut buf = vec![0u8; rows_per_chunk.min(count) * self.row_len];
         let mut done = 0;
@@ -282,11 +283,12 @@ impl<S: Source> Reader<S> {
         Ok(done as u64)
     }
 
-    fn empty_column(&self, c: usize) -> Column {
+    /// A column with room for `rows`, so decoding a chunk never regrows it.
+    fn empty_column(&self, c: usize, rows: usize) -> Column {
         if self.meta.variables[c].storage.is_numeric() {
-            Column::Numbers { values: Vec::new(), missing: Vec::new() }
+            Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) }
         } else {
-            Column::Strings { bytes: Vec::new(), ends: Vec::new(), binary: Vec::new() }
+            Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() }
         }
     }
 
