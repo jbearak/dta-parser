@@ -367,3 +367,29 @@ fn previews_cut_on_characters_and_record_stored_lengths() {
         }
     }
 }
+
+/// plan 0008 M6: an index exported from one reader reads the same values
+/// in another; an index from a file of the same size and layout whose
+/// entries point elsewhere is caught as the strLs are read.
+#[test]
+fn an_adopted_strl_index_reads_the_same_and_mismatches_are_errors() {
+    let a = strls(vec!["aa".into(), "bbbb".into(), "€".into()]);
+    let b = strls(vec!["bbbb".into(), "aa".into(), "€".into()]);
+    assert_eq!(a.len(), b.len());
+    let mut first = Reader::open(Bytes(a.clone()), Options::default()).unwrap();
+    let index = first.strl_index_bytes().unwrap();
+    let expected = first.read(&[0], 0, 3).unwrap();
+
+    let mut second = Reader::open(Bytes(a.clone()), Options::default()).unwrap();
+    second.adopt_strl_index(&index).unwrap();
+    assert_eq!(second.read(&[0], 0, 3).unwrap(), expected);
+
+    let mut other = Reader::open(Bytes(b), Options::default()).unwrap();
+    other.adopt_strl_index(&index).unwrap();
+    let err = other.read(&[0], 0, 3).unwrap_err();
+    assert_eq!(err.kind, dta::ErrorKind::Corrupt, "{err}");
+
+    let longer = strls(vec!["aa".into(), "bbbbb".into(), "€".into()]);
+    let mut wrong_shape = Reader::open(Bytes(longer), Options::default()).unwrap();
+    assert_eq!(wrong_shape.adopt_strl_index(&index).unwrap_err().kind, dta::ErrorKind::Corrupt);
+}

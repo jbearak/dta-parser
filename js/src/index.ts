@@ -143,6 +143,15 @@ export interface Characteristic {
 export interface Options {
   /** Encoding of text in files before release 118; default windows-1252. */
   encoding?: EncodingName;
+  /**
+   * A strL index another reader of this same file made with
+   * `strlIndex()`, so this reader need not scan the file's strLs itself
+   * (it may be backed by a SharedArrayBuffer; it is copied). It must come
+   * from this file, unchanged since: an index from another file is
+   * caught (`DTA_CORRUPT`) when it is adopted or when a strL it lists is
+   * read, but not a file rewritten with the same layout.
+   */
+  strlIndex?: Uint8Array;
 }
 
 /**
@@ -188,6 +197,7 @@ export class DtaReader {
     let meta;
     try {
       meta = JSON.parse(wasm.metadataJson(this.handle));
+      if (options.strlIndex) wasm.adoptStrlIndex(this.handle, options.strlIndex);
     } catch (e) {
       wasm.close(this.handle);
       wasm.forget(read);
@@ -224,6 +234,16 @@ export class DtaReader {
       }
     }
     return this.labels.get(name);
+  }
+
+  /**
+   * The file's strL index, as bytes another reader of the same file can
+   * take as `strlIndex` (in `Options`) instead of scanning the strLs
+   * itself: for readers in several threads. Builds it if no read has.
+   * The layout is versioned; see docs/typescript.md.
+   */
+  strlIndex(): Uint8Array {
+    return wasm.strlIndex(this.open);
   }
 
   /** Every characteristic in the file, including the notes, in file order. */

@@ -10,7 +10,7 @@ use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
 use crate::source::{ensure_room, read_vec, SharedSource, Source};
-use crate::strl_index::{self, StrlEntry, StrlIndex};
+use crate::strl_index::{self, Shape, StrlEntry, StrlIndex};
 use crate::threads::panic_message;
 use crate::types::StorageType;
 
@@ -172,6 +172,9 @@ pub struct Reader<S: Source> {
     offsets: Vec<usize>,
     row_len: usize,
     strls: Option<StrlIndex>,
+    /// The index came from `adopt_strl_index`: check each record's
+    /// header as its payload is read.
+    adopted: bool,
     /// With `Some(cap)`, reads keep at most `cap` stored bytes of each
     /// string and record each one's full stored length (plan 0008 M5).
     preview: Option<usize>,
@@ -203,6 +206,7 @@ impl<S: Source> Reader<S> {
             offsets,
             row_len,
             strls: None,
+            adopted: false,
             preview: None,
             stored: Vec::new(),
             options,
@@ -307,6 +311,79 @@ impl<S: Source> Reader<S> {
         self.stored.get(k).map_or(&[], Vec::as_slice)
     }
 
+    /// The strL index as bytes, for another reader of this file (in
+    /// another thread or process) to adopt with
+    /// [`Reader::adopt_strl_index`] instead of scanning the strL section
+    /// itself (plan 0008 M6). Builds the index if no read has.
+    #[doc(hidden)]
+    pub fn strl_index_bytes(&mut self) -> Result<Vec<u8>> {
+        if self.strls.is_none() {
+            self.strls = Some(self.index_strls()?);
+        }
+        let shape = self.shape();
+        self.strls.as_ref().map_or(Ok(Vec::new()), |index| index.to_bytes(&shape))
+    }
+
+    /// Use an index from [`Reader::strl_index_bytes`] of the same file.
+    /// It is checked against this file's size and layout and for
+    /// consistency, and each strL's record header is checked against it
+    /// as the strL is read; but an index taken from this file before it
+    /// was rewritten with the same layout passes, so the caller vouches
+    /// that the file has not changed.
+    #[doc(hidden)]
+    pub fn adopt_strl_index(&mut self, bytes: &[u8]) -> Result<()> {
+        self.strls = Some(StrlIndex::from_bytes(bytes, &self.shape())?);
+        self.adopted = true;
+        Ok(())
+    }
+
+    fn shape(&self) -> Shape {
+        Shape {
+            file_len: self.source.len(),
+            release: self.layout.release as u32,
+            big_endian: self.meta.byte_order == ByteOrder::Big,
+            nobs: self.meta.nobs,
+            nvar: self.meta.variables.len() as u64,
+            start: self.sections.strls.0,
+            end: self.sections.strls.1,
+        }
+    }
+
+    /// The length of a strL record's header, before its payload.
+    fn strl_head_len(&self) -> usize {
+        3 + 4 + if self.layout.release == 117 { 4 } else { 8 } + 1 + 4
+    }
+
+    /// Append the first `n` bytes of a strL's payload to `into`. Through
+    /// an adopted index, the record's header is read with them, in one
+    /// read, and must match the index entry.
+    fn read_payload(&mut self, (entry, key): (StrlEntry, u64), n: usize, into: &mut Vec<u8>) -> Result<()> {
+        let too_large = || Error::new(format!("a strL of {} bytes is too large to read here", entry.len)).of(ErrorKind::TooLarge);
+        let at = into.len();
+        let head = if self.adopted { self.strl_head_len() } else { 0 };
+        into.try_reserve_exact(head + n).map_err(|_| too_large())?;
+        into.resize(at + head + n, 0);
+        self.source.read_at(entry.offset - head as u64, &mut into[at..])?;
+        if self.adopted {
+            let o_len = head - 12;
+            let mut c = Cursor::new(&into[at..at + head], entry.offset - head as u64, self.meta.byte_order);
+            let found = (|| -> Result<bool> {
+                c.tag("GSO")?;
+                let v = c.u32()? as u64;
+                let o = c.uint(o_len)?;
+                let kind = c.u8()?;
+                let len = c.u32()?;
+                Ok(strl_index::key(v, o) == Some(key) && len == entry.len && (kind == 129) == entry.binary)
+            })();
+            if !found.unwrap_or(false) {
+                return Err(Error::at(entry.offset, "a strL record does not match the adopted strL index (was the file changed?)"));
+            }
+            into.copy_within(at + head.., at);
+            into.truncate(at + n);
+        }
+        Ok(())
+    }
+
     #[doc(hidden)]
     pub fn read_into(&mut self, columns: &[usize], start: u64, count: u64, budget: Option<usize>, into: &mut [Column]) -> Result<u64> {
         if into.len() != columns.len() {
@@ -395,7 +472,7 @@ impl<S: Source> Reader<S> {
                             StorageType::Str(w) => 3 * w as usize,
                             StorageType::StrL => {
                                 let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
-                                let len = self.strl_entry(&cell)?.map_or(0, |e| e.len as usize);
+                                let len = self.strl_entry(&cell)?.map_or(0, |(e, _)| e.len as usize);
                                 let len = self.preview.map_or(len, |cap| len.min(cap));
                                 // UTF-8 text decodes to its own length
                                 // (more only where bytes are invalid);
@@ -566,13 +643,15 @@ impl<S: Source> Reader<S> {
     }
 
     /// The strL entry a cell points to; None for the empty reference.
-    fn strl_entry(&self, cell: &[u8; 8]) -> Result<Option<StrlEntry>> {
+    /// The strL entry a cell points to, and its key; None for the empty
+    /// reference.
+    fn strl_entry(&self, cell: &[u8; 8]) -> Result<Option<(StrlEntry, u64)>> {
         let key = self.strl_key(cell, self.layout.strl_v_len);
         if key == (0, 0) {
             return Ok(None);
         }
         let index = self.strls.as_ref().ok_or_else(|| Error::new("strLs not indexed"))?;
-        let get = |(v, o): (u64, u64)| strl_index::key(v, o).and_then(|k| index.get(k));
+        let get = |(v, o): (u64, u64)| strl_index::key(v, o).and_then(|k| index.get(k).map(|e| (e, k)));
         // haven 2.5.5 writes 119 cells with the 118 split (ADR 0005).
         let found = get(key).or_else(|| (self.layout.release == 119).then(|| get(self.strl_key(cell, 2))).flatten());
         match found {
@@ -641,7 +720,8 @@ impl<S: Source> Reader<S> {
         for cell in refs {
             let mut is_binary = false;
             let mut stored_len = 0usize;
-            if let Some(entry) = self.strl_entry(cell)? {
+            if let Some(found) = self.strl_entry(cell)? {
+                let entry = found.0;
                 let len = entry.len as usize;
                 is_binary = entry.binary;
                 stored_len = len;
@@ -651,9 +731,7 @@ impl<S: Source> Reader<S> {
                     // in a NUL (and so its stored length).
                     let take = cap.min(len);
                     payload.clear();
-                    payload.try_reserve_exact(take).map_err(|_| Error::new("no memory for a preview").of(ErrorKind::TooLarge))?;
-                    payload.resize(take, 0);
-                    self.source.read_at(entry.offset, &mut payload)?;
+                    self.read_payload(found, take, &mut payload)?;
                     if is_binary {
                         bytes.extend_from_slice(&payload);
                     } else {
@@ -681,9 +759,7 @@ impl<S: Source> Reader<S> {
                     }
                     // Straight into the column: no copy.
                     let at = bytes.len();
-                    bytes.try_reserve_exact(len).map_err(|_| too_large())?;
-                    bytes.resize(at + len, 0);
-                    self.source.read_at(entry.offset, &mut bytes[at..])?;
+                    self.read_payload(found, len, bytes)?;
                     if !is_binary {
                         // Text strLs end with a NUL.
                         if bytes.last() == Some(&0) && bytes.len() > at {
@@ -700,9 +776,7 @@ impl<S: Source> Reader<S> {
                     }
                 } else {
                     payload.clear();
-                    payload.try_reserve_exact(len).map_err(|_| too_large())?;
-                    payload.resize(len, 0);
-                    self.source.read_at(entry.offset, &mut payload)?;
+                    self.read_payload(found, len, &mut payload)?;
                     let text = payload.strip_suffix(&[0]).unwrap_or(&payload);
                     stored_len = text.len();
                     // Single-byte text: one UTF-16 unit a byte.

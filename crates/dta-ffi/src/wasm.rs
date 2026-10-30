@@ -376,6 +376,30 @@ pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
     })
 }
 
+/// The strL index as bytes (see `dta::Reader::strl_index_bytes`).
+#[no_mangle]
+pub extern "C" fn dta_strl_index(h: u32) -> *const u8 {
+    call(std::ptr::null(), |state| {
+        let bytes = handle(state, h)?.reader.strl_index_bytes()?;
+        Ok(result(state, bytes))
+    })
+}
+
+/// Adopt the `len` bytes at `index` as the strL index (see
+/// `dta::Reader::adopt_strl_index`); they are copied first. Returns 1, or
+/// 0 on failure.
+///
+/// # Safety
+/// `index` holds `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn dta_adopt_strl_index(h: u32, index: *const u8, len: usize) -> u32 {
+    call(0, |state| {
+        let bytes = std::slice::from_raw_parts(index, len);
+        handle(state, h)?.reader.adopt_strl_index(bytes)?;
+        Ok(1)
+    })
+}
+
 /// Read up to `count` rows from `start` of the `ncols` variables listed
 /// (u32 indices) at `cols`, stopping after the row at which the decoded
 /// output reaches 64 MiB, so module memory stays bounded. The columns

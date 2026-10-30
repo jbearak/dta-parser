@@ -18,6 +18,8 @@ interface Exports {
   dta_characteristics(handle: number): number;
   dta_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number, maxStringBytes: number): number;
   dta_read_end(handle: number): void;
+  dta_strl_index(handle: number): number;
+  dta_adopt_strl_index(handle: number, index: number, len: number): number;
   dta_column_mode(handle: number, k: number): number;
   dta_column_part(handle: number, k: number, part: number): number;
   dta_write_begin(nobs: number): void;
@@ -189,6 +191,26 @@ export function close(handle: number): void {
 
 export function metadataJson(handle: number): string {
   return guard(() => resultText(wasm.dta_metadata(handle)));
+}
+
+/** A copy of the strL index's bytes (see dta_strl_index). */
+export function strlIndex(handle: number): Uint8Array {
+  return guard(() => {
+    const ptr = check(wasm.dta_strl_index(handle)) >>> 0;
+    return new Uint8Array(wasm.memory.buffer, ptr, wasm.dta_result_len() >>> 0).slice();
+  });
+}
+
+/** Adopt an exported strL index; it is copied into the module first. */
+export function adoptStrlIndex(handle: number, index: Uint8Array): void {
+  guard(() => {
+    const ptr = put(index);
+    try {
+      check(wasm.dta_adopt_strl_index(handle, ptr, index.length));
+    } finally {
+      wasm.dta_free(ptr, index.length);
+    }
+  });
 }
 
 export function valueLabelsJson(handle: number): string {

@@ -251,6 +251,38 @@ before decoding, so in files before release 118 a cut value's text may
 be longer than `maxStringBytes` bytes as UTF-8. It cannot be combined
 with `strings: "dictionary"`.
 
+## Sharing the strL index between readers
+
+The first read of a strL variable scans the file's strLs to find each
+one. Readers of the same file in several worker threads can share that
+work: one reader's `strlIndex()` returns the index as bytes (copy them
+into a `SharedArrayBuffer` to share them), and the others take it as
+`strlIndex` when opening:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const first = openDtaFile("survey.dta");
+const index = first.strlIndex();
+const second = openDtaFile("survey.dta", { strlIndex: index });
+console.log(second.readRows(1, 1, ["comment"]));   // [ [ 'moved in 2023' ] ]
+first.close();
+second.close();
+```
+
+The index must come from the same file, unchanged since. It is checked
+when it is adopted (the file's size and layout, and the index's own
+consistency) and as each strL is read (its record must be the one the
+index names), and either failure is `DTA_CORRUPT`; but a file rewritten
+in place with the same layout is not detected.
+
+The bytes are little-endian: the magic `DTASTRLX`; a version (u32, now
+1) and a reserved u32; the file's length (u64), release (u32), byte
+order (u32, 1 for big-endian), rows and variables (u64 each); the strL
+section's start and end (u64 each); the entry count (u64); then the
+entries' keys (u64, variable · 2^40 + row), payload offsets (u64),
+lengths (u32), and binary flags (one bit each, in u64 words).
+
 ## Metadata
 
 ```ts
@@ -638,7 +670,8 @@ From `@jbearak/dta-parser`:
   `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
   `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
   `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
-  `valueLabels(name)`, `notes()`, `characteristics()`, `close()`, and
+  `valueLabels(name)`, `notes()`, `characteristics()`, `strlIndex()`,
+  `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
@@ -648,7 +681,7 @@ From `@jbearak/dta-parser`:
 - Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
   under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
   `StringColumn`, `Column`, `DictionaryColumn`, `PreviewColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
-  (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
+  (`encoding`, `strlIndex`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.
 
 From `@jbearak/dta-parser/format` (no WebAssembly, no Node built-ins):
