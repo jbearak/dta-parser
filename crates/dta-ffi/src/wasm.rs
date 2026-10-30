@@ -385,11 +385,22 @@ pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
 /// `flags`: `NEW_READ` starts a read (dictionaries begin again);
 /// `DICTIONARY` codes string columns while they repeat enough (see
 /// `strings.rs`). See `dta_column_mode` for what each column holds.
+/// `max_string_bytes` (negative for none) keeps at most that many
+/// stored bytes of each string, and records each one's full stored
+/// length (part 6).
 ///
 /// # Safety
 /// `cols` must point to `ncols` u32 values.
 #[no_mangle]
-pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64, flags: u32) -> f64 {
+pub unsafe extern "C" fn dta_read(
+    h: u32,
+    cols: *const u32,
+    ncols: usize,
+    start: f64,
+    count: f64,
+    flags: u32,
+    max_string_bytes: f64,
+) -> f64 {
     let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
     call(-1.0, |state| {
         let budget = state.budget;
@@ -424,6 +435,7 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
                 _ => Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) },
             })
             .collect();
+        reader.set_preview((max_string_bytes >= 0.0).then_some(max_string_bytes as usize));
         // Decoded straight into the call's columns, so a large strL is
         // not held twice.
         let n = reader.read_into(&cols, start as u64, count as u64, Some(budget), columns)?;
@@ -479,9 +491,10 @@ const STRING_LIMIT: usize = (1 << 29) - 24;
 /// the missing codes (u8). Plain strings: 0 the text bytes, 1 the
 /// cumulative UTF-16 ends (u32, one per row), 2 the binary flags (u8,
 /// strLs only), 3 every row's bytes as decoded (for the binary rows), 4
-/// their cumulative byte ends (u32, one per row). Dictionary codes: 0 the new values' bytes, 1 their
-/// cumulative UTF-16 ends, 5 the codes (u32, one per row). Returns a
-/// pointer; `dta_result_len` gives the element count.
+/// their cumulative byte ends (u32, one per row). Dictionary codes: 0
+/// the new values' bytes, 1 their cumulative UTF-16 ends, 5 the codes
+/// (u32, one per row). Previews (plain): 6 the stored lengths (u32, one
+/// per row). Returns a pointer; `dta_result_len` gives the element count.
 #[no_mangle]
 pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
@@ -502,6 +515,10 @@ pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
             (_, Some(Strings::Coded { new_bytes, .. }), 0) => (new_bytes.as_ptr(), new_bytes.len()),
             (_, Some(Strings::Coded { new_utf16, .. }), 1) => (new_utf16.as_ptr() as *const u8, new_utf16.len()),
             (_, Some(Strings::Coded { codes, .. }), 5) => (codes.as_ptr() as *const u8, codes.len()),
+            (Column::Strings { .. }, Some(_), 6) => {
+                let stored = handle.reader.stored_lengths(k);
+                (stored.as_ptr() as *const u8, stored.len())
+            }
             _ => return Err("no such column part".into()),
         };
         state.result_len = len;

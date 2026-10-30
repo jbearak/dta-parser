@@ -85,6 +85,16 @@ export interface StringColumn {
   values: (string | Uint8Array)[];
 }
 
+/**
+ * A string variable read with `maxStringBytes`: values hold at most that
+ * many of the bytes stored in the file, and `storedBytes[i]` is the full
+ * stored length of value `i`, so value `i` was cut exactly when
+ * `storedBytes[i] > maxStringBytes`.
+ */
+export interface PreviewColumn extends StringColumn {
+  storedBytes: Uint32Array;
+}
+
 /** One variable's values, as `readColumns` returns them. */
 export type Column = NumberColumn | StringColumn;
 
@@ -112,6 +122,13 @@ export interface ReadRange {
    * with a binary strL, comes back as a `StringColumn`.
    */
   strings?: "plain" | "dictionary";
+  /**
+   * Keep at most this many of each string's stored bytes (cut back to a
+   * whole character), reading no more of a strL than that, and give each
+   * string column `storedBytes` (see `PreviewColumn`). 0 reads lengths
+   * alone. Not with `strings: "dictionary"`.
+   */
+  maxStringBytes?: number;
 }
 
 /** A characteristic: named text attached to the dataset or to a variable. Notes are characteristics named `note1`, `note2`, .... */
@@ -234,7 +251,12 @@ export class DtaReader {
    * Read `count` rows from row `start` (default: all rows) of the given
    * variables, by index or name, in one pass over the file.
    */
-  readColumns(columns: readonly (number | string)[], range?: ReadRange & { strings?: "plain" }): Column[];
+  readColumns(columns: readonly (number | string)[], range?: ReadRange & { strings?: "plain"; maxStringBytes?: undefined }): Column[];
+  /**
+   * Read as above, keeping at most `maxStringBytes` of each string; string
+   * variables come back as `PreviewColumn`s.
+   */
+  readColumns(columns: readonly (number | string)[], range: ReadRange & { strings?: "plain"; maxStringBytes: number }): (NumberColumn | PreviewColumn)[];
   /**
    * Read as above, giving string variables whose values repeat as
    * `DictionaryColumn`s.
@@ -251,6 +273,14 @@ export class DtaReader {
       throw dtaError("DTA_OUT_OF_RANGE", `rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`, undefined, RangeError);
     }
     const asDictionary = range.strings === "dictionary";
+    const cap = range.maxStringBytes;
+    if (cap !== undefined) {
+      if (!Number.isInteger(cap) || cap < 0 || cap > 2 ** 32 - 1) {
+        throw dtaError("DTA_INVALID", `maxStringBytes must be a whole number from 0 to 2^32 - 1, not ${cap}`, undefined, RangeError);
+      }
+      // Cut values would merge in a dictionary.
+      if (asDictionary) throw dtaError("DTA_INVALID", 'maxStringBytes cannot be used with strings: "dictionary"', undefined, TypeError);
+    }
     let out: (Column | DictionaryColumn)[];
     try {
       out = indices.map((i) =>
@@ -258,7 +288,9 @@ export class DtaReader {
           ? { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) }
           : asDictionary
             ? { kind: "dictionary", codes: new Uint32Array(count), values: [] }
-            : { kind: "string", values: new Array<string | Uint8Array>(count) },
+            : cap !== undefined
+              ? { kind: "string", values: new Array<string | Uint8Array>(count), storedBytes: new Uint32Array(count) }
+              : { kind: "string", values: new Array<string | Uint8Array>(count) },
       );
     } catch (e) {
       if (isAllocationFailure(e)) throw dtaError("DTA_TOO_LARGE", `${count} rows of ${indices.length} variables do not fit in memory`, e);
@@ -270,8 +302,8 @@ export class DtaReader {
     const handle = this.open;
     try {
       for (let done = 0; done < count; ) {
-        const flags = (done === 0 ? wasm.NEW_READ : 0) | wasm.DICTIONARY;
-        const n = wasm.read(handle, indices, start + done, Math.min(BLOCK, count - done), flags);
+        const flags = (done === 0 ? wasm.NEW_READ : 0) | (cap === undefined ? wasm.DICTIONARY : 0);
+        const n = wasm.read(handle, indices, start + done, Math.min(BLOCK, count - done), flags, cap ?? -1);
         for (let k = 0; k < out.length; k++) {
           const column = out[k];
           if (column.kind === "number") {
@@ -309,6 +341,7 @@ export class DtaReader {
             target = out[k] = { kind: "string", values: strings };
           }
           this.plainStrings(handle, k, n, target.values, done);
+          if ("storedBytes" in target) (target as PreviewColumn).storedBytes.set(wasm.part(handle, k, 6, "u32"), done);
         }
         done += n;
       }

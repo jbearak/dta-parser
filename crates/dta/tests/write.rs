@@ -308,3 +308,62 @@ fn a_budgeted_read_ends_before_its_text_passes_the_limit() {
     }
     assert_eq!(rows, [2, 2, 2, 2, 2]);
 }
+
+/// plan 0008 M5: previews keep at most `cap` stored bytes, cut on whole
+/// characters, decode to a prefix of the full value, and record each
+/// value's full stored length; a value was cut exactly when that length
+/// passes the cap.
+#[test]
+fn previews_cut_on_characters_and_record_stored_lengths() {
+    let texts = ["", "abc", "€uro€", "😀x", "aaaaaaaaaa", "é", "MALFORMED"];
+    let values: &'static [String] = texts.iter().map(|t| t.to_string()).collect::<Vec<_>>().leak();
+    let n = values.len();
+    let column = |name: &str, storage| WriteVariable {
+        name: name.into(),
+        storage,
+        format: String::new(),
+        label: String::new(),
+        value_labels: String::new(),
+        values: if storage == StorageType::StrL {
+            Values::StrLs(Box::new(move |i| (values[i].as_bytes(), false)))
+        } else {
+            Values::Strings(Box::new(move |i| values[i].as_bytes()))
+        },
+    };
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![column("s", StorageType::Str(12)), column("l", StorageType::StrL)],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut file = Vec::new();
+    write(&data, &mut file).unwrap();
+    // Make the last value malformed UTF-8 in both columns: "MA\xFF\x80\xE2\x82RMED".
+    for at in file.windows(9).enumerate().filter(|(_, w)| *w == b"MALFORMED").map(|(i, _)| i).collect::<Vec<_>>() {
+        file[at + 2..at + 6].copy_from_slice(b"\xFF\x80\xE2\x82");
+    }
+    let full = Reader::open(Bytes(file.clone()), Options::default()).unwrap().read(&[0, 1], 0, n as u64).unwrap();
+    for cap in 0..=12usize {
+        let mut reader = Reader::open(Bytes(file.clone()), Options::default()).unwrap();
+        reader.set_preview(Some(cap));
+        let mut cols = vec![
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+        ];
+        reader.read_into(&[0, 1], 0, n as u64, None, &mut cols).unwrap();
+        for k in 0..2 {
+            let stored = reader.stored_lengths(k);
+            for i in 0..n {
+                let whole = std::str::from_utf8(full[k].bytes(i)).unwrap();
+                let cut = std::str::from_utf8(cols[k].bytes(i)).unwrap();
+                let raw_len = if i == n - 1 { 9 } else { values[i].len() };
+                assert_eq!(stored[i] as usize, raw_len, "column {k} row {i} cap {cap}");
+                assert!(whole.starts_with(cut), "column {k} row {i} cap {cap}: {cut:?} is not a prefix of {whole:?}");
+                assert_eq!(cut != whole, raw_len > cap, "column {k} row {i} cap {cap}: {cut:?} / {whole:?}");
+            }
+        }
+    }
+}

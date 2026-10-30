@@ -16,7 +16,7 @@ interface Exports {
   dta_metadata(handle: number): number;
   dta_value_labels(handle: number): number;
   dta_characteristics(handle: number): number;
-  dta_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number): number;
+  dta_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number, maxStringBytes: number): number;
   dta_read_end(handle: number): void;
   dta_column_mode(handle: number, k: number): number;
   dta_column_part(handle: number, k: number, part: number): number;
@@ -208,11 +208,11 @@ export function characteristicsJson(handle: number): string {
 export const NEW_READ = 1;
 export const DICTIONARY = 2;
 
-export function read(handle: number, columns: number[], start: number, count: number, flags: number): number {
+export function read(handle: number, columns: number[], start: number, count: number, flags: number, maxStringBytes = -1): number {
   return guard(() => {
     const ptr = alloc(columns.length * 4);
     new Uint32Array(wasm.memory.buffer, ptr, columns.length).set(columns);
-    const n = wasm.dta_read(handle, ptr, columns.length, start, count, flags);
+    const n = wasm.dta_read(handle, ptr, columns.length, start, count, flags, maxStringBytes);
     wasm.dta_free(ptr, columns.length * 4);
     if (n < 0) check(0);
     return n;

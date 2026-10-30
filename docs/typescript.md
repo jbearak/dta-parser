@@ -228,6 +228,29 @@ column instead, so check `kind`. Without the option, string variables
 are always `string[]`; reading them that way is fast too, since the
 package makes each repeated value once.
 
+## Previews of long strings
+
+To show long strings or strLs without reading them whole (a table cell,
+say), pass `maxStringBytes`. Each string keeps at most that many of the
+bytes stored in the file, cut back to a whole character, and a strL is
+read no further than that. Each string column also gets `storedBytes`,
+the full stored length of every value:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const r = openDtaFile("survey.dta");
+const [comment] = r.readColumns(["comment"], { maxStringBytes: 5 });
+if (comment.kind === "string") console.log(comment.values[1], comment.storedBytes[1]);   // moved 13
+r.close();
+```
+
+A value was cut exactly when `storedBytes[i] > maxStringBytes`.
+`maxStringBytes: 0` gives lengths alone. Stored bytes are counted
+before decoding, so in files before release 118 a cut value's text may
+be longer than `maxStringBytes` bytes as UTF-8. It cannot be combined
+with `strings: "dictionary"`.
+
 ## Metadata
 
 ```ts
@@ -613,7 +636,8 @@ From `@jbearak/dta-parser`:
   opens any source given a `ReadAt` function `(into, offset) => void`
   that fills `into` from byte `offset`. Members: `info`, `variables`,
   `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
-  `count`, and `strings: "dictionary"` for `DictionaryColumn`s), `readRows(start, count, columns?)`,
+  `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
+  `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
   `valueLabels(name)`, `notes()`, `characteristics()`, `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
@@ -623,7 +647,7 @@ From `@jbearak/dta-parser`:
   format says.
 - Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
   under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
-  `StringColumn`, `Column`, `DictionaryColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
+  `StringColumn`, `Column`, `DictionaryColumn`, `PreviewColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
   (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.
 

@@ -64,9 +64,11 @@ test("subpath types resolve under node10 and bundler resolution, with readColumn
        const plain: Column[] = r.readColumns([0]);
        const ranged: Column[] = r.readColumns([0], { start: 1, count: 2 });
        const coded: (Column | DictionaryColumn)[] = r.readColumns([0], { strings: "dictionary" });
+       const preview = r.readColumns([0], { maxStringBytes: 8 });
+       const stored: Uint32Array | undefined = preview[0].kind === "string" ? preview[0].storedBytes : undefined;
        // @ts-expect-error: a dictionary read may hold DictionaryColumns
        const wrong: Column[] = r.readColumns([0], { strings: "dictionary" });
-       return [plain, ranged, coded, wrong];
+       return [plain, ranged, coded, wrong, stored];
      }
      export const used = [openDta, openDtaFile, formatValue, m];`,
   );
