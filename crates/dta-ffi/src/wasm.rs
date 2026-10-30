@@ -19,6 +19,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use dta::{Column, Encoding, ErrorKind, Options, Reader, Source};
 
 use crate::json;
+use crate::strings::{self, Dict, Strings};
 
 #[link(wasm_import_module = "env")]
 extern "C" {
@@ -51,6 +52,10 @@ impl Source for HostFile {
 struct Handle {
     reader: Reader<HostFile>,
     columns: Vec<Column>,
+    /// Per read column: its dictionary over the current read, and what
+    /// the last call hands JavaScript for it (None for numbers).
+    dicts: Vec<Dict>,
+    strings: Vec<Option<Strings>>,
 }
 
 #[derive(Default)]
@@ -196,7 +201,7 @@ pub extern "C" fn dta_open(file: u32, len: f64, encoding: u32) -> u32 {
         };
         let source = HostFile { id: file, len: len as u64 };
         let reader = Reader::open(source, Options { encoding, ..Options::default() })?;
-        state.handles.push(Some(Handle { reader, columns: Vec::new() }));
+        state.handles.push(Some(Handle { reader, columns: Vec::new(), dicts: Vec::new(), strings: Vec::new() }));
         Ok(state.handles.len() as u32)
     })
 }
@@ -244,14 +249,23 @@ pub extern "C" fn dta_characteristics(h: u32) -> *const u8 {
 /// stay in the handle for `dta_column_part` until the next read. Returns
 /// the number of rows read, or -1 on failure.
 ///
+/// `flags`: `NEW_READ` starts a read (dictionaries begin again);
+/// `DICTIONARY` codes string columns while they repeat enough (see
+/// `strings.rs`). See `dta_column_mode` for what each column holds.
+///
 /// # Safety
 /// `cols` must point to `ncols` u32 values.
 #[no_mangle]
-pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64) -> f64 {
+pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64, flags: u32) -> f64 {
     let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
     call(-1.0, |state| {
         let handle = handle(state, h)?;
-        let Handle { reader, columns } = handle;
+        let Handle { reader, columns, dicts, strings } = handle;
+        strings.clear();
+        if flags & NEW_READ != 0 || dicts.len() != cols.len() {
+            dicts.clear();
+            dicts.resize_with(cols.len(), Dict::default);
+        }
         columns.clear();
         // Room for the rows this call can return (the budget allows about
         // BUDGET / 9 numbers), so appending chunks does not regrow the
@@ -280,27 +294,78 @@ pub unsafe extern "C" fn dta_read(h: u32, cols: *const u32, ncols: usize, start:
                 Ok(())
             })
             ?;
+        for (column, dict) in columns.iter().zip(dicts.iter_mut()) {
+            strings.push(match column {
+                Column::Numbers { .. } => None,
+                Column::Strings { bytes, ends, binary } => Some(
+                    match (flags & DICTIONARY != 0).then(|| dict.code(bytes, ends, binary)).flatten() {
+                        Some((codes, new_bytes, new_utf16)) => Strings::Coded { codes, new_bytes, new_utf16 },
+                        None => strings::plain(bytes, ends, binary),
+                    },
+                ),
+            });
+        }
         Ok(n as f64)
+    })
+}
+
+const NEW_READ: u32 = 1;
+const DICTIONARY: u32 = 2;
+
+/// Free the dictionaries of the read that just ended.
+#[no_mangle]
+pub extern "C" fn dta_read_end(h: u32) {
+    call((), |state| {
+        let handle = handle(state, h)?;
+        handle.dicts = Vec::new();
+        handle.strings = Vec::new();
+        Ok(())
+    })
+}
+
+/// What read column `k` holds after `dta_read`: 0 numbers, 1 plain
+/// strings, 2 dictionary codes.
+#[no_mangle]
+pub extern "C" fn dta_column_mode(h: u32, k: usize) -> u32 {
+    call(0, |state| {
+        Ok(match handle(state, h)?.strings.get(k).ok_or("no such column")? {
+            None => 0,
+            Some(Strings::Plain { .. }) => 1,
+            Some(Strings::Coded { .. }) => 2,
+        })
     })
 }
 
 /// Decoded bytes one read may hold in module memory (plus one row).
 const BUDGET: usize = 64 << 20;
 
-/// A buffer of read column `k`: `part` 0 is the f64 values or the
-/// string bytes, 1 the missing codes (u8) or the string ends (u32), 2
-/// the binary flags (u8) of a strL column. Returns a pointer;
-/// `dta_result_len` gives the element count.
+/// A buffer of read column `k`. Numbers: `part` 0 the f64 values, 1
+/// the missing codes (u8). Plain strings: 0 the text bytes, 1 the
+/// cumulative UTF-16 ends (u32, one per row), 2 the binary flags (u8,
+/// strLs only), 3 the binary rows' bytes, 4 their cumulative ends (u32,
+/// one per row). Dictionary codes: 0 the new values' bytes, 1 their
+/// cumulative UTF-16 ends, 5 the codes (u32, one per row). Returns a
+/// pointer; `dta_result_len` gives the element count.
 #[no_mangle]
 pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
     call(std::ptr::null(), |state| {
-        let column = handle(state, h)?.columns.get(k).ok_or("no such column")?;
-        let (ptr, len) = match (column, part) {
-            (Column::Numbers { values, .. }, 0) => (values.as_ptr() as *const u8, values.len()),
-            (Column::Numbers { missing, .. }, 1) => (missing.as_ptr(), missing.len()),
-            (Column::Strings { bytes, .. }, 0) => (bytes.as_ptr(), bytes.len()),
-            (Column::Strings { ends, .. }, 1) => (ends.as_ptr() as *const u8, ends.len()),
-            (Column::Strings { binary, .. }, 2) => (binary.as_ptr() as *const u8, binary.len()),
+        let handle = handle(state, h)?;
+        let column = handle.columns.get(k).ok_or("no such column")?;
+        let strings = handle.strings.get(k).and_then(Option::as_ref);
+        let (ptr, len) = match (column, strings, part) {
+            (Column::Numbers { values, .. }, _, 0) => (values.as_ptr() as *const u8, values.len()),
+            (Column::Numbers { missing, .. }, _, 1) => (missing.as_ptr(), missing.len()),
+            (Column::Strings { bytes, .. }, Some(Strings::Plain { text, .. }), 0) => {
+                let text = text.as_ref().unwrap_or(bytes);
+                (text.as_ptr(), text.len())
+            }
+            (_, Some(Strings::Plain { utf16, .. }), 1) => (utf16.as_ptr() as *const u8, utf16.len()),
+            (Column::Strings { binary, .. }, Some(Strings::Plain { .. }), 2) => (binary.as_ptr() as *const u8, binary.len()),
+            (_, Some(Strings::Plain { binary, .. }), 3) => (binary.as_ptr(), binary.len()),
+            (_, Some(Strings::Plain { binary_ends, .. }), 4) => (binary_ends.as_ptr() as *const u8, binary_ends.len()),
+            (_, Some(Strings::Coded { new_bytes, .. }), 0) => (new_bytes.as_ptr(), new_bytes.len()),
+            (_, Some(Strings::Coded { new_utf16, .. }), 1) => (new_utf16.as_ptr() as *const u8, new_utf16.len()),
+            (_, Some(Strings::Coded { codes, .. }), 5) => (codes.as_ptr() as *const u8, codes.len()),
             _ => return Err("no such column part".into()),
         };
         state.result_len = len;

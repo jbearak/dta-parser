@@ -196,6 +196,34 @@ R and Python packages, a range that runs past the last row throws a
 `start`, so reading the last rows of a large file costs the same as the
 first.
 
+## Strings as a dictionary
+
+A string variable whose values repeat (a country, a category) can come
+back as a dictionary: each distinct value once in `values`, and a code
+per row in `codes`, so `values[codes[i]]` is row `i`. That takes far
+less memory than one string per row, and codes compare and group as
+numbers:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const r = openDtaFile("survey.dta");
+const [comment] = r.readColumns(["comment"], { strings: "dictionary" });
+if (comment.kind === "dictionary") {
+  console.log(comment.values);                // [ '', 'moved in 2023', 'asked to call back' ]
+  console.log(Array.from(comment.codes));     // [ 0, 1, 0, 0, 2, 0 ]
+}
+r.close();
+```
+
+Values appear in the order they first appear in the rows read, and
+codes mean nothing outside the one `readColumns` call that returned
+them. A variable with too many distinct values (more than half of at
+least 65,536 rows) or a binary strL comes back as an ordinary string
+column instead, so check `kind`. Without the option, string variables
+are always `string[]`; reading them that way is fast too, since the
+package makes each repeated value once.
+
 ## Metadata
 
 ```ts
@@ -575,7 +603,8 @@ From `@jbearak/dta-parser`:
 - `class DtaReader`: an open file. `new DtaReader(read, length, options?)`
   opens any source given a `ReadAt` function `(into, offset) => void`
   that fills `into` from byte `offset`. Members: `info`, `variables`,
-  `readColumns(columns, range?)`, `readRows(start, count, columns?)`,
+  `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
+  `count`, and `strings: "dictionary"` for `DictionaryColumn`s), `readRows(start, count, columns?)`,
   `valueLabels(name)`, `notes()`, `characteristics()`, `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
@@ -585,7 +614,7 @@ From `@jbearak/dta-parser`:
   format says.
 - Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
   under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
-  `StringColumn`, `Column`, `ValueLabels`, `Characteristic`, `Options`
+  `StringColumn`, `Column`, `DictionaryColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
   (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.
 

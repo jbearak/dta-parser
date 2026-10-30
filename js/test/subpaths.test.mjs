@@ -49,7 +49,7 @@ test("the /format bundle has no wasm and no Node built-ins", () => {
   assert.equal(format.formatValue(format.MISSING[".a"], "%9.0g"), ".a");
 });
 
-test("subpath types resolve under node10 and bundler resolution", () => {
+test("subpath types resolve under node10 and bundler resolution, with readColumns' overloads", () => {
   const dir = mkdtempSync(join(tmpdir(), "dta-types-"));
   mkdirSync(join(dir, "node_modules", "@jbearak"), { recursive: true });
   symlinkSync(pkg, join(dir, "node_modules", "@jbearak", "dta-parser"));
@@ -58,7 +58,16 @@ test("subpath types resolve under node10 and bundler resolution", () => {
     `import { openDta } from "@jbearak/dta-parser";
      import { openDtaFile } from "@jbearak/dta-parser/node";
      import { formatValue, type Missing } from "@jbearak/dta-parser/format";
+     import type { Column, DictionaryColumn, DtaReader } from "@jbearak/dta-parser";
      const m: Missing["missing"] = ".z";
+     export function overloads(r: DtaReader) {
+       const plain: Column[] = r.readColumns([0]);
+       const ranged: Column[] = r.readColumns([0], { start: 1, count: 2 });
+       const coded: (Column | DictionaryColumn)[] = r.readColumns([0], { strings: "dictionary" });
+       // @ts-expect-error: a dictionary read may hold DictionaryColumns
+       const wrong: Column[] = r.readColumns([0], { strings: "dictionary" });
+       return [plain, ranged, coded, wrong];
+     }
      export const used = [openDta, openDtaFile, formatValue, m];`,
   );
   // TypeScript 7 dropped node10 resolution, which projects on

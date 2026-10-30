@@ -88,6 +88,32 @@ export interface StringColumn {
 /** One variable's values, as `readColumns` returns them. */
 export type Column = NumberColumn | StringColumn;
 
+/**
+ * A string variable's values as a dictionary, which `readColumns` gives
+ * with `strings: "dictionary"`: row `i` is `values[codes[i]]`. Codes
+ * hold for one `readColumns` call only. Distinct values appear in
+ * `values` in the order they first appear.
+ */
+export interface DictionaryColumn {
+  kind: "dictionary";
+  codes: Uint32Array;
+  values: string[];
+}
+
+/** Which rows `readColumns` reads, and how it returns strings. */
+export interface ReadRange {
+  /** First row; default 0. */
+  start?: number;
+  /** How many rows; default all from `start`. */
+  count?: number;
+  /**
+   * `"dictionary"`: return string variables whose values repeat as a
+   * `DictionaryColumn`. A variable with too many distinct values, or
+   * with a binary strL, comes back as a `StringColumn`.
+   */
+  strings?: "plain" | "dictionary";
+}
+
 /** A characteristic: named text attached to the dataset or to a variable. Notes are characteristics named `note1`, `note2`, .... */
 export interface Characteristic {
   /** `_dta` for the dataset, or a variable's name. */
@@ -102,8 +128,11 @@ export interface Options {
   encoding?: EncodingName;
 }
 
-/** Most rows asked of the wasm module per call; it also stops at 64 MiB. */
-const BLOCK = 1 << 20;
+/**
+ * Most rows asked of the wasm module per call; it also stops at 64 MiB.
+ * Tests set DTA_TEST_BLOCK_ROWS to split small reads across many calls.
+ */
+const BLOCK = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.DTA_TEST_BLOCK_ROWS) || 1 << 20;
 
 // ignoreBOM: a value that starts with U+FEFF keeps it.
 const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
@@ -182,45 +211,114 @@ export class DtaReader {
    * Read `count` rows from row `start` (default: all rows) of the given
    * variables, by index or name, in one pass over the file.
    */
-  readColumns(columns: readonly (number | string)[], range: { start?: number; count?: number } = {}): Column[] {
+  readColumns(columns: readonly (number | string)[], range?: ReadRange & { strings?: "plain" }): Column[];
+  /**
+   * Read as above, giving string variables whose values repeat as
+   * `DictionaryColumn`s.
+   */
+  readColumns(columns: readonly (number | string)[], range: ReadRange & { strings: "dictionary" }): (Column | DictionaryColumn)[];
+  /** Read as above, with `strings` decided at run time. */
+  readColumns(columns: readonly (number | string)[], range?: ReadRange): (Column | DictionaryColumn)[];
+  /** The one implementation of the three forms above. */
+  readColumns(columns: readonly (number | string)[], range: ReadRange = {}): (Column | DictionaryColumn)[] {
     const indices = columns.map((c) => this.index(c));
     const start = range.start ?? 0;
     const count = range.count ?? this.info.nobs - start;
     if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 0 || start + count > this.info.nobs) {
       throw dtaError("DTA_OUT_OF_RANGE", `rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`, undefined, RangeError);
     }
-    let out: Column[];
+    const asDictionary = range.strings === "dictionary";
+    let out: (Column | DictionaryColumn)[];
     try {
       out = indices.map((i) =>
-        /^str/.test(this.variables[i].type)
-          ? { kind: "string", values: new Array<string | Uint8Array>(count) }
-          : { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) },
+        !/^str/.test(this.variables[i].type)
+          ? { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) }
+          : asDictionary
+            ? { kind: "dictionary", codes: new Uint32Array(count), values: [] }
+            : { kind: "string", values: new Array<string | Uint8Array>(count) },
       );
     } catch (e) {
       if (isAllocationFailure(e)) throw dtaError("DTA_TOO_LARGE", `${count} rows of ${indices.length} variables do not fit in memory`, e);
       throw e;
     }
-    for (let done = 0; done < count; ) {
-      const n = wasm.read(this.open, indices, start + done, Math.min(BLOCK, count - done));
-      out.forEach((column, k) => {
-        if (column.kind === "number") {
-          column.values.set(wasm.part(this.handle, k, 0, "f64"), done);
-          column.missing.set(wasm.part(this.handle, k, 1, "u8"), done);
-        } else {
-          const bytes = wasm.part(this.handle, k, 0, "u8");
-          const ends = wasm.part(this.handle, k, 1, "u32");
-          const binary = this.variables[indices[k]].type === "strL" ? wasm.part(this.handle, k, 2, "u8") : undefined;
-          let from = 0;
-          for (let i = 0; i < n; i++) {
-            const piece = bytes.subarray(from, ends[i]);
-            column.values[done + i] = binary?.[i] ? piece.slice() : utf8.decode(piece);
-            from = ends[i];
+    // Each string column's distinct values so far, while the module
+    // codes it.
+    const seen: string[][] = indices.map(() => []);
+    const handle = this.open;
+    try {
+      for (let done = 0; done < count; ) {
+        const flags = (done === 0 ? wasm.NEW_READ : 0) | wasm.DICTIONARY;
+        const n = wasm.read(handle, indices, start + done, Math.min(BLOCK, count - done), flags);
+        for (let k = 0; k < out.length; k++) {
+          const column = out[k];
+          if (column.kind === "number") {
+            column.values.set(wasm.part(handle, k, 0, "f64"), done);
+            column.missing.set(wasm.part(handle, k, 1, "u8"), done);
+            continue;
           }
+          if (wasm.mode(handle, k) === 2) {
+            const values = seen[k];
+            const fresh = wasm.part(handle, k, 1, "u32");
+            if (fresh.length > 0) {
+              // One decode for the call's new values, then a substring each.
+              const text = utf8.decode(wasm.part(handle, k, 0, "u8"));
+              let from = 0;
+              for (let i = 0; i < fresh.length; i++) {
+                values.push(text.substring(from, fresh[i]));
+                from = fresh[i];
+              }
+            }
+            const codes = wasm.part(handle, k, 5, "u32");
+            if (column.kind === "dictionary") {
+              column.codes.set(codes, done);
+              column.values = values;
+            } else {
+              for (let i = 0; i < n; i++) column.values[done + i] = values[codes[i]];
+            }
+            continue;
+          }
+          // Plain from here on. A dictionary column that gave up becomes
+          // a string column, its earlier rows expanded from their codes.
+          let target = column;
+          if (target.kind === "dictionary") {
+            const strings = new Array<string | Uint8Array>(count);
+            for (let i = 0; i < done; i++) strings[i] = target.values[target.codes[i]];
+            target = out[k] = { kind: "string", values: strings };
+          }
+          this.plainStrings(handle, k, n, target.values, done);
         }
-      });
-      done += n;
+        done += n;
+      }
+    } finally {
+      wasm.readEnd(handle);
     }
     return out;
+  }
+
+  /** Put a call's plain string column `k` (`n` rows) into `values` from `at`. */
+  private plainStrings(handle: number, k: number, n: number, values: (string | Uint8Array)[], at: number): void {
+    const utf16 = wasm.part(handle, k, 1, "u32");
+    // One decode for the call's text, then a substring per row.
+    const text = utf8.decode(wasm.part(handle, k, 0, "u8"));
+    const binary = wasm.part(handle, k, 2, "u8");
+    if (!binary || !binary.includes(1)) {
+      let from = 0;
+      for (let i = 0; i < n; i++) {
+        values[at + i] = text.substring(from, utf16[i]);
+        from = utf16[i];
+      }
+      return;
+    }
+    const flags = binary.slice();
+    const bytes = wasm.part(handle, k, 3, "u8");
+    const ends = wasm.part(handle, k, 4, "u32");
+    let from = 0;
+    let fromByte = 0;
+    for (let i = 0; i < n; i++) {
+      values[at + i] = flags[i] ? bytes.slice(fromByte, ends[i]) : text.substring(from, utf16[i]);
+      from = utf16[i];
+      fromByte = ends[i];
+    }
   }
 
   /** Rows as arrays of cells, one per variable asked for (default: all). */

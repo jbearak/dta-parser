@@ -16,7 +16,9 @@ interface Exports {
   dta_metadata(handle: number): number;
   dta_value_labels(handle: number): number;
   dta_characteristics(handle: number): number;
-  dta_read(handle: number, cols: number, ncols: number, start: number, count: number): number;
+  dta_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number): number;
+  dta_read_end(handle: number): void;
+  dta_column_mode(handle: number, k: number): number;
   dta_column_part(handle: number, k: number, part: number): number;
   dta_write_begin(nobs: number): void;
   dta_write_numbers(meta: number, metaLen: number, storage: number, values: number, missing: number): number;
@@ -165,15 +167,29 @@ export function characteristicsJson(handle: number): string {
  * buffers out. Returns how many rows were read: the module stops once a
  * read holds 64 MiB.
  */
-export function read(handle: number, columns: number[], start: number, count: number): number {
+/** `read` flags: the first call of a read; code string columns. */
+export const NEW_READ = 1;
+export const DICTIONARY = 2;
+
+export function read(handle: number, columns: number[], start: number, count: number, flags: number): number {
   return guard(() => {
     const ptr = wasm.dta_alloc(columns.length * 4) >>> 0;
     new Uint32Array(wasm.memory.buffer, ptr, columns.length).set(columns);
-    const n = wasm.dta_read(handle, ptr, columns.length, start, count);
+    const n = wasm.dta_read(handle, ptr, columns.length, start, count, flags);
     wasm.dta_free(ptr, columns.length * 4);
     if (n < 0) check(0);
     return n;
   });
+}
+
+/** Free what a read kept between its calls (its dictionaries). */
+export function readEnd(handle: number): void {
+  guard(() => wasm.dta_read_end(handle));
+}
+
+/** What read column `k` holds: 0 numbers, 1 plain strings, 2 dictionary codes. */
+export function mode(handle: number, k: number): 0 | 1 | 2 {
+  return guard(() => wasm.dta_column_mode(handle, k)) as 0 | 1 | 2;
 }
 
 /**
@@ -181,13 +197,13 @@ export function read(handle: number, columns: number[], start: number, count: nu
  * module memory: valid until the next call that may allocate (a read,
  * open or write), so copy what you keep before making one.
  */
-export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "f64"): Float64Array;
-export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "u8"): Uint8Array;
-export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "u32"): Uint32Array;
+export function part(handle: number, k: number, kind: number, as: "f64"): Float64Array;
+export function part(handle: number, k: number, kind: number, as: "u8"): Uint8Array;
+export function part(handle: number, k: number, kind: number, as: "u32"): Uint32Array;
 export function part(
   handle: number,
   k: number,
-  kind: 0 | 1 | 2,
+  kind: number,
   as: "f64" | "u8" | "u32",
 ): Float64Array | Uint8Array | Uint32Array {
   return guard(() => {
