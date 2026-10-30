@@ -114,7 +114,7 @@ const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 
 /// Rows are read this many bytes at a time, and decoded this many bytes
 /// at a time.
-const CHUNK: usize = 8 << 20;
+const CHUNK: usize = 2 << 20;
 
 /// The strL section is scanned through a window this large.
 const WINDOW: u64 = 1 << 20;
@@ -184,7 +184,7 @@ impl<S: Source> Reader<S> {
     }
 
     /// Like [`Reader::read`], but hands over the rows a chunk at a time
-    /// (about 8 MiB of the file each), so a caller can copy them where
+    /// (about 2 MiB decoded each), so a caller can copy them where
     /// they belong without holding a second copy of the whole read.
     /// `f` gets the first row of the chunk, counted from `start`, and one
     /// column per entry of `columns`.
@@ -317,47 +317,35 @@ impl<S: Source> Reader<S> {
                 }
             }
             (storage, Column::Numbers { values, missing }) => {
-                let mut push = |v: f64, code: u8| {
-                    values.push(if code == 0 { v } else { f64::NAN });
-                    missing.push(code);
-                };
                 match storage {
-                    StorageType::Byte => {
-                        for b in cells.iter(1) {
-                            let v = b[0] as i8 as i64;
-                            push(v as f64, int_code(v, byte_first, ext));
-                        }
-                    }
-                    StorageType::Int => {
-                        for b in cells.iter(2) {
-                            let a = [b[0], b[1]];
-                            let v = if big { i16::from_be_bytes(a) } else { i16::from_le_bytes(a) } as i64;
-                            push(v as f64, int_code(v, int_first, ext));
-                        }
-                    }
-                    StorageType::Long => {
-                        for b in cells.iter(4) {
-                            let a = [b[0], b[1], b[2], b[3]];
-                            let v = if big { i32::from_be_bytes(a) } else { i32::from_le_bytes(a) } as i64;
-                            push(v as f64, int_code(v, long_first, ext));
-                        }
-                    }
-                    StorageType::Float => {
-                        for b in cells.iter(4) {
-                            let a = [b[0], b[1], b[2], b[3]];
-                            let bits = if big { u32::from_be_bytes(a) } else { u32::from_le_bytes(a) };
-                            push(f32::from_bits(bits) as f64, float_code(bits, ext));
-                        }
-                    }
+                    StorageType::Byte => numbers(cells, 1, values, missing, |b| {
+                        let v = b[0] as i8 as i64;
+                        (v as f64, int_code(v, byte_first, ext))
+                    }),
+                    StorageType::Int => numbers(cells, 2, values, missing, |b| {
+                        let a = [b[0], b[1]];
+                        let v = if big { i16::from_be_bytes(a) } else { i16::from_le_bytes(a) } as i64;
+                        (v as f64, int_code(v, int_first, ext))
+                    }),
+                    StorageType::Long => numbers(cells, 4, values, missing, |b| {
+                        let a = [b[0], b[1], b[2], b[3]];
+                        let v = if big { i32::from_be_bytes(a) } else { i32::from_le_bytes(a) } as i64;
+                        (v as f64, int_code(v, long_first, ext))
+                    }),
+                    StorageType::Float => numbers(cells, 4, values, missing, |b| {
+                        let a = [b[0], b[1], b[2], b[3]];
+                        let bits = if big { u32::from_be_bytes(a) } else { u32::from_le_bytes(a) };
+                        (f32::from_bits(bits) as f64, float_code(bits, ext))
+                    }),
                     StorageType::Double => {
                         // Releases 105 and earlier also wrote 2^333 for missing.
                         let old_missing = (self.layout.release <= 105).then_some(OLD_DOUBLE_MISSING);
-                        for b in cells.iter(8) {
+                        numbers(cells, 8, values, missing, |b| {
                             let a: [u8; 8] = b.try_into().unwrap_or_default();
                             let bits = if big { u64::from_be_bytes(a) } else { u64::from_le_bytes(a) };
                             let code = if Some(bits) == old_missing { missing::SYSTEM } else { double_code(bits, ext) };
-                            push(f64::from_bits(bits), code);
-                        }
+                            (f64::from_bits(bits), code)
+                        })
                     }
                     StorageType::Str(_) | StorageType::StrL => {}
                 }
@@ -598,6 +586,22 @@ impl<S: Source> Reader<S> {
             .collect();
         notes.sort_by_key(|(n, _)| *n);
         Ok(notes.into_iter().map(|(_, v)| v).collect())
+    }
+}
+
+/// Append the numbers in `cells` (each `width` bytes, decoded by `f` to a
+/// value and missing code) to `values` and `missing`; a missing value's
+/// value is NaN.
+#[inline]
+fn numbers(cells: &Cells, width: usize, values: &mut Vec<f64>, missing: &mut Vec<u8>, f: impl Fn(&[u8]) -> (f64, u8)) {
+    let n = cells.rows.len() / cells.row_len.max(1);
+    let start = values.len();
+    values.resize(start + n, 0.0);
+    missing.resize(start + n, 0);
+    for ((b, v), m) in cells.iter(width).zip(&mut values[start..]).zip(&mut missing[start..]) {
+        let (x, code) = f(b);
+        *v = if code == 0 { x } else { f64::NAN };
+        *m = code;
     }
 }
 
