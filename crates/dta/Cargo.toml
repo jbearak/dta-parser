@@ -10,3 +10,5 @@ rust-version = "1.82"
 
 [dev-dependencies]
 serde_json = "1"
+# examples/threads.rs measures CPU time with getrusage.
+libc = "0.2"

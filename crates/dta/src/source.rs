@@ -14,17 +14,41 @@ pub trait Source {
     /// Fill `buf` with the bytes starting at `offset`. Asking for bytes
     /// past the end is an error.
     fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> Result<()>;
+
+    /// The same bytes through `&self`, for reads from several threads at
+    /// once; `None` (the default) when the source cannot do that, and the
+    /// reader then reads on one thread.
+    fn shared(&self) -> Option<&dyn SharedSource> {
+        None
+    }
+}
+
+/// A source several threads may read at once.
+pub trait SharedSource: Sync {
+    /// As [`Source::read_at`]. It must not change what `read_at` reads
+    /// next.
+    fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> Result<()>;
 }
 
 /// A file in memory.
 pub struct Bytes<T: AsRef<[u8]>>(pub T);
 
-impl<T: AsRef<[u8]>> Source for Bytes<T> {
+impl<T: AsRef<[u8]> + Sync> Source for Bytes<T> {
     fn len(&self) -> u64 {
         self.0.as_ref().len() as u64
     }
 
     fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> Result<()> {
+        self.read_at_shared(offset, buf)
+    }
+
+    fn shared(&self) -> Option<&dyn SharedSource> {
+        Some(self)
+    }
+}
+
+impl<T: AsRef<[u8]> + Sync> SharedSource for Bytes<T> {
+    fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> Result<()> {
         let data = self.0.as_ref();
         let start = usize::try_from(offset).ok().filter(|&s| s <= data.len());
         match start.and_then(|s| data.get(s..s + buf.len())) {
@@ -67,6 +91,26 @@ impl Source for FileSource {
         }
         self.file.read_exact(buf)?;
         self.position = offset + buf.len() as u64;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn shared(&self) -> Option<&dyn SharedSource> {
+        Some(self)
+    }
+}
+
+/// Positional reads, which leave the file position (and so `position`)
+/// alone. Windows' `seek_read` moves it, so Windows reads on one thread.
+#[cfg(unix)]
+impl SharedSource for FileSource {
+    fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> Result<()> {
+        use std::os::unix::fs::FileExt;
+        if offset.checked_add(buf.len() as u64).is_none_or(|end| end > self.len) {
+            return Err(Error::at(offset, "unexpected end of file"));
+        }
+        // read_exact_at retries short and interrupted reads.
+        self.file.read_exact_at(buf, offset)?;
         Ok(())
     }
 }

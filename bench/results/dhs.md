@@ -8,66 +8,66 @@ Each cell: median seconds / peak RSS MB. Startup (process start to packages load
 
 | file | task | dtatools | haven | readstata13 | ours: startup s | ours: first call s |
 |---|---|---|---|---|---|---|
-| Dominican Republic 2013 bh | 1 | 0.0547 s / 269 MB | 1.23 s / 288 MB | 1.29 s / 190 MB | 0.239 | 0.0928 |
-| Dominican Republic 2013 bh | 2 | 0.115 s / 350 MB | 1.33 s / 343 MB | 1.36 s / 226 MB | 0.189 | 0.161 |
-| Dominican Republic 2013 bh | 3 | 0.00558 s / 110 MB | 0.0587 s / 128 MB | 0.025 s / 102 MB | 0.193 | 0.011 |
-| Dominican Republic 2013 bh | 4 | 0.00978 s / 114 MB | 0.0572 s / 137 MB | 0.0637 s / 111 MB | 0.194 | 0.0118 |
-| Dominican Republic 2013 bh | 5 | 0.00763 s / 99 MB | 0.0112 s / 124 MB | 0.00873 s / 103 MB | 0.194 | 0.00897 |
-| Dominican Republic 2013 bh | 6 | 0.177 s / 290 MB | 1.51 s / 289 MB | 2.16 s / 245 MB | 0.189 | 0.216 |
-| Turkey 2013 bh | 1 | 0.0571 s / 283 MB | 1.37 s / 300 MB | 1.42 s / 198 MB | 0.187 | 0.0855 |
-| Turkey 2013 bh | 2 | 0.119 s / 343 MB | 1.44 s / 389 MB | 1.49 s / 242 MB | 0.191 | 0.167 |
-| Turkey 2013 bh | 3 | 0.00575 s / 110 MB | 0.0639 s / 126 MB | 0.0254 s / 102 MB | 0.188 | 0.0111 |
-| Turkey 2013 bh | 4 | 0.0105 s / 119 MB | 0.0699 s / 139 MB | 0.0679 s / 113 MB | 0.19 | 0.0125 |
-| Turkey 2013 bh | 5 | 0.00819 s / 97 MB | 0.0125 s / 125 MB | 0.00965 s / 108 MB | 0.189 | 0.00971 |
-| Turkey 2013 bh | 6 | 0.196 s / 310 MB | 1.58 s / 306 MB | 2.36 s / 277 MB | 0.187 | 0.202 |
-| Senegal 2019 bh | 1 | 0.0661 s / 324 MB | 1.65 s / 341 MB | 1.75 s / 221 MB | 0.185 | 0.101 |
-| Senegal 2019 bh | 2 | 0.145 s / 467 MB | 1.76 s / 419 MB | 1.82 s / 277 MB | 0.194 | 0.216 |
-| Senegal 2019 bh | 3 | 0.00623 s / 109 MB | 0.0719 s / 126 MB | 0.0293 s / 107 MB | 0.192 | 0.0117 |
-| Senegal 2019 bh | 4 | 0.0108 s / 117 MB | 0.0635 s / 140 MB | 0.0708 s / 112 MB | 0.192 | 0.0129 |
-| Senegal 2019 bh | 5 | 0.00837 s / 97 MB | 0.0122 s / 125 MB | 0.00987 s / 109 MB | 0.188 | 0.00985 |
-| Senegal 2019 bh | 6 | 0.24 s / 352 MB | 1.95 s / 345 MB | 2.86 s / 297 MB | 0.197 | 0.244 |
-| Tajikistan 2017 bh | 1 | 0.0659 s / 318 MB | 1.61 s / 336 MB | 1.68 s / 216 MB | 0.193 | 0.116 |
-| Tajikistan 2017 bh | 2 | 0.147 s / 390 MB | 1.72 s / 416 MB | 1.78 s / 277 MB | 0.186 | 0.209 |
-| Tajikistan 2017 bh | 3 | 0.00613 s / 110 MB | 0.0704 s / 129 MB | 0.0299 s / 106 MB | 0.187 | 0.0116 |
-| Tajikistan 2017 bh | 4 | 0.0104 s / 119 MB | 0.0612 s / 139 MB | 0.0687 s / 109 MB | 0.185 | 0.0123 |
-| Tajikistan 2017 bh | 5 | 0.00799 s / 97 MB | 0.0121 s / 123 MB | 0.00957 s / 104 MB | 0.186 | 0.00935 |
-| Tajikistan 2017 bh | 6 | 0.231 s / 343 MB | 1.93 s / 336 MB | 2.79 s / 294 MB | 0.186 | 0.233 |
-| Myanmar 2016 bh | 1 | 0.0706 s / 341 MB | 1.75 s / 363 MB | 1.85 s / 217 MB | 0.188 | 0.108 |
-| Myanmar 2016 bh | 2 | 0.15 s / 482 MB | 1.87 s / 428 MB | 1.93 s / 267 MB | 0.186 | 0.208 |
-| Myanmar 2016 bh | 3 | 0.00635 s / 107 MB | 0.0769 s / 126 MB | 0.0314 s / 103 MB | 0.192 | 0.012 |
-| Myanmar 2016 bh | 4 | 0.0105 s / 117 MB | 0.0623 s / 138 MB | 0.07 s / 114 MB | 0.187 | 0.0128 |
-| Myanmar 2016 bh | 5 | 0.00869 s / 97 MB | 0.0129 s / 123 MB | 0.0104 s / 109 MB | 0.186 | 0.0102 |
-| Myanmar 2016 bh | 6 | 0.252 s / 370 MB | 2.11 s / 366 MB | 3.08 s / 284 MB | 0.185 | 0.256 |
-| Dominican Republic 2013 wm | 1 | 0.117 s / 431 MB | 2.29 s / 451 MB | 2.67 s / 388 MB | 0.193 | 0.202 |
-| Dominican Republic 2013 wm | 2 | 0.221 s / 608 MB | 2.52 s / 671 MB | 2.78 s / 462 MB | 0.188 | 0.323 |
-| Dominican Republic 2013 wm | 3 | 0.0132 s / 110 MB | 0.123 s / 138 MB | 0.0719 s / 199 MB | 0.19 | 0.0189 |
-| Dominican Republic 2013 wm | 4 | 0.0373 s / 145 MB | 0.234 s / 170 MB | 0.278 s / 229 MB | 0.186 | 0.0413 |
-| Dominican Republic 2013 wm | 5 | 0.0304 s / 100 MB | 0.0389 s / 136 MB | 0.0645 s / 221 MB | 0.188 | 0.0329 |
-| Dominican Republic 2013 wm | 6 | 0.458 s / 525 MB | 2.57 s / 462 MB | 4 s / 541 MB | 0.184 | 0.464 |
-| Senegal 2019 wm | 1 | 0.141 s / 526 MB | 2.7 s / 553 MB | 3.27 s / 513 MB | 0.181 | 0.203 |
-| Senegal 2019 wm | 2 | 0.255 s / 960 MB | 2.95 s / 763 MB | 3.39 s / 539 MB | 0.184 | 0.355 |
-| Senegal 2019 wm | 3 | 0.0164 s / 115 MB | 0.173 s / 142 MB | 0.11 s / 265 MB | 0.182 | 0.0222 |
-| Senegal 2019 wm | 4 | 0.0519 s / 158 MB | 0.307 s / 183 MB | 0.399 s / 271 MB | 0.181 | 0.054 |
-| Senegal 2019 wm | 5 | 0.0404 s / 104 MB | 0.0506 s / 136 MB | 0.103 s / 284 MB | 0.181 | 0.0424 |
-| Senegal 2019 wm | 6 | 0.598 s / 663 MB | 2.91 s / 565 MB | 4.81 s / 638 MB | 0.187 | 0.609 |
-| Turkey 2013 wm | 1 | 0.144 s / 500 MB | 2.89 s / 526 MB | 3.4 s / 462 MB | 0.184 | 0.215 |
-| Turkey 2013 wm | 2 | 0.274 s / 712 MB | 3.07 s / 812 MB | 3.55 s / 599 MB | 0.181 | 0.352 |
-| Turkey 2013 wm | 3 | 0.0155 s / 112 MB | 0.172 s / 142 MB | 0.0959 s / 223 MB | 0.181 | 0.0213 |
-| Turkey 2013 wm | 4 | 0.0466 s / 155 MB | 0.285 s / 177 MB | 0.376 s / 239 MB | 0.181 | 0.0493 |
-| Turkey 2013 wm | 5 | 0.0364 s / 103 MB | 0.0488 s / 139 MB | 0.0867 s / 259 MB | 0.181 | 0.0382 |
-| Turkey 2013 wm | 6 | 0.583 s / 625 MB | 3.07 s / 535 MB | 5.06 s / 647 MB | 0.181 | 0.607 |
-| Tajikistan 2017 wm | 1 | 0.166 s / 625 MB | 3.42 s / 649 MB | 4.3 s / 526 MB | 0.182 | 0.255 |
-| Tajikistan 2017 wm | 2 | 0.32 s / 878 MB | 3.78 s / 858 MB | 4.28 s / 548 MB | 0.18 | 0.416 |
-| Tajikistan 2017 wm | 3 | 0.0175 s / 115 MB | 0.208 s / 143 MB | 0.114 s / 268 MB | 0.18 | 0.0232 |
-| Tajikistan 2017 wm | 4 | 0.0528 s / 159 MB | 0.327 s / 185 MB | 0.403 s / 277 MB | 0.182 | 0.0555 |
-| Tajikistan 2017 wm | 5 | 0.0414 s / 106 MB | 0.0525 s / 140 MB | 0.104 s / 274 MB | 0.191 | 0.044 |
-| Tajikistan 2017 wm | 6 | 0.708 s / 765 MB | 3.73 s / 662 MB | 6.15 s / 629 MB | 0.182 | 0.718 |
-| Myanmar 2016 wm | 1 | 0.185 s / 691 MB | 4.03 s / 717 MB | 4.76 s / 611 MB | 0.184 | 0.272 |
-| Myanmar 2016 wm | 2 | 0.361 s / 886 MB | 4.31 s / 958 MB | 4.99 s / 673 MB | 0.184 | 0.485 |
-| Myanmar 2016 wm | 3 | 0.0174 s / 114 MB | 0.211 s / 143 MB | 0.113 s / 259 MB | 0.185 | 0.0234 |
-| Myanmar 2016 wm | 4 | 0.0514 s / 158 MB | 0.31 s / 183 MB | 0.394 s / 273 MB | 0.181 | 0.0553 |
-| Myanmar 2016 wm | 5 | 0.0424 s / 106 MB | 0.0517 s / 137 MB | 0.101 s / 279 MB | 0.183 | 0.0439 |
-| Myanmar 2016 wm | 6 | 0.773 s / 827 MB | 4.37 s / 726 MB | 7.26 s / 844 MB | 0.181 | 0.782 |
+| Dominican Republic 2013 bh | 1 | 0.0289 s / 270 MB | 1.23 s / 288 MB | 1.29 s / 190 MB | 0.188 | 0.0535 |
+| Dominican Republic 2013 bh | 2 | 0.094 s / 327 MB | 1.33 s / 343 MB | 1.36 s / 226 MB | 0.185 | 0.131 |
+| Dominican Republic 2013 bh | 3 | 0.00527 s / 102 MB | 0.0587 s / 128 MB | 0.025 s / 102 MB | 0.189 | 0.0102 |
+| Dominican Republic 2013 bh | 4 | 0.00922 s / 110 MB | 0.0572 s / 137 MB | 0.0637 s / 111 MB | 0.184 | 0.0109 |
+| Dominican Republic 2013 bh | 5 | 0.00757 s / 99 MB | 0.0112 s / 124 MB | 0.00873 s / 103 MB | 0.19 | 0.00925 |
+| Dominican Republic 2013 bh | 6 | 0.038 s / 301 MB | 1.51 s / 289 MB | 2.16 s / 245 MB | 0.184 | 0.0399 |
+| Turkey 2013 bh | 1 | 0.0308 s / 284 MB | 1.37 s / 300 MB | 1.42 s / 198 MB | 0.187 | 0.0548 |
+| Turkey 2013 bh | 2 | 0.0967 s / 348 MB | 1.44 s / 389 MB | 1.49 s / 242 MB | 0.184 | 0.135 |
+| Turkey 2013 bh | 3 | 0.00549 s / 102 MB | 0.0639 s / 126 MB | 0.0254 s / 102 MB | 0.185 | 0.0104 |
+| Turkey 2013 bh | 4 | 0.0101 s / 110 MB | 0.0699 s / 139 MB | 0.0679 s / 113 MB | 0.185 | 0.0119 |
+| Turkey 2013 bh | 5 | 0.00799 s / 98 MB | 0.0125 s / 125 MB | 0.00965 s / 108 MB | 0.183 | 0.00926 |
+| Turkey 2013 bh | 6 | 0.0419 s / 319 MB | 1.58 s / 306 MB | 2.36 s / 277 MB | 0.183 | 0.0438 |
+| Senegal 2019 bh | 1 | 0.0333 s / 329 MB | 1.65 s / 341 MB | 1.75 s / 221 MB | 0.183 | 0.0681 |
+| Senegal 2019 bh | 2 | 0.115 s / 400 MB | 1.76 s / 419 MB | 1.82 s / 277 MB | 0.186 | 0.18 |
+| Senegal 2019 bh | 3 | 0.00575 s / 103 MB | 0.0719 s / 126 MB | 0.0293 s / 107 MB | 0.189 | 0.0108 |
+| Senegal 2019 bh | 4 | 0.0102 s / 112 MB | 0.0635 s / 140 MB | 0.0708 s / 112 MB | 0.182 | 0.0118 |
+| Senegal 2019 bh | 5 | 0.00816 s / 99 MB | 0.0122 s / 125 MB | 0.00987 s / 109 MB | 0.184 | 0.0094 |
+| Senegal 2019 bh | 6 | 0.0492 s / 363 MB | 1.95 s / 345 MB | 2.86 s / 297 MB | 0.183 | 0.0481 |
+| Tajikistan 2017 bh | 1 | 0.033 s / 318 MB | 1.61 s / 336 MB | 1.68 s / 216 MB | 0.183 | 0.0672 |
+| Tajikistan 2017 bh | 2 | 0.115 s / 398 MB | 1.72 s / 416 MB | 1.78 s / 277 MB | 0.182 | 0.161 |
+| Tajikistan 2017 bh | 3 | 0.0058 s / 101 MB | 0.0704 s / 129 MB | 0.0299 s / 106 MB | 0.186 | 0.0108 |
+| Tajikistan 2017 bh | 4 | 0.00971 s / 110 MB | 0.0612 s / 139 MB | 0.0687 s / 109 MB | 0.19 | 0.0116 |
+| Tajikistan 2017 bh | 5 | 0.0081 s / 100 MB | 0.0121 s / 123 MB | 0.00957 s / 104 MB | 0.186 | 0.00952 |
+| Tajikistan 2017 bh | 6 | 0.0459 s / 352 MB | 1.93 s / 336 MB | 2.79 s / 294 MB | 0.182 | 0.0512 |
+| Myanmar 2016 bh | 1 | 0.0361 s / 344 MB | 1.75 s / 363 MB | 1.85 s / 217 MB | 0.185 | 0.0699 |
+| Myanmar 2016 bh | 2 | 0.123 s / 417 MB | 1.87 s / 428 MB | 1.93 s / 267 MB | 0.183 | 0.177 |
+| Myanmar 2016 bh | 3 | 0.00607 s / 103 MB | 0.0769 s / 126 MB | 0.0314 s / 103 MB | 0.183 | 0.0112 |
+| Myanmar 2016 bh | 4 | 0.01 s / 112 MB | 0.0623 s / 138 MB | 0.07 s / 114 MB | 0.185 | 0.0119 |
+| Myanmar 2016 bh | 5 | 0.0084 s / 99 MB | 0.0129 s / 123 MB | 0.0104 s / 109 MB | 0.183 | 0.00959 |
+| Myanmar 2016 bh | 6 | 0.0483 s / 381 MB | 2.11 s / 366 MB | 3.08 s / 284 MB | 0.183 | 0.0517 |
+| Dominican Republic 2013 wm | 1 | 0.0671 s / 435 MB | 2.29 s / 451 MB | 2.67 s / 388 MB | 0.184 | 0.128 |
+| Dominican Republic 2013 wm | 2 | 0.169 s / 610 MB | 2.52 s / 671 MB | 2.78 s / 462 MB | 0.182 | 0.242 |
+| Dominican Republic 2013 wm | 3 | 0.0127 s / 107 MB | 0.123 s / 138 MB | 0.0719 s / 199 MB | 0.187 | 0.0181 |
+| Dominican Republic 2013 wm | 4 | 0.0379 s / 138 MB | 0.234 s / 170 MB | 0.278 s / 229 MB | 0.184 | 0.0415 |
+| Dominican Republic 2013 wm | 5 | 0.0301 s / 103 MB | 0.0389 s / 136 MB | 0.0645 s / 221 MB | 0.181 | 0.0319 |
+| Dominican Republic 2013 wm | 6 | 0.183 s / 538 MB | 2.57 s / 462 MB | 4 s / 541 MB | 0.191 | 0.188 |
+| Senegal 2019 wm | 1 | 0.0836 s / 530 MB | 2.7 s / 553 MB | 3.27 s / 513 MB | 0.189 | 0.164 |
+| Senegal 2019 wm | 2 | 0.209 s / 768 MB | 2.95 s / 763 MB | 3.39 s / 539 MB | 0.183 | 0.298 |
+| Senegal 2019 wm | 3 | 0.0162 s / 109 MB | 0.173 s / 142 MB | 0.11 s / 265 MB | 0.185 | 0.0221 |
+| Senegal 2019 wm | 4 | 0.0509 s / 147 MB | 0.307 s / 183 MB | 0.399 s / 271 MB | 0.185 | 0.055 |
+| Senegal 2019 wm | 5 | 0.0405 s / 106 MB | 0.0506 s / 136 MB | 0.103 s / 284 MB | 0.187 | 0.0417 |
+| Senegal 2019 wm | 6 | 0.275 s / 669 MB | 2.91 s / 565 MB | 4.81 s / 638 MB | 0.185 | 0.28 |
+| Turkey 2013 wm | 1 | 0.0809 s / 505 MB | 2.89 s / 526 MB | 3.4 s / 462 MB | 0.183 | 0.152 |
+| Turkey 2013 wm | 2 | 0.203 s / 721 MB | 3.07 s / 812 MB | 3.55 s / 599 MB | 0.183 | 0.312 |
+| Turkey 2013 wm | 3 | 0.0157 s / 106 MB | 0.172 s / 142 MB | 0.0959 s / 223 MB | 0.182 | 0.021 |
+| Turkey 2013 wm | 4 | 0.0461 s / 147 MB | 0.285 s / 177 MB | 0.376 s / 239 MB | 0.189 | 0.0496 |
+| Turkey 2013 wm | 5 | 0.0368 s / 105 MB | 0.0488 s / 139 MB | 0.0867 s / 259 MB | 0.182 | 0.0383 |
+| Turkey 2013 wm | 6 | 0.248 s / 636 MB | 3.07 s / 535 MB | 5.06 s / 647 MB | 0.19 | 0.261 |
+| Tajikistan 2017 wm | 1 | 0.0945 s / 631 MB | 3.42 s / 649 MB | 4.3 s / 526 MB | 0.183 | 0.169 |
+| Tajikistan 2017 wm | 2 | 0.251 s / 964 MB | 3.78 s / 858 MB | 4.28 s / 548 MB | 0.183 | 0.365 |
+| Tajikistan 2017 wm | 3 | 0.0175 s / 109 MB | 0.208 s / 143 MB | 0.114 s / 268 MB | 0.184 | 0.023 |
+| Tajikistan 2017 wm | 4 | 0.0535 s / 149 MB | 0.327 s / 185 MB | 0.403 s / 277 MB | 0.181 | 0.0561 |
+| Tajikistan 2017 wm | 5 | 0.0416 s / 106 MB | 0.0525 s / 140 MB | 0.104 s / 274 MB | 0.183 | 0.0428 |
+| Tajikistan 2017 wm | 6 | 0.302 s / 780 MB | 3.73 s / 662 MB | 6.15 s / 629 MB | 0.183 | 0.312 |
+| Myanmar 2016 wm | 1 | 0.0996 s / 696 MB | 4.03 s / 717 MB | 4.76 s / 611 MB | 0.184 | 0.187 |
+| Myanmar 2016 wm | 2 | 0.277 s / 1,070 MB | 4.31 s / 958 MB | 4.99 s / 673 MB | 0.191 | 0.39 |
+| Myanmar 2016 wm | 3 | 0.0171 s / 109 MB | 0.211 s / 143 MB | 0.113 s / 259 MB | 0.188 | 0.0232 |
+| Myanmar 2016 wm | 4 | 0.0508 s / 150 MB | 0.31 s / 183 MB | 0.394 s / 273 MB | 0.182 | 0.0545 |
+| Myanmar 2016 wm | 5 | 0.0417 s / 106 MB | 0.0517 s / 137 MB | 0.101 s / 279 MB | 0.182 | 0.0438 |
+| Myanmar 2016 wm | 6 | 0.304 s / 840 MB | 4.37 s / 726 MB | 7.26 s / 844 MB | 0.19 | 0.308 |
 
 ## Python
 
@@ -75,66 +75,66 @@ Each cell: median seconds / peak RSS MB. Startup (process start to packages load
 
 | file | task | dta_parser | pandas | pyreadstat | ours: startup s | ours: first call s |
 |---|---|---|---|---|---|---|
-| Dominican Republic 2013 bh | 1 | 0.0762 s / 222 MB | 0.0969 s / 270 MB | 0.69 s / 425 MB | 0.187 | 0.0807 |
-| Dominican Republic 2013 bh | 2 | 0.112 s / 222 MB | 0.131 s / 271 MB | 1.34 s / 426 MB | 0.185 | 0.119 |
-| Dominican Republic 2013 bh | 3 | 0.00378 s / 92 MB | 0.0182 s / 128 MB | 0.0451 s / 96 MB | 0.186 | 0.00479 |
-| Dominican Republic 2013 bh | 4 | 0.0114 s / 100 MB | 0.139 s / 189 MB | 0.0456 s / 120 MB | 0.192 | 0.0138 |
-| Dominican Republic 2013 bh | 5 | 0.00152 s / 83 MB | 0.00434 s / 81 MB | 0.00998 s / 95 MB | 0.187 | 0.00191 |
-| Dominican Republic 2013 bh | 6 | 0.164 s / 233 MB | 0.274 s / 1,127 MB | error | 0.194 | 0.166 |
-| Turkey 2013 bh | 1 | 0.0764 s / 233 MB | 0.104 s / 284 MB | 0.761 s / 446 MB | 0.188 | 0.0846 |
-| Turkey 2013 bh | 2 | 0.114 s / 234 MB | 0.137 s / 285 MB | 1.77 s / 448 MB | 0.186 | 0.122 |
-| Turkey 2013 bh | 3 | 0.00378 s / 92 MB | 0.0185 s / 130 MB | 0.0472 s / 97 MB | 0.183 | 0.00473 |
-| Turkey 2013 bh | 4 | 0.0123 s / 102 MB | 0.153 s / 198 MB | 0.0518 s / 122 MB | 0.195 | 0.0146 |
-| Turkey 2013 bh | 5 | 0.00164 s / 83 MB | 0.00465 s / 81 MB | 0.0112 s / 96 MB | 0.186 | 0.00204 |
-| Turkey 2013 bh | 6 | 0.173 s / 244 MB | 0.295 s / 1,050 MB | error | 0.182 | 0.173 |
-| Senegal 2019 bh | 1 | 0.0945 s / 258 MB | 0.112 s / 321 MB | 0.874 s / 525 MB | 0.187 | 0.102 |
-| Senegal 2019 bh | 2 | 0.139 s / 258 MB | 0.152 s / 322 MB | 1.65 s / 525 MB | 0.183 | 0.148 |
-| Senegal 2019 bh | 3 | 0.00424 s / 92 MB | 0.0224 s / 142 MB | 0.0568 s / 97 MB | 0.19 | 0.0052 |
-| Senegal 2019 bh | 4 | 0.0126 s / 102 MB | 0.156 s / 218 MB | 0.052 s / 123 MB | 0.187 | 0.0148 |
-| Senegal 2019 bh | 5 | 0.00163 s / 84 MB | 0.00473 s / 81 MB | 0.0119 s / 96 MB | 0.183 | 0.00202 |
-| Senegal 2019 bh | 6 | 0.208 s / 269 MB | 0.318 s / 1,207 MB | error | 0.187 | 0.23 |
-| Tajikistan 2017 bh | 1 | 0.0902 s / 245 MB | 0.105 s / 303 MB | 0.877 s / 519 MB | 0.193 | 0.0987 |
-| Tajikistan 2017 bh | 2 | 0.135 s / 246 MB | 0.146 s / 303 MB | 1.58 s / 520 MB | 0.198 | 0.144 |
-| Tajikistan 2017 bh | 3 | 0.00436 s / 92 MB | 0.0225 s / 143 MB | 0.0539 s / 97 MB | 0.186 | 0.00545 |
-| Tajikistan 2017 bh | 4 | 0.012 s / 101 MB | 0.145 s / 206 MB | 0.0489 s / 122 MB | 0.185 | 0.0143 |
-| Tajikistan 2017 bh | 5 | 0.00172 s / 84 MB | 0.00458 s / 81 MB | 0.0109 s / 96 MB | 0.189 | 0.00206 |
-| Tajikistan 2017 bh | 6 | 0.192 s / 256 MB | 0.293 s / 1,113 MB | error | 0.186 | 0.192 |
-| Myanmar 2016 bh | 1 | 0.0939 s / 256 MB | 0.111 s / 335 MB | 0.968 s / 574 MB | 0.193 | 0.102 |
-| Myanmar 2016 bh | 2 | 0.138 s / 256 MB | 0.151 s / 336 MB | 1.74 s / 570 MB | 0.187 | 0.146 |
-| Myanmar 2016 bh | 3 | 0.00444 s / 92 MB | 0.0239 s / 145 MB | 0.0594 s / 98 MB | 0.182 | 0.00554 |
-| Myanmar 2016 bh | 4 | 0.0126 s / 102 MB | 0.153 s / 215 MB | 0.0523 s / 122 MB | 0.182 | 0.0143 |
-| Myanmar 2016 bh | 5 | 0.00178 s / 84 MB | 0.00501 s / 81 MB | 0.0119 s / 96 MB | 0.181 | 0.00216 |
-| Myanmar 2016 bh | 6 | 0.21 s / 265 MB | 0.328 s / 1,264 MB | error | 0.182 | 0.21 |
-| Dominican Republic 2013 wm | 1 | 0.146 s / 373 MB | 0.342 s / 476 MB | 1.3 s / 723 MB | 0.195 | 0.164 |
-| Dominican Republic 2013 wm | 2 | 0.23 s / 373 MB | 0.417 s / 476 MB | 2.54 s / 723 MB | 0.182 | 0.244 |
-| Dominican Republic 2013 wm | 3 | 0.00779 s / 97 MB | 0.0354 s / 161 MB | 0.0683 s / 104 MB | 0.192 | 0.00907 |
-| Dominican Republic 2013 wm | 4 | 0.0391 s / 126 MB | 0.593 s / 349 MB | 0.199 s / 199 MB | 0.186 | 0.0429 |
-| Dominican Republic 2013 wm | 5 | 0.00481 s / 89 MB | 0.0149 s / 84 MB | 0.0657 s / 108 MB | 0.182 | 0.00666 |
-| Dominican Republic 2013 wm | 6 | 0.366 s / 389 MB | 0.869 s / 2,219 MB | error | 0.194 | 0.366 |
-| Senegal 2019 wm | 1 | 0.181 s / 458 MB | 0.471 s / 583 MB | 1.68 s / 1,036 MB | 0.183 | 0.198 |
-| Senegal 2019 wm | 2 | 0.291 s / 458 MB | 0.566 s / 583 MB | 3.14 s / 981 MB | 0.181 | 0.311 |
-| Senegal 2019 wm | 3 | 0.00894 s / 99 MB | 0.047 s / 181 MB | 0.107 s / 109 MB | 0.179 | 0.0105 |
-| Senegal 2019 wm | 4 | 0.0509 s / 138 MB | 0.812 s / 426 MB | 0.284 s / 232 MB | 0.188 | 0.0567 |
-| Senegal 2019 wm | 5 | 0.00635 s / 91 MB | 0.0191 s / 85 MB | 0.098 s / 113 MB | 0.18 | 0.00831 |
-| Senegal 2019 wm | 6 | 0.443 s / 474 MB | 1.16 s / 2,505 MB | error | 0.181 | 0.445 |
-| Turkey 2013 wm | 1 | 0.186 s / 440 MB | 0.459 s / 570 MB | 1.69 s / 872 MB | 0.188 | 0.207 |
-| Turkey 2013 wm | 2 | 0.287 s / 439 MB | 0.545 s / 570 MB | 3.21 s / 872 MB | 0.183 | 0.313 |
-| Turkey 2013 wm | 3 | 0.00923 s / 100 MB | 0.063 s / 190 MB | 0.101 s / 107 MB | 0.181 | 0.0106 |
-| Turkey 2013 wm | 4 | 0.0472 s / 136 MB | 0.758 s / 413 MB | 0.261 s / 223 MB | 0.183 | 0.0513 |
-| Turkey 2013 wm | 5 | 0.00638 s / 91 MB | 0.019 s / 84 MB | 0.0858 s / 112 MB | 0.179 | 0.00824 |
-| Turkey 2013 wm | 6 | 0.455 s / 457 MB | 1.1 s / 2,503 MB | error | 0.19 | 0.454 |
-| Tajikistan 2017 wm | 1 | 0.213 s / 494 MB | 0.556 s / 700 MB | 2.07 s / 1,293 MB | 0.186 | 0.234 |
-| Tajikistan 2017 wm | 2 | 0.337 s / 494 MB | 0.665 s / 699 MB | 3.87 s / 1,081 MB | 0.189 | 0.36 |
-| Tajikistan 2017 wm | 3 | 0.0104 s / 100 MB | 0.112 s / 212 MB | 0.131 s / 110 MB | 0.18 | 0.0119 |
-| Tajikistan 2017 wm | 4 | 0.0537 s / 140 MB | 0.848 s / 446 MB | 0.29 s / 238 MB | 0.179 | 0.0567 |
-| Tajikistan 2017 wm | 5 | 0.00701 s / 92 MB | 0.0199 s / 85 MB | 0.105 s / 112 MB | 0.179 | 0.00896 |
-| Tajikistan 2017 wm | 6 | 0.544 s / 511 MB | 1.24 s / 2,878 MB | error | 0.179 | 0.542 |
-| Myanmar 2016 wm | 1 | 0.248 s / 574 MB | 0.565 s / 785 MB | 2.35 s / 1,223 MB | 0.192 | 0.28 |
-| Myanmar 2016 wm | 2 | 0.371 s / 576 MB | 0.675 s / 786 MB | 4.37 s / 1,224 MB | 0.179 | 0.403 |
-| Myanmar 2016 wm | 3 | 0.0105 s / 100 MB | 0.13 s / 229 MB | 0.145 s / 109 MB | 0.182 | 0.012 |
-| Myanmar 2016 wm | 4 | 0.052 s / 139 MB | 0.827 s / 524 MB | 0.281 s / 233 MB | 0.18 | 0.0559 |
-| Myanmar 2016 wm | 5 | 0.00657 s / 91 MB | 0.0191 s / 84 MB | 0.102 s / 113 MB | 0.182 | 0.00855 |
-| Myanmar 2016 wm | 6 | 0.592 s / 590 MB | 1.27 s / 3,591 MB | error | 0.182 | 0.59 |
+| Dominican Republic 2013 bh | 1 | 0.0354 s / 226 MB | 0.0969 s / 270 MB | 0.69 s / 425 MB | 0.194 | 0.0447 |
+| Dominican Republic 2013 bh | 2 | 0.0716 s / 225 MB | 0.131 s / 271 MB | 1.34 s / 426 MB | 0.187 | 0.0796 |
+| Dominican Republic 2013 bh | 3 | 0.00333 s / 85 MB | 0.0182 s / 128 MB | 0.0451 s / 96 MB | 0.185 | 0.00432 |
+| Dominican Republic 2013 bh | 4 | 0.00973 s / 93 MB | 0.139 s / 189 MB | 0.0456 s / 120 MB | 0.185 | 0.0117 |
+| Dominican Republic 2013 bh | 5 | 0.00156 s / 83 MB | 0.00434 s / 81 MB | 0.00998 s / 95 MB | 0.184 | 0.00192 |
+| Dominican Republic 2013 bh | 6 | 0.05 s / 244 MB | 0.274 s / 1,127 MB | error | 0.193 | 0.0515 |
+| Turkey 2013 bh | 1 | 0.0359 s / 237 MB | 0.104 s / 284 MB | 0.761 s / 446 MB | 0.187 | 0.0447 |
+| Turkey 2013 bh | 2 | 0.0731 s / 238 MB | 0.137 s / 285 MB | 1.77 s / 448 MB | 0.188 | 0.0818 |
+| Turkey 2013 bh | 3 | 0.00346 s / 86 MB | 0.0185 s / 130 MB | 0.0472 s / 97 MB | 0.188 | 0.00443 |
+| Turkey 2013 bh | 4 | 0.0106 s / 94 MB | 0.153 s / 198 MB | 0.0518 s / 122 MB | 0.189 | 0.0125 |
+| Turkey 2013 bh | 5 | 0.00167 s / 83 MB | 0.00465 s / 81 MB | 0.0112 s / 96 MB | 0.185 | 0.00204 |
+| Turkey 2013 bh | 6 | 0.0517 s / 255 MB | 0.295 s / 1,050 MB | error | 0.184 | 0.0523 |
+| Senegal 2019 bh | 1 | 0.0445 s / 261 MB | 0.112 s / 321 MB | 0.874 s / 525 MB | 0.187 | 0.0528 |
+| Senegal 2019 bh | 2 | 0.0899 s / 263 MB | 0.152 s / 322 MB | 1.65 s / 525 MB | 0.184 | 0.0988 |
+| Senegal 2019 bh | 3 | 0.00376 s / 86 MB | 0.0224 s / 142 MB | 0.0568 s / 97 MB | 0.185 | 0.00492 |
+| Senegal 2019 bh | 4 | 0.0109 s / 94 MB | 0.156 s / 218 MB | 0.052 s / 123 MB | 0.186 | 0.0128 |
+| Senegal 2019 bh | 5 | 0.00166 s / 83 MB | 0.00473 s / 81 MB | 0.0119 s / 96 MB | 0.189 | 0.00203 |
+| Senegal 2019 bh | 6 | 0.0597 s / 279 MB | 0.318 s / 1,207 MB | error | 0.183 | 0.0608 |
+| Tajikistan 2017 bh | 1 | 0.0418 s / 247 MB | 0.105 s / 303 MB | 0.877 s / 519 MB | 0.186 | 0.0498 |
+| Tajikistan 2017 bh | 2 | 0.0868 s / 248 MB | 0.146 s / 303 MB | 1.58 s / 520 MB | 0.186 | 0.0958 |
+| Tajikistan 2017 bh | 3 | 0.00383 s / 86 MB | 0.0225 s / 143 MB | 0.0539 s / 97 MB | 0.185 | 0.0049 |
+| Tajikistan 2017 bh | 4 | 0.0102 s / 93 MB | 0.145 s / 206 MB | 0.0489 s / 122 MB | 0.185 | 0.0123 |
+| Tajikistan 2017 bh | 5 | 0.00163 s / 83 MB | 0.00458 s / 81 MB | 0.0109 s / 96 MB | 0.186 | 0.00202 |
+| Tajikistan 2017 bh | 6 | 0.0565 s / 267 MB | 0.293 s / 1,113 MB | error | 0.191 | 0.0593 |
+| Myanmar 2016 bh | 1 | 0.0433 s / 259 MB | 0.111 s / 335 MB | 0.968 s / 574 MB | 0.187 | 0.0519 |
+| Myanmar 2016 bh | 2 | 0.088 s / 259 MB | 0.151 s / 336 MB | 1.74 s / 570 MB | 0.192 | 0.0966 |
+| Myanmar 2016 bh | 3 | 0.00416 s / 86 MB | 0.0239 s / 145 MB | 0.0594 s / 98 MB | 0.192 | 0.00523 |
+| Myanmar 2016 bh | 4 | 0.0105 s / 94 MB | 0.153 s / 215 MB | 0.0523 s / 122 MB | 0.186 | 0.0123 |
+| Myanmar 2016 bh | 5 | 0.00175 s / 83 MB | 0.00501 s / 81 MB | 0.0119 s / 96 MB | 0.185 | 0.00214 |
+| Myanmar 2016 bh | 6 | 0.0584 s / 278 MB | 0.328 s / 1,264 MB | error | 0.186 | 0.0595 |
+| Dominican Republic 2013 wm | 1 | 0.0795 s / 379 MB | 0.342 s / 476 MB | 1.3 s / 723 MB | 0.188 | 0.0935 |
+| Dominican Republic 2013 wm | 2 | 0.165 s / 378 MB | 0.417 s / 476 MB | 2.54 s / 723 MB | 0.183 | 0.178 |
+| Dominican Republic 2013 wm | 3 | 0.00714 s / 90 MB | 0.0354 s / 161 MB | 0.0683 s / 104 MB | 0.195 | 0.00851 |
+| Dominican Republic 2013 wm | 4 | 0.0358 s / 120 MB | 0.593 s / 349 MB | 0.199 s / 199 MB | 0.184 | 0.0389 |
+| Dominican Republic 2013 wm | 5 | 0.00493 s / 89 MB | 0.0149 s / 84 MB | 0.0657 s / 108 MB | 0.187 | 0.0067 |
+| Dominican Republic 2013 wm | 6 | 0.133 s / 403 MB | 0.869 s / 2,219 MB | error | 0.195 | 0.131 |
+| Senegal 2019 wm | 1 | 0.0999 s / 461 MB | 0.471 s / 583 MB | 1.68 s / 1,036 MB | 0.197 | 0.117 |
+| Senegal 2019 wm | 2 | 0.211 s / 462 MB | 0.566 s / 583 MB | 3.14 s / 981 MB | 0.187 | 0.227 |
+| Senegal 2019 wm | 3 | 0.00877 s / 93 MB | 0.047 s / 181 MB | 0.107 s / 109 MB | 0.185 | 0.0102 |
+| Senegal 2019 wm | 4 | 0.0477 s / 132 MB | 0.812 s / 426 MB | 0.284 s / 232 MB | 0.186 | 0.0505 |
+| Senegal 2019 wm | 5 | 0.0064 s / 91 MB | 0.0191 s / 85 MB | 0.098 s / 113 MB | 0.19 | 0.00833 |
+| Senegal 2019 wm | 6 | 0.165 s / 486 MB | 1.16 s / 2,505 MB | error | 0.186 | 0.166 |
+| Turkey 2013 wm | 1 | 0.0984 s / 442 MB | 0.459 s / 570 MB | 1.69 s / 872 MB | 0.193 | 0.115 |
+| Turkey 2013 wm | 2 | 0.204 s / 446 MB | 0.545 s / 570 MB | 3.21 s / 872 MB | 0.185 | 0.219 |
+| Turkey 2013 wm | 3 | 0.00903 s / 93 MB | 0.063 s / 190 MB | 0.101 s / 107 MB | 0.183 | 0.0104 |
+| Turkey 2013 wm | 4 | 0.0438 s / 130 MB | 0.758 s / 413 MB | 0.261 s / 223 MB | 0.181 | 0.0474 |
+| Turkey 2013 wm | 5 | 0.00641 s / 91 MB | 0.019 s / 84 MB | 0.0858 s / 112 MB | 0.185 | 0.00841 |
+| Turkey 2013 wm | 6 | 0.159 s / 469 MB | 1.1 s / 2,503 MB | error | 0.185 | 0.16 |
+| Tajikistan 2017 wm | 1 | 0.118 s / 496 MB | 0.556 s / 700 MB | 2.07 s / 1,293 MB | 0.19 | 0.138 |
+| Tajikistan 2017 wm | 2 | 0.244 s / 498 MB | 0.665 s / 699 MB | 3.87 s / 1,081 MB | 0.186 | 0.263 |
+| Tajikistan 2017 wm | 3 | 0.0101 s / 95 MB | 0.112 s / 212 MB | 0.131 s / 110 MB | 0.183 | 0.0114 |
+| Tajikistan 2017 wm | 4 | 0.0486 s / 132 MB | 0.848 s / 446 MB | 0.29 s / 238 MB | 0.192 | 0.0537 |
+| Tajikistan 2017 wm | 5 | 0.007 s / 93 MB | 0.0199 s / 85 MB | 0.105 s / 112 MB | 0.186 | 0.00899 |
+| Tajikistan 2017 wm | 6 | 0.185 s / 522 MB | 1.24 s / 2,878 MB | error | 0.193 | 0.185 |
+| Myanmar 2016 wm | 1 | 0.127 s / 579 MB | 0.565 s / 785 MB | 2.35 s / 1,223 MB | 0.186 | 0.148 |
+| Myanmar 2016 wm | 2 | 0.251 s / 579 MB | 0.675 s / 786 MB | 4.37 s / 1,224 MB | 0.184 | 0.271 |
+| Myanmar 2016 wm | 3 | 0.0103 s / 93 MB | 0.13 s / 229 MB | 0.145 s / 109 MB | 0.191 | 0.0118 |
+| Myanmar 2016 wm | 4 | 0.0472 s / 132 MB | 0.827 s / 524 MB | 0.281 s / 233 MB | 0.185 | 0.051 |
+| Myanmar 2016 wm | 5 | 0.00671 s / 91 MB | 0.0191 s / 84 MB | 0.102 s / 113 MB | 0.193 | 0.00884 |
+| Myanmar 2016 wm | 6 | 0.185 s / 606 MB | 1.27 s / 3,591 MB | error | 0.186 | 0.186 |
 
 ## Julia
 
@@ -142,66 +142,66 @@ Each cell: median seconds / peak RSS MB. Startup (process start to packages load
 
 | file | task | DtaParser.jl | ReadStatTables.jl | StatFiles.jl | ours: startup s | ours: first call s |
 |---|---|---|---|---|---|---|
-| Dominican Republic 2013 bh | 1 | 0.045 s / 360 MB | 0.345 s / 452 MB | 270 s / 959 MB | 0.153 | 0.0795 |
-| Dominican Republic 2013 bh | 2 | 0.0691 s / 372 MB | 0.374 s / 457 MB | 267 s / 959 MB | 0.144 | 0.284 |
-| Dominican Republic 2013 bh | 3 | 0.00434 s / 312 MB | 0.0419 s / 400 MB | skipped | 0.127 | 0.0752 |
-| Dominican Republic 2013 bh | 4 | 0.00569 s / 313 MB | 0.0223 s / 398 MB | skipped | 0.151 | 0.0382 |
-| Dominican Republic 2013 bh | 5 | 0.00275 s / 301 MB | 0.00274 s / 397 MB | no API | 0.167 | 0.024 |
-| Dominican Republic 2013 bh | 6 | 0.122 s / 373 MB | 0.421 s / 456 MB | no API | 0.152 | 0.215 |
-| Turkey 2013 bh | 1 | 0.0478 s / 364 MB | 0.361 s / 459 MB | 287 s / 1,029 MB | 0.171 | 0.0808 |
-| Turkey 2013 bh | 2 | 0.0734 s / 377 MB | 0.4 s / 464 MB | 288 s / 1,030 MB | 0.141 | 0.293 |
-| Turkey 2013 bh | 3 | 0.00456 s / 313 MB | 0.0436 s / 396 MB | skipped | 0.133 | 0.0751 |
-| Turkey 2013 bh | 4 | 0.00617 s / 314 MB | 0.0243 s / 399 MB | skipped | 0.126 | 0.0362 |
-| Turkey 2013 bh | 5 | 0.00296 s / 301 MB | 0.003 s / 396 MB | no API | 0.136 | 0.0245 |
-| Turkey 2013 bh | 6 | 0.137 s / 377 MB | 0.486 s / 463 MB | no API | 0.148 | 0.225 |
-| Senegal 2019 bh | 1 | 0.0578 s / 373 MB | 0.444 s / 458 MB | 350 s / 1,058 MB | 0.133 | 0.0912 |
-| Senegal 2019 bh | 2 | 0.0886 s / 380 MB | 0.485 s / 463 MB | 350 s / 1,055 MB | 0.142 | 0.305 |
-| Senegal 2019 bh | 3 | 0.00481 s / 313 MB | 0.0527 s / 399 MB | skipped | 0.174 | 0.0769 |
-| Senegal 2019 bh | 4 | 0.00626 s / 314 MB | 0.0244 s / 397 MB | skipped | 0.166 | 0.0361 |
-| Senegal 2019 bh | 5 | 0.00294 s / 301 MB | 0.00303 s / 396 MB | no API | 0.126 | 0.0248 |
-| Senegal 2019 bh | 6 | 0.218 s / 386 MB | 0.596 s / 463 MB | no API | 0.126 | 0.31 |
-| Tajikistan 2017 bh | 1 | 0.0559 s / 370 MB | 0.442 s / 460 MB | 341 s / 1,018 MB | 0.173 | 0.089 |
-| Tajikistan 2017 bh | 2 | 0.0841 s / 376 MB | 0.48 s / 460 MB | 340 s / 1,004 MB | 0.175 | 0.305 |
-| Tajikistan 2017 bh | 3 | 0.00496 s / 312 MB | 0.051 s / 399 MB | skipped | 0.145 | 0.0779 |
-| Tajikistan 2017 bh | 4 | 0.00611 s / 313 MB | 0.0238 s / 399 MB | skipped | 0.141 | 0.0364 |
-| Tajikistan 2017 bh | 5 | 0.00289 s / 302 MB | 0.003 s / 397 MB | no API | 0.141 | 0.0242 |
-| Tajikistan 2017 bh | 6 | 0.195 s / 383 MB | 0.522 s / 464 MB | no API | 0.126 | 0.296 |
-| Myanmar 2016 bh | 1 | 0.0599 s / 373 MB | 0.483 s / 460 MB | 377 s / 1,050 MB | 0.134 | 0.0941 |
-| Myanmar 2016 bh | 2 | 0.0923 s / 375 MB | 0.516 s / 464 MB | 402 s / 1,043 MB | 0.146 | 0.309 |
-| Myanmar 2016 bh | 3 | 0.00523 s / 312 MB | 0.0558 s / 399 MB | skipped | 0.126 | 0.0756 |
-| Myanmar 2016 bh | 4 | 0.00645 s / 314 MB | 0.0247 s / 399 MB | skipped | 0.127 | 0.0362 |
-| Myanmar 2016 bh | 5 | 0.00319 s / 302 MB | 0.0031 s / 396 MB | no API | 0.133 | 0.0249 |
-| Myanmar 2016 bh | 6 | 0.226 s / 386 MB | 0.608 s / 465 MB | no API | 0.147 | 0.32 |
-| Dominican Republic 2013 wm | 1 | 0.1 s / 403 MB | 0.609 s / 491 MB | 529 s / 2,750 MB | 0.16 | 0.135 |
-| Dominican Republic 2013 wm | 2 | 0.147 s / 419 MB | 0.67 s / 496 MB | 526 s / 2,796 MB | 0.154 | 0.361 |
-| Dominican Republic 2013 wm | 3 | 0.0103 s / 315 MB | 0.0694 s / 407 MB | skipped | 0.162 | 0.0808 |
-| Dominican Republic 2013 wm | 4 | 0.0197 s / 317 MB | 0.0748 s / 409 MB | skipped | 0.143 | 0.0526 |
-| Dominican Republic 2013 wm | 5 | 0.00858 s / 304 MB | 0.00866 s / 406 MB | no API | 0.158 | 0.0309 |
-| Dominican Republic 2013 wm | 6 | 0.295 s / 429 MB | 0.88 s / 506 MB | no API | 0.154 | 0.385 |
-| Senegal 2019 wm | 1 | 0.121 s / 440 MB | 0.834 s / 525 MB | 638 s / 3,822 MB | 0.124 | 0.157 |
-| Senegal 2019 wm | 2 | 0.175 s / 459 MB | 0.919 s / 543 MB | 622 s / 4,011 MB | 0.13 | 0.393 |
-| Senegal 2019 wm | 3 | 0.013 s / 317 MB | 0.0949 s / 409 MB | skipped | 0.13 | 0.0808 |
-| Senegal 2019 wm | 4 | 0.0246 s / 322 MB | 0.121 s / 410 MB | skipped | 0.127 | 0.0573 |
-| Senegal 2019 wm | 5 | 0.0107 s / 305 MB | 0.0121 s / 408 MB | no API | 0.141 | 0.0324 |
-| Senegal 2019 wm | 6 | 0.353 s / 457 MB | 1.12 s / 542 MB | no API | 0.131 | 0.446 |
-| Turkey 2013 wm | 1 | 0.128 s / 427 MB | 0.88 s / 516 MB | 655 s / 3,526 MB | 0.133 | 0.163 |
-| Turkey 2013 wm | 2 | 0.187 s / 451 MB | 0.938 s / 542 MB | 651 s / 3,856 MB | 0.135 | 0.403 |
-| Turkey 2013 wm | 3 | 0.0131 s / 314 MB | 0.111 s / 411 MB | skipped | 0.13 | 0.0846 |
-| Turkey 2013 wm | 4 | 0.0242 s / 319 MB | 0.113 s / 410 MB | skipped | 0.123 | 0.0603 |
-| Turkey 2013 wm | 5 | 0.0109 s / 305 MB | 0.0116 s / 411 MB | no API | 0.13 | 0.0319 |
-| Turkey 2013 wm | 6 | 0.37 s / 456 MB | 1.13 s / 532 MB | no API | 0.133 | 0.457 |
-| Tajikistan 2017 wm | 1 | 0.147 s / 475 MB | 1.09 s / 551 MB | 785 s / 4,181 MB | 0.142 | 0.188 |
-| Tajikistan 2017 wm | 2 | 0.22 s / 501 MB | 1.17 s / 553 MB | 791 s / 4,091 MB | 0.141 | 0.436 |
-| Tajikistan 2017 wm | 3 | 0.0146 s / 317 MB | 0.128 s / 409 MB | skipped | 0.154 | 0.0848 |
-| Tajikistan 2017 wm | 4 | 0.0292 s / 321 MB | 0.122 s / 413 MB | skipped | 0.134 | 0.0598 |
-| Tajikistan 2017 wm | 5 | 0.0114 s / 305 MB | 0.012 s / 408 MB | no API | 0.123 | 0.0327 |
-| Tajikistan 2017 wm | 6 | 0.494 s / 498 MB | 1.43 s / 570 MB | no API | 0.137 | 0.584 |
-| Myanmar 2016 wm | 1 | 0.167 s / 489 MB | 1.31 s / 557 MB | 914 s / 3,964 MB | 0.131 | 0.206 |
-| Myanmar 2016 wm | 2 | 0.246 s / 490 MB | 1.31 s / 563 MB | 911 s / 4,078 MB | 0.14 | 0.474 |
-| Myanmar 2016 wm | 3 | 0.0143 s / 315 MB | 0.146 s / 409 MB | skipped | 0.124 | 0.0817 |
-| Myanmar 2016 wm | 4 | 0.0258 s / 320 MB | 0.106 s / 413 MB | skipped | 0.222 | 0.0586 |
-| Myanmar 2016 wm | 5 | 0.011 s / 305 MB | 0.0117 s / 407 MB | no API | 0.151 | 0.0325 |
-| Myanmar 2016 wm | 6 | 0.597 s / 507 MB | 1.7 s / 578 MB | no API | 0.15 | 0.689 |
+| Dominican Republic 2013 bh | 1 | 0.0247 s / 361 MB | 0.345 s / 452 MB | 270 s / 959 MB | 0.192 | 0.0572 |
+| Dominican Republic 2013 bh | 2 | 0.049 s / 374 MB | 0.374 s / 457 MB | 267 s / 959 MB | 0.132 | 0.253 |
+| Dominican Republic 2013 bh | 3 | 0.00407 s / 305 MB | 0.0419 s / 400 MB | skipped | 0.154 | 0.0733 |
+| Dominican Republic 2013 bh | 4 | 0.00501 s / 304 MB | 0.0223 s / 398 MB | skipped | 0.126 | 0.0344 |
+| Dominican Republic 2013 bh | 5 | 0.00267 s / 301 MB | 0.00274 s / 397 MB | no API | 0.149 | 0.024 |
+| Dominican Republic 2013 bh | 6 | 0.0206 s / 382 MB | 0.421 s / 456 MB | no API | 0.139 | 0.11 |
+| Turkey 2013 bh | 1 | 0.0276 s / 365 MB | 0.361 s / 459 MB | 287 s / 1,029 MB | 0.131 | 0.0614 |
+| Turkey 2013 bh | 2 | 0.0529 s / 376 MB | 0.4 s / 464 MB | 288 s / 1,030 MB | 0.142 | 0.268 |
+| Turkey 2013 bh | 3 | 0.0043 s / 304 MB | 0.0436 s / 396 MB | skipped | 0.139 | 0.0738 |
+| Turkey 2013 bh | 4 | 0.00544 s / 304 MB | 0.0243 s / 399 MB | skipped | 0.134 | 0.0353 |
+| Turkey 2013 bh | 5 | 0.00292 s / 301 MB | 0.003 s / 396 MB | no API | 0.122 | 0.0241 |
+| Turkey 2013 bh | 6 | 0.0211 s / 389 MB | 0.486 s / 463 MB | no API | 0.133 | 0.11 |
+| Senegal 2019 bh | 1 | 0.0329 s / 374 MB | 0.444 s / 458 MB | 350 s / 1,058 MB | 0.132 | 0.0659 |
+| Senegal 2019 bh | 2 | 0.0665 s / 377 MB | 0.485 s / 463 MB | 350 s / 1,055 MB | 0.155 | 0.277 |
+| Senegal 2019 bh | 3 | 0.00454 s / 305 MB | 0.0527 s / 399 MB | skipped | 0.139 | 0.0727 |
+| Senegal 2019 bh | 4 | 0.00555 s / 304 MB | 0.0244 s / 397 MB | skipped | 0.133 | 0.0351 |
+| Senegal 2019 bh | 5 | 0.00284 s / 301 MB | 0.00303 s / 396 MB | no API | 0.133 | 0.0241 |
+| Senegal 2019 bh | 6 | 0.0268 s / 399 MB | 0.596 s / 463 MB | no API | 0.139 | 0.116 |
+| Tajikistan 2017 bh | 1 | 0.0322 s / 372 MB | 0.442 s / 460 MB | 341 s / 1,018 MB | 0.145 | 0.0644 |
+| Tajikistan 2017 bh | 2 | 0.0606 s / 377 MB | 0.48 s / 460 MB | 340 s / 1,004 MB | 0.132 | 0.279 |
+| Tajikistan 2017 bh | 3 | 0.00462 s / 305 MB | 0.051 s / 399 MB | skipped | 0.135 | 0.074 |
+| Tajikistan 2017 bh | 4 | 0.00536 s / 304 MB | 0.0238 s / 399 MB | skipped | 0.185 | 0.0344 |
+| Tajikistan 2017 bh | 5 | 0.0029 s / 301 MB | 0.003 s / 397 MB | no API | 0.131 | 0.0242 |
+| Tajikistan 2017 bh | 6 | 0.0271 s / 395 MB | 0.522 s / 464 MB | no API | 0.137 | 0.116 |
+| Myanmar 2016 bh | 1 | 0.0348 s / 374 MB | 0.483 s / 460 MB | 377 s / 1,050 MB | 0.132 | 0.0682 |
+| Myanmar 2016 bh | 2 | 0.0698 s / 376 MB | 0.516 s / 464 MB | 402 s / 1,043 MB | 0.13 | 0.28 |
+| Myanmar 2016 bh | 3 | 0.00505 s / 305 MB | 0.0558 s / 399 MB | skipped | 0.146 | 0.0733 |
+| Myanmar 2016 bh | 4 | 0.00571 s / 304 MB | 0.0247 s / 399 MB | skipped | 0.145 | 0.035 |
+| Myanmar 2016 bh | 5 | 0.00314 s / 301 MB | 0.0031 s / 396 MB | no API | 0.137 | 0.0243 |
+| Myanmar 2016 bh | 6 | 0.0276 s / 398 MB | 0.608 s / 465 MB | no API | 0.126 | 0.121 |
+| Dominican Republic 2013 wm | 1 | 0.0673 s / 424 MB | 0.609 s / 491 MB | 529 s / 2,750 MB | 0.15 | 0.114 |
+| Dominican Republic 2013 wm | 2 | 0.119 s / 425 MB | 0.67 s / 496 MB | 526 s / 2,796 MB | 0.134 | 0.336 |
+| Dominican Republic 2013 wm | 3 | 0.0102 s / 308 MB | 0.0694 s / 407 MB | skipped | 0.136 | 0.0806 |
+| Dominican Republic 2013 wm | 4 | 0.0186 s / 309 MB | 0.0748 s / 409 MB | skipped | 0.124 | 0.0478 |
+| Dominican Republic 2013 wm | 5 | 0.00834 s / 304 MB | 0.00866 s / 406 MB | no API | 0.131 | 0.0302 |
+| Dominican Republic 2013 wm | 6 | 0.0461 s / 460 MB | 0.88 s / 506 MB | no API | 0.16 | 0.139 |
+| Senegal 2019 wm | 1 | 0.0927 s / 480 MB | 0.834 s / 525 MB | 638 s / 3,822 MB | 0.125 | 0.138 |
+| Senegal 2019 wm | 2 | 0.149 s / 455 MB | 0.919 s / 543 MB | 622 s / 4,011 MB | 0.15 | 0.365 |
+| Senegal 2019 wm | 3 | 0.013 s / 310 MB | 0.0949 s / 409 MB | skipped | 0.139 | 0.0804 |
+| Senegal 2019 wm | 4 | 0.0275 s / 319 MB | 0.121 s / 410 MB | skipped | 0.186 | 0.0584 |
+| Senegal 2019 wm | 5 | 0.0106 s / 306 MB | 0.0121 s / 408 MB | no API | 0.137 | 0.0322 |
+| Senegal 2019 wm | 6 | 0.0607 s / 481 MB | 1.12 s / 542 MB | no API | 0.14 | 0.154 |
+| Turkey 2013 wm | 1 | 0.0908 s / 450 MB | 0.88 s / 516 MB | 655 s / 3,526 MB | 0.146 | 0.14 |
+| Turkey 2013 wm | 2 | 0.152 s / 459 MB | 0.938 s / 542 MB | 651 s / 3,856 MB | 0.13 | 0.368 |
+| Turkey 2013 wm | 3 | 0.0132 s / 308 MB | 0.111 s / 411 MB | skipped | 0.123 | 0.0829 |
+| Turkey 2013 wm | 4 | 0.0265 s / 317 MB | 0.113 s / 410 MB | skipped | 0.127 | 0.0572 |
+| Turkey 2013 wm | 5 | 0.0108 s / 306 MB | 0.0116 s / 411 MB | no API | 0.151 | 0.0324 |
+| Turkey 2013 wm | 6 | 0.0594 s / 477 MB | 1.13 s / 532 MB | no API | 0.164 | 0.152 |
+| Tajikistan 2017 wm | 1 | 0.117 s / 500 MB | 1.09 s / 551 MB | 785 s / 4,181 MB | 0.141 | 0.16 |
+| Tajikistan 2017 wm | 2 | 0.188 s / 499 MB | 1.17 s / 553 MB | 791 s / 4,091 MB | 0.13 | 0.402 |
+| Tajikistan 2017 wm | 3 | 0.0143 s / 308 MB | 0.128 s / 409 MB | skipped | 0.163 | 0.0849 |
+| Tajikistan 2017 wm | 4 | 0.0289 s / 319 MB | 0.122 s / 413 MB | skipped | 0.126 | 0.0629 |
+| Tajikistan 2017 wm | 5 | 0.0116 s / 307 MB | 0.012 s / 408 MB | no API | 0.131 | 0.0344 |
+| Tajikistan 2017 wm | 6 | 0.0789 s / 537 MB | 1.43 s / 570 MB | no API | 0.132 | 0.174 |
+| Myanmar 2016 wm | 1 | 0.129 s / 504 MB | 1.31 s / 557 MB | 914 s / 3,964 MB | 0.158 | 0.177 |
+| Myanmar 2016 wm | 2 | 0.209 s / 498 MB | 1.31 s / 563 MB | 911 s / 4,078 MB | 0.139 | 0.449 |
+| Myanmar 2016 wm | 3 | 0.0145 s / 308 MB | 0.146 s / 409 MB | skipped | 0.138 | 0.0817 |
+| Myanmar 2016 wm | 4 | 0.0281 s / 318 MB | 0.106 s / 413 MB | skipped | 0.169 | 0.0596 |
+| Myanmar 2016 wm | 5 | 0.0109 s / 304 MB | 0.0117 s / 407 MB | no API | 0.138 | 0.032 |
+| Myanmar 2016 wm | 6 | 0.0832 s / 529 MB | 1.7 s / 578 MB | no API | 0.14 | 0.186 |
 
 ## TypeScript
 
@@ -209,66 +209,66 @@ Each cell: median seconds / peak RSS MB. Startup (process start to packages load
 
 | file | task | @jbearak/dta-parser | @irbisadm/statfmt | ours: startup s | ours: first call s |
 |---|---|---|---|---|---|
-| Dominican Republic 2013 bh | 1 | 0.0729 s / 431 MB | 1.08 s / 346 MB | 0.0565 | 0.128 |
-| Dominican Republic 2013 bh | 2 | 0.124 s / 399 MB | 1.13 s / 348 MB | 0.0564 | 0.173 |
-| Dominican Republic 2013 bh | 3 | 0.0043 s / 74 MB | 1.08 s / 346 MB | 0.0696 | 0.00923 |
-| Dominican Republic 2013 bh | 4 | 0.00535 s / 100 MB | 0.0652 s / 127 MB | 0.0591 | 0.0147 |
-| Dominican Republic 2013 bh | 5 | 0.00243 s / 60 MB | 0.00505 s / 90 MB | 0.0617 | 0.00561 |
-| Dominican Republic 2013 bh | 6 | 0.217 s / 599 MB | 0.831 s / 405 MB | 0.0539 | 0.434 |
-| Turkey 2013 bh | 1 | 0.0831 s / 486 MB | 1.15 s / 344 MB | 0.0566 | 0.131 |
-| Turkey 2013 bh | 2 | 0.13 s / 475 MB | 1.19 s / 346 MB | 0.0566 | 0.169 |
-| Turkey 2013 bh | 3 | 0.00402 s / 74 MB | 1.19 s / 344 MB | 0.0559 | 0.00826 |
-| Turkey 2013 bh | 4 | 0.00582 s / 103 MB | 0.0697 s / 127 MB | 0.0554 | 0.0154 |
-| Turkey 2013 bh | 5 | 0.00246 s / 60 MB | 0.00532 s / 91 MB | 0.0559 | 0.00647 |
-| Turkey 2013 bh | 6 | 0.231 s / 566 MB | 0.887 s / 409 MB | 0.0553 | 0.459 |
-| Senegal 2019 bh | 1 | 0.1 s / 513 MB | 1.4 s / 390 MB | 0.058 | 0.158 |
-| Senegal 2019 bh | 2 | 0.151 s / 518 MB | 1.44 s / 391 MB | 0.0564 | 0.202 |
-| Senegal 2019 bh | 3 | 0.00474 s / 74 MB | 1.4 s / 391 MB | 0.0573 | 0.00918 |
-| Senegal 2019 bh | 4 | 0.00607 s / 102 MB | 0.0702 s / 134 MB | 0.0564 | 0.0156 |
-| Senegal 2019 bh | 5 | 0.00242 s / 60 MB | 0.0058 s / 97 MB | 0.0541 | 0.00555 |
-| Senegal 2019 bh | 6 | 0.294 s / 686 MB | 1.02 s / 467 MB | 0.0563 | 0.578 |
-| Tajikistan 2017 bh | 1 | 0.0963 s / 494 MB | 1.39 s / 394 MB | 0.0574 | 0.158 |
-| Tajikistan 2017 bh | 2 | 0.147 s / 495 MB | 1.43 s / 396 MB | 0.0562 | 0.209 |
-| Tajikistan 2017 bh | 3 | 0.00484 s / 74 MB | 1.37 s / 396 MB | 0.0558 | 0.00913 |
-| Tajikistan 2017 bh | 4 | 0.00578 s / 101 MB | 0.0688 s / 134 MB | 0.0575 | 0.0148 |
-| Tajikistan 2017 bh | 5 | 0.0025 s / 60 MB | 0.00578 s / 98 MB | 0.0562 | 0.00569 |
-| Tajikistan 2017 bh | 6 | 0.28 s / 735 MB | 1.03 s / 473 MB | 0.0583 | 0.558 |
-| Myanmar 2016 bh | 1 | 0.102 s / 555 MB | 1.49 s / 408 MB | 0.0577 | 0.163 |
-| Myanmar 2016 bh | 2 | 0.156 s / 499 MB | 1.57 s / 409 MB | 0.0557 | 0.214 |
-| Myanmar 2016 bh | 3 | 0.00494 s / 74 MB | 1.49 s / 407 MB | 0.0565 | 0.00954 |
-| Myanmar 2016 bh | 4 | 0.00584 s / 103 MB | 0.0712 s / 135 MB | 0.055 | 0.0153 |
-| Myanmar 2016 bh | 5 | 0.00278 s / 60 MB | 0.0065 s / 99 MB | 0.0557 | 0.00645 |
-| Myanmar 2016 bh | 6 | 0.293 s / 695 MB | 1.15 s / 489 MB | 0.0577 | 0.601 |
-| Dominican Republic 2013 wm | 1 | 0.167 s / 634 MB | 1.93 s / 529 MB | 0.057 | 0.23 |
-| Dominican Republic 2013 wm | 2 | 0.236 s / 645 MB | 1.99 s / 531 MB | 0.0585 | 0.293 |
-| Dominican Republic 2013 wm | 3 | 0.00573 s / 74 MB | 1.92 s / 529 MB | 0.055 | 0.0105 |
-| Dominican Republic 2013 wm | 4 | 0.0221 s / 182 MB | 0.218 s / 209 MB | 0.0545 | 0.0464 |
-| Dominican Republic 2013 wm | 5 | 0.00726 s / 70 MB | 0.0151 s / 120 MB | 0.0576 | 0.0127 |
-| Dominican Republic 2013 wm | 6 | 0.54 s / 924 MB | 1.47 s / 637 MB | 0.0577 | 1.09 |
-| Senegal 2019 wm | 1 | 0.211 s / 730 MB | 2.31 s / 693 MB | 0.0556 | 0.289 |
-| Senegal 2019 wm | 2 | 0.286 s / 730 MB | 2.37 s / 695 MB | 0.0568 | 0.348 |
-| Senegal 2019 wm | 3 | 0.0069 s / 74 MB | 2.32 s / 693 MB | 0.0539 | 0.0116 |
-| Senegal 2019 wm | 4 | 0.0297 s / 209 MB | 0.283 s / 240 MB | 0.0551 | 0.0616 |
-| Senegal 2019 wm | 5 | 0.00868 s / 71 MB | 0.0187 s / 132 MB | 0.0553 | 0.0146 |
-| Senegal 2019 wm | 6 | 0.702 s / 1,094 MB | 1.74 s / 823 MB | 0.0553 | 1.34 |
-| Turkey 2013 wm | 1 | 0.219 s / 690 MB | 2.52 s / 758 MB | 0.0566 | 0.298 |
-| Turkey 2013 wm | 2 | 0.316 s / 701 MB | 2.55 s / 762 MB | 0.0573 | 0.385 |
-| Turkey 2013 wm | 3 | 0.00705 s / 74 MB | 2.49 s / 760 MB | 0.0559 | 0.0115 |
-| Turkey 2013 wm | 4 | 0.0274 s / 188 MB | 0.275 s / 243 MB | 0.0556 | 0.0581 |
-| Turkey 2013 wm | 5 | 0.00872 s / 72 MB | 0.0193 s / 134 MB | 0.0557 | 0.0148 |
-| Turkey 2013 wm | 6 | 0.717 s / 1,087 MB | 1.87 s / 901 MB | 0.0562 | 1.38 |
-| Tajikistan 2017 wm | 1 | 0.266 s / 840 MB | 2.98 s / 829 MB | 0.0567 | 0.349 |
-| Tajikistan 2017 wm | 2 | 0.362 s / 848 MB | 3.11 s / 832 MB | 0.0534 | 0.426 |
-| Tajikistan 2017 wm | 3 | 0.00777 s / 74 MB | 2.97 s / 829 MB | 0.0554 | 0.0125 |
-| Tajikistan 2017 wm | 4 | 0.03 s / 211 MB | 0.303 s / 255 MB | 0.0556 | 0.0642 |
-| Tajikistan 2017 wm | 5 | 0.00927 s / 71 MB | 0.0222 s / 149 MB | 0.0558 | 0.0154 |
-| Tajikistan 2017 wm | 6 | 0.879 s / 1,323 MB | 2.31 s / 991 MB | 0.0553 | 1.83 |
-| Myanmar 2016 wm | 1 | 0.311 s / 945 MB | 3.47 s / 965 MB | 0.0538 | 0.388 |
-| Myanmar 2016 wm | 2 | 0.418 s / 953 MB | 3.53 s / 967 MB | 0.057 | 0.484 |
-| Myanmar 2016 wm | 3 | 0.00863 s / 75 MB | 3.48 s / 965 MB | 0.0561 | 0.0177 |
-| Myanmar 2016 wm | 4 | 0.0286 s / 202 MB | 0.291 s / 264 MB | 0.055 | 0.0636 |
-| Myanmar 2016 wm | 5 | 0.00903 s / 72 MB | 0.0216 s / 155 MB | 0.0553 | 0.0144 |
-| Myanmar 2016 wm | 6 | 0.983 s / 1,502 MB | 2.7 s / 1,151 MB | 0.0588 | 2.2 |
+| Dominican Republic 2013 bh | 1 | 0.0616 s / 424 MB | 1.08 s / 346 MB | 0.0568 | 0.102 |
+| Dominican Republic 2013 bh | 2 | 0.108 s / 423 MB | 1.13 s / 348 MB | 0.0537 | 0.138 |
+| Dominican Republic 2013 bh | 3 | 0.00368 s / 68 MB | 1.08 s / 346 MB | 0.0559 | 0.00754 |
+| Dominican Republic 2013 bh | 4 | 0.00431 s / 93 MB | 0.0652 s / 127 MB | 0.0537 | 0.0111 |
+| Dominican Republic 2013 bh | 5 | 0.00244 s / 60 MB | 0.00505 s / 90 MB | 0.0572 | 0.00581 |
+| Dominican Republic 2013 bh | 6 | 0.0831 s / 531 MB | 0.831 s / 405 MB | 0.0556 | 0.151 |
+| Turkey 2013 bh | 1 | 0.0659 s / 427 MB | 1.15 s / 344 MB | 0.0569 | 0.102 |
+| Turkey 2013 bh | 2 | 0.115 s / 432 MB | 1.19 s / 346 MB | 0.0561 | 0.142 |
+| Turkey 2013 bh | 3 | 0.00374 s / 67 MB | 1.19 s / 344 MB | 0.055 | 0.00778 |
+| Turkey 2013 bh | 4 | 0.0045 s / 96 MB | 0.0697 s / 127 MB | 0.0543 | 0.0116 |
+| Turkey 2013 bh | 5 | 0.00246 s / 60 MB | 0.00532 s / 91 MB | 0.0555 | 0.00556 |
+| Turkey 2013 bh | 6 | 0.0903 s / 565 MB | 0.887 s / 409 MB | 0.0519 | 0.161 |
+| Senegal 2019 bh | 1 | 0.0796 s / 505 MB | 1.4 s / 390 MB | 0.057 | 0.122 |
+| Senegal 2019 bh | 2 | 0.13 s / 487 MB | 1.44 s / 391 MB | 0.0555 | 0.164 |
+| Senegal 2019 bh | 3 | 0.00469 s / 68 MB | 1.4 s / 391 MB | 0.0562 | 0.00901 |
+| Senegal 2019 bh | 4 | 0.00472 s / 97 MB | 0.0702 s / 134 MB | 0.0561 | 0.0119 |
+| Senegal 2019 bh | 5 | 0.00244 s / 60 MB | 0.0058 s / 97 MB | 0.0559 | 0.00561 |
+| Senegal 2019 bh | 6 | 0.109 s / 691 MB | 1.02 s / 467 MB | 0.0557 | 0.207 |
+| Tajikistan 2017 bh | 1 | 0.0799 s / 558 MB | 1.39 s / 394 MB | 0.0569 | 0.118 |
+| Tajikistan 2017 bh | 2 | 0.13 s / 565 MB | 1.43 s / 396 MB | 0.0564 | 0.165 |
+| Tajikistan 2017 bh | 3 | 0.0045 s / 68 MB | 1.37 s / 396 MB | 0.058 | 0.0088 |
+| Tajikistan 2017 bh | 4 | 0.00464 s / 95 MB | 0.0688 s / 134 MB | 0.0551 | 0.0115 |
+| Tajikistan 2017 bh | 5 | 0.00243 s / 60 MB | 0.00578 s / 98 MB | 0.0549 | 0.00563 |
+| Tajikistan 2017 bh | 6 | 0.107 s / 683 MB | 1.03 s / 473 MB | 0.0539 | 0.201 |
+| Myanmar 2016 bh | 1 | 0.0844 s / 497 MB | 1.49 s / 408 MB | 0.0547 | 0.123 |
+| Myanmar 2016 bh | 2 | 0.137 s / 497 MB | 1.57 s / 409 MB | 0.056 | 0.175 |
+| Myanmar 2016 bh | 3 | 0.00461 s / 68 MB | 1.49 s / 407 MB | 0.0564 | 0.00889 |
+| Myanmar 2016 bh | 4 | 0.00459 s / 97 MB | 0.0712 s / 135 MB | 0.0539 | 0.0116 |
+| Myanmar 2016 bh | 5 | 0.00282 s / 60 MB | 0.0065 s / 99 MB | 0.056 | 0.00623 |
+| Myanmar 2016 bh | 6 | 0.113 s / 697 MB | 1.15 s / 489 MB | 0.055 | 0.229 |
+| Dominican Republic 2013 wm | 1 | 0.155 s / 637 MB | 1.93 s / 529 MB | 0.0583 | 0.203 |
+| Dominican Republic 2013 wm | 2 | 0.216 s / 638 MB | 1.99 s / 531 MB | 0.0547 | 0.26 |
+| Dominican Republic 2013 wm | 3 | 0.00514 s / 68 MB | 1.92 s / 529 MB | 0.0564 | 0.00987 |
+| Dominican Republic 2013 wm | 4 | 0.0209 s / 177 MB | 0.218 s / 209 MB | 0.056 | 0.0373 |
+| Dominican Republic 2013 wm | 5 | 0.00703 s / 70 MB | 0.0151 s / 120 MB | 0.0557 | 0.0121 |
+| Dominican Republic 2013 wm | 6 | 0.196 s / 924 MB | 1.47 s / 637 MB | 0.0541 | 0.46 |
+| Senegal 2019 wm | 1 | 0.206 s / 729 MB | 2.31 s / 693 MB | 0.0552 | 0.267 |
+| Senegal 2019 wm | 2 | 0.279 s / 729 MB | 2.37 s / 695 MB | 0.0561 | 0.334 |
+| Senegal 2019 wm | 3 | 0.00706 s / 68 MB | 2.32 s / 693 MB | 0.0584 | 0.0116 |
+| Senegal 2019 wm | 4 | 0.0276 s / 203 MB | 0.283 s / 240 MB | 0.0554 | 0.0528 |
+| Senegal 2019 wm | 5 | 0.00871 s / 72 MB | 0.0187 s / 132 MB | 0.0547 | 0.0146 |
+| Senegal 2019 wm | 6 | 0.253 s / 1,097 MB | 1.74 s / 823 MB | 0.0541 | 0.59 |
+| Turkey 2013 wm | 1 | 0.208 s / 685 MB | 2.52 s / 758 MB | 0.0564 | 0.269 |
+| Turkey 2013 wm | 2 | 0.283 s / 686 MB | 2.55 s / 762 MB | 0.0543 | 0.347 |
+| Turkey 2013 wm | 3 | 0.00658 s / 67 MB | 2.49 s / 760 MB | 0.0558 | 0.0117 |
+| Turkey 2013 wm | 4 | 0.0253 s / 189 MB | 0.275 s / 243 MB | 0.055 | 0.0465 |
+| Turkey 2013 wm | 5 | 0.00873 s / 72 MB | 0.0193 s / 134 MB | 0.0566 | 0.0144 |
+| Turkey 2013 wm | 6 | 0.261 s / 1,082 MB | 1.87 s / 901 MB | 0.0542 | 0.662 |
+| Tajikistan 2017 wm | 1 | 0.258 s / 831 MB | 2.98 s / 829 MB | 0.0548 | 0.32 |
+| Tajikistan 2017 wm | 2 | 0.353 s / 837 MB | 3.11 s / 832 MB | 0.0551 | 0.423 |
+| Tajikistan 2017 wm | 3 | 0.00754 s / 67 MB | 2.97 s / 829 MB | 0.0548 | 0.0124 |
+| Tajikistan 2017 wm | 4 | 0.0289 s / 206 MB | 0.303 s / 255 MB | 0.057 | 0.0527 |
+| Tajikistan 2017 wm | 5 | 0.00911 s / 72 MB | 0.0222 s / 149 MB | 0.0556 | 0.0153 |
+| Tajikistan 2017 wm | 6 | 0.322 s / 1,335 MB | 2.31 s / 991 MB | 0.0555 | 0.951 |
+| Myanmar 2016 wm | 1 | 0.3 s / 947 MB | 3.47 s / 965 MB | 0.0571 | 0.37 |
+| Myanmar 2016 wm | 2 | 0.411 s / 947 MB | 3.53 s / 967 MB | 0.058 | 0.491 |
+| Myanmar 2016 wm | 3 | 0.00853 s / 68 MB | 3.48 s / 965 MB | 0.0574 | 0.0129 |
+| Myanmar 2016 wm | 4 | 0.0275 s / 202 MB | 0.291 s / 264 MB | 0.0566 | 0.051 |
+| Myanmar 2016 wm | 5 | 0.00891 s / 72 MB | 0.0216 s / 155 MB | 0.0574 | 0.0142 |
+| Myanmar 2016 wm | 6 | 0.364 s / 1,500 MB | 2.7 s / 1,151 MB | 0.0572 | 1.22 |
 
 ## Errors
 

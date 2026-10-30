@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 use crate::cursor::{uint, until_nul, ByteOrder, Cursor};
 use crate::encoding::Encoding;
@@ -6,14 +9,49 @@ use crate::error::{Error, Result};
 use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
-use crate::source::{read_vec, Source};
+use crate::source::{read_vec, SharedSource, Source};
+use crate::threads::panic_message;
 use crate::types::StorageType;
 
-/// Options for opening a file.
-#[derive(Debug, Clone, Copy, Default)]
+/// Options for opening a file. The defaults suit every caller; the
+/// hidden fields are for tests.
+#[derive(Debug, Clone, Copy)]
 pub struct Options {
     /// How to decode text in files older than release 118.
     pub encoding: Encoding,
+    /// Worker threads for reads: 0 for the default (see
+    /// [`crate::threads`]), 1 to read on the calling thread alone.
+    pub threads: usize,
+    /// Rows are read and decoded this many bytes at a time.
+    #[doc(hidden)]
+    pub chunk_bytes: usize,
+    /// Reads of fewer bytes than this (selected columns' widths times
+    /// rows) stay on one thread.
+    #[doc(hidden)]
+    pub parallel_bytes: usize,
+    /// Test only: the worker reading this chunk panics.
+    #[doc(hidden)]
+    pub panic_on_chunk: Option<usize>,
+    /// Test only: the worker reading chunk `.0` waits `.1` ms first.
+    #[doc(hidden)]
+    pub delay_chunk: Option<(usize, u64)>,
+}
+
+impl Default for Options {
+    /// With `DTA_TEST_SMALL_CHUNKS=1` in the environment, chunks are
+    /// tiny and every read may go parallel, so the bindings' tests
+    /// exercise the parallel path on small files.
+    fn default() -> Self {
+        let small = crate::threads::small_for_tests();
+        Options {
+            encoding: Encoding::default(),
+            threads: 0,
+            chunk_bytes: if small { 4096 } else { 2 << 20 },
+            parallel_bytes: if small { 0 } else { 16 << 20 },
+            panic_on_chunk: None,
+            delay_chunk: None,
+        }
+    }
 }
 
 /// The values of one variable over a range of rows.
@@ -112,10 +150,6 @@ pub struct Characteristic {
 /// The bits of 2^333.
 const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 
-/// Rows are read this many bytes at a time, and decoded this many bytes
-/// at a time.
-const CHUNK: usize = 8 << 20;
-
 /// The strL section is scanned through a window this large.
 const WINDOW: u64 = 1 << 20;
 
@@ -130,6 +164,7 @@ pub struct Reader<S: Source> {
     offsets: Vec<usize>,
     row_len: usize,
     strls: Option<HashMap<(u32, u64), StrlEntry>>,
+    options: Options,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -161,6 +196,7 @@ impl<S: Source> Reader<S> {
             offsets,
             row_len,
             strls: None,
+            options,
         })
     }
 
@@ -184,10 +220,10 @@ impl<S: Source> Reader<S> {
     }
 
     /// Like [`Reader::read`], but hands over the rows a chunk at a time
-    /// (about 8 MiB of the file each), so a caller can copy them where
+    /// (about 2 MiB decoded each), so a caller can copy them where
     /// they belong without holding a second copy of the whole read.
     /// `f` gets the first row of the chunk, counted from `start`, and one
-    /// column per entry of `columns`.
+    /// column per entry of `columns`, in row order.
     ///
     /// With a `budget` in bytes, the read stops after the row at which the
     /// decoded output (values, missing codes, string bytes and offsets,
@@ -201,6 +237,38 @@ impl<S: Source> Reader<S> {
         budget: Option<usize>,
         mut f: impl FnMut(usize, &[Column]) -> Result<()>,
     ) -> Result<u64> {
+        // A chunk whose rows failed to read comes with `upto` 0; `f` sees
+        // only whole chunks, as a serial read gives them.
+        let whole = |first, chunk: &[Column], _: &[bool], upto| if upto == chunk.len() { f(first, chunk) } else { Ok(()) };
+        self.read_chunks_with(columns, start, count, budget, &|_, _, _| Ok(false), whole, || Ok(()))
+    }
+
+    /// [`Reader::read_chunks`] that may decode chunks on worker threads
+    /// (see [`Options::threads`]). A worker calls `each(k, first,
+    /// column)` for each column of its chunk in order; `each` puts the
+    /// column where it belongs and returns `true`, or returns `false` to
+    /// leave it to `rest`. The calling thread then calls `rest(first,
+    /// chunk, taken, upto)` for the chunks in row order: it handles, in
+    /// order, the columns before `upto` that `each` did not take. `upto`
+    /// is the column count unless `each` failed at that column, whose
+    /// error is returned after `rest` (unless `rest` fails first).
+    /// `poll` is called on the calling thread at least once per chunk and
+    /// every 100 ms while it waits; an error from it stops the read.
+    ///
+    /// Reads go to workers only when they are large, have no `budget`,
+    /// select no strL and the source can be read from several threads;
+    /// otherwise this reads on the calling thread and never calls `each`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn read_chunks_with(
+        &mut self,
+        columns: &[usize],
+        start: u64,
+        count: u64,
+        budget: Option<usize>,
+        each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync),
+        mut rest: impl FnMut(usize, &[Column], &[bool], usize) -> Result<()>,
+        mut poll: impl FnMut() -> Result<()>,
+    ) -> Result<u64> {
         let count = self.check(columns, start, count)?;
         if count == 0 {
             return Ok(0);
@@ -209,25 +277,29 @@ impl<S: Source> Reader<S> {
         if has_strls && self.strls.is_none() {
             self.strls = Some(self.index_strls()?);
         }
-        // Decoded bytes per row, not counting strL payloads. Text can grow
-        // up to 3x when decoded to UTF-8 (a Windows-1252 byte, or an
-        // invalid byte replaced by U+FFFD).
-        let word = std::mem::size_of::<usize>();
-        let decoded_row: usize = columns
-            .iter()
-            .map(|&c| match self.meta.variables[c].storage {
-                StorageType::Str(w) => 3 * w as usize + word,
-                StorageType::StrL => 1 + word,
-                _ => 9,
-            })
-            .sum();
-        // A byte decodes to 9 bytes (a double and a missing code), so size
-        // chunks by whichever is larger, the rows or their decoding.
-        let mut rows_per_chunk = (CHUNK / self.row_len.max(decoded_row).max(1)).max(1);
-        if let Some(budget) = budget {
-            rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
+        let (rows_per_chunk, decoded_row) = self.chunk_rows(columns, budget);
+        let threads = self.threads_for(columns, count as u64, budget);
+        if threads > 1 {
+            if let Some(src) = self.source.shared() {
+                let read = ParallelRead {
+                    src,
+                    decoder: self.decoder(),
+                    data: self.sections.data + start * self.row_len as u64,
+                    row_len: self.row_len,
+                    offsets: columns.iter().map(|&c| self.offsets[c]).collect(),
+                    storage: columns.iter().map(|&c| self.meta.variables[c].storage).collect(),
+                    count,
+                    rows_per_chunk,
+                    threads,
+                    panic_on: self.options.panic_on_chunk,
+                    delay: self.options.delay_chunk,
+                };
+                return read.run(each, &mut rest, &mut poll).map(|()| count as u64);
+            }
         }
         let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows_per_chunk.min(count))).collect();
+        let none_taken = vec![false; columns.len()];
+        let decoder = self.decoder();
         let mut refs: Vec<[u8; 8]> = Vec::new();
         let mut buf = vec![0u8; rows_per_chunk.min(count) * self.row_len];
         let mut done = 0;
@@ -261,16 +333,79 @@ impl<S: Source> Reader<S> {
                         refs.extend(cells.iter(8).map(|b| <[u8; 8]>::try_from(b).unwrap_or_default()));
                         self.resolve_strls(&refs, &mut chunk[k])?;
                     }
-                    storage => self.decode(storage, &cells, &mut chunk[k]),
+                    storage => decoder.decode(storage, &cells, &mut chunk[k]),
                 }
             }
-            f(done, &chunk)?;
+            poll()?;
+            rest(done, &chunk, &none_taken, columns.len())?;
             done += n;
             if budget.is_some_and(|b| used >= b) {
                 break;
             }
         }
         Ok(done as u64)
+    }
+
+    /// Rows per chunk, and decoded bytes per row (not counting strL
+    /// payloads), for a read of `columns`.
+    fn chunk_rows(&self, columns: &[usize], budget: Option<usize>) -> (usize, usize) {
+        // Text can grow up to 3x when decoded to UTF-8 (a Windows-1252
+        // byte, or an invalid byte replaced by U+FFFD).
+        let word = std::mem::size_of::<usize>();
+        let decoded_row: usize = columns
+            .iter()
+            .map(|&c| match self.meta.variables[c].storage {
+                StorageType::Str(w) => 3 * w as usize + word,
+                StorageType::StrL => 1 + word,
+                _ => 9,
+            })
+            .sum();
+        // A byte decodes to 9 bytes (a double and a missing code), so size
+        // chunks by whichever is larger, the rows or their decoding.
+        let widest = self.row_len.max(decoded_row).max(1);
+        let mut rows_per_chunk = (self.options.chunk_bytes.max(1) / widest).max(1);
+        if let Some(budget) = budget {
+            rows_per_chunk = rows_per_chunk.min((budget / decoded_row.max(1)).max(1));
+        }
+        (rows_per_chunk, decoded_row)
+    }
+
+    /// How many threads [`Reader::read_chunks_with`] would use for this
+    /// read: 1 unless it is large, has no `budget`, selects no strL, has
+    /// rows that fit a chunk, and the source can be read from several
+    /// threads. A caller can prepare for workers with it (dtaparser
+    /// touches the pages of R vectors first).
+    pub fn threads_for(&self, columns: &[usize], count: u64, budget: Option<usize>) -> usize {
+        let vars = &self.meta.variables;
+        if budget.is_some() || columns.iter().any(|&c| vars.get(c).is_none_or(|v| v.storage == StorageType::StrL)) {
+            return 1;
+        }
+        let (rows_per_chunk, decoded_row) = self.chunk_rows(columns, budget);
+        let selected: usize = columns.iter().map(|&c| vars[c].storage.width()).sum();
+        let large = self.row_len.max(decoded_row) <= self.options.chunk_bytes
+            && count > rows_per_chunk as u64
+            && (selected as u64).saturating_mul(count) >= self.options.parallel_bytes as u64;
+        if !large || self.source.shared().is_none() {
+            return 1;
+        }
+        let threads = crate::threads::resolve(self.options.threads);
+        // A read of a few columns of wide rows mostly copies rows out of
+        // the file; more threads then add more CPU than they save time
+        // (wide.dta, five columns: 1.27x the CPU at four threads, 1.12x
+        // at two).
+        if self.options.threads == 0 && selected * 4 < self.row_len {
+            return threads.min(2);
+        }
+        threads
+    }
+
+    fn decoder(&self) -> Decoder {
+        Decoder {
+            big: self.meta.byte_order == ByteOrder::Big,
+            extended: self.layout.extended_missing,
+            old_double_missing: self.layout.release <= 105,
+            encoding: self.meta.encoding,
+        }
     }
 
     /// The number of rows `count` as a usize, or an error if a column or
@@ -296,73 +431,6 @@ impl<S: Source> Reader<S> {
             Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) }
         } else {
             Column::Strings { bytes: Vec::new(), ends: Vec::with_capacity(rows), binary: Vec::new() }
-        }
-    }
-
-    fn decode(&self, storage: StorageType, cells: &Cells, out: &mut Column) {
-        let big = self.meta.byte_order == ByteOrder::Big;
-        let ext = self.layout.extended_missing;
-        // Before 113 each integer type's single missing value is its maximum.
-        let (byte_first, int_first, long_first) = if ext {
-            (missing::BYTE_MISSING as i64, missing::INT_MISSING as i64, missing::LONG_MISSING as i64)
-        } else {
-            (i8::MAX as i64, i16::MAX as i64, i32::MAX as i64)
-        };
-        match (storage, out) {
-            (StorageType::Str(w), Column::Strings { bytes, ends, .. }) => {
-                let enc = self.meta.encoding;
-                for b in cells.iter(w as usize) {
-                    enc.decode_into(until_nul(b), bytes);
-                    ends.push(bytes.len());
-                }
-            }
-            (storage, Column::Numbers { values, missing }) => {
-                let mut push = |v: f64, code: u8| {
-                    values.push(if code == 0 { v } else { f64::NAN });
-                    missing.push(code);
-                };
-                match storage {
-                    StorageType::Byte => {
-                        for b in cells.iter(1) {
-                            let v = b[0] as i8 as i64;
-                            push(v as f64, int_code(v, byte_first, ext));
-                        }
-                    }
-                    StorageType::Int => {
-                        for b in cells.iter(2) {
-                            let a = [b[0], b[1]];
-                            let v = if big { i16::from_be_bytes(a) } else { i16::from_le_bytes(a) } as i64;
-                            push(v as f64, int_code(v, int_first, ext));
-                        }
-                    }
-                    StorageType::Long => {
-                        for b in cells.iter(4) {
-                            let a = [b[0], b[1], b[2], b[3]];
-                            let v = if big { i32::from_be_bytes(a) } else { i32::from_le_bytes(a) } as i64;
-                            push(v as f64, int_code(v, long_first, ext));
-                        }
-                    }
-                    StorageType::Float => {
-                        for b in cells.iter(4) {
-                            let a = [b[0], b[1], b[2], b[3]];
-                            let bits = if big { u32::from_be_bytes(a) } else { u32::from_le_bytes(a) };
-                            push(f32::from_bits(bits) as f64, float_code(bits, ext));
-                        }
-                    }
-                    StorageType::Double => {
-                        // Releases 105 and earlier also wrote 2^333 for missing.
-                        let old_missing = (self.layout.release <= 105).then_some(OLD_DOUBLE_MISSING);
-                        for b in cells.iter(8) {
-                            let a: [u8; 8] = b.try_into().unwrap_or_default();
-                            let bits = if big { u64::from_be_bytes(a) } else { u64::from_le_bytes(a) };
-                            let code = if Some(bits) == old_missing { missing::SYSTEM } else { double_code(bits, ext) };
-                            push(f64::from_bits(bits), code);
-                        }
-                    }
-                    StorageType::Str(_) | StorageType::StrL => {}
-                }
-            }
-            _ => {}
         }
     }
 
@@ -598,6 +666,295 @@ impl<S: Source> Reader<S> {
             .collect();
         notes.sort_by_key(|(n, _)| *n);
         Ok(notes.into_iter().map(|(_, v)| v).collect())
+    }
+}
+
+/// What decoding a cell needs to know about the file.
+#[derive(Clone, Copy)]
+struct Decoder {
+    big: bool,
+    extended: bool,
+    /// Releases 105 and earlier also wrote 2^333 for a missing double.
+    old_double_missing: bool,
+    encoding: Encoding,
+}
+
+impl Decoder {
+    fn decode(&self, storage: StorageType, cells: &Cells, out: &mut Column) {
+        let big = self.big;
+        let ext = self.extended;
+        // Before 113 each integer type's single missing value is its maximum.
+        let (byte_first, int_first, long_first) = if ext {
+            (missing::BYTE_MISSING as i64, missing::INT_MISSING as i64, missing::LONG_MISSING as i64)
+        } else {
+            (i8::MAX as i64, i16::MAX as i64, i32::MAX as i64)
+        };
+        match (storage, out) {
+            (StorageType::Str(w), Column::Strings { bytes, ends, .. }) => {
+                let enc = self.encoding;
+                for b in cells.iter(w as usize) {
+                    enc.decode_into(until_nul(b), bytes);
+                    ends.push(bytes.len());
+                }
+            }
+            (storage, Column::Numbers { values, missing }) => {
+                match storage {
+                    StorageType::Byte => numbers(cells, 1, values, missing, |b| {
+                        let v = b[0] as i8 as i64;
+                        (v as f64, int_code(v, byte_first, ext))
+                    }),
+                    StorageType::Int => numbers(cells, 2, values, missing, |b| {
+                        let a = [b[0], b[1]];
+                        let v = if big { i16::from_be_bytes(a) } else { i16::from_le_bytes(a) } as i64;
+                        (v as f64, int_code(v, int_first, ext))
+                    }),
+                    StorageType::Long => numbers(cells, 4, values, missing, |b| {
+                        let a = [b[0], b[1], b[2], b[3]];
+                        let v = if big { i32::from_be_bytes(a) } else { i32::from_le_bytes(a) } as i64;
+                        (v as f64, int_code(v, long_first, ext))
+                    }),
+                    StorageType::Float => numbers(cells, 4, values, missing, |b| {
+                        let a = [b[0], b[1], b[2], b[3]];
+                        let bits = if big { u32::from_be_bytes(a) } else { u32::from_le_bytes(a) };
+                        (f32::from_bits(bits) as f64, float_code(bits, ext))
+                    }),
+                    StorageType::Double => {
+                        // Releases 105 and earlier also wrote 2^333 for missing.
+                        let old_missing = self.old_double_missing.then_some(OLD_DOUBLE_MISSING);
+                        numbers(cells, 8, values, missing, |b| {
+                            let a: [u8; 8] = b.try_into().unwrap_or_default();
+                            let bits = if big { u64::from_be_bytes(a) } else { u64::from_le_bytes(a) };
+                            let code = if Some(bits) == old_missing { missing::SYSTEM } else { double_code(bits, ext) };
+                            (f64::from_bits(bits), code)
+                        })
+                    }
+                    StorageType::Str(_) | StorageType::StrL => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The caller's handler of a chunk's columns (see [`Reader::read_chunks_with`]).
+type Rest<'f> = dyn FnMut(usize, &[Column], &[bool], usize) -> Result<()> + 'f;
+
+/// A read shared out to workers, chunk by chunk (see
+/// [`Reader::read_chunks_with`]).
+struct ParallelRead<'r> {
+    src: &'r dyn SharedSource,
+    decoder: Decoder,
+    /// Where the first row read starts.
+    data: u64,
+    row_len: usize,
+    /// Each selected column's offset in the row and storage type.
+    offsets: Vec<usize>,
+    storage: Vec<StorageType>,
+    count: usize,
+    rows_per_chunk: usize,
+    threads: usize,
+    panic_on: Option<usize>,
+    delay: Option<(usize, u64)>,
+}
+
+/// A chunk's buffers, reused from chunk to chunk.
+struct ChunkBuf {
+    raw: Vec<u8>,
+    columns: Vec<Column>,
+    taken: Vec<bool>,
+}
+
+/// A chunk a worker has finished: its columns, and where `each` or the
+/// read failed.
+struct Finished {
+    buf: ChunkBuf,
+    upto: usize,
+    error: Option<Error>,
+}
+
+#[derive(Default)]
+struct ReadState {
+    /// The next chunk to take, and how many the caller has used.
+    next: usize,
+    used: usize,
+    finished: BTreeMap<usize, Finished>,
+    free: Vec<ChunkBuf>,
+    stop: bool,
+}
+
+#[derive(Default)]
+struct ReadShared {
+    state: Mutex<ReadState>,
+    /// Workers wait here for room in the window.
+    room: Condvar,
+    /// The caller waits here for the next chunk.
+    arrived: Condvar,
+}
+
+impl ReadShared {
+    fn lock(&self) -> MutexGuard<'_, ReadState> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// Stops the workers when dropped, so an early return or a panic on the
+/// caller never leaves them waiting.
+struct StopReadOnDrop<'s>(&'s ReadShared);
+
+impl Drop for StopReadOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.lock().stop = true;
+        self.0.room.notify_all();
+        self.0.arrived.notify_all();
+    }
+}
+
+impl ParallelRead<'_> {
+    fn chunks(&self) -> usize {
+        self.count.div_ceil(self.rows_per_chunk)
+    }
+
+    fn new_buf(&self) -> ChunkBuf {
+        let rows = self.rows_per_chunk.min(self.count);
+        let columns = self
+            .storage
+            .iter()
+            .map(|t| match t {
+                StorageType::Str(w) => {
+                    // Room for the most a chunk can decode to, so the
+                    // buffer never grows past the chunk size.
+                    Column::Strings { bytes: Vec::with_capacity(3 * *w as usize * rows), ends: Vec::with_capacity(rows), binary: Vec::new() }
+                }
+                _ => Column::Numbers { values: Vec::with_capacity(rows), missing: Vec::with_capacity(rows) },
+            })
+            .collect();
+        ChunkBuf { raw: Vec::with_capacity(rows * self.row_len), columns, taken: vec![false; self.storage.len()] }
+    }
+
+    /// Read and decode chunk `n` into `buf`, and hand its columns to `each`.
+    fn process(&self, n: usize, mut buf: ChunkBuf, each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync)) -> Finished {
+        if let Some((_, ms)) = self.delay.filter(|&(chunk, _)| chunk == n) {
+            std::thread::sleep(Duration::from_millis(ms));
+        }
+        if self.panic_on == Some(n) {
+            panic!("test panic on chunk {n}");
+        }
+        let first = n * self.rows_per_chunk;
+        let rows = self.rows_per_chunk.min(self.count - first);
+        buf.raw.resize(rows * self.row_len, 0);
+        buf.taken.fill(false);
+        if let Err(e) = self.src.read_at_shared(self.data + (first * self.row_len) as u64, &mut buf.raw) {
+            return Finished { buf, upto: 0, error: Some(e) };
+        }
+        for ((column, &offset), &storage) in buf.columns.iter_mut().zip(&self.offsets).zip(&self.storage) {
+            column.clear();
+            self.decoder.decode(storage, &Cells { rows: &buf.raw, row_len: self.row_len, offset }, column);
+        }
+        for (k, column) in buf.columns.iter().enumerate() {
+            match each(k, first, column) {
+                Ok(taken) => buf.taken[k] = taken,
+                Err(e) => return Finished { upto: k, error: Some(e), buf },
+            }
+        }
+        Finished { upto: buf.columns.len(), error: None, buf }
+    }
+
+    /// A worker: take chunks while there are any and room in the window.
+    fn work(&self, shared: &ReadShared, each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync)) {
+        let window = self.threads + 2;
+        loop {
+            let (n, buf) = {
+                let mut st = shared.lock();
+                loop {
+                    if st.stop || st.next >= self.chunks() {
+                        return;
+                    }
+                    if st.next < st.used + window {
+                        break;
+                    }
+                    st = shared.room.wait(st).unwrap_or_else(PoisonError::into_inner);
+                }
+                let n = st.next;
+                st.next += 1;
+                (n, st.free.pop())
+            };
+            let buf = buf.unwrap_or_else(|| self.new_buf());
+            let finished = catch_unwind(AssertUnwindSafe(|| self.process(n, buf, each))).unwrap_or_else(|p| Finished {
+                buf: self.new_buf(),
+                upto: 0,
+                error: Some(Error::new(format!("a reader thread failed: {}", panic_message(&*p)))),
+            });
+            shared.lock().finished.insert(n, finished);
+            shared.arrived.notify_one();
+        }
+    }
+
+    fn run(
+        &self,
+        each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync),
+        rest: &mut Rest,
+        poll: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
+        let shared = ReadShared::default();
+        std::thread::scope(|scope| {
+            let _guard = StopReadOnDrop(&shared);
+            let workers = (0..self.threads)
+                .filter_map(|_| std::thread::Builder::new().spawn_scoped(scope, || self.work(&shared, each)).ok())
+                .count();
+            for n in 0..self.chunks() {
+                let finished = if workers == 0 {
+                    // No thread could start: read on this one.
+                    self.process(n, shared.lock().free.pop().unwrap_or_else(|| self.new_buf()), each)
+                } else {
+                    let mut st = shared.lock();
+                    loop {
+                        if let Some(f) = st.finished.remove(&n) {
+                            break f;
+                        }
+                        let (next, timeout) = shared
+                            .arrived
+                            .wait_timeout(st, Duration::from_millis(100))
+                            .unwrap_or_else(PoisonError::into_inner);
+                        st = next;
+                        if timeout.timed_out() {
+                            drop(st);
+                            poll()?;
+                            st = shared.lock();
+                        }
+                    }
+                };
+                poll()?;
+                let Finished { buf, upto, error } = finished;
+                let result = rest(n * self.rows_per_chunk, &buf.columns, &buf.taken, upto);
+                {
+                    let mut st = shared.lock();
+                    st.used += 1;
+                    st.free.push(buf);
+                }
+                shared.room.notify_one();
+                result?;
+                if let Some(e) = error {
+                    return Err(e);
+                }
+            }
+            Ok(())
+        })
+    }
+}
+
+/// Append the numbers in `cells` (each `width` bytes, decoded by `f` to a
+/// value and missing code) to `values` and `missing`; a missing value's
+/// value is NaN.
+#[inline]
+fn numbers(cells: &Cells, width: usize, values: &mut Vec<f64>, missing: &mut Vec<u8>, f: impl Fn(&[u8]) -> (f64, u8)) {
+    let n = cells.rows.len() / cells.row_len.max(1);
+    let start = values.len();
+    values.resize(start + n, 0.0);
+    missing.resize(start + n, 0);
+    for ((b, v), m) in cells.iter(width).zip(&mut values[start..]).zip(&mut missing[start..]) {
+        let (x, code) = f(b);
+        *v = if code == 0 { x } else { f64::NAN };
+        *m = code;
     }
 }
 

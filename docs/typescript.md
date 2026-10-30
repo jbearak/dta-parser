@@ -487,6 +487,10 @@ only Stata.
 1.0 is a new, synchronous API. [docs/migration.md](migration.md) maps
 each 0.x call to its 1.0 replacement.
 
+## Threads
+
+WebAssembly runs on one thread, so the npm package reads and writes on one thread. The R, Python and Julia packages use up to three on large files.
+
 ## Troubleshooting
 
 **"unsupported .dta release".** The file is not a `.dta` file, or its

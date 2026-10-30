@@ -493,6 +493,12 @@ Latin-1 (pass `encoding="latin1"` to match pandas).
 | `missing_user_values` | write a `StataArray` with the codes |
 | `pyreadstat.read_file_in_chunks(...)` | a loop over `skip` and `n_max`; see [Read some rows](#read-some-rows) |
 
+## Threads
+
+Reading and writing large files uses up to three threads: workers decode the rows and fill numeric columns, released from the GIL, while the calling thread makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
+
+Set the `DTA_THREADS` environment variable to `1` to use one thread, or to another number to change the most; it is read at each call. While `write_dta` runs, nothing may change the DataFrame's arrays, from Python or from another thread.
+
 ## Troubleshooting
 
 **`ImportError: cannot import name '_native'`.** Python is importing the

@@ -13,6 +13,10 @@ jobs:
           components: clippy
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # Reported, not gated: wall and CPU time of reads and writes with 1
+      # to 8 threads on x86 (plan 0007), on a 1.4 GB file it writes.
+      - name: Thread scaling on x86
+        run: cargo run --release -p dta --example threads -- --synthetic "$RUNNER_TEMP"
 
   # Relative links and anchors in the Markdown docs. The docs' code
   # examples run in each language's own job (test-docs.R, test_docs.py,
@@ -64,6 +68,14 @@ jobs:
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtatools_*.tar.gz
       - run: Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
       - run: Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
+      # Again with tiny chunks and four threads, so small files take the
+      # parallel read and write paths.
+      - run: |
+          Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
+          Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
+        env:
+          DTA_TEST_SMALL_CHUNKS: "1"
+          DTA_THREADS: "4"
 
   python:
     strategy:
@@ -88,6 +100,10 @@ jobs:
         working-directory: python
       - run: pip install python/dist/*.whl pytest pyreadstat
       - run: python -m pytest python/tests
+      - run: python -m pytest python/tests
+        env:
+          DTA_TEST_SMALL_CHUNKS: "1"
+          DTA_THREADS: "4"
 
   # One abi3 wheel per supported platform, each installed into a fresh
   # venv and smoke-tested. Nothing is published.
@@ -155,14 +171,20 @@ jobs:
           version: ${{ matrix.julia }}
       - uses: julia-actions/cache@v2
       - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
+      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.test()'
+        env:
+          DTA_TEST_SMALL_CHUNKS: "1"
+          DTA_THREADS: "4"
 
-  # Windows: the native library builds (dta_ffi.dll), loads, and reads
-  # and writes a path with non-ASCII characters.
+  # Windows: the core's tests (writes may use threads there; reads stay
+  # serial), and the native library builds (dta_ffi.dll), loads, and
+  # reads and writes a path with non-ASCII characters.
   julia-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p dta
       - run: cargo build --release -p dta-ffi
       - uses: julia-actions/setup-julia@v2
         with:

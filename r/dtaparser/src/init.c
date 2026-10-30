@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <R.h>
 #include <Rinternals.h>
@@ -113,8 +114,23 @@ int dtaparser_interrupted(void) {
 // 1 with a message in err, or 2 when an R error is waiting in `token`.
 int dtaparser_meta(const char *path, const char *encoding, SEXP holder, char *err, size_t err_len);
 int dtaparser_read(const char *path, const int *cols, R_xlen_t ncols, double skip, double n_max, const char *encoding,
-                   int mode, SEXP holder, char *err, size_t err_len);
-int dtaparser_write(const char *path, SEXP spec, char *err, size_t err_len);
+                   int mode, int threads, SEXP holder, char *err, size_t err_len);
+int dtaparser_write(const char *path, SEXP spec, int threads, char *err, size_t err_len);
+
+// Threads for a read or write: options(dtaparser.threads) when set to a
+// positive number, else 0 (the core's default, or DTA_THREADS). When
+// _R_CHECK_LIMIT_CORES_ is set (R CMD check), at most 2.
+static int threads_option(void) {
+  SEXP opt = Rf_GetOption1(Rf_install("dtaparser.threads"));
+  int n = 0;
+  if (opt != R_NilValue && (Rf_isInteger(opt) || Rf_isReal(opt)) && XLENGTH(opt) == 1) {
+    double v = Rf_asReal(opt);
+    if (!ISNAN(v) && v >= 1) n = v > 1024 ? 1024 : (int) v;
+  }
+  const char *limit = getenv("_R_CHECK_LIMIT_CORES_");
+  if (limit && *limit && strcmp(limit, "false") != 0 && strcmp(limit, "FALSE") != 0 && (n == 0 || n > 2)) n = 2;
+  return n;
+}
 
 static const char *string_arg(SEXP x, const char *what) {
   if (!Rf_isString(x) || XLENGTH(x) < 1 || STRING_ELT(x, 0) == NA_STRING) Rf_error("%s must be a string", what);
@@ -150,7 +166,7 @@ static SEXP read(SEXP path, SEXP cols, SEXP skip, SEXP n_max, SEXP encoding, SEX
   int m = Rf_asInteger(mode);
   SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
   char err[1024] = "";
-  return finish(dtaparser_read(p, INTEGER(cols), XLENGTH(cols), s, n, enc, m, holder, err, sizeof err), holder, err);
+  return finish(dtaparser_read(p, INTEGER(cols), XLENGTH(cols), s, n, enc, m, threads_option(), holder, err, sizeof err), holder, err);
 }
 
 // ALTREP vectors (compact sequences, deferred strings) build their data
@@ -169,12 +185,23 @@ static void materialize(SEXP x) {
   }
 }
 
+int dtaparser_packed_parts(SEXP x, SEXP *bytes, SEXP *ends, SEXP *codes);
+
 static SEXP write(SEXP path, SEXP spec) {
   const char *p = string_arg(path, "file");
-  if (TYPEOF(spec) != VECSXP) Rf_error("internal: the write spec must be a list");
-  materialize(spec);
+  if (TYPEOF(spec) != VECSXP || XLENGTH(spec) < 1 || TYPEOF(VECTOR_ELT(spec, 0)) != VECSXP)
+    Rf_error("internal: the write spec must be a list starting with the columns");
+  // Data columns that are packed stay packed: Rust reads their text
+  // (lib.rs, dtaparser_write). Everything else, including a packed
+  // vector anywhere outside spec[[1]], is materialised as before.
+  SEXP columns = VECTOR_ELT(spec, 0), unused;
+  for (R_xlen_t i = 0; i < XLENGTH(columns); i++) {
+    SEXP col = VECTOR_ELT(columns, i);
+    if (dtaparser_packed_parts(col, &unused, &unused, &unused) == 0) materialize(col);
+  }
+  for (R_xlen_t i = 1; i < XLENGTH(spec); i++) materialize(VECTOR_ELT(spec, i));
   char err[1024] = "";
-  int status = dtaparser_write(p, spec, err, sizeof err);
+  int status = dtaparser_write(p, spec, threads_option(), err, sizeof err);
   if (status == 2) R_ContinueUnwind(token);
   if (status == 1) Rf_error("%s", err);
   return R_NilValue;

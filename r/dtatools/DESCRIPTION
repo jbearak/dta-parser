@@ -1,6 +1,6 @@
 Package: dtatools
 Title: Read and Write Stata Files with Stata's Missing Values
-Version: 1.1.0
+Version: 1.0.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Reads and writes Stata .dta files through dtaparser,
     keeping Stata's extended missing values, value labels and

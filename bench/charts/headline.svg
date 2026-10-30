@@ -32,20 +32,20 @@ svg { font-family: -apple-system, system-ui, sans-serif; }
 <line class="grid" x1="720.0" x2="720.0" y1="70" y2="152"/>
 <text class="t2" x="720.0" y="166" font-size="11" text-anchor="middle">10000×</text>
 <text class="t2" x="112" y="85" font-size="12" text-anchor="end">1. full read</text>
-<rect class="s0" x="320.0" y="74" width="115.7" height="7" rx="2"><title>R, haven, task 1: 14.4× ours</title></rect>
-<text class="t" x="439.7" y="81" font-size="10" text-anchor="start">14×</text>
-<rect class="s1" x="320.0" y="83" width="121.0" height="7" rx="2"><title>R, readstata13, task 1: 16.2× ours</title></rect>
-<text class="t" x="445.0" y="90" font-size="10" text-anchor="start">16×</text>
+<rect class="s0" x="320.0" y="74" width="127.3" height="7" rx="2"><title>R, haven, task 1: 18.7× ours</title></rect>
+<text class="t" x="451.3" y="81" font-size="10" text-anchor="start">19×</text>
+<rect class="s1" x="320.0" y="83" width="132.6" height="7" rx="2"><title>R, readstata13, task 1: 21.2× ours</title></rect>
+<text class="t" x="456.6" y="90" font-size="10" text-anchor="start">21×</text>
 <text class="t2" x="112" y="111" font-size="12" text-anchor="end">2. read + pass</text>
-<rect class="s0" x="320.0" y="100" width="88.4" height="7" rx="2"><title>R, haven, task 2: 7.65× ours</title></rect>
-<text class="t" x="412.4" y="107" font-size="10" text-anchor="start">7.7×</text>
-<rect class="s1" x="320.0" y="109" width="92.4" height="7" rx="2"><title>R, readstata13, task 2: 8.39× ours</title></rect>
-<text class="t" x="416.4" y="116" font-size="10" text-anchor="start">8.4×</text>
+<rect class="s0" x="320.0" y="100" width="93.4" height="7" rx="2"><title>R, haven, task 2: 8.58× ours</title></rect>
+<text class="t" x="417.4" y="107" font-size="10" text-anchor="start">8.6×</text>
+<rect class="s1" x="320.0" y="109" width="97.3" height="7" rx="2"><title>R, readstata13, task 2: 9.41× ours</title></rect>
+<text class="t" x="421.3" y="116" font-size="10" text-anchor="start">9.4×</text>
 <text class="t2" x="112" y="137" font-size="12" text-anchor="end">3. 5 columns</text>
-<rect class="s0" x="320.0" y="126" width="84.4" height="7" rx="2"><title>R, haven, task 3: 6.97× ours</title></rect>
-<text class="t" x="408.4" y="133" font-size="10" text-anchor="start">7×</text>
-<rect class="s1" x="320.0" y="135" width="62.4" height="7" rx="2"><title>R, readstata13, task 3: 4.2× ours</title></rect>
-<text class="t" x="386.4" y="142" font-size="10" text-anchor="start">4.2×</text>
+<rect class="s0" x="320.0" y="126" width="86.4" height="7" rx="2"><title>R, haven, task 3: 7.3× ours</title></rect>
+<text class="t" x="410.4" y="133" font-size="10" text-anchor="start">7.3×</text>
+<rect class="s1" x="320.0" y="135" width="64.4" height="7" rx="2"><title>R, readstata13, task 3: 4.4× ours</title></rect>
+<text class="t" x="388.4" y="142" font-size="10" text-anchor="start">4.4×</text>
 <text class="t" x="12" y="196" font-size="13" font-weight="600">Python</text>
 <rect class="s0" x="120" y="187" width="10" height="10" rx="2"/>
 <text class="t2" x="134" y="196" font-size="12">pandas</text>
@@ -66,20 +66,20 @@ svg { font-family: -apple-system, system-ui, sans-serif; }
 <line class="grid" x1="720.0" x2="720.0" y1="204" y2="286"/>
 <text class="t2" x="720.0" y="300" font-size="11" text-anchor="middle">10000×</text>
 <text class="t2" x="112" y="219" font-size="12" text-anchor="end">1. full read</text>
-<rect class="s0" x="320.0" y="208" width="22.1" height="7" rx="2"><title>Python, pandas, task 1: 1.66× ours</title></rect>
-<text class="t" x="346.1" y="215" font-size="10" text-anchor="start">1.7×</text>
-<rect class="s1" x="320.0" y="217" width="93.4" height="7" rx="2"><title>Python, pyreadstat, task 1: 8.58× ours</title></rect>
-<text class="t" x="417.4" y="224" font-size="10" text-anchor="start">8.6×</text>
+<rect class="s0" x="320.0" y="208" width="38.9" height="7" rx="2"><title>Python, pandas, task 1: 2.45× ours</title></rect>
+<text class="t" x="362.9" y="215" font-size="10" text-anchor="start">2.4×</text>
+<rect class="s1" x="320.0" y="217" width="110.2" height="7" rx="2"><title>Python, pyreadstat, task 1: 12.6× ours</title></rect>
+<text class="t" x="434.2" y="224" font-size="10" text-anchor="start">13×</text>
 <text class="t2" x="112" y="245" font-size="12" text-anchor="end">2. read + pass</text>
-<rect class="s0" x="320.0" y="234" width="11.9" height="7" rx="2"><title>Python, pandas, task 2: 1.32× ours</title></rect>
-<text class="t" x="335.9" y="241" font-size="10" text-anchor="start">1.3×</text>
-<rect class="s1" x="320.0" y="243" width="95.6" height="7" rx="2"><title>Python, pyreadstat, task 2: 9.03× ours</title></rect>
-<text class="t" x="419.6" y="250" font-size="10" text-anchor="start">9×</text>
+<rect class="s0" x="320.0" y="234" width="20.8" height="7" rx="2"><title>Python, pandas, task 2: 1.61× ours</title></rect>
+<text class="t" x="344.8" y="241" font-size="10" text-anchor="start">1.6×</text>
+<rect class="s1" x="320.0" y="243" width="104.5" height="7" rx="2"><title>Python, pyreadstat, task 2: 11.1× ours</title></rect>
+<text class="t" x="428.5" y="250" font-size="10" text-anchor="start">11×</text>
 <text class="t2" x="112" y="271" font-size="12" text-anchor="end">3. 5 columns</text>
-<rect class="s0" x="320.0" y="260" width="52.2" height="7" rx="2"><title>Python, pandas, task 3: 3.33× ours</title></rect>
-<text class="t" x="376.2" y="267" font-size="10" text-anchor="start">3.3×</text>
-<rect class="s1" x="320.0" y="269" width="102.1" height="7" rx="2"><title>Python, pyreadstat, task 3: 10.5× ours</title></rect>
-<text class="t" x="426.1" y="276" font-size="10" text-anchor="start">10×</text>
+<rect class="s0" x="320.0" y="260" width="55.0" height="7" rx="2"><title>Python, pandas, task 3: 3.55× ours</title></rect>
+<text class="t" x="379.0" y="267" font-size="10" text-anchor="start">3.5×</text>
+<rect class="s1" x="320.0" y="269" width="104.8" height="7" rx="2"><title>Python, pyreadstat, task 3: 11.2× ours</title></rect>
+<text class="t" x="428.8" y="276" font-size="10" text-anchor="start">11×</text>
 <text class="t" x="12" y="330" font-size="13" font-weight="600">Julia</text>
 <rect class="s0" x="120" y="321" width="10" height="10" rx="2"/>
 <text class="t2" x="134" y="330" font-size="12">ReadStatTables.jl</text>
@@ -100,20 +100,20 @@ svg { font-family: -apple-system, system-ui, sans-serif; }
 <line class="grid" x1="720.0" x2="720.0" y1="338" y2="420"/>
 <text class="t2" x="720.0" y="434" font-size="11" text-anchor="middle">10000×</text>
 <text class="t2" x="112" y="353" font-size="12" text-anchor="end">1. full read</text>
-<rect class="s0" x="320.0" y="342" width="86.8" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 1: 7.38× ours</title></rect>
-<text class="t" x="410.8" y="349" font-size="10" text-anchor="start">7.4×</text>
-<rect class="s1" x="320.0" y="351" width="326.0" height="7" rx="2"><title>Julia, StatFiles.jl, task 1: 1.82e+03× ours</title></rect>
-<text class="t" x="650.0" y="358" font-size="10" text-anchor="start">1,818×</text>
+<rect class="s0" x="320.0" y="342" width="99.0" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 1: 9.76× ours</title></rect>
+<text class="t" x="423.0" y="349" font-size="10" text-anchor="start">9.8×</text>
+<rect class="s1" x="320.0" y="351" width="338.1" height="7" rx="2"><title>Julia, StatFiles.jl, task 1: 2.41e+03× ours</title></rect>
+<text class="t" x="662.1" y="358" font-size="10" text-anchor="start">2,407×</text>
 <text class="t2" x="112" y="379" font-size="12" text-anchor="end">2. read + pass</text>
-<rect class="s0" x="320.0" y="368" width="74.5" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 2: 5.56× ours</title></rect>
-<text class="t" x="398.5" y="375" font-size="10" text-anchor="start">5.6×</text>
-<rect class="s1" x="320.0" y="377" width="311.4" height="7" rx="2"><title>Julia, StatFiles.jl, task 2: 1.3e+03× ours</title></rect>
-<text class="t" x="635.4" y="384" font-size="10" text-anchor="start">1,299×</text>
+<rect class="s0" x="320.0" y="368" width="82.2" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 2: 6.64× ours</title></rect>
+<text class="t" x="406.2" y="375" font-size="10" text-anchor="start">6.6×</text>
+<rect class="s1" x="320.0" y="377" width="319.1" height="7" rx="2"><title>Julia, StatFiles.jl, task 2: 1.55e+03× ours</title></rect>
+<text class="t" x="643.1" y="384" font-size="10" text-anchor="start">1,551×</text>
 <text class="t2" x="112" y="405" font-size="12" text-anchor="end">3. 5 columns</text>
-<rect class="s0" x="320.0" y="394" width="86.6" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 3: 7.34× ours</title></rect>
-<text class="t" x="410.6" y="401" font-size="10" text-anchor="start">7.3×</text>
-<rect class="s1" x="320.0" y="403" width="309.2" height="7" rx="2"><title>Julia, StatFiles.jl, task 3: 1.23e+03× ours</title></rect>
-<text class="t" x="633.2" y="410" font-size="10" text-anchor="start">1,235×</text>
+<rect class="s0" x="320.0" y="394" width="88.5" height="7" rx="2"><title>Julia, ReadStatTables.jl, task 3: 7.67× ours</title></rect>
+<text class="t" x="412.5" y="401" font-size="10" text-anchor="start">7.7×</text>
+<rect class="s1" x="320.0" y="403" width="312.0" height="7" rx="2"><title>Julia, StatFiles.jl, task 3: 1.32e+03× ours</title></rect>
+<text class="t" x="636.0" y="410" font-size="10" text-anchor="start">1,319×</text>
 <text class="t" x="12" y="464" font-size="13" font-weight="600">TypeScript</text>
 <rect class="s0" x="120" y="455" width="10" height="10" rx="2"/>
 <text class="t2" x="134" y="464" font-size="12">@irbisadm/statfmt</text>
@@ -132,12 +132,12 @@ svg { font-family: -apple-system, system-ui, sans-serif; }
 <line class="grid" x1="720.0" x2="720.0" y1="472" y2="554"/>
 <text class="t2" x="720.0" y="568" font-size="11" text-anchor="middle">10000×</text>
 <text class="t2" x="112" y="487" font-size="12" text-anchor="end">1. full read</text>
-<rect class="s0" x="320.0" y="476" width="112.7" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 1: 13.4× ours</title></rect>
-<text class="t" x="436.7" y="483" font-size="10" text-anchor="start">13×</text>
+<rect class="s0" x="320.0" y="476" width="118.2" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 1: 15.2× ours</title></rect>
+<text class="t" x="442.2" y="483" font-size="10" text-anchor="start">15×</text>
 <text class="t2" x="112" y="513" font-size="12" text-anchor="end">2. read + pass</text>
-<rect class="s0" x="320.0" y="502" width="91.6" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 2: 8.25× ours</title></rect>
-<text class="t" x="415.6" y="509" font-size="10" text-anchor="start">8.2×</text>
+<rect class="s0" x="320.0" y="502" width="95.5" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 2: 9.02× ours</title></rect>
+<text class="t" x="419.5" y="509" font-size="10" text-anchor="start">9×</text>
 <text class="t2" x="112" y="539" font-size="12" text-anchor="end">3. 5 columns</text>
-<rect class="s0" x="320.0" y="528" width="222.8" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 3: 169× ours</title></rect>
-<text class="t" x="546.8" y="535" font-size="10" text-anchor="start">169×</text>
+<rect class="s0" x="320.0" y="528" width="225.5" height="7" rx="2"><title>TypeScript, @irbisadm/statfmt, task 3: 180× ours</title></rect>
+<text class="t" x="549.5" y="535" font-size="10" text-anchor="start">180×</text>
 </svg>

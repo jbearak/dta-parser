@@ -12,10 +12,13 @@ geometric mean over the files (the exceptions on single files are under
 
 | language | full read (NSFG, DHS) | read + pass (NSFG, DHS) |
 |---|---|---|
-| R | haven 13×, 22×; readstata13 14×, 25× | haven 6.8×, 12×; readstata13 7.5×, 13× |
-| Python | pandas 1.6×, 1.7×; pyreadstat 8.4×, 9.5× | pandas 1.3×, 1.5×; pyreadstat 8.4×, 12× |
-| Julia | ReadStatTables 7.4×, 7.4×; StatFiles about 1,300×, 5,700× | ReadStatTables 5.6×, 5.3× |
-| TypeScript | statfmt 14×, 13× | statfmt 8.1×, 8.9× |
+| R | haven 15×, 41×; readstata13 17×, 46× | haven 7.4×, 15×; readstata13 8.1×, 16× |
+| Python | pandas 2.2×, 3.5×; pyreadstat 11×, 19× | pandas 1.5×, 2.2×; pyreadstat 9.7×, 18× |
+| Julia | ReadStatTables 9.4×, 11×; StatFiles about 1,700×, 8,700× | ReadStatTables 6.6×, 6.8× |
+| TypeScript | statfmt 15×, 14× | statfmt 8.8×, 9.8× |
+
+These are after plan 0007 (fixes 9 to 13 below), which made ours faster
+in every language; the other readers were not re-run.
 
 The margin is narrowest in Python, where pandas' reader is NumPy code too,
 and in R's pass over every value, where dtatools makes its packed
@@ -68,20 +71,52 @@ the other readers' results were not re-run.
    itself, dtatools on its first read, so 0.08 s fell inside dtatools'
    timed tasks only. Both now load them before the clock.
 
+9. **R, writing packed strings** (plan 0007, `r/dtaparser/src`). The
+   writer made every R string of a column `read_dta` had packed (20M on
+   long.dta) before writing it; it now writes their bytes. R's write of
+   the synthetic files: 9.3× faster (geometric mean), 27% less peak
+   memory; long.dta 6.17 s → 0.80 s.
+10. **Core, writing by block** (plan 0007, `crates/dta/src/writer.rs`).
+    Numbers are filled 1,024 rows per call and rows built column by
+    column in 256 KiB slabs, not a dynamic call per cell. The core's
+    write of wide.dta, one thread: 5.40 s → 2.02 s. Bytes unchanged
+    (`crates/dta/tests/identity.rs`).
+11. **Core, reading** (plan 0007, `crates/dta/src/reader.rs`). 2 MiB
+    chunks, and numbers decoded into sized columns: the core's read of
+    wide.dta 1.00 s → 0.71 s.
+12. **Threads** (plan 0007). Large reads and writes (16 MiB and up)
+    use up to three threads (half the hardware threads on x86): workers
+    read and decode chunks and, in R and Python, fill numeric columns;
+    chunks reach the caller in row order. At three threads every read
+    and write measured used at most 1.15× the CPU time of one thread
+    (`bench/threads/`); e.g. R reads wide.dta 1.19 s → 0.49 s. wasm
+    stays on one thread. Geometric-mean speed-ups of a full read: R
+    2.2×, 1.2×, 1.9× (synthetic, NSFG, DHS), Python 1.9×, 1.35×, 2.0×,
+    Julia 1.8×, 1.3×, 1.5×.
+13. **Python, code arrays** (plan 0007). Writing every missing-value
+    code committed memory for numpy arrays of zeros it had not touched
+    (wide.dta 4.9 → 5.5 GB); only missing values' codes are written.
+
+On GitHub's x86 runners (2 cores, 4 hardware threads, so two threads)
+the CI's thread report shows a full read 1.9× faster at 1.10× the CPU,
+but a five-column read 1.4× faster at 1.5× the CPU (0.05 s of work,
+mostly copying rows out of the page cache) and a write 1.2× faster at
+1.2× (bound by the runner's disk). Those cases are reported, not gated.
+
 ### Targets missed, and why
 
-- **Julia metadata on small files** (35 files, by 0.01 to 0.1 ms). The
+- **Julia metadata on small files** (25 files, by 0.01 to 0.1 ms). The
   metadata crosses the C ABI as JSON (the plan's design) and is parsed
   in Julia; ReadStatTables fills its structures directly. Two
   optimisation attempts (fix 2) narrowed it; the rest is that JSON.
 - **R metadata and windows on small files** (by 0.02 to 0.2 ms).
   dtatools builds a tibble with per-column attributes; readstata13's
   "metadata" here is a one-row read without them.
-- **Python, read + pass on four pregnancy files** (by 10–20%). Ours
-  gives byte and int columns with `.` as float32 (the plan's
-  representation); the pass sums in float64, so each converts, where
-  pandas' columns are already float64.
-- **R memory** on the pass over every value (6 files) and one full read:
+- **Python, read + pass on 1976_Preg** (by 8%; four pregnancy files
+  before plan 0007). Ours gives byte and int columns with `.` as
+  float32 (the plan's representation); the pass sums in float64, so
+  each converts, where pandas' columns are already float64.
+- **R memory** on the pass over every value (7 files) and one full read:
   dtatools keeps the packed text while R makes its strings (ADR 0010),
   and stores every number as a double (ADR 0003) where readstata13 keeps
   R integers.
@@ -157,20 +192,20 @@ Correctness, outside the timing: each reader's result is hashed per column (numb
 
 Ours fastest within its language at task 2 on every NSFG and DHS file and at tasks 3–5 on every file (5% tie band), with peak RSS within 1.5× of the lowest.
 
-1976 checks met, 80 missed.
+1988 checks met, 68 missed.
 
 | language | task | kind | files missed (ours vs best other) |
 |---|---|---|---|
-| Julia | 5. metadata | speed | 1976_PSU (8.44e-05 s vs 7.28e-05 s); 2002_curr_ins (9.35e-05 s vs 7.35e-05 s); 2002_hhpartypnew (8.15e-05 s vs 7.44e-05 s); 2002_HHvars (0.00011 s vs 0.000102 s); 2011_2019_MaleWgt (9.06e-05 s vs 7.66e-05 s); 2022_2023_FemPreg (0.000244 s vs 0.00014 s); and 29 more |
-| Julia | 6. write | memory | groups.dta (1,550 MB vs 1,027 MB) |
-| Python | 2. read + pass | speed | 1976_Preg (0.011 s vs 0.00925 s); 1995_Preg (0.0318 s vs 0.0278 s); 2006_2010_FemPreg (0.0353 s vs 0.0324 s); 1988_Preg (0.0279 s vs 0.0241 s) |
-| R | 1. full read | memory | Myanmar 2016 bh (341 MB vs 217 MB) |
-| R | 2. read + pass | memory | 2006_2010_Male (588 MB vs 346 MB); Dominican Republic 2013 bh (350 MB vs 226 MB); Senegal 2019 bh (467 MB vs 277 MB); Myanmar 2016 bh (482 MB vs 267 MB); Senegal 2019 wm (960 MB vs 539 MB); Tajikistan 2017 wm (878 MB vs 548 MB) |
-| R | 4. 1,000 rows | speed | groups.dta (0.00141 s vs 0.00125 s); 1976_PSU (0.000299 s vs 0.000249 s); 2002_curr_ins (0.000299 s vs 0.000244 s); 2002_hhpartypnew (0.000341 s vs 0.000229 s) |
-| R | 5. metadata | speed | groups.dta (0.00137 s vs 0.000875 s); long_114.dta (0.00138 s vs 0.00125 s); long.dta (0.00135 s vs 0.000892 s); long_119.dta (0.00136 s vs 0.000894 s); wide.dta (0.00219 s vs 0.00111 s); 1976_PSU (0.00029 s vs 9.7e-05 s); and 17 more |
-| TypeScript | 1. full read | memory | 2013_2015_Male (417 MB vs 261 MB) |
-| TypeScript | 2. read + pass | memory | 2013_2015_Male (406 MB vs 262 MB) |
-| TypeScript | 6. write | memory | 2013_2015_Male (500 MB vs 313 MB); 2006_2010_Male (835 MB vs 488 MB); Tajikistan 2017 bh (735 MB vs 473 MB) |
+| Julia | 5. metadata | speed | 2002_HHvars (0.00011 s vs 0.000102 s); 2022_2023_FemPreg (0.000217 s vs 0.00014 s); 2011_2019_FemaleWgt (8e-05 s vs 7.61e-05 s); 2017_2019_FemPreg (0.000682 s vs 0.000625 s); 1976_Preg (0.000286 s vs 0.00026 s); 2015_2017_FemPreg (0.000922 s vs 0.00082 s); and 19 more |
+| Julia | 6. write | memory | groups.dta (1,551 MB vs 1,027 MB) |
+| Python | 2. read + pass | speed | 1976_Preg (0.01 s vs 0.00925 s) |
+| R | 1. full read | memory | Myanmar 2016 bh (344 MB vs 217 MB) |
+| R | 2. read + pass | memory | 2015_2017_FemResp (373 MB vs 247 MB); 2011_2013_FemResp (375 MB vs 248 MB); 2006_2010_Male (523 MB vs 346 MB); 2006_2010_FemResp (837 MB vs 544 MB); Myanmar 2016 bh (417 MB vs 267 MB); Tajikistan 2017 wm (964 MB vs 548 MB); and 1 more |
+| R | 4. 1,000 rows | speed | groups.dta (0.00135 s vs 0.00125 s); 1976_PSU (0.000268 s vs 0.000249 s); 2002_curr_ins (0.000276 s vs 0.000244 s); 2002_hhpartypnew (0.000271 s vs 0.000229 s) |
+| R | 5. metadata | speed | groups.dta (0.0013 s vs 0.000875 s); long_114.dta (0.00136 s vs 0.00125 s); long.dta (0.00133 s vs 0.000892 s); long_119.dta (0.00141 s vs 0.000894 s); wide.dta (0.0022 s vs 0.00111 s); 1976_PSU (0.000265 s vs 9.7e-05 s); and 18 more |
+| TypeScript | 1. full read | memory | 2013_2015_Male (411 MB vs 261 MB) |
+| TypeScript | 2. read + pass | memory | 2013_2015_Male (415 MB vs 262 MB) |
+| TypeScript | 6. write | memory | 2013_2015_Male (500 MB vs 313 MB); 2006_2010_Male (830 MB vs 488 MB) |
 | TypeScript | 6. write | speed | wide.dta (ours failed: error) |
 
 ## Synthetic
@@ -190,33 +225,33 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 0.54 s | 4.08 s | 0.253 s | 0.00166 s | 0.00147 s | 4.27 s |
-| R | haven | 30× | 4.3× | 30× | 11× | 10× | 1.5× |
-| R | readstata13 | 30× | 4.3× | 32× | 1.6× | 0.72× | 3.8× |
-| Python | dta_parser | 0.796 s | 1.35 s | 0.389 s | 0.000577 s | 7.08e-05 s | 1.38 s |
-| Python | pandas | 2.7× | 2× | 3.9× | 1.9e+03× | 4.3× | 3.6× |
-| Python | pyreadstat | 11× | 7.2× | 11× | 10× | 57× | 19× |
-| Julia | DtaParser.jl | 0.736 s | 1.07 s | 0.362 s | 0.0147 s | 0.00486 s | 1.06 s |
-| Julia | ReadStatTables.jl | 8.2× | 6× | 10× | 9.2× | 1.3× | 3.4× |
-| Julia | StatFiles.jl | 51× | 36× | 1e+02× | 2.5e+03× | – (6 no API) | – (6 no API) |
-| TypeScript | @jbearak/dta-parser | 2.39 s | 2.81 s | 1.01 s | 0.00266 s | 0.0014 s | 3.3 s (1 failed) |
-| TypeScript | @irbisadm/statfmt | 4.6× | 4.1× | 12× | 22× | 39× | 4.7× (1 failed) |
+| R | dtatools | 0.242 s | 3.6 s | 0.127 s | 0.00163 s | 0.00146 s | 0.461 s |
+| R | haven | 67× | 4.9× | 60× | 11× | 10× | 14× |
+| R | readstata13 | 67× | 4.9× | 63× | 1.7× | 0.72× | 35× |
+| Python | dta_parser | 0.43 s | 0.962 s | 0.241 s | 0.000554 s | 6.92e-05 s | 0.846 s |
+| Python | pandas | 5× | 2.7× | 6.4× | 1.9e+03× | 4.4× | 5.8× |
+| Python | pyreadstat | 20× | 10× | 18× | 11× | 59× | 32× |
+| Julia | DtaParser.jl | 0.417 s | 0.74 s | 0.219 s | 0.0144 s | 0.00474 s | 0.501 s |
+| Julia | ReadStatTables.jl | 15× | 8.8× | 17× | 9.5× | 1.3× | 7.2× |
+| Julia | StatFiles.jl | 90× | 52× | 1.7e+02× | 2.6e+03× | – (6 no API) | – (6 no API) |
+| TypeScript | @jbearak/dta-parser | 2.28 s | 2.71 s | 0.972 s | 0.00264 s | 0.0014 s | 2.22 s (1 failed) |
+| TypeScript | @irbisadm/statfmt | 4.8× | 4.2× | 13× | 22× | 39× | 6.9× (1 failed) |
 
 Peak RSS, the same way:
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 1,319 MB | 2,553 MB | 524 MB | 99 MB | 98 MB | 1,845 MB |
-| R | haven | 1.4× | 1.2× | 1.6× | 1.1× | 1.1× | 1× |
-| R | readstata13 | 1.5× | 1.1× | 1.7× | 0.95× | 0.96× | 1.3× |
-| Python | dta_parser | 1,665 MB | 1,727 MB | 725 MB | 83 MB | 81 MB | 1,771 MB |
-| Python | pandas | 2.6× | 2.5× | 5.4× | 27× | 0.98× | 3.8× |
+| R | dtatools | 1,322 MB | 2,559 MB | 525 MB | 99 MB | 97 MB | 1,341 MB |
+| R | haven | 1.4× | 1.2× | 1.6× | 1.1× | 1.1× | 1.4× |
+| R | readstata13 | 1.5× | 1.1× | 1.7× | 0.96× | 0.97× | 1.8× |
+| Python | dta_parser | 1,668 MB | 1,730 MB | 726 MB | 82 MB | 81 MB | 1,774 MB |
+| Python | pandas | 2.6× | 2.5× | 5.4× | 27× | 0.99× | 3.8× |
 | Python | pyreadstat | 2× | 1.9× | 1.5× | 1.1× | 1.1× | 1.9× |
-| Julia | DtaParser.jl | 1,926 MB | 1,949 MB | 830 MB | 303 MB | 300 MB | 2,258 MB |
-| Julia | ReadStatTables.jl | 0.77× | 0.77× | 0.88× | 1.3× | 1.3× | 0.81× |
-| Julia | StatFiles.jl | 1.9× | 1.9× | 4.9× | 12× | – | – |
-| TypeScript | @jbearak/dta-parser | 2,127 MB | 2,140 MB | 842 MB | 56 MB | 52 MB | 3,044 MB |
-| TypeScript | @irbisadm/statfmt | 2.6× | 2.6× | 7.9× | 17× | 18× | 3.1× |
+| Julia | DtaParser.jl | 1,932 MB | 1,955 MB | 830 MB | 301 MB | 300 MB | 2,271 MB |
+| Julia | ReadStatTables.jl | 0.77× | 0.77× | 0.88× | 1.3× | 1.3× | 0.8× |
+| Julia | StatFiles.jl | 1.9× | 1.9× | 4.9× | 13× | – | – |
+| TypeScript | @jbearak/dta-parser | 2,115 MB | 2,126 MB | 832 MB | 56 MB | 52 MB | 3,043 MB |
+| TypeScript | @irbisadm/statfmt | 2.6× | 2.6× | 8× | 17× | 18× | 3.1× |
 
 Per file: [results/synthetic.md](results/synthetic.md).
 
@@ -267,33 +302,33 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 0.0125 s | 0.0259 s | 0.00326 s | 0.00513 s | 0.00421 s | 0.0312 s |
-| R | haven | 13× | 6.8× | 6.1× | 4× | 1.1× | 6.4× |
-| R | readstata13 | 14× | 7.5× | 3.9× | 4.3× | 0.89× | 9.7× |
-| Python | dta_parser | 0.015 s | 0.0266 s | 0.00175 s | 0.00456 s | 0.000763 s | 0.0323 s |
-| Python | pandas | 1.6× | 1.3× | 2.8× | 8.8× | 2.6× | 2× |
-| Python | pyreadstat | 8.4× | 8.4× | 10× | 3.9× | 5.1× | 34× (30 failed) |
-| Julia | DtaParser.jl | 0.0102 s | 0.0141 s | 0.00245 s | 0.00303 s | 0.00174 s | 0.0242 s |
-| Julia | ReadStatTables.jl | 7.4× | 5.6× | 6.9× | 3.2× | 0.8× | 2× |
-| Julia | StatFiles.jl | 1.3e+03× | 9.6e+02× | 1.2e+03× (18 not run) | 1.3e+03× (18 not run) | – (36 no API) | – (36 no API) |
-| TypeScript | @jbearak/dta-parser | 0.0143 s | 0.0251 s | 0.00141 s | 0.00267 s | 0.00156 s | 0.0398 s |
-| TypeScript | @irbisadm/statfmt | 14× | 8.1× | 1.4e+02× | 11× | 1.5× | 4.2× |
+| R | dtatools | 0.0106 s | 0.0239 s | 0.0031 s | 0.0049 s | 0.00405 s | 0.0178 s |
+| R | haven | 15× | 7.4× | 6.4× | 4.2× | 1.1× | 11× |
+| R | readstata13 | 17× | 8.1× | 4.1× | 4.5× | 0.93× | 17× |
+| Python | dta_parser | 0.0111 s | 0.0228 s | 0.00165 s | 0.00419 s | 0.000761 s | 0.0185 s |
+| Python | pandas | 2.2× | 1.5× | 3× | 9.5× | 2.6× | 3.5× |
+| Python | pyreadstat | 11× | 9.7× | 11× | 4.2× | 5.1× | 50× (30 failed) |
+| Julia | DtaParser.jl | 0.00804 s | 0.0121 s | 0.00233 s | 0.00277 s | 0.00166 s | 0.00983 s |
+| Julia | ReadStatTables.jl | 9.4× | 6.6× | 7.2× | 3.5× | 0.84× | 4.9× |
+| Julia | StatFiles.jl | 1.7e+03× | 1.1e+03× | 1.3e+03× (18 not run) | 1.5e+03× (18 not run) | – (36 no API) | – (36 no API) |
+| TypeScript | @jbearak/dta-parser | 0.0126 s | 0.023 s | 0.00132 s | 0.0024 s | 0.00153 s | 0.018 s |
+| TypeScript | @irbisadm/statfmt | 15× | 8.8× | 1.5e+02× | 12× | 1.6× | 9.2× |
 
 Peak RSS, the same way:
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 178 MB | 218 MB | 106 MB | 115 MB | 100 MB | 198 MB |
-| R | haven | 1.1× | 1.1× | 1.2× | 1.2× | 1.2× | 0.99× |
-| R | readstata13 | 0.84× | 0.84× | 1.1× | 1.1× | 1.2× | 0.99× |
-| Python | dta_parser | 142 MB | 142 MB | 91 MB | 99 MB | 86 MB | 149 MB |
-| Python | pandas | 1.1× | 1.1× | 1.1× | 1.3× | 0.95× | 2.3× |
-| Python | pyreadstat | 1.5× | 1.5× | 1.1× | 1.2× | 1.1× | 1.1× |
-| Julia | DtaParser.jl | 335 MB | 339 MB | 311 MB | 310 MB | 303 MB | 346 MB |
-| Julia | ReadStatTables.jl | 1.3× | 1.2× | 1.3× | 1.3× | 1.3× | 1.2× |
-| Julia | StatFiles.jl | 2.9× | 2.8× | 1.9× | 1.9× | – | – |
-| TypeScript | @jbearak/dta-parser | 205 MB | 208 MB | 65 MB | 91 MB | 62 MB | 233 MB |
-| TypeScript | @irbisadm/statfmt | 0.97× | 0.96× | 3.1× | 1.2× | 1.3× | 0.95× |
+| R | dtatools | 174 MB | 215 MB | 102 MB | 112 MB | 100 MB | 194 MB |
+| R | haven | 1.1× | 1.1× | 1.2× | 1.2× | 1.2× | 1× |
+| R | readstata13 | 0.86× | 0.85× | 1.1× | 1.1× | 1.2× | 1× |
+| Python | dta_parser | 138 MB | 139 MB | 87 MB | 96 MB | 86 MB | 146 MB |
+| Python | pandas | 1.1× | 1.1× | 1.2× | 1.4× | 0.95× | 2.3× |
+| Python | pyreadstat | 1.6× | 1.6× | 1.1× | 1.3× | 1.1× | 1.1× |
+| Julia | DtaParser.jl | 333 MB | 337 MB | 306 MB | 305 MB | 302 MB | 346 MB |
+| Julia | ReadStatTables.jl | 1.3× | 1.3× | 1.3× | 1.3× | 1.3× | 1.2× |
+| Julia | StatFiles.jl | 2.9× | 2.9× | 1.9× | 1.9× | – | – |
+| TypeScript | @jbearak/dta-parser | 202 MB | 203 MB | 61 MB | 89 MB | 62 MB | 229 MB |
+| TypeScript | @irbisadm/statfmt | 0.99× | 0.98× | 3.2× | 1.2× | 1.3× | 0.97× |
 
 Per file: [results/nsfg.md](results/nsfg.md).
 
@@ -318,33 +353,33 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 0.0964 s | 0.195 s | 0.00977 s | 0.0222 s | 0.0176 s | 0.365 s |
-| R | haven | 22× | 12× | 11× | 6.1× | 1.4× | 6.6× |
-| R | readstata13 | 25× | 13× | 5.4× | 7.1× | 1.7× | 10× |
-| Python | dta_parser | 0.128 s | 0.195 s | 0.00619 s | 0.0242 s | 0.0032 s | 0.299 s |
-| Python | pandas | 1.7× | 1.5× | 6.1× | 14× | 2.9× | 1.9× |
-| Python | pyreadstat | 9.5× | 12× | 12× | 4.7× | 9.9× | – (10 failed) |
-| Julia | DtaParser.jl | 0.0832 s | 0.125 s | 0.00786 s | 0.0123 s | 0.00555 s | 0.267 s |
-| Julia | ReadStatTables.jl | 7.4× | 5.3× | 9.2× | 4.1× | 1× | 3× |
-| Julia | StatFiles.jl | 5.7e+03× | 3.8e+03× | – (10 not run) | – (10 not run) | – (10 no API) | – (10 no API) |
-| TypeScript | @jbearak/dta-parser | 0.144 s | 0.211 s | 0.00571 s | 0.0126 s | 0.00464 s | 0.442 s |
-| TypeScript | @irbisadm/statfmt | 13× | 8.9× | 3.2e+02× | 11× | 2.2× | 3.1× |
+| R | dtatools | 0.0522 s | 0.154 s | 0.00945 s | 0.0216 s | 0.0174 s | 0.107 s |
+| R | haven | 41× | 15× | 12× | 6.2× | 1.4× | 23× |
+| R | readstata13 | 46× | 16× | 5.6× | 7.3× | 1.7× | 35× |
+| Python | dta_parser | 0.0642 s | 0.132 s | 0.00576 s | 0.0215 s | 0.00321 s | 0.0952 s |
+| Python | pandas | 3.5× | 2.2× | 6.6× | 16× | 2.9× | 6.1× |
+| Python | pyreadstat | 19× | 18× | 13× | 5.3× | 9.9× | – (10 failed) |
+| Julia | DtaParser.jl | 0.0541 s | 0.0974 s | 0.00764 s | 0.0118 s | 0.00548 s | 0.0396 s |
+| Julia | ReadStatTables.jl | 11× | 6.8× | 9.4× | 4.3× | 1× | 20× |
+| Julia | StatFiles.jl | 8.7e+03× | 4.9e+03× | – (10 not run) | – (10 not run) | – (10 no API) | – (10 no API) |
+| TypeScript | @jbearak/dta-parser | 0.127 s | 0.193 s | 0.00539 s | 0.0109 s | 0.00461 s | 0.165 s |
+| TypeScript | @irbisadm/statfmt | 14× | 9.8× | 3.4e+02× | 13× | 2.3× | 8.4× |
 
 Peak RSS, the same way:
 
 | language | reader | 1. full read | 2. read + pass | 3. 5 columns | 4. 1,000 rows | 5. metadata | 6. write |
 |---|---|---|---|---|---|---|---|
-| R | dtatools | 409 MB | 567 MB | 111 MB | 135 MB | 100 MB | 472 MB |
-| R | haven | 1.1× | 1× | 1.2× | 1.2× | 1.3× | 0.92× |
-| R | readstata13 | 0.78× | 0.67× | 1.4× | 1.3× | 1.7× | 0.9× |
-| Python | dta_parser | 335 MB | 335 MB | 96 MB | 117 MB | 87 MB | 348 MB |
-| Python | pandas | 1.3× | 1.3× | 1.7× | 2.5× | 0.95× | 5.1× |
-| Python | pyreadstat | 2.1× | 2.1× | 1.1× | 1.4× | 1.2× | – |
-| Julia | DtaParser.jl | 405 MB | 417 MB | 314 MB | 317 MB | 303 MB | 422 MB |
-| Julia | ReadStatTables.jl | 1.2× | 1.2× | 1.3× | 1.3× | 1.3× | 1.2× |
-| Julia | StatFiles.jl | 4.7× | 4.7× | – | – | – | – |
-| TypeScript | @jbearak/dta-parser | 613 MB | 604 MB | 74 MB | 142 MB | 66 MB | 874 MB |
-| TypeScript | @irbisadm/statfmt | 0.86× | 0.88× | 7.1× | 1.3× | 1.7× | 0.72× |
+| R | dtatools | 412 MB | 552 MB | 105 MB | 127 MB | 102 MB | 484 MB |
+| R | haven | 1× | 1× | 1.3× | 1.2× | 1.3× | 0.9× |
+| R | readstata13 | 0.78× | 0.69× | 1.5× | 1.3× | 1.6× | 0.88× |
+| Python | dta_parser | 339 MB | 340 MB | 89 MB | 110 MB | 87 MB | 361 MB |
+| Python | pandas | 1.3× | 1.3× | 1.8× | 2.7× | 0.95× | 4.9× |
+| Python | pyreadstat | 2.1× | 2× | 1.1× | 1.5× | 1.2× | – |
+| Julia | DtaParser.jl | 417 MB | 419 MB | 307 MB | 310 MB | 303 MB | 441 MB |
+| Julia | ReadStatTables.jl | 1.2× | 1.2× | 1.3× | 1.3× | 1.3× | 1.1× |
+| Julia | StatFiles.jl | 4.6× | 4.7× | – | – | – | – |
+| TypeScript | @jbearak/dta-parser | 603 MB | 603 MB | 68 MB | 136 MB | 66 MB | 858 MB |
+| TypeScript | @irbisadm/statfmt | 0.87× | 0.88× | 7.8× | 1.3× | 1.7× | 0.73× |
 
 Per file: [results/dhs.md](results/dhs.md).
 

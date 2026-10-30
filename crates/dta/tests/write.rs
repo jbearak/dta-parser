@@ -30,7 +30,7 @@ fn rewrite(bytes: Vec<u8>, timestamp: &str) -> Vec<u8> {
             label: v.label.clone(),
             value_labels: v.value_labels.clone(),
             values: match c {
-                Column::Numbers { values, missing } => Values::Numbers(Box::new(move |i| (values[i], missing[i]))),
+                Column::Numbers { values, missing } => Values::numbers_by_row(move |i| (values[i], missing[i])),
                 Column::Strings { .. } => Values::Strings(Box::new(move |i| c.bytes(i))),
             },
         })
@@ -158,7 +158,7 @@ fn one_column(storage: StorageType, value: f64) -> dta::Result<Vec<u8>> {
             format: String::new(),
             label: String::new(),
             value_labels: String::new(),
-            values: Values::Numbers(Box::new(move |_| (value, 0))),
+            values: Values::numbers_by_row(move |_| (value, 0)),
         }],
         value_labels: vec![],
         characteristics: vec![],

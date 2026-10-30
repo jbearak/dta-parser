@@ -78,7 +78,7 @@ fn a_chunk_of_bytes_decodes_to_about_8_mib() {
                 format: String::new(),
                 label: String::new(),
                 value_labels: String::new(),
-                values: Values::Numbers(Box::new(|i| ((i % 100) as f64, 0))),
+                values: Values::numbers_by_row(|i| ((i % 100) as f64, 0)),
             })
             .collect(),
         value_labels: vec![],
