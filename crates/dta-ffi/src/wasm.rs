@@ -532,7 +532,9 @@ pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
                 let text = text.as_ref().unwrap_or(bytes);
                 (text.as_ptr(), text.len())
             }
-            (_, Some(Strings::Plain { utf16, .. }), 1) => (utf16.as_ptr() as *const u8, utf16.len()),
+            (_, Some(Strings::Plain { utf16: Some(utf16), .. }), 1) => (utf16.as_ptr() as *const u8, utf16.len()),
+            // All ASCII: the byte ends are the UTF-16 ends.
+            (Column::Strings { ends, .. }, Some(Strings::Plain { utf16: None, .. }), 1) => (ends.as_ptr() as *const u8, ends.len()),
             (Column::Strings { binary, .. }, Some(Strings::Plain { .. }), 2) => (binary.as_ptr() as *const u8, binary.len()),
             (Column::Strings { bytes, .. }, Some(Strings::Plain { .. }), 3) => (bytes.as_ptr(), bytes.len()),
             (Column::Strings { ends, .. }, Some(Strings::Plain { .. }), 4) => (ends.as_ptr() as *const u8, ends.len()),

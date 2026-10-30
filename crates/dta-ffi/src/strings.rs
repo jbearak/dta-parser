@@ -81,7 +81,9 @@ pub enum Strings {
     /// rows, `text` is a copy of the text rows alone; JavaScript takes
     /// the binary rows from the column's own bytes, by its byte ends, so
     /// a large binary strL is not copied.
-    Plain { text: Option<Vec<u8>>, utf16: Vec<u32> },
+    /// `utf16` is None when the call's text is all ASCII: its byte ends
+    /// are its UTF-16 ends.
+    Plain { text: Option<Vec<u8>>, utf16: Option<Vec<u32>> },
 }
 
 impl Dict {
@@ -189,8 +191,11 @@ impl Dict {
 
 /// The plain form of a call's string column.
 pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Strings {
-    let mut utf16 = Vec::with_capacity(ends.len());
     let any_binary = binary.iter().any(|&b| b);
+    if !any_binary && bytes.is_ascii() {
+        return Strings::Plain { text: None, utf16: None };
+    }
+    let mut utf16 = Vec::with_capacity(ends.len());
     let mut text = any_binary.then(Vec::new);
     let (mut start, mut units) = (0, 0u32);
     for (i, &end) in ends.iter().enumerate() {
@@ -204,7 +209,7 @@ pub fn plain(bytes: &[u8], ends: &[usize], binary: &[bool]) -> Strings {
         utf16.push(units);
         start = end;
     }
-    Strings::Plain { text, utf16 }
+    Strings::Plain { text, utf16: Some(utf16) }
 }
 
 #[cfg(test)]
