@@ -1,7 +1,9 @@
 # Plan: faster, leaner reads and writes, with bounded parallelism
 
 Status: approved by Sonnet 5.5 (three rounds) and GPT-6.1 Terra (five
-rounds).
+rounds); implemented in PR #22. One change from the plan: the default
+is at most three threads, not four (Python's full read of wide.dta used
+1.10–1.16× the CPU at four). Results: bench/RESULTS.md, fixes 9 to 13.
 
 ## Problem
 
