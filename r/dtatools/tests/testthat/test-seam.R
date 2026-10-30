@@ -1,4 +1,4 @@
-# dtatools reads through dtaparser's C functions (ADR 0015).
+# dtatools reads through dtaparser's C functions (ADR 0016).
 
 test_that("dtatools loads and reads in a fresh R without dtaparser attached", {
   path <- file.path(fixture_dir, "haven_118.dta")

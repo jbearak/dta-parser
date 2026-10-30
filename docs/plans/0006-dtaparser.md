@@ -113,8 +113,14 @@ has no missing string other than `""`, and haven also reads `""` as
 | a date format (below), no value labels, `dates = TRUE` | `Date`, always a double whatever the storage (days since 1960 minus 3653) |
 | a datetime format (below), no value labels, `dates = TRUE` | `POSIXct`, a double, `tzone = "UTC"` (milliseconds since 1960 to seconds since 1970) |
 | `%tC` and every other `%t` format | numbers, as stored |
-| value labels, `factors = TRUE` | `factor` (below) |
-| value labels, `factors = FALSE` | numbers with a `labels` attribute: the non-missing codes, named by their text |
+| value labels on a non-missing value, `factors = TRUE` | `factor` (below) |
+| value labels on a non-missing value, `factors = FALSE` | numbers with a `labels` attribute: the non-missing codes, named by their text |
+
+A set that labels only missing values (`.d` "Don't know") labels
+nothing plain mode returns, since those values are `NA`; such a column
+is read as if it had no value labels. (Found while writing the docs:
+otherwise a continuous column with labelled missing codes became a
+factor of its numbers. haven's `as_factor()` does make that factor.)
 
 A date format starts with `%td`, `%-td` or `%d` (the old name for
 `%td`, as in `%dDlY`); a datetime format starts with `%tc` or `%-tc`.
@@ -245,7 +251,7 @@ now across the forwarder. Two tests are added for the seam:
 
 ## Docs
 
-- ADR 0015: the package split and the C callable seam. ADRs 0007 and
+- ADR 0016: the package split and the C callable seam. ADRs 0007 and
   0010 get a line pointing to it, since they name dtatools as the
   package that holds the bridge and the packed strings.
 - `CONTEXT.md`: add *dtaparser* and *plain mode*.

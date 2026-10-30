@@ -21,6 +21,7 @@ Contents:
 [Recipes](#recipes) ·
 [Coming from haven](#coming-from-haven) ·
 [Coming from readstata13](#coming-from-readstata13) ·
+[Plain R types: dtaparser](#plain-r-types-dtaparser) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -29,17 +30,20 @@ section.
 
 ## Install
 
-dtatools needs R 4.2 or later and a Rust toolchain (`cargo` and
-`rustc`, from [rustup.rs](https://rustup.rs)), since it compiles the
-Rust core when installed. It is not on CRAN. From a shell:
+dtatools needs R 4.2 or later. It reads and writes through dtaparser,
+which needs a Rust toolchain (`cargo` and `rustc`, from
+[rustup.rs](https://rustup.rs)), since it compiles the Rust core when
+installed. Neither is on CRAN. Install dtaparser first, from a shell:
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
+R CMD INSTALL dta-parser/r/dtaparser
 R CMD INSTALL dta-parser/r/dtatools
 ```
 
-It imports rlang, tibble, tidyselect and vctrs; install them first if R
-reports one missing. Check the install:
+They import rlang, tibble, tidyselect and vctrs; install them first if R
+reports one missing. After reinstalling dtaparser, restart R before
+using dtatools. Check the install:
 
 ```r norun
 library(dtatools)
@@ -447,13 +451,42 @@ except `Date` columns (convert them with `as_dibble()` first).
 | `get.label(df, "set")`, `get.label.name(df, "x")` | `val_labels(df$x)`, `attr(df$x, "label_set")` |
 | `save.dta13(df, file, data.label = ...)` | `attr(df, "label") <- ...; save_dta(df, file)` |
 
+## Plain R types: dtaparser
+
+dtatools follows Stata's rules, which is what tests of a Stata pipeline
+need. To analyse a file under R's rules instead, read it with
+dtaparser, which dtatools installs alongside:
+
+```r
+df <- dtaparser::read_dta("survey.dta")
+df$region             # a factor: North South South East West North
+df$income             # 2100 NA 1850 NA NA 3200
+df$income > 2000      # TRUE NA FALSE NA NA TRUE
+class(df$interviewed) # "Date"
+```
+
+| in the file | dtaparser |
+|---|---|
+| byte, int, long | integer |
+| float, double | double |
+| `.` and `.a` to `.z` | `NA` (the letters are not kept) |
+| value labels | a factor; levels in order of value, unlabelled values as their number. `factors = FALSE` keeps numbers and a `labels` attribute |
+| `%td`, `%d...` | `Date` (`dates = FALSE` keeps numbers) |
+| `%tc` | `POSIXct` in UTC; `%tC`, which counts leap seconds, stays numbers |
+| strN, strL text | character, packed as in dtatools; `""` stays `""` |
+
+`read_dta()` takes the same `col_select`, `encoding`, `skip` and
+`n_max` arguments. Columns keep their variable label in `label`; the
+tibble keeps `label` and `notes`. dtaparser does not write files; use
+dtatools' `save_dta()`.
+
 ## Troubleshooting
 
-**Installation fails with "dtatools: building needs cargo".** Install
+**Installation fails with "dtaparser: building needs cargo".** Install
 Rust from [rustup.rs](https://rustup.rs), open a new terminal, and
 install again. On Windows you also need Rtools.
 
-**"x holds binary strLs, which dtatools does not read".** The column
+**"x holds binary strLs, which dtaparser does not read".** The column
 stores binary data (an image, say). Leave it out with `col_select`, or
 read the file with the Python, Julia or TypeScript package.
 

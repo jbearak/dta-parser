@@ -17,3 +17,5 @@ Suggests:
 SystemRequirements: Cargo (Rust's package manager), rustc
 Encoding: UTF-8
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.1
+Roxygen: list(markdown = TRUE)

@@ -35,7 +35,9 @@ write_fixture <- function(...) {
     })),
     data_label = "",
     timestamp = "01 Jan 2026 00:00",
-    notes = character()
+    notes = character(),
+    characteristics = list(character(), character(), character()),
+    sort_order = integer()
   )
   .Call(dtaparser:::C_dta_write, path, spec)
   path

@@ -17,14 +17,18 @@
 #'   apply (`x > 5` is `NA` where `x` is missing). Strings are as stored:
 #'   Stata's missing string is `""`.
 #'
-#'   With `factors = TRUE`, a column with value labels is a factor whose
+#'   With `factors = TRUE`, a column with value labels on any non-missing
+#'   value is a factor whose
 #'   levels are, in order of value, the labelled codes and the unlabelled
 #'   values read (as `as.character()` of the integer or double); codes
 #'   with the same text share a level, and labelled missing values are
 #'   `NA`. With `factors = FALSE` it keeps its numbers and has a `labels`
 #'   attribute: the codes named by their text.
 #'
-#'   With `dates = TRUE`, a column without value labels whose format
+#'   Labels on missing values alone are dropped, since those values are
+#'   `NA`.
+#'
+#'   With `dates = TRUE`, a column without such value labels whose format
 #'   starts with `%td`, `%-td` or `%d` is a `Date`, and one whose format
 #'   starts with `%tc` or `%-tc` is a `POSIXct` in UTC. `%tC`, which
 #'   counts leap seconds, and the other `%t` formats stay numbers.

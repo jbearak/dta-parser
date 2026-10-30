@@ -443,7 +443,12 @@ pub unsafe extern "C" fn dtaparser_read(
             // Numeric columns are filled in place; string columns gather
             // their text here and become packed columns after the read.
             let target = if var.storage.is_numeric() {
-                let set = sets.iter().find(|s| s.name == var.value_labels);
+                let mut set = sets.iter().find(|s| s.name == var.value_labels);
+                // Plain mode reads every missing value as NA, so a set that
+                // labels only missing values labels nothing it returns.
+                if mode != Mode::Stata {
+                    set = set.filter(|s| s.labels.iter().any(|l| l.missing == 0));
+                }
                 let kind = Kind::of(mode, var, set.is_some());
                 let x = alloc_elt(out, k, kind.sexptype(), nobs)?;
                 match mode {

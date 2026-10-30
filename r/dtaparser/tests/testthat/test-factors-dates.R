@@ -16,6 +16,14 @@ test_that("labelled columns become factors in order of value", {
   expect_identical(levels(got$d), c("one", "1.5"))
 })
 
+test_that("labels on missing values alone make no factor", {
+  skip_if_not_installed("haven")
+  path <- write_fixture(x = col(c(2100, haven::tagged_na("d"), NA), "double",
+                                labels = c("Don't know" = haven::tagged_na("d"))))
+  x <- read_dta(path)$x
+  expect_identical(x, c(2100, NA, NA))
+})
+
 test_that("factor levels come from the rows read", {
   path <- write_fixture(l = col(c(1, 7, 9), "byte", labels = c(one = 1)))
   expect_identical(levels(read_dta(path)$l), c("one", "7", "9"))

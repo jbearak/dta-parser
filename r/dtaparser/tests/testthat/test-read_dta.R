@@ -42,6 +42,11 @@ test_that("read_dta matches haven on every fixture", {
       # haven 2.5.5 reads these value labels as empty, so it gives
       # numbers where read_dta gives a factor.
       if (name %in% c("readstat_104.dta", "readstat_108.dta") && col == "b") next
+      # On purpose: labels on missing values alone make no factor.
+      if (inherits(y, "haven_labelled") && !any(!is.na(attr(y, "labels")))) {
+        expect_equal(as.double(plain(x)), plain(y), label = what)
+        next
+      }
       if (inherits(y, "haven_labelled")) {
         # haven's levels for integers R prints differently as doubles
         # ("1e+05") differ on purpose (tested below).

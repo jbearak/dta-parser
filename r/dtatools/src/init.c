@@ -1,4 +1,4 @@
-// dtatools reads and writes files through dtaparser (ADR 0015): the
+// dtatools reads and writes files through dtaparser (ADR 0016): the
 // routines here forward to C functions dtaparser registers with
 // R_RegisterCCallable. dta_link fetches them; .onLoad calls it once
 // dtaparser's namespace, and so its library, is loaded.
