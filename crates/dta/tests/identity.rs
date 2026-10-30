@@ -190,5 +190,12 @@ fn the_writer_s_bytes_have_not_changed() {
 #[test]
 fn small_blocks_and_slabs_give_the_same_bytes() {
     // Blocks of a few rows, slabs of one or two: every boundary is crossed.
-    check(&WriteOptions { block_bytes: 300, slab_bytes: 64 });
+    check(&WriteOptions { threads: 1, block_bytes: 300, slab_bytes: 64, ..WriteOptions::default() });
+}
+
+#[test]
+fn parallel_writes_give_the_same_bytes() {
+    for (block_bytes, slab_bytes) in [(300, 64), (5000, 700), (8 << 20, 256 << 10)] {
+        check(&WriteOptions { threads: 4, parallel_bytes: 0, block_bytes, slab_bytes, ..WriteOptions::default() });
+    }
 }

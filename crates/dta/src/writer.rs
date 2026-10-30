@@ -11,7 +11,10 @@ use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 use std::io::Write;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::error::{Error, Result};
+use crate::threads::panic_message;
 use crate::missing::{self, DOUBLE_MISSING, FLOAT_MISSING, LONG_MISSING};
 use crate::reader::{Characteristic, ValueLabelSet};
 use crate::types::StorageType;
@@ -94,6 +97,15 @@ const STRN_MAX: usize = 2045;
 /// for tests.
 #[derive(Debug, Clone, Copy)]
 pub struct WriteOptions {
+    /// Worker threads: 0 for the default (see [`crate::threads`]), 1 to
+    /// write on the calling thread alone.
+    pub threads: usize,
+    /// Writes of fewer bytes of numbers than this stay on one thread.
+    #[doc(hidden)]
+    pub parallel_bytes: usize,
+    /// Test only: a worker panics on this slab.
+    #[doc(hidden)]
+    pub panic_on_slab: Option<usize>,
     /// Rows are built this many bytes at a time (at least one row).
     #[doc(hidden)]
     pub block_bytes: usize,
@@ -105,7 +117,7 @@ pub struct WriteOptions {
 
 impl Default for WriteOptions {
     fn default() -> Self {
-        WriteOptions { block_bytes: 8 << 20, slab_bytes: 256 << 10 }
+        WriteOptions { threads: 0, parallel_bytes: 16 << 20, block_bytes: 8 << 20, slab_bytes: 256 << 10, panic_on_slab: None }
     }
 }
 
@@ -117,8 +129,17 @@ pub fn write(data: &Dataset, out: impl Write) -> Result<()> {
 /// [`write`] with options.
 pub fn write_with(data: &Dataset, out: impl Write, options: &WriteOptions) -> Result<()> {
     let mut out = std::io::BufWriter::with_capacity(1 << 16, out);
-    let plan = Plan::new(data)?;
-    plan.write(data, &mut out, options)?;
+    // Parallel only for enough numbers to share out.
+    let numeric_bytes: usize = data
+        .variables
+        .iter()
+        .filter(|v| matches!(v.values, Values::Numbers(_)))
+        .map(|v| v.storage.width())
+        .sum::<usize>()
+        .saturating_mul(data.nobs);
+    let threads = if numeric_bytes >= options.parallel_bytes { crate::threads::resolve(options.threads) } else { 1 };
+    let plan = Plan::new(data, threads)?;
+    plan.write(data, &mut out, options, threads)?;
     out.flush()?;
     Ok(())
 }
@@ -144,7 +165,12 @@ struct Plan<'a> {
 }
 
 impl<'a> Plan<'a> {
-    fn new(data: &Dataset<'a>) -> Result<Plan<'a>> {
+    /// Check `data` and size its strings. Numeric columns are checked by
+    /// `threads` threads (the caller among them) while the caller checks
+    /// the string columns. The error returned is the one a check of each
+    /// variable in turn (its metadata, then its values in row order)
+    /// would meet first.
+    fn new(data: &Dataset<'a>, threads: usize) -> Result<Plan<'a>> {
         let k = data.variables.len();
         if k > 32767 {
             return Err(Error::new(format!("release 118 holds at most 32,767 variables, not {k}")));
@@ -153,72 +179,79 @@ impl<'a> Plan<'a> {
         if data.sort_order.iter().any(|&s| s >= k) {
             return Err(Error::new("the sort order names a variable that does not exist"));
         }
+        let mut errors: Vec<Option<Error>> = data.variables.iter().map(|v| check_metadata(v).err()).collect();
+        // What workers may see of each numeric column: no string closure,
+        // which need not be Sync.
+        let numeric: Vec<(usize, &FillNumbers, &str, StorageType)> = data
+            .variables
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| match &v.values {
+                Values::Numbers(fill) if errors[i].is_none() => Some((i, &**fill, v.name.as_str(), v.storage)),
+                _ => None,
+            })
+            .collect();
+        let nobs = data.nobs;
+        let mut strings: Vec<Option<StringPlan<'a>>> = (0..k).map(|_| None).collect();
+        let next = AtomicUsize::new(0);
+        // Take numeric columns until none is left; each result is
+        // (variable, its first error).
+        let check_next = || {
+            let mut found = Vec::new();
+            loop {
+                let j = next.fetch_add(1, Ordering::Relaxed);
+                let Some(&(i, fill, name, storage)) = numeric.get(j) else { return found };
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| check_numbers(name, storage, fill, nobs)))
+                    .unwrap_or_else(|p| Err(Error::new(format!("{name}: {}", panic_message(&*p)))));
+                if let Err(e) = result {
+                    found.push((i, e));
+                }
+            }
+        };
+        let numeric_errors = std::thread::scope(|scope| {
+            let workers: Vec<_> = (1..threads)
+                .filter(|_| numeric.len() > 1)
+                .filter_map(|_| std::thread::Builder::new().spawn_scoped(scope, check_next).ok())
+                .collect();
+            for (i, v) in data.variables.iter().enumerate() {
+                if errors[i].is_none() && !matches!(v.values, Values::Numbers(_)) {
+                    match plan_strings(i, v, data.nobs) {
+                        Ok(plan) => strings[i] = Some(plan),
+                        Err(e) => errors[i] = Some(e),
+                    }
+                }
+            }
+            let mut found = check_next();
+            for w in workers {
+                // check_next catches panics, so a worker returns.
+                found.extend(w.join().unwrap_or_default());
+            }
+            found
+        });
+        for (i, e) in numeric_errors {
+            errors[i] = Some(e);
+        }
+        if let Some(e) = errors.into_iter().flatten().next() {
+            return Err(e);
+        }
         let mut types = Vec::with_capacity(k);
         let mut strl_bytes = 0u64;
         let mut strl_first = Vec::with_capacity(k);
         let mut strl_rows = Vec::with_capacity(k);
-        for (i, v) in data.variables.iter().enumerate() {
-            strl_first.push(HashMap::default());
-            strl_rows.push(Vec::new());
-            check_name(&v.name)?;
-            check_text(&format!("the label of {}", v.name), &v.label, 80, VAR_LABEL_LEN - 1)?;
-            if v.format.len() >= FORMAT_LEN {
-                return Err(Error::new(format!("the format of {} is too long", v.name)));
-            }
-            if !v.value_labels.is_empty() {
-                check_name(&v.value_labels)?;
-            }
-            types.push(match &v.values {
-                Values::Numbers(fill) => {
-                    if !v.storage.is_numeric() {
-                        return Err(Error::new(format!("{} has numbers but storage {}", v.name, v.storage.name())));
-                    }
-                    check_numbers(v, fill, data.nobs)?;
-                    v.storage
+        for (v, plan) in data.variables.iter().zip(strings) {
+            match plan {
+                Some(p) => {
+                    types.push(p.storage);
+                    strl_bytes += p.strl_bytes;
+                    strl_first.push(p.strl_first);
+                    strl_rows.push(p.strl_rows);
                 }
-                values => {
-                    // Text must be UTF-8 without NULs: readers stop a string at a NUL.
-                    let check = |(s, binary): (&[u8], bool), row: usize| {
-                        if !binary && (s.contains(&0) || std::str::from_utf8(s).is_err()) {
-                            Err(Error::new(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
-                        } else {
-                            Ok(())
-                        }
-                    };
-                    let longest = (0..data.nobs).map(|row| values.string(row).0.len()).max().unwrap_or(0);
-                    let strl = matches!(values, Values::StrLs(_)) || v.storage == StorageType::StrL;
-                    if longest > STRN_MAX || strl {
-                        if data.nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
-                            return Err(Error::new("too many rows or variables for strLs in release 118"));
-                        }
-                        // Each distinct text is checked and counted once.
-                        let mut first = HashMap::default();
-                        let mut recent = RecentTexts::new();
-                        for row in 0..data.nobs {
-                            let s = values.string(row);
-                            if recent.get(s).is_some() {
-                                continue;
-                            }
-                            let f = *first.entry(s).or_insert_with(|| {
-                                strl_rows[i].push(row);
-                                row
-                            });
-                            if f == row {
-                                check(s, row)?;
-                                strl_bytes += gso_len(s) as u64;
-                            }
-                            recent.put(s, f);
-                        }
-                        strl_first[i] = first;
-                        StorageType::StrL
-                    } else {
-                        for row in 0..data.nobs {
-                            check(values.string(row), row)?;
-                        }
-                        StorageType::Str(longest.max(1) as u16)
-                    }
+                None => {
+                    types.push(v.storage);
+                    strl_first.push(HashMap::default());
+                    strl_rows.push(Vec::new());
                 }
-            });
+            }
         }
         let row_len = types.iter().map(|t| t.width()).sum();
         Ok(Plan {
@@ -232,7 +265,7 @@ impl<'a> Plan<'a> {
         })
     }
 
-    fn write(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions) -> Result<()> {
+    fn write(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions, threads: usize) -> Result<()> {
         let k = data.variables.len();
         let nobs = data.nobs as u64;
 
@@ -308,7 +341,7 @@ impl<'a> Plan<'a> {
         debug_assert_eq!(head.len() as u64, data_at + 6);
         out.write_all(&head)?;
 
-        self.write_rows(data, out, options)?;
+        self.write_rows(data, out, options, threads)?;
 
         out.write_all(b"</data><strls>")?;
         self.write_strls(data, out)?;
@@ -318,19 +351,25 @@ impl<'a> Plan<'a> {
         Ok(())
     }
 
-    fn write_rows(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions) -> Result<()> {
+    fn write_rows(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions, threads: usize) -> Result<()> {
         if self.row_len == 0 || data.nobs == 0 {
             return Ok(());
         }
         let block_rows = (options.block_bytes / self.row_len).max(1);
         let slab_rows = (options.slab_bytes / self.row_len).max(1);
-        // Every byte of a row is written each time (values, string
-        // padding, strL references), so the buffer is zeroed only once.
-        let mut buf = vec![0u8; block_rows.min(data.nobs) * self.row_len];
         // Address caches for strL variables only.
         let mut recent: Vec<Option<RecentTexts>> =
             self.types.iter().map(|&t| (t == StorageType::StrL).then(RecentTexts::new)).collect();
+        // A row longer than a block makes blocks of one row, past the
+        // memory bound two blocks in flight would keep: write serially.
+        if threads > 1 && self.row_len <= options.block_bytes && data.nobs > block_rows {
+            return self.write_rows_parallel(data, out, options, threads, block_rows, slab_rows, &mut recent);
+        }
+        // Every byte of a row is written each time (values, string
+        // padding, strL references), so the buffer is zeroed only once.
+        let mut buf = vec![0u8; block_rows.min(data.nobs) * self.row_len];
         let mut scratch = Scratch::default();
+        let numbers = Numbers::of(data, &self.types);
         let mut row = 0;
         while row < data.nobs {
             let n = block_rows.min(data.nobs - row);
@@ -338,12 +377,82 @@ impl<'a> Plan<'a> {
             for (k, slab) in block.chunks_mut(slab_rows * self.row_len).enumerate() {
                 let first = row + k * slab_rows;
                 self.fill_strings(data, slab, first, &mut recent);
-                self.fill_numbers(data, slab, first, &mut scratch);
+                fill_numbers(&numbers, slab, self.row_len, first, &mut scratch);
             }
             out.write_all(block)?;
             row += n;
         }
         Ok(())
+    }
+
+    /// `write_rows` with workers. Per block: the caller fills each
+    /// slab's string cells and hands the slab over; workers fill the
+    /// handed-over slabs' numeric cells; meanwhile the caller writes the
+    /// previous block. A slab is written by the caller, then by one
+    /// worker, never by both at once.
+    #[allow(clippy::too_many_arguments)]
+    fn write_rows_parallel(
+        &self,
+        data: &Dataset,
+        out: &mut impl Write,
+        options: &WriteOptions,
+        threads: usize,
+        block_rows: usize,
+        slab_rows: usize,
+        recent: &mut [Option<RecentTexts>],
+    ) -> Result<()> {
+        let row_len = self.row_len;
+        let block_len = block_rows * row_len;
+        let slab_len = slab_rows * row_len;
+        let mut bufs = [vec![0u8; block_len], vec![0u8; block_len]];
+        let shared = Shared::default();
+        // Only the numeric fills cross to workers; they are Sync.
+        let numbers = Numbers::of(data, &self.types);
+        std::thread::scope(|scope| -> Result<()> {
+            let guard = StopOnDrop(&shared);
+            let workers = (0..threads)
+                .filter_map(|_| {
+                    std::thread::Builder::new()
+                        .spawn_scoped(scope, || shared.work(&numbers, row_len, options.panic_on_slab))
+                        .ok()
+                })
+                .count();
+            if workers == 0 {
+                drop(guard);
+                return Err(Error::new("could not start a writer thread"));
+            }
+            let mut row = 0;
+            let mut block_no = 0;
+            let mut pending: Option<usize> = None;
+            while row < data.nobs {
+                let n = block_rows.min(data.nobs - row);
+                let buf = &mut bufs[block_no % 2];
+                let base = buf.as_mut_ptr();
+                let slabs = n.div_ceil(slab_rows);
+                shared.start(SlabSource { base: Pointer(base), first: row, slab_rows, slab_len, len: n * row_len }, slabs);
+                for k in 0..slabs {
+                    let start = k * slab_len;
+                    let end = ((k + 1) * slab_len).min(n * row_len);
+                    // SAFETY: slab k is not yet handed over, so no worker
+                    // touches it, and slabs do not overlap.
+                    let slab = unsafe { std::slice::from_raw_parts_mut(base.add(start), end - start) };
+                    self.fill_strings(data, slab, row + k * slab_rows, recent);
+                    shared.hand_over();
+                }
+                if let Some(len) = pending.take() {
+                    out.write_all(&bufs[(block_no + 1) % 2][..len])?;
+                }
+                shared.wait_done()?;
+                pending = Some(n * row_len);
+                row += n;
+                block_no += 1;
+            }
+            if let Some(len) = pending {
+                out.write_all(&bufs[(block_no + 1) % 2][..len])?;
+            }
+            drop(guard);
+            Ok(())
+        })
     }
 
     /// The string and strL cells of the rows in `slab`, the first of
@@ -383,28 +492,6 @@ impl<'a> Plan<'a> {
         }
     }
 
-    /// The numeric cells of the rows in `slab`, the first of which is
-    /// row `first`.
-    fn fill_numbers(&self, data: &Dataset, slab: &mut [u8], first: usize, scratch: &mut Scratch) {
-        let row_len = self.row_len;
-        let rows = slab.len() / row_len;
-        let mut offset = 0;
-        for (v, t) in data.variables.iter().zip(&self.types) {
-            if let Values::Numbers(fill) = &v.values {
-                let mut done = 0;
-                while done < rows {
-                    let n = BLOCK.min(rows - done);
-                    let (values, codes) = (&mut scratch.values[..n], &mut scratch.codes[..n]);
-                    fill(first + done, values, codes);
-                    let cells = &mut slab[done * row_len..(done + n) * row_len];
-                    encode(cells, row_len, offset, *t, values, codes);
-                    done += n;
-                }
-            }
-            offset += t.width();
-        }
-    }
-
     fn write_strls(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
         for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
             if *t != StorageType::StrL {
@@ -430,9 +517,249 @@ impl<'a> Plan<'a> {
     }
 }
 
+/// What the first pass learns about a string variable.
+struct StringPlan<'a> {
+    storage: StorageType,
+    strl_bytes: u64,
+    strl_first: HashMap<StrlText<'a>, usize, BuildHasherDefault<FastHash>>,
+    strl_rows: Vec<usize>,
+}
+
+/// The checks of variable `v` that need none of its values.
+fn check_metadata(v: &WriteVariable) -> Result<()> {
+    check_name(&v.name)?;
+    check_text(&format!("the label of {}", v.name), &v.label, 80, VAR_LABEL_LEN - 1)?;
+    if v.format.len() >= FORMAT_LEN {
+        return Err(Error::new(format!("the format of {} is too long", v.name)));
+    }
+    if !v.value_labels.is_empty() {
+        check_name(&v.value_labels)?;
+    }
+    if matches!(v.values, Values::Numbers(_)) && !v.storage.is_numeric() {
+        return Err(Error::new(format!("{} has numbers but storage {}", v.name, v.storage.name())));
+    }
+    Ok(())
+}
+
+/// Check the string variable `v`, the `i`th, and choose its storage type.
+fn plan_strings<'a>(i: usize, v: &WriteVariable<'a>, nobs: usize) -> Result<StringPlan<'a>> {
+    let values = &v.values;
+    // Text must be UTF-8 without NULs: readers stop a string at a NUL.
+    let check = |(s, binary): (&[u8], bool), row: usize| {
+        if !binary && (s.contains(&0) || std::str::from_utf8(s).is_err()) {
+            Err(Error::new(format!("{} row {} is not UTF-8 text without NULs", v.name, row + 1)))
+        } else {
+            Ok(())
+        }
+    };
+    let longest = (0..nobs).map(|row| values.string(row).0.len()).max().unwrap_or(0);
+    let strl = matches!(values, Values::StrLs(_)) || v.storage == StorageType::StrL;
+    let mut plan = StringPlan { storage: StorageType::StrL, strl_bytes: 0, strl_first: HashMap::default(), strl_rows: Vec::new() };
+    if longest > STRN_MAX || strl {
+        if nobs as u64 >= 1 << 48 || i + 1 >= 1 << 16 {
+            return Err(Error::new("too many rows or variables for strLs in release 118"));
+        }
+        // Each distinct text is checked and counted once.
+        let mut recent = RecentTexts::new();
+        for row in 0..nobs {
+            let s = values.string(row);
+            if recent.get(s).is_some() {
+                continue;
+            }
+            let f = *plan.strl_first.entry(s).or_insert_with(|| {
+                plan.strl_rows.push(row);
+                row
+            });
+            if f == row {
+                check(s, row)?;
+                plan.strl_bytes += gso_len(s) as u64;
+            }
+            recent.put(s, f);
+        }
+    } else {
+        for row in 0..nobs {
+            check(values.string(row), row)?;
+        }
+        plan.storage = StorageType::Str(longest.max(1) as u16);
+    }
+    Ok(plan)
+}
+
 /// Bytes a strL takes in the strL section.
 fn gso_len((s, binary): (&[u8], bool)) -> usize {
     3 + 4 + 8 + 1 + 4 + s.len() + !binary as usize
+}
+
+/// The numeric columns, for workers: each one's fill, storage type and
+/// offset in the row.
+struct Numbers<'d, 'a>(Vec<(&'d FillNumbers<'a>, StorageType, usize)>);
+
+impl<'d, 'a> Numbers<'d, 'a> {
+    fn of(data: &'d Dataset<'a>, types: &[StorageType]) -> Self {
+        let mut offset = 0;
+        let mut out = Vec::new();
+        for (v, &t) in data.variables.iter().zip(types) {
+            if let Values::Numbers(fill) = &v.values {
+                out.push((&**fill, t, offset));
+            }
+            offset += t.width();
+        }
+        Numbers(out)
+    }
+}
+
+/// A block's buffer, seen by workers through a raw pointer.
+#[derive(Clone, Copy)]
+struct Pointer(*mut u8);
+
+// SAFETY: workers write only the numeric cells of slabs handed to them,
+// one worker per slab, while the caller does not touch those slabs.
+unsafe impl Send for Pointer {}
+unsafe impl Sync for Pointer {}
+
+/// The block being built: where its slabs are and which rows they hold.
+#[derive(Clone, Copy)]
+struct SlabSource {
+    base: Pointer,
+    first: usize,
+    slab_rows: usize,
+    slab_len: usize,
+    len: usize,
+}
+
+#[derive(Default)]
+struct Shared {
+    state: std::sync::Mutex<Progress>,
+    /// Workers wait here for a slab.
+    slab_ready: std::sync::Condvar,
+    /// The caller waits here for the block to be finished.
+    block_done: std::sync::Condvar,
+}
+
+#[derive(Default)]
+struct Progress {
+    block: Option<SlabSource>,
+    slabs: usize,
+    /// Slabs handed over, taken by a worker, and finished.
+    ready: usize,
+    taken: usize,
+    done: usize,
+    /// Set when the write ends, for any reason.
+    stop: bool,
+    /// A worker's panic, as an error.
+    failed: Option<Error>,
+}
+
+impl Shared {
+    fn lock(&self) -> std::sync::MutexGuard<'_, Progress> {
+        self.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn start(&self, block: SlabSource, slabs: usize) {
+        let mut p = self.lock();
+        *p = Progress { block: Some(block), slabs, stop: p.stop, ..Progress::default() };
+    }
+
+    fn hand_over(&self) {
+        self.lock().ready += 1;
+        self.slab_ready.notify_one();
+    }
+
+    /// Wait until every slab of the block is finished.
+    fn wait_done(&self) -> Result<()> {
+        let mut p = self.lock();
+        loop {
+            if let Some(e) = p.failed.take() {
+                return Err(e);
+            }
+            if p.done == p.slabs {
+                return Ok(());
+            }
+            if p.stop {
+                return Err(Error::new("the write was stopped"));
+            }
+            p = self.block_done.wait(p).unwrap_or_else(std::sync::PoisonError::into_inner);
+        }
+    }
+
+    fn stop(&self) {
+        self.lock().stop = true;
+        self.slab_ready.notify_all();
+        self.block_done.notify_all();
+    }
+
+    /// A worker: fill the numeric cells of handed-over slabs until told
+    /// to stop.
+    fn work(&self, numbers: &Numbers, row_len: usize, panic_on: Option<usize>) {
+        let mut scratch = Scratch::default();
+        let mut p = self.lock();
+        let mut slab_count = 0;
+        loop {
+            if p.stop {
+                return;
+            }
+            let Some(block) = p.block.filter(|_| p.taken < p.ready) else {
+                p = self.slab_ready.wait(p).unwrap_or_else(std::sync::PoisonError::into_inner);
+                continue;
+            };
+            let k = p.taken;
+            p.taken += 1;
+            drop(p);
+            let filled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                if panic_on == Some(slab_count) {
+                    panic!("test panic on slab {slab_count}");
+                }
+                let start = k * block.slab_len;
+                let end = ((k + 1) * block.slab_len).min(block.len);
+                // SAFETY: slab k was handed over and taken by this worker
+                // alone; the caller no longer touches it.
+                let slab = unsafe { std::slice::from_raw_parts_mut(block.base.0.add(start), end - start) };
+                fill_numbers(numbers, slab, row_len, block.first + k * block.slab_rows, &mut scratch);
+            }));
+            slab_count += 1;
+            p = self.lock();
+            match filled {
+                Ok(()) => p.done += 1,
+                Err(payload) => {
+                    p.failed = Some(Error::new(format!("a writer thread failed: {}", panic_message(&*payload))));
+                    p.stop = true;
+                }
+            }
+            if p.stop {
+                // Wake the other workers to exit, and the caller.
+                self.slab_ready.notify_all();
+                self.block_done.notify_all();
+            } else if p.done == p.slabs {
+                self.block_done.notify_all();
+            }
+        }
+    }
+}
+
+/// Stops the workers when dropped, so an early return or a panic on the
+/// caller never leaves them waiting.
+struct StopOnDrop<'s>(&'s Shared);
+
+impl Drop for StopOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.stop();
+    }
+}
+
+/// The numeric cells of the rows in `slab`, the first of which is row
+/// `first`.
+fn fill_numbers(numbers: &Numbers, slab: &mut [u8], row_len: usize, first: usize, scratch: &mut Scratch) {
+    let rows = slab.len() / row_len;
+    for &(fill, t, offset) in &numbers.0 {
+        let mut done = 0;
+        while done < rows {
+            let n = BLOCK.min(rows - done);
+            let (values, codes) = (&mut scratch.values[..n], &mut scratch.codes[..n]);
+            fill(first + done, values, codes);
+            encode(&mut slab[done * row_len..(done + n) * row_len], row_len, offset, t, values, codes);
+            done += n;
+        }
+    }
 }
 
 /// Buffers for one block of a numeric column.
@@ -489,19 +816,19 @@ fn encode(rows: &mut [u8], row_len: usize, offset: usize, t: StorageType, values
     }
 }
 
-/// An error unless every value of the numeric variable `v` (of `nobs`
-/// rows, filled by `fill`) fits its storage type; the first bad row is
+/// An error unless every value of the numeric variable `name` (of
+/// `nobs` rows, filled by `fill`) fits its storage type; the first bad row is
 /// the one reported.
-fn check_numbers(v: &WriteVariable, fill: &FillNumbers, nobs: usize) -> Result<()> {
+fn check_numbers(name: &str, storage: StorageType, fill: &FillNumbers, nobs: usize) -> Result<()> {
     let mut scratch = Scratch::default();
-    let bounds = Bounds::of(v.storage);
+    let bounds = Bounds::of(storage);
     let mut row = 0;
     while row < nobs {
         let n = BLOCK.min(nobs - row);
         let (values, codes) = (&mut scratch.values[..n], &mut scratch.codes[..n]);
         fill(row, values, codes);
         if let Some(i) = (0..n).find(|&i| !bounds.allows(values[i], codes[i])) {
-            return check_value(v, (values[i], codes[i]), row + i);
+            return check_value(name, storage, (values[i], codes[i]), row + i);
         }
         row += n;
     }
@@ -544,18 +871,18 @@ impl Bounds {
     }
 }
 
-/// An error unless `value` fits `v`'s storage type.
-fn check_value(v: &WriteVariable, (value, code): (f64, u8), row: usize) -> Result<()> {
+/// An error unless `value` fits `storage`.
+fn check_value(name: &str, storage: StorageType, (value, code): (f64, u8), row: usize) -> Result<()> {
     if code > missing::LAST {
-        return Err(Error::new(format!("{} row {}: {} is not a missing code", v.name, row + 1, code)));
+        return Err(Error::new(format!("{} row {}: {} is not a missing code", name, row + 1, code)));
     }
-    if !Bounds::of(v.storage).allows(value, code) {
+    if !Bounds::of(storage).allows(value, code) {
         return Err(Error::new(format!(
             "{} row {}: {} does not fit storage type {}",
-            v.name,
+            name,
             row + 1,
             value,
-            v.storage.name()
+            storage.name()
         )));
     }
     Ok(())
