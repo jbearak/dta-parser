@@ -240,6 +240,15 @@ Target: wide.dta's full read in TypeScript at least 15% faster (the
 measured `append` and copy-out shares are 15% and 23%). If it misses
 10%, the change is dropped.
 
+Outcome (implemented): only the JavaScript half is kept. Decoding
+straight into the call's columns made decoding itself slower by about
+what `append` had cost (1,219 ms against 883 + 336 ms): the read is
+bound by memory bandwidth, and decoding into a 2 MiB chunk that stays
+in cache, then copying it, costs the same as decoding into 64 MiB. So
+the core keeps `read_chunks`. Setting from a view of module memory
+instead of `.slice()` then `.set()` took the full read from 2,114–2,134
+to 1,908–1,932 ms (best of 2, three alternating runs each): 10%.
+
 ### M. wasm memory
 
 **M1. A compact strL index in the core.** Replace

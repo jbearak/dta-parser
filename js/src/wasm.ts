@@ -176,7 +176,11 @@ export function read(handle: number, columns: number[], start: number, count: nu
   });
 }
 
-/** A copy of part `part` of read column `k` (see dta_column_part). */
+/**
+ * A view of part `part` of read column `k` (see dta_column_part), in
+ * module memory: valid until the next call that may allocate (a read,
+ * open or write), so copy what you keep before making one.
+ */
 export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "f64"): Float64Array;
 export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "u8"): Uint8Array;
 export function part(handle: number, k: number, kind: 0 | 1 | 2, as: "u32"): Uint32Array;
@@ -192,9 +196,9 @@ export function part(
     // Views are made after the call, since a call can grow (and so
     // replace) the module's memory.
     const buffer = wasm.memory.buffer;
-    if (as === "f64") return new Float64Array(buffer, ptr, n).slice();
-    if (as === "u32") return new Uint32Array(buffer, ptr, n).slice();
-    return new Uint8Array(buffer, ptr, n).slice();
+    if (as === "f64") return new Float64Array(buffer, ptr, n);
+    if (as === "u32") return new Uint32Array(buffer, ptr, n);
+    return new Uint8Array(buffer, ptr, n);
   });
 }
 
