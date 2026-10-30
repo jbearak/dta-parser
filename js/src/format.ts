@@ -116,6 +116,9 @@ interface When {
 const MAX_DAYS = 100_000_000;
 
 function formatTime(v: number, unit: string, mask: string): string {
+  // Weeks, months, quarters, halves and years as far from 1960 as a
+  // JavaScript Date reaches; past that, the plain number.
+  if (unit !== "d" && unit !== "c" && unit !== "C" && !(Math.abs(v) <= 52 * 300_000)) throw new RangeError("date out of range");
   const year = (per: number) => 1960 + Math.floor(Math.floor(v) / per);
   switch (unit) {
     case "d":

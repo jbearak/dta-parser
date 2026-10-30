@@ -71,6 +71,8 @@ test("values a format cannot show fall back to the plain number", () => {
   assert.equal(formatValue(1e300, "%tdCCYY-NN-DD"), "1e+300");
   assert.equal(formatValue(8.7e15, "%tc"), "8.7e+15");
   assert.equal(formatValue(1.5, "%9.101f"), "1.5");
+  for (const f of ["%tm", "%tq", "%th", "%tw", "%ty"]) assert.equal(formatValue(1e300, f), "1e+300");
+  assert.equal(formatValue(2024 * 12, "%tm"), "3984m1");
 });
 
 test("formatValue never throws", () => {
