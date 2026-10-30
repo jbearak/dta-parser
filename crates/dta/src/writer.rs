@@ -3,8 +3,9 @@
 //! A first pass over the data checks every value fits its storage type
 //! and sizes string variables and strLs. With every section's size then
 //! known, the map is written up front with its final offsets, and the
-//! rows are built into a buffer of about 8 MiB at a time. Nothing holds a
-//! second copy of the data.
+//! rows are built into a buffer of about 8 MiB at a time, a slab of rows
+//! at a time and column by column within it. Nothing holds a second copy
+//! of the data.
 
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
@@ -17,15 +18,35 @@ use crate::types::StorageType;
 
 /// One variable's values, read by row as the writer needs them.
 pub enum Values<'a> {
-    /// A value and its missing code (0, or 1 to 27 for `.` to `.z`).
-    Numbers(Box<dyn Fn(usize) -> (f64, u8) + 'a>),
+    /// Values and missing codes a block of rows at a time: called with
+    /// the block's first row and buffers of the block's length (at most
+    /// [`BLOCK`] rows), it fills each row's value and missing code (0, or
+    /// 1 to 27 for `.` to `.z`). See [`Values::numbers_by_row`].
+    Numbers(Box<FillNumbers<'a>>),
     /// UTF-8 text.
     Strings(Box<dyn Fn(usize) -> &'a [u8] + 'a>),
     /// strLs, each UTF-8 text or, where the flag is true, binary bytes.
     StrLs(Box<dyn Fn(usize) -> (&'a [u8], bool) + 'a>),
 }
 
+/// A [`Values::Numbers`] fill: first row, values, missing codes.
+pub type FillNumbers<'a> = dyn Fn(usize, &mut [f64], &mut [u8]) + Sync + 'a;
+
+/// The most rows a [`Values::Numbers`] fill is asked for at once.
+pub const BLOCK: usize = 1024;
+
 impl<'a> Values<'a> {
+    /// Numbers given a row at a time: `get(row)` is the row's value and
+    /// missing code. `get` is inlined into the block loop, so this costs
+    /// one dynamic call per block, not per row.
+    pub fn numbers_by_row(get: impl Fn(usize) -> (f64, u8) + Sync + 'a) -> Self {
+        Values::Numbers(Box::new(move |first, values, codes| {
+            for (i, (v, c)) in values.iter_mut().zip(codes.iter_mut()).enumerate() {
+                (*v, *c) = get(first + i);
+            }
+        }))
+    }
+
     /// A string row's bytes and whether they are binary.
     fn string(&self, row: usize) -> (&'a [u8], bool) {
         match self {
@@ -68,13 +89,36 @@ const NAME_LEN: usize = 129;
 const FORMAT_LEN: usize = 57;
 const VAR_LABEL_LEN: usize = 321;
 const STRN_MAX: usize = 2045;
-const ROWS_BYTES: usize = 8 << 20;
+
+/// How to write. The defaults suit every caller; the hidden fields are
+/// for tests.
+#[derive(Debug, Clone, Copy)]
+pub struct WriteOptions {
+    /// Rows are built this many bytes at a time (at least one row).
+    #[doc(hidden)]
+    pub block_bytes: usize,
+    /// Within a block, rows are filled column by column this many bytes
+    /// at a time (at least one row), so a slab stays in cache.
+    #[doc(hidden)]
+    pub slab_bytes: usize,
+}
+
+impl Default for WriteOptions {
+    fn default() -> Self {
+        WriteOptions { block_bytes: 8 << 20, slab_bytes: 256 << 10 }
+    }
+}
 
 /// Write `data` as release 118.
 pub fn write(data: &Dataset, out: impl Write) -> Result<()> {
+    write_with(data, out, &WriteOptions::default())
+}
+
+/// [`write`] with options.
+pub fn write_with(data: &Dataset, out: impl Write, options: &WriteOptions) -> Result<()> {
     let mut out = std::io::BufWriter::with_capacity(1 << 16, out);
     let plan = Plan::new(data)?;
-    plan.write(data, &mut out)?;
+    plan.write(data, &mut out, options)?;
     out.flush()?;
     Ok(())
 }
@@ -125,13 +169,11 @@ impl<'a> Plan<'a> {
                 check_name(&v.value_labels)?;
             }
             types.push(match &v.values {
-                Values::Numbers(get) => {
+                Values::Numbers(fill) => {
                     if !v.storage.is_numeric() {
                         return Err(Error::new(format!("{} has numbers but storage {}", v.name, v.storage.name())));
                     }
-                    for row in 0..data.nobs {
-                        check_value(v, get(row), row)?;
-                    }
+                    check_numbers(v, fill, data.nobs)?;
                     v.storage
                 }
                 values => {
@@ -190,7 +232,7 @@ impl<'a> Plan<'a> {
         })
     }
 
-    fn write(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
+    fn write(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions) -> Result<()> {
         let k = data.variables.len();
         let nobs = data.nobs as u64;
 
@@ -266,7 +308,7 @@ impl<'a> Plan<'a> {
         debug_assert_eq!(head.len() as u64, data_at + 6);
         out.write_all(&head)?;
 
-        self.write_rows(data, out)?;
+        self.write_rows(data, out, options)?;
 
         out.write_all(b"</data><strls>")?;
         self.write_strls(data, out)?;
@@ -276,52 +318,91 @@ impl<'a> Plan<'a> {
         Ok(())
     }
 
-    fn write_rows(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
-        if self.row_len == 0 {
+    fn write_rows(&self, data: &Dataset, out: &mut impl Write, options: &WriteOptions) -> Result<()> {
+        if self.row_len == 0 || data.nobs == 0 {
             return Ok(());
         }
-        let rows_per_chunk = (ROWS_BYTES / self.row_len).max(1);
-        let mut buf = Vec::with_capacity(rows_per_chunk.min(data.nobs) * self.row_len);
+        let block_rows = (options.block_bytes / self.row_len).max(1);
+        let slab_rows = (options.slab_bytes / self.row_len).max(1);
+        // Every byte of a row is written each time (values, string
+        // padding, strL references), so the buffer is zeroed only once.
+        let mut buf = vec![0u8; block_rows.min(data.nobs) * self.row_len];
         // Address caches for strL variables only.
         let mut recent: Vec<Option<RecentTexts>> =
             self.types.iter().map(|&t| (t == StorageType::StrL).then(RecentTexts::new)).collect();
+        let mut scratch = Scratch::default();
         let mut row = 0;
         while row < data.nobs {
-            let n = rows_per_chunk.min(data.nobs - row);
-            buf.clear();
-            for r in row..row + n {
-                for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
-                    match (&v.values, *t) {
-                        (Values::Numbers(get), t) => {
-                            let (value, code) = get(r);
-                            encode(&mut buf, t, value, code);
-                        }
-                        (values, StorageType::StrL) => {
-                            // A reference to (variable, observation), 2 + 6 bytes.
-                            let s = values.string(r);
-                            let cache = recent[j].as_mut().expect("strL variables have a cache");
-                            let first = cache.get(s).unwrap_or_else(|| {
-                                let f = self.strl_first[j][&s];
-                                cache.put(s, f);
-                                f
-                            });
-                            let o = first as u64 + 1;
-                            buf.extend_from_slice(&(j as u16 + 1).to_le_bytes());
-                            buf.extend_from_slice(&o.to_le_bytes()[..6]);
-                        }
-                        (values, StorageType::Str(w)) => {
-                            let s = values.string(r).0;
-                            buf.extend_from_slice(s);
-                            buf.resize(buf.len() + w as usize - s.len(), 0);
-                        }
-                        _ => unreachable!("the plan gives strings a string type"),
-                    }
-                }
+            let n = block_rows.min(data.nobs - row);
+            let block = &mut buf[..n * self.row_len];
+            for (k, slab) in block.chunks_mut(slab_rows * self.row_len).enumerate() {
+                let first = row + k * slab_rows;
+                self.fill_strings(data, slab, first, &mut recent);
+                self.fill_numbers(data, slab, first, &mut scratch);
             }
-            out.write_all(&buf)?;
+            out.write_all(block)?;
             row += n;
         }
         Ok(())
+    }
+
+    /// The string and strL cells of the rows in `slab`, the first of
+    /// which is row `first`.
+    fn fill_strings(&self, data: &Dataset, slab: &mut [u8], first: usize, recent: &mut [Option<RecentTexts>]) {
+        let row_len = self.row_len;
+        let mut offset = 0;
+        for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
+            match (&v.values, *t) {
+                (Values::Numbers(_), _) => {}
+                (values, StorageType::StrL) => {
+                    // A reference to (variable, observation), 2 + 6 bytes.
+                    let cache = recent[j].as_mut().expect("strL variables have a cache");
+                    for (r, row) in slab.chunks_exact_mut(row_len).enumerate() {
+                        let s = values.string(first + r);
+                        let first_row = cache.get(s).unwrap_or_else(|| {
+                            let f = self.strl_first[j][&s];
+                            cache.put(s, f);
+                            f
+                        });
+                        let cell = &mut row[offset..offset + 8];
+                        cell[..2].copy_from_slice(&(j as u16 + 1).to_le_bytes());
+                        cell[2..].copy_from_slice(&(first_row as u64 + 1).to_le_bytes()[..6]);
+                    }
+                }
+                (values, StorageType::Str(w)) => {
+                    for (r, row) in slab.chunks_exact_mut(row_len).enumerate() {
+                        let s = values.string(first + r).0;
+                        let cell = &mut row[offset..offset + w as usize];
+                        cell[..s.len()].copy_from_slice(s);
+                        cell[s.len()..].fill(0);
+                    }
+                }
+                _ => unreachable!("the plan gives strings a string type"),
+            }
+            offset += t.width();
+        }
+    }
+
+    /// The numeric cells of the rows in `slab`, the first of which is
+    /// row `first`.
+    fn fill_numbers(&self, data: &Dataset, slab: &mut [u8], first: usize, scratch: &mut Scratch) {
+        let row_len = self.row_len;
+        let rows = slab.len() / row_len;
+        let mut offset = 0;
+        for (v, t) in data.variables.iter().zip(&self.types) {
+            if let Values::Numbers(fill) = &v.values {
+                let mut done = 0;
+                while done < rows {
+                    let n = BLOCK.min(rows - done);
+                    let (values, codes) = (&mut scratch.values[..n], &mut scratch.codes[..n]);
+                    fill(first + done, values, codes);
+                    let cells = &mut slab[done * row_len..(done + n) * row_len];
+                    encode(cells, row_len, offset, *t, values, codes);
+                    done += n;
+                }
+            }
+            offset += t.width();
+        }
     }
 
     fn write_strls(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
@@ -354,30 +435,112 @@ fn gso_len((s, binary): (&[u8], bool)) -> usize {
     3 + 4 + 8 + 1 + 4 + s.len() + !binary as usize
 }
 
-fn encode(buf: &mut Vec<u8>, t: StorageType, value: f64, code: u8) {
-    let step = code.saturating_sub(1) as u32;
+/// Buffers for one block of a numeric column.
+struct Scratch {
+    values: Vec<f64>,
+    codes: Vec<u8>,
+}
+
+impl Default for Scratch {
+    fn default() -> Self {
+        Scratch { values: vec![0.0; BLOCK], codes: vec![0; BLOCK] }
+    }
+}
+
+/// Store `values` and their missing `codes` as storage type `t` at
+/// `offset` in each row of `rows` (rows of `row_len` bytes).
+fn encode(rows: &mut [u8], row_len: usize, offset: usize, t: StorageType, values: &[f64], codes: &[u8]) {
+    fn store<const W: usize>(
+        rows: &mut [u8],
+        row_len: usize,
+        offset: usize,
+        values: &[f64],
+        codes: &[u8],
+        cell: impl Fn(f64, u32) -> [u8; W],
+    ) {
+        for ((row, &value), &code) in rows.chunks_exact_mut(row_len).zip(values).zip(codes) {
+            row[offset..offset + W].copy_from_slice(&cell(value, code as u32));
+        }
+    }
+    // A missing code's step from `.`; codes are 1 to 27 here.
+    let step = |code: u32| code.saturating_sub(1);
     match t {
-        StorageType::Byte => {
-            let v = if code == 0 { value as i8 } else { missing::BYTE_MISSING + step as i8 };
-            buf.push(v as u8);
-        }
-        StorageType::Int => {
-            let v = if code == 0 { value as i16 } else { missing::INT_MISSING + step as i16 };
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
-        StorageType::Long => {
-            let v = if code == 0 { value as i32 } else { LONG_MISSING + step as i32 };
-            buf.extend_from_slice(&v.to_le_bytes());
-        }
-        StorageType::Float => {
-            let bits = if code == 0 { (value as f32).to_bits() } else { FLOAT_MISSING + (step << 11) };
-            buf.extend_from_slice(&bits.to_le_bytes());
-        }
-        StorageType::Double => {
-            let bits = if code == 0 { value.to_bits() } else { DOUBLE_MISSING + ((step as u64) << 40) };
-            buf.extend_from_slice(&bits.to_le_bytes());
-        }
+        StorageType::Byte => store(rows, row_len, offset, values, codes, |value, code| {
+            let v = if code == 0 { value as i8 } else { missing::BYTE_MISSING + step(code) as i8 };
+            [v as u8]
+        }),
+        StorageType::Int => store(rows, row_len, offset, values, codes, |value, code| {
+            let v = if code == 0 { value as i16 } else { missing::INT_MISSING + step(code) as i16 };
+            v.to_le_bytes()
+        }),
+        StorageType::Long => store(rows, row_len, offset, values, codes, |value, code| {
+            let v = if code == 0 { value as i32 } else { LONG_MISSING + step(code) as i32 };
+            v.to_le_bytes()
+        }),
+        StorageType::Float => store(rows, row_len, offset, values, codes, |value, code| {
+            let bits = if code == 0 { (value as f32).to_bits() } else { FLOAT_MISSING + (step(code) << 11) };
+            bits.to_le_bytes()
+        }),
+        StorageType::Double => store(rows, row_len, offset, values, codes, |value, code| {
+            let bits = if code == 0 { value.to_bits() } else { DOUBLE_MISSING + ((step(code) as u64) << 40) };
+            bits.to_le_bytes()
+        }),
         StorageType::Str(_) | StorageType::StrL => {}
+    }
+}
+
+/// An error unless every value of the numeric variable `v` (of `nobs`
+/// rows, filled by `fill`) fits its storage type; the first bad row is
+/// the one reported.
+fn check_numbers(v: &WriteVariable, fill: &FillNumbers, nobs: usize) -> Result<()> {
+    let mut scratch = Scratch::default();
+    let bounds = Bounds::of(v.storage);
+    let mut row = 0;
+    while row < nobs {
+        let n = BLOCK.min(nobs - row);
+        let (values, codes) = (&mut scratch.values[..n], &mut scratch.codes[..n]);
+        fill(row, values, codes);
+        if let Some(i) = (0..n).find(|&i| !bounds.allows(values[i], codes[i])) {
+            return check_value(v, (values[i], codes[i]), row + i);
+        }
+        row += n;
+    }
+    Ok(())
+}
+
+/// The numbers a storage type holds.
+struct Bounds {
+    lo: f64,
+    hi: f64,
+    integer: bool,
+}
+
+impl Bounds {
+    fn of(storage: StorageType) -> Bounds {
+        let (lo, hi, integer) = match storage {
+            StorageType::Byte => (-127.0, 100.0, true),
+            StorageType::Int => (-32767.0, 32740.0, true),
+            StorageType::Long => (-2_147_483_647.0, 2_147_483_620.0, true),
+            // The largest float and double below the bits of `.`.
+            StorageType::Float => {
+                let max = f32::from_bits(missing::FLOAT_MISSING - 1) as f64;
+                (-max, max, false)
+            }
+            _ => {
+                let max = f64::from_bits(missing::DOUBLE_MISSING - 1);
+                (-max, max, false)
+            }
+        };
+        Bounds { lo, hi, integer }
+    }
+
+    /// Whether a value and missing code can be written.
+    #[inline]
+    fn allows(&self, value: f64, code: u8) -> bool {
+        match code {
+            0 => (self.lo..=self.hi).contains(&value) && !(self.integer && value.fract() != 0.0),
+            _ => code <= missing::LAST,
+        }
     }
 }
 
@@ -386,24 +549,7 @@ fn check_value(v: &WriteVariable, (value, code): (f64, u8), row: usize) -> Resul
     if code > missing::LAST {
         return Err(Error::new(format!("{} row {}: {} is not a missing code", v.name, row + 1, code)));
     }
-    if code != 0 {
-        return Ok(());
-    }
-    let (lo, hi, integer) = match v.storage {
-        StorageType::Byte => (-127.0, 100.0, true),
-        StorageType::Int => (-32767.0, 32740.0, true),
-        StorageType::Long => (-2_147_483_647.0, 2_147_483_620.0, true),
-        // The largest float and double below the bits of `.`.
-        StorageType::Float => {
-            let max = f32::from_bits(missing::FLOAT_MISSING - 1) as f64;
-            (-max, max, false)
-        }
-        _ => {
-            let max = f64::from_bits(missing::DOUBLE_MISSING - 1);
-            (-max, max, false)
-        }
-    };
-    if !(lo..=hi).contains(&value) || (integer && value.fract() != 0.0) {
+    if !Bounds::of(v.storage).allows(value, code) {
         return Err(Error::new(format!(
             "{} row {}: {} does not fit storage type {}",
             v.name,

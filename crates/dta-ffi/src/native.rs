@@ -320,7 +320,7 @@ fn fill<T>(out: &mut Vec<T>, values: &[f64], f: impl Fn(f64) -> T) -> *const c_v
 }
 
 /// A number from a host buffer, as f64.
-trait Number: Copy {
+trait Number: Copy + Sync {
     fn f64(self) -> f64;
 }
 
@@ -338,14 +338,14 @@ fn numbers<'a, T: Number>(values: &'a [T], codes: Option<&'a [u8]>) -> dta::Valu
     // NaN with no code is `.`.
     let code = |x: f64, c: u8| if c == 0 && x.is_nan() { 1 } else { c };
     match codes {
-        Some(codes) => dta::Values::Numbers(Box::new(move |i| {
+        Some(codes) => dta::Values::numbers_by_row(move |i| {
             let x = values[i].f64();
             (x, code(x, codes[i]))
-        })),
-        None => dta::Values::Numbers(Box::new(move |i| {
+        }),
+        None => dta::Values::numbers_by_row(move |i| {
             let x = values[i].f64();
             (x, code(x, 0))
-        })),
+        }),
     }
 }
 

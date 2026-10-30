@@ -287,16 +287,16 @@ unsafe fn numbers<'a>(kind: &str, addr: usize, codes: usize, nobs: usize) -> Res
     macro_rules! ints {
         ($t:ty) => {{
             let x: &'a [$t] = data!($t);
-            Values::Numbers(Box::new(move |r| match codes {
+            Values::numbers_by_row(move |r| match codes {
                 Some(c) if c[r] != 0 => (f64::NAN, c[r]),
                 _ => (x[r] as f64, 0),
-            }))
+            })
         }};
     }
     macro_rules! floats {
         ($t:ty) => {{
             let x: &'a [$t] = data!($t);
-            Values::Numbers(Box::new(move |r| {
+            Values::numbers_by_row(move |r| {
                 let code = codes.map_or(0, |c| c[r]);
                 if code != 0 {
                     (f64::NAN, code)
@@ -305,7 +305,7 @@ unsafe fn numbers<'a>(kind: &str, addr: usize, codes: usize, nobs: usize) -> Res
                 } else {
                     (x[r] as f64, 0)
                 }
-            }))
+            })
         }};
     }
     Ok(match kind {

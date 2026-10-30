@@ -914,13 +914,13 @@ pub unsafe extern "C" fn dtaparser_write(path: *const c_char, spec: Sexp, err: *
                     INTSXP | LGLSXP => {
                         let p = if TYPEOF(col) == INTSXP { INTEGER(col) } else { LOGICAL(col) };
                         let x = std::slice::from_raw_parts(p, nobs);
-                        Values::Numbers(Box::new(move |r| {
+                        Values::numbers_by_row(move |r| {
                             if x[r] == c_int::MIN { (f64::NAN, missing::SYSTEM) } else { (x[r] as f64, 0) }
-                        }))
+                        })
                     }
                     REALSXP => {
                         let x = std::slice::from_raw_parts(REAL(col), nobs);
-                        Values::Numbers(Box::new(move |r| (x[r], r_code(x[r]))))
+                        Values::numbers_by_row(move |r| (x[r], r_code(x[r])))
                     }
                     _ => return Err(Fail::Message(format!("{name}: cannot write this column type"))),
                 };

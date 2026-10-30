@@ -515,7 +515,7 @@ pub unsafe extern "C" fn dta_write_finish(file: u32, info: *const u8, info_len: 
                 label: c.label.clone(),
                 value_labels: c.value_labels.clone(),
                 values: match &c.data {
-                    WriteData::Numbers(v, m) => dta::Values::Numbers(Box::new(move |i| (v[i], m[i]))),
+                    WriteData::Numbers(v, m) => dta::Values::numbers_by_row(move |i| (v[i], m[i])),
                     WriteData::Strings(b, e) => dta::Values::Strings(Box::new(move |i| {
                         let start = if i == 0 { 0 } else { e[i - 1] as usize };
                         &b[start..e[i] as usize]

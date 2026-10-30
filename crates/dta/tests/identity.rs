@@ -4,7 +4,7 @@
 //! writer produced before it was made faster (plan 0007). A change that
 //! alters any file fails here, whatever reads it back.
 
-use dta::{write, Characteristic, Dataset, StorageType, ValueLabel, ValueLabelSet, Values, WriteVariable};
+use dta::{write_with, Characteristic, WriteOptions, Dataset, StorageType, ValueLabel, ValueLabelSet, Values, WriteVariable};
 
 /// xorshift64*, enough to make varied data from a seed.
 struct Rng(u64);
@@ -87,7 +87,7 @@ fn column(rng: &mut Rng, nobs: usize) -> Data {
     }
 }
 
-fn dataset(seed: u64) -> Vec<u8> {
+fn dataset(seed: u64, options: &WriteOptions) -> Vec<u8> {
     let mut rng = Rng(seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1);
     let nobs = [0, 1, 7, 300, 5000][rng.below(5) as usize];
     let k = 1 + rng.below(12) as usize;
@@ -97,7 +97,7 @@ fn dataset(seed: u64) -> Vec<u8> {
         .enumerate()
         .map(|(i, c)| {
             let (storage, values) = match c {
-                Data::Numbers(storage, v, m) => (*storage, Values::Numbers(Box::new(move |r| (v[r], m[r])))),
+                Data::Numbers(storage, v, m) => (*storage, Values::numbers_by_row(move |r| (v[r], m[r]))),
                 Data::Strings(s) => (StorageType::Str(1), Values::Strings(Box::new(move |r| s[r].as_slice()))),
                 Data::StrLs(s) => (StorageType::StrL, Values::StrLs(Box::new(move |r| (s[r].0.as_slice(), s[r].1)))),
             };
@@ -132,7 +132,7 @@ fn dataset(seed: u64) -> Vec<u8> {
         sort_order: if k > 1 { vec![1, 0] } else { vec![] },
     };
     let mut out = Vec::new();
-    write(&data, &mut out).unwrap();
+    write_with(&data, &mut out, options).unwrap();
     out
 }
 
@@ -175,10 +175,20 @@ const EXPECTED: [u64; 30] = [
     0x9c9f3cbb57ce9d4c,
 ];
 
+fn check(options: &WriteOptions) {
+    let got: Vec<u64> = (0..30).map(|seed| fnv(&dataset(seed, options))).collect();
+    if got != EXPECTED {
+        panic!("hashes differ with {options:?}; got:\n{got:#018x?}");
+    }
+}
+
 #[test]
 fn the_writer_s_bytes_have_not_changed() {
-    let got: Vec<u64> = (0..30).map(|seed| fnv(&dataset(seed))).collect();
-    if got != EXPECTED {
-        panic!("hashes differ; got:\n{got:#018x?}");
-    }
+    check(&WriteOptions::default());
+}
+
+#[test]
+fn small_blocks_and_slabs_give_the_same_bytes() {
+    // Blocks of a few rows, slabs of one or two: every boundary is crossed.
+    check(&WriteOptions { block_bytes: 300, slab_bytes: 64 });
 }

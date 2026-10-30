@@ -22,4 +22,4 @@ pub use header::{Metadata, Variable};
 pub use reader::{Characteristic, Column, Options, Reader, ValueLabel, ValueLabelSet};
 pub use source::{Bytes, FileSource, Source};
 pub use types::StorageType;
-pub use writer::{write, Dataset, Values, WriteVariable};
+pub use writer::{write, write_with, Dataset, Values, WriteOptions, WriteVariable, BLOCK};
