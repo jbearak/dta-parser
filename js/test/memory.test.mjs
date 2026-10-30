@@ -31,6 +31,7 @@ before(async () => {
     bundle: true,
     format: "cjs",
     platform: "node",
+    target: "node24",
     outfile: out,
     loader: { ".wasm": "binary" },
     plugins: [{ name: "test-wasm", setup: (b) => b.onResolve({ filter: /dta\.wasm$/ }, () => ({ path: testWasm })) }],
@@ -175,6 +176,7 @@ test("past 2 GiB of module memory, reads and writes still work", async () => {
     bundle: true,
     format: "cjs",
     platform: "node",
+    target: "node24",
     outfile: out,
     loader: { ".wasm": "binary" },
   });
