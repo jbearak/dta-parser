@@ -10,25 +10,29 @@ const STRING = /^%(-|~)?(\d+)?s$/;
 const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
 
 /**
- * Render a cell as its display format says: `%9.2f`, `%12.0gc`,
- * `%10.3e`, `%td`, `%tcCCYY-NN-DD_HH:MM:SS`, `%tm` and so on.
+ * Render a cell for display, from its display format: `%9.2f`,
+ * `%12.0gc`, `%10.3e`, `%td`, `%tc`, `%tm` and so on.
  *
  * - With `labels`, a labelled value shows its label.
  * - A missing value shows as `.`, `.a`, ... (or its label).
- * - The width only sets how many digits `%g` may use. Alignment is left
- *   to the caller.
- * - `%g` approximates Stata's choice of digits. `%tC` is treated as
- *   `%tc` (leap seconds are not counted).
- * - Date masks take `CC`, `YY`, `NN`, `nn`, `DD`, `dd`, `Mon`, `mon`,
- *   `Month`, `month`, `HH`, `hh`, `MM`, `SS`, `.s`, `.ss`, `.sss`, and
- *   for weekly, quarterly and half-yearly dates `WW`, `ww`, `q` and `h`.
- *   `_` stands for a space, `!x` for a literal `x`, and any other
- *   character is copied. Pieces a unit lacks (the day of a %tm) are left
- *   out. The older `%d` formats show as `%td` does, whatever their mask.
+ * - `%g` (and any format that is not `%f`, `%e` or a date) shows the
+ *   number as R prints it: 7 significant digits (`d` for `%w.dg`),
+ *   trailing zeros dropped, in fixed notation unless scientific is
+ *   narrower (0.5, 0.3333333, 123456789012, 1e-05). `%f` and `%e` keep
+ *   their decimals, and a trailing `c` adds commas. Widths are left to
+ *   the caller.
+ * - `%td` (and the older `%d`) shows as R shows a Date (`2022-10-31`),
+ *   and `%tc` and `%tC` as a POSIXct in UTC (`2022-10-31 13:05:09`),
+ *   whatever their mask. `%tC`'s leap seconds are not counted.
+ * - `%tw`, `%tm`, `%tq`, `%th` and `%ty` show as `1960w1`, `2023m2`,
+ *   `1959q4`, `1961h2` and `2024`, or by their mask: `CC`, `YY`, `NN`,
+ *   `nn`, `Mon`, `mon`, `Month`, `month`, `WW`, `ww`, `q` and `h`; `_` is
+ *   a space, `!x` a literal `x`, and any other character is copied.
+ *   Pieces a unit lacks (the day of a %tm) are left out.
  *
- * An unrecognised format, a date outside JavaScript's date range, or a
- * format asking for more digits than JavaScript can show falls back to
- * the plain number (as `%9.0g` shows it). `formatValue` never throws.
+ * A date outside JavaScript's date range, or a format asking for more
+ * digits than JavaScript can show, falls back to the plain number (as
+ * `%g` shows it). `formatValue` never throws.
  */
 export function formatValue(cell: Cell, format: string, labels?: ValueLabels): string {
   const key = typeof cell === "object" && cell !== null && "missing" in cell ? cell : typeof cell === "number" ? cell : undefined;
@@ -49,23 +53,22 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
   try {
     return formatNumber(cell, format);
   } catch {
-    return general(cell, 9, 0);
+    return general(cell);
   }
 }
 
 function formatNumber(cell: number, format: string): string {
   const time = TIME.exec(format);
   if (time && (format.startsWith("%t") || format.startsWith("%-t"))) return formatTime(cell, time[2], time[3]);
-  // The older %d formats: their masks are shown as %td's default.
+  // The older %d formats show as %td does.
   if (format.startsWith("%d")) return formatTime(cell, "d", "");
   const num = NUMBER.exec(format);
   if (num) {
-    const width = num[3] ? Number(num[3]) : 9;
     const digits = num[4] === undefined ? undefined : Number(num[4]);
-    const text = num[5] === "f" ? cell.toFixed(digits ?? 0) : num[5] === "e" ? exponential(cell, digits ?? 0) : general(cell, width, digits ?? 0);
+    const text = num[5] === "f" ? cell.toFixed(digits ?? 0) : num[5] === "e" ? exponential(cell, digits ?? 0) : general(cell, digits || 7);
     return num[6] ? commas(text) : text;
   }
-  return String(cell);
+  return general(cell);
 }
 
 /**
@@ -87,25 +90,22 @@ function byName(labels: ValueLabels): Map<string, Missing> {
   return view.keys;
 }
 
-/** `%w.dg`: `d` significant digits, or, with `d` 0, as many as fit in `w`. */
-function general(v: number, width: number, digits: number): string {
-  if (digits === 0) {
-    // Fast path: a number JavaScript writes in fewer than `width`
-    // characters has no more significant digits than `%g` would keep.
-    const plain = String(v);
-    if (Number.isInteger(v) ? plain.length <= width : plain.length < width && Math.abs(v) >= 1e-4 && !plain.includes("e")) return plain;
-  }
-  const precision = digits > 0 ? digits : Math.max(1, Math.min(width - (v < 0 ? 3 : 2), 15));
-  const exponent = v === 0 ? 0 : Math.floor(Math.log10(Math.abs(v)));
-  if (exponent < -4 || exponent >= Math.max(precision, width - 1)) {
-    const [mantissa, power] = exponential(v, Math.max(0, precision - 1)).split("e");
-    return `${trimZeros(mantissa)}e${power}`;
-  }
-  const text = v.toPrecision(precision);
-  if (!text.includes("e")) return trimZeros(text);
-  // toPrecision may round up into an exponent (9999999999.5 to 1.0e+10).
-  const [mantissa, power] = text.split("e");
-  return `${trimZeros(mantissa)}e${power.replace(/^([+-])(\d)$/, "$10$2")}`;
+/**
+ * A number as R prints it: `digits` significant digits at most (trailing
+ * zeros dropped), in fixed notation unless scientific is narrower.
+ */
+function general(v: number, digits = 7): string {
+  if (v === 0) return "0";
+  const [mantissa, power] = v.toExponential(digits - 1).split("e");
+  const sig = trimZeros(mantissa);
+  const nsig = sig.replace(/[-.]/g, "").length;
+  const e10 = Number(power);
+  const neg = v < 0 ? 1 : 0;
+  const decimals = Math.max(0, nsig - e10 - 1);
+  const fixedWidth = neg + Math.max(1, e10 + 1) + (decimals > 0 ? decimals + 1 : 0);
+  const sciWidth = neg + (nsig > 1 ? nsig + 1 : 1) + (Math.abs(e10) >= 100 ? 5 : 4);
+  if (fixedWidth <= sciWidth) return v.toFixed(decimals);
+  return `${sig}e${e10 < 0 ? "-" : "+"}${pad(Math.abs(e10))}`;
 }
 
 function exponential(v: number, digits: number): string {
@@ -149,8 +149,10 @@ function formatTime(v: number, unit: string, mask: string): string {
   if (unit !== "d" && unit !== "c" && unit !== "C" && !(Math.abs(v) <= 52 * 300_000)) throw new RangeError("date out of range");
   const year = (per: number) => 1960 + Math.floor(Math.floor(v) / per);
   switch (unit) {
+    // Days and times show as R shows a Date or POSIXct, whatever their
+    // mask.
     case "d":
-      return render(civil(Math.floor(v)), mask || "DDmonCCYY");
+      return iso(civil(Math.floor(v)));
     case "c":
     case "C": {
       // Whole milliseconds, as pandas reads them.
@@ -163,8 +165,7 @@ function formatTime(v: number, unit: string, mask: string): string {
       w.minute = Math.floor(rest / 60_000);
       rest -= w.minute * 60_000;
       w.second = Math.floor(rest / 1000);
-      w.ms = rest - w.second * 1000;
-      return render(w, mask || "DDmonCCYY_HH:MM:SS");
+      return `${iso(w)} ${pad(w.hour)}:${pad(w.minute)}:${pad(w.second)}`;
     }
     case "w":
       return render({ year: year(52), week: mod(v, 52) + 1 }, mask || "CCYY!www");
@@ -177,6 +178,11 @@ function formatTime(v: number, unit: string, mask: string): string {
     default:
       return render({ year: Math.floor(v) }, mask || "CCYY");
   }
+}
+
+/** `YYYY-MM-DD`, as R prints a Date (a negative year in 4 characters with its sign: `-001`). */
+function iso(w: When): string {
+  return `${w.year < 0 ? `-${pad(-w.year, 3)}` : pad(w.year, 4)}-${pad(w.month! + 1)}-${pad(w.day!)}`;
 }
 
 /**
