@@ -5,7 +5,7 @@
 use crate::cursor::{until_nul, ByteOrder, Cursor};
 use crate::encoding::Encoding;
 use crate::error::{Error, Result};
-use crate::source::{read_vec, Source};
+use crate::source::{ensure_room, read_vec, Source};
 use crate::types::StorageType;
 
 /// One variable's descriptor.
@@ -143,6 +143,9 @@ pub(crate) fn parse_tagged<S: Source + ?Sized>(src: &mut S, encoding: Encoding) 
     let start = c.offset();
     let size = descriptor_size(&layout, nvar);
     let block = read_vec(src, start, size)?;
+    // The descriptors decode to at most three times their bytes, plus a
+    // `Variable` each.
+    ensure_room((size as usize).saturating_mul(3).saturating_add(nvar.saturating_mul(256)))?;
     let mut c = Cursor::new(&block, start, order);
     c.tag("<variable_types>")?;
     let mut types = Vec::with_capacity(nvar);

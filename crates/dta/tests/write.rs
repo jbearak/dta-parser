@@ -216,3 +216,189 @@ fn binary_strls_read_back_as_binary() {
         assert_eq!((column.bytes(i), binary[i]), (bytes, is_binary), "row {i}");
     }
 }
+
+#[test]
+fn two_strls_with_one_id_are_an_error() {
+    let rows: [(&[u8], bool); 3] = [(b"first", false), (b"second", false), (b"third", false)];
+    let data = Dataset {
+        nobs: rows.len(),
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "s".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| rows[i])),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+    Reader::open(Bytes(out.clone()), Options::default()).unwrap().read(&[0], 0, 3).unwrap();
+    // Give the third strL the first one's (v, o): 4 + 8 bytes after "GSO".
+    let gso: Vec<usize> = out.windows(3).enumerate().filter(|(_, w)| *w == b"GSO").map(|(i, _)| i).collect();
+    assert_eq!(gso.len(), 3);
+    let id = out[gso[0] + 3..gso[0] + 15].to_vec();
+    out[gso[2] + 3..gso[2] + 15].copy_from_slice(&id);
+    let err = Reader::open(Bytes(out), Options::default()).unwrap().read(&[0], 0, 3).unwrap_err();
+    assert_eq!(err.kind, dta::ErrorKind::Corrupt);
+    assert!(err.message.contains("two strLs"), "{err}");
+}
+
+fn strls(values: Vec<String>) -> Vec<u8> {
+    let n = values.len();
+    let values: &'static [String] = values.leak();
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "s".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| (values[i].as_bytes(), false))),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+    out
+}
+
+/// plan 0008 M3: with `max_text_units` (the wasm module's JavaScript
+/// limit), a longer text strL is TooLarge; its UTF-16 length is counted
+/// in 1 MiB pieces, across which three-byte characters split.
+#[test]
+fn a_text_strl_longer_than_one_string_is_too_large() {
+    let value = "€".repeat(700_000) + "😀";
+    let units = value.encode_utf16().count();
+    let file = strls(vec![value.clone()]);
+    for (max, ok) in [(units - 1, false), (units, true)] {
+        let options = Options { max_text_units: Some(max), ..Options::default() };
+        let got = Reader::open(Bytes(file.clone()), options).unwrap().read(&[0], 0, 1);
+        match got {
+            Ok(columns) => assert!(ok && columns[0].bytes(0) == value.as_bytes(), "max {max}"),
+            Err(e) => assert!(!ok && e.kind == dta::ErrorKind::TooLarge, "max {max}: {e}"),
+        }
+    }
+}
+
+/// A call ends before the row that would take a column's text past
+/// `max_text_units`, so JavaScript can decode it as one string; a call's
+/// first row is always taken.
+#[test]
+fn a_budgeted_read_ends_before_its_text_passes_the_limit() {
+    let file = strls((0..10).map(|i| format!("{i}").repeat(100)).collect());
+    let options = Options { max_text_units: Some(250), ..Options::default() };
+    let mut reader = Reader::open(Bytes(file), options).unwrap();
+    let mut rows = Vec::new();
+    let mut start = 0;
+    while start < 10 {
+        let n = reader.read_chunks(&[0], start, 10 - start, Some(1 << 20), |_, _| Ok(())).unwrap();
+        rows.push(n);
+        start += n;
+    }
+    assert_eq!(rows, [2, 2, 2, 2, 2]);
+}
+
+/// plan 0008 M5: previews keep at most `cap` stored bytes, cut on whole
+/// characters, decode to a prefix of the full value, and record each
+/// value's full stored length; a value was cut exactly when that length
+/// passes the cap.
+#[test]
+fn previews_cut_on_characters_and_record_stored_lengths() {
+    let texts = ["", "abc", "€uro€", "😀x", "aaaaaaaaaa", "é", "BADLEADxx", "MALFORMED"];
+    let values: &'static [String] = texts.iter().map(|t| t.to_string()).collect::<Vec<_>>().leak();
+    let n = values.len();
+    let column = |name: &str, storage| WriteVariable {
+        name: name.into(),
+        storage,
+        format: String::new(),
+        label: String::new(),
+        value_labels: String::new(),
+        values: if storage == StorageType::StrL {
+            Values::StrLs(Box::new(move |i| (values[i].as_bytes(), false)))
+        } else {
+            Values::Strings(Box::new(move |i| values[i].as_bytes()))
+        },
+    };
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![column("s", StorageType::Str(12)), column("l", StorageType::StrL)],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut file = Vec::new();
+    write(&data, &mut file).unwrap();
+    // Make the last values malformed UTF-8 in both columns:
+    // "MA\xFF\x80\xE2\x82RMED", and "\xE0\x80ADLEADxx", whose E0 80 is
+    // invalid from its second byte (E0 needs A0 to BF), so a cut after it
+    // keeps it.
+    for at in file.windows(9).enumerate().filter(|(_, w)| *w == b"MALFORMED").map(|(i, _)| i).collect::<Vec<_>>() {
+        file[at + 2..at + 6].copy_from_slice(b"\xFF\x80\xE2\x82");
+    }
+    for at in file.windows(9).enumerate().filter(|(_, w)| *w == b"BADLEADxx").map(|(i, _)| i).collect::<Vec<_>>() {
+        file[at..at + 2].copy_from_slice(b"\xE0\x80");
+    }
+    let full = Reader::open(Bytes(file.clone()), Options::default()).unwrap().read(&[0, 1], 0, n as u64).unwrap();
+    for cap in 0..=12usize {
+        let mut reader = Reader::open(Bytes(file.clone()), Options::default()).unwrap();
+        reader.set_preview(Some(cap));
+        let mut cols = vec![
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+        ];
+        reader.read_into(&[0, 1], 0, n as u64, None, &mut cols).unwrap();
+        for k in 0..2 {
+            let stored = reader.stored_lengths(k);
+            for i in 0..n {
+                let whole = std::str::from_utf8(full[k].bytes(i)).unwrap();
+                let cut = std::str::from_utf8(cols[k].bytes(i)).unwrap();
+                let raw_len = values[i].len();
+                if i == n - 2 && cap == 2 {
+                    assert_eq!(cut, "\u{FFFD}\u{FFFD}", "column {k}: an invalid E0 80 is kept");
+                }
+                assert_eq!(stored[i] as usize, raw_len, "column {k} row {i} cap {cap}");
+                assert!(whole.starts_with(cut), "column {k} row {i} cap {cap}: {cut:?} is not a prefix of {whole:?}");
+                assert_eq!(cut != whole, raw_len > cap, "column {k} row {i} cap {cap}: {cut:?} / {whole:?}");
+            }
+        }
+    }
+}
+
+/// plan 0008 M6: an index exported from one reader reads the same values
+/// in another; an index from a file of the same size and layout whose
+/// entries point elsewhere is caught as the strLs are read.
+#[test]
+fn an_adopted_strl_index_reads_the_same_and_mismatches_are_errors() {
+    let a = strls(vec!["aa".into(), "bbbb".into(), "€".into()]);
+    let b = strls(vec!["bbbb".into(), "aa".into(), "€".into()]);
+    assert_eq!(a.len(), b.len());
+    let mut first = Reader::open(Bytes(a.clone()), Options::default()).unwrap();
+    let index = first.strl_index_bytes().unwrap();
+    let expected = first.read(&[0], 0, 3).unwrap();
+
+    let mut second = Reader::open(Bytes(a.clone()), Options::default()).unwrap();
+    second.adopt_strl_index(&index).unwrap();
+    assert_eq!(second.read(&[0], 0, 3).unwrap(), expected);
+
+    let mut other = Reader::open(Bytes(b), Options::default()).unwrap();
+    other.adopt_strl_index(&index).unwrap();
+    let err = other.read(&[0], 0, 3).unwrap_err();
+    assert_eq!(err.kind, dta::ErrorKind::Corrupt, "{err}");
+
+    let longer = strls(vec!["aa".into(), "bbbbb".into(), "€".into()]);
+    let mut wrong_shape = Reader::open(Bytes(longer), Options::default()).unwrap();
+    assert_eq!(wrong_shape.adopt_strl_index(&index).unwrap_err().kind, dta::ErrorKind::Corrupt);
+}

@@ -17,7 +17,8 @@ export function openDtaFile(file: string | number, options: Options = {}): DtaRe
     const read = (into: Uint8Array, offset: number) => {
       let done = 0;
       while (done < into.length) {
-        const n = fs.readSync(fd, into, done, into.length - done, offset + done);
+        // Node rejects reads of 2 GiB or more, so take at most 1 GiB a time.
+        const n = fs.readSync(fd, into, done, Math.min(into.length - done, 1 << 30), offset + done);
         if (n === 0) throw new RangeError("unexpected end of file");
         done += n;
       }

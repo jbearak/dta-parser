@@ -4,6 +4,10 @@
 
 mod json;
 
+// Used by the wasm module; built everywhere so its tests run natively.
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+mod strings;
+
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 

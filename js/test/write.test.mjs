@@ -210,3 +210,22 @@ test("a value outside its type is an error, and writeDtaFile leaves no file", ()
   const r = openDta(writeDta({ variables: [{ name: "s", values: [new Uint8Array([0, 0])] }] }));
   assert.deepEqual(r.readColumns(["s"])[0].values, [new Uint8Array([0, 0])]);
 });
+
+test("a leading U+FEFF survives in strN, strL, variable labels and value label text", () => {
+  const bom = "\uFEFFhello";
+  const bytes = writeDta({
+    variables: [
+      { name: "s", values: [bom, "x"] },
+      { name: "l", type: "strL", values: [bom, "y"] },
+      { name: "n", values: [1, 2], label: bom, valueLabels: "set" },
+    ],
+    valueLabels: { set: new Map([[1, bom]]) },
+  });
+  const r = openDta(bytes);
+  const [s, l] = r.readColumns(["s", "l"]);
+  assert.equal(s.values[0], bom);
+  assert.equal(l.values[0], bom);
+  assert.equal(r.variables[2].label, bom);
+  assert.equal(r.valueLabels("set").get(1), bom);
+  r.close();
+});

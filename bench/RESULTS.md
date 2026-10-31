@@ -96,6 +96,46 @@ the other readers' results were not re-run.
 13. **Python, code arrays** (plan 0007). Writing every missing-value
     code committed memory for numpy arrays of zeros it had not touched
     (wide.dta 4.9 → 5.5 GB); only missing values' codes are written.
+14. **TypeScript, strings** (plan 0008 S1–S3). One `TextDecoder.decode`
+    per call and a `substring` per value, and dictionaries of repeated
+    values built in the wasm module, instead of a `decode` per value.
+    Node 24.22, M4 Max, median of 5, string column alone:
+
+    | read | before | after | target |
+    |---|---|---|---|
+    | groups.dta str17 (300 distinct), `string[]` | 1,635 ms, heap 690 MiB | 520 ms, heap 118 MiB | ≤ 650 ms, ≤ 150 MiB |
+    | the same, `strings: "dictionary"` | — | 445 ms, heap 4 MiB | ≤ 450 ms |
+    | long.dta str5 + str10 | 1,087 + 1,018 ms | 388 + 419 ms | ≤ 900 ms |
+    | long.dta str10 (all distinct, 10M) | 1,018 ms | 419 ms | ≤ 450 ms |
+
+    Node 26 is faster again (groups.dta 446 ms, dictionary 391 ms).
+15. **TypeScript, numbers** (plan 0008 W1). Buffers are copied out of
+    wasm memory once, not twice, and a budgeted read of numbers no
+    longer does work per row: wide.dta's full read 2,195 → 1,706 ms
+    (Node 24, best of 2, three alternating runs), against a 15% target.
+16. **wasm memory** (plan 0008 M1–M6), Node 24:
+    - the strL index costs 20 bytes a strL, not 106–130: reading 10M
+      strLs peaks at 773 MiB RSS, not 1,468 MiB, and takes 5.7 s, not
+      9.1 s (the index itself is 192 MiB; target 250 MB);
+    - running out of module memory is `DTA_TOO_LARGE`, never a trap
+      that closes every open file (js/test/memory.test.mjs, against a
+      module capped at 64 MiB; before this, each case trapped);
+    - a 500 MB text strL reads with RSS +965 MiB (1,909 before; target
+      1.1 GiB); a 1 GB binary strL reads (it was `DTA_TOO_LARGE`); a
+      600 MB text strL, longer than a JavaScript string can be, is
+      `DTA_TOO_LARGE` with RSS +6 MiB (0.x's build crashed making the
+      string, at +2.3 GiB);
+    - closing the last reader gives the module's memory back. After the
+      500 MB strL, RSS stays 490 MiB above where it started: those are
+      the decoded string's pages, freed by V8 but not yet taken back by
+      macOS (a bare `TextDecoder.decode` of the same bytes leaves the
+      same). Before, 1,910 MiB stayed. Target: within 50 MB; missed for
+      that reason;
+    - previews (`maxStringBytes: 100`) of a 64 MiB strL read under
+      1 MB of the file;
+    - reading every strL of a 10M-strL file through an adopted index is
+      3.3% slower than through the reader's own (target 5%), and skips
+      the scan.
 
 On GitHub's x86 runners (2 cores, 4 hardware threads, so two threads)
 the CI's thread report shows a full read 1.9× faster at 1.10× the CPU,

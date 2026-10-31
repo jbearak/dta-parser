@@ -1,15 +1,16 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use crate::cursor::{uint, until_nul, ByteOrder, Cursor};
 use crate::encoding::Encoding;
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
 use crate::header::{self, text, Layout, Metadata, Sections};
 use crate::legacy;
 use crate::missing::{self, double_code, float_code, int_code};
-use crate::source::{read_vec, SharedSource, Source};
+use crate::source::{ensure_room, read_vec, SharedSource, Source};
+use crate::strl_index::{self, Shape, StrlEntry, StrlIndex};
 use crate::threads::panic_message;
 use crate::types::StorageType;
 
@@ -35,6 +36,12 @@ pub struct Options {
     /// Test only: the worker reading chunk `.0` waits `.1` ms first.
     #[doc(hidden)]
     pub delay_chunk: Option<(usize, u64)>,
+    /// Longest text, in UTF-16 units, the caller can hold as one string
+    /// (the wasm module sets JavaScript's): a longer text strL is a
+    /// `TooLarge` error found before its payload is reserved, and a read
+    /// with a budget ends before one column's text could pass it.
+    #[doc(hidden)]
+    pub max_text_units: Option<usize>,
 }
 
 impl Default for Options {
@@ -50,6 +57,7 @@ impl Default for Options {
             parallel_bytes: if small { 0 } else { 16 << 20 },
             panic_on_chunk: None,
             delay_chunk: None,
+            max_text_units: None,
         }
     }
 }
@@ -163,16 +171,18 @@ pub struct Reader<S: Source> {
     /// Where each variable starts within a row.
     offsets: Vec<usize>,
     row_len: usize,
-    strls: Option<HashMap<(u32, u64), StrlEntry>>,
+    strls: Option<StrlIndex>,
+    /// The index came from `adopt_strl_index`: check each record's
+    /// header as its payload is read.
+    adopted: bool,
+    /// With `Some(cap)`, reads keep at most `cap` stored bytes of each
+    /// string and record each one's full stored length (plan 0008 M5).
+    preview: Option<usize>,
+    /// Per column read, the stored lengths of the last preview read.
+    stored: Vec<Vec<u32>>,
     options: Options,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct StrlEntry {
-    offset: u64,
-    len: u32,
-    binary: bool,
-}
 
 impl<S: Source> Reader<S> {
     pub fn open(mut source: S, options: Options) -> Result<Self> {
@@ -196,6 +206,9 @@ impl<S: Source> Reader<S> {
             offsets,
             row_len,
             strls: None,
+            adopted: false,
+            preview: None,
+            stored: Vec::new(),
             options,
         })
     }
@@ -266,10 +279,137 @@ impl<S: Source> Reader<S> {
         count: u64,
         budget: Option<usize>,
         each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync),
+        rest: impl FnMut(usize, &[Column], &[bool], usize) -> Result<()>,
+        poll: impl FnMut() -> Result<()>,
+    ) -> Result<u64> {
+        self.read_to(columns, start, count, budget, each, rest, poll, None)
+    }
+
+    /// Read as [`Reader::read_chunks`] does, on this thread, but decode
+    /// every chunk onto the end of `into` (one column per entry of
+    /// `columns`), so no value is copied after decoding: for the wasm
+    /// module, where a 500 MB strL decoded into a chunk and then
+    /// appended to the call's column would take its memory twice
+    /// (plan 0008 M3).
+    /// From now on, keep at most `cap` stored bytes of each string or
+    /// strL (`None`: whole values), and record each value's full stored
+    /// length for [`Reader::stored_lengths`]. A cut ends on a whole
+    /// character of the file's encoding, and reads no more of a strL's
+    /// payload than `cap` bytes and its last byte. For the wasm module's
+    /// previews (plan 0008 M5).
+    #[doc(hidden)]
+    pub fn set_preview(&mut self, cap: Option<usize>) {
+        self.preview = cap;
+    }
+
+    /// The full stored length of each value of column `k` (by position
+    /// in the last read's `columns`) from the last preview read: for
+    /// strN the bytes before the first NUL, for a text strL its length
+    /// less a final NUL, for a binary strL its length.
+    #[doc(hidden)]
+    pub fn stored_lengths(&self, k: usize) -> &[u32] {
+        self.stored.get(k).map_or(&[], Vec::as_slice)
+    }
+
+    /// The strL index as bytes, for another reader of this file (in
+    /// another thread or process) to adopt with
+    /// [`Reader::adopt_strl_index`] instead of scanning the strL section
+    /// itself (plan 0008 M6). Builds the index if no read has.
+    #[doc(hidden)]
+    pub fn strl_index_bytes(&mut self) -> Result<Vec<u8>> {
+        if self.strls.is_none() {
+            self.strls = Some(self.index_strls()?);
+        }
+        let shape = self.shape();
+        self.strls.as_ref().map_or(Ok(Vec::new()), |index| index.to_bytes(&shape))
+    }
+
+    /// Use an index from [`Reader::strl_index_bytes`] of the same file.
+    /// It is checked against this file's size and layout and for
+    /// consistency, and each strL's record header is checked against it
+    /// as the strL is read; but an index taken from this file before it
+    /// was rewritten with the same layout passes, so the caller vouches
+    /// that the file has not changed.
+    #[doc(hidden)]
+    pub fn adopt_strl_index(&mut self, bytes: &[u8]) -> Result<()> {
+        self.strls = Some(StrlIndex::from_bytes(bytes, &self.shape())?);
+        self.adopted = true;
+        Ok(())
+    }
+
+    fn shape(&self) -> Shape {
+        Shape {
+            file_len: self.source.len(),
+            release: self.layout.release as u32,
+            big_endian: self.meta.byte_order == ByteOrder::Big,
+            nobs: self.meta.nobs,
+            nvar: self.meta.variables.len() as u64,
+            start: self.sections.strls.0,
+            end: self.sections.strls.1,
+        }
+    }
+
+    /// The length of a strL record's header, before its payload.
+    fn strl_head_len(&self) -> usize {
+        3 + 4 + if self.layout.release == 117 { 4 } else { 8 } + 1 + 4
+    }
+
+    /// Append the first `n` bytes of a strL's payload to `into`. Through
+    /// an adopted index, the record's header is read with them, in one
+    /// read, and must match the index entry.
+    fn read_payload(&mut self, (entry, key): (StrlEntry, u64), n: usize, into: &mut Vec<u8>) -> Result<()> {
+        let too_large = || Error::new(format!("a strL of {} bytes is too large to read here", entry.len)).of(ErrorKind::TooLarge);
+        let at = into.len();
+        let head = if self.adopted { self.strl_head_len() } else { 0 };
+        into.try_reserve_exact(head + n).map_err(|_| too_large())?;
+        into.resize(at + head + n, 0);
+        self.source.read_at(entry.offset - head as u64, &mut into[at..])?;
+        if self.adopted {
+            let o_len = head - 12;
+            let mut c = Cursor::new(&into[at..at + head], entry.offset - head as u64, self.meta.byte_order);
+            let found = (|| -> Result<bool> {
+                c.tag("GSO")?;
+                let v = c.u32()? as u64;
+                let o = c.uint(o_len)?;
+                let kind = c.u8()?;
+                let len = c.u32()?;
+                Ok(strl_index::key(v, o) == Some(key) && len == entry.len && (kind == 129) == entry.binary)
+            })();
+            if !found.unwrap_or(false) {
+                return Err(Error::at(entry.offset, "a strL record does not match the adopted strL index (was the file changed?)"));
+            }
+            into.copy_within(at + head.., at);
+            into.truncate(at + n);
+        }
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    pub fn read_into(&mut self, columns: &[usize], start: u64, count: u64, budget: Option<usize>, into: &mut [Column]) -> Result<u64> {
+        if into.len() != columns.len() {
+            return Err(Error::invalid("read_into needs one column per variable read"));
+        }
+        let none = |_: usize, _: usize, _: &Column| Ok(false);
+        self.read_to(columns, start, count, budget, &none, |_, _, _, _| Ok(()), || Ok(()), Some(into))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn read_to(
+        &mut self,
+        columns: &[usize],
+        start: u64,
+        count: u64,
+        budget: Option<usize>,
+        each: &(dyn Fn(usize, usize, &Column) -> Result<bool> + Sync),
         mut rest: impl FnMut(usize, &[Column], &[bool], usize) -> Result<()>,
         mut poll: impl FnMut() -> Result<()>,
+        mut into: Option<&mut [Column]>,
     ) -> Result<u64> {
         let count = self.check(columns, start, count)?;
+        self.stored.clear();
+        if self.preview.is_some() {
+            self.stored.resize_with(columns.len(), Vec::new);
+        }
         if count == 0 {
             return Ok(0);
         }
@@ -278,7 +418,7 @@ impl<S: Source> Reader<S> {
             self.strls = Some(self.index_strls()?);
         }
         let (rows_per_chunk, decoded_row) = self.chunk_rows(columns, budget);
-        let threads = self.threads_for(columns, count as u64, budget);
+        let threads = if into.is_some() { 1 } else { self.threads_for(columns, count as u64, budget) };
         if threads > 1 {
             if let Some(src) = self.source.shared() {
                 let read = ParallelRead {
@@ -297,13 +437,27 @@ impl<S: Source> Reader<S> {
                 return read.run(each, &mut rest, &mut poll).map(|()| count as u64);
             }
         }
-        let mut chunk: Vec<Column> = columns.iter().map(|&c| self.empty_column(c, rows_per_chunk.min(count))).collect();
+        // The chunk's raw rows and their decoding (strL payloads are
+        // reserved fallibly as they are read).
+        let rows = rows_per_chunk.min(count);
+        ensure_room(rows.saturating_mul(self.row_len.saturating_add(decoded_row)).saturating_mul(2))?;
+        let mut chunk: Vec<Column> = match into {
+            Some(_) => Vec::new(),
+            None => columns.iter().map(|&c| self.empty_column(c, rows)).collect(),
+        };
         let none_taken = vec![false; columns.len()];
         let decoder = self.decoder();
         let mut refs: Vec<[u8; 8]> = Vec::new();
         let mut buf = vec![0u8; rows_per_chunk.min(count) * self.row_len];
         let mut done = 0;
         let mut used = 0usize;
+        // Each column's text so far this call, in decoded bytes (at least
+        // its UTF-16 units), against `max_text_units`.
+        // Only string columns need looking at row by row.
+        let strings: Vec<usize> = columns.iter().copied().filter(|&c| !self.meta.variables[c].storage.is_numeric()).collect();
+        let mut text = vec![0usize; strings.len()];
+        let mut text_full = false;
+        let mut row_text = Vec::with_capacity(strings.len());
         while done < count {
             let mut n = rows_per_chunk.min(count - done);
             let offset = self.sections.data + (start + done as u64) * self.row_len as u64;
@@ -312,34 +466,88 @@ impl<S: Source> Reader<S> {
                 // Stop after the row that reaches the budget; strL
                 // payload sizes come from the index, before reading them.
                 let mut take = 0;
-                while take < n && used < budget {
+                if strings.is_empty() {
+                    // Every row decodes to the same size.
+                    take = n.min(budget.saturating_sub(used).div_ceil(decoded_row.max(1)));
+                    used = used.saturating_add(take.saturating_mul(decoded_row));
+                }
+                while !strings.is_empty() && take < n && used < budget {
                     let row = &buf[take * self.row_len..(take + 1) * self.row_len];
-                    used += decoded_row;
-                    for &c in columns.iter().filter(|&&c| self.meta.variables[c].storage == StorageType::StrL) {
-                        let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
-                        used = used.saturating_add(self.strl_entry(&cell)?.map_or(0, |e| (e.len as usize).saturating_mul(3)));
+                    let mut row_bytes = decoded_row;
+                    row_text.clear();
+                    for &c in &strings {
+                        row_text.push(match self.meta.variables[c].storage {
+                            StorageType::Str(w) => 3 * w as usize,
+                            StorageType::StrL => {
+                                let cell = <[u8; 8]>::try_from(&row[self.offsets[c]..self.offsets[c] + 8]).unwrap_or_default();
+                                let len = self.strl_entry(&cell)?.map_or(0, |(e, _)| e.len as usize);
+                                let len = self.preview.map_or(len, |cap| len.min(cap));
+                                // UTF-8 text decodes to its own length
+                                // (more only where bytes are invalid);
+                                // 117's single-byte text to up to three times.
+                                let decoded = if self.meta.encoding == Encoding::Utf8 { len } else { len.saturating_mul(3) };
+                                row_bytes = row_bytes.saturating_add(decoded);
+                                decoded
+                            }
+                            _ => 0,
+                        });
                     }
+                    // A call's first row is always taken; a single value
+                    // over the limit is resolve_strls's to refuse.
+                    if let Some(max) = self.options.max_text_units {
+                        if (done > 0 || take > 0) && text.iter().zip(&row_text).any(|(t, r)| t.saturating_add(*r) > max) {
+                            text_full = true;
+                            break;
+                        }
+                    }
+                    text.iter_mut().zip(&row_text).for_each(|(t, r)| *t = t.saturating_add(*r));
+                    used = used.saturating_add(row_bytes);
                     take += 1;
                 }
                 n = take;
             }
             let bytes = &buf[..n * self.row_len];
+            // Decode onto the end of the caller's columns, or into a
+            // cleared chunk handed to `rest`.
+            let out: &mut [Column] = match into.as_deref_mut() {
+                Some(into) => into,
+                None => {
+                    chunk.iter_mut().for_each(Column::clear);
+                    &mut chunk
+                }
+            };
             for (k, &c) in columns.iter().enumerate() {
-                chunk[k].clear();
                 let cells = Cells { rows: bytes, row_len: self.row_len, offset: self.offsets[c] };
                 match self.meta.variables[c].storage {
                     StorageType::StrL => {
                         refs.clear();
                         refs.extend(cells.iter(8).map(|b| <[u8; 8]>::try_from(b).unwrap_or_default()));
-                        self.resolve_strls(&refs, &mut chunk[k])?;
+                        let stored = self.preview.map(|_| std::mem::take(&mut self.stored[k]));
+                        let got = self.resolve_strls(&refs, &mut out[k], stored);
+                        if let Some(stored) = got? {
+                            self.stored[k] = stored;
+                        }
                     }
-                    storage => decoder.decode(storage, &cells, &mut chunk[k]),
+                    StorageType::Str(w) if self.preview.is_some() => {
+                        let cap = self.preview.unwrap_or(usize::MAX);
+                        let enc = self.meta.encoding;
+                        let Column::Strings { bytes, ends, .. } = &mut out[k] else { continue };
+                        for b in cells.iter(w as usize) {
+                            let raw = until_nul(b);
+                            self.stored[k].push(raw.len() as u32);
+                            enc.decode_into(preview_cut(raw, cap, enc), bytes);
+                            ends.push(bytes.len());
+                        }
+                    }
+                    storage => decoder.decode(storage, &cells, &mut out[k]),
                 }
             }
             poll()?;
-            rest(done, &chunk, &none_taken, columns.len())?;
+            if into.is_none() {
+                rest(done, &chunk, &none_taken, columns.len())?;
+            }
             done += n;
-            if budget.is_some_and(|b| used >= b) {
+            if text_full || budget.is_some_and(|b| used >= b) {
                 break;
             }
         }
@@ -413,16 +621,17 @@ impl<S: Source> Reader<S> {
     fn check(&self, columns: &[usize], start: u64, count: u64) -> Result<usize> {
         let nvar = self.meta.variables.len();
         if let Some(&bad) = columns.iter().find(|&&c| c >= nvar) {
-            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")));
+            return Err(Error::new(format!("there is no variable {bad}; the file has {nvar}")).of(ErrorKind::OutOfRange));
         }
         if start.checked_add(count).is_none_or(|end| end > self.meta.nobs) {
             return Err(Error::new(format!(
                 "rows {start} to {} are past the {} rows in the file",
                 start.saturating_add(count),
                 self.meta.nobs
-            )));
+            ))
+            .of(ErrorKind::OutOfRange));
         }
-        usize::try_from(count).map_err(|_| Error::new("too many rows for one read"))
+        usize::try_from(count).map_err(|_| Error::new("too many rows for one read").of(ErrorKind::TooLarge))
     }
 
     /// A column with room for `rows`, so decoding a chunk never regrows it.
@@ -436,24 +645,25 @@ impl<S: Source> Reader<S> {
 
     /// The (variable, observation) a strL cell points to, with the
     /// variable number in the first `v_len` bytes.
-    fn strl_key(&self, cell: &[u8; 8], v_len: usize) -> (u32, u64) {
+    fn strl_key(&self, cell: &[u8; 8], v_len: usize) -> (u64, u64) {
         let order = self.meta.byte_order;
-        (uint(&cell[..v_len], order) as u32, uint(&cell[v_len..], order))
+        (uint(&cell[..v_len], order), uint(&cell[v_len..], order))
     }
 
     /// The strL entry a cell points to; None for the empty reference.
-    fn strl_entry(&self, cell: &[u8; 8]) -> Result<Option<StrlEntry>> {
+    /// The strL entry a cell points to, and its key; None for the empty
+    /// reference.
+    fn strl_entry(&self, cell: &[u8; 8]) -> Result<Option<(StrlEntry, u64)>> {
         let key = self.strl_key(cell, self.layout.strl_v_len);
         if key == (0, 0) {
             return Ok(None);
         }
         let index = self.strls.as_ref().ok_or_else(|| Error::new("strLs not indexed"))?;
+        let get = |(v, o): (u64, u64)| strl_index::key(v, o).and_then(|k| index.get(k).map(|e| (e, k)));
         // haven 2.5.5 writes 119 cells with the 118 split (ADR 0005).
-        let found = index
-            .get(&key)
-            .or_else(|| (self.layout.release == 119).then(|| index.get(&self.strl_key(cell, 2))).flatten());
+        let found = get(key).or_else(|| (self.layout.release == 119).then(|| get(self.strl_key(cell, 2))).flatten());
         match found {
-            Some(e) => Ok(Some(*e)),
+            Some(e) => Ok(Some(e)),
             None => Err(Error::new(format!(
                 "a strL refers to variable {} observation {}, which the strL section lacks",
                 key.0, key.1
@@ -461,58 +671,172 @@ impl<S: Source> Reader<S> {
         }
     }
 
-    fn resolve_strls(&mut self, refs: &[[u8; 8]], out: &mut Column) -> Result<()> {
+    /// Whether the UTF-8 text strL at `offset` (`len` bytes) decodes to
+    /// more than `max` UTF-16 units: read in 1 MiB pieces, so nothing of
+    /// its size is reserved. Invalid bytes count as the U+FFFD they become.
+    fn text_units(&mut self, offset: u64, len: usize, max: Option<usize>) -> Result<bool> {
+        let Some(max) = max else { return Ok(false) };
+        let mut piece = Vec::new();
+        piece.try_reserve_exact(1 << 20).map_err(|_| Error::new("no memory to check a strL").of(ErrorKind::TooLarge))?;
+        let mut units = 0usize;
+        let mut carry = 0usize;
+        let mut at = 0usize;
+        while at < len {
+            let n = (len - at).min((1 << 20) - carry);
+            piece.resize(carry + n, 0);
+            self.source.read_at(offset + at as u64, &mut piece[carry..])?;
+            at += n;
+            let last = at == len;
+            let text = if last { piece.strip_suffix(&[0]).unwrap_or(&piece) } else { &piece[..] };
+            let mut kept = 0;
+            let mut chunks = text.utf8_chunks().peekable();
+            while let Some(chunk) = chunks.next() {
+                units += chunk.valid().encode_utf16().count();
+                let bad = chunk.invalid();
+                if bad.is_empty() {
+                    continue;
+                }
+                // An incomplete character at the end of a piece may be
+                // finished by the next one.
+                if !last && chunks.peek().is_none() && bad.len() < 4 {
+                    kept = bad.len();
+                } else {
+                    units += 1;
+                }
+            }
+            if units > max {
+                return Ok(true);
+            }
+            let keep_from = piece.len() - kept;
+            piece.copy_within(keep_from.., 0);
+            carry = kept;
+        }
+        Ok(units > max)
+    }
+
+    /// Resolve strL cells into `out`. With a preview cap, `stored`
+    /// collects each value's stored length, and is returned.
+    fn resolve_strls(&mut self, refs: &[[u8; 8]], out: &mut Column, mut stored: Option<Vec<u32>>) -> Result<Option<Vec<u32>>> {
         if self.strls.is_none() {
             self.strls = Some(self.index_strls()?);
         }
-        let Column::Strings { bytes, ends, binary } = out else { return Ok(()) };
+        let Column::Strings { bytes, ends, binary } = out else { return Ok(stored) };
         binary.reserve(refs.len());
         let enc = self.meta.encoding;
+        let max_units = self.options.max_text_units;
         let mut payload = Vec::new();
         for cell in refs {
             let mut is_binary = false;
-            if let Some(entry) = self.strl_entry(cell)? {
-                // A strL can declare up to 4 GiB; in wasm that may not fit,
-                // which must be an error, not a trap.
+            let mut stored_len = 0usize;
+            if let Some(found) = self.strl_entry(cell)? {
+                let entry = found.0;
                 let len = entry.len as usize;
-                let room = len.saturating_mul(3);
-                if payload.try_reserve(len.saturating_sub(payload.len())).is_err() || bytes.try_reserve(room).is_err() {
-                    return Err(Error::new(format!("a strL of {len} bytes is too large to read here")));
-                }
-                payload.resize(len, 0);
-                self.source.read_at(entry.offset, &mut payload)?;
                 is_binary = entry.binary;
-                if is_binary {
-                    bytes.extend_from_slice(&payload);
+                stored_len = len;
+                if let Some(cap) = self.preview.filter(|&cap| len > cap) {
+                    // A preview of a longer value: its first `cap` bytes,
+                    // and for text its last byte, to know whether it ends
+                    // in a NUL (and so its stored length).
+                    let take = cap.min(len);
+                    payload.clear();
+                    self.read_payload(found, take, &mut payload)?;
+                    if is_binary {
+                        bytes.extend_from_slice(&payload);
+                    } else {
+                        let mut last = [0u8];
+                        self.source.read_at(entry.offset + len as u64 - 1, &mut last)?;
+                        stored_len = len - usize::from(last[0] == 0);
+                        let raw = if stored_len > cap { back_up(&payload, enc) } else { &payload[..stored_len] };
+                        bytes.try_reserve_exact(enc.decoded_len(raw).saturating_mul(3)).map_err(|_| Error::new("no memory for a preview").of(ErrorKind::TooLarge))?;
+                        enc.decode_into(raw, bytes);
+                    }
+                    if let Some(stored) = stored.as_mut() {
+                        stored.push(stored_len as u32);
+                    }
+                    ends.push(bytes.len());
+                    binary.push(is_binary);
+                    continue;
+                }
+                // A strL can declare up to 4 GiB; in wasm that may not fit,
+                // which must be an error, not a trap. Room is reserved for
+                // exactly what the value needs.
+                let too_large = || Error::new(format!("a strL of {len} bytes is too large to read here")).of(ErrorKind::TooLarge);
+                if is_binary || enc == Encoding::Utf8 {
+                    if !is_binary && max_units.is_some_and(|max| len > max) && self.text_units(entry.offset, len, max_units)? {
+                        return Err(Error::new(format!("a strL of {len} bytes is longer than one string can be here")).of(ErrorKind::TooLarge));
+                    }
+                    // Straight into the column: no copy.
+                    let at = bytes.len();
+                    self.read_payload(found, len, bytes)?;
+                    if !is_binary {
+                        // Text strLs end with a NUL.
+                        if bytes.last() == Some(&0) && bytes.len() > at {
+                            bytes.pop();
+                        }
+                        stored_len = bytes.len() - at;
+                        if std::str::from_utf8(&bytes[at..]).is_err() {
+                            // Rare: invalid bytes become U+FFFD, as everywhere,
+                            // in room reserved fallibly for exactly that.
+                            let raw = &bytes[at..];
+                            let size: usize = raw.utf8_chunks().map(|c| c.valid().len() + if c.invalid().is_empty() { 0 } else { 3 }).sum();
+                            let mut fixed = Vec::new();
+                            fixed.try_reserve_exact(size).map_err(|_| too_large())?;
+                            for chunk in raw.utf8_chunks() {
+                                fixed.extend_from_slice(chunk.valid().as_bytes());
+                                if !chunk.invalid().is_empty() {
+                                    fixed.extend_from_slice("\u{FFFD}".as_bytes());
+                                }
+                            }
+                            bytes.truncate(at);
+                            bytes.try_reserve_exact(fixed.len()).map_err(|_| too_large())?;
+                            bytes.extend_from_slice(&fixed);
+                        }
+                    }
                 } else {
-                    // Text strLs end with a NUL.
+                    payload.clear();
+                    self.read_payload(found, len, &mut payload)?;
                     let text = payload.strip_suffix(&[0]).unwrap_or(&payload);
+                    stored_len = text.len();
+                    // Single-byte text: one UTF-16 unit a byte.
+                    if max_units.is_some_and(|max| text.len() > max) {
+                        return Err(Error::new(format!("a strL of {len} bytes is longer than one string can be here")).of(ErrorKind::TooLarge));
+                    }
+                    bytes.try_reserve_exact(enc.decoded_len(text)).map_err(|_| too_large())?;
                     enc.decode_into(text, bytes);
                 }
+            }
+            if let Some(stored) = stored.as_mut() {
+                stored.push(stored_len as u32);
             }
             ends.push(bytes.len());
             binary.push(is_binary);
         }
-        Ok(())
+        Ok(stored)
     }
 
     /// One pass over the strL section, through a 1 MiB window,
     /// recording where each entry's payload is. Payloads themselves are
     /// read only when asked for.
-    fn index_strls(&mut self) -> Result<HashMap<(u32, u64), StrlEntry>> {
+    fn index_strls(&mut self) -> Result<StrlIndex> {
         let (start, end) = self.sections.strls;
         let o_len = if self.layout.release == 117 { 4 } else { 8 };
         let head_len = 3 + 4 + o_len + 1 + 4;
-        let mut index = HashMap::new();
+        let mut index = StrlIndex::default();
         let mut window: Vec<u8> = Vec::new();
         let mut window_at = start;
         let mut pos = start;
+        // After a payload longer than the window, the next entries are
+        // likely large too: read a small window, not a megabyte of
+        // payload, to find each one's header (plan 0008 M5's previews).
+        let mut small = false;
         while pos < end {
             if end - pos < head_len as u64 {
                 return Err(Error::at(pos, "truncated strL entry"));
             }
             if pos + head_len as u64 > window_at + window.len() as u64 {
-                let len = (end - pos).min(WINDOW);
+                // The first window is modest too: the first entry may be large.
+                let want = if small { 4096 } else if pos == start { 64 << 10 } else { WINDOW };
+                let len = (end - pos).min(want);
                 window = read_vec(&mut self.source, pos, len)?;
                 window_at = pos;
             }
@@ -532,9 +856,16 @@ impl<S: Source> Reader<S> {
                 130 => false,
                 _ => return Err(Error::at(pos, format!("unknown strL type {kind}"))),
             };
-            index.insert((v, o), StrlEntry { offset: payload, len, binary });
+            let Some(key) = strl_index::key(v as u64, o) else {
+                return Err(Error::at(pos, format!("strL variable {v} observation {o} is out of range")));
+            };
+            index.push(key, StrlEntry { offset: payload, len, binary })?;
+            small = len as u64 >= WINDOW;
             pos = payload + len as u64;
         }
+        // Two strLs with one id would show one's text in the other's
+        // cells, so `finish` rejects the file.
+        index.finish(start)?;
         Ok(index)
     }
 
@@ -542,7 +873,24 @@ impl<S: Source> Reader<S> {
     pub fn value_labels(&mut self) -> Result<Vec<ValueLabelSet>> {
         let (start, end) = self.sections.value_labels;
         let section = read_vec(&mut self.source, start, end - start)?;
-        let mut c = Cursor::new(&section, start, self.meta.byte_order);
+        // Each label costs at most its 8 bytes of offset and value, as a
+        // `ValueLabel`, and its text decoded (three times its bytes).
+        ensure_room(section.len().saturating_mul(8))?;
+        let sets = self.label_sets(&section, start, self.layout.name_len);
+        // Release 108 tables name their set in 9 bytes, as pandas,
+        // readstata13 and ReadStat (writer, and reader since dev 69d8f91)
+        // have it. Released ReadStat read 33, so a file written to match
+        // that is read too.
+        match sets {
+            Err(e) if self.layout.release == 108 => self.label_sets(&section, start, 33).map_err(|_| e),
+            sets => sets,
+        }
+    }
+
+    /// The value label sets in `section` (which starts at byte `start`),
+    /// with set names `name_len` bytes long.
+    fn label_sets(&self, section: &[u8], start: u64, name_len: usize) -> Result<Vec<ValueLabelSet>> {
+        let mut c = Cursor::new(section, start, self.meta.byte_order);
         let enc = self.meta.encoding;
         let release = self.layout.release;
         let mut sets = Vec::new();
@@ -556,7 +904,7 @@ impl<S: Source> Reader<S> {
             }
             let at = c.offset();
             let len = usize::try_from(c.i32()?).map_err(|_| Error::at(at, "negative value label table length"))?;
-            let name = text(c.bytes(self.layout.name_len)?, enc);
+            let name = text(c.bytes(name_len)?, enc);
             c.skip(3)?;
             let table = c.bytes(len)?;
             sets.push(ValueLabelSet { name, labels: self.label_table(table, c.offset() - len as u64)? });
@@ -616,6 +964,7 @@ impl<S: Source> Reader<S> {
     pub fn characteristics(&mut self) -> Result<Vec<Characteristic>> {
         let (start, end) = self.sections.characteristics;
         let section = read_vec(&mut self.source, start, end - start)?;
+        ensure_room(section.len().saturating_mul(4))?;
         let mut c = Cursor::new(&section, start, self.meta.byte_order);
         let name_len = self.layout.name_len;
         let enc = self.meta.encoding;
@@ -882,7 +1231,7 @@ impl ParallelRead<'_> {
             let finished = catch_unwind(AssertUnwindSafe(|| self.process(n, buf, each))).unwrap_or_else(|p| Finished {
                 buf: self.new_buf(),
                 upto: 0,
-                error: Some(Error::new(format!("a reader thread failed: {}", panic_message(&*p)))),
+                error: Some(Error::new(format!("a reader thread failed: {}", panic_message(&*p))).of(ErrorKind::Internal)),
             });
             shared.lock().finished.insert(n, finished);
             shared.arrived.notify_one();
@@ -940,6 +1289,55 @@ impl ParallelRead<'_> {
             Ok(())
         })
     }
+}
+
+/// The first `cap` bytes of a value whose stored bytes are `raw` (all
+/// of it if no longer), cut on a whole character (plan 0008 M5).
+fn preview_cut(raw: &[u8], cap: usize, enc: Encoding) -> &[u8] {
+    if raw.len() <= cap {
+        raw
+    } else {
+        back_up(&raw[..cap], enc)
+    }
+}
+
+/// A cut-off value's bytes, less a UTF-8 character the cut split: one
+/// that starts with a lead byte and has fewer continuation bytes after it
+/// than it needs. Invalid bytes are kept, to decode as a full read
+/// decodes them, so the cut decodes to a prefix of the whole value.
+/// Single-byte encodings never split a character.
+fn back_up(cut: &[u8], enc: Encoding) -> &[u8] {
+    if enc != Encoding::Utf8 {
+        return cut;
+    }
+    for back in 1..=cut.len().min(3) {
+        let at = cut.len() - back;
+        let b = cut[at];
+        if b & 0xC0 == 0x80 {
+            continue;
+        }
+        let needs = match b {
+            0xC2..=0xDF => 2,
+            0xE0..=0xEF => 3,
+            0xF0..=0xF4 => 4,
+            _ => return cut,
+        };
+        // The second byte's range depends on the lead (no overlong forms,
+        // surrogates or code points past U+10FFFF); a sequence already
+        // invalid is kept, to decode as a full read decodes it.
+        let second = match b {
+            0xE0 => 0xA0..=0xBF,
+            0xED => 0x80..=0x9F,
+            0xF0 => 0x90..=0xBF,
+            0xF4 => 0x80..=0x8F,
+            _ => 0x80..=0xBF,
+        };
+        if back > 1 && !second.contains(&cut[at + 1]) {
+            return cut;
+        }
+        return if back < needs { &cut[..at] } else { cut };
+    }
+    cut
 }
 
 /// Append the numbers in `cells` (each `width` bytes, decoded by `f` to a

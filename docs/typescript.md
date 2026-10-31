@@ -31,7 +31,7 @@ section.
 ## Install
 
 Version 1.0, described here, is not on npm yet; npm has 0.x, a
-different API. Build it from a checkout. You need Node 20 or later, and
+different API. Build it from a checkout. You need Node 24 or later, and
 Rust with the WebAssembly target to build:
 
 ```sh
@@ -110,8 +110,23 @@ opening. `openDta(bytes)` reads a `Uint8Array` already in memory (in a
 browser, for example).
 
 Call `close()` when done: it frees the reader's memory inside the
-WebAssembly module and closes a file opened by path. Reads after
-`close()` throw "the file is closed".
+WebAssembly module and closes a file opened by path (never a file
+descriptor you passed in). Reads after `close()` throw "the file is
+closed". Close readers you are done with: the WebAssembly module's
+memory only grows, so when the last open reader closes after a large
+read, the package starts a fresh module and gives that memory back (a
+reader you drop without closing is closed when it is garbage collected,
+which may be much later). Or declare the reader with `using`, and it
+closes at the end of the block:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+{
+  using r = openDtaFile("survey.dta");
+  console.log(r.info.nobs);   // 3
+}
+```
 
 TypeScript has no standard table type, so the package has none either:
 you get columns of typed arrays, or rows of cells, and can hand either
@@ -184,6 +199,89 @@ R and Python packages, a range that runs past the last row throws a
 `RangeError`; compute `count` from `r.info.nobs`. The reader seeks to
 `start`, so reading the last rows of a large file costs the same as the
 first.
+
+## Strings as a dictionary
+
+A string variable whose values repeat (a country, a category) can come
+back as a dictionary: each distinct value once in `values`, and a code
+per row in `codes`, so `values[codes[i]]` is row `i`. That takes far
+less memory than one string per row, and codes compare and group as
+numbers:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const r = openDtaFile("survey.dta");
+const [comment] = r.readColumns(["comment"], { strings: "dictionary" });
+if (comment.kind === "dictionary") {
+  console.log(comment.values);                // [ '', 'moved in 2023', 'asked to call back' ]
+  console.log(Array.from(comment.codes));     // [ 0, 1, 0, 0, 2, 0 ]
+}
+r.close();
+```
+
+Values appear in the order they first appear in the rows read, and
+codes mean nothing outside the one `readColumns` call that returned
+them. A variable with too many distinct values (more than half of at
+least 65,536 rows) or a binary strL comes back as an ordinary string
+column instead, so check `kind`. Without the option, string variables
+are always `string[]`; reading them that way is fast too, since the
+package makes each repeated value once.
+
+## Previews of long strings
+
+To show long strings or strLs without reading them whole (a table cell,
+say), pass `maxStringBytes`. Each string keeps at most that many of the
+bytes stored in the file, cut back to a whole character, and a strL is
+read no further than that. Each string column also gets `storedBytes`,
+the full stored length of every value:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const r = openDtaFile("survey.dta");
+const [comment] = r.readColumns(["comment"], { maxStringBytes: 5 });
+if (comment.kind === "string") console.log(comment.values[1], comment.storedBytes[1]);   // moved 13
+r.close();
+```
+
+A value was cut exactly when `storedBytes[i] > maxStringBytes`.
+`maxStringBytes: 0` gives lengths alone. Stored bytes are counted
+before decoding, so in files before release 118 a cut value's text may
+be longer than `maxStringBytes` bytes as UTF-8. It cannot be combined
+with `strings: "dictionary"`.
+
+## Sharing the strL index between readers
+
+The first read of a strL variable scans the file's strLs to find each
+one. Readers of the same file in several worker threads can share that
+work: one reader's `strlIndex()` returns the index as bytes (copy them
+into a `SharedArrayBuffer` to share them), and the others take it as
+`strlIndex` when opening:
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+
+const first = openDtaFile("survey.dta");
+const index = first.strlIndex();
+const second = openDtaFile("survey.dta", { strlIndex: index });
+console.log(second.readRows(1, 1, ["comment"]));   // [ [ 'moved in 2023' ] ]
+first.close();
+second.close();
+```
+
+The index must come from the same file, unchanged since. It is checked
+when it is adopted (the file's size and layout, and the index's own
+consistency) and as each strL is read (its record must be the one the
+index names), and either failure is `DTA_CORRUPT`; but a file rewritten
+in place with the same layout is not detected.
+
+The bytes are little-endian: the magic `DTASTRLX`; a version (u32, now
+1) and a reserved u32; the file's length (u64), release (u32), byte
+order (u32, 1 for big-endian), rows and variables (u64 each); the strL
+section's start and end (u64 each); the entry count (u64); then the
+entries' keys (u64, variable · 2^40 + row), payload offsets (u64),
+lengths (u32), and binary flags (one bit each, in u64 words).
 
 ## Metadata
 
@@ -326,6 +424,11 @@ with masks such as `CCYY-NN-DD` or `Mon_DD,_CCYY`. It ignores the width
 except to choose how many digits `%g` shows, and treats `%tC` like `%tc`
 (no leap seconds). A labelled value shows its label; a missing value
 shows `.`, `.a` and so on, or its label.
+
+`formatValue` is also at `@jbearak/dta-parser/format`, with `MISSING`,
+`missingValue`, `isMissing` and their types, without the WebAssembly
+module or any Node built-in, so a webview or browser bundle can format
+cells it was sent without being allowed to run WebAssembly.
 
 To get a JavaScript `Date`:
 
@@ -491,6 +594,32 @@ each 0.x call to its 1.0 replacement.
 
 WebAssembly runs on one thread, so the npm package reads and writes on one thread. The R, Python and Julia packages use up to three on large files.
 
+## Errors
+
+Every error the package throws has a `code`, so you can act on what
+went wrong without matching its message:
+
+| `code` | means | class |
+|---|---|---|
+| `DTA_CORRUPT` | the file is damaged, or is not a .dta file | `Error` |
+| `DTA_TOO_LARGE` | the file is fine, but a value or read does not fit in memory | `Error` |
+| `DTA_IO` | reading the file, or writing the output, failed; `cause` holds what your `ReadAt` or sink threw | `Error` |
+| `DTA_INVALID` | an argument is wrong: an unknown encoding, or data that cannot be written | `TypeError` or `RangeError` |
+| `DTA_OUT_OF_RANGE` | a variable or rows the file does not have | `RangeError` |
+| `DTA_CLOSED` | the reader was closed | `Error` |
+| `DTA_INTERNAL` | a bug in dta-parser; please report it | `Error` |
+
+```ts
+import { openDtaFile } from "@jbearak/dta-parser/node";
+import type { DtaError } from "@jbearak/dta-parser";
+
+try {
+  openDtaFile("survey.dta").readColumns(["no_such_variable"]);
+} catch (e) {
+  console.log((e as DtaError).code);   // DTA_OUT_OF_RANGE
+}
+```
+
 ## Troubleshooting
 
 **"unsupported .dta release".** The file is not a `.dta` file, or its
@@ -511,6 +640,11 @@ default (or `RUSTUP_TOOLCHAIN`) the script uses, then rerun it.
 the script again after changing Rust code.
 
 **"the file is closed".** You called a method after `close()`.
+
+**"dta-parser was called from inside a ReadAt callback or write
+sink".** A `ReadAt` function passed to `new DtaReader`, or a sink
+passed to `writeDtaTo`, may not call the package while it runs; do that
+work after the outer call returns.
 
 **Accented letters are wrong.** The file is older than release 118;
 pass `{ encoding: "latin1" }` or `{ encoding: "utf-8" }`.
@@ -533,17 +667,27 @@ From `@jbearak/dta-parser`:
 - `class DtaReader`: an open file. `new DtaReader(read, length, options?)`
   opens any source given a `ReadAt` function `(into, offset) => void`
   that fills `into` from byte `offset`. Members: `info`, `variables`,
-  `readColumns(columns, range?)`, `readRows(start, count, columns?)`,
-  `valueLabels(name)`, `notes()`, `characteristics()`, `close()`.
+  `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
+  `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
+  `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
+  `valueLabels(name)`, `notes()`, `characteristics()`, `strlIndex()`,
+  `close()`, and
+  `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
 - `stataKey(cell)`, `stataKeys(column)`: Stata's sort order as numbers.
 - `formatValue(cell, format, labels?)`: show a value as its display
   format says.
-- Types: `Missing`, `Cell`, `Variable`, `Info`, `NumberColumn`,
-  `StringColumn`, `Column`, `ValueLabels`, `Characteristic`, `Options`
-  (`encoding`), `EncodingName` (`"windows-1252"`, `"latin1"`,
+- Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
+  under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
+  `StringColumn`, `Column`, `DictionaryColumn`, `PreviewColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
+  (`encoding`, `strlIndex`), `EncodingName` (`"windows-1252"`, `"latin1"`,
   `"utf-8"`), `ReadAt`, `WriteVariable`, `WriteDataset`.
+
+From `@jbearak/dta-parser/format` (no WebAssembly, no Node built-ins):
+
+- `formatValue`, `MISSING`, `missingValue`, `isMissing`, and the types
+  `Cell`, `Missing`, `MissingName`, `ValueLabels`, as above.
 
 From `@jbearak/dta-parser/node`:
 

@@ -51,14 +51,46 @@ a code into the frozen `MISSING` object.
 | `missing_type_to_label_key` | not needed: value label maps are keyed by the same `MISSING` objects |
 | `apply_display_format(value, fmt)` | `formatValue(cell, format, labels?)` |
 
+## What users will see change
+
+- Node 24 or later is required.
+- Reading past the last row throws a `RangeError` with code
+  `DTA_OUT_OF_RANGE`; 0.x returned the rows that exist. Every error now
+  has a `code` (see "Errors" in docs/typescript.md).
+- Files before release 118 decode as Windows-1252 unless you pass
+  `{ encoding }`; 0.x always used UTF-8. This matches haven and pandas,
+  but text written as UTF-8 into an old release now shows as mojibake
+  until you pass `{ encoding: "utf-8" }`. An unknown encoding name is an
+  error (`DTA_INVALID`).
+- Binary strLs are `Uint8Array`s, not strings.
+- Display formats: `%g` keeps to the column's width (`%8.0g` of
+  123456789 is `1.23457e+08`); masked dates (`%tdCCYY-NN-DD`), `%tC`,
+  `%th`, `%ty` and the old `%d` now format, where 0.x showed the number;
+  `%td` floors fractional days, as haven does. `formatValue` never throws:
+  a value its format cannot show (a date outside JavaScript's range)
+  shows as the plain number.
+- A value label set named twice keeps the last table (0.x kept the
+  first), as pandas does.
+- Some damaged files 0.x rejected now read: type-130 strLs that are empty
+  or lack their final NUL, label text without a NUL or whose offset is
+  the end of the text block (it reads as ""), and a map whose end-of-file
+  offset is past the end. None of these can show one value's data as
+  another's.
+- Some damaged files 0.x read are now rejected: two strLs with the same
+  variable and row (`DTA_CORRUPT`; they showed one's text in the other's
+  cells). The R, Python and Julia packages reject them too.
+- A leading U+FEFF in a string or label is kept.
+
 ## Not in 1.0
 
-- Arrow IPC (`ArrowBuffer` and friends). table-viewer needs another source
-  for it.
-- Caller-set limits on rows, labels or metadata size. Damaged or hostile
-  files are errors: every length is checked against the file before any
+- Arrow IPC (`ArrowBuffer` and friends); table-viewer has dropped it.
+- Listing value label set names without reading them, limits on
+  `valueLabels()`, and cancelling inside one read. Damaged or hostile
+  files are errors, and running out of memory is `DTA_TOO_LARGE`, never
+  a crash: every length is checked against the file before any
   allocation, and a read holds at most 64 MiB of decoded data in the
-  module at a time.
+  module at a time. To stay cancellable, read row ranges in a loop. To
+  show long strings without reading them, use `maxStringBytes`.
 
 Writing is new: `writeDta(dataset)` gives the bytes of a release-118
 file, and `writeDtaFile(path, dataset)` from `/node` streams one to disk.

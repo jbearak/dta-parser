@@ -1,34 +1,15 @@
 // @jbearak/dta-parser: read Stata .dta files, synchronously.
 
 import * as wasm from "./wasm";
+import { dtaError, isAllocationFailure, type DtaError, type ErrorCode } from "./errors";
 import type { EncodingName, ReadAt } from "./wasm";
 
-export type { EncodingName, ReadAt };
+export type { DtaError, EncodingName, ErrorCode, ReadAt };
 
-/** A Stata missing value: `.` or `.a` to `.z`. */
-export interface Missing {
-  readonly missing: string;
-}
+import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 
-const MISSING_NAMES = [".", ...Array.from("abcdefghijklmnopqrstuvwxyz", (c) => `.${c}`)];
-
-/**
- * The 27 missing values, one frozen object each, so `===` compares them:
- * `MISSING["."]`, `MISSING[".a"]`, ... `MISSING[".z"]`.
- */
-export const MISSING: Readonly<Record<string, Missing>> = Object.freeze(
-  Object.fromEntries(MISSING_NAMES.map((name) => [name, Object.freeze({ missing: name })])),
-);
-
-/** The missing value for a code in a NumberColumn's `missing` array (1 to 27). */
-export function missingValue(code: number): Missing {
-  return MISSING[MISSING_NAMES[code - 1]];
-}
-
-/** Whether a cell is a missing value (`.` or `.a` to `.z`) rather than a number, string or bytes. */
-export function isMissing(value: unknown): value is Missing {
-  return typeof value === "object" && value !== null && "missing" in value;
-}
+export { MISSING, isMissing, missingValue };
+export type { Cell, Missing, MissingName, ValueLabels };
 
 // The doubles Stata itself stores for `.` to `.z`: finite, increasing,
 // and above every number Stata stores (code 1 is `.`).
@@ -58,9 +39,6 @@ export function stataKeys(column: NumberColumn): Float64Array {
   }
   return out;
 }
-
-/** One cell: a number, a string, a binary strL, or a missing value. */
-export type Cell = number | string | Uint8Array | Missing;
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {
@@ -107,11 +85,51 @@ export interface StringColumn {
   values: (string | Uint8Array)[];
 }
 
+/**
+ * A string variable read with `maxStringBytes`: values hold at most that
+ * many of the bytes stored in the file, and `storedBytes[i]` is the full
+ * stored length of value `i`, so value `i` was cut exactly when
+ * `storedBytes[i] > maxStringBytes`.
+ */
+export interface PreviewColumn extends StringColumn {
+  storedBytes: Uint32Array;
+}
+
 /** One variable's values, as `readColumns` returns them. */
 export type Column = NumberColumn | StringColumn;
 
-/** Value label set: maps a value, or a missing value, to its text. */
-export type ValueLabels = Map<number | Missing, string>;
+/**
+ * A string variable's values as a dictionary, which `readColumns` gives
+ * with `strings: "dictionary"`: row `i` is `values[codes[i]]`. Codes
+ * hold for one `readColumns` call only. Distinct values appear in
+ * `values` in the order they first appear.
+ */
+export interface DictionaryColumn {
+  kind: "dictionary";
+  codes: Uint32Array;
+  values: string[];
+}
+
+/** Which rows `readColumns` reads, and how it returns strings. */
+export interface ReadRange {
+  /** First row; default 0. */
+  start?: number;
+  /** How many rows; default all from `start`. */
+  count?: number;
+  /**
+   * `"dictionary"`: return string variables whose values repeat as a
+   * `DictionaryColumn`. A variable with too many distinct values, or
+   * with a binary strL, comes back as a `StringColumn`.
+   */
+  strings?: "plain" | "dictionary";
+  /**
+   * Keep at most this many of each string's stored bytes (cut back to a
+   * whole character), reading no more of a strL than that, and give each
+   * string column `storedBytes` (see `PreviewColumn`). 0 reads lengths
+   * alone. Not with `strings: "dictionary"`.
+   */
+  maxStringBytes?: number;
+}
 
 /** A characteristic: named text attached to the dataset or to a variable. Notes are characteristics named `note1`, `note2`, .... */
 export interface Characteristic {
@@ -125,12 +143,40 @@ export interface Characteristic {
 export interface Options {
   /** Encoding of text in files before release 118; default windows-1252. */
   encoding?: EncodingName;
+  /**
+   * A strL index another reader of this same file made with
+   * `strlIndex()`, so this reader need not scan the file's strLs itself
+   * (it may be backed by a SharedArrayBuffer; it is copied). It must come
+   * from this file, unchanged since: an index from another file is
+   * caught (`DTA_CORRUPT`) when it is adopted or when a strL it lists is
+   * read, but not a file rewritten with the same layout.
+   */
+  strlIndex?: Uint8Array;
 }
 
-/** Most rows asked of the wasm module per call; it also stops at 64 MiB. */
-const BLOCK = 1 << 20;
+/**
+ * Most rows asked of the wasm module per call; it also stops at 64 MiB.
+ * Tests set DTA_TEST_BLOCK_ROWS to split small reads across many calls.
+ */
+const BLOCK = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.DTA_TEST_BLOCK_ROWS) || 1 << 20;
 
-const utf8 = new TextDecoder("utf-8");
+// ignoreBOM: a value that starts with U+FEFF keeps it.
+const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
+
+/**
+ * Closes the module handles of readers dropped without `close()`, so the
+ * module can give its memory back; a file opened by path is closed too,
+ * and a file descriptor the caller passed in never is (as `close()`).
+ */
+const unclosed = new FinalizationRegistry((held: { handle: number; generation: number; read: ReadAt; onClose?: () => void }) => {
+  try {
+    if (held.generation === wasm.currentGeneration()) wasm.close(held.handle);
+  } catch {
+    // Nothing to report to: the reader is gone.
+  }
+  wasm.forget(held.read);
+  held.onClose?.();
+});
 
 /** An open .dta file. Reads happen only when asked for. */
 export class DtaReader {
@@ -148,7 +194,16 @@ export class DtaReader {
     this.onClose = onClose;
     this.handle = wasm.open(read, length, options.encoding ?? "windows-1252");
     this.generation = wasm.currentGeneration();
-    const meta = JSON.parse(wasm.metadataJson(this.handle));
+    let meta;
+    try {
+      meta = JSON.parse(wasm.metadataJson(this.handle));
+      if (options.strlIndex) wasm.adoptStrlIndex(this.handle, options.strlIndex);
+    } catch (e) {
+      wasm.close(this.handle);
+      wasm.forget(read);
+      throw e;
+    }
+    unclosed.register(this, { handle: this.handle, generation: this.generation, read, onClose }, this);
     this.variables = Object.freeze(meta.variables.map((v: Variable) => Object.freeze(v)));
     this.info = Object.freeze({
       release: meta.release,
@@ -162,7 +217,7 @@ export class DtaReader {
   }
 
   private get open(): number {
-    if (this.handle === 0 || this.generation !== wasm.currentGeneration()) throw new Error("the file is closed");
+    if (this.handle === 0 || this.generation !== wasm.currentGeneration()) throw dtaError("DTA_CLOSED", "the file is closed");
     return this.handle;
   }
 
@@ -181,6 +236,16 @@ export class DtaReader {
     return this.labels.get(name);
   }
 
+  /**
+   * The file's strL index, as bytes another reader of the same file can
+   * take as `strlIndex` (in `Options`) instead of scanning the strLs
+   * itself: for readers in several threads. Builds it if no read has.
+   * The layout is versioned; see docs/typescript.md.
+   */
+  strlIndex(): Uint8Array {
+    return wasm.strlIndex(this.open);
+  }
+
   /** Every characteristic in the file, including the notes, in file order. */
   characteristics(): Characteristic[] {
     return JSON.parse(wasm.characteristicsJson(this.open));
@@ -197,7 +262,7 @@ export class DtaReader {
   private index(column: number | string): number {
     const i = typeof column === "number" ? column : this.variables.findIndex((v) => v.name === column);
     if (!Number.isInteger(i) || i < 0 || i >= this.variables.length) {
-      throw new RangeError(`no variable ${JSON.stringify(column)}`);
+      throw dtaError("DTA_OUT_OF_RANGE", `no variable ${JSON.stringify(column)}`, undefined, RangeError);
     }
     return i;
   }
@@ -206,39 +271,137 @@ export class DtaReader {
    * Read `count` rows from row `start` (default: all rows) of the given
    * variables, by index or name, in one pass over the file.
    */
-  readColumns(columns: readonly (number | string)[], range: { start?: number; count?: number } = {}): Column[] {
+  readColumns(columns: readonly (number | string)[], range?: ReadRange & { strings?: "plain"; maxStringBytes?: undefined }): Column[];
+  /**
+   * Read as above, keeping at most `maxStringBytes` of each string; string
+   * variables come back as `PreviewColumn`s.
+   */
+  readColumns(columns: readonly (number | string)[], range: ReadRange & { strings?: "plain"; maxStringBytes: number }): (NumberColumn | PreviewColumn)[];
+  /**
+   * Read as above, giving string variables whose values repeat as
+   * `DictionaryColumn`s.
+   */
+  readColumns(columns: readonly (number | string)[], range: ReadRange & { strings: "dictionary" }): (Column | DictionaryColumn)[];
+  /** Read as above, with `strings` decided at run time. */
+  readColumns(columns: readonly (number | string)[], range?: ReadRange): (Column | DictionaryColumn)[];
+  /** The one implementation of the three forms above. */
+  readColumns(columns: readonly (number | string)[], range: ReadRange = {}): (Column | DictionaryColumn)[] {
     const indices = columns.map((c) => this.index(c));
     const start = range.start ?? 0;
     const count = range.count ?? this.info.nobs - start;
     if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 0 || start + count > this.info.nobs) {
-      throw new RangeError(`rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`);
+      throw dtaError("DTA_OUT_OF_RANGE", `rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`, undefined, RangeError);
     }
-    const out: Column[] = indices.map((i) =>
-      /^str/.test(this.variables[i].type)
-        ? { kind: "string", values: new Array<string | Uint8Array>(count) }
-        : { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) },
-    );
-    for (let done = 0; done < count; ) {
-      const n = wasm.read(this.open, indices, start + done, Math.min(BLOCK, count - done));
-      out.forEach((column, k) => {
-        if (column.kind === "number") {
-          column.values.set(wasm.part(this.handle, k, 0, "f64"), done);
-          column.missing.set(wasm.part(this.handle, k, 1, "u8"), done);
-        } else {
-          const bytes = wasm.part(this.handle, k, 0, "u8");
-          const ends = wasm.part(this.handle, k, 1, "u32");
-          const binary = this.variables[indices[k]].type === "strL" ? wasm.part(this.handle, k, 2, "u8") : undefined;
-          let from = 0;
-          for (let i = 0; i < n; i++) {
-            const piece = bytes.subarray(from, ends[i]);
-            column.values[done + i] = binary?.[i] ? piece.slice() : utf8.decode(piece);
-            from = ends[i];
+    const asDictionary = range.strings === "dictionary";
+    const cap = range.maxStringBytes;
+    if (cap !== undefined) {
+      if (!Number.isInteger(cap) || cap < 0 || cap > 2 ** 32 - 1) {
+        throw dtaError("DTA_INVALID", `maxStringBytes must be a whole number from 0 to 2^32 - 1, not ${cap}`, undefined, RangeError);
+      }
+      // Cut values would merge in a dictionary.
+      if (asDictionary) throw dtaError("DTA_INVALID", 'maxStringBytes cannot be used with strings: "dictionary"', undefined, TypeError);
+    }
+    let out: (Column | DictionaryColumn)[];
+    try {
+      out = indices.map((i) =>
+        !/^str/.test(this.variables[i].type)
+          ? { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) }
+          : asDictionary
+            ? { kind: "dictionary", codes: new Uint32Array(count), values: [] }
+            : cap !== undefined
+              ? { kind: "string", values: new Array<string | Uint8Array>(count), storedBytes: new Uint32Array(count) }
+              : { kind: "string", values: new Array<string | Uint8Array>(count) },
+      );
+    } catch (e) {
+      if (isAllocationFailure(e)) throw dtaError("DTA_TOO_LARGE", `${count} rows of ${indices.length} variables do not fit in memory`, e);
+      throw e;
+    }
+    // Each string column's distinct values so far, while the module
+    // codes it.
+    const seen: string[][] = indices.map(() => []);
+    const handle = this.open;
+    try {
+      for (let done = 0; done < count; ) {
+        const flags = (done === 0 ? wasm.NEW_READ : 0) | (cap === undefined ? wasm.DICTIONARY : 0);
+        const n = wasm.read(handle, indices, start + done, Math.min(BLOCK, count - done), flags, cap ?? -1);
+        for (let k = 0; k < out.length; k++) {
+          const column = out[k];
+          if (column.kind === "number") {
+            column.values.set(wasm.part(handle, k, 0, "f64"), done);
+            column.missing.set(wasm.part(handle, k, 1, "u8"), done);
+            continue;
           }
+          if (wasm.mode(handle, k) === 2) {
+            const values = seen[k];
+            const fresh = wasm.part(handle, k, 1, "u32");
+            if (fresh.length > 0) {
+              // One decode for the call's new values, then a substring each.
+              const text = utf8.decode(wasm.part(handle, k, 0, "u8"));
+              let from = 0;
+              for (let i = 0; i < fresh.length; i++) {
+                values.push(text.substring(from, fresh[i]));
+                from = fresh[i];
+              }
+            }
+            const codes = wasm.part(handle, k, 5, "u32");
+            if (column.kind === "dictionary") {
+              column.codes.set(codes, done);
+              column.values = values;
+            } else {
+              for (let i = 0; i < n; i++) column.values[done + i] = values[codes[i]];
+            }
+            continue;
+          }
+          // Plain from here on. A dictionary column that gave up becomes
+          // a string column, its earlier rows expanded from their codes.
+          let target = column;
+          if (target.kind === "dictionary") {
+            const strings = new Array<string | Uint8Array>(count);
+            for (let i = 0; i < done; i++) strings[i] = target.values[target.codes[i]];
+            target = out[k] = { kind: "string", values: strings };
+          }
+          this.plainStrings(handle, k, n, target.values, done);
+          if ("storedBytes" in target) (target as PreviewColumn).storedBytes.set(wasm.part(handle, k, 6, "u32"), done);
         }
-      });
-      done += n;
+        done += n;
+      }
+    } catch (e) {
+      // A backstop: the module ends calls before a column's text passes
+      // V8's longest string, but if a decode still cannot make one,
+      // that is a value too large, not a bug.
+      if (e instanceof RangeError && !("code" in e) && /string length/i.test(e.message)) {
+        throw dtaError("DTA_TOO_LARGE", "a string is longer than JavaScript allows", e);
+      }
+      throw e;
+    } finally {
+      wasm.readEnd(handle);
     }
     return out;
+  }
+
+  /** Put a call's plain string column `k` (`n` rows) into `values` from `at`. */
+  private plainStrings(handle: number, k: number, n: number, values: (string | Uint8Array)[], at: number): void {
+    const utf16 = wasm.part(handle, k, 1, "u32");
+    // One decode for the call's text, then a substring per row.
+    const text = utf8.decode(wasm.part(handle, k, 0, "u8"));
+    const binary = wasm.part(handle, k, 2, "u8");
+    if (!binary || !binary.includes(1)) {
+      let from = 0;
+      for (let i = 0; i < n; i++) {
+        values[at + i] = text.substring(from, utf16[i]);
+        from = utf16[i];
+      }
+      return;
+    }
+    // Binary rows come from the column's own bytes, by its byte ends.
+    const flags = binary.slice();
+    const bytes = wasm.part(handle, k, 3, "u8");
+    const ends = wasm.part(handle, k, 4, "u32");
+    let from = 0;
+    for (let i = 0; i < n; i++) {
+      values[at + i] = flags[i] ? bytes.slice(i === 0 ? 0 : ends[i - 1], ends[i]) : text.substring(from, utf16[i]);
+      from = utf16[i];
+    }
   }
 
   /** Rows as arrays of cells, one per variable asked for (default: all). */
@@ -259,10 +422,19 @@ export class DtaReader {
   close(): void {
     if (this.handle !== 0) {
       if (this.generation === wasm.currentGeneration()) wasm.close(this.handle);
+      unclosed.unregister(this);
       wasm.forget(this.read);
       this.handle = 0;
       this.onClose?.();
     }
+  }
+
+  /**
+   * `close()`, so `using r = openDtaFile(path)` closes the reader at the
+   * end of its block. A file descriptor the caller passed in stays open.
+   */
+  [Symbol.dispose](): void {
+    this.close();
   }
 }
 
@@ -384,12 +556,12 @@ function packNumbers(values: readonly (number | Missing | null)[]): { values: Fl
 export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void): void {
   // Fields cross into the module separated by NULs, so none may hold one.
   const field = (text: string | undefined, what: string): string => {
-    if (text?.includes("\0")) throw new TypeError(`${what} contains a NUL`);
+    if (text?.includes("\0")) throw dtaError("DTA_INVALID", `${what} contains a NUL`, undefined, TypeError);
     return text ?? "";
   };
   const nobs = data.variables[0]?.values.length ?? 0;
   const parts: wasm.WritePart[] = data.variables.map((v) => {
-    if (v.values.length !== nobs) throw new RangeError(`${v.name} has ${v.values.length} values, not ${nobs}`);
+    if (v.values.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${v.values.length} values, not ${nobs}`, undefined, RangeError);
     const meta = [
       field(v.name, "a variable name"),
       field(v.format, `the format of ${v.name}`),
@@ -398,21 +570,21 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     ].join("\0");
     if (v.values instanceof Float64Array) {
       const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
-      if (storage === undefined) throw new TypeError(`${v.name}: a Float64Array cannot be ${v.type}`);
+      if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: a Float64Array cannot be ${v.type}`, undefined, TypeError);
       const missing = v.missing ?? new Uint8Array(nobs);
-      if (missing.length !== nobs) throw new RangeError(`${v.name} has ${missing.length} missing codes, not ${nobs}`);
+      if (missing.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${missing.length} missing codes, not ${nobs}`, undefined, RangeError);
       return { kind: "numbers", meta, storage, values: v.values, missing };
     }
     if (v.type === "strL" || (v.type === undefined && v.values.some(isText))) {
-      if (!v.values.every(isText)) throw new TypeError(`${v.name} mixes strings and numbers`);
+      if (!v.values.every(isText)) throw dtaError("DTA_INVALID", `${v.name} mixes strings and numbers`, undefined, TypeError);
       const values = v.values as readonly (string | Uint8Array)[];
       const strL = v.type === "strL" || values.some((x) => x instanceof Uint8Array);
       const binary = strL ? Uint8Array.from(values, (x) => (x instanceof Uint8Array ? 1 : 0)) : undefined;
       return { kind: "strings", meta, ...packTexts(values), binary };
     }
     const storage = STORAGE[v.type ?? "double"];
-    if (storage === undefined) throw new TypeError(`${v.name}: unknown type ${v.type}`);
-    if (v.values.some(isText)) throw new TypeError(`${v.name} is ${v.type} but holds strings`);
+    if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: unknown type ${v.type}`, undefined, TypeError);
+    if (v.values.some(isText)) throw dtaError("DTA_INVALID", `${v.name} is ${v.type} but holds strings`, undefined, TypeError);
     return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
   });
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {

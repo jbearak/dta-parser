@@ -29,6 +29,10 @@ jobs:
 
   npm:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 24 is the oldest Node the package supports; 26 the newest.
+        node: [24, 26]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,7 +40,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
       - run: scripts/build-wasm.sh
       - run: npm ci
         working-directory: js
@@ -204,7 +208,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

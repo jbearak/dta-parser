@@ -58,7 +58,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-**npm package** (Node 20 or later, and the WebAssembly target:
+**npm package** (Node 24 or later, and the WebAssembly target:
 `rustup target add wasm32-unknown-unknown`):
 
 ```sh

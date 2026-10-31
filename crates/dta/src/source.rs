@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -122,7 +122,29 @@ pub(crate) fn read_vec<S: Source + ?Sized>(src: &mut S, offset: u64, len: u64) -
     if offset.checked_add(len).is_none_or(|end| end > src.len()) {
         return Err(Error::at(offset, "unexpected end of file"));
     }
-    let mut buf = vec![0; len as usize];
+    let mut buf = Vec::new();
+    if buf.try_reserve_exact(len as usize).is_err() {
+        return Err(Error::at(offset, format!("{len} bytes do not fit in memory here")).of(ErrorKind::TooLarge));
+    }
+    buf.resize(len as usize, 0);
     src.read_at(offset, &mut buf)?;
     Ok(buf)
+}
+
+/// Check that `bytes` more can be allocated, so the ordinary
+/// (infallible) allocations that follow, which `bytes` bounds, cannot
+/// fail: in wasm, where running out of memory traps and closes every
+/// open file, allocate that much fallibly and free it. wasm memory never
+/// shrinks, so the room stays for them. Elsewhere the system has room
+/// or overcommits, and this does nothing.
+pub fn ensure_room(bytes: usize) -> Result<()> {
+    if cfg!(target_arch = "wasm32") {
+        let mut probe: Vec<u8> = Vec::new();
+        if probe.try_reserve_exact(bytes).is_err() {
+            return Err(Error::new(format!("{bytes} bytes of working memory do not fit here")).of(ErrorKind::TooLarge));
+        }
+        // Keep the compiler from removing an allocation nothing uses.
+        std::hint::black_box(&probe);
+    }
+    Ok(())
 }
