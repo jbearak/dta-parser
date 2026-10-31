@@ -63,12 +63,13 @@ a code into the frozen `MISSING` object.
   until you pass `{ encoding: "utf-8" }`. An unknown encoding name is an
   error (`DTA_INVALID`).
 - Binary strLs are `Uint8Array`s, not strings.
-- Display formats: `%g` keeps to the column's width (`%8.0g` of
-  123456789 is `1.23457e+08`); masked dates (`%tdCCYY-NN-DD`), `%tC`,
-  `%th`, `%ty` and the old `%d` now format, where 0.x showed the number;
-  `%td` floors fractional days, as haven does. `formatValue` never throws:
-  a value its format cannot show (a date outside JavaScript's range)
-  shows as the plain number.
+- Display formats follow R, not Stata: `%g` prints as R does (7
+  significant digits, fixed unless scientific is narrower: `0.5`,
+  `123456789012`), `%td` as `2024-03-01` and `%tc` as
+  `2024-03-01 13:05:09`, whatever their mask. `%f`, `%e`, commas and the
+  `%tw` to `%ty` masks format as before; `%td` floors fractional days,
+  as haven does. `formatValue` never throws: a value its format cannot
+  show (a date outside JavaScript's range) shows as the plain number.
 - A value label set named twice keeps the last table (0.x kept the
   first), as pandas does.
 - Some damaged files 0.x rejected now read: type-130 strLs that are empty

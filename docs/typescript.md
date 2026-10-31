@@ -139,6 +139,9 @@ There are two ways to get data:
 - **`readRows(start, count, columns?)`** returns an array per row, with
   each cell a `number`, `string`, `Uint8Array` (binary strL) or a
   missing value. Convenient for display.
+- **`readRowsAt(rows, columns?)`** returns the rows listed, in their
+  order, as `readRows` does: a sorted or filtered page in one read
+  rather than one per row. `r.readRowsAt([42, 7, 7, 1000])`.
 
 ```ts
 import { openDtaFile } from "@jbearak/dta-parser/node";
@@ -401,7 +404,8 @@ Dates are numbers in the file: `%td` counts days since 1 January 1960,
 `%tc` milliseconds since then (see the [guide](guide/dates.md)). The
 package always returns the numbers (there is no option to convert
 them), so nothing is lost, and gives
-`formatValue(cell, format, labels?)` to show a value as Stata would:
+`formatValue(cell, format, labels?)` to show a value for display, the
+way R prints it:
 
 ```ts
 import { formatValue } from "@jbearak/dta-parser";
@@ -410,20 +414,25 @@ import { openDtaFile } from "@jbearak/dta-parser/node";
 const r = openDtaFile("survey.dta");
 const [row] = r.readRows(0, 1);
 const fmt = (i: number) => formatValue(row[i], r.variables[i].format, r.valueLabels(r.variables[i].valueLabels));
-console.log(fmt(1), fmt(4));                          // North 01mar2024
-console.log(formatValue(23436, "%tdCCYY-NN-DD"));     // 2024-03-01
+console.log(fmt(1), fmt(4));                          // North 2024-03-01
+console.log(formatValue(1 / 3, "%9.0g"));             // 0.3333333
 console.log(formatValue(1234.5678, "%9.2f"));         // 1234.57
 console.log(formatValue(1234567, "%12.0gc"));         // 1,234,567
 r.close();
 ```
 
-`formatValue` handles `%f`, `%g` and `%e` numbers (with `c` for
-thousands separators), string formats, and the date formats `%td`,
-`%tc`, `%tC`, `%tw`, `%tm`, `%tq`, `%th`, `%ty` and the older `%d`,
-with masks such as `CCYY-NN-DD` or `Mon_DD,_CCYY`. It ignores the width
-except to choose how many digits `%g` shows, and treats `%tC` like `%tc`
-(no leap seconds). A labelled value shows its label; a missing value
-shows `.`, `.a` and so on, or its label.
+`formatValue` shows `%g` numbers (and any format it does not know) as R
+prints them: 7 significant digits, or `d` for `%w.dg`, in fixed
+notation unless scientific is narrower (`0.5`, `123456789012`,
+`1e-05`). `%f` and `%e` keep their decimals, and a `c` adds thousands
+separators. `%td` and the older `%d` show as R shows a `Date`
+(`2024-03-01`), and `%tc` and `%tC` as a `POSIXct` in UTC
+(`2024-03-01 13:05:09`), whatever their mask; `%tC`'s leap seconds are
+not counted. `%tw`, `%tm`, `%tq`, `%th` and `%ty`, which have no R
+class, show as `1960w1`, `2023m2`, `1959q4`, `1961h2` and `2024`, or by
+masks such as `Mon_CCYY`. Widths are left to the caller. A labelled
+value shows its label; a missing value shows `.`, `.a` and so on, or
+its label.
 
 `formatValue` is also at `@jbearak/dta-parser/format`, with `MISSING`,
 `missingValue`, `isMissing` and their types, without the WebAssembly
@@ -670,14 +679,15 @@ From `@jbearak/dta-parser`:
   `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
   `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
   `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
+  `readRowsAt(rows, columns?)`,
   `valueLabels(name)`, `notes()`, `characteristics()`, `strlIndex()`,
   `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
 - `stataKey(cell)`, `stataKeys(column)`: Stata's sort order as numbers.
-- `formatValue(cell, format, labels?)`: show a value as its display
-  format says.
+- `formatValue(cell, format, labels?)`: show a value for display, as
+  R prints it.
 - Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
   under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
   `StringColumn`, `Column`, `DictionaryColumn`, `PreviewColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`

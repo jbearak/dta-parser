@@ -292,6 +292,20 @@ export class DtaReader {
     if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 0 || start + count > this.info.nobs) {
       throw dtaError("DTA_OUT_OF_RANGE", `rows ${start} to ${start + count} are outside 0 to ${this.info.nobs}`, undefined, RangeError);
     }
+    return this.gather(indices, count, range, (handle, done, n, flags, cap) => wasm.read(handle, indices, start + done, n, flags, cap));
+  }
+
+  /**
+   * Read `count` rows of the variables at `indices` into columns, a
+   * module call at a time: `fetch` reads up to `n` rows from the `done`th
+   * into the handle and says how many it read.
+   */
+  private gather(
+    indices: number[],
+    count: number,
+    range: ReadRange,
+    fetch: (handle: number, done: number, n: number, flags: number, cap: number) => number,
+  ): (Column | DictionaryColumn)[] {
     const asDictionary = range.strings === "dictionary";
     const cap = range.maxStringBytes;
     if (cap !== undefined) {
@@ -323,7 +337,7 @@ export class DtaReader {
     try {
       for (let done = 0; done < count; ) {
         const flags = (done === 0 ? wasm.NEW_READ : 0) | (cap === undefined ? wasm.DICTIONARY : 0);
-        const n = wasm.read(handle, indices, start + done, Math.min(BLOCK, count - done), flags, cap ?? -1);
+        const n = fetch(handle, done, Math.min(BLOCK, count - done), flags, cap ?? -1);
         for (let k = 0; k < out.length; k++) {
           const column = out[k];
           if (column.kind === "number") {
@@ -406,16 +420,26 @@ export class DtaReader {
 
   /** Rows as arrays of cells, one per variable asked for (default: all). */
   readRows(start: number, count: number, columns?: readonly (number | string)[]): Cell[][] {
-    const cols = this.readColumns(columns ?? this.variables.map((_, i) => i), { start, count });
-    const rows: Cell[][] = [];
-    for (let i = 0; i < count; i++) {
-      rows.push(
-        cols.map((c) =>
-          c.kind === "string" ? c.values[i] : c.missing[i] ? missingValue(c.missing[i]) : c.values[i],
-        ),
-      );
+    return cells(this.readColumns(columns ?? this.variables.map((_, i) => i), { start, count }), count);
+  }
+
+  /**
+   * The rows listed, in their order (repeats allowed), as `readRows`
+   * gives them: a sorted or filtered page in a few module calls rather
+   * than one per row. Consecutive rows are read together.
+   */
+  readRowsAt(rows: readonly number[], columns?: readonly (number | string)[]): Cell[][] {
+    const indices = (columns ?? this.variables.map((_, i) => i)).map((c) => this.index(c));
+    const at = Float64Array.from(rows);
+    for (const r of at) {
+      if (!Number.isInteger(r) || r < 0 || r >= this.info.nobs) {
+        throw dtaError("DTA_OUT_OF_RANGE", `row ${r} is outside 0 to ${this.info.nobs - 1}`, undefined, RangeError);
+      }
     }
-    return rows;
+    const cols = this.gather(indices, at.length, {}, (handle, done, n, flags, cap) =>
+      wasm.readAt(handle, indices, at.subarray(done, done + n), flags, cap),
+    );
+    return cells(cols as Column[], at.length);
   }
 
   /** Release the file (and close it, if `openDtaFile` opened it by path). Further reads throw. */
@@ -638,3 +662,12 @@ export function writeDta(data: WriteDataset): Uint8Array {
   return out;
 }
 export { formatValue } from "./format";
+
+/** The first `count` rows of `cols` as arrays of cells. */
+function cells(cols: Column[], count: number): Cell[][] {
+  const rows: Cell[][] = [];
+  for (let i = 0; i < count; i++) {
+    rows.push(cols.map((c) => (c.kind === "string" ? c.values[i] : c.missing[i] ? missingValue(c.missing[i]) : c.values[i])));
+  }
+  return rows;
+}

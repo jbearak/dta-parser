@@ -393,6 +393,54 @@ impl<S: Source> Reader<S> {
         self.read_to(columns, start, count, budget, &none, |_, _, _, _| Ok(()), || Ok(()), Some(into))
     }
 
+    /// `read_into` for the rows listed, in their order (repeats allowed):
+    /// each run of consecutive rows is one read. Returns how many of
+    /// `rows` were read; with a `budget`, the read stops once the columns
+    /// hold about that many decoded bytes, as `read_chunks` does.
+    #[doc(hidden)]
+    pub fn read_rows_into(&mut self, columns: &[usize], rows: &[u64], budget: Option<usize>, into: &mut [Column]) -> Result<usize> {
+        if into.len() != columns.len() {
+            return Err(Error::invalid("read_rows_into needs one column per variable read"));
+        }
+        if let Some(&bad) = rows.iter().find(|&&r| r >= self.meta.nobs) {
+            return Err(Error::new(format!("row {bad} is past the {} rows in the file", self.meta.nobs)).of(ErrorKind::OutOfRange));
+        }
+        let held = |into: &[Column]| -> usize {
+            into.iter()
+                .map(|c| match c {
+                    Column::Numbers { values, .. } => values.len() * 9,
+                    Column::Strings { bytes, ends, .. } => bytes.len() + ends.len() * 8,
+                })
+                .sum()
+        };
+        // Each run's stored lengths (previews), kept across the runs.
+        let mut stored: Vec<Vec<u32>> = vec![Vec::new(); if self.preview.is_some() { columns.len() } else { 0 }];
+        let mut done = 0;
+        while done < rows.len() {
+            let room = match budget {
+                Some(b) if done > 0 => match b.checked_sub(held(into)) {
+                    Some(room) if room > 0 => Some(room),
+                    _ => break,
+                },
+                b => b,
+            };
+            let start = rows[done];
+            let run = rows[done..].iter().zip(start..).take_while(|(r, s)| r == &s).count();
+            let n = self.read_to(columns, start, run as u64, room, &|_, _, _| Ok(false), |_, _, _, _| Ok(()), || Ok(()), Some(&mut *into))? as usize;
+            if self.preview.is_some() {
+                stored.iter_mut().zip(&self.stored).for_each(|(all, run)| all.extend_from_slice(run));
+            }
+            done += n;
+            if n < run {
+                break;
+            }
+        }
+        if self.preview.is_some() {
+            self.stored = stored;
+        }
+        Ok(done)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn read_to(
         &mut self,
