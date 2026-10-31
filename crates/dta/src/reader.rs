@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -160,6 +160,22 @@ const OLD_DOUBLE_MISSING: u64 = (1023 + 333) << 52;
 
 /// The strL section is scanned through a window this large.
 const WINDOW: u64 = 1 << 20;
+
+/// strL payloads up to this size are read in batches of neighbours
+/// (`Reader::batched`): records at most `BATCH_GAP` bytes apart share a
+/// read of at most `BATCH_SPAN` bytes, so a scattered page reads little
+/// it does not use.
+const BATCH_MAX: usize = 64 << 10;
+const BATCH_GAP: u64 = 4 << 10;
+const BATCH_SPAN: u64 = 1 << 20;
+
+/// The small strL payloads one call needs, by offset, and the run of the
+/// file last read for them.
+struct Batch {
+    plan: Vec<(StrlEntry, u64)>,
+    at: u64,
+    buf: Vec<u8>,
+}
 
 /// An open `.dta` file. Opening reads only the header and descriptors;
 /// data, value labels, strLs and characteristics are read when asked for.
@@ -365,22 +381,75 @@ impl<S: Source> Reader<S> {
         into.resize(at + head + n, 0);
         self.source.read_at(entry.offset - head as u64, &mut into[at..])?;
         if self.adopted {
-            let o_len = head - 12;
-            let mut c = Cursor::new(&into[at..at + head], entry.offset - head as u64, self.meta.byte_order);
-            let found = (|| -> Result<bool> {
-                c.tag("GSO")?;
-                let v = c.u32()? as u64;
-                let o = c.uint(o_len)?;
-                let kind = c.u8()?;
-                let len = c.u32()?;
-                Ok(strl_index::key(v, o) == Some(key) && len == entry.len && (kind == 129) == entry.binary)
-            })();
-            if !found.unwrap_or(false) {
-                return Err(Error::at(entry.offset, "a strL record does not match the adopted strL index (was the file changed?)"));
-            }
+            self.check_head(&into[at..at + head], (entry, key))?;
             into.copy_within(at + head.., at);
             into.truncate(at + n);
         }
+        Ok(())
+    }
+
+    /// Through an adopted index, a strL record's header (`head`, read from
+    /// just before its payload) must match the index entry.
+    fn check_head(&self, head: &[u8], (entry, key): (StrlEntry, u64)) -> Result<()> {
+        let o_len = head.len() - 12;
+        let mut c = Cursor::new(head, entry.offset - head.len() as u64, self.meta.byte_order);
+        let found = (|| -> Result<bool> {
+            c.tag("GSO")?;
+            let v = c.u32()? as u64;
+            let o = c.uint(o_len)?;
+            let kind = c.u8()?;
+            let len = c.u32()?;
+            Ok(strl_index::key(v, o) == Some(key) && len == entry.len && (kind == 129) == entry.binary)
+        })();
+        if !found.unwrap_or(false) {
+            return Err(Error::at(entry.offset, "a strL record does not match the adopted strL index (was the file changed?)"));
+        }
+        Ok(())
+    }
+
+    /// Where small payload `found` starts in `batch.buf`, reading it first
+    /// if need be, with the payloads after it in `batch.plan` that lie
+    /// close enough to share the read.
+    fn batched(&mut self, batch: &mut Batch, found: (StrlEntry, u64)) -> Result<usize> {
+        let (entry, _) = found;
+        let end = entry.offset + entry.len as u64;
+        if entry.offset < batch.at || end > batch.at + batch.buf.len() as u64 {
+            let head = if self.adopted { self.strl_head_len() as u64 } else { 0 };
+            let first = batch.plan.partition_point(|(e, _)| e.offset < entry.offset);
+            let start = entry.offset - head;
+            let (mut stop, mut last) = (end, first + 1);
+            while let Some(&(e, _)) = batch.plan.get(last) {
+                let e_end = e.offset + e.len as u64;
+                if e.offset - head > stop + BATCH_GAP || e_end - start > BATCH_SPAN {
+                    break;
+                }
+                stop = stop.max(e_end);
+                last += 1;
+            }
+            let len = (stop - start) as usize;
+            batch.buf.clear();
+            batch.buf.try_reserve_exact(len).map_err(|_| Error::new(format!("no memory for {len} bytes of strLs")).of(ErrorKind::TooLarge))?;
+            batch.buf.resize(len, 0);
+            self.source.read_at(start, &mut batch.buf)?;
+            batch.at = start;
+            if self.adopted {
+                for &(e, key) in batch.plan.get(first..last).unwrap_or(&[]) {
+                    let at = (e.offset - head - start) as usize;
+                    self.check_head(&batch.buf[at..at + head as usize], (e, key))?;
+                }
+            }
+        }
+        Ok((entry.offset - batch.at) as usize)
+    }
+
+    /// `read_payload`, from the batch for a small payload read in full.
+    fn fetch(&mut self, batch: &mut Batch, found: (StrlEntry, u64), n: usize, into: &mut Vec<u8>) -> Result<()> {
+        if found.0.len as usize > BATCH_MAX {
+            return self.read_payload(found, n, into);
+        }
+        let at = self.batched(batch, found)?;
+        into.try_reserve_exact(n).map_err(|_| Error::new("no memory for a strL").of(ErrorKind::TooLarge))?;
+        into.extend_from_slice(&batch.buf[at..at + n]);
         Ok(())
     }
 
@@ -764,6 +833,10 @@ impl<S: Source> Reader<S> {
 
     /// Resolve strL cells into `out`. With a preview cap, `stored`
     /// collects each value's stored length, and is returned.
+    ///
+    /// Each distinct strL is read once per call: a cell that repeats one
+    /// (files point every copy of a value at one record) copies what was
+    /// decoded. Small payloads are read in batches of neighbours.
     fn resolve_strls(&mut self, refs: &[[u8; 8]], out: &mut Column, mut stored: Option<Vec<u32>>) -> Result<Option<Vec<u32>>> {
         if self.strls.is_none() {
             self.strls = Some(self.index_strls()?);
@@ -772,11 +845,40 @@ impl<S: Source> Reader<S> {
         binary.reserve(refs.len());
         let enc = self.meta.encoding;
         let max_units = self.options.max_text_units;
-        let mut payload = Vec::new();
+        let no_memory = || Error::new(format!("no memory to resolve {} strLs", refs.len())).of(ErrorKind::TooLarge);
+        let mut found_all = Vec::new();
+        found_all.try_reserve_exact(refs.len()).map_err(|_| no_memory())?;
         for cell in refs {
+            found_all.push(self.strl_entry(cell)?);
+        }
+        let mut batch = Batch { plan: Vec::new(), at: 0, buf: Vec::new() };
+        batch.plan.try_reserve_exact(refs.len()).map_err(|_| no_memory())?;
+        // Values read in full only: a preview reads no more of a longer
+        // value than it shows.
+        let cap = self.preview.unwrap_or(usize::MAX);
+        batch.plan.extend(found_all.iter().flatten().filter(|(e, _)| e.len as usize <= BATCH_MAX.min(cap)));
+        batch.plan.sort_unstable_by_key(|(e, _)| e.offset);
+        batch.plan.dedup_by_key(|(e, _)| e.offset);
+        // Each value decoded so far: its bytes in `bytes`, stored length
+        // and kind.
+        let mut done: HashMap<u64, (usize, usize, usize, bool)> = HashMap::new();
+        done.try_reserve(refs.len()).map_err(|_| no_memory())?;
+        let mut payload = Vec::new();
+        for found in found_all {
             let mut is_binary = false;
             let mut stored_len = 0usize;
-            if let Some(found) = self.strl_entry(cell)? {
+            if let Some(&(from, to, len, kind)) = found.and_then(|(_, key)| done.get(&key)) {
+                bytes.try_reserve_exact(to - from).map_err(|_| no_memory())?;
+                bytes.extend_from_within(from..to);
+                if let Some(stored) = stored.as_mut() {
+                    stored.push(len as u32);
+                }
+                ends.push(bytes.len());
+                binary.push(kind);
+                continue;
+            }
+            let at = bytes.len();
+            if let Some(found) = found {
                 let entry = found.0;
                 let len = entry.len as usize;
                 is_binary = entry.binary;
@@ -803,6 +905,9 @@ impl<S: Source> Reader<S> {
                     }
                     ends.push(bytes.len());
                     binary.push(is_binary);
+                    if done.len() < done.capacity() {
+                        done.insert(found.1, (at, bytes.len(), stored_len, is_binary));
+                    }
                     continue;
                 }
                 // A strL can declare up to 4 GiB; in wasm that may not fit,
@@ -814,8 +919,7 @@ impl<S: Source> Reader<S> {
                         return Err(Error::new(format!("a strL of {len} bytes is longer than one string can be here")).of(ErrorKind::TooLarge));
                     }
                     // Straight into the column: no copy.
-                    let at = bytes.len();
-                    self.read_payload(found, len, bytes)?;
+                    self.fetch(&mut batch, found, len, bytes)?;
                     if !is_binary {
                         // Text strLs end with a NUL.
                         if bytes.last() == Some(&0) && bytes.len() > at {
@@ -842,7 +946,7 @@ impl<S: Source> Reader<S> {
                     }
                 } else {
                     payload.clear();
-                    self.read_payload(found, len, &mut payload)?;
+                    self.fetch(&mut batch, found, len, &mut payload)?;
                     let text = payload.strip_suffix(&[0]).unwrap_or(&payload);
                     stored_len = text.len();
                     // Single-byte text: one UTF-16 unit a byte.
@@ -851,6 +955,9 @@ impl<S: Source> Reader<S> {
                     }
                     bytes.try_reserve_exact(enc.decoded_len(text)).map_err(|_| too_large())?;
                     enc.decode_into(text, bytes);
+                }
+                if done.len() < done.capacity() {
+                    done.insert(found.1, (at, bytes.len(), stored_len, is_binary));
                 }
             }
             if let Some(stored) = stored.as_mut() {

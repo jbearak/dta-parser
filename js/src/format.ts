@@ -51,24 +51,38 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
   if (typeof cell !== "number") return cell.missing;
   if (!Number.isFinite(cell)) return ".";
   try {
-    return formatNumber(cell, format);
+    return formatter(format)(cell);
   } catch {
     return general(cell);
   }
 }
 
-function formatNumber(cell: number, format: string): string {
-  const time = TIME.exec(format);
-  if (time && (format.startsWith("%t") || format.startsWith("%-t"))) return formatTime(cell, time[2], time[3]);
-  // The older %d formats show as %td does.
-  if (format.startsWith("%d")) return formatTime(cell, "d", "");
-  const num = NUMBER.exec(format);
-  if (num) {
-    const digits = num[4] === undefined ? undefined : Number(num[4]);
-    const text = num[5] === "f" ? cell.toFixed(digits ?? 0) : num[5] === "e" ? exponential(cell, digits ?? 0) : general(cell, digits || 7);
-    return num[6] ? commas(text) : text;
+/** Each format string's formatter, parsed once (a few hundred at most in practice). */
+const formatters = new Map<string, (v: number) => string>();
+
+function formatter(format: string): (v: number) => string {
+  let f = formatters.get(format);
+  if (!f) {
+    f = compile(format);
+    if (formatters.size < 1000) formatters.set(format, f);
   }
-  return general(cell);
+  return f;
+}
+
+function compile(format: string): (v: number) => string {
+  const time = TIME.exec(format);
+  if (time && (format.startsWith("%t") || format.startsWith("%-t"))) {
+    const [, , unit, mask] = time;
+    return (v) => formatTime(v, unit, mask);
+  }
+  // The older %d formats show as %td does.
+  if (format.startsWith("%d")) return (v) => formatTime(v, "d", "");
+  const num = NUMBER.exec(format);
+  if (!num) return (v) => general(v);
+  const digits = num[4] === undefined ? undefined : Number(num[4]);
+  const plain: (v: number) => string =
+    num[5] === "f" ? (v) => v.toFixed(digits ?? 0) : num[5] === "e" ? (v) => exponential(v, digits ?? 0) : (v) => general(v, digits || 7);
+  return num[6] ? (v) => commas(plain(v)) : plain;
 }
 
 /**
@@ -96,6 +110,19 @@ function byName(labels: ValueLabels): Map<string, Missing> {
  */
 function general(v: number, digits = 7): string {
   if (v === 0) return "0";
+  if (Number.isInteger(v) && Math.abs(v) < 1e15) {
+    // Fast path: an integer whose significant digits fit needs no rounding.
+    const text = String(v);
+    const neg = v < 0 ? 1 : 0;
+    let nsig = text.length - neg;
+    while (text.charCodeAt(neg + nsig - 1) === 48) nsig--;
+    if (nsig <= digits) {
+      const e10 = text.length - neg - 1;
+      if (text.length <= neg + (nsig > 1 ? nsig + 1 : 1) + 4) return text;
+      const lead = text.slice(neg, neg + 1) + (nsig > 1 ? `.${text.slice(neg + 1, neg + nsig)}` : "");
+      return `${neg ? "-" : ""}${lead}e+${pad(e10)}`;
+    }
+  }
   const [mantissa, power] = v.toExponential(digits - 1).split("e");
   const sig = trimZeros(mantissa);
   const nsig = sig.replace(/[-.]/g, "").length;
