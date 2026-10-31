@@ -139,6 +139,9 @@ There are two ways to get data:
 - **`readRows(start, count, columns?)`** returns an array per row, with
   each cell a `number`, `string`, `Uint8Array` (binary strL) or a
   missing value. Convenient for display.
+- **`readRowsAt(rows, columns?)`** returns the rows listed, in their
+  order, as `readRows` does: a sorted or filtered page in one read
+  rather than one per row. `r.readRowsAt([42, 7, 7, 1000])`.
 
 ```ts
 import { openDtaFile } from "@jbearak/dta-parser/node";
@@ -676,6 +679,7 @@ From `@jbearak/dta-parser`:
   `readColumns(columns, range?)` (`range` is a `ReadRange`: `start`,
   `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
   `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
+  `readRowsAt(rows, columns?)`,
   `valueLabels(name)`, `notes()`, `characteristics()`, `strlIndex()`,
   `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).

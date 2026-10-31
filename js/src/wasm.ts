@@ -17,6 +17,7 @@ interface Exports {
   dta_value_labels(handle: number): number;
   dta_characteristics(handle: number): number;
   dta_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number, maxStringBytes: number): number;
+  dta_read_at(handle: number, cols: number, ncols: number, rows: number, nrows: number, flags: number, maxStringBytes: number): number;
   dta_read_end(handle: number): void;
   dta_strl_index(handle: number): number;
   dta_adopt_strl_index(handle: number, index: number, len: number): number;
@@ -241,6 +242,23 @@ export function read(handle: number, columns: number[], start: number, count: nu
     wasm.dta_free(ptr, columns.length * 4);
     if (n < 0) check(0);
     return n;
+  });
+}
+
+/** `read` for the rows listed, in their order. */
+export function readAt(handle: number, columns: number[], rows: Float64Array, flags: number, maxStringBytes = -1): number {
+  return guard(() => {
+    const cols = put(Uint32Array.from(columns));
+    let at = 0;
+    try {
+      at = put(rows);
+      const n = wasm.dta_read_at(handle, cols, columns.length, at, rows.length, flags, maxStringBytes);
+      if (n < 0) check(0);
+      return n;
+    } finally {
+      if (at !== 0) wasm.dta_free(at, rows.byteLength);
+      wasm.dta_free(cols, columns.length * 4);
+    }
   });
 }
 

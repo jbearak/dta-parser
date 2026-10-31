@@ -402,3 +402,94 @@ fn an_adopted_strl_index_reads_the_same_and_mismatches_are_errors() {
     let mut wrong_shape = Reader::open(Bytes(longer), Options::default()).unwrap();
     assert_eq!(wrong_shape.adopt_strl_index(&index).unwrap_err().kind, dta::ErrorKind::Corrupt);
 }
+
+/// plan 0008 D6: rows read by index, in any order and with repeats, are
+/// the rows a range read gives; a budget stops the read after a prefix of
+/// the list; previews keep every row's stored length.
+#[test]
+fn rows_read_by_index_match_a_range_read() {
+    let n = 500;
+    let texts: &'static [String] = (0..n).map(|i| "é".repeat(i % 7) + &i.to_string()).collect::<Vec<_>>().leak();
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![
+            WriteVariable {
+                name: "x".into(),
+                storage: StorageType::Double,
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::numbers_by_row(|i| if i % 11 == 3 { (0.0, 2) } else { (i as f64 * 1.5, 0) }),
+            },
+            WriteVariable {
+                name: "s".into(),
+                storage: StorageType::Str(20),
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::Strings(Box::new(move |i| texts[i].as_bytes())),
+            },
+            WriteVariable {
+                name: "l".into(),
+                storage: StorageType::StrL,
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::StrLs(Box::new(move |i| (texts[i].as_bytes(), i % 13 == 0))),
+            },
+        ],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut file = Vec::new();
+    write(&data, &mut file).unwrap();
+    let cols = [0, 1, 2];
+    let full = Reader::open(Bytes(file.clone()), Options::default()).unwrap().read(&cols, 0, n as u64).unwrap();
+    let empty = || {
+        vec![
+            Column::Numbers { values: vec![], missing: vec![] },
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+            Column::Strings { bytes: vec![], ends: vec![], binary: vec![] },
+        ]
+    };
+    let rows: Vec<u64> = [499, 0, 1, 2, 3, 250, 250, 7, 6, 5, 100, 101, 102, 498, 499, 0].into_iter().chain(200..260).collect();
+    let mut reader = Reader::open(Bytes(file.clone()), Options::default()).unwrap();
+    let mut got = empty();
+    assert_eq!(reader.read_rows_into(&cols, &rows, None, &mut got).unwrap(), rows.len());
+    let check = |got: &[Column], count: usize| {
+        for (j, &r) in rows[..count].iter().enumerate() {
+            let r = r as usize;
+            let (Column::Numbers { values, missing }, Column::Numbers { values: v, missing: m }) = (&got[0], &full[0]) else { panic!() };
+            assert_eq!((values[j].to_bits(), missing[j]), (v[r].to_bits(), m[r]), "row {r}");
+            for k in 1..3 {
+                assert_eq!(got[k].bytes(j), full[k].bytes(r), "column {k} row {r}");
+            }
+            let (Column::Strings { binary, .. }, Column::Strings { binary: b, .. }) = (&got[2], &full[2]) else { panic!() };
+            assert_eq!(binary[j], b[r], "row {r}");
+        }
+    };
+    check(&got, rows.len());
+    // A budget stops after a prefix (at least one row), which reads the same.
+    let mut got = empty();
+    let count = reader.read_rows_into(&cols, &rows, Some(200), &mut got).unwrap();
+    assert!(count >= 1 && count < rows.len(), "{count}");
+    assert_eq!(got[0].len(), count);
+    check(&got, count);
+    // Previews: every row's stored length, across runs.
+    reader.set_preview(Some(2));
+    let mut got = empty();
+    reader.read_rows_into(&cols, &rows, None, &mut got).unwrap();
+    for k in 1..3 {
+        let stored = reader.stored_lengths(k);
+        assert_eq!(stored.len(), rows.len());
+        for (j, &r) in rows.iter().enumerate() {
+            assert_eq!(stored[j] as usize, texts[r as usize].len(), "column {k} row {r}");
+        }
+    }
+    reader.set_preview(None);
+    let err = reader.read_rows_into(&cols, &[3, n as u64], None, &mut empty()).unwrap_err();
+    assert_eq!(err.kind, dta::ErrorKind::OutOfRange);
+}

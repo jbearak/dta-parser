@@ -426,6 +426,48 @@ pub unsafe extern "C" fn dta_read(
     max_string_bytes: f64,
 ) -> f64 {
     let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
+    read_call(h, &cols, count as usize, flags, max_string_bytes, |reader, budget, columns| {
+        Ok(reader.read_into(&cols, start as u64, count as u64, Some(budget), columns)? as usize)
+    })
+}
+
+/// `dta_read` for the `nrows` rows listed at `rows` (little-endian f64
+/// indices, unaligned), in their order: a sorted or filtered page in one
+/// call. Returns how many of them were read (the 64 MiB limit applies),
+/// or -1 on failure.
+///
+/// # Safety
+/// `cols` must point to `ncols` u32 values, `rows` to `8 * nrows` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn dta_read_at(
+    h: u32,
+    cols: *const u32,
+    ncols: usize,
+    rows: *const u8,
+    nrows: usize,
+    flags: u32,
+    max_string_bytes: f64,
+) -> f64 {
+    let cols: Vec<usize> = std::slice::from_raw_parts(cols, ncols).iter().map(|&c| c as usize).collect();
+    let rows = std::slice::from_raw_parts(rows, nrows.saturating_mul(8));
+    read_call(h, &cols, nrows, flags, max_string_bytes, |reader, budget, columns| {
+        let mut at = Vec::new();
+        at.try_reserve_exact(nrows).map_err(|_| too_large(rows.len()))?;
+        at.extend(rows.chunks_exact(8).map(|b| f64::from_le_bytes(b.try_into().unwrap_or_default()) as u64));
+        Ok(reader.read_rows_into(&cols, &at, Some(budget), columns)?)
+    })
+}
+
+/// What `dta_read` and `dta_read_at` share: room for up to `count` rows,
+/// the read itself, then each string column coded or made plain.
+fn read_call(
+    h: u32,
+    cols: &[usize],
+    count: usize,
+    flags: u32,
+    max_string_bytes: f64,
+    read: impl FnOnce(&mut Reader<HostFile>, usize, &mut [Column]) -> Result<usize, Fail>,
+) -> f64 {
     call(-1.0, |state| {
         let budget = state.budget;
         let handle = handle(state, h)?;
@@ -440,7 +482,7 @@ pub unsafe extern "C" fn dta_read(
                 _ => 9,
             })
             .sum();
-        let rows_bytes = (count as usize).saturating_mul(per_row).min(budget.saturating_add(per_row));
+        let rows_bytes = count.saturating_mul(per_row).min(budget.saturating_add(per_row));
         ensure_room(rows_bytes.saturating_mul(2))?;
         strings.clear();
         if flags & NEW_READ != 0 || dicts.len() != cols.len() {
@@ -451,7 +493,7 @@ pub unsafe extern "C" fn dta_read(
         // Room for the rows this call can return (the budget allows about
         // BUDGET / 9 numbers), so appending chunks does not regrow the
         // columns and leave freed copies in module memory.
-        let rows = (count as usize).min(budget / (9 * cols.len()).max(1) + 1);
+        let rows = count.min(budget / (9 * cols.len()).max(1) + 1);
         *columns = cols
             .iter()
             .map(|&c| match meta.variables.get(c).map(|v| v.storage.is_numeric()) {
@@ -462,7 +504,7 @@ pub unsafe extern "C" fn dta_read(
         reader.set_preview((max_string_bytes >= 0.0).then_some(max_string_bytes as usize));
         // Decoded straight into the call's columns, so a large strL is
         // not held twice.
-        let n = reader.read_into(&cols, start as u64, count as u64, Some(budget), columns)?;
+        let n = read(reader, budget, columns)?;
         for (column, dict) in columns.iter().zip(dicts.iter_mut()) {
             strings.push(match column {
                 Column::Numbers { .. } => None,
