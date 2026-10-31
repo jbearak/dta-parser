@@ -1,6 +1,6 @@
 // Display formats: render a cell as its variable's %-format says.
 
-import type { Cell, ValueLabels } from "./values";
+import type { Cell, Missing, ValueLabels } from "./values";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_MS = 86_400_000;
@@ -38,8 +38,8 @@ export function formatValue(cell: Cell, format: string, labels?: ValueLabels): s
     // two were copied apart, by postMessage say, or come from another
     // bundle of the package): match it by name.
     if (typeof key === "object") {
-      const text = byName(labels).get(key.missing);
-      if (text !== undefined) return text;
+      const own = byName(labels).get(key.missing);
+      if (own !== undefined) return labels.get(own)!;
     }
   }
   if (typeof cell === "string") return cell;
@@ -68,17 +68,23 @@ function formatNumber(cell: number, format: string): string {
   return String(cell);
 }
 
-/** Each label map's missing-value labels, by the missing value's name. */
-const missingLabels = new WeakMap<ValueLabels, Map<string, string>>();
+/**
+ * Each label map's own missing-value keys, by name, and the map's size
+ * when they were found. The text is looked up in the map each time, so an
+ * edited label shows at once; a key deleted, replaced or added (the size
+ * changes, or a key found is gone) has the keys found again.
+ */
+const missingKeys = new WeakMap<ValueLabels, { size: number; keys: Map<string, Missing> }>();
 
-function byName(labels: ValueLabels): Map<string, string> {
-  let names = missingLabels.get(labels);
-  if (!names) {
-    names = new Map();
-    for (const [k, text] of labels) if (typeof k === "object" && k !== null && "missing" in k) names.set(k.missing, text);
-    missingLabels.set(labels, names);
+function byName(labels: ValueLabels): Map<string, Missing> {
+  let view = missingKeys.get(labels);
+  if (!view || view.size !== labels.size || ![...view.keys.values()].every((k) => labels.has(k))) {
+    const keys = new Map<string, Missing>();
+    for (const k of labels.keys()) if (typeof k === "object" && k !== null && "missing" in k) keys.set(k.missing, k);
+    view = { size: labels.size, keys };
+    missingKeys.set(labels, view);
   }
-  return names;
+  return view.keys;
 }
 
 /** `%w.dg`: `d` significant digits, or, with `d` 0, as many as fit in `w`. */

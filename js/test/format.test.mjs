@@ -27,6 +27,27 @@ test("missing values and labels", () => {
   assert.equal(formatValue(2, "%9.0g", labels), "2");
 });
 
+test("labels of copied missing values follow edits to the map", () => {
+  const labels = structuredClone(new Map([[MISSING[".d"], "Don't know"], [1, "Yes"]]));
+  const d = MISSING[".d"];
+  assert.equal(formatValue(d, "%9.0g", labels), "Don't know");
+  const [key] = labels.keys();
+  labels.set(key, "Unsure");
+  assert.equal(formatValue(d, "%9.0g", labels), "Unsure");
+  labels.delete(key);
+  assert.equal(formatValue(d, "%9.0g", labels), ".d");
+  labels.set(structuredClone(MISSING[".e"]), "Refused");
+  assert.equal(formatValue(MISSING[".e"], "%9.0g", labels), "Refused");
+  // Same size: one missing key replaced by another.
+  labels.delete(1);
+  labels.set(structuredClone(d), "Back");
+  labels.delete([...labels.keys()].find((k) => k.missing === ".e"));
+  labels.set(structuredClone(MISSING[".f"]), "Skipped");
+  assert.equal(formatValue(MISSING[".f"], "%9.0g", labels), "Skipped");
+  assert.equal(formatValue(MISSING[".e"], "%9.0g", labels), ".e");
+  assert.equal(formatValue(d, "%9.0g", labels), "Back");
+});
+
 test("strings pass through", () => {
   assert.equal(formatValue("abc", "%-10s"), "abc");
 });
