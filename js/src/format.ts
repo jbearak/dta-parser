@@ -32,7 +32,16 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  */
 export function formatValue(cell: Cell, format: string, labels?: ValueLabels): string {
   const key = typeof cell === "object" && cell !== null && "missing" in cell ? cell : typeof cell === "number" ? cell : undefined;
-  if (labels && key !== undefined && labels.has(key)) return labels.get(key)!;
+  if (labels && key !== undefined) {
+    if (labels.has(key)) return labels.get(key)!;
+    // A missing value that is not the same object as the map's key (the
+    // two were copied apart, by postMessage say, or come from another
+    // bundle of the package): match it by name.
+    if (typeof key === "object") {
+      const text = byName(labels).get(key.missing);
+      if (text !== undefined) return text;
+    }
+  }
   if (typeof cell === "string") return cell;
   if (cell instanceof Uint8Array) return `<${cell.length} bytes>`;
   if (typeof cell !== "number") return cell.missing;
@@ -57,6 +66,19 @@ function formatNumber(cell: number, format: string): string {
     return num[6] ? commas(text) : text;
   }
   return String(cell);
+}
+
+/** Each label map's missing-value labels, by the missing value's name. */
+const missingLabels = new WeakMap<ValueLabels, Map<string, string>>();
+
+function byName(labels: ValueLabels): Map<string, string> {
+  let names = missingLabels.get(labels);
+  if (!names) {
+    names = new Map();
+    for (const [k, text] of labels) if (typeof k === "object" && k !== null && "missing" in k) names.set(k.missing, text);
+    missingLabels.set(labels, names);
+  }
+  return names;
 }
 
 /** `%w.dg`: `d` significant digits, or, with `d` 0, as many as fit in `w`. */

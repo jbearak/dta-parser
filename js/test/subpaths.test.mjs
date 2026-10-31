@@ -49,6 +49,32 @@ test("the /format bundle has no wasm and no Node built-ins", () => {
   assert.equal(format.formatValue(format.MISSING[".a"], "%9.0g"), ".a");
 });
 
+test("labels on missing values are found when the cell and the map were copied apart", () => {
+  const main = require("../dist/index.js");
+  const fmt = require("../dist/format.js");
+  const labels = new Map([[1, "yes"], [main.MISSING[".d"], "refused"]]);
+  // Separate structured clones, as postMessage makes; and the two bundles.
+  assert.equal(fmt.formatValue(structuredClone(fmt.missingValue(5)), "%8.0g", structuredClone(labels)), "refused");
+  assert.equal(fmt.formatValue(fmt.MISSING[".d"], "%8.0g", labels), "refused");
+  assert.equal(main.formatValue(fmt.MISSING[".d"], "%8.0g", structuredClone(labels)), "refused");
+  assert.equal(fmt.formatValue(fmt.MISSING[".e"], "%8.0g", structuredClone(labels)), ".e");
+});
+
+test("Node's ESM import names every subpath's exports", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dta-esm-"));
+  mkdirSync(join(dir, "node_modules", "@jbearak"), { recursive: true });
+  symlinkSync(pkg, join(dir, "node_modules", "@jbearak", "dta-parser"));
+  writeFileSync(
+    join(dir, "main.mjs"),
+    `import { formatValue, MISSING, missingValue, isMissing } from "@jbearak/dta-parser/format";
+     import { openDta, writeDta } from "@jbearak/dta-parser";
+     import { openDtaFile } from "@jbearak/dta-parser/node";
+     console.log(formatValue(MISSING[".a"], "%9.0g"), typeof missingValue, typeof isMissing, typeof openDta, typeof writeDta, typeof openDtaFile);`,
+  );
+  const out = execFileSync(process.execPath, ["--preserve-symlinks", join(dir, "main.mjs")], { encoding: "utf8", cwd: dir });
+  assert.equal(out.trim(), ".a function function function function function");
+});
+
 test("subpath types resolve under node10 and bundler resolution, with readColumns' overloads", () => {
   const dir = mkdtempSync(join(tmpdir(), "dta-types-"));
   mkdirSync(join(dir, "node_modules", "@jbearak"), { recursive: true });
