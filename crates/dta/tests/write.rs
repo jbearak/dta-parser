@@ -493,3 +493,98 @@ fn rows_read_by_index_match_a_range_read() {
     let err = reader.read_rows_into(&cols, &[3, n as u64], None, &mut empty()).unwrap_err();
     assert_eq!(err.kind, dta::ErrorKind::OutOfRange);
 }
+
+/// A source that counts its reads.
+struct Counting(Bytes<Vec<u8>>, std::rc::Rc<std::cell::Cell<usize>>);
+
+impl dta::Source for Counting {
+    fn len(&self) -> u64 {
+        self.0.len()
+    }
+    fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
+        self.1.set(self.1.get() + 1);
+        self.0.read_at(offset, buf)
+    }
+}
+
+/// plan 0008 D8: a read resolves each distinct strL once, and reads
+/// small neighbouring payloads together, giving the same values (in
+/// full, as previews, and through an adopted index) in a few reads.
+#[test]
+fn strls_are_read_once_and_in_batches() {
+    let n = 3000;
+    let big = |i: usize| format!("{i}:{}", "x".repeat(100_000));
+    let texts: &'static [String] = (0..n)
+        // Small values first, then 100 large ones and one large repeat.
+        .map(|i| match (i >= n - 300, i % 10) {
+            (true, 0 | 3 | 6) => big(i),
+            (true, _) => big(7),
+            (_, 0..=4) => "shared".to_string(),
+            (_, 5) => String::new(),
+            _ => format!("é{i}"),
+        })
+        .collect::<Vec<_>>()
+        .leak();
+    let data = Dataset {
+        nobs: n,
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![WriteVariable {
+            name: "l".into(),
+            storage: StorageType::StrL,
+            format: String::new(),
+            label: String::new(),
+            value_labels: String::new(),
+            values: Values::StrLs(Box::new(move |i| (texts[i].as_bytes(), i < n - 300 && i % 10 == 9))),
+        }],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut file = Vec::new();
+    write(&data, &mut file).unwrap();
+    let reads = std::rc::Rc::new(std::cell::Cell::new(0));
+    let open = || Reader::open(Counting(Bytes(file.clone()), reads.clone()), Options::default()).unwrap();
+    let mut reader = open();
+    reader.read(&[0], 0, 1).unwrap(); // builds the index
+    let index = reader.strl_index_bytes().unwrap();
+    for adopted in [false, true] {
+        for cap in [None, Some(3), Some(200_000)] {
+            let mut reader = open();
+            if adopted {
+                reader.adopt_strl_index(&index).unwrap();
+            } else {
+                reader.read(&[0], 0, 1).unwrap();
+            }
+            reader.set_preview(cap);
+            reads.set(0);
+            let mut cols = vec![Column::Strings { bytes: vec![], ends: vec![], binary: vec![] }];
+            reader.read_into(&[0], 0, n as u64, None, &mut cols).unwrap();
+            // Read in full: a read per large value, a few for the rest
+            // (3,000 without). A preview reads values it cuts one by one,
+            // no more of each than it shows.
+            if cap.is_none_or(|c| c >= 100_000) {
+                assert!(reads.get() <= 101 + 10, "{} reads (adopted {adopted}, cap {cap:?})", reads.get());
+            }
+            let stored = reader.stored_lengths(0);
+            for (i, text) in texts.iter().enumerate() {
+                let want = match cap {
+                    Some(cap) if text.len() > cap => &text.as_bytes()[..cap],
+                    _ => text.as_bytes(),
+                };
+                let got = cols[0].bytes(i);
+                if i < n - 300 && i % 10 == 9 {
+                    assert_eq!(got, want, "row {i} (adopted {adopted}, cap {cap:?})");
+                } else {
+                    assert!(text.starts_with(std::str::from_utf8(got).unwrap()) && got.len() <= want.len(), "row {i} (adopted {adopted}, cap {cap:?})");
+                    if cap.is_none_or(|c| text.len() <= c) {
+                        assert_eq!(got, want, "row {i}");
+                    }
+                }
+                if cap.is_some() {
+                    assert_eq!(stored[i] as usize, text.len(), "row {i}");
+                }
+            }
+        }
+    }
+}
