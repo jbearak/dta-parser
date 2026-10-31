@@ -110,7 +110,7 @@ function byName(labels: ValueLabels): Map<string, Missing> {
  */
 function general(v: number, digits = 7): string {
   if (v === 0) return "0";
-  if (Number.isInteger(v) && Math.abs(v) < 1e15) {
+  if (Number.isInteger(v) && Math.abs(v) < 1e15 && digits <= 101) {
     // Fast path: an integer whose significant digits fit needs no rounding.
     const text = String(v);
     const neg = v < 0 ? 1 : 0;
