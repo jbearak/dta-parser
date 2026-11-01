@@ -34,9 +34,10 @@ moves to its letter. So `.a` means what that variable's labels say: 98
 
 ## Consequences
 
-- A read writes and reads one temporary file: 1.5 seconds in all for the
-  largest NSFG file (10,847 rows, 5,754 columns, 142 MB of text), most of
-  it parsing. Disk use is about the size of the numbers.
+- A read writes and reads one temporary file. For the largest NSFG
+  file (10,847 rows, 5,754 columns, 142 MB of text), R's
+  `read_fixed_width`, conversion and read together, takes 1.5 seconds,
+  most of it parsing. Disk use is about the size of the numbers.
 - Options of `read_dta` that a release 118 file makes moot (`encoding`,
   `dates`) are not offered.
 - The converter does not run SAS: it reads the statements CDC's setups

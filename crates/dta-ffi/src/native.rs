@@ -535,7 +535,7 @@ pub unsafe extern "C" fn dta_fixed_width_to_dta(
         std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
         let file = options.open(&out).map_err(|e| format!("{}: {e}", out.display()))?;
         let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
-            .map_err(|e| format!("{}: {e}", setup.display()))?;
+            .map_err(|e| e.to_string())?;
         let messages: Vec<String> = warnings.into_iter().map(|w| w.message).collect();
         let text = json::strings(&messages);
         if !len.is_null() {

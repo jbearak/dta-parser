@@ -1079,7 +1079,7 @@ pub unsafe extern "C" fn dtaparser_fixed_width(
         let (setup_bytes, data_bytes) = (read(&setup)?, read(&data)?);
         let file = create_new(&out).map_err(|e| Fail::Message(format!("{out}: {e}")))?;
         let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
-            .map_err(|e| Fail::Message(format!("{setup}: {e}")))?;
+            .map_err(|e| Fail::Message(e.to_string()))?;
         let messages: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
         strings_elt(holder, 0, &messages)
     })

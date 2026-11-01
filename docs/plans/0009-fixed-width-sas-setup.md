@@ -38,20 +38,19 @@ CRLF, tabs as whitespace, keywords in either case):
 |---|---|
 | comments | `/* ... */`, including inside `INPUT` (`/*blank 10383-10866*/`); `* ... ;` statements; a stray `*/` with no opener after a `*` comment (1973, 1976FemResp, 1988Preg) |
 | `libname "data-file-path";` | placeholder, every file |
-| `PROC FORMAT; VALUE name k='label' ... ;` | 7,306 VALUE statements; integer keys, two negative (`-1=`); labels single-quoted with `''` for `'`, may hold `;` and `"` |
+| `PROC FORMAT; VALUE name k='label' ... ;` | 7,306 VALUE statements; integer keys, two negative (`-1=`); labels single-quoted with `''` for `'`, may hold `;` and `"`; once no space between a label and the next key (1973 `24='(20) Subfecund'33='(30) Fecund'`) |
 | `run;` | at the end, and between `PROC FORMAT` and `DATA` in 1995FemResp |
 | `DATA ;` | unnamed |
 | `INFILE "c:\temp\x.dat" [missover] [recfm=f] lrecl=N;` | `recfm=f` only in 1988 |
 | `INPUT name start[-end] ...;` | column input; one `$` (1973 `temp_NLAMOUNT $ 653-656`); no implied decimals, pointers or informats. Overlapping columns are common (`rec_type 6` and `MARSTAT 6`). The same name twice: 1982FemResp (`FMARITAL 1041` twice; `AGEREMAR` at 1265-1267 and 1284-1287) and 1995FemResp (`FILLER` about 20 times) |
 | record-type selection | `INPUT rec_type 6 @; if rec_type<5 then delete; else input ... ;` with `<`, `>`, `=`; 1976 and 1982, both files each |
-| `LABEL` | `name = 'text'`; `name ="text"` (all of 1995FemPregFile; two in 1988FemResp holding `'`); `name 'text'` with no `=` (three in 1995FemResp); `FILLER` labelled many times |
+| `LABEL` | `name = 'text'`; `name ="text"` (all of 1995FemPregFile; two in 1988FemResp holding `'`); `name 'text'` with no `=` (three in 1995FemResp); `FILLER` labelled many times; `INTENT` and `DISFIRST` labelled twice with different text (1982FemResp) |
 | missing-value recodes | `IF (X = 98 OR X = 99) THEN X = .;` with 1 to 3 codes: 54 variables in 1973, 363 in 1976FemResp, 49 in 1976Preg, 126 in 1988Preg |
 | `FORMAT name fmt. ...;` | |
 | other data-step code | 1973 only: `if int_id=3882 then temp_NLAMOUNT='0000';` and `H_FINC_NLAMOUNT=input(temp_NLAMOUNT, 4.);`. Record 3882 holds `OOO0` (letter O) in columns 653-656; 7,986 other records are blank there |
 
-Variable labels run to 200 characters (labels over 80: 73 in
-1976FemResp, 21 in 1982FemResp, 9 in 1982Preg, 140 in 1988FemResp, 15
-in 1988Preg, 4 in 1995FemResp).
+Variable labels run to 200 characters (275 over 80; see "Long variable
+labels").
 
 The data files: 1973, 1976, 1982 and 1995 have one record per CRLF line,
 every line the same length (1973's lines are 2,023 bytes against
@@ -123,7 +122,10 @@ Statements:
 - Record-type selection: `INPUT v cols @; IF v op n THEN DELETE; ELSE
   INPUT specs;` with `op` one of `=`, `^=`, `~=`, `<`, `<=`, `>`, `>=`
   or `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`. A record for which the
-  condition holds is dropped. `v` stays a variable, as in SAS.
+  condition holds is dropped. `v` stays a variable, as in SAS. A
+  variable a selection reads may not be assigned by any statement (an
+  error), which is stricter than SAS needs and enough for the nine
+  files.
 - `LABEL name [=] 'text' ...;`, single- or double-quoted; the last label
   of a name wins.
 - `FORMAT name fmt. ...;` attaches the value-label set `fmt` when a
@@ -176,7 +178,7 @@ Statements:
 - Numeric field: trimmed of blanks. Empty, or `.`, is `.`. Otherwise
   parsed as a decimal number (sign, digits, point, exponent). A field
   that is not a number is `.`; one warning per variable gives the count
-  and the first record number (1973's `OOO0` is fixed by the setup's
+  and the first record's number in the data file (1973's `OOO0` is fixed by the setup's
   own assignment before `INPUT(...)` reads it).
 - String field (`$`): leading and trailing blanks trimmed.
 
@@ -334,6 +336,12 @@ temporary file.
 
 ## Tests
 
+AGENTS.md's rule that expected values come only from open-source
+readers is about facts of formats other programs define: no expected
+value comes from Stata, its output or its documentation. This feature
+also has behaviour this library defines itself, as every library option
+does, and the tests assert that as this plan specifies it.
+
 Expected values come from asciiSetupReader 3.0.0 (MIT, open source) for
 setup mode. What no open-source reader does (the letters of `"tagged"`,
 the 1973 assignments, repeated names) is this plan's own behaviour, and
@@ -371,8 +379,10 @@ value comes from Stata, its output or its documentation.
    and read the `.dta` with haven (`na_tag()` and `labels`) and
    readstata13; Python's tests read it with pandas and pyreadstat
    (missing codes and value labels), as `python/tests/test_compat.py`
-   does. That checks letters, derived sets and 320-character labels with
-   readers independent of ours.
+   does. That checks letters, their value labels, a value-label set
+   without the recoded codes and a 200-character label with readers
+   independent of ours. (The Rust tests cover shared and renamed
+   derived sets and 320-byte labels.)
 3. **Bindings**: R (testthat), Python (pytest) and Julia read one small
    fixture in each mode and check types, `NA` positions, letters
    (`haven::na_tag`, `missing.a`, `stata_code`), a column with both

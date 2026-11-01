@@ -560,7 +560,7 @@ fn fixed_width(py: Python<'_>, data: &str, setup: &str, out: &str, recodes: &str
     let file = options.open(out).map_err(|e| fail(format!("{out}: {e}")))?;
     let warnings = py
         .detach(|| dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file)))
-        .map_err(|e| fail(format!("{setup}: {e}")))?;
+        .map_err(fail)?;
     Ok(warnings.into_iter().map(|w| w.message).collect())
 }
 

@@ -104,7 +104,7 @@ pub fn fixed_width_to_dta(setup: &[u8], data: &[u8], recodes: Recodes, out: impl
     let mut strings: Vec<Option<Vec<String>>> =
         layout.vars.iter().map(|v| v.is_str.then(|| Vec::with_capacity(kept.len()))).collect();
     let mut bad: Vec<(usize, usize)> = vec![(0, 0); n];
-    for (row, rec) in kept.iter().enumerate() {
+    for rec in &kept {
         for (k, var) in layout.vars.iter().enumerate() {
             if var.is_str {
                 let s = program.string(data, rec, k);
@@ -113,7 +113,7 @@ pub fn fixed_width_to_dta(setup: &[u8], data: &[u8], recodes: Recodes, out: impl
                 let (v, code, invalid) = program.number(data, rec, k);
                 if invalid {
                     if bad[k].0 == 0 {
-                        bad[k].1 = row + 1;
+                        bad[k].1 = rec.number;
                     }
                     bad[k].0 += 1;
                 }
@@ -126,7 +126,7 @@ pub fn fixed_width_to_dta(setup: &[u8], data: &[u8], recodes: Recodes, out: impl
             warn(
                 &mut warnings,
                 WarningKind::NotANumber,
-                format!("{}: {count} values are not numbers and read as `.` (the first in kept record {first})", layout.vars[k].name),
+                format!("{}: {count} values are not numbers and read as `.` (the first in record {first} of the data file)", layout.vars[k].name),
             );
         }
     }
@@ -962,7 +962,7 @@ fn check_order(layout: &Layout) -> Result<()> {
         c.vars(&mut vars);
         if let Some(&v) = vars.iter().find(|v| assigned.contains(v) || layout.vars[**v].from.is_some()) {
             return Err(Error::invalid(format!(
-                "unsupported data-step order: a record selection reads {}, which a statement makes or assigns",
+                "setup: unsupported data-step order: a record selection reads {}, which a statement makes or assigns",
                 layout.vars[v].name
             )));
         }
@@ -977,6 +977,8 @@ fn check_order(layout: &Layout) -> Result<()> {
 struct Rec {
     start: usize,
     end: usize,
+    /// Its number in the data file, from 1.
+    number: usize,
 }
 
 fn split_records(data: &[u8], layout: &Layout) -> Result<Vec<Rec>> {
@@ -990,7 +992,7 @@ fn split_records(data: &[u8], layout: &Layout) -> Result<Vec<Rec>> {
                 data.len() % l
             )));
         }
-        out.extend((0..data.len() / l).map(|i| Rec { start: i * l, end: (i + 1) * l }));
+        out.extend((0..data.len() / l).map(|i| Rec { start: i * l, end: (i + 1) * l, number: i + 1 }));
         return Ok(out);
     }
     let mut start = 0;
@@ -1003,7 +1005,7 @@ fn split_records(data: &[u8], layout: &Layout) -> Result<Vec<Rec>> {
         if let Some(l) = layout.lrecl {
             end = end.min(start + l);
         }
-        out.push(Rec { start, end });
+        out.push(Rec { start, end, number: out.len() + 1 });
         start = nl + 1;
     }
     Ok(out)
@@ -1065,15 +1067,15 @@ impl<'l> Program<'l> {
             for a in &layout.assigns {
                 let mut codes = Vec::new();
                 if let Const::Missing(c) = a.value {
-                    if a.cond.recode_codes(a.target, &mut codes) {
-                        if c == SYSTEM {
-                            for code in codes {
-                                if !order[a.target].contains(&code) {
-                                    order[a.target].push(code);
-                                }
+                    // Every letter the setup assigns the variable is
+                    // reserved, by a recode or any other statement.
+                    if c != SYSTEM {
+                        written[a.target].insert(c);
+                    } else if a.cond.recode_codes(a.target, &mut codes) {
+                        for code in codes {
+                            if !order[a.target].contains(&code) {
+                                order[a.target].push(code);
                             }
-                        } else {
-                            written[a.target].insert(c);
                         }
                     }
                 }

@@ -200,6 +200,14 @@ fn letters_follow_the_setup_and_skip_its_own() {
 }
 
 #[test]
+fn letters_the_setup_assigns_otherwise_are_reserved_too() {
+    // `.a` comes from a statement that is not a recode; 98 takes `.b`.
+    let setup = "DATA; INPUT X 1-2 Y 3; IF X = 1 AND Y = 1 THEN X = .A; IF X = 98 THEN X = .;";
+    let g = read(setup, "011\n98 \n", Recodes::Tagged);
+    assert_eq!(g.nums("X"), [Err(A), Err(B)]);
+}
+
+#[test]
 fn codes_sent_to_one_letter_share_it() {
     let setup = "PROC FORMAT; VALUE f 8='DK' 9='NA';
         DATA; INPUT X 1; IF X = 9 OR X = 8 THEN X = .D; FORMAT X f.;";
@@ -240,6 +248,14 @@ fn a_set_named_like_a_variable_is_not_taken() {
     let setup = "PROC FORMAT; VALUE x 1='one'; DATA; INPUT X 1; IF X = 9 THEN X = .;";
     let g = read(setup, "9\n", Recodes::Tagged);
     assert_eq!(g.set_of, ["X_2"]);
+}
+
+#[test]
+fn a_label_followed_by_a_key_with_no_space() {
+    // CDC's 1973 setup: 24='(20) Subfecund'33='(30) Fecund'.
+    let setup = "PROC FORMAT; VALUE f 24='(20) Subfecund'33='(30) Fecund'; DATA; INPUT X 1-2; FORMAT X f.;";
+    let g = read(setup, "33\n", Recodes::Setup);
+    assert_eq!(g.value_labels("X"), [("24".into(), "(20) Subfecund".into()), ("33".into(), "(30) Fecund".into())]);
 }
 
 #[test]
@@ -318,7 +334,10 @@ fn fields_that_are_not_numbers() {
     assert_eq!(g.nums("A"), [Ok(1.0), Err(M), Err(M), Ok(-2.0), Ok(1.5)]);
     assert_eq!(g.kinds(), [WarningKind::NotANumber]);
     assert!(g.warnings[0].1.contains("A: 1 values are not numbers"));
-    assert!(g.warnings[0].1.contains("record 3"));
+    assert!(g.warnings[0].1.contains("record 3 of the data file"));
+    // Record numbers are the data file's, also when records are dropped.
+    let g = read("DATA; INPUT T 1 @; IF T = 1 THEN DELETE; ELSE INPUT A 2;", "1x\n2y\n", Recodes::Setup);
+    assert!(g.warnings[0].1.contains("record 2 of the data file"), "{:?}", g.warnings);
 }
 
 #[test]
