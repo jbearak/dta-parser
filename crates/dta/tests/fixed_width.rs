@@ -243,6 +243,20 @@ fn a_set_named_like_a_variable_is_not_taken() {
 }
 
 #[test]
+fn derived_set_names_skip_taken_names_and_fit_32_characters() {
+    // yn_2 is a VALUE of its own, so B's derived set takes yn_3.
+    let setup = "PROC FORMAT; VALUE yn 1='Yes' 9='NA'; VALUE yn_2 1='One';
+        DATA; INPUT A 1 B 2 C 3; IF B = 9 THEN B = .; FORMAT A yn. B yn. C yn_2.;";
+    let g = read(setup, "199\n", Recodes::Setup);
+    assert_eq!(g.set_of, ["yn", "yn_3", "yn_2"]);
+    // A 32-character format name is shortened to fit its suffix.
+    let long = "f".repeat(32);
+    let setup = format!("PROC FORMAT; VALUE {long} 1='Yes' 9='NA'; DATA; INPUT A 1 B 2; IF B = 9 THEN B = .; FORMAT A B {long}.;");
+    let g = read(&setup, "19\n", Recodes::Setup);
+    assert_eq!(g.set_of, [long.clone(), format!("{}_2", "f".repeat(30))]);
+}
+
+#[test]
 fn record_type_selection() {
     let setup = "DATA; INFILE 'x' LRECL=5;
         INPUT rec_type 1 @;

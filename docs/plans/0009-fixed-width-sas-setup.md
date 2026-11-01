@@ -284,7 +284,7 @@ removes the file:
   directory is removed on success, error and interrupt (`on.exit`,
   the context manager, `try/finally`). It needs disk about the size of
   the result's numbers; memory peaks at the data file plus the record
-  offsets plus what `read_dta` returns.
+  offsets plus the string columns' text plus what `read_dta` returns.
 
 Plumbing: R's bridge (`r/dtaparser/src/rust/lib.rs`, with its C entry
 in `init.c`) and the Python extension (`python/src/lib.rs`) each get one
@@ -335,8 +335,11 @@ temporary file.
 ## Tests
 
 Expected values come from asciiSetupReader 3.0.0 (MIT, open source) for
-setup mode, and otherwise from the setup text and SAS's documented
-semantics as written into the tests, never from Stata or its output.
+setup mode. What no open-source reader does (the letters of `"tagged"`,
+the 1973 assignments, repeated names) is this plan's own behaviour, and
+the tests assert it as specified here; the files that behaviour writes
+are then read by haven, readstata13, pandas and pyreadstat. No expected
+value comes from Stata, its output or its documentation.
 
 1. **Rust** (`crates/dta/tests/fixed_width.rs`), on setups and data
    written in the test, each read back with `Reader`: the tokenizer
