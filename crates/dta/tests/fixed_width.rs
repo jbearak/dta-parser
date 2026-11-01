@@ -405,7 +405,7 @@ fn unsupported_data_step_order() {
 #[test]
 fn skipped_and_unknown() {
     let setup = "PROC FORMAT; VALUE f 1-5='low' 6='six' OTHER='rest'; VALUE $s 'a'='A';
-        DATA; INPUT X 1; LENGTH y 8; z = x * 2; LABEL Q='q'; FORMAT X f. Q f.;
+        DATA; INPUT X 1; LENGTH y 8; z = x * 2; y = 1; LABEL Q='q'; FORMAT X f. Q f.;
         IF W = 1 THEN X = .; RUN; PROC PRINT; RUN;";
     let g = read(setup, "6\n", Recodes::Setup);
     assert_eq!(g.value_labels("X"), [("6".into(), "six".into())]);
@@ -414,7 +414,7 @@ fn skipped_and_unknown() {
     kinds.sort_by_key(|k| format!("{k:?}"));
     assert_eq!(
         kinds,
-        [SkippedStatement, SkippedStatement, SkippedStatement, SkippedStatement, SkippedValueLabel, SkippedValueLabel, SkippedValueLabel, UnknownName, UnknownName, UnknownName]
+        [SkippedStatement, SkippedStatement, SkippedStatement, SkippedStatement, SkippedStatement, SkippedValueLabel, SkippedValueLabel, SkippedValueLabel, UnknownName, UnknownName, UnknownName]
     );
 }
 

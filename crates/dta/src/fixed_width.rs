@@ -899,15 +899,15 @@ impl CondParser<'_> {
 /// `name = INPUT(src, w.)`, which makes a new numeric variable.
 fn parse_assign_input(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidthWarning>) -> Result<()> {
     let t = &st.toks;
-    let width = match t.as_slice() {
-        [Tok::Word(_), eq, f, open, Tok::Word(_), comma, Tok::Num(w), close]
+    let parsed = match t.as_slice() {
+        [Tok::Word(name), eq, f, open, Tok::Word(src), comma, Tok::Num(w), close]
             if eq.is_sym("=") && f.is_word("INPUT") && open.is_sym("(") && comma.is_sym(",") && close.is_sym(")") =>
         {
-            w.strip_suffix('.').and_then(|w| w.parse::<usize>().ok())
+            w.strip_suffix('.').and_then(|w| w.parse::<usize>().ok()).map(|width| (name, src, width))
         }
         _ => None,
     };
-    let (Some(width), Tok::Word(name), Tok::Word(src)) = (width, &t[0], &t[4]) else {
+    let Some((name, src, width)) = parsed else {
         warn(warnings, WarningKind::SkippedStatement, format!("skipped {}", st.show()));
         return Ok(());
     };
