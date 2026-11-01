@@ -46,7 +46,9 @@ rules. dtatools imports dtaparser.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust
-([rustup.rs](https://rustup.rs)).
+([rustup.rs](https://rustup.rs)). The R packages are also published
+with binaries for macOS, Windows and Ubuntu, which need no Rust:
+`install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))`.
 
 The [guide](docs/guide/README.md) explains the parts of a `.dta` file
 that matter when you use it (releases, storage types, missing values,

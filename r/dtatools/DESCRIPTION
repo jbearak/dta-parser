@@ -8,7 +8,7 @@ Description: Reads and writes Stata .dta files through dtaparser,
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
-    dtaparser (>= 0.1.0),
+    dtaparser (>= 1.0.0),
     rlang,
     tibble,
     tidyselect,
@@ -18,6 +18,8 @@ Suggests:
     haven,
     readstata13,
     testthat (>= 3.0.0)
+Remotes:
+    dtaparser=jbearak/dta-parser/r/dtaparser
 Encoding: UTF-8
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.1

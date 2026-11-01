@@ -78,7 +78,18 @@ Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools"
 ```
 
 `scripts/build-r-package.sh` makes the source tarballs that CI
-installs; dtaparser's carries its own copy of the Rust core.
+installs. dtaparser carries a committed copy of the Rust core in
+`r/dtaparser/src/rust/dta`, so it installs from GitHub without the rest
+of the repository. Its `configure` refreshes the copy from `crates/dta`
+whenever it runs in a checkout; commit the result with any change to
+the core, or CI fails.
+
+To release the R packages, set both DESCRIPTIONs to the new version
+(dtatools' `Imports` names the dtaparser it needs) and push a tag
+`r-v<version>` on main. The r-packages workflow builds binaries for
+macOS, Windows and Ubuntu, publishes them with the source packages as
+the R repository on GitHub Pages, and makes a GitHub release of the
+same files.
 
 **Python package** (Python 3.10 or later):
 
