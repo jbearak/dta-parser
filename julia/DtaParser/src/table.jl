@@ -12,7 +12,8 @@ Table metadata (`metadata(t, key)`): `"label"`, `"timestamp"`,
 strings), `"characteristics"` (`(variable, name, value)` named tuples,
 without notes), `"sorted_by"` (column names) and `"value_labels"`: a
 `Dict` from each value label set's name to a `Dict` from
-[`stata_key`](@ref) to text.
+[`stata_key`](@ref) to text. A table from [`read_fixed_width`](@ref)
+that warned also has `"warnings"`, a vector of strings.
 
 Column metadata (`colmetadata(t, col, key)`): `"label"`, `"format"`,
 `"storage"` (such as `"byte"`, `"str12"`, `"strL"`) and `"value_labels"`

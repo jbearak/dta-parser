@@ -106,6 +106,11 @@ pub struct WriteOptions {
     /// Test only: a worker panics on this slab.
     #[doc(hidden)]
     pub panic_on_slab: Option<usize>,
+    /// Variable labels may have up to 320 characters, not 80. Release
+    /// 118's field holds 320 bytes and our readers read all of it; the
+    /// fixed-width converter's files (ADR 0018) are read only by them.
+    #[doc(hidden)]
+    pub long_variable_labels: bool,
     /// Rows are built this many bytes at a time (at least one row).
     #[doc(hidden)]
     pub block_bytes: usize,
@@ -128,6 +133,7 @@ impl Default for WriteOptions {
             block_bytes: if small { 4096 } else { 8 << 20 },
             slab_bytes: if small { 512 } else { 256 << 10 },
             panic_on_slab: None,
+            long_variable_labels: false,
         }
     }
 }
@@ -149,7 +155,7 @@ pub fn write_with(data: &Dataset, out: impl Write, options: &WriteOptions) -> Re
         .sum::<usize>()
         .saturating_mul(data.nobs);
     let threads = if numeric_bytes >= options.parallel_bytes { crate::threads::resolve(options.threads) } else { 1 };
-    let plan = Plan::new(data, threads)?;
+    let plan = Plan::new(data, threads, options.long_variable_labels)?;
     plan.write(data, &mut out, options, threads)?;
     out.flush()?;
     Ok(())
@@ -181,7 +187,7 @@ impl<'a> Plan<'a> {
     /// the string columns. The error returned is the one a check of each
     /// variable in turn (its metadata, then its values in row order)
     /// would meet first.
-    fn new(data: &Dataset<'a>, threads: usize) -> Result<Plan<'a>> {
+    fn new(data: &Dataset<'a>, threads: usize, long_labels: bool) -> Result<Plan<'a>> {
         let k = data.variables.len();
         if k > 32767 {
             return Err(Error::invalid(format!("release 118 holds at most 32,767 variables, not {k}")));
@@ -190,7 +196,7 @@ impl<'a> Plan<'a> {
         if data.sort_order.iter().any(|&s| s >= k) {
             return Err(Error::invalid("the sort order names a variable that does not exist"));
         }
-        let mut errors: Vec<Option<Error>> = data.variables.iter().map(|v| check_metadata(v).err()).collect();
+        let mut errors: Vec<Option<Error>> = data.variables.iter().map(|v| check_metadata(v, long_labels).err()).collect();
         // What workers may see of each numeric column: no string closure,
         // which need not be Sync.
         let numeric: Vec<(usize, &FillNumbers, &str, StorageType)> = data
@@ -537,9 +543,10 @@ struct StringPlan<'a> {
 }
 
 /// The checks of variable `v` that need none of its values.
-fn check_metadata(v: &WriteVariable) -> Result<()> {
+fn check_metadata(v: &WriteVariable, long_label: bool) -> Result<()> {
     check_name(&v.name)?;
-    check_text(&format!("the label of {}", v.name), &v.label, 80, VAR_LABEL_LEN - 1)?;
+    let max_chars = if long_label { VAR_LABEL_LEN - 1 } else { 80 };
+    check_text(&format!("the label of {}", v.name), &v.label, max_chars, VAR_LABEL_LEN - 1)?;
     if v.format.len() >= FORMAT_LEN {
         return Err(Error::invalid(format!("the format of {} is too long", v.name)));
     }

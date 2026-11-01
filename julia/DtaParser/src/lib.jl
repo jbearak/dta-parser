@@ -1,12 +1,13 @@
 # The native library (crates/dta-ffi, declared in its include/dta.h).
 
-const ABI_VERSION = 1
+const ABI_VERSION = 2
 
 # cargo names the library dta_ffi.dll on Windows, libdta_ffi.* elsewhere.
 const libname = Sys.iswindows() ? "dta_ffi.dll" : Sys.isapple() ? "libdta_ffi.dylib" : "libdta_ffi.so"
 
 # Symbols, looked up when the package loads.
-const SYMBOLS = (:dta_abi_version, :dta_open, :dta_close, :dta_meta_json, :dta_string_free, :dta_read, :dta_write)
+const SYMBOLS = (:dta_abi_version, :dta_open, :dta_close, :dta_meta_json, :dta_string_free, :dta_read, :dta_write,
+                 :dta_fixed_width_to_dta)
 const FNS = Dict{Symbol,Ptr{Cvoid}}()
 const LOAD_ERROR = Ref{String}("")
 
@@ -22,13 +23,14 @@ function __init__()
         return
     end
     handle = Base.Libc.Libdl.dlopen(path)
+    # The version first: an older library lacks newer symbols.
+    version = ccall(Base.Libc.Libdl.dlsym(handle, :dta_abi_version), UInt32, ())
+    if version != ABI_VERSION
+        LOAD_ERROR[] = "$path has ABI version $version; DtaParser needs $ABI_VERSION. Rebuild with `Pkg.build(\"DtaParser\")`"
+        return
+    end
     for s in SYMBOLS
         FNS[s] = Base.Libc.Libdl.dlsym(handle, s)
-    end
-    version = ccall(FNS[:dta_abi_version], UInt32, ())
-    if version != ABI_VERSION
-        empty!(FNS)
-        LOAD_ERROR[] = "$path has ABI version $version; DtaParser needs $ABI_VERSION. Rebuild with `Pkg.build(\"DtaParser\")`"
     end
 end
 

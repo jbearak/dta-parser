@@ -515,6 +515,64 @@ class(df$interviewed) # "Date"
 tibble keeps `label` and `notes`. dtaparser does not write files; use
 dtatools' `save_dta()`.
 
+## Fixed-width files with a SAS setup file
+
+Some surveys are published as fixed-width text with a SAS program, the
+*setup file*, that says where each variable sits. CDC publishes the
+National Survey of Family Growth's 1973 to 1995 cycles this way.
+dtaparser's `read_fixed_width()` reads such data through its setup
+file: columns from `INPUT`, variable labels from `LABEL`, value labels
+from `PROC FORMAT` and `FORMAT`, record types from
+`IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
+*missing-value recodes*, such as `IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`.
+
+```r
+writeLines(c(
+  "PROC FORMAT;",
+  "  VALUE kidsf 0='(0) None' 98='(98) DK' 99='(99) Not ascertained';",
+  "DATA;",
+  "INPUT ID 1-3 KIDS 4-5;",
+  "LABEL KIDS = 'Number of children';",
+  "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
+  "FORMAT KIDS kidsf.;"
+), "survey.sas")
+writeLines(c("001 2", "00298", "00399", "004 0"), "survey.dat")
+```
+
+By default the recodes apply as the setup writes them, so 98 and 99 are
+`NA`, and the columns are as `read_dta()` returns them:
+
+```r
+df <- dtaparser::read_fixed_width("survey.dat", "survey.sas")
+df$KIDS               # a factor: 2 <NA> <NA> (0) None
+attr(df$KIDS, "label") # "Number of children"
+```
+
+`recodes = "tagged"` keeps why each value is missing, as labelled
+missing values: per variable, the codes recoded to `.` become haven's
+tagged NAs `.a`, `.b`, ... in the order the setup names them, and each
+code's value label moves to its letter. `factors` is then `FALSE` by
+default, since a factor cannot hold tagged NAs:
+
+```r
+df <- dtaparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
+haven::na_tag(df$KIDS)   # NA "a" "b" NA
+is.na(df$KIDS)           # FALSE TRUE TRUE FALSE
+attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = NA(a), (99) Not ascertained = NA(b)
+```
+
+A letter means what that variable's labels say: `.a` is 98 "DK" here,
+but in a variable whose setup recodes 97 "Refused" first, `.a` is
+"Refused". `recodes = "none"` ignores the recodes, keeping the codes as
+numbers.
+
+Numeric columns take the smallest type that holds their values, and
+records shorter than the setup's columns read as blank (`NA`).
+Statements the reader does not run, such as other data-step code or a
+range in `VALUE`, are skipped with one warning; the tibble's
+`warnings` attribute lists them all. `col_select`, `skip` and `n_max`
+work as in `read_dta()`, after the whole file is read.
+
 ## Threads
 
 Reading and writing large files uses up to three threads: workers decode and fill numeric columns while R makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
@@ -575,3 +633,9 @@ Each function has a help page (`?read_dta`). Exports:
 - `tab(x, missing = FALSE)`, `dta_group_id(..., missing = FALSE)`,
   `dta_group_tag(..., missing = FALSE)`, `dta_setequal(x, y)`,
   `dta_setdiff(x, y)`: Stata's tabulation, grouping and set operations.
+
+dtaparser exports `read_dta()` (see
+[Plain R types](#plain-r-types-dtaparser)) and
+`read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
+fixed-width text through its SAS setup file (see
+[Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).

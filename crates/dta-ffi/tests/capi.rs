@@ -143,7 +143,7 @@ fn same(a: &[Vec<Row>], b: &[Vec<Row>]) -> bool {
 
 #[test]
 fn version() {
-    assert_eq!(dta_abi_version(), 1);
+    assert_eq!(dta_abi_version(), 2);
 }
 
 #[test]
@@ -376,4 +376,50 @@ fn writes_read_back() {
     assert_eq!(rc, -1);
     assert!(err.text().contains("only a strL"), "{}", err.text());
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn fixed_width_through_a_setup_file() {
+    let dir = std::env::temp_dir().join(format!("dta-capi-fixed-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let (data, setup, out) = (dir.join("x.dat"), dir.join("x.sas"), dir.join("x.dta"));
+    fs::write(&data, "198\n299\n").unwrap();
+    fs::write(&setup, "PROC FORMAT; VALUE f 98='DK'; DATA; INPUT ID 1 K 2-3; IF K = 98 OR K = 99 THEN K = .; FORMAT K f.; LENGTH x 8;").unwrap();
+    let call = |recodes: &str, err: &mut ErrBuf| unsafe {
+        let mut len = 0usize;
+        let s = dta_fixed_width_to_dta(
+            c(data.to_str().unwrap()).as_ptr(),
+            c(setup.to_str().unwrap()).as_ptr(),
+            c(out.to_str().unwrap()).as_ptr(),
+            c(recodes).as_ptr(),
+            &mut len,
+            err.ptr(),
+            512,
+        );
+        if s.is_null() {
+            return None;
+        }
+        let text = CStr::from_ptr(s).to_str().unwrap().to_string();
+        assert_eq!(text.len(), len);
+        dta_string_free(s);
+        Some(text)
+    };
+    let mut err = ErrBuf::new();
+    let warnings = call("tagged", &mut err).unwrap_or_else(|| panic!("{}", err.text()));
+    let warnings: Value = serde_json::from_str(&warnings).unwrap();
+    assert_eq!(warnings, json!(["skipped line 1: LENGTH x 8;"]));
+    assert_eq!(err.text(), "");
+    let mut r = Reader::open(Bytes(fs::read(&out).unwrap()), Options::default()).unwrap();
+    match &r.read(&[1], 0, 2).unwrap()[0] {
+        Column::Numbers { missing, .. } => assert_eq!(missing, &[2, 3]),
+        other => panic!("{other:?}"),
+    }
+    // The output must be a new file.
+    assert!(call("setup", &mut err).is_none());
+    assert!(err.text().contains("x.dta"), "{}", err.text());
+    fs::remove_file(&out).unwrap();
+    assert!(call("letters", &mut err).is_none());
+    assert!(err.text().contains("recodes must be"), "{}", err.text());
+    let _ = fs::remove_dir_all(&dir);
 }

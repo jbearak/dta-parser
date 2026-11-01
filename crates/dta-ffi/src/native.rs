@@ -14,7 +14,7 @@ use dta::{Characteristic, Column, Encoding, FileSource, Options, Reader, Storage
 
 use crate::json::{self, Value};
 
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
 
 // Storage types, as `DtaColumn::storage`.
 pub const BYTE: u32 = 1;
@@ -504,6 +504,44 @@ pub unsafe extern "C" fn dta_write(
             let _ = std::fs::remove_file(&tmp);
         }
         renamed.map(|_| 0)
+    })
+}
+
+/// # Safety
+/// See dta.h: the paths and `recodes` are NUL-terminated; `len` NULL or
+/// writable; `err` NULL or `err_len` writable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn dta_fixed_width_to_dta(
+    data_path: *const c_char,
+    setup_path: *const c_char,
+    out_path: *const c_char,
+    recodes: *const c_char,
+    len: *mut usize,
+    err: *mut c_char,
+    err_len: usize,
+) -> *mut c_char {
+    guard(err, err_len, std::ptr::null_mut(), || {
+        let data = path(c_str(data_path).ok_or("the data path is NULL")?)?;
+        let setup = path(c_str(setup_path).ok_or("the setup path is NULL")?)?;
+        let out = path(c_str(out_path).ok_or("the output path is NULL")?)?;
+        let name = String::from_utf8_lossy(c_str(recodes).unwrap_or(b"setup")).into_owned();
+        let mode = dta::Recodes::from_name(&name)
+            .ok_or_else(|| format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{name}\""))?;
+        let read = |p: &PathBuf| std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()));
+        let (setup_bytes, data_bytes) = (read(&setup)?, read(&data)?);
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+        let file = options.open(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+        let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
+            .map_err(|e| format!("{}: {e}", setup.display()))?;
+        let messages: Vec<String> = warnings.into_iter().map(|w| w.message).collect();
+        let text = json::strings(&messages);
+        if !len.is_null() {
+            *len = text.len();
+        }
+        Ok(CString::new(text).map_err(|e| e.to_string())?.into_raw())
     })
 }
 

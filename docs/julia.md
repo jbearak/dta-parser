@@ -430,6 +430,63 @@ What changes: numeric columns keep their storage type (`Int8` rather
 than a wider type), dates are `Date`/`DateTime`, labelled columns stay
 numbers, and old files decode as Windows-1252 unless you say otherwise.
 
+## Fixed-width files with a SAS setup file
+
+Some surveys are published as fixed-width text with a SAS program, the
+*setup file*, that says where each variable sits. CDC publishes the
+National Survey of Family Growth's 1973 to 1995 cycles this way.
+`read_fixed_width` reads such data through its setup file: columns from
+`INPUT`, variable labels from `LABEL`, value labels from `PROC FORMAT`
+and `FORMAT`, record types from
+`IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
+*missing-value recodes*, such as `IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`.
+
+```julia
+write("survey.sas", """
+PROC FORMAT;
+  VALUE kidsf 0='(0) None' 98='(98) DK' 99='(99) Not ascertained';
+DATA;
+INPUT ID 1-3 KIDS 4-5;
+LABEL KIDS = 'Number of children';
+IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;
+FORMAT KIDS kidsf.;
+""")
+write("survey.dat", "001 2\n00298\n00399\n004 0\n")
+```
+
+By default the recodes apply as the setup writes them, so 98 and 99 are
+`missing` with code 1 (`.`), and the columns are as `read_dta` returns
+them:
+
+```julia
+t = read_fixed_width("survey.dat", "survey.sas")
+collect(t.KIDS)                           # Union{Missing, Int8}[2, missing, missing, 0]
+colmetadata(t, :KIDS, "label")            # "Number of children"
+```
+
+`recodes=:tagged` keeps why each value is missing: per variable, the
+codes recoded to `.` become `.a`, `.b`, ... (codes 2, 3, ...) in the
+order the setup names them, and each code's value label moves to its
+letter:
+
+```julia
+t = read_fixed_width("survey.dat", "survey.sas"; recodes=:tagged)
+[stata_code(t.KIDS, i) for i in 1:4]      # UInt8[0, 2, 3, 0]
+metadata(t, "value_labels")["kidsf"][stata_key(".a")]   # "(98) DK"
+```
+
+A letter means what that variable's labels say: `.a` is 98 "DK" here,
+but in a variable whose setup recodes 97 "Refused" first, `.a` is
+"Refused". `recodes=:none` ignores the recodes, keeping the codes as
+numbers.
+
+Numeric columns take the smallest storage type that holds their values,
+and records shorter than the setup's columns read as blank (`missing`).
+Statements the reader does not run, such as other data-step code or a
+range in `VALUE`, are skipped with one warning; table metadata
+`"warnings"` lists them all. `cols`, `skip` and `n_max` work as in
+`read_dta`, after the whole file is read.
+
 ## Threads
 
 Reading and writing large files uses up to three threads, which decode the rows; Julia receives the chunks in order on the calling task. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work. They are the library's own threads, not Julia's, so `julia -t` does not change them.
@@ -468,6 +525,9 @@ Every export has a docstring (`?read_dta` at the REPL):
 
 - `read_dta(path; cols, skip, n_max, encoding, dates)`: read a file into
   a `DtaTable`.
+- `read_fixed_width(path, setup; recodes, cols, skip, n_max)`: read
+  fixed-width text through its SAS setup file into a `DtaTable` (see
+  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
 - `read_meta(path; encoding)`: metadata, `"nrows"` and `"columns"`,
   without rows.
 - `write_dta(path, table; label, notes, timestamp, value_labels,

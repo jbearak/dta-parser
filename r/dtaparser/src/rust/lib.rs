@@ -1052,3 +1052,44 @@ pub unsafe extern "C" fn dtaparser_write(
         Ok(())
     })
 }
+
+/// Read the fixed-width file `data` as the SAS setup file `setup`
+/// describes, write it as release 118 to the new file `out` (plan 0009),
+/// and store the warnings' messages, a character vector, as element 0 of
+/// `holder`. `recodes` is "setup", "tagged" or "none".
+///
+/// # Safety
+/// The pointers come from init.c.
+#[no_mangle]
+pub unsafe extern "C" fn dtaparser_fixed_width(
+    data: *const c_char,
+    setup: *const c_char,
+    out: *const c_char,
+    recodes: *const c_char,
+    holder: Sexp,
+    err: *mut c_char,
+    err_len: usize,
+) -> c_int {
+    let (data, setup, out) = (c_str(data).unwrap_or_default(), c_str(setup).unwrap_or_default(), c_str(out).unwrap_or_default());
+    let recodes = c_str(recodes).unwrap_or_default();
+    guard(err, err_len, || {
+        let mode = dta::Recodes::from_name(&recodes)
+            .ok_or_else(|| Fail::Message(format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{recodes}\"")))?;
+        let read = |p: &str| std::fs::read(p).map_err(|e| Fail::Message(format!("{p}: {e}")));
+        let (setup_bytes, data_bytes) = (read(&setup)?, read(&data)?);
+        let file = create_new(&out).map_err(|e| Fail::Message(format!("{out}: {e}")))?;
+        let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
+            .map_err(|e| Fail::Message(format!("{setup}: {e}")))?;
+        let messages: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
+        strings_elt(holder, 0, &messages)
+    })
+}
+
+/// Create `path`, which must not exist, readable only by its owner.
+fn create_new(path: &str) -> std::io::Result<std::fs::File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    options.open(path)
+}
