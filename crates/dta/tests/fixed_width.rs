@@ -506,3 +506,48 @@ fn matches_ascii_setup_reader() {
         assert_eq!(got, want, "{name}");
     }
 }
+
+/// recodes = "tagged" on the same files gives what
+/// compat/fixed_width/expected_fixed_width.R makes with asciiSetupReader
+/// and haven: the codes read without the recodes, each recoded code a
+/// tagged NA in the order the setup lists the recodes, and its label on
+/// that letter.
+#[test]
+fn tagged_matches_ascii_setup_reader_and_haven() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat");
+    let setup = std::fs::read_to_string(root.join("fixed_width/synthetic.sas")).unwrap();
+    let data = std::fs::read(root.join("fixed_width/synthetic.dat")).unwrap();
+    let expected: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("expected/fixed_width.json")).unwrap()).unwrap();
+    let g = try_read(&setup, &data, Recodes::Tagged).unwrap();
+    for v in expected["variables"].as_array().unwrap() {
+        let name = v["name"].as_str().unwrap();
+        let Some(tagged) = v["tagged"].as_array() else { continue };
+        for (row, (x, y)) in g.nums(name).iter().zip(tagged).enumerate() {
+            let want = match (y.as_f64(), y["missing"].as_str()) {
+                (Some(b), _) => Ok(b),
+                (None, Some(m)) => Err(dta::missing::from_name(m).unwrap()),
+                (None, None) => Err(1),
+            };
+            match (x, want) {
+                (Ok(a), Ok(b)) => assert!((a - b).abs() <= 1e-9 * b.abs().max(1.0), "{name} row {row}: {a} {b}"),
+                (x, want) => assert_eq!(*x, want, "{name} row {row}"),
+            }
+        }
+        let mut want: Vec<(String, String)> = v["tagged_labels"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| {
+                let key = match p[0].as_f64() {
+                    Some(c) => format!("{c}"),
+                    None => p[0].as_str().unwrap().to_string(),
+                };
+                (key, p[1].as_str().unwrap().to_string())
+            })
+            .collect();
+        want.sort();
+        let got = if g.set_of[g.k(name)].is_empty() { Vec::new() } else { g.value_labels(name) };
+        assert_eq!(got, want, "{name}");
+    }
+}

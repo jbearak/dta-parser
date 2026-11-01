@@ -43,8 +43,10 @@ compares the NSFG files themselves, gives it equivalent input for the
 first two and compares labels by their letters and digits. Its other
 limits there (a label written twice, a `VALUE` with no space after a
 label, `LABEL` without `=`) are listed in that script, each checked
-against the setup text. The letters of `recodes = "tagged"`, which no
-open-source reader makes, are checked by reading the converted file
-with haven, readstata13, pandas and pyreadstat.
+against the setup text. For `recodes = "tagged"`, the expected values
+are asciiSetupReader's codes read without the recodes, made into haven
+tagged NAs in the order its `parse_setup()` lists the recodes; the
+converted file is also read with haven, readstata13, pandas and
+pyreadstat.
 
 `compat/README.md` lists, per release, which readers are the oracle.

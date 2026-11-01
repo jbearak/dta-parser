@@ -195,8 +195,8 @@ writer's defaults.
 
 The writer's `Values::Numbers` fill computes each value again from the
 data (field, then statements), so the values are never held as a second
-copy; only the start and end of each kept record (16 bytes a record)
-are stored.
+copy; only the start, end and number of each kept record (24 bytes a
+record) are stored.
 
 ### Long variable labels
 
@@ -336,14 +336,13 @@ temporary file.
 
 ## Tests
 
-AGENTS.md's rule that expected values come only from open-source
-readers is about facts of formats other programs define: no expected
-value comes from Stata, its output or its documentation. This feature
-also has behaviour this library defines itself, as every library option
-does, and the tests assert that as this plan specifies it.
-
-Expected values come from asciiSetupReader 3.0.0 (MIT, open source) for
-setup mode. What no open-source reader does (the letters of `"tagged"`,
+Expected values come from open-source readers (AGENTS.md); none comes
+from Stata, its output or its documentation. For setup mode they are
+what asciiSetupReader 3.0.0 (MIT) reads. For `"tagged"` mode they are
+asciiSetupReader's codes, read through the setup without its recodes,
+made into haven tagged NAs in the order asciiSetupReader's
+`parse_setup()` lists each variable's recodes, with their labels on the
+letters (`compat/fixed_width/expected_fixed_width.R`). What no open-source reader does (the letters of `"tagged"`,
 the 1973 assignments, repeated names) is this plan's own behaviour, and
 the tests assert it as specified here; the files that behaviour writes
 are then read by haven, readstata13, pandas and pyreadstat. No expected
@@ -372,8 +371,9 @@ value comes from Stata, its output or its documentation.
    record-type selection, which the oracle cannot read) and its data
    from a fixed seed; `expected_fixed_width.R` reads it with asciiSetupReader
    and stores values, labels and value labels in
-   `compat/expected/fixed_width.json`. The Rust test compares setup
-   mode. Committed, so CI needs no R for it.
+   `compat/expected/fixed_width.json`, with the `"tagged"` values made
+   from them with haven. The Rust tests compare setup and tagged mode.
+   Committed, so CI needs no R for it.
    **Tagged mode readback**: R's tests convert the same fixture in
    `"tagged"` mode (through the internal `dtaparser:::fixed_width_to_dta`)
    and read the `.dta` with haven (`na_tag()` and `labels`) and
