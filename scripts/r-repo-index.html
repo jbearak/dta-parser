@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- The front page of the R package repository on GitHub Pages; the
+     r-packages workflow fills in the version. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>dtatools and dtaparser @VERSION@</title>
+<style>body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5 } pre { background: #f4f4f4; padding: .75rem; overflow-x: auto }</style>
+</head>
+<body>
+<h1>dtatools and dtaparser @VERSION@</h1>
+<p>An R package repository for
+<a href="https://github.com/jbearak/dta-parser">dta-parser</a>'s R
+packages. It holds binaries for macOS (arm64), Windows (x86_64) and
+Ubuntu 24.04 (x86_64) for the current and previous R releases, and the
+source packages, which need Rust to build.</p>
+
+<h2>macOS and Windows</h2>
+<pre>install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))</pre>
+
+<h2>Ubuntu 24.04</h2>
+<pre>install.packages("dtatools", repos = c(
+  sprintf("https://jbearak.github.io/dta-parser/bin/linux/noble-x86_64/%s", getRversion()[, 1:2]),
+  "https://cloud.r-project.org"
+))</pre>
+
+<p>Documentation:
+<a href="https://github.com/jbearak/dta-parser/blob/main/docs/r.md">docs/r.md</a>.</p>
+</body>
+</html>

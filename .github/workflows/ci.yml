@@ -66,6 +66,10 @@ jobs:
       # Build the source packages, then install them from outside the
       # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh
+      # Installs from GitHub build r/dtaparser alone, from the committed
+      # copy of the Rust core; configure just refreshed it from crates/dta.
+      - name: Committed Rust core matches crates/dta
+        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta)"
       - run: |
           cd "$RUNNER_TEMP"
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz

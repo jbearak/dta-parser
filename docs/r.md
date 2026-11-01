@@ -30,10 +30,45 @@ section.
 
 ## Install
 
-dtatools needs R 4.2 or later. It reads and writes through dtaparser,
-which needs a Rust toolchain (`cargo` and `rustc`, from
-[rustup.rs](https://rustup.rs)), since it compiles the Rust core when
-installed. Neither is on CRAN. Install dtaparser first, from a shell:
+dtatools needs R 4.2 or later, and reads and writes through dtaparser.
+Neither is on CRAN. Each release is published as an R package
+repository on GitHub, with binaries for macOS (arm64), Windows (x86_64)
+and Ubuntu 24.04 (x86_64) for the current and previous R releases. On
+macOS and Windows:
+
+```r norun
+install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+```
+
+On Ubuntu 24.04:
+
+```r norun
+install.packages("dtatools", repos = c(
+  sprintf("https://jbearak.github.io/dta-parser/bin/linux/noble-x86_64/%s", getRversion()[, 1:2]),
+  "https://cloud.r-project.org"
+))
+```
+
+pak uses the same repository once it is in `repos`, so a project whose
+DESCRIPTION imports dtatools installs it with
+
+```r norun
+options(repos = c(dta = "https://jbearak.github.io/dta-parser", getOption("repos")))
+pak::local_install_deps()
+```
+
+Elsewhere, and for the code on `main`, build from source, which needs a
+Rust toolchain (`cargo` and `rustc`, from
+[rustup.rs](https://rustup.rs)):
+
+```r norun
+pak::pak("jbearak/dta-parser/r/dtatools")
+```
+
+`remotes::install_github("jbearak/dta-parser", subdir = "r/dtatools")`
+does the same; a DESCRIPTION can name the source in
+`Remotes: dtatools=jbearak/dta-parser/r/dtatools`. From a clone, install
+dtaparser first:
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
@@ -41,9 +76,9 @@ R CMD INSTALL dta-parser/r/dtaparser
 R CMD INSTALL dta-parser/r/dtatools
 ```
 
-They import rlang, tibble, tidyselect and vctrs; install them first if R
-reports one missing. After reinstalling dtaparser, restart R before
-using dtatools. Check the install:
+This way, install rlang, tibble, tidyselect and vctrs first if R reports
+one missing. After reinstalling dtaparser, restart R before using
+dtatools. Check the install:
 
 ```r norun
 library(dtatools)
@@ -491,6 +526,11 @@ Set `options(dtaparser.threads = 1)` to use one thread, or another number to cha
 **Installation fails with "dtaparser: building needs cargo".** Install
 Rust from [rustup.rs](https://rustup.rs), open a new terminal, and
 install again. On Windows you also need Rtools.
+
+**"dtatools needs dtaparser built from the same release".** The
+installed dtaparser was built from a different checkout than dtatools.
+Install `r/dtaparser` from the same checkout, restart R, then install
+dtatools again.
 
 **"x holds binary strLs, which dtaparser does not read".** The column
 stores binary data (an image, say). Leave it out with `col_select`, or
