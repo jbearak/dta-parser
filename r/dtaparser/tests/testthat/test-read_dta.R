@@ -143,7 +143,7 @@ test_that("a tibble saved with saveRDS reads back without dtaparser", {
   rds <- tempfile(fileext = ".rds")
   saveRDS(read_dta(path), rds)
   out <- fresh_r(sprintf(
-    'x <- readRDS("%s"); cat(x$s, "dtaparser" %%in%% loadedNamespaces(), sep = ",")', rds
+    'x <- readRDS(%s); cat(x$s, "dtaparser" %%in%% loadedNamespaces(), sep = ",")', deparse(rds)
   ))
   expect_identical(out, "a,b,FALSE")
 })
