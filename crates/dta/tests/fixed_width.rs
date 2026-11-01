@@ -463,6 +463,8 @@ fn matches_ascii_setup_reader() {
         serde_json::from_str(&std::fs::read_to_string(root.join("expected/fixed_width.json")).unwrap()).unwrap();
     let g = try_read(&setup, &data, Recodes::Setup).unwrap();
     assert!(g.warnings.is_empty(), "{:?}", g.warnings);
+    let nobs = expected["nobs"].as_u64().unwrap() as usize;
+    assert!(g.columns.iter().all(|c| c.len() == nobs));
     let theirs = expected["variables"].as_array().unwrap();
     let mut names: Vec<&str> = theirs.iter().map(|v| v["name"].as_str().unwrap()).collect();
     let mut ours: Vec<&str> = g.names.iter().map(String::as_str).collect();
@@ -520,6 +522,8 @@ fn tagged_matches_ascii_setup_reader_and_haven() {
     let expected: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(root.join("expected/fixed_width.json")).unwrap()).unwrap();
     let g = try_read(&setup, &data, Recodes::Tagged).unwrap();
+    let nobs = expected["nobs"].as_u64().unwrap() as usize;
+    assert!(g.columns.iter().all(|c| c.len() == nobs));
     for v in expected["variables"].as_array().unwrap() {
         let name = v["name"].as_str().unwrap();
         let Some(tagged) = v["tagged"].as_array() else { continue };

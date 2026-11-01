@@ -1,7 +1,7 @@
 # Plan: read fixed-width text files through SAS setup files (historical NSFG)
 
-Status: draft, round 3 (rounds 1 and 2: Sonnet 5.5 and GPT-6.1 Terra
-asked for revisions); implemented alongside.
+Status: approved by Sonnet 5.5 (three rounds) and GPT-6.1 Terra (five
+rounds); implemented.
 
 ## Problem
 
