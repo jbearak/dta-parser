@@ -544,8 +544,29 @@ fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
     Err(std::io::Error::other("no free name for a temporary file"))
 }
 
+/// Read the fixed-width file `data` as the SAS setup file `setup`
+/// describes and write it as release 118 to the new file `out` (plan
+/// 0009). Returns the warnings' messages.
+#[pyfunction]
+fn fixed_width(py: Python<'_>, data: &str, setup: &str, out: &str, recodes: &str) -> PyResult<Vec<String>> {
+    let mode = dta::Recodes::from_name(recodes)
+        .ok_or_else(|| fail(format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{recodes}\"")))?;
+    let read = |p: &str| std::fs::read(p).map_err(|e| fail(format!("{p}: {e}")));
+    let (setup_bytes, data_bytes) = (read(setup)?, read(data)?);
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let file = options.open(out).map_err(|e| fail(format!("{out}: {e}")))?;
+    let warnings = py
+        .detach(|| dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file)))
+        .map_err(fail)?;
+    Ok(warnings.into_iter().map(|w| w.message).collect())
+}
+
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(fixed_width, m)?)?;
     m.add_function(wrap_pyfunction!(meta, m)?)?;
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;

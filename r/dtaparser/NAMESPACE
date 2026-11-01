@@ -1,2 +1,3 @@
 useDynLib(dtaparser, .registration = TRUE, .fixes = "C_")
 export(read_dta)
+export(read_fixed_width)

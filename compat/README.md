@@ -17,6 +17,14 @@ To regenerate, from the repository root:
 
 `fixtures/README.md` says where each file comes from.
 
+`fixed_width/` holds a synthetic fixed-width data file and its SAS setup
+file, in the style CDC publishes for the NSFG (plan 0009), and
+`expected/fixed_width.json` what asciiSetupReader reads from them, and
+for `recodes = "tagged"` its codes made into haven tagged NAs:
+
+    Rscript compat/fixed_width/make_fixed_width.R
+    Rscript compat/fixed_width/expected_fixed_width.R   # needs asciiSetupReader and haven
+
 ## Which reader is the oracle, per release
 
 pandas and readstata13 have their own implementations. haven wraps

@@ -243,6 +243,20 @@ fn string(out: &mut String, s: &str) {
     out.push('"');
 }
 
+/// A JSON array of strings.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub fn strings(values: &[String]) -> String {
+    let mut out = String::from("[");
+    for (i, v) in values.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        string(&mut out, v);
+    }
+    out.push(']');
+    out
+}
+
 fn field(out: &mut String, name: &str, value: &str) {
     string(out, name);
     out.push(':');

@@ -17,6 +17,10 @@ TypeScript, with one implementation of the format underneath all four.
 - **Keeps the metadata**: variable labels, value labels (including labels
   on `.a` to `.z`), display formats, storage types, the data label and
   notes, characteristics, the sort order and the timestamp.
+- **Reads fixed-width text through a SAS setup file**, such as the
+  National Survey of Family Growth cycles of 1973 to 1995, with the
+  setup's missing-value recodes kept as `.a`, `.b`, ... on request
+  (`read_fixed_width` in R, Python and Julia).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -139,6 +143,7 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `StataArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
+| fixed-width text through a SAS setup file | dtaparser's `read_fixed_width` | `read_fixed_width` | `read_fixed_width` | |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `stata_key`, `stata_keys` | `stata_key` | `stataKey`, `stataKeys` |

@@ -116,6 +116,8 @@ int dtaparser_meta(const char *path, const char *encoding, SEXP holder, char *er
 int dtaparser_read(const char *path, const int *cols, R_xlen_t ncols, double skip, double n_max, const char *encoding,
                    int mode, int threads, SEXP holder, char *err, size_t err_len);
 int dtaparser_write(const char *path, SEXP spec, int threads, char *err, size_t err_len);
+int dtaparser_fixed_width(const char *data, const char *setup, const char *out, const char *recodes, SEXP holder,
+                          char *err, size_t err_len);
 
 // Threads for a read or write: options(dtaparser.threads) when set to a
 // positive number, else 0 (the core's default, or DTA_THREADS). When
@@ -207,6 +209,16 @@ static SEXP write(SEXP path, SEXP spec) {
   return R_NilValue;
 }
 
+// Convert a fixed-width file through its SAS setup file to the new
+// release 118 file `out`; returns the warnings' messages.
+static SEXP fixed_width(SEXP data, SEXP setup, SEXP out, SEXP recodes) {
+  const char *d = string_arg(data, "file"), *s = string_arg(setup, "setup"), *o = string_arg(out, "out");
+  const char *r = string_arg(recodes, "recodes");
+  SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
+  char err[1024] = "";
+  return finish(dtaparser_fixed_width(d, s, o, r, holder, err, sizeof err), holder, err);
+}
+
 // Whether a double vector holds a tagged NA for .a to .z: R's NA (low
 // word 1954) with a letter in bits 32 to 39, as lib.rs writes them.
 static SEXP has_letters(SEXP x) {
@@ -233,6 +245,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_read", (DL_FUNC) &read, 6},
   {"dta_write", (DL_FUNC) &write, 2},
   {"dta_has_letters", (DL_FUNC) &has_letters, 1},
+  {"dta_fixed_width", (DL_FUNC) &fixed_width, 4},
   {NULL, NULL, 0}
 };
 

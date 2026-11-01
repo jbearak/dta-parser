@@ -32,4 +32,21 @@ tests:
   value labels as empty, and cannot read 104, 110 or big-endian 118 and
   119 files. pandas 3 has none of these.
 
+**Fixed-width files read through a SAS setup file** (plan 0009) have
+their own oracle: asciiSetupReader (R, MIT), which reads such files and
+applies their missing-value recodes. `compat/fixed_width/` holds a
+synthetic setup and data file, and `compat/expected/fixed_width.json`
+what asciiSetupReader reads from them. It cannot read fixed-length
+records without line breaks or two record types in one file, and it
+turns variable labels into column names; `scripts/check-nsfg.R`, which
+compares the NSFG files themselves, gives it equivalent input for the
+first two and compares labels by their letters and digits. Its other
+limits there (a label written twice, a `VALUE` with no space after a
+label, `LABEL` without `=`) are listed in that script, each checked
+against the setup text. For `recodes = "tagged"`, the expected values
+are asciiSetupReader's codes read without the recodes, made into haven
+tagged NAs in the order its `parse_setup()` lists the recodes; the
+converted file is also read with haven, readstata13, pandas and
+pyreadstat.
+
 `compat/README.md` lists, per release, which readers are the oracle.

@@ -493,6 +493,64 @@ Latin-1 (pass `encoding="latin1"` to match pandas).
 | `missing_user_values` | write a `StataArray` with the codes |
 | `pyreadstat.read_file_in_chunks(...)` | a loop over `skip` and `n_max`; see [Read some rows](#read-some-rows) |
 
+## Fixed-width files with a SAS setup file
+
+Some surveys are published as fixed-width text with a SAS program, the
+*setup file*, that says where each variable sits. CDC publishes the
+National Survey of Family Growth's 1973 to 1995 cycles this way.
+`read_fixed_width` reads such data through its setup file: columns from
+`INPUT`, variable labels from `LABEL`, value labels from `PROC FORMAT`
+and `FORMAT`, record types from
+`IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
+*missing-value recodes*, such as `IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`.
+
+```python
+with open("survey.sas", "w") as f:
+    f.write("""PROC FORMAT;
+  VALUE kidsf 0='(0) None' 98='(98) DK' 99='(99) Not ascertained';
+DATA;
+INPUT ID 1-3 KIDS 4-5;
+LABEL KIDS = 'Number of children';
+IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;
+FORMAT KIDS kidsf.;
+""")
+with open("survey.dat", "w") as f:
+    f.write("001 2\n00298\n00399\n004 0\n")
+```
+
+By default the recodes apply as the setup writes them, so 98 and 99 are
+`NaN`, and the columns are as `read_dta` returns them:
+
+```python
+df = dp.read_fixed_width("survey.dat", "survey.sas")
+print(df["KIDS"].tolist())                            # [2.0, nan, nan, 0.0]
+print(df.attrs["dta"]["columns"]["KIDS"]["label"])    # Number of children
+```
+
+`recodes="tagged"` keeps why each value is missing: per variable, the
+codes recoded to `.` become `missing.a`, `missing.b`, ... in the order
+the setup names them, and each code's value label moves to its letter:
+
+```python
+df = dp.read_fixed_width("survey.dat", "survey.sas", recodes="tagged")
+print(df["KIDS"].tolist())                     # [2.0, .a, .b, 0.0]
+print(df["KIDS"][1] is missing.a)              # True
+print(df.attrs["dta"]["value_labels"]["kidsf"])
+# {0: '(0) None', .a: '(98) DK', .b: '(99) Not ascertained'}
+```
+
+A letter means what that variable's labels say: `.a` is 98 "DK" here,
+but in a variable whose setup recodes 97 "Refused" first, `.a` is
+"Refused". `recodes="none"` ignores the recodes, keeping the codes as
+numbers.
+
+Numeric columns take the smallest storage type that holds their values,
+and records shorter than the setup's columns read as blank (`.`).
+Statements the reader does not run, such as other data-step code or a
+range in `VALUE`, are skipped with one `FixedWidthWarning`;
+`df.attrs["warnings"]` lists them all. `columns`, `skip` and `n_max`
+work as in `read_dta`, after the whole file is read.
+
 ## Threads
 
 Reading and writing large files uses up to three threads: workers decode the rows and fill numeric columns, released from the GIL, while the calling thread makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
@@ -542,6 +600,11 @@ The docstrings (`help(dp.read_dta)`) are the reference. Exports:
 
 - `read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True)`:
   read a file into a DataFrame.
+- `read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None)`:
+  read fixed-width text through its SAS setup file (see
+  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
+- `FixedWidthWarning`: the warning `read_fixed_width` gives for
+  statements it skipped.
 - `read_meta(path, encoding=None)`: the metadata dictionary and `nobs`,
   without data.
 - `write_dta(df, path, *, label=None, variable_labels=None, timestamp=None)`:

@@ -69,3 +69,16 @@ How dtaparser's bridge fills columns for its own `read_dta`: integers
 for byte, int and long (doubles once they hold `.a` to `.z`), `NA` for
 every missing value with the letter kept in doubles, dates converted.
 Its other mode fills dtatools' `dta_num` columns.
+
+**Setup file**:
+A SAS program published with a fixed-width text data file, saying
+where each variable's columns are, its variable label and value labels,
+and which codes are missing values. CDC publishes one for each NSFG
+file of 1973 to 1995. `read_fixed_width` reads the data through it.
+_Avoid_: dictionary (Stata's own `.dct` format), codebook
+
+**Missing-value recode**:
+A setup file statement that turns a code into a missing value, such as
+`IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`. `read_fixed_width`
+applies them as written, gives each code its own letter (`.a`, `.b`,
+...) or ignores them.

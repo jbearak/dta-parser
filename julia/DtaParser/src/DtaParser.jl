@@ -11,7 +11,7 @@ using Dates
 import DataAPI
 import Tables
 
-export read_dta, read_meta, write_dta, DtaTable, DtaColumn, stata_code, set_stata_code!, stata_key
+export read_dta, read_fixed_width, read_meta, write_dta, DtaTable, DtaColumn, stata_code, set_stata_code!, stata_key
 
 include("lib.jl")
 include("json.jl")
@@ -19,6 +19,7 @@ include("column.jl")
 include("table.jl")
 include("read.jl")
 include("write.jl")
+include("fixed_width.jl")
 include("precompile.jl")
 
 end
