@@ -601,6 +601,14 @@ fn a_setup_in_several_files_reads_as_one() {
 }
 
 #[test]
+fn quit_ends_a_proc_step_like_run() {
+    let setup = "DATA; INPUT X 1; PROC FORMAT; VALUE f 1='one'; QUIT; FORMAT X f.;";
+    let g = read(setup, "1\n2\n", Recodes::None);
+    assert!(g.warnings.is_empty(), "{:?}", g.warnings);
+    assert_eq!(g.value_labels("X"), [("1".into(), "one".into())]);
+}
+
+#[test]
 fn several_files_are_named_by_their_place() {
     // A statement ends with its file.
     let g = try_read_files(&["DATA; INPUT A 1", "B 2;"], b"12\n", Recodes::None, true).unwrap();

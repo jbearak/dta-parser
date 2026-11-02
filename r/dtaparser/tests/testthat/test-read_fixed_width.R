@@ -226,6 +226,13 @@ test_that("a setup in several files reads as the files joined", {
   expect_error(read_fixed_width(file.path(dir, "x.dat"), character()), "one or more paths")
 })
 
+test_that("QUIT ends a PROC step like RUN", {
+  f <- fw_files(c("DATA; INPUT X 1;", "PROC FORMAT; VALUE f 1='one'; QUIT;", "FORMAT X f.;"), c("1", "2"))
+  df <- read_fixed_width(f[["data"]], f[["setup"]], recodes = "none", factors = FALSE)
+  expect_null(attr(df, "warnings"))
+  expect_identical(attr(df$X, "labels"), c(one = 1))
+})
+
 test_that("a label with stray quotes is read whole, with a warning naming its line", {
   setup <- c(
     "DATA; INPUT SALMX1 1 RING 2 C 3;",

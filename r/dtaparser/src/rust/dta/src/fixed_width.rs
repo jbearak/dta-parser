@@ -596,8 +596,8 @@ fn parse_setup(texts: &[Cow<str>], commented_formats: bool, warnings: &mut Vec<F
         };
         let was_after_delete = std::mem::take(&mut after_delete);
         match head.as_str() {
-            "LIBNAME" | "OPTIONS" | "TITLE" | "FILENAME" | "QUIT" => continue,
-            "RUN" => {
+            "LIBNAME" | "OPTIONS" | "TITLE" | "FILENAME" => continue,
+            "RUN" | "QUIT" => {
                 in_format = false;
                 in_other_proc = false;
                 continue;

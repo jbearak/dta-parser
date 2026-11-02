@@ -182,6 +182,14 @@ end
     @test_throws ArgumentError read_fixed_width(dat, String[])
 end
 
+@testset "read_fixed_width: QUIT ends a PROC step like RUN" begin
+    dat, sas = fw_files("DATA; INPUT X 1;\nPROC FORMAT; VALUE f 1='one'; QUIT;\nFORMAT X f.;", "1\n2\n")
+    t = read_fixed_width(dat, sas; recodes=:none)
+    @test !("warnings" in DataAPI.metadatakeys(t))
+    @test DataAPI.colmetadata(t, :X, "value_labels") == "f"
+    @test DataAPI.metadata(t, "value_labels")["f"] == Dict(1.0 => "one")
+end
+
 @testset "read_fixed_width labels with stray quotes" begin
     setup = [
         "DATA; INPUT SALMX1 1 RING 2 C 3;",
