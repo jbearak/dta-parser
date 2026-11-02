@@ -434,7 +434,7 @@ numbers, and old files decode as Windows-1252 unless you say otherwise.
 
 Some surveys are published as fixed-width text with a SAS program, the
 *setup file*, that says where each variable sits. CDC publishes the
-National Survey of Family Growth's 1973 to 1995 cycles this way.
+National Survey of Family Growth this way, from 1973 to 2017-2019.
 `read_fixed_width` reads such data through its setup file: columns from
 `INPUT`, variable labels from `LABEL`, value labels from `PROC FORMAT`
 and `FORMAT`, record types from
@@ -484,8 +484,52 @@ Numeric columns take the smallest storage type that holds their values,
 and records shorter than the setup's columns read as blank (`missing`).
 Statements the reader does not run, such as other data-step code or a
 range in `VALUE`, are skipped with one warning; table metadata
-`"warnings"` lists them all. `cols`, `skip` and `n_max` work as in
-`read_dta`, after the whole file is read.
+`"warnings"` lists them all. A variable label with stray quotes inside
+it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"` in CDC's
+2011-2013 to 2015-2017 setups, is read from its first quote to its
+last, with a warning naming its line. `cols`, `skip` and `n_max` work
+as in `read_dta`, after the whole file is read.
+
+CDC's setups from 2002 on differ in two ways, and `read_fixed_width`
+reads both. The 2002 setups come in three files (`2002FemPregInput.sas`,
+`2002FemPregVarLabel.sas`, `2002FemPregValueLabel.sas`); give `setup` a
+vector of the paths in that order, and they are read as one setup. A
+statement may not run from one file into the next, and errors and
+warnings name a file by its place (`"file 2 line 8"`):
+
+```julia
+write("input.sas", "DATA;\nINPUT ID 1-3 KIDS 4-5;\nRUN;\n")
+write("labels.sas", "PROC FORMAT;\n  VALUE kidsf 0='(0) None' 98='(98) DK';\nRUN;\nFORMAT KIDS kidsf.;\n")
+t = read_fixed_width("survey.dat", ["input.sas", "labels.sas"]; recodes=:none)
+metadata(t, "value_labels")["kidsf"]   # Dict(0.0 => "(0) None", 98.0 => "(98) DK")
+```
+
+From 2006-2010 on, CDC puts the `PROC FORMAT` step and the `FORMAT`
+statement each in a block comment (`/* ... */`), so that SAS users
+without CDC's format catalog can run the file as published. The value
+labels are still there, so by default a comment that holds nothing but
+a `PROC FORMAT` step or a `FORMAT` statement is read as code; a comment
+that only mentions them stays a comment. `commented_formats=false`
+reads every comment as a comment, and those files then have no value
+labels:
+
+```julia
+write("commented.sas", """
+/*
+PROC FORMAT;
+  VALUE kidsf 0='(0) None' 98='(98) DK';
+*/
+DATA;
+INPUT ID 1-3 KIDS 4-5;
+/*
+FORMAT KIDS kidsf.;
+*/
+""")
+t = read_fixed_width("survey.dat", "commented.sas"; recodes=:none)
+colmetadata(t, :KIDS, "value_labels")   # "kidsf"
+t = read_fixed_width("survey.dat", "commented.sas"; recodes=:none, commented_formats=false)
+colmetadata(t, :KIDS, "value_labels")   # ""
+```
 
 ## Threads
 
@@ -525,8 +569,9 @@ Every export has a docstring (`?read_dta` at the REPL):
 
 - `read_dta(path; cols, skip, n_max, encoding, dates)`: read a file into
   a `DtaTable`.
-- `read_fixed_width(path, setup; recodes, cols, skip, n_max)`: read
-  fixed-width text through its SAS setup file into a `DtaTable` (see
+- `read_fixed_width(path, setup; recodes, cols, skip, n_max,
+  commented_formats)`: read fixed-width text through its SAS setup file,
+  one path or a vector of paths, into a `DtaTable` (see
   [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
 - `read_meta(path; encoding)`: metadata, `"nrows"` and `"columns"`,
   without rows.

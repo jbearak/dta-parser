@@ -1,7 +1,8 @@
 # Plan: read fixed-width text files through SAS setup files (historical NSFG)
 
 Status: approved by Sonnet 5.5 (three rounds) and GPT-6.1 Terra (five
-rounds); implemented.
+rounds); implemented. Extended to the 2002 to 2017-2019 setups (see
+[Later cycles](#later-cycles-2002-to-2017-2019)).
 
 ## Problem
 
@@ -76,11 +77,12 @@ pub enum Recodes { Setup, Tagged, None }
 pub struct FixedWidthWarning { pub kind: WarningKind, pub message: String }
 pub enum WarningKind { SkippedStatement, SkippedValueLabel, UnknownName,
                        DuplicateName, NotANumber, ShortRecords, NoRecords,
-                       LabelCut }
+                       LabelCut, LabelQuotes }
 
-/// Read `data` as `setup` describes and write it as release 118 to `out`.
-pub fn fixed_width_to_dta(setup: &[u8], data: &[u8], recodes: Recodes,
-                          out: impl Write) -> Result<Vec<FixedWidthWarning>>
+/// Read `data` as `setups` describe and write it as release 118 to `out`.
+pub fn fixed_width_to_dta(setups: &[&[u8]], data: &[u8], recodes: Recodes,
+                          commented_formats: bool, out: impl Write)
+                          -> Result<Vec<FixedWidthWarning>>
 ```
 
 The core keeps doing no I/O of its own; bindings read both files into
@@ -257,9 +259,12 @@ removes the file:
 
 | language | call |
 |---|---|
-| R (dtaparser) | `read_fixed_width(file, setup, recodes = c("setup", "tagged", "none"), col_select = NULL, skip = 0, n_max = Inf, factors = recodes != "tagged", warn_extended_missing = TRUE)` |
-| Python | `dta_parser.read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None)` |
-| Julia | `read_fixed_width(path, setup; recodes=:setup, cols=nothing, skip=0, n_max=nothing)` |
+| R (dtaparser) | `read_fixed_width(file, setup, recodes = c("setup", "tagged", "none"), col_select = NULL, skip = 0, n_max = Inf, factors = recodes != "tagged", warn_extended_missing = TRUE, commented_formats = TRUE)` |
+| Python | `dta_parser.read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None, commented_formats=True)` |
+| Julia | `read_fixed_width(path, setup; recodes=:setup, cols=nothing, skip=0, n_max=nothing, commented_formats=true)` |
+
+`setup` is one path or several (an R character vector, a Python list, a
+Julia vector).
 
 - R's `factors` defaults to `FALSE` with `recodes = "tagged"`
   (`recodes <- match.arg(recodes)` runs before `factors` is used), so asking
@@ -290,11 +295,13 @@ removes the file:
 
 Plumbing: R's bridge (`r/dtaparser/src/rust/lib.rs`, with its C entry
 in `init.c`) and the Python extension (`python/src/lib.rs`) each get one
-function taking the two input paths, the output path and the mode, and
-returning the warnings. Julia gets a C function in
-`crates/dta-ffi/src/native.rs`, declared in
+function taking the data path, the setup paths, the output path, the
+mode and `commented_formats`, and returning the warnings. Julia gets a
+C function in `crates/dta-ffi/src/native.rs`, declared in
 `crates/dta-ffi/include/dta.h`: `dta_fixed_width_to_dta(data_path,
-setup_path, out_path, recodes, warnings_json_out, err, err_len)`.
+setup_paths, n_setups, out_path, recodes, commented_formats,
+warnings_json_out, err, err_len)` (ABI version 3; it was 2 with one
+setup path and no `commented_formats`).
 Julia's `lib.jl` looks up every symbol before it checks the ABI version,
 so a stale library would fail with a raw `dlsym` error: the ABI version
 goes to 2 in `native.rs`, `include/dta.h` and `lib.jl`, and `lib.jl`
@@ -409,6 +416,62 @@ value comes from Stata, its output or its documentation.
    differently (each such difference listed, not skipped silently). It also times conversion
    and read for each file. Run for the PR and reported there, not in CI
    (the data is not ours to commit).
+
+## Later cycles (2002 to 2017-2019)
+
+CDC's setups for the 2002, 2006-2010, 2011-2013, 2013-2015, 2015-2017
+and 2017-2019 female respondent and pregnancy files use the statements
+above, with three differences.
+
+- **Several files.** 2002 splits each setup in three:
+  `2002FemPregInput.sas` (`FILENAME`, `libname`, `%LET`, `DATA
+  &dataset;`, `INFILE`, `INPUT`, `RUN;`), `2002FemPregVarLabel.sas`
+  (`LABEL`, with `/* SECTION B */` comments inside it) and
+  `2002FemPregValueLabel.sas` (`PROC FORMAT; VALUE ...; RUN;` then
+  `FORMAT ...; RUN;`); the same for FemResp. `setup` takes the files in
+  that order. Each file is split into statements on its own (a
+  statement may not run from one file into the next) and the
+  statements are then read in order as one setup. With several files,
+  messages say `file 2 line 8` where one file says `line 8`.
+  The `FORMAT` comes after the `RUN` of a `PROC FORMAT` step, outside
+  any step. So once a `DATA` statement has been read, a `LABEL` or
+  `FORMAT` outside any step (after a `RUN`, not inside `PROC FORMAT` or
+  another `PROC`) applies to the DATA step's variables.
+- **Commented-out formats.** From 2006-2010 on, the header says that
+  "Sections for PROC FORMAT and FORMAT have been commented out": a line
+  `/*` before `PROC FORMAT;` and a line `*/` after its last `VALUE` (or
+  its `QUIT;`), and the same around `FORMAT ... ;`. CDC does this so
+  that SAS users without CDC's format catalog can run the file as
+  published; the value labels are all there. With `commented_formats`
+  (the default), a block comment that starts between statements is
+  read as code when its text, ignoring whitespace, ends in `;`, splits
+  into statements without error, and is either `PROC FORMAT ...;`
+  followed by one or more `VALUE` statements and at most a final `RUN;`
+  or `QUIT;`, or one `FORMAT` statement that names at least one
+  variable and format. Any other comment, such as the header that
+  mentions `PROC FORMAT` in prose, stays a comment. Turned off, every
+  comment is a comment and those files have no value labels.
+- **Stray quotes in labels.** The 2006-2010 to 2017-2019 FemResp setups
+  have labels with quotes inside them, such as
+  `SALMX1 = "FLAG INDICATING WHETHER " SAME AS LAST MONTH" WAS ORIGINAL ANSWER ..."`
+  and `STRLOPER = "... OPERATION "IN EFFECT" (RECODE)"` (98 labels in
+  each of 2011-2013, 2013-2015 and 2015-2017), and
+  `RING = "... RING OR "NuvaRing"?"` (in each from 2006-2010 to
+  2017-2019).
+  SAS ends the string at the second quote, and so did this reader,
+  which then failed on `SAME`. Now, when a label's string is followed
+  on its line by words and strings, the last a string, up to the next
+  `name =` or the statement's end, the label is the setup's text from
+  its first quote to its last, with a warning (`LabelQuotes`) naming
+  the line. Words and strings that are all `name 'text'` pairs naming
+  variables already defined stay labels without `=` (1995FemResp has
+  such labels on lines of their own). Anything else after a label is
+  still an error.
+
+Encodings, `INPUT`, `INFILE` and the data files need nothing new
+(2006-2010 FemPreg's setup is windows-1252 text; the others are ASCII,
+with CRLF lines until 2011-2013 and LF after). The `LENGTH` statement
+of 2006-2010 on is skipped with a warning, as before.
 
 ## Proof for the PR
 

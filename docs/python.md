@@ -497,7 +497,7 @@ Latin-1 (pass `encoding="latin1"` to match pandas).
 
 Some surveys are published as fixed-width text with a SAS program, the
 *setup file*, that says where each variable sits. CDC publishes the
-National Survey of Family Growth's 1973 to 1995 cycles this way.
+National Survey of Family Growth this way, from 1973 to 2017-2019.
 `read_fixed_width` reads such data through its setup file: columns from
 `INPUT`, variable labels from `LABEL`, value labels from `PROC FORMAT`
 and `FORMAT`, record types from
@@ -548,8 +548,54 @@ Numeric columns take the smallest storage type that holds their values,
 and records shorter than the setup's columns read as blank (`.`).
 Statements the reader does not run, such as other data-step code or a
 range in `VALUE`, are skipped with one `FixedWidthWarning`;
-`df.attrs["warnings"]` lists them all. `columns`, `skip` and `n_max`
-work as in `read_dta`, after the whole file is read.
+`df.attrs["warnings"]` lists them all. A variable label with stray
+quotes inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS
+ANSWERED"` in CDC's 2011-2013 to 2015-2017 setups, is read from its
+first quote to its last, with a warning naming its line. `columns`,
+`skip` and `n_max` work as in `read_dta`, after the whole file is read.
+
+CDC's setups from 2002 on differ in two ways, and `read_fixed_width`
+reads both. The 2002 setups come in three files (`2002FemPregInput.sas`,
+`2002FemPregVarLabel.sas`, `2002FemPregValueLabel.sas`); give `setup`
+a list of the paths in that order, and they are read as one setup. A
+statement may not run from one file into the next, and errors and
+warnings name a file by its place (`"file 2 line 8"`):
+
+```python
+with open("input.sas", "w") as f:
+    f.write("DATA;\nINPUT ID 1-3 KIDS 4-5;\nRUN;\n")
+with open("labels.sas", "w") as f:
+    f.write("PROC FORMAT;\n  VALUE kidsf 0='(0) None' 98='(98) DK';\nRUN;\nFORMAT KIDS kidsf.;\n")
+df = dp.read_fixed_width("survey.dat", ["input.sas", "labels.sas"], recodes="none")
+print(df.attrs["dta"]["value_labels"]["kidsf"])   # {0: '(0) None', 98: '(98) DK'}
+```
+
+From 2006-2010 on, CDC puts the `PROC FORMAT` step and the `FORMAT`
+statement each in a block comment (`/* ... */`), so that SAS users
+without CDC's format catalog can run the file as published. The value
+labels are still there, so by default a comment that holds nothing but
+a `PROC FORMAT` step or a `FORMAT` statement is read as code; a comment
+that only mentions them stays a comment. `commented_formats=False`
+reads every comment as a comment, and those files then have no value
+labels:
+
+```python
+with open("commented.sas", "w") as f:
+    f.write("""/*
+PROC FORMAT;
+  VALUE kidsf 0='(0) None' 98='(98) DK';
+*/
+DATA;
+INPUT ID 1-3 KIDS 4-5;
+/*
+FORMAT KIDS kidsf.;
+*/
+""")
+df = dp.read_fixed_width("survey.dat", "commented.sas", recodes="none")
+print(df.attrs["dta"]["value_labels"])   # {'kidsf': {0: '(0) None', 98: '(98) DK'}}
+df = dp.read_fixed_width("survey.dat", "commented.sas", recodes="none", commented_formats=False)
+print(df.attrs["dta"]["value_labels"])   # {}
+```
 
 ## Threads
 
@@ -600,8 +646,9 @@ The docstrings (`help(dp.read_dta)`) are the reference. Exports:
 
 - `read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True)`:
   read a file into a DataFrame.
-- `read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None)`:
-  read fixed-width text through its SAS setup file (see
+- `read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None, commented_formats=True)`:
+  read fixed-width text through its SAS setup file, given as one path
+  or a list of paths (see
   [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
 - `FixedWidthWarning`: the warning `read_fixed_width` gives for
   statements it skipped.

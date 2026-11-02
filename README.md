@@ -18,7 +18,7 @@ TypeScript, with one implementation of the format underneath all four.
   on `.a` to `.z`), display formats, storage types, the data label and
   notes, characteristics, the sort order and the timestamp.
 - **Reads fixed-width text through a SAS setup file**, such as the
-  National Survey of Family Growth cycles of 1973 to 1995, with the
+  National Survey of Family Growth from 1973 to 2017-2019, with the
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
   (`read_fixed_width` in R, Python and Julia).
 - **Reads only what you ask for**: a few columns, a window of rows, or
