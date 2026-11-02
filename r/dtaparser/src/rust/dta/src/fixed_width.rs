@@ -1,5 +1,5 @@
 //! Fixed-width text data read through a SAS setup file, as CDC publishes
-//! the National Survey of Family Growth cycles of 1973 to 1995, and
+//! the National Survey of Family Growth from 1973 to 2017-2019, and
 //! written as release 118 for the language bindings to read back.
 //!
 //! The setup file is parsed for what such files hold: `PROC FORMAT`
@@ -7,10 +7,13 @@
 //! selection (`IF v < n THEN DELETE; ELSE INPUT ...`), `LABEL`, `FORMAT`,
 //! and two forms of data-step assignment (`IF cond THEN v = constant`
 //! and `v = INPUT(s, w.)`). Other statements are skipped with a warning.
+//! A setup may come as several files (2002), read in order as one, and
+//! its `PROC FORMAT` and `FORMAT` may be commented out (2006 to 2019).
 //! Plan 0009 and ADR 0018 give the rules and the reasons.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::io::Write;
 
 use crate::encoding::Encoding;
@@ -66,6 +69,9 @@ pub enum WarningKind {
     NoRecords,
     /// A variable label longer than 320 bytes, cut.
     LabelCut,
+    /// A variable label with stray quotes inside, read from its first
+    /// quote to its last.
+    LabelQuotes,
 }
 
 /// Something the converter did that the caller should know about.
@@ -75,10 +81,28 @@ pub struct FixedWidthWarning {
     pub message: String,
 }
 
-/// Read `data` as `setup` describes and write it as release 118 to `out`.
-pub fn fixed_width_to_dta(setup: &[u8], data: &[u8], recodes: Recodes, out: impl Write) -> Result<Vec<FixedWidthWarning>> {
+/// Read `data` as `setups` describe and write it as release 118 to `out`.
+///
+/// `setups` are the setup's files, read in order as one setup; a
+/// statement may not run from one file into the next. With several,
+/// errors and warnings name the file by its place in `setups`, from 1.
+/// With `commented_formats`, a block comment that holds only a `PROC
+/// FORMAT` step or a `FORMAT` statement is read as code: CDC comments
+/// them out of its 2006 to 2019 setups so that SAS runs without the
+/// format catalog.
+pub fn fixed_width_to_dta(
+    setups: &[&[u8]],
+    data: &[u8],
+    recodes: Recodes,
+    commented_formats: bool,
+    out: impl Write,
+) -> Result<Vec<FixedWidthWarning>> {
     let mut warnings = Vec::new();
-    let layout = parse_setup(&text(setup), &mut warnings)?;
+    if setups.is_empty() {
+        return Err(Error::invalid("no setup file was given"));
+    }
+    let texts: Vec<Cow<str>> = setups.iter().map(|s| text(s)).collect();
+    let layout = parse_setup(&texts, commented_formats, &mut warnings)?;
     let records = split_records(data, &layout)?;
     let utf8 = std::str::from_utf8(data).is_ok();
     let program = Program::new(&layout, recodes)?;
@@ -233,10 +257,37 @@ impl Tok {
     }
 }
 
-struct Statement {
-    /// Line of the statement's first token, from 1.
+/// A place in the setup: its file's place among several (from 1), and the
+/// line (from 1).
+#[derive(Debug, Clone, Copy)]
+struct Loc {
+    file: Option<usize>,
     line: usize,
+}
+
+impl fmt::Display for Loc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.file {
+            Some(file) => write!(f, "file {file} line {}", self.line),
+            None => write!(f, "line {}", self.line),
+        }
+    }
+}
+
+/// Where a token is in its file's text: bytes `start..end`, on `line`.
+#[derive(Debug, Clone, Copy)]
+struct Span {
+    start: usize,
+    end: usize,
+    line: usize,
+}
+
+struct Statement {
+    /// Where the statement's first token is.
+    loc: Loc,
     toks: Vec<Tok>,
+    /// Each token's place, in step with `toks`.
+    spans: Vec<Span>,
 }
 
 impl Statement {
@@ -246,37 +297,57 @@ impl Statement {
         if s.chars().count() > 80 {
             s = s.chars().take(77).collect::<String>() + "...";
         }
-        format!("line {}: {s};", self.line)
+        format!("{}: {s};", self.loc)
     }
 
     fn error(&self, what: &str) -> Error {
-        Error::invalid(format!("setup line {}: {what}", self.line))
+        Error::invalid(format!("setup {}: {what}", self.loc))
+    }
+
+    /// The text of the setup file the statement is in.
+    fn src<'s>(&self, texts: &'s [Cow<str>]) -> &'s str {
+        &texts[self.loc.file.map_or(0, |f| f - 1)]
     }
 }
 
 /// Split SAS source into statements of tokens: comments dropped, quoted
-/// strings kept whole, statements ended by `;` outside quotes.
-fn statements(src: &str) -> Result<Vec<Statement>> {
+/// strings kept whole, statements ended by `;` outside quotes. `file` is
+/// the file's place among several setup files. With `commented_formats`,
+/// a block comment between statements that [`commented_format`] accepts
+/// is read as code.
+fn statements(src: &str, file: Option<usize>, commented_formats: bool) -> Result<Vec<Statement>> {
     let b = src.as_bytes();
     let mut out = Vec::new();
     let mut toks: Vec<Tok> = Vec::new();
+    let mut spans: Vec<Span> = Vec::new();
     let mut start_line = 0;
     let mut line = 1;
     let mut i = 0;
+    // Where the block comment being read as code ends.
+    let mut close: Option<usize> = None;
     while i < b.len() {
         let c = b[i];
-        if c == b'\n' {
+        if close == Some(i) {
+            close = None;
+            i += 2;
+        } else if c == b'\n' {
             line += 1;
             i += 1;
         } else if c.is_ascii_whitespace() {
             i += 1;
         } else if c == b'/' && b.get(i + 1) == Some(&b'*') {
-            i += 2;
-            while i < b.len() && !(b[i] == b'*' && b.get(i + 1) == Some(&b'/')) {
-                line += (b[i] == b'\n') as usize;
-                i += 1;
+            let body = i + 2;
+            let end = (body..b.len()).find(|&j| b[j] == b'*' && b.get(j + 1) == Some(&b'/')).unwrap_or(b.len());
+            if commented_formats && toks.is_empty() && close.is_none() && end < b.len() && commented_format(&src[body..end]) {
+                close = Some(end);
+                i = body;
+            } else {
+                line += b[i..end].iter().filter(|&&c| c == b'\n').count();
+                if close == Some(end) {
+                    close = None;
+                }
+                i = end + 2;
             }
-            i += 2;
         } else if c == b'*' && toks.is_empty() {
             // A comment statement, up to the next `;`.
             while i < b.len() && b[i] != b';' {
@@ -286,27 +357,54 @@ fn statements(src: &str) -> Result<Vec<Statement>> {
             i += 1;
         } else if c == b';' {
             if !toks.is_empty() {
-                out.push(Statement { line: start_line, toks: std::mem::take(&mut toks) });
+                let loc = Loc { file, line: start_line };
+                out.push(Statement { loc, toks: std::mem::take(&mut toks), spans: std::mem::take(&mut spans) });
             }
             i += 1;
         } else {
             if toks.is_empty() {
                 start_line = line;
             }
-            let (tok, next) = token(b, i, line)?;
+            let (tok, next) = token(b, i, Loc { file, line })?;
+            spans.push(Span { start: i, end: next, line });
             line += b[i..next].iter().filter(|&&c| c == b'\n').count();
             toks.push(tok);
             i = next;
         }
     }
     if !toks.is_empty() {
-        out.push(Statement { line: start_line, toks });
+        out.push(Statement { loc: Loc { file, line: start_line }, toks, spans });
     }
     Ok(out)
 }
 
+/// Whether a block comment's text, ignoring whitespace, is a `PROC FORMAT`
+/// step (`PROC FORMAT;`, `VALUE` statements, and an optional `RUN;` or
+/// `QUIT;`) or one `FORMAT` statement. A comment that only mentions them
+/// is not.
+fn commented_format(body: &str) -> bool {
+    if !body.trim_end().ends_with(';') {
+        return false;
+    }
+    let Ok(stmts) = statements(body, None, false) else { return false };
+    match stmts.as_slice() {
+        [proc, rest @ ..] if proc.toks[0].is_word("PROC") && proc.toks.get(1).is_some_and(|t| t.is_word("FORMAT")) => {
+            let values = match rest {
+                [values @ .., last] if last.toks.len() == 1 && (last.toks[0].is_word("RUN") || last.toks[0].is_word("QUIT")) => values,
+                _ => rest,
+            };
+            !values.is_empty() && values.iter().all(|s| s.toks[0].is_word("VALUE"))
+        }
+        [format] if format.toks[0].is_word("FORMAT") => {
+            let mut pairs = Vec::new();
+            parse_format(format, &mut pairs).is_ok() && !pairs.is_empty()
+        }
+        _ => false,
+    }
+}
+
 /// The token starting at `b[i]` and the index after it.
-fn token(b: &[u8], i: usize, line: usize) -> Result<(Tok, usize)> {
+fn token(b: &[u8], i: usize, loc: Loc) -> Result<(Tok, usize)> {
     let c = b[i];
     let word_char = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
     if c == b'\'' || c == b'"' {
@@ -314,7 +412,7 @@ fn token(b: &[u8], i: usize, line: usize) -> Result<(Tok, usize)> {
         let mut j = i + 1;
         loop {
             match b.get(j) {
-                None => return Err(Error::invalid(format!("setup line {line}: a quoted string is not closed"))),
+                None => return Err(Error::invalid(format!("setup {loc}: a quoted string is not closed"))),
                 Some(&q) if q == c && b.get(j + 1) == Some(&c) => {
                     s.push(c);
                     j += 2;
@@ -439,7 +537,7 @@ struct Var {
 
 /// `IF cond THEN target = value`, in setup order.
 struct Assign {
-    line: usize,
+    loc: Loc,
     target: usize,
     cond: Cond,
     value: Const,
@@ -470,16 +568,26 @@ impl Layout {
     }
 }
 
-fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layout> {
-    let stmts = statements(src)?;
+fn parse_setup(texts: &[Cow<str>], commented_formats: bool, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layout> {
+    let several = texts.len() > 1;
+    let mut stmts = Vec::new();
+    for (k, src) in texts.iter().enumerate() {
+        stmts.extend(statements(src, several.then_some(k + 1), commented_formats)?);
+    }
     let mut layout = Layout::default();
     let mut in_format = false;
     let mut in_data = false;
+    // In a PROC step other than PROC FORMAT, whose statements are skipped.
+    let mut in_other_proc = false;
+    // A DATA step came earlier. CDC's 2002 setups put FORMAT after the
+    // RUN of a PROC FORMAT step that follows the DATA step, so LABEL and
+    // FORMAT outside any step apply to the DATA step's variables.
+    let mut saw_data = false;
     let mut saw_input = false;
     // The previous statement was `IF ... THEN DELETE`, so `ELSE` may follow.
     let mut after_delete = false;
-    let mut labels: Vec<(usize, String, String)> = Vec::new();
-    let mut formats: Vec<(usize, String, String)> = Vec::new();
+    let mut labels: Vec<(Loc, String, String)> = Vec::new();
+    let mut formats: Vec<(Loc, String, String)> = Vec::new();
     let mut duplicates: Vec<String> = Vec::new();
     for st in &stmts {
         let head = match &st.toks[0] {
@@ -491,10 +599,12 @@ fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layou
             "LIBNAME" | "OPTIONS" | "TITLE" | "FILENAME" | "QUIT" => continue,
             "RUN" => {
                 in_format = false;
+                in_other_proc = false;
                 continue;
             }
             "PROC" => {
                 in_format = st.toks.get(1).is_some_and(|t| t.is_word("FORMAT"));
+                in_other_proc = !in_format;
                 in_data = false;
                 if !in_format {
                     warn(warnings, WarningKind::SkippedStatement, format!("skipped {}", st.show()));
@@ -503,7 +613,9 @@ fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layou
             }
             "DATA" => {
                 in_format = false;
+                in_other_proc = false;
                 in_data = true;
+                saw_data = true;
                 continue;
             }
             "VALUE" if in_format => {
@@ -512,7 +624,8 @@ fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layou
             }
             _ => {}
         }
-        if !in_data {
+        let outside = saw_data && !in_format && !in_other_proc && matches!(head.as_str(), "LABEL" | "FORMAT");
+        if !in_data && !outside {
             warn(warnings, WarningKind::SkippedStatement, format!("skipped {}", st.show()));
             continue;
         }
@@ -525,7 +638,7 @@ fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layou
             "ELSE" if was_after_delete && st.toks.get(1).is_some_and(|t| t.is_word("INPUT")) => {
                 parse_input(st, &st.toks[2..], &mut layout, &mut duplicates)?;
             }
-            "LABEL" => parse_label(st, &mut labels)?,
+            "LABEL" => parse_label(st, st.src(texts), &layout, &mut labels, warnings)?,
             "FORMAT" => parse_format(st, &mut formats)?,
             "IF" if saw_input => match parse_if(st, &mut layout, warnings)? {
                 IfKind::Delete => after_delete = true,
@@ -547,16 +660,16 @@ fn parse_setup(src: &str, warnings: &mut Vec<FixedWidthWarning>) -> Result<Layou
             format!("INPUT reads {name} more than once; it keeps its first position and the values of its last columns"),
         );
     }
-    for (line, name, text) in labels {
+    for (loc, name, text) in labels {
         match layout.find(&name) {
             Some(k) => layout.vars[k].label = text,
-            None => warn(warnings, WarningKind::UnknownName, format!("line {line}: LABEL names {name}, which INPUT does not define")),
+            None => warn(warnings, WarningKind::UnknownName, format!("{loc}: LABEL names {name}, which INPUT does not define")),
         }
     }
-    for (line, name, fmt) in formats {
+    for (loc, name, fmt) in formats {
         match layout.find(&name) {
             Some(k) => layout.vars[k].format = Some(fmt),
-            None => warn(warnings, WarningKind::UnknownName, format!("line {line}: FORMAT names {name}, which INPUT does not define")),
+            None => warn(warnings, WarningKind::UnknownName, format!("{loc}: FORMAT names {name}, which INPUT does not define")),
         }
     }
     check_order(&layout)?;
@@ -572,7 +685,7 @@ fn parse_value(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidt
     };
     layout.format_names.insert(name.to_ascii_lowercase());
     if is_str {
-        warn(warnings, WarningKind::SkippedValueLabel, format!("line {}: skipped character format ${name}: Stata labels only numbers", st.line));
+        warn(warnings, WarningKind::SkippedValueLabel, format!("{}: skipped character format ${name}: Stata labels only numbers", st.loc));
         return Ok(());
     }
     // Options in parentheses, such as (MULTILABEL).
@@ -609,7 +722,7 @@ fn parse_value(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidt
                 warn(
                     warnings,
                     WarningKind::SkippedValueLabel,
-                    format!("line {}: VALUE {name}: skipped the label of {}: Stata labels only whole numbers and .a to .z", st.line, shown.join("")),
+                    format!("{}: VALUE {name}: skipped the label of {}: Stata labels only whole numbers and .a to .z", st.loc, shown.join("")),
                 );
             }
         }
@@ -705,8 +818,15 @@ fn parse_input(st: &Statement, t: &[Tok], layout: &mut Layout, duplicates: &mut 
     Ok(())
 }
 
-/// `LABEL name [=] 'text' ...`.
-fn parse_label(st: &Statement, out: &mut Vec<(usize, String, String)>) -> Result<()> {
+/// `LABEL name [=] 'text' ...`. `src` is the text of the statement's file;
+/// `layout` has the variables defined so far.
+fn parse_label(
+    st: &Statement,
+    src: &str,
+    layout: &Layout,
+    out: &mut Vec<(Loc, String, String)>,
+    warnings: &mut Vec<FixedWidthWarning>,
+) -> Result<()> {
     let t = &st.toks;
     let mut i = 1;
     while i < t.len() {
@@ -719,7 +839,21 @@ fn parse_label(st: &Statement, out: &mut Vec<(usize, String, String)>) -> Result
             i += 1;
         }
         match t.get(i) {
-            Some(Tok::Str(s)) => out.push((st.line, name, s.clone())),
+            Some(Tok::Str(s)) => match stray_quotes(st, i, layout) {
+                Some(last) => {
+                    // The text between the first quote and the last.
+                    let text = &src[st.spans[i].start + 1..st.spans[last].end - 1];
+                    let loc = Loc { file: st.loc.file, line: st.spans[i].line };
+                    warn(
+                        warnings,
+                        WarningKind::LabelQuotes,
+                        format!("{loc}: the label of {name} has quotes inside it; it is read from its first quote to its last"),
+                    );
+                    out.push((st.loc, name, text.to_string()));
+                    i = last;
+                }
+                None => out.push((st.loc, name, s.clone())),
+            },
             _ => return Err(st.error(&format!("LABEL {name}: the label is not a quoted string"))),
         }
         i += 1;
@@ -727,9 +861,35 @@ fn parse_label(st: &Statement, out: &mut Vec<(usize, String, String)>) -> Result
     Ok(())
 }
 
+/// For a label whose text has stray quotes, such as CDC's 2011-2013
+/// `SALMX1 = "FLAG INDICATING WHETHER " SAME AS LAST MONTH" WAS ..."`,
+/// the index of the string that ends it. The string at `i` is followed by
+/// words and strings, the last a string, up to the next `name =`, the
+/// statement's end or the end of the string's line. Words and strings
+/// that are all `name 'text'` pairs naming variables already defined are
+/// labels without `=` instead (CDC's 1995 `STRTL069 'AG8 ...'`).
+fn stray_quotes(st: &Statement, i: usize, layout: &Layout) -> Option<usize> {
+    let t = &st.toks;
+    let line = st.spans[i].line;
+    let mut j = i + 1;
+    while j < t.len() && st.spans[j].line == line && !(matches!(t[j], Tok::Word(_)) && t.get(j + 1).is_some_and(|x| x.is_sym("="))) {
+        if !matches!(t[j], Tok::Word(_) | Tok::Str(_)) {
+            return None;
+        }
+        j += 1;
+    }
+    let rest = &t[i + 1..j];
+    if !matches!(rest.last(), Some(Tok::Str(_))) {
+        return None;
+    }
+    let labels = rest.len() % 2 == 0
+        && rest.chunks(2).all(|p| matches!(&p[0], Tok::Word(n) if layout.find(n).is_some()) && matches!(p[1], Tok::Str(_)));
+    (!labels).then_some(j - 1)
+}
+
 /// `FORMAT names fmt. names fmt. ...`. Formats are kept by lower-case
 /// name; ones no `VALUE` defines are ignored later.
-fn parse_format(st: &Statement, out: &mut Vec<(usize, String, String)>) -> Result<()> {
+fn parse_format(st: &Statement, out: &mut Vec<(Loc, String, String)>) -> Result<()> {
     let t = &st.toks;
     let mut names: Vec<String> = Vec::new();
     let mut i = 1;
@@ -737,7 +897,7 @@ fn parse_format(st: &Statement, out: &mut Vec<(usize, String, String)>) -> Resul
         match (&t[i], t.get(i + 1)) {
             (Tok::Word(f), Some(Tok::Missing(SYSTEM))) => {
                 for n in names.drain(..) {
-                    out.push((st.line, n, f.to_ascii_lowercase()));
+                    out.push((st.loc, n, f.to_ascii_lowercase()));
                 }
                 i += 2;
             }
@@ -782,7 +942,7 @@ fn parse_if(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidthWa
         Ok(c) if p.i == p.t.len() => c,
         _ => {
             if let Some(name) = p.unknown {
-                warn(warnings, WarningKind::UnknownName, format!("line {}: IF names {name}, which INPUT does not define", st.line));
+                warn(warnings, WarningKind::UnknownName, format!("{}: IF names {name}, which INPUT does not define", st.loc));
             }
             return skip(warnings);
         }
@@ -799,7 +959,7 @@ fn parse_if(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidthWa
     };
     let Some(value) = value else { return skip(warnings) };
     let Some(target) = layout.find(name) else {
-        warn(warnings, WarningKind::UnknownName, format!("line {}: IF assigns {name}, which INPUT does not define", st.line));
+        warn(warnings, WarningKind::UnknownName, format!("{}: IF assigns {name}, which INPUT does not define", st.loc));
         return skip(warnings);
     };
     let var = &layout.vars[target];
@@ -808,7 +968,7 @@ fn parse_if(st: &Statement, layout: &mut Layout, warnings: &mut Vec<FixedWidthWa
         (Const::Num(_), true) => return Err(st.error(&format!("IF assigns a number to the string {}", var.name))),
         _ => {}
     }
-    layout.assigns.push(Assign { line: st.line, target, cond, value });
+    layout.assigns.push(Assign { loc: st.loc, target, cond, value });
     Ok(IfKind::Assign)
 }
 
@@ -912,7 +1072,7 @@ fn parse_assign_input(st: &Statement, layout: &mut Layout, warnings: &mut Vec<Fi
         return Ok(());
     };
     let Some(src) = layout.find(src) else {
-        warn(warnings, WarningKind::UnknownName, format!("line {}: INPUT() reads {src}, which INPUT does not define", st.line));
+        warn(warnings, WarningKind::UnknownName, format!("{}: INPUT() reads {src}, which INPUT does not define", st.loc));
         warn(warnings, WarningKind::SkippedStatement, format!("skipped {}", st.show()));
         return Ok(());
     };
@@ -941,8 +1101,8 @@ fn check_order(layout: &Layout) -> Result<()> {
             let var = &layout.vars[v];
             if var.from.is_some() || (v != a.target && assigned.contains(&v)) {
                 return Err(Error::invalid(format!(
-                    "setup line {}: unsupported data-step order: the condition reads {}, which an earlier statement makes or assigns",
-                    a.line, var.name
+                    "setup {}: unsupported data-step order: the condition reads {}, which an earlier statement makes or assigns",
+                    a.loc, var.name
                 )));
             }
         }
@@ -952,8 +1112,8 @@ fn check_order(layout: &Layout) -> Result<()> {
         let src = layout.vars[made].from.unwrap().0;
         if let Some(a) = layout.assigns[before..].iter().find(|a| a.target == src) {
             return Err(Error::invalid(format!(
-                "setup line {}: unsupported data-step order: {} is assigned after INPUT() reads it",
-                a.line, layout.vars[src].name
+                "setup {}: unsupported data-step order: {} is assigned after INPUT() reads it",
+                a.loc, layout.vars[src].name
             )));
         }
     }
@@ -1381,11 +1541,11 @@ mod tests {
 
     #[test]
     fn tokens() {
-        let s = statements("/* c */ * x; y ;\r\nVALUE a -1='it''s; ok' 2=\"b\";\nFORMAT v fmt. w 8.2;").unwrap();
+        let s = statements("/* c */ * x; y ;\r\nVALUE a -1='it''s; ok' 2=\"b\";\nFORMAT v fmt. w 8.2;", None, false).unwrap();
         assert_eq!(s.len(), 3);
         assert_eq!(s[0].toks, vec![Tok::Word("y".into())]);
         assert_eq!(s[1].toks, vec![Tok::Word("VALUE".into()), Tok::Word("a".into()), Tok::Sym("-".into()), Tok::Num("1".into()), Tok::Sym("=".into()), Tok::Str("it's; ok".into()), Tok::Num("2".into()), Tok::Sym("=".into()), Tok::Str("b".into())]);
-        assert_eq!(s[1].line, 2);
+        assert_eq!(s[1].loc.line, 2);
         assert_eq!(s[2].toks[2], Tok::Word("fmt".into()));
         assert_eq!(s[2].toks[3], Tok::Missing(SYSTEM));
         assert_eq!(s[2].toks[5], Tok::Num("8.2".into()));
@@ -1393,7 +1553,7 @@ mod tests {
 
     #[test]
     fn missing_tokens() {
-        let s = statements("x = .A; y = .; z = .5;").unwrap();
+        let s = statements("x = .A; y = .; z = .5;", None, false).unwrap();
         assert_eq!(s[0].toks[2], Tok::Missing(2));
         assert_eq!(s[1].toks[2], Tok::Missing(SYSTEM));
         assert_eq!(s[2].toks[2], Tok::Num(".5".into()));

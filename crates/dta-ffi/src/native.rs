@@ -14,7 +14,7 @@ use dta::{Characteristic, Column, Encoding, FileSource, Options, Reader, Storage
 
 use crate::json::{self, Value};
 
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 // Storage types, as `DtaColumn::storage`.
 pub const BYTE: u32 = 1;
@@ -508,34 +508,46 @@ pub unsafe extern "C" fn dta_write(
 }
 
 /// # Safety
-/// See dta.h: the paths and `recodes` are NUL-terminated; `len` NULL or
-/// writable; `err` NULL or `err_len` writable bytes.
+/// See dta.h: the paths and `recodes` are NUL-terminated; `setup_paths`
+/// holds `n_setups` paths; `len` NULL or writable; `err` NULL or `err_len`
+/// writable bytes.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dta_fixed_width_to_dta(
     data_path: *const c_char,
-    setup_path: *const c_char,
+    setup_paths: *const *const c_char,
+    n_setups: usize,
     out_path: *const c_char,
     recodes: *const c_char,
+    commented_formats: c_int,
     len: *mut usize,
     err: *mut c_char,
     err_len: usize,
 ) -> *mut c_char {
     guard(err, err_len, std::ptr::null_mut(), || {
         let data = path(c_str(data_path).ok_or("the data path is NULL")?)?;
-        let setup = path(c_str(setup_path).ok_or("the setup path is NULL")?)?;
+        if setup_paths.is_null() || n_setups == 0 {
+            return Err("no setup file was given".to_string());
+        }
+        let setups = (0..n_setups)
+            .map(|i| path(c_str(*setup_paths.add(i)).ok_or("a setup path is NULL")?))
+            .collect::<Result<Vec<PathBuf>, String>>()?;
         let out = path(c_str(out_path).ok_or("the output path is NULL")?)?;
         let name = String::from_utf8_lossy(c_str(recodes).unwrap_or(b"setup")).into_owned();
         let mode = dta::Recodes::from_name(&name)
             .ok_or_else(|| format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{name}\""))?;
         let read = |p: &PathBuf| std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()));
-        let (setup_bytes, data_bytes) = (read(&setup)?, read(&data)?);
+        let setup_bytes = setups.iter().map(read).collect::<Result<Vec<Vec<u8>>, String>>()?;
+        let data_bytes = read(&data)?;
         let mut options = std::fs::OpenOptions::new();
         options.write(true).create_new(true);
         #[cfg(unix)]
         std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
         let file = options.open(&out).map_err(|e| format!("{}: {e}", out.display()))?;
-        let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
-            .map_err(|e| e.to_string())?;
+        let setup_refs: Vec<&[u8]> = setup_bytes.iter().map(Vec::as_slice).collect();
+        let warnings =
+            dta::fixed_width_to_dta(&setup_refs, &data_bytes, mode, commented_formats != 0, std::io::BufWriter::new(file))
+                .map_err(|e| e.to_string())?;
         let messages: Vec<String> = warnings.into_iter().map(|w| w.message).collect();
         let text = json::strings(&messages);
         if !len.is_null() {

@@ -100,7 +100,8 @@ def test_errors_leave_no_temporary_files(files):
 
 def test_other_readers_read_the_tagged_file(files, tmp_path):
     out = str(tmp_path / "tagged.dta")
-    _native.fixed_width(*files(), out, "tagged")
+    data, setup = files()
+    _native.fixed_width(data, [setup], out, "tagged", True)
     theirs = pd.read_stata(out, convert_missing=True, convert_categoricals=False)
     assert [str(v) for v in theirs["KIDS"]] == ["2", ".a", ".b", ".b", "0"]
     with pd.io.stata.StataReader(out) as reader:
@@ -112,3 +113,133 @@ def test_other_readers_read_the_tagged_file(files, tmp_path):
     df, meta = pyreadstat.read_dta(out, user_missing=True)
     assert df["KIDS"].tolist()[1:4] == ["a", "b", "b"]
     assert meta.variable_value_labels["KIDS"] == {0: "(0) None", "a": "(98) DK", "b": "(99) Not ascertained"}
+
+
+# CDC's setups from 2006-2010 on put the PROC FORMAT step and the FORMAT
+# statement each in a block comment; their lines end in CRLF until
+# 2011-2013.
+COMMENTED = [
+    "/*-----------------------------------------------",
+    " | PROC FORMAT:  creates user-defined formats; FORMAT: attaches them.",
+    " | Sections for PROC FORMAT and FORMAT have been commented out.",
+    " |----------------------------------------------*/",
+    "* SAS PROC FORMAT;",
+    "/*",
+    "PROC FORMAT;",
+    "VALUE sexf 1 = 'Boy' 2 = 'Girl' ;",
+    "VALUE kidsf 0 = 'None' 98 = 'DK' ;",
+    "QUIT;",
+    "*/",
+    "* SAS DATA, INFILE, INPUT STATEMENTS;",
+    "DATA;",
+    'INFILE "data-filename" LRECL=5;',
+    "INPUT ID 1-2 SEX 3 KIDS 4-5 ;",
+    "* SAS LABEL STATEMENT;",
+    "LABEL ID = 'Case' SEX = 'Sex' KIDS = 'Kids' ;",
+    "* SAS FORMAT STATEMENT;",
+    "/*",
+    "FORMAT",
+    "   SEX sexf.",
+    "   KIDS kidsf. ;",
+    "*/",
+    "RUN ;",
+]
+COMMENTED_DATA = ["01100", "02298"]
+
+
+def write_crlf(path, lines):
+    path.write_bytes("".join(line + "\r\n" for line in lines).encode())
+    return str(path)
+
+
+@pytest.fixture
+def crlf(tmp_path):
+    def make(setup=COMMENTED):
+        return write_crlf(tmp_path / "x.dat", COMMENTED_DATA), write_crlf(tmp_path / "x.sas", setup)
+    return make
+
+
+def kids_labels(df):
+    info = df.attrs["dta"]
+    name = info["columns"]["KIDS"]["value_labels"]
+    return info["value_labels"][name] if name else None
+
+
+def test_commented_formats_are_read_unless_turned_off(crlf):
+    df = dp.read_fixed_width(*crlf(), recodes="none")
+    assert "warnings" not in df.attrs
+    assert kids_labels(df) == {0: "None", 98: "DK"}
+    assert df.attrs["dta"]["value_labels"]["sexf"] == {1: "Boy", 2: "Girl"}
+    off = dp.read_fixed_width(*crlf(), recodes="none", commented_formats=False)
+    assert kids_labels(off) is None
+    assert off.attrs["dta"]["value_labels"] == {}
+    assert off["KIDS"].tolist() == df["KIDS"].tolist() == [0, 98]
+    assert off.attrs["dta"]["columns"]["KIDS"]["label"] == "Kids"
+    with pytest.raises(TypeError, match="True or False"):
+        dp.read_fixed_width(*crlf(), commented_formats="yes")
+
+
+def test_a_commented_proc_format_or_format_alone(crlf):
+    only_proc = [line for i, line in enumerate(COMMENTED) if i not in (18, 22)]
+    only_format = [line for i, line in enumerate(COMMENTED) if i not in (5, 10)]
+    for setup in (only_proc, only_format):
+        assert kids_labels(dp.read_fixed_width(*crlf(setup), recodes="none")) == {0: "None", 98: "DK"}
+        assert kids_labels(dp.read_fixed_width(*crlf(setup), recodes="none", commented_formats=False)) is None
+
+
+def test_a_comment_that_mentions_proc_format_stays_a_comment(crlf):
+    # Read as code, each would end the DATA step before LABEL, or fail.
+    for comment in ["/* PROC FORMAT: see the codebook; */", "/* PROC FORMAT; VALUE labels are below */",
+                    "/* FORMAT statements: below; */"]:
+        setup = COMMENTED[:15] + [comment] + COMMENTED[16:]
+        df = dp.read_fixed_width(*crlf(setup), recodes="none")
+        assert "warnings" not in df.attrs
+        assert df.attrs["dta"]["columns"]["KIDS"]["label"] == "Kids"
+
+
+def test_a_setup_in_several_files_reads_as_the_files_joined(tmp_path):
+    # CDC's 2002 setups: the DATA step, LABEL, then PROC FORMAT and FORMAT.
+    parts = [
+        ["FILENAME datafile 'x.dat' ;", "DATA &dataset ;", "INFILE datafile LRECL=5;",
+         "INPUT ID $ 1-2 SEX 3 KIDS 4-5 ;", "RUN;"],
+        ["LABEL", " /* SECTION A */", '  ID = "RESPONDENT ID"', '  KIDS = "NUMBER OF KIDS"', "  ;"],
+        ["PROC FORMAT;", 'VALUE SEXF 1 = "BOY" 2 = "GIRL" ;', 'VALUE KIDSF 98 = "DK" ;', "RUN;",
+         "FORMAT SEX SEXF. KIDS KIDSF. ;", "RUN;"],
+    ]
+    paths = [write_crlf(tmp_path / f"{i}.sas", part) for i, part in enumerate(parts)]
+    joined = write_crlf(tmp_path / "all.sas", parts[0] + parts[1] + parts[2])
+    data = write_crlf(tmp_path / "x.dat", COMMENTED_DATA)
+    files = dp.read_fixed_width(data, paths, recodes="none")
+    one = dp.read_fixed_width(data, joined, recodes="none")
+    pd.testing.assert_frame_equal(files, one)
+    assert files.attrs == one.attrs
+    assert "warnings" not in files.attrs
+    assert files.attrs["dta"]["value_labels"]["SEXF"] == {1: "BOY", 2: "GIRL"}
+    assert files.attrs["dta"]["columns"]["KIDS"]["label"] == "NUMBER OF KIDS"
+    write_crlf(tmp_path / "1.sas", ["LABEL KIDS 3;"])
+    with pytest.raises(ValueError, match="setup file 2 line 1: LABEL KIDS"):
+        dp.read_fixed_width(data, paths)
+    with pytest.raises(ValueError, match="one or more paths"):
+        dp.read_fixed_width(data, [])
+
+
+def test_a_label_with_stray_quotes(tmp_path):
+    setup = [
+        "DATA; INPUT SALMX1 1 RING 2 C 3;",
+        "LABEL",
+        '  SALMX1 = "FLAG INDICATING WHETHER " SAME AS LAST MONTH" WAS ORIGINAL ANSWER"',
+        '  RING = "EVER USED RING OR "NUVARING"?"',
+        "  C 'no equals' ;",
+    ]
+    sas = write_crlf(tmp_path / "x.sas", setup)
+    dat = write_crlf(tmp_path / "x.dat", ["123"])
+    with pytest.warns(dp.FixedWidthWarning, match="line 3: the label of SALMX1"):
+        df = dp.read_fixed_width(dat, sas)
+    columns = df.attrs["dta"]["columns"]
+    assert columns["SALMX1"]["label"] == 'FLAG INDICATING WHETHER " SAME AS LAST MONTH" WAS ORIGINAL ANSWER'
+    assert columns["RING"]["label"] == 'EVER USED RING OR "NUVARING"?'
+    assert columns["C"]["label"] == "no equals"
+    assert df.attrs["warnings"] == [
+        "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
+        "line 4: the label of RING has quotes inside it; it is read from its first quote to its last",
+    ]
