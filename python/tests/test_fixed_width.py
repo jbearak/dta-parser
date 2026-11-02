@@ -223,6 +223,14 @@ def test_a_setup_in_several_files_reads_as_the_files_joined(tmp_path):
         dp.read_fixed_width(data, [])
 
 
+def test_quit_ends_a_proc_step_like_run(files):
+    setup = "DATA; INPUT X 1;\nPROC FORMAT; VALUE f 1='one'; QUIT;\nFORMAT X f.;"
+    df = dp.read_fixed_width(*files(setup, "1\n2\n"), recodes="none")
+    assert "warnings" not in df.attrs
+    assert df.attrs["dta"]["value_labels"]["f"] == {1: "one"}
+    assert df.attrs["dta"]["columns"]["X"]["value_labels"] == "f"
+
+
 def test_a_label_with_stray_quotes(tmp_path):
     setup = [
         "DATA; INPUT SALMX1 1 RING 2 C 3;",
