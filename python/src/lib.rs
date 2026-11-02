@@ -544,22 +544,33 @@ fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
     Err(std::io::Error::other("no free name for a temporary file"))
 }
 
-/// Read the fixed-width file `data` as the SAS setup file `setup`
-/// describes and write it as release 118 to the new file `out` (plan
-/// 0009). Returns the warnings' messages.
+/// Read the fixed-width file `data` as the SAS setup file describes,
+/// given as the files `setups` read in order, and write it as release 118
+/// to the new file `out` (plan 0009). Returns the warnings' messages.
 #[pyfunction]
-fn fixed_width(py: Python<'_>, data: &str, setup: &str, out: &str, recodes: &str) -> PyResult<Vec<String>> {
+fn fixed_width(
+    py: Python<'_>,
+    data: &str,
+    setups: Vec<String>,
+    out: &str,
+    recodes: &str,
+    commented_formats: bool,
+) -> PyResult<Vec<String>> {
     let mode = dta::Recodes::from_name(recodes)
         .ok_or_else(|| fail(format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{recodes}\"")))?;
     let read = |p: &str| std::fs::read(p).map_err(|e| fail(format!("{p}: {e}")));
-    let (setup_bytes, data_bytes) = (read(setup)?, read(data)?);
+    let setup_bytes = setups.iter().map(|p| read(p)).collect::<PyResult<Vec<Vec<u8>>>>()?;
+    let data_bytes = read(data)?;
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let file = options.open(out).map_err(|e| fail(format!("{out}: {e}")))?;
+    let setup_refs: Vec<&[u8]> = setup_bytes.iter().map(Vec::as_slice).collect();
     let warnings = py
-        .detach(|| dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file)))
+        .detach(|| {
+            dta::fixed_width_to_dta(&setup_refs, &data_bytes, mode, commented_formats, std::io::BufWriter::new(file))
+        })
         .map_err(fail)?;
     Ok(warnings.into_iter().map(|w| w.message).collect())
 }

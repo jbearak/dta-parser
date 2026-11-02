@@ -30,7 +30,7 @@ extern "C" {
 
 /* The ABI described here. A caller should refuse a library whose
  * dta_abi_version() differs. */
-#define DTA_ABI_VERSION 2
+#define DTA_ABI_VERSION 3
 
 /* Storage types (dta_column.storage). */
 #define DTA_BYTE 1   /* int8; . is 101, .a-.z 102-127 */
@@ -180,19 +180,23 @@ int dta_write(const char *path, uint64_t nrows, const dta_column *columns, size_
 
 /*
  * Read the fixed-width text file `data_path` as the SAS setup file
- * `setup_path` describes (docs/plans/0009-fixed-width-sas-setup.md) and
- * write it as release 118 to `out_path`, which must not exist; it is
- * created readable by its owner only. `recodes` says what to do with the
+ * describes (docs/plans/0009-fixed-width-sas-setup.md) and write it as
+ * release 118 to `out_path`, which must not exist; it is created readable
+ * by its owner only. The setup is the `n_setups` files at `setup_paths`
+ * (at least one), read in order as one; with several, errors and warnings
+ * name a file by its place, from 1. `recodes` says what to do with the
  * setup's missing-value recodes: "setup" (as written; also for NULL),
  * "tagged" (codes recoded to . become .a, .b, ... per variable) or
- * "none" (ignored).
+ * "none" (ignored). With `commented_formats` nonzero, a block comment
+ * holding only a PROC FORMAT step or a FORMAT statement is read as code.
  *
  * Returns the warnings, a JSON array of strings (UTF-8, NUL-terminated),
  * with its length in *len when len is not NULL; the caller frees it with
  * dta_string_free. Returns NULL on failure.
  */
-char *dta_fixed_width_to_dta(const char *data_path, const char *setup_path, const char *out_path,
-                             const char *recodes, size_t *len, char *err, size_t err_len);
+char *dta_fixed_width_to_dta(const char *data_path, const char *const *setup_paths, size_t n_setups,
+                             const char *out_path, const char *recodes, int commented_formats, size_t *len,
+                             char *err, size_t err_len);
 
 #ifdef __cplusplus
 }

@@ -12,13 +12,18 @@ read_fixed_width(
   skip = 0,
   n_max = Inf,
   factors = recodes != "tagged",
-  warn_extended_missing = TRUE
+  warn_extended_missing = TRUE,
+  commented_formats = TRUE
 )
 }
 \arguments{
 \item{file}{Path to the fixed-width data file.}
 
-\item{setup}{Path to the SAS setup file.}
+\item{setup}{Path to the SAS setup file, or several paths read in order
+as one setup, such as CDC's 2002 files
+\code{c("2002FemPregInput.sas", "2002FemPregVarLabel.sas", "2002FemPregValueLabel.sas")}. A statement may not run from one file
+into the next. With several, errors and warnings name a file by its
+place in \code{setup} (\code{"file 2 line 8"}).}
 
 \item{recodes}{What to do with the setup's missing-value recodes:
 \code{"setup"} applies them as written (a code recoded to \code{.} is \code{NA};
@@ -35,6 +40,16 @@ numbers.}
 factor cannot hold tagged NAs, so this is \code{FALSE} by default with
 \code{recodes = "tagged"}, which keeps numbers, tagged NAs and a \code{labels}
 attribute naming both.}
+
+\item{commented_formats}{Whether to read a \verb{PROC FORMAT} step or a
+\code{FORMAT} statement that the setup has put in a block comment
+(\verb{/* ... */}) as code. CDC's setups from 2006-2010 on comment both
+out so that SAS users without CDC's format catalog can run the file
+as published; the value labels are still there, so this is \code{TRUE} by
+default. Only a comment that holds nothing but such a step or
+statement is read; one that mentions \verb{PROC FORMAT} in prose stays a
+comment. \code{FALSE} reads every comment as a comment, so those files
+have no value labels.}
 }
 \value{
 A tibble, as \code{\link[=read_dta]{read_dta()}} returns. Numeric columns take the
@@ -46,11 +61,14 @@ move to their tagged NA, or go when the code becomes a plain \code{NA}.
 Statements the reader does not run (other data-step code, ranges in
 \code{VALUE}) are skipped with one warning of class
 \code{dtaparser_fixed_width_warning}; the tibble's \code{warnings} attribute
-lists them all.
+lists them all. A variable label with stray quotes inside it, such as
+\verb{X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"} in CDC's
+2011-2013 to 2015-2017 setups, is read from its first quote to its
+last, with a warning naming its line.
 }
 \description{
 Reads fixed-width ASCII data, such as the National Survey of Family
-Growth cycles of 1973 to 1995 that CDC publishes as \code{.dat} files,
+Growth files of 1973 to 2017-2019 that CDC publishes as \code{.dat} files,
 using the SAS setup file (\code{.sas}) that describes it: each variable's
 columns from \code{INPUT}, its label from \code{LABEL}, its value labels from
 \verb{PROC FORMAT} and \code{FORMAT}, record-type selection

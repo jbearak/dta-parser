@@ -143,7 +143,7 @@ fn same(a: &[Vec<Row>], b: &[Vec<Row>]) -> bool {
 
 #[test]
 fn version() {
-    assert_eq!(dta_abi_version(), 2);
+    assert_eq!(dta_abi_version(), 3);
 }
 
 #[test]
@@ -386,13 +386,17 @@ fn fixed_width_through_a_setup_file() {
     let (data, setup, out) = (dir.join("x.dat"), dir.join("x.sas"), dir.join("x.dta"));
     fs::write(&data, "198\n299\n").unwrap();
     fs::write(&setup, "PROC FORMAT; VALUE f 98='DK'; DATA; INPUT ID 1 K 2-3; IF K = 98 OR K = 99 THEN K = .; FORMAT K f.; LENGTH x 8;").unwrap();
-    let call = |recodes: &str, err: &mut ErrBuf| unsafe {
+    let setup_c = c(setup.to_str().unwrap());
+    let setups = [setup_c.as_ptr()];
+    let call_with = |setups: &[*const c_char], commented: c_int, recodes: &str, err: &mut ErrBuf| unsafe {
         let mut len = 0usize;
         let s = dta_fixed_width_to_dta(
             c(data.to_str().unwrap()).as_ptr(),
-            c(setup.to_str().unwrap()).as_ptr(),
+            setups.as_ptr(),
+            setups.len(),
             c(out.to_str().unwrap()).as_ptr(),
             c(recodes).as_ptr(),
+            commented,
             &mut len,
             err.ptr(),
             512,
@@ -405,6 +409,7 @@ fn fixed_width_through_a_setup_file() {
         dta_string_free(s);
         Some(text)
     };
+    let call = |recodes: &str, err: &mut ErrBuf| call_with(&setups, 1, recodes, err);
     let mut err = ErrBuf::new();
     let warnings = call("tagged", &mut err).unwrap_or_else(|| panic!("{}", err.text()));
     let warnings: Value = serde_json::from_str(&warnings).unwrap();
@@ -421,5 +426,22 @@ fn fixed_width_through_a_setup_file() {
     fs::remove_file(&out).unwrap();
     assert!(call("letters", &mut err).is_none());
     assert!(err.text().contains("recodes must be"), "{}", err.text());
+    assert!(call_with(&[], 1, "setup", &mut err).is_none());
+    assert!(err.text().contains("no setup file"), "{}", err.text());
+
+    // A setup in two files, its formats commented out.
+    let (first, second) = (dir.join("a.sas"), dir.join("b.sas"));
+    fs::write(&first, "/*\nPROC FORMAT; VALUE f 98='DK';\n*/\nDATA; INPUT ID 1 K 2-3; RUN;").unwrap();
+    fs::write(&second, "/*\nFORMAT K f.;\n*/\nLENGTH x 8;").unwrap();
+    let (first_c, second_c) = (c(first.to_str().unwrap()), c(second.to_str().unwrap()));
+    let two = [first_c.as_ptr(), second_c.as_ptr()];
+    for (commented, labelled) in [(1, "f"), (0, "")] {
+        let warnings = call_with(&two, commented, "none", &mut err).unwrap_or_else(|| panic!("{}", err.text()));
+        let warnings: Value = serde_json::from_str(&warnings).unwrap();
+        assert_eq!(warnings, json!(["skipped file 2 line 4: LENGTH x 8;"]));
+        let r = Reader::open(Bytes(fs::read(&out).unwrap()), Options::default()).unwrap();
+        assert_eq!(r.metadata().variables[1].value_labels, labelled);
+        fs::remove_file(&out).unwrap();
+    }
     let _ = fs::remove_dir_all(&dir);
 }

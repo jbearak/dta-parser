@@ -66,8 +66,15 @@ fn read(setup: &str, data: &str, recodes: Recodes) -> Got {
 }
 
 fn try_read(setup: &str, data: &[u8], recodes: Recodes) -> dta::Result<Got> {
+    try_read_files(&[setup], data, recodes, true)
+}
+
+/// A setup given as several files, and whether commented-out formats are
+/// read.
+fn try_read_files(setups: &[&str], data: &[u8], recodes: Recodes, commented_formats: bool) -> dta::Result<Got> {
     let mut out = Vec::new();
-    let warnings = fixed_width_to_dta(setup.as_bytes(), data, recodes, &mut out)?;
+    let setups: Vec<&[u8]> = setups.iter().map(|s| s.as_bytes()).collect();
+    let warnings = fixed_width_to_dta(&setups, data, recodes, commented_formats, &mut out)?;
     let mut r = Reader::open(Bytes(out), Options::default()).unwrap();
     let meta = r.metadata().clone();
     let all: Vec<usize> = (0..meta.variables.len()).collect();
@@ -441,11 +448,218 @@ fn no_records_and_errors() {
     assert!(err("DATA; INPUT A 1; LABEL A='x;", "1\n").contains("not closed"));
 }
 
+/// A setup in the style of CDC's 2006 to 2019 files: the PROC FORMAT step
+/// and the FORMAT statement each in a block comment of their own, and a
+/// header that mentions both.
+const COMMENTED: &str = "/*----------------------------------------\r
+ | PROC FORMAT:  creates user-defined formats; FORMAT: attaches them.\r
+ | Sections for PROC FORMAT and FORMAT have been commented out.\r
+ |---------------------------------------*/\r
+\r
+* SAS PROC FORMAT;\r
+\r
+/*\r
+PROC FORMAT;\r
+VALUE sexf 1 = 'Boy' 2 = 'Girl' ;\r
+VALUE kidsf 0 = 'None' 98 = 'DK' ;\r
+QUIT;\r
+*/\r
+\r
+* SAS DATA, INFILE, INPUT STATEMENTS;\r
+\r
+DATA;\r
+INFILE \"data-filename\" LRECL=5;\r
+INPUT ID 1-2 SEX 3 KIDS 4-5 ;\r
+\r
+* SAS LABEL STATEMENT;\r
+\r
+LABEL ID = 'Case' SEX = 'Sex' KIDS = 'Kids' ;\r
+\r
+* SAS FORMAT STATEMENT;\r
+/*\r
+FORMAT\r
+   SEX sexf.\r
+   KIDS kidsf. ;\r
+*/\r
+\r
+RUN ;\r
+";
+
+const COMMENTED_DATA: &str = "01100\r\n02298\r\n";
+
+#[test]
+fn commented_out_formats_are_read() {
+    let g = read(COMMENTED, COMMENTED_DATA, Recodes::None);
+    assert!(g.warnings.is_empty(), "{:?}", g.warnings);
+    assert_eq!(g.names, ["ID", "SEX", "KIDS"]);
+    assert_eq!(g.nums("KIDS"), [Ok(0.0), Ok(98.0)]);
+    assert_eq!(g.label("KIDS"), "Kids");
+    assert_eq!(g.value_labels("SEX"), [("1".into(), "Boy".into()), ("2".into(), "Girl".into())]);
+    assert_eq!(g.value_labels("KIDS"), [("0".into(), "None".into()), ("98".into(), "DK".into())]);
+
+    // Turned off, both comments stay comments: the same values, no labels.
+    let off = try_read_files(&[COMMENTED], COMMENTED_DATA.as_bytes(), Recodes::None, false).unwrap();
+    assert!(off.warnings.is_empty(), "{:?}", off.warnings);
+    assert_eq!(off.set_of, ["", "", ""]);
+    assert!(off.sets.is_empty());
+    assert_eq!(off.nums("KIDS"), g.nums("KIDS"));
+    assert_eq!(off.label("KIDS"), "Kids");
+}
+
+#[test]
+fn a_commented_proc_format_or_format_alone() {
+    // Only the PROC FORMAT step is commented out.
+    let setup = COMMENTED.replace("/*\r\nFORMAT", "FORMAT").replace("kidsf. ;\r\n*/", "kidsf. ;");
+    let g = read(&setup, COMMENTED_DATA, Recodes::None);
+    assert_eq!(g.value_labels("SEX").len(), 2);
+    let off = try_read_files(&[&setup], COMMENTED_DATA.as_bytes(), Recodes::None, false).unwrap();
+    assert_eq!(off.set_of, ["", "", ""]);
+    // Only the FORMAT statement is commented out.
+    let setup = COMMENTED.replace("/*\r\nPROC", "PROC").replace("QUIT;\r\n*/", "QUIT;");
+    let g = read(&setup, COMMENTED_DATA, Recodes::None);
+    assert_eq!(g.value_labels("KIDS").len(), 2);
+    let off = try_read_files(&[&setup], COMMENTED_DATA.as_bytes(), Recodes::None, false).unwrap();
+    assert_eq!(off.set_of, ["", "", ""]);
+    // A step with no RUN or QUIT (CDC from 2013), ended by DATA.
+    let setup = COMMENTED.replace("QUIT;\r\n", "");
+    assert_eq!(read(&setup, COMMENTED_DATA, Recodes::None).value_labels("SEX").len(), 2);
+}
+
+#[test]
+fn comments_that_mention_formats_stay_comments() {
+    // Each would end the DATA step or fail if it were read as code.
+    for comment in [
+        "/* PROC FORMAT: see the codebook; */",
+        "/*\r\nPROC FORMAT;\r\n*/",
+        "/* PROC FORMAT; VALUE labels come from the codebook */",
+        "/* FORMAT statements: below; */",
+        "/* FORMAT is set below; */",
+        "/* PROC FORMAT; PROC PRINT; */",
+    ] {
+        let setup = COMMENTED.replace("* SAS LABEL STATEMENT;", comment);
+        let g = try_read(&setup, COMMENTED_DATA.as_bytes(), Recodes::None).unwrap_or_else(|e| panic!("{comment}: {e:?}"));
+        assert!(g.warnings.is_empty(), "{comment}: {:?}", g.warnings);
+        assert_eq!(g.label("KIDS"), "Kids", "{comment}");
+        assert_eq!(g.value_labels("KIDS").len(), 2, "{comment}");
+    }
+    // A comment inside a statement is never read.
+    let g = read("DATA; INPUT A 1 /* FORMAT A f.; */ B 2;", "12\n", Recodes::None);
+    assert_eq!(g.names, ["A", "B"]);
+}
+
+/// CDC's 2002 setups come in three files: the DATA step, then LABEL, then
+/// PROC FORMAT and a FORMAT statement after its RUN.
+const INPUT_2002: &str = "/* The data file */\r
+FILENAME datafile 'x.dat' ;\r
+DATA &dataset ;\r
+INFILE datafile LRECL=5;\r
+INPUT\r
+   ID $ 1-2   SEX 3   KIDS 4-5 ;\r
+RUN;\r
+";
+const LABEL_2002: &str = "/* VARIABLE LABEL STATEMENT */\r
+LABEL\r
+ /* SECTION A */\r
+    ID = \"RESPONDENT ID\"\r
+    KIDS = \"NUMBER OF KIDS\"\r
+    ;\r
+";
+const VALUE_2002: &str = "/* PROC FORMAT AND FORMAT STATEMENTS */\r
+PROC FORMAT;\r
+VALUE SEXF 1 = \"BOY\" 2 = \"GIRL\" ;\r
+VALUE KIDSF 98 = \"DK\" ;\r
+RUN;\r
+\r
+FORMAT\r
+   SEX SEXF.   KIDS KIDSF. ;\r
+RUN;\r
+";
+
+#[test]
+fn a_setup_in_several_files_reads_as_one() {
+    let files = try_read_files(&[INPUT_2002, LABEL_2002, VALUE_2002], COMMENTED_DATA.as_bytes(), Recodes::None, true).unwrap();
+    let joined = try_read(&[INPUT_2002, LABEL_2002, VALUE_2002].concat(), COMMENTED_DATA.as_bytes(), Recodes::None).unwrap();
+    assert!(files.warnings.is_empty(), "{:?}", files.warnings);
+    assert!(joined.warnings.is_empty(), "{:?}", joined.warnings);
+    assert_eq!(files.names, ["ID", "SEX", "KIDS"]);
+    assert_eq!(files.labels, ["RESPONDENT ID", "", "NUMBER OF KIDS"]);
+    assert_eq!(files.value_labels("SEX"), [("1".into(), "BOY".into()), ("2".into(), "GIRL".into())]);
+    assert_eq!(files.value_labels("KIDS"), [("98".into(), "DK".into())]);
+    assert_eq!(files.strs("ID"), ["01", "02"]);
+    for g in [&files, &joined] {
+        assert_eq!(g.labels, files.labels);
+        assert_eq!(g.set_of, files.set_of);
+        assert_eq!(g.sets, files.sets);
+        assert_eq!(g.storage, files.storage);
+        assert_eq!(g.nums("SEX"), [Ok(1.0), Ok(2.0)]);
+        assert_eq!(g.nums("KIDS"), [Ok(0.0), Ok(98.0)]);
+    }
+    // FORMAT inside another PROC step is that step's.
+    let other = VALUE_2002.replace("RUN;\r\n\r\nFORMAT", "RUN;\r\nPROC PRINT;\r\nFORMAT");
+    let g = try_read_files(&[INPUT_2002, LABEL_2002, &other], COMMENTED_DATA.as_bytes(), Recodes::None, true).unwrap();
+    assert_eq!(g.set_of, ["", "", ""]);
+}
+
+#[test]
+fn several_files_are_named_by_their_place() {
+    // A statement ends with its file.
+    let g = try_read_files(&["DATA; INPUT A 1", "B 2;"], b"12\n", Recodes::None, true).unwrap();
+    assert_eq!(g.names, ["A"]);
+    assert_eq!(g.warnings, [(WarningKind::SkippedStatement, "skipped file 2 line 1: B 2;".to_string())]);
+    let e = try_read_files(&["DATA; INPUT A 1;", "\nLABEL A 3;"], b"1\n", Recodes::None, true).err().unwrap();
+    assert_eq!(e.message, "setup file 2 line 2: LABEL A: the label is not a quoted string");
+    // One file: lines only, as before.
+    let e = try_read_files(&["DATA; INPUT A 1;\nLABEL A 3;"], b"1\n", Recodes::None, true).err().unwrap();
+    assert_eq!(e.message, "setup line 2: LABEL A: the label is not a quoted string");
+    assert!(try_read_files(&[], b"1\n", Recodes::None, true).err().unwrap().message.contains("no setup file"));
+}
+
+#[test]
+fn labels_with_stray_quotes() {
+    // CDC's 2011-2013 female respondent setup, and 1995-style labels
+    // without `=`, which stay labels of their own: after a label on the
+    // same line when they name variables, and on a line of their own.
+    let setup = "DATA; INPUT SALMX1 1 RING 2 STRLOPER 3 C 4 D 5 E 6;\r
+LABEL\r
+   SALMX1 = \"FLAG INDICATING WHETHER \" SAME AS LAST MONTH\" WAS ORIGINAL ANSWER TO ED-6 METHHIST - JAN [INTERVIEW YR-3]\"\r
+   RING = \"EA-10 R EVER USED VAGINAL CONTRACEPTIVE RING OR \"NUVARING\"?\"\r
+   E 'no equals either'\r
+   C = 'plain' D 'no equals'\r
+   STRLOPER = \"TYPE OF STERILIZATION OPERATION \"IN EFFECT\" (RECODE)\" ;\r
+";
+    let g = read(setup, "123456\n", Recodes::None);
+    assert_eq!(
+        g.label("SALMX1"),
+        "FLAG INDICATING WHETHER \" SAME AS LAST MONTH\" WAS ORIGINAL ANSWER TO ED-6 METHHIST - JAN [INTERVIEW YR-3]"
+    );
+    assert_eq!(g.label("RING"), "EA-10 R EVER USED VAGINAL CONTRACEPTIVE RING OR \"NUVARING\"?");
+    assert_eq!(g.label("STRLOPER"), "TYPE OF STERILIZATION OPERATION \"IN EFFECT\" (RECODE)");
+    assert_eq!(g.label("C"), "plain");
+    assert_eq!(g.label("D"), "no equals");
+    assert_eq!(g.label("E"), "no equals either");
+    let lines: Vec<&str> = g.warnings.iter().map(|w| w.1.as_str()).collect();
+    assert_eq!(
+        lines,
+        [
+            "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
+            "line 4: the label of RING has quotes inside it; it is read from its first quote to its last",
+            "line 7: the label of STRLOPER has quotes inside it; it is read from its first quote to its last",
+        ]
+    );
+    assert_eq!(g.kinds(), [WarningKind::LabelQuotes; 3]);
+    // Anything else after a label is still an error: other tokens, a run
+    // that ends in a word, or a run across lines.
+    for bad in ["A = \"x \" B-1\" y\"", "A = \"x\" B C", "A = \"x \" B C\n\" y\""] {
+        let e = err(&format!("DATA; INPUT A 1; LABEL {bad};"), "1\n");
+        assert!(e.contains("is not a quoted string"), "{bad}: {e}");
+    }
+}
+
 #[test]
 fn windows_1252_text() {
     let setup = b"DATA; INPUT S $ 1-2; LABEL S='caf\xe9';";
     let mut out = Vec::new();
-    fixed_width_to_dta(setup, b"\xe9a\n", Recodes::Setup, &mut out).unwrap();
+    fixed_width_to_dta(&[setup], b"\xe9a\n", Recodes::Setup, true, &mut out).unwrap();
     let mut r = Reader::open(Bytes(out), Options::default()).unwrap();
     assert_eq!(r.metadata().variables[0].label, "café");
     let c = r.read(&[0], 0, 1).unwrap();

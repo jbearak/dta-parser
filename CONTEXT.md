@@ -74,7 +74,8 @@ Its other mode fills dtatools' `dta_num` columns.
 A SAS program published with a fixed-width text data file, saying
 where each variable's columns are, its variable label and value labels,
 and which codes are missing values. CDC publishes one for each NSFG
-file of 1973 to 1995. `read_fixed_width` reads the data through it.
+file from 1973 to 2017-2019 (in 2002, split into three files).
+`read_fixed_width` reads the data through it.
 _Avoid_: dictionary (Stata's own `.dct` format), codebook
 
 **Missing-value recode**:

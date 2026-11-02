@@ -1,6 +1,6 @@
 # The native library (crates/dta-ffi, declared in its include/dta.h).
 
-const ABI_VERSION = 2
+const ABI_VERSION = 3
 
 # cargo names the library dta_ffi.dll on Windows, libdta_ffi.* elsewhere.
 const libname = Sys.iswindows() ? "dta_ffi.dll" : Sys.isapple() ? "libdta_ffi.dylib" : "libdta_ffi.so"

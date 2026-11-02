@@ -1053,33 +1053,42 @@ pub unsafe extern "C" fn dtaparser_write(
     })
 }
 
-/// Read the fixed-width file `data` as the SAS setup file `setup`
-/// describes, write it as release 118 to the new file `out` (plan 0009),
-/// and store the warnings' messages, a character vector, as element 0 of
-/// `holder`. `recodes` is "setup", "tagged" or "none".
+/// Read the fixed-width file `data` as the SAS setup file describes,
+/// given as `nsetups` files at `setups` read in order, write it as release
+/// 118 to the new file `out` (plan 0009), and store the warnings'
+/// messages, a character vector, as element 0 of `holder`. `recodes` is
+/// "setup", "tagged" or "none"; `commented_formats` is nonzero to read
+/// commented-out `PROC FORMAT` and `FORMAT`.
 ///
 /// # Safety
-/// The pointers come from init.c.
+/// The pointers come from init.c; `setups` holds `nsetups` strings.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dtaparser_fixed_width(
     data: *const c_char,
-    setup: *const c_char,
+    setups: *const *const c_char,
+    nsetups: usize,
     out: *const c_char,
     recodes: *const c_char,
+    commented_formats: c_int,
     holder: Sexp,
     err: *mut c_char,
     err_len: usize,
 ) -> c_int {
-    let (data, setup, out) = (c_str(data).unwrap_or_default(), c_str(setup).unwrap_or_default(), c_str(out).unwrap_or_default());
+    let (data, out) = (c_str(data).unwrap_or_default(), c_str(out).unwrap_or_default());
+    let setups: Vec<String> = std::slice::from_raw_parts(setups, nsetups).iter().map(|&s| c_str(s).unwrap_or_default()).collect();
     let recodes = c_str(recodes).unwrap_or_default();
     guard(err, err_len, || {
         let mode = dta::Recodes::from_name(&recodes)
             .ok_or_else(|| Fail::Message(format!("recodes must be \"setup\", \"tagged\" or \"none\", not \"{recodes}\"")))?;
         let read = |p: &str| std::fs::read(p).map_err(|e| Fail::Message(format!("{p}: {e}")));
-        let (setup_bytes, data_bytes) = (read(&setup)?, read(&data)?);
+        let setup_bytes = setups.iter().map(|p| read(p)).collect::<Res<Vec<Vec<u8>>>>()?;
+        let data_bytes = read(&data)?;
         let file = create_new(&out).map_err(|e| Fail::Message(format!("{out}: {e}")))?;
-        let warnings = dta::fixed_width_to_dta(&setup_bytes, &data_bytes, mode, std::io::BufWriter::new(file))
-            .map_err(|e| Fail::Message(e.to_string()))?;
+        let setup_refs: Vec<&[u8]> = setup_bytes.iter().map(Vec::as_slice).collect();
+        let warnings =
+            dta::fixed_width_to_dta(&setup_refs, &data_bytes, mode, commented_formats != 0, std::io::BufWriter::new(file))
+                .map_err(|e| Fail::Message(e.to_string()))?;
         let messages: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
         strings_elt(holder, 0, &messages)
     })
