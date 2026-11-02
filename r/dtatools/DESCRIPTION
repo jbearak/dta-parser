@@ -8,7 +8,7 @@ Description: Reads and writes Stata .dta files through dtaparser,
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
-    dtaparser (>= 1.0.0),
+    dtaparser (>= 1.1.0),
     rlang,
     tibble,
     tidyselect,
