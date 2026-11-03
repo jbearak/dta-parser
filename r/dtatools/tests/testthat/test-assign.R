@@ -1,72 +1,70 @@
 test_that(":= makes a column on the rows i selects, by Stata's comparisons", {
   d <- dibble(age = c(25, 41, NA, .a), s = c("p", "q", "r", "s"))
-  out <- d[age > 35, older := 1]
+  out <- recoded(d[age > 35, older] := 1)
   expect_identical(as.character(out$older), c(".", "1", "1", "1"))
   expect_identical(attr(out$older, "storage"), "double")
   expect_false("older" %in% names(d))
-  out <- d[age < 30, t := "young"]
+  out <- recoded(d[age < 30, t] := "young")
   expect_identical(out$t, c("young", "", "", ""))
-  out <- d[c(TRUE, NA, FALSE, TRUE), flag := TRUE]
+  out <- recoded(d[c(TRUE, NA, FALSE, TRUE), flag] := TRUE)
   expect_identical(as.character(out$flag), c("1", ".", ".", "1"))
   expect_identical(attr(out$flag, "storage"), "byte")
-  expect_identical(as.character(d[c(2, 4), k := 7]$k), c(".", "7", ".", "7"))
-  expect_identical(as.character(d[-1, k := 7]$k), c(".", "7", "7", "7"))
-  expect_identical(as.character(d[dta_num(c(0, 2, NA, 0)), k := 7]$k), c(".", "7", "7", "."))
-  expect_identical(as.character(d[, k := age]$k), c("25", "41", ".", ".a"))
+  expect_identical(as.character(recoded(d[c(2, 4), k] := 7)$k), c(".", "7", ".", "7"))
+  expect_identical(as.character(recoded(d[-1, k] := 7)$k), c(".", "7", "7", "7"))
+  expect_identical(as.character(recoded(d[dta_num(c(0, 2, NA, 0)), k] := 7)$k), c(".", "7", "7", "."))
+  expect_identical(as.character(recoded(d[, k] := age)$k), c("25", "41", ".", ".a"))
 })
 
 test_that(":= into an existing column keeps its labels and widens its storage", {
   d <- dibble(x = dta_num(c(1, 2, .d), storage = "byte", label = "X", labels = c(One = 1, DK = .d)))
-  out <- d[x == .d, x := .r]
+  out <- recoded(d[x == .d, x] := .r)
   expect_identical(as.character(out$x), c("1", "2", ".r"))
   expect_identical(attr(out$x, "labels"), attr(d$x, "labels"))
   expect_identical(attr(out$x, "label"), "X")
   expect_identical(attr(out$x, "storage"), "byte")
-  expect_identical(attr(d[1, x := 100]$x, "storage"), "byte")
-  expect_identical(attr(d[1, x := 101]$x, "storage"), "int")
-  expect_identical(attr(d[1, x := -40000]$x, "storage"), "long")
-  expect_identical(attr(d[1, x := 3e9]$x, "storage"), "double")
-  expect_identical(attr(d[1, x := 0.5]$x, "storage"), "double")
+  expect_identical(attr(recoded(d[1, x] := 100)$x, "storage"), "byte")
+  expect_identical(attr(recoded(d[1, x] := 101)$x, "storage"), "int")
+  expect_identical(attr(recoded(d[1, x] := -40000)$x, "storage"), "long")
+  expect_identical(attr(recoded(d[1, x] := 3e9)$x, "storage"), "double")
+  expect_identical(attr(recoded(d[1, x] := 0.5)$x, "storage"), "double")
   f <- dibble(x = dta_num(1, storage = "float"))
-  expect_identical(attr(f[, x := 0.1]$x, "storage"), "float")
-  expect_identical(attr(f[, x := 1e300]$x, "storage"), "double")
-  expect_error(d[, x := "a"], "cannot put strings into numeric column x")
-  expect_error(dibble(s = "a")[, s := 1], "cannot put numbers into string column s")
+  expect_identical(attr(recoded(f[, x] := 0.1)$x, "storage"), "float")
+  expect_identical(attr(recoded(f[, x] := 1e300)$x, "storage"), "double")
+  expect_error(d[, x] := "a", "cannot put strings into numeric column x")
+  expect_error(recoded(dibble(s = "a")[, s] := 1), "cannot put numbers into string column s")
   path <- tempfile(fileext = ".dta")
-  save_dta(d[1, x := 0.5], path)
+  save_dta(recoded(d[1, x] := 0.5), path)
   expect_identical(as.character(read_dta(path)$x), c("0.5", "2", ".d"))
 })
 
 test_that(":= with by works within groups, each missing code its own", {
   d <- dibble(g = c(.a, 1, .b, 1, .a, NA), x = c(1, 2, 3, 4, 5, 6))
-  out <- d[, n := .N, by = g]
+  out <- recoded(d[, n, by = g] := .N)
   expect_identical(as.character(out$n), c("2", "2", "1", "2", "2", "1"))
-  out <- d[x > 1, first := x[1], by = .(g)]
+  out <- recoded(d[x > 1, first, by = .(g)] := x[1])
   expect_identical(as.character(out$first), c(".", "2", "3", "2", "5", "6"))
-  out <- d[, idx := seq_len(.N), by = "g"]
+  out <- recoded(d[, idx, by = "g"] := seq_len(.N))
   expect_identical(as.character(out$idx), c("1", "1", "1", "2", "2", "1"))
   by <- "g"
-  expect_identical(d[, n := .N, by = by]$n, d[, n := .N, by = g]$n)
-  expect_error(d[, g := 1, by = g], "cannot change g")
-  expect_error(d[1, by = g], "by needs :=")
+  expect_identical(recoded(d[, n, by = by] := .N)$n, recoded(d[, n, by = g] := .N)$n)
+  expect_error(recoded(d[, g, by = g] := 1), "cannot change g")
+  expect_error(d[1, by = g], "by goes with :=")
 })
 
-test_that(":= takes several columns in turn, names in strings or variables, and NULL", {
+test_that(":= takes names in strings or variables, and NULL", {
   d <- dibble(x = c(1, 2), y = c(3, 4))
-  out <- d[, `:=`(a = x * 10, b = a + 1)]
+  out <- recoded(d[, a] := x * 10)
+  out[, b] := a + 1  # sees the new a
   expect_identical(as.character(out$b), c("11", "21"))
   nm <- "z"
-  expect_identical(names(d[, (nm) := 0]), c("x", "y", "z"))
-  expect_identical(names(d[, "z" := 0]), c("x", "y", "z"))
-  expect_identical(names(d[, y := NULL]), "x")
-  expect_error(d[1, y := NULL], "no i or by")
+  expect_identical(names(recoded(d[, (nm)] := 0)), c("x", "y", "z"))
+  expect_identical(names(recoded(d[, "z"] := 0)), c("x", "y", "z"))
+  expect_identical(names(recoded(d[, y] := NULL)), "x")
+  expect_error(recoded(d[1, y] := NULL), "no i or by")
   gone <- NULL
-  expect_identical(names(d[, y := gone]), "x")
-  expect_error(d[, y := NULL, by = x], "NULL drops the whole column")
-  expect_identical(as.character(d[, `:=`(z = 1, z = z + 1)]$z), c("2", "2"))
-  expect_identical(names(d[, `:=`(z = 1, z = NULL)]), c("x", "y"))
-  expect_error(d[, a := 1:3], "`a`.*size 3.*size 2")
-  expect_error(d[, `:=`(1)], "name := value")
+  expect_identical(names(recoded(d[, y] := gone)), "x")
+  expect_error(recoded(d[, y, by = x] := NULL), "NULL drops the whole column")
+  expect_error(recoded(d[, a] := 1:3), "`a`.*size 3.*size 2")
 })
 
 test_that(":= keeps the dibble's attributes and ends the sort order at a changed key", {
@@ -74,13 +72,13 @@ test_that(":= keeps the dibble's attributes and ends the sort order at a changed
   attr(d, "label") <- "Data"
   attr(d, "notes") <- "note"
   attr(d, "sort_order") <- c("a", "b")
-  out <- d[, c := 0]
+  out <- recoded(d[, c] := 0)
   expect_s3_class(out, "dibble")
   expect_identical(attr(out, "label"), "Data")
   expect_identical(attr(out, "notes"), "note")
   expect_identical(attr(out, "sort_order"), c("a", "b"))
-  expect_identical(attr(d[, b := 0], "sort_order"), "a")
-  expect_null(attr(d[, a := 0], "sort_order"))
+  expect_identical(attr(recoded(d[, b] := 0), "sort_order"), "a")
+  expect_null(attr(recoded(d[, a] := 0), "sort_order"))
 })
 
 test_that("[ without := is tibble's", {
@@ -94,17 +92,21 @@ test_that("[ without := is tibble's", {
 
 test_that(":= on no rows still gives the value's type, with or without by", {
   d <- dibble(g = c(1, 2), s = c("a", "b"), x = dta_num(c(1, 2), storage = "byte"))
-  for (out in list(d[g < 0, t := "z"], d[g < 0, t := "z", by = g])) {
+  for (out in list(recoded(d[g < 0, t] := "z"), recoded(d[g < 0, t, by = g] := "z"))) {
     expect_identical(out$t, c("", ""))
   }
-  expect_identical(d[g < 0, s := "z", by = g]$s, c("a", "b"))
-  expect_identical(d[g < 0, x := 0.5, by = g]$x, d$x)
-  expect_identical(d[g < 0, s := 1, by = g], d)
+  expect_identical(recoded(d[g < 0, s, by = g] := "z")$s, c("a", "b"))
+  expect_identical(recoded(d[g < 0, x, by = g] := 0.5)$x, d$x)
+  expect_identical(recoded(d[g < 0, s, by = g] := 1), d)
 })
 
 test_that(":= stores only what Stata holds", {
   d <- dibble(x = c(1, 2), s = c("a", "b"))
-  out <- d[, `:=`(x = c(Inf, .a), y = c(NaN, -Inf), s = NA_character_, t = c("u", NA))]
+  out <- d
+  out[, x] := c(Inf, .a)
+  out[, y] := c(NaN, -Inf)
+  out[, s] := NA_character_
+  out[, t] := c("u", NA)
   expect_identical(as.character(out$x), c(".", ".a"))
   expect_identical(as.character(out$y), c(".", "."))
   expect_identical(out$s, c("", ""))
@@ -118,83 +120,89 @@ test_that(":= stores only what Stata holds", {
 
 test_that(":= values see the selected rows, .data, .N and the caller's variables", {
   d <- dibble(g = c("p", "q", "p", "p"), x = c(1, 2, 3, 4))
-  out <- d[x > 1, n := .N, by = g]
+  out <- recoded(d[x > 1, n, by = g] := .N)
   expect_identical(as.character(out$n), c(".", "1", "2", "2"))
-  out <- d[x > 1, k := seq_len(.N), by = g]
+  out <- recoded(d[x > 1, k, by = g] := seq_len(.N))
   expect_identical(as.character(out$k), c(".", "1", "1", "2"))
-  out <- d[, y := .data$x * 2]
+  out <- recoded(d[, y] := .data$x * 2)
   expect_identical(as.character(out$y), c("2", "4", "6", "8"))
-  f <- function(d, cut, add) d[x > cut, y := x + add]
+  f <- function(d, cut, add) {
+    d[x > cut, y] := x + add
+    d
+  }
   expect_identical(as.character(f(d, 2, 10)$y), c(".", ".", "13", "14"))
-  expect_error(d[, y := if (.N > 2) "a" else 1, by = g], class = "vctrs_error_incompatible_type")
+  expect_error(recoded(d[, y, by = g] := if (.N > 2) "a" else 1), class = "vctrs_error_incompatible_type")
 })
 
 test_that("a new column takes the value's attributes", {
   d <- dibble(a = dta_num(c(1, 2), label = "A", labels = c(One = 1)))
-  expect_identical(attr(d[, b := a]$b, "labels"), c(One = 1))
-  expect_null(attr(d[, b := a + 1]$b, "labels"))
+  expect_identical(attr(recoded(d[, b] := a)$b, "labels"), c(One = 1))
+  expect_null(attr(recoded(d[, b] := a + 1)$b, "labels"))
 })
 
-test_that("[ with := rejects what it does not take", {
+test_that("d[i, name := value] is an error that shows the line to write", {
   d <- dibble(g = c(1, 2), x = c(1, 2))
-  expect_error(d[, n := .N, keyby = g], "only i, j and by")
-  expect_error(d[, n := .N, drop = TRUE], "only i, j and by")
-  expect_error(d[n := 1], "with a comma")
-  expect_identical(as.character(d[, n := .N, by = NULL]$n), c("2", "2"))
+  expect_error(d[x > 1, y := x * 2], "write d[x > 1, y] := x * 2 to change d", fixed = TRUE)
+  expect_error(d <- d[, n := .N, by = g], "write d[, n, by = g] := .N to change d", fixed = TRUE)
+  expect_error(d[, `:=`(a = 1, b = a + 1)], "write d[, a] := 1; d[, b] := a + 1 to change d", fixed = TRUE)
+  expect_error(d[n := 1], "write d[, n] := 1 to change d", fixed = TRUE)
+  expect_false("n" %in% names(d))
+  expect_error(d[, n, keyby = g] := .N, "write d\\[i, name\\] := value")
+  expect_identical(as.character(recoded(d[, n, by = NULL] := .N)$n), c("2", "2"))
 })
 
 test_that(":= values see every column they name", {
   d <- dibble(x = c(1, 2, 3), s = c("a", "b", "c"), y = c(10, 20, 30), g = c(1, 1, 2))
-  expect_identical(as.character(d[, z := x + y]$z), c("11", "22", "33"))
-  expect_identical(as.character(d[x > 1, z := y - x]$z), c(".", "18", "27"))
-  expect_identical(as.character(d[, z := sum(y) - x, by = g]$z), c("29", "28", "27"))
-  expect_identical(d[, t := paste0(s, .data$x + .data$y)]$t, c("a11", "b22", "c33"))
+  expect_identical(as.character(recoded(d[, z] := x + y)$z), c("11", "22", "33"))
+  expect_identical(as.character(recoded(d[x > 1, z] := y - x)$z), c(".", "18", "27"))
+  expect_identical(as.character(recoded(d[, z, by = g] := sum(y) - x)$z), c("29", "28", "27"))
+  expect_identical(recoded(d[, t] := paste0(s, .data$x + .data$y))$t, c("a11", "b22", "c33"))
   v <- "y"
-  expect_identical(as.character(d[, z := .data[[v]] / x]$z), c("10", "10", "10"))
+  expect_identical(as.character(recoded(d[, z] := .data[[v]] / x)$z), c("10", "10", "10"))
 })
 
 test_that("groups agree on a new column's type and storage whatever their order", {
   d <- dibble(g = c(1, 2), x = c(5, 6))
-  a <- d[, z := if (g[1] == 1) x > 0 else x * 1000, by = g]
-  b <- d[, z := if (g[1] == 2) x > 0 else x * 1000, by = g]
+  a <- recoded(d[, z, by = g] := if (g[1] == 1) x > 0 else x * 1000)
+  b <- recoded(d[, z, by = g] := if (g[1] == 2) x > 0 else x * 1000)
   expect_identical(attr(a$z, "storage"), "double")
   expect_identical(attr(b$z, "storage"), "double")
-  s <- d[, s := if (g[1] == 1) NA else "k", by = g]
+  s <- recoded(d[, s, by = g] := if (g[1] == 1) NA else "k")
   expect_identical(s$s, c("", "k"))
-  expect_identical(d[, s := if (g[1] == 1) "q" else NA, by = g]$s, c("q", ""))
-  expect_identical(as.character(d[, z := if (g[1] == 1) NA else 2, by = g]$z), c(".", "2"))
-  expect_identical(dibble(s = c("a", "b"))[1, s := NA]$s, c("", "b"))
-  expect_identical(attr(d[, z := NA]$z, "storage"), "byte")
-  expect_error(d[, z := if (g[1] == 1) NULL else 1, by = g], "NULL in a group")
+  expect_identical(recoded(d[, s, by = g] := if (g[1] == 1) "q" else NA)$s, c("q", ""))
+  expect_identical(as.character(recoded(d[, z, by = g] := if (g[1] == 1) NA else 2)$z), c(".", "2"))
+  expect_identical(recoded(dibble(s = c("a", "b"))[1, s] := NA)$s, c("", "b"))
+  expect_identical(attr(recoded(d[, z] := NA)$z, "storage"), "byte")
+  expect_error(recoded(d[, z, by = g] := if (g[1] == 1) NULL else 1), "NULL in a group")
 })
 
 test_that("when i picks no rows, existing columns stay and nothing warns", {
   d <- dibble(age = c(30, 40), x = c(1, 2))
   attr(d, "sort_order") <- c("age", "x")
-  expect_no_warning(out <- d[age > 100, m := max(age)])
+  expect_no_warning(out <- recoded(d[age > 100, m] := max(age)))
   expect_identical(as.character(out$m), c(".", "."))
-  expect_identical(attr(d[age > 100, age := 1], "sort_order"), c("age", "x"))
-  expect_identical(d[age > 100, age := stop("not evaluated")], d)
+  expect_identical(attr(recoded(d[age > 100, age] := 1), "sort_order"), c("age", "x"))
+  expect_identical(recoded(d[age > 100, age] := stop("not evaluated")), d)
 })
 
 test_that(":= finds columns however the expression looks them up, before the caller's", {
   d <- dibble(x = c(1, 2), g = c(1, 2))
   x <- c(99, 99)
-  expect_identical(as.character(d[, y := get("x")]$y), c("1", "2"))
-  expect_identical(as.character(d[, y := get("x") * 10, by = g]$y), c("10", "20"))
-  expect_identical(as.character(d[get("x") > 1, y := 0]$y), c(".", "0"))
-  expect_identical(as.character(d[, y := eval(quote(x)) + 1]$y), c("2", "3"))
+  expect_identical(as.character(recoded(d[, y] := get("x"))$y), c("1", "2"))
+  expect_identical(as.character(recoded(d[, y, by = g] := get("x") * 10)$y), c("10", "20"))
+  expect_identical(as.character(recoded(d[get("x") > 1, y] := 0)$y), c(".", "0"))
+  expect_identical(as.character(recoded(d[, y] := eval(quote(x)) + 1)$y), c("2", "3"))
   rm(x)
-  expect_identical(as.character(d[, y := get("x"), by = g]$y), c("1", "2"))
-  expect_identical(as.character(d[, y := x, by = g]$y), c("1", "2"))
+  expect_identical(as.character(recoded(d[, y, by = g] := get("x"))$y), c("1", "2"))
+  expect_identical(as.character(recoded(d[, y, by = g] := x)$y), c("1", "2"))
 })
 
 test_that("grouped values of only NA, and long with float, keep every value", {
   d <- dibble(g = c(1, 2, 3), s = c("a", "b", "c"), x = c(1, 2, 3))
-  expect_identical(d[, s := NA, by = g]$s, c("", "", ""))
-  expect_identical(d[x > 2, s := NA, by = g]$s, c("a", "b", ""))
-  expect_identical(as.character(d[, z := NA, by = g]$z), c(".", ".", "."))
-  out <- d[x < 3, z := if (g[1] == 1) dta_num(16777217, storage = "long") else dta_num(0.5, storage = "float"), by = g]
+  expect_identical(recoded(d[, s, by = g] := NA)$s, c("", "", ""))
+  expect_identical(recoded(d[x > 2, s, by = g] := NA)$s, c("a", "b", ""))
+  expect_identical(as.character(recoded(d[, z, by = g] := NA)$z), c(".", ".", "."))
+  out <- recoded(d[x < 3, z, by = g] := if (g[1] == 1) dta_num(16777217, storage = "long") else dta_num(0.5, storage = "float"))
   expect_identical(attr(out$z, "storage"), "double")
   path <- tempfile(fileext = ".dta")
   save_dta(out, path)
@@ -203,11 +211,11 @@ test_that("grouped values of only NA, and long with float, keep every value", {
 
 test_that("a new column on no rows is . when its value fails there", {
   d <- dibble(x = c(1, 2))
-  expect_identical(as.character(d[x > 100, z := if (x > 1) 1 else 0]$z), c(".", "."))
-  expect_identical(as.character(d[x > 100, z := x[[1]]]$z), c(".", "."))
-  expect_error(d[FALSE, x := NULL], "no i or by")
-  expect_error(d[, y := {x <<- 0; 1}], "cannot assign to column x")
-  expect_identical(as.character(d[, y := {x <- x + 1; x * 2}]$y), c("4", "6"))
+  expect_identical(as.character(recoded(d[x > 100, z] := if (x > 1) 1 else 0)$z), c(".", "."))
+  expect_identical(as.character(recoded(d[x > 100, z] := x[[1]])$z), c(".", "."))
+  expect_error(recoded(d[FALSE, x] := NULL), "no i or by")
+  expect_error(recoded(d[, y] := {x <<- 0; 1}), "cannot assign to column x")
+  expect_identical(as.character(recoded(d[, y] := {x <- x + 1; x * 2})$y), c("4", "6"))
   expect_identical(as.character(d$x), c("1", "2"))
 })
 
@@ -216,7 +224,7 @@ test_that("d[i, name] <- value recodes as := does, picking rows among the column
               y = c(1, 5, 3), s = c("a", "b", "c"))
   e <- d
   e[x == .d, x] <- .r
-  expect_identical(e, d[x == .d, x := .r])
+  expect_identical(e, recoded(d[x == .d, x] := .r))
   e[y > 2, z] <- 0.5
   expect_identical(as.character(e$z), c(".", "0.5", "0.5"))
   expect_identical(attr(e$z, "storage"), "double")
@@ -322,10 +330,10 @@ test_that("dplyr's rows_update still works on a dibble", {
 
 test_that("d[i, name] := value changes d, with the value among the columns", {
   d <- dibble(x = c(1, 2, 3), y = c(1, 0, 3), v = c(10, 20, 30), g = c(1, 1, 2))
-  v <- 99  # the column hides it, as in d[i, name := value]
+  v <- 99  # the column hides it
   e <- d
   e[x == y, z] := v
-  expect_identical(e, d[x == y, z := v])
+  expect_identical(as.character(e$z), c("10", ".", "30"))
   e[, w] := x + v
   expect_identical(as.character(e$w), c("11", "22", "33"))
   e[x > 1, "s"] := "k"
@@ -343,7 +351,7 @@ test_that("d[i, name] := value changes d, with the value among the columns", {
   expect_identical(as.character(d$x), c("1", "2", "3"))
 })
 
-test_that("in d[i, name] := value a bare name is the column, as in :=", {
+test_that("in d[i, name] := value a bare name is the column", {
   d <- dibble(x = c(1, 2))
   nm <- "q"
   expect_error(d[1, nm] <- 1, "nm is a variable, not a column")

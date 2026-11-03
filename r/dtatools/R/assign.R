@@ -1,12 +1,9 @@
 #' Make and change columns with `:=` or `[<-`
 #'
-#' `d[i, name := value, by = g]` returns `d` with column `name` set to
-#' `value` on the rows `i` selects, as data.table's `:=` does, but as a
-#' new dibble. `d` itself is unchanged: write `d <- d[i, ...]`. A line
-#' `d[i, name := value]` on its own does nothing, even in a test.
-#' `d[i, name] := value`, with `:=` outside the brackets, changes `d`
-#' itself, as does `d[i, name] <- value` for a value that does not use
-#' the columns (see below).
+#' `d[i, name] := value` sets column `name` to `value` on the rows `i`
+#' selects, making the column if it is new, and changes `d` itself, as
+#' Stata's `generate` and `replace` change the data in memory.
+#' `d[i, name, by = g] := value` computes `value` within groups.
 #'
 #' - `i` is evaluated among the columns. Comparisons follow Stata's rules
 #'   (see [dta_num()]), so `d[age > 30, ...]` includes rows whose age is
@@ -16,15 +13,16 @@
 #' - `value` is evaluated, as in data.table, among the columns of the
 #'   selected rows only (of each group, with `by`), and is recycled from
 #'   length 1. `.N` is the number of rows it sees. Stata's `if` does not
-#'   narrow `_n`, `_N` or `x[1]` that way, so `d[, n := seq_len(.N), by
-#'   = g]` is `by g: gen n = _n` only without `i`; and the rows keep
-#'   their order, where `bysort` sorts.
+#'   narrow `_n`, `_N` or `x[1]` that way, so
+#'   `d[, n, by = g] := seq_len(.N)` is `by g: gen n = _n` only without
+#'   `i`; and the rows keep their order, where `bysort` sorts. A column
+#'   hides a variable of the same name in the caller.
 #' - Values are converted as [dibble()] converts columns. `Inf`, `-Inf`
 #'   and `NaN` become `.`, and string `NA` becomes `""`, since Stata
 #'   holds neither.
 #' - A new column is `.` (or `""` for strings) on the other rows, and
-#'   takes the value's attributes, so `b := a` copies `a`'s labels while
-#'   `b := a + 1` has none; with `by`, the first group's.
+#'   takes the value's attributes, so `d[, b] := a` copies `a`'s labels
+#'   while `d[, b] := a + 1` has none; with `by`, the first group's.
 #' - An existing column keeps its labels, label and format, as `replace`
 #'   does. If its storage cannot hold the new values it widens to the
 #'   narrowest of `int` and `long` that holds them, else to `double`
@@ -35,30 +33,26 @@
 #' - `by` names grouping columns: `by = g`, `by = c("g", "h")` or
 #'   `by = .(g, h)`. `.`, `.a`, ..., `.z` are each their own group. A
 #'   `by` column cannot be changed.
-#' - Several columns at once: `` d[, `:=`(a = 1, b = a + 1)] ``. Each is
-#'   made in turn, so `b` sees the new `a`; `i` and the groups are
-#'   computed once, before the first.
 #' - A value of `NULL` drops the column (not with `i` or `by`).
 #' - When `i` picks no rows, an existing column is left as it is and its
 #'   value is not evaluated. A new column is evaluated once on zero rows
 #'   only for its type; if that fails, it is `.`, and the error is not
 #'   shown.
 #'
-#' The name may be a string (`"a" := 1`) or, in parentheses, a variable
-#' holding one (`(nm) := 1`). A column that was a sort key ends the sort
-#' order there. `.N` and `.data` hide columns of those names. data.table's
-#' other arguments (`keyby`, `on`, ...) are
-#' errors. Any `[` without `:=` is tibble's.
+#' `name` is one column: a bare name (the column, even if a variable has
+#' that name), a string (`"a"`), or, in parentheses, a variable holding
+#' one (`(nm)`). For several columns, write one line each. `d` may be any
+#' target `<-` takes, such as `l$d`; inside a function, as with `<-`, it
+#' changes the function's copy. To keep `d` as it was, copy it first:
+#' `e <- d; e[i, name] := value`. A column that was a sort key ends the
+#' sort order there. `.N` and `.data` hide columns of those names.
 #'
-#' @section Changing `d` with `:=` outside the brackets:
-#' `d[i, name] := value` runs `d <- d[i, name := value]` in the caller,
-#' and `d[i, name, by = g] := value` runs
-#' `d <- d[i, name := value, by = g]`, so `value` uses the columns and
-#' everything above applies. `d` may be any target `<-` takes, such as
-#' `l$d`; inside a function, as with `<-`, it changes the function's
-#' copy. `name` is one column, read as in `:=` inside the brackets: a
-#' bare name is the column, even if a variable has that name.
+#' data.table's `d[i, name := value]`, with `:=` inside the brackets, is
+#' an error that shows the `d[i, name] := value` line to write instead:
+#' on a dibble it used to return a changed copy and leave `d` as it was,
+#' so on its own line it did nothing. Any other `[` is tibble's.
 #'
+#' @section Where R finds `:=`:
 #' rlang and data.table each export a `:=` too, only to report misuse,
 #' and the package attached last is the one R finds. Attach dtatools
 #' after them, or, in tests that call `dtatools::` functions without
@@ -69,17 +63,17 @@
 #' keep working, as they read `:=` without calling it.
 #'
 #' @section Assigning with `<-`:
-#' `d[i, name] <- value` changes `d` itself, with no `d <-` in front,
-#' because R assigns the result back to `d`. It does what
-#' `d <- d[i, name := value]` does, with `i` evaluated among the columns
+#' `d[i, name] <- value` also changes `d`, and needs no attached
+#' package, as R finds `[<-` by the dibble's class. It does what
+#' `d[i, name] := value` does, with `i` evaluated among the columns
 #' as there, except for the following:
 #'
 #' - R evaluates `value` before the dibble sees it, in the caller's
 #'   environment, so it cannot use the columns: `d[x == 1, y] <- 0` works,
-#'   but for `d[x == 1, y] <- z * 2`, write `d <- d[x == 1, y := z * 2]`.
+#'   but for `d[x == 1, y] <- z * 2`, write `d[x == 1, y] := z * 2`.
 #'   `value` has one element, or one per row `i` picks (not one per row
 #'   of `d`). It is evaluated even when `i` picks no rows.
-#' - There is no `by`, and only one column at a time.
+#' - There is no `by`.
 #' - `name` is a column name, a string (`"a"`), or a variable in
 #'   parentheses (`(nm)`). A bare name that is not a column but is a
 #'   variable in the caller, as in `for (nm in vars) d[x > 0, nm] <- 1`
@@ -100,38 +94,41 @@
 #' lhs := rhs
 #' @param x A dibble.
 #' @param i Rows: a condition or row numbers.
-#' @param j `name := value`, or `` `:=`(name = value, ...) ``; with
-#'   `<-`, the column name.
-#' @param ... Passed to tibble's `[` when `j` is not `:=`.
-#' @param by Grouping columns.
+#' @param j With `<-`, the column name. `name := value` here is an
+#'   error that shows the `d[i, name] := value` line to write.
+#' @param ... Passed to tibble's `[` and `[<-`.
+#' @param by Not taken by `[`: write `d[i, name, by = g] := value`.
 #' @param value With `<-`, the new values.
 #' @param lhs `d[i, name]` or `d[i, name, by = g]`.
 #' @param rhs The new values, evaluated among the columns.
 #' @return A dibble; `d[i, name] := value` returns it invisibly.
 #' @examples
 #' d <- dibble(age = c(25, 41, NA, 37), kids = c(0, 2, 1, .d), g = c(1, 1, 2, 2))
-#' d <- d[age > 35, older := TRUE]       # missing age counts as > 35
-#' d <- d[kids == .d, kids := .r]
-#' d <- d[, n_in_g := .N, by = g]
-#' d[age < 30, young] <- 1               # changes d itself
-#' d[, months] := age * 12               # changes d itself, using a column
+#' d[age > 35, older] := TRUE            # missing age counts as > 35
+#' d[kids == .d, kids] := .r
+#' d[, n_in_g, by = g] := .N
+#' d[, months] := age * 12
+#' d[age < 30, young] <- 1               # <- for a value without columns
 #' d
 #' @name dibble-assign
 NULL
 
 #' @export
 `[.dibble` <- function(x, i, j, ..., by) {
-  if (missing(j) || !is_assign(substitute(j))) {
-    if (!missing(i) && is_assign(substitute(i))) stop("dibble: write d[, name := value], with a comma", call. = FALSE)
-    if (!missing(by)) stop("dibble: by needs := in j", call. = FALSE)
-    return(NextMethod())
+  # d[i, name := value] would return a recoded copy and leave d as it
+  # was, unlike data.table; it is an error that shows the line to write.
+  in_i <- !missing(i) && is_assign(substitute(i))
+  if (in_i || (!missing(j) && is_assign(substitute(j)))) {
+    target <- deparse1(substitute(x), backtick = TRUE)
+    rows <- if (in_i || missing(i)) "" else deparse1(substitute(i), backtick = TRUE)
+    by <- if (missing(by)) "" else paste0(", by = ", deparse1(substitute(by), backtick = TRUE))
+    lines <- assign_lines(target, rows, if (in_i) substitute(i) else substitute(j), by)
+    stop("dibble: write ", paste(lines, collapse = "; "), " to change ", target, ". The form ", target,
+         "[i, name := value] is retired, since on its own it left ", target, " unchanged; to keep ", target,
+         ", copy it first: e <- ", target, call. = FALSE)
   }
-  if (...length()) stop("dibble: [ with := takes only i, j and by", call. = FALSE)
-  env <- parent.frame()
-  steps <- assign_steps(substitute(j), env)
-  rows <- if (!missing(i)) picked_rows(x, substitute(i), env)
-  by <- if (missing(by)) character() else by_names(substitute(by), env, names(x))
-  assign_columns(x, rows, steps, by, env)
+  if (!missing(by)) stop("dibble: by goes with :=; write d[i, name, by = g] := value", call. = FALSE)
+  NextMethod()
 }
 
 #' @export
@@ -158,11 +155,11 @@ NULL
 #' @usage NULL
 #' @export
 `:=` <- function(lhs, rhs) {
-  # d[i, name, by = g] := value runs d <- d[i, name := value, by = g] in
-  # the caller; := inside d[...] is read by `[.dibble` and never called.
+  # d[i, name, by = g] := value: d with `name` set to `value` on the rows
+  # i picks, assigned back to d in the caller.
   lhs <- substitute(lhs)
   if (!is.call(lhs) || !identical(lhs[[1]], as.name("[")) || length(lhs) < 2) {
-    stop("dibble: write d[i, name] := value, or name := value inside d[...]", call. = FALSE)
+    stop("dibble: write d[i, name] := value", call. = FALSE)
   }
   arg_names <- names(lhs) %||% rep("", length(lhs))
   arg_names <- arg_names[-(1:2)]
@@ -175,10 +172,10 @@ NULL
   target <- lhs[[2]]
   x <- eval(target, env)
   if (!inherits(x, "dibble")) stop("dibble: d[i, name] := value needs a dibble; convert with as_dibble()", call. = FALSE)
-  expr <- lhs
-  expr[[2]] <- x
-  expr[[unnamed[[2]]]] <- call(":=", lhs[[unnamed[[2]]]], substitute(rhs))
-  new <- eval(expr, env)
+  rows <- if (!identical(lhs[[unnamed[[1]]]], quote(expr = ))) picked_rows(x, lhs[[unnamed[[1]]]], env)
+  by <- if ("by" %in% arg_names) by_names(lhs[["by"]], env, names(x)) else character()
+  steps <- list(list(name = assign_name(lhs[[unnamed[[2]]]], env), value = substitute(rhs)))
+  new <- assign_columns(x, rows, steps, by, env)
   eval(call("<-", target, new), env)
   invisible(new)
 }
@@ -243,7 +240,7 @@ assign_columns <- function(x, rows, steps, by, env) {
       combined(parts, groups, length(rows))
     }
     if (is.null(value)) {
-      if (picked || length(by)) stop("dibble: ", name, " := NULL drops the whole column; no i or by", call. = FALSE)
+      if (picked || length(by)) stop("dibble: NULL drops the whole column; write d[, ", name, "] := NULL, with no i or by", call. = FALSE)
       x <- set_column(x, name, NULL)
       next
     }
@@ -254,16 +251,18 @@ assign_columns <- function(x, rows, steps, by, env) {
 
 is_assign <- function(expr) is.call(expr) && identical(expr[[1]], as.name(":="))
 
-# `a := v` or `:=`(a = v, b = w): a list of list(name, value), each value
-# an unevaluated expression, in order (a name may come twice).
-assign_steps <- function(expr, env) {
+# The `d[i, name] := value` lines that do what the retired
+# d[i, name := value] (or `:=`(a = v, b = w)) would have, as text.
+assign_lines <- function(target, rows, expr, by) {
   args <- as.list(expr)[-1]
-  if (is.null(names(args))) {
-    if (length(args) != 2) stop("dibble: write name := value or `:=`(name = value, ...)", call. = FALSE)
-    return(list(list(name = assign_name(args[[1]], env), value = args[[2]])))
+  pairs <- if (is.null(names(args)) && length(args) == 2) {
+    list(c(deparse1(args[[1]], backtick = TRUE), deparse1(args[[2]], backtick = TRUE)))
+  } else if (!is.null(names(args)) && all(nzchar(names(args)))) {
+    lapply(seq_along(args), function(k) c(deparse1(as.name(names(args)[[k]]), backtick = TRUE), deparse1(args[[k]], backtick = TRUE)))
+  } else {
+    list(c("name", "value"))
   }
-  if (!all(nzchar(names(args)))) stop("dibble: every value in `:=`(...) needs a name", call. = FALSE)
-  lapply(seq_along(args), function(k) list(name = names(args)[[k]], value = args[[k]]))
+  vapply(pairs, function(p) paste0(target, "[", rows, ", ", p[[1]], by, "] := ", p[[2]]), "")
 }
 
 # The groups' values as one column over the selected rows, with the
@@ -305,8 +304,9 @@ text_attributes <- function(x, from) {
   x
 }
 
-# The column name on the left of :=: a name, a string, or (expr) giving one.
-assign_name <- function(lhs, env, form = "name := value") {
+# The column name in d[i, name] := value: a name, a string, or (expr)
+# giving one.
+assign_name <- function(lhs, env, form = "d[i, name] := value") {
   if (is.call(lhs) && identical(lhs[[1]], as.name("("))) lhs <- eval(lhs[[2]], env)
   if (is.name(lhs)) lhs <- as.character(lhs)
   if (!is.character(lhs) || length(lhs) != 1 || is.na(lhs) || !nzchar(lhs)) {

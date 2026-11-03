@@ -22,12 +22,12 @@ lhs := rhs
 
 \item{i}{Rows: a condition or row numbers.}
 
-\item{j}{\code{name := value}, or \code{`:=`(name = value, ...)}; with
-\verb{<-}, the column name.}
+\item{j}{With \verb{<-}, the column name. \code{name := value} here is an
+error that shows the \code{d[i, name] := value} line to write.}
 
-\item{...}{Passed to tibble's \code{[} when \code{j} is not \verb{:=}.}
+\item{...}{Passed to tibble's \code{[} and \verb{[<-}.}
 
-\item{by}{Grouping columns.}
+\item{by}{Not taken by \code{[}: write \code{d[i, name, by = g] := value}.}
 
 \item{value}{With \verb{<-}, the new values.}
 }
@@ -35,13 +35,10 @@ lhs := rhs
 A dibble; \code{d[i, name] := value} returns it invisibly.
 }
 \description{
-\code{d[i, name := value, by = g]} returns \code{d} with column \code{name} set to
-\code{value} on the rows \code{i} selects, as data.table's \verb{:=} does, but as a
-new dibble. \code{d} itself is unchanged: write \code{d <- d[i, ...]}. A line
-\code{d[i, name := value]} on its own does nothing, even in a test.
-\code{d[i, name] := value}, with \verb{:=} outside the brackets, changes \code{d}
-itself, as does \code{d[i, name] <- value} for a value that does not use
-the columns (see below).
+\code{d[i, name] := value} sets column \code{name} to \code{value} on the rows \code{i}
+selects, making the column if it is new, and changes \code{d} itself, as
+Stata's \code{generate} and \code{replace} change the data in memory.
+\code{d[i, name, by = g] := value} computes \code{value} within groups.
 }
 \details{
 \itemize{
@@ -53,14 +50,16 @@ Without \code{i}, every row.
 \item \code{value} is evaluated, as in data.table, among the columns of the
 selected rows only (of each group, with \code{by}), and is recycled from
 length 1. \code{.N} is the number of rows it sees. Stata's \code{if} does not
-narrow \verb{_n}, \verb{_N} or \code{x[1]} that way, so \code{d[, n := seq_len(.N), by = g]} is \verb{by g: gen n = _n} only without \code{i}; and the rows keep
-their order, where \code{bysort} sorts.
+narrow \verb{_n}, \verb{_N} or \code{x[1]} that way, so
+\code{d[, n, by = g] := seq_len(.N)} is \verb{by g: gen n = _n} only without
+\code{i}; and the rows keep their order, where \code{bysort} sorts. A column
+hides a variable of the same name in the caller.
 \item Values are converted as \code{\link[=dibble]{dibble()}} converts columns. \code{Inf}, \code{-Inf}
 and \code{NaN} become \code{.}, and string \code{NA} becomes \code{""}, since Stata
 holds neither.
 \item A new column is \code{.} (or \code{""} for strings) on the other rows, and
-takes the value's attributes, so \code{b := a} copies \code{a}'s labels while
-\code{b := a + 1} has none; with \code{by}, the first group's.
+takes the value's attributes, so \code{d[, b] := a} copies \code{a}'s labels
+while \code{d[, b] := a + 1} has none; with \code{by}, the first group's.
 \item An existing column keeps its labels, label and format, as \code{replace}
 does. If its storage cannot hold the new values it widens to the
 narrowest of \code{int} and \code{long} that holds them, else to \code{double}
@@ -71,9 +70,6 @@ column.
 \item \code{by} names grouping columns: \code{by = g}, \code{by = c("g", "h")} or
 \code{by = .(g, h)}. \code{.}, \code{.a}, ..., \code{.z} are each their own group. A
 \code{by} column cannot be changed.
-\item Several columns at once: \code{d[, `:=`(a = 1, b = a + 1)]}. Each is
-made in turn, so \code{b} sees the new \code{a}; \code{i} and the groups are
-computed once, before the first.
 \item A value of \code{NULL} drops the column (not with \code{i} or \code{by}).
 \item When \code{i} picks no rows, an existing column is left as it is and its
 value is not evaluated. A new column is evaluated once on zero rows
@@ -81,21 +77,20 @@ only for its type; if that fails, it is \code{.}, and the error is not
 shown.
 }
 
-The name may be a string (\code{"a" := 1}) or, in parentheses, a variable
-holding one (\code{(nm) := 1}). A column that was a sort key ends the sort
-order there. \code{.N} and \code{.data} hide columns of those names. data.table's
-other arguments (\code{keyby}, \code{on}, ...) are
-errors. Any \code{[} without \verb{:=} is tibble's.
-}
-\section{Changing \code{d} with \verb{:=} outside the brackets}{
+\code{name} is one column: a bare name (the column, even if a variable has
+that name), a string (\code{"a"}), or, in parentheses, a variable holding
+one (\code{(nm)}). For several columns, write one line each. \code{d} may be any
+target \verb{<-} takes, such as \code{l$d}; inside a function, as with \verb{<-}, it
+changes the function's copy. To keep \code{d} as it was, copy it first:
+\verb{e <- d; e[i, name] := value}. A column that was a sort key ends the
+sort order there. \code{.N} and \code{.data} hide columns of those names.
 
-\code{d[i, name] := value} runs \code{d <- d[i, name := value]} in the caller,
-and \code{d[i, name, by = g] := value} runs
-\code{d <- d[i, name := value, by = g]}, so \code{value} uses the columns and
-everything above applies. \code{d} may be any target \verb{<-} takes, such as
-\code{l$d}; inside a function, as with \verb{<-}, it changes the function's
-copy. \code{name} is one column, read as in \verb{:=} inside the brackets: a
-bare name is the column, even if a variable has that name.
+data.table's \code{d[i, name := value]}, with \verb{:=} inside the brackets, is
+an error that shows the \code{d[i, name] := value} line to write instead:
+on a dibble it used to return a changed copy and leave \code{d} as it was,
+so on its own line it did nothing. Any other \code{[} is tibble's.
+}
+\section{Where R finds \verb{:=}}{
 
 rlang and data.table each export a \verb{:=} too, only to report misuse,
 and the package attached last is the one R finds. Attach dtatools
@@ -109,17 +104,17 @@ keep working, as they read \verb{:=} without calling it.
 
 \section{Assigning with \verb{<-}}{
 
-\code{d[i, name] <- value} changes \code{d} itself, with no \verb{d <-} in front,
-because R assigns the result back to \code{d}. It does what
-\code{d <- d[i, name := value]} does, with \code{i} evaluated among the columns
+\code{d[i, name] <- value} also changes \code{d}, and needs no attached
+package, as R finds \verb{[<-} by the dibble's class. It does what
+\code{d[i, name] := value} does, with \code{i} evaluated among the columns
 as there, except for the following:
 \itemize{
 \item R evaluates \code{value} before the dibble sees it, in the caller's
 environment, so it cannot use the columns: \code{d[x == 1, y] <- 0} works,
-but for \code{d[x == 1, y] <- z * 2}, write \code{d <- d[x == 1, y := z * 2]}.
+but for \code{d[x == 1, y] <- z * 2}, write \code{d[x == 1, y] := z * 2}.
 \code{value} has one element, or one per row \code{i} picks (not one per row
 of \code{d}). It is evaluated even when \code{i} picks no rows.
-\item There is no \code{by}, and only one column at a time.
+\item There is no \code{by}.
 \item \code{name} is a column name, a string (\code{"a"}), or a variable in
 parentheses (\code{(nm)}). A bare name that is not a column but is a
 variable in the caller, as in \code{for (nm in vars) d[x > 0, nm] <- 1}
@@ -135,10 +130,10 @@ tibble's, with \code{i} evaluated in the caller.
 
 \examples{
 d <- dibble(age = c(25, 41, NA, 37), kids = c(0, 2, 1, .d), g = c(1, 1, 2, 2))
-d <- d[age > 35, older := TRUE]       # missing age counts as > 35
-d <- d[kids == .d, kids := .r]
-d <- d[, n_in_g := .N, by = g]
-d[age < 30, young] <- 1               # changes d itself
-d[, months] := age * 12               # changes d itself, using a column
+d[age > 35, older] := TRUE            # missing age counts as > 35
+d[kids == .d, kids] := .r
+d[, n_in_g, by = g] := .N
+d[, months] := age * 12
+d[age < 30, young] <- 1               # <- for a value without columns
 d
 }

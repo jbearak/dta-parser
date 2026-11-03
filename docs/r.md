@@ -338,50 +338,43 @@ format yourself: `dta_num(days, storage = "long", format = "%td")`.
 
 ## Make and change columns
 
-A dibble takes data.table's `:=` in `[`, for what Stata's `generate`
-and `replace` do with `if` and `by`:
+`df[i, name] := value` does what Stata's `generate` and `replace` do
+with `if`, and changes `df` itself; add `by` for `bysort`:
 
 ```r
 df <- read_dta("survey.dta")
-df <- df[age >= 40, older := TRUE]     # gen older = 1 if age >= 40
+df[age >= 40, older] := TRUE           # gen older = 1 if age >= 40
 df$older                               # . 1 . 1 1 .
-df <- df[income > 3000, high := 1]     # missing incomes count as > 3000
+df[income > 3000, high] := 1           # missing incomes count as > 3000
 df$high                                # . 1 . 1 1 1
-df <- df[income == .r, income := .d]   # replace income = .d if income == .r
-df <- df[, n := .N, by = region]       # bysort region: gen n = _N
-df$n                                   # 2 2 2 1 1 2
-```
-
-Unlike data.table, `[` returns a new dibble and leaves `df` as it was,
-so assign the result: `df[age >= 40, older := TRUE]` on its own line
-changes nothing. `i` (before the comma) picks rows with Stata's
-comparisons; a new column is `.` (strings `""`) on the rows it leaves
-out. A changed column keeps its labels and format, and its storage
-widens when the new values need it (a byte given 0.5 becomes a double).
-`` df[, `:=`(a = 1, b = a + 1)] `` makes several columns in turn,
-`x := NULL` drops one, and `by` takes `g`, `c("g", "h")` or `.(g, h)`.
-As in data.table, the value sees only the rows `i` picks: `.N` counts
-them in each group, so `.N` is Stata's `_N` only without `i`, and the
-rows are not sorted as `bysort` sorts them. See `?"dibble-assign"`.
-
-To change `df` itself, without writing `df <-`, put `:=` after the
-brackets:
-
-```r
+df[income == .r, income] := .d         # replace income = .d if income == .r
 df[age >= 40, over40] := age - 40      # gen over40 = age - 40 if age >= 40
 df$over40                              # . 11 . 22 5 .
 df[, n, by = region] := .N             # bysort region: gen n = _N
+df$n                                   # 2 2 2 1 1 2
 ```
 
-`df[i, name] := value` runs `df <- df[i, name := value]` for you, so
-everything above applies. Mind the bracket: `df[i, name] := value`
-changes `df`, while `df[i, name := value]` returns a copy. The column is
-a name, a string, or `(nm)` for a variable that holds one; a bare name
-is the column even if a variable has the same name. rlang and
-data.table also export a `:=`, and R uses the one from the package
-attached last, so attach dtatools after them. Tests that call
+`i` (before the comma) picks rows with Stata's comparisons; a new column
+is `.` (strings `""`) on the rows it leaves out. A changed column keeps
+its labels and format, and its storage widens when the new values need
+it (a byte given 0.5 becomes a double). The value is evaluated among the
+columns, and sees only the rows `i` picks, as in data.table: `.N` counts
+them in each group, so `.N` is Stata's `_N` only without `i`, and the
+rows are not sorted as `bysort` sorts them. `by` takes `g`,
+`c("g", "h")` or `.(g, h)`, and a value of `NULL` drops the column. The
+column is a name, a string, or `(nm)` for a variable that holds one; a
+bare name is the column even if a variable has the same name. Write one
+line per column, and to keep `df` as it was, copy it first:
+`e <- df; e[i, name] := value`.
+
+data.table writes `:=` inside the brackets, `df[i, name := value]`. On
+a dibble that is an error that shows the line to write instead, since
+it used to return a changed copy and leave `df` as it was.
+
+rlang and data.table also export a `:=`, and R uses the one from the
+package attached last, so attach dtatools after them. Tests that call
 `dtatools::` functions without attaching dtatools can bind it in a
-helper file: `` `:=` <- dtatools::`:=` ``.
+helper file: `` `:=` <- dtatools::`:=` ``. See `?"dibble-assign"`.
 
 When the new value doesn't use any columns, R's own assignment works
 too, without attaching dtatools:
@@ -737,8 +730,8 @@ Each function has a help page (`?read_dta`). Exports:
   read a file into a dibble.
 - `save_dta(data, file)`: write a data frame as release 118.
 - `dibble(...)`, `as_dibble(x)`: build or convert a dibble.
-- `d[i, name := value, by = ]`, `d[i, name] := value`,
-  `d[i, name] <- value`: make or change a column (`?"dibble-assign"`).
+- `d[i, name, by = ] := value`, `d[i, name] <- value`: make or change a
+  column (`?"dibble-assign"`).
 - `dta_num(x, labels, label, storage, format)`: a Stata numeric column.
 - `.a` ... `.z`: the 26 extended missing values.
 - `is_missing(x)`, `is_tagged_missing(x, tag = NULL)`: which values are

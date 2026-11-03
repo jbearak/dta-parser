@@ -30,7 +30,7 @@ error. \code{as_dibble()} converts a data frame by the same rules, keeping
 its \code{label}, \code{timestamp}, \code{notes}, \code{characteristics} and \code{sort_order}
 attributes (see \code{\link[=read_dta]{read_dta()}}). Assigning into a dibble with \verb{$<-},
 \verb{[[<-} or tibble's other forms stores values as given;
-\code{d[i, name := value]} and \code{d[i, name] <- value} convert them and follow
+\code{d[i, name] := value} and \code{d[i, name] <- value} convert them and follow
 Stata's \code{generate} and \code{replace} (see \link{dibble-assign}).
 }
 \examples{

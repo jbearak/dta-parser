@@ -1,5 +1,8 @@
 # A dibble takes `:=` in `[`, returning a new dibble
 
+ADR 0022 retires this form: `d[i, name := value]` is now an error that
+points to `d[i, name] := value` (ADR 0021).
+
 Plan 0001 left data manipulation (`gen`, `replace`) out of the dibble.
 The user later asked for data.table's syntax for making and recoding
 columns, so `[.dibble` now handles `d[i, name := value, by = g]` and
