@@ -1,7 +1,7 @@
 # Plan: dta_pmax and dta_pmin
 
-Status: first round reviewed by Sonnet 5.5 and GPT-6.1 Terra;
-implemented.
+Status: approved by Sonnet 5.5 (two rounds) and GPT-6.1 Terra (two
+rounds); implemented.
 
 ## Problem
 
