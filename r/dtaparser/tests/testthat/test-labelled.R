@@ -262,3 +262,62 @@ test_that("the accessors read the class however it was made", {
   expect_identical(val_label(pooled), rep(c("Yes", "Refused"), 2))
   expect_identical(var_label(with_labels(1, c(A = 1), label = "L")), "L")
 })
+
+# Labels as text (plan 0017).
+
+test_that("== and != with a label compare its code", {
+  x <- yes_no()
+  expect_identical(as_user(x == "Yes", x = x), as_user(x == 1, x = x))
+  expect_identical(as_user("Yes" == x, x = x), as_user(x == 1, x = x))
+  expect_identical(as_user(x != "No", x = x), as_user(x != 0, x = x))
+  expect_identical(as_user(x == NA_character_, x = x), rep(NA, 6))
+  expect_identical(as_user(x == 1, x = x), c(TRUE, FALSE, NA, TRUE, NA, FALSE))
+  expect_identical(as_user(x + 1, x = x), c(2, 1, NA, 2, NA, 3))
+  skip_if_not_installed("dplyr")
+  expect_identical(nrow(dplyr::filter(tibble::tibble(x = x), x == "Yes")), 2L)
+})
+
+test_that("text that names no one answer is an error in a comparison", {
+  x <- yes_no()
+  expect_error(as_user(x == "Refused", x = x), "labels the missing value .r")
+  expect_error(as_user(x > "No", x = x), "labels have no order")
+  expect_error(as_user(x == "Maybe", x = x), "\"Maybe\" is not a label of this column")
+  shared <- with_labels(c(1, 2), c(Same = 1, Same = 2))
+  expect_error(as_user(shared == "Same", shared = shared), "labels more than one code")
+})
+
+test_that("a label assigns its code", {
+  x <- yes_no()
+  y <- x
+  y[2] <- "Yes"
+  expect_identical(vctrs::vec_data(y)[1:2], c(1, 1))
+  y[1] <- "Refused"
+  expect_identical(na_tag(y)[1], "r")
+  ints <- with_labels(c(1L, 0L), c(No = 0, Yes = 1, tagged_na(c(Refused = "r"))))
+  expect_error(ints[1] <- "Refused", class = "vctrs_error_cast_lossy")
+  expect_error(y[1] <- "Maybe", "not a label")
+  skip_if_not_installed("dplyr")
+  expect_identical(vctrs::vec_data(dplyr::if_else(x == 1, "No", x))[c(1, 2, 6)], c(0, 0, 2))
+  expect_identical(val_label(dplyr::case_when(x == 0 ~ "Yes", .default = x)), c("Yes", "Yes", "Refused", "Yes", NA, NA))
+  expect_identical(vctrs::vec_data(dplyr::coalesce(x, "No")), c(1, 0, 0, 1, 0, 2))
+})
+
+test_that(":= assigns a label's code, widening integer codes for .a to .z", {
+  d <- tibble::tibble(v = with_labels(c(1L, 0L, NA), c(No = 0, Yes = 1, tagged_na(c(Refused = "r")))))
+  e <- d
+  e[3, v] := "No"
+  expect_identical(vctrs::vec_data(e$v), c(1L, 0L, 0L))
+  f <- d
+  f[1, v] := "Refused"
+  expect_type(vctrs::vec_data(f$v), "double")
+  expect_identical(na_tag(f$v), c("r", NA, NA))
+  expect_s3_class(f$v, "dtaparser_labelled")
+  expect_error(d[1, v] := "Maybe", "not a label")
+})
+
+test_that("%in% compares codes, so labels go through val_label", {
+  x <- yes_no()
+  # mtfrm() gives codes, so text finds nothing; the docs say so.
+  expect_identical(as_user(x %in% "Yes", x = x), rep(FALSE, 6))
+  expect_identical(val_label(x) %in% "Yes", c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE))
+})

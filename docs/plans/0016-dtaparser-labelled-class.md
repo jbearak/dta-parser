@@ -149,7 +149,8 @@ depend on how inputs are grouped.
   so `case_when(x == 1 ~ 2, .default = x)` can leave a label on a code
   whose meaning changed; the help page warns, and a test shows it.
 - **Anything else** (character, factor, other logicals) is vctrs'
-  incompatible-type error. A comparison with text goes through
+  incompatible-type error. (Plan 0017 lets text stand for its label's
+  code.) A comparison with text goes through
   `val_label(x) == "Yes"`.
 
 ### Casting

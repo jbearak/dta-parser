@@ -50,8 +50,13 @@ the codes. For the share of each answer, write
 \code{svymean(~factor(x), design, na.rm = TRUE)}.
 
 \strong{Comparisons and arithmetic.} \code{x == 1}, \code{x > 0}, \code{x \%in\% c(1, 5)}
-and \code{match(1, x)} compare codes. A comparison with text goes through
-\code{val_label(x) == "Yes"}. Arithmetic, math and summaries (\code{x + 1},
+and \code{match(1, x)} compare codes. A label stands for its code in \code{==}
+and \code{!=}: \code{x == "Yes"} is \code{x == 1}. A label of a missing value is an
+error there, since \code{NA} compares as \code{NA} (write \code{is_tagged_na(x, "r")}
+or \code{val_label(x) == "Refused"}), and so are \code{<} and \code{>} with text,
+since labels have no order. \code{x \%in\% c("Yes", "No")} compares codes with
+text and is \code{FALSE} throughout; write \code{val_label(x) \%in\% c("Yes", "No")}.
+Arithmetic, math and summaries (\code{x + 1},
 \code{abs(x)}, \code{sum(x)}, \code{mean(x)}, \code{max(x)}, \code{median(x)}, \code{quantile(x)})
 give plain numbers: a computed number has no label.
 
@@ -70,7 +75,10 @@ codes with no attributes, \code{.a} to \code{.z} kept; \code{unclass(x)} keeps
 \code{labels} and \code{label}. \code{as.integer(x)} is an error when \code{x} holds \code{.a}
 to \code{.z} or fractions. \code{x[i] <- value} casts into \code{x}'s type, so a
 fraction into integer codes is an error there; \code{d[i, x] := value}
-widens the codes to double instead. \code{dplyr::recode()} has no method
+widens the codes to double instead. A label assigns its code, as in
+\code{x[i] <- "No"}, \code{if_else(cond, "No", x)} or \code{d[i, x] := "Refused"}; a
+string that labels no code, or two, is an error.
+\code{dplyr::recode()} has no method
 for the class; use \code{dplyr::case_match()}.
 }
 \examples{
@@ -79,6 +87,8 @@ x <- with_labels(c(1, 0, tagged_na("r"), 1, NA),
                  label = "Wants a baby")
 x                   # 1 [Yes] 0 [No] NA(r) [Refused] 1 [Yes] NA
 x == 1              # TRUE FALSE NA TRUE NA
+x == "Yes"          # the same
+x[2] <- "Yes"       # code 1
 val_label(x)        # "Yes" "No" "Refused" "Yes" NA
 as.character(x)     # "Yes" "No" NA "Yes" NA
 table(x)            # No 1, Yes 2

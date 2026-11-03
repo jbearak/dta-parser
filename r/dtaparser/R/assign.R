@@ -195,6 +195,7 @@ made <- function(value, rows, n) {
 # The column `old` with `value` on `rows`.
 replaced <- function(old, value, rows, name) {
   if (is.factor(old)) return(into_factor(old, value, rows, name))
+  if (inherits(old, "dtaparser_labelled") && is.character(value)) value <- text_codes(value, old)
   if (inherits(old, "dtaparser_labelled") && (is.logical(value) || is.numeric(value)) &&
       (!is.object(value) || inherits(value, "dtaparser_labelled"))) {
     return(into_labelled(old, value, rows))

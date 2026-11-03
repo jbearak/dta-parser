@@ -28,8 +28,13 @@
 #' `svymean(~factor(x), design, na.rm = TRUE)`.
 #'
 #' **Comparisons and arithmetic.** `x == 1`, `x > 0`, `x %in% c(1, 5)`
-#' and `match(1, x)` compare codes. A comparison with text goes through
-#' `val_label(x) == "Yes"`. Arithmetic, math and summaries (`x + 1`,
+#' and `match(1, x)` compare codes. A label stands for its code in `==`
+#' and `!=`: `x == "Yes"` is `x == 1`. A label of a missing value is an
+#' error there, since `NA` compares as `NA` (write `is_tagged_na(x, "r")`
+#' or `val_label(x) == "Refused"`), and so are `<` and `>` with text,
+#' since labels have no order. `x %in% c("Yes", "No")` compares codes with
+#' text and is `FALSE` throughout; write `val_label(x) %in% c("Yes", "No")`.
+#' Arithmetic, math and summaries (`x + 1`,
 #' `abs(x)`, `sum(x)`, `mean(x)`, `max(x)`, `median(x)`, `quantile(x)`)
 #' give plain numbers: a computed number has no label.
 #'
@@ -48,7 +53,10 @@
 #' `labels` and `label`. `as.integer(x)` is an error when `x` holds `.a`
 #' to `.z` or fractions. `x[i] <- value` casts into `x`'s type, so a
 #' fraction into integer codes is an error there; `d[i, x] := value`
-#' widens the codes to double instead. `dplyr::recode()` has no method
+#' widens the codes to double instead. A label assigns its code, as in
+#' `x[i] <- "No"`, `if_else(cond, "No", x)` or `d[i, x] := "Refused"`; a
+#' string that labels no code, or two, is an error.
+#' `dplyr::recode()` has no method
 #' for the class; use `dplyr::case_match()`.
 #'
 #' @param x An integer or double vector, or a `dtaparser_labelled`, whose
@@ -66,6 +74,8 @@
 #'                  label = "Wants a baby")
 #' x                   # 1 [Yes] 0 [No] NA(r) [Refused] 1 [Yes] NA
 #' x == 1              # TRUE FALSE NA TRUE NA
+#' x == "Yes"          # the same
+#' x[2] <- "Yes"       # code 1
 #' val_label(x)        # "Yes" "No" "Refused" "Yes" NA
 #' as.character(x)     # "Yes" "No" NA "Yes" NA
 #' table(x)            # No 1, Yes 2
@@ -276,3 +286,57 @@ quantile.dtaparser_labelled <- function(x, ...) stats::quantile(vctrs::vec_data(
 
 #' @export
 summary.dtaparser_labelled <- function(object, ...) summary(vctrs::vec_data(object), ...)
+
+# The code each string in `text` labels in `to`: NA for NA. A string
+# that labels no code, or two, names no one code and is an error.
+text_codes <- function(text, to) {
+  labels <- labels_of(to)
+  text_of <- names(labels) %||% character()
+  hit <- match(text, text_of)
+  unknown <- !is.na(text) & is.na(hit)
+  if (any(unknown)) {
+    shown <- if (length(text_of)) paste0("\"", text_of, "\"", collapse = ", ") else "none"
+    stop("\"", text[unknown][[1]], "\" is not a label of this column; its labels are ", shown, call. = FALSE)
+  }
+  shared <- !is.na(text) & text %in% text_of[duplicated(text_of)]
+  if (any(shared)) stop("\"", text[shared][[1]], "\" labels more than one code; give the code", call. = FALSE)
+  unname(as.double(labels))[hit]
+}
+
+#' @export
+vec_ptype2.dtaparser_labelled.character <- function(x, y, ...) {
+  new_labelled(double(), labels_of(x), attr(x, "label", exact = TRUE))
+}
+#' @export
+vec_ptype2.character.dtaparser_labelled <- function(x, y, ...) {
+  new_labelled(double(), labels_of(y), attr(y, "label", exact = TRUE))
+}
+
+#' @export
+vec_cast.dtaparser_labelled.character <- function(x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()) {
+  codes <- text_codes(x, to)
+  new_labelled(codes_as(codes, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE))
+}
+
+# == and != with a string compare the code it labels. A label of a
+# missing value would compare as NA on every row, and labels have no
+# order, so those are errors. Everything else goes on to vctrs.
+#' @export
+Ops.dtaparser_labelled <- function(e1, e2) {
+  if (nargs() == 2 && (is.character(e1) || is.character(e2)) && .Generic %in% c("==", "!=", "<", ">", "<=", ">=")) {
+    if (!.Generic %in% c("==", "!=")) {
+      stop("`", .Generic, "`: labels have no order; compare codes, as in x ", .Generic, " 1", call. = FALSE)
+    }
+    labelled <- if (is.character(e1)) e2 else e1
+    text <- if (is.character(e1)) e1 else e2
+    codes <- text_codes(text, labelled)
+    missing <- !is.na(text) & is.na(codes)
+    if (any(missing)) {
+      tag <- na_tag(codes[missing][[1]])
+      stop("\"", text[missing][[1]], "\" labels the missing value .", tag, ", and NA compares as NA; write is_tagged_na(x, \"",
+           tag, "\") or val_label(x) == \"", text[missing][[1]], "\"", call. = FALSE)
+    }
+    return(get(.Generic)(vctrs::vec_data(labelled), codes))
+  }
+  NextMethod()
+}
