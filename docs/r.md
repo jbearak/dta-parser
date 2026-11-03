@@ -336,6 +336,34 @@ To write a date column, give `dibble()` or `as_dibble()` a `Date`
 column; it becomes a long with format `%td`. Or set the numbers and
 format yourself: `dta_num(days, storage = "long", format = "%td")`.
 
+## Make and change columns
+
+A dibble takes data.table's `:=` in `[`, for what Stata's `generate`
+and `replace` do with `if` and `by`:
+
+```r
+df <- read_dta("survey.dta")
+df <- df[age >= 40, older := TRUE]     # gen older = 1 if age >= 40
+df$older                               # . 1 . 1 1 .
+df <- df[income > 3000, high := 1]     # missing incomes count as > 3000
+df$high                                # . 1 . 1 1 1
+df <- df[income == .r, income := .d]   # replace income = .d if income == .r
+df <- df[, n := .N, by = region]       # bysort region: gen n = _N
+df$n                                   # 2 2 2 1 1 2
+```
+
+Unlike data.table, `[` returns a new dibble and leaves `df` as it was,
+so assign the result: `df[age >= 40, older := TRUE]` on its own line
+changes nothing. `i` (before the comma) picks rows with Stata's
+comparisons; a new column is `.` (strings `""`) on the rows it leaves
+out. A changed column keeps its labels and format, and its storage
+widens when the new values need it (a byte given 0.5 becomes a double).
+`` df[, `:=`(a = 1, b = a + 1)] `` makes several columns in turn,
+`x := NULL` drops one, and `by` takes `g`, `c("g", "h")` or `.(g, h)`.
+As in data.table, the value sees only the rows `i` picks: `.N` counts
+them in each group, so `.N` is Stata's `_N` only without `i`, and the
+rows are not sorted as `bysort` sorts them. See `?"dibble-assign"`.
+
 ## Write a file
 
 ```r
@@ -670,6 +698,7 @@ Each function has a help page (`?read_dta`). Exports:
   read a file into a dibble.
 - `save_dta(data, file)`: write a data frame as release 118.
 - `dibble(...)`, `as_dibble(x)`: build or convert a dibble.
+- `d[i, name := value, by = ]`: make or change a column (`?"dibble-assign"`).
 - `dta_num(x, labels, label, storage, format)`: a Stata numeric column.
 - `.a` ... `.z`: the 26 extended missing values.
 - `is_missing(x)`, `is_tagged_missing(x, tag = NULL)`: which values are

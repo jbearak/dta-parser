@@ -28,7 +28,9 @@ their codes; a factor becomes character; a \code{Date} becomes days since
 labels; character columns stay character. Any other class is an
 error. \code{as_dibble()} converts a data frame by the same rules, keeping
 its \code{label}, \code{timestamp}, \code{notes}, \code{characteristics} and \code{sort_order}
-attributes (see \code{\link[=read_dta]{read_dta()}}). Assigning into a dibble stores values as given.
+attributes (see \code{\link[=read_dta]{read_dta()}}). Assigning into a dibble stores values as given;
+\code{d[i, name := value]} converts them and follows Stata's \code{generate} and
+\code{replace} (see \link{dibble-assign}).
 }
 \examples{
 dibble(x = c(1, NA, .d), when = as.Date("2024-03-01"), s = "a")

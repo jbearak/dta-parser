@@ -10,7 +10,9 @@
 #' labels; character columns stay character. Any other class is an
 #' error. `as_dibble()` converts a data frame by the same rules, keeping
 #' its `label`, `timestamp`, `notes`, `characteristics` and `sort_order`
-#' attributes (see [read_dta()]). Assigning into a dibble stores values as given.
+#' attributes (see [read_dta()]). Assigning into a dibble stores values as given;
+#' `d[i, name := value]` converts them and follows Stata's `generate` and
+#' `replace` (see [dibble-assign]).
 #'
 #' @param ... Columns, as for `tibble::tibble()`.
 #' @param x A data frame.
