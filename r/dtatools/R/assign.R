@@ -53,10 +53,13 @@
 #' so on its own line it did nothing. Any other `[` is tibble's.
 #'
 #' @section Where R finds `:=`:
-#' rlang and data.table each export a `:=` too, only to report misuse,
-#' and the package attached last is the one R finds. Attach dtatools
-#' after them, or, in tests that call `dtatools::` functions without
-#' attaching it, bind it in a helper file:
+#' `:=` is dtaparser's, re-exported: it takes the left side apart and
+#' calls dtaparser's `colon_equals()`, whose method for dibbles is
+#' dtatools'. On any other data frame it follows R's rules (see
+#' `?dtaparser::":="`). rlang and data.table each export a `:=` too, only
+#' to report misuse, and the package attached last is the one R finds.
+#' Attach dtatools after them, or, in tests that call `dtatools::`
+#' functions without attaching it, bind it in a helper file:
 #' `` `:=` <- dtatools::`:=` ``. Code in a package that imports rlang's
 #' `:=` must bind dtatools' the same way. Their own uses of `:=`, such
 #' as data.table's `dt[, b := 1]` or dplyr's `mutate(d, !!nm := 1)`,
@@ -85,7 +88,7 @@
 #' Any other `[<-` (`d[i] <- v`, a numeric `j`, or several columns) is
 #' tibble's, with `i` evaluated in the caller.
 #'
-#' @aliases [.dibble [<-.dibble
+#' @aliases [.dibble [<-.dibble :=
 #' @usage
 #' \method{[}{dibble}(x, i, j, ..., by)
 #'
@@ -151,33 +154,12 @@ NULL
   assign_columns(x, rows, list(list(name = name, value = value, evaluated = TRUE)), character(), env)
 }
 
-#' @rdname dibble-assign
-#' @usage NULL
-#' @export
-`:=` <- function(lhs, rhs) {
-  # d[i, name, by = g] := value: d with `name` set to `value` on the rows
-  # i picks, assigned back to d in the caller.
-  lhs <- substitute(lhs)
-  if (!is.call(lhs) || !identical(lhs[[1]], as.name("[")) || length(lhs) < 2) {
-    stop("dibble: write d[i, name] := value", call. = FALSE)
-  }
-  arg_names <- names(lhs) %||% rep("", length(lhs))
-  arg_names <- arg_names[-(1:2)]
-  unnamed <- which(!nzchar(arg_names)) + 2L
-  if (length(unnamed) != 2 || any(arg_names[nzchar(arg_names)] != "by") || sum(arg_names == "by") > 1 ||
-      identical(lhs[[unnamed[[2]]]], quote(expr = ))) {
-    stop("dibble: write d[i, name] := value", call. = FALSE)
-  }
-  env <- parent.frame()
-  target <- lhs[[2]]
-  x <- eval(target, env)
-  if (!inherits(x, "dibble")) stop("dibble: d[i, name] := value needs a dibble; convert with as_dibble()", call. = FALSE)
-  rows <- if (!identical(lhs[[unnamed[[1]]]], quote(expr = ))) picked_rows(x, lhs[[unnamed[[1]]]], env)
-  by <- if ("by" %in% arg_names) by_names(lhs[["by"]], env, names(x)) else character()
-  steps <- list(list(name = assign_name(lhs[[unnamed[[2]]]], env), value = substitute(rhs)))
-  new <- assign_columns(x, rows, steps, by, env)
-  eval(call("<-", target, new), env)
-  invisible(new)
+# d[i, name, by = g] := value on a dibble, once dtaparser's `:=` has
+# taken the left side apart: d with `name` set to `value` on the rows i
+# picks, by Stata's rules.
+colon_equals.dibble <- function(x, i, name, value, by, env) {
+  rows <- if (!is.null(i)) picked_rows(x, i, env)
+  assign_columns(x, rows, list(list(name = name, value = value)), by, env)
 }
 
 # The rows the expression `i` picks, evaluated among the columns of `x`.
@@ -326,21 +308,6 @@ assign_rows <- function(i, n) {
     return(which(rep_len(i, n)))
   }
   vctrs::vec_as_location(i, n, missing = "error")
-}
-
-# The grouping column names: g, c("g", "h"), .(g, h) or list(g, h), or a
-# variable holding names (NULL for none).
-by_names <- function(expr, env, columns) {
-  if (is.call(expr) && (identical(expr[[1]], as.name(".")) || identical(expr[[1]], as.name("list")))) {
-    args <- as.list(expr)[-1]
-    if (!all(vapply(args, is.name, NA))) stop("dibble: by takes column names", call. = FALSE)
-    return(vapply(args, as.character, ""))
-  }
-  if (is.name(expr) && as.character(expr) %in% columns) return(as.character(expr))
-  names <- eval(expr, env)
-  if (is.null(names)) return(character())
-  if (!is.character(names)) stop("dibble: by takes column names", call. = FALSE)
-  names
 }
 
 # The columns of `x`, to evaluate expressions among: every column is an

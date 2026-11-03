@@ -1,17 +1,19 @@
 Package: dtaparser
 Title: Read Stata Files into Standard R Types
-Version: 1.3.0
+Version: 2.0.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Reads Stata .dta files through the dta-parser library into
     standard R types: integers, doubles, character vectors, factors,
-    dates and date-times, with every missing value NA.
+    dates and date-times, with every missing value NA, and gives data
+    frames d[i, name] := value, to translate do-files line by line.
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
     rlang,
     tibble,
     tidyselect,
-    utils
+    utils,
+    vctrs
 Suggests:
     haven,
     testthat (>= 3.0.0)

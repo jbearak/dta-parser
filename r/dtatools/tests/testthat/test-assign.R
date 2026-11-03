@@ -381,8 +381,13 @@ test_that("d[i, name] := value errors on other left sides", {
   expect_error(d[1, ] := 1, "write d\\[i, name\\] := value")
   expect_error(d[1, x, g] := 1, "write d\\[i, name\\] := value")
   expect_error(d[1, x, keyby = g] := 1, "write d\\[i, name\\] := value")
+  # Another data frame gets dtaparser's method, under R's rules.
   df <- data.frame(x = 1)
-  expect_error(df[1, x] := 2, "needs a dibble")
+  df[1, x] := 2
+  expect_identical(df, data.frame(x = 2))
+  d[NULL, x] := 9
+  expect_identical(as.character(d$x), c("1", "2"))
+  expect_identical(dtatools::`:=`, dtaparser::`:=`)
   expect_error(d[1, x] := NULL, "drops the whole column")
 })
 
