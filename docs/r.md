@@ -364,8 +364,27 @@ As in data.table, the value sees only the rows `i` picks: `.N` counts
 them in each group, so `.N` is Stata's `_N` only without `i`, and the
 rows are not sorted as `bysort` sorts them. See `?"dibble-assign"`.
 
-When the new value doesn't use any columns, R's own assignment saves
-writing `df <-`:
+To change `df` itself, without writing `df <-`, put `:=` after the
+brackets:
+
+```r
+df[age >= 40, over40] := age - 40      # gen over40 = age - 40 if age >= 40
+df$over40                              # . 11 . 22 5 .
+df[, n, by = region] := .N             # bysort region: gen n = _N
+```
+
+`df[i, name] := value` runs `df <- df[i, name := value]` for you, so
+everything above applies. Mind the bracket: `df[i, name] := value`
+changes `df`, while `df[i, name := value]` returns a copy. The column is
+a name, a string, or `(nm)` for a variable that holds one; a bare name
+is the column even if a variable has the same name. rlang and
+data.table also export a `:=`, and R uses the one from the package
+attached last, so attach dtatools after them. Tests that call
+`dtatools::` functions without attaching dtatools can bind it in a
+helper file: `` `:=` <- dtatools::`:=` ``.
+
+When the new value doesn't use any columns, R's own assignment works
+too, without attaching dtatools:
 
 ```r
 df[age < 30, young] <- 1               # gen young = 1 if age < 30
@@ -373,15 +392,12 @@ df$young                               # . . 1 . . .
 df[income == .d, income] <- .r         # replace income = .r if income == .d
 ```
 
-This changes `df` the way `df <- df[i, name := value]` would: `i` is
-evaluated among the columns, with the same comparisons, conversions and
-widening. R evaluates the value before the dibble sees it, and it does
-so among your variables, not the columns, so `df[i, y] <- x * 2` can't
-use the column `x`; use `:=` for that, and for `by` or several columns
-at once. The column is a name, a string, or `(nm)` for a variable that
-holds one. A bare name that is a variable but not a column is an
-error, since tibble would read it as the variable and `:=` as a column
-name; so a loop or helper that writes `df[i, col] <- v` needs
+R evaluates the value before the dibble sees it, among your variables,
+not the columns, so `df[i, y] <- x * 2` can't use the column `x`; use
+`:=` for that, and for `by`. Otherwise this works as
+`df[i, name] := value` does, except that a bare name that is a variable
+but not a column is an error, since tibble would read it as the
+variable; so a loop or helper that writes `df[i, col] <- v` needs
 `df[i, (col)] <- v`, and a new column named like a built-in such as
 `pi` or `T` needs quotes (`df[, "pi"] <- 1`). To add a row, write
 `df[nrow(df) + 1, ] <- list(...)`. Any other `[<-`, such as
@@ -721,8 +737,8 @@ Each function has a help page (`?read_dta`). Exports:
   read a file into a dibble.
 - `save_dta(data, file)`: write a data frame as release 118.
 - `dibble(...)`, `as_dibble(x)`: build or convert a dibble.
-- `d[i, name := value, by = ]`, `d[i, name] <- value`: make or change a
-  column (`?"dibble-assign"`).
+- `d[i, name := value, by = ]`, `d[i, name] := value`,
+  `d[i, name] <- value`: make or change a column (`?"dibble-assign"`).
 - `dta_num(x, labels, label, storage, format)`: a Stata numeric column.
 - `.a` ... `.z`: the 26 extended missing values.
 - `is_missing(x)`, `is_tagged_missing(x, tag = NULL)`: which values are

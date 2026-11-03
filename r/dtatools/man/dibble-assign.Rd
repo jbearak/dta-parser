@@ -2,8 +2,22 @@
 % Please edit documentation in R/assign.R
 \name{dibble-assign}
 \alias{dibble-assign}
+\alias{[.dibble}
+\alias{[<-.dibble}
+\alias{:=}
 \title{Make and change columns with \verb{:=} or \verb{[<-}}
+\usage{
+\method{[}{dibble}(x, i, j, ..., by)
+
+\method{[}{dibble}(x, i, j, ...) <- value
+
+lhs := rhs
+}
 \arguments{
+\item{lhs}{\code{d[i, name]} or \code{d[i, name, by = g]}.}
+
+\item{rhs}{The new values, evaluated among the columns.}
+
 \item{x}{A dibble.}
 
 \item{i}{Rows: a condition or row numbers.}
@@ -18,15 +32,16 @@
 \item{value}{With \verb{<-}, the new values.}
 }
 \value{
-A dibble.
+A dibble; \code{d[i, name] := value} returns it invisibly.
 }
 \description{
 \code{d[i, name := value, by = g]} returns \code{d} with column \code{name} set to
 \code{value} on the rows \code{i} selects, as data.table's \verb{:=} does, but as a
 new dibble. \code{d} itself is unchanged: write \code{d <- d[i, ...]}. A line
 \code{d[i, name := value]} on its own does nothing, even in a test.
-\code{d[i, name] <- value} changes \code{d} itself, for a value that does not
-use the columns (see below).
+\code{d[i, name] := value}, with \verb{:=} outside the brackets, changes \code{d}
+itself, as does \code{d[i, name] <- value} for a value that does not use
+the columns (see below).
 }
 \details{
 \itemize{
@@ -72,6 +87,26 @@ order there. \code{.N} and \code{.data} hide columns of those names. data.table'
 other arguments (\code{keyby}, \code{on}, ...) are
 errors. Any \code{[} without \verb{:=} is tibble's.
 }
+\section{Changing \code{d} with \verb{:=} outside the brackets}{
+
+\code{d[i, name] := value} runs \code{d <- d[i, name := value]} in the caller,
+and \code{d[i, name, by = g] := value} runs
+\code{d <- d[i, name := value, by = g]}, so \code{value} uses the columns and
+everything above applies. \code{d} may be any target \verb{<-} takes, such as
+\code{l$d}; inside a function, as with \verb{<-}, it changes the function's
+copy. \code{name} is one column, read as in \verb{:=} inside the brackets: a
+bare name is the column, even if a variable has that name.
+
+rlang and data.table each export a \verb{:=} too, only to report misuse,
+and the package attached last is the one R finds. Attach dtatools
+after them, or, in tests that call \verb{dtatools::} functions without
+attaching it, bind it in a helper file:
+\code{`:=` <- dtatools::`:=`}. Code in a package that imports rlang's
+\verb{:=} must bind dtatools' the same way. Their own uses of \verb{:=}, such
+as data.table's \code{dt[, b := 1]} or dplyr's \code{mutate(d, !!nm := 1)},
+keep working, as they read \verb{:=} without calling it.
+}
+
 \section{Assigning with \verb{<-}}{
 
 \code{d[i, name] <- value} changes \code{d} itself, with no \verb{d <-} in front,
@@ -104,5 +139,6 @@ d <- d[age > 35, older := TRUE]       # missing age counts as > 35
 d <- d[kids == .d, kids := .r]
 d <- d[, n_in_g := .N, by = g]
 d[age < 30, young] <- 1               # changes d itself
+d[, months] := age * 12               # changes d itself, using a column
 d
 }
