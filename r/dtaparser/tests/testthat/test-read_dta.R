@@ -15,7 +15,8 @@ test_that("read_dta matches haven on every fixture", {
     name <- basename(path)
     # haven 2.5.5 cannot read release 105 value labels at all.
     if (name == "readstat_105.dta") next
-    ours <- read_dta(path, warn_extended_missing = FALSE)
+    ours <- read_dta(path, factors = TRUE, warn_extended_missing = FALSE)
+    numbers <- read_dta(path)
     theirs <- haven::read_dta(path)
     expect_s3_class(ours, "tbl_df")
     expect_false(inherits(ours, "dibble"))
@@ -48,6 +49,11 @@ test_that("read_dta matches haven on every fixture", {
         next
       }
       if (inherits(y, "haven_labelled")) {
+        # By default the column keeps haven's numbers and labels.
+        n <- numbers[[col]]
+        expect_equal(as.double(plain(n)), plain(y), label = what)
+        expect_identical(haven::na_tag(as.double(plain(n))), haven::na_tag(plain(y)), label = what)
+        expect_equal(attr(n, "labels", exact = TRUE), attr(y, "labels", exact = TRUE), label = what)
         # haven's levels for integers R prints differently as doubles
         # ("1e+05") differ on purpose (tested below).
         v <- plain(x)

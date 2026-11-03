@@ -8,7 +8,8 @@
 #'   `"windows-1252"` (the default), `"latin1"` or `"utf-8"`.
 #' @param skip Rows to skip at the start.
 #' @param n_max The most rows to read; `Inf` for all.
-#' @param factors Whether columns with value labels become factors.
+#' @param factors Whether columns with value labels become factors. A
+#'   factor cannot hold `.a` to `.z`, so the default keeps the numbers.
 #' @param dates Whether columns with date and datetime formats become
 #'   `Date` and `POSIXct`.
 #' @param warn_extended_missing Whether to warn when `factors = TRUE`
@@ -22,16 +23,18 @@
 #'   read is a double instead, so its type can depend on `skip` and
 #'   `n_max`. Strings are as stored: Stata's missing string is `""`.
 #'
+#'   By default a column with value labels keeps its numbers and has a
+#'   `labels` attribute: the codes, `.a` to `.z` among them, named by
+#'   their text. [val_labels()] gives it and [val_label()] each value's
+#'   text.
+#'
 #'   With `factors = TRUE`, a column with value labels on any non-missing
 #'   value is a factor whose
 #'   levels are, in order of value, the labelled codes and the unlabelled
 #'   values read (as `as.character()` of the integer or double); codes
 #'   with the same text share a level, and missing values, labelled or
 #'   not, are `NA`. A factor cannot keep `.a` to `.z`, so this warns
-#'   when it loses them (see `warn_extended_missing`). With
-#'   `factors = FALSE` the column keeps its numbers and has a `labels`
-#'   attribute: the codes, `.a` to `.z` among them, named by their text.
-#'   [val_labels()] gives it and [val_label()] each value's text.
+#'   when it loses them (see `warn_extended_missing`).
 #'
 #'   A column whose labels are all on missing values keeps its numbers
 #'   and its `labels` attribute either way (a date column stays a date
@@ -57,7 +60,7 @@
 #'   `as_factor()` keeps labelled missing values as levels.
 #' @export
 read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max = Inf,
-                     factors = TRUE, dates = TRUE, warn_extended_missing = TRUE) {
+                     factors = FALSE, dates = TRUE, warn_extended_missing = TRUE) {
   if (!is.numeric(skip) || length(skip) != 1 || is.na(skip) || skip < 0) stop("skip must be a number >= 0")
   if (!is.numeric(n_max) || length(n_max) != 1 || is.na(n_max) || n_max < 0) stop("n_max must be a number >= 0")
   if (!rlang::is_bool(factors)) stop("factors must be TRUE or FALSE")

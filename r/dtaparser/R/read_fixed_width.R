@@ -24,10 +24,9 @@
 #'   numbers.
 #' @param col_select,skip,n_max,warn_extended_missing As in [read_dta()].
 #'   `skip` and `n_max` apply after the whole file is read.
-#' @param factors Whether columns with value labels become factors. A
-#'   factor cannot hold tagged NAs, so this is `FALSE` by default with
-#'   `recodes = "tagged"`, which keeps numbers, tagged NAs and a `labels`
-#'   attribute naming both.
+#' @param factors Whether columns with value labels become factors, as
+#'   in [read_dta()]. A factor cannot hold the tagged NAs that
+#'   `recodes = "tagged"` makes.
 #' @param commented_formats Whether to read a `PROC FORMAT` step or a
 #'   `FORMAT` statement that the setup has put in a block comment
 #'   (`/* ... */`) as code. CDC's setups from 2006-2010 on comment both
@@ -67,10 +66,9 @@
 #' val_label(df$KIDS)
 #' @export
 read_fixed_width <- function(file, setup, recodes = c("setup", "tagged", "none"), col_select = NULL,
-                             skip = 0, n_max = Inf, factors = recodes != "tagged",
+                             skip = 0, n_max = Inf, factors = FALSE,
                              warn_extended_missing = TRUE, commented_formats = TRUE) {
   recodes <- match.arg(recodes)
-  force(factors)
   if (!is.character(setup) || length(setup) == 0) stop("`setup` must be one or more paths")
   if (!isTRUE(commented_formats) && !isFALSE(commented_formats)) {
     stop("`commented_formats` must be TRUE or FALSE")

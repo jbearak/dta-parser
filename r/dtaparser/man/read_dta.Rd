@@ -10,7 +10,7 @@ read_dta(
   encoding = NULL,
   skip = 0,
   n_max = Inf,
-  factors = TRUE,
+  factors = FALSE,
   dates = TRUE,
   warn_extended_missing = TRUE
 )
@@ -29,7 +29,8 @@ columns when \code{NULL}. Columns come back in the order selected.}
 
 \item{n_max}{The most rows to read; \code{Inf} for all.}
 
-\item{factors}{Whether columns with value labels become factors.}
+\item{factors}{Whether columns with value labels become factors. A
+factor cannot hold \code{.a} to \code{.z}, so the default keeps the numbers.}
 
 \item{dates}{Whether columns with date and datetime formats become
 \code{Date} and \code{POSIXct}.}
@@ -47,16 +48,18 @@ it back. An integer column holding any of them in the rows
 read is a double instead, so its type can depend on \code{skip} and
 \code{n_max}. Strings are as stored: Stata's missing string is \code{""}.
 
+By default a column with value labels keeps its numbers and has a
+\code{labels} attribute: the codes, \code{.a} to \code{.z} among them, named by
+their text. \code{\link[=val_labels]{val_labels()}} gives it and \code{\link[=val_label]{val_label()}} each value's
+text.
+
 With \code{factors = TRUE}, a column with value labels on any non-missing
 value is a factor whose
 levels are, in order of value, the labelled codes and the unlabelled
 values read (as \code{as.character()} of the integer or double); codes
 with the same text share a level, and missing values, labelled or
 not, are \code{NA}. A factor cannot keep \code{.a} to \code{.z}, so this warns
-when it loses them (see \code{warn_extended_missing}). With
-\code{factors = FALSE} the column keeps its numbers and has a \code{labels}
-attribute: the codes, \code{.a} to \code{.z} among them, named by their text.
-\code{\link[=val_labels]{val_labels()}} gives it and \code{\link[=val_label]{val_label()}} each value's text.
+when it loses them (see \code{warn_extended_missing}).
 
 A column whose labels are all on missing values keeps its numbers
 and its \code{labels} attribute either way (a date column stays a date

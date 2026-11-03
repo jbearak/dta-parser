@@ -11,7 +11,7 @@ read_fixed_width(
   col_select = NULL,
   skip = 0,
   n_max = Inf,
-  factors = recodes != "tagged",
+  factors = FALSE,
   warn_extended_missing = TRUE,
   commented_formats = TRUE
 )
@@ -36,10 +36,9 @@ numbers.}
 \item{col_select, skip, n_max, warn_extended_missing}{As in \code{\link[=read_dta]{read_dta()}}.
 \code{skip} and \code{n_max} apply after the whole file is read.}
 
-\item{factors}{Whether columns with value labels become factors. A
-factor cannot hold tagged NAs, so this is \code{FALSE} by default with
-\code{recodes = "tagged"}, which keeps numbers, tagged NAs and a \code{labels}
-attribute naming both.}
+\item{factors}{Whether columns with value labels become factors, as
+in \code{\link[=read_dta]{read_dta()}}. A factor cannot hold the tagged NAs that
+\code{recodes = "tagged"} makes.}
 
 \item{commented_formats}{Whether to read a \verb{PROC FORMAT} step or a
 \code{FORMAT} statement that the setup has put in a block comment

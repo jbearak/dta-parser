@@ -30,7 +30,8 @@ fw_files <- function(setup = fw_setup, data = fw_data) {
 
 test_that("setup mode applies the recodes as written", {
   f <- fw_files()
-  df <- read_fixed_width(f[["data"]], f[["setup"]])
+  expect_identical(unclass(read_fixed_width(f[["data"]], f[["setup"]])$KIDS)[1:5], c(2L, NA, NA, NA, 0L))
+  df <- read_fixed_width(f[["data"]], f[["setup"]], factors = TRUE)
   expect_s3_class(df, "tbl_df")
   expect_named(df, c("ID", "SEX", "KIDS"))
   expect_identical(as.vector(df$ID), 1:5)
