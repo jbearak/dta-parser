@@ -4,8 +4,9 @@
 #' `value` on the rows `i` selects, as data.table's `:=` does, but as a
 #' new dibble. `d` itself is unchanged: write `d <- d[i, ...]`. A line
 #' `d[i, name := value]` on its own does nothing, even in a test.
-#' `d[i, name] <- value` changes `d` itself, for a value that does not
-#' use the columns (see below).
+#' `d[i, name] := value`, with `:=` outside the brackets, changes `d`
+#' itself, as does `d[i, name] <- value` for a value that does not use
+#' the columns (see below).
 #'
 #' - `i` is evaluated among the columns. Comparisons follow Stata's rules
 #'   (see [dta_num()]), so `d[age > 30, ...]` includes rows whose age is
@@ -49,6 +50,24 @@
 #' other arguments (`keyby`, `on`, ...) are
 #' errors. Any `[` without `:=` is tibble's.
 #'
+#' @section Changing `d` with `:=` outside the brackets:
+#' `d[i, name] := value` runs `d <- d[i, name := value]` in the caller,
+#' and `d[i, name, by = g] := value` runs
+#' `d <- d[i, name := value, by = g]`, so `value` uses the columns and
+#' everything above applies. `d` may be any target `<-` takes, such as
+#' `l$d`; inside a function, as with `<-`, it changes the function's
+#' copy. `name` is one column, read as in `:=` inside the brackets: a
+#' bare name is the column, even if a variable has that name.
+#'
+#' rlang and data.table each export a `:=` too, only to report misuse,
+#' and the package attached last is the one R finds. Attach dtatools
+#' after them, or, in tests that call `dtatools::` functions without
+#' attaching it, bind it in a helper file:
+#' `` `:=` <- dtatools::`:=` ``. Code in a package that imports rlang's
+#' `:=` must bind dtatools' the same way. Their own uses of `:=`, such
+#' as data.table's `dt[, b := 1]` or dplyr's `mutate(d, !!nm := 1)`,
+#' keep working, as they read `:=` without calling it.
+#'
 #' @section Assigning with `<-`:
 #' `d[i, name] <- value` changes `d` itself, with no `d <-` in front,
 #' because R assigns the result back to `d`. It does what
@@ -72,6 +91,13 @@
 #' Any other `[<-` (`d[i] <- v`, a numeric `j`, or several columns) is
 #' tibble's, with `i` evaluated in the caller.
 #'
+#' @aliases [.dibble [<-.dibble
+#' @usage
+#' \method{[}{dibble}(x, i, j, ..., by)
+#'
+#' \method{[}{dibble}(x, i, j, ...) <- value
+#'
+#' lhs := rhs
 #' @param x A dibble.
 #' @param i Rows: a condition or row numbers.
 #' @param j `name := value`, or `` `:=`(name = value, ...) ``; with
@@ -79,13 +105,16 @@
 #' @param ... Passed to tibble's `[` when `j` is not `:=`.
 #' @param by Grouping columns.
 #' @param value With `<-`, the new values.
-#' @return A dibble.
+#' @param lhs `d[i, name]` or `d[i, name, by = g]`.
+#' @param rhs The new values, evaluated among the columns.
+#' @return A dibble; `d[i, name] := value` returns it invisibly.
 #' @examples
 #' d <- dibble(age = c(25, 41, NA, 37), kids = c(0, 2, 1, .d), g = c(1, 1, 2, 2))
 #' d <- d[age > 35, older := TRUE]       # missing age counts as > 35
 #' d <- d[kids == .d, kids := .r]
 #' d <- d[, n_in_g := .N, by = g]
 #' d[age < 30, young] <- 1               # changes d itself
+#' d[, months] := age * 12               # changes d itself, using a column
 #' d
 #' @name dibble-assign
 NULL
@@ -123,6 +152,35 @@ NULL
     assign_rows(picked, nrow(x))
   }
   assign_columns(x, rows, list(list(name = name, value = value, evaluated = TRUE)), character(), env)
+}
+
+#' @rdname dibble-assign
+#' @usage NULL
+#' @export
+`:=` <- function(lhs, rhs) {
+  # d[i, name, by = g] := value runs d <- d[i, name := value, by = g] in
+  # the caller; := inside d[...] is read by `[.dibble` and never called.
+  lhs <- substitute(lhs)
+  if (!is.call(lhs) || !identical(lhs[[1]], as.name("[")) || length(lhs) < 2) {
+    stop("dibble: write d[i, name] := value, or name := value inside d[...]", call. = FALSE)
+  }
+  arg_names <- names(lhs) %||% rep("", length(lhs))
+  arg_names <- arg_names[-(1:2)]
+  unnamed <- which(!nzchar(arg_names)) + 2L
+  if (length(unnamed) != 2 || any(arg_names[nzchar(arg_names)] != "by") || sum(arg_names == "by") > 1 ||
+      identical(lhs[[unnamed[[2]]]], quote(expr = ))) {
+    stop("dibble: write d[i, name] := value", call. = FALSE)
+  }
+  env <- parent.frame()
+  target <- lhs[[2]]
+  x <- eval(target, env)
+  if (!inherits(x, "dibble")) stop("dibble: d[i, name] := value needs a dibble; convert with as_dibble()", call. = FALSE)
+  expr <- lhs
+  expr[[2]] <- x
+  expr[[unnamed[[2]]]] <- call(":=", lhs[[unnamed[[2]]]], substitute(rhs))
+  new <- eval(expr, env)
+  eval(call("<-", target, new), env)
+  invisible(new)
 }
 
 # The rows the expression `i` picks, evaluated among the columns of `x`.

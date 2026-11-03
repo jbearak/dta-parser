@@ -319,3 +319,88 @@ test_that("dplyr's rows_update still works on a dibble", {
   up <- dplyr::rows_update(d, dibble(id = 2, x = 99), by = "id")
   expect_identical(as.character(up$x), c("10", "99", "."))
 })
+
+test_that("d[i, name] := value changes d, with the value among the columns", {
+  d <- dibble(x = c(1, 2, 3), y = c(1, 0, 3), v = c(10, 20, 30), g = c(1, 1, 2))
+  v <- 99  # the column hides it, as in d[i, name := value]
+  e <- d
+  e[x == y, z] := v
+  expect_identical(e, d[x == y, z := v])
+  e[, w] := x + v
+  expect_identical(as.character(e$w), c("11", "22", "33"))
+  e[x > 1, "s"] := "k"
+  expect_identical(e$s, c("", "k", "k"))
+  nm <- "t"
+  e[1, (nm)] := 5
+  expect_identical(as.character(e$t), c("5", ".", "."))
+  e[, n, by = g] := .N
+  expect_identical(as.character(e$n), c("2", "2", "1"))
+  e[x > 100, x] := stop("not evaluated")  # no rows: the column stays
+  expect_identical(e$x, d$x)
+  e[, w] := NULL
+  expect_false("w" %in% names(e))
+  expect_invisible(e[1, x] := 0)
+  expect_identical(as.character(d$x), c("1", "2", "3"))
+})
+
+test_that("in d[i, name] := value a bare name is the column, as in :=", {
+  d <- dibble(x = c(1, 2))
+  nm <- "q"
+  expect_error(d[1, nm] <- 1, "nm is a variable, not a column")
+  d[1, nm] := 1
+  expect_identical(names(d), c("x", "nm"))
+})
+
+test_that("d[i, name] := value works inside functions and on nested targets", {
+  d <- dibble(x = c(1, 2))
+  f <- function(d, cut) {
+    d[x > cut, big] := x * 10
+    d
+  }
+  expect_identical(as.character(f(d, 1)$big), c(".", "20"))
+  expect_false("big" %in% names(d))
+  l <- list(d = d)
+  l$d[x == 2, x] := .a
+  expect_identical(as.character(l$d$x), c("1", ".a"))
+  l[["d"]][, y] := x
+  expect_identical(as.character(l$d$y), c("1", ".a"))
+})
+
+test_that("d[i, name] := value errors on other left sides", {
+  d <- dibble(x = c(1, 2), g = c(1, 2))
+  expect_error(x := 1, "write d\\[i, name\\] := value")
+  expect_error(d[1] := 1, "write d\\[i, name\\] := value")
+  expect_error(d[1, ] := 1, "write d\\[i, name\\] := value")
+  expect_error(d[1, x, g] := 1, "write d\\[i, name\\] := value")
+  expect_error(d[1, x, keyby = g] := 1, "write d\\[i, name\\] := value")
+  df <- data.frame(x = 1)
+  expect_error(df[1, x] := 2, "needs a dibble")
+  expect_error(d[1, x] := NULL, "drops the whole column")
+})
+
+test_that(":= is found when dtatools is attached last, and not when rlang is", {
+  script <- tempfile(fileext = ".R")
+  writeLines(c(
+    'has_dt <- requireNamespace("data.table", quietly = TRUE)',
+    'if (has_dt) suppressMessages(library(data.table))',
+    'library(dtatools, warn.conflicts = FALSE)  # attached last, its := wins',
+    'd <- dibble(x = c(1, 2))',
+    'd[x == 1, y] := x + 1',
+    'cat(as.character(d$y), sep = ",")',
+    'if (has_dt) {',
+    '  dt <- data.table::data.table(a = 1:2)',
+    '  dt[, b := a * 2]  # data.table reads its :=, never calls it',
+    '  cat(";", dt$b, sep = ",")',
+    '} else cat(";", 2, 4, sep = ",")',
+    'library(rlang, warn.conflicts = FALSE)',
+    'e <- tryCatch({d[x == 1, y] := 0; "no error"}, error = function(e) conditionMessage(e))',
+    'cat(";", grepl("dynamic dots", e), sep = "")'
+  ), script)
+  old <- Sys.getenv("R_LIBS", unset = NA)
+  Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
+  on.exit(if (is.na(old)) Sys.unsetenv("R_LIBS") else Sys.setenv(R_LIBS = old))
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- suppressWarnings(system2(rscript, shQuote(script), stdout = TRUE, stderr = TRUE))
+  out <- out[!grepl("^OMP:", out)]
+  expect_identical(out, "2,.;,2,4;TRUE")
+})
