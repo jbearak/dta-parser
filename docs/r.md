@@ -718,8 +718,13 @@ dtaparser::val_labels(pooled$region)  # North = 1, South = 2, East = 3, West = 4
 - Missing values, `.` and `.a` to `.z` alike, are `NA` to R.
   `val_label(x)` says why each is missing; `count(d, val_label(x))`
   counts them by reason, since `count(d, x)` puts them in one group.
-- Comparisons and `%in%` use the codes; compare with text through
-  `val_label(x) == "Yes"`. Arithmetic and summaries give plain numbers.
+- Comparisons and `%in%` use the codes, and a label stands for its code
+  in `==`, `!=` and assignment: `x == "Yes"`, `x[i] <- "No"`,
+  `d[i, x] := "Refused"`. A missing value's label is an error in `==`,
+  since `NA` compares as `NA`: write `is_tagged_na(x, "r")`. `%in%`
+  compares codes with text and finds nothing, so write
+  `val_label(x) %in% c("Yes", "No")`. Arithmetic and summaries give
+  plain numbers.
 - The survey package sees a number: `svymean(~x, design)` averages the
   codes. For the share of each answer, write
   `svymean(~factor(x), design, na.rm = TRUE)`.
