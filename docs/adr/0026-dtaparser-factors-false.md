@@ -7,7 +7,8 @@ a warning (ADR 0017). The user decided that losing information by
 default costs more than labels by default buy. `factors` now defaults to
 `FALSE` in `read_dta()` and `read_fixed_width()`: a labelled column
 keeps its numbers, with `.a` to `.z` as tagged NAs, and a `labels`
-attribute that `val_labels()` and `val_label()` read. `factors = TRUE`
+attribute that `val_labels()` and `val_label()` read. (ADR 0028 makes
+such a column a `dtaparser_labelled`, so the labels survive dplyr.) `factors = TRUE`
 gives factors as before, with the warning.
 
 ## Considered options

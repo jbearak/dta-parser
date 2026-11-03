@@ -66,8 +66,9 @@ test_that("tagged mode keeps labelled missings, and factors defaults to FALSE", 
 test_that("recodes = \"none\" keeps the codes", {
   f <- fw_files()
   df <- read_fixed_width(f[["data"]], f[["setup"]], recodes = "none", factors = FALSE)
-  expect_identical(df$KIDS, structure(c(2L, 98L, 99L, 99L, 0L), label = strrep("k", 200),
-                                      labels = c(`(0) None` = 0, `(98) DK` = 98, `(99) Not ascertained` = 99)))
+  expect_identical(df$KIDS, with_labels(c(2L, 98L, 99L, 99L, 0L),
+                                        c(`(0) None` = 0, `(98) DK` = 98, `(99) Not ascertained` = 99),
+                                        label = strrep("k", 200)))
   expect_error(read_fixed_width(f[["data"]], f[["setup"]], recodes = "letters"), "should be one of")
 })
 

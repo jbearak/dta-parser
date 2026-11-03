@@ -23,10 +23,12 @@
 #'   read is a double instead, so its type can depend on `skip` and
 #'   `n_max`. Strings are as stored: Stata's missing string is `""`.
 #'
-#'   By default a column with value labels keeps its numbers and has a
-#'   `labels` attribute: the codes, `.a` to `.z` among them, named by
-#'   their text. [val_labels()] gives it and [val_label()] each value's
-#'   text.
+#'   By default a column with value labels keeps its numbers as a
+#'   [`dtaparser_labelled`][with_labels], whose `labels` attribute holds
+#'   the codes, `.a` to `.z` among them, named by their text.
+#'   [val_labels()] gives them and [val_label()] each value's text. The
+#'   class keeps the labels through dplyr's `bind_rows()`, `case_when()`
+#'   and `if_else()`; `as.numeric()` gives the plain codes.
 #'
 #'   With `factors = TRUE`, a column with value labels on any non-missing
 #'   value is a factor whose
@@ -37,7 +39,7 @@
 #'   when it loses them (see `warn_extended_missing`).
 #'
 #'   A column whose labels are all on missing values keeps its numbers
-#'   and its `labels` attribute either way (a date column stays a date
+#'   as a `dtaparser_labelled` either way (a date column stays a date
 #'   and drops them).
 #'
 #'   With `dates = TRUE`, a column without such value labels whose format
@@ -93,6 +95,11 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
       values[[i]] <- labelled_factor(values[[i]], meta$storage[cols[i]] %in% c("byte", "int", "long"))
     }
     if (length(lost)) warn_lost(lost)
+  }
+  # Labelled numbers, factors aside, as the class that keeps their labels.
+  for (i in seq_along(values)) {
+    x <- values[[i]]
+    if (is.numeric(x) && !is.object(x) && !is.null(attr(x, "labels", exact = TRUE))) values[[i]] <- as_labelled_column(x)
   }
   rows <- min(max(meta$nobs - floor(skip), 0), floor(n_max))
   out <- tibble::new_tibble(values, nrow = rows)

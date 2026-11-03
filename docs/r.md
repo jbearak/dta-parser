@@ -616,7 +616,7 @@ dtaparser, which dtatools installs alongside:
 
 ```r
 df <- dtaparser::read_dta("survey.dta")
-df$region             # 1 2 2 3 4 1, with a labels attribute
+df$region             # 1 [North] 2 [South] 2 [South] 3 [East] 4 [West] 1 [North]
 df$income             # 2100 NA 1850 NA NA 3200
 df$income > 2000      # TRUE NA FALSE NA NA TRUE
 class(df$interviewed) # "Date"
@@ -627,7 +627,7 @@ class(df$interviewed) # "Date"
 | byte, int, long | integer; double if the rows read hold `.a` to `.z` |
 | float, double | double |
 | `.` and `.a` to `.z` | `NA`; in doubles `.a` to `.z` keep their letter as haven's tagged NAs (`na_tag()`) |
-| value labels | numbers and a `labels` attribute, labels on `.a` to `.z` included. `factors = TRUE` makes a factor: levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it) |
+| value labels | a `dtaparser_labelled`: the numbers, with a `labels` attribute that keeps through dplyr, labels on `.a` to `.z` included (see [Labelled columns](#labelled-columns)). `factors = TRUE` makes a factor: levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it) |
 | `%td`, `%d...` | `Date` (`dates = FALSE` keeps numbers) |
 | `%tc` | `POSIXct` in UTC; `%tC`, which counts leap seconds, stays numbers |
 | strN, strL text | character, packed as in dtatools; `""` stays `""` |
@@ -695,6 +695,41 @@ haven's `tagged_na()` drops names, so with haven attached too, write
 `dtaparser::tagged_na()`. It also takes its letters as `...` and makes
 a tag from any character, where dtaparser's takes one vector and only
 `"a"` to `"z"`.
+
+### Labelled columns
+
+A column with value labels is a `dtaparser_labelled`: its codes, with
+the labels as attributes. vctrs drops attributes from plain vectors
+when it combines them, so dplyr's `bind_rows()`, `case_when()` and
+`if_else()` would lose a plain `labels` attribute; the class keeps it.
+`with_labels(x, labels, label = NULL)` makes one from your own codes:
+
+```r
+x <- dtaparser::with_labels(c(1, 0, dtaparser::tagged_na("r"), 1, NA),
+                            c(No = 0, Yes = 1, dtaparser::tagged_na(c(Refused = "r"))))
+x                  # 1 [Yes] 0 [No] NA(r) [Refused] 1 [Yes] NA
+x == 1             # TRUE FALSE NA TRUE NA
+as.character(x)    # "Yes" "No" NA "Yes" NA
+table(x)           # No 1, Yes 2: no missing value is a level
+pooled <- dplyr::bind_rows(df, df)  # two files stacked
+dtaparser::val_labels(pooled$region)  # North = 1, South = 2, East = 3, West = 4
+```
+
+- Missing values, `.` and `.a` to `.z` alike, are `NA` to R.
+  `val_label(x)` says why each is missing; `count(d, val_label(x))`
+  counts them by reason, since `count(d, x)` puts them in one group.
+- Comparisons and `%in%` use the codes; compare with text through
+  `val_label(x) == "Yes"`. Arithmetic and summaries give plain numbers.
+- The survey package sees a number: `svymean(~x, design)` averages the
+  codes. For the share of each answer, write
+  `svymean(~factor(x), design, na.rm = TRUE)`.
+- Combining two columns whose labels give one code two texts is an
+  error; relabel one with `with_labels()` first.
+- `as.numeric(x)` gives the plain codes. Base `ifelse()` drops the class;
+  `dplyr::if_else()` keeps it.
+
+`?with_labels` has the rest: casting, `:=`, and why a new code keeps
+the old code's label.
 
 ## From a do-file to R
 
@@ -916,8 +951,9 @@ dtaparser exports `read_dta()` (see
 `read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
 fixed-width text through its SAS setup file (see
 [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), and
-five accessors for the columns they return, and `tagged_na(x)` to make
-`.a` to `.z`:
+five accessors for the columns they return, `tagged_na(x)` to make
+`.a` to `.z`, and `with_labels(x, labels, label = NULL)` to make a
+labelled column (see [Labelled columns](#labelled-columns)):
 
 - `na_tag(x)`, `is_tagged_na(x, tag = NULL)`: the letters of `.a` to
   `.z`. `tagged_na(x)`: `.a` to `.z` from their letters.

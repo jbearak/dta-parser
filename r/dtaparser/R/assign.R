@@ -162,7 +162,10 @@ colon_equals.data.frame <- function(x, i, name, value, by, env) {
 
 # x without its class and attributes, so that vctrs groups any column
 # by its values (a labelled integer as integers).
-unattributed <- function(x) if (is.factor(x) || !is.atomic(x)) x else as.vector(x)
+unattributed <- function(x) {
+  if (inherits(x, "dtaparser_labelled")) return(vctrs::vec_data(x))
+  if (is.factor(x) || !is.atomic(x)) x else as.vector(x)
+}
 
 recycled <- function(value, size, name) {
   if (is.null(value)) return(NULL)
@@ -192,6 +195,10 @@ made <- function(value, rows, n) {
 # The column `old` with `value` on `rows`.
 replaced <- function(old, value, rows, name) {
   if (is.factor(old)) return(into_factor(old, value, rows, name))
+  if (inherits(old, "dtaparser_labelled") && (is.logical(value) || is.numeric(value)) &&
+      (!is.object(value) || inherits(value, "dtaparser_labelled"))) {
+    return(into_labelled(old, value, rows))
+  }
   if ((is.logical(old) || is.numeric(old)) && !is.object(old) && (is.logical(value) || is.numeric(value)) &&
       !is.object(value)) {
     old <- widened(old, value)
@@ -199,6 +206,16 @@ replaced <- function(old, value, rows, name) {
     return(old)
   }
   vctrs::vec_assign(old, rows, vctrs::vec_cast(value, old, x_arg = "value", to_arg = name))
+}
+
+# The labelled column `old` with `value` on `rows`: its codes widen as
+# an unclassed column's do, and a labelled value's labels join `old`'s.
+into_labelled <- function(old, value, rows) {
+  labels <- if (inherits(value, "dtaparser_labelled")) union_labels(old, value) else labels_of(old)
+  value <- plain(value)
+  codes <- widened(vctrs::vec_data(old), value)
+  codes[rows] <- if (is.integer(codes)) as.integer(value) else value
+  new_labelled(codes, labels, attr(old, "label", exact = TRUE))
 }
 
 # `old` as the narrowest of logical, integer and double that holds both
