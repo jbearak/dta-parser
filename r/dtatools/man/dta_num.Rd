@@ -40,7 +40,8 @@ never give NA and put missing values above every number (\code{.} < \code{.a}
 any missing operand and for results Stata cannot hold (\code{NaN}, \code{Inf}),
 as a new \code{dta_num} without labels. In \code{&}, \code{|} and \code{!} a value is true
 when it is nonzero or missing. \code{sum()}, \code{mean()}, \code{max()} and the
-like keep R's rules.
+like keep R's rules. For \code{pmax()} and \code{pmin()}, use \code{\link[=dta_pmax]{dta_pmax()}}
+and \code{\link[=dta_pmin]{dta_pmin()}}.
 }
 \examples{
 x <- dta_num(c(1, 5, NA, .d), labels = c(Low = 1, High = 5), label = "Score")

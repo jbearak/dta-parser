@@ -26,6 +26,8 @@ Kept as R's, and so not Stata's:
 - `mean` and R's `Summary` group (`sum`, `min`, `max`, ...): Stata
   has no single meaning for them (`summarize`, `egen` and `collapse`
   each skip missing values their own way).
+- `pmax` and `pmin`, which are not generics; ADR 0024 adds
+  `dta_pmax` and `dta_pmin`, which follow the rule above.
 - `cumsum` and the other cumulative functions turn every value after a
   missing one into `.`, where Stata's running `sum()` counts missing as 0.
 - Mixing a `dta_num` with another class that has its own operators
