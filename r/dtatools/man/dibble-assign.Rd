@@ -14,10 +14,6 @@
 lhs := rhs
 }
 \arguments{
-\item{lhs}{\code{d[i, name]} or \code{d[i, name, by = g]}.}
-
-\item{rhs}{The new values, evaluated among the columns.}
-
 \item{x}{A dibble.}
 
 \item{i}{Rows: a condition or row numbers.}
@@ -30,6 +26,10 @@ error that shows the \code{d[i, name] := value} line to write.}
 \item{by}{Not taken by \code{[}: write \code{d[i, name, by = g] := value}.}
 
 \item{value}{With \verb{<-}, the new values.}
+
+\item{lhs}{\code{d[i, name]} or \code{d[i, name, by = g]}.}
+
+\item{rhs}{The new values, evaluated among the columns.}
 }
 \value{
 A dibble; \code{d[i, name] := value} returns it invisibly.
@@ -92,10 +92,13 @@ so on its own line it did nothing. Any other \code{[} is tibble's.
 }
 \section{Where R finds \verb{:=}}{
 
-rlang and data.table each export a \verb{:=} too, only to report misuse,
-and the package attached last is the one R finds. Attach dtatools
-after them, or, in tests that call \verb{dtatools::} functions without
-attaching it, bind it in a helper file:
+\verb{:=} is dtaparser's, re-exported: it takes the left side apart and
+calls dtaparser's \code{colon_equals()}, whose method for dibbles is
+dtatools'. On any other data frame it follows R's rules (see
+\code{?dtaparser::":="}). rlang and data.table each export a \verb{:=} too, only
+to report misuse, and the package attached last is the one R finds.
+Attach dtatools after them, or, in tests that call \verb{dtatools::}
+functions without attaching it, bind it in a helper file:
 \code{`:=` <- dtatools::`:=`}. Code in a package that imports rlang's
 \verb{:=} must bind dtatools' the same way. Their own uses of \verb{:=}, such
 as data.table's \code{dt[, b := 1]} or dplyr's \code{mutate(d, !!nm := 1)},

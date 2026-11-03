@@ -22,6 +22,7 @@ Contents:
 [Coming from haven](#coming-from-haven) ·
 [Coming from readstata13](#coming-from-readstata13) ·
 [Plain R types: dtaparser](#plain-r-types-dtaparser) ·
+[From a do-file to R](#from-a-do-file-to-r) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -382,6 +383,8 @@ rlang and data.table also export a `:=`, and R uses the one from the
 package attached last, so attach dtatools after them. Tests that call
 `dtatools::` functions without attaching dtatools can bind it in a
 helper file: `` `:=` <- dtatools::`:=` ``. See `?"dibble-assign"`.
+On a data frame that is not a dibble, the same `:=` follows R's rules
+instead; see [From a do-file to R](#from-a-do-file-to-r).
 
 When the new value doesn't use any columns, R's own assignment works
 too, without attaching dtatools:
@@ -641,6 +644,50 @@ haven's `tagged_na()` drops names, so with haven attached too, write
 a tag from any character, where dtaparser's takes one vector and only
 `"a"` to `"z"`.
 
+## From a do-file to R
+
+dtaparser's `:=` works on any data frame or tibble, so a do-file can
+become an R script one line at a time without dibbles. It is the same
+`:=` as dtatools' (dtatools re-exports it), but on a data frame it
+follows R's rules: missing values compare as `NA`, and `NA` in `i`
+selects no row. Compare with labels, which needs `factors = TRUE`:
+
+```r
+df <- dtaparser::read_dta("survey.dta", factors = TRUE)
+df[age >= 40, older] := 1                      # gen older = 1 if age >= 40
+df$older                                       # NA 1 NA 1 1 NA
+df[income > 2000, high] := 1                   # missing incomes are left out
+df$high                                        # 1 NA NA NA NA 1
+df[region == "East", region] := "South"        # replace region = 2 if region == 3
+df[, n, by = region] := .N                     # bysort region: gen n = _N
+df$n                                           # 2 3 3 3 1 2
+df[, avg, by = region] := mean(income, na.rm = TRUE)  # egen avg = mean(income), by(region)
+df$avg                                         # 2650 1850 1850 1850 NaN 2650
+```
+
+Where Stata and R differ, the line follows R:
+
+- `income > 2000` is `NA` where income is missing, so those rows are
+  not selected. In Stata they would be, since missing values are larger
+  than every number. Add `| is.na(income)` to keep Stata's answer.
+- A new column is `NA` on the rows `i` leaves out, and `NaN` and `Inf`
+  stay as they are.
+- A column widens when it cannot hold the new values, as `replace`
+  promotes storage: logical to integer to double. An integer column
+  given whole numbers stays integer.
+- A factor column takes labels. A label that is not a level is an error,
+  so a typo cannot add a category; add a level first with
+  `levels(df$region) <- c(levels(df$region), "Abroad")`. A number is an
+  error too. Beware `i`: `region == 3` on a factor compares with the
+  level text and matches nothing, without an error.
+- A data.table is an error; use its own `dt[i, name := value]`.
+
+The rest is as in [Make and change columns](#make-and-change-columns):
+`by`, `.N`, the forms of `name`, `NULL` to drop a column, and where R
+finds `:=` when rlang or data.table is attached. Without dtatools,
+attach dtaparser or bind `` `:=` <- dtaparser::`:=` ``. See
+`?dtaparser::":="`.
+
 ## Fixed-width files with a SAS setup file
 
 Some surveys are published as fixed-width text with a SAS program, the
@@ -824,3 +871,6 @@ five accessors for the columns they return, and `tagged_na(x)` to make
   `.z`. `tagged_na(x)`: `.a` to `.z` from their letters.
 - `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
   and value labels.
+- `d[i, name, by = ] := value`: make or change a column of a data
+  frame under R's rules (`?dtaparser::":="`). `colon_equals()` is the
+  generic behind it; dtatools adds the method for dibbles.
