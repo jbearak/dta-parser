@@ -210,3 +210,112 @@ test_that("a new column on no rows is . when its value fails there", {
   expect_identical(as.character(d[, y := {x <- x + 1; x * 2}]$y), c("4", "6"))
   expect_identical(as.character(d$x), c("1", "2"))
 })
+
+test_that("d[i, name] <- value recodes as := does, picking rows among the columns", {
+  d <- dibble(x = dta_num(c(1, 2, .d), storage = "byte", label = "X", labels = c(DK = .d)),
+              y = c(1, 5, 3), s = c("a", "b", "c"))
+  e <- d
+  e[x == .d, x] <- .r
+  expect_identical(e, d[x == .d, x := .r])
+  e[y > 2, z] <- 0.5
+  expect_identical(as.character(e$z), c(".", "0.5", "0.5"))
+  expect_identical(attr(e$z, "storage"), "double")
+  e[1, x] <- 0.5
+  expect_identical(attr(e$x, "storage"), "double")
+  expect_identical(attr(e$x, "labels"), attr(d$x, "labels"))
+  e[x > 1, s] <- c("m", "n")
+  expect_identical(e$s, c("a", "m", "n"))
+  e[, "t"] <- "k"
+  expect_identical(e$t, c("k", "k", "k"))
+  nm <- "y"
+  e[1, (nm)] <- 100
+  expect_identical(as.character(e$y), c("100", "5", "3"))
+  e[c(TRUE, NA, FALSE), w] <- tibble::tibble(w = 1)
+  expect_identical(as.character(e$w), c("1", ".", "."))
+  e[y > 1000, y] <- 7  # no rows: the column stays
+  expect_identical(as.character(e$y), c("100", "5", "3"))
+  expect_error(e[y > 1000, y] <- 1:7, "size 7.*size 0")
+  e[, w] <- NULL
+  expect_false("w" %in% names(e))
+  expect_identical(d$x, dibble(x = dta_num(c(1, 2, .d), storage = "byte", label = "X", labels = c(DK = .d)))$x)
+})
+
+test_that("d[i, name] <- value works inside functions and nested targets", {
+  d <- dibble(x = c(1, 2))
+  f <- function(d, cut) {
+    d[x > cut, big] <- 1
+    d
+  }
+  expect_identical(as.character(f(d, 1)$big), c(".", "1"))
+  expect_false("big" %in% names(d))
+  l <- list(d = d)
+  l$d[x == 2, x] <- .a
+  expect_identical(as.character(l$d$x), c("1", ".a"))
+})
+
+test_that("d[i, name] <- value errors rather than guess", {
+  d <- dibble(x = c(1, 2), s = c("a", "b"))
+  nm <- "x"
+  expect_error(d[1, nm] <- 3, "nm is a variable, not a column")
+  expect_error(d[1, s] <- 1, "cannot put numbers into string column s")
+  expect_error(d[1, x] <- NULL, "NULL drops the whole column")
+  expect_error(d[, x] <- 1:3, "size 3.*size 2")
+  expect_error(d[1, (c("x", "s"))] <- 1, "one column name")
+  sym <- quote(x)
+  expect_error(d[1, (sym)] <- 9, "must give a string")
+  two <- 2
+  expect_error(d[1, (two)] <- 9, "must give a string")
+  expect_error(d[x > 100, new] <- 1:7, "size 7.*size 0")
+  expect_error(d[nrow(d) + 1, "x"] <- 9, "cannot add rows")
+  helper <- function(d, col, v) {
+    d[d$x > 1, col] <- v
+    d
+  }
+  expect_error(helper(d, "x", 0), "col is a variable, not a column")
+  e <- d
+  e[nrow(e) + 1, ] <- list(3, "c")  # adding a row is tibble's
+  expect_identical(nrow(e), 3L)
+  x <- 99  # a column hides the caller's variable, in i and as the name
+  d[x == 2, x] <- 0
+  expect_identical(as.character(d$x), c("1", "0"))
+})
+
+test_that("other [<- forms are tibble's", {
+  d <- dibble(x = c(1, 2), y = c(3, 4))
+  e <- d
+  e[1, 2] <- 9
+  expect_identical(as.character(e$y), c("9", "4"))
+  e <- d
+  e["y"] <- list(c(5, 6))
+  expect_identical(as.numeric(e$y), c(5, 6))
+  e <- d
+  e[d$x > 1, c("x", "y")] <- 0
+  expect_identical(as.numeric(e$x), c(1, 0))
+})
+
+test_that("d[i, name] <- value takes row numbers, a dta_num i, and no rows at all", {
+  d <- dibble(x = c(1, 2, 3), f = dta_num(c(0, 2, NA)))
+  e <- d
+  e[-1, y] <- 1
+  expect_identical(as.character(e$y), c(".", "1", "1"))
+  e[c(1, 3), y] <- 5
+  expect_identical(as.character(e$y), c("5", "1", "5"))
+  e[f, z] <- 1  # true where nonzero or missing, as Stata's `if f`
+  expect_identical(as.character(e$z), c(".", "1", "1"))
+  e[, nothing] <- NULL
+  expect_identical(names(e), c("x", "f", "y", "z"))
+  e[, c] <- 0  # a function's name is a column name like any other
+  expect_identical(as.character(e$c), c("0", "0", "0"))
+  d0 <- d[0, ]
+  d0[, y] <- 1
+  expect_identical(names(d0), c("x", "f", "y"))
+  d0[, x] <- NULL
+  expect_identical(names(d0), c("f", "y"))
+})
+
+test_that("dplyr's rows_update still works on a dibble", {
+  skip_if_not_installed("dplyr")
+  d <- dibble(id = c(1, 2, 3), x = c(10, 20, NA))
+  up <- dplyr::rows_update(d, dibble(id = 2, x = 99), by = "id")
+  expect_identical(as.character(up$x), c("10", "99", "."))
+})

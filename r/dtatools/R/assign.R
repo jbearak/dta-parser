@@ -1,9 +1,11 @@
-#' Make and change columns with `:=`
+#' Make and change columns with `:=` or `[<-`
 #'
 #' `d[i, name := value, by = g]` returns `d` with column `name` set to
 #' `value` on the rows `i` selects, as data.table's `:=` does, but as a
 #' new dibble. `d` itself is unchanged: write `d <- d[i, ...]`. A line
 #' `d[i, name := value]` on its own does nothing, even in a test.
+#' `d[i, name] <- value` changes `d` itself, for a value that does not
+#' use the columns (see below).
 #'
 #' - `i` is evaluated among the columns. Comparisons follow Stata's rules
 #'   (see [dta_num()]), so `d[age > 30, ...]` includes rows whose age is
@@ -47,17 +49,43 @@
 #' other arguments (`keyby`, `on`, ...) are
 #' errors. Any `[` without `:=` is tibble's.
 #'
+#' @section Assigning with `<-`:
+#' `d[i, name] <- value` changes `d` itself, with no `d <-` in front,
+#' because R assigns the result back to `d`. It does what
+#' `d <- d[i, name := value]` does, with `i` evaluated among the columns
+#' as there, except for the following:
+#'
+#' - R evaluates `value` before the dibble sees it, in the caller's
+#'   environment, so it cannot use the columns: `d[x == 1, y] <- 0` works,
+#'   but for `d[x == 1, y] <- z * 2`, write `d <- d[x == 1, y := z * 2]`.
+#'   `value` has one element, or one per row `i` picks (not one per row
+#'   of `d`). It is evaluated even when `i` picks no rows.
+#' - There is no `by`, and only one column at a time.
+#' - `name` is a column name, a string (`"a"`), or a variable in
+#'   parentheses (`(nm)`). A bare name that is not a column but is a
+#'   variable in the caller, as in `for (nm in vars) d[x > 0, nm] <- 1`
+#'   or a helper's `d[i, col] <- v`, is an error, since tibble would read
+#'   it as the variable and `:=` as the column; write `(nm)` or `"nm"`.
+#' - It cannot add rows: write `d[nrow(d) + 1, ] <- list(...)`.
+#' - `d[, name] <- NULL` drops the column; with `i` it is an error.
+#'
+#' Any other `[<-` (`d[i] <- v`, a numeric `j`, or several columns) is
+#' tibble's, with `i` evaluated in the caller.
+#'
 #' @param x A dibble.
 #' @param i Rows: a condition or row numbers.
-#' @param j `name := value`, or `` `:=`(name = value, ...) ``.
+#' @param j `name := value`, or `` `:=`(name = value, ...) ``; with
+#'   `<-`, the column name.
 #' @param ... Passed to tibble's `[` when `j` is not `:=`.
 #' @param by Grouping columns.
+#' @param value With `<-`, the new values.
 #' @return A dibble.
 #' @examples
 #' d <- dibble(age = c(25, 41, NA, 37), kids = c(0, 2, 1, .d), g = c(1, 1, 2, 2))
 #' d <- d[age > 35, older := TRUE]       # missing age counts as > 35
 #' d <- d[kids == .d, kids := .r]
 #' d <- d[, n_in_g := .N, by = g]
+#' d[age < 30, young] <- 1               # changes d itself
 #' d
 #' @name dibble-assign
 NULL
@@ -72,9 +100,61 @@ NULL
   if (...length()) stop("dibble: [ with := takes only i, j and by", call. = FALSE)
   env <- parent.frame()
   steps <- assign_steps(substitute(j), env)
-  n <- nrow(x)
-  rows <- if (missing(i)) seq_len(n) else assign_rows(eval_columns(substitute(i), column_env(x), NULL, env), n)
+  rows <- if (!missing(i)) picked_rows(x, substitute(i), env)
   by <- if (missing(by)) character() else by_names(substitute(by), env, names(x))
+  assign_columns(x, rows, steps, by, env)
+}
+
+#' @export
+`[<-.dibble` <- function(x, i, j, ..., value) {
+  # Only d[i, name] <- value and d[, name] <- value; d[i] <- value,
+  # d[[name]], numeric or several j are tibble's.
+  if (nargs() != 4 || missing(j)) return(NextMethod())
+  env <- parent.frame()
+  name <- target_name(substitute(j), names(x), env)
+  if (is.null(name)) return(NextMethod())
+  if (is.null(value) && !missing(i)) stop("dibble: NULL drops the whole column; write d[, ", name, "] <- NULL", call. = FALSE)
+  if (is.data.frame(value) && length(value) == 1) value <- value[[1]]
+  rows <- if (!missing(i)) {
+    picked <- eval_columns(substitute(i), column_env(x), NULL, env)
+    if (is.numeric(picked) && !inherits(picked, "dta_num") && any(picked > nrow(x), na.rm = TRUE)) {
+      stop("dibble: d[i, ", name, "] <- value cannot add rows; write d[nrow(d) + 1, ] <- list(...)", call. = FALSE)
+    }
+    assign_rows(picked, nrow(x))
+  }
+  assign_columns(x, rows, list(list(name = name, value = value, evaluated = TRUE)), character(), env)
+}
+
+# The rows the expression `i` picks, evaluated among the columns of `x`.
+picked_rows <- function(x, i, env) assign_rows(eval_columns(i, column_env(x), NULL, env), nrow(x))
+
+# The column named by `j` in d[i, j] <- value: a name, a string, or
+# (expr) giving one; NULL for any other `j`, which tibble handles. A
+# name that is neither a column nor free in the caller, where it may
+# hold a column name as tibble reads it, is an error rather than a guess.
+target_name <- function(j, columns, env) {
+  if (is.character(j) && length(j) == 1) return(assign_name(j, env, "d[i, name] <- value"))
+  if (is.call(j) && identical(j[[1]], as.name("("))) {
+    name <- eval(j[[2]], env)
+    if (!is.character(name)) stop("dibble: (name) in d[i, (name)] <- value must give a string", call. = FALSE)
+    return(assign_name(name, env, "d[i, (name)] <- value"))
+  }
+  if (!is.name(j)) return(NULL)
+  name <- as.character(j)
+  if (!name %in% columns && exists(name, envir = env) && !is.function(get(name, envir = env))) {
+    stop("dibble: ", name, " is a variable, not a column; write d[i, (", name, ")] <- value for the column it names, ",
+         "or d[i, \"", name, "\"] <- value for a new column ", name, call. = FALSE)
+  }
+  name
+}
+
+# Each step (list(name, value), the value an expression, or the value
+# itself if `evaluated`) into `x` on `rows` (NULL for all), within the
+# groups of the `by` columns.
+assign_columns <- function(x, rows, steps, by, env) {
+  n <- nrow(x)
+  picked <- !is.null(rows)
+  if (!picked) rows <- seq_len(n)
   if (!all(by %in% names(x))) stop("dibble: no column ", setdiff(by, names(x))[[1]], " to group by", call. = FALSE)
   # With no rows there are no groups; the value, evaluated once on zero
   # rows, still gives the column's type.
@@ -87,8 +167,12 @@ NULL
     if (name %in% by) stop("dibble: cannot change ", name, ", a by column", call. = FALSE)
     # When i picks no rows, an existing column stays as it is, and a new
     # one needs the value only for its type.
-    if (!length(rows) && !missing(i) && !is.null(x[[name]]) && !is.null(step$value)) next
-    value <- if (!length(rows)) {
+    if (!length(rows) && picked && !is.null(x[[name]]) && !is.null(step$value)) {
+      # A value given with <- still has to fit the rows it would fill.
+      if (isTRUE(step$evaluated)) vctrs::vec_recycle(step$value, 0L, x_arg = name)
+      next
+    }
+    value <- if (!length(rows) && !isTRUE(step$evaluated)) {
       # Best effort: a value that fails on zero rows (`x[[1]]`) gives `.`.
       tryCatch(suppressWarnings(group_value(step, columns, rows, env)), error = function(e) logical())
     } else if (is.null(groups)) {
@@ -101,7 +185,7 @@ NULL
       combined(parts, groups, length(rows))
     }
     if (is.null(value)) {
-      if (!missing(i) || length(by)) stop("dibble: ", name, " := NULL drops the whole column; no i or by", call. = FALSE)
+      if (picked || length(by)) stop("dibble: ", name, " := NULL drops the whole column; no i or by", call. = FALSE)
       x <- set_column(x, name, NULL)
       next
     }
@@ -164,11 +248,11 @@ text_attributes <- function(x, from) {
 }
 
 # The column name on the left of :=: a name, a string, or (expr) giving one.
-assign_name <- function(lhs, env) {
+assign_name <- function(lhs, env, form = "name := value") {
   if (is.call(lhs) && identical(lhs[[1]], as.name("("))) lhs <- eval(lhs[[2]], env)
   if (is.name(lhs)) lhs <- as.character(lhs)
   if (!is.character(lhs) || length(lhs) != 1 || is.na(lhs) || !nzchar(lhs)) {
-    stop("dibble: the left side of := must be one column name", call. = FALSE)
+    stop("dibble: name in ", form, " must be one column name", call. = FALSE)
   }
   lhs
 }
@@ -244,7 +328,7 @@ eval_columns <- function(expr, columns, rows, env) {
 # One step's value on `rows`, as a dibble column of length(rows) (NULL
 # if the value is NULL).
 group_value <- function(step, columns, rows, env) {
-  value <- eval_columns(step$value, columns, rows, env)
+  value <- if (isTRUE(step$evaluated)) step$value else eval_columns(step$value, columns, rows, env)
   if (is.null(value)) return(NULL)
   # Logical NAs stay logical until the column they go into gives a type.
   if (is.logical(value) && all(is.na(value))) return(vctrs::vec_recycle(value, length(rows), x_arg = step$name))

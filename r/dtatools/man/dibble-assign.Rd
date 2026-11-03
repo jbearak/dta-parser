@@ -2,17 +2,20 @@
 % Please edit documentation in R/assign.R
 \name{dibble-assign}
 \alias{dibble-assign}
-\title{Make and change columns with \verb{:=}}
+\title{Make and change columns with \verb{:=} or \verb{[<-}}
 \arguments{
 \item{x}{A dibble.}
 
 \item{i}{Rows: a condition or row numbers.}
 
-\item{j}{\code{name := value}, or \code{`:=`(name = value, ...)}.}
+\item{j}{\code{name := value}, or \code{`:=`(name = value, ...)}; with
+\verb{<-}, the column name.}
 
 \item{...}{Passed to tibble's \code{[} when \code{j} is not \verb{:=}.}
 
 \item{by}{Grouping columns.}
+
+\item{value}{With \verb{<-}, the new values.}
 }
 \value{
 A dibble.
@@ -22,6 +25,8 @@ A dibble.
 \code{value} on the rows \code{i} selects, as data.table's \verb{:=} does, but as a
 new dibble. \code{d} itself is unchanged: write \code{d <- d[i, ...]}. A line
 \code{d[i, name := value]} on its own does nothing, even in a test.
+\code{d[i, name] <- value} changes \code{d} itself, for a value that does not
+use the columns (see below).
 }
 \details{
 \itemize{
@@ -67,10 +72,37 @@ order there. \code{.N} and \code{.data} hide columns of those names. data.table'
 other arguments (\code{keyby}, \code{on}, ...) are
 errors. Any \code{[} without \verb{:=} is tibble's.
 }
+\section{Assigning with \verb{<-}}{
+
+\code{d[i, name] <- value} changes \code{d} itself, with no \verb{d <-} in front,
+because R assigns the result back to \code{d}. It does what
+\code{d <- d[i, name := value]} does, with \code{i} evaluated among the columns
+as there, except for the following:
+\itemize{
+\item R evaluates \code{value} before the dibble sees it, in the caller's
+environment, so it cannot use the columns: \code{d[x == 1, y] <- 0} works,
+but for \code{d[x == 1, y] <- z * 2}, write \code{d <- d[x == 1, y := z * 2]}.
+\code{value} has one element, or one per row \code{i} picks (not one per row
+of \code{d}). It is evaluated even when \code{i} picks no rows.
+\item There is no \code{by}, and only one column at a time.
+\item \code{name} is a column name, a string (\code{"a"}), or a variable in
+parentheses (\code{(nm)}). A bare name that is not a column but is a
+variable in the caller, as in \code{for (nm in vars) d[x > 0, nm] <- 1}
+or a helper's \code{d[i, col] <- v}, is an error, since tibble would read
+it as the variable and \verb{:=} as the column; write \code{(nm)} or \code{"nm"}.
+\item It cannot add rows: write \code{d[nrow(d) + 1, ] <- list(...)}.
+\item \code{d[, name] <- NULL} drops the column; with \code{i} it is an error.
+}
+
+Any other \verb{[<-} (\code{d[i] <- v}, a numeric \code{j}, or several columns) is
+tibble's, with \code{i} evaluated in the caller.
+}
+
 \examples{
 d <- dibble(age = c(25, 41, NA, 37), kids = c(0, 2, 1, .d), g = c(1, 1, 2, 2))
 d <- d[age > 35, older := TRUE]       # missing age counts as > 35
 d <- d[kids == .d, kids := .r]
 d <- d[, n_in_g := .N, by = g]
+d[age < 30, young] <- 1               # changes d itself
 d
 }

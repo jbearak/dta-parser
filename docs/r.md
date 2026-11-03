@@ -364,6 +364,29 @@ As in data.table, the value sees only the rows `i` picks: `.N` counts
 them in each group, so `.N` is Stata's `_N` only without `i`, and the
 rows are not sorted as `bysort` sorts them. See `?"dibble-assign"`.
 
+When the new value doesn't use any columns, R's own assignment saves
+writing `df <-`:
+
+```r
+df[age < 30, young] <- 1               # gen young = 1 if age < 30
+df$young                               # . . 1 . . .
+df[income == .d, income] <- .r         # replace income = .r if income == .d
+```
+
+This changes `df` the way `df <- df[i, name := value]` would: `i` is
+evaluated among the columns, with the same comparisons, conversions and
+widening. R evaluates the value before the dibble sees it, and it does
+so among your variables, not the columns, so `df[i, y] <- x * 2` can't
+use the column `x`; use `:=` for that, and for `by` or several columns
+at once. The column is a name, a string, or `(nm)` for a variable that
+holds one. A bare name that is a variable but not a column is an
+error, since tibble would read it as the variable and `:=` as a column
+name; so a loop or helper that writes `df[i, col] <- v` needs
+`df[i, (col)] <- v`, and a new column named like a built-in such as
+`pi` or `T` needs quotes (`df[, "pi"] <- 1`). To add a row, write
+`df[nrow(df) + 1, ] <- list(...)`. Any other `[<-`, such as
+`df[1, 2] <- 0` or several columns, is tibble's.
+
 ## Write a file
 
 ```r
@@ -698,7 +721,8 @@ Each function has a help page (`?read_dta`). Exports:
   read a file into a dibble.
 - `save_dta(data, file)`: write a data frame as release 118.
 - `dibble(...)`, `as_dibble(x)`: build or convert a dibble.
-- `d[i, name := value, by = ]`: make or change a column (`?"dibble-assign"`).
+- `d[i, name := value, by = ]`, `d[i, name] <- value`: make or change a
+  column (`?"dibble-assign"`).
 - `dta_num(x, labels, label, storage, format)`: a Stata numeric column.
 - `.a` ... `.z`: the 26 extended missing values.
 - `is_missing(x)`, `is_tagged_missing(x, tag = NULL)`: which values are
