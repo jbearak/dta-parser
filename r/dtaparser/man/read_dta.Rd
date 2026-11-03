@@ -48,10 +48,12 @@ it back. An integer column holding any of them in the rows
 read is a double instead, so its type can depend on \code{skip} and
 \code{n_max}. Strings are as stored: Stata's missing string is \code{""}.
 
-By default a column with value labels keeps its numbers and has a
-\code{labels} attribute: the codes, \code{.a} to \code{.z} among them, named by
-their text. \code{\link[=val_labels]{val_labels()}} gives it and \code{\link[=val_label]{val_label()}} each value's
-text.
+By default a column with value labels keeps its numbers as a
+\code{\link[=with_labels]{dtaparser_labelled}}, whose \code{labels} attribute holds
+the codes, \code{.a} to \code{.z} among them, named by their text.
+\code{\link[=val_labels]{val_labels()}} gives them and \code{\link[=val_label]{val_label()}} each value's text. The
+class keeps the labels through dplyr's \code{bind_rows()}, \code{case_when()}
+and \code{if_else()}; \code{as.numeric()} gives the plain codes.
 
 With \code{factors = TRUE}, a column with value labels on any non-missing
 value is a factor whose
@@ -62,7 +64,7 @@ not, are \code{NA}. A factor cannot keep \code{.a} to \code{.z}, so this warns
 when it loses them (see \code{warn_extended_missing}).
 
 A column whose labels are all on missing values keeps its numbers
-and its \code{labels} attribute either way (a date column stays a date
+as a \code{dtaparser_labelled} either way (a date column stays a date
 and drops them).
 
 With \code{dates = TRUE}, a column without such value labels whose format
