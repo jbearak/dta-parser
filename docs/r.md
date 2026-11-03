@@ -496,16 +496,16 @@ write `na.rm = TRUE` where `egen` skips them.
 |---|---|---|
 | `egen v = mean(x)` | `mean(x, na.rm = TRUE)` | `.` |
 | `egen v = total(x)` | `sum(x, na.rm = TRUE)` | 0 |
-| `egen v = count(x)` | `sum(!is.na(x))` | 0 |
+| `egen v = count(x)` | `sum(!is_missing(x))` | 0 |
 | `egen v = median(x)` | `median(x, na.rm = TRUE)` | `.` |
 | `egen v = sd(x)` | `sd(x, na.rm = TRUE)` | `.` (also with one value) |
 | `egen v = max(x)`, `min(x)` | `max(x, na.rm = TRUE)`, `min(...)` | `.`, and R warns once per such group; wrap the value in `suppressWarnings()` |
 | `egen v = rowtotal(x y)` | `rowSums(cbind(x, y), na.rm = TRUE)` | 0 |
 | `egen v = rowmean(x y)` | `rowMeans(cbind(x, y), na.rm = TRUE)` | `.` |
 | `egen v = rowmax(x y)`, `rowmin(...)` | `dta_pmax(x, y, na.rm = TRUE)`, `dta_pmin(...)` | `.` |
-| `egen v = rowmiss(x y)` | `rowSums(is.na(cbind(x, y)))` | |
-| `egen v = rownonmiss(x y)` | `rowSums(!is.na(cbind(x, y)))` | |
-| `egen v = group(g)`, `tag(g)` | `dta_group_id(g)`, `dta_group_tag(g)` | |
+| `egen v = rowmiss(x y)` | `rowSums(cbind(is_missing(x), is_missing(y)))` | 2, the number of columns |
+| `egen v = rownonmiss(x y)` | `rowSums(!cbind(is_missing(x), is_missing(y)))` | 0 |
+| `egen v = group(g)`, `tag(g)` | `dta_group_id(g)`, `dta_group_tag(g)` | `.` and 0 where `g` is missing; `missing = TRUE` makes it a group |
 | `by g: gen v = _n` | `seq_len(.N)`, counting rows in file order | |
 
 ```r
@@ -514,7 +514,7 @@ df[, avg, by = region] := mean(income, na.rm = TRUE)      # egen avg = mean(inco
 df$avg                                                    # 2650 1850 1850 . . 2650
 df[age < 40, young, by = region] := mean(income, na.rm = TRUE)  # ... if age < 40
 df$young                                                  # 2650 . 1850 . . 2650
-df[, known, by = region] := sum(!is.na(income))           # egen known = count(income), by(region)
+df[, known, by = region] := sum(!is_missing(income))      # egen known = count(income), by(region)
 df$known                                                  # 2 1 1 0 0 2
 df[, top, by = region] := suppressWarnings(max(income, na.rm = TRUE))
 df$top                                                    # 3200 1850 1850 . . 3200
@@ -531,7 +531,8 @@ implementation, so R's `rank()` and `quantile()` may disagree with them.
 dtaparser's columns are plain R types, so the same `na.rm = TRUE`
 values work with its `:=` (see [From a do-file to R](#from-a-do-file-to-r)),
 dplyr's `mutate(.by = g)` or data.table's `by`. There an all-missing
-group gives R's `NaN` or `-Inf`, not `.`.
+group gives R's own results, such as `NaN` from `mean()` and `-Inf`
+from `max()`, not `.`.
 
 ## Recipes
 
