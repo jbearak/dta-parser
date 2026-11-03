@@ -529,8 +529,9 @@ ties and percentiles could not be checked against an open-source
 implementation, so R's `rank()` and `quantile()` may disagree with them.
 
 dtaparser's columns are plain R types, so the same `na.rm = TRUE`
-reductions work in dplyr's `mutate(.by = g)` or data.table's `by`; there
-an all-missing group gives R's `NaN` or `-Inf`, not `.`.
+values work with its `:=` (see [From a do-file to R](#from-a-do-file-to-r)),
+dplyr's `mutate(.by = g)` or data.table's `by`. There an all-missing
+group gives R's `NaN` or `-Inf`, not `.`.
 
 ## Recipes
 
