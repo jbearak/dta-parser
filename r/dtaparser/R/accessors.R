@@ -3,7 +3,8 @@
 #' [read_dta()] keeps `.a` to `.z` in double columns as `NA` with the
 #' letter stored in its bits (haven's tagged NA), so R sees `NA`.
 #' `na_tag()` gives the letters back; `is_tagged_na()` says which values
-#' are `.a` to `.z`, or one of the letters in `tag`.
+#' are `.a` to `.z`, or one of the letters in `tag`. `tagged_na()` makes
+#' them, for writing values and labels of your own.
 #'
 #' An integer, logical or factor gives `NA` (and `FALSE`) throughout: it
 #' cannot hold a letter. A byte, int or long column is an integer only
@@ -11,14 +12,24 @@
 #' first rows of a file and on all of it. A `Date` or `POSIXct` column
 #' keeps its letters.
 #'
-#' These are haven's names. haven's versions stop on anything that is not
-#' a double, drop names, and take one `tag`; these take several.
+#' These are haven's names. haven's `na_tag()` and `is_tagged_na()` stop
+#' on anything that is not a double, drop names, and take one `tag`;
+#' these take several. haven's `tagged_na()` takes its letters as `...`,
+#' drops names, and makes a tag from any character; this one takes one
+#' vector, keeps its names, and takes only `"a"` to `"z"`, since `"ab"`,
+#' `"A"` or `NA` is more likely a typo. With haven attached too, call
+#' `dtaparser::tagged_na()` where the names matter, as in a labels
+#' vector.
 #'
-#' @param x A double, integer, logical or factor vector.
+#' @param x For `na_tag()` and `is_tagged_na()`, a double, integer,
+#'   logical or factor vector. For `tagged_na()`, a character vector of
+#'   letters `"a"` to `"z"`.
 #' @param tag Letters `"a"` to `"z"`; `NULL` for any of them.
 #' @return `na_tag()`: a character vector as long as `x`, keeping its
 #'   names: the letter of each `.a` to `.z`, `NA` for numbers and for
 #'   `.`. `is_tagged_na()`: a logical vector as long as `x`.
+#'   `tagged_na()`: a double vector as long as `x`, keeping its names,
+#'   each element `NA` with its letter.
 #' @seealso [val_label()], to get the text of each missing value's label.
 #' @examples
 #' dir <- tempfile()
@@ -35,6 +46,11 @@
 #' df$KIDS                     # 2 NA NA 0
 #' na_tag(df$KIDS)             # NA "a" "b" NA
 #' is_tagged_na(df$KIDS, "b")  # FALSE FALSE TRUE FALSE
+#'
+#' x <- c(1, tagged_na("d"), NA)
+#' na_tag(x)                   # NA "d" NA
+#' is.na(x)                    # FALSE TRUE TRUE
+#' tagged_na(c(Refused = "r", "Don't know" = "d"))  # Refused = NA, Don't know = NA
 #' @export
 na_tag <- function(x) {
   if (is.double(x)) {
@@ -57,6 +73,23 @@ is_tagged_na <- function(x, tag = NULL) {
     stop("tag must be letters \"a\" to \"z\"", call. = FALSE)
   }
   unname(tags %in% tag)
+}
+
+#' @rdname na_tag
+#' @export
+tagged_na <- function(x) {
+  if (!is.character(x)) stop("x must be a character vector, not ", class(x)[1], call. = FALSE)
+  bad <- !(x %in% letters)
+  if (any(bad)) {
+    stop("x must be lowercase letters \"a\" to \"z\", not ", encodeString(x[bad][1], quote = "\""), call. = FALSE)
+  }
+  # NA_real_'s eight bytes, little-endian, once per element; the letter
+  # goes in byte 4, which is bits 32 to 39.
+  bytes <- rep(as.raw(c(0xa2, 0x07, 0, 0, 0, 0, 0xf0, 0x7f)), length(x))
+  bytes[seq(5, by = 8, length.out = length(x))] <- charToRaw(paste(x, collapse = ""))
+  out <- readBin(bytes, "double", n = length(x), size = 8, endian = "little")
+  names(out) <- names(x)
+  out
 }
 
 #' Variable and value labels

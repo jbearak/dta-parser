@@ -618,6 +618,21 @@ give `NULL`. dtatools has its own `val_labels()` and `val_label()` for
 `dta_num` columns; with both packages attached, write
 `dtaparser::val_label()` or `dtatools::val_label()`.
 
+`tagged_na(x)` makes `.a` to `.z`, for values and labels of your own.
+It takes a character vector of letters `"a"` to `"z"` and keeps its
+names, so it can build a labels vector:
+
+```r
+labels <- c(No = 0, Yes = 1, dtaparser::tagged_na(c(Refused = "r", "Don't know" = "d")))
+x <- structure(c(1, dtaparser::tagged_na("r"), 0, NA), labels = labels)
+dtaparser::val_label(x)  # "Yes" "Refused" "No" NA
+```
+
+haven's `tagged_na()` drops names, so with haven attached too, write
+`dtaparser::tagged_na()`. It also takes its letters as `...` and makes
+a tag from any character, where dtaparser's takes one vector and only
+`"a"` to `"z"`.
+
 ## Fixed-width files with a SAS setup file
 
 Some surveys are published as fixed-width text with a SAS program, the
@@ -795,9 +810,10 @@ dtaparser exports `read_dta()` (see
 `read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
 fixed-width text through its SAS setup file (see
 [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), and
-five accessors for the columns they return:
+five accessors for the columns they return, and `tagged_na(x)` to make
+`.a` to `.z`:
 
 - `na_tag(x)`, `is_tagged_na(x, tag = NULL)`: the letters of `.a` to
-  `.z`.
+  `.z`. `tagged_na(x)`: `.a` to `.z` from their letters.
 - `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
   and value labels.

@@ -1,4 +1,5 @@
-# na_tag, is_tagged_na, var_label, val_labels and val_label (plan 0013).
+# na_tag, is_tagged_na, var_label, val_labels and val_label (plan 0013),
+# and tagged_na (plan 0015).
 # Files come from this library's writer; .a to .z from haven's
 # tagged_na(), and the expected letters from haven's na_tag() on the same
 # doubles. Other expected values are the labels the tests wrote.
@@ -133,4 +134,51 @@ test_that("read_fixed_width's tagged recodes read back through the accessors", {
   expect_identical(val_label(df$KIDS), c(NA, "DK", "Not ascertained", "None"))
   expect_identical(var_label(df$KIDS), "Number of children")
   expect_identical(na_tag(val_labels(df$KIDS)), c(None = NA, DK = "a", "Not ascertained" = "b"))
+})
+
+test_that("tagged_na makes the bits haven's tagged_na makes", {
+  skip_if_not_installed("haven")
+  expect_identical(writeBin(tagged_na(letters), raw()), writeBin(haven::tagged_na(letters), raw()))
+})
+
+test_that("tagged_na's values read back as their letters", {
+  x <- tagged_na(letters)
+  expect_type(x, "double")
+  expect_identical(na_tag(x), letters)
+  expect_true(all(is.na(x)))
+  expect_identical(is_tagged_na(tagged_na(c("d", "r")), "d"), c(TRUE, FALSE))
+  expect_identical(tagged_na(character()), numeric())
+})
+
+test_that("tagged_na keeps names exactly", {
+  expect_identical(names(tagged_na(c(Refused = "r", "d"))), c("Refused", ""))
+  expect_null(names(tagged_na(c("r", "d"))))
+})
+
+test_that("tagged_na takes only lowercase letters, in one character vector", {
+  for (bad in list(NA_character_, "", "ab", "A", ".d", "é")) {
+    expect_error(tagged_na(c("a", bad)), "x must be lowercase letters \"a\" to \"z\", not ", fixed = TRUE)
+  }
+  expect_error(tagged_na(c("a", "ab", "A")), "not \"ab\"", fixed = TRUE)
+  expect_error(tagged_na(NA_character_), "not NA", fixed = TRUE)
+  expect_error(tagged_na(1), "x must be a character vector, not numeric")
+  expect_error(tagged_na(factor("a")), "not factor")
+  expect_error(tagged_na(list("a")), "not list")
+  expect_error(tagged_na(NULL), "not NULL")
+  expect_error(tagged_na("a", "b"), "unused argument")
+  expect_error(tagged_na(), "missing")
+})
+
+test_that("a letter survives what a recode does to a column", {
+  x <- c(1, tagged_na("r"), NA)
+  expect_identical(na_tag(x), c(NA, "r", NA))
+  expect_identical(na_tag(x[2:3]), c("r", NA))
+  attr(x, "labels") <- c(Refused = tagged_na("r"))
+  expect_identical(na_tag(x), c(NA, "r", NA))
+})
+
+test_that("val_label reads labels made with tagged_na", {
+  labels <- c(No = 0, Yes = 1, tagged_na(c(Refused = "r", "Not asked" = "n")))
+  x <- structure(c(0, 1, tagged_na(c("r", "n")), NA, 2), labels = labels)
+  expect_identical(val_label(x), c("No", "Yes", "Refused", "Not asked", NA, NA))
 })

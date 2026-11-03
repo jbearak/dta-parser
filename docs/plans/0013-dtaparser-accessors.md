@@ -197,7 +197,7 @@ the labels the test wrote.
 - Setters (`var_label<-` and so on): dtaparser does not write files.
 - A `tagged_na()` constructor or `.a` to `.z` objects: comparisons go
   through `is_tagged_na(x, "d")`. dtatools has `.a` to `.z` for its own
-  rules.
+  rules. (Plan 0015 adds `tagged_na()`.)
 - Accessors for the dataset label, notes and characteristics.
 - Printing tagged NAs with their letter.
 - Python and Julia, which have their own types for missing codes.

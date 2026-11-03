@@ -3,14 +3,19 @@
 \name{na_tag}
 \alias{na_tag}
 \alias{is_tagged_na}
+\alias{tagged_na}
 \title{Extended missing values \code{.a} to \code{.z}}
 \usage{
 na_tag(x)
 
 is_tagged_na(x, tag = NULL)
+
+tagged_na(x)
 }
 \arguments{
-\item{x}{A double, integer, logical or factor vector.}
+\item{x}{For \code{na_tag()} and \code{is_tagged_na()}, a double, integer,
+logical or factor vector. For \code{tagged_na()}, a character vector of
+letters \code{"a"} to \code{"z"}.}
 
 \item{tag}{Letters \code{"a"} to \code{"z"}; \code{NULL} for any of them.}
 }
@@ -18,12 +23,15 @@ is_tagged_na(x, tag = NULL)
 \code{na_tag()}: a character vector as long as \code{x}, keeping its
 names: the letter of each \code{.a} to \code{.z}, \code{NA} for numbers and for
 \code{.}. \code{is_tagged_na()}: a logical vector as long as \code{x}.
+\code{tagged_na()}: a double vector as long as \code{x}, keeping its names,
+each element \code{NA} with its letter.
 }
 \description{
 \code{\link[=read_dta]{read_dta()}} keeps \code{.a} to \code{.z} in double columns as \code{NA} with the
 letter stored in its bits (haven's tagged NA), so R sees \code{NA}.
 \code{na_tag()} gives the letters back; \code{is_tagged_na()} says which values
-are \code{.a} to \code{.z}, or one of the letters in \code{tag}.
+are \code{.a} to \code{.z}, or one of the letters in \code{tag}. \code{tagged_na()} makes
+them, for writing values and labels of your own.
 }
 \details{
 An integer, logical or factor gives \code{NA} (and \code{FALSE}) throughout: it
@@ -32,8 +40,14 @@ when the rows read held no \code{.a} to \code{.z}, so the same code works on the
 first rows of a file and on all of it. A \code{Date} or \code{POSIXct} column
 keeps its letters.
 
-These are haven's names. haven's versions stop on anything that is not
-a double, drop names, and take one \code{tag}; these take several.
+These are haven's names. haven's \code{na_tag()} and \code{is_tagged_na()} stop
+on anything that is not a double, drop names, and take one \code{tag};
+these take several. haven's \code{tagged_na()} takes its letters as \code{...},
+drops names, and makes a tag from any character; this one takes one
+vector, keeps its names, and takes only \code{"a"} to \code{"z"}, since \code{"ab"},
+\code{"A"} or \code{NA} is more likely a typo. With haven attached too, call
+\code{dtaparser::tagged_na()} where the names matter, as in a labels
+vector.
 }
 \examples{
 dir <- tempfile()
@@ -50,6 +64,11 @@ df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"
 df$KIDS                     # 2 NA NA 0
 na_tag(df$KIDS)             # NA "a" "b" NA
 is_tagged_na(df$KIDS, "b")  # FALSE FALSE TRUE FALSE
+
+x <- c(1, tagged_na("d"), NA)
+na_tag(x)                   # NA "d" NA
+is.na(x)                    # FALSE TRUE TRUE
+tagged_na(c(Refused = "r", "Don't know" = "d"))  # Refused = NA, Don't know = NA
 }
 \seealso{
 \code{\link[=val_label]{val_label()}}, to get the text of each missing value's label.
