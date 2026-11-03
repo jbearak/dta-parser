@@ -229,19 +229,44 @@ static SEXP fixed_width(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP comm
   return finish(dtaparser_fixed_width(d, s, (size_t) n, o, r, c, holder, err, sizeof err), holder, err);
 }
 
-// Whether a double vector holds a tagged NA for .a to .z: R's NA (low
-// word 1954) with a letter in bits 32 to 39, as lib.rs writes them.
+// The letter of a tagged NA for .a to .z, or 0: R's NA (low word 1954)
+// with a letter in bits 32 to 39, as lib.rs writes them.
+static char letter_of(double x) {
+  if (!ISNAN(x)) return 0;
+  uint64_t bits;
+  memcpy(&bits, &x, sizeof bits);
+  unsigned tag = (unsigned) ((bits >> 32) & 0xff);
+  return (uint32_t) bits == 1954 && tag >= 'a' && tag <= 'z' ? (char) tag : 0;
+}
+
+// Whether a double vector holds a tagged NA for .a to .z.
 static SEXP has_letters(SEXP x) {
   if (TYPEOF(x) != REALSXP) return Rf_ScalarLogical(FALSE);
   const double *p = REAL_RO(x);
   for (R_xlen_t i = 0, n = XLENGTH(x); i < n; i++) {
-    if (!ISNAN(p[i])) continue;
-    uint64_t bits;
-    memcpy(&bits, &p[i], sizeof bits);
-    unsigned tag = (unsigned) ((bits >> 32) & 0xff);
-    if ((uint32_t) bits == 1954 && tag >= 'a' && tag <= 'z') return Rf_ScalarLogical(TRUE);
+    if (letter_of(p[i])) return Rf_ScalarLogical(TRUE);
   }
   return Rf_ScalarLogical(FALSE);
+}
+
+// The letter of each element of a double vector ("a" to "z"), NA where
+// it is a number or a plain NA. Names are left to the R caller.
+static SEXP na_tag(SEXP x) {
+  if (TYPEOF(x) != REALSXP) Rf_error("na_tag: x must be a double vector");
+  R_xlen_t n = XLENGTH(x);
+  const double *p = REAL_RO(x);
+  SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+  SEXP letters = PROTECT(Rf_allocVector(STRSXP, 26));
+  for (int i = 0; i < 26; i++) {
+    char c = (char) ('a' + i);
+    SET_STRING_ELT(letters, i, Rf_mkCharLen(&c, 1));
+  }
+  for (R_xlen_t i = 0; i < n; i++) {
+    char c = letter_of(p[i]);
+    SET_STRING_ELT(out, i, c ? STRING_ELT(letters, c - 'a') : NA_STRING);
+  }
+  UNPROTECT(2);
+  return out;
 }
 
 SEXP dtaparser_packed_state(SEXP x);
@@ -255,6 +280,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_read", (DL_FUNC) &read, 6},
   {"dta_write", (DL_FUNC) &write, 2},
   {"dta_has_letters", (DL_FUNC) &has_letters, 1},
+  {"dta_na_tag", (DL_FUNC) &na_tag, 1},
   {"dta_fixed_width", (DL_FUNC) &fixed_width, 5},
   {NULL, NULL, 0}
 };

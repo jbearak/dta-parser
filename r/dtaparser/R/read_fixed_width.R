@@ -63,7 +63,8 @@
 #' writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "survey.dat"))
 #' df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
 #'                        recodes = "tagged")
-#' haven::na_tag(df$KIDS)
+#' na_tag(df$KIDS)
+#' val_label(df$KIDS)
 #' @export
 read_fixed_width <- function(file, setup, recodes = c("setup", "tagged", "none"), col_select = NULL,
                              skip = 0, n_max = Inf, factors = recodes != "tagged",

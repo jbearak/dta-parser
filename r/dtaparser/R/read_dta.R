@@ -17,8 +17,8 @@
 #'   double columns are doubles; string columns are character. Every
 #'   missing value, `.` and `.a` to `.z` alike, is `NA`, so R's rules
 #'   apply (`x > 5` is `NA` where `x` is missing). In doubles, `.a` to
-#'   `.z` keep their letter as haven's tagged NAs do: `haven::na_tag()`
-#'   gives it back. An integer column holding any of them in the rows
+#'   `.z` keep their letter as haven's tagged NAs do: [na_tag()] gives
+#'   it back. An integer column holding any of them in the rows
 #'   read is a double instead, so its type can depend on `skip` and
 #'   `n_max`. Strings are as stored: Stata's missing string is `""`.
 #'
@@ -31,6 +31,7 @@
 #'   when it loses them (see `warn_extended_missing`). With
 #'   `factors = FALSE` the column keeps its numbers and has a `labels`
 #'   attribute: the codes, `.a` to `.z` among them, named by their text.
+#'   [val_labels()] gives it and [val_label()] each value's text.
 #'
 #'   A column whose labels are all on missing values keeps its numbers
 #'   and its `labels` attribute either way (a date column stays a date
@@ -41,7 +42,8 @@
 #'   starts with `%tc` or `%-tc` is a `POSIXct` in UTC. `%tC`, which
 #'   counts leap seconds, and the other `%t` formats stay numbers.
 #'
-#'   Columns carry their variable label as attribute `label`; the tibble
+#'   Columns carry their variable label as attribute `label`
+#'   ([var_label()]); the tibble
 #'   carries the dataset label as `label` and its notes as `notes`.
 #'
 #'   String columns come back packed: R makes each string when it is

@@ -4,7 +4,8 @@ Plan 0006 had dtaparser read every missing value as a bare `NA`, so the
 reason an answer is missing (`.d` "don't know", `.r` "refused") was
 lost. An R double can keep it at no cost to R's rules: haven's tagged
 NA is R's `NA` with the letter in bits 32 to 39, so `is.na()` is TRUE
-and `x > 5` is `NA`, and `haven::na_tag()` gives the letter back. The
+and `x > 5` is `NA`, and `haven::na_tag()` (or dtaparser's own
+`na_tag()`, ADR 0023) gives the letter back. The
 bridge already writes that layout for dtatools (ADR 0003).
 
 So dtaparser's float, double, `Date` and `POSIXct` columns keep the

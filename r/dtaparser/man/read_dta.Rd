@@ -42,8 +42,8 @@ A tibble. Byte, int and long columns are integers; float and
 double columns are doubles; string columns are character. Every
 missing value, \code{.} and \code{.a} to \code{.z} alike, is \code{NA}, so R's rules
 apply (\code{x > 5} is \code{NA} where \code{x} is missing). In doubles, \code{.a} to
-\code{.z} keep their letter as haven's tagged NAs do: \code{haven::na_tag()}
-gives it back. An integer column holding any of them in the rows
+\code{.z} keep their letter as haven's tagged NAs do: \code{\link[=na_tag]{na_tag()}} gives
+it back. An integer column holding any of them in the rows
 read is a double instead, so its type can depend on \code{skip} and
 \code{n_max}. Strings are as stored: Stata's missing string is \code{""}.
 
@@ -56,6 +56,7 @@ not, are \code{NA}. A factor cannot keep \code{.a} to \code{.z}, so this warns
 when it loses them (see \code{warn_extended_missing}). With
 \code{factors = FALSE} the column keeps its numbers and has a \code{labels}
 attribute: the codes, \code{.a} to \code{.z} among them, named by their text.
+\code{\link[=val_labels]{val_labels()}} gives it and \code{\link[=val_label]{val_label()}} each value's text.
 
 A column whose labels are all on missing values keeps its numbers
 and its \code{labels} attribute either way (a date column stays a date
@@ -66,7 +67,8 @@ starts with \verb{\%td}, \verb{\%-td} or \verb{\%d} is a \code{Date}, and one wh
 starts with \verb{\%tc} or \verb{\%-tc} is a \code{POSIXct} in UTC. \verb{\%tC}, which
 counts leap seconds, and the other \verb{\%t} formats stay numbers.
 
-Columns carry their variable label as attribute \code{label}; the tibble
+Columns carry their variable label as attribute \code{label}
+(\code{\link[=var_label]{var_label()}}); the tibble
 carries the dataset label as \code{label} and its notes as \code{notes}.
 
 String columns come back packed: R makes each string when it is

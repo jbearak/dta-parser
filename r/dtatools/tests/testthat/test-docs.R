@@ -67,4 +67,9 @@ test_that("every export has a help page and appears in docs/r.md", {
     expect(grepl(paste0("`", name, "("), page, fixed = TRUE) || grepl(paste0("`", name, "`"), page, fixed = TRUE),
            paste("docs/r.md does not mention", name))
   }
+  for (name in sort(getNamespaceExports("dtaparser"))) {
+    expect(length(utils::help(name, package = "dtaparser")) > 0, paste("no help page for dtaparser's", name))
+    expect(grepl(paste0("`", name, "("), page, fixed = TRUE) || grepl(paste0("`", name, "`"), page, fixed = TRUE),
+           paste("docs/r.md does not mention dtaparser's", name))
+  }
 })
