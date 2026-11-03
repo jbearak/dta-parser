@@ -270,6 +270,11 @@ On a `dta_num`, missing values behave as in Stata:
   from `.b`.
 - `sum()`, `mean()`, `max()` and friends keep R's rules (`NA` unless
   `na.rm = TRUE`).
+- **`dta_pmax()` and `dta_pmin()`** are `pmax()` and `pmin()` with
+  arithmetic's rule: a missing result is `.`, and the result has no
+  labels. With `na.rm = TRUE` they skip missing values, as Stata's row
+  maximum does. Base `pmax()` on a `dta_num` can return the last
+  argument's `.a` to `.z` and the first argument's labels.
 
 ```r
 x <- df$income
@@ -277,6 +282,8 @@ x > 3000                           # FALSE TRUE FALSE TRUE TRUE TRUE
 x > 3000 & !is_missing(x)          # FALSE FALSE FALSE FALSE FALSE TRUE
 x + 100                            # 2200 . 1950 . . 3300
 sort(x)                            # 1850 2100 3200 .d .r .s (row 4 is now .s)
+dta_pmax(c(2, .a, .b), c(1, 5, NA), na.rm = TRUE)   # 2 5 .
+dta_pmax(c(2, .a, .b), c(1, 5, NA))                 # 2 . .
 ```
 
 Plain doubles hold the codes too, so `c(NA, .i)` is a vector with `.`
@@ -756,8 +763,11 @@ on a byte or int column. Set `attr(x, "storage") <- "double"` (or
 `"long"`).
 
 **A letter became `.` after `ifelse()` or `c()`.** Base functions that
-build new doubles keep the letter; functions that compute (arithmetic,
-`pmax()`) do not. Reassign the code with `x[i] <- .d`.
+build new doubles keep the letter; computing (arithmetic, math
+functions, `dta_pmax()`) gives `.`. Reassign the code with `x[i] <- .d`.
+Base `pmax()` and `pmin()` on a `dta_num` keep the last argument's
+letter where every argument is missing; use `dta_pmax()` and
+`dta_pmin()`.
 
 ## API reference
 
@@ -770,6 +780,8 @@ Each function has a help page (`?read_dta`). Exports:
 - `d[i, name, by = ] := value`, `d[i, name] <- value`: make or change a
   column (`?"dibble-assign"`).
 - `dta_num(x, labels, label, storage, format)`: a Stata numeric column.
+- `dta_pmax(..., na.rm = FALSE)`, `dta_pmin(..., na.rm = FALSE)`:
+  parallel maxima and minima whose missing results are `.`.
 - `.a` ... `.z`: the 26 extended missing values.
 - `is_missing(x)`, `is_tagged_missing(x, tag = NULL)`: which values are
   missing.

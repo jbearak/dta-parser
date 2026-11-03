@@ -23,7 +23,8 @@ MISSING_NAMES <- c(".", paste0(".", letters))
 #'   any missing operand and for results Stata cannot hold (`NaN`, `Inf`),
 #'   as a new `dta_num` without labels. In `&`, `|` and `!` a value is true
 #'   when it is nonzero or missing. `sum()`, `mean()`, `max()` and the
-#'   like keep R's rules.
+#'   like keep R's rules. For `pmax()` and `pmin()`, use [dta_pmax()]
+#'   and [dta_pmin()].
 #' @examples
 #' x <- dta_num(c(1, 5, NA, .d), labels = c(Low = 1, High = 5), label = "Score")
 #' x > 3          # missing values are above every number, as in Stata
@@ -119,6 +120,52 @@ Ops.dta_num <- function(e1, e2) {
 # gives `.` without a warning where R warns "NaNs produced".
 #' @export
 Math.dta_num <- function(x, ...) stata_number(suppressWarnings(get(.Generic)(named_numbers(x), ...)))
+
+#' Parallel maxima and minima of Stata numbers
+#'
+#' R's `pmax()` and `pmin()` on the numbers, with missing values as in
+#' Stata's arithmetic: every missing result is `.`, never `.a` to `.z`,
+#' and the result is a new `dta_num` (storage double, no labels, label or
+#' format), as from `x + y`.
+#'
+#' Base `pmax()` and `pmin()` given a `dta_num` run slower R code that
+#' keeps a letter where every argument is missing (the last argument's,
+#' so the result depends on their order) and copies the first argument's
+#' labels onto the result.
+#'
+#' @param ... `dta_num` vectors, doubles, integers or logicals, recycled
+#'   to a common length as `pmax()` recycles them. R's `NA` and `NaN` are `.`.
+#' @param na.rm `FALSE`: a row with any missing value gives `.`. `TRUE`:
+#'   missing values are skipped, and a row with no number gives `.`.
+#' @return A `dta_num` vector, named as the first argument when it is as
+#'   long as the result. An infinite result is `.`; an infinite argument
+#'   that is not the result does not matter.
+#' @examples
+#' x <- dta_num(c(1, 5, NA, NA))
+#' y <- dta_num(c(2, .a, .b, NA))
+#' dta_pmax(x, y)                # 2 . . .
+#' dta_pmax(x, y, na.rm = TRUE)  # 2 5 . .
+#' dta_pmin(x, 3, na.rm = TRUE)  # 1 3 3 3
+#' @export
+dta_pmax <- function(..., na.rm = FALSE) parallel_extreme(base::pmax, "dta_pmax", list(...), na.rm)
+
+#' @rdname dta_pmax
+#' @export
+dta_pmin <- function(..., na.rm = FALSE) parallel_extreme(base::pmin, "dta_pmin", list(...), na.rm)
+
+# Base pmax or pmin on the plain numbers (its fast C code, which a
+# classed argument would bypass), then every NA, NaN or Inf made `.`.
+parallel_extreme <- function(f, name, args, na.rm) {
+  if (!isTRUE(na.rm) && !isFALSE(na.rm)) stop(name, ": na.rm must be TRUE or FALSE", call. = FALSE)
+  plain <- lapply(args, function(a) {
+    if ((!is.numeric(a) && !is.logical(a) && !is.null(a)) ||
+        (is.object(a) && !inherits(a, "dta_num")) || !is.null(dim(a))) {
+      stop(name, ": arguments must be numbers, not ", class(a)[[1]], call. = FALSE)
+    }
+    named_numbers(a)
+  })
+  stata_number(do.call(f, c(plain, na.rm = na.rm)))
+}
 
 # The numbers with their names, so R's operations name results as usual.
 named_numbers <- function(x) {

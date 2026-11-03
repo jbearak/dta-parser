@@ -116,3 +116,74 @@ test_that("mixing with haven's labelled falls back to R's rules", {
   expect_warning(r <- x + h, "Incompatible methods")
   expect_identical(as.vector(unclass(r))[c(1, 4)], c(4, 4))
 })
+
+# dta_pmax and dta_pmin: R's pmax and pmin on the numbers, but every
+# missing result is `.` and the result is a new dta_num, whatever order
+# the arguments come in. Base pmax on a dta_num instead keeps the last
+# argument's letter where all are missing, and the first argument's
+# labels.
+
+px <- dta_num(c(1, 5, NA, NA, 3), labels = c(Refused = .b), label = "x", format = "%9.0g")
+py <- dta_num(c(2, .a, .b, NA, NA))
+
+test_that("dta_pmax and dta_pmin skip missing values only with na.rm", {
+  expect_identical(shown(dta_pmax(px, py)), c("2", ".", ".", ".", "."))
+  expect_identical(shown(dta_pmin(px, py)), c("1", ".", ".", ".", "."))
+  expect_identical(shown(dta_pmax(px, py, na.rm = TRUE)), c("2", "5", ".", ".", "3"))
+  expect_identical(shown(dta_pmin(px, py, na.rm = TRUE)), c("1", "5", ".", ".", "3"))
+})
+
+test_that("a row with no number is `.`, whatever the argument order", {
+  expect_identical(shown(dta_pmax(py, px, na.rm = TRUE)), shown(dta_pmax(px, py, na.rm = TRUE)))
+  expect_identical(shown(dta_pmin(py, px, na.rm = TRUE)), shown(dta_pmin(px, py, na.rm = TRUE)))
+  expect_identical(shown(dta_pmax(.a, .b, .z, na.rm = TRUE)), ".")
+  expect_identical(shown(dta_pmax(px, py, .c, na.rm = TRUE)), c("2", "5", ".", ".", "3"))
+  expect_identical(shown(dta_pmin(NaN, .c, NA, na.rm = TRUE)), ".")
+})
+
+test_that("the result is a new dta_num without labels", {
+  r <- dta_pmax(px, py, na.rm = TRUE)
+  expect_s3_class(r, "dta_num")
+  expect_identical(attr(r, "storage"), "double")
+  expect_null(attr(r, "labels"))
+  expect_null(attr(r, "label"))
+  expect_null(attr(r, "format"))
+  expect_s3_class(dta_pmax(1, 2), "dta_num")
+})
+
+test_that("dta_pmax takes plain numbers, recycles and names as pmax does", {
+  expect_identical(shown(dta_pmax(px, 4L, na.rm = TRUE)), c("4", "5", "4", "4", "4"))
+  expect_identical(shown(dta_pmin(c(TRUE, FALSE), dta_num(c(0.5, NA)), na.rm = TRUE)), c("0.5", "0"))
+  expect_identical(shown(dta_pmax(dta_num(c(-1, -2)), c(NA, -3))), c(".", "-2"))
+  named <- c(a = 1, b = 2)
+  expect_identical(names(dta_pmax(named, dta_num(c(0, 3)))), c("a", "b"))
+  expect_null(names(dta_pmax(dta_num(c(0, 3)), named)))
+  expect_length(dta_pmax(dta_num(double()), 1), 0)
+  set.seed(1)
+  a <- rnorm(50)
+  b <- rnorm(50)
+  expect_identical(as.vector(unclass(dta_pmax(a, b))), pmax(a, b))
+  expect_identical(as.vector(unclass(dta_pmin(a, b))), pmin(a, b))
+})
+
+test_that("an infinite result is `.`, an infinite argument it passes over is not", {
+  expect_identical(shown(dta_pmin(dta_num(1), Inf)), "1")
+  expect_identical(shown(dta_pmax(dta_num(1), Inf)), ".")
+  expect_identical(shown(dta_pmax(dta_num(1), -Inf)), "1")
+})
+
+test_that("dta_pmax refuses strings, factors, dates, matrices and a bad na.rm", {
+  expect_error(dta_pmax(px, "a"), "dta_pmax: arguments must be numbers")
+  expect_error(dta_pmax(px, factor("a")), "dta_pmax: arguments must be numbers")
+  expect_error(dta_pmin(px, Sys.Date()), "dta_pmin: arguments must be numbers")
+  expect_error(dta_pmax(px, matrix(1:4, 2)), "dta_pmax: arguments must be numbers")
+  expect_error(dta_pmax(px, na.rm = NA), "dta_pmax: na.rm must be TRUE or FALSE")
+  expect_error(dta_pmax(), "no arguments")
+})
+
+test_that("dta_pmax in := makes a column without letters or labels", {
+  d <- dibble(x = px, y = py)
+  d[, m] := dta_pmax(x, y, na.rm = TRUE)
+  expect_identical(shown(d$m), c("2", "5", ".", ".", "3"))
+  expect_null(attr(d$m, "labels"))
+})
