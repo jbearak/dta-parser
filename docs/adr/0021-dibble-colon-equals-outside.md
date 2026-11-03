@@ -1,5 +1,8 @@
 # dtatools exports `:=`, for `d[i, name] := value`
 
+ADR 0022 makes `d[i, name := value]` an error, so this is now the only
+`:=` form.
+
 ADR 0020 gave dibbles `d[i, name] <- value`, which changes `d` without
 `d <-`. R evaluates the value in the caller before the method runs, so
 `d[x == y, z] <- v` cannot use the column `v`: it stops with

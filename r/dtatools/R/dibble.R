@@ -12,7 +12,7 @@
 #' its `label`, `timestamp`, `notes`, `characteristics` and `sort_order`
 #' attributes (see [read_dta()]). Assigning into a dibble with `$<-`,
 #' `[[<-` or tibble's other forms stores values as given;
-#' `d[i, name := value]` and `d[i, name] <- value` convert them and follow
+#' `d[i, name] := value` and `d[i, name] <- value` convert them and follow
 #' Stata's `generate` and `replace` (see [dibble-assign]).
 #'
 #' @param ... Columns, as for `tibble::tibble()`.
