@@ -564,7 +564,7 @@ class(df$interviewed) # "Date"
 |---|---|
 | byte, int, long | integer; double if the rows read hold `.a` to `.z` |
 | float, double | double |
-| `.` and `.a` to `.z` | `NA`; in doubles `.a` to `.z` keep their letter as haven's tagged NAs (`haven::na_tag()`) |
+| `.` and `.a` to `.z` | `NA`; in doubles `.a` to `.z` keep their letter as haven's tagged NAs (`na_tag()`) |
 | value labels | a factor; levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it). `factors = FALSE` keeps numbers and a `labels` attribute, labels on `.a` to `.z` included |
 | `%td`, `%d...` | `Date` (`dates = FALSE` keeps numbers) |
 | `%tc` | `POSIXct` in UTC; `%tC`, which counts leap seconds, stays numbers |
@@ -574,6 +574,42 @@ class(df$interviewed) # "Date"
 `n_max` arguments. Columns keep their variable label in `label`; the
 tibble keeps `label` and `notes`. dtaparser does not write files; use
 dtatools' `save_dta()`.
+
+Five functions read back what the file says about a column. `income`
+is labelled only on its missing values, so it stays a number:
+
+```r
+dtaparser::var_label(df$income)  # "Monthly income"
+dtaparser::na_tag(df$income)     # NA "d" NA NA "r" NA
+dtaparser::is_tagged_na(df$income, "r") # FALSE FALSE FALSE FALSE TRUE FALSE
+dtaparser::val_labels(df$income) # Don't know = NA, Refused = NA (.d and .r)
+dtaparser::val_label(df$income)  # NA "Don't know" NA NA "Refused" NA
+unlist(dtaparser::var_label(df)) # region "Region", age "Age in years", ...
+```
+
+`na_tag(x)` gives each value's letter (`NA` for numbers and for `.`),
+and `is_tagged_na(x, tag)` says which values are `.a` to `.z`, or the
+letters in `tag`. An integer, logical or factor gives `NA`
+throughout, since it cannot hold a letter. `var_label(x)` gives the
+variable label, and `val_labels(x)` the value labels: the codes, named
+by their text. Given a data frame, both give a list with one element
+per column. `val_label(x, values = x)` gives the text of each value,
+matching `.a` to `.z` by letter, so it says why each missing value is
+missing. A factor's levels are its labels, so it has no `val_labels()`;
+read with `factors = FALSE` to keep the codes:
+
+```r
+codes <- dtaparser::read_dta("survey.dta", factors = FALSE)
+dtaparser::val_labels(codes$region) # North = 1, South = 2, East = 3, West = 4
+dtaparser::val_label(codes$region)  # "North" "South" "South" "East" "West" "North"
+```
+
+The names are haven's and labelled's. haven's `na_tag()` stops on
+anything but a double, and labelled's `val_labels()` and `val_label()`
+read only its `haven_labelled` class, so on dtaparser's columns they
+give `NULL`. dtatools has its own `val_labels()` and `val_label()` for
+`dta_num` columns; with both packages attached, write
+`dtaparser::val_label()` or `dtatools::val_label()`.
 
 ## Fixed-width files with a SAS setup file
 
@@ -605,7 +641,7 @@ By default the recodes apply as the setup writes them, so 98 and 99 are
 ```r
 df <- dtaparser::read_fixed_width("survey.dat", "survey.sas")
 df$KIDS               # a factor: 2 <NA> <NA> (0) None
-attr(df$KIDS, "label") # "Number of children"
+dtaparser::var_label(df$KIDS) # "Number of children"
 ```
 
 `recodes = "tagged"` keeps why each value is missing, as labelled
@@ -616,9 +652,10 @@ default, since a factor cannot hold tagged NAs:
 
 ```r
 df <- dtaparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
-haven::na_tag(df$KIDS)   # NA "a" "b" NA
-is.na(df$KIDS)           # FALSE TRUE TRUE FALSE
-attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = NA(a), (99) Not ascertained = NA(b)
+dtaparser::na_tag(df$KIDS)     # NA "a" "b" NA
+is.na(df$KIDS)                 # FALSE TRUE TRUE FALSE
+dtaparser::val_label(df$KIDS)  # NA "(98) DK" "(99) Not ascertained" "(0) None"
+dtaparser::na_tag(dtaparser::val_labels(df$KIDS)) # (0) None = NA, (98) DK = "a", (99) ... = "b"
 ```
 
 A letter means what that variable's labels say: `.a` is 98 "DK" here,
@@ -742,7 +779,13 @@ Each function has a help page (`?read_dta`). Exports:
   `dta_setdiff(x, y)`: Stata's tabulation, grouping and set operations.
 
 dtaparser exports `read_dta()` (see
-[Plain R types](#plain-r-types-dtaparser)) and
+[Plain R types](#plain-r-types-dtaparser)),
 `read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
 fixed-width text through its SAS setup file (see
-[Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
+[Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), and
+five accessors for the columns they return:
+
+- `na_tag(x)`, `is_tagged_na(x, tag = NULL)`: the letters of `.a` to
+  `.z`.
+- `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
+  and value labels.

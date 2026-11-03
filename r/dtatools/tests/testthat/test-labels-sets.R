@@ -14,6 +14,13 @@ test_that("val_label looks up each value, NA where unlabelled", {
   expect_identical(val_label(dta_num(1), 1), NA_character_)
 })
 
+test_that("dtaparser's val_label and val_labels agree with dtatools' on a dta_num", {
+  expect_identical(dtaparser::val_label(x), dtatools::val_label(x, x))
+  expect_identical(dtaparser::val_label(x, .g), dtatools::val_label(x, .g))
+  expect_identical(dtaparser::val_labels(x), unclass(dtatools::val_labels(x)))
+  expect_identical(dtaparser::na_tag(x), c(NA, NA, "d", NA, "g"))
+})
+
 test_that("labelbook lists labels in Stata's order", {
   data <- dibble(x = x, s = "a")
   m <- labelbook(data)$mappings
