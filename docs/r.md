@@ -16,8 +16,10 @@ Contents:
 [Missing values](#missing-values) ·
 [Value labels](#value-labels) ·
 [Dates](#dates) ·
+[Make and change columns](#make-and-change-columns) ·
 [Write a file](#write-a-file) ·
 [Sets, groups and tabulations](#sets-groups-and-tabulations) ·
+[egen in R](#egen-in-r) ·
 [Recipes](#recipes) ·
 [Coming from haven](#coming-from-haven) ·
 [Coming from readstata13](#coming-from-readstata13) ·
@@ -481,6 +483,56 @@ columns (or a data frame) 1, 2, ... in sorted order; rows with a missing
 value get `NA` unless `missing = TRUE`. `dta_group_tag()` marks the
 first row of each group. `tab(x, missing = FALSE)` counts each value in
 Stata's order, named as Stata writes the value.
+
+## egen in R
+
+An `egen` line becomes `df[i, v, by = g] := value`, with an R function
+as the value. `by(g)` or `by g:` is `by = g`, and `if c` is `i`: the
+value sees only the rows `c` picks, and the other rows get `.`, as with
+`egen`. R's reductions keep missing values unless told otherwise, so
+write `na.rm = TRUE` where `egen` skips them.
+
+| Stata | value | a group or row with only missing values |
+|---|---|---|
+| `egen v = mean(x)` | `mean(x, na.rm = TRUE)` | `.` |
+| `egen v = total(x)` | `sum(x, na.rm = TRUE)` | 0 |
+| `egen v = count(x)` | `sum(!is_missing(x))` | 0 |
+| `egen v = median(x)` | `median(x, na.rm = TRUE)` | `.` |
+| `egen v = sd(x)` | `sd(x, na.rm = TRUE)` | `.` (also with one value) |
+| `egen v = max(x)`, `min(x)` | `max(x, na.rm = TRUE)`, `min(...)` | `.`, and R warns once per such group; wrap the value in `suppressWarnings()` |
+| `egen v = rowtotal(x y)` | `rowSums(cbind(x, y), na.rm = TRUE)` | 0 |
+| `egen v = rowmean(x y)` | `rowMeans(cbind(x, y), na.rm = TRUE)` | `.` |
+| `egen v = rowmax(x y)`, `rowmin(...)` | `dta_pmax(x, y, na.rm = TRUE)`, `dta_pmin(...)` | `.` |
+| `egen v = rowmiss(x y)` | `rowSums(cbind(is_missing(x), is_missing(y)))` | 2, the number of columns |
+| `egen v = rownonmiss(x y)` | `rowSums(!cbind(is_missing(x), is_missing(y)))` | 0 |
+| `egen v = group(g)`, `tag(g)` | `dta_group_id(g)`, `dta_group_tag(g)` | `.` and 0 where `g` is missing; `missing = TRUE` makes it a group |
+| `by g: gen v = _n` | `seq_len(.N)`, counting rows in file order | |
+
+```r
+df <- read_dta("survey.dta")
+df[, avg, by = region] := mean(income, na.rm = TRUE)      # egen avg = mean(income), by(region)
+df$avg                                                    # 2650 1850 1850 . . 2650
+df[age < 40, young, by = region] := mean(income, na.rm = TRUE)  # ... if age < 40
+df$young                                                  # 2650 . 1850 . . 2650
+df[, known, by = region] := sum(!is_missing(income))      # egen known = count(income), by(region)
+df$known                                                  # 2 1 1 0 0 2
+df[, top, by = region] := suppressWarnings(max(income, na.rm = TRUE))
+df$top                                                    # 3200 1850 1850 . . 3200
+df[, both] := rowSums(cbind(age, income), na.rm = TRUE)   # egen both = rowtotal(age income)
+df$both                                                   # 2134 51 1879 62 45 3238
+df[, nth, by = region] := seq_len(.N)                     # by region: gen nth = _n
+df$nth                                                    # 1 1 2 1 1 2
+```
+
+`rank()`, `pctile()`, `mode()` and `cut()` have no row. Their rules for
+ties and percentiles could not be checked against an open-source
+implementation, so R's `rank()` and `quantile()` may disagree with them.
+
+dtaparser's columns are plain R types, so the same `na.rm = TRUE`
+values work with its `:=` (see [From a do-file to R](#from-a-do-file-to-r)),
+dplyr's `mutate(.by = g)` or data.table's `by`. There an all-missing
+group gives R's own results, such as `NaN` from `mean()` and `-Inf`
+from `max()`, not `.`.
 
 ## Recipes
 
