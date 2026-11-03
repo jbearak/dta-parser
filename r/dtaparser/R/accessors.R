@@ -109,9 +109,9 @@ tagged_na <- function(x) {
 #' the default `values = x`, it gives each row's label, which says why
 #' each missing value is missing.
 #'
-#' A factor has no value labels here: its levels are the labels, and its
-#' integer codes are not the file's codes. Read with `factors = FALSE` to
-#' keep the codes. `val_label()` gives `NA` throughout for a column
+#' A factor, from `read_dta(factors = TRUE)`, has no value labels here:
+#' its levels are the labels, and its integer codes are not the file's
+#' codes. `val_label()` gives `NA` throughout for a column
 #' without labels (a factor, a date, an unlabelled column), so
 #' `lapply(df, val_label)` works on any tibble `read_dta()` returns.
 #'

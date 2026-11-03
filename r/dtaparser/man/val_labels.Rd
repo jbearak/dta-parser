@@ -40,9 +40,9 @@ to \code{.z} by letter, so \code{.a} never matches \code{.b}; \code{.} has no la
 the default \code{values = x}, it gives each row's label, which says why
 each missing value is missing.
 
-A factor has no value labels here: its levels are the labels, and its
-integer codes are not the file's codes. Read with \code{factors = FALSE} to
-keep the codes. \code{val_label()} gives \code{NA} throughout for a column
+A factor, from \code{read_dta(factors = TRUE)}, has no value labels here:
+its levels are the labels, and its integer codes are not the file's
+codes. \code{val_label()} gives \code{NA} throughout for a column
 without labels (a factor, a date, an unlabelled column), so
 \code{lapply(df, val_label)} works on any tibble \code{read_dta()} returns.
 

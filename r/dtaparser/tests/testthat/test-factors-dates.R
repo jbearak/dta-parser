@@ -1,4 +1,4 @@
-# Value labels become factors; date and datetime formats become Date and
+# Value labels become factors with factors = TRUE; date and datetime formats become Date and
 # POSIXct. See read_dta's documentation for the rules.
 
 test_that("labelled columns become factors in order of value", {
@@ -7,7 +7,7 @@ test_that("labelled columns become factors in order of value", {
   x <- c(3, 1, 2, 5, 100000, -100000, haven::tagged_na("d"), NA)
   path <- write_fixture(l = col(x, "long", labels = labels), d = col(c(1.5, 1, NA, 1, 1, 1, 1, 1), "double",
                                                                    labels = c(one = 1)))
-  got <- read_dta(path, warn_extended_missing = FALSE)
+  got <- read_dta(path, factors = TRUE, warn_extended_missing = FALSE)
   # Repeated texts share a level; labelled missing values are NA; an
   # unlabelled integer's level is as.character() of the integer, where
   # haven's as_factor() gives "1e+05" and "-1e+05".
@@ -40,27 +40,28 @@ test_that("factors warn once when they lose .a to .z", {
     dot = col(c(1, NA), "byte", labels = c(a = 1)),
     plain = col(c(1, haven::tagged_na("a")), "double")
   )
-  expect_warning(x <- read_dta(path), "`l` and `u`.*factors = FALSE", class = "dtaparser_extended_missing")
+  expect_warning(x <- read_dta(path, factors = TRUE), "`l` and `u`.*factors = FALSE", class = "dtaparser_extended_missing")
   expect_identical(as.character(x$l), c("a", NA))
   expect_identical(haven::na_tag(x$plain), c(NA, "a"))
-  expect_no_warning(read_dta(path, warn_extended_missing = FALSE))
-  expect_no_warning(read_dta(path, factors = FALSE))
-  expect_no_warning(read_dta(path, col_select = c("dot", "plain")))
+  expect_no_warning(read_dta(path, factors = TRUE, warn_extended_missing = FALSE))
+  expect_no_warning(read_dta(path))
+  expect_no_warning(read_dta(path, factors = TRUE, col_select = c("dot", "plain")))
   expect_error(read_dta(path, warn_extended_missing = NA), "warn_extended_missing")
 })
 
 test_that("factor levels come from the rows read", {
   path <- write_fixture(l = col(c(1, 7, 9), "byte", labels = c(one = 1)))
-  expect_identical(levels(read_dta(path)$l), c("one", "7", "9"))
-  expect_identical(levels(read_dta(path, n_max = 2)$l), c("one", "7"))
+  expect_identical(levels(read_dta(path, factors = TRUE)$l), c("one", "7", "9"))
+  expect_identical(levels(read_dta(path, factors = TRUE, n_max = 2)$l), c("one", "7"))
 })
 
-test_that("factors = FALSE keeps numbers, letters and every label", {
+test_that("by default, labelled columns keep numbers, letters and every label", {
   skip_if_not_installed("haven")
   labels <- c(a = 1, b = 2, dk = haven::tagged_na("d"))
   path <- write_fixture(l = col(c(1, 2, haven::tagged_na("d")), "int", labels = labels),
                         i = col(c(1, 2, NA), "int", labels = labels))
-  x <- read_dta(path, factors = FALSE)
+  x <- read_dta(path)
+  expect_identical(read_dta(path, factors = FALSE), x)
   expect_identical(as.vector(x$l), c(1, 2, haven::tagged_na("d")))
   expect_identical(attr(x$l, "labels"), labels)
   expect_identical(as.vector(x$i), c(1L, 2L, NA))
@@ -97,7 +98,10 @@ test_that("date formats give Date and datetime formats POSIXct in UTC", {
   # %tC counts leap seconds; it and the other %t formats stay numbers.
   expect_identical(x$tC, ms)
   expect_identical(x$tw, c(1L, 2L, NA))
-  expect_s3_class(x$labelled, "factor")
+  # Value labels on a non-missing value outrank the date format.
+  expect_identical(as.vector(x$labelled), c(0L, 1L, NA))
+  expect_identical(attr(x$labelled, "labels"), c(start = 0))
+  expect_s3_class(read_dta(path, factors = TRUE)$labelled, "factor")
   expect_identical(read_dta(path, dates = FALSE)$td, c(0L, 21915L, NA))
 })
 

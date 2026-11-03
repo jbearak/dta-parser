@@ -76,7 +76,7 @@ test_that("val_label is NA for columns without labels, and stops on data frames"
     td = col(c(0, 1), "long", "%td", labels = c("Don't know" = tna("d"))),
     n = col(c(1, 2), "double")
   )
-  df <- read_dta(path)
+  df <- read_dta(path, factors = TRUE)
   expect_s3_class(df$f, "factor")
   expect_null(val_labels(df$f))
   expect_identical(val_label(df$f), c(NA_character_, NA_character_))

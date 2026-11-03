@@ -55,8 +55,8 @@ _Avoid_: factor (a different R type), categorical
 
 **dtaparser**:
 The R package that reads files into standard R types (integers,
-factors, `Date`; every missing value `NA`, with `.a` to `.z` keeping
-their letter in doubles) and holds the Rust bridge
+doubles, `Date`, factors on request; every missing value `NA`, with
+`.a` to `.z` keeping their letter in doubles) and holds the Rust bridge
 that dtatools reads and writes through.
 
 **dtatools**:

@@ -561,7 +561,7 @@ dtaparser, which dtatools installs alongside:
 
 ```r
 df <- dtaparser::read_dta("survey.dta")
-df$region             # a factor: North South South East West North
+df$region             # 1 2 2 3 4 1, with a labels attribute
 df$income             # 2100 NA 1850 NA NA 3200
 df$income > 2000      # TRUE NA FALSE NA NA TRUE
 class(df$interviewed) # "Date"
@@ -572,7 +572,7 @@ class(df$interviewed) # "Date"
 | byte, int, long | integer; double if the rows read hold `.a` to `.z` |
 | float, double | double |
 | `.` and `.a` to `.z` | `NA`; in doubles `.a` to `.z` keep their letter as haven's tagged NAs (`na_tag()`) |
-| value labels | a factor; levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it). `factors = FALSE` keeps numbers and a `labels` attribute, labels on `.a` to `.z` included |
+| value labels | numbers and a `labels` attribute, labels on `.a` to `.z` included. `factors = TRUE` makes a factor: levels in order of value, unlabelled values as their number; missing values are `NA`, with a warning when `.a` to `.z` lose their letter (`warn_extended_missing = FALSE` silences it) |
 | `%td`, `%d...` | `Date` (`dates = FALSE` keeps numbers) |
 | `%tc` | `POSIXct` in UTC; `%tC`, which counts leap seconds, stays numbers |
 | strN, strL text | character, packed as in dtatools; `""` stays `""` |
@@ -582,8 +582,17 @@ class(df$interviewed) # "Date"
 tibble keeps `label` and `notes`. dtaparser does not write files; use
 dtatools' `save_dta()`.
 
-Five functions read back what the file says about a column. `income`
-is labelled only on its missing values, so it stays a number:
+Code that compares with labels, as in `region == "South"`, reads more
+clearly than code that compares with codes. For that, read with
+`factors = TRUE`, at the cost of `.a` to `.z` in labelled columns:
+
+```r
+labelled <- dtaparser::read_dta("survey.dta", factors = TRUE)
+labelled$region       # a factor: North South South East West North
+labelled$region == "South"  # FALSE TRUE TRUE FALSE FALSE FALSE
+```
+
+Five functions read back what the file says about a column:
 
 ```r
 dtaparser::var_label(df$income)  # "Monthly income"
@@ -602,13 +611,12 @@ variable label, and `val_labels(x)` the value labels: the codes, named
 by their text. Given a data frame, both give a list with one element
 per column. `val_label(x, values = x)` gives the text of each value,
 matching `.a` to `.z` by letter, so it says why each missing value is
-missing. A factor's levels are its labels, so it has no `val_labels()`;
-read with `factors = FALSE` to keep the codes:
+missing. A factor's levels are its labels, so it has no `val_labels()`:
 
 ```r
-codes <- dtaparser::read_dta("survey.dta", factors = FALSE)
-dtaparser::val_labels(codes$region) # North = 1, South = 2, East = 3, West = 4
-dtaparser::val_label(codes$region)  # "North" "South" "South" "East" "West" "North"
+dtaparser::val_labels(df$region)       # North = 1, South = 2, East = 3, West = 4
+dtaparser::val_label(df$region)        # "North" "South" "South" "East" "West" "North"
+dtaparser::val_labels(labelled$region) # NULL
 ```
 
 The names are haven's and labelled's. haven's `na_tag()` stops on
@@ -662,15 +670,14 @@ By default the recodes apply as the setup writes them, so 98 and 99 are
 
 ```r
 df <- dtaparser::read_fixed_width("survey.dat", "survey.sas")
-df$KIDS               # a factor: 2 <NA> <NA> (0) None
+df$KIDS               # 2 NA NA 0
 dtaparser::var_label(df$KIDS) # "Number of children"
 ```
 
 `recodes = "tagged"` keeps why each value is missing, as labelled
 missing values: per variable, the codes recoded to `.` become haven's
 tagged NAs `.a`, `.b`, ... in the order the setup names them, and each
-code's value label moves to its letter. `factors` is then `FALSE` by
-default, since a factor cannot hold tagged NAs:
+code's value label moves to its letter:
 
 ```r
 df <- dtaparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
@@ -711,7 +718,7 @@ writeLines(c(
   "FORMAT KIDS kidsf.;"
 ), "labels.sas")
 df <- dtaparser::read_fixed_width("survey.dat", c("input.sas", "labels.sas"),
-                                  recodes = "none", factors = FALSE)
+                                  recodes = "none")
 attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
 ```
 
@@ -730,9 +737,9 @@ writeLines(c(
   "DATA;", "INPUT ID 1-3 KIDS 4-5;",
   "/*", "FORMAT KIDS kidsf.;", "*/"
 ), "commented.sas")
-df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none", factors = FALSE)
+df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none")
 attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
-df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none", factors = FALSE,
+df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none",
                                   commented_formats = FALSE)
 attr(df$KIDS, "labels")  # NULL
 ```
