@@ -86,7 +86,7 @@ fn with_reader<T>(
 ) -> Res<T> {
     match input {
         Input::Path(p) => {
-            let source = FileSource::open(p).map_err(|e| Fail::Message(format!("{p}: {e}")))?;
+            let source = ReadAhead::open(p).map_err(|e| Fail::Message(format!("{p}: {e}")))?;
             let mut r = Reader::open(source, options).map_err(|e| Fail::Message(format!("{p}: {e}")))?;
             f(&mut r).map_err(|e| prefix(e, p))
         }
@@ -94,6 +94,99 @@ fn with_reader<T>(
             let mut r = Reader::open(Bytes(*bytes), options)?;
             f(&mut r)
         }
+    }
+}
+
+/// A file read in blocks of 1 MiB, one per thread: a wide file has a
+/// column chunk of a few kilobytes per column, and a system call for
+/// each, from several threads at once, cost more than decoding them.
+/// Reads of a quarter block or more go to the file directly.
+struct ReadAhead {
+    file: FileSource,
+    /// Tells this file's blocks from another's in a thread's cache.
+    id: u64,
+}
+
+const BLOCK_BYTES: usize = 1 << 20;
+
+struct Block {
+    id: u64,
+    start: u64,
+    bytes: Vec<u8>,
+}
+
+thread_local! {
+    static BLOCK: std::cell::RefCell<Block> = const { std::cell::RefCell::new(Block { id: 0, start: 0, bytes: Vec::new() }) };
+}
+
+impl ReadAhead {
+    fn open(path: &str) -> dta::Result<Self> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        Ok(ReadAhead { file: FileSource::open(path)?, id: NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) })
+    }
+
+    /// Read through this thread's block, filling it with `fill`.
+    fn read_with(
+        &self,
+        offset: u64,
+        buf: &mut [u8],
+        fill: impl FnOnce(u64, &mut [u8]) -> dta::Result<()>,
+    ) -> dta::Result<()> {
+        let len = self.file.len();
+        if buf.len() >= BLOCK_BYTES / 4 || offset.checked_add(buf.len() as u64).is_none_or(|e| e > len) {
+            return fill(offset, buf);
+        }
+        BLOCK.with(|b| {
+            let mut b = b.borrow_mut();
+            let end = offset + buf.len() as u64;
+            if !(b.id == self.id && b.start <= offset && end <= b.start + b.bytes.len() as u64) {
+                let n = (BLOCK_BYTES as u64).min(len - offset) as usize;
+                b.bytes.resize(n, 0);
+                fill(offset, &mut b.bytes)?;
+                b.id = self.id;
+                b.start = offset;
+            }
+            let at = (offset - b.start) as usize;
+            buf.copy_from_slice(&b.bytes[at..at + buf.len()]);
+            Ok(())
+        })
+    }
+}
+
+impl Drop for ReadAhead {
+    fn drop(&mut self) {
+        // Workers' blocks go with their threads; free this thread's.
+        let _ = BLOCK.try_with(|b| {
+            if let Ok(mut b) = b.try_borrow_mut() {
+                if b.id == self.id {
+                    *b = Block { id: 0, start: 0, bytes: Vec::new() };
+                }
+            }
+        });
+    }
+}
+
+impl Source for ReadAhead {
+    fn len(&self) -> u64 {
+        self.file.len()
+    }
+
+    fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
+        let file = &self.file as *const FileSource as *mut FileSource;
+        // SAFETY: `fill` is the only user of the file while it runs, and
+        // `self` is borrowed mutably for the call.
+        self.read_with(offset, buf, |o, b| unsafe { (*file).read_at(o, b) })
+    }
+
+    fn shared(&self) -> Option<&dyn dta::SharedSource> {
+        self.file.shared().map(|_| self as &dyn dta::SharedSource)
+    }
+}
+
+impl dta::SharedSource for ReadAhead {
+    fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
+        let shared = self.file.shared().ok_or_else(|| dta::Error::new("internal: the file has no shared reads"))?;
+        self.read_with(offset, buf, |o, b| shared.read_at_shared(o, b))
     }
 }
 
@@ -345,11 +438,19 @@ fn nonempty(s: &Option<String>) -> Option<&str> {
     s.as_deref().filter(|s| !s.is_empty())
 }
 
-/// The value label set a column's profile entry names, if the profile
-/// has it.
-fn label_set<'p>(profile: Option<&'p Profile>, entry: Option<&dta_parquet::ColumnProfile>) -> Option<&'p ValueLabelSet> {
+/// The profile's value label sets by name, built once: a file may have
+/// thousands of columns, each naming one.
+fn sets_by_name(profile: Option<&Profile>) -> HashMap<&str, usize> {
+    profile.map_or_else(HashMap::new, |p| {
+        p.value_labels.iter().enumerate().map(|(k, s)| (s.name.as_str(), k)).collect()
+    })
+}
+
+/// The index of the value label set a column's profile entry names, if
+/// the profile has it.
+fn label_set(sets: &HashMap<&str, usize>, entry: Option<&dta_parquet::ColumnProfile>) -> Option<usize> {
     let name = entry?.value_labels.as_deref()?;
-    profile?.value_label_set(name)
+    sets.get(name).copied()
 }
 
 // ---------------------------------------------------------------- info
@@ -392,6 +493,7 @@ pub unsafe extern "C" fn dtaparser_parquet_info_rs(
             optional_string_elt(out, 4, profile.and_then(|p| nonempty(&p.label)))?;
             strings_elt(out, 5, profile.map_or(&[][..], |p| &p.notes[..]))?;
             let by_name = entries(profile);
+            let sets = sets_by_name(profile);
             let cols = r.reader_columns();
             let fields = [
                 "name", "role", "r_type", "physical_type", "logical_type", "label", "value_labels", "storage",
@@ -401,7 +503,9 @@ pub unsafe extern "C" fn dtaparser_parquet_info_rs(
             let mut text: Vec<Vec<Option<String>>> = vec![Vec::with_capacity(cols.len()); fields.len()];
             for c in cols {
                 let entry = by_name.get(c.name.as_str()).copied();
-                let set = label_set(profile, entry).filter(|_| c.role == Role::Data && labels_apply(c, entry));
+                let set = label_set(&sets, entry)
+                    .filter(|_| c.role == Role::Data && labels_apply(c, entry))
+                    .and_then(|k| profile.map(|p| &p.value_labels[k]));
                 text[0].push(Some(c.name.clone()));
                 text[1].push(Some(if c.role == Role::Data { "data" } else { "nested" }.into()));
                 text[2].push(r_type(c, entry, set.is_some()).map(String::from));
@@ -597,7 +701,10 @@ fn read_into(
     let window = r.window(skip, n);
     let rows = usize::try_from(window.end - window.start).map_err(|_| Fail::Message("too many rows".into()))?;
     let profile = r.profile();
-    let by_name = entries(profile);
+    let by_name: HashMap<&str, usize> =
+        profile.map_or_else(HashMap::new, |p| p.columns.iter().enumerate().map(|(k, c)| (c.name.as_str(), k)).collect());
+    let set_names = sets_by_name(profile);
+    let entry_of = |name: &str| by_name.get(name).and_then(|&k| profile.map(|p| &p.columns[k]));
     let fields = ["columns", "names", "label", "notes", "warnings", "integer", "rows"];
     let out_list = named_list(holder, 0, &fields)?;
     let out = alloc_elt(out_list, 0, VECSXP, selected.len())?;
@@ -615,7 +722,7 @@ fn read_into(
                 info.name
             )));
         }
-        let entry = by_name.get(info.name.as_str()).copied();
+        let entry = entry_of(info.name.as_str());
         let kind = kind_of(info, entry, int64)?;
         let mut col = Col { index: c, kind: kind.clone(), x: std::ptr::null_mut(), codes: Vec::new(), int64s: Vec::new(), check_min: false };
         let mut sink = Sink::None;
@@ -691,16 +798,16 @@ fn read_into(
 
     let names: Vec<&str> = cols.iter().map(|c| reader_cols[c.index].name.as_str()).collect();
     let names: Vec<String> = names.into_iter().map(String::from).collect();
-    // Copies of what the callback and the steps after the read need, so
-    // that the reader can be borrowed mutably for the read.
-    let entries_owned: Vec<Option<dta_parquet::ColumnProfile>> =
-        names.iter().map(|n| by_name.get(n.as_str()).map(|e| (*e).clone())).collect();
-    let sets: Vec<Option<ValueLabelSet>> = entries_owned
+    // Indices of what the steps after the read need, so that the reader
+    // can be borrowed mutably for the read.
+    let entry_ix: Vec<Option<usize>> = names.iter().map(|n| by_name.get(n.as_str()).copied()).collect();
+    let set_ix: Vec<Option<usize>> = cols
         .iter()
-        .zip(&cols)
-        .map(|(e, c)| {
+        .zip(&names)
+        .map(|(c, n)| {
             let info = &reader_cols[c.index];
-            label_set(profile, e.as_ref()).filter(|_| labels_apply(info, e.as_ref())).cloned()
+            let e = entry_of(n.as_str());
+            label_set(&set_names, e).filter(|_| labels_apply(info, e))
         })
         .collect();
     let integer: Vec<bool> = cols
@@ -720,6 +827,7 @@ fn read_into(
         .map(|c| format!("column \"{}\":", reader_cols[c.index].name))
         .collect();
     drop(by_name);
+    drop(set_names);
 
     let mut failed: Option<Fail> = None;
     let selected_ix: Vec<usize> = cols.iter().map(|c| c.index).collect();
@@ -750,11 +858,14 @@ fn read_into(
         (Ok(report), None) => report,
     };
 
+    let profile = r.profile();
+    let mut shared = SharedAttrs::default();
     for (k, (col, sink)) in cols.iter_mut().zip(sinks).enumerate() {
         let name = &names[k];
-        let entry = entries_owned[k].as_ref();
+        let entry = entry_ix[k].and_then(|i| profile.map(|p| &p.columns[i]));
+        let set = set_ix[k].and_then(|i| profile.map(|p| (i, &p.value_labels[i])));
         let x = finish(out, k, col, sink, name, rows, report.letters[k], truncate)?;
-        set_column_attributes(x, &col.kind, entry, sets[k].as_ref())?;
+        set_column_attributes(x, &col.kind, entry, set, &mut shared)?;
     }
     strings_elt(out_list, 1, &names)?;
     optional_string_elt(out_list, 2, data_label.as_deref())?;
@@ -919,43 +1030,82 @@ fn finish(out: Sexp, k: usize, col: &mut Col, sink: Sink, name: &str, rows: usiz
 /// from the profile; for labelled numbers `labels` in code order and the
 /// class `dtaparser_labelled`; the classes of dates, date-times, factors
 /// and integer64.
+/// Attribute values made once and given to every column that has the
+/// same one: classes, display formats, time zones and each value label
+/// set's labels. A wide file then makes a few R objects for these, not
+/// some per column, which R's collector would trace. R copies a shared
+/// attribute before anything changes it.
+#[derive(Default)]
+struct SharedAttrs {
+    texts: HashMap<(&'static str, String), Sexp>,
+    labels: HashMap<usize, Sexp>,
+}
+
+impl SharedAttrs {
+    /// Set attribute `name` of `x` to the character vector `value`,
+    /// made the first time.
+    fn text(&mut self, x: Sexp, name: &'static CStr, value: &[&str]) -> Res<()> {
+        let key = (name.to_str().unwrap_or(""), value.join("\u{1}"));
+        if let Some(&v) = self.texts.get(&key) {
+            return set_attr(x, name, v);
+        }
+        let v = alloc_attr(x, name, STRSXP, value.len())?;
+        set_strs(v, value)?;
+        self.texts.insert(key, v);
+        Ok(())
+    }
+}
+
+extern "C" {
+    fn dtaparser_set_attr(x: Sexp, name: *const c_char, value: Sexp) -> c_int;
+}
+
+/// Set attribute `name` of `x` to `value`, which is already reachable.
+fn set_attr(x: Sexp, name: &CStr, value: Sexp) -> Res<()> {
+    status(unsafe { dtaparser_set_attr(x, name.as_ptr(), value) })
+}
+
 fn set_column_attributes(
     x: Sexp,
     kind: &Kind,
     entry: Option<&dta_parquet::ColumnProfile>,
-    set: Option<&ValueLabelSet>,
+    set: Option<(usize, &ValueLabelSet)>,
+    shared: &mut SharedAttrs,
 ) -> Res<()> {
     if let Some(label) = entry.and_then(|e| nonempty(&e.label)) {
         string_attr(x, c"label", label)?;
     }
     if let Some(format) = entry.and_then(|e| nonempty(&e.format)) {
-        string_attr(x, c"format", format)?;
+        shared.text(x, c"format", &[format])?;
     }
     match kind {
-        Kind::Date => string_attr(x, c"class", "Date")?,
+        Kind::Date => shared.text(x, c"class", &["Date"])?,
         Kind::Seconds { tz, .. } | Kind::Nanos { tz } => {
-            let class = alloc_attr(x, c"class", STRSXP, 2)?;
-            set_strs(class, &["POSIXct", "POSIXt"])?;
+            shared.text(x, c"class", &["POSIXct", "POSIXt"])?;
             if let Some(tz) = tz {
-                string_attr(x, c"tzone", tz)?;
+                shared.text(x, c"tzone", &[tz])?;
             }
         }
         Kind::Factor { levels, ordered } => {
             let l = alloc_attr(x, c"levels", STRSXP, levels.len())?;
             set_strs(l, levels)?;
             if *ordered {
-                let class = alloc_attr(x, c"class", STRSXP, 2)?;
-                set_strs(class, &["ordered", "factor"])?;
+                shared.text(x, c"class", &["ordered", "factor"])?;
             } else {
-                string_attr(x, c"class", "factor")?;
+                shared.text(x, c"class", &["factor"])?;
             }
         }
-        Kind::Int64(Int64Mode::Integer64) => string_attr(x, c"class", "integer64")?,
+        Kind::Int64(Int64Mode::Integer64) => shared.text(x, c"class", &["integer64"])?,
         Kind::Integer | Kind::Double { .. } | Kind::Int64(Int64Mode::Double) => {
-            if let Some(set) = set {
-                set_labels(x, set)?;
-                let class = alloc_attr(x, c"class", STRSXP, 2)?;
-                set_strs(class, &["dtaparser_labelled", "vctrs_vctr"])?;
+            if let Some((k, set)) = set {
+                match shared.labels.get(&k) {
+                    Some(&v) => set_attr(x, c"labels", v)?,
+                    None => {
+                        let v = set_labels(x, set)?;
+                        shared.labels.insert(k, v);
+                    }
+                }
+                shared.text(x, c"class", &["dtaparser_labelled", "vctrs_vctr"])?;
             }
         }
         _ => {}
@@ -965,7 +1115,8 @@ fn set_column_attributes(
 
 /// The `labels` attribute: codes named by their text, in the order
 /// dtaparser keeps them (numbers ascending, then `.`, then `.a` to `.z`).
-fn set_labels(x: Sexp, set: &ValueLabelSet) -> Res<()> {
+/// Returns it.
+fn set_labels(x: Sexp, set: &ValueLabelSet) -> Res<Sexp> {
     let mut labels: Vec<&ValueLabel> = set.labels.iter().collect();
     labels.sort_by(|a, b| {
         let key = |l: &ValueLabel| (l.missing != 0, l.missing);
@@ -979,7 +1130,8 @@ fn set_labels(x: Sexp, set: &ValueLabelSet) -> Res<()> {
         unsafe { slice_mut(REAL(codes), values.len()) }.copy_from_slice(&values);
     }
     let texts = alloc_attr(codes, c"names", STRSXP, labels.len())?;
-    set_strs(texts, &labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())
+    set_strs(texts, &labels.iter().map(|l| l.text.as_str()).collect::<Vec<_>>())?;
+    Ok(codes)
 }
 
 // ---------------------------------------------------------------- write

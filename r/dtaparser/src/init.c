@@ -20,14 +20,27 @@
 
 static SEXP token;
 
+// A jump that does not save or restore the signal mask: setjmp does on
+// macOS, a system call each time, and the shims below run thousands of
+// times in one read of a wide file.
+#ifdef _WIN32
+typedef jmp_buf shim_jmp_buf;
+#define SHIM_SETJMP(jb) setjmp(jb)
+#define SHIM_LONGJMP(jb) longjmp(jb, 1)
+#else
+typedef sigjmp_buf shim_jmp_buf;
+#define SHIM_SETJMP(jb) sigsetjmp(jb, 0)
+#define SHIM_LONGJMP(jb) siglongjmp(jb, 1)
+#endif
+
 static void on_jump(void *jb, Rboolean jump) {
-  if (jump) longjmp(*(jmp_buf *) jb, 1);
+  if (jump) SHIM_LONGJMP(*(shim_jmp_buf *) jb);
 }
 
 // Run fn(data); 0 if it returned, 1 if it raised an R error.
 static int try_r(SEXP (*fn)(void *), void *data, SEXP *out) {
-  jmp_buf jb;
-  if (setjmp(jb)) return 1;
+  shim_jmp_buf jb;
+  if (SHIM_SETJMP(jb)) return 1;
   SEXP result = R_UnwindProtect(fn, data, on_jump, &jb, token);
   if (out) *out = result;
   return 0;
@@ -60,6 +73,21 @@ static SEXP do_alloc_attr(void *p) {
 int dtaparser_alloc_attr(SEXP x, const char *name, int type, R_xlen_t n, SEXP *out) {
   struct alloc_attr a = {x, name, (SEXPTYPE) type, n};
   return try_r(do_alloc_attr, &a, out);
+}
+
+// Set attribute `name` of x to value, which is already reachable (an
+// attribute of another column), so that columns share it.
+struct set_attr { SEXP x; const char *name; SEXP value; };
+
+static SEXP do_set_attr(void *p) {
+  struct set_attr *a = p;
+  Rf_setAttrib(a->x, Rf_install(a->name), a->value);
+  return R_NilValue;
+}
+
+int dtaparser_set_attr(SEXP x, const char *name, SEXP value) {
+  struct set_attr a = {x, name, value};
+  return try_r(do_set_attr, &a, NULL);
 }
 
 // A new packed string column (strings.c), stored as element i of parent.

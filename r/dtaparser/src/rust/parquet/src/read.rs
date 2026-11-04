@@ -620,9 +620,12 @@ impl<S: Source> Reader<S> {
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
         };
-        let bytes = tasks
-            .iter()
-            .fold(0u64, |sum, t| sum.saturating_add(ctx.uncompressed(t)));
+        // What the read decodes: the larger of the pages' uncompressed
+        // size and the values it writes out. Dictionary encoding makes the
+        // first much smaller than the second for survey data.
+        let bytes = tasks.iter().fold(0u64, |sum, t| {
+            sum.saturating_add(ctx.uncompressed(t).max(t.decoded()))
+        });
         let threads = dta::threads::resolve(self.options.threads);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
@@ -923,6 +926,20 @@ struct Task<'a> {
     dest: Dest<'a>,
 }
 
+impl Task<'_> {
+    /// The bytes of output a task writes.
+    fn decoded(&self) -> u64 {
+        let width = match &self.dest {
+            Dest::I8(_) | Dest::U8(_) => 1,
+            Dest::I16(_) => 2,
+            Dest::I32(_) | Dest::F32(_) | Dest::Levels { .. } => 4,
+            Dest::I64(_) | Dest::F64(_) => 8,
+            Dest::Text => 0,
+        };
+        (self.window.end - self.window.start).saturating_mul(width)
+    }
+}
+
 /// What a task gives back to the calling thread.
 struct Done {
     text: Option<TextChunk>,
@@ -1175,35 +1192,58 @@ fn run_parallel(
             .unwrap_or_else(PoisonError::into_inner)
             .take()
     };
+    // Workers take tasks a run at a time and post a run's results under
+    // one lock: a wide file has thousands of small chunks, and a lock and
+    // a wake-up per chunk cost more than decoding some of them.
+    // A run stays a small part of the window, which bounds the text held.
+    let batch = (n / (threads * 4)).clamp(1, 64).min((window / (2 * threads)).max(1));
     std::thread::scope(|s| {
         let worker = || {
             let mut scratch = Scratch::default();
             let mut read = |offset: u64, buf: &mut [u8]| shared.read_at_shared(offset, buf);
-            loop {
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                if i >= n {
+            let mut results = Vec::with_capacity(batch);
+            'work: loop {
+                let first = next.fetch_add(batch, Ordering::Relaxed);
+                if first >= n {
                     break;
                 }
                 {
                     let mut st = lock(&state);
-                    while !st.stop && i >= st.delivered + window {
+                    while !st.stop && first >= st.delivered + window {
                         st = cv.wait(st).unwrap_or_else(PoisonError::into_inner);
                     }
                     if st.stop {
                         break;
                     }
                 }
-                let Some(task) = take(i) else { continue };
-                let result =
-                    catch_unwind(AssertUnwindSafe(|| run(ctx, task, &mut read, &mut scratch)))
-                        .unwrap_or_else(|p| {
-                            Err(
-                                Error::new(format!("a read thread panicked: {}", panic_text(&*p)))
-                                    .of(ErrorKind::Internal),
-                            )
-                        });
-                lock(&state).done[i] = Some(result);
+                for i in first..(first + batch).min(n) {
+                    let Some(task) = take(i) else { continue };
+                    let result =
+                        catch_unwind(AssertUnwindSafe(|| run(ctx, task, &mut read, &mut scratch)))
+                            .unwrap_or_else(|p| {
+                                Err(Error::new(format!(
+                                    "a read thread panicked: {}",
+                                    panic_text(&*p)
+                                ))
+                                .of(ErrorKind::Internal))
+                            });
+                    let failed = result.is_err();
+                    results.push((i, result));
+                    if failed {
+                        break;
+                    }
+                }
+                let stop = {
+                    let mut st = lock(&state);
+                    for (i, r) in results.drain(..) {
+                        st.done[i] = Some(r);
+                    }
+                    st.stop
+                };
                 cv.notify_all();
+                if stop {
+                    break 'work;
+                }
             }
         };
         let mut started = 0;
