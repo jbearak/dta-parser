@@ -53,8 +53,9 @@
 #' through `colon_equals()`, so attaching both packages, in either order,
 #' changes nothing. rlang and data.table each export a `:=` too, only to
 #' report misuse, and the package attached last is the one R finds:
-#' attach dtaparser after them, or bind it with
-#' `` `:=` <- dtaparser::`:=` ``. Their own uses of `:=`, such as
+#' attach datakit after them, as in
+#' `library(dplyr); library(dtaparser); library(datakit)`, or bind it
+#' with `` `:=` <- datakit::`:=` ``. Their own uses of `:=`, such as
 #' data.table's `dt[, b := 1]` or dplyr's `mutate(d, !!nm := 1)`, keep
 #' working, as they read `:=` without calling it.
 #'
@@ -98,7 +99,7 @@
 #' The methods behind `:=`
 #'
 #' `colon_equals()` does the work of `d[i, name, by = g] := value`
-#' once `:=` has taken its left side apart. dtaparser's method for data
+#' once `:=` has taken its left side apart. datakit's method for data
 #' frames follows R's rules; dtatools' method for dibbles follows
 #' Stata's. Call `:=`, not this.
 #'
@@ -193,7 +194,7 @@ made <- function(value, rows, n) {
 # The column `old` with `value` on `rows`.
 replaced <- function(old, value, rows, name) {
   if (is.factor(old)) return(into_factor(old, value, rows, name))
-  if (inherits(old, "dtaparser_labelled") && is.character(value)) value <- text_codes(value, old)
+  if (inherits(old, "dtaparser_labelled") && is.character(value)) value <- label_codes(value, old)
   if (inherits(old, "dtaparser_labelled") && (is.logical(value) || is.numeric(value)) &&
       (!is.object(value) || inherits(value, "dtaparser_labelled"))) {
     return(into_labelled(old, value, rows))
@@ -208,13 +209,26 @@ replaced <- function(old, value, rows, name) {
 }
 
 # The labelled column `old` with `value` on `rows`: its codes widen as
-# an unclassed column's do, and a labelled value's labels join `old`'s.
+# an unclassed column's do, and a labelled value's labels join `old`'s
+# (vec_ptype2() makes the union, and stops when a code has two texts).
 into_labelled <- function(old, value, rows) {
-  labels <- if (inherits(value, "dtaparser_labelled")) union_labels(old, value) else labels_of(old)
-  value <- plain(value)
+  labels <- if (inherits(value, "dtaparser_labelled")) {
+    dtaparser::val_labels(vctrs::vec_ptype2(old, value))
+  } else {
+    dtaparser::val_labels(old)
+  }
+  if (inherits(value, "dtaparser_labelled")) value <- vctrs::vec_data(value)
   codes <- widened(vctrs::vec_data(old), value)
   codes[rows] <- if (is.integer(codes)) as.integer(value) else value
-  new_labelled(codes, labels, attr(old, "label", exact = TRUE))
+  dtaparser::with_labels(codes, labels, label = attr(old, "label", exact = TRUE))
+}
+
+# The codes the strings `text` label in the labelled column `old`, as
+# doubles, since a label may be of .a to .z. dtaparser's cast from text
+# stops on a string that labels no code, or two.
+label_codes <- function(text, old) {
+  to <- dtaparser::with_labels(double(), dtaparser::val_labels(old))
+  vctrs::vec_data(vctrs::vec_cast(text, to))
 }
 
 # `old` as the narrowest of logical, integer and double that holds both
@@ -239,7 +253,7 @@ widened <- function(old, value) {
 fits_integer <- function(v) {
   known <- v[!is.na(v)]
   all(known == trunc(known) & abs(known) <= .Machine$integer.max) && !any(is.nan(v)) &&
-    !any(is_tagged_na(v[is.na(v)]))
+    !any(dtaparser::is_tagged_na(v[is.na(v)]))
 }
 
 into_factor <- function(old, value, rows, name) {

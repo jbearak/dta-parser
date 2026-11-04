@@ -71,8 +71,9 @@ dtatools re-exports this \verb{:=} and gives its dibbles Stata's rules
 through \code{colon_equals()}, so attaching both packages, in either order,
 changes nothing. rlang and data.table each export a \verb{:=} too, only to
 report misuse, and the package attached last is the one R finds:
-attach dtaparser after them, or bind it with
-\code{`:=` <- dtaparser::`:=`}. Their own uses of \verb{:=}, such as
+attach datakit after them, as in
+\verb{library(dplyr); library(dtaparser); library(datakit)}, or bind it
+with \code{`:=` <- datakit::`:=`}. Their own uses of \verb{:=}, such as
 data.table's \code{dt[, b := 1]} or dplyr's \code{mutate(d, !!nm := 1)}, keep
 working, as they read \verb{:=} without calling it.
 }

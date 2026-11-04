@@ -92,10 +92,10 @@ so on its own line it did nothing. Any other \code{[} is tibble's.
 }
 \section{Where R finds \verb{:=}}{
 
-\verb{:=} is dtaparser's, re-exported: it takes the left side apart and
-calls dtaparser's \code{colon_equals()}, whose method for dibbles is
+\verb{:=} is datakit's, re-exported: it takes the left side apart and
+calls datakit's \code{colon_equals()}, whose method for dibbles is
 dtatools'. On any other data frame it follows R's rules (see
-\code{?dtaparser::":="}). rlang and data.table each export a \verb{:=} too, only
+\code{?datakit::":="}). rlang and data.table each export a \verb{:=} too, only
 to report misuse, and the package attached last is the one R finds.
 Attach dtatools after them, or, in tests that call \verb{dtatools::}
 functions without attaching it, bind it in a helper file:

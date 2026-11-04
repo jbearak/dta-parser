@@ -1,0 +1,7 @@
+useDynLib(datakit, .registration = TRUE, .fixes = "C_")
+export(read_fixed_width)
+export(":=")
+export(colon_equals)
+S3method(colon_equals, default)
+S3method(colon_equals, data.frame)
+S3method(colon_equals, data.table)

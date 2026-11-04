@@ -50,17 +50,9 @@ vector, keeps its names, and takes only \code{"a"} to \code{"z"}, since \code{"a
 vector.
 }
 \examples{
-dir <- tempfile()
-dir.create(dir)
-writeLines(c(
-  "PROC FORMAT; VALUE kidsf 98='DK' 99='Not ascertained';",
-  "DATA; INPUT KIDS 1-2;",
-  "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
-  "FORMAT KIDS kidsf.;"
-), file.path(dir, "survey.sas"))
-writeLines(c(" 2", "98", "99", " 0"), file.path(dir, "survey.dat"))
-df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
-                       recodes = "tagged")
+path <- tempfile(fileext = ".dta")
+save_dta(data.frame(KIDS = c(2, tagged_na("a"), tagged_na("b"), 0)), path)
+df <- read_dta(path)
 df$KIDS                     # 2 NA NA 0
 na_tag(df$KIDS)             # NA "a" "b" NA
 is_tagged_na(df$KIDS, "b")  # FALSE FALSE TRUE FALSE

@@ -67,9 +67,11 @@ test_that("every export has a help page and appears in docs/r.md", {
     expect(grepl(paste0("`", name, "("), page, fixed = TRUE) || grepl(paste0("`", name, "`"), page, fixed = TRUE),
            paste("docs/r.md does not mention", name))
   }
-  for (name in sort(getNamespaceExports("dtaparser"))) {
-    expect(length(utils::help(name, package = "dtaparser")) > 0, paste("no help page for dtaparser's", name))
-    expect(grepl(paste0("`", name, "("), page, fixed = TRUE) || grepl(paste0("`", name, "`"), page, fixed = TRUE),
-           paste("docs/r.md does not mention dtaparser's", name))
+  for (pkg in c("dtaparser", "datakit")) {
+    for (name in sort(getNamespaceExports(pkg))) {
+      expect(length(utils::help(name, package = (pkg))) > 0, paste0("no help page for ", pkg, "'s ", name))
+      expect(grepl(paste0("`", name, "("), page, fixed = TRUE) || grepl(paste0("`", name, "`"), page, fixed = TRUE),
+             paste0("docs/r.md does not mention ", pkg, "'s ", name))
+    }
   }
 })

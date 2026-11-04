@@ -21,7 +21,7 @@ A \code{dtaparser_labelled} with \code{x}'s codes. Its labels are kept
 in code order, \code{.a} to \code{.z} last.
 }
 \description{
-With \code{factors = FALSE}, \code{\link[=read_dta]{read_dta()}} and \code{\link[=read_fixed_width]{read_fixed_width()}} return a
+With \code{factors = FALSE}, \code{\link[=read_dta]{read_dta()}} (and datakit's \code{read_fixed_width()}) return a
 column with value labels as a \code{dtaparser_labelled}: its codes, \code{.a} to
 \code{.z} among them as tagged NAs, with the labels and the variable label
 as attributes. The class tells vctrs, and so dplyr, how to combine it,
@@ -74,7 +74,7 @@ and labels; use \code{dplyr::if_else()}.
 codes with no attributes, \code{.a} to \code{.z} kept; \code{unclass(x)} keeps
 \code{labels} and \code{label}. \code{as.integer(x)} is an error when \code{x} holds \code{.a}
 to \code{.z} or fractions. \code{x[i] <- value} casts into \code{x}'s type, so a
-fraction into integer codes is an error there; \code{d[i, x] := value}
+fraction into integer codes is an error there; datakit's \code{d[i, x] := value}
 widens the codes to double instead. A label assigns its code, as in
 \code{x[i] <- "No"}, \code{if_else(cond, "No", x)} or \code{d[i, x] := "Refused"}; a
 string that labels no code, or two, is an error.

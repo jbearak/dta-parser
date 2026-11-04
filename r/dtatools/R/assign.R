@@ -53,10 +53,10 @@
 #' so on its own line it did nothing. Any other `[` is tibble's.
 #'
 #' @section Where R finds `:=`:
-#' `:=` is dtaparser's, re-exported: it takes the left side apart and
-#' calls dtaparser's `colon_equals()`, whose method for dibbles is
+#' `:=` is datakit's, re-exported: it takes the left side apart and
+#' calls datakit's `colon_equals()`, whose method for dibbles is
 #' dtatools'. On any other data frame it follows R's rules (see
-#' `?dtaparser::":="`). rlang and data.table each export a `:=` too, only
+#' `?datakit::":="`). rlang and data.table each export a `:=` too, only
 #' to report misuse, and the package attached last is the one R finds.
 #' Attach dtatools after them, or, in tests that call `dtatools::`
 #' functions without attaching it, bind it in a helper file:
@@ -154,7 +154,7 @@ NULL
   assign_columns(x, rows, list(list(name = name, value = value, evaluated = TRUE)), character(), env)
 }
 
-# d[i, name, by = g] := value on a dibble, once dtaparser's `:=` has
+# d[i, name, by = g] := value on a dibble, once datakit's `:=` has
 # taken the left side apart: d with `name` set to `value` on the rows i
 # picks, by Stata's rules.
 colon_equals.dibble <- function(x, i, name, value, by, env) {

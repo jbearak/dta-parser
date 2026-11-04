@@ -1,6 +1,6 @@
 #' Labelled columns that keep their labels
 #'
-#' With `factors = FALSE`, [read_dta()] and [read_fixed_width()] return a
+#' With `factors = FALSE`, [read_dta()] (and datakit's `read_fixed_width()`) return a
 #' column with value labels as a `dtaparser_labelled`: its codes, `.a` to
 #' `.z` among them as tagged NAs, with the labels and the variable label
 #' as attributes. The class tells vctrs, and so dplyr, how to combine it,
@@ -52,7 +52,7 @@
 #' codes with no attributes, `.a` to `.z` kept; `unclass(x)` keeps
 #' `labels` and `label`. `as.integer(x)` is an error when `x` holds `.a`
 #' to `.z` or fractions. `x[i] <- value` casts into `x`'s type, so a
-#' fraction into integer codes is an error there; `d[i, x] := value`
+#' fraction into integer codes is an error there; datakit's `d[i, x] := value`
 #' widens the codes to double instead. A label assigns its code, as in
 #' `x[i] <- "No"`, `if_else(cond, "No", x)` or `d[i, x] := "Refused"`; a
 #' string that labels no code, or two, is an error.

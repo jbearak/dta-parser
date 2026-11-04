@@ -43,20 +43,6 @@ test_that("read_dta's labels match haven's", {
   expect_identical(unname(na_tag(ours)), na_tag(unname(theirs))[match(label_keys(ours), label_keys(theirs))])
 })
 
-test_that("read_fixed_width gives the class", {
-  dir <- tempfile()
-  dir.create(dir)
-  writeLines(c(
-    "PROC FORMAT; VALUE kidsf 0='None' 98='DK';",
-    "DATA; INPUT KIDS 1-2;",
-    "FORMAT KIDS kidsf.;"
-  ), file.path(dir, "s.sas"))
-  writeLines(c(" 2", "98", " 0"), file.path(dir, "s.dat"))
-  kids <- read_fixed_width(file.path(dir, "s.dat"), file.path(dir, "s.sas"), recodes = "none")$KIDS
-  expect_s3_class(kids, "dtaparser_labelled")
-  expect_identical(val_label(kids), c(NA, "DK", "None"))
-})
-
 test_that("with_labels makes the class, and stops on bad labels", {
   x <- yes_no(label = "Wants a baby")
   expect_s3_class(x, "dtaparser_labelled")
@@ -216,24 +202,6 @@ test_that("casting gives plain codes, and refuses to lose letters, fractions or 
   expect_error(ints[1] <- extra, "Code 2 has a label")
 })
 
-test_that(":= widens labelled codes and keeps class, labels and letters", {
-  d <- tibble::tibble(g = c(1, 1, 2), v = with_labels(c(1L, 0L, NA), c(No = 0, Yes = 1), label = "V"))
-  e <- d
-  e[1, v] := 2.5
-  expect_s3_class(e$v, "dtaparser_labelled")
-  expect_identical(vctrs::vec_data(e$v), c(2.5, 0, NA))
-  expect_identical(val_labels(e$v), c(No = 0, Yes = 1))
-  expect_identical(var_label(e$v), "V")
-  f <- d
-  f[g == 2, v, by = g] := tagged_na("a")
-  expect_identical(na_tag(f$v), c(NA, NA, "a"))
-  expect_s3_class(f$v, "dtaparser_labelled")
-  h <- d
-  h[, w] := with_labels(c(0, 1, 0), c(No = 0, Yes = 1))
-  expect_s3_class(h$w, "dtaparser_labelled")
-  expect_identical(val_label(h$w), c("No", "Yes", "No"))
-})
-
 test_that("base R: ifelse drops the class; rbind, merge and saveRDS keep it", {
   x <- yes_no()
   expect_false(is.object(ifelse(TRUE, x, x)))
@@ -300,19 +268,6 @@ test_that("a label assigns its code", {
   expect_identical(vctrs::vec_data(dplyr::if_else(x == 1, "No", x))[c(1, 2, 6)], c(0, 0, 2))
   expect_identical(val_label(dplyr::case_when(x == 0 ~ "Yes", .default = x)), c("Yes", "Yes", "Refused", "Yes", NA, NA))
   expect_identical(vctrs::vec_data(dplyr::coalesce(x, "No")), c(1, 0, 0, 1, 0, 2))
-})
-
-test_that(":= assigns a label's code, widening integer codes for .a to .z", {
-  d <- tibble::tibble(v = with_labels(c(1L, 0L, NA), c(No = 0, Yes = 1, tagged_na(c(Refused = "r")))))
-  e <- d
-  e[3, v] := "No"
-  expect_identical(vctrs::vec_data(e$v), c(1L, 0L, 0L))
-  f <- d
-  f[1, v] := "Refused"
-  expect_type(vctrs::vec_data(f$v), "double")
-  expect_identical(na_tag(f$v), c("r", NA, NA))
-  expect_s3_class(f$v, "dtaparser_labelled")
-  expect_error(d[1, v] := "Maybe", "not a label")
 })
 
 test_that("%in% compares codes, so labels go through val_label", {

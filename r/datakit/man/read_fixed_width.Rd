@@ -33,11 +33,11 @@ is missing: per variable, the codes recoded to \code{.} become tagged NAs
 code's label (\code{"(98) DK"}); \code{"none"} ignores them, so the codes stay
 numbers.}
 
-\item{col_select, skip, n_max, warn_extended_missing}{As in \code{\link[=read_dta]{read_dta()}}.
+\item{col_select, skip, n_max, warn_extended_missing}{As in \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}.
 \code{skip} and \code{n_max} apply after the whole file is read.}
 
 \item{factors}{Whether columns with value labels become factors, as
-in \code{\link[=read_dta]{read_dta()}}. A factor cannot hold the tagged NAs that
+in \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}. A factor cannot hold the tagged NAs that
 \code{recodes = "tagged"} makes.}
 
 \item{commented_formats}{Whether to read a \verb{PROC FORMAT} step or a
@@ -51,7 +51,7 @@ comment. \code{FALSE} reads every comment as a comment, so those files
 have no value labels.}
 }
 \value{
-A tibble, as \code{\link[=read_dta]{read_dta()}} returns. Numeric columns take the
+A tibble, as \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}} returns. Numeric columns take the
 smallest type that holds their values: integers when every value is
 a whole number within R's integer range, doubles otherwise (and
 doubles when they hold tagged NAs). Value labels on recoded codes
@@ -59,7 +59,7 @@ move to their tagged NA, or go when the code becomes a plain \code{NA}.
 
 Statements the reader does not run (other data-step code, ranges in
 \code{VALUE}) are skipped with one warning of class
-\code{dtaparser_fixed_width_warning}; the tibble's \code{warnings} attribute
+\code{datakit_fixed_width_warning}; the tibble's \code{warnings} attribute
 lists them all. A \code{LENGTH} statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes inside it, such as
 \verb{X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"} in CDC's
 2011-2013 to 2015-2017 setups, is read from its first quote to its
@@ -87,6 +87,6 @@ writeLines(c(
 writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "survey.dat"))
 df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
                        recodes = "tagged")
-na_tag(df$KIDS)
-val_label(df$KIDS)
+dtaparser::na_tag(df$KIDS)
+dtaparser::val_label(df$KIDS)
 }
