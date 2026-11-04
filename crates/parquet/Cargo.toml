@@ -20,4 +20,4 @@ ruzstd = "0.8"
 
 [dev-dependencies]
 # Examples and tests write and read JSON; the library does not.
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
