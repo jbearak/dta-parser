@@ -22,7 +22,7 @@ use crate::format::{
     PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
     TimeUnit,
 };
-use crate::profile::{self, Categorical, Logical, Profile, Storage};
+use crate::profile::{self, Categorical, ColumnProfile, Logical, Profile, Storage};
 use crate::rle;
 use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
@@ -490,8 +490,14 @@ fn bad_code(name: &str, row: usize, code: u8) -> Error {
 
 fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
     let mut p = table.profile.clone();
+    let mut at: HashMap<String, usize> =
+        p.columns.iter().enumerate().map(|(k, c)| (c.name.clone(), k)).collect();
     for (k, c) in table.columns.iter().enumerate() {
-        let entry = p.column_mut(&c.name);
+        let i = *at.entry(c.name.clone()).or_insert_with(|| {
+            p.columns.push(ColumnProfile::named(c.name.clone()));
+            p.columns.len() - 1
+        });
+        let entry = &mut p.columns[i];
         // A Double column keeps the date or timestamp type its caller
         // gives it: R's `Date` and `POSIXct` are written so when DATE or
         // TIMESTAMP cannot hold their values exactly.

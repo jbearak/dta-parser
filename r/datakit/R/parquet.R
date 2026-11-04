@@ -269,15 +269,23 @@ save_parquet <- function(data, file, compression = "zstd", compression_level = N
   names <- names(data)
   if (anyDuplicated(names)) stop("save_parquet: two columns are named \"", names[anyDuplicated(names)], "\"", call. = FALSE)
   cols <- Map(parquet_column, data, names)
-  sets <- list()
+  # Label sets by name, in a hashed environment: a wide file has thousands.
+  sets <- new.env(hash = TRUE, parent = emptyenv(), size = length(cols))
+  set_names <- character(length(cols))
+  n_sets <- 0L
   for (c in cols) {
     if (!nzchar(c$label_set)) next
     entry <- list(name = enc2utf8(c$label_set), codes = as.double(unclass(c$labels)), texts = enc2utf8(names(c$labels)))
-    if (!is.null(sets[[c$label_set]]) && !identical(sets[[c$label_set]], entry)) {
+    seen <- sets[[c$label_set]]
+    if (is.null(seen)) {
+      assign(c$label_set, entry, envir = sets)
+      n_sets <- n_sets + 1L
+      set_names[n_sets] <- c$label_set
+    } else if (!identical(seen, entry)) {
       stop("save_parquet: columns sharing label set \"", c$label_set, "\" have different labels", call. = FALSE)
     }
-    sets[[c$label_set]] <- entry
   }
+  sets <- unname(mget(set_names[seq_len(n_sets)], envir = sets))
   field <- function(name) vapply(cols, function(c) c[[name]], "", USE.NAMES = FALSE)
   chars <- kept_characteristics(attr(data, "characteristics", exact = TRUE), names)
   spec <- list(
@@ -287,7 +295,7 @@ save_parquet <- function(data, file, compression = "zstd", compression_level = N
     labels = enc2utf8(field("label")),
     formats = enc2utf8(field("format")),
     label_sets = enc2utf8(field("label_set")),
-    sets = unname(sets),
+    sets = sets,
     tz = enc2utf8(vapply(cols, function(c) c$tz, NA_character_, USE.NAMES = FALSE)),
     levels = unname(lapply(cols, function(c) if (!is.null(c$levels)) enc2utf8(c$levels))),
     ordered = vapply(cols, function(c) c$ordered, NA, USE.NAMES = FALSE),

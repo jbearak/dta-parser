@@ -1341,7 +1341,9 @@ unsafe fn table_of<'a>(spec: Sexp) -> Res<Table<'a>> {
         if Rf_xlength(x).max(0) as usize != rows {
             return Err(Fail::Message("columns differ in length".into()));
         }
-        let entry = profile.column_mut(name);
+        // save_parquet checked the names are unique.
+        profile.columns.push(dta_parquet::ColumnProfile::named(*name));
+        let entry = profile.columns.last_mut().expect("just pushed");
         if !labels[i].is_empty() {
             entry.label = Some(labels[i].to_string());
         }
