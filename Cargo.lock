@@ -47,6 +47,7 @@ name = "dta-parquet"
 version = "0.1.0"
 dependencies = [
  "dta",
+ "libc",
  "lz4_flex",
  "miniz_oxide",
  "ruzstd",

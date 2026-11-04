@@ -21,3 +21,5 @@ ruzstd = "0.8"
 [dev-dependencies]
 # Examples and tests write and read JSON; the library does not.
 serde_json = { version = "1", features = ["float_roundtrip"] }
+# examples/bench.rs measures CPU time with getrusage.
+libc = "0.2"
