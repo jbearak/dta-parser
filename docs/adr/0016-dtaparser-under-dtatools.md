@@ -1,5 +1,7 @@
 # dtaparser reads files; dtatools builds Stata's rules on top of it
 
+ADR 0031 moves `save_dta` into dtaparser; dtatools re-exports it.
+
 dtatools gives R Stata's missing-value rules, which a test suite for a
 Stata pipeline needs and an analyst does not. So the R reader is split.
 `dtaparser` holds the Rust bridge, the packed string columns and the
