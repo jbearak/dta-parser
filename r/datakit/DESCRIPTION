@@ -1,27 +1,35 @@
 Package: datakit
 Title: Translate Stata Do-Files to R, Line by Line
-Version: 3.0.0
+Version: 3.1.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Data preparation for do-files translated to R, built on
     dtaparser. d[i, name, by = g] := value makes and changes a column of
     a data frame or tibble, as generate, replace and bysort do, under
     R's rules. read_fixed_width() reads fixed-width text, such as the
     National Survey of Family Growth files, through its SAS setup file.
+    read_parquet() and save_parquet() read and write Parquet files that
+    keep value labels, variable labels and the extended missing values
+    .a to .z, and return the types read_dta() returns.
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
-    dtaparser (>= 3.0.0),
+    dtaparser (>= 3.1.0),
     rlang,
     stats,
+    tibble,
+    tidyselect,
     utils,
     vctrs
 Suggests:
+    arrow,
+    bit64,
     dplyr,
     haven,
+    jsonlite,
+    nanoparquet,
     readstata13,
     RcppTOML,
-    testthat (>= 3.0.0),
-    tibble
+    testthat (>= 3.0.0)
 Remotes:
     dtaparser=jbearak/dta-parser/r/dtaparser
 Encoding: UTF-8
