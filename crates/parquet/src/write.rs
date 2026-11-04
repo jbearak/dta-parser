@@ -1573,8 +1573,11 @@ impl<K: std::hash::Hash + Eq, V: Copy> Dictionary<K, V> {
     }
 }
 
-/// A fast hash for dictionary keys (FxHash's mixing step); the keys are
-/// the caller's values, and a hash flood only slows the write.
+/// A fast hash for dictionary keys: a folded multiply, which carries
+/// every input bit into both halves of the result. (A plain multiply
+/// does not: doubles such as 3086.25 have all-zero low bits, their hashes
+/// then share their low bits, and the table's buckets collide.) The keys
+/// are the caller's values; a hash flood only slows the write.
 #[derive(Default)]
 struct Fx(u64);
 
@@ -1598,7 +1601,8 @@ impl Hasher for Fx {
 
     #[inline]
     fn write_u64(&mut self, v: u64) {
-        self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+        let m = u128::from(self.0 ^ v) * 0x9e37_79b9_7f4a_7c15_u128;
+        self.0 = (m as u64) ^ ((m >> 64) as u64);
     }
 
     #[inline]
@@ -1875,6 +1879,18 @@ mod tests {
         let st = s.finish();
         assert_eq!(st.min_value, Some((-7i32).to_le_bytes().to_vec()));
         assert_eq!(st.max_value, Some(5i32.to_le_bytes().to_vec()));
+    }
+
+    #[test]
+    fn hashes_of_doubles_with_zero_low_bits_spread() {
+        use std::hash::BuildHasher;
+        let b = BuildHasherDefault::<Fx>::default();
+        let mut low = std::collections::HashSet::new();
+        for k in 0..4096u32 {
+            low.insert(b.hash_one((f64::from(k) / 4.0).to_bits()) & 0xfff);
+        }
+        // Spread over most of the 4,096 buckets, not a few.
+        assert!(low.len() > 2000, "{}", low.len());
     }
 
     #[test]
