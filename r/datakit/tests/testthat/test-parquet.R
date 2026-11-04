@@ -90,7 +90,9 @@ test_that("a long string column, mostly distinct, round-trips with threads and s
   x <- tibble::tibble(
     distinct = sprintf("value %06d", sample.int(n)),
     few = sample(c("north", "south", NA), n, replace = TRUE),
-    mixed = ifelse(seq_len(n) > n / 2, sprintf("late %d", seq_len(n)), "early")
+    mixed = ifelse(seq_len(n) > n / 2, sprintf("late %d", seq_len(n)), "early"),
+    # Missing in a few row groups only: the others are copied whole.
+    gaps = replace(sprintf("id %06d", sample.int(n)), c(5, 4321, 25000), NA)
   )
   y <- round_trip(x, row_group_size = 1000)
   expect_identical(y, x)

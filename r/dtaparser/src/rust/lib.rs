@@ -823,6 +823,17 @@ impl Strings {
             }
             // The dictionary was given up: add this chunk plainly.
         }
+        if self.dict.is_none() && tc.codes.is_none() && !tc.missing.contains(&1) {
+            // Plain values and no missing rows: the chunk in one copy.
+            let base = self.bytes.len();
+            let first = self.ends.len();
+            self.ends.extend(tc.ends.iter().map(|&e| base + e));
+            self.bytes.extend_from_slice(&tc.bytes);
+            if let Some(nas) = &mut self.nas {
+                nas.extend(first as i32..self.ends.len() as i32);
+            }
+            return Ok(());
+        }
         for r in 0..tc.rows {
             self.add(tc.row(r));
         }
