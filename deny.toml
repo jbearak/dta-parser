@@ -1,0 +1,13 @@
+# cargo deny check licenses: the licences every crate in the workspace's
+# dependency graph may use (plan 0018, ADR 0033). The crates here are
+# GPL-3.0-only; each dependency must be compatible with that.
+
+[licenses]
+allow = [
+    "GPL-3.0-only",
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Zlib",
+]
+confidence-threshold = 0.9
