@@ -45,3 +45,13 @@ test_that("read_fixed_width gives the class", {
   expect_s3_class(kids, "dtaparser_labelled")
   expect_identical(val_label(kids), c(NA, "DK", "None"))
 })
+
+test_that(":= keeps a display format on labelled and plain columns, codes widened or not", {
+  x <- with_labels(structure(c(1, 0), format = "%3.0f"), c(No = 0, Yes = 1))
+  d <- tibble::tibble(v = x, w = structure(c(1L, 2L), format = "%5.0f"))
+  d[1, v] := 2.5
+  d[1, w] := 0.5
+  d[2, v] := "Yes"
+  expect_identical(attr(d$v, "format"), "%3.0f")
+  expect_identical(attr(d$w, "format"), "%5.0f")
+})

@@ -88,6 +88,7 @@
 #' @export
 with_labels <- function(x, labels, label = NULL) {
   if (is.null(label)) label <- attr(x, "label", exact = TRUE)
+  format <- attr(x, "format", exact = TRUE)
   if (inherits(x, "dtaparser_labelled")) x <- vctrs::vec_data(x)
   if (!(is.double(x) || is.integer(x)) || is.object(x)) {
     stop("x must be an integer or double vector, not ", class(x)[1], call. = FALSE)
@@ -95,7 +96,7 @@ with_labels <- function(x, labels, label = NULL) {
   if (!is.null(label) && !(is.character(label) && length(label) == 1 && !is.na(label))) {
     stop("label must be a string or NULL", call. = FALSE)
   }
-  new_labelled(x, checked_labels(labels), label)
+  new_labelled(x, checked_labels(labels), label, format)
 }
 
 checked_labels <- function(labels) {
@@ -114,15 +115,16 @@ checked_labels <- function(labels) {
   labels
 }
 
-# The class around the codes `x`, with `labels` put in code order.
-new_labelled <- function(x, labels, label) {
+# The class around the codes `x`, with `labels` put in code order and
+# the display format `save_dta()` writes, if any.
+new_labelled <- function(x, labels, label, format = NULL) {
   attributes(x) <- NULL
-  vctrs::new_vctr(x, labels = in_code_order(labels), label = label, class = "dtaparser_labelled")
+  vctrs::new_vctr(x, labels = in_code_order(labels), label = label, format = format, class = "dtaparser_labelled")
 }
 
 # A read column with a `labels` attribute as the class.
 as_labelled_column <- function(x) {
-  new_labelled(x, attr(x, "labels", exact = TRUE), attr(x, "label", exact = TRUE))
+  new_labelled(x, attr(x, "labels", exact = TRUE), attr(x, "label", exact = TRUE), attr(x, "format", exact = TRUE))
 }
 
 in_code_order <- function(labels) {
@@ -159,6 +161,8 @@ union_labels <- function(x, y) {
 }
 
 first_label <- function(x, y) attr(x, "label", exact = TRUE) %||% attr(y, "label", exact = TRUE)
+first_format <- function(x, y) attr(x, "format", exact = TRUE) %||% attr(y, "format", exact = TRUE)
+format_of <- function(x) attr(x, "format", exact = TRUE)
 
 # The plain codes of a labelled value, other values as they are.
 plain <- function(x) if (inherits(x, "dtaparser_labelled")) vctrs::vec_data(x) else x
@@ -209,21 +213,21 @@ mtfrm.dtaparser_labelled <- function(x) vctrs::vec_data(x)
 #' @export
 vec_ptype2.dtaparser_labelled.dtaparser_labelled <- function(x, y, ...) {
   both_integer <- is.integer(vctrs::vec_data(x)) && is.integer(vctrs::vec_data(y))
-  new_labelled(if (both_integer) integer() else double(), union_labels(x, y), first_label(x, y))
+  new_labelled(if (both_integer) integer() else double(), union_labels(x, y), first_label(x, y), first_format(x, y))
 }
 
 #' @export
-vec_ptype2.dtaparser_labelled.double <- function(x, y, ...) new_labelled(double(), labels_of(x), first_label(x, y))
+vec_ptype2.dtaparser_labelled.double <- function(x, y, ...) new_labelled(double(), labels_of(x), first_label(x, y), first_format(x, y))
 #' @export
-vec_ptype2.double.dtaparser_labelled <- function(x, y, ...) new_labelled(double(), labels_of(y), first_label(y, x))
+vec_ptype2.double.dtaparser_labelled <- function(x, y, ...) new_labelled(double(), labels_of(y), first_label(y, x), first_format(y, x))
 
 #' @export
 vec_ptype2.dtaparser_labelled.integer <- function(x, y, ...) {
-  new_labelled(vctrs::vec_ptype(vctrs::vec_data(x)), labels_of(x), first_label(x, y))
+  new_labelled(vctrs::vec_ptype(vctrs::vec_data(x)), labels_of(x), first_label(x, y), first_format(x, y))
 }
 #' @export
 vec_ptype2.integer.dtaparser_labelled <- function(x, y, ...) {
-  new_labelled(vctrs::vec_ptype(vctrs::vec_data(y)), labels_of(y), first_label(y, x))
+  new_labelled(vctrs::vec_ptype(vctrs::vec_data(y)), labels_of(y), first_label(y, x), first_format(y, x))
 }
 
 #' @export
@@ -235,12 +239,12 @@ vec_cast.dtaparser_labelled.dtaparser_labelled <- function(x, to, ..., x_arg = "
                                   details = paste0("Code ", extra[[1]], " has a label that `", to_arg %|% "to",
                                                    "` lacks, so the cast would drop it."))
   }
-  new_labelled(codes_as(x, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE))
+  new_labelled(codes_as(x, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE), format_of(to))
 }
 
 #' @export
 vec_cast.dtaparser_labelled.double <- function(x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()) {
-  new_labelled(codes_as(x, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE))
+  new_labelled(codes_as(x, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE), format_of(to))
 }
 #' @export
 vec_cast.dtaparser_labelled.integer <- vec_cast.dtaparser_labelled.double
@@ -305,17 +309,17 @@ text_codes <- function(text, to) {
 
 #' @export
 vec_ptype2.dtaparser_labelled.character <- function(x, y, ...) {
-  new_labelled(double(), labels_of(x), attr(x, "label", exact = TRUE))
+  new_labelled(double(), labels_of(x), attr(x, "label", exact = TRUE), format_of(x))
 }
 #' @export
 vec_ptype2.character.dtaparser_labelled <- function(x, y, ...) {
-  new_labelled(double(), labels_of(y), attr(y, "label", exact = TRUE))
+  new_labelled(double(), labels_of(y), attr(y, "label", exact = TRUE), format_of(y))
 }
 
 #' @export
 vec_cast.dtaparser_labelled.character <- function(x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()) {
   codes <- text_codes(x, to)
-  new_labelled(codes_as(codes, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE))
+  new_labelled(codes_as(codes, to, x_arg, to_arg, call), labels_of(to), attr(to, "label", exact = TRUE), format_of(to))
 }
 
 # == and != with a string compare the code it labels. A label of a

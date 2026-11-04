@@ -50,9 +50,22 @@ What is new is the classes dtaparser's `read_dta` makes and the old
 
 ## Consequences
 
-- dtaparser's `read_dta` does not keep storage types or display
-  formats, so its round trip writes integers as long and doubles as
-  double; values, labels, dates and `.a` to `.z` are kept.
+- dtaparser's `read_dta` does not keep storage types, so its round
+  trip writes integers as long and doubles as double; values, labels,
+  dates and `.a` to `.z` are kept.
+- `read_dta` keeps a numeric column's display format in a `format`
+  attribute only when it says more than the default: not a general
+  format `%w.0g` (Stata's defaults by storage type, which `compress`
+  leaves on a variable whose storage changes), and not plain `%td` or
+  `%tc` on a date. So most columns stay plain vectors and `identical()`
+  against one still holds. R has no display format of its
+  own that travels with a column; pillar's `num()` keeps one through
+  dplyr by being a class, which every numeric column would then carry.
+  The attribute survives `filter()`, `arrange()`, joins and arithmetic.
+  The labelled class carries it through vctrs as it carries `label`;
+  other columns lose it in `bind_rows()`, `if_else()`, `case_when()`
+  and base `x[i]`, and are then written with the default, as Stata
+  gives a new variable.
 - dtatools no longer forwards the writer's C callable; it calls
   dtaparser's `save_dta`.
 - `save_dta` on a haven data frame writes its `Date` columns, where it

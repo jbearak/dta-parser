@@ -220,7 +220,9 @@ into_labelled <- function(old, value, rows) {
   if (inherits(value, "dtaparser_labelled")) value <- vctrs::vec_data(value)
   codes <- widened(vctrs::vec_data(old), value)
   codes[rows] <- if (is.integer(codes)) as.integer(value) else value
-  dtaparser::with_labels(codes, labels, label = attr(old, "label", exact = TRUE))
+  out <- dtaparser::with_labels(codes, labels, label = attr(old, "label", exact = TRUE))
+  attr(out, "format") <- attr(old, "format", exact = TRUE)
+  out
 }
 
 # The codes the strings `text` label in the labelled column `old`, as

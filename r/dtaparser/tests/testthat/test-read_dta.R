@@ -28,7 +28,11 @@ test_that("read_dta matches haven on every fixture", {
       y <- theirs[[col]]
       format <- attr(y, "format.stata", exact = TRUE)
       expect_identical(attr(x, "label", exact = TRUE), attr(y, "label", exact = TRUE), label = what)
-      expect_null(attr(x, "format"))
+      # A kept display format is the file's, as haven reads it; factors
+      # and strings keep none.
+      kept <- attr(numbers[[col]], "format", exact = TRUE)
+      if (!is.null(kept)) expect_identical(kept, format, label = what)
+      if (is.factor(x) || is.character(x)) expect_null(attr(x, "format"), label = what)
       if (is.character(y)) {
         # haven 2.5.5 reads strLs in 119 files from other writers wrongly
         # and drops trailing blanks from strN values.
