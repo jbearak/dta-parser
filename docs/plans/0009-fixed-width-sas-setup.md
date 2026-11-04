@@ -463,7 +463,7 @@ above, with three differences.
   on its line by words and strings, the last a string, up to the next
   `name =` or the statement's end, the label is the setup's text from
   its first quote to its last, with a warning (`LabelQuotes`) naming
-  the line. Words and strings that are all `name 'text'` pairs naming
+  the line. (ADR 0030 drops the warning.) Words and strings that are all `name 'text'` pairs naming
   variables already defined stay labels without `=` (1995FemResp has
   such labels on lines of their own). Anything else after a label is
   still an error.
@@ -471,7 +471,8 @@ above, with three differences.
 Encodings, `INPUT`, `INFILE` and the data files need nothing new
 (2006-2010 FemPreg's setup is windows-1252 text; the others are ASCII,
 with CRLF lines until 2011-2013 and LF after). The `LENGTH` statement
-of 2006-2010 on is skipped with a warning, as before.
+of 2006-2010 on is skipped with a warning, as before. (ADR 0030 skips
+a `LENGTH` for numbers without one.)
 
 ## Proof for the PR
 

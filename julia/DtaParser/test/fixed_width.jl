@@ -201,12 +201,9 @@ end
     dir = mktempdir()
     sas = write_crlf(joinpath(dir, "x.sas"), setup)
     dat = write_crlf(joinpath(dir, "x.dat"), ["123"])
-    t = @test_logs (:warn, r"line 3: the label of SALMX1") read_fixed_width(dat, sas)
+    t = @test_logs read_fixed_width(dat, sas)
     @test DataAPI.colmetadata(t, :SALMX1, "label") == "FLAG INDICATING WHETHER \" SAME AS LAST MONTH\" WAS ORIGINAL ANSWER"
     @test DataAPI.colmetadata(t, :RING, "label") == "EVER USED RING OR \"NUVARING\"?"
     @test DataAPI.colmetadata(t, :C, "label") == "no equals"
-    @test DataAPI.metadata(t, "warnings") == [
-        "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
-        "line 4: the label of RING has quotes inside it; it is read from its first quote to its last",
-    ]
+    @test !("warnings" in DataAPI.metadatakeys(t))
 end

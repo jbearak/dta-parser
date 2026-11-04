@@ -235,7 +235,7 @@ test_that("QUIT ends a PROC step like RUN", {
   expect_identical(attr(df$X, "labels"), c(one = 1))
 })
 
-test_that("a label with stray quotes is read whole, with a warning naming its line", {
+test_that("a label with stray quotes is read whole, without a warning", {
   setup <- c(
     "DATA; INPUT SALMX1 1 RING 2 C 3;",
     "LABEL",
@@ -247,15 +247,9 @@ test_that("a label with stray quotes is read whole, with a warning naming its li
   dir.create(dir)
   write_crlf(setup, file.path(dir, "x.sas"))
   write_crlf("123", file.path(dir, "x.dat"))
-  expect_warning(
-    df <- read_fixed_width(file.path(dir, "x.dat"), file.path(dir, "x.sas")),
-    class = "dtaparser_fixed_width_warning"
-  )
+  expect_no_warning(df <- read_fixed_width(file.path(dir, "x.dat"), file.path(dir, "x.sas")))
   expect_identical(attr(df$SALMX1, "label"), "FLAG INDICATING WHETHER \" SAME AS LAST MONTH\" WAS ORIGINAL ANSWER")
   expect_identical(attr(df$RING, "label"), "EVER USED RING OR \"NUVARING\"?")
   expect_identical(attr(df$C, "label"), "no equals")
-  expect_identical(attr(df, "warnings"), c(
-    "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
-    "line 4: the label of RING has quotes inside it; it is read from its first quote to its last"
-  ))
+  expect_null(attr(df, "warnings"))
 })

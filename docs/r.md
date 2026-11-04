@@ -835,10 +835,10 @@ Numeric columns take the smallest type that holds their values, and
 records shorter than the setup's columns read as blank (`NA`).
 Statements the reader does not run, such as other data-step code or a
 range in `VALUE`, are skipped with one warning; the tibble's
-`warnings` attribute lists them all. A variable label with stray quotes
+`warnings` attribute lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes
 inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"`
 in CDC's 2011-2013 to 2015-2017 setups, is read from its first quote to
-its last, with a warning naming its line. `col_select`, `skip` and
+its last, without a warning. `col_select`, `skip` and
 `n_max` work as in `read_dta()`, after the whole file is read.
 
 CDC's setups from 2002 on differ in two ways, and `read_fixed_width()`

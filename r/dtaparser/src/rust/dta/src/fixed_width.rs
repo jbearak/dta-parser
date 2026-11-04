@@ -6,7 +6,8 @@
 //! value labels, `INFILE`'s record length, column `INPUT`, record-type
 //! selection (`IF v < n THEN DELETE; ELSE INPUT ...`), `LABEL`, `FORMAT`,
 //! and two forms of data-step assignment (`IF cond THEN v = constant`
-//! and `v = INPUT(s, w.)`). Other statements are skipped with a warning.
+//! and `v = INPUT(s, w.)`). Other statements are skipped with a warning,
+//! except numeric `LENGTH`, which is skipped without one (ADR 0030).
 //! A setup may come as several files (2002), read in order as one, and
 //! its `PROC FORMAT` and `FORMAT` may be commented out (2006 to 2019).
 //! Plan 0009 and ADR 0018 give the rules and the reasons.
@@ -69,9 +70,6 @@ pub enum WarningKind {
     NoRecords,
     /// A variable label longer than 320 bytes, cut.
     LabelCut,
-    /// A variable label with stray quotes inside, read from its first
-    /// quote to its last.
-    LabelQuotes,
 }
 
 /// Something the converter did that the caller should know about.
@@ -597,6 +595,11 @@ fn parse_setup(texts: &[Cow<str>], commented_formats: bool, warnings: &mut Vec<F
         let was_after_delete = std::mem::take(&mut after_delete);
         match head.as_str() {
             "LIBNAME" | "OPTIONS" | "TITLE" | "FILENAME" => continue,
+            // A number's LENGTH sets only how many bytes SAS stores it in.
+            // A string's (`LENGTH s $ 5`) can cut what INPUT reads, so it
+            // is skipped with a warning below. `LENGTH = ...` assigns a
+            // variable named LENGTH.
+            "LENGTH" if !st.toks.get(1).is_some_and(|t| t.is_sym("=")) && !st.toks.iter().any(|t| t.is_sym("$")) => continue,
             "RUN" | "QUIT" => {
                 in_format = false;
                 in_other_proc = false;
@@ -638,7 +641,7 @@ fn parse_setup(texts: &[Cow<str>], commented_formats: bool, warnings: &mut Vec<F
             "ELSE" if was_after_delete && st.toks.get(1).is_some_and(|t| t.is_word("INPUT")) => {
                 parse_input(st, &st.toks[2..], &mut layout, &mut duplicates)?;
             }
-            "LABEL" => parse_label(st, st.src(texts), &layout, &mut labels, warnings)?,
+            "LABEL" => parse_label(st, st.src(texts), &layout, &mut labels)?,
             "FORMAT" => parse_format(st, &mut formats)?,
             "IF" if saw_input => match parse_if(st, &mut layout, warnings)? {
                 IfKind::Delete => after_delete = true,
@@ -820,13 +823,7 @@ fn parse_input(st: &Statement, t: &[Tok], layout: &mut Layout, duplicates: &mut 
 
 /// `LABEL name [=] 'text' ...`. `src` is the text of the statement's file;
 /// `layout` has the variables defined so far.
-fn parse_label(
-    st: &Statement,
-    src: &str,
-    layout: &Layout,
-    out: &mut Vec<(Loc, String, String)>,
-    warnings: &mut Vec<FixedWidthWarning>,
-) -> Result<()> {
+fn parse_label(st: &Statement, src: &str, layout: &Layout, out: &mut Vec<(Loc, String, String)>) -> Result<()> {
     let t = &st.toks;
     let mut i = 1;
     while i < t.len() {
@@ -841,14 +838,10 @@ fn parse_label(
         match t.get(i) {
             Some(Tok::Str(s)) => match stray_quotes(st, i, layout) {
                 Some(last) => {
-                    // The text between the first quote and the last.
+                    // The text between the first quote and the last, with
+                    // no warning: it can change only a variable label
+                    // (ADR 0030).
                     let text = &src[st.spans[i].start + 1..st.spans[last].end - 1];
-                    let loc = Loc { file: st.loc.file, line: st.spans[i].line };
-                    warn(
-                        warnings,
-                        WarningKind::LabelQuotes,
-                        format!("{loc}: the label of {name} has quotes inside it; it is read from its first quote to its last"),
-                    );
                     out.push((st.loc, name, text.to_string()));
                     i = last;
                 }

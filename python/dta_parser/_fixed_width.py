@@ -49,11 +49,10 @@ def read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=N
     Columns are as read_dta returns them; numeric columns take the
     smallest storage type that holds their values. Statements the reader
     does not run (other data-step code, ranges in VALUE) give one
-    FixedWidthWarning; df.attrs["warnings"] lists them all. A variable
+    FixedWidthWarning; df.attrs["warnings"] lists them all. A LENGTH statement for numbers, which sets only how SAS stores them, is skipped without one. A variable
     label with stray quotes inside it, such as
     X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED" in CDC's 2011-2013 to
-    2015-2017 setups, is read from its first quote to its last, with a
-    warning naming its line.
+    2015-2017 setups, is read from its first quote to its last, without a warning.
     """
     if recodes not in _RECODES:
         raise ValueError(f'recodes must be "setup", "tagged" or "none", not {recodes!r}')

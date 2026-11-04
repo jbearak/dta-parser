@@ -8,6 +8,7 @@ letters, value labels and long labels independently.
 import glob
 import os
 import tempfile
+import warnings
 
 import pandas as pd
 import pytest
@@ -241,13 +242,11 @@ def test_a_label_with_stray_quotes(tmp_path):
     ]
     sas = write_crlf(tmp_path / "x.sas", setup)
     dat = write_crlf(tmp_path / "x.dat", ["123"])
-    with pytest.warns(dp.FixedWidthWarning, match="line 3: the label of SALMX1"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         df = dp.read_fixed_width(dat, sas)
     columns = df.attrs["dta"]["columns"]
     assert columns["SALMX1"]["label"] == 'FLAG INDICATING WHETHER " SAME AS LAST MONTH" WAS ORIGINAL ANSWER'
     assert columns["RING"]["label"] == 'EVER USED RING OR "NUVARING"?'
     assert columns["C"]["label"] == "no equals"
-    assert df.attrs["warnings"] == [
-        "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
-        "line 4: the label of RING has quotes inside it; it is read from its first quote to its last",
-    ]
+    assert "warnings" not in df.attrs
