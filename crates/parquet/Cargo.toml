@@ -1,0 +1,23 @@
+[package]
+name = "dta-parquet"
+description = "Read and write Parquet files that keep what a .dta file says"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+rust-version = "1.82"
+
+[dependencies]
+dta = { path = "../dta" }
+snap = "1"
+miniz_oxide = "0.8"
+lz4_flex = { version = "0.11", default-features = false, features = ["safe-encode", "safe-decode"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+zstd = { version = "0.13", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ruzstd = "0.8"
+
+[dev-dependencies]
+# Examples and tests write and read JSON; the library does not.
+serde_json = "1"

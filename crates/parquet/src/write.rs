@@ -1,0 +1,1894 @@
+//! Writing a table as Parquet with a dta profile (plan 0018, "What we
+//! write").
+//!
+//! Row groups are written in order; the columns of each are encoded on
+//! worker threads, and only that row group's encoded pages are held
+//! before they go to the output. Values come from the caller a block of
+//! rows at a time, so nothing holds a second copy of the table.
+
+use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
+use std::io::Write;
+use std::ops::Range;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, PoisonError};
+
+use crate::arrow::{self, ArrowType};
+use crate::codec::{Codecs, Compression};
+use crate::format::{
+    converted, Codec, ColumnChunk, ColumnMetaData, ColumnOrder, DataPageHeader,
+    DictionaryPageHeader, Encoding, FileMetaData, KeyValue, LogicalType, OffsetIndex, PageHeader,
+    PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
+    TimeUnit,
+};
+use crate::profile::{self, Categorical, Profile};
+use crate::rle;
+use dta::{missing, Error, ErrorKind, Result};
+
+/// The most rows a fill is asked for at once.
+pub const BLOCK: usize = 1024;
+
+/// Fills a block of rows: called with the block's first row and buffers
+/// of the block's length, it writes each row's value and missing code
+/// (0 for a value, 1 for a null, 2 to 27 for `.a` to `.z`).
+pub type Fill<'a, T> = dyn Fn(usize, &mut [T], &mut [u8]) + Sync + 'a;
+
+/// Gives a row's bytes, or `None` for a null.
+pub type GetBytes<'a> = dyn Fn(usize) -> Option<&'a [u8]> + Sync + 'a;
+
+/// Fills a block of level codes: from 0 for the first level, negative for
+/// a null.
+pub type FillCodes<'a> = dyn Fn(usize, &mut [i32]) + Sync + 'a;
+
+/// A column's values and the type to write them as (plan 0018, "Column
+/// types we write"). Every column is written OPTIONAL.
+pub enum Values<'a> {
+    /// INT32 annotated INT(8): every value must fit in 8 bits.
+    Int8(Box<Fill<'a, i32>>),
+    /// INT32 annotated INT(16).
+    Int16(Box<Fill<'a, i32>>),
+    Int32(Box<Fill<'a, i32>>),
+    Int64(Box<Fill<'a, i64>>),
+    Float(Box<Fill<'a, f32>>),
+    Double(Box<Fill<'a, f64>>),
+    /// Values 0 and 1.
+    Bool(Box<Fill<'a, u8>>),
+    /// Days since 1970-01-01.
+    Date(Box<Fill<'a, i32>>),
+    /// Units since 1970-01-01 00:00. `utc`: the values are instants
+    /// (adjusted to UTC); `zone` is the time zone to show them in, kept in
+    /// the profile and `ARROW:schema`. An instant without a zone is
+    /// recorded as having none.
+    Timestamp {
+        unit: TimeUnit,
+        utc: bool,
+        zone: Option<String>,
+        fill: Box<Fill<'a, i64>>,
+    },
+    /// UTF-8 text, checked.
+    Text(Box<GetBytes<'a>>),
+    /// Bytes.
+    Binary(Box<GetBytes<'a>>),
+    /// Codes into `levels`, written dictionary-encoded with every level in
+    /// order in every row group.
+    Categorical {
+        levels: Vec<String>,
+        ordered: bool,
+        codes: Box<FillCodes<'a>>,
+    },
+}
+
+impl<'a> Values<'a> {
+    /// Build a fill from a function giving each row's value, or `None`
+    /// for a null.
+    pub fn by_row<T: Default + Copy>(
+        get: impl Fn(usize) -> Option<T> + Sync + 'a,
+    ) -> Box<Fill<'a, T>> {
+        Box::new(move |first, values: &mut [T], codes: &mut [u8]| {
+            for (i, (v, c)) in values.iter_mut().zip(codes.iter_mut()).enumerate() {
+                match get(first + i) {
+                    Some(x) => {
+                        *v = x;
+                        *c = 0;
+                    }
+                    None => {
+                        *v = T::default();
+                        *c = missing::SYSTEM;
+                    }
+                }
+            }
+        })
+    }
+
+    /// Bytes per value of the plain encoding, for sizing row groups; text
+    /// adds its length.
+    fn width(&self) -> usize {
+        match self {
+            Values::Int8(_)
+            | Values::Int16(_)
+            | Values::Int32(_)
+            | Values::Float(_)
+            | Values::Date(_)
+            | Values::Categorical { .. } => 4,
+            Values::Int64(_) | Values::Double(_) | Values::Timestamp { .. } => 8,
+            Values::Bool(_) => 1,
+            Values::Text(_) | Values::Binary(_) => 4,
+        }
+    }
+}
+
+/// One column to write.
+pub struct WriteColumn<'a> {
+    pub name: String,
+    pub values: Values<'a>,
+}
+
+/// A table to write.
+pub struct Table<'a> {
+    pub rows: usize,
+    pub columns: Vec<WriteColumn<'a>>,
+    /// Labels, formats, notes and the rest. The writer adds what it knows
+    /// from the columns: levels, time zones and missing-letter columns.
+    pub profile: Profile,
+}
+
+/// How to write. The defaults are plan 0018's.
+#[derive(Debug, Clone, Copy)]
+pub struct WriteOptions {
+    pub compression: Compression,
+    /// The codec's level; `None` for its default (zstd 3, gzip 6).
+    pub compression_level: Option<i32>,
+    /// Rows per row group; `None` sizes them to about 64 MiB of values,
+    /// at most 262,144 rows.
+    pub row_group_rows: Option<usize>,
+    /// Write `.a` to `.z` into missing-letter columns; with `false` they
+    /// are plain nulls.
+    pub missing_letters: bool,
+    /// Worker threads: 0 for the default, 1 for none.
+    pub threads: usize,
+    /// About this many uncompressed bytes per data page.
+    #[doc(hidden)]
+    pub page_bytes: usize,
+    /// About this many uncompressed bytes per row group.
+    #[doc(hidden)]
+    pub row_group_bytes: usize,
+    #[doc(hidden)]
+    pub row_group_max_rows: usize,
+    /// A dictionary stops growing at this size.
+    #[doc(hidden)]
+    pub dictionary_bytes: usize,
+    /// Write offset indexes (for measuring reads without them).
+    #[doc(hidden)]
+    pub offset_index: bool,
+    /// Row groups of fewer bytes than this are encoded on one thread.
+    #[doc(hidden)]
+    pub parallel_bytes: usize,
+}
+
+impl Default for WriteOptions {
+    fn default() -> Self {
+        let small = std::env::var("DTA_TEST_SMALL_CHUNKS").is_ok_and(|v| v == "1");
+        WriteOptions {
+            compression: if cfg!(target_arch = "wasm32") {
+                Compression::Snappy
+            } else {
+                Compression::Zstd
+            },
+            compression_level: None,
+            row_group_rows: None,
+            missing_letters: true,
+            threads: 0,
+            page_bytes: 1 << 20,
+            row_group_bytes: 64 << 20,
+            row_group_max_rows: 262_144,
+            dictionary_bytes: 1 << 20,
+            offset_index: true,
+            parallel_bytes: if small { 0 } else { 16 << 20 },
+        }
+    }
+}
+
+/// What a write produced.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WriteReport {
+    pub bytes: u64,
+    pub row_groups: usize,
+    /// Each data column with `.a` to `.z`, and its missing-letter column.
+    pub missing_letters: Vec<(String, String)>,
+}
+
+/// The library and version, for the footer's `created_by`.
+pub const CREATED_BY: &str = concat!("dta-parquet version ", env!("CARGO_PKG_VERSION"));
+
+/// Write `table` to `out` as a Parquet file.
+pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<WriteReport> {
+    let level = options.compression.level(options.compression_level)?;
+    let mut names = std::collections::HashSet::with_capacity(table.columns.len());
+    for c in &table.columns {
+        if !names.insert(c.name.as_str()) {
+            return Err(Error::invalid(format!(
+                "two columns are named \"{}\"",
+                c.name
+            )));
+        }
+        if let Values::Categorical { levels, .. } = &c.values {
+            let mut seen = std::collections::HashSet::with_capacity(levels.len());
+            if let Some(l) = levels.iter().find(|l| !seen.insert(l.as_str())) {
+                return Err(Error::invalid(format!(
+                    "column \"{}\" has the level \"{l}\" twice",
+                    c.name
+                )));
+            }
+            if u32::try_from(levels.len()).is_err() {
+                return Err(
+                    Error::invalid(format!("column \"{}\" has too many levels", c.name))
+                        .of(ErrorKind::TooLarge),
+                );
+            }
+        }
+    }
+    let threads = dta::threads::resolve(options.threads);
+    let scratch: Vec<Mutex<Scratch>> = (0..threads.max(1))
+        .map(|_| Mutex::new(Scratch::default()))
+        .collect();
+
+    // Which columns hold `.a` to `.z`, found before anything is written
+    // because the schema lists their letter columns.
+    let has_letters: Vec<bool> = if options.missing_letters {
+        let scan = |k: usize, _: &mut Scratch| scan_letters(&table.columns[k], table.rows);
+        let big = table.rows.saturating_mul(table.columns.len() * 8) >= options.parallel_bytes;
+        parallel(
+            if big { threads } else { 1 },
+            table.columns.len(),
+            &scratch,
+            &scan,
+        )
+        .into_iter()
+        .collect::<Result<_>>()?
+    } else {
+        vec![false; table.columns.len()]
+    };
+    let mut letter_names = Vec::new();
+    let mut taken: std::collections::HashSet<String> =
+        table.columns.iter().map(|c| c.name.clone()).collect();
+    let mut letters_of: Vec<Option<usize>> = vec![None; table.columns.len()];
+    for (k, c) in table.columns.iter().enumerate() {
+        if has_letters[k] {
+            let mut name = format!("{}__missing", c.name);
+            let mut n = 1;
+            while taken.contains(&name) {
+                name = format!("{}__missing_{n}", c.name);
+                n += 1;
+            }
+            taken.insert(name.clone());
+            letters_of[k] = Some(letter_names.len());
+            letter_names.push((c.name.clone(), name));
+        }
+    }
+
+    let profile = profile_for(table, &letters_of, &letter_names)?;
+    let schema = schema_for(table, &letter_names);
+    let arrow_schema = arrow_schema_for(table, &letter_names);
+
+    let mut out = Counter { inner: out, at: 0 };
+    out.put(b"PAR1")?;
+    let mut groups = Vec::new();
+    let mut indexes: Vec<Vec<OffsetIndex>> = Vec::new();
+    for (g, rows) in row_groups(table, options).into_iter().enumerate() {
+        let n_rows = rows.len();
+        let bytes: usize = table
+            .columns
+            .iter()
+            .map(|c| c.values.width() * n_rows)
+            .sum();
+        let job = |k: usize, s: &mut Scratch| {
+            let enc = Encoder {
+                options,
+                compression: options.compression,
+                level,
+            };
+            enc.column(&table.columns[k], rows.clone(), letters_of[k].is_some(), s)
+        };
+        let threads_here = if bytes >= options.parallel_bytes {
+            threads
+        } else {
+            1
+        };
+        let encoded: Vec<Encoded> = parallel(threads_here, table.columns.len(), &scratch, &job)
+            .into_iter()
+            .collect::<Result<_>>()?;
+        let mut chunks = Vec::with_capacity(schema.len() - 1);
+        let mut group_index = Vec::with_capacity(schema.len() - 1);
+        let start = out.at;
+        let mut letter_chunks = Vec::new();
+        let (mut total, mut compressed) = (0i64, 0i64);
+        for (k, mut e) in encoded.into_iter().enumerate() {
+            if let Some(l) = e.letters.take() {
+                letter_chunks.push((
+                    letter_names[letters_of[k].expect("has letters")].1.clone(),
+                    *l,
+                ));
+            }
+            let (cc, oi) = put_chunk(
+                &mut out,
+                &table.columns[k].name,
+                e,
+                options.compression.codec(),
+            )?;
+            total += cc.meta.as_ref().map_or(0, |m| m.total_uncompressed_size);
+            compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
+            chunks.push(cc);
+            group_index.push(oi);
+        }
+        for (name, e) in letter_chunks {
+            let (cc, oi) = put_chunk(&mut out, &name, e, options.compression.codec())?;
+            total += cc.meta.as_ref().map_or(0, |m| m.total_uncompressed_size);
+            compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
+            chunks.push(cc);
+            group_index.push(oi);
+        }
+        groups.push(RowGroup {
+            columns: chunks,
+            total_byte_size: total,
+            num_rows: n_rows as i64,
+            file_offset: Some(start as i64),
+            total_compressed_size: Some(compressed),
+            ordinal: i16::try_from(g).ok(),
+        });
+        indexes.push(group_index);
+    }
+    if options.offset_index {
+        for (g, group_index) in groups.iter_mut().zip(indexes) {
+            for (cc, oi) in g.columns.iter_mut().zip(group_index) {
+                let bytes = oi.to_bytes();
+                cc.offset_index = Some((out.at as i64, bytes.len() as i32));
+                out.put(&bytes)?;
+            }
+        }
+    }
+    let leaves = schema.len() - 1;
+    let meta = FileMetaData {
+        version: 2,
+        schema,
+        num_rows: table.rows as i64,
+        row_groups: groups,
+        key_value: vec![
+            KeyValue {
+                key: profile::KEY.into(),
+                value: Some(profile.into_bytes()),
+            },
+            KeyValue {
+                key: "ARROW:schema".into(),
+                value: Some(arrow_schema.into_bytes()),
+            },
+        ],
+        created_by: Some(CREATED_BY.into()),
+        column_orders: Some(vec![ColumnOrder::TypeDefined; leaves]),
+        encrypted: false,
+    };
+    let footer = meta.to_bytes();
+    let row_groups = meta.row_groups.len();
+    out.put(&footer)?;
+    out.put(&(footer.len() as u32).to_le_bytes())?;
+    out.put(b"PAR1")?;
+    out.inner.flush()?;
+    Ok(WriteReport {
+        bytes: out.at,
+        row_groups,
+        missing_letters: letter_names,
+    })
+}
+
+/// Counts the bytes written, for the offsets in the footer.
+struct Counter<W: Write> {
+    inner: W,
+    at: u64,
+}
+
+impl<W: Write> Counter<W> {
+    fn put(&mut self, bytes: &[u8]) -> Result<()> {
+        self.inner.write_all(bytes)?;
+        self.at += bytes.len() as u64;
+        Ok(())
+    }
+}
+
+/// Write one encoded chunk; return its footer entry and offset index.
+fn put_chunk<W: Write>(
+    out: &mut Counter<W>,
+    name: &str,
+    e: Encoded,
+    codec: Codec,
+) -> Result<(ColumnChunk, OffsetIndex)> {
+    let start = out.at;
+    out.put(&e.dict)?;
+    let data_start = out.at;
+    out.put(&e.data)?;
+    let pages = e
+        .pages
+        .iter()
+        .map(|p| PageLocation {
+            offset: (data_start + p.offset) as i64,
+            compressed_page_size: p.len,
+            first_row_index: p.first_row as i64,
+        })
+        .collect();
+    let meta = ColumnMetaData {
+        physical: e.physical,
+        encodings: e.encodings,
+        path: vec![name.to_string()],
+        codec,
+        num_values: e.rows as i64,
+        total_uncompressed_size: e.uncompressed as i64,
+        total_compressed_size: (e.dict.len() + e.data.len()) as i64,
+        data_page_offset: data_start as i64,
+        dictionary_page_offset: (!e.dict.is_empty()).then_some(start as i64),
+        statistics: Some(e.stats),
+    };
+    Ok((
+        ColumnChunk {
+            file_path: None,
+            meta: Some(meta),
+            offset_index: None,
+            encrypted: false,
+        },
+        OffsetIndex { pages },
+    ))
+}
+
+/// Whether a numeric column holds any of `.a` to `.z`; a code past `.z`
+/// is an error.
+fn scan_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
+    fn scan<T: Default + Copy>(fill: &Fill<T>, rows: usize, name: &str) -> Result<bool> {
+        let mut values = [T::default(); BLOCK];
+        let mut codes = vec![0u8; BLOCK];
+        let mut found = false;
+        for first in (0..rows).step_by(BLOCK) {
+            let n = BLOCK.min(rows - first);
+            codes[..n].fill(0);
+            fill(first, &mut values[..n], &mut codes[..n]);
+            for (i, &c) in codes[..n].iter().enumerate() {
+                if c > missing::LAST {
+                    return Err(bad_code(name, first + i, c));
+                }
+                found |= c > missing::SYSTEM;
+            }
+        }
+        Ok(found)
+    }
+    match &c.values {
+        Values::Int8(f) | Values::Int16(f) | Values::Int32(f) | Values::Date(f) => {
+            scan(f.as_ref(), rows, &c.name)
+        }
+        Values::Int64(f) | Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, &c.name),
+        Values::Float(f) => scan(f.as_ref(), rows, &c.name),
+        Values::Double(f) => scan(f.as_ref(), rows, &c.name),
+        _ => Ok(false),
+    }
+}
+
+fn bad_code(name: &str, row: usize, code: u8) -> Error {
+    Error::invalid(format!(
+        "column \"{name}\": row {} has missing code {code}, which is not one of . and .a to .z",
+        row + 1
+    ))
+}
+
+fn profile_for(
+    table: &Table,
+    letters_of: &[Option<usize>],
+    letter_names: &[(String, String)],
+) -> Result<String> {
+    let mut p = table.profile.clone();
+    for (k, c) in table.columns.iter().enumerate() {
+        let entry = p.column_mut(&c.name);
+        entry.missing_letters = letters_of[k].map(|l| letter_names[l].1.clone());
+        match &c.values {
+            Values::Categorical {
+                levels, ordered, ..
+            } => {
+                entry.categorical = Some(Categorical {
+                    levels: levels.clone(),
+                    ordered: *ordered,
+                })
+            }
+            Values::Timestamp { utc, zone, .. } => {
+                entry.tz = match (zone, utc) {
+                    (Some(z), _) => Some(z.clone()),
+                    // An instant without a zone.
+                    (None, true) => Some(String::new()),
+                    (None, false) => None,
+                }
+            }
+            _ => {}
+        }
+    }
+    p.to_json()
+}
+
+fn schema_for(table: &Table, letter_names: &[(String, String)]) -> Vec<SchemaElement> {
+    let mut schema = Vec::with_capacity(table.columns.len() + letter_names.len() + 1);
+    schema.push(SchemaElement {
+        name: "schema".into(),
+        num_children: Some((table.columns.len() + letter_names.len()) as i32),
+        ..Default::default()
+    });
+    let int = |bits| Some(LogicalType::Integer { bits, signed: true });
+    for c in &table.columns {
+        let (physical, logical, conv) = match &c.values {
+            Values::Int8(_) => (PhysicalType::Int32, int(8), Some(converted::INT_8)),
+            Values::Int16(_) => (PhysicalType::Int32, int(16), Some(converted::INT_16)),
+            Values::Int32(_) => (PhysicalType::Int32, None, None),
+            Values::Int64(_) => (PhysicalType::Int64, None, None),
+            Values::Float(_) => (PhysicalType::Float, None, None),
+            Values::Double(_) => (PhysicalType::Double, None, None),
+            Values::Bool(_) => (PhysicalType::Boolean, None, None),
+            Values::Date(_) => (
+                PhysicalType::Int32,
+                Some(LogicalType::Date),
+                Some(converted::DATE),
+            ),
+            Values::Timestamp { unit, utc, .. } => {
+                // The converted types mean instants in milliseconds or
+                // microseconds only.
+                let conv = match (utc, unit) {
+                    (true, TimeUnit::Millis) => Some(converted::TIMESTAMP_MILLIS),
+                    (true, TimeUnit::Micros) => Some(converted::TIMESTAMP_MICROS),
+                    _ => None,
+                };
+                (
+                    PhysicalType::Int64,
+                    Some(LogicalType::Timestamp {
+                        utc: *utc,
+                        unit: Some(*unit),
+                    }),
+                    conv,
+                )
+            }
+            Values::Text(_) | Values::Categorical { .. } => (
+                PhysicalType::ByteArray,
+                Some(LogicalType::String),
+                Some(converted::UTF8),
+            ),
+            Values::Binary(_) => (PhysicalType::ByteArray, None, None),
+        };
+        schema.push(SchemaElement {
+            name: c.name.clone(),
+            physical: Some(physical),
+            repetition: Some(Repetition::Optional),
+            logical,
+            converted: conv,
+            ..Default::default()
+        });
+    }
+    for (_, name) in letter_names {
+        schema.push(SchemaElement {
+            name: name.clone(),
+            physical: Some(PhysicalType::ByteArray),
+            repetition: Some(Repetition::Optional),
+            logical: Some(LogicalType::String),
+            converted: Some(converted::UTF8),
+            ..Default::default()
+        });
+    }
+    schema
+}
+
+fn arrow_schema_for(table: &Table, letter_names: &[(String, String)]) -> String {
+    let mut fields: Vec<(String, ArrowType)> = table
+        .columns
+        .iter()
+        .map(|c| {
+            let ty = match &c.values {
+                Values::Int8(_) => ArrowType::Int { bits: 8 },
+                Values::Int16(_) => ArrowType::Int { bits: 16 },
+                Values::Int32(_) => ArrowType::Int { bits: 32 },
+                Values::Int64(_) => ArrowType::Int { bits: 64 },
+                Values::Float(_) => ArrowType::Float32,
+                Values::Double(_) => ArrowType::Float64,
+                Values::Bool(_) => ArrowType::Bool,
+                Values::Date(_) => ArrowType::Date32,
+                Values::Timestamp {
+                    unit, utc, zone, ..
+                } => ArrowType::Timestamp {
+                    unit: *unit,
+                    zone: match (zone, utc) {
+                        (Some(z), _) => Some(z.clone()),
+                        (None, true) => Some("UTC".into()),
+                        (None, false) => None,
+                    },
+                },
+                Values::Text(_) => ArrowType::Utf8,
+                Values::Binary(_) => ArrowType::Binary,
+                Values::Categorical { ordered, .. } => ArrowType::Dictionary { ordered: *ordered },
+            };
+            (c.name.clone(), ty)
+        })
+        .collect();
+    fields.extend(
+        letter_names
+            .iter()
+            .map(|(_, n)| (n.clone(), ArrowType::Utf8)),
+    );
+    arrow::schema_entry(&fields)
+}
+
+/// The rows of each row group.
+fn row_groups(table: &Table, options: &WriteOptions) -> Vec<Range<usize>> {
+    let rows = table.rows;
+    if let Some(n) = options.row_group_rows {
+        let n = n.max(1);
+        return (0..rows).step_by(n).map(|s| s..(s + n).min(rows)).collect();
+    }
+    let max_rows = options.row_group_max_rows.max(1);
+    let fixed: usize = table.columns.iter().map(|c| c.values.width()).sum();
+    let texts: Vec<&GetBytes> = table
+        .columns
+        .iter()
+        .filter_map(|c| match &c.values {
+            Values::Text(g) | Values::Binary(g) => Some(g.as_ref()),
+            _ => None,
+        })
+        .collect();
+    if texts.is_empty() {
+        let n = (options.row_group_bytes / fixed.max(1)).clamp(1, max_rows);
+        return (0..rows).step_by(n).map(|s| s..(s + n).min(rows)).collect();
+    }
+    // Text widths vary, so add them up row by row.
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut bytes = 0usize;
+    for r in 0..rows {
+        bytes += fixed
+            + texts
+                .iter()
+                .map(|g| g(r).map_or(0, <[u8]>::len))
+                .sum::<usize>();
+        if r + 1 - start >= max_rows || bytes >= options.row_group_bytes {
+            out.push(start..r + 1);
+            start = r + 1;
+            bytes = 0;
+        }
+    }
+    if start < rows {
+        out.push(start..rows);
+    }
+    out
+}
+
+/// Run `f(k)` for `k` in `0..n` on up to `threads` threads; results in
+/// order. Each thread has its own scratch, kept between calls.
+fn parallel<T: Send>(
+    threads: usize,
+    n: usize,
+    scratch: &[Mutex<Scratch>],
+    f: &(dyn Fn(usize, &mut Scratch) -> Result<T> + Sync),
+) -> Vec<Result<T>> {
+    let lock = |k: usize| scratch[k].lock().unwrap_or_else(PoisonError::into_inner);
+    if threads <= 1 || n <= 1 {
+        let mut s = lock(0);
+        return (0..n).map(|k| f(k, &mut s)).collect();
+    }
+    let results: Vec<Mutex<Option<Result<T>>>> = (0..n).map(|_| Mutex::new(None)).collect();
+    let next = AtomicUsize::new(0);
+    let work = |w: usize| {
+        let mut s = lock(w);
+        loop {
+            let k = next.fetch_add(1, Ordering::Relaxed);
+            if k >= n {
+                break;
+            }
+            let r = catch_unwind(AssertUnwindSafe(|| f(k, &mut s))).unwrap_or_else(|p| {
+                Err(
+                    Error::new(format!("a write thread panicked: {}", panic_text(&*p)))
+                        .of(ErrorKind::Internal),
+                )
+            });
+            *results[k].lock().unwrap_or_else(PoisonError::into_inner) = Some(r);
+        }
+    };
+    let work = &work;
+    std::thread::scope(|scope| {
+        let mut started = 0;
+        for w in 0..threads.min(n).min(scratch.len()) {
+            if std::thread::Builder::new()
+                .spawn_scoped(scope, move || work(w))
+                .is_ok()
+            {
+                started += 1;
+            }
+        }
+        if started == 0 {
+            work(0);
+        }
+    });
+    results
+        .into_iter()
+        .map(|m| {
+            m.into_inner()
+                .unwrap_or_else(PoisonError::into_inner)
+                .unwrap_or_else(|| {
+                    Err(Error::new("a column was not encoded").of(ErrorKind::Internal))
+                })
+        })
+        .collect()
+}
+
+fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<&str>()
+        .map(|s| s.to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "unknown panic".into())
+}
+
+// ---- encoding ----
+
+/// A thread's reused buffers.
+#[derive(Default)]
+struct Scratch {
+    codecs: Codecs,
+    page: Vec<u8>,
+    packed: Vec<u8>,
+    levels: Vec<u8>,
+}
+
+/// A page's place in its chunk's data pages.
+struct Page {
+    offset: u64,
+    len: i32,
+    first_row: u64,
+}
+
+/// One column chunk, encoded.
+struct Encoded {
+    physical: PhysicalType,
+    /// The dictionary page, header included, or nothing.
+    dict: Vec<u8>,
+    /// The data pages, headers included.
+    data: Vec<u8>,
+    pages: Vec<Page>,
+    uncompressed: usize,
+    encodings: Vec<Encoding>,
+    stats: Statistics,
+    rows: usize,
+    /// The chunk of the column's missing-letter column.
+    letters: Option<Box<Encoded>>,
+}
+
+struct Encoder<'o> {
+    options: &'o WriteOptions,
+    compression: Compression,
+    level: i32,
+}
+
+/// The pages of a chunk as they are written.
+struct Pages {
+    physical: PhysicalType,
+    dict: Vec<u8>,
+    data: Vec<u8>,
+    pages: Vec<Page>,
+    uncompressed: usize,
+    encodings: Vec<Encoding>,
+}
+
+impl Pages {
+    fn new(physical: PhysicalType) -> Self {
+        Pages {
+            physical,
+            dict: Vec::new(),
+            data: Vec::new(),
+            pages: Vec::new(),
+            uncompressed: 0,
+            encodings: vec![Encoding::Rle],
+        }
+    }
+
+    fn uses(&mut self, e: Encoding) {
+        if !self.encodings.contains(&e) {
+            self.encodings.push(e);
+        }
+    }
+
+    fn finish(self, stats: Statistics, rows: usize) -> Encoded {
+        Encoded {
+            physical: self.physical,
+            dict: self.dict,
+            data: self.data,
+            pages: self.pages,
+            uncompressed: self.uncompressed,
+            encodings: self.encodings,
+            stats,
+            rows,
+            letters: None,
+        }
+    }
+}
+
+impl Encoder<'_> {
+    /// Compress `s.page` and append it with its header to `out`; returns
+    /// the header and page's length.
+    fn put_page(
+        &self,
+        s: &mut Scratch,
+        mut header: PageHeader,
+        out: &mut Vec<u8>,
+        uncompressed: &mut usize,
+    ) -> Result<i32> {
+        let Scratch {
+            codecs,
+            page,
+            packed,
+            ..
+        } = s;
+        packed.clear();
+        codecs.compress(self.compression, self.level, page, packed)?;
+        let too_big = || {
+            Error::invalid(format!(
+                "a page of {} bytes is larger than Parquet allows",
+                page.len()
+            ))
+            .of(ErrorKind::TooLarge)
+        };
+        header.uncompressed_page_size = i32::try_from(page.len()).map_err(|_| too_big())?;
+        header.compressed_page_size = i32::try_from(packed.len()).map_err(|_| too_big())?;
+        let start = out.len();
+        header.write(out);
+        let header_len = out.len() - start;
+        out.extend_from_slice(packed);
+        *uncompressed += header_len + page.len();
+        i32::try_from(out.len() - start).map_err(|_| too_big())
+    }
+
+    /// Write a data page of `rows` rows whose levels are `s.levels` and
+    /// whose encoded values are `values`.
+    fn data_page(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        first_row: u64,
+        encoding: Encoding,
+        values: &[u8],
+    ) -> Result<()> {
+        let rows = s.levels.len();
+        s.page.clear();
+        s.page.extend_from_slice(&[0; 4]);
+        rle::encode(&s.levels, 1, &mut s.page);
+        let len = (s.page.len() - 4) as u32;
+        s.page[..4].copy_from_slice(&len.to_le_bytes());
+        s.page.extend_from_slice(values);
+        let header = PageHeader {
+            kind: PageType::Data,
+            uncompressed_page_size: 0,
+            compressed_page_size: 0,
+            data: Some(DataPageHeader {
+                num_values: i32::try_from(rows).map_err(|_| {
+                    Error::invalid("too many rows in a page").of(ErrorKind::TooLarge)
+                })?,
+                encoding,
+                definition_level_encoding: Encoding::Rle,
+                repetition_level_encoding: Encoding::Rle,
+            }),
+            dictionary: None,
+            data_v2: None,
+        };
+        let offset = p.data.len() as u64;
+        let len = self.put_page(s, header, &mut p.data, &mut p.uncompressed)?;
+        p.pages.push(Page {
+            offset,
+            len,
+            first_row,
+        });
+        p.uses(encoding);
+        s.levels.clear();
+        Ok(())
+    }
+
+    fn dictionary_page(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        count: usize,
+        values: &[u8],
+    ) -> Result<()> {
+        s.page.clear();
+        s.page.extend_from_slice(values);
+        let header = PageHeader {
+            kind: PageType::Dictionary,
+            uncompressed_page_size: 0,
+            compressed_page_size: 0,
+            data: None,
+            dictionary: Some(DictionaryPageHeader {
+                num_values: count as i32,
+                encoding: Encoding::Plain,
+            }),
+            data_v2: None,
+        };
+        let mut dict = Vec::new();
+        self.put_page(s, header, &mut dict, &mut p.uncompressed)?;
+        p.dict = dict;
+        p.uses(Encoding::Plain);
+        Ok(())
+    }
+
+    fn column(
+        &self,
+        c: &WriteColumn,
+        rows: Range<usize>,
+        letters: bool,
+        s: &mut Scratch,
+    ) -> Result<Encoded> {
+        let mut letter_codes = if letters {
+            vec![0u8; rows.len()]
+        } else {
+            Vec::new()
+        };
+        let name = &c.name;
+        let lc = letters.then_some(&mut letter_codes);
+        let mut e = match &c.values {
+            Values::Int8(f) => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Int32,
+                Some(8),
+            )?,
+            Values::Int16(f) => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Int32,
+                Some(16),
+            )?,
+            Values::Int32(f) | Values::Date(f) => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Int32,
+                None,
+            )?,
+            Values::Int64(f) | Values::Timestamp { fill: f, .. } => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Int64,
+                None,
+            )?,
+            Values::Float(f) => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Float,
+                None,
+            )?,
+            Values::Double(f) => self.numbers(
+                f.as_ref(),
+                rows.clone(),
+                s,
+                lc,
+                name,
+                PhysicalType::Double,
+                None,
+            )?,
+            Values::Bool(f) => self.booleans(f.as_ref(), rows.clone(), s, name)?,
+            Values::Text(g) => self.texts(g.as_ref(), rows.clone(), s, name, true)?,
+            Values::Binary(g) => self.texts(g.as_ref(), rows.clone(), s, name, false)?,
+            Values::Categorical { levels, codes, .. } => {
+                self.categorical(levels, codes.as_ref(), rows.clone(), s, name)?
+            }
+        };
+        if letters {
+            e.letters = Some(Box::new(self.letters(&letter_codes, s)?));
+        }
+        Ok(e)
+    }
+
+    /// A numeric chunk: dictionary-encoded while that pays (plan 0018),
+    /// else PLAIN.
+    #[allow(clippy::too_many_arguments)]
+    fn numbers<T: Number>(
+        &self,
+        fill: &Fill<T>,
+        rows: Range<usize>,
+        s: &mut Scratch,
+        mut letters: Option<&mut Vec<u8>>,
+        name: &str,
+        physical: PhysicalType,
+        bits: Option<u32>,
+    ) -> Result<Encoded> {
+        let mut p = Pages::new(physical);
+        let mut values = [T::default(); BLOCK];
+        let mut codes = vec![0u8; BLOCK];
+        let mut dict: Option<Dictionary<u64, T>> = Some(Dictionary::default());
+        let mut plain = Vec::new();
+        let mut stats = Stats::<T>::default();
+        let mut page_first = 0usize;
+        s.levels.clear();
+        for first in rows.clone().step_by(BLOCK) {
+            let n = BLOCK.min(rows.end - first);
+            codes[..n].fill(0);
+            fill(first, &mut values[..n], &mut codes[..n]);
+            for i in 0..n {
+                let row = first + i - rows.start;
+                let code = codes[i];
+                if code == 0 {
+                    let v = values[i];
+                    if let Some(bits) = bits {
+                        if !v.fits(bits) {
+                            return Err(Error::invalid(format!("column \"{name}\": the value {v:?} in row {} does not fit in {bits} bits", first + i + 1)));
+                        }
+                    }
+                    stats.add(v);
+                    s.levels.push(1);
+                    match &mut dict {
+                        Some(d) => {
+                            if d.add(v.key(), v, T::WIDTH)
+                                && d.bytes >= self.options.dictionary_bytes
+                            {
+                                // The dictionary is full: this page ends
+                                // here, and the rest of the chunk is PLAIN.
+                                self.flush_numbers(s, &mut p, &mut dict, &mut plain, page_first)?;
+                                page_first = row + 1;
+                                if dict.is_some() {
+                                    self.numbers_dictionary(s, &mut p, &mut dict)?;
+                                }
+                            }
+                        }
+                        None => v.put(&mut plain),
+                    }
+                } else {
+                    if code > missing::LAST {
+                        return Err(bad_code(name, first + i, code));
+                    }
+                    stats.nulls += 1;
+                    s.levels.push(0);
+                    if let Some(l) = letters.as_deref_mut() {
+                        if code > missing::SYSTEM {
+                            l[row] = code;
+                        }
+                    }
+                }
+                let size = match &dict {
+                    Some(d) => d.indices.len() * width(d.values.len()) as usize / 8,
+                    None => plain.len(),
+                };
+                if size + s.levels.len() / 8 >= self.options.page_bytes {
+                    self.flush_numbers(s, &mut p, &mut dict, &mut plain, page_first)?;
+                    page_first = row + 1;
+                }
+            }
+        }
+        if !s.levels.is_empty() || p.pages.is_empty() {
+            self.flush_numbers(s, &mut p, &mut dict, &mut plain, page_first)?;
+        }
+        if dict.is_some() {
+            self.numbers_dictionary(s, &mut p, &mut dict)?;
+        }
+        Ok(p.finish(stats.finish(), rows.len()))
+    }
+
+    /// Write the numbers' dictionary page, once.
+    fn numbers_dictionary<T: Number>(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        dict: &mut Option<Dictionary<u64, T>>,
+    ) -> Result<()> {
+        let Some(d) = dict.take() else { return Ok(()) };
+        if !p.dict.is_empty() {
+            return Ok(());
+        }
+        let mut bytes = Vec::with_capacity(d.values.len() * T::WIDTH);
+        for v in &d.values {
+            v.put(&mut bytes);
+        }
+        self.dictionary_page(s, p, d.values.len(), &bytes)
+    }
+
+    /// Write the current page. On the first page, a dictionary that is
+    /// too large, or not smaller than 60% of the values it replaces, is
+    /// dropped and the chunk is PLAIN from the start.
+    fn flush_numbers<T: Number>(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        dict: &mut Option<Dictionary<u64, T>>,
+        plain: &mut Vec<u8>,
+        first_row: usize,
+    ) -> Result<()> {
+        if let Some(d) = dict {
+            let first_page = p.pages.is_empty();
+            if first_page && !d.pays(T::WIDTH * d.indices.len(), self.options.dictionary_bytes) {
+                plain.clear();
+                for &i in &d.indices {
+                    d.values[i as usize].put(plain);
+                }
+                *dict = None;
+            } else {
+                let mut values = Vec::new();
+                d.encode_indices(&mut values);
+                self.data_page(s, p, first_row as u64, Encoding::RleDictionary, &values)?;
+                d.indices.clear();
+                if d.bytes >= self.options.dictionary_bytes {
+                    // Full: the dictionary page is written now with what it
+                    // has, and later pages are PLAIN.
+                    self.numbers_dictionary(s, p, dict)?;
+                }
+                return Ok(());
+            }
+        }
+        let values = std::mem::take(plain);
+        self.data_page(s, p, first_row as u64, Encoding::Plain, &values)?;
+        *plain = values;
+        plain.clear();
+        Ok(())
+    }
+
+    fn booleans(
+        &self,
+        fill: &Fill<u8>,
+        rows: Range<usize>,
+        s: &mut Scratch,
+        name: &str,
+    ) -> Result<Encoded> {
+        let mut p = Pages::new(PhysicalType::Boolean);
+        let mut values = vec![0u8; BLOCK];
+        let mut codes = vec![0u8; BLOCK];
+        let mut bits = Vec::new();
+        let (mut acc, mut n_bits) = (0u8, 0u32);
+        let mut stats = Stats::<u8>::default();
+        let mut page_first = 0;
+        s.levels.clear();
+        let flush = |s: &mut Scratch,
+                     p: &mut Pages,
+                     bits: &mut Vec<u8>,
+                     acc: &mut u8,
+                     n_bits: &mut u32,
+                     first: usize|
+         -> Result<()> {
+            if *n_bits > 0 {
+                bits.push(*acc);
+            }
+            self.data_page(s, p, first as u64, Encoding::Plain, bits)?;
+            bits.clear();
+            (*acc, *n_bits) = (0, 0);
+            Ok(())
+        };
+        for first in rows.clone().step_by(BLOCK) {
+            let n = BLOCK.min(rows.end - first);
+            codes[..n].fill(0);
+            fill(first, &mut values[..n], &mut codes[..n]);
+            for i in 0..n {
+                if codes[i] == 0 {
+                    let v = values[i];
+                    if v > 1 {
+                        return Err(Error::invalid(format!(
+                            "column \"{name}\": row {} holds {v}, not a boolean",
+                            first + i + 1
+                        )));
+                    }
+                    stats.add(v);
+                    s.levels.push(1);
+                    acc |= v << n_bits;
+                    n_bits += 1;
+                    if n_bits == 8 {
+                        bits.push(acc);
+                        (acc, n_bits) = (0, 0);
+                    }
+                } else {
+                    if codes[i] > missing::LAST {
+                        return Err(bad_code(name, first + i, codes[i]));
+                    }
+                    stats.nulls += 1;
+                    s.levels.push(0);
+                }
+                if bits.len() + s.levels.len() / 8 >= self.options.page_bytes {
+                    let row = first + i - rows.start;
+                    flush(s, &mut p, &mut bits, &mut acc, &mut n_bits, page_first)?;
+                    page_first = row + 1;
+                }
+            }
+        }
+        if !s.levels.is_empty() || p.pages.is_empty() {
+            flush(s, &mut p, &mut bits, &mut acc, &mut n_bits, page_first)?;
+        }
+        Ok(p.finish(stats.finish(), rows.len()))
+    }
+
+    fn texts<'a>(
+        &self,
+        get: &GetBytes<'a>,
+        rows: Range<usize>,
+        s: &mut Scratch,
+        name: &str,
+        utf8: bool,
+    ) -> Result<Encoded> {
+        let mut p = Pages::new(PhysicalType::ByteArray);
+        let mut dict: Option<Dictionary<&'a [u8], &'a [u8]>> = Some(Dictionary::default());
+        let mut plain = Vec::new();
+        let mut plain_size = 0usize;
+        let (mut min, mut max): (Option<&[u8]>, Option<&[u8]>) = (None, None);
+        let mut nulls = 0u64;
+        let mut page_first = 0;
+        s.levels.clear();
+        let check = |v: &[u8], row: usize| {
+            if utf8 && std::str::from_utf8(v).is_err() {
+                return Err(Error::invalid(format!(
+                    "column \"{name}\": the text in row {} is not UTF-8",
+                    row + 1
+                )));
+            }
+            Ok(())
+        };
+        for row in rows.clone() {
+            match get(row) {
+                Some(v) => {
+                    if u32::try_from(v.len()).is_err() {
+                        return Err(Error::invalid(format!(
+                            "column \"{name}\": the value in row {} is longer than Parquet allows",
+                            row + 1
+                        ))
+                        .of(ErrorKind::TooLarge));
+                    }
+                    s.levels.push(1);
+                    if min.is_none_or(|m| v < m) {
+                        min = Some(v);
+                    }
+                    if max.is_none_or(|m| v > m) {
+                        max = Some(v);
+                    }
+                    plain_size += 4 + v.len();
+                    match &mut dict {
+                        Some(d) => {
+                            if d.add(v, v, 4 + v.len()) {
+                                check(v, row)?;
+                                if d.bytes >= self.options.dictionary_bytes {
+                                    self.flush_texts(
+                                        s,
+                                        &mut p,
+                                        &mut dict,
+                                        &mut plain,
+                                        &mut plain_size,
+                                        page_first,
+                                    )?;
+                                    page_first = row - rows.start + 1;
+                                    self.texts_dictionary(s, &mut p, &mut dict)?;
+                                }
+                            }
+                        }
+                        None => {
+                            check(v, row)?;
+                            plain.extend_from_slice(&(v.len() as u32).to_le_bytes());
+                            plain.extend_from_slice(v);
+                        }
+                    }
+                }
+                None => {
+                    nulls += 1;
+                    s.levels.push(0);
+                }
+            }
+            let size = match &dict {
+                Some(d) => d.indices.len() * width(d.values.len()) as usize / 8,
+                None => plain.len(),
+            };
+            if size + s.levels.len() / 8 >= self.options.page_bytes {
+                self.flush_texts(
+                    s,
+                    &mut p,
+                    &mut dict,
+                    &mut plain,
+                    &mut plain_size,
+                    page_first,
+                )?;
+                page_first = row - rows.start + 1;
+            }
+        }
+        if !s.levels.is_empty() || p.pages.is_empty() {
+            self.flush_texts(
+                s,
+                &mut p,
+                &mut dict,
+                &mut plain,
+                &mut plain_size,
+                page_first,
+            )?;
+        }
+        self.texts_dictionary(s, &mut p, &mut dict)?;
+        let mut stats = Statistics {
+            null_count: Some(nulls as i64),
+            ..Default::default()
+        };
+        if let (Some(lo), Some(hi)) = (min, max) {
+            // Long values would bloat the footer.
+            if lo.len() <= 64 && hi.len() <= 64 {
+                stats.min_value = Some(lo.to_vec());
+                stats.max_value = Some(hi.to_vec());
+            }
+        }
+        Ok(p.finish(stats, rows.len()))
+    }
+
+    fn texts_dictionary(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        dict: &mut Option<Dictionary<&[u8], &[u8]>>,
+    ) -> Result<()> {
+        let Some(d) = dict.take() else { return Ok(()) };
+        if !p.dict.is_empty() {
+            return Ok(());
+        }
+        let mut bytes = Vec::with_capacity(d.bytes);
+        for v in &d.values {
+            bytes.extend_from_slice(&(v.len() as u32).to_le_bytes());
+            bytes.extend_from_slice(v);
+        }
+        self.dictionary_page(s, p, d.values.len(), &bytes)
+    }
+
+    fn flush_texts(
+        &self,
+        s: &mut Scratch,
+        p: &mut Pages,
+        dict: &mut Option<Dictionary<&[u8], &[u8]>>,
+        plain: &mut Vec<u8>,
+        plain_size: &mut usize,
+        first_row: usize,
+    ) -> Result<()> {
+        if let Some(d) = dict {
+            if p.pages.is_empty() && !d.pays(*plain_size, self.options.dictionary_bytes) {
+                // Every value was checked when it entered the dictionary.
+                plain.clear();
+                for &i in &d.indices {
+                    let v = d.values[i as usize];
+                    plain.extend_from_slice(&(v.len() as u32).to_le_bytes());
+                    plain.extend_from_slice(v);
+                }
+                *dict = None;
+            } else {
+                let mut values = Vec::new();
+                d.encode_indices(&mut values);
+                self.data_page(s, p, first_row as u64, Encoding::RleDictionary, &values)?;
+                d.indices.clear();
+                *plain_size = 0;
+                return Ok(());
+            }
+        }
+        let values = std::mem::take(plain);
+        self.data_page(s, p, first_row as u64, Encoding::Plain, &values)?;
+        *plain = values;
+        plain.clear();
+        *plain_size = 0;
+        Ok(())
+    }
+
+    /// Every level in the dictionary, in order, in every row group: the
+    /// codes are the level numbers.
+    fn categorical(
+        &self,
+        levels: &[String],
+        fill: &FillCodes,
+        rows: Range<usize>,
+        s: &mut Scratch,
+        name: &str,
+    ) -> Result<Encoded> {
+        let mut p = Pages::new(PhysicalType::ByteArray);
+        let w = width(levels.len());
+        let mut codes = vec![0i32; BLOCK];
+        let mut indices: Vec<u32> = Vec::new();
+        let mut used = vec![false; levels.len()];
+        let mut nulls = 0i64;
+        let mut page_first = 0;
+        s.levels.clear();
+        let mut dict_bytes = Vec::new();
+        for l in levels {
+            dict_bytes.extend_from_slice(&(l.len() as u32).to_le_bytes());
+            dict_bytes.extend_from_slice(l.as_bytes());
+        }
+        self.dictionary_page(s, &mut p, levels.len(), &dict_bytes)?;
+        let flush =
+            |s: &mut Scratch, p: &mut Pages, indices: &mut Vec<u32>, first: usize| -> Result<()> {
+                let mut values = vec![w];
+                rle::encode(indices, w, &mut values);
+                self.data_page(s, p, first as u64, Encoding::RleDictionary, &values)?;
+                indices.clear();
+                Ok(())
+            };
+        for first in rows.clone().step_by(BLOCK) {
+            let n = BLOCK.min(rows.end - first);
+            codes[..n].fill(-1);
+            fill(first, &mut codes[..n]);
+            for (i, &c) in codes[..n].iter().enumerate() {
+                if c < 0 {
+                    nulls += 1;
+                    s.levels.push(0);
+                } else {
+                    let c = c as usize;
+                    if c >= levels.len() {
+                        return Err(Error::invalid(format!(
+                            "column \"{name}\": row {} has level code {c}, but there are {} levels",
+                            first + i + 1,
+                            levels.len()
+                        )));
+                    }
+                    used[c] = true;
+                    indices.push(c as u32);
+                    s.levels.push(1);
+                }
+                if indices.len() * w as usize / 8 + s.levels.len() / 8 >= self.options.page_bytes {
+                    flush(s, &mut p, &mut indices, page_first)?;
+                    page_first = first + i - rows.start + 1;
+                }
+            }
+        }
+        if !s.levels.is_empty() || p.pages.is_empty() {
+            flush(s, &mut p, &mut indices, page_first)?;
+        }
+        let mut stats = Statistics {
+            null_count: Some(nulls),
+            ..Default::default()
+        };
+        let used: Vec<&[u8]> = levels
+            .iter()
+            .zip(&used)
+            .filter(|(_, &u)| u)
+            .map(|(l, _)| l.as_bytes())
+            .collect();
+        if let (Some(lo), Some(hi)) = (used.iter().min(), used.iter().max()) {
+            if lo.len() <= 64 && hi.len() <= 64 {
+                stats.min_value = Some(lo.to_vec());
+                stats.max_value = Some(hi.to_vec());
+            }
+        }
+        Ok(p.finish(stats, rows.len()))
+    }
+
+    /// A missing-letter chunk: ".a" to ".z" where `codes` has them, null
+    /// elsewhere; always dictionary-encoded.
+    fn letters(&self, codes: &[u8], s: &mut Scratch) -> Result<Encoded> {
+        let mut p = Pages::new(PhysicalType::ByteArray);
+        let mut present = [false; 28];
+        for &c in codes {
+            present[c as usize] = true;
+        }
+        let letters: Vec<u8> = (2..=missing::LAST)
+            .filter(|&c| present[c as usize])
+            .collect();
+        let mut index = [0u32; 28];
+        let mut dict_bytes = Vec::new();
+        for (i, &c) in letters.iter().enumerate() {
+            index[c as usize] = i as u32;
+            dict_bytes.extend_from_slice(&2u32.to_le_bytes());
+            dict_bytes.extend_from_slice(&[b'.', b'a' + c - 2]);
+        }
+        self.dictionary_page(s, &mut p, letters.len(), &dict_bytes)?;
+        let w = width(letters.len());
+        let mut indices = Vec::new();
+        let mut page_first = 0;
+        s.levels.clear();
+        let mut nulls = 0i64;
+        for (r, &c) in codes.iter().enumerate() {
+            if c > missing::SYSTEM {
+                indices.push(index[c as usize]);
+                s.levels.push(1);
+            } else {
+                nulls += 1;
+                s.levels.push(0);
+            }
+            if indices.len() * w as usize / 8 + s.levels.len() / 8 >= self.options.page_bytes
+                || r + 1 == codes.len()
+            {
+                let mut values = vec![w];
+                rle::encode(&indices, w, &mut values);
+                self.data_page(
+                    s,
+                    &mut p,
+                    page_first as u64,
+                    Encoding::RleDictionary,
+                    &values,
+                )?;
+                indices.clear();
+                page_first = r + 1;
+            }
+        }
+        if p.pages.is_empty() {
+            self.data_page(s, &mut p, 0, Encoding::RleDictionary, &[w])?;
+        }
+        let mut stats = Statistics {
+            null_count: Some(nulls),
+            ..Default::default()
+        };
+        if let (Some(&lo), Some(&hi)) = (letters.first(), letters.last()) {
+            stats.min_value = Some(vec![b'.', b'a' + lo - 2]);
+            stats.max_value = Some(vec![b'.', b'a' + hi - 2]);
+        }
+        Ok(p.finish(stats, codes.len()))
+    }
+}
+
+/// Bits for dictionary indices: at least 1, which every reader takes.
+fn width(entries: usize) -> u8 {
+    rle::width_for(entries.saturating_sub(1) as u32).max(1)
+}
+
+/// A dictionary being built: distinct values in order of first
+/// appearance, and the indices of the current page's values.
+struct Dictionary<K, V> {
+    map: HashMap<K, u32, BuildHasherDefault<Fx>>,
+    values: Vec<V>,
+    indices: Vec<u32>,
+    /// The dictionary page's size.
+    bytes: usize,
+}
+
+impl<K, V> Default for Dictionary<K, V> {
+    fn default() -> Self {
+        Dictionary {
+            map: HashMap::default(),
+            values: Vec::new(),
+            indices: Vec::new(),
+            bytes: 0,
+        }
+    }
+}
+
+impl<K: std::hash::Hash + Eq, V: Copy> Dictionary<K, V> {
+    /// Add a value; returns whether it was new.
+    #[inline]
+    fn add(&mut self, key: K, v: V, size: usize) -> bool {
+        let next = self.values.len() as u32;
+        let i = *self.map.entry(key).or_insert(next);
+        self.indices.push(i);
+        if i == next {
+            self.values.push(v);
+            self.bytes += size;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Plan 0018's rule for the first page: under the size limit and
+    /// smaller than 60% of the plain values it replaces.
+    fn pays(&self, plain: usize, limit: usize) -> bool {
+        self.bytes < limit && (self.bytes as f64) < 0.6 * plain as f64
+    }
+
+    fn encode_indices(&self, out: &mut Vec<u8>) {
+        let w = width(self.values.len());
+        out.push(w);
+        rle::encode(&self.indices, w, out);
+    }
+}
+
+/// A fast hash for dictionary keys (FxHash's mixing step); the keys are
+/// the caller's values, and a hash flood only slows the write.
+#[derive(Default)]
+struct Fx(u64);
+
+impl Hasher for Fx {
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        let mut chunks = bytes.chunks_exact(8);
+        for c in &mut chunks {
+            self.write_u64(u64::from_le_bytes(c.try_into().expect("8 bytes")));
+        }
+        let mut tail = [0u8; 8];
+        let rest = chunks.remainder();
+        tail[..rest.len()].copy_from_slice(rest);
+        self.write_u64(u64::from_le_bytes(tail));
+    }
+
+    #[inline]
+    fn write_u64(&mut self, v: u64) {
+        self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, v: usize) {
+        self.write_u64(v as u64);
+    }
+}
+
+/// A number type the writer encodes.
+trait Number: Copy + Default + Send + std::fmt::Debug + PartialOrd {
+    const WIDTH: usize;
+    fn put(self, out: &mut Vec<u8>);
+    /// The bits, for the dictionary: -0.0 and 0.0, and NaNs with
+    /// different payloads, stay distinct.
+    fn key(self) -> u64;
+    fn fits(self, bits: u32) -> bool;
+    fn is_nan(self) -> bool {
+        false
+    }
+    fn is_zero(self) -> bool {
+        false
+    }
+    fn negative_zero() -> Self {
+        Self::default()
+    }
+}
+
+impl Number for i32 {
+    const WIDTH: usize = 4;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        self as u32 as u64
+    }
+    fn fits(self, bits: u32) -> bool {
+        let lim = 1i32 << (bits - 1);
+        (-lim..lim).contains(&self)
+    }
+}
+
+impl Number for i64 {
+    const WIDTH: usize = 8;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        self as u64
+    }
+    fn fits(self, _: u32) -> bool {
+        true
+    }
+}
+
+impl Number for f32 {
+    const WIDTH: usize = 4;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        u64::from(self.to_bits())
+    }
+    fn fits(self, _: u32) -> bool {
+        true
+    }
+    fn is_nan(self) -> bool {
+        f32::is_nan(self)
+    }
+    fn is_zero(self) -> bool {
+        self == 0.0
+    }
+    fn negative_zero() -> Self {
+        -0.0
+    }
+}
+
+impl Number for f64 {
+    const WIDTH: usize = 8;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        self.to_bits()
+    }
+    fn fits(self, _: u32) -> bool {
+        true
+    }
+    fn is_nan(self) -> bool {
+        f64::is_nan(self)
+    }
+    fn is_zero(self) -> bool {
+        self == 0.0
+    }
+    fn negative_zero() -> Self {
+        -0.0
+    }
+}
+
+impl Number for u8 {
+    const WIDTH: usize = 1;
+    fn put(self, out: &mut Vec<u8>) {
+        out.push(self);
+    }
+    fn key(self) -> u64 {
+        u64::from(self)
+    }
+    fn fits(self, _: u32) -> bool {
+        true
+    }
+}
+
+/// Minimum, maximum and nulls of a chunk, by the format's rules for
+/// floating point: NaN is left out, and a zero minimum is written -0.0
+/// and a zero maximum +0.0.
+struct Stats<T> {
+    min: Option<T>,
+    max: Option<T>,
+    nulls: u64,
+}
+
+impl<T> Default for Stats<T> {
+    fn default() -> Self {
+        Stats {
+            min: None,
+            max: None,
+            nulls: 0,
+        }
+    }
+}
+
+impl<T: Number> Stats<T> {
+    #[inline]
+    fn add(&mut self, v: T) {
+        if v.is_nan() {
+            return;
+        }
+        if self.min.is_none_or(|m| v < m) {
+            self.min = Some(v);
+        }
+        if self.max.is_none_or(|m| v > m) {
+            self.max = Some(v);
+        }
+    }
+
+    fn finish(self) -> Statistics {
+        let mut s = Statistics {
+            null_count: Some(self.nulls as i64),
+            ..Default::default()
+        };
+        if let (Some(mut lo), Some(mut hi)) = (self.min, self.max) {
+            if lo.is_zero() {
+                lo = T::negative_zero();
+            }
+            if hi.is_zero() {
+                hi = T::default();
+            }
+            let (mut a, mut b) = (Vec::new(), Vec::new());
+            lo.put(&mut a);
+            hi.put(&mut b);
+            s.min_value = Some(a);
+            s.max_value = Some(b);
+        }
+        s
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn table_of(rows: usize, columns: Vec<WriteColumn<'_>>) -> Table<'_> {
+        Table {
+            rows,
+            columns,
+            profile: Profile::default(),
+        }
+    }
+
+    #[test]
+    fn row_groups_are_sized_by_bytes_and_rows() {
+        let opts = WriteOptions {
+            row_group_bytes: 1000,
+            row_group_max_rows: 30,
+            ..Default::default()
+        };
+        let doubles = |n| {
+            table_of(
+                n,
+                vec![WriteColumn {
+                    name: "x".into(),
+                    values: Values::Double(Values::by_row(|_| Some(1.0))),
+                }],
+            )
+        };
+        // 8 bytes a row: 125 rows of bytes, but at most 30 rows.
+        let g = row_groups(&doubles(100), &opts);
+        assert_eq!(g.len(), 4);
+        assert_eq!(g[3], 90..100);
+        let opts = WriteOptions {
+            row_group_bytes: 1000,
+            row_group_max_rows: 1000,
+            ..Default::default()
+        };
+        assert_eq!(
+            row_groups(&doubles(300), &opts),
+            vec![0..125, 125..250, 250..300]
+        );
+        // A row wider than the limit is a row group by itself.
+        let wide = table_of(
+            3,
+            vec![WriteColumn {
+                name: "t".into(),
+                values: Values::Text(Box::new(|_| Some(&[b'x'; 5000][..]))),
+            }],
+        );
+        assert_eq!(row_groups(&wide, &opts), vec![0..1, 1..2, 2..3]);
+        // Text adds its length.
+        let text = table_of(
+            10,
+            vec![WriteColumn {
+                name: "t".into(),
+                values: Values::Text(Box::new(|_| Some(&[b'x'; 196][..]))),
+            }],
+        );
+        assert_eq!(row_groups(&text, &opts), vec![0..5, 5..10]);
+        // Given rows win.
+        let opts = WriteOptions {
+            row_group_rows: Some(4),
+            ..Default::default()
+        };
+        assert_eq!(row_groups(&doubles(10), &opts), vec![0..4, 4..8, 8..10]);
+        assert!(row_groups(&doubles(0), &opts).is_empty());
+        let opts = WriteOptions {
+            row_group_rows: Some(0),
+            ..Default::default()
+        };
+        assert_eq!(row_groups(&doubles(2), &opts).len(), 2);
+    }
+
+    #[test]
+    fn float_statistics_follow_the_format() {
+        let mut s = Stats::<f64>::default();
+        for v in [f64::NAN, 3.0, 0.0, f64::NAN] {
+            s.add(v);
+        }
+        let st = s.finish();
+        // NaN is left out; the zero minimum is written -0.0.
+        assert_eq!(st.min_value, Some((-0.0f64).to_le_bytes().to_vec()));
+        assert_eq!(st.max_value, Some(3.0f64.to_le_bytes().to_vec()));
+        let mut s = Stats::<f64>::default();
+        s.add(-0.0);
+        s.add(0.0);
+        let st = s.finish();
+        assert_eq!(st.min_value, Some((-0.0f64).to_le_bytes().to_vec()));
+        assert_eq!(st.max_value, Some(0.0f64.to_le_bytes().to_vec()));
+        let mut s = Stats::<f32>::default();
+        s.add(f32::NAN);
+        s.nulls = 2;
+        let st = s.finish();
+        assert_eq!(
+            (st.min_value, st.max_value, st.null_count),
+            (None, None, Some(2))
+        );
+        let mut s = Stats::<f32>::default();
+        s.add(-2.5);
+        s.add(0.0);
+        let st = s.finish();
+        assert_eq!(st.max_value, Some(0.0f32.to_le_bytes().to_vec()));
+        assert_eq!(st.min_value, Some((-2.5f32).to_le_bytes().to_vec()));
+        let mut s = Stats::<i32>::default();
+        for v in [5, -7, 0] {
+            s.add(v);
+        }
+        let st = s.finish();
+        assert_eq!(st.min_value, Some((-7i32).to_le_bytes().to_vec()));
+        assert_eq!(st.max_value, Some(5i32.to_le_bytes().to_vec()));
+    }
+
+    #[test]
+    fn the_dictionary_rule() {
+        let mut d = Dictionary::<u64, i32>::default();
+        for v in [1, 2, 1, 1, 2] {
+            d.add(v as u64, v, 4);
+        }
+        assert_eq!(d.values, vec![1, 2]);
+        assert_eq!(d.indices, vec![0, 1, 0, 0, 1]);
+        // 8 bytes of dictionary against 20 of plain values: 40%.
+        assert!(d.pays(20, 1 << 20));
+        // Against 12: 67%, more than 60%.
+        assert!(!d.pays(12, 1 << 20));
+        assert!(!d.pays(1000, 8));
+    }
+}
