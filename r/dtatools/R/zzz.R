@@ -1,4 +1,4 @@
-# dtatools reads and writes through dtaparser's C functions (ADR 0016).
+# dtatools reads through dtaparser's C functions and writes with its save_dta (ADR 0016, ADR 0031).
 # The ABI number dtatools was built for; dtaparser's must match.
 DTAPARSER_ABI <- 1L
 

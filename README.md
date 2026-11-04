@@ -39,7 +39,7 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | language | package | docs | returns |
 |---|---|---|---|
 | R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
-| R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, and `tagged_na()` and `with_labels()` make them |
+| R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, `tagged_na()` and `with_labels()` make them, and `save_dta()` writes them, dates included |
 | Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |

@@ -415,7 +415,9 @@ save_dta(df, "out.dta")
 ```
 
 `save_dta(data, file)` writes any data frame as release 118 and returns
-`file` invisibly. A dibble from `read_dta` writes back with its values,
+`file` invisibly. It is dtaparser's; dtatools re-exports it. It goes by
+each column's type and attributes only, so it writes a dibble and
+dtaparser's plain tibble alike. A dibble from `read_dta` writes back with its values,
 missing codes, numeric storage types, variable labels, value labels, display
 formats, data label, notes, characteristics and sort order. The
 `timestamp` attribute is written as given; without one, the file gets
@@ -430,8 +432,10 @@ How columns map to storage types:
 | double | double |
 | logical | byte |
 | character | strN up to 2045 bytes, else strL; `NA` becomes `""` (Stata strings have no missing value) |
-| factor | an error: convert to character, or to numbers with labels |
-| anything else (`Date`, `POSIXct`, lists) | an error; `as_dibble()` converts `Date` |
+| factor | long codes 1 to k, labelled with the levels, as Stata's `encode` makes them |
+| `Date` | days since 1960 with format `%td`: long when every day is whole, else double |
+| `POSIXct` | milliseconds since 1960 as double, with format `%tc`; the UTC clock time |
+| anything else (`POSIXlt`, `difftime`, lists) | an error |
 
 `NA` in a numeric column is `.`; tagged `NA`s (dtatools' or haven's) are
 `.a` to `.z`. Strings must be UTF-8; `enc2utf8()` converts others.
@@ -588,7 +592,7 @@ so most code carries over. The differences:
 `as_dibble()` converts a haven data frame: `labelled` columns keep their
 labels, `Date` columns become `%td` numbers, and tagged `NA`s keep their
 letters. `save_dta()` also writes a plain haven data frame directly,
-except `Date` columns (convert them with `as_dibble()` first).
+`Date` columns as `%td`.
 
 ## Coming from readstata13
 
@@ -634,8 +638,24 @@ class(df$interviewed) # "Date"
 
 `read_dta()` takes the same `col_select`, `encoding`, `skip` and
 `n_max` arguments. Columns keep their variable label in `label`; the
-tibble keeps `label` and `notes`. dtaparser does not write files; use
-dtatools' `save_dta()`.
+tibble keeps `label` and `notes`. `save_dta()` writes the tibble back:
+`Date` as `%td`, `POSIXct` as `%tc`, labelled columns with their labels,
+and `.a` to `.z` with their letters. A display format other than the
+default, such as `%9.2f`, is kept in a column's `format` attribute and
+written back. Storage types are not kept, so integers come back long
+and doubles double:
+
+```r
+dtaparser::save_dta(df, "again.dta")
+again <- dtaparser::read_dta("again.dta")
+identical(again$interviewed, df$interviewed)  # TRUE
+dtaparser::na_tag(again$income)               # NA "d" NA NA "r" NA
+```
+
+A factor is written as codes 1 to k labelled with its levels. A factor
+from `read_dta(factors = TRUE)` therefore comes back with codes 1 to k,
+not the file's own codes, which that read did not keep; to write the
+file's codes, read with `factors = FALSE`, the default.
 
 Code that compares with labels, as in `region == "South"`, reads more
 clearly than code that compares with codes. For that, read with
@@ -914,9 +934,9 @@ pass `encoding = "latin1"` or `encoding = "utf-8"`.
 **`x > 0` is `TRUE` where `x` is missing.** That is Stata's rule, which
 dtatools follows on `dta_num` columns. Add `& !is_missing(x)`.
 
-**"save_dta: convert factors to character or numbers first".** Stata has
-no factor type. Use `as.character()`, or build a `dta_num` with
-`labels`.
+**A factor's codes changed after `save_dta`.** Stata has no factor
+type, so `save_dta` writes codes 1 to k labelled with the levels. To
+keep a file's own codes, read it with `factors = FALSE`.
 
 **`save_dta` says a value does not fit.** The column's `storage`
 attribute names a type too small for a value, usually after arithmetic
@@ -952,7 +972,8 @@ Each function has a help page (`?read_dta`). Exports:
   `dta_setdiff(x, y)`: Stata's tabulation, grouping and set operations.
 
 dtaparser exports `read_dta()` (see
-[Plain R types](#plain-r-types-dtaparser)),
+[Plain R types](#plain-r-types-dtaparser)), `save_dta()` (which
+dtatools re-exports),
 `read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
 fixed-width text through its SAS setup file (see
 [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), and

@@ -1,5 +1,6 @@
 useDynLib(dtaparser, .registration = TRUE, .fixes = "C_")
 export(read_dta)
+export(save_dta)
 export(read_fixed_width)
 export(":=")
 export(colon_equals)

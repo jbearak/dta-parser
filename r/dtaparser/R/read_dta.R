@@ -51,6 +51,17 @@
 #'   ([var_label()]); the tibble
 #'   carries the dataset label as `label` and its notes as `notes`.
 #'
+#'   A numeric column whose display format says more than the default,
+#'   such as `%9.2f`, or `%tdCCYY-NN-DD` on a `Date`, carries it as
+#'   attribute `format`, which [save_dta()] writes back. Columns with a
+#'   general format (`%9.0g` and the like, Stata's defaults), and dates
+#'   with plain `%td` or `%tc`, have no such attribute, so they stay
+#'   plain vectors; nor do factors and strings. The attribute stays
+#'   through `filter()`, `arrange()`, joins and arithmetic. A labelled
+#'   column keeps it everywhere, as it keeps its labels; other columns
+#'   lose it in `bind_rows()`, `if_else()`, `case_when()` and base
+#'   `x[i]`, and are then written with the default.
+#'
 #'   String columns come back packed: R makes each string when it is
 #'   first used, so reading is fast and the first operation over every
 #'   value of a column pays the cost instead. A column with few distinct

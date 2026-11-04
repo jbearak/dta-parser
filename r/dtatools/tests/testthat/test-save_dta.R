@@ -191,3 +191,7 @@ test_that("ALTREP columns (compact sequences, deferred strings) are written", {
   expect_identical(as.vector(unclass(again$i)), as.double(1:5))
   expect_identical(as.vector(again$s), as.character(1:5))
 })
+
+test_that("save_dta is dtaparser's, re-exported", {
+  expect_identical(dtatools::save_dta, dtaparser::save_dta)
+})
