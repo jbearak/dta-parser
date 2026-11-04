@@ -381,15 +381,16 @@ parquet_selection <- function(select, file, nested) {
   if (rlang::is_call(expr, "c") && length(expr) > 1 && all(vapply(as.list(expr)[-1], is.character, NA))) {
     return(unique(unlist(as.list(expr)[-1])))
   }
+  # A variable holding names, as in col_select = cols, goes through
+  # all_of(), as read_dta() does, unless a column has the variable's
+  # name: the reader checks that, so the footer is read once.
+  if (rlang::is_symbol(expr)) {
+    value <- tryCatch(rlang::eval_tidy(select), error = function(e) NULL)
+    if (is.character(value) && !anyNA(value)) return(structure(unique(value), prefer = rlang::as_string(expr)))
+  }
   info <- .Call(C_dta_parquet_info, file)
   names <- info$columns$name
   if (nested == "skip") names <- names[info$columns$role == "data"]
-  # A variable holding names, as in col_select = cols, goes through
-  # all_of(), as read_dta() does, unless a column has the variable's name.
-  if (rlang::is_symbol(expr) && !(rlang::as_string(expr) %in% names)) {
-    value <- tryCatch(rlang::eval_tidy(select), error = function(e) NULL)
-    if (is.character(value)) select <- rlang::quo(tidyselect::all_of(!!value))
-  }
   picked <- tryCatch(
     tidyselect::eval_select(select, stats::setNames(as.list(seq_along(names)), names)),
     vctrs_error_subscript_oob = function(e) {

@@ -1,20 +1,29 @@
 //! The JSON the profile needs, by hand so the crate takes no serde.
 //!
 //! Objects keep their members in order and keep duplicate keys, so the
-//! profile's validation can find and report them.
+//! profile's validation can find and report them. Strings without
+//! escapes borrow from the text, which is checked as UTF-8 once: a
+//! profile of thousands of columns and label sets is mostly short
+//! strings, and allocating each was most of the time to read one.
+
+use std::borrow::Cow;
+
+/// A string of a parsed value: borrowed from the text unless it had
+/// escapes.
+pub(crate) type Text<'a> = Cow<'a, str>;
 
 /// A parsed JSON value.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum Value {
+pub(crate) enum Value<'a> {
     Null,
     Bool(bool),
     Number(f64),
-    String(String),
-    Array(Vec<Value>),
-    Object(Vec<(String, Value)>),
+    String(Text<'a>),
+    Array(Vec<Value<'a>>),
+    Object(Vec<(Text<'a>, Value<'a>)>),
 }
 
-impl Value {
+impl Value<'_> {
     pub(crate) fn kind(&self) -> &'static str {
         match self {
             Value::Null => "null",
@@ -28,17 +37,23 @@ impl Value {
 }
 
 /// The first key that appears twice in an object's own members.
-pub(crate) fn duplicate_key(members: &[(String, Value)]) -> Option<&str> {
+pub(crate) fn duplicate_key<'m>(members: &'m [(Text<'_>, Value<'_>)]) -> Option<&'m str> {
     let mut seen = std::collections::HashSet::with_capacity(members.len());
     members
         .iter()
-        .map(|(k, _)| k.as_str())
+        .map(|(k, _)| &**k)
         .find(|k| !seen.insert(*k))
 }
 
 /// Parse a whole JSON text.
-pub(crate) fn parse(text: &[u8]) -> Result<Value, String> {
-    let mut p = Parser { s: text, at: 0 };
+pub(crate) fn parse(text: &[u8]) -> Result<Value<'_>, String> {
+    let text = std::str::from_utf8(text)
+        .map_err(|e| format!("text is not UTF-8 at byte {}", e.valid_up_to()))?;
+    let mut p = Parser {
+        s: text.as_bytes(),
+        text,
+        at: 0,
+    };
     let v = p.value(0)?;
     p.space();
     if p.at != p.s.len() {
@@ -49,10 +64,12 @@ pub(crate) fn parse(text: &[u8]) -> Result<Value, String> {
 
 struct Parser<'a> {
     s: &'a [u8],
+    /// The same text, as checked UTF-8.
+    text: &'a str,
     at: usize,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
     fn fail(&self, what: &str) -> String {
         format!("{what} at byte {}", self.at)
     }
@@ -77,7 +94,7 @@ impl Parser<'_> {
         }
     }
 
-    fn value(&mut self, depth: usize) -> Result<Value, String> {
+    fn value(&mut self, depth: usize) -> Result<Value<'a>, String> {
         if depth > 128 {
             return Err(self.fail("JSON nested too deeply"));
         }
@@ -137,7 +154,7 @@ impl Parser<'_> {
         }
     }
 
-    fn number(&mut self) -> Result<Value, String> {
+    fn number(&mut self) -> Result<Value<'a>, String> {
         let start = self.at;
         let digits = |p: &mut Self| {
             let from = p.at;
@@ -169,18 +186,18 @@ impl Parser<'_> {
                 return Err(self.fail("bad number"));
             }
         }
-        let text =
-            std::str::from_utf8(&self.s[start..self.at]).map_err(|_| self.fail("bad number"))?;
-        text.parse()
+        self.text[start..self.at]
+            .parse()
             .map(Value::Number)
             .map_err(|_| self.fail("bad number"))
     }
 
-    fn string(&mut self) -> Result<String, String> {
+    fn string(&mut self) -> Result<Text<'a>, String> {
         if self.s.get(self.at) != Some(&b'"') {
             return Err(self.fail("expected a string"));
         }
         self.at += 1;
+        let start = self.at;
         let mut out = Vec::new();
         loop {
             // Copy the run up to the next quote or backslash at once.
@@ -190,6 +207,12 @@ impl Parser<'_> {
             let Some(n) = run else {
                 return Err(self.fail("unterminated string"));
             };
+            if out.is_empty() && self.s[self.at + n] == b'"' && self.at == start {
+                // No escapes: the string is a slice of the text, which
+                // ends at an ASCII quote, a character boundary.
+                self.at += n + 1;
+                return Ok(Cow::Borrowed(&self.text[start..start + n]));
+            }
             out.extend_from_slice(&self.s[self.at..self.at + n]);
             self.at += n;
             let b = self.s[self.at];
@@ -232,7 +255,9 @@ impl Parser<'_> {
                 _ => return Err(self.fail("control character in a string")),
             }
         }
-        String::from_utf8(out).map_err(|_| self.fail("text is not UTF-8"))
+        String::from_utf8(out)
+            .map(Cow::Owned)
+            .map_err(|_| self.fail("text is not UTF-8"))
     }
 
     fn hex4(&mut self) -> Result<u32, String> {

@@ -124,6 +124,9 @@ test_that("col_select takes names and tidyselect, in the order given", {
   expect_identical(names(read_parquet(p, col_select = tidyselect::starts_with("c"))), "cc")
   wanted <- c("b", "d")
   expect_identical(names(read_parquet(p, col_select = wanted)), c("b", "d"))
+  # As tidyselect does, a column named like the variable wins.
+  d <- c("a", "b")
+  expect_identical(names(read_parquet(p, col_select = d)), "d")
   expect_error(read_parquet(p, col_select = c("a", "nope")), "column \"nope\" is not in the file; its columns are \"a\", \"b\", \"cc\", \"d\"")
   expect_error(read_parquet(p, col_select = c(a, nope)), "columns are \"a\", \"b\", \"cc\", \"d\"")
 })

@@ -634,6 +634,7 @@ pub unsafe extern "C" fn dtaparser_parquet_read_rs(
     raw: *const u8,
     raw_len: usize,
     names: Sexp,
+    prefer: *const c_char,
     skip: f64,
     n_max: f64,
     int64: c_int,
@@ -647,6 +648,7 @@ pub unsafe extern "C" fn dtaparser_parquet_read_rs(
     let input = input(path, raw, raw_len);
     let wanted: Option<Vec<String>> = (TYPEOF(names) == STRSXP)
         .then(|| super::r_strings(names).into_iter().map(String::from).collect());
+    let prefer = c_str(prefer);
     guard(err, err_len, || {
         let int64 = match int64 {
             0 => Int64Mode::Double,
@@ -658,11 +660,13 @@ pub unsafe extern "C" fn dtaparser_parquet_read_rs(
             nested: if nested == 1 { Nested::Skip } else { Nested::Error },
             ..ReadOptions::default()
         };
-        with_reader(&input, options, &mut |r| read_into(r, wanted.as_deref(), skip, n_max, int64, timestamps == 1, holder))
+        with_reader(&input, options, &mut |r| {
+            read_into(r, wanted.as_deref(), prefer.as_deref(), skip, n_max, int64, timestamps == 1, holder)
+        })
     })
 }
 
-fn select(r: &dyn Access, wanted: Option<&[String]>) -> Res<Vec<usize>> {
+fn select(r: &dyn Access, wanted: Option<&[String]>, prefer: Option<&str>) -> Res<Vec<usize>> {
     let cols = r.reader_columns();
     let Some(wanted) = wanted else {
         return r.data_columns().map_err(|e| {
@@ -670,6 +674,9 @@ fn select(r: &dyn Access, wanted: Option<&[String]>) -> Res<Vec<usize>> {
         });
     };
     let by_name: HashMap<&str, usize> = cols.iter().enumerate().rev().map(|(k, c)| (c.name.as_str(), k)).collect();
+    if let Some(&k) = prefer.and_then(|p| by_name.get(p)) {
+        return Ok(vec![k]);
+    }
     wanted
         .iter()
         .map(|name| {
@@ -689,13 +696,14 @@ fn select(r: &dyn Access, wanted: Option<&[String]>) -> Res<Vec<usize>> {
 fn read_into(
     r: &mut dyn Access,
     wanted: Option<&[String]>,
+    prefer: Option<&str>,
     skip: f64,
     n_max: f64,
     int64: Int64Mode,
     truncate: bool,
     holder: Sexp,
 ) -> Res<()> {
-    let selected = select(r, wanted)?;
+    let selected = select(r, wanted, prefer)?;
     let skip = skip as u64;
     let n = if n_max.is_finite() { n_max as u64 } else { u64::MAX };
     let window = r.window(skip, n);
