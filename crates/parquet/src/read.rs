@@ -8,7 +8,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 use crate::decode::{
-    self, Booleans, Chunk, NumberOut, Numbers as NumberConsumer, Scratch, TextChunk, Texts,
+    self, Booleans, Chunk, NumberOut, Numbers as NumberConsumer, Physical, Scratch, TextChunk,
+    Texts,
 };
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
 use crate::profile::{self, Profile};
@@ -62,7 +63,9 @@ mod sealed {
 
 /// A number type the reader can write into: `i8`, `i16`, `i32`, `i64`,
 /// `u8`, `f32` or `f64`. A value the type cannot hold exactly is an error
-/// naming the column and row.
+/// naming the column and row. An integer type reads a DOUBLE column only
+/// when the profile gives it an integer storage type
+/// ([`ColumnInfo::storage`]).
 pub trait Element: Copy + Send + Sync + std::fmt::Debug + 'static + sealed::Sealed {
     #[doc(hidden)]
     const NAME: &'static str;
@@ -94,8 +97,13 @@ macro_rules! integer_element {
             fn from_f32(_: f32) -> Option<Self> {
                 None
             }
-            fn from_f64(_: f64) -> Option<Self> {
-                None
+            /// Whole numbers in range only; NaN is neither.
+            #[inline]
+            fn from_f64(v: f64) -> Option<Self> {
+                // `MAX as f64 + 1.0` is exact for every type here but i64,
+                // where it rounds to 2^63, which is still the right bound.
+                (v.fract() == 0.0 && v >= <$t>::MIN as f64 && v < <$t>::MAX as f64 + 1.0)
+                    .then_some(v as $t)
             }
             fn accepts(kind: &ColumnType) -> bool {
                 use ColumnType::*;
@@ -172,7 +180,7 @@ impl Element for f64 {
 pub struct Numbers<'a, T> {
     pub values: &'a mut [T],
     /// Per row, 0 for a value, 1 for `.` (a null) and 2 to 27 for `.a`
-    /// to `.z` (from the column's missing-letter column).
+    /// to `.z` (a tagged NaN in a DOUBLE column).
     pub codes: Option<&'a mut [u8]>,
     /// The value written for each missing code: index 0 for `.`, 1 to 26
     /// for `.a` to `.z`.
@@ -196,7 +204,8 @@ impl<'a, T: Element> Numbers<'a, T> {
     }
 
     /// Write `value(code)` for the missing code `code` (1 for `.`, 2 to 27
-    /// for `.a` to `.z`), as R keeps `.a` to `.z` in a double's NaN.
+    /// for `.a` to `.z`). R keeps `.a` to `.z` as tagged NaNs:
+    /// `with_missing(|c| if c == 1 { NA } else { tagged_nan(c) })`.
     pub fn with_missing(mut self, value: impl Fn(u8) -> T) -> Self {
         for (k, m) in self.missing.iter_mut().enumerate() {
             *m = value(k as u8 + missing::SYSTEM);
@@ -234,7 +243,6 @@ pub struct ReadReport {
     pub rows: u64,
     /// Per selected column, whether any `.a` to `.z` was read.
     pub letters: Vec<bool>,
-    pub warnings: Vec<String>,
 }
 
 /// A row group: its rows and size.
@@ -324,7 +332,7 @@ impl<S: Source> Reader<S> {
                 .ok_or_else(|| Error::new("the row groups hold too many rows"))?;
         }
         let mut warnings = Vec::new();
-        let profile = match meta
+        let mut profile = match meta
             .key_value
             .iter()
             .find(|kv| kv.key == profile::KEY)
@@ -337,8 +345,8 @@ impl<S: Source> Reader<S> {
             }
             None => None,
         };
-        if let Some(p) = &profile {
-            link_letters(&mut columns, p, &mut warnings);
+        if let Some(p) = &mut profile {
+            check_storage(&mut columns, p, &mut warnings);
             for c in &p.columns {
                 if c.categorical.is_some() {
                     if let Some(col) = columns.iter().find(|x| x.name == c.name) {
@@ -367,8 +375,8 @@ impl<S: Source> Reader<S> {
         &self.meta
     }
 
-    /// The file's top-level columns, in order, including missing-letter
-    /// and nested ones (see [`ColumnInfo::role`]).
+    /// The file's top-level columns, in order, including nested ones (see
+    /// [`ColumnInfo::role`]).
     pub fn columns(&self) -> &[ColumnInfo] {
         &self.columns
     }
@@ -378,9 +386,9 @@ impl<S: Source> Reader<S> {
         self.columns.iter().position(|c| c.name == name)
     }
 
-    /// The columns a read returns by default: the data columns, without
-    /// missing-letter columns. With nested columns in the file, this is an
-    /// error naming them unless the options say to skip them.
+    /// The columns a read returns by default: the data columns. With
+    /// nested columns in the file, this is an error naming them unless the
+    /// options say to skip them.
     pub fn data_columns(&self) -> Result<Vec<usize>> {
         let nested: Vec<&str> = self
             .columns
@@ -462,8 +470,7 @@ impl<S: Source> Reader<S> {
         self.profile.as_ref()
     }
 
-    /// Warnings from opening the file: about its profile and its
-    /// missing-letter columns.
+    /// Warnings from opening the file, about its profile.
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
@@ -524,9 +531,9 @@ impl<S: Source> Reader<S> {
     /// `k` being the column's position in `columns`, one column chunk at a
     /// time, in row order for each column.
     ///
-    /// A column with a missing-letter column gets its `.a` to `.z` back
-    /// from it, unless the letters fail the checks of plan 0018, in which
-    /// case they read as `.` with a warning in the report.
+    /// In a DOUBLE column, a value whose bits are exactly a tagged NaN
+    /// ([`crate::tagged_nan`]) reads as that `.a` to `.z`; every other NaN
+    /// is a NaN value.
     pub fn read(
         &mut self,
         columns: &[usize],
@@ -551,27 +558,10 @@ impl<S: Source> Reader<S> {
         // Offset indexes, for row groups read in part.
         for (g, local) in &groups {
             for &c in columns {
-                let (leaf, letters) = (self.columns[c].leaf, self.columns[c].letters);
+                let leaf = self.columns[c].leaf;
                 self.load_offset_index(*g, leaf, local)?;
-                if let Some(l) = letters {
-                    let leaf = self.columns[l].leaf;
-                    self.load_offset_index(*g, leaf, local)?;
-                }
             }
         }
-        // Columns with letters need a missing code per row; when the
-        // caller gave no slice for them, keep them here.
-        let mut own_codes: Vec<Vec<u8>> = columns
-            .iter()
-            .zip(outputs.iter())
-            .map(|(&c, out)| {
-                if self.columns[c].letters.is_some() && !has_codes(out) {
-                    vec![0u8; rows]
-                } else {
-                    Vec::new()
-                }
-            })
-            .collect();
         let levels: Vec<Option<HashMap<&[u8], i32>>> = columns
             .iter()
             .zip(outputs.iter())
@@ -594,8 +584,8 @@ impl<S: Source> Reader<S> {
             .collect();
         // Split each output into one destination per row group.
         let mut per_column: Vec<std::vec::IntoIter<Dest<'_>>> = Vec::with_capacity(columns.len());
-        for ((out, own), lv) in outputs.iter_mut().zip(own_codes.iter_mut()).zip(&levels) {
-            per_column.push(split(out, own, lv.as_ref(), &sizes).into_iter());
+        for (out, lv) in outputs.iter_mut().zip(&levels) {
+            per_column.push(split(out, lv.as_ref(), &sizes).into_iter());
         }
         let mut tasks = Vec::with_capacity(groups.len() * columns.len());
         let mut at = 0u64;
@@ -625,12 +615,8 @@ impl<S: Source> Reader<S> {
         let threads = dta::threads::resolve(self.options.threads);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
-        let mut bad: Vec<Option<u64>> = vec![None; columns.len()];
         let mut deliver = |k: usize, done: Done| -> Result<()> {
             letters[k] |= done.letters;
-            if let Some(row) = done.bad_letters {
-                bad[k] = Some(bad[k].map_or(row, |b: u64| b.min(row)));
-            }
             match done.text {
                 Some(chunk) => text(k, &chunk),
                 None => Ok(()),
@@ -653,27 +639,9 @@ impl<S: Source> Reader<S> {
             }
         }
         drop(levels);
-        // Letters that failed their checks read as `.` everywhere.
-        let mut warnings = Vec::new();
-        for (k, (&c, out)) in columns.iter().zip(outputs.iter_mut()).enumerate() {
-            if let Some(row) = bad[k] {
-                let col = &self.columns[c];
-                let letter_name = col.letters.map_or("", |l| self.columns[l].name.as_str());
-                warnings.push(format!(
-                    "the missing-letter column \"{letter_name}\" of \"{}\" fails its checks at row {} (a letter where \"{}\" has a value, or a value that is not .a to .z); \"{}\" is read without its letters",
-                    col.name,
-                    row + 1,
-                    col.name,
-                    col.name
-                ));
-                unfold_letters(out, &mut own_codes[k]);
-                letters[k] = false;
-            }
-        }
         Ok(ReadReport {
             rows: rows as u64,
             letters,
-            warnings,
         })
     }
 
@@ -684,14 +652,18 @@ impl<S: Source> Reader<S> {
         if let ColumnType::Unsupported(why) = &col.kind {
             return Err(Error::invalid(format!("column \"{}\" is {why}", col.name)));
         }
+        // A DOUBLE column written wider reads into what it was.
+        let kind = col
+            .storage
+            .map_or_else(|| col.kind.clone(), |s| s.column_type());
         let ok = match out {
-            Output::Int8(n) => accepts(n, &col.kind, rows),
-            Output::Int16(n) => accepts(n, &col.kind, rows),
-            Output::Int32(n) => accepts(n, &col.kind, rows),
-            Output::Int64(n) => accepts(n, &col.kind, rows),
-            Output::UInt8(n) => accepts(n, &col.kind, rows),
-            Output::Float32(n) => accepts(n, &col.kind, rows),
-            Output::Float64(n) => accepts(n, &col.kind, rows),
+            Output::Int8(n) => accepts(n, &kind, rows),
+            Output::Int16(n) => accepts(n, &kind, rows),
+            Output::Int32(n) => accepts(n, &kind, rows),
+            Output::Int64(n) => accepts(n, &kind, rows),
+            Output::UInt8(n) => accepts(n, &kind, rows),
+            Output::Float32(n) => accepts(n, &kind, rows),
+            Output::Float64(n) => accepts(n, &kind, rows),
             Output::Levels { codes, .. } => {
                 if levels_in(&self.profile, &col.name).is_none() || col.kind != ColumnType::Text {
                     return Err(Error::invalid(format!(
@@ -716,7 +688,7 @@ impl<S: Source> Reader<S> {
         }
     }
 
-    /// The leaves of `columns` and of their letter columns.
+    /// The leaves of `columns`.
     fn leaves(&self, columns: &[usize]) -> Result<Vec<usize>> {
         let mut out = Vec::new();
         for &c in columns {
@@ -730,9 +702,6 @@ impl<S: Source> Reader<S> {
                 )));
             }
             out.push(col.leaf);
-            if let Some(l) = col.letters {
-                out.push(self.columns[l].leaf);
-            }
         }
         Ok(out)
     }
@@ -816,59 +785,27 @@ fn accepts<T: Element>(
     Ok(n.values.len() == rows && n.codes.as_ref().is_none_or(|c| c.len() == rows))
 }
 
-fn has_codes(out: &Output) -> bool {
-    match out {
-        Output::Int8(n) => n.codes.is_some(),
-        Output::Int16(n) => n.codes.is_some(),
-        Output::Int32(n) => n.codes.is_some(),
-        Output::Int64(n) => n.codes.is_some(),
-        Output::UInt8(n) => n.codes.is_some(),
-        Output::Float32(n) => n.codes.is_some(),
-        Output::Float64(n) => n.codes.is_some(),
-        _ => false,
-    }
-}
-
-/// Check each letter column the profile names, and link it to its data
-/// column; warn for each that cannot be used.
-fn link_letters(columns: &mut [ColumnInfo], p: &Profile, warnings: &mut Vec<String>) {
-    for entry in &p.columns {
-        let Some(letters) = &entry.missing_letters else {
+/// Keep each `storage` the profile gives a DOUBLE column; drop, with a
+/// warning, one given any other column.
+fn check_storage(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec<String>) {
+    for entry in &mut p.columns {
+        let Some(storage) = entry.storage else {
             continue;
         };
-        let Some(data) = columns
-            .iter()
-            .position(|c| c.name == entry.name && c.role == Role::Data)
+        let Some(col) = columns
+            .iter_mut()
+            .find(|c| c.name == entry.name && c.role == Role::Data)
         else {
             continue;
         };
-        let lost = |why: &str| {
-            format!(
-                "the missing-letter column \"{letters}\" of \"{}\" {why}; its .a to .z read as .",
-                entry.name
-            )
-        };
-        let Some(l) = columns.iter().position(|c| &c.name == letters) else {
-            warnings.push(lost("is not in the file"));
-            continue;
-        };
-        let why = if l == data {
-            Some("is the column itself")
-        } else if !columns[data].kind.is_numeric() {
-            Some("belongs to a column that is not numeric")
-        } else if columns[l].kind != ColumnType::Text || columns[l].role != Role::Data {
-            Some("is not a text column")
-        } else if columns.iter().any(|c| c.letters == Some(l)) {
-            Some("is named for another column too")
+        if col.kind == ColumnType::Double {
+            col.storage = Some(storage);
         } else {
-            None
-        };
-        match why {
-            Some(why) => warnings.push(lost(why)),
-            None => {
-                columns[data].letters = Some(l);
-                columns[l].role = Role::MissingLetters;
-            }
+            warnings.push(format!(
+                "dropped \"columns.{}.storage\" from the dta profile: it gives a storage type to a column that is not DOUBLE",
+                entry.name
+            ));
+            entry.storage = None;
         }
     }
 }
@@ -901,11 +838,7 @@ fn cut<'s, T>(mut s: &'s mut [T], sizes: &[usize]) -> Vec<&'s mut [T]> {
     out
 }
 
-fn split_numbers<'a, T: Copy>(
-    n: &'a mut Numbers<'_, T>,
-    own: &'a mut Vec<u8>,
-    sizes: &[usize],
-) -> Vec<NumberOut<'a, T>> {
+fn split_numbers<'a, T: Copy>(n: &'a mut Numbers<'_, T>, sizes: &[usize]) -> Vec<NumberOut<'a, T>> {
     let Numbers {
         values,
         codes,
@@ -914,10 +847,6 @@ fn split_numbers<'a, T: Copy>(
     let values = cut(values, sizes);
     let codes: Vec<Option<&mut [u8]>> = match codes {
         Some(c) => cut(c, sizes).into_iter().map(Some).collect(),
-        None if !own.is_empty() => cut(own.as_mut_slice(), sizes)
-            .into_iter()
-            .map(Some)
-            .collect(),
         None => sizes.iter().map(|_| None).collect(),
     };
     let missing = &*missing;
@@ -935,39 +864,17 @@ fn split_numbers<'a, T: Copy>(
 
 fn split<'a>(
     out: &'a mut Output<'_>,
-    own: &'a mut Vec<u8>,
     levels: Option<&'a HashMap<&'a [u8], i32>>,
     sizes: &[usize],
 ) -> Vec<Dest<'a>> {
     match out {
-        Output::Int8(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::I8)
-            .collect(),
-        Output::Int16(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::I16)
-            .collect(),
-        Output::Int32(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::I32)
-            .collect(),
-        Output::Int64(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::I64)
-            .collect(),
-        Output::UInt8(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::U8)
-            .collect(),
-        Output::Float32(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::F32)
-            .collect(),
-        Output::Float64(n) => split_numbers(n, own, sizes)
-            .into_iter()
-            .map(Dest::F64)
-            .collect(),
+        Output::Int8(n) => split_numbers(n, sizes).into_iter().map(Dest::I8).collect(),
+        Output::Int16(n) => split_numbers(n, sizes).into_iter().map(Dest::I16).collect(),
+        Output::Int32(n) => split_numbers(n, sizes).into_iter().map(Dest::I32).collect(),
+        Output::Int64(n) => split_numbers(n, sizes).into_iter().map(Dest::I64).collect(),
+        Output::UInt8(n) => split_numbers(n, sizes).into_iter().map(Dest::U8).collect(),
+        Output::Float32(n) => split_numbers(n, sizes).into_iter().map(Dest::F32).collect(),
+        Output::Float64(n) => split_numbers(n, sizes).into_iter().map(Dest::F64).collect(),
         Output::Levels { codes, null, .. } => {
             let levels = levels.expect("checked before the read");
             let null = *null;
@@ -981,34 +888,6 @@ fn split<'a>(
                 .collect()
         }
         Output::Text => sizes.iter().map(|_| Dest::Text).collect(),
-    }
-}
-
-/// Undo letters after their checks failed in some row group: every
-/// `.a` to `.z` becomes `.`.
-fn unfold_letters(out: &mut Output, own: &mut [u8]) {
-    fn undo<T: Copy>(n: &mut Numbers<T>, own: &mut [u8]) {
-        let null = n.missing[0];
-        let codes: &mut [u8] = match n.codes.as_deref_mut() {
-            Some(c) => c,
-            None => own,
-        };
-        for (c, v) in codes.iter_mut().zip(n.values.iter_mut()) {
-            if *c > missing::SYSTEM {
-                *c = missing::SYSTEM;
-                *v = null;
-            }
-        }
-    }
-    match out {
-        Output::Int8(n) => undo(n, own),
-        Output::Int16(n) => undo(n, own),
-        Output::Int32(n) => undo(n, own),
-        Output::Int64(n) => undo(n, own),
-        Output::UInt8(n) => undo(n, own),
-        Output::Float32(n) => undo(n, own),
-        Output::Float64(n) => undo(n, own),
-        _ => {}
     }
 }
 
@@ -1028,9 +907,8 @@ struct Task<'a> {
 /// What a task gives back to the calling thread.
 struct Done {
     text: Option<TextChunk>,
+    /// Whether any `.a` to `.z` was read.
     letters: bool,
-    /// The read row of the first row whose letter failed its checks.
-    bad_letters: Option<u64>,
 }
 
 /// What every task reads.
@@ -1103,32 +981,21 @@ impl Ctx<'_> {
     }
 }
 
-/// Decode one task's chunk (and its letter chunk) into its destination.
+/// Decode one task's chunk into its destination.
 fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) -> Result<Done> {
     let column = &ctx.reader_columns[task.column];
     let chunk = ctx.chunk(task.group, column, task.window.clone())?;
     let rows = (task.window.end - task.window.start) as usize;
     let file_row = chunk.file_row + task.window.start;
-    let letters = column.letters.map(|l| &ctx.reader_columns[l]);
     let mut done = Done {
         text: None,
         letters: false,
-        bad_letters: None,
     };
     macro_rules! numbers {
         ($out:expr) => {{
             let mut out = $out;
             out.file_row = file_row;
-            decode_numbers(&chunk, &mut out, read, scratch)?;
-            if let Some(lcol) = letters {
-                let lchunk = ctx.chunk(task.group, lcol, task.window.clone())?;
-                let mut t = Texts::new(task.first, rows, false);
-                decode::decode(&lchunk, read, scratch, &mut t)?;
-                match fold_letters(&mut out, &t.chunk) {
-                    Ok(found) => done.letters = found,
-                    Err(row) => done.bad_letters = Some(task.first + row as u64),
-                }
-            }
+            done.letters = decode_numbers(&chunk, &mut out, read, scratch)?;
         }};
     }
     match task.dest {
@@ -1183,12 +1050,13 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
     Ok(done)
 }
 
+/// Decode a numeric chunk; returns whether it held any `.a` to `.z`.
 fn decode_numbers<T: Element>(
     chunk: &Chunk,
     out: &mut NumberOut<T>,
     read: &mut decode::ReadAt,
     scratch: &mut Scratch,
-) -> Result<()> {
+) -> Result<bool> {
     fn reborrow<'s, T>(out: &'s mut NumberOut<'_, T>) -> NumberOut<'s, T> {
         NumberOut {
             values: &mut *out.values,
@@ -1197,6 +1065,20 @@ fn decode_numbers<T: Element>(
             file_row: out.file_row,
         }
     }
+    fn numbers<P: Physical, T: Element>(
+        chunk: &Chunk,
+        out: &mut NumberOut<T>,
+        read: &mut decode::ReadAt,
+        scratch: &mut Scratch,
+    ) -> Result<bool> {
+        let mut n = NumberConsumer::<P, T> {
+            out: reborrow(out),
+            dictionary: Vec::new(),
+            letters: false,
+        };
+        decode::decode(chunk, read, scratch, &mut n)?;
+        Ok(n.letters)
+    }
     let named = |e: Error| match e.kind {
         ErrorKind::Invalid => {
             Error::invalid(format!("column \"{}\": {}", chunk.column.name, e.message))
@@ -1204,44 +1086,13 @@ fn decode_numbers<T: Element>(
         _ => e,
     };
     match chunk.column.physical {
-        Some(PhysicalType::Int32) => decode::decode(
-            chunk,
-            read,
-            scratch,
-            &mut NumberConsumer::<i32, T> {
-                out: reborrow(out),
-                dictionary: Vec::new(),
-            },
-        ),
-        Some(PhysicalType::Int64) => decode::decode(
-            chunk,
-            read,
-            scratch,
-            &mut NumberConsumer::<i64, T> {
-                out: reborrow(out),
-                dictionary: Vec::new(),
-            },
-        ),
-        Some(PhysicalType::Float) => decode::decode(
-            chunk,
-            read,
-            scratch,
-            &mut NumberConsumer::<f32, T> {
-                out: reborrow(out),
-                dictionary: Vec::new(),
-            },
-        ),
-        Some(PhysicalType::Double) => decode::decode(
-            chunk,
-            read,
-            scratch,
-            &mut NumberConsumer::<f64, T> {
-                out: reborrow(out),
-                dictionary: Vec::new(),
-            },
-        ),
+        Some(PhysicalType::Int32) => numbers::<i32, T>(chunk, out, read, scratch),
+        Some(PhysicalType::Int64) => numbers::<i64, T>(chunk, out, read, scratch),
+        Some(PhysicalType::Float) => numbers::<f32, T>(chunk, out, read, scratch),
+        Some(PhysicalType::Double) => numbers::<f64, T>(chunk, out, read, scratch),
         Some(PhysicalType::Boolean) => {
             decode::decode(chunk, read, scratch, &mut Booleans { out: reborrow(out) })
+                .map(|()| false)
         }
         _ => Err(Error::invalid(format!(
             "column \"{}\" is not numeric",
@@ -1249,54 +1100,6 @@ fn decode_numbers<T: Element>(
         ))),
     }
     .map_err(named)
-}
-
-/// Put the letters of a missing-letter chunk into the data column's
-/// output. Returns whether there were any, or the first row (within the
-/// chunk) that fails the checks, leaving the output as it was.
-fn fold_letters<T: Copy>(
-    out: &mut NumberOut<T>,
-    letters: &TextChunk,
-) -> std::result::Result<bool, usize> {
-    let codes = out
-        .codes
-        .as_deref_mut()
-        .expect("columns with letters have codes");
-    // The code of each distinct value: 2 to 27, or 0 for one that is not
-    // a letter.
-    let value_code = |v: &[u8]| match v {
-        [b'.', c @ b'a'..=b'z'] => c - b'a' + 2,
-        _ => 0,
-    };
-    let dict: Vec<u8> = (0..letters.ends.len())
-        .map(|i| value_code(letters.value(i)))
-        .collect();
-    let letter_at = |r: usize| -> Option<u8> {
-        match &letters.codes {
-            Some(c) if c[r] == TextChunk::NULL => None,
-            Some(c) => Some(dict[c[r] as usize]),
-            None if letters.missing[r] != 0 => None,
-            None => Some(dict[r]),
-        }
-    };
-    let mut found = false;
-    for (r, &code) in codes.iter().enumerate() {
-        if let Some(l) = letter_at(r) {
-            if l == 0 || code != missing::SYSTEM {
-                return Err(r);
-            }
-            found = true;
-        }
-    }
-    if found {
-        for (r, (code, v)) in codes.iter_mut().zip(out.values.iter_mut()).enumerate() {
-            if let Some(l) = letter_at(r) {
-                *code = l;
-                *v = out.missing[usize::from(l - 1)];
-            }
-        }
-    }
-    Ok(found)
 }
 
 // ---- threads ----

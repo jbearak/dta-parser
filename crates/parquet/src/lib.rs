@@ -5,10 +5,11 @@
 //! Parquet cannot say (variable and value labels, display formats, notes,
 //! characteristics, factor levels, time zones) goes into one JSON entry
 //! of the file's key-value metadata, the dta [`Profile`], under the key
-//! `dta`. Each of `.a` to `.z` is a null in its column, and its letter
-//! goes into a text column named `<name>__missing`, which [`Reader`]
-//! folds back in. An `ARROW:schema` entry lets pyarrow, polars and arrow
-//! (R) restore categoricals and time zones.
+//! `dta`. `.` is a null; `.a` to `.z` are tagged NaNs ([`tagged_nan`]) in
+//! DOUBLE columns, so a numeric column that holds any is written as
+//! DOUBLE, with its storage type in the profile ([`Storage`]). An
+//! `ARROW:schema` entry lets pyarrow, polars and arrow (R) restore
+//! categoricals and time zones.
 //!
 //! Like the `dta` crate, this one does no I/O of its own: a [`Reader`]
 //! reads through a [`dta::Source`], and [`write`] writes to any
@@ -17,7 +18,8 @@
 //! **Reading.** [`Reader::open`] reads the footer. [`Reader::read`]
 //! decodes a selection of columns over a window of rows straight into
 //! slices the caller allocated ([`Output`]): numbers into a slice of the
-//! target type, with an optional missing code per row; text one column
+//! target type, with an optional missing code per row (`.a` to `.z` from
+//! the tagged NaNs of DOUBLE columns); text one column
 //! chunk at a time as a [`TextChunk`], kept as dictionary and codes when
 //! the file has them. Whole row groups outside the window are skipped,
 //! and within a chunk only the pages that hold the window are
@@ -44,14 +46,16 @@ pub mod profile;
 mod read;
 mod rle;
 mod schema;
+mod tagged;
 mod thrift;
 mod write;
 
 pub use codec::Compression;
 pub use decode::TextChunk;
-pub use profile::{Categorical, ColumnProfile, Profile};
+pub use profile::{Categorical, ColumnProfile, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};
 pub use schema::{ColumnInfo, ColumnType, Role};
+pub use tagged::{tagged_code, tagged_nan, NA_BITS};
 pub use write::{
     write, Fill, FillCodes, GetBytes, Table, Values, WriteColumn, WriteOptions, WriteReport, BLOCK,
     CREATED_BY,

@@ -3,6 +3,7 @@
 use crate::format::{
     converted, FileMetaData, LogicalType, PhysicalType, Repetition, SchemaElement, TimeUnit,
 };
+use crate::profile::Storage;
 use dta::{Error, Result};
 
 /// What a column holds, as this crate reads it.
@@ -36,8 +37,7 @@ pub enum ColumnType {
 }
 
 impl ColumnType {
-    /// Numbers (including dates, timestamps and booleans), which can have
-    /// a missing-letter column.
+    /// Numbers, including dates, timestamps and booleans.
     pub fn is_numeric(&self) -> bool {
         !matches!(
             self,
@@ -51,8 +51,6 @@ impl ColumnType {
 pub enum Role {
     /// A column of data.
     Data,
-    /// The `.a` to `.z` of another column (see [`ColumnInfo::letters`]).
-    MissingLetters,
     /// A list, map or group, which this crate does not read.
     Nested,
 }
@@ -69,8 +67,9 @@ pub struct ColumnInfo {
     pub kind: ColumnType,
     /// The column is REQUIRED: it has no nulls.
     pub required: bool,
-    /// For a data column, the index of its missing-letter column.
-    pub letters: Option<usize>,
+    /// For a DOUBLE column written wider because it holds `.a` to `.z`,
+    /// the storage type the profile records for it.
+    pub storage: Option<Storage>,
     /// The first leaf (column chunk) of this column, and how many it has
     /// (more than one only for nested columns).
     pub(crate) leaf: usize,
@@ -213,7 +212,7 @@ pub(crate) fn columns(meta: &FileMetaData) -> Result<Vec<ColumnInfo>> {
                 column_type(e)
             },
             required: e.repetition == Some(Repetition::Required),
-            letters: None,
+            storage: None,
             leaf,
             leaves,
         });

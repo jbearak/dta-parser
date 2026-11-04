@@ -8,6 +8,7 @@
 //! writer is given must be representable exactly.
 
 use crate::json::{self, Value};
+use crate::schema::ColumnType;
 use dta::{missing, Characteristic, Error, Result, ValueLabel, ValueLabelSet};
 
 /// The key the profile is stored under.
@@ -50,8 +51,9 @@ pub struct ColumnProfile {
     pub format: Option<String>,
     /// The name of the column's value label set.
     pub value_labels: Option<String>,
-    /// The name of the column's missing-letter column.
-    pub missing_letters: Option<String>,
+    /// The storage type of a DOUBLE column that was written wider
+    /// because it holds `.a` to `.z`.
+    pub storage: Option<Storage>,
     pub categorical: Option<Categorical>,
     /// A timestamp's time zone. `Some("")` records a timestamp that is
     /// an instant without a zone (R's `POSIXct` without `tzone`).
@@ -74,10 +76,56 @@ impl ColumnProfile {
         self.label.is_none()
             && self.format.is_none()
             && self.value_labels.is_none()
-            && self.missing_letters.is_none()
+            && self.storage.is_none()
             && self.categorical.is_none()
             && self.tz.is_none()
             && self.unit.is_none()
+    }
+}
+
+/// What a column written as DOUBLE, because it holds `.a` to `.z`, was
+/// before (plan 0018, "Missing values"). A double column needs none.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Storage {
+    /// INT32 annotated INT(8): Stata's byte.
+    Byte,
+    /// INT32 annotated INT(16): Stata's int.
+    Int,
+    /// INT32: Stata's long.
+    Long,
+    /// FLOAT.
+    Float,
+}
+
+impl Storage {
+    /// The name in the profile.
+    pub fn name(self) -> &'static str {
+        match self {
+            Storage::Byte => "byte",
+            Storage::Int => "int",
+            Storage::Long => "long",
+            Storage::Float => "float",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "byte" => Some(Storage::Byte),
+            "int" => Some(Storage::Int),
+            "long" => Some(Storage::Long),
+            "float" => Some(Storage::Float),
+            _ => None,
+        }
+    }
+
+    /// The column type this storage was written from.
+    pub fn column_type(self) -> ColumnType {
+        match self {
+            Storage::Byte => ColumnType::Int8,
+            Storage::Int => ColumnType::Int16,
+            Storage::Long => ColumnType::Int32,
+            Storage::Float => ColumnType::Float,
+        }
     }
 }
 
@@ -315,7 +363,7 @@ impl Profile {
                     ("label", &c.label),
                     ("format", &c.format),
                     ("value_labels", &c.value_labels),
-                    ("missing_letters", &c.missing_letters),
+                    ("storage", &c.storage.map(|s| s.name().to_string())),
                     ("tz", &c.tz),
                     ("unit", &c.unit),
                 ] {
@@ -476,9 +524,18 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
             "label" => &mut c.label,
             "format" => &mut c.format,
             "value_labels" => &mut c.value_labels,
-            "missing_letters" => &mut c.missing_letters,
             "tz" => &mut c.tz,
             "unit" => &mut c.unit,
+            "storage" => {
+                match text(value).as_deref().and_then(Storage::from_name) {
+                    Some(st) => c.storage = Some(st),
+                    None => warn(dropped(
+                        &format!("{path}storage"),
+                        "is not one of \"byte\", \"int\", \"long\" and \"float\"",
+                    )),
+                }
+                continue;
+            }
             "categorical" => {
                 match categorical(value) {
                     Ok(cat) => c.categorical = Some(cat),
@@ -653,7 +710,7 @@ mod tests {
                     label: Some("Age in years".into()),
                     format: Some("%9.0g".into()),
                     value_labels: Some("agelbl".into()),
-                    missing_letters: Some("age__missing".into()),
+                    storage: Some(Storage::Byte),
                     ..Default::default()
                 },
                 ColumnProfile {
@@ -800,7 +857,9 @@ mod tests {
                 "c": {"categorical": {"levels": ["x", "x"]}},
                 "d": {"categorical": {"levels": ["x"], "ordered": "yes"}},
                 "e": {"categorical": {"ordered": true}},
-                "f": {"value_labels": "good", "tz": "UTC"}
+                "f": {"value_labels": "good", "tz": "UTC"},
+                "g": {"storage": "double"},
+                "h": {"storage": 1, "label": "kept"}
             },
             "value_labels": {
                 "notpairs": {"1": "a"},
@@ -826,6 +885,8 @@ mod tests {
             "\"columns.c.categorical\"",
             "\"columns.d.categorical\"",
             "\"columns.e.categorical\"",
+            "\"columns.g.storage\"",
+            "\"columns.h.storage\"",
             "\"value_labels.notpairs\"",
             "\"value_labels.dupcode\"",
             "\"value_labels.dupmissing\"",
@@ -852,6 +913,8 @@ mod tests {
         assert_eq!(f.tz.as_deref(), Some("UTC"));
         assert_eq!(f.value_labels, None);
         assert!(p.column("c").is_none());
+        assert!(p.column("g").is_none());
+        assert_eq!(p.column("h").unwrap().storage, None);
     }
 
     #[test]

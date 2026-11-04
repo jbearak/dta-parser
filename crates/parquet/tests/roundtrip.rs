@@ -3,9 +3,12 @@
 mod support;
 
 use dta::{ValueLabel, ValueLabelSet};
-use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue};
-use dta_parquet::{write, ColumnProfile, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, WriteOptions};
-use support::{every_type, expected, read, same, table, Col, Data, Got};
+use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue, PhysicalType, TimeUnit};
+use dta_parquet::{
+    tagged_code, tagged_nan, write, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
+    WriteOptions, NA_BITS,
+};
+use support::{every_type, expected, read, same, storage_columns, table, Col, Data, Got};
 
 fn bytes_of(cols: &[Col], profile: Profile, options: &WriteOptions) -> Vec<u8> {
     let mut out = Vec::new();
@@ -30,8 +33,7 @@ fn check(bytes: &[u8], cols: &[Col], skip: usize, n: usize, options: ReadOptions
     let rows = cols[0].rows();
     let end = (skip + n).min(rows);
     let start = skip.min(rows);
-    let (got, _, warnings) = read(bytes, &names(cols), skip as u64, n as u64, options);
-    assert!(warnings.is_empty(), "{warnings:?}");
+    let (got, _) = read(bytes, &names(cols), skip as u64, n as u64, options);
     for (c, g) in cols.iter().zip(&got) {
         let want = expected(c, start..end);
         assert!(same(&want, g), "column {} rows {start}..{end}:\nwant {want:?}\n got {g:?}", c.name);
@@ -73,19 +75,26 @@ fn every_type_round_trips_with_nulls_letters_and_categoricals() {
     assert_eq!(p.notes, vec!["First note.".to_string()]);
     let i8p = p.column("i8").unwrap();
     assert_eq!(i8p.label.as_deref(), Some("Small numbers"));
-    assert_eq!(i8p.missing_letters.as_deref(), Some("i8__missing"));
+    assert_eq!(i8p.storage, Some(Storage::Byte));
     assert_eq!(p.value_labels[0].labels[1].missing, 2);
     assert_eq!(p.column("region").unwrap().categorical.as_ref().unwrap().levels.len(), 4);
     assert!(p.column("size").unwrap().categorical.as_ref().unwrap().ordered);
     assert_eq!(p.column("when_ny").unwrap().tz.as_deref(), Some("America/New_York"));
     assert_eq!(p.column("when_utc").unwrap().tz.as_deref(), Some(""));
     assert!(p.column("local").is_none_or(|c| c.tz.is_none()));
-    // Letter columns come after the data columns and are not data.
-    let roles: Vec<(&str, Role)> = r.columns().iter().map(|c| (c.name.as_str(), c.role)).collect();
-    let letter_cols: Vec<&str> = roles.iter().filter(|(_, r)| *r == Role::MissingLetters).map(|(n, _)| *n).collect();
-    assert_eq!(letter_cols, vec!["i8__missing", "i16__missing", "f64__missing"]);
-    assert_eq!(&roles[roles.len() - 3..].iter().map(|(n, _)| *n).collect::<Vec<_>>(), &letter_cols);
-    assert_eq!(r.data_columns().unwrap().len(), cols.len());
+    // Columns with .a to .z are DOUBLE, with their storage in the
+    // profile; the others keep their types, and no column is added.
+    let kind = |name: &str| {
+        let c = &r.columns()[r.column_index(name).unwrap()];
+        (c.kind.clone(), c.storage)
+    };
+    assert_eq!(kind("i8"), (ColumnType::Double, Some(Storage::Byte)));
+    assert_eq!(kind("i16"), (ColumnType::Double, Some(Storage::Int)));
+    assert_eq!(kind("f64"), (ColumnType::Double, None));
+    assert_eq!(kind("i32"), (ColumnType::Int32, None));
+    assert_eq!(kind("f32"), (ColumnType::Float, None));
+    assert!(r.columns().iter().all(|c| c.role == Role::Data));
+    assert_eq!(r.columns().len(), cols.len());
     assert_eq!(r.created_by(), Some(dta_parquet::CREATED_BY));
     assert!(r.key_value("ARROW:schema").is_some());
 }
@@ -94,36 +103,44 @@ fn every_type_round_trips_with_nulls_letters_and_categoricals() {
 fn the_letters_read_as_codes_and_flags() {
     let cols = every_type(100);
     let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());
-    let (got, letters, _) = read(&bytes, &["i8", "i32", "f64"], 0, 100, serial());
+    let (got, letters) = read(&bytes, &["i8", "i32", "f64"], 0, 100, serial());
     assert_eq!(letters, vec![true, false, true]);
     let Got::Ints(_, codes) = &got[0] else { panic!() };
     assert_eq!(codes[3], 1);
     assert_eq!(codes[4], 2);
     assert_eq!(codes[14], 2);
-    // Missing letters off: .a to .z are plain nulls, with no letter columns.
+    // Missing letters off: .a to .z are plain nulls, and every column
+    // keeps its type.
     let off = WriteOptions { missing_letters: false, ..Default::default() };
     let bytes = bytes_of(&cols, Profile::default(), &off);
     let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
-    assert!(r.columns().iter().all(|c| c.role == Role::Data));
-    let (got, letters, _) = read(&bytes, &["i8"], 0, 100, serial());
-    assert_eq!(letters, vec![false]);
+    let i8c = &r.columns()[r.column_index("i8").unwrap()];
+    assert_eq!((i8c.kind.clone(), i8c.storage), (ColumnType::Int8, None));
+    assert!(r.profile().is_none_or(|p| p.columns.iter().all(|c| c.storage.is_none())));
+    let (got, letters) = read(&bytes, &["i8", "f64"], 0, 100, serial());
+    assert_eq!(letters, vec![false, false]);
     let Got::Ints(_, codes) = &got[0] else { panic!() };
-    assert_eq!(codes[4], 1);
+    assert_eq!((codes[3], codes[4]), (1, 1));
+    let Got::Floats(values, codes) = &got[1] else { panic!() };
+    assert_eq!(codes[6], 1);
+    assert_eq!(values[6], -1e300, "a null, not a NaN");
 }
 
 #[test]
 fn letters_can_go_into_the_values_themselves() {
-    // As R keeps .a to .z in a double's NaN payload.
+    // As R keeps .a to .z: tagged NaNs, and NA_real_ for `.`.
     let cols = every_type(50);
     let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());
     let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
     let k = r.column_index("f64").unwrap();
     let mut values = vec![0.0; 50];
-    let mut outputs = [Output::Float64(Numbers::new(&mut values, f64::NAN).with_missing(|code| -f64::from(code)))];
+    let na = f64::from_bits(NA_BITS);
+    let mut outputs = [Output::Float64(Numbers::new(&mut values, na).with_missing(|c| if c == 1 { na } else { tagged_nan(c) }))];
     let report = r.read(&[k], 0, 50, &mut outputs, |_, _| Ok(())).unwrap();
     assert_eq!(report.letters, vec![true]);
-    assert_eq!(values[3], -1.0); // .
-    assert_eq!(values[6], -3.0); // .b
+    assert_eq!(values[3].to_bits(), NA_BITS); // .
+    assert_eq!(values[6].to_bits(), tagged_nan(3).to_bits()); // .b
+    assert_eq!(tagged_code(values[6]), 3);
     assert_eq!(values[2], 2.0 / 3.0);
 }
 
@@ -296,6 +313,8 @@ fn statistics_are_written() {
     assert_eq!(i32s.min_value, Some(values.iter().min().unwrap().to_le_bytes().to_vec()));
     assert_eq!(i32s.max_value, Some(values.iter().max().unwrap().to_le_bytes().to_vec()));
     assert_eq!(i32s.null_count, Some(cols[2].codes.iter().filter(|&&c| c != 0).count() as i64));
+    // f64 holds .b; only its nulls are counted.
+    assert_eq!(stats("f64").null_count, Some(cols[5].codes.iter().filter(|&&c| c == 1).count() as i64));
     // f64 has -0.0 at row 1 and 0 nowhere else; the minimum is -0.0.
     assert_eq!(stats("f64").min_value, Some((-0.0f64).to_le_bytes().to_vec()));
     // f32 has NaN at row 7, left out.
@@ -334,65 +353,168 @@ fn with_profile(bytes: &[u8], profile: &str) -> Vec<u8> {
 }
 
 #[test]
-fn letter_columns_are_checked() {
-    let n = 10;
-    let x = Col { name: "x".into(), data: Data::F64((0..n).map(|r| r as f64).collect()), codes: (0..n).map(|r| u8::from(r % 2 == 1)).collect() };
-    let letters = |v: Vec<Option<&str>>| Col { name: "lx".into(), data: Data::Text(v.into_iter().map(|s| s.map(String::from)).collect()), codes: vec![] };
-    let profile = r#"{"version": 1, "columns": {"x": {"missing_letters": "lx"}}}"#;
-    let read_x = |cols: &[Col]| {
-        let bytes = with_profile(&bytes_of(cols, Profile::default(), &WriteOptions::default()), profile);
-        let (got, letters, warnings) = read(&bytes, &["x"], 0, n as u64, serial());
-        let Got::Floats(_, codes) = &got[0] else { panic!() };
-        (codes.clone(), letters[0], warnings)
-    };
-    // Good letters: on null rows only.
-    let mut good = vec![None; n];
-    good[1] = Some(".a");
-    good[9] = Some(".z");
-    let (codes, found, warnings) = read_x(&[x.clone(), letters(good)]);
-    assert!(warnings.is_empty(), "{warnings:?}");
-    assert!(found);
-    assert_eq!((codes[1], codes[3], codes[9]), (2, 1, 27));
-    // A letter where x has a value.
-    let mut on_value = vec![None; n];
-    on_value[1] = Some(".a");
-    on_value[4] = Some(".b");
-    let (codes, found, warnings) = read_x(&[x.clone(), letters(on_value)]);
-    assert!(!found);
-    assert_eq!(codes[1], 1);
-    assert_eq!(warnings.len(), 1);
-    assert!(warnings[0].contains("\"lx\"") && warnings[0].contains("\"x\"") && warnings[0].contains("row 5"), "{}", warnings[0]);
-    // A value that is not a letter.
-    let mut not_letter = vec![None; n];
-    not_letter[3] = Some("..");
-    let (_, found, warnings) = read_x(&[x.clone(), letters(not_letter)]);
-    assert!(!found);
-    assert!(warnings[0].contains("row 4"), "{}", warnings[0]);
-    // A letter column that is not text stays a data column.
-    let ints = Col { name: "lx".into(), data: Data::I32(vec![1; n]), codes: vec![0; n] };
-    let bytes = with_profile(&bytes_of(&[x.clone(), ints], Profile::default(), &WriteOptions::default()), profile);
-    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
-    assert_eq!(r.warnings().len(), 1);
-    assert!(r.warnings()[0].contains("not a text column"));
-    assert_eq!(r.data_columns().unwrap().len(), 2);
-    // A letter column the file does not have.
-    let bytes = with_profile(&bytes_of(std::slice::from_ref(&x), Profile::default(), &WriteOptions::default()), profile);
-    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
-    assert_eq!(r.warnings().len(), 1);
-    assert!(r.warnings()[0].contains("not in the file"));
-    // Letter checks fail in one row group of several: no letters at all.
-    let mut late = vec![None; n];
-    late[1] = Some(".a");
-    late[8] = Some(".c");
-    let cols = [x, letters(late)];
-    let bytes = with_profile(&bytes_of(&cols, Profile::default(), &WriteOptions { row_group_rows: Some(3), ..Default::default() }), profile);
-    for opts in [serial(), threaded()] {
-        let (got, found, warnings) = read(&bytes, &["x"], 0, n as u64, opts);
-        let Got::Floats(_, codes) = &got[0] else { panic!() };
-        assert_eq!(found, vec![false]);
-        assert_eq!(codes[1], 1, "letters from good row groups are undone too");
-        assert!(warnings[0].contains("row 9"), "{}", warnings[0]);
+fn tagged_nans_round_trip_from_every_storage_type() {
+    let cols = storage_columns();
+    for row_group_rows in [None, Some(4)] {
+        let opts = WriteOptions { row_group_rows, ..Default::default() };
+        let bytes = bytes_of(&cols, Profile::default(), &opts);
+        let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+        assert!(r.warnings().is_empty(), "{:?}", r.warnings());
+        let want = [Some(Storage::Byte), Some(Storage::Int), Some(Storage::Long), Some(Storage::Float), None];
+        for (c, storage) in cols.iter().zip(want) {
+            let info = &r.columns()[r.column_index(&c.name).unwrap()];
+            assert_eq!(info.physical, Some(PhysicalType::Double), "{}", c.name);
+            assert_eq!(info.storage, storage, "{}", c.name);
+            assert_eq!(r.profile().unwrap().column(&c.name).and_then(|p| p.storage), storage);
+        }
+        // Read back as their storage types: the values, `.` and the letters.
+        check(&bytes, &cols, 0, 12, serial());
+        check(&bytes, &cols, 3, 6, threaded());
+        // And into each storage type's own Rust type.
+        let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+        let idx: Vec<usize> = ["b", "i", "l", "f"].iter().map(|n| r.column_index(n).unwrap()).collect();
+        let (mut b, mut i, mut l, mut f) = (vec![0i8; 12], vec![0i16; 12], vec![0i32; 12], vec![0f32; 12]);
+        let mut codes = vec![vec![0u8; 12]; 4];
+        let [cb, ci, cl, cf] = &mut codes[..] else { unreachable!() };
+        let mut outputs = [
+            Output::Int8(Numbers::new(&mut b, i8::MIN).with_codes(cb)),
+            Output::Int16(Numbers::new(&mut i, i16::MIN).with_codes(ci)),
+            Output::Int32(Numbers::new(&mut l, i32::MIN).with_codes(cl)),
+            Output::Float32(Numbers::new(&mut f, -1.0).with_codes(cf)),
+        ];
+        let report = r.read(&idx, 0, 12, &mut outputs, |_, _| Ok(())).unwrap();
+        assert_eq!(report.letters, vec![true; 4]);
+        assert_eq!((b[0], b[11], b[3]), (-120, 100, i8::MIN));
+        assert_eq!((i[0], l[0]), (-30_000, -1_800_000_000));
+        assert_eq!(f[1], 0.25);
+        assert!(f[5].is_nan());
+        for c in &codes {
+            assert_eq!((c[2], c[3], c[5], c[7]), (1, 2, 0, 27));
+        }
     }
+}
+
+#[test]
+fn a_plain_nan_stays_a_nan_and_a_null_stays_a_null() {
+    let cols = storage_columns();
+    let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());
+    let (got, _) = read(&bytes, &["f", "d"], 0, 12, serial());
+    for g in &got {
+        let Got::Floats(values, codes) = g else { panic!() };
+        assert!(values[5].is_nan() && tagged_code(values[5]) == 0);
+        assert_eq!(codes[5], 0, "NaN is a value");
+        assert_eq!((codes[2], values[2]), (1, -1e300), "null is .");
+        assert_eq!((codes[3], values[3]), (2, -1e300), ".a is .a");
+    }
+    // In the file: the NaN, the tagged NaNs and the null, as such.
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let k = r.column_index("d").unwrap();
+    let mut v = vec![0.0; 12];
+    let mut outputs = [Output::Float64(Numbers::new(&mut v, 7.0).with_missing(|c| if c == 1 { 7.0 } else { tagged_nan(c) }))];
+    r.read(&[k], 0, 12, &mut outputs, |_, _| Ok(())).unwrap();
+    assert_eq!(v[2], 7.0);
+    assert_eq!(v[3].to_bits(), 0x7ff0_0061_0000_07a2);
+    assert_eq!(v[7].to_bits(), 0x7ff0_007a_0000_07a2);
+    assert!(v[5].is_nan() && tagged_code(v[5]) == 0);
+}
+
+#[test]
+fn statistics_leave_out_tagged_nans_and_count_only_nulls() {
+    let cols = storage_columns();
+    let bytes = bytes_of(&cols, Profile::default(), &WriteOptions { row_group_rows: Some(12), ..Default::default() });
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let stats = |k: usize| r.metadata().row_groups[0].columns[k].meta.as_ref().unwrap().statistics.clone().unwrap();
+    // b: -120..100 without rows 2, 3 and 7; as doubles.
+    let b = stats(0);
+    assert_eq!(b.min_value, Some((-120f64).to_le_bytes().to_vec()));
+    assert_eq!(b.max_value, Some(100f64.to_le_bytes().to_vec()));
+    assert_eq!(b.null_count, Some(1));
+    // d: NaN and tagged NaNs left out; 0/3 is the minimum, written -0.0.
+    let d = stats(4);
+    assert_eq!(d.min_value, Some((-0.0f64).to_le_bytes().to_vec()));
+    assert_eq!(d.max_value, Some((11.0f64 / 3.0).to_le_bytes().to_vec()));
+    assert_eq!(d.null_count, Some(1));
+}
+
+#[test]
+fn missing_letters_off_writes_nulls() {
+    let cols = storage_columns();
+    let off = WriteOptions { missing_letters: false, ..Default::default() };
+    let bytes = bytes_of(&cols, Profile::default(), &off);
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let kinds: Vec<ColumnType> = r.columns().iter().map(|c| c.kind.clone()).collect();
+    assert_eq!(kinds, vec![ColumnType::Int8, ColumnType::Int16, ColumnType::Int32, ColumnType::Float, ColumnType::Double]);
+    assert!(r.columns().iter().all(|c| c.storage.is_none()));
+    let stats = r.metadata().row_groups[0].columns[4].meta.as_ref().unwrap().statistics.clone().unwrap();
+    assert_eq!(stats.null_count, Some(3));
+    let (got, letters) = read(&bytes, &names(&cols), 0, 12, serial());
+    assert_eq!(letters, vec![false; 5]);
+    for g in &got {
+        let codes = match g {
+            Got::Ints(_, c) | Got::Floats(_, c) => c,
+            _ => panic!(),
+        };
+        assert_eq!((codes[2], codes[3], codes[7]), (1, 1, 1));
+    }
+}
+
+#[test]
+fn letters_only_go_where_a_double_holds_them() {
+    // 64-bit integers, dates, timestamps and booleans cannot be written as
+    // DOUBLE exactly: a letter in one is an error, unless letters are off.
+    let code = vec![0, 2];
+    let bad = [
+        Col { name: "big".into(), data: Data::I64(vec![1, 2]), codes: code.clone() },
+        Col { name: "day".into(), data: Data::Date(vec![1, 2]), codes: code.clone() },
+        Col { name: "ts".into(), data: Data::Ts { unit: TimeUnit::Millis, utc: true, zone: None, v: vec![1, 2] }, codes: code.clone() },
+        Col { name: "yes".into(), data: Data::Bool(vec![1, 0]), codes: code.clone() },
+    ];
+    for c in &bad {
+        let one = std::slice::from_ref(c);
+        let e = write(&table(one, Profile::default()), Vec::new(), &WriteOptions::default()).unwrap_err();
+        assert!(e.message.contains(&format!("\"{}\"", c.name)) && e.message.contains("row 2 holds .a"), "{}", e.message);
+        let off = WriteOptions { missing_letters: false, ..Default::default() };
+        let bytes = bytes_of(one, Profile::default(), &off);
+        let (got, _) = read(&bytes, &[&c.name], 0, 2, serial());
+        let Got::Ints(_, codes) = &got[0] else { panic!() };
+        assert_eq!(codes, &vec![0, 1]);
+    }
+    // A byte column written as DOUBLE still checks its values fit.
+    let wide = [Col { name: "b".into(), data: Data::I8(vec![1, 200, 0]), codes: vec![2, 0, 0] }];
+    let e = write(&table(&wide, Profile::default()), Vec::new(), &WriteOptions::default()).unwrap_err();
+    assert!(e.message.contains("\"b\"") && e.message.contains("row 2") && e.message.contains("8 bits"), "{}", e.message);
+}
+
+#[test]
+fn a_storage_the_columns_cannot_have_is_dropped() {
+    let cols = [
+        Col { name: "x".into(), data: Data::I32(vec![1, 2]), codes: vec![0, 0] },
+        Col { name: "y".into(), data: Data::F64(vec![1.0, 2.0]), codes: vec![0, 0] },
+        Col { name: "z".into(), data: Data::F64(vec![2.5, 1.0]), codes: vec![0, 2] },
+    ];
+    let profile = r#"{"version": 1, "columns": {"x": {"storage": "byte"}, "y": {"storage": "short", "label": "Why"}, "z": {"storage": "int"}, "gone": {"storage": "long"}}}"#;
+    let bytes = with_profile(&bytes_of(&cols, Profile::default(), &WriteOptions::default()), profile);
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let w = r.warnings().to_vec();
+    assert_eq!(w.len(), 2, "{w:?}");
+    assert!(w.iter().any(|w| w.contains("\"columns.y.storage\"")), "{w:?}");
+    assert!(w.iter().any(|w| w.contains("\"columns.x.storage\"") && w.contains("not DOUBLE")), "{w:?}");
+    let p = r.profile().unwrap();
+    assert_eq!(p.column("x").and_then(|c| c.storage), None);
+    assert_eq!(p.column("y").unwrap().label.as_deref(), Some("Why"));
+    assert_eq!(p.column("y").unwrap().storage, None);
+    let storage: Vec<Option<Storage>> = r.columns().iter().map(|c| c.storage).collect();
+    assert_eq!(storage, vec![None, None, Some(Storage::Int)]);
+    // A DOUBLE column without an integer storage does not read as integers.
+    let y = r.column_index("y").unwrap();
+    let mut v = vec![0i16; 2];
+    let e = r.read(&[y], 0, 2, &mut [Output::Int16(Numbers::new(&mut v, 0))], |_, _| Ok(())).unwrap_err();
+    assert!(e.message.contains("cannot be read as"), "{}", e.message);
+    // With one, a value that is not a whole number is an error naming it.
+    let z = r.column_index("z").unwrap();
+    let mut v = vec![0i16; 2];
+    let e = r.read(&[z], 0, 2, &mut [Output::Int16(Numbers::new(&mut v, 0))], |_, _| Ok(())).unwrap_err();
+    assert!(e.message.contains("\"z\"") && e.message.contains("2.5") && e.message.contains("row 1"), "{}", e.message);
 }
 
 #[test]
@@ -402,10 +524,13 @@ fn a_damaged_profile_is_a_warning() {
     let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
     assert!(r.profile().is_none());
     assert_eq!(r.warnings().len(), 1);
-    // The letter columns are then ordinary text columns, as for any tool.
-    assert!(r.columns().iter().any(|c| c.name == "i8__missing" && c.role == Role::Data));
-    let (got, _, _) = read(&bytes, &["i8__missing"], 0, 10, serial());
-    assert_eq!(got[0], Got::Bytes((0..10).map(|r| (r == 4).then(|| b".a".to_vec())).collect()));
+    // A byte column with letters is then a plain DOUBLE column, whose
+    // tagged NaNs are still .a to .z.
+    assert!(r.columns().iter().all(|c| c.storage.is_none()));
+    let (got, letters) = read(&bytes, &["i8"], 0, 10, serial());
+    assert_eq!(letters, vec![true]);
+    let Got::Floats(values, codes) = &got[0] else { panic!() };
+    assert_eq!((values[0], codes[3], codes[4]), (-100.0, 1, 2));
 }
 
 #[test]
@@ -458,19 +583,4 @@ fn writer_errors_name_the_column_and_row() {
     write(&table(&bad_utf8, Profile::default()), Vec::new(), &WriteOptions::default()).unwrap();
     let e = WriteOptions { compression: Compression::Snappy, compression_level: Some(3), ..Default::default() };
     assert!(write(&table(&twice[..1], Profile::default()), Vec::new(), &e).is_err());
-}
-
-#[test]
-fn letter_column_names_avoid_taken_names() {
-    let cols = vec![
-        Col { name: "x".into(), data: Data::F64(vec![1.0, 2.0]), codes: vec![0, 2] },
-        Col { name: "x__missing".into(), data: Data::F64(vec![1.0, 2.0]), codes: vec![0, 0] },
-    ];
-    let mut out = Vec::new();
-    let report = write(&table(&cols, Profile::default()), &mut out, &WriteOptions::default()).unwrap();
-    assert_eq!(report.missing_letters, vec![("x".to_string(), "x__missing_1".to_string())]);
-    let (got, letters, _) = read(&out, &["x", "x__missing"], 0, 2, serial());
-    assert_eq!(letters, vec![true, false]);
-    let Got::Floats(_, codes) = &got[0] else { panic!() };
-    assert_eq!(codes, &vec![0, 2]);
 }

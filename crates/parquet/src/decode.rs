@@ -658,6 +658,12 @@ pub(crate) trait Physical: Copy + Send + Sync + std::fmt::Debug + 'static {
     const WIDTH: usize;
     fn from_le(b: &[u8]) -> Self;
     fn convert<T: crate::read::Element>(self) -> Option<T>;
+    /// The missing code of a tagged NaN (2 to 27 for `.a` to `.z`), or 0.
+    /// Only doubles hold them.
+    #[inline]
+    fn letter(self) -> u8 {
+        0
+    }
 }
 
 impl Physical for i32 {
@@ -706,6 +712,10 @@ impl Physical for f64 {
     fn convert<T: crate::read::Element>(self) -> Option<T> {
         T::from_f64(self)
     }
+    #[inline]
+    fn letter(self) -> u8 {
+        crate::tagged::tagged_code(self)
+    }
 }
 
 /// Where a chunk's numbers go: its part of the caller's slices.
@@ -729,6 +739,30 @@ fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
 pub(crate) struct Numbers<'o, P, T> {
     pub(crate) out: NumberOut<'o, T>,
     pub(crate) dictionary: Vec<P>,
+    /// Whether any `.a` to `.z` was read.
+    pub(crate) letters: bool,
+}
+
+/// Put one present value into `d`: a tagged NaN as its missing value and
+/// code, anything else converted. Returns whether it was `.a` to `.z`.
+#[inline]
+fn put_one<P: Physical, T: crate::read::Element>(
+    p: P,
+    d: &mut T,
+    code: Option<&mut u8>,
+    missing: &[T; 27],
+    row: u64,
+) -> Result<bool> {
+    let letter = p.letter();
+    if letter != 0 {
+        *d = missing[usize::from(letter - 1)];
+        if let Some(c) = code {
+            *c = letter;
+        }
+        return Ok(true);
+    }
+    *d = p.convert().ok_or_else(|| cannot_hold(&p, row, T::NAME))?;
+    Ok(false)
 }
 
 impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
@@ -736,9 +770,10 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
     fn put(&mut self, page: &DataPage, mut value: impl FnMut(usize) -> P) -> Result<()> {
         let out = &mut self.out;
         let take = page.take.clone();
-        let dest = &mut out.values[page.out_at..page.out_at + take.len()];
-        if let Some(codes) = out.codes.as_deref_mut() {
-            let codes = &mut codes[page.out_at..page.out_at + take.len()];
+        let rows = page.out_at..page.out_at + take.len();
+        let dest = &mut out.values[rows.clone()];
+        let mut codes = out.codes.as_deref_mut().map(|c| &mut c[rows]);
+        if let Some(codes) = codes.as_deref_mut() {
             match page.levels {
                 None => codes.fill(0),
                 Some(l) => {
@@ -748,32 +783,31 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
                 }
             }
         }
+        let missing = out.missing;
         let first_row = out.file_row + page.out_at as u64;
         let mut vi = values_before(page.levels, take.start);
+        let mut letters = false;
         match page.levels {
             None => {
                 for (k, d) in dest.iter_mut().enumerate() {
-                    let p = value(vi + k);
-                    *d = p
-                        .convert()
-                        .ok_or_else(|| cannot_hold(&p, first_row + k as u64, T::NAME))?;
+                    let code = codes.as_deref_mut().map(|c| &mut c[k]);
+                    letters |= put_one(value(vi + k), d, code, missing, first_row + k as u64)?;
                 }
             }
             Some(levels) => {
-                let null = out.missing[0];
+                let null = missing[0];
                 for (k, (d, &l)) in dest.iter_mut().zip(&levels[take]).enumerate() {
                     if l == 1 {
-                        let p = value(vi);
+                        let code = codes.as_deref_mut().map(|c| &mut c[k]);
+                        letters |= put_one(value(vi), d, code, missing, first_row + k as u64)?;
                         vi += 1;
-                        *d = p
-                            .convert()
-                            .ok_or_else(|| cannot_hold(&p, first_row + k as u64, T::NAME))?;
                     } else {
                         *d = null;
                     }
                 }
             }
         }
+        self.letters |= letters;
         Ok(())
     }
 }
@@ -854,6 +888,7 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
                 file_row: self.out.file_row,
             },
             dictionary: Vec::new(),
+            letters: false,
         };
         let bools = &*bools;
         // Booleans are 0 and 1, which every output type holds.

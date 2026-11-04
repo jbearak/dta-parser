@@ -22,8 +22,9 @@ use crate::format::{
     PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
     TimeUnit,
 };
-use crate::profile::{self, Categorical, Profile};
+use crate::profile::{self, Categorical, Profile, Storage};
 use crate::rle;
+use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
 
 /// The most rows a fill is asked for at once.
@@ -31,7 +32,9 @@ pub const BLOCK: usize = 1024;
 
 /// Fills a block of rows: called with the block's first row and buffers
 /// of the block's length, it writes each row's value and missing code
-/// (0 for a value, 1 for a null, 2 to 27 for `.a` to `.z`).
+/// (0 for a value, 1 for a null, 2 to 27 for `.a` to `.z`). `.a` to `.z`
+/// may be given only for `Int8`, `Int16`, `Int32`, `Float` and `Double`
+/// columns, unless [`WriteOptions::missing_letters`] is off.
 pub type Fill<'a, T> = dyn Fn(usize, &mut [T], &mut [u8]) + Sync + 'a;
 
 /// Gives a row's bytes, or `None` for a null.
@@ -129,7 +132,7 @@ pub struct Table<'a> {
     pub rows: usize,
     pub columns: Vec<WriteColumn<'a>>,
     /// Labels, formats, notes and the rest. The writer adds what it knows
-    /// from the columns: levels, time zones and missing-letter columns.
+    /// from the columns: levels, time zones and storage types.
     pub profile: Profile,
 }
 
@@ -142,8 +145,9 @@ pub struct WriteOptions {
     /// Rows per row group; `None` sizes them to about 64 MiB of values,
     /// at most 262,144 rows.
     pub row_group_rows: Option<usize>,
-    /// Write `.a` to `.z` into missing-letter columns; with `false` they
-    /// are plain nulls.
+    /// Write `.a` to `.z` as tagged NaNs, a numeric column that holds any
+    /// as DOUBLE; with `false` they are plain nulls, and every column
+    /// keeps its type.
     pub missing_letters: bool,
     /// Worker threads: 0 for the default, 1 for none.
     pub threads: usize,
@@ -194,8 +198,6 @@ impl Default for WriteOptions {
 pub struct WriteReport {
     pub bytes: u64,
     pub row_groups: usize,
-    /// Each data column with `.a` to `.z`, and its missing-letter column.
-    pub missing_letters: Vec<(String, String)>,
 }
 
 /// The library and version, for the footer's `created_by`.
@@ -233,10 +235,10 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
         .map(|_| Mutex::new(Scratch::default()))
         .collect();
 
-    // Which columns hold `.a` to `.z`, found before anything is written
-    // because the schema lists their letter columns.
-    let has_letters: Vec<bool> = if options.missing_letters {
-        let scan = |k: usize, _: &mut Scratch| scan_letters(&table.columns[k], table.rows);
+    // Which columns hold `.a` to `.z`, found before anything is written:
+    // those are DOUBLE in every row group.
+    let tagged: Vec<bool> = if options.missing_letters {
+        let scan = |k: usize, _: &mut Scratch| holds_letters(&table.columns[k], table.rows);
         let big = table.rows.saturating_mul(table.columns.len() * 8) >= options.parallel_bytes;
         parallel(
             if big { threads } else { 1 },
@@ -249,27 +251,10 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
     } else {
         vec![false; table.columns.len()]
     };
-    let mut letter_names = Vec::new();
-    let mut taken: std::collections::HashSet<String> =
-        table.columns.iter().map(|c| c.name.clone()).collect();
-    let mut letters_of: Vec<Option<usize>> = vec![None; table.columns.len()];
-    for (k, c) in table.columns.iter().enumerate() {
-        if has_letters[k] {
-            let mut name = format!("{}__missing", c.name);
-            let mut n = 1;
-            while taken.contains(&name) {
-                name = format!("{}__missing_{n}", c.name);
-                n += 1;
-            }
-            taken.insert(name.clone());
-            letters_of[k] = Some(letter_names.len());
-            letter_names.push((c.name.clone(), name));
-        }
-    }
 
-    let profile = profile_for(table, &letters_of, &letter_names)?;
-    let schema = schema_for(table, &letter_names);
-    let arrow_schema = arrow_schema_for(table, &letter_names);
+    let profile = profile_for(table, &tagged)?;
+    let schema = schema_for(table, &tagged);
+    let arrow_schema = arrow_schema_for(table, &tagged);
 
     let mut out = Counter { inner: out, at: 0 };
     out.put(b"PAR1")?;
@@ -288,7 +273,7 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
                 compression: options.compression,
                 level,
             };
-            enc.column(&table.columns[k], rows.clone(), letters_of[k].is_some(), s)
+            enc.column(&table.columns[k], rows.clone(), tagged[k], s)
         };
         let threads_here = if bytes >= options.parallel_bytes {
             threads
@@ -301,28 +286,14 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
         let mut chunks = Vec::with_capacity(schema.len() - 1);
         let mut group_index = Vec::with_capacity(schema.len() - 1);
         let start = out.at;
-        let mut letter_chunks = Vec::new();
         let (mut total, mut compressed) = (0i64, 0i64);
-        for (k, mut e) in encoded.into_iter().enumerate() {
-            if let Some(l) = e.letters.take() {
-                letter_chunks.push((
-                    letter_names[letters_of[k].expect("has letters")].1.clone(),
-                    *l,
-                ));
-            }
+        for (k, e) in encoded.into_iter().enumerate() {
             let (cc, oi) = put_chunk(
                 &mut out,
                 &table.columns[k].name,
                 e,
                 options.compression.codec(),
             )?;
-            total += cc.meta.as_ref().map_or(0, |m| m.total_uncompressed_size);
-            compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
-            chunks.push(cc);
-            group_index.push(oi);
-        }
-        for (name, e) in letter_chunks {
-            let (cc, oi) = put_chunk(&mut out, &name, e, options.compression.codec())?;
             total += cc.meta.as_ref().map_or(0, |m| m.total_uncompressed_size);
             compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
             chunks.push(cc);
@@ -376,7 +347,6 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
     Ok(WriteReport {
         bytes: out.at,
         row_groups,
-        missing_letters: letter_names,
     })
 }
 
@@ -437,10 +407,16 @@ fn put_chunk<W: Write>(
     ))
 }
 
-/// Whether a numeric column holds any of `.a` to `.z`; a code past `.z`
-/// is an error.
-fn scan_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
-    fn scan<T: Default + Copy>(fill: &Fill<T>, rows: usize, name: &str) -> Result<bool> {
+/// Whether a column holds any of `.a` to `.z`. A code past `.z` is an
+/// error, and so is a letter in a column that cannot be written as DOUBLE
+/// exactly (64-bit integers, dates, timestamps, booleans).
+fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
+    fn scan<T: Default + Copy>(
+        fill: &Fill<T>,
+        rows: usize,
+        name: &str,
+        widens: bool,
+    ) -> Result<bool> {
         let mut values = [T::default(); BLOCK];
         let mut codes = vec![0u8; BLOCK];
         let mut found = false;
@@ -452,19 +428,40 @@ fn scan_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
                 if c > missing::LAST {
                     return Err(bad_code(name, first + i, c));
                 }
-                found |= c > missing::SYSTEM;
+                if c > missing::SYSTEM {
+                    if !widens {
+                        return Err(Error::invalid(format!(
+                            "column \"{name}\": row {} holds {}, but .a to .z can be written only in byte, int, long, float and double columns; turn missing_letters off to write them as nulls",
+                            first + i + 1,
+                            missing::name(c).unwrap_or_default()
+                        )));
+                    }
+                    found = true;
+                }
             }
         }
         Ok(found)
     }
+    let name = &c.name;
     match &c.values {
-        Values::Int8(f) | Values::Int16(f) | Values::Int32(f) | Values::Date(f) => {
-            scan(f.as_ref(), rows, &c.name)
-        }
-        Values::Int64(f) | Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, &c.name),
-        Values::Float(f) => scan(f.as_ref(), rows, &c.name),
-        Values::Double(f) => scan(f.as_ref(), rows, &c.name),
-        _ => Ok(false),
+        Values::Int8(f) | Values::Int16(f) | Values::Int32(f) => scan(f.as_ref(), rows, name, true),
+        Values::Float(f) => scan(f.as_ref(), rows, name, true),
+        Values::Double(f) => scan(f.as_ref(), rows, name, true),
+        Values::Date(f) => scan(f.as_ref(), rows, name, false),
+        Values::Int64(f) | Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, name, false),
+        Values::Bool(f) => scan(f.as_ref(), rows, name, false),
+        Values::Text(_) | Values::Binary(_) | Values::Categorical { .. } => Ok(false),
+    }
+}
+
+/// What a column written as DOUBLE because it holds `.a` to `.z` was.
+fn storage_of(values: &Values) -> Option<Storage> {
+    match values {
+        Values::Int8(_) => Some(Storage::Byte),
+        Values::Int16(_) => Some(Storage::Int),
+        Values::Int32(_) => Some(Storage::Long),
+        Values::Float(_) => Some(Storage::Float),
+        _ => None,
     }
 }
 
@@ -475,15 +472,15 @@ fn bad_code(name: &str, row: usize, code: u8) -> Error {
     ))
 }
 
-fn profile_for(
-    table: &Table,
-    letters_of: &[Option<usize>],
-    letter_names: &[(String, String)],
-) -> Result<String> {
+fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
     let mut p = table.profile.clone();
     for (k, c) in table.columns.iter().enumerate() {
         let entry = p.column_mut(&c.name);
-        entry.missing_letters = letters_of[k].map(|l| letter_names[l].1.clone());
+        entry.storage = if tagged[k] {
+            storage_of(&c.values)
+        } else {
+            None
+        };
         match &c.values {
             Values::Categorical {
                 levels, ordered, ..
@@ -507,16 +504,17 @@ fn profile_for(
     p.to_json()
 }
 
-fn schema_for(table: &Table, letter_names: &[(String, String)]) -> Vec<SchemaElement> {
-    let mut schema = Vec::with_capacity(table.columns.len() + letter_names.len() + 1);
+fn schema_for(table: &Table, tagged: &[bool]) -> Vec<SchemaElement> {
+    let mut schema = Vec::with_capacity(table.columns.len() + 1);
     schema.push(SchemaElement {
         name: "schema".into(),
-        num_children: Some((table.columns.len() + letter_names.len()) as i32),
+        num_children: Some(table.columns.len() as i32),
         ..Default::default()
     });
     let int = |bits| Some(LogicalType::Integer { bits, signed: true });
-    for c in &table.columns {
+    for (c, &tagged) in table.columns.iter().zip(tagged) {
         let (physical, logical, conv) = match &c.values {
+            _ if tagged => (PhysicalType::Double, None, None),
             Values::Int8(_) => (PhysicalType::Int32, int(8), Some(converted::INT_8)),
             Values::Int16(_) => (PhysicalType::Int32, int(16), Some(converted::INT_16)),
             Values::Int32(_) => (PhysicalType::Int32, None, None),
@@ -562,25 +560,17 @@ fn schema_for(table: &Table, letter_names: &[(String, String)]) -> Vec<SchemaEle
             ..Default::default()
         });
     }
-    for (_, name) in letter_names {
-        schema.push(SchemaElement {
-            name: name.clone(),
-            physical: Some(PhysicalType::ByteArray),
-            repetition: Some(Repetition::Optional),
-            logical: Some(LogicalType::String),
-            converted: Some(converted::UTF8),
-            ..Default::default()
-        });
-    }
     schema
 }
 
-fn arrow_schema_for(table: &Table, letter_names: &[(String, String)]) -> String {
-    let mut fields: Vec<(String, ArrowType)> = table
+fn arrow_schema_for(table: &Table, tagged: &[bool]) -> String {
+    let fields: Vec<(String, ArrowType)> = table
         .columns
         .iter()
-        .map(|c| {
+        .zip(tagged)
+        .map(|(c, &tagged)| {
             let ty = match &c.values {
+                _ if tagged => ArrowType::Float64,
                 Values::Int8(_) => ArrowType::Int { bits: 8 },
                 Values::Int16(_) => ArrowType::Int { bits: 16 },
                 Values::Int32(_) => ArrowType::Int { bits: 32 },
@@ -606,11 +596,6 @@ fn arrow_schema_for(table: &Table, letter_names: &[(String, String)]) -> String 
             (c.name.clone(), ty)
         })
         .collect();
-    fields.extend(
-        letter_names
-            .iter()
-            .map(|(_, n)| (n.clone(), ArrowType::Utf8)),
-    );
     arrow::schema_entry(&fields)
 }
 
@@ -753,8 +738,6 @@ struct Encoded {
     encodings: Vec<Encoding>,
     stats: Statistics,
     rows: usize,
-    /// The chunk of the column's missing-letter column.
-    letters: Option<Box<Encoded>>,
 }
 
 struct Encoder<'o> {
@@ -801,7 +784,6 @@ impl Pages {
             encodings: self.encodings,
             stats,
             rows,
-            letters: None,
         }
     }
 }
@@ -912,97 +894,53 @@ impl Encoder<'_> {
         Ok(())
     }
 
+    /// Encode a column's rows; `tagged`: the column holds `.a` to `.z`
+    /// and is written as DOUBLE.
     fn column(
         &self,
         c: &WriteColumn,
         rows: Range<usize>,
-        letters: bool,
+        tagged: bool,
         s: &mut Scratch,
     ) -> Result<Encoded> {
-        let mut letter_codes = if letters {
-            vec![0u8; rows.len()]
-        } else {
-            Vec::new()
-        };
+        use PhysicalType::{Double, Float, Int32, Int64};
         let name = &c.name;
-        let lc = letters.then_some(&mut letter_codes);
-        let mut e = match &c.values {
-            Values::Int8(f) => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Int32,
-                Some(8),
-            )?,
-            Values::Int16(f) => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Int32,
-                Some(16),
-            )?,
-            Values::Int32(f) | Values::Date(f) => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Int32,
-                None,
-            )?,
-            Values::Int64(f) | Values::Timestamp { fill: f, .. } => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Int64,
-                None,
-            )?,
-            Values::Float(f) => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Float,
-                None,
-            )?,
-            Values::Double(f) => self.numbers(
-                f.as_ref(),
-                rows.clone(),
-                s,
-                lc,
-                name,
-                PhysicalType::Double,
-                None,
-            )?,
-            Values::Bool(f) => self.booleans(f.as_ref(), rows.clone(), s, name)?,
-            Values::Text(g) => self.texts(g.as_ref(), rows.clone(), s, name, true)?,
-            Values::Binary(g) => self.texts(g.as_ref(), rows.clone(), s, name, false)?,
-            Values::Categorical { levels, codes, .. } => {
-                self.categorical(levels, codes.as_ref(), rows.clone(), s, name)?
+        match &c.values {
+            // A byte or int column still checks its values fit.
+            Values::Int8(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, Some(8)),
+            Values::Int16(f) if tagged => {
+                self.numbers(&mut tag(f), rows, s, name, Double, Some(16))
             }
-        };
-        if letters {
-            e.letters = Some(Box::new(self.letters(&letter_codes, s)?));
+            Values::Int32(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
+            Values::Float(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
+            Values::Double(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
+            Values::Int8(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(8)),
+            Values::Int16(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(16)),
+            Values::Int32(f) | Values::Date(f) => {
+                self.numbers(&mut f.as_ref(), rows, s, name, Int32, None)
+            }
+            Values::Int64(f) | Values::Timestamp { fill: f, .. } => {
+                self.numbers(&mut f.as_ref(), rows, s, name, Int64, None)
+            }
+            Values::Float(f) => self.numbers(&mut f.as_ref(), rows, s, name, Float, None),
+            Values::Double(f) => self.numbers(&mut f.as_ref(), rows, s, name, Double, None),
+            Values::Bool(f) => self.booleans(f.as_ref(), rows, s, name),
+            Values::Text(g) => self.texts(g.as_ref(), rows, s, name, true),
+            Values::Binary(g) => self.texts(g.as_ref(), rows, s, name, false),
+            Values::Categorical { levels, codes, .. } => {
+                self.categorical(levels, codes.as_ref(), rows, s, name)
+            }
         }
-        Ok(e)
     }
 
     /// A numeric chunk: dictionary-encoded while that pays (plan 0018),
-    /// else PLAIN.
-    #[allow(clippy::too_many_arguments)]
+    /// else PLAIN. Every missing code is a null; `.a` to `.z` that are to
+    /// be kept arrive as tagged NaN values ([`tag`]).
     fn numbers<T: Number>(
         &self,
-        fill: &Fill<T>,
+        fill: &mut Block<T>,
         rows: Range<usize>,
         s: &mut Scratch,
-        mut letters: Option<&mut Vec<u8>>,
         name: &str,
         physical: PhysicalType,
         bits: Option<u32>,
@@ -1053,11 +991,6 @@ impl Encoder<'_> {
                     }
                     stats.nulls += 1;
                     s.levels.push(0);
-                    if let Some(l) = letters.as_deref_mut() {
-                        if code > missing::SYSTEM {
-                            l[row] = code;
-                        }
-                    }
                 }
                 let size = match &dict {
                     Some(d) => d.indices.len() * width(d.values.len()) as usize / 8,
@@ -1454,67 +1387,28 @@ impl Encoder<'_> {
         }
         Ok(p.finish(stats, rows.len()))
     }
+}
 
-    /// A missing-letter chunk: ".a" to ".z" where `codes` has them, null
-    /// elsewhere; always dictionary-encoded.
-    fn letters(&self, codes: &[u8], s: &mut Scratch) -> Result<Encoded> {
-        let mut p = Pages::new(PhysicalType::ByteArray);
-        let mut present = [false; 28];
-        for &c in codes {
-            present[c as usize] = true;
-        }
-        let letters: Vec<u8> = (2..=missing::LAST)
-            .filter(|&c| present[c as usize])
-            .collect();
-        let mut index = [0u32; 28];
-        let mut dict_bytes = Vec::new();
-        for (i, &c) in letters.iter().enumerate() {
-            index[c as usize] = i as u32;
-            dict_bytes.extend_from_slice(&2u32.to_le_bytes());
-            dict_bytes.extend_from_slice(&[b'.', b'a' + c - 2]);
-        }
-        self.dictionary_page(s, &mut p, letters.len(), &dict_bytes)?;
-        let w = width(letters.len());
-        let mut indices = Vec::new();
-        let mut page_first = 0;
-        s.levels.clear();
-        let mut nulls = 0i64;
-        for (r, &c) in codes.iter().enumerate() {
-            if c > missing::SYSTEM {
-                indices.push(index[c as usize]);
-                s.levels.push(1);
+/// A block of rows to encode, as [`Fill`] gives them.
+type Block<'f, T> = dyn FnMut(usize, &mut [T], &mut [u8]) + 'f;
+
+/// A numeric column that holds `.a` to `.z`, as doubles: each value
+/// widened, and each letter its tagged NaN (plan 0018, "Missing values").
+fn tag<'f, S: Number + Into<f64>>(
+    fill: &'f Fill<'_, S>,
+) -> impl FnMut(usize, &mut [f64], &mut [u8]) + 'f {
+    let mut narrow = [S::default(); BLOCK];
+    move |first, values: &mut [f64], codes: &mut [u8]| {
+        let n = values.len();
+        fill(first, &mut narrow[..n], codes);
+        for ((v, c), &x) in values.iter_mut().zip(codes.iter_mut()).zip(&narrow[..n]) {
+            if (missing::SYSTEM + 1..=missing::LAST).contains(c) {
+                *v = tagged_nan(*c);
+                *c = 0;
             } else {
-                nulls += 1;
-                s.levels.push(0);
-            }
-            if indices.len() * w as usize / 8 + s.levels.len() / 8 >= self.options.page_bytes
-                || r + 1 == codes.len()
-            {
-                let mut values = vec![w];
-                rle::encode(&indices, w, &mut values);
-                self.data_page(
-                    s,
-                    &mut p,
-                    page_first as u64,
-                    Encoding::RleDictionary,
-                    &values,
-                )?;
-                indices.clear();
-                page_first = r + 1;
+                *v = x.into();
             }
         }
-        if p.pages.is_empty() {
-            self.data_page(s, &mut p, 0, Encoding::RleDictionary, &[w])?;
-        }
-        let mut stats = Statistics {
-            null_count: Some(nulls),
-            ..Default::default()
-        };
-        if let (Some(&lo), Some(&hi)) = (letters.first(), letters.last()) {
-            stats.min_value = Some(vec![b'.', b'a' + lo - 2]);
-            stats.max_value = Some(vec![b'.', b'a' + hi - 2]);
-        }
-        Ok(p.finish(stats, codes.len()))
     }
 }
 
@@ -1687,8 +1581,11 @@ impl Number for f64 {
     fn key(self) -> u64 {
         self.to_bits()
     }
-    fn fits(self, _: u32) -> bool {
-        true
+    /// For a byte or int column written as DOUBLE: a whole number in
+    /// range, or a tagged NaN.
+    fn fits(self, bits: u32) -> bool {
+        let lim = f64::from(1u32 << (bits - 1));
+        self.is_nan() || (self.fract() == 0.0 && (-lim..lim).contains(&self))
     }
     fn is_nan(self) -> bool {
         f64::is_nan(self)

@@ -169,6 +169,22 @@ pub fn every_type(n: usize) -> Vec<Col> {
     ]
 }
 
+/// One column of each storage type with values, `.`, `.a`, `.z` and, for
+/// floats, a plain NaN, over 12 rows.
+pub fn storage_columns() -> Vec<Col> {
+    // Row 0..12: values, but row 2 is `.`, row 3 `.a`, row 7 `.z`; row 5
+    // of the floats is a NaN value.
+    let codes: Vec<u8> = (0..12).map(|r| match r { 2 => 1, 3 => 2, 7 => 27, _ => 0 }).collect();
+    let ints = |scale: i32| (0..12).map(|r| (r - 6) * scale).collect::<Vec<i32>>();
+    vec![
+        Col { name: "b".into(), data: Data::I8(ints(20)), codes: codes.clone() },
+        Col { name: "i".into(), data: Data::I16(ints(5000)), codes: codes.clone() },
+        Col { name: "l".into(), data: Data::I32(ints(300_000_000)), codes: codes.clone() },
+        Col { name: "f".into(), data: Data::F32((0..12).map(|r| if r == 5 { f32::NAN } else { r as f32 * 0.25 }).collect()), codes: codes.clone() },
+        Col { name: "d".into(), data: Data::F64((0..12).map(|r| if r == 5 { f64::NAN } else { r as f64 / 3.0 }).collect()), codes },
+    ]
+}
+
 /// A column as read back: numbers as `f64` (or exact `i64`) with codes,
 /// text as optional bytes, categoricals as codes.
 #[derive(Debug, Clone, PartialEq)]
@@ -205,19 +221,25 @@ pub fn expected(c: &Col, rows: std::ops::Range<usize>) -> Got {
 }
 
 /// Read `names` over rows `skip..skip + n` with `options`; each column
-/// read the way its kind suggests. Returns the columns, the report's
-/// letters flags and warnings.
-pub fn read(bytes: &[u8], names: &[&str], skip: u64, n: u64, options: ReadOptions) -> (Vec<Got>, Vec<bool>, Vec<String>) {
+/// read the way its kind suggests, or its storage type when the profile
+/// gives one. Returns the columns and the report's letters flags.
+pub fn read(bytes: &[u8], names: &[&str], skip: u64, n: u64, options: ReadOptions) -> (Vec<Got>, Vec<bool>) {
     let mut r = Reader::open(dta::Bytes(bytes), options).unwrap();
     read_with(&mut r, names, skip, n).unwrap()
 }
 
-pub fn read_with<S: dta::Source>(r: &mut Reader<S>, names: &[&str], skip: u64, n: u64) -> dta::Result<(Vec<Got>, Vec<bool>, Vec<String>)> {
+pub fn read_with<S: dta::Source>(r: &mut Reader<S>, names: &[&str], skip: u64, n: u64) -> dta::Result<(Vec<Got>, Vec<bool>)> {
     use dta_parquet::ColumnType::*;
     let window = r.window(skip, n);
     let rows = (window.end - window.start) as usize;
     let idx: Vec<usize> = names.iter().map(|n| r.column_index(n).unwrap_or_else(|| panic!("no column {n}"))).collect();
-    let kinds: Vec<_> = idx.iter().map(|&k| r.columns()[k].kind.clone()).collect();
+    let kinds: Vec<_> = idx
+        .iter()
+        .map(|&k| {
+            let c = &r.columns()[k];
+            c.storage.map_or_else(|| c.kind.clone(), |s| s.column_type())
+        })
+        .collect();
     let cats: Vec<bool> = names.iter().map(|n| r.profile().and_then(|p| p.column(n)).is_some_and(|c| c.categorical.is_some())).collect();
     let mut ints: Vec<(Vec<i64>, Vec<u8>)> = vec![(vec![0; rows], vec![0; rows]); names.len()];
     let mut floats: Vec<(Vec<f64>, Vec<u8>)> = vec![(vec![0.0; rows], vec![0; rows]); names.len()];
@@ -249,7 +271,7 @@ pub fn read_with<S: dta::Source>(r: &mut Reader<S>, names: &[&str], skip: u64, n
             _ => Got::Ints(ints[k].0.clone(), ints[k].1.clone()),
         });
     }
-    Ok((out, report.letters, report.warnings))
+    Ok((out, report.letters))
 }
 
 /// Compare, treating NaN as equal to NaN and -0.0 as distinct from 0.0.
