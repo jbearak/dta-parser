@@ -13,6 +13,12 @@
 /// holds a positive number, else the default; never more than the
 /// machine has, and always 1 in wasm.
 pub fn resolve(requested: usize) -> usize {
+    resolve_with_default(requested, 3)
+}
+
+/// As [`resolve`], with `most` in place of the default's three: for work
+/// measured to have its own (plan 0018's Parquet reads and writes).
+pub fn resolve_with_default(requested: usize, most: usize) -> usize {
     if cfg!(target_arch = "wasm32") {
         return 1;
     }
@@ -22,15 +28,20 @@ pub fn resolve(requested: usize) -> usize {
     } else {
         match std::env::var("DTA_THREADS").ok().and_then(|v| v.trim().parse::<usize>().ok()) {
             Some(n) if n > 0 => n,
-            _ => default(available),
+            _ => default_of(available, most),
         }
     };
     wanted.min(available).max(1)
 }
 
+#[cfg(test)]
 fn default(available: usize) -> usize {
+    default_of(available, 3)
+}
+
+fn default_of(available: usize, most: usize) -> usize {
     let cores = if cfg!(any(target_arch = "x86", target_arch = "x86_64")) { (available / 2).max(1) } else { available };
-    cores.min(3)
+    cores.min(most.max(1))
 }
 
 /// Whether `DTA_TEST_SMALL_CHUNKS=1`: the bindings' tests set it to
@@ -59,5 +70,13 @@ mod tests {
         assert_eq!(default(2), if cfg!(any(target_arch = "x86", target_arch = "x86_64")) { 1 } else { 2 });
         assert!(resolve(1) == 1);
         assert!(resolve(10_000) >= 1);
+    }
+
+    #[test]
+    fn work_measured_on_its_own_has_its_own_default() {
+        assert_eq!(default_of(16, 2), 2);
+        assert_eq!(default_of(16, 0), 1);
+        assert_eq!(default_of(1, 4), 1);
+        assert!(resolve_with_default(1, 8) == 1);
     }
 }

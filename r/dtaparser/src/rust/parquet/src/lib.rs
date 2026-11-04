@@ -52,6 +52,17 @@ mod thrift;
 mod write;
 
 pub use codec::Compression;
+
+/// The default number of worker threads for a read, where the caller
+/// asks for 0 and `DTA_THREADS` is not set ([`dta::threads`]). Plan
+/// 0007's rule (CPU time at most 1.15 times one thread's, each thread
+/// added at least half as fast as one more whole core) applied to
+/// Parquet reads at 1 to 12 threads; the measurements are in
+/// bench/RESULTS.md, under Parquet.
+pub const READ_THREADS: usize = 2;
+
+/// As [`READ_THREADS`], for writes.
+pub const WRITE_THREADS: usize = 2;
 pub use decode::TextChunk;
 pub use profile::{Categorical, ColumnProfile, Logical, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};

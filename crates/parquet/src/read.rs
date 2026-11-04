@@ -31,8 +31,9 @@ pub enum Nested {
 /// Options for opening a file.
 #[derive(Debug, Clone, Copy)]
 pub struct ReadOptions {
-    /// Worker threads for reads: 0 for the default (see
-    /// [`dta::threads`]), 1 to read on the calling thread alone.
+    /// Worker threads for reads: 0 for the default
+    /// ([`READ_THREADS`](crate::READ_THREADS), or `DTA_THREADS`), 1 to
+    /// read on the calling thread alone.
     pub threads: usize,
     pub nested: Nested,
     /// Reads of fewer uncompressed bytes than this stay on one thread.
@@ -733,7 +734,7 @@ impl<S: Source> Reader<S> {
         let bytes = tasks.iter().fold(0u64, |sum, t| {
             sum.saturating_add(ctx.uncompressed(t).max(t.decoded()))
         });
-        let threads = dta::threads::resolve(self.options.threads);
+        let threads = dta::threads::resolve_with_default(self.options.threads, crate::READ_THREADS);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
         let mut deliver = |k: usize, done: Done| -> Result<()> {
