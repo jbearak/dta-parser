@@ -82,7 +82,7 @@ test_that("col_select, skip and n_max apply to the result", {
 test_that("warnings are one classed warning and an attribute", {
   setup <- c("PROC FORMAT; VALUE f 1-5='low';", "DATA; INPUT X 1;", sprintf("y%d = x * 2;", 1:10))
   f <- fw_files(setup, c("1", "2"))
-  expect_warning(df <- read_fixed_width(f[["data"]], f[["setup"]]), class = "dtaparser_fixed_width_warning")
+  expect_warning(df <- read_fixed_width(f[["data"]], f[["setup"]]), class = "datakit_fixed_width_warning")
   expect_length(attr(df, "warnings"), 11)
   w <- tryCatch(read_fixed_width(f[["data"]], f[["setup"]]), warning = function(w) conditionMessage(w))
   expect_match(w, "3 more", fixed = TRUE)
@@ -90,12 +90,12 @@ test_that("warnings are one classed warning and an attribute", {
 })
 
 test_that("errors name the setup line, and leave no temporary files", {
-  before <- Sys.glob(file.path(tempdir(), "dtaparser*"))
+  before <- Sys.glob(file.path(tempdir(), "datakit*"))
   f <- fw_files(c("DATA;", "INPUT X 1. ;"), "1")
   expect_error(read_fixed_width(f[["data"]], f[["setup"]]), "setup line 2: INPUT form not supported")
-  expect_identical(Sys.glob(file.path(tempdir(), "dtaparser*")), before)
+  expect_identical(Sys.glob(file.path(tempdir(), "datakit*")), before)
   df <- read_fixed_width(fw_files()[["data"]], fw_files()[["setup"]])
-  expect_identical(Sys.glob(file.path(tempdir(), "dtaparser*")), before)
+  expect_identical(Sys.glob(file.path(tempdir(), "datakit*")), before)
 })
 
 test_that("haven and readstata13 read the tagged file's letters and labels", {
@@ -252,4 +252,22 @@ test_that("a label with stray quotes is read whole, without a warning", {
   expect_identical(attr(df$RING, "label"), "EVER USED RING OR \"NUVARING\"?")
   expect_identical(attr(df$C, "label"), "no equals")
   expect_null(attr(df, "warnings"))
+})
+
+test_that("read_fixed_width's tagged recodes read back through the accessors", {
+  dir <- tempfile()
+  dir.create(dir)
+  writeLines(c(
+    "PROC FORMAT; VALUE kidsf 0='None' 98='DK' 99='Not ascertained';",
+    "DATA; INPUT ID 1-3 KIDS 4-5;",
+    "LABEL KIDS = 'Number of children';",
+    "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
+    "FORMAT KIDS kidsf.;"
+  ), file.path(dir, "s.sas"))
+  writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "s.dat"))
+  df <- read_fixed_width(file.path(dir, "s.dat"), file.path(dir, "s.sas"), recodes = "tagged")
+  expect_identical(na_tag(df$KIDS), c(NA, "a", "b", NA))
+  expect_identical(val_label(df$KIDS), c(NA, "DK", "Not ascertained", "None"))
+  expect_identical(var_label(df$KIDS), "Number of children")
+  expect_identical(na_tag(val_labels(df$KIDS)), c(None = NA, DK = "a", "Not ascertained" = "b"))
 })

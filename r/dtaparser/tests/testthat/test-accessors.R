@@ -118,24 +118,6 @@ test_that("var_label reads the label read_dta keeps from the file", {
   expect_identical(var_label(read_dta(path)$x), "Score")
 })
 
-test_that("read_fixed_width's tagged recodes read back through the accessors", {
-  dir <- tempfile()
-  dir.create(dir)
-  writeLines(c(
-    "PROC FORMAT; VALUE kidsf 0='None' 98='DK' 99='Not ascertained';",
-    "DATA; INPUT ID 1-3 KIDS 4-5;",
-    "LABEL KIDS = 'Number of children';",
-    "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
-    "FORMAT KIDS kidsf.;"
-  ), file.path(dir, "s.sas"))
-  writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "s.dat"))
-  df <- read_fixed_width(file.path(dir, "s.dat"), file.path(dir, "s.sas"), recodes = "tagged")
-  expect_identical(na_tag(df$KIDS), c(NA, "a", "b", NA))
-  expect_identical(val_label(df$KIDS), c(NA, "DK", "Not ascertained", "None"))
-  expect_identical(var_label(df$KIDS), "Number of children")
-  expect_identical(na_tag(val_labels(df$KIDS)), c(None = NA, DK = "a", "Not ascertained" = "b"))
-})
-
 test_that("tagged_na makes the bits haven's tagged_na makes", {
   skip_if_not_installed("haven")
   expect_identical(writeBin(tagged_na(letters), raw()), writeBin(haven::tagged_na(letters), raw()))

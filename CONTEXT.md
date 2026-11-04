@@ -1,7 +1,7 @@
 # dta-parser
 
 Reads and writes Stata `.dta` files for TypeScript tools (npm) and for R
-(dtaparser, and dtatools on top of it).
+(dtaparser, with datakit and dtatools on top of it).
 
 ## Language
 
@@ -57,7 +57,15 @@ _Avoid_: factor (a different R type), categorical
 The R package that reads files into standard R types (integers,
 doubles, `Date`, factors on request; every missing value `NA`, with
 `.a` to `.z` keeping their letter in doubles), writes data frames back
-with `save_dta`, and holds the Rust bridge that dtatools reads through.
+with `save_dta`, and holds the Rust bridge that dtatools and datakit
+reach the core through.
+
+**datakit**:
+The R package for translating do-files to R: `d[i, name, by = g] :=
+value` on data frames under R's rules, and `read_fixed_width`. It
+imports dtaparser and reaches the Rust bridge through it.
+_Avoid_: using datakit for `.dta` reading or labels (those are
+dtaparser's)
 
 **dtatools**:
 The R package that reads files into dibbles, whose `dta_num` columns
@@ -75,7 +83,7 @@ A SAS program published with a fixed-width text data file, saying
 where each variable's columns are, its variable label and value labels,
 and which codes are missing values. CDC publishes one for each NSFG
 file from 1973 to 2017-2019 (in 2002, split into three files).
-`read_fixed_width` reads the data through it.
+datakit's `read_fixed_width` reads the data through it.
 _Avoid_: dictionary (Stata's own `.dct` format), codebook
 
 **Missing-value recode**:

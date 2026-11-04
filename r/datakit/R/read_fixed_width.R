@@ -22,10 +22,10 @@
 #'   `.a`, `.b`, ... in the order the setup names them, each with its
 #'   code's label (`"(98) DK"`); `"none"` ignores them, so the codes stay
 #'   numbers.
-#' @param col_select,skip,n_max,warn_extended_missing As in [read_dta()].
+#' @param col_select,skip,n_max,warn_extended_missing As in [dtaparser::read_dta()].
 #'   `skip` and `n_max` apply after the whole file is read.
 #' @param factors Whether columns with value labels become factors, as
-#'   in [read_dta()]. A factor cannot hold the tagged NAs that
+#'   in [dtaparser::read_dta()]. A factor cannot hold the tagged NAs that
 #'   `recodes = "tagged"` makes.
 #' @param commented_formats Whether to read a `PROC FORMAT` step or a
 #'   `FORMAT` statement that the setup has put in a block comment
@@ -36,7 +36,7 @@
 #'   statement is read; one that mentions `PROC FORMAT` in prose stays a
 #'   comment. `FALSE` reads every comment as a comment, so those files
 #'   have no value labels.
-#' @return A tibble, as [read_dta()] returns. Numeric columns take the
+#' @return A tibble, as [dtaparser::read_dta()] returns. Numeric columns take the
 #'   smallest type that holds their values: integers when every value is
 #'   a whole number within R's integer range, doubles otherwise (and
 #'   doubles when they hold tagged NAs). Value labels on recoded codes
@@ -44,7 +44,7 @@
 #'
 #'   Statements the reader does not run (other data-step code, ranges in
 #'   `VALUE`) are skipped with one warning of class
-#'   `dtaparser_fixed_width_warning`; the tibble's `warnings` attribute
+#'   `datakit_fixed_width_warning`; the tibble's `warnings` attribute
 #'   lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes inside it, such as
 #'   `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"` in CDC's
 #'   2011-2013 to 2015-2017 setups, is read from its first quote to its
@@ -62,8 +62,8 @@
 #' writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "survey.dat"))
 #' df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
 #'                        recodes = "tagged")
-#' na_tag(df$KIDS)
-#' val_label(df$KIDS)
+#' dtaparser::na_tag(df$KIDS)
+#' dtaparser::val_label(df$KIDS)
 #' @export
 read_fixed_width <- function(file, setup, recodes = c("setup", "tagged", "none"), col_select = NULL,
                              skip = 0, n_max = Inf, factors = FALSE,
@@ -75,12 +75,12 @@ read_fixed_width <- function(file, setup, recodes = c("setup", "tagged", "none")
   }
   file <- normalizePath(file, mustWork = TRUE)
   setup <- normalizePath(setup, mustWork = TRUE)
-  dir <- tempfile("dtaparser")
+  dir <- tempfile("datakit")
   if (!dir.create(dir, mode = "0700")) stop("could not create a temporary directory: ", dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
   out <- file.path(dir, "data.dta")
   warnings <- .Call(C_dta_fixed_width, file, setup, out, recodes, commented_formats)
-  df <- read_dta(out, col_select = {{ col_select }}, skip = skip, n_max = n_max, factors = factors,
+  df <- dtaparser::read_dta(out, col_select = {{ col_select }}, skip = skip, n_max = n_max, factors = factors,
                  dates = FALSE, warn_extended_missing = warn_extended_missing)
   if (length(warnings)) {
     attr(df, "warnings") <- warnings
@@ -99,5 +99,5 @@ warn_fixed_width <- function(messages) {
   if (length(messages) > 8) {
     lines <- c(lines, i = paste(length(messages) - 8, "more; see attr(x, \"warnings\")"))
   }
-  rlang::warn(c("The setup file was read with warnings:", lines), class = "dtaparser_fixed_width_warning")
+  rlang::warn(c("The setup file was read with warnings:", lines), class = "datakit_fixed_width_warning")
 }

@@ -177,12 +177,6 @@ test_that("a labelled column keeps its format through vctrs and dplyr; a plain o
   expect_identical(attr(dplyr::bind_rows(tibble::tibble(x = x), tibble::tibble(x = 1))$x, "format"), "%3.0f")
   expect_identical(attr(with_labels(x, c(No = 0)), "format"), "%3.0f")
   expect_identical(attr(x[2], "format"), "%3.0f")
-  # := keeps it on labelled and plain columns, codes widened or not.
-  d <- tibble::tibble(v = x, w = structure(c(1L, 2L), format = "%5.0f"))
-  d[1, v] := 2.5
-  d[1, w] := 0.5
-  expect_identical(attr(d$v, "format"), "%3.0f")
-  expect_identical(attr(d$w, "format"), "%5.0f")
   d <- tibble::tibble(y = structure(c(1.5, 2), format = "%9.2f"))
   expect_identical(attr(dplyr::filter(d, y > 1.6)$y, "format"), "%9.2f")
   expect_identical(attr(dplyr::arrange(d, y)$y, "format"), "%9.2f")

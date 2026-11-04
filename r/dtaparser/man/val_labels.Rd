@@ -54,18 +54,12 @@ dtatools exports \code{val_labels()} and \code{val_label()} too, for its
 package attached as well, call these as \code{dtaparser::val_label()}.
 }
 \examples{
-dir <- tempfile()
-dir.create(dir)
-writeLines(c(
-  "PROC FORMAT; VALUE kidsf 0='None' 98='DK' 99='Not ascertained';",
-  "DATA; INPUT KIDS 1-2;",
-  "LABEL KIDS = 'Number of children';",
-  "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
-  "FORMAT KIDS kidsf.;"
-), file.path(dir, "survey.sas"))
-writeLines(c(" 2", "98", "99", " 0"), file.path(dir, "survey.dat"))
-df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
-                       recodes = "tagged")
+kids <- with_labels(c(2, tagged_na("a"), tagged_na("b"), 0),
+                    c(None = 0, tagged_na(c(DK = "a", "Not ascertained" = "b"))),
+                    label = "Number of children")
+path <- tempfile(fileext = ".dta")
+save_dta(data.frame(KIDS = kids), path)
+df <- read_dta(path)
 var_label(df$KIDS)   # "Number of children"
 val_labels(df$KIDS)  # None = 0, DK = NA, Not ascertained = NA
 val_label(df$KIDS)   # NA "DK" "Not ascertained" "None"

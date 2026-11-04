@@ -1,5 +1,5 @@
 // The C side of dtaparser's bridge to Rust, and the C functions dtatools
-// calls through R_GetCCallable (see the end of this file).
+// and datakit call through R_GetCCallable (see the end of this file).
 //
 // R reports errors by jumping (longjmp) up the stack, which must never
 // pass through Rust frames. So Rust calls R only through the shims here:
@@ -147,8 +147,9 @@ static SEXP finish(int status, SEXP holder, const char *err) {
   return out;
 }
 
-// meta, read, write and dtaparser_dictionary are .Call routines and also
-// dtatools' callables; their errors leave by R's jumps through C frames.
+// meta, read and dtaparser_dictionary are .Call routines and also
+// dtatools' callables, and fixed_width is datakit's callable; their
+// errors leave by R's jumps through C frames.
 static SEXP meta(SEXP path, SEXP encoding) {
   const char *p = string_arg(path, "file");
   const char *enc = Rf_isNull(encoding) ? NULL : string_arg(encoding, "encoding");
@@ -211,7 +212,7 @@ static SEXP write(SEXP path, SEXP spec) {
 
 // Convert a fixed-width file through its SAS setup file, given as one or
 // more files read in order, to the new release 118 file `out`; returns
-// the warnings' messages.
+// the warnings' messages. datakit's read_fixed_width calls it.
 static SEXP fixed_width(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP commented_formats) {
   const char *d = string_arg(data, "file"), *o = string_arg(out, "out");
   const char *r = string_arg(recodes, "recodes");
@@ -281,14 +282,15 @@ static const R_CallMethodDef routines[] = {
   {"dta_write", (DL_FUNC) &write, 2},
   {"dta_has_letters", (DL_FUNC) &has_letters, 1},
   {"dta_na_tag", (DL_FUNC) &na_tag, 1},
-  {"dta_fixed_width", (DL_FUNC) &fixed_width, 5},
   {NULL, NULL, 0}
 };
 
-// dtatools refuses to run against a dtaparser whose number differs from
-// the one it was built for. Bump it when a callable changes.
+// dtatools and datakit refuse to run against a dtaparser whose number
+// differs from the one they were built for. Bump it when a callable
+// changes. 2: dtaparser_write went (dtatools calls save_dta) and
+// dtaparser_fixed_width came (datakit's read_fixed_width).
 static int abi(void) {
-  return 1;
+  return 2;
 }
 
 void R_init_dtaparser(DllInfo *dll) {
@@ -298,7 +300,7 @@ void R_init_dtaparser(DllInfo *dll) {
   R_RegisterCCallable("dtaparser", "dtaparser_abi", (DL_FUNC) &abi);
   R_RegisterCCallable("dtaparser", "dtaparser_meta", (DL_FUNC) &meta);
   R_RegisterCCallable("dtaparser", "dtaparser_read", (DL_FUNC) &read);
-  R_RegisterCCallable("dtaparser", "dtaparser_write", (DL_FUNC) &write);
+  R_RegisterCCallable("dtaparser", "dtaparser_fixed_width", (DL_FUNC) &fixed_width);
   R_RegisterCCallable("dtaparser", "dtaparser_dictionary", (DL_FUNC) &dtaparser_dictionary);
   R_registerRoutines(dll, NULL, routines, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);

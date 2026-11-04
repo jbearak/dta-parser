@@ -46,7 +46,12 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
-rules. dtatools imports dtaparser.
+rules. `datakit` adds what a do-file translated to R needs beyond
+reading and writing: `d[i, name, by = g] := value` for `generate`,
+`replace` and `bysort`, and `read_fixed_width` for fixed-width text
+with a SAS setup file. A translated script attaches
+`library(dtaparser); library(datakit)`, datakit last. datakit imports
+dtaparser; dtatools imports both.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust
@@ -143,7 +148,7 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `StataArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| fixed-width text through a SAS setup file | dtaparser's `read_fixed_width` | `read_fixed_width` | `read_fixed_width` | |
+| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | `read_fixed_width` | `read_fixed_width` | |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `stata_key`, `stata_keys` | `stata_key` | `stataKey`, `stataKeys` |
@@ -163,7 +168,8 @@ than release 118 comes back as UTF-8.
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
 | `crates/dta-ffi` | the WebAssembly interface (for TypeScript) and C interface (for Julia) |
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
-| `r/dtatools` | the R package with Stata's rules, built on dtaparser |
+| `r/datakit` | the R package for translating do-files to R: `:=` and `read_fixed_width`, built on dtaparser |
+| `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
 | `python` | the Python package |
 | `julia/DtaParser` | the Julia package |
 | `js` | the npm package |

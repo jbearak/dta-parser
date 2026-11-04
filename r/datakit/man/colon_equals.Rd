@@ -24,7 +24,7 @@ colon_equals(x, i, name, value, by, env)
 }
 \description{
 \code{colon_equals()} does the work of \code{d[i, name, by = g] := value}
-once \verb{:=} has taken its left side apart. dtaparser's method for data
+once \verb{:=} has taken its left side apart. datakit's method for data
 frames follows R's rules; dtatools' method for dibbles follows
 Stata's. Call \verb{:=}, not this.
 }

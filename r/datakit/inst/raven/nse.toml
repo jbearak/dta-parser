@@ -1,0 +1,9 @@
+schema = 1
+
+# d[i, name] := value and d[i, name, by = g] := value: i, by, and value are
+# evaluated among d's columns; name is a column name, or (var) for a
+# variable holding one. d itself is an ordinary variable.
+[[operator]]
+name = ":="
+form = "subset-assign"
+masked_arguments = ["by"]

@@ -1,6 +1,7 @@
 # dtaparser reads files; dtatools builds Stata's rules on top of it
 
-ADR 0031 moves `save_dta` into dtaparser; dtatools re-exports it.
+ADR 0031 moves `save_dta` into dtaparser; dtatools re-exports it. ADR
+0032 adds datakit between them, for `:=` and `read_fixed_width`.
 
 dtatools gives R Stata's missing-value rules, which a test suite for a
 Stata pipeline needs and an analyst does not. So the R reader is split.

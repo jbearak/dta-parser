@@ -1,13 +1,12 @@
 Package: dtaparser
 Title: Read and Write Stata Files as Standard R Types and Labelled Numbers
-Version: 2.1.0
+Version: 3.0.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Reads Stata .dta files through the dta-parser library into
     standard R types: integers, doubles, character vectors, factors,
     dates and date-times, with every missing value NA. Columns with value
     labels are labelled numbers whose labels survive dplyr. Writes data
-    frames, dates and factors included, as release 118. Gives data
-    frames d[i, name] := value, to translate do-files line by line.
+    frames, dates and factors included, as release 118.
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:

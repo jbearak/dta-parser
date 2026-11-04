@@ -1,5 +1,8 @@
 # dtaparser exports `:=` for data frames under R's rules; dtatools adds the dibble method
 
+ADR 0032 moves `:=` and `colon_equals()` from dtaparser to datakit; the
+rules here are unchanged.
+
 A do-file translated to R reads best line by line, and
 `d[i, name, by = g] := value` (ADR 0021) keeps the shape of a
 `generate`, `replace ... if` or `bysort` line. Only dibbles had it, and

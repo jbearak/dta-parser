@@ -1,7 +1,8 @@
 # dtatools exports `:=`, for `d[i, name] := value`
 
 ADR 0022 makes `d[i, name := value]` an error, so this is now the only
-`:=` form.
+`:=` form. ADR 0027 gave data frames the same `:=`, and ADR 0032 moved
+it to datakit; dtatools re-exports it.
 
 ADR 0020 gave dibbles `d[i, name] <- value`, which changes `d` without
 `d <-`. R evaluates the value in the caller before the method runs, so
