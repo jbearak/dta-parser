@@ -34,6 +34,15 @@ pub fn resolve_with_default(requested: usize, most: usize) -> usize {
     wanted.min(available).max(1)
 }
 
+/// As [`resolve_with_default`], for work whose default grows with its
+/// size: one thread per `per_thread` bytes of `work`, at least `least`
+/// and at most `most` (plan 0018: large Parquet reads and writes gain
+/// from more threads than mid-sized ones do).
+pub fn resolve_scaled(requested: usize, work: u64, per_thread: u64, least: usize, most: usize) -> usize {
+    let by_size = usize::try_from(work / per_thread.max(1)).unwrap_or(usize::MAX);
+    resolve_with_default(requested, by_size.clamp(least.min(most), most))
+}
+
 #[cfg(test)]
 fn default(available: usize) -> usize {
     default_of(available, 3)
@@ -78,5 +87,8 @@ mod tests {
         assert_eq!(default_of(16, 0), 1);
         assert_eq!(default_of(1, 4), 1);
         assert!(resolve_with_default(1, 8) == 1);
+        assert_eq!(resolve_scaled(1, u64::MAX, 1, 2, 8), 1);
+        assert!(resolve_scaled(0, 0, 0, 2, 8) >= 1);
+        assert!(resolve_scaled(0, u64::MAX, 1, 2, 8) <= 8);
     }
 }

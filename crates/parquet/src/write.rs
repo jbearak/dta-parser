@@ -157,9 +157,9 @@ pub struct WriteOptions {
     /// column that holds any as DOUBLE; with `false` they are plain
     /// nulls, and every column keeps its type.
     pub missing_letters: bool,
-    /// Worker threads: 0 for the default
-    /// ([`WRITE_THREADS`](crate::WRITE_THREADS), or `DTA_THREADS`), 1
-    /// for none.
+    /// Worker threads: 0 for the default (from
+    /// [`WRITE_THREADS`](crate::WRITE_THREADS) up with the write's size,
+    /// or `DTA_THREADS`), 1 for none.
     pub threads: usize,
     /// About this many uncompressed bytes per data page.
     #[doc(hidden)]
@@ -240,7 +240,17 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
             }
         }
     }
-    let threads = dta::threads::resolve_with_default(options.threads, crate::WRITE_THREADS);
+    // What the write encodes: every row's values at their widths.
+    let work = table.columns.iter().fold(0u64, |sum, c| {
+        sum.saturating_add((c.values.width() as u64).saturating_mul(table.rows as u64))
+    });
+    let threads = dta::threads::resolve_scaled(
+        options.threads,
+        work,
+        crate::WRITE_BYTES_PER_THREAD,
+        crate::WRITE_THREADS,
+        crate::WRITE_THREADS_MOST,
+    );
     let scratch: Vec<Mutex<Scratch>> = (0..threads.max(1))
         .map(|_| Mutex::new(Scratch::default()))
         .collect();
