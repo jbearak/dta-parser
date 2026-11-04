@@ -256,8 +256,15 @@ fn subtree_leaves(schema: &[SchemaElement], at: &mut usize, depth: usize) -> Res
         )));
     }
     if children == 0 {
-        // A group with no children has no leaves; a primitive is one.
-        return Ok(usize::from(e.physical.is_some()));
+        // A primitive is one leaf. An element with neither a type nor
+        // children is not a column at all.
+        if e.physical.is_none() {
+            return Err(Error::new(format!(
+                "schema element \"{}\" has neither a type nor children",
+                e.name
+            )));
+        }
+        return Ok(1);
     }
     let mut leaves = 0;
     for _ in 0..children {
@@ -451,8 +458,20 @@ mod tests {
         let mut bad = meta.clone();
         bad.schema[2].num_children = Some(-1);
         assert!(columns(&bad).is_err());
-        let mut bad = meta;
+        let mut bad = meta.clone();
         bad.schema[0].num_children = Some(1);
         assert!(columns(&bad).is_err());
+        // An element with neither a type nor children, at the top or in a
+        // group.
+        for at in [1, 4] {
+            let mut bad = meta.clone();
+            bad.schema[at].physical = None;
+            let e = columns(&bad).unwrap_err();
+            assert!(
+                e.message.contains("neither a type nor children"),
+                "{}",
+                e.message
+            );
+        }
     }
 }
