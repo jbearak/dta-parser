@@ -261,7 +261,10 @@ impl<'a> In<'a> {
     ) -> Result<Vec<T>> {
         let (n, ty) = self.list()?;
         self.enter()?;
-        let mut out = Vec::with_capacity(n);
+        // `n` is at most the bytes left, but each element may be far
+        // larger in memory than its one byte: let the vector grow as
+        // elements are read instead.
+        let mut out = Vec::with_capacity(n.min(1024));
         for _ in 0..n {
             out.push(f(self, ty)?);
         }

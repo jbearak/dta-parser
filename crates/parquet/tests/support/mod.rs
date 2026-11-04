@@ -2,7 +2,7 @@
 //! and read back, for the round-trip tests and the readback example.
 #![allow(dead_code)]
 
-use dta_parquet::format::TimeUnit;
+use dta_parquet::format::{FileMetaData, PageHeader, PageType, TimeUnit};
 use dta_parquet::{Numbers, Output, Profile, ReadOptions, Reader, Table, TextChunk, Values, WriteColumn};
 
 /// A column's values as the tests hold them.
@@ -309,4 +309,52 @@ pub fn same(a: &Got, b: &Got) -> bool {
         }
         _ => a == b,
     }
+}
+
+/// Rewrite a valid file page by page, letting `meta` change the footer
+/// and `tweak` each page's header and body, and dropping offset indexes.
+pub fn rebuild(bytes: &[u8], meta_tweak: impl FnOnce(&mut FileMetaData), mut tweak: impl FnMut(&mut PageHeader, &mut Vec<u8>)) -> Vec<u8> {
+    let n = bytes.len();
+    let footer_len = u32::from_le_bytes(bytes[n - 8..n - 4].try_into().unwrap()) as usize;
+    let mut meta = FileMetaData::parse(&bytes[n - 8 - footer_len..n - 8], 0).unwrap();
+    let mut out = b"PAR1".to_vec();
+    for g in &mut meta.row_groups {
+        for c in &mut g.columns {
+            c.offset_index = None;
+            let m = c.meta.as_mut().unwrap();
+            let start = m.dictionary_page_offset.filter(|&d| d > 0 && d < m.data_page_offset).unwrap_or(m.data_page_offset) as usize;
+            let end = start + m.total_compressed_size as usize;
+            let new_start = out.len();
+            let (mut at, mut first_data, mut dictionary) = (start, None, false);
+            while at < end {
+                let (mut h, len) = PageHeader::parse(&bytes[at..end], at as u64).unwrap();
+                let size = h.compressed_page_size as usize;
+                let mut body = bytes[at + len..at + len + size].to_vec();
+                at += len + size;
+                tweak(&mut h, &mut body);
+                h.compressed_page_size = body.len() as i32;
+                if h.kind == PageType::Dictionary {
+                    dictionary = true;
+                } else if first_data.is_none() {
+                    first_data = Some(out.len());
+                }
+                h.write(&mut out);
+                out.extend_from_slice(&body);
+            }
+            m.dictionary_page_offset = dictionary.then_some(new_start as i64);
+            m.data_page_offset = first_data.unwrap_or(new_start) as i64;
+            m.total_compressed_size = (out.len() - new_start) as i64;
+        }
+    }
+    meta_tweak(&mut meta);
+    finish(out, &meta)
+}
+
+/// Append the footer `meta`, its length and the magic number.
+pub fn finish(mut out: Vec<u8>, meta: &FileMetaData) -> Vec<u8> {
+    let footer = meta.to_bytes();
+    out.extend_from_slice(&footer);
+    out.extend_from_slice(&(footer.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"PAR1");
+    out
 }

@@ -259,11 +259,17 @@ fn walk(chunk: &Chunk, read: &mut ReadAt, range: &Range<u64>) -> Result<Vec<Walk
         let mut want = 256u64;
         let (header, len) = loop {
             let n = want.min(range.end - at);
-            buf.resize(n as usize, 0);
+            // Within the chunk, which is within the file.
+            buf.resize(
+                usize::try_from(n).map_err(|_| Error::at(at, "a page header is too long"))?,
+                0,
+            );
             read(at, &mut buf)?;
             match PageHeader::parse(&buf, at) {
                 Ok(h) => break h,
-                Err(e) if e.message == TRUNCATED && n < range.end - at => want *= 4,
+                Err(e) if e.message == TRUNCATED && n < range.end - at => {
+                    want = want.saturating_mul(4)
+                }
                 Err(e) => return Err(e),
             }
         };
@@ -314,9 +320,12 @@ pub(crate) struct DataPage<'p> {
     pub(crate) take: Range<usize>,
     /// Where `take.start` goes in the chunk's output.
     pub(crate) out_at: usize,
-    /// Per row, 1 where there is a value; `None` when every row has one.
+    /// Per row of `take`, 1 where there is a value; `None` when every
+    /// one has a value.
     pub(crate) levels: Option<&'p [u8]>,
-    /// The number of values (non-null rows) in the page.
+    /// The number of values (non-null rows) in the page before `take`,
+    /// and up to its end.
+    pub(crate) before: usize,
     pub(crate) present: usize,
     pub(crate) encoding: Encoding,
     pub(crate) values: &'p [u8],
@@ -361,8 +370,8 @@ pub(crate) fn decode(
             let body_len = usize::try_from(header.compressed_page_size)
                 .map_err(|_| fail(Error::new("a page has a negative size")))?;
             let body_start = at + header_len;
-            let body = bytes
-                .get(body_start..body_start + body_len)
+            let body = bytes[body_start..]
+                .get(..body_len)
                 .ok_or_else(|| fail(Error::new("a page runs past the end of its column chunk")))?;
             at = body_start + body_len;
             match header.kind {
@@ -411,6 +420,7 @@ pub(crate) fn decode(
                         &header,
                         body,
                         rows as usize,
+                        &take,
                         optional,
                         page,
                         levels,
@@ -426,8 +436,9 @@ pub(crate) fn decode(
                         levels: if p.all_present {
                             None
                         } else {
-                            Some(&levels[..rows as usize])
+                            Some(&levels[..])
                         },
+                        before: p.before,
                         present: p.present,
                         encoding: p.encoding,
                         values,
@@ -471,13 +482,16 @@ enum Where {
 
 struct Prepared {
     values: Where,
+    /// Values before the wanted rows, and up to their end.
+    before: usize,
     present: usize,
+    /// Every wanted row has a value.
     all_present: bool,
     encoding: Encoding,
 }
 
-/// Decompress `body` into `page` (unless uncompressed); returns the range
-/// of `page` holding the bytes.
+/// Decompress `body` into `page`, which must make `uncompressed` bytes;
+/// returns the range of `page` holding them.
 fn inflate(
     codecs: &mut Codecs,
     codec: Codec,
@@ -487,18 +501,38 @@ fn inflate(
 ) -> Result<Range<usize>> {
     let n = usize::try_from(uncompressed)
         .map_err(|_| Error::new("a page has a negative uncompressed size"))?;
-    page.clear();
-    if page.try_reserve(n).is_err() {
-        return Err(
-            Error::new(format!("a page of {n} bytes does not fit in memory here"))
-                .of(ErrorKind::TooLarge),
-        );
-    }
-    page.resize(n, 0);
-    codecs.decompress(codec, body, page)?;
+    codecs.decompress(codec, body, n, page)?;
     Ok(0..n)
 }
 
+/// The bytes after a 4-byte little-endian length, and how many bytes the
+/// length and they take.
+fn prefixed<'b>(bytes: &'b [u8], what: &str) -> Result<(&'b [u8], usize)> {
+    let short = || Error::new(what.to_string());
+    let len = bytes
+        .get(..4)
+        .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")))
+        .ok_or_else(short)?;
+    let len = usize::try_from(len).map_err(|_| short())?;
+    let data = bytes[4..].get(..len).ok_or_else(short)?;
+    Ok((data, 4 + len))
+}
+
+/// Decode RLE definition levels for rows `take` of a page into `levels`;
+/// returns the values before `take`.
+fn rle_levels(bytes: &[u8], take: &Range<usize>, levels: &mut [u8]) -> Result<usize> {
+    let mut before = 0;
+    rle::decode_from(bytes, 1, take.start, levels, |v, n| {
+        if v == 1 {
+            before += n;
+        }
+    })?;
+    Ok(before)
+}
+
+/// Decompress a data page and decode its definition levels for rows
+/// `take` (of `rows`), so that memory follows the rows wanted rather than
+/// the count the page header gives.
 #[allow(clippy::too_many_arguments)]
 fn prepare(
     codecs: &mut Codecs,
@@ -506,19 +540,36 @@ fn prepare(
     header: &PageHeader,
     body: &[u8],
     rows: usize,
+    take: &Range<usize>,
     optional: bool,
     page: &mut Vec<u8>,
     levels: &mut Vec<u8>,
 ) -> Result<Prepared> {
     levels.clear();
     if optional {
-        // The row count comes from the file: refuse one that does not fit
-        // rather than abort.
-        if levels.try_reserve(rows).is_err() {
-            return Err(Error::new(format!("a page of {rows} rows does not fit in memory here")).of(ErrorKind::TooLarge));
-        }
-        levels.resize(rows, 0);
+        // At most the rows the caller asked for, whose output is already
+        // allocated.
+        levels.resize(take.len(), 0);
     }
+    let finish = |values: Where, before: usize, levels: &[u8], encoding: Encoding| {
+        if !optional {
+            return Prepared {
+                values,
+                before: take.start,
+                present: take.end,
+                all_present: true,
+                encoding,
+            };
+        }
+        let here = levels.iter().filter(|&&l| l == 1).count();
+        Prepared {
+            values,
+            before,
+            present: before + here,
+            all_present: here == take.len(),
+            encoding,
+        }
+    };
     if let Some(d) = &header.data_v2 {
         let rep = usize::try_from(d.repetition_levels_byte_length)
             .map_err(|_| Error::new("negative level length"))?;
@@ -530,9 +581,11 @@ fn prepare(
         let level_bytes = body
             .get(..def)
             .ok_or_else(|| Error::new("a page's levels run past the page"))?;
-        if optional {
-            rle::decode(level_bytes, 1, &mut levels[..])?;
-        }
+        let before = if optional {
+            rle_levels(level_bytes, take, levels)?
+        } else {
+            0
+        };
         let rest = &body[def..];
         let values_len = usize::try_from(header.uncompressed_page_size)
             .ok()
@@ -546,13 +599,7 @@ fn prepare(
             }
             Where::Body(def..body.len())
         };
-        let (present, all) = count(levels, optional, rows);
-        return Ok(Prepared {
-            values,
-            present,
-            all_present: all,
-            encoding: d.encoding,
-        });
+        return Ok(finish(values, before, levels, d.encoding));
     }
     let d = header
         .data
@@ -568,20 +615,14 @@ fn prepare(
         (&page[..], Some(0))
     };
     let mut at = 0;
+    let mut before = 0;
     if optional {
-        at = match d.definition_level_encoding {
+        (at, before) = match d.definition_level_encoding {
             Encoding::Rle => {
-                let len = bytes
-                    .get(..4)
-                    .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")) as usize)
-                    .ok_or_else(|| Error::new("a page ends in its levels"))?;
-                let level_bytes = bytes
-                    .get(4..4 + len)
-                    .ok_or_else(|| Error::new("a page's levels run past the page"))?;
-                rle::decode(level_bytes, 1, &mut levels[..])?;
-                4 + len
+                let (level_bytes, used) = prefixed(bytes, "a page's levels run past the page")?;
+                (used, rle_levels(level_bytes, take, levels)?)
             }
-            Encoding::BitPacked => rle::decode_bit_packed(bytes, 1, &mut levels[..])?,
+            Encoding::BitPacked => rle::decode_bit_packed(bytes, 1, rows, take.start, levels)?,
             other => {
                 return Err(Error::new(format!(
                     "definition levels encoded {}, which is not read",
@@ -590,38 +631,15 @@ fn prepare(
             }
         };
     }
-    let (present, all) = count(levels, optional, rows);
     let values = match base {
         None => Where::Body(at..bytes.len()),
         Some(_) => Where::Page(at..bytes.len()),
     };
-    Ok(Prepared {
-        values,
-        present,
-        all_present: all,
-        encoding: d.encoding,
-    })
+    Ok(finish(values, before, levels, d.encoding))
 }
 
-fn count(levels: &[u8], optional: bool, rows: usize) -> (usize, bool) {
-    if !optional {
-        return (rows, true);
-    }
-    let present = levels.iter().filter(|&&l| l == 1).count();
-    (present, present == rows)
-}
-
-/// Index of the first value at row `row` of a page: the number of
-/// present rows before it.
-#[inline]
-fn values_before(levels: Option<&[u8]>, row: usize) -> usize {
-    match levels {
-        None => row,
-        Some(l) => l[..row].iter().filter(|&&v| v == 1).count(),
-    }
-}
-
-/// Decode a page's dictionary indices (all of them) into `indices`.
+/// Decode the dictionary indices of a page's wanted rows into
+/// `indices`: index `i` there is the page's value `page.before + i`.
 fn dictionary_indices(
     page: &DataPage,
     indices: &mut Vec<u32>,
@@ -632,9 +650,15 @@ fn dictionary_indices(
         .first()
         .ok_or_else(|| Error::new("a dictionary-encoded page has no bit width"))?;
     indices.clear();
-    indices.resize(page.present, 0);
-    if page.present > 0 {
-        rle::decode(&page.values[1..], width, &mut indices[..])?;
+    indices.resize(page.present - page.before, 0);
+    if !indices.is_empty() {
+        rle::decode_from(
+            &page.values[1..],
+            width,
+            page.before,
+            &mut indices[..],
+            |_, _| {},
+        )?;
     }
     if indices.iter().any(|&i| i as usize >= dictionary_len) {
         return Err(Error::new(
@@ -777,7 +801,7 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
             match page.levels {
                 None => codes.fill(0),
                 Some(l) => {
-                    for (c, &l) in codes.iter_mut().zip(&l[take.clone()]) {
+                    for (c, &l) in codes.iter_mut().zip(l) {
                         *c = 1 - l;
                     }
                 }
@@ -785,7 +809,7 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
         }
         let missing = out.missing;
         let first_row = out.file_row + page.out_at as u64;
-        let mut vi = values_before(page.levels, take.start);
+        let mut vi = page.before;
         let mut letters = false;
         match page.levels {
             None => {
@@ -796,7 +820,7 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
             }
             Some(levels) => {
                 let null = missing[0];
-                for (k, (d, &l)) in dest.iter_mut().zip(&levels[take]).enumerate() {
+                for (k, (d, &l)) in dest.iter_mut().zip(levels).enumerate() {
                     if l == 1 {
                         let code = codes.as_deref_mut().map(|c| &mut c[k]);
                         letters |= put_one(value(vi), d, code, missing, first_row + k as u64)?;
@@ -834,7 +858,8 @@ impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
             Encoding::PlainDictionary | Encoding::RleDictionary => {
                 dictionary_indices(page, indices, self.dictionary.len())?;
                 let dict = std::mem::take(&mut self.dictionary);
-                let result = self.put(page, |i| dict[indices[i] as usize]);
+                let before = page.before;
+                let result = self.put(page, |i| dict[indices[i - before] as usize]);
                 self.dictionary = dict;
                 result
             }
@@ -854,29 +879,21 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, bools: &mut Vec<u8>) -> Result<()> {
+        // The wanted values only: `bools[i]` is value `page.before + i`.
+        let before = page.before;
         bools.clear();
-        bools.resize(page.present, 0);
         match page.encoding {
             Encoding::Plain => {
                 let bytes = page
                     .values
                     .get(..page.present.div_ceil(8))
                     .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
-                for (i, b) in bools.iter_mut().enumerate() {
-                    *b = (bytes[i >> 3] >> (i & 7)) & 1;
-                }
+                bools.extend((before..page.present).map(|i| (bytes[i >> 3] >> (i & 7)) & 1));
             }
             Encoding::Rle => {
-                let len = page
-                    .values
-                    .get(..4)
-                    .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")) as usize)
-                    .ok_or_else(|| Error::new("an RLE page ends early"))?;
-                let data = page
-                    .values
-                    .get(4..4 + len)
-                    .ok_or_else(|| Error::new("an RLE page ends early"))?;
-                rle::decode(data, 1, &mut bools[..])?;
+                let (data, _) = prefixed(page.values, "an RLE page ends early")?;
+                bools.resize(page.present - before, 0);
+                rle::decode_from(data, 1, before, &mut bools[..], |_, _| {})?;
             }
             other => return Err(unsupported_encoding(other)),
         }
@@ -892,7 +909,7 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
         };
         let bools = &*bools;
         // Booleans are 0 and 1, which every output type holds.
-        n.put(page, |i| i32::from(bools[i]))
+        n.put(page, |i| i32::from(bools[i - before]))
     }
 }
 
@@ -970,14 +987,12 @@ impl Texts {
         let mut at = 0;
         let start = self.chunk.bytes.len();
         for i in 0..count {
-            let len = values
-                .get(at..at + 4)
-                .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")) as usize)
-                .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
-            let v = values
-                .get(at + 4..at + 4 + len)
-                .ok_or_else(|| Error::new("a text value runs past the end of its page"))?;
-            at += 4 + len;
+            let rest = &values[at..];
+            if rest.len() < 4 {
+                return Err(Error::new("a page holds fewer values than its levels say"));
+            }
+            let (v, used) = prefixed(rest, "a text value runs past the end of its page")?;
+            at += used;
             if keep.contains(&i) {
                 self.chunk.bytes.extend_from_slice(v);
                 self.chunk.ends.push(self.chunk.bytes.len());
@@ -1018,10 +1033,7 @@ impl Consumer for Texts {
     }
 
     fn page(&mut self, page: &DataPage, indices: &mut Vec<u32>, _: &mut Vec<u8>) -> Result<()> {
-        let take = page.take.clone();
-        let first_value = values_before(page.levels, take.start);
-        let wanted = first_value
-            ..first_value + values_before(page.levels.map(|l| &l[take.start..]), take.len());
+        let wanted = page.before..page.present;
         // Values arrive in row order: the chunk's output so far ends at
         // this page's out_at.
         match page.encoding {
@@ -1068,7 +1080,7 @@ impl Consumer for Texts {
                 let codes = self.chunk.codes.as_mut().ok_or_else(|| {
                     Error::new("a dictionary-encoded page in a chunk without a dictionary")
                 })?;
-                let mut vi = wanted.start;
+                let mut vi = 0;
                 rows_of(page, |present| {
                     codes.push(if present {
                         vi += 1;
@@ -1088,6 +1100,6 @@ impl Consumer for Texts {
 fn rows_of(page: &DataPage, mut f: impl FnMut(bool)) {
     match page.levels {
         None => (0..page.take.len()).for_each(|_| f(true)),
-        Some(l) => l[page.take.clone()].iter().for_each(|&v| f(v == 1)),
+        Some(l) => l.iter().for_each(|&v| f(v == 1)),
     }
 }

@@ -421,8 +421,9 @@ impl<S: Source> Reader<S> {
             .map(|(g, &first_row)| {
                 let (mut compressed, mut uncompressed) = (0u64, 0u64);
                 for c in g.columns.iter().filter_map(|c| c.meta.as_ref()) {
-                    compressed += c.total_compressed_size.max(0) as u64;
-                    uncompressed += c.total_uncompressed_size.max(0) as u64;
+                    compressed = compressed.saturating_add(c.total_compressed_size.max(0) as u64);
+                    uncompressed =
+                        uncompressed.saturating_add(c.total_uncompressed_size.max(0) as u64);
                 }
                 RowGroupInfo {
                     first_row,
@@ -543,7 +544,15 @@ impl<S: Source> Reader<S> {
         mut text: impl FnMut(usize, &TextChunk) -> Result<()>,
     ) -> Result<ReadReport> {
         let window = self.window(skip, n);
-        let rows = (window.end - window.start) as usize;
+        // More rows than this machine can index (a 32-bit one) cannot have
+        // outputs.
+        let rows = usize::try_from(window.end - window.start).map_err(|_| {
+            Error::invalid(format!(
+                "{} rows are more than this machine can read at once",
+                window.end - window.start
+            ))
+            .of(ErrorKind::TooLarge)
+        })?;
         if outputs.len() != columns.len() {
             return Err(Error::invalid(format!(
                 "{} columns were selected but {} outputs given",
@@ -611,7 +620,9 @@ impl<S: Source> Reader<S> {
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
         };
-        let bytes: u64 = tasks.iter().map(|t| ctx.uncompressed(t)).sum();
+        let bytes = tasks
+            .iter()
+            .fold(0u64, |sum, t| sum.saturating_add(ctx.uncompressed(t)));
         let threads = dta::threads::resolve(self.options.threads);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
@@ -984,8 +995,10 @@ impl Ctx<'_> {
             .meta
             .as_ref()
             .map_or(0, |m| m.total_uncompressed_size.max(0) as u64);
-        let rows = g.num_rows.max(1) as u64;
-        size * (t.window.end - t.window.start) / rows
+        let rows = g.num_rows.max(1) as u128;
+        (u128::from(size) * u128::from(t.window.end - t.window.start) / rows)
+            .try_into()
+            .unwrap_or(u64::MAX)
     }
 }
 

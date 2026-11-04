@@ -79,19 +79,50 @@ fn unpack8<T: Small>(bytes: &[u8], width: u8, out: &mut [T]) {
 /// `buf`. Returns the bytes used. Runs may hold more values than asked
 /// for (the last bit-packed run is padded to a multiple of eight); the
 /// rest are ignored.
+#[cfg(test)]
 pub(crate) fn decode<T: Small>(buf: &[u8], width: u8, out: &mut [T]) -> Result<usize> {
+    decode_from(buf, width, 0, out, |_, _| {})
+}
+
+/// Like [`decode`], but for values `skip..skip + out.len()`: the first
+/// `skip` values are passed to `skipped(value, count)` instead of being
+/// stored, so a caller wanting a few values deep into a page needs room
+/// for those alone. Long runs are skipped whole.
+pub(crate) fn decode_from<T: Small>(
+    buf: &[u8],
+    width: u8,
+    skip: usize,
+    out: &mut [T],
+    mut skipped: impl FnMut(u32, usize),
+) -> Result<usize> {
     if width > 32 {
         return Err(Error::new(format!("RLE bit width {width} is more than 32")));
     }
     let value_bytes = (width as usize).div_ceil(8);
+    let total = skip
+        .checked_add(out.len())
+        .ok_or_else(|| Error::new("RLE data asked for too many values"))?;
     let mut at = 0;
-    let mut filled = 0;
-    while filled < out.len() {
+    // Values decoded so far, counting the skipped ones.
+    let mut pos = 0;
+    // Stores a run of `n` values `v` from `pos`.
+    let fill =
+        |pos: usize, n: usize, v: u32, out: &mut [T], skipped: &mut dyn FnMut(u32, usize)| {
+            let end = pos + n;
+            if pos < skip {
+                skipped(v, end.min(skip) - pos);
+            }
+            if end > skip {
+                out[pos.max(skip) - skip..end - skip].fill(T::from_u32(v));
+            }
+        };
+    while pos < total {
         let header = varint(buf, &mut at)?;
         if header & 1 == 0 {
             let run = usize::try_from(header >> 1).unwrap_or(usize::MAX);
             let bytes = buf
-                .get(at..at + value_bytes)
+                .get(at..)
+                .and_then(|b| b.get(..value_bytes))
                 .ok_or_else(|| Error::new("RLE data ends early"))?;
             let mut v = 0u32;
             for (k, b) in bytes.iter().enumerate() {
@@ -104,54 +135,98 @@ pub(crate) fn decode<T: Small>(buf: &[u8], width: u8, out: &mut [T]) -> Result<u
             if run == 0 {
                 return Err(Error::new("empty RLE run"));
             }
-            let take = run.min(out.len() - filled);
-            out[filled..filled + take].fill(T::from_u32(v));
-            filled += take;
+            let n = run.min(total - pos);
+            fill(pos, n, v, out, &mut skipped);
+            pos += n;
         } else {
             let groups = usize::try_from(header >> 1).unwrap_or(usize::MAX);
             if groups == 0 {
                 return Err(Error::new("empty bit-packed run"));
             }
-            let values = groups.saturating_mul(8);
-            let take = values.min(out.len() - filled);
+            let n = groups.saturating_mul(8).min(total - pos);
+            if width == 0 {
+                // Every value is 0 and takes no bytes.
+                fill(pos, n, 0, out, &mut skipped);
+                pos += n;
+                continue;
+            }
             // Some writers end the last run's bytes early; the values
             // asked for must still be there.
-            let need = (take * width as usize).div_ceil(8);
-            let have = (buf.len() - at).min(groups.saturating_mul(width as usize));
-            if have < need {
+            let w = width as usize;
+            let need = (n as u64 * w as u64).div_ceil(8);
+            let have = (buf.len() - at).min(groups.saturating_mul(w));
+            if (have as u64) < need {
                 return Err(Error::new("bit-packed run ends early"));
             }
             let run = &buf[at..at + have];
-            let w = width as usize;
-            for (g, chunk) in out[filled..filled + take].chunks_mut(8).enumerate() {
+            let group = |g: usize| {
                 let start = (g * w).min(run.len());
-                unpack8(&run[start..(start + w).min(run.len())], width, chunk);
+                &run[start..(start + w).min(run.len())]
+            };
+            let groups_used = n.div_ceil(8);
+            // Groups that start before `skip`, a value at a time.
+            let mut g = 0;
+            while g < groups_used && pos + 8 * g < skip {
+                let first = pos + 8 * g;
+                let count = 8.min(pos + n - first);
+                let mut tmp = [T::default(); 8];
+                unpack8(group(g), width, &mut tmp[..count]);
+                for (i, &v) in tmp[..count].iter().enumerate() {
+                    if first + i < skip {
+                        skipped(v.to_u32(), 1);
+                    } else {
+                        out[first + i - skip] = v;
+                    }
+                }
+                g += 1;
+            }
+            // The rest straight into `out`, eight at a time.
+            if g < groups_used {
+                let dest = &mut out[pos + 8 * g - skip..pos + n - skip];
+                for (k, chunk) in dest.chunks_mut(8).enumerate() {
+                    unpack8(group(g + k), width, chunk);
+                }
             }
             at += have;
-            filled += take;
+            pos += n;
         }
     }
     Ok(at)
 }
 
-/// Decode the older BIT_PACKED encoding: `out.len()` values packed from
-/// the most significant bit, with no header. Returns the bytes used.
-pub(crate) fn decode_bit_packed(buf: &[u8], width: u8, out: &mut [u8]) -> Result<usize> {
-    let bytes = (out.len() * width as usize).div_ceil(8);
-    let buf = buf
-        .get(..bytes)
-        .ok_or_else(|| Error::new("bit-packed levels end early"))?;
+/// Decode the older BIT_PACKED encoding of a page's `rows` values, packed
+/// from the most significant bit with no header: values `skip..skip +
+/// out.len()` go into `out`, and the count of 1s before `skip` is
+/// returned with the bytes all `rows` take.
+pub(crate) fn decode_bit_packed(
+    buf: &[u8],
+    width: u8,
+    rows: usize,
+    skip: usize,
+    out: &mut [u8],
+) -> Result<(usize, usize)> {
+    let short = || Error::new("bit-packed levels end early");
+    let bytes =
+        usize::try_from((rows as u64 * u64::from(width)).div_ceil(8)).map_err(|_| short())?;
+    let buf = buf.get(..bytes).ok_or_else(short)?;
+    if skip.checked_add(out.len()).is_none_or(|e| e > rows) {
+        return Err(Error::new("bit-packed levels asked for past the page"));
+    }
     let mut bit = 0usize;
-    for o in out.iter_mut() {
+    let mut next = || {
         let mut v = 0u8;
         for _ in 0..width {
             let b = (buf[bit >> 3] >> (7 - (bit & 7))) & 1;
             v = (v << 1) | b;
             bit += 1;
         }
-        *o = v;
+        v
+    };
+    let ones = (0..skip).filter(|_| next() == 1).count();
+    for o in out.iter_mut() {
+        *o = next();
     }
-    Ok(bytes)
+    Ok((bytes, ones))
 }
 
 /// Bit-packed literal runs are cut at this many groups of eight, as other
@@ -266,6 +341,49 @@ mod tests {
     }
 
     #[test]
+    fn a_window_decodes_as_the_whole_does() {
+        let values: Vec<u32> = (0..2000u32)
+            .map(|i| if (i / 50) % 3 == 0 { 1 } else { (i * 7919) % 2 })
+            .collect();
+        let mut buf = Vec::new();
+        encode(&values, 1, &mut buf);
+        for (skip, len) in [
+            (0, 2000),
+            (1, 5),
+            (7, 9),
+            (8, 8),
+            (13, 600),
+            (1999, 1),
+            (2000, 0),
+        ] {
+            let mut got = vec![0u32; len];
+            let mut ones = 0;
+            decode_from(&buf, 1, skip, &mut got, |v, n| ones += v as usize * n).unwrap();
+            assert_eq!(got, &values[skip..skip + len], "{skip} {len}");
+            assert_eq!(ones, values[..skip].iter().sum::<u32>() as usize);
+        }
+        // Legacy BIT_PACKED, from the middle.
+        let legacy = [0b1010_1010, 0b1111_0000];
+        let mut got = [0u8; 4];
+        assert_eq!(
+            decode_bit_packed(&legacy, 1, 16, 6, &mut got).unwrap(),
+            (2, 3)
+        );
+        assert_eq!(got, [1, 0, 1, 1]);
+        // A run of a billion values costs nothing to skip.
+        let mut buf = Vec::new();
+        put_varint(&mut buf, 2_000_000_000 << 1);
+        buf.push(1);
+        let mut got = [0u8; 1];
+        let mut ones = 0;
+        decode_from(&buf, 1, 1_999_999_999, &mut got, |v, n| {
+            ones += v as usize * n
+        })
+        .unwrap();
+        assert_eq!((got[0], ones), (1, 1_999_999_999));
+    }
+
+    #[test]
     fn long_runs_are_one_rle_run() {
         let ones = vec![1u8; 100_000];
         let mut buf = Vec::new();
@@ -287,7 +405,7 @@ mod tests {
         // The legacy BIT_PACKED order for the same values.
         let legacy = [0b0000_0101, 0b0011_1001, 0b0111_0111];
         let mut got = [0u8; 8];
-        decode_bit_packed(&legacy, 3, &mut got).unwrap();
+        decode_bit_packed(&legacy, 3, 8, 0, &mut got).unwrap();
         assert_eq!(got, [0, 1, 2, 3, 4, 5, 6, 7]);
     }
 
@@ -309,6 +427,6 @@ mod tests {
         assert!(decode(&[0x02, 0], 33, &mut out).is_err());
         assert!(decode(&[0xff; 12], 3, &mut out).is_err());
         let mut out = [0u8; 9];
-        assert!(decode_bit_packed(&[0xff], 1, &mut out).is_err());
+        assert!(decode_bit_packed(&[0xff], 1, 9, 0, &mut out).is_err());
     }
 }
