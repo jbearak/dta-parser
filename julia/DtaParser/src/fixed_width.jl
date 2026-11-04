@@ -37,10 +37,10 @@ recodes (`IF (X = 98 OR X = 99) THEN X = .;`).
 Columns are as `read_dta` returns them; numeric columns take the
 smallest storage type that holds their values. Statements the reader
 does not run (other data-step code, ranges in `VALUE`) give one warning;
-table metadata `"warnings"` lists them all. A variable label with stray
+table metadata `"warnings"` lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray
 quotes inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS
 ANSWERED"` in CDC's 2011-2013 to 2015-2017 setups, is read from its
-first quote to its last, with a warning naming its line.
+first quote to its last, without a warning.
 """
 function read_fixed_width(path::AbstractString, setup::Union{AbstractString,AbstractVector{<:AbstractString}};
                           recodes::Symbol=:setup, cols=nothing, skip::Integer=0,

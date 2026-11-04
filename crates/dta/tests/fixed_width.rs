@@ -412,7 +412,7 @@ fn unsupported_data_step_order() {
 #[test]
 fn skipped_and_unknown() {
     let setup = "PROC FORMAT; VALUE f 1-5='low' 6='six' OTHER='rest'; VALUE $s 'a'='A';
-        DATA; INPUT X 1; LENGTH y 8; z = x * 2; y = 1; LABEL Q='q'; FORMAT X f. Q f.;
+        DATA; INPUT X 1; LENGTH y $ 8; z = x * 2; y = 1; LABEL Q='q'; FORMAT X f. Q f.;
         IF W = 1 THEN X = .; RUN; PROC PRINT; RUN;";
     let g = read(setup, "6\n", Recodes::Setup);
     assert_eq!(g.value_labels("X"), [("6".into(), "six".into())]);
@@ -423,6 +423,15 @@ fn skipped_and_unknown() {
         kinds,
         [SkippedStatement, SkippedStatement, SkippedStatement, SkippedStatement, SkippedStatement, SkippedValueLabel, SkippedValueLabel, SkippedValueLabel, UnknownName, UnknownName, UnknownName]
     );
+}
+
+#[test]
+fn length_statements() {
+    // CDC's setups from 2006-2010 on end with a LENGTH of numbers, which
+    // changes no value read. A string's LENGTH can cut one, so it warns.
+    let g = read("DATA; INPUT A 1 S $ 2-3;\nLENGTH A 3;\nLENGTH A 3 S $ 1;", "1ab\n", Recodes::Setup);
+    assert_eq!(g.warnings, [(WarningKind::SkippedStatement, "skipped line 3: LENGTH A 3 S $ 1;".to_string())]);
+    assert_eq!(g.strs("S"), ["ab"]);
 }
 
 #[test]
@@ -645,16 +654,7 @@ LABEL\r
     assert_eq!(g.label("C"), "plain");
     assert_eq!(g.label("D"), "no equals");
     assert_eq!(g.label("E"), "no equals either");
-    let lines: Vec<&str> = g.warnings.iter().map(|w| w.1.as_str()).collect();
-    assert_eq!(
-        lines,
-        [
-            "line 3: the label of SALMX1 has quotes inside it; it is read from its first quote to its last",
-            "line 4: the label of RING has quotes inside it; it is read from its first quote to its last",
-            "line 7: the label of STRLOPER has quotes inside it; it is read from its first quote to its last",
-        ]
-    );
-    assert_eq!(g.kinds(), [WarningKind::LabelQuotes; 3]);
+    assert_eq!(g.warnings, []);
     // Anything else after a label is still an error: other tokens, a run
     // that ends in a word, or a run across lines.
     for bad in ["A = \"x \" B-1\" y\"", "A = \"x\" B C", "A = \"x \" B C\n\" y\""] {

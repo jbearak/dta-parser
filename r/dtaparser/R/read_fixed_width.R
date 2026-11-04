@@ -45,10 +45,10 @@
 #'   Statements the reader does not run (other data-step code, ranges in
 #'   `VALUE`) are skipped with one warning of class
 #'   `dtaparser_fixed_width_warning`; the tibble's `warnings` attribute
-#'   lists them all. A variable label with stray quotes inside it, such as
+#'   lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes inside it, such as
 #'   `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"` in CDC's
 #'   2011-2013 to 2015-2017 setups, is read from its first quote to its
-#'   last, with a warning naming its line.
+#'   last, without a warning.
 #' @examples
 #' dir <- tempfile()
 #' dir.create(dir)

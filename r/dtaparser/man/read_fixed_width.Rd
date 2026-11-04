@@ -60,10 +60,10 @@ move to their tagged NA, or go when the code becomes a plain \code{NA}.
 Statements the reader does not run (other data-step code, ranges in
 \code{VALUE}) are skipped with one warning of class
 \code{dtaparser_fixed_width_warning}; the tibble's \code{warnings} attribute
-lists them all. A variable label with stray quotes inside it, such as
+lists them all. A \code{LENGTH} statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes inside it, such as
 \verb{X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"} in CDC's
 2011-2013 to 2015-2017 setups, is read from its first quote to its
-last, with a warning naming its line.
+last, without a warning.
 }
 \description{
 Reads fixed-width ASCII data, such as the National Survey of Family
