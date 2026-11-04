@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use dta_parquet::format::TimeUnit;
-use dta_parquet::{ColumnType, Numbers, Output, ReadOptions, Reader, TextChunk};
+use dta_parquet::{ColumnType, Nested, Numbers, Output, ReadOptions, Reader, Role, TextChunk};
 use serde_json::Value;
 
 fn root() -> &'static Path {
@@ -125,10 +125,16 @@ fn fixtures() -> Vec<(String, Value)> {
 fn check(options: ReadOptions, windows: &[(u64, u64)]) {
     for (stem, doc) in fixtures() {
         let bytes = std::fs::read(root().join("fixtures").join(format!("{stem}.parquet"))).unwrap();
+        let nested: Vec<&str> = doc["nested"].as_array().map_or(Vec::new(), |a| a.iter().map(|v| v.as_str().unwrap()).collect());
+        let options = if nested.is_empty() { options } else { ReadOptions { nested: Nested::Skip, ..options } };
         let mut r = Reader::open(dta::Bytes(&bytes[..]), options).unwrap();
         assert!(r.warnings().is_empty(), "{stem}: {:?}", r.warnings());
         let rows = doc["rows"].as_u64().unwrap();
         assert_eq!(r.rows(), rows, "{stem}");
+        for name in &nested {
+            let k = r.column_index(name).unwrap();
+            assert_eq!(r.columns()[k].role, Role::Nested, "{stem}.{name}");
+        }
         let columns = doc["columns"].as_array().unwrap();
         assert_eq!(r.data_columns().unwrap().len(), columns.len(), "{stem}");
         for col in columns {
@@ -200,4 +206,23 @@ fn the_fixtures_cover_what_they_should() {
         assert!(encodings.contains(&e), "no fixture uses {e:?}");
     }
     assert!(with_index && v2);
+}
+
+#[test]
+fn nested_columns_are_named_unless_skipped() {
+    let bytes = std::fs::read(root().join("fixtures/pyarrow_nested.parquet")).unwrap();
+    let r = Reader::open(dta::Bytes(&bytes[..]), ReadOptions::default()).unwrap();
+    let e = r.data_columns().unwrap_err();
+    for name in ["\"tags\"", "\"point\"", "\"props\""] {
+        assert!(e.message.contains(name), "{}", e.message);
+    }
+    assert!(e.message.contains("skip"), "{}", e.message);
+    let r = Reader::open(dta::Bytes(&bytes[..]), ReadOptions { nested: Nested::Skip, ..Default::default() }).unwrap();
+    let names: Vec<&str> = r.data_columns().unwrap().iter().map(|&k| r.columns()[k].name.as_str()).collect();
+    assert_eq!(names, vec!["id", "name"]);
+    // Selecting a nested column is an error naming it.
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), ReadOptions::default()).unwrap();
+    let k = r.column_index("tags").unwrap();
+    let e = r.read(&[k], 0, 10, &mut [Output::Text], |_, _| Ok(())).unwrap_err();
+    assert!(e.message.contains("\"tags\""), "{}", e.message);
 }

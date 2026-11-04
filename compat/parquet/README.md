@@ -25,6 +25,7 @@ the scripts.
 | `pyarrow_gzip.parquet` | pyarrow, `compression="gzip"` | gzip |
 | `pyarrow_small_pages.parquet` | pyarrow, zstd, 200-row row groups, 1 KiB pages, `write_page_index=True` | row groups, many pages, an offset index |
 | `pyarrow_plain.parquet` | pyarrow, `use_dictionary=False`, no compression | PLAIN only, uncompressed |
+| `pyarrow_nested.parquet` | pyarrow, defaults | a list, a struct and a map among flat columns, which are not read |
 | `polars_default.parquet` | polars, defaults | zstd, polars' encodings |
 | `polars_zstd.parquet` | polars, zstd, statistics, 250-row row groups | row groups, polars' offset index |
 | `duckdb_default.parquet` | DuckDB `COPY ... (FORMAT parquet)` | PLAIN_DICTIONARY, DuckDB's timestamps |

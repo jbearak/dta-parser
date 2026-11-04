@@ -83,6 +83,19 @@ def main():
     )
     pq.write_table(t, os.path.join(OUT, "pyarrow_plain.parquet"), use_dictionary=False, compression="none")
 
+    # Nested columns between flat ones: a list, a struct and a map, which
+    # are not read; the flat columns around them are.
+    nested = pa.table(
+        {
+            "id": pa.array(range(N), pa.int32()),
+            "tags": pa.array([[i, i + 1] if i % 5 else None for i in range(N)], pa.list_(pa.int64())),
+            "point": pa.array([{"x": i, "y": float(i) / 2} for i in range(N)]),
+            "props": pa.array([[("k", i)] for i in range(N)], pa.map_(pa.string(), pa.int64())),
+            "name": pa.array(masked([f"n{i}" for i in range(N)], 7), pa.string()),
+        }
+    )
+    pq.write_table(nested, os.path.join(OUT, "pyarrow_nested.parquet"))
+
     # polars: its own default (zstd) and explicitly zstd with statistics.
     df = pl.from_arrow(t)
     df.write_parquet(os.path.join(OUT, "polars_default.parquet"))

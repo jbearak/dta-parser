@@ -44,11 +44,18 @@ def values(col):
 for path in sorted(glob.glob(os.path.join(HERE, "fixtures", "*.parquet"))):
     stem = os.path.splitext(os.path.basename(path))[0]
     table = pq.read_table(path)
+    nested = [f.name for f in table.schema if pa.types.is_nested(f.type)]
     doc = {
-        "reader": f"pyarrow {pa.__version__}",
         "rows": table.num_rows,
-        "columns": [{"name": f.name, "arrow_type": str(f.type), "values": values(table.column(f.name))} for f in table.schema],
+        "columns": [
+            {"name": f.name, "arrow_type": str(f.type), "values": values(table.column(f.name))}
+            for f in table.schema
+            if f.name not in nested
+        ],
     }
+    if nested:
+        # Not read by dta-parquet; listed so the test checks they are named.
+        doc["nested"] = nested
     with open(os.path.join(OUT, stem + ".json"), "w") as f:
         json.dump(doc, f, indent=None, separators=(",", ":"))
         f.write("\n")
