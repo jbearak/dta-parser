@@ -33,14 +33,22 @@ section.
 
 ## Install
 
-dtatools needs R 4.2 or later, and reads and writes through dtaparser.
-Neither is on CRAN. Each release is published as an R package
+dtatools needs R 4.2 or later. It reads and writes through dtaparser
+and takes `:=` from datakit, and installing it installs both. None of
+the three is on CRAN. Each release is published as an R package
 repository on GitHub, with binaries for macOS (arm64), Windows (x86_64)
 and Ubuntu 24.04 (x86_64) for the current and previous R releases. On
 macOS and Windows:
 
 ```r norun
 install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+```
+
+To analyse data under R's rules or translate a do-file, without
+dibbles, install dtaparser and datakit instead:
+
+```r norun
+install.packages(c("dtaparser", "datakit"), repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
 On Ubuntu 24.04:
@@ -71,17 +79,18 @@ pak::pak("jbearak/dta-parser/r/dtatools")
 `remotes::install_github("jbearak/dta-parser", subdir = "r/dtatools")`
 does the same; a DESCRIPTION can name the source in
 `Remotes: dtatools=jbearak/dta-parser/r/dtatools`. From a clone, install
-dtaparser first:
+dtaparser first, then datakit:
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
 R CMD INSTALL dta-parser/r/dtaparser
+R CMD INSTALL dta-parser/r/datakit
 R CMD INSTALL dta-parser/r/dtatools
 ```
 
 This way, install rlang, tibble, tidyselect and vctrs first if R reports
 one missing. After reinstalling dtaparser, restart R before using
-dtatools. Check the install:
+dtatools or datakit. Check the install:
 
 ```r norun
 library(dtatools)
@@ -381,8 +390,9 @@ data.table writes `:=` inside the brackets, `df[i, name := value]`. On
 a dibble that is an error that shows the line to write instead, since
 it used to return a changed copy and leave `df` as it was.
 
-rlang and data.table also export a `:=`, and R uses the one from the
-package attached last, so attach dtatools after them. Tests that call
+`:=` is datakit's; dtatools re-exports it and adds the rules for
+dibbles. rlang and data.table also export a `:=`, and R uses the one
+from the package attached last, so attach dtatools after them. Tests that call
 `dtatools::` functions without attaching dtatools can bind it in a
 helper file: `` `:=` <- dtatools::`:=` ``. See `?"dibble-assign"`.
 On a data frame that is not a dibble, the same `:=` follows R's rules
@@ -757,10 +767,12 @@ the old code's label.
 
 ## From a do-file to R
 
-dtaparser's `:=` works on any data frame or tibble, so a do-file can
-become an R script one line at a time without dibbles. It is the same
-`:=` as dtatools' (dtatools re-exports it), but on a data frame it
-follows R's rules: missing values compare as `NA`, and `NA` in `i`
+datakit's `:=` works on any data frame or tibble, so a do-file can
+become an R script one line at a time without dibbles. A translated
+script starts with `library(dtaparser); library(datakit)`, after dplyr
+and tidyr if it uses them: attached last, datakit's `:=` masks rlang's,
+which dplyr re-exports. It is the same `:=` as dtatools' (dtatools
+re-exports it), but on a data frame it follows R's rules: missing values compare as `NA`, and `NA` in `i`
 selects no row. Compare with labels, which needs `factors = TRUE`:
 
 ```r
@@ -796,15 +808,26 @@ Where Stata and R differ, the line follows R:
 The rest is as in [Make and change columns](#make-and-change-columns):
 `by`, `.N`, the forms of `name`, `NULL` to drop a column, and where R
 finds `:=` when rlang or data.table is attached. Without dtatools,
-attach dtaparser or bind `` `:=` <- dtaparser::`:=` ``. See
-`?dtaparser::":="`.
+attach datakit or bind `` `:=` <- datakit::`:=` ``. See
+`?datakit::":="`.
+
+datakit ships a file for the Raven language server,
+`inst/raven/nse.toml`, which says that `i`, `by` and the value of
+`d[i, name, by = g] := value` are evaluated among `d`'s columns, so
+Raven can treat the names in them as columns rather than variables.
+dtatools ships the same file.
+
+To save a snapshot for comparison with Stata's output, write the data
+frame with `dtaparser::save_dta()`; dates, labelled columns and `.a` to
+`.z` written by `:=` read back as they were (see
+[Plain R types](#plain-r-types-dtaparser)).
 
 ## Fixed-width files with a SAS setup file
 
 Some surveys are published as fixed-width text with a SAS program, the
 *setup file*, that says where each variable sits. CDC publishes the
 National Survey of Family Growth this way, from 1973 to 2017-2019.
-dtaparser's `read_fixed_width()` reads such data through its setup
+datakit's `read_fixed_width()` reads such data through its setup
 file: columns from `INPUT`, variable labels from `LABEL`, value labels
 from `PROC FORMAT` and `FORMAT`, record types from
 `IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
@@ -827,7 +850,7 @@ By default the recodes apply as the setup writes them, so 98 and 99 are
 `NA`, and the columns are as `read_dta()` returns them:
 
 ```r
-df <- dtaparser::read_fixed_width("survey.dat", "survey.sas")
+df <- datakit::read_fixed_width("survey.dat", "survey.sas")
 df$KIDS               # 2 NA NA 0
 dtaparser::var_label(df$KIDS) # "Number of children"
 ```
@@ -838,7 +861,7 @@ tagged NAs `.a`, `.b`, ... in the order the setup names them, and each
 code's value label moves to its letter:
 
 ```r
-df <- dtaparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
+df <- datakit::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
 dtaparser::na_tag(df$KIDS)     # NA "a" "b" NA
 is.na(df$KIDS)                 # FALSE TRUE TRUE FALSE
 dtaparser::val_label(df$KIDS)  # NA "(98) DK" "(99) Not ascertained" "(0) None"
@@ -875,7 +898,7 @@ writeLines(c(
   "RUN;",
   "FORMAT KIDS kidsf.;"
 ), "labels.sas")
-df <- dtaparser::read_fixed_width("survey.dat", c("input.sas", "labels.sas"),
+df <- datakit::read_fixed_width("survey.dat", c("input.sas", "labels.sas"),
                                   recodes = "none")
 attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
 ```
@@ -895,9 +918,9 @@ writeLines(c(
   "DATA;", "INPUT ID 1-3 KIDS 4-5;",
   "/*", "FORMAT KIDS kidsf.;", "*/"
 ), "commented.sas")
-df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none")
+df <- datakit::read_fixed_width("survey.dat", "commented.sas", recodes = "none")
 attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
-df <- dtaparser::read_fixed_width("survey.dat", "commented.sas", recodes = "none",
+df <- datakit::read_fixed_width("survey.dat", "commented.sas", recodes = "none",
                                   commented_formats = FALSE)
 attr(df$KIDS, "labels")  # NULL
 ```
@@ -972,11 +995,8 @@ Each function has a help page (`?read_dta`). Exports:
 
 dtaparser exports `read_dta()` (see
 [Plain R types](#plain-r-types-dtaparser)), `save_dta()` (which
-dtatools re-exports),
-`read_fixed_width(file, setup, recodes = "setup", ...)`, which reads
-fixed-width text through its SAS setup file (see
-[Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), and
-five accessors for the columns they return, `tagged_na(x)` to make
+dtatools re-exports), five accessors for the columns `read_dta()`
+returns, `tagged_na(x)` to make
 `.a` to `.z`, and `with_labels(x, labels, label = NULL)` to make a
 labelled column (see [Labelled columns](#labelled-columns)):
 
@@ -984,6 +1004,13 @@ labelled column (see [Labelled columns](#labelled-columns)):
   `.z`. `tagged_na(x)`: `.a` to `.z` from their letters.
 - `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
   and value labels.
+
+datakit exports:
+
+- `read_fixed_width(file, setup, recodes = "setup", ...)`: read
+  fixed-width text through its SAS setup file (see
+  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
 - `d[i, name, by = ] := value`: make or change a column of a data
-  frame under R's rules (`?dtaparser::":="`). `colon_equals()` is the
+  frame under R's rules (`?datakit::":="`; see
+  [From a do-file to R](#from-a-do-file-to-r)). `colon_equals()` is the
   generic behind it; dtatools adds the method for dibbles.

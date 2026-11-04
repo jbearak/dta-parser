@@ -1,7 +1,7 @@
 # Contributing
 
 This repository holds one implementation of the `.dta` format, in Rust,
-and four packages built on it. This page says how to build and test
+and the packages built on it. This page says how to build and test
 each part, how the documentation is checked, and the rules every change
 follows.
 
@@ -33,7 +33,8 @@ people and by coding agents alike:
 | `crates/dta` | the format: reader (releases 104 to 119) and release 118 writer | Rust |
 | `crates/dta-ffi` | the WebAssembly interface for the npm package, and the C interface (`include/dta.h`) for Julia | Rust |
 | `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
-| `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
+| `r/datakit` | the R package for translating do-files: `:=` and `read_fixed_width`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
+| `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser, takes `:=` from datakit ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
 | `python` | the Python package, a PyO3 extension | Python, Rust |
 | `julia/DtaParser` | the Julia package, over the C interface | Julia |
 | `js` | the npm package, over the WebAssembly module | TypeScript |
@@ -67,13 +68,15 @@ cd js && npm ci && npm run build && npm test
 ```
 
 **R packages** (R 4.2 or later, with testthat, haven, readstata13 and
-dplyr for the tests). dtatools imports dtaparser, so install dtaparser
-first:
+dplyr for the tests). datakit imports dtaparser, and dtatools imports
+both, so install them in this order:
 
 ```sh
 R CMD INSTALL r/dtaparser
+R CMD INSTALL r/datakit
 R CMD INSTALL r/dtatools
 Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
+Rscript -e 'testthat::test_dir("r/datakit/tests/testthat", package = "datakit", load_package = "installed")'
 Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
 ```
 
@@ -84,8 +87,9 @@ of the repository. Its `configure` refreshes the copy from `crates/dta`
 whenever it runs in a checkout; commit the result with any change to
 the core, or CI fails.
 
-To release the R packages, set both DESCRIPTIONs to the new version
-(dtatools' `Imports` names the dtaparser it needs) and push a tag
+To release the R packages, set the three DESCRIPTIONs to the new
+version (datakit's and dtatools' `Imports` name the versions they need)
+and push a tag
 `r-v<version>` on main. The r-packages workflow builds binaries for
 macOS, Windows and Ubuntu, publishes them with the source packages as
 the R repository on GitHub Pages, and makes a GitHub release of the
@@ -164,7 +168,7 @@ R CMD INSTALL r/dtatools
 Rscript -e 'roxygen2::roxygenise("r/dtatools", roclets = "rd", load_code = roxygen2::load_installed)'
 ```
 
-The same commands with `r/dtaparser` regenerate dtaparser's.
+The same commands with `r/dtaparser` or `r/datakit` regenerate theirs.
 
 `roclets = "rd"` leaves `NAMESPACE` alone; it is written by hand.
 
