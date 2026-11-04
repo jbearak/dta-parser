@@ -62,8 +62,9 @@ reach the core through.
 
 **datakit**:
 The R package for translating do-files to R: `d[i, name, by = g] :=
-value` on data frames under R's rules, and `read_fixed_width`. It
-imports dtaparser and reaches the Rust bridge through it.
+value` on data frames under R's rules, `read_fixed_width`, and
+`read_parquet` and `save_parquet`. It imports dtaparser and reaches the
+Rust bridge through it.
 _Avoid_: using datakit for `.dta` reading or labels (those are
 dtaparser's)
 
@@ -85,6 +86,14 @@ and which codes are missing values. CDC publishes one for each NSFG
 file from 1973 to 2017-2019 (in 2002, split into three files).
 datakit's `read_fixed_width` reads the data through it.
 _Avoid_: dictionary (Stata's own `.dct` format), codebook
+
+**dta profile**:
+The JSON entry, under the key `dta` in a Parquet file's metadata, that
+holds what Parquet cannot say about a table: variable and value labels,
+display formats, notes, characteristics, factor levels, time zones, and
+the storage type of a column written as DOUBLE because it holds `.a` to
+`.z`. Other Parquet tools ignore it.
+_Avoid_: schema (Parquet's own), metadata (unqualified)
 
 **Missing-value recode**:
 A setup file statement that turns a code into a missing value, such as
