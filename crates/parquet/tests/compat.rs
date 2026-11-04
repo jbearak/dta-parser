@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use dta_parquet::format::TimeUnit;
+use dta_parquet::format::{LogicalType, TimeUnit};
 use dta_parquet::{ColumnType, LevelsFrom, Nested, Numbers, Output, ReadOptions, Reader, Role, TextChunk};
 use serde_json::Value;
 
@@ -187,10 +187,20 @@ fn check(options: ReadOptions, windows: &[(u64, u64)]) {
             let name = col["name"].as_str().unwrap();
             let k = r.column_index(name).unwrap();
             let arrow = col["arrow_type"].as_str().unwrap();
-            assert_eq!(r.columns()[k].kind, kind_of(arrow), "{stem}.{name}: {arrow}");
+            // pyarrow reads ENUM as binary; plan 0018 reads it as text.
+            let is_enum = r.columns()[k].logical == Some(LogicalType::Enum) || r.columns()[k].converted == Some(dta_parquet::format::converted::ENUM);
+            let want_kind = if is_enum && arrow == "binary" { ColumnType::Text } else { kind_of(arrow) };
+            assert_eq!(r.columns()[k].kind, want_kind, "{stem}.{name}: {arrow}");
             let want = col["values"].as_array().unwrap();
             for &(skip, n) in windows {
-                let got = read_column(&mut r, name, skip, n);
+                let mut got = read_column(&mut r, name, skip, n);
+                if is_enum && arrow == "binary" {
+                    for v in &mut got {
+                        if let Value::String(s) = v {
+                            *v = Value::from(s.as_bytes().to_vec());
+                        }
+                    }
+                }
                 let start = (skip as usize).min(want.len());
                 let end = (skip.saturating_add(n) as usize).min(want.len());
                 let want = &want[start..end];
