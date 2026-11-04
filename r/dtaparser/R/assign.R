@@ -214,7 +214,7 @@ into_labelled <- function(old, value, rows) {
   value <- plain(value)
   codes <- widened(vctrs::vec_data(old), value)
   codes[rows] <- if (is.integer(codes)) as.integer(value) else value
-  new_labelled(codes, labels, attr(old, "label", exact = TRUE))
+  new_labelled(codes, labels, attr(old, "label", exact = TRUE), attr(old, "format", exact = TRUE))
 }
 
 # `old` as the narrowest of logical, integer and double that holds both

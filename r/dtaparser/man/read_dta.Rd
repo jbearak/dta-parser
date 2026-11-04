@@ -76,6 +76,17 @@ Columns carry their variable label as attribute \code{label}
 (\code{\link[=var_label]{var_label()}}); the tibble
 carries the dataset label as \code{label} and its notes as \code{notes}.
 
+A numeric column whose display format says more than the default,
+such as \verb{\%9.2f}, or \verb{\%tdCCYY-NN-DD} on a \code{Date}, carries it as
+attribute \code{format}, which \code{\link[=save_dta]{save_dta()}} writes back. Columns with a
+general format (\verb{\%9.0g} and the like, Stata's defaults), and dates
+with plain \verb{\%td} or \verb{\%tc}, have no such attribute, so they stay
+plain vectors; nor do factors and strings. The attribute stays
+through \code{filter()}, \code{arrange()}, joins and arithmetic. A labelled
+column keeps it everywhere, as it keeps its labels; other columns
+lose it in \code{bind_rows()}, \code{if_else()}, \code{case_when()} and base
+\code{x[i]}, and are then written with the default.
+
 String columns come back packed: R makes each string when it is
 first used, so reading is fast and the first operation over every
 value of a column pays the cost instead. A column with few distinct

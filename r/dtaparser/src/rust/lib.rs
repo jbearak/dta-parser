@@ -390,12 +390,17 @@ fn promote(
     Ok(y)
 }
 
-/// Plain mode's attributes: `label` when there is one, `labels` (the
-/// codes, `.a` to `.z` tagged, named by their text) on a labelled
-/// column, and the class of a date or datetime.
+/// Plain mode's attributes: `label` when there is one, `format` when a
+/// numeric column's display format says more than the default
+/// (`plain_format`), `labels` (the codes, `.a` to `.z`
+/// tagged, named by their text) on a labelled column, and the class of a
+/// date or datetime.
 fn set_plain_attributes(x: Sexp, var: &Variable, kind: Kind, set: Option<&ValueLabelSet>) -> Res<()> {
     if !var.label.is_empty() {
         string_attr(x, c"label", &var.label)?;
+    }
+    if let Some(format) = plain_format(var, kind) {
+        string_attr(x, c"format", format)?;
     }
     if let Some(set) = set {
         let codes = alloc_attr(x, c"labels", REALSXP, set.labels.len())?;
@@ -414,6 +419,33 @@ fn set_plain_attributes(x: Sexp, var: &Variable, kind: Kind, set: Option<&ValueL
         _ => {}
     }
     Ok(())
+}
+
+/// A numeric column's display format, unless it says no more than the
+/// default: a general format `%w.0g` (Stata's defaults are `%8.0g` to
+/// `%12.0g` by storage type, and `compress` keeps the old one), or `%td`
+/// on a `Date` and `%tc` on a `POSIXct`. Most columns have such a format
+/// and stay plain vectors without the attribute. String columns have
+/// none: the writer sets their width, and so their format, from the
+/// values.
+fn plain_format(var: &Variable, kind: Kind) -> Option<&str> {
+    if !var.storage.is_numeric() {
+        return None;
+    }
+    let f = var.format.as_str();
+    let default = match kind {
+        Kind::Date => f == "%td",
+        Kind::DateTime => f == "%tc",
+        _ => is_general(f),
+    };
+    (!default).then_some(f)
+}
+
+/// Whether `f` is a general format `%w.0g` or `%-w.0g`.
+fn is_general(f: &str) -> bool {
+    let f = f.strip_prefix('%').unwrap_or("");
+    let f = f.strip_prefix('-').unwrap_or(f);
+    f.strip_suffix(".0g").is_some_and(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// The attributes dtatools' `read_dta` documents: `label` and `format` on

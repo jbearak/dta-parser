@@ -640,9 +640,10 @@ class(df$interviewed) # "Date"
 `n_max` arguments. Columns keep their variable label in `label`; the
 tibble keeps `label` and `notes`. `save_dta()` writes the tibble back:
 `Date` as `%td`, `POSIXct` as `%tc`, labelled columns with their labels,
-and `.a` to `.z` with their letters. Storage types and display formats
-are not kept by `read_dta()`, so integers come back long and doubles
-double:
+and `.a` to `.z` with their letters. A display format other than the
+default, such as `%9.2f`, is kept in a column's `format` attribute and
+written back. Storage types are not kept, so integers come back long
+and doubles double:
 
 ```r
 dtaparser::save_dta(df, "again.dta")

@@ -86,9 +86,13 @@ test_that("date formats give Date and datetime formats POSIXct in UTC", {
   x <- read_dta(path)
   want <- as.Date(c("1960-01-01", "2020-01-01", NA))
   for (name in c("td", "d", "dlong", "left", "custom")) {
-    expect_identical(x[[name]], want, label = name)
+    expect_identical(structure(x[[name]], format = NULL), want, label = name)
     expect_type(unclass(x[[name]]), "double")
   }
+  # A date format other than plain %td is kept for save_dta.
+  expect_null(attr(x$td, "format"))
+  expect_identical(vapply(x[c("d", "dlong", "left", "custom")], attr, "", "format"),
+                   c(d = "%d", dlong = "%dDlY", left = "%-td", custom = "%tdDD/NN/CCYY"))
   want <- as.POSIXct(c("1960-01-01 00:00:00", "1960-01-01 00:00:01.5", NA), tz = "UTC")
   for (name in c("tc", "lefttc")) {
     expect_s3_class(x[[name]], "POSIXct")
@@ -96,13 +100,13 @@ test_that("date formats give Date and datetime formats POSIXct in UTC", {
     expect_equal(as.double(x[[name]]), as.double(want), label = name)
   }
   # %tC counts leap seconds; it and the other %t formats stay numbers.
-  expect_identical(x$tC, ms)
-  expect_identical(x$tw, c(1L, 2L, NA))
+  expect_identical(x$tC, structure(ms, format = "%tC"))
+  expect_identical(x$tw, structure(c(1L, 2L, NA), format = "%tw"))
   # Value labels on a non-missing value outrank the date format.
   expect_identical(as.vector(x$labelled), c(0L, 1L, NA))
   expect_identical(attr(x$labelled, "labels"), c(start = 0))
   expect_s3_class(read_dta(path, factors = TRUE)$labelled, "factor")
-  expect_identical(read_dta(path, dates = FALSE)$td, c(0L, 21915L, NA))
+  expect_identical(read_dta(path, dates = FALSE)$td, structure(c(0L, 21915L, NA), format = "%td"))
 })
 
 test_that("haven agrees on Date and POSIXct values", {

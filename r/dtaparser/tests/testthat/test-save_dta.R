@@ -134,3 +134,59 @@ test_that("metadata attributes are written as given", {
   expect_identical(meta$names[meta$sort_order], "a")
   expect_setequal(paste(meta$characteristics$variable, meta$characteristics$value), c("a 1", "_dta 3"))
 })
+
+test_that("a display format other than the default is kept and written back", {
+  path <- write_fixture(
+    plain = col(c(1, 2), "byte"),
+    long = col(c(1, 2), "long", "%12.0g"),
+    left = col(c(1.5, 2), "double", "%-10.0g"),
+    money = col(c(2100.5, NA), "double", "%9.2f"),
+    count = col(c(3, 4), "int", "%5.0fc"),
+    born = col(c(0, 23000), "long", "%tdCCYY-NN-DD"),
+    day = col(c(0, 1), "long", "%td"),
+    smoker = col(c(1, tagged_na("d")), "byte", "%3.0f", labels = c(Yes = 1, tagged_na(c(DK = "d")))),
+    name = col(c("a", "b"), "str", "%-9s")
+  )
+  d <- read_dta(path)
+  # Defaults leave plain vectors; strings and %td dates have no attribute.
+  expect_identical(d$plain, c(1L, 2L))
+  expect_identical(d$long, c(1L, 2L))
+  expect_identical(d$left, c(1.5, 2))
+  expect_null(attr(d$day, "format"))
+  expect_null(attr(d$name, "format"))
+  expect_identical(attr(d$money, "format"), "%9.2f")
+  expect_identical(attr(d$count, "format"), "%5.0fc")
+  expect_identical(attr(d$born, "format"), "%tdCCYY-NN-DD")
+  expect_s3_class(d$born, "Date")
+  expect_identical(attr(d$smoker, "format"), "%3.0f")
+  expect_null(attr(read_dta(path, factors = TRUE, warn_extended_missing = FALSE)$smoker, "format"))
+  back <- saved(d)
+  expect_identical(unname(formats_of(back)[c("money", "count", "born", "day", "smoker")]),
+                   c("%9.2f", "%5.0fc", "%tdCCYY-NN-DD", "%td", "%3.0f"))
+  expect_identical(read_dta(back), d)
+  # dates = FALSE: a %td column is a number whose format is kept.
+  expect_identical(attr(read_dta(path, dates = FALSE)$day, "format"), "%td")
+})
+
+test_that("a labelled column keeps its format through vctrs and dplyr; a plain one loses it there", {
+  skip_if_not_installed("dplyr")
+  x <- with_labels(structure(c(1, 0), format = "%3.0f"), c(No = 0, Yes = 1))
+  expect_identical(attr(x, "format"), "%3.0f")
+  expect_identical(attr(vctrs::vec_c(x, x), "format"), "%3.0f")
+  expect_identical(attr(dplyr::if_else(x == 1, x, 9), "format"), "%3.0f")
+  expect_identical(attr(dplyr::bind_rows(tibble::tibble(x = x), tibble::tibble(x = 1))$x, "format"), "%3.0f")
+  expect_identical(attr(with_labels(x, c(No = 0)), "format"), "%3.0f")
+  expect_identical(attr(x[2], "format"), "%3.0f")
+  # := keeps it on labelled and plain columns, codes widened or not.
+  d <- tibble::tibble(v = x, w = structure(c(1L, 2L), format = "%5.0f"))
+  d[1, v] := 2.5
+  d[1, w] := 0.5
+  expect_identical(attr(d$v, "format"), "%3.0f")
+  expect_identical(attr(d$w, "format"), "%5.0f")
+  d <- tibble::tibble(y = structure(c(1.5, 2), format = "%9.2f"))
+  expect_identical(attr(dplyr::filter(d, y > 1.6)$y, "format"), "%9.2f")
+  expect_identical(attr(dplyr::arrange(d, y)$y, "format"), "%9.2f")
+  expect_identical(attr(d$y * 2, "format"), "%9.2f")
+  expect_null(attr(dplyr::if_else(d$y > 1, d$y, 0), "format"))
+  expect_null(attr(d$y[2], "format"))
+})
