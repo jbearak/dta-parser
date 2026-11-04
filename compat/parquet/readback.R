@@ -8,7 +8,7 @@
 #     cargo run -p dta-parquet --example samples -- DIR
 #     Rscript compat/parquet/readback.R DIR
 #
-# Needs arrow, nanoparquet and jsonlite.
+# Needs arrow, nanoparquet, haven and jsonlite.
 
 args <- commandArgs(trailingOnly = TRUE)
 dir <- args[[1]]
@@ -103,7 +103,15 @@ check <- function(tool, file, spec, df) {
     }
     compare(tool, file, name, s$values, normal(x, s))
     if (!is.null(s$letters)) {
-      compare(tool, file, paste0(name, "__missing"), s$letters, df[[paste0(name, "__missing")]])
+      # .a to .z are haven's tagged NAs, with their letters; `.` and every
+      # value have no tag.
+      want <- vapply(s$letters, function(l) if (is.null(l)) NA_character_ else substring(l, 2), "")
+      got <- haven::na_tag(x)
+      ok <- (is.na(want) & is.na(got)) | (!is.na(want) & !is.na(got) & want == got)
+      bad <- which(!ok)
+      if (length(bad) > 0) {
+        fail(tool, file, sprintf("%s: row %d has tag %s, not %s", name, bad[1], got[bad[1]], want[bad[1]]))
+      }
     }
   }
   checked[[tool]] <<- checked[[tool]] + 1L

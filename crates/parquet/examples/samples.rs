@@ -11,7 +11,7 @@ use dta::{ValueLabel, ValueLabelSet};
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{write, ColumnProfile, Compression, Profile, WriteOptions};
 use serde_json::{json, Map, Value};
-use support::{every_type, table, Col, Data};
+use support::{every_type, storage_columns, table, Col, Data};
 
 fn profile() -> Profile {
     Profile {
@@ -42,13 +42,16 @@ fn number(v: f64) -> Value {
     }
 }
 
-/// What a column holds, for the readback scripts.
-fn describe(c: &Col) -> Value {
+/// What a column holds, for the readback scripts. `.a` to `.z` are null
+/// in `values` and named in `letters`; with `letters_on` the column is
+/// then written as DOUBLE (`type` is `float64`, and `storage` names what
+/// it was), and without, they are plain nulls.
+fn describe(c: &Col, letters_on: bool) -> Value {
     let n = c.rows();
     let missing = |r: usize| c.codes.get(r).is_some_and(|&k| k != 0);
     let ints = |v: Vec<i64>| -> Vec<Value> { (0..n).map(|r| if missing(r) { Value::Null } else { json!(v[r]) }).collect() };
     let mut o = Map::new();
-    let (kind, values): (&str, Vec<Value>) = match &c.data {
+    let (mut kind, values): (&str, Vec<Value>) = match &c.data {
         Data::I8(v) => ("int8", ints(v.iter().map(|&x| i64::from(x)).collect())),
         Data::I16(v) => ("int16", ints(v.iter().map(|&x| i64::from(x)).collect())),
         Data::I32(v) => ("int32", ints(v.iter().map(|&x| i64::from(x)).collect())),
@@ -78,12 +81,23 @@ fn describe(c: &Col) -> Value {
             ("categorical", codes.iter().map(|&k| if k < 0 { Value::Null } else { json!(levels[k as usize]) }).collect())
         }
     };
-    o.insert("type".into(), json!(kind));
-    o.insert("values".into(), Value::Array(values));
-    if c.codes.iter().any(|&k| k > 1) {
+    if letters_on && c.codes.iter().any(|&k| k > 1) {
         let letters: Vec<Value> = c.codes.iter().map(|&k| if k > 1 { json!(format!(".{}", (b'a' + k - 2) as char)) } else { Value::Null }).collect();
         o.insert("letters".into(), Value::Array(letters));
+        let storage = match &c.data {
+            Data::I8(_) => Some("byte"),
+            Data::I16(_) => Some("int"),
+            Data::I32(_) => Some("long"),
+            Data::F32(_) => Some("float"),
+            _ => None,
+        };
+        if let Some(st) = storage {
+            o.insert("storage".into(), json!(st));
+        }
+        kind = "float64";
     }
+    o.insert("type".into(), json!(kind));
+    o.insert("values".into(), Value::Array(values));
     Value::Object(o)
 }
 
@@ -97,7 +111,7 @@ fn main() {
         write(&table(cols, profile), file, &options).unwrap();
         let mut columns = Map::new();
         for c in cols {
-            columns.insert(c.name.clone(), describe(c));
+            columns.insert(c.name.clone(), describe(c, options.missing_letters));
         }
         let order: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
         expected.insert(name.into(), json!({"rows": cols.first().map_or(0, Col::rows), "order": order, "columns": columns}));
@@ -115,6 +129,10 @@ fn main() {
         WriteOptions { row_group_rows: Some(1000), page_bytes: 4096, ..Default::default() },
     );
     put("empty", &every_type(0), Profile::default(), WriteOptions::default());
+    // .a to .z from every storage type, beside `.` and a NaN value; and the
+    // same with missing_letters off, as plain nulls.
+    put("letters", &storage_columns(), Profile::default(), WriteOptions::default());
+    put("letters_off", &storage_columns(), Profile::default(), WriteOptions { missing_letters: false, ..Default::default() });
     // 5,000 columns with large label sets (plan 0018, "Risks").
     let wide: Vec<Col> = (0..5000).map(|k| Col { name: format!("v{k}"), data: Data::I32(vec![k, k + 1, k + 2]), codes: vec![0, 1, 0] }).collect();
     let wide_profile = Profile {

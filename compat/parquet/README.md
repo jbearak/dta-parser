@@ -56,14 +56,17 @@ The fixtures were written with pyarrow 26.0.1, polars 2.1.0, DuckDB
 
 `samples` writes every type with nulls, `.a` to `.z`, categoricals
 (ordered and not, with an unused level) and time zones; the same in each
-codec; 5,000 rows in five row groups of small pages; an empty table; and
-5,000 columns with 50 label sets of 1,000 labels. Each script checks every
+codec; 5,000 rows in five row groups of small pages; an empty table;
+`.a` to `.z` in a byte, an int, a long, a float and a double column,
+beside `.` and a NaN value, written once as tagged NaNs and once with
+`missing_letters` off; and 5,000 columns with 50 label sets of 1,000
+labels. Each script checks every
 value, that the `dta` key is in the file's metadata, and these cells of
 plan 0018's table:
 
 | ours | pyarrow / pandas | polars | DuckDB | arrow (R) | nanoparquet |
 |---|---|---|---|---|---|
-| `.a` to `.z` | null, plus a `__missing` string column | same | same (and `count()` leaves them out) | same | same |
+| `.a` to `.z` | pyarrow: NaN, not null, in a `double` column, with the storage type in the profile; pandas: missing (`isna()`) | NaN, not null (`null_count()` leaves them out) | NaN, not NULL: `count()` counts them, and `x IS NULL OR isnan(x)` finds every missing value | tagged NA, letter kept (`haven::na_tag()`) | tagged NA, letter kept |
 | categorical | `dictionary<..., ordered>` with every level in order; pandas `category`, ordered kept | `Categorical` | VARCHAR | factor (ordered kept), every level | factor, every level, never ordered |
 | zoned timestamp | tz-aware, our zone | our zone | TIMESTAMP WITH TIME ZONE | `POSIXct` in our zone | `POSIXct` in UTC |
 | INT(8), INT(16) | int8, int16 (pandas: float64 with nulls) | Int8, Int16 | TINYINT, SMALLINT | integer | integer |
@@ -93,3 +96,4 @@ open-source projects:
 - [DuckDB](https://duckdb.org/), MIT
 - [nanoparquet](https://github.com/r-lib/nanoparquet), MIT
 - [pandas](https://pandas.pydata.org/), BSD-3-Clause, for the readback
+- [haven](https://haven.tidyverse.org/), MIT, for the readback's tagged NAs

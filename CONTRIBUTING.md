@@ -61,7 +61,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 **Parquet compatibility** (Python with pyarrow, pandas, polars and
-duckdb; R with arrow, nanoparquet and jsonlite): other tools read back
+duckdb; R with arrow, nanoparquet, haven and jsonlite): other tools read back
 what `crates/parquet` writes. `compat/parquet/README.md` says how the
 fixtures are made.
 

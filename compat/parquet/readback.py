@@ -58,6 +58,15 @@ def letters_of(spec):
     return spec.get("letters")
 
 
+def as_nan(spec):
+    """The values a tool that sees .a to .z as NaN gets: our tagged NaNs
+    are NaN values, not nulls (plan 0018, "Missing values")."""
+    letters = letters_of(spec)
+    if letters is None:
+        return spec["values"]
+    return ["NaN" if l is not None else v for v, l in zip(spec["values"], letters)]
+
+
 # ---- pyarrow and pandas ----
 
 def arrow_type(spec):
@@ -97,13 +106,19 @@ def check_pyarrow(file, spec):
     meta = pq.read_metadata(path)
     if b"dta" not in (meta.metadata or {}):
         fail("pyarrow", file, "no dta key in the file metadata")
+    profile = json.loads((meta.metadata or {}).get(b"dta", b"{}"))
     if table.num_rows != spec["rows"]:
         fail("pyarrow", file, f"{table.num_rows} rows")
     for name, col_spec in spec["columns"].items():
         col = table.column(name)
         if str(col.type) != arrow_type(col_spec):
             fail("pyarrow", file, f"{name}: type {col.type}, not {arrow_type(col_spec)}")
-        compare("pyarrow", file, name, col_spec["values"], arrow_values(col, col_spec))
+        compare("pyarrow", file, name, as_nan(col_spec), arrow_values(col, col_spec))
+        # A column written as DOUBLE because it holds .a to .z names its
+        # storage type in the profile.
+        storage = profile.get("columns", {}).get(name, {}).get("storage")
+        if storage != col_spec.get("storage"):
+            fail("pyarrow", file, f"{name}: profile storage {storage!r}, not {col_spec.get('storage')!r}")
         if col_spec["type"] == "categorical" and spec["rows"] > 0:
             # Every row group's dictionary holds every level, in order. A
             # table without rows has no row groups, so its levels are only
@@ -111,9 +126,6 @@ def check_pyarrow(file, spec):
             for chunk in col.chunks:
                 if chunk.dictionary.to_pylist() != col_spec["levels"]:
                     fail("pyarrow", file, f"{name}: levels {chunk.dictionary.to_pylist()}")
-        letters = letters_of(col_spec)
-        if letters is not None:
-            compare("pyarrow", file, name + "__missing", letters, table.column(name + "__missing").to_pylist())
     checked["pyarrow"] = checked.get("pyarrow", 0) + 1
 
     # pandas, through pyarrow: the table's pandas column.
@@ -134,6 +146,15 @@ def check_pyarrow(file, spec):
         if t == "timestamp" and col_spec["zone"]:
             if str(s.dt.tz) != col_spec["zone"]:
                 fail("pandas", file, f"{name}: zone {s.dt.tz}, not {col_spec['zone']}")
+        letters = letters_of(col_spec)
+        if letters is not None:
+            # pandas reads every NaN as missing, so .a to .z are missing
+            # too (and so is a NaN value).
+            missing = [v is None or v == "NaN" for v in col_spec["values"]]
+            got = s.isna().tolist()
+            if got != missing:
+                row = next(i for i, (a, b) in enumerate(zip(missing, got)) if a != b)
+                fail("pandas", file, f"{name}: row {row + 1} isna() is {got[row]}")
     checked["pandas"] = checked.get("pandas", 0) + 1
 
 
@@ -180,10 +201,13 @@ def check_polars(file, spec):
         values = s.to_list()
         if t == "binary":
             values = [None if v is None else list(v) for v in values]
-        compare("polars", file, name, col_spec["values"], values)
+        compare("polars", file, name, as_nan(col_spec), values)
         letters = letters_of(col_spec)
         if letters is not None:
-            compare("polars", file, name + "__missing", letters, df[name + "__missing"].to_list())
+            # NaN, not null: is_null() is false for .a to .z.
+            want = sum(v is None and l is None for v, l in zip(col_spec["values"], letters))
+            if s.null_count() != want:
+                fail("polars", file, f"{name}: null_count() is {s.null_count()}, not {want}")
     checked["polars"] = checked.get("polars", 0) + 1
 
 
@@ -226,18 +250,22 @@ def check_duckdb(file, spec):
         values = [r[0] for r in con.execute(f"SELECT {q} FROM '{path}'").fetchall()]
         if t == "binary":
             values = [None if v is None else list(v) for v in values]
-        compare("duckdb", file, name, col_spec["values"], values)
+        compare("duckdb", file, name, as_nan(col_spec), values)
+    # .a to .z are NaN, not NULL: count() counts them, and the docs' query
+    # (x IS NULL OR isnan(x)) finds every missing value.
+    for name, col_spec in spec["columns"].items():
         letters = letters_of(col_spec)
         if letters is not None:
-            got = [r[0] for r in con.execute(f'SELECT "{name}__missing" FROM \'{path}\'').fetchall()]
-            compare("duckdb", file, name + "__missing", letters, got)
-    # The letters are nulls, so SQL counts them as missing.
-    for name, col_spec in spec["columns"].items():
-        if letters_of(col_spec) is not None:
-            n = con.execute(f'SELECT count("{name}") FROM \'{path}\'').fetchone()[0]
-            want = sum(v is not None for v in col_spec["values"])
+            n, missing = con.execute(
+                f'SELECT count("{name}"), count(*) FILTER ("{name}" IS NULL OR isnan("{name}")) FROM \'{path}\''
+            ).fetchone()
+            values = col_spec["values"]
+            want = sum(v is not None or l is not None for v, l in zip(values, letters))
             if n != want:
                 fail("duckdb", file, f"count({name}) is {n}, not {want}")
+            want = sum(v is None or v == "NaN" for v in values)
+            if missing != want:
+                fail("duckdb", file, f"{name}: {missing} rows are NULL or NaN, not {want}")
     checked["duckdb"] = checked.get("duckdb", 0) + 1
 
 
