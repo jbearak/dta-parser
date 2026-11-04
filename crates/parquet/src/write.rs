@@ -55,6 +55,9 @@ pub enum Values<'a> {
     Int32(Box<Fill<'a, i32>>),
     Int64(Box<Fill<'a, i64>>),
     Float(Box<Fill<'a, f32>>),
+    /// DOUBLE. A `logical` given for the column in [`Table::profile`]
+    /// is kept: days or seconds since 1970 that DATE or TIMESTAMP cannot
+    /// hold exactly.
     Double(Box<Fill<'a, f64>>),
     /// Values 0 and 1.
     Bool(Box<Fill<'a, u8>>),
@@ -489,10 +492,17 @@ fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
     let mut p = table.profile.clone();
     for (k, c) in table.columns.iter().enumerate() {
         let entry = p.column_mut(&c.name);
+        // A Double column keeps the date or timestamp type its caller
+        // gives it: R's `Date` and `POSIXct` are written so when DATE or
+        // TIMESTAMP cannot hold their values exactly.
+        let given = match c.values {
+            Values::Double(_) => entry.logical,
+            _ => None,
+        };
         (entry.storage, entry.logical) = if tagged[k] {
-            (storage_of(&c.values), logical_of(&c.values))
+            (storage_of(&c.values), logical_of(&c.values).or(given))
         } else {
-            (None, None)
+            (None, given)
         };
         match &c.values {
             Values::Categorical {

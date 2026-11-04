@@ -585,6 +585,32 @@ fn a_logical_type_the_columns_cannot_have_is_dropped() {
 }
 
 #[test]
+fn a_double_column_keeps_the_logical_type_it_is_given() {
+    // R writes a Date with fractions of a day, or a POSIXct whose seconds
+    // are not whole microseconds, as DOUBLE with `logical` in the
+    // profile, letters or not; other columns cannot be given one.
+    let cols = [
+        Col { name: "day".into(), data: Data::F64(vec![1.5, 2.0]), codes: vec![0, 1] },
+        Col { name: "when".into(), data: Data::F64(vec![0.1, 2.0]), codes: vec![2, 0] },
+        Col { name: "n".into(), data: Data::I32(vec![1, 2]), codes: vec![0, 0] },
+    ];
+    let mut profile = Profile::default();
+    profile.column_mut("day").logical = Some(Logical::Date);
+    profile.column_mut("when").logical = Some(Logical::Timestamp);
+    profile.column_mut("when").tz = Some("America/Chicago".into());
+    profile.column_mut("n").logical = Some(Logical::Date);
+    let bytes = bytes_of(&cols, profile, &WriteOptions::default());
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    assert!(r.warnings().is_empty(), "{:?}", r.warnings());
+    let logical: Vec<Option<Logical>> = r.columns().iter().map(|c| c.profile_logical).collect();
+    assert_eq!(logical, vec![Some(Logical::Date), Some(Logical::Timestamp), None]);
+    assert_eq!(r.profile().unwrap().column("when").unwrap().tz.as_deref(), Some("America/Chicago"));
+    let (got, _) = read(&bytes, &["day", "when"], 0, 2, serial());
+    assert_eq!(got[0], Got::Floats(vec![1.5, -1e300], vec![0, 1]));
+    assert_eq!(got[1], Got::Floats(vec![-1e300, 2.0], vec![2, 0]));
+}
+
+#[test]
 fn a_storage_the_columns_cannot_have_is_dropped() {
     let cols = [
         Col { name: "x".into(), data: Data::I32(vec![1, 2]), codes: vec![0, 0] },
