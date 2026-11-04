@@ -32,11 +32,15 @@ than snappy.
 
 ## What follows
 
-- **zstd through C libzstd is the best trade.** At level 3 its output is a
-  quarter the size of snappy's, written at 60% of snappy's speed and read
-  at 85% of it. On a disk that writes 1 to 3 GB/s, the smaller file costs
-  less wall time than the extra compression, so zstd is the default on
-  native builds (R, Python, Julia).
+- **zstd through C libzstd gives the smallest files at a modest cost.**
+  At level 3 its output is a quarter the size of snappy's, written at
+  60% of snappy's speed and read at 85% of it. On one thread, writing a
+  gigabyte of values to a disk at 1 GB/s takes 1/2.56 + 0.022 = 0.41 s
+  with zstd and 1/4.30 + 0.086 = 0.32 s with snappy, so the smaller file
+  does not pay for the compression on its own; it does when several
+  threads compress columns at once, or when the disk is slower. Plan
+  0018 makes zstd the default on native builds for the file size and
+  measures writes end to end before keeping it.
 - **`ruzstd` reads zstd at a quarter of libzstd's speed** and writes only
   its fastest level. It is used only in the wasm build, where C libzstd
   would need a C toolchain for wasm32.

@@ -19,3 +19,13 @@ rounds' records and the research notes in `docs/research/parquet-*.md`.
 
 Each file lists the findings and what the next revision did about each,
 including the ones declined and why.
+
+After approval, the code review of the plan's PR (GPT Sol) found four
+errors of fact, corrected without changing the design the judges
+approved: the Python and Julia round trips now name the `.dta`-only
+keys they leave out (and the profile keeps the file's `timestamp`); a
+strL column mixing text and binary reads back as binary; the claim that
+zstd's smaller files make up for its compression time on one thread was
+wrong and is replaced by the arithmetic and a measurement in PR 3 that
+can switch the default to snappy; and plan 0007's default is three
+threads, not four.

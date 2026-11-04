@@ -117,6 +117,7 @@ missing; "What other tools see" below lists what they lose.
 | logical, bool | BOOLEAN | none |
 | text (strN, strL, R character, pandas `str`/`object` of text) | BYTE_ARRAY | STRING (UTF8) |
 | binary strL, R list of raw, Python `bytes`, Julia `Vector{UInt8}` | BYTE_ARRAY | none |
+| a strL column mixing text and binary values (Python, Julia, TypeScript) | BYTE_ARRAY | none; every value reads back as binary |
 | R `Date`, a Python `datetime64` column written as a date (below), Julia `Date` | INT32 | DATE |
 | a zoned time: R `POSIXct`, pandas `datetime64[unit, tz]`, Julia `ZonedDateTime` | INT64 | TIMESTAMP(unit, adjusted to UTC) |
 | a clock time without zone: pandas `datetime64[unit]`, Julia `DateTime`, Stata `%tc` read as a time | INT64 | TIMESTAMP(unit, not adjusted to UTC) |
@@ -205,6 +206,7 @@ missing; "What other tools see" below lists what they lose.
   "notes": ["Wave 2 only."],
   "characteristics": {"_dta": {"note0": "1"}, "age": {"source": "q12"}},
   "sort": ["id"],
+  "timestamp": "2024-03-01T09:30:00",
   "columns": {
     "age":    {"label": "Age in years", "format": "%9.0g",
                "value_labels": "agelbl", "missing_letters": "age__missing"},
@@ -235,6 +237,9 @@ missing; "What other tools see" below lists what they lose.
   INT32 is long, FLOAT is float, DOUBLE is double. A string column
   becomes strN or strL when it is written to `.dta`, from its widest
   value, as it does today.
+- `timestamp` keeps the `.dta` file's time stamp where a language
+  carries one (Python and Julia do); a `.dta` file's release, byte order
+  and text encoding describe that file, not the data, and are not kept.
 - **Validation.** `version` is 1. A reader that finds a higher version
   reads what it knows and warns once. The profile must be a JSON object
   of at most 64 MiB, with no duplicate keys at any level, and each
@@ -275,17 +280,23 @@ The compat suite checks every cell of this table, and the docs carry it.
   windows. pyarrow does not write the index by default; our reader walks
   page headers when it is absent (below), and PR 2 measures both ways
   on a window read.
-- **Compression.** `zstd` level 3 by default, `snappy`, `gzip`, `lz4_raw`
-  or `none` on request, with `compression_level` where the codec has
-  levels. In `parquet-codecs.md`, zstd 3 through C libzstd made DHS data
-  a quarter the size of snappy's output, writing at 2.6 GB/s and reading
-  at 3.7 GB/s, against snappy's 4.3 and 4.4. polars and DuckDB also
-  default to zstd. The npm package has no C libzstd. It writes zstd with
-  the pure-Rust `ruzstd`, which has one level and compresses less (0.060
-  of the input against 0.022), and reads zstd at a quarter of libzstd's
-  speed. So the npm package writes **snappy by default**, and zstd only
-  when asked, with that cost in its docs; it reads zstd files from the
-  other languages at about 1 GB/s.
+- **Compression.** `zstd` level 3 by default, `snappy`, `gzip`,
+  `lz4_raw` or `none` on request, with `compression_level` where the
+  codec has levels. In `parquet-codecs.md`, zstd 3 through C libzstd
+  made DHS data a quarter the size of snappy's output, writing at 2.6
+  GB/s and reading at 3.7 GB/s, against snappy's 4.3 and 4.4. polars and
+  DuckDB also default to zstd. On one thread, compressing and writing a
+  gigabyte to a 1 GB/s disk takes 0.41 s with zstd and 0.32 s with
+  snappy, so zstd's smaller files cost write time unless the columns are
+  compressed in parallel, as ours are. PR 3 measures writes end to end
+  with both codecs; if zstd by default misses a write target there, the
+  default becomes snappy, and `docs/parquet.md` records why.
+- **The npm package** has no C libzstd. It writes zstd with the
+  pure-Rust `ruzstd`, which has one level and compresses less (0.060 of
+  the input against 0.022), and reads zstd at a quarter of libzstd's
+  speed. So it writes **snappy by default**, and zstd only when asked,
+  with that cost in its docs; it reads zstd files from the other
+  languages at about 1 GB/s.
 - **Row groups.** As many rows as fit in about 64 MiB of uncompressed
   values, at most 262,144 rows (polars' default) and at least 1 row, so a
   row group stays bounded in bytes even when each row is wide. Callers
@@ -403,7 +414,7 @@ levels in the profile and has none of this.
   a time. Calls into R or Python stay on the main thread. The thread
   pool, its controls (`threads`, `DTA_THREADS`,
   `options(dtaparser.threads)`) and its rule for when to use threads
-  come from plan 0007. Plan 0007's default of at most four threads was
+  come from plan 0007. Plan 0007's default of at most three threads was
   measured on `.dta` reads; PR 3 measures Parquet reads and writes at
   1 to 12 threads and sets the Parquet default by the same rule (CPU
   time at most 1.15× one thread's, each added thread at least half
@@ -537,7 +548,11 @@ object with `seek`. `write_parquet` returns the file as `bytes` when
 tz-aware datetimes, `Int64` and `bytes`. `columns` takes names or
 positions (of data columns), and an unknown one is a `KeyError` that
 lists the names. The round trip is checked over every fixture with
-`assert_frame_equal` and the `attrs`.
+`assert_frame_equal` and the `attrs`, except the keys that describe a
+`.dta` file (`release`, `byte_order`, `encoding`, and each string
+column's strN width, which is chosen again when it is written to
+`.dta`), and except a strL column mixing text and binary values, whose
+text values come back as `bytes` (the type table above says why).
 
 **The index.** `write_parquet`, like `write_dta`, writes columns only,
 not the index. When the index is anything but a default `RangeIndex`
@@ -575,7 +590,8 @@ to `.z` and DataAPI metadata. Zones and categoricals need TimeZones.jl
 and CategoricalArrays.jl, loaded as package extensions; without them
 the values come back as `DateTime` in UTC and as `String`, with one
 warning naming the columns. The round trip is checked over every
-fixture with `isequal` on values, codes and metadata.
+fixture with `isequal` on values, codes and metadata, with the same
+exceptions as Python's.
 
 `read_meta` returns what it returns for `.dta` (`nrows` and the column
 metadata), plus `format = :parquet`, `row_groups`, `compression`,
