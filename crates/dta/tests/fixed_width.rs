@@ -429,9 +429,11 @@ fn skipped_and_unknown() {
 fn length_statements() {
     // CDC's setups from 2006-2010 on end with a LENGTH of numbers, which
     // changes no value read. A string's LENGTH can cut one, so it warns.
-    let g = read("DATA; INPUT A 1 S $ 2-3;\nLENGTH A 3;\nLENGTH A 3 S $ 1;", "1ab\n", Recodes::Setup);
+    // `LENGTH = ...` is an assignment to a variable named LENGTH.
+    let g = read("DATA; INPUT A 1 S $ 2-3 T $ 4;\nLENGTH A 3;\nLENGTH A 3 S $ 1;\nLENGTH = INPUT(T, 1.);", "1ab2\n", Recodes::Setup);
     assert_eq!(g.warnings, [(WarningKind::SkippedStatement, "skipped line 3: LENGTH A 3 S $ 1;".to_string())]);
     assert_eq!(g.strs("S"), ["ab"]);
+    assert_eq!(g.nums("LENGTH"), [Ok(2.0)]);
 }
 
 #[test]

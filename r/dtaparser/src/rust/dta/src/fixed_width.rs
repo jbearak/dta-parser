@@ -597,8 +597,9 @@ fn parse_setup(texts: &[Cow<str>], commented_formats: bool, warnings: &mut Vec<F
             "LIBNAME" | "OPTIONS" | "TITLE" | "FILENAME" => continue,
             // A number's LENGTH sets only how many bytes SAS stores it in.
             // A string's (`LENGTH s $ 5`) can cut what INPUT reads, so it
-            // is skipped with a warning below.
-            "LENGTH" if !st.toks.iter().any(|t| t.is_sym("$")) => continue,
+            // is skipped with a warning below. `LENGTH = ...` assigns a
+            // variable named LENGTH.
+            "LENGTH" if !st.toks.get(1).is_some_and(|t| t.is_sym("=")) && !st.toks.iter().any(|t| t.is_sym("$")) => continue,
             "RUN" | "QUIT" => {
                 in_format = false;
                 in_other_proc = false;
