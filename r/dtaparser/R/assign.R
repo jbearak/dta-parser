@@ -172,8 +172,6 @@ recycled <- function(value, size, name) {
   vctrs::vec_recycle(value, size, x_arg = name)
 }
 
-`%||%` <- function(x, y) if (is.null(x)) y else x  # base R has it from 4.4
-
 # The rows the evaluated `i` selects, as row numbers.
 picked <- function(i, n) {
   if (is.logical(i)) {

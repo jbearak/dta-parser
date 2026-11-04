@@ -1,4 +1,4 @@
-// dtatools reads and writes files through dtaparser (ADR 0016): the
+// dtatools reads files through dtaparser (ADR 0016): the
 // routines here forward to C functions dtaparser registers with
 // R_RegisterCCallable. dta_link fetches them; .onLoad calls it once
 // dtaparser's namespace, and so its library, is loaded.
@@ -12,7 +12,7 @@ typedef SEXP (*sexp1_fn)(SEXP);
 typedef SEXP (*sexp2_fn)(SEXP, SEXP);
 typedef SEXP (*sexp6_fn)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
-static sexp2_fn meta_fn, write_fn;
+static sexp2_fn meta_fn;
 static sexp6_fn read_fn;
 static sexp1_fn dictionary_fn;
 
@@ -22,7 +22,6 @@ static SEXP link(void) {
   abi_fn abi = (abi_fn) R_GetCCallable("dtaparser", "dtaparser_abi");
   meta_fn = (sexp2_fn) R_GetCCallable("dtaparser", "dtaparser_meta");
   read_fn = (sexp6_fn) R_GetCCallable("dtaparser", "dtaparser_read");
-  write_fn = (sexp2_fn) R_GetCCallable("dtaparser", "dtaparser_write");
   dictionary_fn = (sexp1_fn) R_GetCCallable("dtaparser", "dtaparser_dictionary");
   return Rf_ScalarInteger(abi());
 }
@@ -45,11 +44,6 @@ static SEXP read(SEXP path, SEXP cols, SEXP skip, SEXP n_max, SEXP encoding) {
   return out;
 }
 
-static SEXP write(SEXP path, SEXP spec) {
-  check_linked();
-  return write_fn(path, spec);
-}
-
 static SEXP dictionary(SEXP x) {
   check_linked();
   return dictionary_fn(x);
@@ -67,7 +61,6 @@ static const R_CallMethodDef routines[] = {
   {"dta_dictionary", (DL_FUNC) &dictionary, 1},
   {"dta_meta", (DL_FUNC) &meta, 2},
   {"dta_read", (DL_FUNC) &read, 5},
-  {"dta_write", (DL_FUNC) &write, 2},
   {NULL, NULL, 0}
 };
 

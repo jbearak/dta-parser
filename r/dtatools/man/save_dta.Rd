@@ -2,7 +2,7 @@
 % Please edit documentation in R/save_dta.R
 \name{save_dta}
 \alias{save_dta}
-\title{Write a data frame as a Stata .dta file (release 118)}
+\title{Write a dibble as a Stata .dta file (release 118)}
 \usage{
 save_dta(data, file)
 }
@@ -15,23 +15,23 @@ save_dta(data, file)
 \code{file}, invisibly.
 }
 \description{
-Numeric columns keep their \code{storage} attribute when they have one;
-otherwise integers are written as long, doubles as double and logicals
-as byte. Character columns are strN, or strL beyond 2045 bytes; \code{NA}
-is written as \code{""}, since Stata strings have no missing value. Strings
-must be UTF-8 (see \code{\link[=enc2utf8]{enc2utf8()}}). Value
-labels come from each column's \code{labels} attribute, under its
-\code{label_set} name (or the column's name); \code{.a} to \code{.z} may be labelled.
-A value that does not fit its storage type is an error.
+\code{save_dta()} is dtaparser's, re-exported (see \code{?dtaparser::save_dta}
+for every rule). It writes from the columns' types and attributes, so
+a dibble comes back as \code{\link[=read_dta]{read_dta()}} read it: each \code{dta_num} column
+keeps its \code{storage}, \code{format}, \code{label}, \code{labels} and \code{label_set}, and
+\code{.a} to \code{.z} keep their letters.
 }
 \details{
+A numeric column without a \code{storage} attribute is written as long
+(integers), double (doubles) or byte (logicals). Character columns are
+strN, or strL beyond 2045 bytes; \code{NA} is written as \code{""}. A value that
+does not fit its storage type is an error.
+
 The data frame's attributes give the file's metadata, as \code{\link[=read_dta]{read_dta()}}
-leaves them: \code{label}, \code{notes}, \code{characteristics} (a data frame with
-character columns \code{variable}, \code{name}, \code{value}; those of variables not
-in \code{data} are dropped), \code{sort_order} (column names; only its leading
-keys found in \code{data} are written) and \code{timestamp}, written as given.
-Without a \code{timestamp} attribute the file is stamped with the current
-time, so a file read without a timestamp comes back with one.
+leaves them: \code{label}, \code{notes}, \code{characteristics}, \code{sort_order} and
+\code{timestamp}. Without a \code{timestamp} attribute the file is stamped with
+the current time, so a file read without a timestamp comes back with
+one.
 }
 \examples{
 df <- dibble(

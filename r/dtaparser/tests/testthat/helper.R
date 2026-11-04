@@ -15,9 +15,9 @@ col <- function(x, storage, format = "%9.0g", labels = NULL) {
   list(x = x, storage = storage, format = format, labels = labels)
 }
 
-# Write a release-118 file through dtaparser's own writer (the one
-# dtatools' save_dta uses), for the storage types and formats haven's
-# writer cannot make. Each labelled column gets a label set of its name.
+# Write a release-118 file through dtaparser's writer directly (the one
+# save_dta uses), with the storage types and formats save_dta and
+# haven's writer cannot make from R vectors. Each labelled column gets a label set of its name.
 write_fixture <- function(...) {
   cols <- list(...)
   path <- tempfile(fileext = ".dta")
