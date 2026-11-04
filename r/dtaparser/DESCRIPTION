@@ -1,6 +1,6 @@
 Package: dtaparser
 Title: Read and Write Stata Files as Standard R Types and Labelled Numbers
-Version: 3.0.0
+Version: 3.1.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Reads Stata .dta files through the dta-parser library into
     standard R types: integers, doubles, character vectors, factors,
