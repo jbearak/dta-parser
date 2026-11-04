@@ -1,7 +1,7 @@
 # Write our Parquet input for each .dta file: read with dtaparser, write
 # with datakit's defaults. bench/parquet/run.py then makes the pyarrow,
 # polars and DuckDB versions from these (convert.py), so all hold the
-# same data.
+# same data. CONVERT_COMPRESSION, when set, names another codec.
 #   Rscript bench/parquet/convert.R OUT_DIR KEY=PATH ...
 args <- commandArgs(trailingOnly = TRUE)
 out <- args[[1]]
@@ -12,7 +12,9 @@ for (a in args[-1]) {
   dst <- file.path(out, paste0(key, ".parquet"))
   if (file.exists(dst)) next
   x <- dtaparser::read_dta(path)
-  datakit::save_parquet(x, paste0(dst, ".tmp"))
+  codec <- Sys.getenv("CONVERT_COMPRESSION")
+  if (nzchar(codec)) datakit::save_parquet(x, paste0(dst, ".tmp"), compression = codec)
+  else datakit::save_parquet(x, paste0(dst, ".tmp"))
   file.rename(paste0(dst, ".tmp"), dst)
   cat(key, format(file.size(dst) / 1e6, digits = 3), "MB\n")
 }

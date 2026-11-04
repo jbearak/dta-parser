@@ -15,6 +15,8 @@ and the ten DHS files bench/run.py uses under DTA_DHS_DIR (read only,
 ADR 0013). Each is converted to Parquet four ways in --data (default
 /private/tmp/claude-501/pq-bench): by our writer (convert.R), then from
 that by pyarrow, polars and DuckDB with their defaults (convert.py).
+Our writer also writes each with zstd 3 (ours_zstd), for the other
+tools to read: the evidence for the default codec.
 
 Cases. Reads, on the pyarrow, polars and our files: the whole file
 (full), five columns spread over it (five), 1,000 rows from the middle
@@ -97,8 +99,13 @@ def prepare(files, data):
                                                for t in ("pyarrow", "polars", "duckdb"))]
     if missing:
         subprocess.run([sys.executable, str(HERE / "convert.py"), str(data), *missing], check=True, cwd=ROOT)
+    todo =[f for f in files if not (data / "ours_zstd" / f"{f['key']}.parquet").exists()]
+    if todo:
+        subprocess.run(["Rscript", str(HERE / "convert.R"), str(data / "ours_zstd"),
+                        *[f"{f['key']}={f['dta']}" for f in todo]], check=True, cwd=ROOT,
+                       env={**os.environ, "CONVERT_COMPRESSION": "zstd"})
     for f in files:
-        f["files"] = {i: data / i / f"{f['key']}.parquet" for i in [*INPUTS, "duckdb"]}
+        f["files"] = {i: data / i / f"{f['key']}.parquet" for i in [*INPUTS, "duckdb", "ours_zstd"]}
         meta = pq.ParquetFile(f["files"]["ours"]).metadata
         names = [meta.schema.column(i).name for i in range(meta.num_columns)]
         picks = sorted({round(k * (len(names) - 1) / 4) for k in range(5)})
@@ -175,7 +182,7 @@ def run_all(files, out, libs, tasks, inputs, tools):
                     path = out / "raw" / f["key"] / inp / f"{lib}-{task}.json"
                     t = time.time()
                     m = cached(path, lambda: measure(cmd, report))
-                    if time.time() - t > 1:
+                    if time.time() - t > 1 or "error" in m:
                         shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                         print(f"  {task} {inp} {lib}: {shown}", flush=True)
         for task in [t for t in tasks if t in WRITES]:
@@ -185,7 +192,7 @@ def run_all(files, out, libs, tasks, inputs, tools):
                 path = out / "raw" / f["key"] / "dta" / f"{lib}-{task}.json"
                 t = time.time()
                 m = cached(path, lambda: measure(cmd, report))
-                if time.time() - t > 1:
+                if time.time() - t > 1 or "error" in m:
                     shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                     print(f"  {task} {lib}: {shown}", flush=True)
         if "snappy" in tasks:
@@ -194,18 +201,18 @@ def run_all(files, out, libs, tasks, inputs, tools):
             path = out / "raw" / f["key"] / "dta" / "ours-snappy.json"
             t = time.time()
             m = cached(path, lambda: measure(cmd, report))
-            if time.time() - t > 1:
+            if time.time() - t > 1 or "error" in m:
                 shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                 print(f"  snappy ours: {shown}", flush=True)
         if "tool" in tasks:
             for tool in tools:
-                for inp in (tool, "ours"):
+                for inp in (tool, "ours", "ours_zstd"):
                     warm(f["files"][inp])
                     cmd = [sys.executable, str(HERE / "case.py"), tool, str(f["files"][inp]), str(report)]
                     path = out / "raw" / f["key"] / inp / f"py-{tool}.json"
                     t = time.time()
                     m = cached(path, lambda: measure(cmd, report))
-                    if time.time() - t > 1:
+                    if time.time() - t > 1 or "error" in m:
                         shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s"
                         print(f"  {tool} on {inp}: {shown}", flush=True)
 
@@ -270,19 +277,21 @@ def evaluate(files, out):
                                       f"speedup {s:.2f} allows {allowed:.3f} s")
     tool_rows = []
     for tool in TOOLS:
-        for fam in ("nsfg", "dhs", "synthetic"):
+        for fam, inp in [(fam, inp) for inp in ("ours", "ours_zstd") for fam in ("nsfg", "dhs", "synthetic")]:
             pairs = []
             for f in [f for f in files if f["family"] == fam]:
                 own = load(out, f, tool, f"py-{tool}")
-                ours = load(out, f, "ours", f"py-{tool}")
+                ours = load(out, f, inp, f"py-{tool}")
                 if own and ours:
                     pairs.append((f, ours, own))
             if not pairs:
                 continue
             g = geomean([p[1]["wall"] for p in pairs]) / geomean([p[2]["wall"] for p in pairs])
             worst = max(pairs, key=lambda p: p[1]["wall"] / p[2]["wall"])
-            tool_rows.append({"tool": tool, "family": fam, "n": len(pairs), "ratio": g,
+            tool_rows.append({"tool": tool, "family": fam, "input": inp, "n": len(pairs), "ratio": g,
                               "worst": worst[0]["label"], "worst_ratio": worst[1]["wall"] / worst[2]["wall"]})
+            if inp != "ours":
+                continue
             if g > 1.10:
                 misses.append(f"4: {tool} on {fam}: our files take {g:.2f}x its own")
             for f, ours, own in pairs:
@@ -318,19 +327,21 @@ def report(files, out, dest):
                      f"{r['wall']:.2f} | {r['cpu']:.2f} | {r['rss']:.2f} |")
     lines += ["", "## Other tools reading our files", "",
               "Time on our file ÷ time on the tool's own default output (target 4: at most 1.10).", "",
-              "| tool | family | files | geometric mean | worst file | its ratio |", "|---|---|---|---|---|---|"]
+              "Our files with the default codec (snappy), and with zstd 3 (`ours_zstd`, not gated).", "",
+              "| tool | our codec | family | files | geometric mean | worst file | its ratio |", "|---|---|---|---|---|---|---|"]
     for r in tool_rows:
-        lines.append(f"| {r['tool']} | {FAMILIES[r['family']]} | {r['n']} | {r['ratio']:.2f} | {r['worst']} | "
+        codec = "snappy" if r["input"] == "ours" else "zstd 3"
+        lines.append(f"| {r['tool']} | {codec} | {FAMILIES[r['family']]} | {r['n']} | {r['ratio']:.2f} | {r['worst']} | "
                      f"{r['worst_ratio']:.2f} |")
-    lines += ["", "## Our writes: zstd 3 (the default) against snappy", "",
+    lines += ["", "## Our writes: zstd 3 against snappy (the default)", "",
               "Ratios of our zstd write to our snappy write (geometric means), and how arrow, nanoparquet and DuckDB "
-              "compare with each (wall time).", "",
+              "(their defaults) compare with each (wall time).", "",
               "| family | files | wall zstd/snappy | size zstd/snappy | vs arrow (zstd, snappy) | vs nanoparquet | vs duckdb |",
               "|---|---|---|---|---|---|---|"]
     for fam in ("nsfg", "dhs", "synthetic"):
         fs = [f for f in files if f["family"] == fam]
-        z = [load(out, f, "dta", "ours-write") for f in fs]
-        sn = [load(out, f, "dta", "ours-snappy") for f in fs]
+        z = [load(out, f, "dta", "ours-zstd") for f in fs]
+        sn = [load(out, f, "dta", "ours-write") for f in fs]
         keep = [(f, a, b) for f, a, b in zip(fs, z, sn) if a and b]
         if not keep:
             continue
@@ -352,7 +363,7 @@ def report(files, out, dest):
     for f in files:
         lines += [f"### {f['label']}", "",
                   f"{f['rows']:,} rows, {f['ncols']:,} columns; .dta {f['dta_size'] / MB:.1f} MB; Parquet "
-                  + ", ".join(f"{i} {f['size'][i] / MB:.1f} MB" for i in [*INPUTS, 'duckdb']) + ".", "",
+                  + ", ".join(f"{i} {f['size'][i] / MB:.1f} MB" for i in [*INPUTS, 'duckdb', 'ours_zstd']) + ".", "",
                   "| case | input | " + " | ".join(LIBS) + " |", "|---|---|" + "---|" * len(LIBS)]
         for task in READS + WRITES:
             for inp in (INPUTS if task in READS else ["dta"]):
@@ -370,7 +381,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--family", nargs="*", default=list(FAMILIES))
     ap.add_argument("--libs", nargs="*", default=LIBS)
-    ap.add_argument("--tasks", nargs="*", default=READS + WRITES + ["snappy", "tool"])
+    ap.add_argument("--tasks", nargs="*", default=READS + WRITES + ["tool"])
     ap.add_argument("--inputs", nargs="*", default=INPUTS)
     ap.add_argument("--tools", nargs="*", default=TOOLS)
     ap.add_argument("--only", nargs="*")
