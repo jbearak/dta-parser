@@ -1210,6 +1210,9 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
 }
 
 /// Decode a numeric chunk; returns whether it held any `.a` to `.z`.
+/// Called once a chunk, and kept out of [`run`] so that its copies for
+/// every output type do not crowd run's own loops.
+#[inline(never)]
 fn decode_numbers<T: Element>(
     chunk: &Chunk,
     out: &mut NumberOut<T>,
@@ -1282,7 +1285,8 @@ fn fixed_width(column: &ColumnInfo) -> Option<usize> {
 
 /// Decode a DECIMAL chunk: into `doubles` (the nearest double to each
 /// value; more than 15 significant digits is an error), or, with none,
-/// as text returned.
+/// as text returned. Kept out of [`run`], whose other paths are hot.
+#[inline(never)]
 fn decode_decimal(
     chunk: &Chunk,
     first: u64,

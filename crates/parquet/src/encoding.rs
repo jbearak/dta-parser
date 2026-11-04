@@ -11,7 +11,19 @@
 
 use dta::{Error, Result};
 
-use crate::rle::varint;
+/// An unsigned LEB128 varint at `*at`, moving `*at` past it.
+fn varint(buf: &[u8], at: &mut usize) -> Result<u64> {
+    let mut v = 0u64;
+    for shift in (0..64).step_by(7) {
+        let b = *buf.get(*at).ok_or_else(|| short(DBP))?;
+        *at += 1;
+        v |= u64::from(b & 0x7f) << shift;
+        if b & 0x80 == 0 {
+            return Ok(v);
+        }
+    }
+    Err(Error::new(format!("{DBP}: a varint longer than 10 bytes")))
+}
 
 fn short(what: &str) -> Error {
     Error::new(format!("{what} data ends early"))

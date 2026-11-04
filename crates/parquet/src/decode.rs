@@ -932,6 +932,44 @@ impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
     }
 }
 
+impl<P: Physical, T: crate::read::Element> Numbers<'_, P, T> {
+    /// Pages encoded DELTA_BINARY_PACKED or BYTE_STREAM_SPLIT, kept out of
+    /// [`Consumer::page`] so that its PLAIN and dictionary paths compile
+    /// as they did before these encodings were read.
+    #[inline(never)]
+    fn page_other(&mut self, page: &DataPage) -> Result<()> {
+        match page.encoding {
+            Encoding::DeltaBinaryPacked if P::from_bits(0).is_some() => {
+                // Only the wanted values, whose output is allocated.
+                let mut buf = std::mem::take(&mut self.decoded);
+                buf.clear();
+                buf.resize(page.present - page.before, 0);
+                let before = page.before;
+                let result = encoding::delta_values(page.values, before, &mut buf).and_then(|()| {
+                    self.put(page, |i| {
+                        P::from_bits(buf[i - before]).expect("an integer type")
+                    })
+                });
+                self.decoded = buf;
+                result
+            }
+            Encoding::ByteStreamSplit => {
+                let count = encoding::split_count(page.values, P::WIDTH)?;
+                if count < page.present {
+                    return Err(Error::new("a page holds fewer values than its levels say"));
+                }
+                let values = page.values;
+                self.put(page, |i| {
+                    let mut b = [0u8; 16];
+                    encoding::split_value(values, count, i, &mut b[..P::WIDTH]);
+                    P::from_le(&b)
+                })
+            }
+            other => Err(unsupported_encoding(other)),
+        }
+    }
+}
+
 impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
     fn dictionary(&mut self, count: usize, values: &[u8]) -> Result<()> {
         let bytes = values
@@ -959,32 +997,7 @@ impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
                 self.dictionary = dict;
                 result
             }
-            Encoding::DeltaBinaryPacked if P::from_bits(0).is_some() => {
-                // Only the wanted values, whose output is allocated.
-                let mut buf = std::mem::take(&mut self.decoded);
-                buf.clear();
-                buf.resize(page.present - page.before, 0);
-                let before = page.before;
-                let result = encoding::delta_values(page.values, before, &mut buf).and_then(|()| {
-                    self.put(page, |i| {
-                        P::from_bits(buf[i - before]).expect("an integer type")
-                    })
-                });
-                self.decoded = buf;
-                result
-            }
-            Encoding::ByteStreamSplit => {
-                let count = encoding::split_count(page.values, P::WIDTH)?;
-                if count < page.present {
-                    return Err(Error::new("a page holds fewer values than its levels say"));
-                }
-                let values = page.values;
-                self.put(page, |i| {
-                    let mut b = [0u8; 16];
-                    encoding::split_value(values, count, i, &mut b[..P::WIDTH]);
-                    P::from_le(&b)
-                })
-            }
+            Encoding::DeltaBinaryPacked | Encoding::ByteStreamSplit => self.page_other(page),
             other => Err(unsupported_encoding(other)),
         }
     }
