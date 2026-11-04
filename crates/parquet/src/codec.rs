@@ -1,4 +1,5 @@
-//! Page compression: none, snappy, gzip, zstd and lz4_raw.
+//! Page compression: none, snappy, gzip, zstd and lz4_raw, and brotli
+//! on read.
 //!
 //! zstd goes through C libzstd on native targets and the pure-Rust
 //! `ruzstd` in wasm, where C would need a wasm32 C toolchain
@@ -158,6 +159,7 @@ impl Codecs {
                 out.truncate(n);
             }
             Codec::Gzip => gunzip(input, declared, out)?,
+            Codec::Brotli => unbrotli(input, declared, out)?,
             Codec::Zstd => self.unzstd(input, declared, out)?,
             Codec::Lz4Raw => {
                 if declared > input.len().saturating_mul(LZ4_MAX_RATIO) {
@@ -338,10 +340,81 @@ pub(crate) fn unsupported(codec: Codec) -> Error {
     let what = match codec {
         Codec::Lzo => "LZO compression is not supported".to_string(),
         Codec::Lz4 => "the Hadoop framing of LZ4 is not supported (LZ4_RAW is)".to_string(),
-        Codec::Brotli => "BROTLI compression is not read yet".to_string(),
         other => format!("{} is not supported", other.name()),
     };
     Error::new(what)
+}
+
+// ---- brotli ----
+
+/// Decompress a brotli stream into `out` (which starts empty), growing it
+/// as bytes come, to no more than `declared` bytes.
+fn unbrotli(input: &[u8], declared: usize, out: &mut Vec<u8>) -> Result<()> {
+    use std::io::Read;
+    // The decoder sizes its window from the first block's length: check
+    // that first, so that a header alone cannot ask for 16 MiB.
+    if let Some(len) = brotli_first_block(input) {
+        if len > declared {
+            return Err(Error::new(format!(
+                "brotli: a block of {len} bytes, more than the {declared} the page header says"
+            )));
+        }
+    }
+    let bad = |e: std::io::Error| Error::new(format!("brotli: {e}"));
+    let mut d = brotli_decompressor::Decompressor::new(input, 4096);
+    let mut written = 0;
+    grow(out, first_size(input, declared))?;
+    loop {
+        if written == out.len() {
+            if written >= declared {
+                // Full: anything more is too much.
+                let mut extra = [0u8; 1];
+                if d.read(&mut extra).map_err(bad)? != 0 {
+                    return Err(Error::new(
+                        "brotli: data holds more bytes than the page header says",
+                    ));
+                }
+                break;
+            }
+            grow(out, written.saturating_mul(2).max(1).min(declared))?;
+        }
+        let n = d.read(&mut out[written..]).map_err(bad)?;
+        if n == 0 {
+            break;
+        }
+        written += n;
+    }
+    out.truncate(written);
+    Ok(())
+}
+
+/// The length the first meta-block header of a brotli stream gives
+/// (RFC 7932, section 9.2), if it has one: `None` for an empty stream, a
+/// metadata block or too few bytes.
+fn brotli_first_block(input: &[u8]) -> Option<usize> {
+    let mut bit = 0usize;
+    let mut take = |n: usize| -> Option<usize> {
+        let mut v = 0;
+        for k in 0..n {
+            let b = (*input.get((bit + k) / 8)? >> ((bit + k) % 8)) & 1;
+            v |= usize::from(b) << k;
+        }
+        bit += n;
+        Some(v)
+    };
+    // WBITS: 1, 4 or 7 bits.
+    if take(1)? == 1 && take(3)? == 0 {
+        take(3)?;
+    }
+    // ISLAST, then ISLASTEMPTY if set.
+    if take(1)? == 1 && take(1)? == 1 {
+        return None;
+    }
+    let nibbles = match take(2)? {
+        3 => return None,
+        n => 4 + n,
+    };
+    Some(take(4 * nibbles)? + 1)
 }
 
 // ---- gzip ----
@@ -605,6 +678,53 @@ mod tests {
         }
     }
 
+    /// A text, and the same compressed by brotli through pyarrow's
+    /// `pa.compress` with its defaults.
+    const BROTLI_TEXT: &[u8] = b"hello brotli, hello brotli, hello brotli!";
+    const BROTLI_PACKED: &[u8] = &[
+        0x1b, 0x28, 0x00, 0x00, 0xc4, 0x6d, 0x6c, 0x5d, 0xfd, 0xde, 0xe5, 0x13, 0x04, 0x21, 0xca,
+        0x41, 0x14, 0xe1, 0xa7, 0x1e, 0xcf, 0xe9, 0x13, 0xbe, 0x7d, 0x23, 0x88,
+    ];
+
+    #[test]
+    fn brotli_reads() {
+        let mut out = Vec::new();
+        unbrotli(BROTLI_PACKED, BROTLI_TEXT.len(), &mut out).unwrap();
+        assert_eq!(out, BROTLI_TEXT);
+        assert_eq!(brotli_first_block(BROTLI_PACKED), Some(BROTLI_TEXT.len()));
+        // A wrong size, a cut stream and a damaged one are errors.
+        let mut codecs = Codecs::default();
+        for wrong in [BROTLI_TEXT.len() - 1, BROTLI_TEXT.len() + 1] {
+            assert!(codecs.decompress(Codec::Brotli, BROTLI_PACKED, wrong, &mut out).is_err());
+        }
+        for cut in 1..BROTLI_PACKED.len() {
+            assert!(codecs.decompress(Codec::Brotli, &BROTLI_PACKED[..cut], BROTLI_TEXT.len(), &mut out).is_err(), "cut {cut}");
+        }
+        // The empty stream is the byte 0x06 (WBITS 16, ISLAST, ISLASTEMPTY).
+        codecs.decompress(Codec::Brotli, &[0x06], 0, &mut out).unwrap();
+        assert!(out.is_empty());
+        assert_eq!(brotli_first_block(&[0x06]), None);
+    }
+
+    /// A first block claiming 16 MiB is refused before the decoder sizes
+    /// its window to it.
+    #[test]
+    fn a_brotli_block_cannot_claim_more_than_the_page() {
+        // WBITS 24 (bits 1, 111), not last, 6 nibbles of length-1 =
+        // 0xffffff: 16 MiB.
+        let mut bits: Vec<u8> = vec![1, 1, 1, 1, 0, 0, 1];
+        for _ in 0..24 {
+            bits.push(1);
+        }
+        let mut bytes = vec![0u8; bits.len().div_ceil(8) + 4];
+        for (k, b) in bits.iter().enumerate() {
+            bytes[k / 8] |= b << (k % 8);
+        }
+        assert_eq!(brotli_first_block(&bytes), Some(1 << 24));
+        let e = unbrotli(&bytes, 100, &mut Vec::new()).unwrap_err();
+        assert!(e.message.contains("more than the 100"), "{}", e.message);
+    }
+
     #[test]
     fn levels_and_names() {
         assert_eq!(Compression::from_name("ZSTD").unwrap(), Compression::Zstd);
@@ -627,7 +747,6 @@ mod tests {
         let mut codecs = Codecs::default();
         for (c, word) in [
             (Codec::Lzo, "LZO"),
-            (Codec::Brotli, "BROTLI"),
             (Codec::Lz4, "Hadoop"),
             (Codec::Other(42), "codec 42"),
         ] {
