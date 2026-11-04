@@ -101,8 +101,9 @@ plan.
 A file we write is ordinary Parquet that every reader opens. What
 Parquet cannot say goes into one key-value entry in the file metadata,
 the **dta profile**, under the key `dta`, as JSON. Readers that do not
-know the key still get every value, with nulls where values are
-missing; "What other tools see" below lists what they lose.
+know the key still get every value, with nulls for plain missing
+values and tagged NaNs for `.a` to `.z` (below); "What other tools
+see" lists what they lose.
 
 ### Column types we write
 
@@ -252,7 +253,7 @@ missing; "What other tools see" below lists what they lose.
 | ours | pyarrow / pandas | polars | DuckDB | arrow (R) | nanoparquet |
 |---|---|---|---|---|---|
 | value labels, variable labels, formats, notes | lost (profile ignored) | lost | lost | lost | lost |
-| `.a` to `.z` | missing (pandas reads NaN as missing); pyarrow sees NaN | NaN, not null | NaN, not NULL | tagged NA (letter kept) | tagged NA (letter kept) |
+| `.a` to `.z` | missing (pandas reads NaN as missing); pyarrow sees NaN | NaN, not null | SQL: NaN, not NULL; DuckDB in R: tagged NA (letter kept) | tagged NA (letter kept) | tagged NA (letter kept) |
 | categorical | `category` (ordered kept) | `Categorical` | VARCHAR | factor | character |
 | zoned timestamp | tz-aware, our zone | our zone | TIMESTAMPTZ | `POSIXct` in our zone | `POSIXct` in UTC |
 | INT(8), INT(16) | int8, int16 (float64 if the column has nulls, since we write no `pandas` key) | Int8, Int16 | TINYINT, SMALLINT | integer | integer |
