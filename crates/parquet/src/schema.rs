@@ -17,33 +17,75 @@ pub enum ColumnType {
     Int32,
     /// INT64, unannotated or INT(64, signed).
     Int64,
+    /// INT32 annotated INT(8, unsigned) (or UINT_8).
+    UInt8,
+    /// INT32 annotated INT(16, unsigned).
+    UInt16,
+    /// INT32 annotated INT(32, unsigned): the bits read as a `u32`.
+    UInt32,
+    /// INT64 annotated INT(64, unsigned): the bits read as a `u64`.
+    UInt64,
     Float,
     Double,
     Boolean,
     /// BYTE_ARRAY annotated STRING, ENUM or JSON: UTF-8 text.
     Text,
-    /// BYTE_ARRAY without a text annotation (or BSON): bytes.
+    /// BYTE_ARRAY without a text annotation (or BSON), or
+    /// FIXED_LEN_BYTE_ARRAY without one (or UUID): bytes.
     Binary,
     /// INT32 DATE: days since 1970-01-01.
     Date,
     /// INT64 TIMESTAMP: units since 1970-01-01 00:00, as an instant
-    /// (`utc`) or a clock time without zone.
+    /// (`utc`) or a clock time without zone. An INT96 timestamp reads as
+    /// nanoseconds, not adjusted to UTC (as pyarrow reads it), and
+    /// [`ColumnInfo::physical`] says it was INT96.
     Timestamp {
         unit: TimeUnit,
         utc: bool,
+    },
+    /// TIME: units since midnight; INT32 in milliseconds, INT64 in
+    /// microseconds or nanoseconds.
+    Time {
+        unit: TimeUnit,
+        utc: bool,
+    },
+    /// DECIMAL: an integer (INT32, INT64, or big-endian two's complement
+    /// in a BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY of at most 32 bytes)
+    /// times 10^-`scale`, with at most `precision` digits. Reads as
+    /// text, every digit kept ([`crate::Output::Text`]), or as the
+    /// nearest double, where a value with more than 15 significant
+    /// digits is an error ([`crate::decimal`]).
+    Decimal {
+        precision: u32,
+        scale: u32,
     },
     /// A type this version does not read; the text names it.
     Unsupported(String),
 }
 
 impl ColumnType {
-    /// Numbers, including dates, timestamps and booleans.
+    /// Numbers, including dates, times, timestamps, booleans and
+    /// decimals.
     pub fn is_numeric(&self) -> bool {
         !matches!(
             self,
             ColumnType::Text | ColumnType::Binary | ColumnType::Unsupported(_)
         )
     }
+}
+
+/// Where a categorical column's levels come from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LevelsFrom {
+    /// The dta profile's `categorical` entry: every level, in order,
+    /// ordered or not as it says.
+    Profile,
+    /// The rows read: the column is a dictionary of strings in the
+    /// file's `ARROW:schema` (pandas `category`, polars `Categorical`,
+    /// an arrow factor) and the profile gives it no levels. The levels
+    /// are the distinct values of the rows read, in order of first
+    /// appearance ([`crate::ReadReport::levels`]), and unordered.
+    Rows,
 }
 
 /// What a column is for.
@@ -67,6 +109,14 @@ pub struct ColumnInfo {
     pub kind: ColumnType,
     /// The column is REQUIRED: it has no nulls.
     pub required: bool,
+    /// The length of a FIXED_LEN_BYTE_ARRAY column's values.
+    pub type_length: Option<i32>,
+    /// Whether the column reads as a categorical, and where its levels
+    /// come from (read it with [`crate::Output::Levels`]).
+    pub levels: Option<LevelsFrom>,
+    /// A timestamp's zone, from the file's `ARROW:schema` (the dta
+    /// profile's `tz` is in [`crate::Profile`]).
+    pub zone: Option<String>,
     /// For a DOUBLE column written wider because it holds `.a` to `.z`,
     /// the storage type the profile records for it.
     pub storage: Option<Storage>,
@@ -92,93 +142,162 @@ impl ColumnInfo {
 /// The type a flat column reads as.
 pub(crate) fn column_type(e: &SchemaElement) -> ColumnType {
     use ColumnType::*;
-    let unsupported =
-        |what: &str| Unsupported(format!("{what}, which this version does not read yet"));
     let physical = match e.physical {
         Some(p) => p,
         None => return Unsupported("a column without a physical type".into()),
     };
+    let invalid = |what: String| Unsupported(format!("{what}, which is not a valid annotation"));
     let conv = e.converted;
-    match (physical, &e.logical) {
-        (PhysicalType::Boolean, _) => Boolean,
-        (PhysicalType::Int32, Some(LogicalType::Integer { bits, signed: true })) => match bits {
-            8 => Int8,
-            16 => Int16,
-            32 => Int32,
-            b => Unsupported(format!(
-                "INT32 annotated INT({b}), which is not a valid annotation"
-            )),
+    let logical = match &e.logical {
+        Some(LogicalType::Null) | None => None,
+        Some(l) => Some(l),
+    };
+    // A converted type stands for its logical type where there is none.
+    let from_converted;
+    let logical = match (logical, conv) {
+        (Some(l), _) => Some(l),
+        (None, Some(c)) => {
+            from_converted = match c {
+                converted::UTF8 => Some(LogicalType::String),
+                converted::ENUM => Some(LogicalType::Enum),
+                converted::JSON => Some(LogicalType::Json),
+                converted::BSON => Some(LogicalType::Bson),
+                converted::DATE => Some(LogicalType::Date),
+                converted::DECIMAL => Some(LogicalType::Decimal {
+                    scale: e.scale.unwrap_or(0),
+                    precision: e.precision.unwrap_or(0),
+                }),
+                converted::TIME_MILLIS | converted::TIME_MICROS => Some(LogicalType::Time {
+                    utc: true,
+                    unit: Some(if c == converted::TIME_MILLIS {
+                        TimeUnit::Millis
+                    } else {
+                        TimeUnit::Micros
+                    }),
+                }),
+                converted::TIMESTAMP_MILLIS | converted::TIMESTAMP_MICROS => {
+                    Some(LogicalType::Timestamp {
+                        utc: true,
+                        unit: Some(if c == converted::TIMESTAMP_MILLIS {
+                            TimeUnit::Millis
+                        } else {
+                            TimeUnit::Micros
+                        }),
+                    })
+                }
+                converted::INT_8 | converted::INT_16 | converted::INT_32 | converted::INT_64 => {
+                    Some(LogicalType::Integer {
+                        bits: [8, 16, 32, 64][(c - converted::INT_8) as usize],
+                        signed: true,
+                    })
+                }
+                converted::UINT_8
+                | converted::UINT_16
+                | converted::UINT_32
+                | converted::UINT_64 => Some(LogicalType::Integer {
+                    bits: [8, 16, 32, 64][(c - converted::UINT_8) as usize],
+                    signed: false,
+                }),
+                converted::INTERVAL => {
+                    return Unsupported("an INTERVAL, which this version does not read".into())
+                }
+                _ => None,
+            };
+            from_converted.as_ref()
+        }
+        (None, None) => None,
+    };
+    use PhysicalType as P;
+    match (physical, logical) {
+        (P::Boolean, _) => Boolean,
+        (P::Int32, Some(LogicalType::Integer { bits, signed })) => match (bits, signed) {
+            (8, true) => Int8,
+            (16, true) => Int16,
+            (32, true) => Int32,
+            (8, false) => UInt8,
+            (16, false) => UInt16,
+            (32, false) => UInt32,
+            (b, _) => invalid(format!("INT32 annotated INT({b})")),
         },
+        (P::Int64, Some(LogicalType::Integer { bits, signed })) => match (bits, signed) {
+            (64, true) => Int64,
+            (64, false) => UInt64,
+            (b, _) => invalid(format!("INT64 annotated INT({b})")),
+        },
+        (P::Int32, Some(LogicalType::Date)) => Date,
         (
-            PhysicalType::Int32 | PhysicalType::Int64,
-            Some(LogicalType::Integer { signed: false, .. }),
-        ) => unsupported("an unsigned integer"),
-        (PhysicalType::Int32, Some(LogicalType::Date)) => Date,
-        (_, Some(LogicalType::Decimal { .. })) => unsupported("DECIMAL"),
-        (_, Some(LogicalType::Time { .. })) => unsupported("TIME"),
-        (
-            PhysicalType::Int64,
-            Some(LogicalType::Integer {
-                bits: 64,
-                signed: true,
-            }),
-        ) => Int64,
-        (PhysicalType::Int64, Some(LogicalType::Timestamp { utc, unit })) => match unit {
+            P::Int32 | P::Int64 | P::FixedLenByteArray | P::ByteArray,
+            Some(LogicalType::Decimal { scale, precision }),
+        ) => decimal(physical, *precision, *scale, e.type_length),
+        (P::Int32 | P::Int64, Some(LogicalType::Time { utc, unit })) => match (physical, unit) {
+            (P::Int32, Some(TimeUnit::Millis))
+            | (P::Int64, Some(TimeUnit::Micros | TimeUnit::Nanos)) => Time {
+                unit: unit.expect("matched"),
+                utc: *utc,
+            },
+            (_, Some(u)) => invalid(format!("{} annotated TIME({u:?})", physical.name())),
+            (_, None) => Unsupported("a TIME whose unit this version does not know".into()),
+        },
+        (P::Int64, Some(LogicalType::Timestamp { utc, unit })) => match unit {
             Some(unit) => Timestamp {
                 unit: *unit,
                 utc: *utc,
             },
             None => Unsupported("a TIMESTAMP whose unit this version does not know".into()),
         },
-        (PhysicalType::FixedLenByteArray, Some(LogicalType::Float16)) => {
+        (P::FixedLenByteArray, Some(LogicalType::Float16)) => {
             Unsupported("FLOAT16, which is not read".into())
         }
-        (
-            PhysicalType::ByteArray,
-            Some(LogicalType::String | LogicalType::Enum | LogicalType::Json),
-        ) => Text,
-        (PhysicalType::ByteArray, Some(LogicalType::Bson)) => Binary,
-        (PhysicalType::Int32, None | Some(LogicalType::Null)) => match conv {
-            Some(converted::INT_8) => Int8,
-            Some(converted::INT_16) => Int16,
-            Some(converted::DATE) => Date,
-            Some(converted::UINT_8 | converted::UINT_16 | converted::UINT_32) => {
-                unsupported("an unsigned integer")
-            }
-            Some(converted::DECIMAL) => unsupported("DECIMAL"),
-            Some(converted::TIME_MILLIS) => unsupported("TIME"),
-            _ => Int32,
+        (P::ByteArray, Some(LogicalType::String | LogicalType::Enum | LogicalType::Json)) => Text,
+        (P::ByteArray, Some(LogicalType::Bson)) => Binary,
+        (P::FixedLenByteArray, None | Some(LogicalType::Uuid)) => match e.type_length {
+            Some(n) if n > 0 => Binary,
+            _ => Unsupported("a FIXED_LEN_BYTE_ARRAY without a length".into()),
         },
-        (PhysicalType::Int64, None | Some(LogicalType::Null)) => match conv {
-            Some(converted::TIMESTAMP_MILLIS) => Timestamp {
-                unit: TimeUnit::Millis,
-                utc: true,
-            },
-            Some(converted::TIMESTAMP_MICROS) => Timestamp {
-                unit: TimeUnit::Micros,
-                utc: true,
-            },
-            Some(converted::UINT_64) => unsupported("an unsigned integer"),
-            Some(converted::DECIMAL) => unsupported("DECIMAL"),
-            Some(converted::TIME_MICROS) => unsupported("TIME"),
-            _ => Int64,
+        (P::Int32, None) => Int32,
+        (P::Int64, None) => Int64,
+        (P::Float, _) => Float,
+        (P::Double, _) => Double,
+        (P::ByteArray, None) => Binary,
+        // INT96 has no annotations; every writer of it meant a timestamp.
+        (P::Int96, _) => Timestamp {
+            unit: TimeUnit::Nanos,
+            utc: false,
         },
-        (PhysicalType::Float, _) => Float,
-        (PhysicalType::Double, _) => Double,
-        (PhysicalType::ByteArray, None | Some(LogicalType::Null)) => match conv {
-            Some(converted::UTF8 | converted::ENUM | converted::JSON) => Text,
-            Some(converted::DECIMAL) => unsupported("DECIMAL"),
-            _ => Binary,
-        },
-        (PhysicalType::Int96, _) => unsupported("an INT96 timestamp"),
-        (PhysicalType::FixedLenByteArray, _) => unsupported("FIXED_LEN_BYTE_ARRAY"),
         (p, Some(l)) => Unsupported(format!(
             "{} annotated {l:?}, which this version does not read",
             p.name()
         )),
-        (PhysicalType::Other(v), None) => Unsupported(format!(
+        (P::Other(v), None) => Unsupported(format!(
             "physical type {v}, which this version does not know"
         )),
+    }
+}
+
+/// The most bytes a DECIMAL value may take: 32 holds 76 digits, as
+/// Arrow's widest decimal does.
+pub(crate) const DECIMAL_BYTES: usize = 32;
+
+fn decimal(physical: PhysicalType, precision: i32, scale: i32, length: Option<i32>) -> ColumnType {
+    let bad = |why: &str| {
+        ColumnType::Unsupported(format!(
+            "DECIMAL({precision}, {scale}), which is not valid: {why}"
+        ))
+    };
+    if !(1..=76).contains(&precision) {
+        return bad("the precision must be 1 to 76");
+    }
+    if scale < 0 || scale > precision {
+        return bad("the scale must be 0 to the precision");
+    }
+    if physical == PhysicalType::FixedLenByteArray
+        && !length.is_some_and(|n| n > 0 && n as usize <= DECIMAL_BYTES)
+    {
+        return bad("its values must take 1 to 32 bytes");
+    }
+    ColumnType::Decimal {
+        precision: precision as u32,
+        scale: scale as u32,
     }
 }
 
@@ -217,6 +336,9 @@ pub(crate) fn columns(meta: &FileMetaData) -> Result<Vec<ColumnInfo>> {
                 column_type(e)
             },
             required: e.repetition == Some(Repetition::Required),
+            type_length: e.type_length,
+            levels: None,
+            zone: None,
             storage: None,
             profile_logical: None,
             leaf,
@@ -354,53 +476,140 @@ mod tests {
         for (e, want) in cases {
             assert_eq!(column_type(&e), want, "{e:?}");
         }
+        // The types the second slice reads.
+        let with = |mut e: SchemaElement, f: &dyn Fn(&mut SchemaElement)| {
+            f(&mut e);
+            e
+        };
+        let unsigned = |bits| {
+            Some(LogicalType::Integer {
+                bits,
+                signed: false,
+            })
+        };
+        let dec = |precision, scale| Some(LogicalType::Decimal { scale, precision });
+        let time = |unit| {
+            Some(LogicalType::Time {
+                utc: false,
+                unit: Some(unit),
+            })
+        };
+        let flba = |n: i32, logical| {
+            with(leaf("a", FixedLenByteArray, logical, None), &|e| {
+                e.type_length = Some(n)
+            })
+        };
+        let cases = [
+            (
+                leaf("a", Int96, None, None),
+                ColumnType::Timestamp {
+                    unit: TimeUnit::Nanos,
+                    utc: false,
+                },
+            ),
+            (leaf("a", Int32, unsigned(8), None), ColumnType::UInt8),
+            (leaf("a", Int32, unsigned(16), None), ColumnType::UInt16),
+            (
+                leaf("a", Int32, None, Some(converted::UINT_32)),
+                ColumnType::UInt32,
+            ),
+            (
+                leaf("a", Int64, None, Some(converted::UINT_64)),
+                ColumnType::UInt64,
+            ),
+            (
+                leaf("a", Int32, time(TimeUnit::Millis), None),
+                ColumnType::Time {
+                    unit: TimeUnit::Millis,
+                    utc: false,
+                },
+            ),
+            (
+                leaf("a", Int64, time(TimeUnit::Nanos), None),
+                ColumnType::Time {
+                    unit: TimeUnit::Nanos,
+                    utc: false,
+                },
+            ),
+            (
+                leaf("a", Int64, None, Some(converted::TIME_MICROS)),
+                ColumnType::Time {
+                    unit: TimeUnit::Micros,
+                    utc: true,
+                },
+            ),
+            (
+                leaf("a", Int32, dec(9, 2), None),
+                ColumnType::Decimal {
+                    precision: 9,
+                    scale: 2,
+                },
+            ),
+            (
+                leaf("a", ByteArray, dec(40, 0), None),
+                ColumnType::Decimal {
+                    precision: 40,
+                    scale: 0,
+                },
+            ),
+            (
+                flba(16, dec(38, 10)),
+                ColumnType::Decimal {
+                    precision: 38,
+                    scale: 10,
+                },
+            ),
+            (
+                with(leaf("a", Int64, None, Some(converted::DECIMAL)), &|e| {
+                    e.precision = Some(18);
+                    e.scale = Some(4)
+                }),
+                ColumnType::Decimal {
+                    precision: 18,
+                    scale: 4,
+                },
+            ),
+            (flba(3, None), ColumnType::Binary),
+            (flba(16, Some(LogicalType::Uuid)), ColumnType::Binary),
+            (
+                leaf("a", ByteArray, Some(LogicalType::Json), None),
+                ColumnType::Text,
+            ),
+            (
+                leaf("a", ByteArray, None, Some(converted::ENUM)),
+                ColumnType::Text,
+            ),
+        ];
+        for (e, want) in cases {
+            assert_eq!(column_type(&e), want, "{e:?}");
+        }
         for (e, word) in [
-            (leaf("a", Int96, None, None), "INT96"),
+            (flba(2, Some(LogicalType::Float16)), "FLOAT16"),
+            (leaf("a", Int32, unsigned(64), None), "INT(64)"),
+            (leaf("a", Int32, time(TimeUnit::Micros), None), "TIME"),
+            (leaf("a", Int64, time(TimeUnit::Millis), None), "TIME"),
             (
-                leaf(
-                    "a",
-                    Int32,
-                    Some(LogicalType::Integer {
-                        bits: 16,
-                        signed: false,
-                    }),
-                    None,
-                ),
-                "unsigned",
+                leaf("a", FixedLenByteArray, dec(20, 2), None),
+                "1 to 32 bytes",
             ),
-            (leaf("a", Int64, None, Some(converted::UINT_64)), "unsigned"),
+            (flba(33, dec(20, 2)), "1 to 32 bytes"),
+            (leaf("a", Int64, dec(18, 19), None), "scale"),
+            (leaf("a", Int64, dec(0, 0), None), "precision"),
+            (leaf("a", ByteArray, dec(77, 0), None), "precision"),
             (
-                leaf("a", FixedLenByteArray, Some(LogicalType::Float16), None),
-                "FLOAT16",
+                leaf("a", Int64, None, Some(converted::DECIMAL)),
+                "precision",
             ),
+            (leaf("a", FixedLenByteArray, None, None), "without a length"),
+            (flba(0, None), "without a length"),
             (
-                leaf(
-                    "a",
-                    FixedLenByteArray,
-                    Some(LogicalType::Decimal {
-                        scale: 2,
-                        precision: 20,
-                    }),
-                    None,
-                ),
-                "DECIMAL",
-            ),
-            (
-                leaf(
-                    "a",
-                    Int64,
-                    Some(LogicalType::Time {
-                        utc: true,
-                        unit: Some(TimeUnit::Micros),
-                    }),
-                    None,
-                ),
-                "TIME",
+                with(flba(12, None), &|e| e.converted = Some(converted::INTERVAL)),
+                "INTERVAL",
             ),
         ] {
             match column_type(&e) {
-                ColumnType::Unsupported(why) => assert!(why.contains(word), "{why}"),
-                other => panic!("{other:?}"),
+                ColumnType::Unsupported(why) => assert!(why.contains(word), "{word}: {why}"),
+                other => panic!("{word}: {other:?}"),
             }
         }
     }

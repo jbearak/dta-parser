@@ -31,6 +31,18 @@ the scripts.
 | `duckdb_default.parquet` | DuckDB `COPY ... (FORMAT parquet)` | PLAIN_DICTIONARY, DuckDB's timestamps |
 | `arrow_r_default.parquet` | arrow (R) `write_parquet`, defaults | factors, zoned `POSIXct`, list of raw |
 | `nanoparquet_default.parquet` | nanoparquet `write_parquet`, defaults | nanoparquet's encodings |
+| `pyarrow_brotli.parquet` | pyarrow, `compression="brotli"` | brotli |
+| `pyarrow_delta.parquet` | pyarrow, no dictionary, `column_encoding`, no compression, 1 KiB pages | DELTA_BINARY_PACKED (INT32, INT64, decimals as integers), DELTA_LENGTH_BYTE_ARRAY, DELTA_BYTE_ARRAY (text and FIXED_LEN_BYTE_ARRAY), BYTE_STREAM_SPLIT (FLOAT, DOUBLE, INT32, INT64, FIXED_LEN_BYTE_ARRAY), many pages |
+| `pyarrow_delta_v2.parquet` | the same, data page v2, snappy, 250-row row groups, `write_page_index=True` | the same encodings in pages v2, row groups, an offset index |
+| `pyarrow_types.parquet` | pyarrow, `use_deprecated_int96_timestamps=True` | INT96; TIME in ms, us and ns; DECIMAL(9, 2) to DECIMAL(50, 5) in FIXED_LEN_BYTE_ARRAY; unsigned 8 to 64 bits; fixed-size binary; UUID; JSON; a dictionary of integers |
+| `pyarrow_types_v2.parquet` | the same table, `store_decimal_as_integer=True`, data page v2, zstd, small pages and row groups, an offset index | DECIMAL in INT32 and INT64, TIMESTAMP in place of INT96 |
+| `fastparquet_default.parquet` | fastparquet `write`, 250-row row groups | pandas' unsigned and nullable types, a categorical, fastparquet's encodings |
+| `fastparquet_int96_brotli.parquet` | fastparquet, `times="int96"`, `compression="BROTLI"` | INT96 and brotli from another writer |
+| `parquet2_default.parquet` | Parquet2.jl `writefile`, defaults | Julia's types: unsigned integers, `Time` (TIME in ns), `DateTime`, a `Dec64` decimal (in INT64), bytes; snappy |
+| `parquet2_zstd_pages.parquet` | Parquet2.jl, zstd, 7 pages a column | zstd, many pages |
+| `parquet2_brotli.parquet` | Parquet2.jl, brotli, 3 pages a column | brotli from a third writer |
+| `hyparquet_delta.parquet` | hyparquet-writer, an encoding chosen per column, no compression, 1 KiB pages, 250-row row groups | DELTA_BINARY_PACKED, DELTA_LENGTH_BYTE_ARRAY, DELTA_BYTE_ARRAY and BYTE_STREAM_SPLIT from another writer; DECIMAL in a BYTE_ARRAY; ENUM; UINT_32; JSON; UUID |
+| `hyparquet_default.parquet` | hyparquet-writer, defaults | the same types with its own encodings, snappy |
 
 The Python fixtures hold 8-, 16-, 32- and 64-bit integers, floats and
 doubles (with NaN and -0.0), booleans, text (repeated and distinct),
@@ -39,14 +51,37 @@ bytes, dates, timestamps in milliseconds, microseconds and nanoseconds
 fixtures hold R's types: integer, double, logical, character, `Date`,
 `POSIXct` with a zone, factor and (arrow only) a list of raw vectors.
 
+The second set (from `pyarrow_brotli` on) holds the types and
+encodings plan 0018's second slice reads: unsigned integers, TIME,
+INT96, DECIMAL (some values with more than 15 significant digits, up to
+50 digits), fixed-size binary, UUID, JSON, ENUM, a dictionary of
+integers, with nulls; in DELTA and BYTE_STREAM_SPLIT encodings, pages
+v1 and v2, and brotli from three writers.
+
 To regenerate, from the repository root:
 
-    python3 compat/parquet/make_fixtures.py    # pyarrow, polars, DuckDB
+    python3 compat/parquet/make_fixtures.py    # pyarrow, polars, DuckDB, fastparquet
     Rscript compat/parquet/make_fixtures.R     # arrow, nanoparquet
+    julia --project=ENV compat/parquet/make_fixtures.jl    # Parquet2.jl (ENV has Parquet2, DataFrames, DecFP)
+    node compat/parquet/make_fixtures.mjs DIR/node_modules/hyparquet-writer
     python3 compat/parquet/expected.py         # pyarrow reads them all
 
+`python3 compat/parquet/make_fixtures.py breadth` writes only the
+pyarrow and fastparquet files of the second set. hyparquet-writer is
+not a dependency of this repository: install it in a scratch directory
+(`npm install hyparquet-writer`) and pass its path.
+
 The fixtures were written with pyarrow 26.0.1, polars 2.1.0, DuckDB
-2.0.0, arrow (R) 26.0.0 and nanoparquet 0.5.2.
+2.0.0, arrow (R) 26.0.0, nanoparquet 0.5.2, fastparquet 2026.9.0 (with
+pandas 3.1.1), Parquet2.jl 0.2.37 (Julia 1.13.3) and hyparquet-writer
+0.18.0 (Node 26).
+
+Expected values are pyarrow's, decimals as text with every digit. Two
+readings differ from pyarrow's by design (plan 0018): pyarrow reads an
+ENUM column as binary, ours as text (the compat test compares their
+bytes); and a text column `ARROW:schema` marks as a dictionary is also
+read as a categorical whose levels are the rows' values in order of
+first appearance, which the test checks against pyarrow's values.
 
 ## Readback
 
@@ -98,5 +133,10 @@ open-source projects:
 - [polars](https://pola.rs/), MIT
 - [DuckDB](https://duckdb.org/), MIT
 - [nanoparquet](https://github.com/r-lib/nanoparquet), MIT
+- [fastparquet](https://github.com/dask/fastparquet), Apache-2.0
+- [Parquet2.jl](https://gitlab.com/ExpandingMan/Parquet2.jl), MIT, with
+  [DecFP.jl](https://github.com/JuliaMath/DecFP.jl), BSD-2-Clause, for its
+  decimals
+- [hyparquet-writer](https://github.com/hyparam/hyparquet-writer), MIT
 - [pandas](https://pandas.pydata.org/), BSD-3-Clause, for the readback
 - [haven](https://haven.tidyverse.org/), MIT, for the readback's tagged NAs

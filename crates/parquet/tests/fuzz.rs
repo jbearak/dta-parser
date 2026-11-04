@@ -12,7 +12,7 @@ mod support;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use counting::{largest_during, Counting};
-use dta_parquet::{write, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, WriteOptions};
+use dta_parquet::{write, ColumnType, Compression, LevelsFrom, Numbers, Output, Profile, ReadOptions, Reader, Role, WriteOptions};
 use support::{every_type, rebuild, table};
 
 #[global_allocator]
@@ -168,15 +168,19 @@ fn mutate(file: &[u8], rng: &mut Rng) -> Vec<u8> {
     b
 }
 
-/// Read `columns` of rows `skip..skip + n`, each as its kind suggests.
+/// Read `columns` of rows `skip..skip + n`, each as its kind suggests:
+/// text, bytes and decimals as text, a dictionary of text from
+/// `ARROW:schema` as levels, numbers as doubles.
 fn read(r: &mut Reader<dta::Bytes<&[u8]>>, columns: &[usize], skip: u64, n: u64) -> dta::Result<()> {
     let w = r.window(skip, n);
     let rows = (w.end - w.start) as usize;
-    let mut floats: Vec<(Vec<f64>, Vec<u8>)> = vec![(vec![0.0; rows], vec![0; rows]); columns.len()];
+    let mut floats: Vec<(Vec<f64>, Vec<u8>, Vec<i32>)> = vec![(vec![0.0; rows], vec![0; rows], vec![0; rows]); columns.len()];
     let mut outputs: Vec<Output> = Vec::new();
     for (&c, f) in columns.iter().zip(floats.iter_mut()) {
-        outputs.push(match r.columns()[c].kind {
-            ColumnType::Text | ColumnType::Binary => Output::Text,
+        let col = &r.columns()[c];
+        outputs.push(match col.kind {
+            ColumnType::Text if col.levels == Some(LevelsFrom::Rows) => Output::Levels { codes: &mut f.2, base: 1, null: 0 },
+            ColumnType::Text | ColumnType::Binary | ColumnType::Decimal { .. } => Output::Text,
             _ => Output::Float64(Numbers::new(&mut f.0, f64::NAN).with_codes(&mut f.1)),
         });
     }
