@@ -299,9 +299,11 @@ impl Profile {
             warn("the dta profile has no \"version\"; it is read as version 1".into());
         }
         // A column may only name a set the profile has.
+        let sets: std::collections::HashSet<&str> =
+            p.value_labels.iter().map(|s| s.name.as_str()).collect();
         for c in &mut p.columns {
             if let Some(set) = &c.value_labels {
-                if !p.value_labels.iter().any(|s| &s.name == set) {
+                if !sets.contains(set.as_str()) {
                     warnings.push(dropped(
                         &format!("columns.{}.value_labels", c.name),
                         &format!("names the set \"{set}\", which the profile does not have"),
