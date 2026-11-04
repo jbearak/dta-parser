@@ -29,3 +29,11 @@ zstd's smaller files make up for its compression time on one thread was
 wrong and is replaced by the arithmetic and a measurement in PR 3 that
 can switch the default to snappy; and plan 0007's default is three
 threads, not four.
+
+**Changed by the user after approval (2026-11-04).** The approved design
+wrote `.a` to `.z` as nulls with their letters in a `<name>__missing`
+string column. The user chose tagged NaNs in DOUBLE columns instead, as
+R holds them: our readers decode the bits in every language, and the
+letter column's naming, matching and validation go away. The cost,
+which the judges' design avoided, is that DuckDB SQL, polars and Spark
+see `.a` to `.z` as NaN rather than null. ADR 0033 records the choice.
