@@ -512,6 +512,11 @@ fn prepare(
 ) -> Result<Prepared> {
     levels.clear();
     if optional {
+        // The row count comes from the file: refuse one that does not fit
+        // rather than abort.
+        if levels.try_reserve(rows).is_err() {
+            return Err(Error::new(format!("a page of {rows} rows does not fit in memory here")).of(ErrorKind::TooLarge));
+        }
         levels.resize(rows, 0);
     }
     if let Some(d) = &header.data_v2 {

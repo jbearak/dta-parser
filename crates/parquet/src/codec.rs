@@ -5,7 +5,9 @@
 //! (docs/research/parquet-codecs.md).
 
 use crate::format::Codec;
-use dta::{Error, ErrorKind, Result};
+#[cfg(not(target_arch = "wasm32"))]
+use dta::ErrorKind;
+use dta::{Error, Result};
 
 /// A codec to write pages with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
