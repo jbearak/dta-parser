@@ -18,6 +18,8 @@ use dta::{
     ValueLabelSet, Values, Variable, WriteOptions, WriteVariable,
 };
 
+mod parquet_r;
+
 type Sexp = *mut c_void;
 
 const STRSXP: c_int = 16;
@@ -48,6 +50,7 @@ extern "C" {
         nbytes: isize,
         n: isize,
         rows: isize,
+        has_na: c_int,
         out: *mut Sexp,
         bytes: *mut Sexp,
         ends: *mut Sexp,
@@ -94,17 +97,31 @@ fn packed_elt(parent: Sexp, i: usize, s: &Strings) -> Res<Sexp> {
     let (mut x, mut b, mut e, mut c) =
         (std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
     let n = s.ends.len();
-    let rows = s.dict.as_ref().map_or(-1, |d| d.codes.len() as isize);
+    let codes = s.codes();
+    let rows = codes.map_or(-1, |c| c.len() as isize);
     status(unsafe {
-        dtaparser_packed_elt(parent, i as isize, s.bytes.len() as isize, n as isize, rows, &mut x, &mut b, &mut e, &mut c)
+        dtaparser_packed_elt(
+            parent,
+            i as isize,
+            s.bytes.len() as isize,
+            n as isize,
+            rows,
+            s.has_na as c_int,
+            &mut x,
+            &mut b,
+            &mut e,
+            &mut c,
+        )
     })?;
     unsafe {
-        std::slice::from_raw_parts_mut(RAW(b), s.bytes.len()).copy_from_slice(&s.bytes);
+        if !s.bytes.is_empty() {
+            std::slice::from_raw_parts_mut(RAW(b), s.bytes.len()).copy_from_slice(&s.bytes);
+        }
         for (d, &end) in std::slice::from_raw_parts_mut(REAL(e), n).iter_mut().zip(&s.ends) {
             *d = end as f64;
         }
-        if let Some(d) = &s.dict {
-            std::slice::from_raw_parts_mut(INTEGER(c), d.codes.len()).copy_from_slice(&d.codes);
+        if let Some(codes) = codes {
+            std::slice::from_raw_parts_mut(INTEGER(c), codes.len()).copy_from_slice(codes);
         }
     }
     Ok(x)
@@ -664,6 +681,11 @@ impl DictLimits {
 /// `dict.codes` each row's index among them, so R will make one string
 /// per distinct value. A column whose values are mostly distinct gives
 /// the dictionary up: `bytes` and `ends` then hold every row's value.
+///
+/// A missing row (a Parquet null; `.dta` strings have none) has code
+/// `NA` (`i32::MIN`). Without a dictionary, `bytes` and `ends` then hold
+/// the present rows' values and `nas` a code per row, once one is
+/// missing.
 struct Strings {
     bytes: Vec<u8>,
     ends: Vec<usize>,
@@ -671,6 +693,8 @@ struct Strings {
     limits: DictLimits,
     /// The column's row count, to reserve per-row vectors once.
     rows: usize,
+    nas: Option<Vec<i32>>,
+    has_na: bool,
 }
 
 struct Dict {
@@ -685,6 +709,8 @@ struct Dict {
 }
 
 const NONE: u32 = u32::MAX;
+/// R's `NA_integer_`.
+const NA_INTEGER: i32 = i32::MIN;
 
 /// A front cache slot: a dictionary index, and for a value of at most
 /// eight bytes its bytes as a word, so a hit needs no other memory.
@@ -703,7 +729,16 @@ const FRONT: usize = 4096;
 impl Strings {
     fn new(limits: DictLimits, rows: usize) -> Self {
         let dict = Dict { codes: Vec::with_capacity(rows), front: vec![Front { index: NONE, len: 0, word: 0 }; FRONT], table: HashMap::default(), next: Vec::new() };
-        Strings { bytes: Vec::new(), ends: Vec::new(), dict: Some(dict), limits, rows }
+        Strings { bytes: Vec::new(), ends: Vec::new(), dict: Some(dict), limits, rows, nas: None, has_na: false }
+    }
+
+    /// A code per row, when the column has them: its dictionary's, or
+    /// without one, once a row is missing.
+    fn codes(&self) -> Option<&[i32]> {
+        match &self.dict {
+            Some(d) => Some(&d.codes),
+            None => self.nas.as_deref(),
+        }
     }
 
     fn value(&self, i: usize) -> &[u8] {
@@ -714,6 +749,84 @@ impl Strings {
     fn push(&mut self, v: &[u8]) {
         self.bytes.extend_from_slice(v);
         self.ends.push(self.bytes.len());
+        if let Some(nas) = &mut self.nas {
+            nas.push(self.ends.len() as i32 - 1);
+        }
+    }
+
+    /// A missing row.
+    fn push_na(&mut self) {
+        self.has_na = true;
+        match &mut self.dict {
+            Some(d) => d.codes.push(NA_INTEGER),
+            None => {
+                let n = self.ends.len();
+                let rows = self.rows;
+                self.nas
+                    .get_or_insert_with(|| {
+                        let mut v = Vec::with_capacity(rows);
+                        v.extend(0..n as i32);
+                        v
+                    })
+                    .push(NA_INTEGER);
+            }
+        }
+    }
+
+    /// Add a row, which may be missing.
+    fn add(&mut self, v: Option<&[u8]>) {
+        match v {
+            None => self.push_na(),
+            Some(v) if self.dict.is_some() => {
+                if !self.add_coded(v) {
+                    self.push(v);
+                }
+            }
+            Some(v) => self.push(v),
+        }
+    }
+
+    /// Add a chunk of Parquet text. A dictionary-encoded chunk adds each
+    /// of its distinct values to the column's dictionary once and maps
+    /// its codes, so a value repeated across row groups is one R string;
+    /// other chunks add row by row.
+    fn add_chunk(&mut self, name: &str, tc: &dta_parquet::TextChunk) -> Res<()> {
+        if tc.bytes.contains(&0) {
+            return Err(Fail::Message(format!("column \"{name}\" holds a string with an embedded nul, which R cannot hold")));
+        }
+        let mut from = 0;
+        for &end in &tc.ends {
+            if end - from > i32::MAX as usize {
+                return Err(Fail::Message(format!("column \"{name}\" holds a string longer than R allows")));
+            }
+            from = end;
+        }
+        if let (Some(codes), true) = (&tc.codes, self.dict.is_some()) {
+            let rows_after = self.dict.as_ref().map_or(0, |d| d.codes.len()) + tc.rows;
+            let mut map = Vec::with_capacity(tc.ends.len());
+            for i in 0..tc.ends.len() {
+                match self.intern(tc.value(i), rows_after) {
+                    Some(index) => map.push(index as i32),
+                    None => break,
+                }
+            }
+            if let Some(d) = &mut self.dict {
+                for &c in codes {
+                    if c == dta_parquet::TextChunk::NULL {
+                        self.has_na = true;
+                        d.codes.push(NA_INTEGER);
+                    } else {
+                        d.codes.push(map[c as usize]);
+                    }
+                }
+                return Ok(());
+            }
+            // The dictionary was given up: add this chunk plainly.
+        }
+        for r in 0..tc.rows {
+            self.add(tc.row(r));
+        }
+        Ok(())
     }
 
     /// Append a chunk, checking that R can hold every value.
@@ -749,6 +862,34 @@ impl Strings {
             }
         }
         Ok(())
+    }
+
+    /// The dictionary index of `v`, added if new, with `rows` the rows
+    /// the column will have counted for the rule on giving up; `None` if
+    /// the dictionary was given up.
+    fn intern(&mut self, v: &[u8], rows: usize) -> Option<u32> {
+        let word = if v.len() <= 8 { short_word(v) } else { 0 };
+        let hash = mix(quick_hash(v, word));
+        let found = match self.lookup(v, hash) {
+            Some(found) => found,
+            None => {
+                self.give_up();
+                return None;
+            }
+        };
+        if let Some(index) = found {
+            return Some(index);
+        }
+        let distinct = self.ends.len() + 1;
+        if distinct > self.limits.limit || (rows >= self.limits.window && distinct * 2 > rows) {
+            self.give_up();
+            return None;
+        }
+        let index = self.ends.len() as u32;
+        let d = self.dict.as_mut().expect("a dictionary");
+        d.next.push(d.table.insert(hash, index).unwrap_or(NONE));
+        self.push(v);
+        Some(index)
     }
 
     /// Add a row through the dictionary; false if the dictionary was
@@ -821,12 +962,19 @@ impl Strings {
             dict: None,
             limits: self.limits,
             rows: self.rows,
+            nas: None,
+            has_na: false,
         };
         for &c in &d.codes {
-            plain.push(self.value(c as usize));
+            if c == NA_INTEGER {
+                plain.push_na();
+            } else {
+                plain.push(self.value(c as usize));
+            }
         }
         self.bytes = plain.bytes;
         self.ends = plain.ends;
+        self.nas = plain.nas;
     }
 }
 
@@ -943,8 +1091,13 @@ unsafe fn string_values<'a>(x: Sexp, nobs: usize) -> Values<'a> {
             let text = if len == 0 { &[][..] } else { std::slice::from_raw_parts(RAW(bytes) as *const u8, len) };
             let codes = (TYPEOF(codes) == INTSXP).then(|| std::slice::from_raw_parts(INTEGER(codes) as *const c_int, nobs));
             Values::Strings(Box::new(move |r| {
-                // read_dta wrote the codes and ends, so they are in range.
-                let j = codes.map_or(r, |c| c[r] as usize);
+                // read_dta wrote the codes and ends, so they are in range;
+                // a missing row (from read_parquet) is "", as NA is.
+                let j = match codes {
+                    Some(c) if c[r] == NA_INTEGER => return &[][..],
+                    Some(c) => c[r] as usize,
+                    None => r,
+                };
                 let from = if j == 0 { 0 } else { ends[j - 1] as usize };
                 &text[from..ends[j] as usize]
             }))

@@ -14,7 +14,9 @@
 //   so R makes one string per distinct value, not per row. data2 is
 //   R_NilValue or a cache, a character vector with a slot per value in
 //   bytes holding the strings made so far, and NA_STRING where none is
-//   made yet (Stata strings are never NA).
+//   made yet. A row whose code is NA_INTEGER is NA (Parquet's nulls;
+//   Stata strings are never NA), and data1's fourth element, a logical,
+//   says whether any code is.
 // - made: data1 is R_NilValue and data2 holds every string; the column is
 //   an ordinary character vector behind one indirection. It may hold NAs
 //   assigned since.
@@ -33,6 +35,7 @@ static R_altrep_class_t packed_class;
 #define BYTES(x) VECTOR_ELT(R_altrep_data1(x), 0)
 #define ENDS(x) VECTOR_ELT(R_altrep_data1(x), 1)
 #define CODES(x) VECTOR_ELT(R_altrep_data1(x), 2)
+#define HAS_NA(x) (LOGICAL(VECTOR_ELT(R_altrep_data1(x), 3))[0])
 
 static R_xlen_t packed_length(SEXP x) {
   if (!PACKED(x)) return XLENGTH(R_altrep_data2(x));
@@ -72,7 +75,9 @@ static SEXP packed_make(SEXP x, SEXP cache, R_xlen_t i) {
 
 static SEXP packed_elt(SEXP x, R_xlen_t i) {
   if (!PACKED(x)) return STRING_ELT(R_altrep_data2(x), i);
-  return packed_make(x, cache_of(x), slot_of(x, i));
+  R_xlen_t slot = slot_of(x, i);
+  if (slot == NA_INTEGER) return NA_STRING;
+  return packed_make(x, cache_of(x), slot);
 }
 
 // Make every string, then drop the packed text.
@@ -90,7 +95,8 @@ static void *packed_dataptr(SEXP x, Rboolean writeable) {
       R_xlen_t rows = XLENGTH(codes);
       SEXP full = PROTECT(Rf_allocVector(STRSXP, rows));
       const int *code = INTEGER(codes);
-      for (R_xlen_t i = 0; i < rows; i++) SET_STRING_ELT(full, i, STRING_ELT(cache, code[i]));
+      for (R_xlen_t i = 0; i < rows; i++)
+        SET_STRING_ELT(full, i, code[i] == NA_INTEGER ? NA_STRING : STRING_ELT(cache, code[i]));
       R_set_altrep_data2(x, full);
       UNPROTECT(1);
     }
@@ -108,10 +114,10 @@ static void packed_set_elt(SEXP x, R_xlen_t i, SEXP v) {
   SET_STRING_ELT(R_altrep_data2(x), i, v);
 }
 
-// Packed columns cannot hold NA; once made, a NA may have been written
-// through the data pointer, so make no promise.
+// A packed column holds NA only where a code is NA_INTEGER; once made, a
+// NA may have been written through the data pointer, so make no promise.
 static int packed_no_na(SEXP x) {
-  return PACKED(x);
+  return PACKED(x) && !HAS_NA(x);
 }
 
 // A packed copy shares the packed text, which is never modified; R copies
@@ -125,23 +131,25 @@ static SEXP packed_duplicate(SEXP x, Rboolean deep) {
 // A new packed column of n values and nbytes bytes of text, stored as
 // element i of parent; *bytes and *ends receive its vectors to fill. With
 // rows >= 0 the values are a dictionary and *codes receives an integer
-// vector of rows codes to fill; with rows < 0, *codes is R_NilValue.
-SEXP dtaparser_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, SEXP *bytes,
-                         SEXP *ends, SEXP *codes) {
-  SEXP data = PROTECT(Rf_allocVector(VECSXP, 3));
+// vector of rows codes to fill, NA_INTEGER for NA when has_na; with
+// rows < 0, *codes is R_NilValue.
+SEXP dtaparser_new_packed(SEXP parent, R_xlen_t i, R_xlen_t nbytes, R_xlen_t n, R_xlen_t rows, int has_na,
+                         SEXP *bytes, SEXP *ends, SEXP *codes) {
+  SEXP data = PROTECT(Rf_allocVector(VECSXP, 4));
   *bytes = SET_VECTOR_ELT(data, 0, Rf_allocVector(RAWSXP, nbytes));
   *ends = SET_VECTOR_ELT(data, 1, Rf_allocVector(REALSXP, n));
   *codes = rows < 0 ? R_NilValue : SET_VECTOR_ELT(data, 2, Rf_allocVector(INTSXP, rows));
+  SET_VECTOR_ELT(data, 3, Rf_ScalarLogical(rows >= 0 && has_na));
   SEXP x = SET_VECTOR_ELT(parent, i, R_new_altrep(packed_class, data, R_NilValue));
   UNPROTECT(1);
   return x;
 }
 
-// For a packed column with a dictionary, list(values, codes): its
-// distinct values as a character vector and each row's 0-based code
+// For a packed column with a dictionary and no NA, list(values, codes):
+// its distinct values as a character vector and each row's 0-based code
 // (shared with the column, so not to be modified). NULL for anything else.
 SEXP dtaparser_dictionary(SEXP x) {
-  if (!ALTREP(x) || !R_altrep_inherits(x, packed_class) || !PACKED(x) || CODES(x) == R_NilValue)
+  if (!ALTREP(x) || !R_altrep_inherits(x, packed_class) || !PACKED(x) || CODES(x) == R_NilValue || HAS_NA(x))
     return R_NilValue;
   SEXP cache = cache_of(x);
   for (R_xlen_t i = 0; i < XLENGTH(cache); i++) packed_make(x, cache, i);
@@ -156,7 +164,7 @@ SEXP dtaparser_dictionary(SEXP x) {
 
 // The parts of a column the writer can read without making R strings:
 // 1 for a packed column, with *bytes, *ends and *codes as in data1 (the
-// codes R_NilValue without a dictionary); 2 for a made one, with its
+// codes R_NilValue without a dictionary, NA_INTEGER for NA); 2 for a made one, with its
 // ordinary character vector in *bytes; 0 for any other vector. Calls no
 // R function that allocates or raises an error.
 int dtaparser_packed_parts(SEXP x, SEXP *bytes, SEXP *ends, SEXP *codes) {
