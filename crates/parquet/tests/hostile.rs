@@ -448,3 +448,25 @@ fn byte_array_decimals() {
     let mut f = [0f32; 1];
     assert!(r.read(&[0], 0, 1, &mut [Output::Float32(Numbers::new(&mut f, 0.0))], |_, _| Ok(())).is_err());
 }
+
+/// An all-null BYTE_STREAM_SPLIT page of a FIXED_LEN_BYTE_ARRAY column
+/// whose declared width is 2 GiB has no value bytes to bound that width:
+/// reading it must not allocate the width.
+#[test]
+fn an_all_null_split_page_does_not_allocate_its_width() {
+    let rows = 4i64;
+    let mut levels = Vec::new();
+    varint(&mut levels, (rows as u64) << 1);
+    levels.push(0);
+    let mut body = (levels.len() as u32).to_le_bytes().to_vec();
+    body.extend_from_slice(&levels);
+    let mut col = element("x", PhysicalType::FixedLenByteArray, Repetition::Optional);
+    col.type_length = Some(i32::MAX);
+    let file = one_column(col, rows, &[data_page(rows as i32, Encoding::ByteStreamSplit, body)]);
+    let (result, largest) = largest_during(|| {
+        let mut r = Reader::open(dta::Bytes(&file[..]), one_thread())?;
+        r.read(&[0], 0, rows as u64, &mut [Output::Text], |_, _| Ok(()))
+    });
+    assert!(largest <= MIB, "asked for {largest} bytes");
+    result.unwrap();
+}

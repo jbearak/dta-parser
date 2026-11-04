@@ -1152,6 +1152,12 @@ impl Texts {
                     return Err(Error::new("a page holds fewer values than its levels say"));
                 }
                 let mut push = push;
+                if n == 0 {
+                    // An all-null window: `width` comes from the file and
+                    // is bounded by the value bytes only when there are
+                    // values, so allocate nothing.
+                    return Ok(());
+                }
                 scratch.clear();
                 scratch.resize(width, 0);
                 for i in skip..page.present {
