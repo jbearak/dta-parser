@@ -7,9 +7,10 @@
 //! of the file's key-value metadata, the dta [`Profile`], under the key
 //! `dta`. `.` is a null; `.a` to `.z` are tagged NaNs ([`tagged_nan`]) in
 //! DOUBLE columns, so a numeric column that holds any is written as
-//! DOUBLE, with its storage type in the profile ([`Storage`]). An
-//! `ARROW:schema` entry lets pyarrow, polars and arrow (R) restore
-//! categoricals and time zones.
+//! DOUBLE, with its storage type in the profile ([`Storage`]), and so is
+//! a date or timestamp column, as days or seconds since 1970
+//! ([`Logical`]). An `ARROW:schema` entry lets pyarrow, polars and arrow
+//! (R) restore categoricals and time zones.
 //!
 //! Like the `dta` crate, this one does no I/O of its own: a [`Reader`]
 //! reads through a [`dta::Source`], and [`write`] writes to any
@@ -52,7 +53,7 @@ mod write;
 
 pub use codec::Compression;
 pub use decode::TextChunk;
-pub use profile::{Categorical, ColumnProfile, Profile, Storage};
+pub use profile::{Categorical, ColumnProfile, Logical, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};
 pub use schema::{ColumnInfo, ColumnType, Role};
 pub use tagged::{tagged_code, tagged_nan, NA_BITS};

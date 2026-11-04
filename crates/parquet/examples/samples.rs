@@ -11,7 +11,7 @@ use dta::{ValueLabel, ValueLabelSet};
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{write, ColumnProfile, Compression, Profile, WriteOptions};
 use serde_json::{json, Map, Value};
-use support::{every_type, storage_columns, table, Col, Data};
+use support::{dated_columns, every_type, storage_columns, table, Col, Data};
 
 fn profile() -> Profile {
     Profile {
@@ -42,10 +42,21 @@ fn number(v: f64) -> Value {
     }
 }
 
+/// The nearest double to `v` units of `per_second` a second: the exact
+/// decimal, parsed.
+fn seconds(v: i64, per_second: u64) -> f64 {
+    let (q, r) = (v.unsigned_abs() / per_second, v.unsigned_abs() % per_second);
+    let digits = per_second.ilog10() as usize;
+    let sign = if v < 0 { "-" } else { "" };
+    format!("{sign}{q}.{r:0digits$}").parse().unwrap()
+}
+
 /// What a column holds, for the readback scripts. `.a` to `.z` are null
 /// in `values` and named in `letters`; with `letters_on` the column is
-/// then written as DOUBLE (`type` is `float64`, and `storage` names what
-/// it was), and without, they are plain nulls.
+/// then written as DOUBLE (`type` is `float64`; `storage` names what it
+/// was, or `logical` says it was a date, in days since 1970, or a
+/// timestamp, in seconds, with `tz` its zone in the profile), and
+/// without, they are plain nulls.
 fn describe(c: &Col, letters_on: bool) -> Value {
     let n = c.rows();
     let missing = |r: usize| c.codes.get(r).is_some_and(|&k| k != 0);
@@ -81,6 +92,7 @@ fn describe(c: &Col, letters_on: bool) -> Value {
             ("categorical", codes.iter().map(|&k| if k < 0 { Value::Null } else { json!(levels[k as usize]) }).collect())
         }
     };
+    let mut values = values;
     if letters_on && c.codes.iter().any(|&k| k > 1) {
         let letters: Vec<Value> = c.codes.iter().map(|&k| if k > 1 { json!(format!(".{}", (b'a' + k - 2) as char)) } else { Value::Null }).collect();
         o.insert("letters".into(), Value::Array(letters));
@@ -93,6 +105,30 @@ fn describe(c: &Col, letters_on: bool) -> Value {
         };
         if let Some(st) = storage {
             o.insert("storage".into(), json!(st));
+        }
+        match &c.data {
+            Data::Date(_) => {
+                o.insert("logical".into(), json!("date"));
+            }
+            Data::Ts { unit, utc, zone, v } => {
+                for key in ["unit", "utc", "zone"] {
+                    o.remove(key);
+                }
+                o.insert("logical".into(), json!("timestamp"));
+                // The profile's tz: the zone, "" for an instant without
+                // one, absent for a local time.
+                let tz = zone.clone().or_else(|| utc.then(String::new));
+                if let Some(tz) = tz {
+                    o.insert("tz".into(), json!(tz));
+                }
+                let per_second = match unit {
+                    TimeUnit::Millis => 1_000,
+                    TimeUnit::Micros => 1_000_000,
+                    TimeUnit::Nanos => 1_000_000_000,
+                };
+                values = (0..n).map(|r| if missing(r) { Value::Null } else { json!(seconds(v[r], per_second)) }).collect();
+            }
+            _ => {}
         }
         kind = "float64";
     }
@@ -133,6 +169,10 @@ fn main() {
     // same with missing_letters off, as plain nulls.
     put("letters", &storage_columns(), Profile::default(), WriteOptions::default());
     put("letters_off", &storage_columns(), Profile::default(), WriteOptions { missing_letters: false, ..Default::default() });
+    // A date and timestamps with .a to .z, written as days and seconds
+    // since 1970; and with missing_letters off, as dates and timestamps.
+    put("dated", &dated_columns(), Profile::default(), WriteOptions::default());
+    put("dated_off", &dated_columns(), Profile::default(), WriteOptions { missing_letters: false, ..Default::default() });
     // 5,000 columns with large label sets (plan 0018, "Risks").
     let wide: Vec<Col> = (0..5000).map(|k| Col { name: format!("v{k}"), data: Data::I32(vec![k, k + 1, k + 2]), codes: vec![0, 1, 0] }).collect();
     let wide_profile = Profile {

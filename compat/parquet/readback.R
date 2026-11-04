@@ -123,6 +123,14 @@ for (file in names(expected)) {
   tryCatch({
     table <- arrow::read_parquet(path, as_data_frame = FALSE)
     if (is.null(table$metadata$dta)) fail("arrow", file, "no dta key in the file metadata")
+    # A date or timestamp written as DOUBLE says what it was in the
+    # profile, for our readers to restore; arrow sees a double.
+    profile <- jsonlite::fromJSON(table$metadata$dta, simplifyVector = FALSE)
+    for (name in names(spec$columns)) {
+      want <- spec$columns[[name]]$logical
+      got <- profile$columns[[name]]$logical
+      if (!identical(got, want)) fail("arrow", file, sprintf("%s: profile logical %s, not %s", name, format(got), format(want)))
+    }
     check("arrow", file, spec, as.data.frame(table))
   }, error = function(e) fail("arrow", file, conditionMessage(e)))
   if (grepl("lz4_raw", file)) {

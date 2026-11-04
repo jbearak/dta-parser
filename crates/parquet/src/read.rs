@@ -346,7 +346,7 @@ impl<S: Source> Reader<S> {
             None => None,
         };
         if let Some(p) = &mut profile {
-            check_storage(&mut columns, p, &mut warnings);
+            check_widened(&mut columns, p, &mut warnings);
             for c in &p.columns {
                 if c.categorical.is_some() {
                     if let Some(col) = columns.iter().find(|x| x.name == c.name) {
@@ -785,13 +785,13 @@ fn accepts<T: Element>(
     Ok(n.values.len() == rows && n.codes.as_ref().is_none_or(|c| c.len() == rows))
 }
 
-/// Keep each `storage` the profile gives a DOUBLE column; drop, with a
-/// warning, one given any other column.
-fn check_storage(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec<String>) {
+/// Keep each `storage` and `logical` the profile gives a DOUBLE column;
+/// drop, with a warning, one given any other column.
+fn check_widened(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec<String>) {
     for entry in &mut p.columns {
-        let Some(storage) = entry.storage else {
+        if entry.storage.is_none() && entry.logical.is_none() {
             continue;
-        };
+        }
         let Some(col) = columns
             .iter_mut()
             .find(|c| c.name == entry.name && c.role == Role::Data)
@@ -799,13 +799,21 @@ fn check_storage(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec
             continue;
         };
         if col.kind == ColumnType::Double {
-            col.storage = Some(storage);
-        } else {
+            col.storage = entry.storage;
+            col.profile_logical = entry.logical;
+            continue;
+        }
+        if entry.storage.take().is_some() {
             warnings.push(format!(
                 "dropped \"columns.{}.storage\" from the dta profile: it gives a storage type to a column that is not DOUBLE",
                 entry.name
             ));
-            entry.storage = None;
+        }
+        if entry.logical.take().is_some() {
+            warnings.push(format!(
+                "dropped \"columns.{}.logical\" from the dta profile: it gives a date or timestamp type to a column that is not DOUBLE",
+                entry.name
+            ));
         }
     }
 }

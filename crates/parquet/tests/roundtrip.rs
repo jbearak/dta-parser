@@ -3,12 +3,12 @@
 mod support;
 
 use dta::{ValueLabel, ValueLabelSet};
-use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue, PhysicalType, TimeUnit};
+use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue, PhysicalType};
 use dta_parquet::{
     tagged_code, tagged_nan, write, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
-    WriteOptions, NA_BITS,
+    WriteOptions, Logical, NA_BITS,
 };
-use support::{every_type, expected, read, same, storage_columns, table, Col, Data, Got};
+use support::{dated_columns, every_type, expected, read, same, storage_columns, table, Col, Data, Got};
 
 fn bytes_of(cols: &[Col], profile: Profile, options: &WriteOptions) -> Vec<u8> {
     let mut out = Vec::new();
@@ -459,14 +459,86 @@ fn missing_letters_off_writes_nulls() {
 }
 
 #[test]
+fn dates_and_timestamps_with_letters_are_days_and_seconds() {
+    let cols = dated_columns();
+    let tz = |name: &str| -> Option<&'static str> {
+        match name {
+            "when" => Some("America/New_York"),
+            "when_utc" => Some(""),
+            _ => None,
+        }
+    };
+    for row_group_rows in [None, Some(2)] {
+        let opts = WriteOptions { row_group_rows, ..Default::default() };
+        let bytes = bytes_of(&cols, Profile::default(), &opts);
+        let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+        assert!(r.warnings().is_empty(), "{:?}", r.warnings());
+        for c in &cols {
+            let info = &r.columns()[r.column_index(&c.name).unwrap()];
+            let want = if matches!(c.data, Data::Date(_)) { Logical::Date } else { Logical::Timestamp };
+            // A plain DOUBLE to Parquet, with what it was in the profile.
+            assert_eq!((info.physical, info.logical.clone(), info.converted), (Some(PhysicalType::Double), None, None), "{}", c.name);
+            assert_eq!((info.kind.clone(), info.storage, info.profile_logical), (ColumnType::Double, None, Some(want)), "{}", c.name);
+            let p = r.profile().unwrap().column(&c.name).unwrap();
+            assert_eq!((p.logical, p.storage, p.tz.as_deref()), (Some(want), None, tz(&c.name)), "{}", c.name);
+        }
+        // Dates are days and timestamps seconds since 1970, with `.`, .a
+        // and .b; read over windows and threads alike.
+        let want: Vec<(Vec<f64>, Vec<u8>)> = vec![
+            (vec![0.0, 19_000.0, -1.0, 365.0, -25_567.0], vec![0, 2, 1, 3, 0]),
+            (vec![1_700_000_000.5, 0.0, -1.5, 0.001, 86_400.0], vec![0, 1, 0, 0, 3]),
+            (vec![-0.000_001, 1.25, 0.0, 0.0, 1_600_000_000.0], vec![0, 0, 3, 2, 0]),
+            (vec![1.000_000_123, -1.000_000_001, 0.0, 0.0, 1_700_000_000.123_456_7], vec![0, 0, 2, 1, 0]),
+        ];
+        for (skip, n, options) in [(0, 5, serial()), (1, 3, threaded())] {
+            let (got, letters) = read(&bytes, &names(&cols), skip, n, options);
+            let rows = skip as usize..(skip + n) as usize;
+            let any: Vec<bool> = want.iter().map(|(_, k)| k[rows.clone()].iter().any(|&c| c > 1)).collect();
+            assert_eq!(letters, any);
+            for ((c, g), (values, codes)) in cols.iter().zip(&got).zip(&want) {
+                let Got::Floats(v, k) = g else { panic!("{}: {g:?}", c.name) };
+                assert_eq!(k, &codes[rows.clone()], "{}", c.name);
+                for (i, r) in rows.clone().enumerate() {
+                    if codes[r] == 0 {
+                        // The nearest double, even to a nanosecond.
+                        assert_eq!(v[i], values[r], "{} row {r}", c.name);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn dates_and_timestamps_keep_their_type_with_letters_off() {
+    let cols = dated_columns();
+    let off = WriteOptions { missing_letters: false, ..Default::default() };
+    let bytes = bytes_of(&cols, Profile::default(), &off);
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    assert_eq!(r.columns()[0].kind, ColumnType::Date);
+    for c in &r.columns()[1..] {
+        assert!(matches!(c.kind, ColumnType::Timestamp { .. }), "{}: {:?}", c.name, c.kind);
+    }
+    assert!(r.columns().iter().all(|c| c.profile_logical.is_none() && c.storage.is_none()));
+    assert!(r.profile().unwrap().columns.iter().all(|c| c.logical.is_none()));
+    let (got, letters) = read(&bytes, &names(&cols), 0, 5, serial());
+    assert_eq!(letters, vec![false; 4]);
+    let Got::Ints(day, codes) = &got[0] else { panic!() };
+    assert_eq!((day[0], day[2], day[4]), (0, i64::MIN, -25_567));
+    assert_eq!(codes, &vec![0, 1, 1, 1, 0]);
+    let Got::Ints(when, codes) = &got[1] else { panic!() };
+    assert_eq!((when[0], when[2], when[3]), (1_700_000_000_500, -1500, 1));
+    assert_eq!(codes, &vec![0, 1, 0, 0, 1]);
+}
+
+#[test]
 fn letters_only_go_where_a_double_holds_them() {
-    // 64-bit integers, dates, timestamps and booleans cannot be written as
-    // DOUBLE exactly: a letter in one is an error, unless letters are off.
+    // 64-bit integers cannot be written as DOUBLE exactly, and booleans
+    // have no double form: a letter in one is an error, unless letters
+    // are off.
     let code = vec![0, 2];
     let bad = [
         Col { name: "big".into(), data: Data::I64(vec![1, 2]), codes: code.clone() },
-        Col { name: "day".into(), data: Data::Date(vec![1, 2]), codes: code.clone() },
-        Col { name: "ts".into(), data: Data::Ts { unit: TimeUnit::Millis, utc: true, zone: None, v: vec![1, 2] }, codes: code.clone() },
         Col { name: "yes".into(), data: Data::Bool(vec![1, 0]), codes: code.clone() },
     ];
     for c in &bad {
@@ -483,6 +555,33 @@ fn letters_only_go_where_a_double_holds_them() {
     let wide = [Col { name: "b".into(), data: Data::I8(vec![1, 200, 0]), codes: vec![2, 0, 0] }];
     let e = write(&table(&wide, Profile::default()), Vec::new(), &WriteOptions::default()).unwrap_err();
     assert!(e.message.contains("\"b\"") && e.message.contains("row 2") && e.message.contains("8 bits"), "{}", e.message);
+}
+
+#[test]
+fn a_logical_type_the_columns_cannot_have_is_dropped() {
+    let cols = [
+        Col { name: "x".into(), data: Data::Date(vec![1, 2]), codes: vec![0, 0] },
+        Col { name: "y".into(), data: Data::F64(vec![1.0, 2.0]), codes: vec![0, 0] },
+        Col { name: "z".into(), data: Data::F64(vec![2.5, 1.0]), codes: vec![0, 2] },
+    ];
+    let profile = r#"{"version": 1, "columns": {"x": {"logical": "date"}, "y": {"logical": "datetime", "label": "Why"}, "z": {"logical": "timestamp", "tz": "UTC"}, "gone": {"logical": "date"}}}"#;
+    let bytes = with_profile(&bytes_of(&cols, Profile::default(), &WriteOptions::default()), profile);
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let w = r.warnings().to_vec();
+    assert_eq!(w.len(), 2, "{w:?}");
+    assert!(w.iter().any(|w| w.contains("\"columns.y.logical\"")), "{w:?}");
+    assert!(w.iter().any(|w| w.contains("\"columns.x.logical\"") && w.contains("not DOUBLE")), "{w:?}");
+    let p = r.profile().unwrap();
+    assert_eq!(p.column("x").and_then(|c| c.logical), None);
+    assert_eq!(p.column("y").unwrap().label.as_deref(), Some("Why"));
+    assert_eq!(p.column("y").unwrap().logical, None);
+    assert_eq!(p.column("z").unwrap().logical, Some(Logical::Timestamp));
+    let logical: Vec<Option<Logical>> = r.columns().iter().map(|c| c.profile_logical).collect();
+    assert_eq!(logical, vec![None, None, Some(Logical::Timestamp)]);
+    // x is still a date, and z still reads as doubles with its letter.
+    assert_eq!(r.columns()[0].kind, ColumnType::Date);
+    let (got, _) = read(&bytes, &["z"], 0, 2, serial());
+    assert_eq!(got[0], Got::Floats(vec![2.5, -1e300], vec![0, 2]));
 }
 
 #[test]

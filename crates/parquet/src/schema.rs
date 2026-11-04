@@ -3,7 +3,7 @@
 use crate::format::{
     converted, FileMetaData, LogicalType, PhysicalType, Repetition, SchemaElement, TimeUnit,
 };
-use crate::profile::Storage;
+use crate::profile::{Logical, Storage};
 use dta::{Error, Result};
 
 /// What a column holds, as this crate reads it.
@@ -70,6 +70,11 @@ pub struct ColumnInfo {
     /// For a DOUBLE column written wider because it holds `.a` to `.z`,
     /// the storage type the profile records for it.
     pub storage: Option<Storage>,
+    /// For a DOUBLE column written as such because it holds `.a` to
+    /// `.z`, the date or timestamp the profile records it was: days or
+    /// seconds since 1970, its zone in the profile's `tz`. Unlike
+    /// [`logical`](Self::logical), this comes from the dta profile.
+    pub profile_logical: Option<Logical>,
     /// The first leaf (column chunk) of this column, and how many it has
     /// (more than one only for nested columns).
     pub(crate) leaf: usize,
@@ -213,6 +218,7 @@ pub(crate) fn columns(meta: &FileMetaData) -> Result<Vec<ColumnInfo>> {
             },
             required: e.repetition == Some(Repetition::Required),
             storage: None,
+            profile_logical: None,
             leaf,
             leaves,
         });

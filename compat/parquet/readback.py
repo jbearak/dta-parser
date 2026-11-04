@@ -116,9 +116,15 @@ def check_pyarrow(file, spec):
         compare("pyarrow", file, name, as_nan(col_spec), arrow_values(col, col_spec))
         # A column written as DOUBLE because it holds .a to .z names its
         # storage type in the profile.
-        storage = profile.get("columns", {}).get(name, {}).get("storage")
-        if storage != col_spec.get("storage"):
-            fail("pyarrow", file, f"{name}: profile storage {storage!r}, not {col_spec.get('storage')!r}")
+        entry = profile.get("columns", {}).get(name, {})
+        if entry.get("storage") != col_spec.get("storage"):
+            fail("pyarrow", file, f"{name}: profile storage {entry.get('storage')!r}, not {col_spec.get('storage')!r}")
+        # A date or timestamp written as DOUBLE (days or seconds since
+        # 1970) says so, and a timestamp keeps its zone.
+        if entry.get("logical") != col_spec.get("logical"):
+            fail("pyarrow", file, f"{name}: profile logical {entry.get('logical')!r}, not {col_spec.get('logical')!r}")
+        if col_spec.get("logical") == "timestamp" and entry.get("tz") != col_spec.get("tz"):
+            fail("pyarrow", file, f"{name}: profile tz {entry.get('tz')!r}, not {col_spec.get('tz')!r}")
         if col_spec["type"] == "categorical" and spec["rows"] > 0:
             # Every row group's dictionary holds every level, in order. A
             # table without rows has no row groups, so its levels are only

@@ -54,6 +54,9 @@ pub struct ColumnProfile {
     /// The storage type of a DOUBLE column that was written wider
     /// because it holds `.a` to `.z`.
     pub storage: Option<Storage>,
+    /// What a DOUBLE column written because it holds `.a` to `.z` was
+    /// when that was a date or a timestamp.
+    pub logical: Option<Logical>,
     pub categorical: Option<Categorical>,
     /// A timestamp's time zone. `Some("")` records a timestamp that is
     /// an instant without a zone (R's `POSIXct` without `tzone`).
@@ -77,6 +80,7 @@ impl ColumnProfile {
             && self.format.is_none()
             && self.value_labels.is_none()
             && self.storage.is_none()
+            && self.logical.is_none()
             && self.categorical.is_none()
             && self.tz.is_none()
             && self.unit.is_none()
@@ -125,6 +129,34 @@ impl Storage {
             Storage::Int => ColumnType::Int16,
             Storage::Long => ColumnType::Int32,
             Storage::Float => ColumnType::Float,
+        }
+    }
+}
+
+/// What a date or timestamp column written as DOUBLE, because it holds
+/// `.a` to `.z`, was (plan 0018, "Missing values"). A date is then days
+/// since 1970-01-01 and a timestamp seconds since 1970-01-01 00:00, R's
+/// `Date` and `POSIXct`; the timestamp's zone stays in `tz`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Logical {
+    Date,
+    Timestamp,
+}
+
+impl Logical {
+    /// The name in the profile.
+    pub fn name(self) -> &'static str {
+        match self {
+            Logical::Date => "date",
+            Logical::Timestamp => "timestamp",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "date" => Some(Logical::Date),
+            "timestamp" => Some(Logical::Timestamp),
+            _ => None,
         }
     }
 }
@@ -364,6 +396,7 @@ impl Profile {
                     ("format", &c.format),
                     ("value_labels", &c.value_labels),
                     ("storage", &c.storage.map(|s| s.name().to_string())),
+                    ("logical", &c.logical.map(|l| l.name().to_string())),
                     ("tz", &c.tz),
                     ("unit", &c.unit),
                 ] {
@@ -532,6 +565,16 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
                     None => warn(dropped(
                         &format!("{path}storage"),
                         "is not one of \"byte\", \"int\", \"long\" and \"float\"",
+                    )),
+                }
+                continue;
+            }
+            "logical" => {
+                match text(value).as_deref().and_then(Logical::from_name) {
+                    Some(l) => c.logical = Some(l),
+                    None => warn(dropped(
+                        &format!("{path}logical"),
+                        "is not one of \"date\" and \"timestamp\"",
                     )),
                 }
                 continue;
@@ -729,6 +772,7 @@ mod tests {
                 ColumnProfile {
                     name: "when".into(),
                     tz: Some("America/New_York".into()),
+                    logical: Some(Logical::Timestamp),
                     ..Default::default()
                 },
                 ColumnProfile {
@@ -859,7 +903,9 @@ mod tests {
                 "e": {"categorical": {"ordered": true}},
                 "f": {"value_labels": "good", "tz": "UTC"},
                 "g": {"storage": "double"},
-                "h": {"storage": 1, "label": "kept"}
+                "h": {"storage": 1, "label": "kept"},
+                "i": {"logical": "datetime"},
+                "j": {"logical": true, "label": "kept"}
             },
             "value_labels": {
                 "notpairs": {"1": "a"},
@@ -887,6 +933,8 @@ mod tests {
             "\"columns.e.categorical\"",
             "\"columns.g.storage\"",
             "\"columns.h.storage\"",
+            "\"columns.i.logical\"",
+            "\"columns.j.logical\"",
             "\"value_labels.notpairs\"",
             "\"value_labels.dupcode\"",
             "\"value_labels.dupmissing\"",
@@ -915,6 +963,8 @@ mod tests {
         assert!(p.column("c").is_none());
         assert!(p.column("g").is_none());
         assert_eq!(p.column("h").unwrap().storage, None);
+        assert!(p.column("i").is_none());
+        assert_eq!(p.column("j").unwrap().logical, None);
     }
 
     #[test]

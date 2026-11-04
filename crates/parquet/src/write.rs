@@ -22,7 +22,7 @@ use crate::format::{
     PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
     TimeUnit,
 };
-use crate::profile::{self, Categorical, Profile, Storage};
+use crate::profile::{self, Categorical, Logical, Profile, Storage};
 use crate::rle;
 use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
@@ -33,8 +33,9 @@ pub const BLOCK: usize = 1024;
 /// Fills a block of rows: called with the block's first row and buffers
 /// of the block's length, it writes each row's value and missing code
 /// (0 for a value, 1 for a null, 2 to 27 for `.a` to `.z`). `.a` to `.z`
-/// may be given only for `Int8`, `Int16`, `Int32`, `Float` and `Double`
-/// columns, unless [`WriteOptions::missing_letters`] is off.
+/// may be given only for `Int8`, `Int16`, `Int32`, `Float`, `Double`,
+/// `Date` and `Timestamp` columns, unless [`WriteOptions::missing_letters`]
+/// is off.
 pub type Fill<'a, T> = dyn Fn(usize, &mut [T], &mut [u8]) + Sync + 'a;
 
 /// Gives a row's bytes, or `None` for a null.
@@ -132,7 +133,8 @@ pub struct Table<'a> {
     pub rows: usize,
     pub columns: Vec<WriteColumn<'a>>,
     /// Labels, formats, notes and the rest. The writer adds what it knows
-    /// from the columns: levels, time zones and storage types.
+    /// from the columns: levels, time zones, and the storage and logical
+    /// types of columns written as DOUBLE.
     pub profile: Profile,
 }
 
@@ -145,9 +147,9 @@ pub struct WriteOptions {
     /// Rows per row group; `None` sizes them to about 64 MiB of values,
     /// at most 262,144 rows.
     pub row_group_rows: Option<usize>,
-    /// Write `.a` to `.z` as tagged NaNs, a numeric column that holds any
-    /// as DOUBLE; with `false` they are plain nulls, and every column
-    /// keeps its type.
+    /// Write `.a` to `.z` as tagged NaNs, a numeric, date or timestamp
+    /// column that holds any as DOUBLE; with `false` they are plain
+    /// nulls, and every column keeps its type.
     pub missing_letters: bool,
     /// Worker threads: 0 for the default, 1 for none.
     pub threads: usize,
@@ -409,7 +411,7 @@ fn put_chunk<W: Write>(
 
 /// Whether a column holds any of `.a` to `.z`. A code past `.z` is an
 /// error, and so is a letter in a column that cannot be written as DOUBLE
-/// exactly (64-bit integers, dates, timestamps, booleans).
+/// (64-bit integers, which a double cannot hold exactly, and booleans).
 fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
     fn scan<T: Default + Copy>(
         fill: &Fill<T>,
@@ -431,7 +433,7 @@ fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
                 if c > missing::SYSTEM {
                     if !widens {
                         return Err(Error::invalid(format!(
-                            "column \"{name}\": row {} holds {}, but .a to .z can be written only in byte, int, long, float and double columns; turn missing_letters off to write them as nulls",
+                            "column \"{name}\": row {} holds {}, but .a to .z can be written only in byte, int, long, float, double, date and timestamp columns; turn missing_letters off to write them as nulls",
                             first + i + 1,
                             missing::name(c).unwrap_or_default()
                         )));
@@ -447,8 +449,9 @@ fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
         Values::Int8(f) | Values::Int16(f) | Values::Int32(f) => scan(f.as_ref(), rows, name, true),
         Values::Float(f) => scan(f.as_ref(), rows, name, true),
         Values::Double(f) => scan(f.as_ref(), rows, name, true),
-        Values::Date(f) => scan(f.as_ref(), rows, name, false),
-        Values::Int64(f) | Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, name, false),
+        Values::Date(f) => scan(f.as_ref(), rows, name, true),
+        Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, name, true),
+        Values::Int64(f) => scan(f.as_ref(), rows, name, false),
         Values::Bool(f) => scan(f.as_ref(), rows, name, false),
         Values::Text(_) | Values::Binary(_) | Values::Categorical { .. } => Ok(false),
     }
@@ -465,6 +468,16 @@ fn storage_of(values: &Values) -> Option<Storage> {
     }
 }
 
+/// What a column written as DOUBLE because it holds `.a` to `.z` was,
+/// when it was a date or a timestamp.
+fn logical_of(values: &Values) -> Option<Logical> {
+    match values {
+        Values::Date(_) => Some(Logical::Date),
+        Values::Timestamp { .. } => Some(Logical::Timestamp),
+        _ => None,
+    }
+}
+
 fn bad_code(name: &str, row: usize, code: u8) -> Error {
     Error::invalid(format!(
         "column \"{name}\": row {} has missing code {code}, which is not one of . and .a to .z",
@@ -476,10 +489,10 @@ fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
     let mut p = table.profile.clone();
     for (k, c) in table.columns.iter().enumerate() {
         let entry = p.column_mut(&c.name);
-        entry.storage = if tagged[k] {
-            storage_of(&c.values)
+        (entry.storage, entry.logical) = if tagged[k] {
+            (storage_of(&c.values), logical_of(&c.values))
         } else {
-            None
+            (None, None)
         };
         match &c.values {
             Values::Categorical {
@@ -914,6 +927,27 @@ impl Encoder<'_> {
             Values::Int32(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
             Values::Float(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
             Values::Double(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
+            // Days since 1970, as R's Date holds them.
+            Values::Date(f) if tagged => self.numbers(&mut tag(f), rows, s, name, Double, None),
+            // Seconds since 1970, as R's POSIXct holds them.
+            Values::Timestamp { unit, fill: f, .. } if tagged => {
+                let per_second: i64 = match unit {
+                    TimeUnit::Millis => 1_000,
+                    TimeUnit::Micros => 1_000_000,
+                    TimeUnit::Nanos => 1_000_000_000,
+                };
+                let seconds = move |x: i64| {
+                    if x.unsigned_abs() <= 1 << 53 {
+                        // Exact as a double, so one rounding.
+                        x as f64 / per_second as f64
+                    } else {
+                        // Whole seconds and the fraction apart, both with
+                        // the sign of `x`, so that nothing cancels.
+                        (x / per_second) as f64 + (x % per_second) as f64 / per_second as f64
+                    }
+                };
+                self.numbers(&mut tag_with(f, seconds), rows, s, name, Double, None)
+            }
             Values::Int8(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(8)),
             Values::Int16(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(16)),
             Values::Int32(f) | Values::Date(f) => {
@@ -1397,6 +1431,14 @@ type Block<'f, T> = dyn FnMut(usize, &mut [T], &mut [u8]) + 'f;
 fn tag<'f, S: Number + Into<f64>>(
     fill: &'f Fill<'_, S>,
 ) -> impl FnMut(usize, &mut [f64], &mut [u8]) + 'f {
+    tag_with(fill, S::into)
+}
+
+/// [`tag`], with each value made a double by `widen`.
+fn tag_with<'f, S: Number>(
+    fill: &'f Fill<'_, S>,
+    widen: impl Fn(S) -> f64 + 'f,
+) -> impl FnMut(usize, &mut [f64], &mut [u8]) + 'f {
     let mut narrow = [S::default(); BLOCK];
     move |first, values: &mut [f64], codes: &mut [u8]| {
         let n = values.len();
@@ -1406,7 +1448,7 @@ fn tag<'f, S: Number + Into<f64>>(
                 *v = tagged_nan(*c);
                 *c = 0;
             } else {
-                *v = x.into();
+                *v = widen(x);
             }
         }
     }

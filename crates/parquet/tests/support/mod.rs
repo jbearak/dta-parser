@@ -185,6 +185,33 @@ pub fn storage_columns() -> Vec<Col> {
     ]
 }
 
+/// A date and three timestamps (a zone, an instant without one, and a
+/// local time in nanoseconds, one past 2^53) with values, `.`, `.a` and
+/// `.b`, over 5 rows. With letters on, these are written as days and seconds since
+/// 1970.
+pub fn dated_columns() -> Vec<Col> {
+    let ts = |unit, utc, zone: Option<&str>, v: Vec<i64>| Data::Ts { unit, utc, zone: zone.map(Into::into), v };
+    vec![
+        // 1900-01-01 is day -25,567.
+        Col { name: "day".into(), data: Data::Date(vec![0, 19_000, -1, 365, -25_567]), codes: vec![0, 2, 1, 3, 0] },
+        Col {
+            name: "when".into(),
+            data: ts(TimeUnit::Millis, true, Some("America/New_York"), vec![1_700_000_000_500, 0, -1500, 1, 86_400_000]),
+            codes: vec![0, 1, 0, 0, 3],
+        },
+        Col {
+            name: "when_utc".into(),
+            data: ts(TimeUnit::Micros, true, None, vec![-1, 1_250_000, 0, 0, 1_600_000_000_000_000]),
+            codes: vec![0, 0, 3, 2, 0],
+        },
+        Col {
+            name: "local".into(),
+            data: ts(TimeUnit::Nanos, false, None, vec![1_000_000_123, -1_000_000_001, 0, 0, 1_700_000_000_123_456_789]),
+            codes: vec![0, 0, 2, 1, 0],
+        },
+    ]
+}
+
 /// A column as read back: numbers as `f64` (or exact `i64`) with codes,
 /// text as optional bytes, categoricals as codes.
 #[derive(Debug, Clone, PartialEq)]

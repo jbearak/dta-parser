@@ -170,6 +170,17 @@ see" lists what they lose.
   records its storage type (`"storage": "byte"`, `"int"`, `"long"` or
   `"float"`) for the readers that keep it (Python, Julia, TypeScript).
   Columns without `.a` to `.z` keep their own type.
+- A date or timestamp column holding `.a` to `.z` is written as DOUBLE
+  too, the way R's `Date` and `POSIXct` hold it: a date as days since
+  1970-01-01, a timestamp as seconds since 1970-01-01 00:00 (fractions
+  as near as a double holds them), with the profile entry
+  `"logical": "date"` or `"timestamp"` and the timestamp's `tz` as it
+  would have been. Our readers turn these back into dates and
+  timestamps; other tools see doubles. 64-bit integers (which a double
+  cannot hold exactly) and booleans cannot hold `.a` to `.z`: a letter
+  in either is an error unless `missing_letters` is false. `read_dta()`
+  never returns such a column, so every frame it returns can be
+  written.
 - A reader decodes a DOUBLE value as `.a` to `.z` only when its bits are
   exactly that pattern with a letter `a` to `z`; any other NaN is NaN.
   Our readers read the bits from the file, so this works the same in
@@ -230,7 +241,11 @@ see" lists what they lose.
 - Storage types are not repeated where Parquet's type says it: INT(8)
   is byte, INT(16) is int, INT32 is long, FLOAT is float, DOUBLE is
   double. `storage` appears only on a DOUBLE column written wider
-  because it holds `.a` to `.z`. A string column
+  because it holds `.a` to `.z`. So does `logical` (`"date"` or
+  `"timestamp"`), on a date or timestamp column written as DOUBLE for
+  the same reason. A reader drops either key, with one warning, from a
+  column that is not DOUBLE, or when its value is not one it knows. A
+  string column
   becomes strN or strL when it is written to `.dta`, from its widest
   value, as it does today.
 - `timestamp` keeps the `.dta` file's time stamp where a language
@@ -508,7 +523,7 @@ save_parquet(data, file, compression = "zstd", compression_level = NULL,
   That frame has one row per Parquet column: name, role (`data` or
   `nested`), the R type `read_parquet()` will return, Parquet's
   physical and logical type, the variable label, the value label set's
-  name, and the storage type the profile records. This
+  name, and the storage and logical types the profile records. This
   copies `nanoparquet::read_parquet_schema()`, the only R function that
   says what a column will become before reading it.
 - `save_parquet()` writes what `save_dta()` writes and with the same
