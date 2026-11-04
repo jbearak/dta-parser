@@ -695,13 +695,27 @@ mod tests {
         // A wrong size, a cut stream and a damaged one are errors.
         let mut codecs = Codecs::default();
         for wrong in [BROTLI_TEXT.len() - 1, BROTLI_TEXT.len() + 1] {
-            assert!(codecs.decompress(Codec::Brotli, BROTLI_PACKED, wrong, &mut out).is_err());
+            assert!(codecs
+                .decompress(Codec::Brotli, BROTLI_PACKED, wrong, &mut out)
+                .is_err());
         }
         for cut in 1..BROTLI_PACKED.len() {
-            assert!(codecs.decompress(Codec::Brotli, &BROTLI_PACKED[..cut], BROTLI_TEXT.len(), &mut out).is_err(), "cut {cut}");
+            assert!(
+                codecs
+                    .decompress(
+                        Codec::Brotli,
+                        &BROTLI_PACKED[..cut],
+                        BROTLI_TEXT.len(),
+                        &mut out
+                    )
+                    .is_err(),
+                "cut {cut}"
+            );
         }
         // The empty stream is the byte 0x06 (WBITS 16, ISLAST, ISLASTEMPTY).
-        codecs.decompress(Codec::Brotli, &[0x06], 0, &mut out).unwrap();
+        codecs
+            .decompress(Codec::Brotli, &[0x06], 0, &mut out)
+            .unwrap();
         assert!(out.is_empty());
         assert_eq!(brotli_first_block(&[0x06]), None);
     }
@@ -713,9 +727,7 @@ mod tests {
         // WBITS 24 (bits 1, 111), not last, 6 nibbles of length-1 =
         // 0xffffff: 16 MiB.
         let mut bits: Vec<u8> = vec![1, 1, 1, 1, 0, 0, 1];
-        for _ in 0..24 {
-            bits.push(1);
-        }
+        bits.extend([1; 24]);
         let mut bytes = vec![0u8; bits.len().div_ceil(8) + 4];
         for (k, b) in bits.iter().enumerate() {
             bytes[k / 8] |= b << (k % 8);

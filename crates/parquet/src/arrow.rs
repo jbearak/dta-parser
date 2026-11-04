@@ -4,8 +4,12 @@
 //! factor or `category`, ordered or not) and a timestamp's zone.
 //!
 //! The message is a flatbuffer (the Arrow format's `Message.fbs` and
-//! `Schema.fbs`), built here by hand: the few tables it needs do not
-//! justify a flatbuffers dependency.
+//! `Schema.fbs`), built and read here by hand: the few tables it needs do
+//! not justify a flatbuffers dependency.
+//!
+//! Reading takes another writer's entry, which is untrusted: every
+//! offset and length is checked against the buffer, and a damaged entry
+//! is an `Err` the reader turns into a warning, never a failure.
 
 use crate::format::TimeUnit;
 
@@ -279,9 +283,285 @@ fn base64(data: &[u8]) -> String {
     out
 }
 
+// ---- reading ----
+
+/// What the reader takes from one top-level field of an `ARROW:schema`
+/// entry.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ArrowField {
+    pub(crate) name: String,
+    /// The field is dictionary-encoded.
+    pub(crate) dictionary: bool,
+    /// Its (value) type is text: Utf8, LargeUtf8 or Utf8View.
+    pub(crate) text: bool,
+    /// A timestamp's zone.
+    pub(crate) zone: Option<String>,
+}
+
+const TYPE_LARGE_UTF8: u8 = 20;
+const TYPE_UTF8_VIEW: u8 = 24;
+
+/// A flatbuffer being read: every access is checked, giving `None` past
+/// the end.
+struct Flat<'a>(&'a [u8]);
+
+/// A table: its position and its vtable's.
+#[derive(Clone, Copy)]
+struct TableAt {
+    at: usize,
+    vtable: usize,
+    vtable_len: usize,
+}
+
+impl<'a> Flat<'a> {
+    fn bytes<const N: usize>(&self, at: usize) -> Option<[u8; N]> {
+        self.0.get(at..at.checked_add(N)?)?.try_into().ok()
+    }
+    fn u8(&self, at: usize) -> Option<u8> {
+        self.0.get(at).copied()
+    }
+    fn u16(&self, at: usize) -> Option<usize> {
+        Some(u16::from_le_bytes(self.bytes(at)?) as usize)
+    }
+    fn u32(&self, at: usize) -> Option<usize> {
+        usize::try_from(u32::from_le_bytes(self.bytes(at)?)).ok()
+    }
+    /// Follow the offset stored at `at`.
+    fn deref(&self, at: usize) -> Option<usize> {
+        let to = at.checked_add(self.u32(at)?)?;
+        (to < self.0.len()).then_some(to)
+    }
+    fn table(&self, at: usize) -> Option<TableAt> {
+        let back = i32::from_le_bytes(self.bytes(at)?);
+        let vtable = usize::try_from(at as i64 - i64::from(back)).ok()?;
+        let vtable_len = self.u16(vtable)?;
+        if vtable_len < 4 || vtable.checked_add(vtable_len)? > self.0.len() {
+            return None;
+        }
+        Some(TableAt {
+            at,
+            vtable,
+            vtable_len,
+        })
+    }
+    /// Where field `slot` of `t` is, if present.
+    fn field(&self, t: TableAt, slot: usize) -> Option<usize> {
+        let entry = 4 + 2 * slot;
+        if entry + 2 > t.vtable_len {
+            return None;
+        }
+        match self.u16(t.vtable + entry)? {
+            0 => None,
+            off => {
+                let at = t.at.checked_add(off)?;
+                (at < self.0.len()).then_some(at)
+            }
+        }
+    }
+    /// The table field `slot` of `t` points to.
+    fn child(&self, t: TableAt, slot: usize) -> Option<TableAt> {
+        self.table(self.deref(self.field(t, slot)?)?)
+    }
+    fn string(&self, t: TableAt, slot: usize) -> Option<Option<String>> {
+        let Some(at) = self.field(t, slot) else {
+            return Some(None);
+        };
+        let s = self.deref(at)?;
+        let len = self.u32(s)?;
+        let bytes = self
+            .0
+            .get(s.checked_add(4)?..s.checked_add(4)?.checked_add(len)?)?;
+        Some(Some(std::str::from_utf8(bytes).ok()?.to_string()))
+    }
+    fn u8_field(&self, t: TableAt, slot: usize) -> Option<u8> {
+        match self.field(t, slot) {
+            Some(at) => self.u8(at),
+            None => Some(0),
+        }
+    }
+}
+
+/// The top-level fields of an `ARROW:schema` value: base64 of an Arrow
+/// IPC message (with or without the continuation marker) whose header is
+/// a schema. `Err` says what is wrong with it.
+pub(crate) fn read_schema(value: &[u8]) -> Result<Vec<ArrowField>, String> {
+    let ipc = unbase64(value).ok_or("it is not base64")?;
+    let (start, len) = match ipc.get(..4) {
+        Some([0xff, 0xff, 0xff, 0xff]) => (8, ipc.get(4..8)),
+        Some(_) => (4, ipc.get(..4)),
+        None => return Err("it is too short".into()),
+    };
+    let len = len
+        .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")) as usize)
+        .ok_or("it is too short")?;
+    let fb = ipc
+        .get(start..)
+        .and_then(|b| b.get(..len))
+        .ok_or("its message is longer than the entry")?;
+    fields(&Flat(fb)).ok_or_else(|| "its message is damaged".to_string())
+}
+
+fn fields(fb: &Flat) -> Option<Vec<ArrowField>> {
+    let message = fb.table(fb.deref(0)?)?;
+    // MessageHeader 1 is Schema.
+    if fb.u8_field(message, 1)? != 1 {
+        return None;
+    }
+    let schema = fb.child(message, 2)?;
+    let Some(at) = fb.field(schema, 1) else {
+        return Some(Vec::new());
+    };
+    let vector = fb.deref(at)?;
+    let n = fb.u32(vector)?;
+    // Each element is a 4-byte offset, all within the buffer.
+    if n > (fb.0.len() - vector) / 4 {
+        return None;
+    }
+    let mut out = Vec::with_capacity(n);
+    for k in 0..n {
+        let field = fb.table(fb.deref(vector + 4 + 4 * k)?)?;
+        let tag = fb.u8_field(field, 2)?;
+        let zone = if tag == TYPE_TIMESTAMP {
+            match fb.field(field, 3) {
+                Some(_) => fb.string(fb.child(field, 3)?, 1)?,
+                None => None,
+            }
+        } else {
+            None
+        };
+        out.push(ArrowField {
+            name: fb.string(field, 0)?.unwrap_or_default(),
+            dictionary: fb.field(field, 4).is_some(),
+            text: matches!(tag, TYPE_UTF8 | TYPE_LARGE_UTF8 | TYPE_UTF8_VIEW),
+            zone,
+        });
+    }
+    Some(out)
+}
+
+/// Standard base64, with or without padding; ASCII whitespace is
+/// skipped.
+fn unbase64(text: &[u8]) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(text.len() / 4 * 3 + 3);
+    let (mut acc, mut bits) = (0u32, 0u32);
+    let mut padding = 0;
+    for &c in text {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => {
+                padding += 1;
+                continue;
+            }
+            c if c.is_ascii_whitespace() => continue,
+            _ => return None,
+        };
+        if padding > 0 {
+            return None;
+        }
+        acc = acc << 6 | u32::from(v);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    (padding <= 2).then_some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn our_own_entry_reads_back() {
+        let columns = vec![
+            ("a".to_string(), ArrowType::Int { bits: 8 }),
+            (
+                "region".to_string(),
+                ArrowType::Dictionary { ordered: true },
+            ),
+            ("s".to_string(), ArrowType::Utf8),
+            (
+                "when".to_string(),
+                ArrowType::Timestamp {
+                    unit: TimeUnit::Micros,
+                    zone: Some("America/New_York".into()),
+                },
+            ),
+            (
+                "local".to_string(),
+                ArrowType::Timestamp {
+                    unit: TimeUnit::Nanos,
+                    zone: None,
+                },
+            ),
+        ];
+        let got = read_schema(schema_entry(&columns).as_bytes()).unwrap();
+        let summary: Vec<(&str, bool, bool, Option<&str>)> = got
+            .iter()
+            .map(|f| (f.name.as_str(), f.dictionary, f.text, f.zone.as_deref()))
+            .collect();
+        assert_eq!(
+            summary,
+            vec![
+                ("a", false, false, None),
+                ("region", true, true, None),
+                ("s", false, true, None),
+                ("when", false, false, Some("America/New_York")),
+                ("local", false, false, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn damaged_entries_are_errors_not_panics() {
+        let columns = vec![
+            (
+                "region".to_string(),
+                ArrowType::Dictionary { ordered: false },
+            ),
+            (
+                "when".to_string(),
+                ArrowType::Timestamp {
+                    unit: TimeUnit::Millis,
+                    zone: Some("UTC".into()),
+                },
+            ),
+        ];
+        let good = schema_entry(&columns);
+        let ipc = unbase64(good.as_bytes()).unwrap();
+        assert!(read_schema(b"not base64!").is_err());
+        assert!(read_schema(b"").is_err());
+        assert!(read_schema(b"AAAA====").is_err());
+        // Every byte set to each of a few values, and every cut: an
+        // answer or an error, never a panic.
+        for at in 0..ipc.len() {
+            for v in [0x00, 0x01, 0x7f, 0x80, 0xff] {
+                let mut bad = ipc.clone();
+                bad[at] = v;
+                let _ = read_schema(base64(&bad).as_bytes());
+            }
+            let _ = read_schema(base64(&ipc[..at]).as_bytes());
+        }
+        // Without the continuation marker (the older framing).
+        let legacy = &ipc[4..];
+        assert_eq!(read_schema(base64(legacy).as_bytes()).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn base64_reads_back() {
+        for data in [&b""[..], b"f", b"fo", b"foo", b"foobar", &[0xff, 0, 0x80]] {
+            assert_eq!(unbase64(base64(data).as_bytes()).unwrap(), data);
+        }
+        assert_eq!(unbase64(b"Zm9v\nYmFy").unwrap(), b"foobar");
+        assert_eq!(unbase64(b"Zm9v YmFy").unwrap(), b"foobar");
+        assert!(unbase64(b"Zg==Zg").is_none());
+    }
 
     #[test]
     fn base64_matches_known_values() {

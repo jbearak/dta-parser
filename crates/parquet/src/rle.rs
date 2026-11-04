@@ -38,7 +38,7 @@ pub(crate) fn width_for(max: u32) -> u8 {
     (32 - max.leading_zeros()) as u8
 }
 
-fn varint(buf: &[u8], at: &mut usize) -> Result<u64> {
+pub(crate) fn varint(buf: &[u8], at: &mut usize) -> Result<u64> {
     let mut v = 0u64;
     for shift in (0..64).step_by(7) {
         let b = *buf

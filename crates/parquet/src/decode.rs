@@ -8,6 +8,7 @@
 use std::ops::Range;
 
 use crate::codec::Codecs;
+use crate::encoding;
 use crate::format::{Codec, ColumnMetaData, Encoding, OffsetIndex, PageHeader, PageType};
 use crate::rle;
 use crate::schema::ColumnInfo;
@@ -682,6 +683,12 @@ pub(crate) trait Physical: Copy + Send + Sync + std::fmt::Debug + 'static {
     const WIDTH: usize;
     fn from_le(b: &[u8]) -> Self;
     fn convert<T: crate::read::Element>(self) -> Option<T>;
+    /// The value from the bits DELTA_BINARY_PACKED gives, for the integer
+    /// types it encodes; `None` for the others.
+    #[inline]
+    fn from_bits(_: u64) -> Option<Self> {
+        None
+    }
     /// The missing code of a tagged NaN (2 to 27 for `.a` to `.z`), or 0.
     /// Only doubles hold them.
     #[inline]
@@ -700,6 +707,10 @@ impl Physical for i32 {
     fn convert<T: crate::read::Element>(self) -> Option<T> {
         T::from_i32(self)
     }
+    #[inline]
+    fn from_bits(v: u64) -> Option<Self> {
+        Some(v as u32 as i32)
+    }
 }
 
 impl Physical for i64 {
@@ -711,6 +722,89 @@ impl Physical for i64 {
     #[inline]
     fn convert<T: crate::read::Element>(self) -> Option<T> {
         T::from_i64(self)
+    }
+    #[inline]
+    fn from_bits(v: u64) -> Option<Self> {
+        Some(v as i64)
+    }
+}
+
+/// An INT32 column annotated unsigned: the same bits, read as a u32.
+impl Physical for u32 {
+    const WIDTH: usize = 4;
+    #[inline]
+    fn from_le(b: &[u8]) -> Self {
+        u32::from_le_bytes(b[..4].try_into().expect("4 bytes"))
+    }
+    #[inline]
+    fn convert<T: crate::read::Element>(self) -> Option<T> {
+        T::from_u64(u64::from(self))
+    }
+    #[inline]
+    fn from_bits(v: u64) -> Option<Self> {
+        Some(v as u32)
+    }
+}
+
+/// An INT64 column annotated unsigned.
+impl Physical for u64 {
+    const WIDTH: usize = 8;
+    #[inline]
+    fn from_le(b: &[u8]) -> Self {
+        u64::from_le_bytes(b[..8].try_into().expect("8 bytes"))
+    }
+    #[inline]
+    fn convert<T: crate::read::Element>(self) -> Option<T> {
+        T::from_u64(self)
+    }
+    #[inline]
+    fn from_bits(v: u64) -> Option<Self> {
+        Some(v)
+    }
+}
+
+/// An INT96 timestamp: nanoseconds since midnight (8 bytes), then the
+/// Julian day (4 bytes, unsigned), as Impala and Spark wrote them. It
+/// reads as nanoseconds since 1970-01-01 00:00.
+#[derive(Clone, Copy)]
+pub(crate) struct Int96(pub(crate) [u8; 12]);
+
+/// The Julian day of 1970-01-01.
+const UNIX_JULIAN_DAY: i64 = 2_440_588;
+const NANOS_PER_DAY: i64 = 86_400_000_000_000;
+
+impl Int96 {
+    fn parts(self) -> (i64, u32) {
+        let nanos = i64::from_le_bytes(self.0[..8].try_into().expect("8 bytes"));
+        let day = u32::from_le_bytes(self.0[8..].try_into().expect("4 bytes"));
+        (nanos, day)
+    }
+
+    /// Nanoseconds since 1970, if an i64 holds them.
+    pub(crate) fn nanos(self) -> Option<i64> {
+        let (nanos, day) = self.parts();
+        (i64::from(day) - UNIX_JULIAN_DAY)
+            .checked_mul(NANOS_PER_DAY)?
+            .checked_add(nanos)
+    }
+}
+
+impl std::fmt::Debug for Int96 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (nanos, day) = self.parts();
+        write!(f, "INT96 (Julian day {day}, {nanos} ns)")
+    }
+}
+
+impl Physical for Int96 {
+    const WIDTH: usize = 12;
+    #[inline]
+    fn from_le(b: &[u8]) -> Self {
+        Int96(b[..12].try_into().expect("12 bytes"))
+    }
+    #[inline]
+    fn convert<T: crate::read::Element>(self) -> Option<T> {
+        T::from_i64(self.nanos()?)
     }
 }
 
@@ -763,6 +857,8 @@ fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
 pub(crate) struct Numbers<'o, P, T> {
     pub(crate) out: NumberOut<'o, T>,
     pub(crate) dictionary: Vec<P>,
+    /// Values decoded from a DELTA_BINARY_PACKED page, the wanted ones.
+    pub(crate) decoded: Vec<u64>,
     /// Whether any `.a` to `.z` was read.
     pub(crate) letters: bool,
 }
@@ -863,6 +959,32 @@ impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
                 self.dictionary = dict;
                 result
             }
+            Encoding::DeltaBinaryPacked if P::from_bits(0).is_some() => {
+                // Only the wanted values, whose output is allocated.
+                let mut buf = std::mem::take(&mut self.decoded);
+                buf.clear();
+                buf.resize(page.present - page.before, 0);
+                let before = page.before;
+                let result = encoding::delta_values(page.values, before, &mut buf).and_then(|()| {
+                    self.put(page, |i| {
+                        P::from_bits(buf[i - before]).expect("an integer type")
+                    })
+                });
+                self.decoded = buf;
+                result
+            }
+            Encoding::ByteStreamSplit => {
+                let count = encoding::split_count(page.values, P::WIDTH)?;
+                if count < page.present {
+                    return Err(Error::new("a page holds fewer values than its levels say"));
+                }
+                let values = page.values;
+                self.put(page, |i| {
+                    let mut b = [0u8; 16];
+                    encoding::split_value(values, count, i, &mut b[..P::WIDTH]);
+                    P::from_le(&b)
+                })
+            }
             other => Err(unsupported_encoding(other)),
         }
     }
@@ -905,6 +1027,7 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
                 file_row: self.out.file_row,
             },
             dictionary: Vec::new(),
+            decoded: Vec::new(),
             letters: false,
         };
         let bools = &*bools;
@@ -965,6 +1088,8 @@ pub(crate) struct Texts {
     /// The column's values are checked as UTF-8.
     pub(crate) utf8: bool,
     dictionary_len: usize,
+    /// The width of a FIXED_LEN_BYTE_ARRAY column's values.
+    fixed: Option<usize>,
 }
 
 impl Texts {
@@ -978,12 +1103,63 @@ impl Texts {
             },
             utf8,
             dictionary_len: 0,
+            fixed: None,
         }
+    }
+
+    /// Values of a FIXED_LEN_BYTE_ARRAY column, each `width` bytes.
+    pub(crate) fn fixed(mut self, width: Option<usize>) -> Self {
+        self.fixed = width;
+        self
+    }
+
+    /// Append values `page.before..page.present` of a page encoded other
+    /// than PLAIN or with a dictionary. `scratch` holds the value being
+    /// rebuilt.
+    fn push_encoded(&mut self, page: &DataPage, scratch: &mut Vec<u8>) -> Result<()> {
+        let start = self.chunk.bytes.len();
+        let first = self.chunk.ends.len();
+        let (skip, n) = (page.before, page.present - page.before);
+        let chunk = &mut self.chunk;
+        let push = |v: &[u8]| {
+            chunk.bytes.extend_from_slice(v);
+            chunk.ends.push(chunk.bytes.len());
+            Ok(())
+        };
+        match (page.encoding, self.fixed) {
+            (Encoding::DeltaLengthByteArray, None) => {
+                encoding::delta_length_byte_array(page.values, skip, n, push)?
+            }
+            (Encoding::DeltaByteArray, _) => {
+                encoding::delta_byte_array(page.values, skip, n, scratch, push)?
+            }
+            (Encoding::ByteStreamSplit, Some(width)) => {
+                let count = encoding::split_count(page.values, width)?;
+                if count < page.present {
+                    return Err(Error::new("a page holds fewer values than its levels say"));
+                }
+                let mut push = push;
+                scratch.clear();
+                scratch.resize(width, 0);
+                for i in skip..page.present {
+                    encoding::split_value(page.values, count, i, scratch);
+                    push(scratch)?;
+                }
+            }
+            (other, _) => return Err(unsupported_encoding(other)),
+        }
+        if self.utf8 {
+            check_utf8(&self.chunk.bytes, start, &self.chunk.ends[first..])?;
+        }
+        Ok(())
     }
 
     /// Append PLAIN byte arrays (`count` of them) as values; returns how
     /// many bytes they took.
     fn push_plain(&mut self, values: &[u8], count: usize, keep: Range<usize>) -> Result<usize> {
+        if let Some(width) = self.fixed {
+            return self.push_fixed(values, width, count, keep);
+        }
         let mut at = 0;
         let start = self.chunk.bytes.len();
         for i in 0..count {
@@ -1006,6 +1182,35 @@ impl Texts {
             )?;
         }
         Ok(at)
+    }
+}
+
+impl Texts {
+    /// PLAIN values of a FIXED_LEN_BYTE_ARRAY column: `count` values of
+    /// `width` bytes, no lengths.
+    fn push_fixed(
+        &mut self,
+        values: &[u8],
+        width: usize,
+        count: usize,
+        keep: Range<usize>,
+    ) -> Result<usize> {
+        let need = count
+            .checked_mul(width)
+            .filter(|&n| n <= values.len())
+            .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
+        let start = self.chunk.bytes.len();
+        let first = self.chunk.ends.len();
+        for i in keep.start..keep.end.min(count) {
+            self.chunk
+                .bytes
+                .extend_from_slice(&values[i * width..(i + 1) * width]);
+            self.chunk.ends.push(self.chunk.bytes.len());
+        }
+        if self.utf8 {
+            check_utf8(&self.chunk.bytes, start, &self.chunk.ends[first..])?;
+        }
+        Ok(need)
     }
 }
 
@@ -1032,14 +1237,26 @@ impl Consumer for Texts {
         Ok(())
     }
 
-    fn page(&mut self, page: &DataPage, indices: &mut Vec<u32>, _: &mut Vec<u8>) -> Result<()> {
+    fn page(
+        &mut self,
+        page: &DataPage,
+        indices: &mut Vec<u32>,
+        scratch: &mut Vec<u8>,
+    ) -> Result<()> {
         let wanted = page.before..page.present;
         // Values arrive in row order: the chunk's output so far ends at
         // this page's out_at.
         match page.encoding {
-            Encoding::Plain => {
+            Encoding::Plain
+            | Encoding::DeltaLengthByteArray
+            | Encoding::DeltaByteArray
+            | Encoding::ByteStreamSplit => {
                 let base = self.chunk.ends.len();
-                self.push_plain(page.values, page.present, wanted)?;
+                if page.encoding == Encoding::Plain {
+                    self.push_plain(page.values, page.present, wanted)?;
+                } else {
+                    self.push_encoded(page, scratch)?;
+                }
                 match &mut self.chunk.codes {
                     // In a chunk with a dictionary, PLAIN pages (after a
                     // writer gave up on the dictionary) add values to it.

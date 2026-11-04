@@ -7,13 +7,14 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
+use crate::decimal::{Unscaled, DOUBLE_DIGITS};
 use crate::decode::{
-    self, Booleans, Chunk, NumberOut, Numbers as NumberConsumer, Physical, Scratch, TextChunk,
-    Texts,
+    self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, Physical, Scratch,
+    TextChunk, Texts,
 };
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
 use crate::profile::{self, Profile};
-use crate::schema::{self, ColumnInfo, ColumnType, Role};
+use crate::schema::{self, ColumnInfo, ColumnType, LevelsFrom, Role};
 use dta::{missing, Error, ErrorKind, Result, SharedSource, Source};
 
 /// What to do with nested columns (lists, maps, groups), which are not
@@ -57,15 +58,19 @@ mod sealed {
     impl Sealed for i32 {}
     impl Sealed for i64 {}
     impl Sealed for u8 {}
+    impl Sealed for u16 {}
+    impl Sealed for u32 {}
+    impl Sealed for u64 {}
     impl Sealed for f32 {}
     impl Sealed for f64 {}
 }
 
 /// A number type the reader can write into: `i8`, `i16`, `i32`, `i64`,
-/// `u8`, `f32` or `f64`. A value the type cannot hold exactly is an error
-/// naming the column and row. An integer type reads a DOUBLE column only
-/// when the profile gives it an integer storage type
-/// ([`ColumnInfo::storage`]).
+/// `u8`, `u16`, `u32`, `u64`, `f32` or `f64`. A value the type cannot
+/// hold exactly is an error naming the column and row. An integer type
+/// reads a DOUBLE column only when the profile gives it an integer
+/// storage type ([`ColumnInfo::storage`]). Only `f64` reads a DECIMAL
+/// column (see [`crate::decimal`]).
 pub trait Element: Copy + Send + Sync + std::fmt::Debug + 'static + sealed::Sealed {
     #[doc(hidden)]
     const NAME: &'static str;
@@ -73,6 +78,8 @@ pub trait Element: Copy + Send + Sync + std::fmt::Debug + 'static + sealed::Seal
     fn from_i32(v: i32) -> Option<Self>;
     #[doc(hidden)]
     fn from_i64(v: i64) -> Option<Self>;
+    #[doc(hidden)]
+    fn from_u64(v: u64) -> Option<Self>;
     #[doc(hidden)]
     fn from_f32(v: f32) -> Option<Self>;
     #[doc(hidden)]
@@ -94,6 +101,10 @@ macro_rules! integer_element {
             fn from_i64(v: i64) -> Option<Self> {
                 <$t>::try_from(v).ok()
             }
+            #[inline]
+            fn from_u64(v: u64) -> Option<Self> {
+                <$t>::try_from(v).ok()
+            }
             fn from_f32(_: f32) -> Option<Self> {
                 None
             }
@@ -109,7 +120,17 @@ macro_rules! integer_element {
                 use ColumnType::*;
                 matches!(
                     kind,
-                    Int8 | Int16 | Int32 | Int64 | Boolean | Date | Timestamp { .. }
+                    Int8 | Int16
+                        | Int32
+                        | Int64
+                        | UInt8
+                        | UInt16
+                        | UInt32
+                        | UInt64
+                        | Boolean
+                        | Date
+                        | Timestamp { .. }
+                        | Time { .. }
                 )
             }
         }
@@ -121,6 +142,9 @@ integer_element!(i16, "a 16-bit integer");
 integer_element!(i32, "a 32-bit integer");
 integer_element!(i64, "a 64-bit integer");
 integer_element!(u8, "an unsigned 8-bit integer");
+integer_element!(u16, "an unsigned 16-bit integer");
+integer_element!(u32, "an unsigned 32-bit integer");
+integer_element!(u64, "an unsigned 64-bit integer");
 
 /// Below 2^63 and at least -2^63, where `as i64` does not saturate.
 const I64_LIMIT: f64 = 9_223_372_036_854_775_808.0;
@@ -138,6 +162,11 @@ impl Element for f32 {
         ((f as f64) < I64_LIMIT && f as i64 == v).then_some(f)
     }
     #[inline]
+    fn from_u64(v: u64) -> Option<Self> {
+        let f = v as f32;
+        ((f as f64) < 2.0 * I64_LIMIT && f as u64 == v).then_some(f)
+    }
+    #[inline]
     fn from_f32(v: f32) -> Option<Self> {
         Some(v)
     }
@@ -147,7 +176,7 @@ impl Element for f32 {
         (f as f64 == v || v.is_nan()).then_some(f)
     }
     fn accepts(kind: &ColumnType) -> bool {
-        kind.is_numeric()
+        kind.is_numeric() && !matches!(kind, ColumnType::Decimal { .. })
     }
 }
 
@@ -161,6 +190,11 @@ impl Element for f64 {
     fn from_i64(v: i64) -> Option<Self> {
         let f = v as f64;
         (f < I64_LIMIT && f as i64 == v).then_some(f)
+    }
+    #[inline]
+    fn from_u64(v: u64) -> Option<Self> {
+        let f = v as f64;
+        (f < 2.0 * I64_LIMIT && f as u64 == v).then_some(f)
     }
     #[inline]
     fn from_f32(v: f32) -> Option<Self> {
@@ -221,18 +255,27 @@ pub enum Output<'a> {
     Int32(Numbers<'a, i32>),
     Int64(Numbers<'a, i64>),
     UInt8(Numbers<'a, u8>),
+    UInt16(Numbers<'a, u16>),
+    UInt32(Numbers<'a, u32>),
+    UInt64(Numbers<'a, u64>),
     Float32(Numbers<'a, f32>),
+    /// Also the nearest double to each DECIMAL value; a value with more
+    /// than 15 significant digits is an error naming the column and row
+    /// (read it as [`Output::Text`] to keep every digit).
     Float64(Numbers<'a, f64>),
-    /// A categorical column (one with levels in the profile) as level
-    /// codes: `base` for the first level, `null` for a missing value. R's
-    /// factors use base 1 and `NA_integer_`.
+    /// A categorical column ([`ColumnInfo::levels`]) as level codes:
+    /// `base` for the first level, `null` for a missing value. R's
+    /// factors use base 1 and `NA_integer_`. With levels from the profile
+    /// the codes follow its levels; with levels from the rows read, the
+    /// levels are in [`ReadReport::levels`].
     Levels {
         codes: &'a mut [i32],
         base: i32,
         null: i32,
     },
     /// Text or bytes, handed to the read's text callback one column chunk
-    /// at a time.
+    /// at a time. A DECIMAL column reads as text too, every digit kept
+    /// ([`crate::decimal`]).
     Text,
 }
 
@@ -243,6 +286,10 @@ pub struct ReadReport {
     pub rows: u64,
     /// Per selected column, whether any `.a` to `.z` was read.
     pub letters: Vec<bool>,
+    /// Per selected column read as [`Output::Levels`] with levels from
+    /// the rows read ([`LevelsFrom::Rows`]), those levels: the distinct
+    /// values, in order of first appearance. `None` for other columns.
+    pub levels: Vec<Option<Vec<String>>>,
 }
 
 /// A row group: its rows and size.
@@ -269,6 +316,24 @@ pub struct Reader<S: Source> {
 }
 
 const MAGIC: &[u8; 4] = b"PAR1";
+const ARROW_SCHEMA: &str = "ARROW:schema";
+
+/// Take what `ARROW:schema` says that Parquet's own types do not: that a
+/// text column is a dictionary (a categorical, when the profile gives it
+/// no levels), and a timestamp's zone. Fields match columns by name.
+fn apply_arrow(columns: &mut [ColumnInfo], fields: &[crate::arrow::ArrowField]) {
+    for col in columns.iter_mut().filter(|c| c.role == Role::Data) {
+        let Some(f) = fields.iter().find(|f| f.name == col.name) else {
+            continue;
+        };
+        if f.dictionary && f.text && col.kind == ColumnType::Text && col.levels.is_none() {
+            col.levels = Some(LevelsFrom::Rows);
+        }
+        if matches!(col.kind, ColumnType::Timestamp { .. }) {
+            col.zone.clone_from(&f.zone);
+        }
+    }
+}
 
 impl<S: Source> Reader<S> {
     /// Open a file: check its magic numbers and read its footer, schema
@@ -349,12 +414,27 @@ impl<S: Source> Reader<S> {
             check_widened(&mut columns, p, &mut warnings);
             for c in &p.columns {
                 if c.categorical.is_some() {
-                    if let Some(col) = columns.iter().find(|x| x.name == c.name) {
+                    if let Some(col) = columns.iter_mut().find(|x| x.name == c.name) {
                         if col.kind != ColumnType::Text {
                             warnings.push(format!("the dta profile gives levels for column \"{}\", which is not text; they are ignored", c.name));
+                        } else {
+                            col.levels = Some(LevelsFrom::Profile);
                         }
                     }
                 }
+            }
+        }
+        if let Some(entry) = meta
+            .key_value
+            .iter()
+            .find(|kv| kv.key == ARROW_SCHEMA)
+            .and_then(|kv| kv.value.as_ref())
+        {
+            match crate::arrow::read_schema(entry) {
+                Ok(fields) => apply_arrow(&mut columns, &fields),
+                Err(why) => warnings.push(format!(
+                    "the file's {ARROW_SCHEMA} entry could not be read ({why}); it is ignored"
+                )),
             }
         }
         Ok(Reader {
@@ -591,10 +671,37 @@ impl<S: Source> Reader<S> {
             .iter()
             .map(|(_, r)| (r.end - r.start) as usize)
             .collect();
-        // Split each output into one destination per row group.
+        // Split each output into one destination per row group. Levels
+        // found in the rows read are assigned here, in row order, from
+        // each chunk's text; the codes stay with this thread.
         let mut per_column: Vec<std::vec::IntoIter<Dest<'_>>> = Vec::with_capacity(columns.len());
-        for (out, lv) in outputs.iter_mut().zip(&levels) {
-            per_column.push(split(out, lv.as_ref(), &sizes).into_iter());
+        let mut found: Vec<Option<Found<'_>>> = Vec::with_capacity(columns.len());
+        for ((out, lv), &c) in outputs.iter_mut().zip(&levels).zip(columns) {
+            let rows_levels = self.columns[c].levels == Some(LevelsFrom::Rows)
+                && matches!(out, Output::Levels { .. });
+            if rows_levels {
+                let Output::Levels { codes, base, null } = out else {
+                    unreachable!("matched above");
+                };
+                found.push(Some(Found {
+                    pieces: cut(codes, &sizes).into_iter(),
+                    base: *base,
+                    null: *null,
+                    index: HashMap::new(),
+                    levels: Vec::new(),
+                    name: &self.columns[c].name,
+                }));
+                per_column.push(
+                    sizes
+                        .iter()
+                        .map(|_| Dest::Text)
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                );
+            } else {
+                found.push(None);
+                per_column.push(split(out, lv.as_ref(), &sizes).into_iter());
+            }
         }
         let mut tasks = Vec::with_capacity(groups.len() * columns.len());
         let mut at = 0u64;
@@ -628,9 +735,10 @@ impl<S: Source> Reader<S> {
         let mut letters = vec![false; columns.len()];
         let mut deliver = |k: usize, done: Done| -> Result<()> {
             letters[k] |= done.letters;
-            match done.text {
-                Some(chunk) => text(k, &chunk),
-                None => Ok(()),
+            match (done.text, &mut found[k]) {
+                (Some(chunk), Some(f)) => f.add(&chunk),
+                (Some(chunk), None) => text(k, &chunk),
+                (None, _) => Ok(()),
             }
         };
         let shared = if parallel { self.source.shared() } else { None };
@@ -653,6 +761,7 @@ impl<S: Source> Reader<S> {
         Ok(ReadReport {
             rows: rows as u64,
             letters,
+            levels: found.into_iter().map(|f| f.map(|f| f.levels)).collect(),
         })
     }
 
@@ -673,18 +782,30 @@ impl<S: Source> Reader<S> {
             Output::Int32(n) => accepts(n, &kind, rows),
             Output::Int64(n) => accepts(n, &kind, rows),
             Output::UInt8(n) => accepts(n, &kind, rows),
+            Output::UInt16(n) => accepts(n, &kind, rows),
+            Output::UInt32(n) => accepts(n, &kind, rows),
+            Output::UInt64(n) => accepts(n, &kind, rows),
             Output::Float32(n) => accepts(n, &kind, rows),
             Output::Float64(n) => accepts(n, &kind, rows),
             Output::Levels { codes, .. } => {
-                if levels_in(&self.profile, &col.name).is_none() || col.kind != ColumnType::Text {
+                let profile = levels_in(&self.profile, &col.name).is_some();
+                let ok = match col.levels {
+                    Some(LevelsFrom::Profile) => profile,
+                    Some(LevelsFrom::Rows) => true,
+                    None => false,
+                };
+                if !ok || col.kind != ColumnType::Text {
                     return Err(Error::invalid(format!(
-                        "column \"{}\" has no levels in the dta profile",
+                        "column \"{}\" is not a categorical: it has no levels in the dta profile and is not a dictionary of text in ARROW:schema",
                         col.name
                     )));
                 }
                 Ok(codes.len() == rows)
             }
-            Output::Text => Ok(matches!(col.kind, ColumnType::Text | ColumnType::Binary)),
+            Output::Text => Ok(matches!(
+                col.kind,
+                ColumnType::Text | ColumnType::Binary | ColumnType::Decimal { .. }
+            )),
         };
         match ok {
             Ok(true) => Ok(()),
@@ -836,6 +957,9 @@ enum Dest<'a> {
     I32(NumberOut<'a, i32>),
     I64(NumberOut<'a, i64>),
     U8(NumberOut<'a, u8>),
+    U16(NumberOut<'a, u16>),
+    U32(NumberOut<'a, u32>),
+    U64(NumberOut<'a, u64>),
     F32(NumberOut<'a, f32>),
     F64(NumberOut<'a, f64>),
     Levels {
@@ -892,6 +1016,9 @@ fn split<'a>(
         Output::Int32(n) => split_numbers(n, sizes).into_iter().map(Dest::I32).collect(),
         Output::Int64(n) => split_numbers(n, sizes).into_iter().map(Dest::I64).collect(),
         Output::UInt8(n) => split_numbers(n, sizes).into_iter().map(Dest::U8).collect(),
+        Output::UInt16(n) => split_numbers(n, sizes).into_iter().map(Dest::U16).collect(),
+        Output::UInt32(n) => split_numbers(n, sizes).into_iter().map(Dest::U32).collect(),
+        Output::UInt64(n) => split_numbers(n, sizes).into_iter().map(Dest::U64).collect(),
         Output::Float32(n) => split_numbers(n, sizes).into_iter().map(Dest::F32).collect(),
         Output::Float64(n) => split_numbers(n, sizes).into_iter().map(Dest::F64).collect(),
         Output::Levels { codes, null, .. } => {
@@ -1025,7 +1152,14 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
         Dest::I32(out) => numbers!(out),
         Dest::I64(out) => numbers!(out),
         Dest::U8(out) => numbers!(out),
+        Dest::U16(out) => numbers!(out),
+        Dest::U32(out) => numbers!(out),
+        Dest::U64(out) => numbers!(out),
         Dest::F32(out) => numbers!(out),
+        Dest::F64(mut out) if matches!(column.kind, ColumnType::Decimal { .. }) => {
+            out.file_row = file_row;
+            decode_decimal(&chunk, task.first, rows, Some(out), read, scratch)?;
+        }
         Dest::F64(out) => numbers!(out),
         Dest::Levels {
             codes,
@@ -1062,8 +1196,12 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
                 };
             }
         }
+        Dest::Text if matches!(column.kind, ColumnType::Decimal { .. }) => {
+            done.text = decode_decimal(&chunk, task.first, rows, None, read, scratch)?;
+        }
         Dest::Text => {
-            let mut t = Texts::new(task.first, rows, column.kind == ColumnType::Text);
+            let mut t = Texts::new(task.first, rows, column.kind == ColumnType::Text)
+                .fixed(fixed_width(column));
             decode::decode(&chunk, read, scratch, &mut t)?;
             done.text = Some(t.chunk);
         }
@@ -1095,6 +1233,7 @@ fn decode_numbers<T: Element>(
         let mut n = NumberConsumer::<P, T> {
             out: reborrow(out),
             dictionary: Vec::new(),
+            decoded: Vec::new(),
             letters: false,
         };
         decode::decode(chunk, read, scratch, &mut n)?;
@@ -1106,9 +1245,16 @@ fn decode_numbers<T: Element>(
         }
         _ => e,
     };
+    let unsigned = matches!(
+        chunk.column.kind,
+        ColumnType::UInt8 | ColumnType::UInt16 | ColumnType::UInt32 | ColumnType::UInt64
+    );
     match chunk.column.physical {
+        Some(PhysicalType::Int32) if unsigned => numbers::<u32, T>(chunk, out, read, scratch),
+        Some(PhysicalType::Int64) if unsigned => numbers::<u64, T>(chunk, out, read, scratch),
         Some(PhysicalType::Int32) => numbers::<i32, T>(chunk, out, read, scratch),
         Some(PhysicalType::Int64) => numbers::<i64, T>(chunk, out, read, scratch),
+        Some(PhysicalType::Int96) => numbers::<Int96, T>(chunk, out, read, scratch),
         Some(PhysicalType::Float) => numbers::<f32, T>(chunk, out, read, scratch),
         Some(PhysicalType::Double) => numbers::<f64, T>(chunk, out, read, scratch),
         Some(PhysicalType::Boolean) => {
@@ -1121,6 +1267,203 @@ fn decode_numbers<T: Element>(
         ))),
     }
     .map_err(named)
+}
+
+/// The width of a FIXED_LEN_BYTE_ARRAY column's values.
+fn fixed_width(column: &ColumnInfo) -> Option<usize> {
+    if column.physical != Some(PhysicalType::FixedLenByteArray) {
+        return None;
+    }
+    column
+        .type_length
+        .and_then(|n| usize::try_from(n).ok())
+        .filter(|&n| n > 0)
+}
+
+/// Decode a DECIMAL chunk: into `doubles` (the nearest double to each
+/// value; more than 15 significant digits is an error), or, with none,
+/// as text returned.
+fn decode_decimal(
+    chunk: &Chunk,
+    first: u64,
+    rows: usize,
+    doubles: Option<NumberOut<'_, f64>>,
+    read: &mut decode::ReadAt,
+    scratch: &mut Scratch,
+) -> Result<Option<TextChunk>> {
+    let column = chunk.column;
+    let ColumnType::Decimal { scale, .. } = column.kind else {
+        unreachable!("a DECIMAL column");
+    };
+    // The unscaled values: integers with a missing flag per row, or
+    // big-endian bytes (a dictionary and codes, or a value per row).
+    let mut ints = Vec::new();
+    let mut nulls = Vec::new();
+    let mut raw = None;
+    match column.physical {
+        Some(PhysicalType::Int32 | PhysicalType::Int64) => {
+            ints.resize(rows, 0i64);
+            nulls.resize(rows, 0u8);
+            let mut out = NumberOut {
+                values: &mut ints[..],
+                codes: Some(&mut nulls[..]),
+                missing: &[0; 27],
+                file_row: chunk.file_row + chunk.window.start,
+            };
+            decode_numbers(chunk, &mut out, read, scratch)?;
+        }
+        _ => {
+            let mut t = Texts::new(first, rows, false).fixed(fixed_width(column));
+            decode::decode(chunk, read, scratch, &mut t)?;
+            raw = Some(t.chunk);
+        }
+    }
+    let file_row = chunk.file_row + chunk.window.start;
+    let value = |r: usize| -> Result<Option<Unscaled>> {
+        match &raw {
+            None if nulls[r] != 0 => Ok(None),
+            None => Ok(Some(Unscaled::from_i64(ints[r]))),
+            Some(t) => t
+                .row(r)
+                .map(|b| {
+                    Unscaled::from_be(b).map_err(|e| {
+                        Error::new(format!(
+                            "column \"{}\", row {}: {}",
+                            column.name,
+                            file_row + r as u64 + 1,
+                            e.message
+                        ))
+                    })
+                })
+                .transpose(),
+        }
+    };
+    if let Some(mut out) = doubles {
+        let null = out.missing[0];
+        for r in 0..rows {
+            let (v, code) = match value(r)? {
+                None => (null, 1),
+                Some(u) => {
+                    if u.significant() > DOUBLE_DIGITS {
+                        let mut text = Vec::new();
+                        u.write(scale, &mut text);
+                        return Err(Error::invalid(format!(
+                            "column \"{}\": the value {} in row {} has more than {DOUBLE_DIGITS} significant digits, which a double cannot hold exactly; read the column as text to keep every digit",
+                            column.name,
+                            String::from_utf8_lossy(&text),
+                            out.file_row + r as u64 + 1
+                        )));
+                    }
+                    (u.to_f64(scale), 0)
+                }
+            };
+            out.values[r] = v;
+            if let Some(c) = out.codes.as_deref_mut() {
+                c[r] = code;
+            }
+        }
+        return Ok(None);
+    }
+    let mut text = TextChunk {
+        first,
+        rows,
+        utf8: true,
+        ..Default::default()
+    };
+    match raw.as_ref().and_then(|t| t.codes.as_ref()) {
+        // A dictionary: each distinct value once, the codes as they are.
+        Some(codes) => {
+            let t = raw.as_ref().expect("raw");
+            for i in 0..t.ends.len() {
+                Unscaled::from_be(t.value(i))
+                    .map_err(|e| Error::new(format!("column \"{}\": {}", column.name, e.message)))?
+                    .write(scale, &mut text.bytes);
+                text.ends.push(text.bytes.len());
+            }
+            text.codes = Some(codes.clone());
+        }
+        None => {
+            for r in 0..rows {
+                match value(r)? {
+                    Some(u) => {
+                        u.write(scale, &mut text.bytes);
+                        text.missing.push(0);
+                    }
+                    None => text.missing.push(1),
+                }
+                text.ends.push(text.bytes.len());
+            }
+        }
+    }
+    Ok(Some(text))
+}
+
+/// A column whose levels are the rows' distinct values, in order of first
+/// appearance: the codes of each row group's part of its output, and the
+/// levels found so far.
+struct Found<'a> {
+    pieces: std::vec::IntoIter<&'a mut [i32]>,
+    base: i32,
+    null: i32,
+    index: HashMap<Vec<u8>, i32>,
+    levels: Vec<String>,
+    name: &'a str,
+}
+
+impl Found<'_> {
+    /// Code one chunk's rows, which come in row order.
+    fn add(&mut self, chunk: &TextChunk) -> Result<()> {
+        let codes = self.pieces.next().expect("one per row group");
+        // With a dictionary, each entry is looked up once.
+        let mut known: Vec<Option<i32>> = match &chunk.codes {
+            Some(_) => vec![None; chunk.ends.len()],
+            None => Vec::new(),
+        };
+        for (r, code) in codes.iter_mut().enumerate() {
+            let entry = match &chunk.codes {
+                Some(c) if c[r] == TextChunk::NULL => {
+                    *code = self.null;
+                    continue;
+                }
+                Some(c) => Some(c[r] as usize),
+                None if chunk.missing[r] != 0 => {
+                    *code = self.null;
+                    continue;
+                }
+                None => None,
+            };
+            if let Some(i) = entry {
+                if let Some(k) = known[i] {
+                    *code = k;
+                    continue;
+                }
+            }
+            let value = chunk.value(entry.unwrap_or(r));
+            let k = match self.index.get(value) {
+                Some(&k) => k,
+                None => {
+                    let k = i32::try_from(self.levels.len())
+                        .ok()
+                        .and_then(|n| n.checked_add(self.base))
+                        .ok_or_else(|| {
+                            Error::invalid(format!(
+                                "column \"{}\" has more distinct values than a categorical holds",
+                                self.name
+                            ))
+                        })?;
+                    self.levels
+                        .push(String::from_utf8_lossy(value).into_owned());
+                    self.index.insert(value.to_vec(), k);
+                    k
+                }
+            };
+            if let Some(i) = entry {
+                known[i] = Some(k);
+            }
+            *code = k;
+        }
+        Ok(())
+    }
 }
 
 // ---- threads ----

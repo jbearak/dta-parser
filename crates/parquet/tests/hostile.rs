@@ -253,3 +253,198 @@ fn an_empty_group_is_not_a_column() {
     };
     assert!(e.message.contains("\"g\"") && e.message.contains("neither a type nor children"), "{}", e.message);
 }
+
+// ---- S4: the damage plan 0018 names ----
+
+/// Read every column of `file`, whole and as a window (which, without an
+/// offset index, walks the page headers), on one thread and on four.
+fn read_all(file: &[u8]) -> Vec<dta::Result<()>> {
+    let mut out = Vec::new();
+    for threads in [1, 4] {
+        for (skip, n) in [(0, u64::MAX), (430, 20)] {
+            let options = ReadOptions { threads, parallel_bytes: 0, ..Default::default() };
+            let result = Reader::open(dta::Bytes(file), options).and_then(|mut r| {
+                let columns = r.data_columns()?;
+                let w = r.window(skip, n);
+                let rows = (w.end - w.start) as usize;
+                // Each kind into a type that holds every value.
+                let mut store: Vec<(Vec<f64>, Vec<i64>, Vec<u64>)> = vec![(vec![0.0; rows], vec![0; rows], vec![0; rows]); columns.len()];
+                let mut outs: Vec<Output> = columns
+                    .iter()
+                    .zip(store.iter_mut())
+                    .map(|(&c, v)| {
+                        use dta_parquet::ColumnType::*;
+                        match r.columns()[c].kind {
+                            Text | Binary | Decimal { .. } => Output::Text,
+                            Float | Double => Output::Float64(Numbers::new(&mut v.0, -1.0)),
+                            UInt8 | UInt16 | UInt32 | UInt64 => Output::UInt64(Numbers::new(&mut v.2, 0)),
+                            _ => Output::Int64(Numbers::new(&mut v.1, -1)),
+                        }
+                    })
+                    .collect();
+                r.read(&columns, skip, n, &mut outs, |_, _| Ok(())).map(drop)
+            });
+            out.push(result);
+        }
+    }
+    out
+}
+
+/// Each read is an error naming a column and a row group, at a byte
+/// offset inside the file.
+fn named_errors(what: &str, file: &[u8], column: Option<&str>) {
+    for result in read_all(file) {
+        let e = result.expect_err(what);
+        let named = match column {
+            Some(c) => e.message.contains(&format!("column \"{c}\"")),
+            None => e.message.contains("column \""),
+        };
+        assert!(named && e.message.contains(", row group "), "{what}: {}", e.message);
+        let offset = e.offset.unwrap_or_else(|| panic!("{what}: no offset in {}", e.message));
+        assert!(offset < file.len() as u64, "{what}: offset {offset}");
+    }
+}
+
+fn fixture(name: &str) -> Vec<u8> {
+    std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/parquet/fixtures/").to_string() + name).unwrap()
+}
+
+#[test]
+fn a_bad_magic_number_or_footer_length_is_an_error() {
+    let good = doubles_file(Compression::Zstd);
+    for (what, at) in [("start", 0), ("end", good.len() - 1)] {
+        let mut bad = good.clone();
+        bad[at] ^= 0x20;
+        let e = Reader::open(dta::Bytes(&bad[..]), one_thread()).err().unwrap();
+        assert!(e.message.contains("PAR1"), "{what}: {}", e.message);
+    }
+    // A footer longer than the file, and one longer than all but the
+    // magic numbers.
+    for claimed in [u32::MAX, good.len() as u32 - 11] {
+        let mut bad = good.clone();
+        let n = bad.len();
+        bad[n - 8..n - 4].copy_from_slice(&claimed.to_le_bytes());
+        let e = Reader::open(dta::Bytes(&bad[..]), one_thread()).err().unwrap();
+        assert!(e.message.contains("footer") && e.offset == Some(n as u64 - 8), "{}", e);
+    }
+}
+
+#[test]
+fn a_page_whose_size_does_not_match_its_header_is_an_error() {
+    for c in [Compression::None, Compression::Snappy, Compression::Gzip, Compression::Zstd, Compression::Lz4Raw] {
+        let good = doubles_file(c);
+        assert!(read_all(&good).iter().all(Result::is_ok), "{c:?}");
+        // The uncompressed size one more or one less than the page holds.
+        for delta in [1, -1] {
+            let bad = rebuild(&good, |_| {}, |h, _| {
+                if h.kind == PageType::Data {
+                    h.uncompressed_page_size += delta;
+                }
+            });
+            named_errors(&format!("{c:?}, size {delta:+}"), &bad, Some("x"));
+        }
+        // A chunk that ends inside its last page.
+        let bad = rebuild(&good, |m| m.row_groups[0].columns[0].meta.as_mut().unwrap().total_compressed_size -= 1, |_, _| {});
+        named_errors(&format!("{c:?}, chunk cut short"), &bad, Some("x"));
+    }
+}
+
+#[test]
+fn a_page_that_fails_to_decompress_is_an_error() {
+    let mut files: Vec<(String, Vec<u8>, Option<&str>)> = [Compression::Snappy, Compression::Gzip, Compression::Zstd, Compression::Lz4Raw]
+        .into_iter()
+        .map(|c| (format!("{c:?}"), doubles_file(c), Some("x")))
+        .collect();
+    files.push(("brotli (pyarrow)".into(), fixture("pyarrow_brotli.parquet"), None));
+    files.push(("brotli (fastparquet)".into(), fixture("fastparquet_int96_brotli.parquet"), None));
+    files.push(("snappy, DELTA (pyarrow)".into(), fixture("pyarrow_delta_v2.parquet"), None));
+    for (what, good, column) in files {
+        assert!(read_all(&good).iter().all(Result::is_ok), "{what}");
+        // Cut each data page's compressed bytes in half, or scramble them.
+        for cut in [true, false] {
+            let bad = rebuild(&good, |_| {}, |h, body| {
+                if matches!(h.kind, PageType::Data | PageType::DataV2) && body.len() > 4 {
+                    if cut {
+                        body.truncate(body.len() / 2);
+                    } else {
+                        let n = body.len();
+                        for b in &mut body[n / 4..] {
+                            *b = b.wrapping_mul(31).wrapping_add(7);
+                        }
+                    }
+                }
+            });
+            named_errors(&format!("{what}, {}", if cut { "cut" } else { "scrambled" }), &bad, column);
+        }
+    }
+}
+
+// ---- S5: pages no fixture has ----
+
+fn zigzag(out: &mut Vec<u8>, v: i64) {
+    varint(out, ((v << 1) ^ (v >> 63)) as u64);
+}
+
+/// A DELTA_BINARY_PACKED page of two billion values in one block of
+/// width 0 is a few bytes: a one-row window at its end reads at once,
+/// needing memory for that row only.
+#[test]
+fn a_delta_page_of_two_billion_values_reads_a_row_at_a_time() {
+    let rows = 2_000_000_000i64;
+    let mut body = Vec::new();
+    varint(&mut body, 1 << 31); // values per block
+    varint(&mut body, 1); // miniblocks per block
+    varint(&mut body, rows as u64);
+    zigzag(&mut body, 5); // the first value
+    zigzag(&mut body, 3); // the block's minimum delta
+    body.push(0); // its one miniblock's bit width
+    let file = one_column(element("x", PhysicalType::Int64, Repetition::Required), rows, &[data_page(rows as i32, Encoding::DeltaBinaryPacked, body)]);
+    for skip in [0, rows as u64 - 1] {
+        let (result, largest) = largest_during(|| {
+            let mut r = Reader::open(dta::Bytes(&file[..]), one_thread()).unwrap();
+            let mut v = [0i64];
+            let mut outs = [Output::Int64(Numbers::new(&mut v, -1))];
+            r.read(&[0], skip, 1, &mut outs, |_, _| Ok(())).map(|_| v[0])
+        });
+        assert_eq!(result.unwrap(), 5 + 3 * skip as i64);
+        assert!(largest <= MIB, "row {skip}: asked for {largest} bytes");
+    }
+}
+
+/// DECIMAL in a BYTE_ARRAY: big-endian two's complement of any length up
+/// to 32 bytes, as text with every digit, or as doubles while a value has
+/// at most 15 significant digits.
+#[test]
+fn byte_array_decimals() {
+    let values: [&[u8]; 4] = [&[0x01], &[0xff, 0x85], &[0x00, 0x00, 0x30, 0x39], &12_345_678_901_234_567_890_123i128.to_be_bytes()[6..]];
+    let mut body = Vec::new();
+    for v in values {
+        body.extend_from_slice(&(v.len() as u32).to_le_bytes());
+        body.extend_from_slice(v);
+    }
+    let decimal = SchemaElement {
+        logical: Some(dta_parquet::format::LogicalType::Decimal { scale: 3, precision: 40 }),
+        ..element("d", PhysicalType::ByteArray, Repetition::Required)
+    };
+    let file = one_column(decimal, 4, &[data_page(4, Encoding::Plain, body)]);
+    let mut r = Reader::open(dta::Bytes(&file[..]), one_thread()).unwrap();
+    assert_eq!(r.columns()[0].kind, dta_parquet::ColumnType::Decimal { precision: 40, scale: 3 });
+    let mut text = Vec::new();
+    r.read(&[0], 0, 4, &mut [Output::Text], |_, chunk| {
+        for row in 0..chunk.rows {
+            text.push(String::from_utf8(chunk.row(row).unwrap().to_vec()).unwrap());
+        }
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(text, ["0.001", "-0.123", "12.345", "12345678901234567890.123"]);
+    let mut v = [0.0; 3];
+    r.read(&[0], 0, 3, &mut [Output::Float64(Numbers::new(&mut v, -1.0))], |_, _| Ok(())).unwrap();
+    assert_eq!(v, [0.001, -0.123, 12.345]);
+    let mut v = [0.0; 4];
+    let e = r.read(&[0], 0, 4, &mut [Output::Float64(Numbers::new(&mut v, -1.0))], |_, _| Ok(())).unwrap_err();
+    assert!(e.message.contains("column \"d\"") && e.message.contains("row 4") && e.message.contains("text"), "{}", e.message);
+    // Only doubles and text read a DECIMAL.
+    let mut f = [0f32; 1];
+    assert!(r.read(&[0], 0, 1, &mut [Output::Float32(Numbers::new(&mut f, 0.0))], |_, _| Ok(())).is_err());
+}
