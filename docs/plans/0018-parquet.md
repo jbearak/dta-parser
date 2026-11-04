@@ -160,42 +160,35 @@ missing; "What other tools see" below lists what they lose.
 ### Missing values
 
 - `.` and every other plain missing value is a Parquet null.
-- `.a` to `.z` are nulls too, so every tool sees them as missing: `IS
-  NULL`, `count(x)`, `null_count` and `mean()` behave as they do for `.`.
-  Each column that holds any of them gets a **missing-letter column**.
-  That is a STRING column, dictionary-encoded, holding `".a"` to
-  `".z"` on those rows and null on every other row. It is named
-  `<name>__missing` (with a numeric suffix if the name is taken) and
-  placed after all the data columns. The profile names it. An all-null
-  column chunk dictionary-encodes to a few bytes, so a survey file
-  whose columns mostly have no letters pays nothing for them.
-- The writers take `missing_letters` (default true). Set to false, the
-  writer writes `.a` to `.z` as plain nulls with no letter columns,
-  for files meant only for other tools. The docs show how to drop the
-  letter columns in pyarrow, polars, DuckDB and arrow instead.
+- `.a` to `.z` are written as **tagged NaNs**: the bit pattern R uses
+  for them in doubles (haven's tagged NA, and what dtaparser returns).
+  It is R's `NA_real_` (`0x7FF00000000007A2`) with the letter's ASCII
+  code in bits 32 to 39. R already widens an integer column that holds
+  `.a` to `.z` to double, and a FLOAT cannot carry the pattern, so any
+  numeric column holding them is written as DOUBLE, and the profile
+  records its storage type (`"storage": "byte"`, `"int"`, `"long"` or
+  `"float"`) for the readers that keep it (Python, Julia, TypeScript).
+  Columns without `.a` to `.z` keep their own type.
+- A reader decodes a DOUBLE value as `.a` to `.z` only when its bits are
+  exactly that pattern with a letter `a` to `z`; any other NaN is NaN.
+  Our readers read the bits from the file, so this works the same in
+  every language, whatever that language does with NaN payloads.
+- **What it costs.** Nothing extra to write or read. But tools that
+  treat NaN as a value see `.a` to `.z` as NaN: in DuckDB SQL, polars
+  and Spark, `IS NULL` is false for them, `count(x)` counts them and
+  `mean(x)` is NaN. arrow (R), nanoparquet and DuckDB in R return them
+  as tagged NAs, and pandas reads them as missing. The user chose this
+  over a design that wrote them as nulls with the letters in a separate
+  string column (correct in every tool, but more to write, read and
+  validate); see ADR 0033. The docs give the query that treats them as
+  missing in those tools (`x IS NULL OR isnan(x)` in DuckDB,
+  `is_null() | is_nan()` in polars).
+- The writers take `missing_letters` (default true). Set to false, they
+  write `.a` to `.z` as plain nulls, for files meant for SQL engines or
+  polars; the letters are then lost.
 - NaN is a value, not a missing value, in every language whose doubles
   tell NaN from a missing value (R's `NaN`, Julia's `NaN`). In pandas a
   float64 `NaN` is the missing value and is written as null.
-
-**How our readers use a letter column:**
-
-- Selecting a column reads its letter column with it; the letter
-  column itself is never returned. `read_parquet_info()` (and each
-  language's equivalent) lists it with role `missing_letters`.
-  Positions in a column selection count data columns only.
-- A letter column is used only if it is BYTE_ARRAY STRING, every
-  non-null value is one of `".a"` ... `".z"`, and it is non-null only
-  on rows where its data column is null. If any of that fails, the
-  reader warns once, naming both columns and the first bad row, and
-  returns the data column's values without letters.
-- A profile that names a letter column the file does not have gives
-  one warning: the letters were lost, the values are still missing.
-- A file whose profile was dropped by another tool shows the letter
-  column as an ordinary string column, as any reader would.
-- A tool that renames or reorders columns but keeps the profile can
-  attach a letter column to the wrong data. The checks above catch it
-  whenever a letter falls on a non-null value. The docs say that only
-  our writers guarantee the profile matches the data.
 
 ### The profile
 
@@ -209,7 +202,7 @@ missing; "What other tools see" below lists what they lose.
   "timestamp": "2024-03-01T09:30:00",
   "columns": {
     "age":    {"label": "Age in years", "format": "%9.0g",
-               "value_labels": "agelbl", "missing_letters": "age__missing"},
+               "value_labels": "agelbl", "storage": "byte"},
     "region": {"categorical": {"levels": ["North", "South", "West"], "ordered": false}},
     "seen":   {"format": "%tdCCYY-NN-DD"},
     "when":   {"tz": "America/New_York"},
@@ -233,8 +226,10 @@ missing; "What other tools see" below lists what they lose.
   every `.dta` label fits.
 - `categorical.levels` keeps the order and the levels no row uses,
   which a dictionary page does not.
-- Storage types are not repeated: INT(8) is byte, INT(16) is int,
-  INT32 is long, FLOAT is float, DOUBLE is double. A string column
+- Storage types are not repeated where Parquet's type says it: INT(8)
+  is byte, INT(16) is int, INT32 is long, FLOAT is float, DOUBLE is
+  double. `storage` appears only on a DOUBLE column written wider
+  because it holds `.a` to `.z`. A string column
   becomes strN or strL when it is written to `.dta`, from its widest
   value, as it does today.
 - `timestamp` keeps the `.dta` file's time stamp where a language
@@ -257,7 +252,7 @@ missing; "What other tools see" below lists what they lose.
 | ours | pyarrow / pandas | polars | DuckDB | arrow (R) | nanoparquet |
 |---|---|---|---|---|---|
 | value labels, variable labels, formats, notes | lost (profile ignored) | lost | lost | lost | lost |
-| `.a` to `.z` | null, plus a `__missing` string column | same | same | same | same |
+| `.a` to `.z` | missing (pandas reads NaN as missing); pyarrow sees NaN | NaN, not null | NaN, not NULL | tagged NA (letter kept) | tagged NA (letter kept) |
 | categorical | `category` (ordered kept) | `Categorical` | VARCHAR | factor | character |
 | zoned timestamp | tz-aware, our zone | our zone | TIMESTAMPTZ | `POSIXct` in our zone | `POSIXct` in UTC |
 | INT(8), INT(16) | int8, int16 (float64 if the column has nulls, since we write no `pandas` key) | Int8, Int16 | TINYINT, SMALLINT | integer | integer |
@@ -509,10 +504,10 @@ save_parquet(data, file, compression = "zstd", compression_level = NULL,
 - `read_parquet_info()` reads the footer only and returns a list:
   `rows`, `row_groups` (rows and bytes of each), `created_by`,
   `compression`, the data label and notes, and a `columns` data frame.
-  That frame has one row per Parquet column: name, role (`data`,
-  `missing_letters` or `nested`), the R type `read_parquet()` will
-  return, Parquet's physical and logical type, the variable label, the
-  value label set's name, and whether the column has `.a` to `.z`. This
+  That frame has one row per Parquet column: name, role (`data` or
+  `nested`), the R type `read_parquet()` will return, Parquet's
+  physical and logical type, the variable label, the value label set's
+  name, and the storage type the profile records. This
   copies `nanoparquet::read_parquet_schema()`, the only R function that
   says what a column will become before reading it.
 - `save_parquet()` writes what `save_dta()` writes and with the same
@@ -567,7 +562,7 @@ default `RangeIndex`. An index that pandas stored as a column (such as
 with `"nobs"` as for `.dta`, and for Parquet also `"format":
 "parquet"`, `"row_groups"` (rows and bytes of each), `"compression"`,
 `"created_by"`, and per column, beside its label, format and value
-labels: `"role"` (`"data"`, `"missing_letters"` or `"nested"`),
+labels: `"role"` (`"data"` or `"nested"`),
 `"physical_type"`, `"logical_type"` and `"dtype"`, the pandas dtype
 `read_parquet` will give it.
 
@@ -829,8 +824,8 @@ cases.
 2. **Core, first slice** (`crates/parquet`). Reading and writing
    everything we write, and the default output of pyarrow, arrow (R),
    polars, DuckDB and nanoparquet: PLAIN and dictionary encodings, RLE
-   levels, pages v1 and v2, snappy, gzip and zstd, the profile, letter
-   columns, statistics, the offset index and `ARROW:schema`. Fixtures
+   levels, pages v1 and v2, snappy, gzip and zstd, the profile, tagged
+   NaNs for `.a` to `.z`, statistics, the offset index and `ARROW:schema`. Fixtures
    written by those tools from data we create, with values checked
    against pyarrow's reading of the same file. Our files read back by
    pyarrow, polars, DuckDB, arrow (R) and nanoparquet, with values

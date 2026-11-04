@@ -5,10 +5,10 @@ Parquet files (plan 0018). A file we write is plain Parquet that every
 tool opens. What Parquet cannot say goes into one JSON entry in the
 file's key-value metadata, the dta profile (key `dta`): variable and
 value labels, display formats, notes, characteristics, factor levels,
-time zones. Each `.a` to `.z` is a null in its column, so every tool
-sees a missing value, and its letter goes in a string column named
-`<name>__missing`, which our readers fold back in and other tools show
-as an ordinary column. The format is implemented in a new crate,
+time zones. `.` is a null. `.a` to `.z` are tagged NaNs in DOUBLE
+columns: the bit pattern R uses for them (haven's tagged NA), so R's
+own Parquet readers give the letters back too, and a numeric column
+holding them is written as DOUBLE with its storage type in the profile. The format is implemented in a new crate,
 `crates/parquet`, over `crates/dta`'s `Source` and `Sink`, with small
 codec crates from crates.io; `crates/dta` stays free of dependencies.
 
@@ -19,11 +19,17 @@ codec crates from crates.io; `crates/dta` stays free of dependencies.
   in-band), so every reader converts anyway. Fewer tools read it,
   its files are larger, and table-viewer removed an Arrow IPC source
   before release (#308).
-- **`.a` to `.z` as tagged NaNs in the values**, as haven stores them in
-  R. R's Parquet readers give the letters back without knowing about
-  us, but SQL engines, polars and Arrow compute see a number (NaN):
-  `IS NULL` and `count()` miss it and `mean()` is NaN. Integer columns
-  have no NaN to tag.
+- **`.a` to `.z` as nulls, with the letters in a string column**
+  (`<name>__missing`) that our readers fold back in. This was the first
+  design, approved at Gate 1: every tool, SQL engines included, sees a
+  missing value. The user chose tagged NaNs instead (2026-11-04): R
+  already holds `.a` to `.z` that way, our readers decode the bits in
+  every language, and tagged NaNs cost nothing to write or read and
+  need no extra column to name, match and validate. The cost is that
+  DuckDB SQL, polars and Spark see `.a` to `.z` as NaN, not null
+  (`IS NULL` is false, `count()` counts them, `mean()` is NaN). The
+  writers' `missing_letters = FALSE` writes plain nulls for files meant
+  for those tools.
 - **Letters in the footer**, per column chunk. Invisible to other tools,
   but lost by any tool that rewrites the file, and the footer grows
   with the data.
@@ -47,8 +53,7 @@ codec crates from crates.io; `crates/dta` stays free of dependencies.
 - dtaparser's bridge registers `dtaparser_parquet_read` and
   `dtaparser_parquet_write`, and the ABI number goes from 2 to 3, so the
   three R packages are released together as 3.1.0.
-- A tool that renames columns but keeps our profile can pair a letter
-  column with the wrong data. Our readers check each pairing (type,
-  values, letters only on null rows) and drop the letters with a warning
-  when it fails; only our writers guarantee the profile matches.
+- In DuckDB SQL, polars and Spark, `.a` to `.z` in our files are NaN
+  values, not nulls. The docs say so, with the query that treats them
+  as missing.
 - Nested columns are neither read nor written.
