@@ -147,8 +147,11 @@ pub struct WriteOptions {
     pub compression: Compression,
     /// The codec's level; `None` for its default (zstd 3, gzip 6).
     pub compression_level: Option<i32>,
-    /// Rows per row group; `None` sizes them to about 64 MiB of values,
-    /// at most 262,144 rows.
+    /// Rows per row group; `None` sizes them to about 1 GiB of values,
+    /// at most 262,144 rows (polars' default). A survey file of thousands
+    /// of columns is then one row group, as pyarrow and polars write it:
+    /// with four, pyarrow took 2.4 times as long to read one (plan 0018's
+    /// 64 MiB, changed by the measurements in bench/RESULTS.md).
     pub row_group_rows: Option<usize>,
     /// Write `.a` to `.z` as tagged NaNs, a numeric, date or timestamp
     /// column that holds any as DOUBLE; with `false` they are plain
@@ -189,7 +192,7 @@ impl Default for WriteOptions {
             missing_letters: true,
             threads: 0,
             page_bytes: 1 << 20,
-            row_group_bytes: 64 << 20,
+            row_group_bytes: 1 << 30,
             row_group_max_rows: 262_144,
             dictionary_bytes: 1 << 20,
             offset_index: true,

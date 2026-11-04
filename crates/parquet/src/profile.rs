@@ -243,7 +243,7 @@ impl Profile {
                     }
                 }
                 "label" => match value {
-                    Value::String(s) => p.label = Some(s.clone()),
+                    Value::String(s) => p.label = Some(s.to_string()),
                     _ => warn(dropped("label", "is not text")),
                 },
                 "notes" => match strings(value) {
@@ -497,23 +497,23 @@ fn dropped(what: &str, why: &str) -> String {
 /// The members of an object whose keys appear once; a key that appears
 /// more than once is dropped, every time, with one warning.
 fn unique<'v>(
-    members: &'v [(String, Value)],
+    members: &'v [(json::Text<'v>, Value<'v>)],
     path: &str,
     warn: &mut impl FnMut(String),
-) -> Vec<(&'v str, &'v Value)> {
-    let mut counts = std::collections::HashMap::<&str, usize>::new();
+) -> Vec<(&'v str, &'v Value<'v>)> {
+    let mut counts = std::collections::HashMap::<&str, usize>::with_capacity(members.len());
     for (k, _) in members {
-        *counts.entry(k.as_str()).or_default() += 1;
+        *counts.entry(&**k).or_default() += 1;
     }
     let mut warned = std::collections::HashSet::new();
     let mut out = Vec::with_capacity(members.len());
     for (k, v) in members {
-        if counts[k.as_str()] > 1 {
-            if warned.insert(k.as_str()) {
+        if counts[&**k] > 1 {
+            if warned.insert(&**k) {
                 warn(dropped(&format!("{path}{k}"), "appears more than once"));
             }
         } else {
-            out.push((k.as_str(), v));
+            out.push((&**k, v));
         }
     }
     out
@@ -524,7 +524,7 @@ fn strings(v: &Value) -> Option<Vec<String>> {
         Value::Array(items) => items
             .iter()
             .map(|i| match i {
-                Value::String(s) => Some(s.clone()),
+                Value::String(s) => Some(s.to_string()),
                 _ => None,
             })
             .collect(),
@@ -543,7 +543,7 @@ fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> 
     members
         .iter()
         .map(|(k, v)| match v {
-            Value::String(s) => Ok((k.clone(), s.clone())),
+            Value::String(s) => Ok((k.to_string(), s.to_string())),
             _ => Err(format!("has \"{k}\", which is not text")),
         })
         .collect()
@@ -558,7 +558,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
     let path = format!("columns.{name}.");
     for (key, value) in unique(members, &path, warn) {
         let text = |value: &Value| match value {
-            Value::String(s) => Some(s.clone()),
+            Value::String(s) => Some(s.to_string()),
             _ => None,
         };
         let slot = match key {
@@ -614,7 +614,7 @@ fn categorical(v: &Value) -> std::result::Result<Categorical, String> {
     let mut cat = Categorical::default();
     let mut has_levels = false;
     for (k, v) in members {
-        match k.as_str() {
+        match &**k {
             "levels" => {
                 cat.levels = strings(v).ok_or("has levels that are not an array of text")?;
                 if let Some(level) = first_duplicate(&cat.levels) {
@@ -698,13 +698,13 @@ fn label_set(name: &str, v: &Value) -> std::result::Result<ValueLabelSet, String
             Value::Number(v) => ValueLabel {
                 value: *v,
                 missing: 0,
-                text: text.clone(),
+                text: text.to_string(),
             },
             Value::String(s) => match missing::from_name(s) {
                 Some(m) => ValueLabel {
                     value: f64::NAN,
                     missing: m,
-                    text: text.clone(),
+                    text: text.to_string(),
                 },
                 None => return Err(format!("has the code \"{s}\", which is not . or .a to .z")),
             },
