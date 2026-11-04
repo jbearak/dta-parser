@@ -333,30 +333,34 @@ impl Profile {
         }
         if !self.characteristics.is_empty() {
             o.push_str(",\"characteristics\":{");
-            let mut vars: Vec<&str> = Vec::new();
+            // Each variable's characteristics, in the order the variables
+            // first appear.
+            let mut vars: Vec<(&str, Vec<&Characteristic>)> = Vec::new();
+            let mut at: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
             for c in &self.characteristics {
-                if !vars.contains(&c.variable.as_str()) {
-                    vars.push(&c.variable);
-                }
+                let k = *at.entry(c.variable.as_str()).or_insert_with(|| {
+                    vars.push((c.variable.as_str(), Vec::new()));
+                    vars.len() - 1
+                });
+                vars[k].1.push(c);
             }
-            for (i, var) in vars.iter().enumerate() {
+            for (i, (var, chars)) in vars.iter().enumerate() {
                 if i > 0 {
                     o.push(',');
                 }
                 json::string(&mut o, var);
                 o.push_str(":{");
-                let mut names: Vec<&str> = Vec::new();
-                for c in self.characteristics.iter().filter(|c| c.variable == *var) {
-                    if names.contains(&c.name.as_str()) {
+                let mut names = std::collections::HashSet::with_capacity(chars.len());
+                for c in chars {
+                    if !names.is_empty() {
+                        o.push(',');
+                    }
+                    if !names.insert(c.name.as_str()) {
                         return Err(Error::invalid(format!(
                             "the characteristic {var}[{}] is given twice",
                             c.name
                         )));
                     }
-                    if !names.is_empty() {
-                        o.push(',');
-                    }
-                    names.push(&c.name);
                     json::string(&mut o, &c.name);
                     o.push(':');
                     json::string(&mut o, &c.value);
@@ -372,8 +376,9 @@ impl Profile {
         let columns: Vec<&ColumnProfile> = self.columns.iter().filter(|c| !c.is_empty()).collect();
         if !columns.is_empty() {
             o.push_str(",\"columns\":{");
+            let mut seen = std::collections::HashSet::with_capacity(columns.len());
             for (i, c) in columns.iter().enumerate() {
-                if columns[..i].iter().any(|d| d.name == c.name) {
+                if !seen.insert(c.name.as_str()) {
                     return Err(Error::invalid(format!(
                         "the profile has two entries for column \"{}\"",
                         c.name
@@ -429,8 +434,9 @@ impl Profile {
         }
         if !self.value_labels.is_empty() {
             o.push_str(",\"value_labels\":{");
+            let mut seen = std::collections::HashSet::with_capacity(self.value_labels.len());
             for (i, set) in self.value_labels.iter().enumerate() {
-                if self.value_labels[..i].iter().any(|s| s.name == set.name) {
+                if !seen.insert(set.name.as_str()) {
                     return Err(Error::invalid(format!(
                         "there are two value label sets named \"{}\"",
                         set.name
