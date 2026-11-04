@@ -354,3 +354,18 @@ fn decimals_as_doubles() {
     }
     assert!(checked.0 >= 4 && checked.1 >= 2, "{checked:?}");
 }
+
+/// A timestamp's zone comes from `ARROW:schema`, where pyarrow writes it;
+/// a timestamp without one has none.
+#[test]
+fn zones_come_from_arrow_schema() {
+    for stem in ["pyarrow_default", "pyarrow_brotli", "polars_default"] {
+        let bytes = std::fs::read(root().join("fixtures").join(format!("{stem}.parquet"))).unwrap();
+        let r = Reader::open(dta::Bytes(&bytes[..]), ReadOptions::default()).unwrap();
+        let zone = |name: &str| r.columns()[r.column_index(name).unwrap()].zone.clone();
+        assert_eq!(zone("ts_us_ny").as_deref(), Some("America/New_York"), "{stem}");
+        assert_eq!(zone("ts_ms").as_deref(), Some("UTC"), "{stem}");
+        assert_eq!(zone("ts_ns_local"), None, "{stem}");
+        assert_eq!(zone("i32"), None, "{stem}");
+    }
+}
