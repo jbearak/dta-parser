@@ -31,6 +31,7 @@ people and by coding agents alike:
 | path | what | language |
 |---|---|---|
 | `crates/dta` | the format: reader (releases 104 to 119) and release 118 writer | Rust |
+| `crates/parquet` | Parquet with a dta profile (plan 0018, [ADR 0033](docs/adr/0033-parquet-with-a-dta-profile.md)): reader and writer over `crates/dta`'s `Source` | Rust |
 | `crates/dta-ffi` | the WebAssembly interface for the npm package, and the C interface (`include/dta.h`) for Julia | Rust |
 | `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
 | `r/datakit` | the R package for translating do-files: `:=` and `read_fixed_width`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
@@ -58,6 +59,20 @@ also needs its language. The commands match what CI runs
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
+
+**Parquet compatibility** (Python with pyarrow, pandas, polars and
+duckdb; R with arrow, nanoparquet and jsonlite): other tools read back
+what `crates/parquet` writes. `compat/parquet/README.md` says how the
+fixtures are made.
+
+```sh
+cargo run -p dta-parquet --example samples -- /tmp/parquet
+python3 compat/parquet/readback.py /tmp/parquet
+Rscript compat/parquet/readback.R /tmp/parquet
+```
+
+`cargo deny check licenses` checks the licences of the crates the
+workspace uses against `deny.toml`.
 
 **npm package** (Node 24 or later, and the WebAssembly target:
 `rustup target add wasm32-unknown-unknown`):
