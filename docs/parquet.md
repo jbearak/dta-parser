@@ -218,8 +218,14 @@ write the file with `missing_letters = FALSE`.
   stays under 1 MiB and smaller than 60% of the values it replaces;
   past either, the rest of the chunk is PLAIN. No DELTA or
   BYTE_STREAM_SPLIT encodings, which some readers cannot read.
-- **Threads.** See [bench/RESULTS.md](../bench/RESULTS.md#parquet) for
-  the measurements at 1 to 12 threads and the default they set.
+- **Threads: up to two, for reads and writes of 16 MB or more.** By
+  plan 0007's rule, each thread added must speed the task up by at
+  least half of one thread's work, and CPU time must stay within 1.15
+  times one thread's. A third thread missed on NSFG 1995 reads
+  (it added 0.48 of a thread's speed) and on writes of NSFG 1995 and a
+  DHS women's file (0.43 and 0.37). `DTA_THREADS` and each language's
+  threads option change the count. The measurements at 1 to 12
+  threads are in [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 
 The speed of reads and writes against arrow, nanoparquet and DuckDB,
 and of other tools reading our files, is in
@@ -240,7 +246,7 @@ and of other tools reading our files, is in
 | `not a Parquet file: it does not start and end with PAR1`; `the footer's length ... is more than the file holds` | not a Parquet file, or a truncated one | check the file |
 | `the file is an encrypted Parquet file, which is not supported` | Parquet encryption | decrypt it with the tool that wrote it |
 | `column "x", row group 2: ...` (at byte n) | a damaged page | the file is damaged at that column and row group |
-| `unknown compression "lzo"; use one of "zstd", "snappy", "gzip", "lz4_raw" or "none"` | `save_parquet(compression = )` | one of those |
+| `unknown compression "lzo"; use one of "snappy", "zstd", "gzip", "lz4_raw" or "none"` | `save_parquet(compression = )` | one of those |
 | `zstd levels run from 1 to 22, not 99`; `snappy has no compression levels` | `compression_level` | a level the codec has, or `NULL` |
 | `save_parquet: cannot write x, a column of class complex` (or a list, `POSIXlt`, `difftime`, a nested data frame) | a column type Parquet files here do not hold | convert it first |
 | `column "l": element 1 is not a raw vector or NULL; a list column must hold only raw vectors` | a list that is not binary data | convert it, or drop it |

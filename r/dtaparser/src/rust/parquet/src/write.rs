@@ -184,11 +184,11 @@ impl Default for WriteOptions {
     fn default() -> Self {
         let small = std::env::var("DTA_TEST_SMALL_CHUNKS").is_ok_and(|v| v == "1");
         WriteOptions {
-            compression: if cfg!(target_arch = "wasm32") {
-                Compression::Snappy
-            } else {
-                Compression::Zstd
-            },
+            // Snappy, not plan 0018's zstd 3: pyarrow and DuckDB took up to
+            // 1.4 times as long to read our zstd files as their own snappy
+            // ones (target 4), and on dictionary-encoded survey data zstd
+            // saved only about 15% (bench/RESULTS.md, Parquet).
+            compression: Compression::Snappy,
             compression_level: None,
             row_group_rows: None,
             missing_letters: true,

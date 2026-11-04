@@ -1026,7 +1026,7 @@ and per column the R type `read_parquet()` gives it:
 ```r
 info <- read_parquet_info("survey.parquet")
 info$rows          # 6
-info$compression   # "zstd"
+info$compression   # "snappy"
 info$label         # "Household survey (example)"
 info$columns$name          # "id" "region" "age" "income" "interviewed" "comment"
 info$columns$r_type        # "integer" "dtaparser_labelled" "integer" "dtaparser_labelled" "Date" "character"
@@ -1091,9 +1091,11 @@ are in UTC, which is the same instant.
 `save_parquet(data, file)` writes any data frame: what `save_dta()`
 writes, and also factors with their levels (ordered or not), logicals,
 time zones, text of any length, lists of raw vectors (binary) and
-bit64's `integer64`. It returns `data` invisibly. Compression is zstd at
-level 3 by default; `compression` takes `"zstd"`, `"snappy"`, `"gzip"`,
-`"lz4_raw"` or `"none"`, and `compression_level` the codec's level.
+bit64's `integer64`. It returns `data` invisibly. Compression is snappy
+by default, which pyarrow, polars and DuckDB read fastest;
+`compression` takes `"snappy"`, `"zstd"`, `"gzip"`, `"lz4_raw"` or
+`"none"`, and `compression_level` the codec's level. zstd makes a file
+smaller (by about 15% for survey data) and slower to read.
 Row groups hold up to 262,144 rows and about 1 GiB of values;
 `row_group_size` sets the rows:
 
@@ -1203,7 +1205,7 @@ part of datakit; use arrow's `open_dataset()` or DuckDB for those.
 | `open_dataset(file) \|> ... \|> head(n)` or `$ReadRowGroup()` | (no rows) | `read_parquet(file, skip = 100, n_max = 50)` | only the pages that hold the rows are read |
 | `read_parquet(file, as_data_frame = FALSE)` | (none) | (none) | no Arrow tables; use arrow for those |
 | `ParquetFileReader$create(file)$GetSchema()` | `read_parquet_schema(file)`, `read_parquet_info(file)` | `read_parquet_info(file)` | one call: rows, row groups, codecs, labels, and the R type of each column |
-| `write_parquet(x, sink)` (snappy) | `write_parquet(x, file)` (snappy) | `save_parquet(x, file)` (zstd 3) | labels, letters, zones, ordered factors written; returns `x` invisibly |
+| `write_parquet(x, sink)` (snappy) | `write_parquet(x, file)` (snappy) | `save_parquet(x, file)` (snappy) | labels, letters, zones, ordered factors written; returns `x` invisibly |
 | `compression = "zstd", compression_level = 3` | `compression = "zstd", options = parquet_options(compression_level = 3)` | `compression = "zstd", compression_level = 3` | |
 | `chunk_size = n` | `options = parquet_options(num_rows_per_row_group = n)` | `row_group_size = n` | |
 | `options(arrow.int64_downcast = FALSE)` | `options = parquet_options(read_int64_type = "integer64")` | `int64 = "integer64"` | a lossy double is an error, not a silent change |
@@ -1217,6 +1219,8 @@ as plain numbers. nanoparquet drops labels and time zones.
 ## Threads
 
 Reading and writing large files uses up to three threads: workers decode and fill numeric columns while R makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
+
+Parquet reads and writes of 16 MB or more use up to two threads, which decode or compress column chunks while R makes the strings. A third thread made them only about 0.4 to 0.5 times faster than two in our measurements, short of the half a thread's worth of speedup we require from each one added. The numbers are in [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 
 Set `options(dtaparser.threads = 1)` to use one thread, or another number to change the most; the `DTA_THREADS` environment variable does the same when the option is unset. Under `R CMD check` (`_R_CHECK_LIMIT_CORES_` set), at most two are used.
 
@@ -1308,5 +1312,5 @@ datakit exports:
   [Parquet files](#parquet-files)).
 - `read_parquet_info(file)`: a Parquet file's rows, row groups, codecs,
   labels and columns, from its footer.
-- `save_parquet(data, file, compression = "zstd", compression_level = NULL, row_group_size = NULL, missing_letters = TRUE)`:
+- `save_parquet(data, file, compression = "snappy", compression_level = NULL, row_group_size = NULL, missing_letters = TRUE)`:
   write a data frame as Parquet, labels and `.a` to `.z` kept.

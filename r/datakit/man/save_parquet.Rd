@@ -7,7 +7,7 @@
 save_parquet(
   data,
   file,
-  compression = "zstd",
+  compression = "snappy",
   compression_level = NULL,
   row_group_size = NULL,
   missing_letters = TRUE
@@ -19,15 +19,16 @@ returned.}
 
 \item{file}{Path to write.}
 
-\item{compression}{The codec: \code{"zstd"} (the default), \code{"snappy"},
-\code{"gzip"}, \code{"lz4_raw"} or \code{"none"}. zstd made the DHS files a quarter
-of snappy's size; \code{docs/parquet.md} has the measurements.}
+\item{compression}{The codec: \code{"snappy"} (the default), \code{"zstd"},
+\code{"gzip"}, \code{"lz4_raw"} or \code{"none"}. Other tools read snappy files
+faster, and zstd made survey files only about 15\% smaller;
+\code{docs/parquet.md} has the measurements.}
 
 \item{compression_level}{The codec's level: 1 to 22 for zstd (3 by
 default), 0 to 10 for gzip (6). \code{NULL} for the default.}
 
 \item{row_group_size}{Rows per row group. \code{NULL} (the default) puts as
-many rows in each as fit in about 64 MiB, at most 262,144.}
+many rows in each as fit in about 1 GiB, at most 262,144.}
 
 \item{missing_letters}{Whether to keep \code{.a} to \code{.z} as tagged NaNs
 (\code{TRUE}) or write them as nulls (\code{FALSE}), for files meant for SQL

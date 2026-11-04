@@ -162,7 +162,7 @@ test_that("read_parquet_info describes the file without reading it", {
   expect_identical(info$row_groups$rows, c(2, 1))
   expect_true(all(info$row_groups$compressed_bytes > 0))
   expect_match(info$created_by, "^dta-parquet")
-  expect_identical(info$compression, "zstd")
+  expect_identical(info$compression, "snappy")
   expect_identical(info$label, "Survey")
   expect_identical(info$notes, "A note")
   cols <- info$columns
@@ -236,8 +236,8 @@ test_that("int64 columns read as doubles, integer64 or text", {
 test_that("save_parquet's errors name the column", {
   p <- tempfile(fileext = ".parquet")
   expect_error(save_parquet(data.frame(a = 1), p, compression = "lzo"),
-               "unknown compression \"lzo\"; use one of \"zstd\", \"snappy\", \"gzip\", \"lz4_raw\" or \"none\"")
-  expect_error(save_parquet(data.frame(a = 1), p, compression_level = 99), "zstd levels run from 1 to 22")
+               "unknown compression \"lzo\"; use one of \"snappy\", \"zstd\", \"gzip\", \"lz4_raw\" or \"none\"")
+  expect_error(save_parquet(data.frame(a = 1), p, compression = "zstd", compression_level = 99), "zstd levels run from 1 to 22")
   expect_error(save_parquet(data.frame(a = 1), p, compression = "snappy", compression_level = 2), "snappy has no compression levels")
   d <- data.frame(a = 1:2)
   d$l <- list(1, "x")
