@@ -53,3 +53,29 @@ test("a read of several times the module's memory stays within it", { skip }, ()
   assert.deepEqual(x.values, want[3].values.subarray(499_000, 1_699_000));
   r.close();
 });
+
+test("a few large values among many small ones are read within the budget", { skip }, () => {
+  // The read is planned by the footer's average sizes: 100 values of
+  // 1 MiB among 200,000 empty ones average about 530 bytes a row, and
+  // one planned call would gather all 100 MiB. The module counts the text
+  // as it gathers it, and the rows are read again in smaller calls.
+  const n = 200_000;
+  const big = new Uint8Array(1 << 20).map((_, i) => (i * 7) % 251);
+  const values = Array.from({ length: n }, (_, i) => (i >= 1000 && i < 1100 ? big : new Uint8Array(0)));
+  const bytes = ordinary.writeParquet({ variables: [{ name: "b", type: "binary", values }] });
+  const r = capped.openParquet(bytes);
+  const [b] = r.readColumns(["b"]);
+  assert.ok(capped.test.memoryBytes() <= 64 << 20, `${capped.test.memoryBytes()}`);
+  assert.equal(b.values.length, n);
+  for (let i = 0; i < n; i++) {
+    const want = i >= 1000 && i < 1100 ? big.length : 0;
+    if (b.values[i].length !== want) assert.fail(`row ${i}: ${b.values[i].length} bytes`);
+  }
+  assert.deepEqual(b.values[1050], big);
+  r.close();
+  // One value larger than a call may hold.
+  const huge = ordinary.writeParquet({ variables: [{ name: "h", type: "binary", values: [new Uint8Array(17 << 20)] }] });
+  const h = capped.openParquet(huge);
+  assert.throws(() => h.readColumns(["h"]), (e) => e.code === "DTA_TOO_LARGE" && /row 0/.test(e.message));
+  h.close();
+});

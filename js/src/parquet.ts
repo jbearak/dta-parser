@@ -582,9 +582,27 @@ export class ParquetReader implements TableReader {
     const handle = this.open;
     let first = true;
     try {
-      for (const call of this.calls(idx, start, count)) {
+      // The plan is by the footer's average sizes; the module counts the
+      // text it gathers, and a call whose text passes the budget is read
+      // again in halves, then a column at a time.
+      const work = this.calls(idx, start, count).reverse();
+      while (work.length) {
+        const call = work.pop()!;
         const cols = call.cols.map((k) => this.core[idx[k]]);
-        const n = wasm.pqRead(handle, cols, call.start, call.count, (first ? NEW_READ : 0) | DICTIONARY);
+        const fixed = call.count * call.cols.reduce((n, k) => n + (vars[k].columnKind === "dictionary" ? 4 : 9), 0);
+        const n = wasm.pqRead(handle, cols, call.start, call.count, (first ? NEW_READ : 0) | DICTIONARY, Math.max(1, BUDGET - fixed));
+        if (n === wasm.OVER_BUDGET) {
+          if (call.count > 1) {
+            const half = Math.ceil(call.count / 2);
+            work.push({ cols: call.cols, start: call.start + half, count: call.count - half });
+            work.push({ cols: call.cols, start: call.start, count: half });
+          } else if (call.cols.length > 1) {
+            for (let j = call.cols.length - 1; j >= 0; j--) work.push({ cols: [call.cols[j]], start: call.start, count: 1 });
+          } else {
+            throw dtaError("DTA_TOO_LARGE", `column ${JSON.stringify(vars[call.cols[0]].name)}: the value in row ${call.start} is more than the ${BUDGET} bytes one read of the module may hold`);
+          }
+          continue;
+        }
         first = false;
         const dir = wasm.pqDirectory(handle);
         const at = call.start - start;

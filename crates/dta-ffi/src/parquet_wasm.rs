@@ -875,6 +875,8 @@ fn check_columns(handle: &PqHandle, cols: &[usize]) -> Result<(), Fail> {
 // ---------------------------------------------------------------- read
 
 const NEW_READ: u32 = 1;
+/// What `pq_read` returns when the call's text passed `max_text` bytes.
+const OVER_BUDGET: f64 = -2.0;
 const DICTIONARY: u32 = 2;
 const NULL_CODE: u32 = u32::MAX;
 
@@ -1029,12 +1031,14 @@ fn pack_levels(levels: &[String], bytes: &mut Vec<u8>, utf16: &mut Vec<u32>) {
 /// into the handle; `pq_directory` then says where each column's buffers
 /// are. `flags`: `NEW_READ` starts a read (dictionaries begin again),
 /// `DICTIONARY` codes text columns while they repeat enough. Returns the
-/// rows read, or -1.
+/// rows read, -1 on an error, or `OVER_BUDGET` when the text gathered
+/// passed `max_text` bytes (0: no limit), for JavaScript to read the rows
+/// in smaller calls.
 ///
 /// # Safety
 /// `cols` holds `ncols` u32s.
 #[no_mangle]
-pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64, flags: u32) -> f64 {
+pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: f64, count: f64, flags: u32, max_text: f64) -> f64 {
     let cols = columns_at(cols, ncols);
     call(-1.0, |_| {
         with_handle(h, |handle| {
@@ -1087,6 +1091,11 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                 .filter(|&&c| matches!(how[c], How::Number { check: true }))
                 .map(|&c| format!("column \"{}\":", reader.columns()[c].name))
                 .collect();
+            // JavaScript plans calls by the footer's average sizes, which a
+            // few large values can far exceed: the core counts the text as
+            // it decodes it. Half the budget, since this call then holds a
+            // copy of the text too.
+            reader.set_text_budget((max_text > 0.0).then_some((max_text / 2.0) as usize));
             let report = {
                 let mut outputs: Vec<Output> = outs
                     .iter_mut()
@@ -1114,8 +1123,12 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                     Ok(())
                 };
                 read_into(reader, &cols, start as u64, count as u64, &mut outputs, &mut on_text)
+            };
+            if report.is_err() && reader.text_budget_passed() {
+                // JavaScript reads these rows in smaller calls.
+                return Ok(OVER_BUDGET);
             }
-            .map_err(|e| read_error(e, &int64_names))?;
+            let report = report.map_err(|e| read_error(e, &int64_names))?;
             // INT64 read as numbers: every value a safe integer, whatever
             // the statistics said.
             for (k, &c) in cols.iter().enumerate() {

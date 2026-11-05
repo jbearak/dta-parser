@@ -70,7 +70,7 @@ interface Exports {
   pq_key_value(handle: number, name: number, len: number): number;
   pq_cache_stats(handle: number): number;
   pq_plan(handle: number, cols: number, ncols: number, start: number, count: number): number;
-  pq_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number): number;
+  pq_read(handle: number, cols: number, ncols: number, start: number, count: number, flags: number, maxText: number): number;
   pq_directory(handle: number): number;
   pq_read_end(handle: number): void;
   pq_write_begin(rows: number): void;
@@ -558,11 +558,16 @@ export function pqPlan(handle: number, columns: number[], start: number, count: 
  * Read rows of the columns into the handle; returns the rows read. The
  * directory (`pqDirectory`) then says where each column's buffers are.
  */
-export function pqRead(handle: number, columns: number[], start: number, count: number, flags: number): number {
+/** What `pqRead` returns when the call's text passed `maxText` bytes. */
+export const OVER_BUDGET = -2;
+
+/** Read into the handle; the rows read, or `OVER_BUDGET` when the text gathered passed `maxText` bytes (0: no limit). */
+export function pqRead(handle: number, columns: number[], start: number, count: number, flags: number, maxText = 0): number {
   return guard(() => {
     const cols = put(Uint32Array.from(columns));
     try {
-      const n = wasm.pq_read(handle, cols, columns.length, start, count, flags);
+      const n = wasm.pq_read(handle, cols, columns.length, start, count, flags, maxText);
+      if (n === OVER_BUDGET) return n;
       if (n < 0) check(0);
       return n;
     } finally {

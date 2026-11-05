@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 use crate::decimal::{Unscaled, DOUBLE_DIGITS};
-use crate::decode::{
+use crate::decode::{TextBudget, 
     self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, PageCache, Physical,
     Scratch, TextChunk, Texts,
 };
@@ -325,6 +325,10 @@ pub struct Reader<S: Source> {
     offset_indexes: HashMap<(usize, usize), Option<OffsetIndex>>,
     options: ReadOptions,
     page_cache: Option<Mutex<PageCache>>,
+    /// The most text one read may gather ([`Reader::set_text_budget`]),
+    /// and what the current read has gathered.
+    text_budget: Option<usize>,
+    text_held: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 const MAGIC: &[u8; 4] = b"PAR1";
@@ -482,7 +486,25 @@ impl<S: Source> Reader<S> {
             offset_indexes: HashMap::new(),
             options,
             page_cache: None,
+            text_budget: None,
+            text_held: Default::default(),
         })
+    }
+
+    /// Fail a read, with an error of kind `TooLarge`, once the text it has
+    /// gathered over all its columns passes `bytes` (counted a page at a
+    /// time); `None` (the default) for no limit. A caller that plans its
+    /// reads by the footer's average sizes can then read the rows again
+    /// in smaller windows ([`Reader::text_budget_passed`]) instead of
+    /// running out of memory on a window of unusually large values.
+    pub fn set_text_budget(&mut self, bytes: Option<usize>) {
+        self.text_budget = bytes;
+    }
+
+    /// Whether the last read failed because its text passed the budget.
+    pub fn text_budget_passed(&self) -> bool {
+        self.text_budget
+            .is_some_and(|most| self.text_held.load(std::sync::atomic::Ordering::Relaxed) > most)
     }
 
     /// Keep up to `bytes` of decompressed pages between reads (none with
@@ -668,6 +690,7 @@ impl<S: Source> Reader<S> {
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
             cache: self.page_cache.as_ref(),
+            budget: self.text_budget.map(|most| TextBudget { held: self.text_held.clone(), most }),
         };
         for (g, local) in &groups {
             for &leaf in &leaves {
@@ -709,6 +732,7 @@ impl<S: Source> Reader<S> {
         outputs: &mut [Output<'_>],
         mut text: impl FnMut(usize, &TextChunk) -> Result<()>,
     ) -> Result<ReadReport> {
+        self.text_held.store(0, std::sync::atomic::Ordering::Relaxed);
         let window = self.window(skip, n);
         // More rows than this machine can index (a 32-bit one) cannot have
         // outputs.
@@ -813,6 +837,7 @@ impl<S: Source> Reader<S> {
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
             cache: self.page_cache.as_ref(),
+            budget: self.text_budget.map(|most| TextBudget { held: self.text_held.clone(), most }),
         };
         // What the read decodes: the larger of the pages' uncompressed
         // size and the values it writes out. Dictionary encoding makes the
@@ -1190,6 +1215,7 @@ struct Ctx<'r> {
     offset_indexes: &'r HashMap<(usize, usize), Option<OffsetIndex>>,
     file_len: u64,
     cache: Option<&'r Mutex<PageCache>>,
+    budget: Option<TextBudget>,
 }
 
 impl Ctx<'_> {
@@ -1336,7 +1362,8 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
         }
         Dest::Text => {
             let mut t = Texts::new(task.first, rows, column.kind == ColumnType::Text)
-                .fixed(fixed_width(column));
+                .fixed(fixed_width(column))
+                .budget(ctx.budget.clone());
             decode::decode(&chunk, read, scratch, &mut t)?;
             done.text = Some(t.chunk);
         }

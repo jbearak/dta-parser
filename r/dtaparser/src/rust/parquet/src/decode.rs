@@ -1212,7 +1212,21 @@ pub(crate) struct Texts {
     dictionary_len: usize,
     /// The width of a FIXED_LEN_BYTE_ARRAY column's values.
     fixed: Option<usize>,
+    budget: Option<TextBudget>,
+    /// The chunk's bytes already counted against the budget.
+    charged: usize,
 }
+
+/// A limit on the text one read gathers, over all its columns and row
+/// groups ([`Reader::set_text_budget`](crate::Reader::set_text_budget)).
+#[derive(Clone)]
+pub(crate) struct TextBudget {
+    pub(crate) held: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub(crate) most: usize,
+}
+
+/// The error a read gives when its text passes its budget.
+pub(crate) const OVER_TEXT_BUDGET: &str = "the text read passed the read's budget";
 
 impl Texts {
     pub(crate) fn new(first: u64, rows: usize, utf8: bool) -> Self {
@@ -1226,7 +1240,27 @@ impl Texts {
             utf8,
             dictionary_len: 0,
             fixed: None,
+            budget: None,
+            charged: 0,
         }
+    }
+
+    /// Count the text against `budget`, page by page.
+    pub(crate) fn budget(mut self, budget: Option<TextBudget>) -> Self {
+        self.budget = budget;
+        self
+    }
+
+    /// Count the bytes added since the last call; past the budget, fail.
+    fn charge(&mut self) -> Result<()> {
+        let Some(b) = &self.budget else { return Ok(()) };
+        let added = self.chunk.bytes.len() - self.charged;
+        self.charged = self.chunk.bytes.len();
+        let held = b.held.fetch_add(added, std::sync::atomic::Ordering::Relaxed) + added;
+        if held > b.most {
+            return Err(Error::new(OVER_TEXT_BUDGET).of(ErrorKind::TooLarge));
+        }
+        Ok(())
     }
 
     /// Values of a FIXED_LEN_BYTE_ARRAY column, each `width` bytes.
@@ -1362,10 +1396,26 @@ impl Consumer for Texts {
         self.push_plain(values, count, 0..count)?;
         self.dictionary_len = count;
         self.chunk.codes = Some(Vec::with_capacity(self.chunk.rows));
+        // Not counted: the dictionary is decoded whole however few rows
+        // are read (writers keep it to about a megabyte), so a smaller
+        // window would not make it smaller.
+        self.charged = self.chunk.bytes.len();
         Ok(())
     }
 
     fn page(
+        &mut self,
+        page: &DataPage,
+        indices: &mut Vec<u32>,
+        scratch: &mut Vec<u8>,
+    ) -> Result<()> {
+        self.fill_page(page, indices, scratch)?;
+        self.charge()
+    }
+}
+
+impl Texts {
+    fn fill_page(
         &mut self,
         page: &DataPage,
         indices: &mut Vec<u32>,
