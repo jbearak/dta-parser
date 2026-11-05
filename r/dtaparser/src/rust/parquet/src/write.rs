@@ -225,6 +225,23 @@ pub const CREATED_BY: &str = concat!("dta-parquet version ", env!("CARGO_PKG_VER
 
 /// Write `table` to `out` as a Parquet file.
 pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<WriteReport> {
+    write_with_letters(table, out, options, &[])
+}
+
+/// [`write`], told which columns hold `.a` to `.z`, so the writer need not
+/// read every column once more to find out before it encodes. `letters[k]`
+/// is `Some(found)` where the caller has looked at column `k`'s missing
+/// codes and found them all 0 to 27, with any of `.a` to `.z` only in a
+/// column that can be written as DOUBLE (byte, int, long, float, double,
+/// date or timestamp); a letter in a column said to have none is written
+/// as a null. `None`, or a column past the end of `letters`, is read as
+/// [`write`] reads it.
+pub fn write_with_letters(
+    table: &Table,
+    out: impl Write,
+    options: &WriteOptions,
+    letters: &[Option<bool>],
+) -> Result<WriteReport> {
     let level = options.compression.level(options.compression_level)?;
     let mut names = std::collections::HashSet::with_capacity(table.columns.len());
     for c in &table.columns {
@@ -268,7 +285,10 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
     // Which columns hold `.a` to `.z`, found before anything is written:
     // those are DOUBLE in every row group.
     let tagged: Vec<bool> = if options.missing_letters {
-        let scan = |k: usize, _: &mut Scratch| holds_letters(&table.columns[k], table.rows);
+        let scan = |k: usize, _: &mut Scratch| match letters.get(k).copied().flatten() {
+            Some(found) => Ok(found),
+            None => holds_letters(&table.columns[k], table.rows),
+        };
         let big = table.rows.saturating_mul(table.columns.len() * 8) >= options.parallel_bytes;
         parallel(
             if big { threads } else { 1 },

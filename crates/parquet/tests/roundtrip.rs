@@ -5,7 +5,7 @@ mod support;
 use dta::{ValueLabel, ValueLabelSet};
 use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue, PhysicalType};
 use dta_parquet::{
-    tagged_code, tagged_nan, write, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
+    tagged_code, tagged_nan, write, write_with_letters, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
     WriteOptions, Logical, NA_BITS,
 };
 use support::{dated_columns, every_type, expected, read, same, storage_columns, table, Col, Data, Got};
@@ -124,6 +124,25 @@ fn the_letters_read_as_codes_and_flags() {
     let Got::Floats(values, codes) = &got[1] else { panic!() };
     assert_eq!(codes[6], 1);
     assert_eq!(values[6], -1e300, "a null, not a NaN");
+}
+
+#[test]
+fn a_caller_who_says_which_columns_hold_letters_gets_the_same_file() {
+    let cols = every_type(100);
+    let t = table(&cols, Profile::default());
+    let mut plain = Vec::new();
+    write(&t, &mut plain, &WriteOptions::default()).unwrap();
+    // What write found, given as hints: the same bytes.
+    let (_, letters) = read(&plain, &names(&cols), 0, 100, serial());
+    let hints: Vec<Option<bool>> = letters.into_iter().map(Some).collect();
+    assert!(hints.contains(&Some(true)) && hints.contains(&Some(false)));
+    let mut hinted = Vec::new();
+    write_with_letters(&t, &mut hinted, &WriteOptions::default(), &hints).unwrap();
+    assert!(hinted == plain);
+    // No hints at all, or too few, read the columns as write does.
+    let mut short = Vec::new();
+    write_with_letters(&t, &mut short, &WriteOptions::default(), &hints[..1]).unwrap();
+    assert!(short == plain);
 }
 
 #[test]

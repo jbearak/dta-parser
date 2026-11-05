@@ -77,7 +77,7 @@ interface Exports {
   pq_directory(handle: number): number;
   pq_read_end(handle: number): void;
   pq_write_begin(rows: number): void;
-  pq_write_numbers(meta: number, metaLen: number, kind: number, unit: number, id: number): number;
+  pq_write_numbers(meta: number, metaLen: number, kind: number, unit: number, id: number, letters: number): number;
   pq_write_bigints(meta: number, metaLen: number, kind: number, unit: number, values: number, codes: number): number;
   pq_write_texts(meta: number, metaLen: number, binary: number, bytes: number, bytesLen: number, ends: number, missing: number): number;
   pq_write_categorical(
@@ -626,6 +626,31 @@ export type ParquetPart =
   | { kind: "sort"; text: string };
 
 /** Write a Parquet table of `rows` rows built from `parts` to `sink`. */
+/**
+ * Whether a column's missing codes hold `.a` to `.z`, for the writer,
+ * which otherwise reads every value once more to find out: 1 none, 2
+ * some, 0 a code it must report (past `.z`, or a letter where a column
+ * cannot be DOUBLE: bool and int64, kinds 5 and 8).
+ */
+function lettersIn(missing: Uint8Array, kind: number): number {
+  // Most columns have no code over 1: look four at a time first (a byte
+  // over 1 has a bit set besides its lowest).
+  const n = missing.length;
+  let i = 0;
+  const head = Math.min(n, (4 - (missing.byteOffset & 3)) & 3);
+  let any = false;
+  for (; i < head && !any; i++) any = missing[i] > 1;
+  if (!any) {
+    const words = new Uint32Array(missing.buffer, missing.byteOffset + i, (n - i) >>> 2);
+    for (let j = 0; j < words.length && !any; j++) any = (words[j] & 0xfefefefe) !== 0;
+    for (i += 4 * words.length; i < n && !any; i++) any = missing[i] > 1;
+  }
+  if (!any) return 1;
+  if (kind === 5 || kind === 8) return 0;
+  for (let k = 0; k < n; k++) if (missing[k] > 27) return 0;
+  return 2;
+}
+
 export function pqWrite(
   rows: number,
   parts: ParquetPart[],
@@ -672,7 +697,7 @@ function pqWriteParts(
           // writes (host_fill).
           const id = fills.size + 1;
           fills.set(id, part);
-          ok = wasm.pq_write_numbers(...text(part.meta), part.type, part.unit, id);
+          ok = wasm.pq_write_numbers(...text(part.meta), part.type, part.unit, id, lettersIn(part.missing, part.type));
           break;
         }
         case "bigints":

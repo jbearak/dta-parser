@@ -1189,6 +1189,9 @@ struct WCol {
     /// For timestamps: 0 s, 1 ms, 2 us, 3 ns.
     unit: u32,
     data: WData,
+    /// Whether the column holds `.a` to `.z`, where JavaScript looked
+    /// (`dta_parquet::write_with_letters`).
+    letters: Option<bool>,
 }
 
 #[derive(Default)]
@@ -1227,6 +1230,7 @@ fn column_meta(meta: &[u8], kind: u32, unit: u32, data: WData) -> Result<WCol, F
         kind,
         unit,
         data,
+        letters: None,
     })
 }
 
@@ -1239,16 +1243,24 @@ pub extern "C" fn pq_write_begin(rows: f64) {
 /// Add a column of doubles with missing codes (0 a value, 1 `.`, 2 to 27
 /// `.a` to `.z`), which JavaScript's `host_fill` gives as source `id`
 /// while the table is written; `kind` and `unit` as in `WCol` (kind 9:
-/// days since 1970 as doubles, a date that DATE cannot hold).
+/// days since 1970 as doubles, a date that DATE cannot hold). `letters`
+/// is what JavaScript found in the missing codes: 1 none of `.a` to `.z`,
+/// 2 some (every code at most 27, in a column that can be DOUBLE), 0 not
+/// known, so the writer looks.
 ///
 /// # Safety
 /// `meta` holds `meta_len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn pq_write_numbers(meta: *const u8, meta_len: usize, kind: u32, unit: u32, id: u32) -> u32 {
+pub unsafe extern "C" fn pq_write_numbers(meta: *const u8, meta_len: usize, kind: u32, unit: u32, id: u32, letters: u32) -> u32 {
     call(0, |_| {
         let meta = copy(meta, meta_len)?;
         WRITE.with(|w| {
-            let col = column_meta(&meta, kind, unit, WData::Hosted(id))?;
+            let mut col = column_meta(&meta, kind, unit, WData::Hosted(id))?;
+            col.letters = match letters {
+                1 => Some(false),
+                2 => Some(true),
+                _ => None,
+            };
             w.borrow_mut().columns.push(col);
             Ok(1)
         })
@@ -1711,7 +1723,10 @@ pub unsafe extern "C" fn pq_write_finish(
         // A buffer, so the many small writes of page headers cross into
         // JavaScript a megabyte at a time.
         let mut sink = std::io::BufWriter::with_capacity(1 << 20, HostSink(file));
-        let written = dta_parquet::write(&table, &mut sink, &options);
+        // Columns JavaScript has looked at are not read an extra time to
+        // find .a to .z.
+        let letters: Vec<Option<bool>> = state.columns.iter().map(|c| c.letters).collect();
+        let written = dta_parquet::write_with_letters(&table, &mut sink, &options, &letters);
         STAGE.with(|s| *s.borrow_mut() = Window::default());
         // A value a fill found its column cannot hold is the cause of any
         // error the writer then met.

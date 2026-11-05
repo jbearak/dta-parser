@@ -265,7 +265,6 @@ impl Codecs {
         out.truncate(start + n);
         Ok(())
     }
-
 }
 
 pub(crate) fn unsupported(codec: Codec) -> Error {

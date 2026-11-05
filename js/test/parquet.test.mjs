@@ -207,6 +207,29 @@ test("missingLetters: false writes .a to .z as nulls and keeps each column's typ
   assert.ok(c.missing.includes(1));
 });
 
+test(".a to .z are found wherever they are in a column's missing codes", () => {
+  // The writer is told which columns hold letters, from their codes
+  // looked at four at a time; codes not on a 4-byte boundary, and a
+  // letter in the first, a middle or the last row, all count.
+  const rows = 1003;
+  for (const at of [0, 1, 2, 500, rows - 1]) {
+    const backing = new Uint8Array(rows + 3);
+    const missing = backing.subarray(3);
+    missing[at] = 5; // .d
+    const values = new Float64Array(rows).map((_, i) => i % 100);
+    const r = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values, missing } }] }));
+    assert.equal(r.variables[0].physicalType, "DOUBLE", `letter at ${at}`);
+    const [c] = r.readColumns(["x"]);
+    assert.equal(c.missing[at], 5, `letter at ${at}`);
+    assert.equal(c.missing.reduce((n, m) => n + (m > 0 ? 1 : 0), 0), 1);
+  }
+  const none = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values: new Float64Array(9), missing: Uint8Array.of(0, 1, 0, 1, 1, 0, 0, 0, 1) } }] }));
+  assert.equal(none.variables[0].physicalType, "INT32");
+  // Codes the writer must report are still reported.
+  assert.throws(() => writeParquet({ variables: [{ name: "b", type: "bool", values: { kind: "number", values: new Float64Array(3), missing: Uint8Array.of(0, 2, 0) } }] }), /\.a to \.z can be written only/);
+  assert.throws(() => writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values: new Float64Array(3), missing: Uint8Array.of(0, 28, 0) } }] }), /code 28/);
+});
+
 test("strings: dictionary gives DictionaryColumns for repeating text", () => {
   const r = openParquet(writeParquet(constructed(3000), { rowGroupSize: 1000 }));
   const [word, uniq] = r.readColumns(["word", "uniq"], { strings: "dictionary" });

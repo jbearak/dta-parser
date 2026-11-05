@@ -99,6 +99,6 @@ pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader
 pub use schema::{ColumnInfo, ColumnType, LevelsFrom, Role};
 pub use tagged::{tagged_code, tagged_nan, NA_BITS};
 pub use write::{
-    write, Fill, FillCodes, GetBytes, Table, Values, WriteColumn, WriteOptions, WriteReport, BLOCK,
-    CREATED_BY,
+    write, write_with_letters, Fill, FillCodes, GetBytes, Table, Values, WriteColumn, WriteOptions,
+    WriteReport, BLOCK, CREATED_BY,
 };
