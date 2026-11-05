@@ -230,6 +230,23 @@ test(".a to .z are found wherever they are in a column's missing codes", () => {
   assert.throws(() => writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values: new Float64Array(3), missing: Uint8Array.of(0, 28, 0) } }] }), /code 28/);
 });
 
+test("a variable asked for twice gives the same values twice, in arrays of its own", () => {
+  const r = openParquet(writeParquet(constructed(3000), { rowGroupSize: 1000 }));
+  for (const strings of ["plain", "dictionary"]) {
+    const [a, x, b] = r.readColumns(["word", "age", "word"], { strings });
+    const [once] = r.readColumns(["word"], { strings });
+    const text = (c, i) => (c.missing?.[i] ? null : c.kind === "dictionary" ? c.values[c.codes[i]] : c.values[i]);
+    for (let i = 0; i < 3000; i++) {
+      assert.equal(text(a, i), text(once, i), `${strings} row ${i}`);
+      assert.equal(text(b, i), text(once, i), `${strings} row ${i}, second copy`);
+    }
+    assert.notEqual(a, b);
+  }
+  const [x, y] = r.readColumns(["age", "age"], { start: 10, count: 5 });
+  assert.deepEqual(y, x);
+  assert.notEqual(y.values, x.values);
+});
+
 test("strings: dictionary gives DictionaryColumns for repeating text", () => {
   const r = openParquet(writeParquet(constructed(3000), { rowGroupSize: 1000 }));
   const [word, uniq] = r.readColumns(["word", "uniq"], { strings: "dictionary" });

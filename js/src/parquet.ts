@@ -552,6 +552,23 @@ export class ParquetReader implements TableReader {
 
   /** Read rows `start` to `start + count` of the variables at `idx` into columns. */
   private gather(idx: number[], start: number, count: number, asDictionary: boolean): TableColumn[] {
+    // A variable asked for twice is read once (the module's text
+    // dictionary is one per column, so a second copy in one call would
+    // get codes without their values), and each later position gets a
+    // copy of its own.
+    const distinct = [...new Set(idx)];
+    if (distinct.length < idx.length) {
+      const read = this.gather(distinct, start, count, asDictionary);
+      const given = new Set<number>();
+      return idx.map((k) => {
+        const col = read[distinct.indexOf(k)];
+        if (!given.has(k)) {
+          given.add(k);
+          return col;
+        }
+        return copyColumn(col);
+      });
+    }
     const vars = idx.map((k) => this.readable(k));
     let out: TableColumn[];
     try {
@@ -635,6 +652,20 @@ export class ParquetReader implements TableReader {
   /** `close()`, so `using r = openParquetFile(path)` closes the reader at the end of its block. */
   [Symbol.dispose](): void {
     this.close();
+  }
+}
+
+/** A column with arrays of its own. */
+function copyColumn(c: TableColumn): TableColumn {
+  switch (c.kind) {
+    case "number":
+      return { kind: "number", values: c.values.slice(), missing: c.missing.slice() };
+    case "bigint":
+      return { kind: "bigint", values: c.values.slice(), missing: c.missing.slice() } as BigIntColumn;
+    case "dictionary":
+      return { kind: "dictionary", codes: c.codes.slice(), values: [...c.values], missing: c.missing?.slice() };
+    default:
+      return { kind: "string", values: [...c.values], missing: c.missing?.slice() };
   }
 }
 
