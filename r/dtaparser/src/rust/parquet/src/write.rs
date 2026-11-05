@@ -1227,27 +1227,6 @@ impl Encoder<'_> {
                     }
                 }
             }
-            // PLAIN, and the block cannot fill the page: the same as the
-            // loop below, without its checks on every value.
-            if dict.is_none()
-                && bits.is_none()
-                && plain.len() + n * T::WIDTH + (s.levels.len() + n) / 8 < self.options.page_bytes
-            {
-                plain.reserve(n * T::WIDTH);
-                for i in 0..n {
-                    let code = codes[i];
-                    if code == 0 {
-                        stats.add(values[i]);
-                        values[i].put(&mut plain);
-                    } else if code > missing::LAST {
-                        return Err(bad_code(name, first + i, code));
-                    } else {
-                        stats.nulls += 1;
-                    }
-                }
-                s.levels.extend(codes[..n].iter().map(|&c| u8::from(c == 0)));
-                continue;
-            }
             for i in 0..n {
                 let row = first + i - rows.start;
                 let code = codes[i];
