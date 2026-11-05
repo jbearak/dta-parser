@@ -201,6 +201,14 @@ pub struct WriteOptions {
     /// the ones before them to be written.
     #[doc(hidden)]
     pub pipeline_bytes: usize,
+    /// The default thread rule for this write, in place of
+    /// [`WRITE_BYTES_PER_THREAD`](crate::WRITE_BYTES_PER_THREAD),
+    /// [`WRITE_THREADS`](crate::WRITE_THREADS) and
+    /// [`WRITE_THREADS_MOST`](crate::WRITE_THREADS_MOST): one thread per
+    /// `.0` bytes of values, at least `.1` and at most `.2`. For inputs
+    /// measured to have their own (polars' Arrow export, plan 0019).
+    #[doc(hidden)]
+    pub thread_rule: Option<(u64, usize, usize)>,
 }
 
 impl Default for WriteOptions {
@@ -223,6 +231,7 @@ impl Default for WriteOptions {
             offset_index: true,
             parallel_bytes: if small { 0 } else { 16 << 20 },
             pipeline_bytes: if small { 1 } else { 256 << 20 },
+            thread_rule: None,
         }
     }
 }
@@ -285,13 +294,12 @@ pub fn write_with_letters(
     let work = table.columns.iter().fold(0u64, |sum, c| {
         sum.saturating_add((c.values.width() as u64).saturating_mul(table.rows as u64))
     });
-    let threads = dta::threads::resolve_scaled(
-        options.threads,
-        work,
+    let (per_thread, least, most) = options.thread_rule.unwrap_or((
         crate::WRITE_BYTES_PER_THREAD,
         crate::WRITE_THREADS,
         crate::WRITE_THREADS_MOST,
-    );
+    ));
+    let threads = dta::threads::resolve_scaled(options.threads, work, per_thread, least, most);
     let scratch: Vec<Mutex<Scratch>> = (0..threads.max(1))
         .map(|_| Mutex::new(Scratch::default()))
         .collect();

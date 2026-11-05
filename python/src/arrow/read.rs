@@ -27,6 +27,8 @@ use crate::parquet::{entries, kind_of, no_nulls, read_error, select, unit_code, 
 pub(crate) const ARROW_BYTES_PER_THREAD: u64 = 8 << 20;
 pub(crate) const ARROW_THREADS: usize = 1;
 pub(crate) const ARROW_THREADS_MOST: usize = 16;
+/// Reads of fewer bytes than this stay on one thread.
+pub(crate) const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
 
 /// polars' Enum of `.a` to `.z` (datakit's `LETTERS`).
 pub(crate) fn letter_names() -> Vec<String> {
@@ -406,6 +408,7 @@ pub fn parquet_read_arrow<'py>(
         thread_rule: Some((ARROW_BYTES_PER_THREAD, ARROW_THREADS, ARROW_THREADS_MOST)),
         ..ReadOptions::default()
     };
+    let options = ReadOptions { parallel_bytes: options.parallel_bytes.min(ARROW_PARALLEL_BYTES), ..options };
     let names: Option<Vec<String>> = columns.as_ref().and_then(|c| c.iter().map(|w| w.extract::<String>().ok()).collect());
     let names: Option<Vec<&str>> = names.as_ref().map(|n| n.iter().map(String::as_str).collect());
     with_reader_for(source, options, names.as_deref(), &mut |r| {
