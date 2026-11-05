@@ -512,15 +512,15 @@ yearly = df.income .* 12
 
 ### Labels and .a to .z through DataFrames operations
 
-Metadata follows DataFrames' own rule for style `:note`. The codes
-follow the `DtaColumn`: they are kept wherever DataFrames moves the
-column itself or indexes it, and lost wherever DataFrames or your
-function builds a new vector from its elements, since each element is
-`missing` and a new vector stores it as `.`.
+Metadata follows DataFrames' own rule for style `:note`. The codes live
+in the `DtaColumn`. When DataFrames moves that column or indexes it,
+they come along. When DataFrames or your function builds a new vector
+from its elements, they are gone: each element is `missing`, and a new
+vector stores it as `.`.
 
-These are what the tests (`julia/Datakit/test/operations.jl`) observe
-on DataFrames 1.8.2 and on 1.4.0, the oldest version Datakit allows.
-They describe DataFrames, not a promise of Datakit's.
+The lists below are what `julia/Datakit/test/operations.jl` observes on
+DataFrames 1.8.2 and on 1.4.0, the oldest version Datakit allows. They
+describe DataFrames' behaviour, which Datakit does not control.
 
 **Keep the codes and the labels:**
 
