@@ -10,7 +10,8 @@ bundles.
 
 It was committed after the R Parquet documentation was drafted (PR 3 of
 plan 0018) and before the Python, Julia and TypeScript Parquet
-documentation; it was written without reading that draft.
+documentation; it was written without reading that draft. Plan 0018
+records this exception to its "before any Parquet docs" rule.
 
 ## The eleven tasks
 
@@ -36,7 +37,11 @@ alone?
 
 A task is **supported** by another library when its documentation or
 code at the pinned version lets a user do it at all, however
-awkwardly. The table comes from the research notes
+awkwardly. For tasks 6 and 9, a library supports them if a user can
+attach labels to the file and get them back by any documented means,
+including the library's own key-value or field metadata, since a user
+could keep labels there by a convention of their own. The table comes
+from the research notes
 (`docs/research/parquet-*.md`) and the libraries' documentation at the
 pinned versions. "no" means the library cannot do the task; its score
 for that task is still given and published, but pass rule 1 does not
@@ -49,10 +54,10 @@ compare against it.
 | 3 columns | yes | yes | yes | yes | yes | yes | yes | yes |
 | 4 rows | yes (datasets, row groups) | no (r-lib/nanoparquet#48) | yes (row groups, batches) | no | yes (`n_rows`, lazy slice) | yes (row groups) | yes (`rowStart`, `rowEnd`) | yes (`limit`, `offset`) |
 | 5 metadata | yes | yes | yes | no (through pyarrow only) | yes | yes | yes | yes |
-| 6 labels | yes (haven labels, in R only) | no | no | yes (`attrs`, in pandas only) | no | no | no | no |
+| 6 labels | yes (haven labels, in R only) | yes (key-value metadata) | yes (schema and field metadata; `attrs` through pandas) | yes (`attrs`) | yes (key-value metadata) | yes (key-value metadata) | yes (key-value metadata) | yes (key-value metadata) |
 | 7 dates | yes | yes | yes | yes | yes | yes | yes | yes |
 | 8 write | yes | yes | yes | yes | yes | yes | yes | yes |
-| 9 write labels | yes (in R only) | no | no | yes (`attrs`) | no | no | no | no |
+| 9 write labels | yes (in R only) | yes (key-value metadata) | yes (schema and field metadata) | yes (`attrs`) | yes (key-value metadata) | yes (key-value metadata) | yes (key-value metadata) | yes (key-value metadata) |
 | 10 `.a` to `.z` | no (apache/arrow#49149) | no | no | no | no | no | no | no |
 | 11 other tools' files | yes | yes | yes | yes | yes | yes | yes | yes |
 
@@ -96,7 +101,10 @@ fails for that language; plan 0018 then asks the user how to proceed.
   `save_parquet`, and dtaparser's for the label helpers they return;
   Python and Julia: the docstrings; TypeScript: the TSDoc in `js/src/`).
   The commit is recorded with each round.
-- Other libraries: the documentation at the pinned version below.
+- Other libraries: the documentation at the pinned version below,
+  always including the library's front page (its README or
+  documentation home) and its installation page, so that task 1 and
+  findability are judged on what a user would see.
 
 **Blinding.** In both bundles, package and repository names in prose
 are replaced by "Library A" and "Library B". Function names in code
@@ -142,11 +150,11 @@ commit is recorded with the round.
 
 | language | library | version | documentation |
 |---|---|---|---|
-| R | arrow | 26.0.0 | the R package's `README.md`, the vignettes on reading and writing data and on metadata, and the reference pages for `read_parquet`, `write_parquet`, `ParquetFileReader`, `open_dataset` and `schema`, at tag `apache-arrow-26.0.0` of apache/arrow (`r/`) |
+| R | arrow | 26.0.0 | the R package's `README.md` and installation vignette, the vignettes on reading and writing data and on metadata, and the reference pages for `read_parquet`, `write_parquet`, `ParquetFileReader`, `open_dataset` and `schema`, at tag `apache-arrow-26.0.0` of apache/arrow (`r/`) |
 | R | nanoparquet | 0.5.2 | `README.md`, the vignettes, and the reference pages for `read_parquet`, `write_parquet`, `read_parquet_schema`, `read_parquet_info`, `read_parquet_metadata` and `parquet_options`, at tag `v0.5.2` of r-lib/nanoparquet |
-| Python | pyarrow | 26.0.1 | the Parquet page of the Python user guide (`docs/source/python/parquet.rst`) and the docstrings of `pyarrow.parquet.read_table`, `write_table`, `ParquetFile`, `read_metadata` and `read_schema`, at tag `apache-arrow-26.0.1` |
-| Python | pandas | 3.1.1 | the Parquet section of `doc/source/user_guide/io.rst` and the docstrings of `read_parquet` and `DataFrame.to_parquet`, at tag `v3.1.1` |
-| Python | polars | 2.1.0 | the user guide's Parquet page and the reference pages for `read_parquet`, `scan_parquet`, `read_parquet_schema`, `read_parquet_metadata` and `DataFrame.write_parquet`, at the Python 2.1.0 release |
+| Python | pyarrow | 26.0.1 | the documentation home and installation page (`docs/source/python/index.rst`, `install.rst`), the Parquet page of the Python user guide (`docs/source/python/parquet.rst`) and the docstrings of `pyarrow.parquet.read_table`, `write_table`, `ParquetFile`, `read_metadata` and `read_schema`, at tag `apache-arrow-26.0.1` |
+| Python | pandas | 3.1.1 | the documentation home and installation page (`doc/source/index.rst.template`, `doc/source/getting_started/install.rst`), the Parquet section of `doc/source/user_guide/io.rst` and the docstrings of `read_parquet` and `DataFrame.to_parquet`, at tag `v3.1.1` |
+| Python | polars | 2.1.0 | the user guide's home and installation pages, the user guide's Parquet page and the reference pages for `read_parquet`, `scan_parquet`, `read_parquet_schema`, `read_parquet_metadata` and `DataFrame.write_parquet`, at the Python 2.1.0 release |
 | Julia | Parquet2.jl | 0.2.37 | `README.md` and `docs/src/`, at tag `v0.2.37` |
 | TypeScript | hyparquet and hyparquet-writer | 1.32.0 and 0.18.0 | each package's `README.md` and its TypeScript declarations, as published to npm at those versions |
 | TypeScript | parquet-wasm | 0.9.0 | `README.md`, the documentation site's pages for reading and writing, and the TypeScript declarations, as published to npm at 0.9.0 |

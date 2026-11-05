@@ -772,7 +772,10 @@ Each round's reviews and our answers go in
 **Gate 2, the documentation (last PR).** The blind pairwise judging of
 `docs/judging/rubric.md`, under its own rubric,
 `docs/judging/parquet-rubric.md`, committed in its own commit before
-any Parquet docs are written. Its tasks:
+any Parquet docs are written. (In the event it was committed after the
+R Parquet docs were drafted in PR 3 and before the Python, Julia and
+TypeScript ones, and written without reading the R draft; the rubric
+says so.) Its tasks:
 
 1. Install.
 2. Read a whole file; what type each Parquet type becomes.
@@ -860,7 +863,8 @@ cases.
    fastparquet, Parquet2.jl and hyparquet-writer too.
 5. **Python**, 6. **Julia**, 7. **TypeScript**, in parallel once 4 is
    merged, each with its docs, round-trip tests and benchmarks.
-8. **Judging and results.** `parquet-rubric.md` (its own commit first),
+8. **Judging and results.** `parquet-rubric.md` (its own commit and PR,
+   during PR 3),
    Gate 2, `bench/RESULTS.md`'s Parquet section, `docs/parquet.md`'s
    final measurements and `docs/acknowledgements.md`.
 
