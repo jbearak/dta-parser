@@ -102,6 +102,8 @@ function Base.copyto!(dest::DtaColumn, doffs::Integer, src::DtaView, soffs::Inte
     n > 0 || throw(ArgumentError("tried to copy n=$n elements, but n should be nonnegative"))
     checkbounds(dest, doffs:doffs+n-1)
     checkbounds(src, soffs:soffs+n-1)
+    # A view of `dest` itself: copy the rows first, as they may overlap.
+    parent(src) === dest && return copyto!(dest, doffs, copy(view(src, soffs:soffs+n-1)), 1, n)
     p, ix = parent(src), parentindices(src)[1]
     @inbounds for k in 0:n-1
         i = ix[soffs+k]
