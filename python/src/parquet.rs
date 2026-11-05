@@ -1167,11 +1167,6 @@ fn read_into<'py>(
         .filter(|c| matches!(c.kind, Kind::DecimalFloat))
         .map(|c| format!("column \"{}\":", infos[c.index].name))
         .collect();
-    let int_names: Vec<String> = cols
-        .iter()
-        .filter(|c| matches!(c.kind, Kind::Int64 { .. } | Kind::UInt { .. }))
-        .map(|c| format!("column \"{}\":", infos[c.index].name))
-        .collect();
     drop(by_name);
 
     let mut failed: Option<PyErr> = None;
@@ -1198,7 +1193,7 @@ fn read_into<'py>(
     if let Some(e) = failed {
         return Err(e);
     }
-    let mut report = report.map_err(|e| fail(read_error(e.to_string(), &decimal_names, &int_names)))?;
+    let mut report = report.map_err(|e| fail(read_error(e.to_string(), &decimal_names)))?;
 
     let out = PyDict::new(py);
     let list = PyList::empty(py);
@@ -1224,12 +1219,11 @@ fn read_into<'py>(
 }
 
 /// The message of a read's error, with what Python offers instead.
-fn read_error(m: String, decimal_names: &[String], int_names: &[String]) -> String {
+fn read_error(m: String, decimal_names: &[String]) -> String {
     const DECIMAL: &str = "read the column as text to keep every digit";
     if decimal_names.iter().any(|n| m.starts_with(n.as_str())) && m.contains(DECIMAL) {
         return m.replace(DECIMAL, "this should not happen for a DECIMAL of 15 digits or fewer");
     }
-    let _ = int_names;
     m
 }
 

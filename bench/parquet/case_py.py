@@ -206,7 +206,7 @@ elif lib in ("polars", "polars-df"):
 elif lib == "fastparquet":
     threads = "1"
 elif lib == "duckdb-arrow":
-    threads = str(con.sql("SELECT current_setting('threads')").fetchone()[0])
+    threads = str(con.sql("SELECT current_setting('threads')").fetchall()[0][0])
 result = {"loaded": loaded, "version": version, "threads": threads}
 if task in ("write", "zstd"):
     df = dp.read_dta(path)
