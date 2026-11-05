@@ -12,12 +12,10 @@ snap = "1"
 miniz_oxide = "0.8"
 lz4_flex = { version = "0.11", default-features = false, features = ["safe-encode", "safe-decode"] }
 brotli-decompressor = "6"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# C libzstd on every target. For wasm32-unknown-unknown it needs a clang
+# that targets wasm32 (CC_wasm32_unknown_unknown); zstd-sys supplies the
+# C library functions libzstd uses there.
 zstd = { version = "0.13", default-features = false }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-ruzstd = "0.8"
 
 [dev-dependencies]
 # Examples and tests write and read JSON; the library does not.

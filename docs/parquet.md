@@ -1,16 +1,15 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R) and dta_parser (Python) read and write Parquet files that keep a `.dta` file's
-value labels, variable labels, display formats, notes and extended
+datakit (R), dta_parser (Python), DtaParser (Julia) and the npm
+package (TypeScript) read and write Parquet files that keep a `.dta`
+file's value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
 file it writes is ordinary Parquet that pyarrow, pandas, polars,
 DuckDB, arrow and nanoparquet read; what Parquet has no place for goes
 into one JSON entry of the file's metadata, the *dta profile*, which
 those tools ignore. Only flat tables are read and written: nested
 columns (lists, maps, structs) are not, so for nested data use arrow,
-pyarrow or polars. The Julia and TypeScript packages get the same
-reader and writer later (plan 0018); this page gains their sections
-then.
+pyarrow or polars.
 
 Contents:
 [Tasks](#tasks) ·
@@ -30,7 +29,7 @@ Nothing beyond the package: R, [Parquet: install](r.md#parquet-install);
 Python, [Parquet: install](python.md#parquet-install);
 Julia, [Parquet: install](julia.md#parquet-install) (TimeZones.jl and
 CategoricalArrays.jl are optional, for zones and categoricals).
-TypeScript: not yet.
+TypeScript, [Parquet: install](typescript.md#parquet-install).
 
 ### Read a whole file, and what each type becomes
 
@@ -40,18 +39,23 @@ Python: [Read a Parquet file](python.md#read-a-parquet-file) and
 [What each Parquet type becomes](python.md#what-each-parquet-type-becomes-in-python).
 Julia: [Read a Parquet file](julia.md#read-a-parquet-file) and
 [What each Parquet type becomes](julia.md#what-each-parquet-type-becomes-in-julia).
+TypeScript: [Read a Parquet file](typescript.md#read-a-parquet-file) and
+[What each Parquet type becomes](typescript.md#what-each-parquet-type-becomes-in-typescript).
 
 ### Read some columns
 
 R: [Read some columns](r.md#read-some-columns-of-a-parquet-file).
 Python: [Read some columns](python.md#read-some-columns-of-a-parquet-file).
 Julia: [Read some columns](julia.md#read-some-columns-of-a-parquet-file).
+TypeScript: [Read some columns](typescript.md#read-some-columns-of-a-parquet-file).
 
 ### Read a range of rows
 
 R: [Read a range of rows](r.md#read-a-range-of-rows-of-a-parquet-file).
 Python: [Read a range of rows](python.md#read-a-range-of-rows-of-a-parquet-file).
 Julia: [Read a range of rows](julia.md#read-a-range-of-rows-of-a-parquet-file).
+TypeScript: [Read a range of rows](typescript.md#read-a-range-of-rows-of-a-parquet-file),
+and [in a browser or over HTTP](typescript.md#parquet-in-a-browser-or-over-http).
 Only the row groups that hold the rows are read, and within them only
 the pages that do: through the file's offset index, or, when it has
 none, by walking the page headers.
@@ -62,40 +66,45 @@ R: [Schema and metadata](r.md#a-parquet-files-schema-and-metadata).
 Python: [Schema and metadata](python.md#a-parquet-files-schema-and-metadata).
 Julia: [Schema and metadata](julia.md#a-parquet-files-schema-and-metadata)
 (`read_meta`, which also reads `.dta` files).
+TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metadata).
 
 ### Value labels and variable labels
 
 R: [Labels](r.md#labels-in-parquet-files).
 Python: [Labels](python.md#labels-in-parquet-files).
 Julia: [Labels](julia.md#labels-in-parquet-files).
+TypeScript: [Labels](typescript.md#labels-in-parquet-files).
 
 ### Dates and timestamps, with time zones
 
 R: [Dates and time zones](r.md#dates-and-time-zones-in-parquet-files).
 Python: [Dates and time zones](python.md#dates-and-time-zones-in-parquet-files).
 Julia: [Dates and time zones](julia.md#dates-and-time-zones-in-parquet-files).
+TypeScript: [Dates and time zones](typescript.md#dates-and-time-zones-in-parquet-files).
 
 ### Write a table; compression and row groups
 
 R: [Write a Parquet file](r.md#write-a-parquet-file).
 Python: [Write a Parquet file](python.md#write-a-parquet-file), and
 [the index](python.md#the-index-and-parquet-files), which is not
-written. The defaults are
-[below](#defaults-and-the-measurements-behind-them).
-Julia: [Write a Parquet file](julia.md#write-a-parquet-file). The
-defaults are [below](#defaults-and-the-measurements-behind-them).
+written.
+Julia: [Write a Parquet file](julia.md#write-a-parquet-file).
+TypeScript: [Write a Parquet file](typescript.md#write-a-parquet-file).
+The defaults are [below](#defaults-and-the-measurements-behind-them).
 
 ### Write labels and a data label, and check them
 
 R: [Write labels](r.md#write-labels-to-a-parquet-file).
 Python: [Write labels](python.md#write-labels-to-a-parquet-file).
 Julia: [Write labels](julia.md#write-labels-to-a-parquet-file).
+TypeScript: [Write labels](typescript.md#write-labels-to-a-parquet-file).
 
 ### Keep `.a` to `.z` through a write and a read
 
 R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
 Python: [Keep .a to .z](python.md#keep-a-to-z-in-a-parquet-file).
 Julia: [Keep .a to .z](julia.md#keep-a-to-z-in-a-parquet-file).
+TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
 ### Read a file another tool wrote
 
@@ -105,6 +114,7 @@ and [coming from pyarrow, pandas or polars](python.md#coming-from-pyarrow-pandas
 Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
 pandas, pyarrow and polars write microsecond timestamps, so Julia reads
 their files with `timestamps = :truncate`.
+TypeScript: [Files from other tools](typescript.md#parquet-files-from-other-tools).
 Every encoding and codec other tools write by default is read, and
 the types plan 0018 lists: unsigned integers, DECIMAL, TIME, INT96,
 fixed-length binary, UUID, ENUM and JSON. A category or factor that
@@ -259,7 +269,8 @@ write the file with `missing_letters = FALSE`.
   files were 16 to 17% smaller than snappy ones, and writing them took
   3 to 11% longer. `zstd` (with
   `compression_level`), `gzip`, `lz4_raw` and `none` are there on
-  request.
+  request, in every language, the npm package included: its wasm
+  module carries C libzstd too.
 - **Row groups: up to 262,144 rows (polars' default) and about 1 GiB of
   values.** The plan had 64 MiB, which made a DHS file of 5,000 columns
   four row groups where pyarrow and polars write one; pyarrow then took
@@ -353,3 +364,12 @@ Julia's argument names, and these of their own:
 | `column t: cannot write values of type Time; Parquet TIME columns are read, not written` (also complex numbers and other types) | a column type `write_parquet` does not write | convert it first |
 | `column c: a categorical column is written as text, so its levels must be strings, not Int64; ...` | a `CategoricalArray` of numbers | `categorical(string.(x))`, or write the numbers |
 | `column z holds times in 2 zones; a Parquet timestamp column has one. ...` | a `ZonedDateTime` column with several zones | `astimezone` to one zone |
+The TypeScript package gives the same messages, with its own option
+names, and a `code` on each error ([Errors](typescript.md#errors)):
+| message (TypeScript) | cause | what to do |
+| `no variable "x"; the file's are ...` (`DTA_OUT_OF_RANGE`) | a name or index in `columns` the file does not have | check `r.variables` |
+| `the file has nested columns, which are not read: "l"; select the columns wanted, or open with nested: "skip"` | `readRows` without `columns` on a file with a list, map or struct | select columns, or `{ nested: "skip" }` |
+| `column "n": the value 9007199254740993 in row 1 ... read with int64: "bigint" to keep every digit` | `int64: "number"`, or statistics that understated a column's range | `{ int64: "bigint" }` |
+| `maxStringBytes is for .dta files; Parquet strings are read whole` | `maxStringBytes` on a Parquet reader | leave it out |
+| `x: a .dta file cannot hold 64-bit integers; use writeParquet` | `writeDta` given bigints | `writeParquet`, or numbers |
+| warnings in `info.warnings` | a damaged or newer dta profile | as above |

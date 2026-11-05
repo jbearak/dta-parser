@@ -1,12 +1,10 @@
 //! Page compression: none, snappy, gzip, zstd and lz4_raw, and brotli
 //! on read.
 //!
-//! zstd goes through C libzstd on native targets and the pure-Rust
-//! `ruzstd` in wasm, where C would need a wasm32 C toolchain
-//! (docs/research/parquet-codecs.md).
+//! zstd goes through C libzstd on every target; building for wasm needs
+//! a clang that targets wasm32 (scripts/build-wasm.sh).
 
 use crate::format::Codec;
-#[cfg(not(target_arch = "wasm32"))]
 use dta::ErrorKind;
 use dta::{Error, Result};
 
@@ -17,8 +15,7 @@ pub enum Compression {
     Snappy,
     /// Levels 0 to 10; 6 by default.
     Gzip,
-    /// Levels 1 to 22 (and negative levels for speed); 3 by default. In
-    /// wasm, `ruzstd` has one level and the level is ignored.
+    /// Levels 1 to 22 (and negative levels for speed); 3 by default.
     Zstd,
     Lz4Raw,
 }
@@ -75,12 +72,8 @@ impl Compression {
 /// once per read or write, not once per page.
 #[derive(Default)]
 pub(crate) struct Codecs {
-    #[cfg(not(target_arch = "wasm32"))]
     zstd_in: Option<zstd::zstd_safe::DCtx<'static>>,
-    #[cfg(not(target_arch = "wasm32"))]
     zstd_out: Option<(i32, zstd::bulk::Compressor<'static>)>,
-    #[cfg(target_arch = "wasm32")]
-    zstd_in: Option<ruzstd::decoding::FrameDecoder>,
 }
 
 /// The most bytes snappy can make of each compressed byte: a copy of 64
@@ -184,7 +177,6 @@ impl Codecs {
     /// zstd can expand a few bytes into very many, so decompress into a
     /// buffer sized by the input and, when that is too small, try again
     /// with one twice as large, up to `declared`.
-    #[cfg(not(target_arch = "wasm32"))]
     fn unzstd(&mut self, input: &[u8], declared: usize, out: &mut Vec<u8>) -> Result<()> {
         use zstd::zstd_safe;
         use zstd_safe::zstd_sys::{ZSTD_ErrorCode, ZSTD_getErrorCode};
@@ -226,56 +218,6 @@ impl Codecs {
         }
     }
 
-    /// Decode block by block, growing `out` only as bytes come, and
-    /// stopping once they pass `declared`.
-    #[cfg(target_arch = "wasm32")]
-    fn unzstd(&mut self, input: &[u8], declared: usize, out: &mut Vec<u8>) -> Result<()> {
-        use ruzstd::decoding::BlockDecodingStrategy;
-        use ruzstd::io::Read as _;
-        let bad = |e: &dyn std::fmt::Display| Error::new(format!("zstd: {e}"));
-        let d = self
-            .zstd_in
-            .get_or_insert_with(ruzstd::decoding::FrameDecoder::new);
-        let mut input = input;
-        let mut written = 0;
-        grow(out, first_size(input, declared))?;
-        while !input.is_empty() {
-            match d.init(&mut input) {
-                Ok(()) => {}
-                Err(ruzstd::decoding::errors::FrameDecoderError::ReadFrameHeaderError(
-                    ruzstd::decoding::errors::ReadFrameHeaderError::SkipFrame { length, .. },
-                )) => {
-                    input = usize::try_from(length)
-                        .ok()
-                        .and_then(|l| input.get(l..))
-                        .ok_or_else(|| Error::new("zstd: a skippable frame runs past the page"))?;
-                    continue;
-                }
-                Err(e) => return Err(bad(&e)),
-            }
-            loop {
-                d.decode_blocks(&mut input, BlockDecodingStrategy::UptoBytes(1 << 20))
-                    .map_err(|e| bad(&e))?;
-                while d.can_collect() > 0 {
-                    if written == out.len() {
-                        if written >= declared {
-                            return Err(Error::new(
-                                "zstd: data holds more bytes than the page header says",
-                            ));
-                        }
-                        grow(out, written.saturating_mul(2).max(1).min(declared))?;
-                    }
-                    written += d.read(&mut out[written..]).map_err(|e| bad(&e))?;
-                }
-                if d.is_finished() {
-                    break;
-                }
-            }
-        }
-        out.truncate(written);
-        Ok(())
-    }
-
     /// Compress `input` onto the end of `out`.
     pub(crate) fn compress(
         &mut self,
@@ -310,7 +252,6 @@ impl Codecs {
         Ok(())
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn zstd(&mut self, input: &[u8], level: i32, out: &mut Vec<u8>) -> Result<()> {
         if self.zstd_out.as_ref().is_none_or(|(l, _)| *l != level) {
             self.zstd_out = Some((level, zstd::bulk::Compressor::new(level)?));
@@ -322,16 +263,6 @@ impl Codecs {
             .compress_to_buffer(input, &mut out[start..])
             .map_err(|e| Error::new(format!("zstd: {e}")).of(ErrorKind::Internal))?;
         out.truncate(start + n);
-        Ok(())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn zstd(&mut self, input: &[u8], _level: i32, out: &mut Vec<u8>) -> Result<()> {
-        // ruzstd 0.8 implements only its fastest level.
-        out.extend_from_slice(&ruzstd::encoding::compress_to_vec(
-            input,
-            ruzstd::encoding::CompressionLevel::Fastest,
-        ));
         Ok(())
     }
 }

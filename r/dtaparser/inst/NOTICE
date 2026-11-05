@@ -25,8 +25,3 @@ Used only to build zstd-sys's C code:
   pkg-config 0.3.34, getrandom 0.4.3, libc 0.2.191, cfg-if 1.0.5
                          MIT OR Apache-2.0
   r-efi 6.0.0            MIT OR Apache-2.0 OR LGPL-2.1-or-later
-
-Carried in the source but compiled only for WebAssembly:
-
-  ruzstd 0.8.3           MIT            https://github.com/KillingSpark/zstd-rs
-  twox-hash 2.1.5        MIT            https://github.com/shepmaster/twox-hash

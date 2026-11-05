@@ -94,7 +94,7 @@ for (const path of docFiles()) {
 test("every export has TSDoc and appears in docs/typescript.md", { skip }, () => {
   const text = readFileSync(page, "utf8");
   const mentioned = (n) => text.includes(`\`${n}`) || text.includes(`.${n}(`) || text.includes(`{ ${n}`) || text.includes(`, ${n}`);
-  for (const src of ["index.ts", "node.ts", "format.ts"]) {
+  for (const src of ["index.ts", "node.ts", "format.ts", "parquet.ts"]) {
     const lines = readFileSync(join(pkg, "src", src), "utf8").split("\n");
     lines.forEach((line, i) => {
       const m = /^export\s+(?:declare\s+)?(?:function|class|const|interface|type)\s+(\w+)/.exec(line);
@@ -108,12 +108,14 @@ test("every export has TSDoc and appears in docs/typescript.md", { skip }, () =>
   for (const entry of ["../dist/index.js", "../dist/node.js"]) {
     for (const n of Object.keys(require(entry))) assert.ok(mentioned(n), `docs/typescript.md does not mention ${n}`);
   }
-  // The reader's public methods.
-  const index = readFileSync(join(pkg, "src", "index.ts"), "utf8").split("\n");
-  index.forEach((line, i) => {
-    const m = /^  (\w+)\(.*\{$/.exec(line);
-    if (!m || m[1] === "constructor") return;
-    assert.ok(index[i - 1].trim().endsWith("*/"), `DtaReader.${m[1]} has no TSDoc`);
-    assert.ok(mentioned(m[1]), `docs/typescript.md does not mention ${m[1]}`);
-  });
+  // The readers' public methods (those marked @internal are not public).
+  for (const src of ["index.ts", "parquet.ts"]) {
+    const lines = readFileSync(join(pkg, "src", src), "utf8").split("\n");
+    lines.forEach((line, i) => {
+      const m = /^  (\w+)\(.*\{$/.exec(line);
+      if (!m || m[1] === "constructor" || lines[i - 1].includes("@internal")) return;
+      assert.ok(lines[i - 1].trim().endsWith("*/"), `${src}: ${m[1]} has no TSDoc`);
+      assert.ok(mentioned(m[1]), `docs/typescript.md does not mention ${m[1]}`);
+    });
+  }
 });

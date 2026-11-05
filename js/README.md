@@ -29,6 +29,19 @@ writeDtaFile("out.dta", {
 });
 ```
 
+Parquet files too, keeping labels, `.a` to `.z`, categoricals and time
+zones, through the same reader interface (`TableReader`):
+
+```ts
+import { openParquet, writeParquet, toDate } from "@jbearak/dta-parser";
+import { openParquetFile, writeParquetFile } from "@jbearak/dta-parser/node";
+
+writeParquetFile("out.parquet", { variables: [{ name: "x", values: [1, 2] }] }); // writeDta's dataset; snappy
+const p = openParquetFile("out.parquet");  // reads the footer only; or openParquet(bytes), openParquetAsync(readAt, size)
+p.readColumns(["x"], { start: 0, count: 2 });
+p.close();
+```
+
 A file is read only as far as asked: opening reads the header and the
 variable descriptors, and `readColumns` decodes just the requested
 variables and rows. Each call into the module holds at most 64 MiB of

@@ -5,7 +5,7 @@ mod support;
 use dta::{ValueLabel, ValueLabelSet};
 use dta_parquet::format::{Codec, Encoding, FileMetaData, KeyValue, PhysicalType};
 use dta_parquet::{
-    tagged_code, tagged_nan, write, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
+    tagged_code, tagged_nan, write, write_with_letters, ColumnProfile, ColumnType, Compression, Numbers, Output, Profile, ReadOptions, Reader, Role, Storage,
     WriteOptions, Logical, NA_BITS,
 };
 use support::{dated_columns, every_type, expected, read, same, storage_columns, table, Col, Data, Got};
@@ -127,6 +127,25 @@ fn the_letters_read_as_codes_and_flags() {
 }
 
 #[test]
+fn a_caller_who_says_which_columns_hold_letters_gets_the_same_file() {
+    let cols = every_type(100);
+    let t = table(&cols, Profile::default());
+    let mut plain = Vec::new();
+    write(&t, &mut plain, &WriteOptions::default()).unwrap();
+    // What write found, given as hints: the same bytes.
+    let (_, letters) = read(&plain, &names(&cols), 0, 100, serial());
+    let hints: Vec<Option<bool>> = letters.into_iter().map(Some).collect();
+    assert!(hints.contains(&Some(true)) && hints.contains(&Some(false)));
+    let mut hinted = Vec::new();
+    write_with_letters(&t, &mut hinted, &WriteOptions::default(), &hints).unwrap();
+    assert!(hinted == plain);
+    // No hints at all, or too few, read the columns as write does.
+    let mut short = Vec::new();
+    write_with_letters(&t, &mut short, &WriteOptions::default(), &hints[..1]).unwrap();
+    assert!(short == plain);
+}
+
+#[test]
 fn letters_can_go_into_the_values_themselves() {
     // As R keeps .a to .z: tagged NaNs, and NA_real_ for `.`.
     let cols = every_type(50);
@@ -199,6 +218,41 @@ fn window_reads_fetch_only_the_pages_they_need() {
     let opts = WriteOptions { offset_index: false, ..opts };
     let bytes = bytes_of(&cols, Profile::default(), &opts);
     check(&bytes, &cols, 500_000, 1000, serial());
+}
+
+#[test]
+fn the_page_cache_serves_neighbouring_windows() {
+    let cols = every_type(3000);
+    let opts = WriteOptions { row_group_rows: Some(1000), page_bytes: 2000, ..Default::default() };
+    let bytes = bytes_of(&cols, Profile::default(), &opts);
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    r.set_page_cache(1 << 20);
+    let all = names(&cols);
+    // Batches of 50 rows: each page is decompressed once, then found in
+    // the cache, and the values are the same as without it.
+    for skip in (0..3000).step_by(50) {
+        let (got, _) = support::read_with(&mut r, &all, skip, 50).unwrap();
+        for (c, g) in cols.iter().zip(&got) {
+            assert!(same(&expected(c, skip as usize..skip as usize + 50), g), "{} at {skip}", c.name);
+        }
+    }
+    let (held, hits, misses) = r.page_cache_stats();
+    assert!(held > 0 && held <= 1 << 20, "{held}");
+    assert!(hits > 4 * misses, "{hits} hits, {misses} misses");
+    // A small budget evicts and still reads right.
+    r.set_page_cache(4096);
+    for skip in (0..3000).rev().step_by(70) {
+        let (got, _) = support::read_with(&mut r, &all, skip, 30).unwrap();
+        for (c, g) in cols.iter().zip(&got) {
+            let end = (skip as usize + 30).min(3000);
+            assert!(same(&expected(c, skip as usize..end), g), "{} at {skip}", c.name);
+        }
+    }
+    assert!(r.page_cache_stats().0 <= 4096);
+    // Whole chunks are not cached.
+    r.set_page_cache(1 << 20);
+    support::read_with(&mut r, &all, 0, 3000).unwrap();
+    assert_eq!(r.page_cache_stats(), (0, 0, 0));
 }
 
 #[test]

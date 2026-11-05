@@ -225,6 +225,23 @@ pub const CREATED_BY: &str = concat!("dta-parquet version ", env!("CARGO_PKG_VER
 
 /// Write `table` to `out` as a Parquet file.
 pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<WriteReport> {
+    write_with_letters(table, out, options, &[])
+}
+
+/// [`write`], told which columns hold `.a` to `.z`, so the writer need not
+/// read every column once more to find out before it encodes. `letters[k]`
+/// is `Some(found)` where the caller has looked at column `k`'s missing
+/// codes and found them all 0 to 27, with any of `.a` to `.z` only in a
+/// column that can be written as DOUBLE (byte, int, long, float, double,
+/// date or timestamp); a letter in a column said to have none is written
+/// as a null. `None`, or a column past the end of `letters`, is read as
+/// [`write`] reads it.
+pub fn write_with_letters(
+    table: &Table,
+    out: impl Write,
+    options: &WriteOptions,
+    letters: &[Option<bool>],
+) -> Result<WriteReport> {
     let level = options.compression.level(options.compression_level)?;
     let mut names = std::collections::HashSet::with_capacity(table.columns.len());
     for c in &table.columns {
@@ -268,7 +285,10 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
     // Which columns hold `.a` to `.z`, found before anything is written:
     // those are DOUBLE in every row group.
     let tagged: Vec<bool> = if options.missing_letters {
-        let scan = |k: usize, _: &mut Scratch| holds_letters(&table.columns[k], table.rows);
+        let scan = |k: usize, _: &mut Scratch| match letters.get(k).copied().flatten() {
+            Some(found) => Ok(found),
+            None => holds_letters(&table.columns[k], table.rows),
+        };
         let big = table.rows.saturating_mul(table.columns.len() * 8) >= options.parallel_bytes;
         parallel(
             if big { threads } else { 1 },
@@ -1199,10 +1219,13 @@ impl Encoder<'_> {
         let mut p = Pages::new(physical);
         let mut values = [T::default(); BLOCK];
         let mut codes = vec![0u8; BLOCK];
-        let mut dict: Option<Dictionary<u64, T>> = Some(Dictionary {
-            map: s.numbers_map(rows.len()),
-            ..Dictionary::default()
-        });
+        // The dictionary is written or dropped by the time it holds
+        // dictionary_bytes of values, so its table is made that size (or
+        // the chunk's) at once, reusing this thread's largest table.
+        let most = rows.len().min(self.options.dictionary_bytes / T::WIDTH + 1);
+        let mut map = s.numbers_map(rows.len());
+        map.reserve(most);
+        let mut dict: Option<Dictionary<u64, T>> = Some(Dictionary { map, ..Dictionary::default() });
         let mut plain = Vec::new();
         let mut stats = Stats::<T>::default();
         let mut page_first = 0usize;
@@ -1774,10 +1797,26 @@ impl Hasher for Fx {
         self.write_u64(u64::from_le_bytes(tail));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     fn write_u64(&mut self, v: u64) {
         let m = u128::from(self.0 ^ v) * 0x9e37_79b9_7f4a_7c15_u128;
         self.0 = (m as u64) ^ ((m >> 64) as u64);
+    }
+
+    /// wasm has no 64-by-64-bit multiply to 128 bits (it is a call to a
+    /// helper, as slow as the rest of the insert), so there the bits are
+    /// mixed with MurmurHash3's 64-bit finalizer, which also carries every
+    /// input bit into the low bits, with plain 64-bit multiplies.
+    #[cfg(target_arch = "wasm32")]
+    #[inline]
+    fn write_u64(&mut self, v: u64) {
+        let mut x = self.0 ^ v;
+        x ^= x >> 33;
+        x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        x ^= x >> 33;
+        x = x.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        self.0 = x ^ (x >> 33);
     }
 
     #[inline]

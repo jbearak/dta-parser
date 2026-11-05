@@ -718,6 +718,112 @@ one-minute load average before each run was 9.3 to 15.2 (median 10.9).
 Every case of our reader was measured again after fixes 6 to 9 (the
 second run); the other libraries' cases are from the first.
 
+## Parquet in TypeScript (npm package)
+
+Plan 0018's gate for the npm package (PR 7): `openParquetFile` and
+`writeParquetFile` in Node 26.12.1 against hyparquet 1.32.0 (with
+hyparquet-compressors 1.1.3), hyparquet-writer 0.18.0 and parquet-wasm
+0.9.0 (with apache-arrow 21.2.0 to bring its tables into JavaScript), on
+the 36 NSFG files, the 10 DHS files and the three synthetic files, each
+on pyarrow's, polars' and our Parquet copy. Every number is in
+[results/parquet-node.md](results/parquet-node.md), written by
+`bench/parquet/run_node.py` (each case in `bench/parquet/case.mjs`);
+this section is written by hand from it.
+
+**Targets 1 and 2 hold. Target 3 misses on one case**: five columns of
+our own survey files against hyparquet, on CPU time only. The user
+accepted this miss as V8's compiler overhead (below), on the profiling
+evidence given there.
+
+Ours over theirs, geometric means of wall time on pyarrow's files (NSFG,
+DHS); below 1 is faster. Reads of polars' files are within 0.1 of these
+or faster; reads of our own files are in the full report.
+
+| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) | write (zstd 3) |
+|---|---|---|---|---|---|---|
+| hyparquet, hyparquet-writer | 0.24, 0.12 | 0.66, 0.68 | 0.20, 0.08 | 0.30, 0.15 | 0.32, 0.30 | (none) |
+| parquet-wasm | 0.32, 0.18 | 0.10, 0.03 | 0.49, 0.43 | 0.41, 0.23 | 0.62, 0.94 | 0.45, 0.56 |
+
+- **Target 1** (geometric mean of wall and of peak RSS at most 1.05
+  times theirs, over NSFG and over DHS, on every input): holds. The
+  highest wall ratio is 1.04, five columns of our DHS files against
+  hyparquet (0.93 on NSFG); the highest peak RSS ratio 1.03, the same
+  case on NSFG. Against parquet-wasm the highest are 0.94 (writes, DHS)
+  and 0.79.
+- **Target 2** (no file over 1.25 times, unless by under 20 ms or 16
+  MiB): holds. Among the closest: parquet-wasm's default write of
+  long.dta, 2.46 s against our 2.67 (1.09), and of NSFG 1995_FemResp,
+  453 ms against 454.
+- **Target 3** (CPU at most theirs times the larger of 1.15 and our
+  speedup): **misses, accepted by the user**, on five columns of our
+  own files against hyparquet, on 25 of the 46 survey files: by 3 to 34
+  ms of CPU (NSFG
+  2017_2019_Male: 80 ms against 46 allowed 52; DHS Tajikistan 2017 wm:
+  88 against 58 allowed 67). Wall time on those files is 0.93 to 1.04
+  of hyparquet's. The excess is V8 compiling the module's hot functions
+  with its optimizing compiler, on background threads, during a read
+  of 10 to 40 ms: opening a file runs the footer's parser, the dta
+  profile's and the variables' JSON once per column, and V8 optimizes
+  each function that runs that long (37 functions, 46 ms of compiling,
+  on 2017_2019_Male). With `node --liftoff-only` the same read takes the
+  same wall time and 21 ms of CPU (hyparquet: 43), and on DHS Tajikistan
+  2017 wm 33 ms (hyparquet: 57). WebAssembly gives a module no way to
+  keep V8 from optimizing it, and a library must not set V8's flags for
+  the process it runs in. On pyarrow's and polars' copies, which carry
+  no dta profile, the case passes.
+- **Not compared.** hyparquet's and parquet-wasm's whole-file routes
+  take the file as one buffer, and Node will not read the 4.8 GB
+  wide.dta files into one (ERR_FS_FILE_TOO_LARGE); parquet-wasm takes
+  the whole buffer for every read. hyparquet-writer ran out of
+  JavaScript heap writing wide.dta, and parquet-wasm could not copy the
+  table into its wasm memory, which holds at most 4 GiB ("offset is out
+  of bounds"). hyparquet's whole-file read (and read + pass) of our
+  long.dta ran out of V8's default heap in the benchmark runs; run
+  again by hand it finished in 7.4 s at 5.8 GB, so it is near the
+  limit.
+
+Fixed because of these runs (each its own commit on the branch):
+
+1. **C libzstd in wasm.** The module had the pure-Rust ruzstd, whose
+   decoder made polars' zstd files slow to read and whose encoder made
+   zstd writes miss against parquet-wasm (long.dta: 10.4 s against
+   4.0). zstd-sys builds libzstd for wasm32 with a clang that targets
+   it (CI installs one). polars' long.dta now reads in 1.49 s (was
+   3.5), its wide.dta in 6.1 s (was 23), and long.dta writes with zstd
+   in 3.6 s; zstd levels now take effect. The module is 2,197,612
+   bytes, 420,996 with brotli (was 1,899,927 and 374,306).
+2. **.a to .z found while JavaScript hands the numbers over.** The
+   writer read every number column once more to find them. NSFG
+   1995_FemResp (5,754 columns): 454 ms, was 573 (parquet-wasm 453).
+3. **Less memory at the peak of a small read.** V8 compiled the large
+   functions an open runs per column with its optimizing compiler, whose
+   memory grows with a function's size; their callees are now functions
+   of their own. Five columns of NSFG 1973_FemResp: 68 MB (was 83,
+   hyparquet 64).
+4. **Text written as codes when it repeats, and one copy fewer.**
+   groups.dta's write: 491 MB at the peak (was 1,515; hyparquet-writer
+   785), 0.99 s; long.dta's 1,965 MB (was 2,259).
+5. **Our own files open faster.** The dta profile's value label sets,
+   half of its reading time, are read when `valueLabels` first asks;
+   duplicate checks no longer build a hash set per object; variables
+   share one prototype getter. Five columns of our DHS files: 1.04 of
+   hyparquet's wall time (was 1.17).
+6. Earlier, while building: chunk statistics loaded on first use,
+   number dictionaries sized once and hashed for wasm, text packed in
+   blocks (wide.dta's write 12.2 s to 7.2 s).
+
+Method: as above (five runs per case in fresh processes under
+`/usr/bin/time -l`, medians, the file in the page cache, task timed
+inside the process after its packages loaded). Writes time writing a
+table already in the library's own form: our `WriteDataset`, plain
+arrays for hyparquet-writer, and an apache-arrow table for parquet-wasm
+(its copy into wasm is timed). Every library runs on one thread. The
+machine was shared with two other benchmark runs, taking turns on a
+lock; the one-minute load average before each run was 8.8 to 25.6
+(median 10.8) over 9,930 runs. Our read cases were run again after fix
+5; the other libraries' cases and our writes are from the run before
+it, with the same build of everything else.
+
 ## Method
 
 Machine: Apple M4 Max, 128 GB, macOS 26.7.1. R 4.6.1, Python 3.14.7, Julia 1.13.3, Node v26.12.1. Ours are this repository's packages as of the commit that adds these results.

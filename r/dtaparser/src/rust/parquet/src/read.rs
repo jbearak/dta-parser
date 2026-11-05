@@ -8,14 +8,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 use crate::decimal::{Unscaled, DOUBLE_DIGITS};
-use crate::decode::{
-    self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, Physical, Scratch,
-    TextChunk, Texts,
+use crate::decode::{TextBudget, 
+    self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, PageCache, Physical,
+    Scratch, TextChunk, Texts,
 };
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
 use crate::profile::{self, Profile};
 use crate::schema::{self, ColumnInfo, ColumnType, LevelsFrom, Role};
-use dta::{missing, Error, ErrorKind, Result, SharedSource, Source};
+use dta::{missing, Error, ErrorKind, Result, SharedSource, Source, ValueLabelSet};
 
 /// What to do with nested columns (lists, maps, groups), which are not
 /// read.
@@ -39,6 +39,12 @@ pub struct ReadOptions {
     /// Reads of fewer uncompressed bytes than this stay on one thread.
     #[doc(hidden)]
     pub parallel_bytes: u64,
+    /// Leave the dta profile's value-label sets unread when the file is
+    /// opened, reading them when [`Reader::value_label_sets`] asks
+    /// ([`Profile::parse_lazy_labels`]). The profile's `value_labels` is
+    /// then empty, and a damaged set is reported only when the sets are
+    /// read.
+    pub lazy_value_labels: bool,
 }
 
 impl Default for ReadOptions {
@@ -48,6 +54,7 @@ impl Default for ReadOptions {
             threads: 0,
             nested: Nested::Error,
             parallel_bytes: if small { 0 } else { 16 << 20 },
+            lazy_value_labels: false,
         }
     }
 }
@@ -308,12 +315,20 @@ pub struct Reader<S: Source> {
     meta: FileMetaData,
     columns: Vec<ColumnInfo>,
     profile: Option<Profile>,
+    /// With `lazy_value_labels`: each unread set's name and where its JSON
+    /// is in the profile's text.
+    label_spans: Vec<crate::profile::LabelSpan>,
     warnings: Vec<String>,
     first_rows: Vec<u64>,
     rows: u64,
     /// Offset indexes read so far, by row group and leaf.
     offset_indexes: HashMap<(usize, usize), Option<OffsetIndex>>,
     options: ReadOptions,
+    page_cache: Option<Mutex<PageCache>>,
+    /// The most text one read may gather ([`Reader::set_text_budget`]),
+    /// and what the current read has gathered.
+    text_budget: Option<usize>,
+    text_held: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 const MAGIC: &[u8; 4] = b"PAR1";
@@ -411,6 +426,7 @@ impl<S: Source> Reader<S> {
                 .ok_or_else(|| Error::new("the row groups hold too many rows"))?;
         }
         let mut warnings = Vec::new();
+        let mut label_spans = Vec::new();
         let mut profile = match meta
             .key_value
             .iter()
@@ -418,7 +434,13 @@ impl<S: Source> Reader<S> {
             .and_then(|kv| kv.value.as_ref())
         {
             Some(text) => {
-                let (p, w) = Profile::parse_some(text, selected);
+                let (p, w) = if options.lazy_value_labels {
+                    let (p, w, spans) = Profile::parse_lazy_labels(text, selected);
+                    label_spans = spans;
+                    (p, w)
+                } else {
+                    Profile::parse_some(text, selected)
+                };
                 warnings.extend(w);
                 p
             }
@@ -457,11 +479,49 @@ impl<S: Source> Reader<S> {
             meta,
             columns,
             profile,
+            label_spans,
             warnings,
             first_rows,
             rows,
             offset_indexes: HashMap::new(),
             options,
+            page_cache: None,
+            text_budget: None,
+            text_held: Default::default(),
+        })
+    }
+
+    /// Fail a read, with an error of kind `TooLarge`, once the text it has
+    /// gathered over all its columns passes `bytes` (counted a page at a
+    /// time); `None` (the default) for no limit. A caller that plans its
+    /// reads by the footer's average sizes can then read the rows again
+    /// in smaller windows ([`Reader::text_budget_passed`]) instead of
+    /// running out of memory on a window of unusually large values.
+    pub fn set_text_budget(&mut self, bytes: Option<usize>) {
+        self.text_budget = bytes;
+    }
+
+    /// Whether the last read failed because its text passed the budget.
+    pub fn text_budget_passed(&self) -> bool {
+        self.text_budget
+            .is_some_and(|most| self.text_held.load(std::sync::atomic::Ordering::Relaxed) > most)
+    }
+
+    /// Keep up to `bytes` of decompressed pages between reads (none with
+    /// 0, the default), for readers that read many small windows: each
+    /// page a window needs is then decompressed once while it stays in
+    /// the cache. Only reads of part of a column chunk use it.
+    pub fn set_page_cache(&mut self, bytes: usize) {
+        self.page_cache = (bytes > 0).then(|| Mutex::new(PageCache::new(bytes)));
+    }
+
+    /// The page cache's size now and its hits and misses so far: (bytes,
+    /// hits, misses).
+    pub fn page_cache_stats(&self) -> (usize, u64, u64) {
+        self.page_cache.as_ref().map_or((0, 0, 0), |c| {
+            let c = c.lock().unwrap_or_else(PoisonError::into_inner);
+            let (h, m) = c.hits_and_misses();
+            (c.bytes(), h, m)
         })
     }
 
@@ -566,6 +626,38 @@ impl<S: Source> Reader<S> {
         self.profile.as_ref()
     }
 
+    /// The names of the profile's value-label sets, in order, whether or
+    /// not they have been read.
+    pub fn value_label_set_names(&self) -> Vec<&str> {
+        let read = self.profile.iter().flat_map(|p| &p.value_labels).map(|s| s.name.as_str());
+        read.chain(self.label_spans.iter().map(|(n, _)| n.as_str())).collect()
+    }
+
+    /// The profile's value-label sets, with a warning for each one dropped
+    /// because it could not be read. Without `lazy_value_labels` these
+    /// are the profile's own, read when the file was opened.
+    pub fn value_label_sets(&self) -> (Vec<ValueLabelSet>, Vec<String>) {
+        let mut sets: Vec<ValueLabelSet> = self.profile.iter().flat_map(|p| p.value_labels.iter().cloned()).collect();
+        let mut warnings = Vec::new();
+        if self.label_spans.is_empty() {
+            return (sets, warnings);
+        }
+        let text = self
+            .meta
+            .key_value
+            .iter()
+            .find(|kv| kv.key == profile::KEY)
+            .and_then(|kv| kv.value.as_deref())
+            .unwrap_or_default();
+        for (name, span) in &self.label_spans {
+            match Profile::parse_label_set(text, name, span.clone()) {
+                Ok(set) => sets.push(set),
+                Err(w) => warnings.push(w),
+            }
+        }
+        (sets, warnings)
+    }
+
     /// Warnings from opening the file, about its profile.
     pub fn warnings(&self) -> &[String] {
         &self.warnings
@@ -597,6 +689,8 @@ impl<S: Source> Reader<S> {
             first_rows: &self.first_rows,
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
+            cache: self.page_cache.as_ref(),
+            budget: self.text_budget.map(|most| TextBudget { held: self.text_held.clone(), most }),
         };
         for (g, local) in &groups {
             for &leaf in &leaves {
@@ -638,6 +732,7 @@ impl<S: Source> Reader<S> {
         outputs: &mut [Output<'_>],
         mut text: impl FnMut(usize, &TextChunk) -> Result<()>,
     ) -> Result<ReadReport> {
+        self.text_held.store(0, std::sync::atomic::Ordering::Relaxed);
         let window = self.window(skip, n);
         // More rows than this machine can index (a 32-bit one) cannot have
         // outputs.
@@ -741,6 +836,8 @@ impl<S: Source> Reader<S> {
             first_rows: &self.first_rows,
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
+            cache: self.page_cache.as_ref(),
+            budget: self.text_budget.map(|most| TextBudget { held: self.text_held.clone(), most }),
         };
         // What the read decodes: the larger of the pages' uncompressed
         // size and the values it writes out. Dictionary encoding makes the
@@ -1117,6 +1214,8 @@ struct Ctx<'r> {
     first_rows: &'r [u64],
     offset_indexes: &'r HashMap<(usize, usize), Option<OffsetIndex>>,
     file_len: u64,
+    cache: Option<&'r Mutex<PageCache>>,
+    budget: Option<TextBudget>,
 }
 
 impl Ctx<'_> {
@@ -1163,6 +1262,7 @@ impl Ctx<'_> {
                 .offset_indexes
                 .get(&(g, column.leaf))
                 .and_then(Option::as_ref),
+            cache: self.cache,
         })
     }
 
@@ -1262,7 +1362,8 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
         }
         Dest::Text => {
             let mut t = Texts::new(task.first, rows, column.kind == ColumnType::Text)
-                .fixed(fixed_width(column));
+                .fixed(fixed_width(column))
+                .budget(ctx.budget.clone());
             decode::decode(&chunk, read, scratch, &mut t)?;
             done.text = Some(t.chunk);
         }

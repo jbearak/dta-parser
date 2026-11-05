@@ -5,7 +5,9 @@
 //! at a time into a reused buffer, and their values written straight
 //! into the caller's slices.
 
+use std::collections::HashMap;
 use std::ops::Range;
+use std::sync::{Mutex, PoisonError};
 
 use crate::codec::Codecs;
 use crate::encoding;
@@ -42,6 +44,91 @@ pub(crate) struct Chunk<'r> {
     pub(crate) file_row: u64,
     pub(crate) file_len: u64,
     pub(crate) offset_index: Option<&'r OffsetIndex>,
+    /// Decompressed pages kept between reads, used when the window is
+    /// only part of the chunk.
+    pub(crate) cache: Option<&'r Mutex<PageCache>>,
+}
+
+/// Decompressed pages kept between reads, by each page's offset in the
+/// file, up to a byte budget; the least recently used go first. A reader
+/// that reads many small windows of the same pages (a viewer scrolling,
+/// or a scan in batches) then decompresses each page once
+/// ([`crate::Reader::set_page_cache`]).
+#[derive(Debug, Default)]
+pub struct PageCache {
+    budget: usize,
+    used: usize,
+    tick: u64,
+    pages: HashMap<u64, (Vec<u8>, u64)>,
+    hits: u64,
+    misses: u64,
+}
+
+impl PageCache {
+    /// A cache holding up to `budget` bytes of decompressed pages.
+    pub fn new(budget: usize) -> Self {
+        PageCache { budget, ..Default::default() }
+    }
+
+    /// Bytes held now.
+    pub fn bytes(&self) -> usize {
+        self.used
+    }
+
+    /// Pages found and not found in the cache so far.
+    pub fn hits_and_misses(&self) -> (u64, u64) {
+        (self.hits, self.misses)
+    }
+
+    /// Copy the page at `offset` into `out`, if held.
+    fn take(&mut self, offset: u64, out: &mut Vec<u8>) -> bool {
+        self.tick += 1;
+        let tick = self.tick;
+        match self.pages.get_mut(&offset) {
+            Some((bytes, used)) => {
+                *used = tick;
+                out.clear();
+                out.extend_from_slice(bytes);
+                self.hits += 1;
+                true
+            }
+            None => {
+                self.misses += 1;
+                false
+            }
+        }
+    }
+
+    /// Keep a copy of `bytes` as the page at `offset`, dropping the least
+    /// recently used pages to make room. A page larger than half the
+    /// budget is not kept.
+    fn put(&mut self, offset: u64, bytes: &[u8]) {
+        if bytes.len() > self.budget / 2 || self.pages.contains_key(&offset) {
+            return;
+        }
+        while self.used + bytes.len() > self.budget {
+            let Some((&oldest, _)) = self.pages.iter().min_by_key(|(_, (_, t))| *t) else { break };
+            if let Some((b, _)) = self.pages.remove(&oldest) {
+                self.used -= b.len();
+            }
+        }
+        let mut copy = Vec::new();
+        if copy.try_reserve_exact(bytes.len()).is_err() {
+            return;
+        }
+        copy.extend_from_slice(bytes);
+        self.used += copy.len();
+        self.tick += 1;
+        self.pages.insert(offset, (copy, self.tick));
+    }
+}
+
+/// The cache and a page's offset, when the page may be kept.
+type Cached<'c> = Option<(&'c Mutex<PageCache>, u64)>;
+
+fn lock(c: &Mutex<PageCache>) -> std::sync::MutexGuard<'_, PageCache> {
+    // A panic while the lock was held leaves a cache that is still whole.
+    c.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 impl Chunk<'_> {
@@ -358,6 +445,8 @@ pub(crate) fn decode(
     } = scratch;
     let codec = chunk.meta.codec;
     let optional = !chunk.column.required;
+    let partial = !(chunk.window.start == 0 && chunk.window.end >= chunk.group_rows);
+    let cache = chunk.cache.filter(|_| partial);
     let mut seen_dictionary = false;
     let mut covered = chunk.window.start;
     for seg in &segments {
@@ -396,8 +485,15 @@ pub(crate) fn decode(
                     }
                     let count = usize::try_from(d.num_values)
                         .map_err(|_| fail(Error::new("a dictionary page has a negative size")))?;
-                    let values = inflate(codecs, codec, body, header.uncompressed_page_size, page)
-                        .map_err(fail)?;
+                    let values = inflate(
+                        codecs,
+                        codec,
+                        body,
+                        header.uncompressed_page_size,
+                        page,
+                        cache.map(|c| (c, offset)),
+                    )
+                    .map_err(fail)?;
                     out.dictionary(count, &page[values]).map_err(fail)?;
                 }
                 PageType::Data | PageType::DataV2 => {
@@ -425,6 +521,7 @@ pub(crate) fn decode(
                         optional,
                         page,
                         levels,
+                        cache.map(|c| (c, offset)),
                     )
                     .map_err(fail)?;
                     let values = match &p.values {
@@ -492,17 +589,27 @@ struct Prepared {
 }
 
 /// Decompress `body` into `page`, which must make `uncompressed` bytes;
-/// returns the range of `page` holding them.
+/// returns the range of `page` holding them. With a cache, a page decompressed
+/// before is copied from it, and one decompressed now is kept in it.
 fn inflate(
     codecs: &mut Codecs,
     codec: Codec,
     body: &[u8],
     uncompressed: i32,
     page: &mut Vec<u8>,
+    cache: Cached,
 ) -> Result<Range<usize>> {
     let n = usize::try_from(uncompressed)
         .map_err(|_| Error::new("a page has a negative uncompressed size"))?;
+    if let Some((c, offset)) = cache {
+        if lock(c).take(offset, page) && page.len() == n {
+            return Ok(0..n);
+        }
+    }
     codecs.decompress(codec, body, n, page)?;
+    if let Some((c, offset)) = cache {
+        lock(c).put(offset, &page[..n]);
+    }
     Ok(0..n)
 }
 
@@ -545,6 +652,7 @@ fn prepare(
     optional: bool,
     page: &mut Vec<u8>,
     levels: &mut Vec<u8>,
+    cache: Cached,
 ) -> Result<Prepared> {
     levels.clear();
     if optional {
@@ -593,7 +701,8 @@ fn prepare(
             .and_then(|n| n.checked_sub(def))
             .ok_or_else(|| Error::new("a page's uncompressed size is smaller than its levels"))?;
         let values = if d.is_compressed && codec != Codec::Uncompressed {
-            Where::Page(inflate(codecs, codec, rest, values_len as i32, page)?)
+            let n = i32::try_from(values_len).map_err(|_| Error::new("a page is too large"))?;
+            Where::Page(inflate(codecs, codec, rest, n, page, cache)?)
         } else {
             if rest.len() != values_len {
                 return Err(Error::new("an uncompressed page's sizes differ"));
@@ -612,7 +721,7 @@ fn prepare(
         }
         (body, None)
     } else {
-        inflate(codecs, codec, body, header.uncompressed_page_size, page)?;
+        inflate(codecs, codec, body, header.uncompressed_page_size, page, cache)?;
         (&page[..], Some(0))
     };
     let mut at = 0;
@@ -1103,7 +1212,21 @@ pub(crate) struct Texts {
     dictionary_len: usize,
     /// The width of a FIXED_LEN_BYTE_ARRAY column's values.
     fixed: Option<usize>,
+    budget: Option<TextBudget>,
+    /// The chunk's bytes already counted against the budget.
+    charged: usize,
 }
+
+/// A limit on the text one read gathers, over all its columns and row
+/// groups ([`Reader::set_text_budget`](crate::Reader::set_text_budget)).
+#[derive(Clone)]
+pub(crate) struct TextBudget {
+    pub(crate) held: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub(crate) most: usize,
+}
+
+/// The error a read gives when its text passes its budget.
+pub(crate) const OVER_TEXT_BUDGET: &str = "the text read passed the read's budget";
 
 impl Texts {
     pub(crate) fn new(first: u64, rows: usize, utf8: bool) -> Self {
@@ -1117,7 +1240,27 @@ impl Texts {
             utf8,
             dictionary_len: 0,
             fixed: None,
+            budget: None,
+            charged: 0,
         }
+    }
+
+    /// Count the text against `budget`, page by page.
+    pub(crate) fn budget(mut self, budget: Option<TextBudget>) -> Self {
+        self.budget = budget;
+        self
+    }
+
+    /// Count the bytes added since the last call; past the budget, fail.
+    fn charge(&mut self) -> Result<()> {
+        let Some(b) = &self.budget else { return Ok(()) };
+        let added = self.chunk.bytes.len() - self.charged;
+        self.charged = self.chunk.bytes.len();
+        let held = b.held.fetch_add(added, std::sync::atomic::Ordering::Relaxed) + added;
+        if held > b.most {
+            return Err(Error::new(OVER_TEXT_BUDGET).of(ErrorKind::TooLarge));
+        }
+        Ok(())
     }
 
     /// Values of a FIXED_LEN_BYTE_ARRAY column, each `width` bytes.
@@ -1253,10 +1396,26 @@ impl Consumer for Texts {
         self.push_plain(values, count, 0..count)?;
         self.dictionary_len = count;
         self.chunk.codes = Some(Vec::with_capacity(self.chunk.rows));
+        // Not counted: the dictionary is decoded whole however few rows
+        // are read (writers keep it to about a megabyte), so a smaller
+        // window would not make it smaller.
+        self.charged = self.chunk.bytes.len();
         Ok(())
     }
 
     fn page(
+        &mut self,
+        page: &DataPage,
+        indices: &mut Vec<u32>,
+        scratch: &mut Vec<u8>,
+    ) -> Result<()> {
+        self.fill_page(page, indices, scratch)?;
+        self.charge()
+    }
+}
+
+impl Texts {
+    fn fill_page(
         &mut self,
         page: &DataPage,
         indices: &mut Vec<u32>,

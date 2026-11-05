@@ -10,6 +10,7 @@
 use crate::json::{self, Value};
 use crate::schema::ColumnType;
 use dta::{missing, Characteristic, Error, Result, ValueLabel, ValueLabelSet};
+use std::ops::Range;
 
 /// The key the profile is stored under.
 pub const KEY: &str = "dta";
@@ -206,6 +207,45 @@ impl Profile {
     /// unparsed, so damage there gives no warning: a read of five
     /// columns of a file with a large profile does not pay for all of it.
     pub fn parse_some(text: &[u8], columns: Option<&[&str]>) -> (Option<Profile>, Vec<String>) {
+        Self::parse_inner(text, columns, false, &mut Vec::new())
+    }
+
+    /// [`parse_some`](Self::parse_some), leaving the value-label sets it
+    /// would read unread: the profile has none in `value_labels`, and the
+    /// sets come back as their names and where each one's JSON is in
+    /// `text`, for [`parse_label_set`](Self::parse_label_set) when they
+    /// are wanted. A column still may name only a set the profile has;
+    /// what a set holds is checked only when it is read. Most of a survey
+    /// file's profile is its sets, which opening a file for a few columns
+    /// need not read.
+    pub fn parse_lazy_labels(text: &[u8], columns: Option<&[&str]>) -> (Option<Profile>, Vec<String>, Vec<LabelSpan>) {
+        let mut spans = Vec::new();
+        let (p, warnings) = Self::parse_inner(text, columns, true, &mut spans);
+        (p, warnings, spans)
+    }
+
+    /// The value-label set `name` from `text[span]`, as
+    /// [`parse_lazy_labels`](Self::parse_lazy_labels) found it; when it
+    /// cannot be read, the warning [`parse`](Self::parse) would have given.
+    pub fn parse_label_set(text: &[u8], name: &str, span: Range<usize>) -> std::result::Result<ValueLabelSet, String> {
+        let why = match text.get(span).map(json::parse) {
+            Some(Ok(v)) => match label_set(name, &v) {
+                Ok(set) => return Ok(set),
+                Err(why) => why,
+            },
+            Some(Err(e)) => format!("is not JSON ({e})"),
+            None => "is outside the profile".into(),
+        };
+        Err(dropped(&format!("value_labels.{name}"), &why))
+    }
+
+    #[inline(never)]
+    fn parse_inner(
+        text: &[u8],
+        columns: Option<&[&str]>,
+        lazy_labels: bool,
+        spans: &mut Vec<LabelSpan>,
+    ) -> (Option<Profile>, Vec<String>) {
         let mut warnings = Vec::new();
         if text.len() > MAX_BYTES {
             warnings.push(format!(
@@ -217,11 +257,13 @@ impl Profile {
         }
         let keep: Option<std::collections::HashSet<&str>> =
             columns.map(|c| c.iter().copied().collect());
-        let parsed = match &keep {
-            None => json::parse(text),
-            Some(keep) => json::parse_skipping(text, &|member, key| {
-                (member == "columns" && !keep.contains(key)) || member == "value_labels"
-            }),
+        let parsed = if keep.is_none() && !lazy_labels {
+            json::parse(text)
+        } else {
+            json::parse_skipping(text, &|member, key| {
+                (member == "columns" && keep.as_ref().is_some_and(|k| !k.contains(key)))
+                    || member == "value_labels"
+            })
         };
         let members = match parsed {
             Ok(Value::Object(m)) => m,
@@ -246,7 +288,7 @@ impl Profile {
         let mut warn = |w: String| warnings.push(w);
         let mut seen_version = false;
         let mut sets = None;
-        for (key, value) in unique(&members, "", &mut warn) {
+        for (key, value) in unique(&members, String::new, &mut warn) {
             match key {
                 "version" => {
                     seen_version = true;
@@ -281,7 +323,7 @@ impl Profile {
                 },
                 "characteristics" => match value {
                     Value::Object(vars) => {
-                        for (var, entry) in unique(vars, "characteristics.", &mut warn) {
+                        for (var, entry) in unique(vars, || "characteristics.".to_string(), &mut warn) {
                             match text_object(entry) {
                                 Ok(pairs) => p.characteristics.extend(pairs.into_iter().map(
                                     |(name, value)| Characteristic {
@@ -298,7 +340,7 @@ impl Profile {
                 },
                 "columns" => match value {
                     Value::Object(cols) => {
-                        for (name, entry) in unique(cols, "columns.", &mut warn) {
+                        for (name, entry) in unique(cols, || "columns.".to_string(), &mut warn) {
                             if matches!(entry, Value::Skipped(_)) {
                                 continue;
                             }
@@ -320,8 +362,13 @@ impl Profile {
             });
             match value {
                 Value::Object(sets) => {
-                    for (name, entry) in unique(sets, "value_labels.", &mut warn) {
+                    for (name, entry) in unique(sets, || "value_labels.".to_string(), &mut warn) {
                         if wanted.as_ref().is_some_and(|w| !w.contains(name)) {
+                            continue;
+                        }
+                        if let (true, Value::Skipped(raw)) = (lazy_labels, entry) {
+                            let at = raw.as_ptr() as usize - text.as_ptr() as usize;
+                            spans.push((name.to_string(), at..at + raw.len()));
                             continue;
                         }
                         let whole;
@@ -351,8 +398,12 @@ impl Profile {
             warn("the dta profile has no \"version\"; it is read as version 1".into());
         }
         // A column may only name a set the profile has.
-        let sets: std::collections::HashSet<&str> =
-            p.value_labels.iter().map(|s| s.name.as_str()).collect();
+        let sets: std::collections::HashSet<&str> = p
+            .value_labels
+            .iter()
+            .map(|s| s.name.as_str())
+            .chain(spans.iter().map(|(n, _)| n.as_str()))
+            .collect();
         for c in &mut p.columns {
             if let Some(set) = &c.value_labels {
                 if !sets.contains(set.as_str()) {
@@ -554,22 +605,21 @@ fn dropped(what: &str, why: &str) -> String {
 /// more than once is dropped, every time, with one warning.
 fn unique<'v>(
     members: &'v [(json::Text<'v>, Value<'v>)],
-    path: &str,
+    path: impl Fn() -> String,
     warn: &mut impl FnMut(String),
 ) -> Vec<(&'v str, &'v Value<'v>)> {
-    let mut counts = std::collections::HashMap::<&str, usize>::with_capacity(members.len());
-    for (k, _) in members {
-        *counts.entry(&**k).or_default() += 1;
-    }
-    let mut warned = std::collections::HashSet::new();
+    let keys: Vec<&str> = members.iter().map(|(k, _)| &**k).collect();
+    let repeated = json::repeated_keys(&keys);
+    let mut warned = vec![false; repeated.len()];
     let mut out = Vec::with_capacity(members.len());
     for (k, v) in members {
-        if counts[&**k] > 1 {
-            if warned.insert(&**k) {
-                warn(dropped(&format!("{path}{k}"), "appears more than once"));
+        match repeated.binary_search(&&**k) {
+            Ok(i) => {
+                if !std::mem::replace(&mut warned[i], true) {
+                    warn(dropped(&format!("{}{k}", path()), "appears more than once"));
+                }
             }
-        } else {
-            out.push((&**k, v));
+            Err(_) => out.push((&**k, v)),
         }
     }
     out
@@ -589,6 +639,7 @@ fn strings(v: &Value) -> Option<Vec<String>> {
 }
 
 /// An object whose values are all text.
+#[inline(never)]
 fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> {
     let Value::Object(members) = v else {
         return Err("is not an object".into());
@@ -605,14 +656,16 @@ fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> 
         .collect()
 }
 
+#[inline(never)]
 fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<ColumnProfile> {
     let Value::Object(members) = v else {
         warn(dropped(&format!("columns.{name}"), "is not an object"));
         return None;
     };
     let mut c = ColumnProfile::named(name);
-    let path = format!("columns.{name}.");
-    for (key, value) in unique(members, &path, warn) {
+    // Made only for a warning: most columns have none.
+    let path = || format!("columns.{name}.");
+    for (key, value) in unique(members, path, warn) {
         let text = |value: &Value| match value {
             Value::String(s) => Some(s.to_string()),
             _ => None,
@@ -627,7 +680,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
                 match text(value).as_deref().and_then(Storage::from_name) {
                     Some(st) => c.storage = Some(st),
                     None => warn(dropped(
-                        &format!("{path}storage"),
+                        &format!("{}storage", path()),
                         "is not one of \"byte\", \"int\", \"long\" and \"float\"",
                     )),
                 }
@@ -637,7 +690,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
                 match text(value).as_deref().and_then(Logical::from_name) {
                     Some(l) => c.logical = Some(l),
                     None => warn(dropped(
-                        &format!("{path}logical"),
+                        &format!("{}logical", path()),
                         "is not one of \"date\" and \"timestamp\"",
                     )),
                 }
@@ -646,7 +699,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
             "categorical" => {
                 match categorical(value) {
                     Ok(cat) => c.categorical = Some(cat),
-                    Err(why) => warn(dropped(&format!("{path}categorical"), &why)),
+                    Err(why) => warn(dropped(&format!("{}categorical", path()), &why)),
                 }
                 continue;
             }
@@ -654,12 +707,13 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
         };
         match text(value) {
             Some(s) => *slot = Some(s),
-            None => warn(dropped(&format!("{path}{key}"), "is not text")),
+            None => warn(dropped(&format!("{}{key}", path()), "is not text")),
         }
     }
     Some(c)
 }
 
+#[inline(never)]
 fn categorical(v: &Value) -> std::result::Result<Categorical, String> {
     let Value::Object(members) = v else {
         return Err("is not an object".into());
@@ -696,14 +750,19 @@ fn first_duplicate(items: &[String]) -> Option<&str> {
     items.iter().map(String::as_str).find(|s| !seen.insert(*s))
 }
 
+/// An unread value-label set: its name, and where its JSON is in the
+/// profile's text ([`Profile::parse_lazy_labels`]).
+pub type LabelSpan = (String, Range<usize>);
+
 /// What identifies a label's code within its set: a number's bits (with
 /// -0.0 as 0.0), or a missing code.
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum CodeKey {
     Number(u64),
     Missing(u8),
 }
 
+#[inline(never)]
 fn code_key(l: &ValueLabel) -> std::result::Result<CodeKey, String> {
     if l.missing != 0 {
         return match missing::name(l.missing) {
@@ -736,12 +795,13 @@ fn code_text(l: &ValueLabel) -> String {
     }
 }
 
+#[inline(never)]
 fn label_set(name: &str, v: &Value) -> std::result::Result<ValueLabelSet, String> {
     let Value::Array(pairs) = v else {
         return Err("is not an array of [code, text] pairs".into());
     };
     let mut labels = Vec::with_capacity(pairs.len());
-    let mut seen = std::collections::HashSet::with_capacity(pairs.len());
+    let mut keys = Vec::with_capacity(pairs.len());
     for pair in pairs {
         let (code, text) = match pair {
             Value::Array(p) if p.len() == 2 => (&p[0], &p[1]),
@@ -766,11 +826,27 @@ fn label_set(name: &str, v: &Value) -> std::result::Result<ValueLabelSet, String
             },
             other => return Err(format!("has a code that is {}", other.kind())),
         };
-        let key = code_key(&label).map_err(|why| format!("has {why}"))?;
-        if !seen.insert(key) {
-            return Err(format!("labels {} more than once", code_text(&label)));
-        }
+        keys.push(code_key(&label).map_err(|why| format!("has {why}"))?);
         labels.push(label);
+    }
+    // A code labelled twice: sorted, the codes are checked side by side
+    // (no hashing, so no choice of codes slows it down); the first label
+    // in order whose code came before is the one named.
+    let mut sorted = keys.clone();
+    sorted.sort_unstable();
+    if sorted.windows(2).any(|w| w[0] == w[1]) {
+        let mut seen: Vec<CodeKey> = Vec::new();
+        for (key, label) in keys.iter().zip(&labels) {
+            let twice = sorted.binary_search(key).is_ok_and(|i| {
+                sorted.get(i + 1) == Some(key) || (i > 0 && sorted[i - 1] == *key)
+            });
+            if twice {
+                if seen.contains(key) {
+                    return Err(format!("labels {} more than once", code_text(label)));
+                }
+                seen.push(*key);
+            }
+        }
     }
     Ok(ValueLabelSet {
         name: name.to_string(),
@@ -930,6 +1006,47 @@ mod tests {
         // The set, and the column's reference to it.
         assert_eq!(whole.len(), 2, "{whole:?}");
         assert_eq!(some, whole);
+    }
+
+    #[test]
+    fn label_sets_read_later_are_the_same() {
+        let p = full();
+        let text = p.to_json().unwrap();
+        let (lazy, warnings, spans) = Profile::parse_lazy_labels(text.as_bytes(), None);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        let mut lazy = lazy.unwrap();
+        assert!(lazy.value_labels.is_empty());
+        assert_eq!(spans.len(), p.value_labels.len());
+        for (name, span) in spans {
+            lazy.value_labels.push(Profile::parse_label_set(text.as_bytes(), &name, span).unwrap());
+        }
+        same(&lazy, &p);
+        // A set that cannot be read is dropped when it is read, with the
+        // warning parse gives at once.
+        for bad in [
+            &br#"{"version":1,"value_labels":{"ok":[[1,"one"]],"bad":[[1,"a"],[1,"b"]]}}"#[..],
+            br#"{"version":1,"value_labels":{"ok":[[1,"one"]],"bad":[[1,"a"],]}}"#,
+        ] {
+            let (_, eager) = Profile::parse(bad);
+            let (p, none, spans) = Profile::parse_lazy_labels(bad, None);
+            assert!(p.is_some() && none.is_empty(), "{none:?}");
+            let late: Vec<String> = spans.into_iter().filter_map(|(n, s)| Profile::parse_label_set(bad, &n, s).err()).collect();
+            assert_eq!(late.len(), 1, "{late:?}");
+            assert!(late[0].starts_with("dropped \"value_labels.bad\""), "{late:?}");
+            // A set whose JSON is damaged makes the whole profile unread
+            // when it is read at once; read later, as parse_some reads
+            // the sets of selected columns, only the set is dropped.
+            if eager[0].starts_with("dropped") {
+                assert_eq!(late, eager);
+            }
+        }
+        // With a selection, only the sets the selected columns name.
+        let keep = ["age"];
+        let (_, _, spans) = Profile::parse_lazy_labels(text.as_bytes(), Some(&keep));
+        let (some, _) = Profile::parse_some(text.as_bytes(), Some(&keep));
+        let names: Vec<&str> = spans.iter().map(|(n, _)| n.as_str()).collect();
+        let want: Vec<&str> = some.as_ref().unwrap().value_labels.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, want);
     }
 
     #[test]
