@@ -43,7 +43,7 @@ function parquet2_window(p, skip, n)
     parts = DataFrame[]
     first = 0
     for g in 1:length(ds)
-        rows = Parquet2.nrows(ds[g])
+        rows = nrow(ds[g])
         if first + rows > skip && first < skip + n
             push!(parts, DataFrame(ds[g]; copycols=false))
         elseif first >= skip + n
