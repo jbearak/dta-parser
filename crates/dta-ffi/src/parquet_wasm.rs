@@ -304,6 +304,9 @@ fn int64_auto(meta: &FileMetaData, col: &ColumnInfo) -> (bool, String) {
 /// number); with the reason for each 64-bit column's kind.
 fn plan_columns(r: &Reader<HostFile>, int64: u32) -> (Vec<How>, Vec<Option<String>>) {
     let profile = r.profile();
+    let levels: HashMap<&str, ()> = profile.map_or_else(HashMap::new, |p| {
+        p.columns.iter().filter(|c| c.categorical.is_some()).map(|c| (c.name.as_str(), ())).collect()
+    });
     let mut hows = Vec::with_capacity(r.columns().len());
     let mut reasons = Vec::with_capacity(r.columns().len());
     for col in r.columns() {
@@ -313,7 +316,7 @@ fn plan_columns(r: &Reader<HostFile>, int64: u32) -> (Vec<How>, Vec<Option<Strin
         } else {
             match &col.kind {
                 ColumnType::Unsupported(why) => How::NotRead(format!("column \"{}\" is {why}", col.name)),
-                ColumnType::Text if col.levels == Some(LevelsFrom::Profile) && levels_of(profile, &col.name).is_some() => How::Levels,
+                ColumnType::Text if col.levels == Some(LevelsFrom::Profile) && levels.contains_key(col.name.as_str()) => How::Levels,
                 ColumnType::Text if col.levels == Some(LevelsFrom::Rows) => How::Levels,
                 ColumnType::Text => How::Text { binary: false },
                 ColumnType::Binary => How::Text { binary: true },
@@ -339,10 +342,6 @@ fn plan_columns(r: &Reader<HostFile>, int64: u32) -> (Vec<How>, Vec<Option<Strin
         reasons.push(reason);
     }
     (hows, reasons)
-}
-
-fn levels_of<'p>(profile: Option<&'p Profile>, name: &str) -> Option<&'p [String]> {
-    profile?.column(name)?.categorical.as_ref().map(|c| c.levels.as_slice())
 }
 
 /// The zone a timestamp shows in: the profile's, else `ARROW:schema`'s,
