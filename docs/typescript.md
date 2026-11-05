@@ -910,9 +910,13 @@ default), `"zstd"`, `"gzip"`, `"lz4_raw"` or `"none"`, with
 `compressionLevel` where the codec has levels. Snappy is the default
 because this package writes zstd with a pure-Rust encoder that has one
 level: in plan 0018's measurements it compressed to 6% of the input
-where C libzstd reached 2%, and it is slower to write than snappy. The
-other languages' packages write zstd with libzstd. Every codec reads at
-full speed. `rowGroupSize` sets rows per row group; by default a row
+where C libzstd reached 2%, and a zstd write of a large table takes
+three to six times as long as a snappy one, and about three times as
+long as parquet-wasm's, which uses libzstd. The other languages' packages write zstd with libzstd.
+zstd is also the slowest codec to read, since the decoder is pure Rust
+too: polars writes zstd by default, and reading polars' copy of a 10
+million row table took 3.5 s against 0.9 s for pyarrow's snappy copy
+(hyparquet and parquet-wasm took longer on both). `rowGroupSize` sets rows per row group; by default a row
 group holds up to 262,144 rows and about 1 GiB of values, so a survey
 file is one row group, as pyarrow and polars write it. `missingLetters`
 is described [below](#keep-a-to-z-in-a-parquet-file). Every file has
