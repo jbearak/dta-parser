@@ -42,12 +42,6 @@ static R_xlen_t packed_length(SEXP x) {
   return CODES(x) != R_NilValue ? XLENGTH(CODES(x)) : XLENGTH(ENDS(x));
 }
 
-// The cache slot of row i of a packed column.
-static R_xlen_t slot_of(SEXP x, R_xlen_t i) {
-  SEXP codes = CODES(x);
-  return codes == R_NilValue ? i : INTEGER(codes)[i];
-}
-
 // The cache, allocated and attached on first use.
 static SEXP cache_of(SEXP x) {
   SEXP cache = R_altrep_data2(x);
@@ -73,10 +67,20 @@ static SEXP packed_make(SEXP x, SEXP cache, R_xlen_t i) {
   return s;
 }
 
+// Called once per element by code that walks a vector (nchar, is.na,
+// paste), so each R API call saved here counts: the usual case, a string
+// already made, reads data1, the codes and the cache once each.
 static SEXP packed_elt(SEXP x, R_xlen_t i) {
-  if (!PACKED(x)) return STRING_ELT(R_altrep_data2(x), i);
-  R_xlen_t slot = slot_of(x, i);
+  SEXP data = R_altrep_data1(x);
+  SEXP cache = R_altrep_data2(x);
+  if (data == R_NilValue) return STRING_ELT(cache, i);
+  SEXP codes = VECTOR_ELT(data, 2);
+  R_xlen_t slot = codes == R_NilValue ? i : ((const int *) DATAPTR_RO(codes))[i];
   if (slot == NA_INTEGER) return NA_STRING;
+  if (cache != R_NilValue) {
+    SEXP s = STRING_ELT(cache, slot);
+    if (s != NA_STRING) return s;
+  }
   return packed_make(x, cache_of(x), slot);
 }
 
