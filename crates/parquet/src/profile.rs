@@ -31,6 +31,9 @@ pub struct Profile {
     pub version: u32,
     /// The data label.
     pub label: Option<String>,
+    /// The `.dta` file's time stamp, as its text, where a language keeps
+    /// one (Python and Julia do).
+    pub timestamp: Option<String>,
     pub notes: Vec<String>,
     /// Characteristics of the dataset (`_dta`) and of columns.
     pub characteristics: Vec<Characteristic>,
@@ -249,6 +252,10 @@ impl Profile {
                     Value::String(s) => p.label = Some(s.to_string()),
                     _ => warn(dropped("label", "is not text")),
                 },
+                "timestamp" => match value {
+                    Value::String(s) => p.timestamp = Some(s.to_string()),
+                    _ => warn(dropped("timestamp", "is not text")),
+                },
                 "notes" => match strings(value) {
                     Some(v) => p.notes = v,
                     None => warn(dropped("notes", "is not an array of text")),
@@ -333,6 +340,10 @@ impl Profile {
         if let Some(l) = &self.label {
             o.push_str(",\"label\":");
             json::string(&mut o, l);
+        }
+        if let Some(t) = &self.timestamp {
+            o.push_str(",\"timestamp\":");
+            json::string(&mut o, t);
         }
         if !self.notes.is_empty() {
             o.push_str(",\"notes\":");
@@ -752,6 +763,7 @@ mod tests {
         Profile {
             version: 1,
             label: Some("Smoking survey, 2024".into()),
+            timestamp: Some("1 Mar 2024 09:30".into()),
             notes: vec!["Wave 2 only.".into()],
             characteristics: vec![
                 Characteristic {
