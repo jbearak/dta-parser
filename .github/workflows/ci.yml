@@ -105,14 +105,25 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::arrow, any::nanoparquet
       # Build the source packages, then install them from outside the
       # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh
       # Installs from GitHub build r/dtaparser alone, from the committed
-      # copy of the Rust core; configure just refreshed it from crates/dta.
-      - name: Committed Rust core matches crates/dta
-        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta)"
+      # copy of the Rust core; configure just refreshed it from crates/dta
+      # and crates/parquet.
+      - name: Committed Rust core matches crates/dta and crates/parquet
+        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet)"
+      # The source package carries its crates.io crates (plan 0018): it
+      # builds with cargo offline and an empty cargo home, so nothing can
+      # come from the network or a cache.
+      - name: dtaparser's source package builds offline
+        run: |
+          home="$(mktemp -d)"
+          lib="$(mktemp -d)"
+          cd "$RUNNER_TEMP"
+          CARGO_NET_OFFLINE=true CARGO_HOME="$home" R CMD INSTALL -l "$lib" "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz
+          test -z "$(find "$home" -name '*.crate')"
       - run: |
           cd "$RUNNER_TEMP"
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz

@@ -1,5 +1,8 @@
 useDynLib(datakit, .registration = TRUE, .fixes = "C_")
 export(read_fixed_width)
+export(read_parquet)
+export(read_parquet_info)
+export(save_parquet)
 export(":=")
 export(colon_equals)
 S3method(colon_equals, default)

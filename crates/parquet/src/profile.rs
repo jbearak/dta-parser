@@ -243,7 +243,7 @@ impl Profile {
                     }
                 }
                 "label" => match value {
-                    Value::String(s) => p.label = Some(s.clone()),
+                    Value::String(s) => p.label = Some(s.to_string()),
                     _ => warn(dropped("label", "is not text")),
                 },
                 "notes" => match strings(value) {
@@ -299,9 +299,11 @@ impl Profile {
             warn("the dta profile has no \"version\"; it is read as version 1".into());
         }
         // A column may only name a set the profile has.
+        let sets: std::collections::HashSet<&str> =
+            p.value_labels.iter().map(|s| s.name.as_str()).collect();
         for c in &mut p.columns {
             if let Some(set) = &c.value_labels {
-                if !p.value_labels.iter().any(|s| &s.name == set) {
+                if !sets.contains(set.as_str()) {
                     warnings.push(dropped(
                         &format!("columns.{}.value_labels", c.name),
                         &format!("names the set \"{set}\", which the profile does not have"),
@@ -331,30 +333,34 @@ impl Profile {
         }
         if !self.characteristics.is_empty() {
             o.push_str(",\"characteristics\":{");
-            let mut vars: Vec<&str> = Vec::new();
+            // Each variable's characteristics, in the order the variables
+            // first appear.
+            let mut vars: Vec<(&str, Vec<&Characteristic>)> = Vec::new();
+            let mut at: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
             for c in &self.characteristics {
-                if !vars.contains(&c.variable.as_str()) {
-                    vars.push(&c.variable);
-                }
+                let k = *at.entry(c.variable.as_str()).or_insert_with(|| {
+                    vars.push((c.variable.as_str(), Vec::new()));
+                    vars.len() - 1
+                });
+                vars[k].1.push(c);
             }
-            for (i, var) in vars.iter().enumerate() {
+            for (i, (var, chars)) in vars.iter().enumerate() {
                 if i > 0 {
                     o.push(',');
                 }
                 json::string(&mut o, var);
                 o.push_str(":{");
-                let mut names: Vec<&str> = Vec::new();
-                for c in self.characteristics.iter().filter(|c| c.variable == *var) {
-                    if names.contains(&c.name.as_str()) {
+                let mut names = std::collections::HashSet::with_capacity(chars.len());
+                for c in chars {
+                    if !names.is_empty() {
+                        o.push(',');
+                    }
+                    if !names.insert(c.name.as_str()) {
                         return Err(Error::invalid(format!(
                             "the characteristic {var}[{}] is given twice",
                             c.name
                         )));
                     }
-                    if !names.is_empty() {
-                        o.push(',');
-                    }
-                    names.push(&c.name);
                     json::string(&mut o, &c.name);
                     o.push(':');
                     json::string(&mut o, &c.value);
@@ -370,8 +376,9 @@ impl Profile {
         let columns: Vec<&ColumnProfile> = self.columns.iter().filter(|c| !c.is_empty()).collect();
         if !columns.is_empty() {
             o.push_str(",\"columns\":{");
+            let mut seen = std::collections::HashSet::with_capacity(columns.len());
             for (i, c) in columns.iter().enumerate() {
-                if columns[..i].iter().any(|d| d.name == c.name) {
+                if !seen.insert(c.name.as_str()) {
                     return Err(Error::invalid(format!(
                         "the profile has two entries for column \"{}\"",
                         c.name
@@ -427,8 +434,9 @@ impl Profile {
         }
         if !self.value_labels.is_empty() {
             o.push_str(",\"value_labels\":{");
+            let mut seen = std::collections::HashSet::with_capacity(self.value_labels.len());
             for (i, set) in self.value_labels.iter().enumerate() {
-                if self.value_labels[..i].iter().any(|s| s.name == set.name) {
+                if !seen.insert(set.name.as_str()) {
                     return Err(Error::invalid(format!(
                         "there are two value label sets named \"{}\"",
                         set.name
@@ -489,23 +497,23 @@ fn dropped(what: &str, why: &str) -> String {
 /// The members of an object whose keys appear once; a key that appears
 /// more than once is dropped, every time, with one warning.
 fn unique<'v>(
-    members: &'v [(String, Value)],
+    members: &'v [(json::Text<'v>, Value<'v>)],
     path: &str,
     warn: &mut impl FnMut(String),
-) -> Vec<(&'v str, &'v Value)> {
-    let mut counts = std::collections::HashMap::<&str, usize>::new();
+) -> Vec<(&'v str, &'v Value<'v>)> {
+    let mut counts = std::collections::HashMap::<&str, usize>::with_capacity(members.len());
     for (k, _) in members {
-        *counts.entry(k.as_str()).or_default() += 1;
+        *counts.entry(&**k).or_default() += 1;
     }
     let mut warned = std::collections::HashSet::new();
     let mut out = Vec::with_capacity(members.len());
     for (k, v) in members {
-        if counts[k.as_str()] > 1 {
-            if warned.insert(k.as_str()) {
+        if counts[&**k] > 1 {
+            if warned.insert(&**k) {
                 warn(dropped(&format!("{path}{k}"), "appears more than once"));
             }
         } else {
-            out.push((k.as_str(), v));
+            out.push((&**k, v));
         }
     }
     out
@@ -516,7 +524,7 @@ fn strings(v: &Value) -> Option<Vec<String>> {
         Value::Array(items) => items
             .iter()
             .map(|i| match i {
-                Value::String(s) => Some(s.clone()),
+                Value::String(s) => Some(s.to_string()),
                 _ => None,
             })
             .collect(),
@@ -535,7 +543,7 @@ fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> 
     members
         .iter()
         .map(|(k, v)| match v {
-            Value::String(s) => Ok((k.clone(), s.clone())),
+            Value::String(s) => Ok((k.to_string(), s.to_string())),
             _ => Err(format!("has \"{k}\", which is not text")),
         })
         .collect()
@@ -550,7 +558,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
     let path = format!("columns.{name}.");
     for (key, value) in unique(members, &path, warn) {
         let text = |value: &Value| match value {
-            Value::String(s) => Some(s.clone()),
+            Value::String(s) => Some(s.to_string()),
             _ => None,
         };
         let slot = match key {
@@ -606,7 +614,7 @@ fn categorical(v: &Value) -> std::result::Result<Categorical, String> {
     let mut cat = Categorical::default();
     let mut has_levels = false;
     for (k, v) in members {
-        match k.as_str() {
+        match &**k {
             "levels" => {
                 cat.levels = strings(v).ok_or("has levels that are not an array of text")?;
                 if let Some(level) = first_duplicate(&cat.levels) {
@@ -690,13 +698,13 @@ fn label_set(name: &str, v: &Value) -> std::result::Result<ValueLabelSet, String
             Value::Number(v) => ValueLabel {
                 value: *v,
                 missing: 0,
-                text: text.clone(),
+                text: text.to_string(),
             },
             Value::String(s) => match missing::from_name(s) {
                 Some(m) => ValueLabel {
                     value: f64::NAN,
                     missing: m,
-                    text: text.clone(),
+                    text: text.to_string(),
                 },
                 None => return Err(format!("has the code \"{s}\", which is not . or .a to .z")),
             },

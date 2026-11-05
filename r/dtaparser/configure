@@ -8,11 +8,17 @@ if [ -d ../../crates/dta ]; then
   cp -R ../../crates/dta/src src/rust/dta/
   # The core's test-only dependencies are not needed to build it.
   sed '/^\[dev-dependencies\]/,$d' ../../crates/dta/Cargo.toml > src/rust/dta/Cargo.toml
+  rm -rf src/rust/parquet
+  mkdir -p src/rust/parquet
+  cp -R ../../crates/parquet/src src/rust/parquet/
+  sed '/^\[dev-dependencies\]/,$d' ../../crates/parquet/Cargo.toml > src/rust/parquet/Cargo.toml
 fi
-if [ ! -d src/rust/dta ]; then
-  echo "dtaparser: the Rust core (src/rust/dta) is missing" >&2
-  exit 1
-fi
+for crate in dta parquet; do
+  if [ ! -d src/rust/$crate ]; then
+    echo "dtaparser: the Rust core (src/rust/$crate) is missing" >&2
+    exit 1
+  fi
+done
 if ! command -v cargo >/dev/null 2>&1; then
   echo "dtaparser: building needs cargo; see https://rustup.rs" >&2
   exit 1

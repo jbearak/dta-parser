@@ -34,7 +34,7 @@ impl Compression {
             "zstd" => Ok(Compression::Zstd),
             "lz4_raw" | "lz4" => Ok(Compression::Lz4Raw),
             _ => Err(Error::invalid(format!(
-                "unknown compression \"{name}\"; use one of \"zstd\", \"snappy\", \"gzip\", \"lz4_raw\" or \"none\""
+                "unknown compression \"{name}\"; use one of \"snappy\", \"zstd\", \"gzip\", \"lz4_raw\" or \"none\""
             ))),
         }
     }

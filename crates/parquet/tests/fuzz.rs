@@ -45,7 +45,7 @@ fn files() -> Vec<(String, Vec<u8>)> {
     out.sort();
     let cols = every_type(400);
     for (name, options) in [
-        ("zstd, small pages", WriteOptions { row_group_rows: Some(150), page_bytes: 200, ..Default::default() }),
+        ("zstd, small pages", WriteOptions { compression: Compression::Zstd, row_group_rows: Some(150), page_bytes: 200, ..Default::default() }),
         ("snappy, no index", WriteOptions { compression: Compression::Snappy, offset_index: false, ..Default::default() }),
         ("gzip", WriteOptions { compression: Compression::Gzip, row_group_rows: Some(300), ..Default::default() }),
         ("lz4, no letters", WriteOptions { compression: Compression::Lz4Raw, missing_letters: false, page_bytes: 500, ..Default::default() }),

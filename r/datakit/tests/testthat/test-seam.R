@@ -2,9 +2,9 @@
 # (ADR 0032), and attached last, its := is the one R finds.
 
 test_that("a dtaparser with another ABI number is refused", {
-  expect_invisible(datakit:::check_abi(2L, 2L))
-  expect_error(datakit:::check_abi(1L, 2L), "reinstall dtaparser")
-  expect_error(datakit:::check_abi(NA_integer_, 2L), "reinstall dtaparser")
+  expect_invisible(datakit:::check_abi(3L, 3L))
+  expect_error(datakit:::check_abi(2L, 3L), "reinstall dtaparser")
+  expect_error(datakit:::check_abi(NA_integer_, 3L), "reinstall dtaparser")
 })
 
 test_that("attached after dplyr, as a translated script does, datakit's := is found", {

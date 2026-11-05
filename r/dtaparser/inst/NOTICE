@@ -1,0 +1,32 @@
+dtaparser bundles Rust code from this repository (the dta and dta-parquet
+crates, GPL-3.0-only) and, for reading and writing Parquet files, these
+crates from crates.io. The source package carries their source in
+src/rust/vendor.tar.xz with each crate's own licence files. A package
+built from GitHub fetches the same versions (src/rust/Cargo.lock).
+
+Compiled into the package:
+
+  snap 1.1.2             BSD-3-Clause   https://github.com/BurntSushi/rust-snappy
+  lz4_flex 0.11.6        MIT            https://github.com/pseitz/lz4_flex
+  miniz_oxide 0.8.9      MIT OR Zlib OR Apache-2.0
+                                        https://github.com/Frommi/miniz_oxide
+  adler2 2.0.1           0BSD OR MIT OR Apache-2.0
+                                        https://github.com/oyvindln/adler2
+  zstd 0.13.4            BSD-3-Clause   https://github.com/gyscos/zstd-rs
+  zstd-safe 7.4.0        BSD-3-Clause   https://github.com/gyscos/zstd-rs
+  zstd-sys 2.1.2         BSD-3-Clause   https://github.com/gyscos/zstd-rs
+    with Zstandard (libzstd) 1.5.7, by Meta Platforms, Inc. and
+    affiliates, BSD-3-Clause (dual-licensed BSD or GPLv2)
+                                        https://github.com/facebook/zstd
+
+Used only to build zstd-sys's C code:
+
+  cc 1.11.0, find-msvc-tools 0.1.15, jobserver 0.1.35, shlex 2.0.1,
+  pkg-config 0.3.34, getrandom 0.4.3, libc 0.2.191, cfg-if 1.0.5
+                         MIT OR Apache-2.0
+  r-efi 6.0.0            MIT OR Apache-2.0 OR LGPL-2.1-or-later
+
+Carried in the source but compiled only for WebAssembly:
+
+  ruzstd 0.8.3           MIT            https://github.com/KillingSpark/zstd-rs
+  twox-hash 2.1.5        MIT            https://github.com/shepmaster/twox-hash

@@ -21,6 +21,12 @@ TypeScript, with one implementation of the format underneath all four.
   National Survey of Family Growth from 1973 to 2017-2019, with the
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
   (`read_fixed_width` in R, Python and Julia).
+- **Reads and writes Parquet that keeps all of this** (in R, through
+  datakit's `read_parquet()` and `save_parquet()`): labels, formats,
+  notes and `.a` to `.z` travel in the file's metadata, and the file is
+  plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
+  read. A tibble read from a `.dta` file comes back identical. See
+  [docs/parquet.md](docs/parquet.md).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -48,8 +54,9 @@ In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
 rules. `datakit` adds what a do-file translated to R needs beyond
 reading and writing: `d[i, name, by = g] := value` for `generate`,
-`replace` and `bysort`, and `read_fixed_width` for fixed-width text
-with a SAS setup file. A translated script attaches
+`replace` and `bysort`, `read_fixed_width` for fixed-width text
+with a SAS setup file, and `read_parquet` and `save_parquet` for
+Parquet files. A translated script attaches
 `library(dtaparser); library(datakit)`, datakit last. datakit imports
 dtaparser; dtatools imports both.
 

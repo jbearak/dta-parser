@@ -12,7 +12,7 @@ use std::io::Write;
 use std::ops::Range;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Condvar, Mutex, PoisonError};
 
 use crate::arrow::{self, ArrowType};
 use crate::codec::{Codecs, Compression};
@@ -22,7 +22,7 @@ use crate::format::{
     PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
     TimeUnit,
 };
-use crate::profile::{self, Categorical, Logical, Profile, Storage};
+use crate::profile::{self, Categorical, ColumnProfile, Logical, Profile, Storage};
 use crate::rle;
 use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
@@ -55,6 +55,9 @@ pub enum Values<'a> {
     Int32(Box<Fill<'a, i32>>),
     Int64(Box<Fill<'a, i64>>),
     Float(Box<Fill<'a, f32>>),
+    /// DOUBLE. A `logical` given for the column in [`Table::profile`]
+    /// is kept: days or seconds since 1970 that DATE or TIMESTAMP cannot
+    /// hold exactly.
     Double(Box<Fill<'a, f64>>),
     /// Values 0 and 1.
     Bool(Box<Fill<'a, u8>>),
@@ -144,14 +147,19 @@ pub struct WriteOptions {
     pub compression: Compression,
     /// The codec's level; `None` for its default (zstd 3, gzip 6).
     pub compression_level: Option<i32>,
-    /// Rows per row group; `None` sizes them to about 64 MiB of values,
-    /// at most 262,144 rows.
+    /// Rows per row group; `None` sizes them to about 1 GiB of values,
+    /// at most 262,144 rows (polars' default). A survey file of thousands
+    /// of columns is then one row group, as pyarrow and polars write it:
+    /// with four, pyarrow took 2.4 times as long to read one (plan 0018's
+    /// 64 MiB, changed by the measurements in bench/RESULTS.md).
     pub row_group_rows: Option<usize>,
     /// Write `.a` to `.z` as tagged NaNs, a numeric, date or timestamp
     /// column that holds any as DOUBLE; with `false` they are plain
     /// nulls, and every column keeps its type.
     pub missing_letters: bool,
-    /// Worker threads: 0 for the default, 1 for none.
+    /// Worker threads: 0 for the default (from
+    /// [`WRITE_THREADS`](crate::WRITE_THREADS) up with the write's size,
+    /// or `DTA_THREADS`), 1 for none.
     pub threads: usize,
     /// About this many uncompressed bytes per data page.
     #[doc(hidden)]
@@ -176,17 +184,17 @@ impl Default for WriteOptions {
     fn default() -> Self {
         let small = std::env::var("DTA_TEST_SMALL_CHUNKS").is_ok_and(|v| v == "1");
         WriteOptions {
-            compression: if cfg!(target_arch = "wasm32") {
-                Compression::Snappy
-            } else {
-                Compression::Zstd
-            },
+            // Snappy, not plan 0018's zstd 3: pyarrow and DuckDB took up to
+            // 1.4 times as long to read our zstd files as their own snappy
+            // ones (target 4), and on dictionary-encoded survey data zstd
+            // saved only about a sixth (bench/RESULTS.md, Parquet).
+            compression: Compression::Snappy,
             compression_level: None,
             row_group_rows: None,
             missing_letters: true,
             threads: 0,
             page_bytes: 1 << 20,
-            row_group_bytes: 64 << 20,
+            row_group_bytes: 1 << 30,
             row_group_max_rows: 262_144,
             dictionary_bytes: 1 << 20,
             offset_index: true,
@@ -232,7 +240,17 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
             }
         }
     }
-    let threads = dta::threads::resolve(options.threads);
+    // What the write encodes: every row's values at their widths.
+    let work = table.columns.iter().fold(0u64, |sum, c| {
+        sum.saturating_add((c.values.width() as u64).saturating_mul(table.rows as u64))
+    });
+    let threads = dta::threads::resolve_scaled(
+        options.threads,
+        work,
+        crate::WRITE_BYTES_PER_THREAD,
+        crate::WRITE_THREADS,
+        crate::WRITE_THREADS_MOST,
+    );
     let scratch: Vec<Mutex<Scratch>> = (0..threads.max(1))
         .map(|_| Mutex::new(Scratch::default()))
         .collect();
@@ -282,14 +300,14 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
         } else {
             1
         };
-        let encoded: Vec<Encoded> = parallel(threads_here, table.columns.len(), &scratch, &job)
-            .into_iter()
-            .collect::<Result<_>>()?;
         let mut chunks = Vec::with_capacity(schema.len() - 1);
         let mut group_index = Vec::with_capacity(schema.len() - 1);
         let start = out.at;
         let (mut total, mut compressed) = (0i64, 0i64);
-        for (k, e) in encoded.into_iter().enumerate() {
+        // Each column chunk is written as soon as it and those before it
+        // are encoded, so only a few are held at a time, not the row
+        // group (840 MB of wide.dta's).
+        parallel_ordered(threads_here, table.columns.len(), &scratch, &job, |k, e| {
             let (cc, oi) = put_chunk(
                 &mut out,
                 &table.columns[k].name,
@@ -300,7 +318,8 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
             compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
             chunks.push(cc);
             group_index.push(oi);
-        }
+            Ok(())
+        })?;
         groups.push(RowGroup {
             columns: chunks,
             total_byte_size: total,
@@ -487,12 +506,25 @@ fn bad_code(name: &str, row: usize, code: u8) -> Error {
 
 fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
     let mut p = table.profile.clone();
+    let mut at: HashMap<String, usize> =
+        p.columns.iter().enumerate().map(|(k, c)| (c.name.clone(), k)).collect();
     for (k, c) in table.columns.iter().enumerate() {
-        let entry = p.column_mut(&c.name);
+        let i = *at.entry(c.name.clone()).or_insert_with(|| {
+            p.columns.push(ColumnProfile::named(c.name.clone()));
+            p.columns.len() - 1
+        });
+        let entry = &mut p.columns[i];
+        // A Double column keeps the date or timestamp type its caller
+        // gives it: R's `Date` and `POSIXct` are written so when DATE or
+        // TIMESTAMP cannot hold their values exactly.
+        let given = match c.values {
+            Values::Double(_) => entry.logical,
+            _ => None,
+        };
         (entry.storage, entry.logical) = if tagged[k] {
-            (storage_of(&c.values), logical_of(&c.values))
+            (storage_of(&c.values), logical_of(&c.values).or(given))
         } else {
-            (None, None)
+            (None, given)
         };
         match &c.values {
             Values::Categorical {
@@ -711,6 +743,112 @@ fn parallel<T: Send>(
                 })
         })
         .collect()
+}
+
+/// Run `f(k)` for `k` in `0..n` on up to `threads` threads, and give
+/// each result to `sink` on the calling thread, in order, as soon as it
+/// and those before it are done. Workers run at most two results per
+/// thread ahead of `sink`, so few are held at once. Stops at the first
+/// error.
+fn parallel_ordered<T: Send>(
+    threads: usize,
+    n: usize,
+    scratch: &[Mutex<Scratch>],
+    f: &(dyn Fn(usize, &mut Scratch) -> Result<T> + Sync),
+    mut sink: impl FnMut(usize, T) -> Result<()>,
+) -> Result<()> {
+    let lock = |k: usize| scratch[k].lock().unwrap_or_else(PoisonError::into_inner);
+    let threads = threads.min(n).min(scratch.len());
+    if threads <= 1 {
+        let mut s = lock(0);
+        for k in 0..n {
+            let t = f(k, &mut s)?;
+            sink(k, t)?;
+        }
+        return Ok(());
+    }
+    struct State<T> {
+        results: Vec<Option<Result<T>>>,
+        /// The next column to hand to a worker.
+        next: usize,
+        /// Columns given to `sink` so far.
+        done: usize,
+        stop: bool,
+    }
+    let window = 2 * threads;
+    let state = Mutex::new(State {
+        results: (0..n).map(|_| None).collect(),
+        next: 0,
+        done: 0,
+        stop: false,
+    });
+    let changed = Condvar::new();
+    let guard = || state.lock().unwrap_or_else(PoisonError::into_inner);
+    let work = |w: usize| {
+        let mut s = lock(w);
+        loop {
+            let k = {
+                let mut st = guard();
+                while !st.stop && st.next < n && st.next >= st.done + window {
+                    st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
+                }
+                if st.stop || st.next >= n {
+                    break;
+                }
+                st.next += 1;
+                st.next - 1
+            };
+            let r = catch_unwind(AssertUnwindSafe(|| f(k, &mut s))).unwrap_or_else(|p| {
+                Err(
+                    Error::new(format!("a write thread panicked: {}", panic_text(&*p)))
+                        .of(ErrorKind::Internal),
+                )
+            });
+            guard().results[k] = Some(r);
+            changed.notify_all();
+        }
+    };
+    let work = &work;
+    std::thread::scope(|scope| {
+        let mut started = 0;
+        for w in 0..threads {
+            if std::thread::Builder::new()
+                .spawn_scoped(scope, move || work(w))
+                .is_ok()
+            {
+                started += 1;
+            }
+        }
+        let mut outcome = Ok(());
+        for k in 0..n {
+            let r = {
+                let mut st = guard();
+                loop {
+                    if let Some(r) = st.results[k].take() {
+                        break Some(r);
+                    }
+                    if started == 0 {
+                        break None;
+                    }
+                    st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
+                }
+            };
+            // No worker started: encode here.
+            let r = r.unwrap_or_else(|| f(k, &mut lock(0)));
+            outcome = r.and_then(|t| sink(k, t));
+            let mut st = guard();
+            st.done = k + 1;
+            if outcome.is_err() {
+                st.stop = true;
+            }
+            drop(st);
+            changed.notify_all();
+            if outcome.is_err() {
+                break;
+            }
+        }
+        outcome
+    })
 }
 
 fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {

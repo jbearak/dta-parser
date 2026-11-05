@@ -585,6 +585,32 @@ fn a_logical_type_the_columns_cannot_have_is_dropped() {
 }
 
 #[test]
+fn a_double_column_keeps_the_logical_type_it_is_given() {
+    // R writes a Date with fractions of a day, or a POSIXct whose seconds
+    // are not whole microseconds, as DOUBLE with `logical` in the
+    // profile, letters or not; other columns cannot be given one.
+    let cols = [
+        Col { name: "day".into(), data: Data::F64(vec![1.5, 2.0]), codes: vec![0, 1] },
+        Col { name: "when".into(), data: Data::F64(vec![0.1, 2.0]), codes: vec![2, 0] },
+        Col { name: "n".into(), data: Data::I32(vec![1, 2]), codes: vec![0, 0] },
+    ];
+    let mut profile = Profile::default();
+    profile.column_mut("day").logical = Some(Logical::Date);
+    profile.column_mut("when").logical = Some(Logical::Timestamp);
+    profile.column_mut("when").tz = Some("America/Chicago".into());
+    profile.column_mut("n").logical = Some(Logical::Date);
+    let bytes = bytes_of(&cols, profile, &WriteOptions::default());
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    assert!(r.warnings().is_empty(), "{:?}", r.warnings());
+    let logical: Vec<Option<Logical>> = r.columns().iter().map(|c| c.profile_logical).collect();
+    assert_eq!(logical, vec![Some(Logical::Date), Some(Logical::Timestamp), None]);
+    assert_eq!(r.profile().unwrap().column("when").unwrap().tz.as_deref(), Some("America/Chicago"));
+    let (got, _) = read(&bytes, &["day", "when"], 0, 2, serial());
+    assert_eq!(got[0], Got::Floats(vec![1.5, -1e300], vec![0, 1]));
+    assert_eq!(got[1], Got::Floats(vec![-1e300, 2.0], vec![2, 0]));
+}
+
+#[test]
 fn a_storage_the_columns_cannot_have_is_dropped() {
     let cols = [
         Col { name: "x".into(), data: Data::I32(vec![1, 2]), codes: vec![0, 0] },
@@ -682,4 +708,44 @@ fn writer_errors_name_the_column_and_row() {
     write(&table(&bad_utf8, Profile::default()), Vec::new(), &WriteOptions::default()).unwrap();
     let e = WriteOptions { compression: Compression::Snappy, compression_level: Some(3), ..Default::default() };
     assert!(write(&table(&twice[..1], Profile::default()), Vec::new(), &e).is_err());
+}
+
+/// An output that fails once it has taken `room` bytes.
+struct Full {
+    room: usize,
+}
+
+impl std::io::Write for Full {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if buf.len() > self.room {
+            return Err(std::io::Error::other("the disk is full"));
+        }
+        self.room -= buf.len();
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn a_write_on_threads_stops_at_the_first_error() {
+    // Many columns, so workers run ahead of the column being written.
+    let cols: Vec<Col> = (0..64)
+        .map(|k| Col { name: format!("v{k}"), data: Data::F64((0..500).map(|i| (i * k) as f64).collect()), codes: vec![0; 500] })
+        .collect();
+    let threads = WriteOptions { threads: 4, parallel_bytes: 0, ..Default::default() };
+    let whole = bytes_of(&cols, Profile::default(), &threads);
+    assert_eq!(whole, bytes_of(&cols, Profile::default(), &WriteOptions { threads: 1, ..threads }));
+    for room in [10, whole.len() / 3, whole.len() - 10] {
+        let e = write(&table(&cols, Profile::default()), Full { room }, &threads).unwrap_err();
+        assert!(e.message.contains("the disk is full"), "{}", e.message);
+    }
+    // A column that cannot be encoded, among others that can.
+    let mut bad = cols.clone();
+    let mut values = vec![1; 500];
+    values[7] = 200;
+    bad[40] = Col { name: "b".into(), data: Data::I8(values), codes: vec![0; 500] };
+    let e = write(&table(&bad, Profile::default()), Vec::new(), &threads).unwrap_err();
+    assert!(e.message.contains("\"b\"") && e.message.contains("row 8"), "{}", e.message);
 }

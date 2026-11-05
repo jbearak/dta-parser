@@ -25,6 +25,9 @@ Contents:
 [Coming from readstata13](#coming-from-readstata13) ·
 [Plain R types: dtaparser](#plain-r-types-dtaparser) ·
 [From a do-file to R](#from-a-do-file-to-r) ·
+[Fixed-width files](#fixed-width-files-with-a-sas-setup-file) ·
+[Parquet files](#parquet-files) ·
+[Threads](#threads) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -926,9 +929,331 @@ df <- datakit::read_fixed_width("survey.dat", "commented.sas", recodes = "none",
 attr(df$KIDS, "labels")  # NULL
 ```
 
+## Parquet files
+
+datakit's `read_parquet()` and `save_parquet()` read and write Parquet
+files that keep what a `.dta` file says: value labels, variable labels,
+display formats, `.a` to `.z`, the data label and notes, and also factor
+levels and time zones. `read_parquet()` returns what
+`dtaparser::read_dta()` returns, and a tibble `read_dta()` gave comes
+back `identical()` after `save_parquet()`. arrow and nanoparquet each
+export a `read_parquet()` too: where either is attached after datakit,
+write `datakit::read_parquet()`. An argument only arrow's has, such as
+`as_data_frame`, then fails as an unused argument. The files are plain
+Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet read;
+[docs/parquet.md](parquet.md) says what each of them sees, and gives the
+file's specification. Only flat tables are read and written: for lists,
+maps or structs, use arrow.
+
+Contents:
+[Install](#parquet-install) ·
+[Read a Parquet file](#read-a-parquet-file) ·
+[Read some columns](#read-some-columns-of-a-parquet-file) ·
+[Read a range of rows](#read-a-range-of-rows-of-a-parquet-file) ·
+[Schema and metadata](#a-parquet-files-schema-and-metadata) ·
+[Labels](#labels-in-parquet-files) ·
+[Dates and time zones](#dates-and-time-zones-in-parquet-files) ·
+[Write a Parquet file](#write-a-parquet-file) ·
+[Write labels](#write-labels-to-a-parquet-file) ·
+[Keep .a to .z](#keep-a-to-z-in-a-parquet-file) ·
+[Files from other tools](#parquet-files-from-other-tools) ·
+[What each type becomes](#what-each-parquet-type-becomes-in-r) ·
+[Coming from arrow or nanoparquet](#coming-from-arrow-or-nanoparquet)
+
+### Parquet: install
+
+Parquet needs nothing beyond datakit, which [Install](#install) covers;
+it reads and writes through dtaparser's Rust core, with no arrow or
+other library. A source package (`datakit_*.tar.gz` and
+`dtaparser_*.tar.gz` from the releases) carries the Rust crates it
+needs and builds offline; an install from GitHub fetches them from
+crates.io.
+
+### Read a Parquet file
+
+This writes the example file as Parquet and reads it back:
+
+```r
+library(dtaparser)
+library(datakit)
+
+df <- read_dta("survey.dta")
+save_parquet(df, "survey.parquet")
+back <- read_parquet("survey.parquet")
+identical(back, df)   # TRUE
+back$income           # 2100 NA(d) [Don't know] 1850 NA NA(r) [Refused] 3200
+class(back$region)    # "dtaparser_labelled" "vctrs_vctr"
+class(back$interviewed) # "Date"
+```
+
+Every missing value is `NA`; in doubles `.a` to `.z` keep their letter
+(`na_tag()`), and a double `NaN` stays `NaN`. Columns with value labels
+are `dtaparser_labelled` (see [Labelled columns](#labelled-columns)),
+and `factors = TRUE` makes them factors as in `read_dta()`. String
+columns come back packed, as `read_dta()`'s do. `file` may also be a raw
+vector holding a whole file. [What each type becomes](#what-each-parquet-type-becomes-in-r)
+gives the type of each Parquet column.
+
+### Read some columns of a Parquet file
+
+`col_select` takes names or a tidyselect expression, and returns the
+columns in the order given; only those columns are read from the file:
+
+```r
+read_parquet("survey.parquet", col_select = c("income", "id"))    # income, id
+read_parquet("survey.parquet", col_select = tidyselect::starts_with("i"))  # id, income, interviewed
+```
+
+An unknown name is an error that lists the file's columns:
+`column "weight" is not in the file; its columns are "id", "region", ...`.
+
+### Read a range of rows of a Parquet file
+
+`skip` and `n_max` work as in `read_dta()`. Only the row groups that
+hold the rows are read, and within them only the pages that do, so a
+window of a large file is quick:
+
+```r
+read_parquet("survey.parquet", skip = 2, n_max = 2)$id   # 3 4
+```
+
+### A Parquet file's schema and metadata
+
+`read_parquet_info()` reads the footer only. It gives the number of
+rows, the row groups, the writer, the codecs, the data label and notes,
+and per column the R type `read_parquet()` gives it:
+
+```r
+info <- read_parquet_info("survey.parquet")
+info$rows          # 6
+info$compression   # "snappy"
+info$label         # "Household survey (example)"
+info$columns$name          # "id" "region" "age" "income" "interviewed" "comment"
+info$columns$r_type        # "integer" "dtaparser_labelled" "integer" "dtaparser_labelled" "Date" "character"
+info$columns$physical_type # "INT32" "INT32" "INT32" "DOUBLE" "INT32" "BYTE_ARRAY"
+info$columns$value_labels  # NA "region" NA "income" NA NA
+```
+
+`role` is `"nested"` for a list, map or group, which is not read, and
+`storage` and `logical` show what a column written as DOUBLE because it
+holds `.a` to `.z` was: `"byte"`, `"int"`, `"long"` or `"float"`, or
+`"date"` or `"timestamp"`.
+
+### Labels in Parquet files
+
+The variable label is attribute `label`, value labels attribute
+`labels`, the data label and notes attributes of the tibble, as for
+`read_dta()`, and the same functions read them:
+
+```r
+var_label(back$age)        # "Age in years"
+val_label(back$income)     # NA "Don't know" NA NA "Refused" NA
+attr(back, "label")        # "Household survey (example)"
+read_parquet("survey.parquet", factors = TRUE)$region  # North South South East West North
+```
+
+Other tools do not read labels: they see the codes. A file from another
+tool has none, unless it was written by `save_parquet()` (or another
+library writing the same `dta` entry; see [docs/parquet.md](parquet.md#the-profile)).
+
+### Dates and time zones in Parquet files
+
+A `Date` is a Parquet DATE, and a `POSIXct` a TIMESTAMP in
+microseconds, with its time zone kept:
+
+```r
+visits <- tibble::tibble(
+  at = as.POSIXct(c("2024-03-01 09:30:00", "2024-03-01 17:05:00"), tz = "America/New_York")
+)
+save_parquet(visits, "visits.parquet")
+v <- read_parquet("visits.parquet")
+v$at                  # "2024-03-01 09:30:00 EST" "2024-03-01 17:05:00 EST"
+attr(v$at, "tzone")   # "America/New_York"
+```
+
+arrow, pyarrow and polars read the zone too. A `POSIXct` without a
+`tzone` attribute comes back without one. Two cases are written as
+numbers so that they come back unchanged: a `Date` with a fraction of a
+day, and a `POSIXct` whose seconds no whole number of microseconds gives
+back exactly (such as `Sys.time()`'s, at times). Those columns are
+DOUBLE days or seconds since 1970, with `logical` `"date"` or
+`"timestamp"` in `read_parquet_info()`; other tools see numbers.
+
+Timestamps from other tools come back as `POSIXct`, INT96 ones too.
+One in nanoseconds that is not a whole number of microseconds is an
+error that says to pass `timestamps = "truncate"`, which drops the
+nanoseconds below a microsecond. The zone is the one `save_parquet()`
+recorded, else the one the file's arrow schema gives (arrow's, pyarrow's
+and polars' zoned timestamps), else UTC. A TIME (a clock time without a
+date) comes back as a `difftime` in seconds since midnight.
+
+### Write a Parquet file
+
+`save_parquet(data, file)` writes any data frame: what `save_dta()`
+writes, and also factors with their levels (ordered or not), logicals,
+time zones, text of any length, lists of raw vectors (binary) and
+bit64's `integer64`. It returns `data` invisibly. Compression is snappy
+by default, which pyarrow, polars and DuckDB read fastest;
+`compression` takes `"snappy"`, `"zstd"`, `"gzip"`, `"lz4_raw"` or
+`"none"`, and `compression_level` the codec's level. zstd makes a file
+smaller (by about a sixth for survey data) and slower to read.
+Row groups hold up to 262,144 rows and about 1 GiB of values;
+`row_group_size` sets the rows:
+
+```r
+save_parquet(df, "small.parquet", compression = "snappy", row_group_size = 2)
+read_parquet_info("small.parquet")$row_groups$rows  # 2 2 2
+```
+
+A column of another type (a list that is not of raw vectors, a nested
+data frame, complex numbers, `POSIXlt`, `difftime`) is an error naming
+it, and an unknown `compression` an error that lists the codecs.
+[docs/parquet.md](parquet.md#defaults-and-the-measurements-behind-them)
+gives the measurements behind the defaults.
+
+### Write labels to a Parquet file
+
+Labels are written from the same attributes `save_dta()` reads: `label`
+and `format` on a column; `labels` (with `label_set`, else the column's
+name) on a labelled column; `label`, `notes`, `characteristics` and
+`sort_order` on the data frame:
+
+```r
+smoking <- tibble::tibble(
+  smoker = with_labels(c(1, 0, tagged_na("d")),
+                       c(No = 0, Yes = 1, tagged_na(c("Don't know" = "d"))),
+                       label = "Smokes daily")
+)
+attr(smoking, "label") <- "Smoking"
+attr(smoking, "notes") <- "Wave 2 only."
+save_parquet(smoking, "smoking.parquet")
+s <- read_parquet("smoking.parquet")
+s$smoker              # 1 [Yes] 0 [No] NA(d) [Don't know]
+val_labels(s$smoker)  # No = 0, Yes = 1, Don't know = NA(d)
+attr(s, "notes")      # "Wave 2 only."
+```
+
+Columns that share a label set must have the same labels, as for
+`save_dta()`.
+
+### Keep .a to .z in a Parquet file
+
+`.a` to `.z` are written as tagged NaNs, the bits R holds them in, so a
+column holding any is DOUBLE. They come back with their letters, from
+`read_parquet()` and also from arrow and nanoparquet:
+
+```r
+na_tag(read_parquet("survey.parquet")$income)   # NA "d" NA NA "r" NA
+```
+
+Other tools see NaN, which some count as a value rather than a missing
+one (DuckDB SQL, polars: [docs/parquet.md](parquet.md#what-other-tools-see-in-our-files)
+gives the query that treats them as missing). For files meant for those
+tools, `missing_letters = FALSE` writes `.a` to `.z` as plain nulls,
+and the letters are lost:
+
+```r
+save_parquet(df, "nulls.parquet", missing_letters = FALSE)
+na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
+```
+
+### Parquet files from other tools
+
+`read_parquet()` reads the files pyarrow, pandas, polars, DuckDB,
+arrow, nanoparquet, fastparquet and others write: every encoding
+(dictionary, PLAIN, the DELTA encodings, BYTE_STREAM_SPLIT), data pages
+v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and brotli.
+A column that pandas, polars or arrow wrote as a category or factor (a
+dictionary of strings in the file's arrow schema) is a factor:
+
+```r
+if (requireNamespace("arrow", quietly = TRUE)) {
+  arrow::write_parquet(data.frame(f = factor(c("b", "a", "b"), levels = c("a", "b", "c"))), "from_arrow.parquet")
+  levels(read_parquet("from_arrow.parquet")$f)            # "b" "a"
+  levels(read_parquet("from_arrow.parquet", skip = 2)$f)  # "b"
+}
+```
+
+Its levels are the distinct values of the rows read, in the order they
+first appear, and it is not ordered: the file does not say which levels
+the writer had or in what order. Reading another window of rows can
+give other levels; reading every row gives them all. A file
+`save_parquet()` wrote has every level, in order, whatever rows are
+read. `factors` does not change these columns.
+
+DECIMAL columns read as the nearest double to each value. A value with
+more than 15 significant digits, which a double cannot give back, is an
+error naming the column and row; `decimal = "character"` reads every
+digit as text:
+
+```r
+if (requireNamespace("arrow", quietly = TRUE)) {
+  price <- arrow::Array$create(c("2.50", "1234567890.123456789"))$cast(arrow::decimal128(19, 9))
+  arrow::write_parquet(arrow::arrow_table(price = price), "prices.parquet")
+  read_parquet("prices.parquet", n_max = 1)$price             # 2.5
+  read_parquet("prices.parquet", decimal = "character")$price # "2.500000000" "1234567890.123456789"
+  # read_parquet("prices.parquet") is an error: row 2 has 19 significant digits
+}
+```
+
+Unsigned 8- and 16-bit integers read as integers; unsigned 32- and
+64-bit ones follow the INT64 rules, so `int64 = "character"` keeps every
+digit (and an unsigned value of 2^63 or more is an error for
+`int64 = "integer64"`, which cannot hold it).
+
+What this version does not read, each an error that names the column
+and its type: FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO,
+encryption. Nested columns (lists, maps, structs) are an error unless
+`col_select` leaves them out or `nested = "skip"` is given. Datasets of
+many files, Hive partitions and predicate pushdown are not part of
+datakit; use arrow's `open_dataset()` or DuckDB for those.
+
+### What each Parquet type becomes in R
+
+| Parquet | R |
+|---|---|
+| INT32: INT(8), INT(16) or none | integer; double where `.a` to `.z` appear in the rows read of a column written wider for them; a value of -2147483648, R's integer `NA`, is an error |
+| unsigned 8 and 16 bits | integer |
+| INT64, unsigned 32 and 64 bits | `int64 = "double"` (default): double, and a value a double does not hold exactly is an error naming the column, the row and the option; `"integer64"` (bit64) or `"character"` keep every digit (`"character"` only, for unsigned values of 2^63 or more) |
+| FLOAT, DOUBLE | double; `.a` to `.z` are tagged NAs, other NaN stay NaN |
+| DECIMAL, precision 15 or less | double, the nearest to each value |
+| DECIMAL, precision above 15 | `decimal = "double"` (default): double, and a value with more than 15 significant digits is an error naming the column, the row and `decimal = "character"`; `"character"` keeps every digit |
+| BOOLEAN | logical |
+| DATE | `Date` |
+| TIMESTAMP (milli-, micro-, nanoseconds), INT96 | `POSIXct`, in the zone `save_parquet()` recorded, else the one in `ARROW:schema`, else UTC; nanoseconds that are not whole microseconds are an error naming `timestamps = "truncate"` |
+| TIME (milli-, micro-, nanoseconds) | `difftime` in seconds since midnight |
+| STRING, ENUM, JSON | character |
+| BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | a list of raw vectors, `NULL` for null |
+| a categorical `save_parquet()` wrote | factor, ordered if it was, every level kept |
+| a dictionary of strings in `ARROW:schema`, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered; levels are the distinct values of the rows read, in order of first appearance |
+| a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
+| FLOAT16, INTERVAL | not read: an error naming the column and type |
+
+### Coming from arrow or nanoparquet
+
+| arrow | nanoparquet | datakit | what changes |
+|---|---|---|---|
+| `read_parquet(file)` | `read_parquet(file)` | `read_parquet(file)` | labels, `.a` to `.z`, formats, notes kept; a tibble of `read_dta()`'s types |
+| `read_parquet(file, col_select = c(a, b))` | `read_parquet(file, col_select = c("a", "b"))` | `read_parquet(file, col_select = c(a, b))` | names or tidyselect; an unknown name lists the file's columns |
+| `open_dataset(file) \|> ... \|> head(n)` or `$ReadRowGroup()` | (no rows) | `read_parquet(file, skip = 100, n_max = 50)` | only the pages that hold the rows are read |
+| `read_parquet(file, as_data_frame = FALSE)` | (none) | (none) | no Arrow tables; use arrow for those |
+| `ParquetFileReader$create(file)$GetSchema()` | `read_parquet_schema(file)`, `read_parquet_info(file)` | `read_parquet_info(file)` | one call: rows, row groups, codecs, labels, and the R type of each column |
+| `write_parquet(x, sink)` (snappy) | `write_parquet(x, file)` (snappy) | `save_parquet(x, file)` (snappy) | labels, letters, zones, ordered factors written; returns `x` invisibly |
+| `compression = "zstd", compression_level = 3` | `compression = "zstd", options = parquet_options(compression_level = 3)` | `compression = "zstd", compression_level = 3` | |
+| `chunk_size = n` | `options = parquet_options(num_rows_per_row_group = n)` | `row_group_size = n` | |
+| `options(arrow.int64_downcast = FALSE)` | `options = parquet_options(read_int64_type = "integer64")` | `int64 = "integer64"` | a lossy double is an error, not a silent change |
+| `options(arrow.use_threads = FALSE)` | (one thread) | `options(dtaparser.threads = 1)` | |
+
+arrow writes R attributes into its own `r` metadata entry, which only
+arrow reads; datakit neither writes nor reads it, so labels written by
+arrow are not read here, and arrow's `haven_labelled` columns come back
+as plain numbers. nanoparquet drops labels and time zones.
+
 ## Threads
 
 Reading and writing large files uses up to three threads: workers decode and fill numeric columns while R makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
+
+Parquet reads and writes of 16 MB or more use two threads or more, which decode or compress column chunks while R makes the strings. Survey files use two: a third added less than half a thread's worth of speed. Larger work uses more: a read one thread per 176 MiB of values, up to eight, and a write one per 256 MiB, up to six. The rule and the numbers are in [docs/parquet.md](parquet.md#defaults-and-the-measurements-behind-them) and [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 
 Set `options(dtaparser.threads = 1)` to use one thread, or another number to change the most; the `DTA_THREADS` environment variable does the same when the option is unset. Under `R CMD check` (`_R_CHECK_LIMIT_CORES_` set), at most two are used.
 
@@ -1015,3 +1340,10 @@ datakit exports:
   frame under R's rules (`?datakit::":="`; see
   [From a do-file to R](#from-a-do-file-to-r)). `colon_equals()` is the
   generic behind it; dtatools adds the method for dibbles.
+- `read_parquet(file, col_select = NULL, skip = 0, n_max = Inf, factors = FALSE, int64 = "double", decimal = "double", timestamps = "error", nested = "error", warn_extended_missing = TRUE)`:
+  read a Parquet file into `read_dta()`'s types (see
+  [Parquet files](#parquet-files)).
+- `read_parquet_info(file)`: a Parquet file's rows, row groups, codecs,
+  labels and columns, from its footer.
+- `save_parquet(data, file, compression = "snappy", compression_level = NULL, row_group_size = NULL, missing_letters = TRUE)`:
+  write a data frame as Parquet, labels and `.a` to `.z` kept.

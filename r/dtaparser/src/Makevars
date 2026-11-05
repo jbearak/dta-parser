@@ -5,10 +5,14 @@ all: $(SHLIB)
 
 $(SHLIB): rustlib
 
+# A source package carries the crates.io crates as vendor.tar.xz, with a
+# .cargo/config.toml that builds from them (scripts/build-r-package.sh);
+# a checkout has neither, and cargo fetches them.
 rustlib:
+	if [ -f rust/vendor.tar.xz ] && [ ! -d rust/vendor ]; then cd rust && $(TAR) -xJf vendor.tar.xz; fi
 	cd rust && cargo build --release --lib --target-dir target
 
 .PHONY: rustlib
 
 clean:
-	rm -rf $(SHLIB) $(OBJECTS) rust/target
+	rm -rf $(SHLIB) $(OBJECTS) rust/target rust/vendor

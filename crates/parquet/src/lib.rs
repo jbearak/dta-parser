@@ -66,6 +66,32 @@ mod thrift;
 mod write;
 
 pub use codec::Compression;
+
+// Default thread counts (plan 0018, "Threads"), set by plan 0007's
+// rule: each thread added must make the task at least half a thread's
+// work faster, and CPU time must stay within 1.15 times one thread's.
+// They are used where the caller asks for 0 threads and `DTA_THREADS`
+// is not set ([`dta::threads`]), never past the machine's cores (half
+// of them on x86). Measured on snappy files at 1 to 16 threads; the
+// numbers are in bench/RESULTS.md, under Parquet.
+
+/// The fewest threads a large read uses: survey files of up to about
+/// 250 MiB decoded failed the rule at three.
+pub const READ_THREADS: usize = 2;
+/// Past that, one read thread per this many decoded bytes: long.dta
+/// (777 MiB) passed the rule at four threads and failed at six.
+pub const READ_BYTES_PER_THREAD: u64 = 176 << 20;
+/// The most read threads: wide.dta (4.6 GB) passed at eight and failed
+/// at twelve.
+pub const READ_THREADS_MOST: usize = 8;
+
+/// The fewest threads a large write uses: survey files and long.dta
+/// failed the rule at three.
+pub const WRITE_THREADS: usize = 2;
+/// Past that, one write thread per this many bytes of values.
+pub const WRITE_BYTES_PER_THREAD: u64 = 256 << 20;
+/// The most write threads: wide.dta passed at six and failed at eight.
+pub const WRITE_THREADS_MOST: usize = 6;
 pub use decode::TextChunk;
 pub use profile::{Categorical, ColumnProfile, Logical, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};

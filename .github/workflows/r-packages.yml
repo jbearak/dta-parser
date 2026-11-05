@@ -18,6 +18,7 @@ on:
     paths:
       - "r/**"
       - "crates/dta/**"
+      - "crates/parquet/**"
       - "scripts/build-r-package.sh"
       - "scripts/place-r-binaries.R"
       - ".github/workflows/r-packages.yml"
@@ -65,7 +66,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite
       - uses: actions/download-artifact@v4
         with:
           name: r-source
