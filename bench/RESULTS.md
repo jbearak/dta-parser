@@ -368,6 +368,70 @@ one carried other work throughout, with a one-minute load average of
 measurements are noisier than the plan intended; every comparison ran
 under the same load.
 
+### Julia
+
+Plan 0018's gate for Julia (PR 6): DtaParser's `read_parquet` and
+`write_parquet` against Parquet2.jl 0.2.37 and DuckDB.jl 2.0.0, on the
+same 36 NSFG, 10 DHS and three synthetic files and the same pyarrow,
+polars and our Parquet files as R's. Every file and number is in
+[results/parquet-julia.md](results/parquet-julia.md), written by
+`bench/parquet/run.py --lang julia` (cases in `bench/parquet/case.jl`).
+Target 4 (other tools reading our files) does not depend on the
+language that wrote them, and is R's above.
+
+**Every target holds**, on every file and each of the three inputs.
+
+Ours over theirs, geometric means of wall time over the files (NSFG,
+DHS); below 1 is faster. Reads are of pyarrow's files; the other inputs
+are within a few hundredths, and are in the full report.
+
+| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) |
+|---|---|---|---|---|---|
+| Parquet2.jl | 0.07, 0.08 | 0.16, 0.16 | 0.06, 0.06 | 0.11, 0.14 | 0.03, 0.03 |
+| DuckDB.jl | 0.25, 0.20 | 0.71, 0.70 | 0.29, 0.20 | 0.37, 0.30 | 0.19, 0.21 |
+
+- **Target 1** (geometric mean of wall time and of peak RSS at most
+  1.05 times theirs, over NSFG and over DHS): the highest wall ratio is
+  0.73 (DuckDB, five columns of our DHS files), the highest RSS ratio
+  0.81 (the same).
+- **Target 2** (no file over 1.25 times, unless by under 20 ms or 16
+  MiB): the closest on wall time is DuckDB reading five columns of our
+  NSFG 1995_FemResp, 323 ms against 347 (0.93); on peak RSS, DuckDB
+  writing groups.dta, 1,612 MB against 1,408 (1.14), and long.dta,
+  2,138 MB against 2,103 (1.02). Peak RSS includes the table being
+  written, read from the `.dta` file before the timed write, which is
+  the same for every library.
+- **Target 3** (CPU at most theirs times the larger of 1.15 and our
+  speedup): the closest is again DuckDB's five columns of NSFG
+  1995_FemResp, 0.321 s against the 0.398 s allowed.
+- **Not compared.** DuckDB.jl could not read pyarrow's 4.8 GB wide.dta
+  file ("Could not read from file ...: Invalid argument", as DuckDB's R
+  package said); those three cases have no comparison.
+
+Parquet2.jl reads columns lazily; its timed read is
+`DataFrame(Parquet2.Dataset(file); copycols = false)`, which loads every
+column, and its 1,000-row window reads the row groups holding the rows.
+DuckDB.jl's are `SELECT` queries collected into a DataFrame, as in R.
+Writes time writing the table `read_dta` returns: ours as it is, with
+its `DtaColumn`s; the others a DataFrame of plain vectors made from it
+(not timed), since they do not know `DtaColumn`.
+
+Fixed while measuring, each its own commit: DataFrames brings
+SentinelArrays, whose methods invalidated DtaParser's compiled read
+path, so a first `read_parquet` in a session with DataFrames loaded
+spent 0.16 s compiling; DtaParser's DataFrames extension now runs the
+precompile workload again, and that read took 0.02 s. `write_parquet`
+no longer compiles a method for each table type (0.2 s on a first
+write of a new type, now 0.04 s).
+
+Method as for R, with Julia 1.13.3 and bench/julia's environment. Each
+library used its default threads: Julia's one thread, which Parquet2.jl
+uses, DuckDB.jl's reported one, and ours by the rule above. The
+one-minute load average before each run was 9.3 to 22.3 (median 12.0):
+the machine carried other work, including the Python and TypeScript
+benchmarks taking turns with these, so single measurements are noisier
+than the plan intended; every comparison ran under the same load.
+
 ## Parquet in Python
 
 Plan 0018's speed and memory gate for Python (PR 5): dta_parser's
@@ -653,70 +717,6 @@ took turns with this one file by file under a common lock; the
 one-minute load average before each run was 9.3 to 15.2 (median 10.9).
 Every case of our reader was measured again after fixes 6 to 9 (the
 second run); the other libraries' cases are from the first.
-
-### Julia
-
-Plan 0018's gate for Julia (PR 6): DtaParser's `read_parquet` and
-`write_parquet` against Parquet2.jl 0.2.37 and DuckDB.jl 2.0.0, on the
-same 36 NSFG, 10 DHS and three synthetic files and the same pyarrow,
-polars and our Parquet files as R's. Every file and number is in
-[results/parquet-julia.md](results/parquet-julia.md), written by
-`bench/parquet/run.py --lang julia` (cases in `bench/parquet/case.jl`).
-Target 4 (other tools reading our files) does not depend on the
-language that wrote them, and is R's above.
-
-**Every target holds**, on every file and each of the three inputs.
-
-Ours over theirs, geometric means of wall time over the files (NSFG,
-DHS); below 1 is faster. Reads are of pyarrow's files; the other inputs
-are within a few hundredths, and are in the full report.
-
-| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) |
-|---|---|---|---|---|---|
-| Parquet2.jl | 0.07, 0.08 | 0.16, 0.16 | 0.06, 0.06 | 0.11, 0.14 | 0.03, 0.03 |
-| DuckDB.jl | 0.25, 0.20 | 0.71, 0.70 | 0.29, 0.20 | 0.37, 0.30 | 0.19, 0.21 |
-
-- **Target 1** (geometric mean of wall time and of peak RSS at most
-  1.05 times theirs, over NSFG and over DHS): the highest wall ratio is
-  0.73 (DuckDB, five columns of our DHS files), the highest RSS ratio
-  0.81 (the same).
-- **Target 2** (no file over 1.25 times, unless by under 20 ms or 16
-  MiB): the closest on wall time is DuckDB reading five columns of our
-  NSFG 1995_FemResp, 323 ms against 347 (0.93); on peak RSS, DuckDB
-  writing groups.dta, 1,612 MB against 1,408 (1.14), and long.dta,
-  2,138 MB against 2,103 (1.02). Peak RSS includes the table being
-  written, read from the `.dta` file before the timed write, which is
-  the same for every library.
-- **Target 3** (CPU at most theirs times the larger of 1.15 and our
-  speedup): the closest is again DuckDB's five columns of NSFG
-  1995_FemResp, 0.321 s against the 0.398 s allowed.
-- **Not compared.** DuckDB.jl could not read pyarrow's 4.8 GB wide.dta
-  file ("Could not read from file ...: Invalid argument", as DuckDB's R
-  package said); those three cases have no comparison.
-
-Parquet2.jl reads columns lazily; its timed read is
-`DataFrame(Parquet2.Dataset(file); copycols = false)`, which loads every
-column, and its 1,000-row window reads the row groups holding the rows.
-DuckDB.jl's are `SELECT` queries collected into a DataFrame, as in R.
-Writes time writing the table `read_dta` returns: ours as it is, with
-its `DtaColumn`s; the others a DataFrame of plain vectors made from it
-(not timed), since they do not know `DtaColumn`.
-
-Fixed while measuring, each its own commit: DataFrames brings
-SentinelArrays, whose methods invalidated DtaParser's compiled read
-path, so a first `read_parquet` in a session with DataFrames loaded
-spent 0.16 s compiling; DtaParser's DataFrames extension now runs the
-precompile workload again, and that read took 0.02 s. `write_parquet`
-no longer compiles a method for each table type (0.2 s on a first
-write of a new type, now 0.04 s).
-
-Method as for R, with Julia 1.13.3 and bench/julia's environment. Each
-library used its default threads: Julia's one thread, which Parquet2.jl
-uses, DuckDB.jl's reported one, and ours by the rule above. The
-one-minute load average before each run was 9.3 to 22.3 (median 12.0):
-the machine carried other work, including the Python and TypeScript
-benchmarks taking turns with these, so single measurements are noisier
-than the plan intended; every comparison ran under the same load.
 
 ## Method
 
