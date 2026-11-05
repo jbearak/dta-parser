@@ -248,6 +248,10 @@ def test_save_dta_refuses_what_dta_cannot_hold(tmp_path):
     for df, match in [
         (pl.DataFrame({"t": [dt.time(1, 2)]}), "Time"),
         (pl.DataFrame({"x": pl.Series([2**60], dtype=pl.Int64)}), "beyond ±2\\^53"),
+        # Just past, where the value as a double rounds to 2^53.
+        (pl.DataFrame({"x": pl.Series([2**53 + 1], dtype=pl.Int64)}), "beyond ±2\\^53"),
+        (pl.DataFrame({"x": pl.Series([2**53 + 1], dtype=pl.UInt64)}), "beyond ±2\\^53"),
+        (pl.DataFrame({"when": pl.Series([2**53 + 1 - 3653 * 86_400_000], dtype=pl.Int64).cast(pl.Datetime("ms"))}), "too far from 1960"),
         (pl.DataFrame({"when": pl.Series([dt.datetime(2020, 1, 1)]).dt.replace_time_zone("UTC")}), "time zone"),
         (pl.DataFrame({"1bad": [1]}), "not a name Stata can hold"),
     ]:
@@ -392,9 +396,12 @@ def test_datetimes_with_letters_hold_whole_microseconds():
     back, _, _ = read_parquet(native.parquet_write_arrow(ns, None, meta, timestamps="truncate"))
     assert back["ts"][0] == dt.datetime(2020, 1, 1)
     far = pl.DataFrame({"ts": pl.Series([dt.datetime(2300, 1, 1, 0, 0, 0, 1), None])})
-    for mode in ("error", "truncate"):
-        with pytest.raises(ValueError, match="too far from 1970"):
-            native.parquet_write_arrow(far, None, {"missing": {"ts": pl.Series([None, ".a"], dtype=LETTERS)}}, timestamps=mode)
+    # Past 2^53 microseconds, where the microseconds as a double round too.
+    odd = pl.DataFrame({"ts": pl.Series([9007199254740995, None], dtype=pl.Int64).cast(pl.Datetime("us"))})
+    for frame in (far, odd):
+        for mode in ("error", "truncate"):
+            with pytest.raises(ValueError, match='column "ts", row 1: .*too far from 1970'):
+                native.parquet_write_arrow(frame, None, {"missing": {"ts": pl.Series([None, ".a"], dtype=LETTERS)}}, timestamps=mode)
 
 
 @pytest.mark.parametrize("df, what", [

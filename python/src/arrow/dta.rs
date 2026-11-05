@@ -456,6 +456,15 @@ fn integer_storage(name: &str, lo: f64, hi: f64, from: usize) -> PyResult<Storag
     Ok(StorageType::Double)
 }
 
+/// A 64-bit integer column's range as doubles, or an error past ±2^53.
+fn exact_range(name: &str, (lo, hi): (i128, i128)) -> PyResult<(f64, f64)> {
+    const MOST: i128 = 1 << 53;
+    if lo < -MOST || hi > MOST {
+        return Err(fail(format!("column \"{name}\": {} is beyond ±2^53, which Stata cannot store exactly", if lo < -MOST { lo } else { hi })));
+    }
+    Ok((lo as f64, hi as f64))
+}
+
 /// Each row's value as a double (0 for a null) and missing code.
 type Row<'a> = Box<dyn Fn(&Chunk, usize) -> f64 + Sync + 'a>;
 
@@ -555,6 +564,20 @@ pub fn dta_write_arrow<'py>(
             }
             if lo > hi { (0.0, 0.0) } else { (lo, hi) }
         };
+        // 64-bit integers in integers: as doubles, 2^53 + 1 would pass as 2^53.
+        let int_range = |as_int: &dyn Fn(&Chunk, usize) -> i128| {
+            let (mut lo, mut hi) = (i128::MAX, i128::MIN);
+            for ch in &c.chunks {
+                for j in ch.off..ch.off + ch.len {
+                    if valid(&ch.a, j) {
+                        let v = as_int(ch, j);
+                        lo = lo.min(v);
+                        hi = hi.max(v);
+                    }
+                }
+            }
+            if lo > hi { (0, 0) } else { (lo, hi) }
+        };
         let col: &Column = c;
         let l = letters[k].take();
         let (storage, row): (StorageType, Option<Row>) = if c.field.dictionary.is_some() {
@@ -582,16 +605,16 @@ pub fn dta_write_arrow<'py>(
                     (integer_storage(&name, lo, hi, 2)?, Some(Box::new(get::<i32>) as Row))
                 }
                 "l" => {
+                    let (lo, hi) = exact_range(&name, int_range(&|c: &Chunk, j: usize| i128::from(unsafe { *(c.a.buffer(1) as *const i64).add(j) })))?;
                     let g = |c: &Chunk, j: usize| unsafe { *(c.a.buffer(1) as *const i64).add(j) } as f64;
-                    let (lo, hi) = range(&g);
                     (integer_storage(&name, lo, hi, 0)?, Some(Box::new(g) as Row))
                 }
                 "C" => (integer_storage(&name, range(&get::<u8>).0, range(&get::<u8>).1, 0)?, Some(Box::new(get::<u8>) as Row)),
                 "S" => (integer_storage(&name, range(&get::<u16>).0, range(&get::<u16>).1, 0)?, Some(Box::new(get::<u16>) as Row)),
                 "I" => (integer_storage(&name, range(&get::<u32>).0, range(&get::<u32>).1, 0)?, Some(Box::new(get::<u32>) as Row)),
                 "L" => {
+                    let (lo, hi) = exact_range(&name, int_range(&|c: &Chunk, j: usize| i128::from(unsafe { *(c.a.buffer(1) as *const u64).add(j) })))?;
                     let g = |c: &Chunk, j: usize| unsafe { *(c.a.buffer(1) as *const u64).add(j) } as f64;
-                    let (lo, hi) = range(&g);
                     (integer_storage(&name, lo, hi, 0)?, Some(Box::new(g) as Row))
                 }
                 "b" => (StorageType::Byte, Some(Box::new(|c: &Chunk, j: usize| f64::from(unsafe { (*(c.a.buffer(1) as *const u8).add(j / 8) >> (j % 8)) & 1 })) as Row)),
@@ -631,7 +654,7 @@ pub fn dta_write_arrow<'py>(
                                 )));
                             }
                             let ms = if per_ms < 0 { v.checked_mul(-per_ms) } else { Some(v.div_euclid(per_ms)) };
-                            if ms.and_then(|m| m.checked_add(EPOCH_DAYS * DAY_MS)).is_none_or(|m| (m as f64).abs() > EXACT) {
+                            if ms.and_then(|m| m.checked_add(EPOCH_DAYS * DAY_MS)).is_none_or(|m| m.unsigned_abs() > 1 << 53) {
                                 return Err(fail(format!("column \"{name}\", row {row}: the datetime is too far from 1960 for a .dta datetime to hold exactly")));
                             }
                         }

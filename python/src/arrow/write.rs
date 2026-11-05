@@ -404,7 +404,8 @@ pub fn parquet_write_arrow<'py>(
             let us = us.filter(|&us| {
                 let x = seconds_of(us);
                 let back = (x * 1e6).round();
-                back == us as f64 && back / 1e6 == x
+                // In integers: past 2^53 `us as f64` would round too.
+                back.abs() < 9.2e18 && back as i64 == us && back / 1e6 == x
             });
             *o = us.ok_or_else(|| {
                 fail(format!(
