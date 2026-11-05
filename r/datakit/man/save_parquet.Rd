@@ -21,7 +21,7 @@ returned.}
 
 \item{compression}{The codec: \code{"snappy"} (the default), \code{"zstd"},
 \code{"gzip"}, \code{"lz4_raw"} or \code{"none"}. Other tools read snappy files
-faster, and zstd made survey files only about 15\% smaller;
+faster, and zstd made survey files only about a sixth smaller;
 \code{docs/parquet.md} has the measurements.}
 
 \item{compression_level}{The codec's level: 1 to 22 for zstd (3 by

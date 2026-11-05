@@ -187,7 +187,7 @@ impl Default for WriteOptions {
             // Snappy, not plan 0018's zstd 3: pyarrow and DuckDB took up to
             // 1.4 times as long to read our zstd files as their own snappy
             // ones (target 4), and on dictionary-encoded survey data zstd
-            // saved only about 15% (bench/RESULTS.md, Parquet).
+            // saved only about a sixth (bench/RESULTS.md, Parquet).
             compression: Compression::Snappy,
             compression_level: None,
             row_group_rows: None,

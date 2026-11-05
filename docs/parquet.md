@@ -200,13 +200,21 @@ write the file with `missing_letters = FALSE`.
 
 ## Defaults and the measurements behind them
 
-- **Compression: zstd at level 3.** In
-  [the codec measurements](research/parquet-codecs.md), zstd 3 through
-  C libzstd made DHS data a quarter of snappy's size (a ratio of 0.022
-  against 0.086), writing at 2.6 GB/s and reading at 3.7 GB/s against
-  snappy's 4.3 and 4.4. Columns are compressed in parallel, so the
-  slower codec costs little time; the write measurements below compare
-  the two. `snappy`, `gzip`, `lz4_raw` and `none` are there on request.
+- **Compression: snappy.** The plan chose zstd at level 3, which
+  [the codec measurements](research/parquet-codecs.md) found made raw
+  DHS data a quarter of snappy's size, and said the default would
+  become snappy if zstd missed a target. It missed the target that
+  other tools read our files about as fast as their own: DuckDB took
+  1.40 times as long to read our zstd copy of long.dta as its own
+  snappy output, and pyarrow and DuckDB were up to 1.2 times slower on
+  our zstd survey files. Our reader paid too: random doubles barely
+  compress, and decoding them through zstd took three times the CPU
+  time. The size saving was small, because most survey columns are
+  dictionary-encoded before compression: zstd files of the NSFG and DHS
+  files were 16 to 17% smaller than snappy ones, and writing them took
+  3 to 11% longer. `zstd` (with
+  `compression_level`), `gzip`, `lz4_raw` and `none` are there on
+  request.
 - **Row groups: up to 262,144 rows (polars' default) and about 1 GiB of
   values.** The plan had 64 MiB, which made a DHS file of 5,000 columns
   four row groups where pyarrow and polars write one; pyarrow then took
@@ -218,14 +226,25 @@ write the file with `missing_letters = FALSE`.
   stays under 1 MiB and smaller than 60% of the values it replaces;
   past either, the rest of the chunk is PLAIN. No DELTA or
   BYTE_STREAM_SPLIT encodings, which some readers cannot read.
-- **Threads: up to two, for reads and writes of 16 MB or more.** By
-  plan 0007's rule, each thread added must speed the task up by at
-  least half of one thread's work, and CPU time must stay within 1.15
-  times one thread's. A third thread missed on NSFG 1995 reads
-  (it added 0.48 of a thread's speed) and on writes of NSFG 1995 and a
-  DHS women's file (0.43 and 0.37). `DTA_THREADS` and each language's
-  threads option change the count. The measurements at 1 to 12
-  threads are in [bench/RESULTS.md](../bench/RESULTS.md#parquet).
+- **Threads: more for larger work.** Reads and writes of under 16 MB
+  use one thread. Larger reads use one thread per 176 MiB of decoded
+  values, at least two and at most eight; larger writes one per 256
+  MiB of values, at least two and at most six. These numbers come from
+  plan 0007's rule, applied at each size: each thread added must make
+  the task faster by at least half of what one thread does alone, and
+  CPU time must stay within 1.15 times one thread's. Survey files of up
+  to about 250 MiB decoded fail it at three threads (NSFG 1995 gained
+  0.39 of a thread from the third), because much of their work is
+  per-column work on the calling thread. Large files have more to
+  share: long.dta (777 MiB) passed for reads up to four threads and
+  wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
+  `DTA_THREADS` and each language's threads option set the count
+  instead. The measurements at 1 to 16 threads are in
+  [bench/RESULTS.md](../bench/RESULTS.md#parquet).
+- **Memory for a read in R.** Before a large read, dtaparser has R
+  make room for the whole result at once. R otherwise grows its memory
+  a step at a time, collecting garbage at each step, which took a
+  quarter to a third of a first read's time in a new session.
 
 The speed of reads and writes against arrow, nanoparquet and DuckDB,
 and of other tools reading our files, is in

@@ -1095,7 +1095,7 @@ bit64's `integer64`. It returns `data` invisibly. Compression is snappy
 by default, which pyarrow, polars and DuckDB read fastest;
 `compression` takes `"snappy"`, `"zstd"`, `"gzip"`, `"lz4_raw"` or
 `"none"`, and `compression_level` the codec's level. zstd makes a file
-smaller (by about 15% for survey data) and slower to read.
+smaller (by about a sixth for survey data) and slower to read.
 Row groups hold up to 262,144 rows and about 1 GiB of values;
 `row_group_size` sets the rows:
 
@@ -1220,7 +1220,7 @@ as plain numbers. nanoparquet drops labels and time zones.
 
 Reading and writing large files uses up to three threads: workers decode and fill numeric columns while R makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
 
-Parquet reads and writes of 16 MB or more use up to two threads, which decode or compress column chunks while R makes the strings. A third thread made them only about 0.4 to 0.5 times faster than two in our measurements, short of the half a thread's worth of speedup we require from each one added. The numbers are in [bench/RESULTS.md](../bench/RESULTS.md#parquet).
+Parquet reads and writes of 16 MB or more use two threads or more, which decode or compress column chunks while R makes the strings. Survey files use two: a third added less than half a thread's worth of speed. Larger work uses more: a read one thread per 176 MiB of values, up to eight, and a write one per 256 MiB, up to six. The rule and the numbers are in [docs/parquet.md](parquet.md#defaults-and-the-measurements-behind-them) and [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 
 Set `options(dtaparser.threads = 1)` to use one thread, or another number to change the most; the `DTA_THREADS` environment variable does the same when the option is unset. Under `R CMD check` (`_R_CHECK_LIMIT_CORES_` set), at most two are used.
 

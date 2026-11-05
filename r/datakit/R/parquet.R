@@ -226,7 +226,7 @@ read_parquet_info <- function(file) {
 #' @param file Path to write.
 #' @param compression The codec: `"snappy"` (the default), `"zstd"`,
 #'   `"gzip"`, `"lz4_raw"` or `"none"`. Other tools read snappy files
-#'   faster, and zstd made survey files only about 15% smaller;
+#'   faster, and zstd made survey files only about a sixth smaller;
 #'   `docs/parquet.md` has the measurements.
 #' @param compression_level The codec's level: 1 to 22 for zstd (3 by
 #'   default), 0 to 10 for gzip (6). `NULL` for the default.
