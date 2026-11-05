@@ -533,6 +533,7 @@ fn time_unit(i: &mut In) -> Result<Option<TimeUnit>> {
     Ok(unit)
 }
 
+#[inline(never)]
 fn logical_type(i: &mut In) -> Result<Option<LogicalType>> {
     let mut out = None;
     i.read_struct(|i, id, ty| {
@@ -603,6 +604,7 @@ fn logical_type(i: &mut In) -> Result<Option<LogicalType>> {
     Ok(out)
 }
 
+#[inline(never)]
 fn schema_element(i: &mut In) -> Result<SchemaElement> {
     let mut e = SchemaElement::default();
     i.read_struct(|i, id, ty| {
@@ -630,6 +632,7 @@ fn schema_element(i: &mut In) -> Result<SchemaElement> {
     Ok(e)
 }
 
+#[inline(never)]
 fn statistics(i: &mut In) -> Result<Statistics> {
     let mut s = Statistics::default();
     i.read_struct(|i, id, ty| {
@@ -647,6 +650,7 @@ fn statistics(i: &mut In) -> Result<Statistics> {
     Ok(s)
 }
 
+#[inline(never)]
 fn column_meta(i: &mut In) -> Result<ColumnMetaData> {
     let mut m = ColumnMetaData {
         physical: PhysicalType::Other(-1),
@@ -690,6 +694,7 @@ fn column_meta(i: &mut In) -> Result<ColumnMetaData> {
     Ok(m)
 }
 
+#[inline(never)]
 fn column_chunk(i: &mut In) -> Result<ColumnChunk> {
     let mut c = ColumnChunk {
         file_path: None,
@@ -718,6 +723,7 @@ fn column_chunk(i: &mut In) -> Result<ColumnChunk> {
     Ok(c)
 }
 
+#[inline(never)]
 fn row_group(i: &mut In) -> Result<RowGroup> {
     let mut g = RowGroup {
         columns: Vec::new(),

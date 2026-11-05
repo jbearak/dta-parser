@@ -589,6 +589,7 @@ fn strings(v: &Value) -> Option<Vec<String>> {
 }
 
 /// An object whose values are all text.
+#[inline(never)]
 fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> {
     let Value::Object(members) = v else {
         return Err("is not an object".into());
@@ -605,6 +606,7 @@ fn text_object(v: &Value) -> std::result::Result<Vec<(String, String)>, String> 
         .collect()
 }
 
+#[inline(never)]
 fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<ColumnProfile> {
     let Value::Object(members) = v else {
         warn(dropped(&format!("columns.{name}"), "is not an object"));
@@ -660,6 +662,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
     Some(c)
 }
 
+#[inline(never)]
 fn categorical(v: &Value) -> std::result::Result<Categorical, String> {
     let Value::Object(members) = v else {
         return Err("is not an object".into());
@@ -704,6 +707,7 @@ enum CodeKey {
     Missing(u8),
 }
 
+#[inline(never)]
 fn code_key(l: &ValueLabel) -> std::result::Result<CodeKey, String> {
     if l.missing != 0 {
         return match missing::name(l.missing) {
@@ -736,6 +740,7 @@ fn code_text(l: &ValueLabel) -> String {
     }
 }
 
+#[inline(never)]
 fn label_set(name: &str, v: &Value) -> std::result::Result<ValueLabelSet, String> {
     let Value::Array(pairs) = v else {
         return Err("is not an array of [code, text] pairs".into());

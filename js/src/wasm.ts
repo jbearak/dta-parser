@@ -13,19 +13,16 @@ import { inflateRaw } from "./inflate";
  * bundle made with the plain module (the tests' capped build) passes
  * through.
  */
-function moduleBytes(b: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+function moduleBytes(b: Uint8Array<ArrayBuffer>): Uint8Array {
   if (b[0] === 0 && b[1] === 0x61 && b[2] === 0x73 && b[3] === 0x6d) return b;
   const size = (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
   const proc = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
   const zlib = proc?.getBuiltinModule?.("node:zlib") as { inflateRawSync(b: Uint8Array): Uint8Array } | undefined;
-  if (zlib) {
-    const out = zlib.inflateRawSync(b.subarray(4));
-    return new Uint8Array(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)) as Uint8Array<ArrayBuffer>;
-  }
-  return inflateRaw(b.subarray(4), size) as Uint8Array<ArrayBuffer>;
+  // Compiled from where zlib left it: a copy into a buffer of its own
+  // cost 2 MB more at the peak.
+  if (zlib) return zlib.inflateRawSync(b.subarray(4));
+  return inflateRaw(b.subarray(4), size);
 }
-
-const wasmBytes = moduleBytes(embedded);
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -119,7 +116,8 @@ let hostError: unknown;
 
 // Synchronous compile and instantiate: Node allows it for any size, and
 // it keeps the whole API synchronous.
-const module = new WebAssembly.Module(wasmBytes);
+// The bytes are not kept: only the compiled module is.
+const module = new WebAssembly.Module(moduleBytes(embedded) as Uint8Array<ArrayBuffer>);
 const imports = {
   env: {
     // Never lets a JavaScript exception unwind through wasm frames; the

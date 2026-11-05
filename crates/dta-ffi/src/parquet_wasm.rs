@@ -518,92 +518,108 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
             o.push(',');
         }
         let entry = entries.get(col.name.as_str()).copied();
-        let h = &how[k];
-        o.push('{');
-        key(&mut o, "name");
-        push_str(&mut o, &col.name);
-        key(&mut o, "type");
-        push_str(&mut o, type_name(col));
-        key(&mut o, "format");
-        push_str(&mut o, entry.and_then(|e| e.format.as_deref()).unwrap_or(""));
-        key(&mut o, "label");
-        push_str(&mut o, entry.and_then(|e| e.label.as_deref()).unwrap_or(""));
-        let set = entry
-            .and_then(|e| e.value_labels.as_deref())
-            .filter(|s| sets.contains_key(s) && labels_apply(col, h))
-            .unwrap_or("");
-        key(&mut o, "valueLabels");
-        push_str(&mut o, set);
-        key(&mut o, "role");
-        push_str(&mut o, if col.role == Role::Data { "data" } else { "nested" });
-        key(&mut o, "physicalType");
-        push_str(&mut o, &col.physical.map(|p| p.name()).unwrap_or_default());
-        key(&mut o, "logicalType");
-        push_str(&mut o, &logical_name(col));
-        key(&mut o, "columnKind");
-        match h {
-            How::Number { .. } => push_str(&mut o, "number"),
-            How::BigInt { .. } => push_str(&mut o, "bigint"),
-            How::Text { .. } => push_str(&mut o, "string"),
-            How::Levels => push_str(&mut o, "dictionary"),
-            How::NotRead(why) => {
-                o.push_str("null");
-                key(&mut o, "notRead");
-                push_str(&mut o, why);
-            }
-        }
-        if let Some(why) = &reasons[k] {
-            key(&mut o, "int64");
-            o.push('{');
-            key(&mut o, "kind");
-            push_str(&mut o, if matches!(h, How::BigInt { .. }) { "bigint" } else { "number" });
-            key(&mut o, "reason");
-            push_str(&mut o, why);
-            o.push('}');
-        }
-        if let Some(u) = unit_of(col) {
-            key(&mut o, "unit");
-            push_str(&mut o, u);
-        }
-        if let Some(z) = zone_of(col, entry) {
-            key(&mut o, "timeZone");
-            push_str(&mut o, &z);
-        }
-        if let Some(s) = col.storage {
-            key(&mut o, "storage");
-            push_str(&mut o, s.name());
-        }
-        if matches!(h, How::Levels) {
-            let cat = entry.and_then(|e| e.categorical.as_ref());
-            key(&mut o, "categorical");
-            o.push('{');
-            key(&mut o, "levels");
-            match cat.filter(|_| col.levels == Some(LevelsFrom::Profile)) {
-                Some(c) => o.push_str(&json::strings(&c.levels)),
-                None => o.push_str("null"),
-            }
-            key(&mut o, "ordered");
-            o.push_str(if cat.is_some_and(|c| c.ordered) && col.levels == Some(LevelsFrom::Profile) { "true" } else { "false" });
-            o.push('}');
-        }
-        if matches!(h, How::Text { .. }) {
-            // A text column's size per row group, for JavaScript to keep
-            // each read under its budget without the chunks' details.
-            key(&mut o, "textBytes");
-            o.push('[');
-            for (g, group) in meta.row_groups.iter().enumerate() {
-                if g > 0 {
-                    o.push(',');
-                }
-                let m = group.columns.get(col.leaf()).and_then(|c| c.meta.as_ref());
-                num(&mut o, m.map_or(0, |m| m.total_uncompressed_size.max(0)) as f64);
-            }
-            o.push(']');
-        }
-        o.push('}');
+        variable_json(&mut o, col, entry, &how[k], reasons[k].as_deref(), &sets, meta);
     }
     o.push_str("]}");
     o
+}
+
+/// One variable of `info_json`. Its own function, not inlined: opening a
+/// file runs it once per column, and V8 then compiles it with its
+/// optimizing compiler, whose memory grows with the function's size
+/// (inlined into `info_json` it cost 5 MB at the peak of a small read).
+#[inline(never)]
+fn variable_json(
+    o: &mut String,
+    col: &ColumnInfo,
+    entry: Option<&ColumnProfile>,
+    h: &How,
+    reason: Option<&str>,
+    sets: &HashMap<&str, ()>,
+    meta: &FileMetaData,
+) {
+    o.push('{');
+    key(o, "name");
+    push_str(o, &col.name);
+    key(o, "type");
+    push_str(o, type_name(col));
+    key(o, "format");
+    push_str(o, entry.and_then(|e| e.format.as_deref()).unwrap_or(""));
+    key(o, "label");
+    push_str(o, entry.and_then(|e| e.label.as_deref()).unwrap_or(""));
+    let set = entry
+        .and_then(|e| e.value_labels.as_deref())
+        .filter(|s| sets.contains_key(s) && labels_apply(col, h))
+        .unwrap_or("");
+    key(o, "valueLabels");
+    push_str(o, set);
+    key(o, "role");
+    push_str(o, if col.role == Role::Data { "data" } else { "nested" });
+    key(o, "physicalType");
+    push_str(o, &col.physical.map(|p| p.name()).unwrap_or_default());
+    key(o, "logicalType");
+    push_str(o, &logical_name(col));
+    key(o, "columnKind");
+    match h {
+        How::Number { .. } => push_str(o, "number"),
+        How::BigInt { .. } => push_str(o, "bigint"),
+        How::Text { .. } => push_str(o, "string"),
+        How::Levels => push_str(o, "dictionary"),
+        How::NotRead(why) => {
+            o.push_str("null");
+            key(o, "notRead");
+            push_str(o, why);
+        }
+    }
+    if let Some(why) = reason {
+        key(o, "int64");
+        o.push('{');
+        key(o, "kind");
+        push_str(o, if matches!(h, How::BigInt { .. }) { "bigint" } else { "number" });
+        key(o, "reason");
+        push_str(o, why);
+        o.push('}');
+    }
+    if let Some(u) = unit_of(col) {
+        key(o, "unit");
+        push_str(o, u);
+    }
+    if let Some(z) = zone_of(col, entry) {
+        key(o, "timeZone");
+        push_str(o, &z);
+    }
+    if let Some(s) = col.storage {
+        key(o, "storage");
+        push_str(o, s.name());
+    }
+    if matches!(h, How::Levels) {
+        let cat = entry.and_then(|e| e.categorical.as_ref());
+        key(o, "categorical");
+        o.push('{');
+        key(o, "levels");
+        match cat.filter(|_| col.levels == Some(LevelsFrom::Profile)) {
+            Some(c) => o.push_str(&json::strings(&c.levels)),
+            None => o.push_str("null"),
+        }
+        key(o, "ordered");
+        o.push_str(if cat.is_some_and(|c| c.ordered) && col.levels == Some(LevelsFrom::Profile) { "true" } else { "false" });
+        o.push('}');
+    }
+    if matches!(h, How::Text { .. }) {
+        // A text column's size per row group, for JavaScript to keep
+        // each read under its budget without the chunks' details.
+        key(o, "textBytes");
+        o.push('[');
+        for (g, group) in meta.row_groups.iter().enumerate() {
+            if g > 0 {
+                o.push(',');
+            }
+            let m = group.columns.get(col.leaf()).and_then(|c| c.meta.as_ref());
+            num(o, m.map_or(0, |m| m.total_uncompressed_size.max(0)) as f64);
+        }
+        o.push(']');
+    }
+    o.push('}');
 }
 
 /// Per column, its chunks (one per row group: sizes, codec, encodings,
@@ -884,6 +900,7 @@ impl TextAcc {
         }
     }
 
+    #[inline(never)]
     fn add(&mut self, chunk: &TextChunk, dict: &mut Dict) {
         if self.coded {
             if let Some(cc) = &chunk.codes {
@@ -938,6 +955,58 @@ fn read_error(e: dta::Error, int64_names: &[String]) -> Fail {
         f.message.push_str("; read with int64: \"bigint\" to keep every digit");
     }
     f
+}
+
+// pq_read's loops over rows, each its own small function: V8 compiles a
+// function that runs long with its optimizing compiler, whose memory
+// grows with the function's size, and pq_read is large.
+
+/// The core's read, kept out of pq_read.
+#[inline(never)]
+fn read_into(
+    reader: &mut Reader<HostFile>,
+    cols: &[usize],
+    start: u64,
+    count: u64,
+    outputs: &mut [Output<'_>],
+    on_text: &mut dyn FnMut(usize, &TextChunk) -> dta::Result<()>,
+) -> dta::Result<dta_parquet::ReadReport> {
+    reader.read(cols, start, count, outputs, on_text)
+}
+
+/// The first row whose value is not a safe integer.
+#[inline(never)]
+fn first_unsafe(values: &[f64], codes: &[u8]) -> Option<usize> {
+    values.iter().zip(codes).position(|(v, &m)| m == 0 && v.abs() > SAFE)
+}
+
+/// Text's end offsets in UTF-16 units, or `None` when they are its byte
+/// offsets (ASCII).
+#[inline(never)]
+fn utf16_ends(bytes: &[u8], ends: &[u32]) -> Option<Vec<u32>> {
+    if bytes.is_ascii() {
+        return None;
+    }
+    let mut u = Vec::with_capacity(ends.len());
+    let (mut from, mut units) = (0usize, 0u32);
+    for &e in ends {
+        let v = &bytes[from..e as usize];
+        units += if v.is_ascii() { v.len() as u32 } else { utf16_len(v) as u32 };
+        u.push(units);
+        from = e as usize;
+    }
+    Some(u)
+}
+
+/// Levels end to end, with their ends in UTF-16 units.
+#[inline(never)]
+fn pack_levels(levels: &[String], bytes: &mut Vec<u8>, utf16: &mut Vec<u32>) {
+    let mut units = 0u32;
+    for l in levels {
+        bytes.extend_from_slice(l.as_bytes());
+        units += l.encode_utf16().count() as u32;
+        utf16.push(units);
+    }
 }
 
 /// Read rows `start` to `start + count` of the `ncols` columns at `cols`
@@ -1028,14 +1097,14 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                     }
                     Ok(())
                 };
-                reader.read(&cols, start as u64, count as u64, &mut outputs, &mut on_text)
+                read_into(reader, &cols, start as u64, count as u64, &mut outputs, &mut on_text)
             }
             .map_err(|e| read_error(e, &int64_names))?;
             // INT64 read as numbers: every value a safe integer, whatever
             // the statistics said.
             for (k, &c) in cols.iter().enumerate() {
                 if let (How::Number { check: true }, Out::Number { values, codes }) = (&how[c], &outs[k]) {
-                    if let Some(r) = values.iter().zip(codes).position(|(v, &m)| m == 0 && v.abs() > SAFE) {
+                    if let Some(r) = first_unsafe(values, codes) {
                         return Err(Fail {
                             kind: INVALID,
                             message: format!(
@@ -1055,31 +1124,14 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                         let (new_bytes, new_utf16) = dict.take_new();
                         Out::Coded { codes: acc.codes, new_bytes, new_utf16 }
                     } else {
-                        let utf16 = if acc.binary || acc.bytes.is_ascii() {
-                            None
-                        } else {
-                            let mut u = Vec::with_capacity(acc.ends.len());
-                            let (mut from, mut units) = (0usize, 0u32);
-                            for &e in &acc.ends {
-                                let v = &acc.bytes[from..e as usize];
-                                units += if v.is_ascii() { v.len() as u32 } else { utf16_len(v) as u32 };
-                                u.push(units);
-                                from = e as usize;
-                            }
-                            Some(u)
-                        };
+                        let utf16 = if acc.binary { None } else { utf16_ends(&acc.bytes, &acc.ends) };
                         Out::Plain { bytes: acc.bytes, ends: acc.ends, missing: acc.missing, utf16, binary: acc.binary }
                     };
                 }
             }
             for (k, out) in outs.iter_mut().enumerate() {
                 if let (Out::Levels { found_bytes, found_utf16, .. }, Some(Some(levels))) = (out, report.levels.get(k)) {
-                    let mut units = 0u32;
-                    for l in levels {
-                        found_bytes.extend_from_slice(l.as_bytes());
-                        units += l.encode_utf16().count() as u32;
-                        found_utf16.push(units);
-                    }
+                    pack_levels(levels, found_bytes, found_utf16);
                 }
             }
             // The directory: per column, its mode and four (pointer,
