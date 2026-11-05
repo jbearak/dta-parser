@@ -1,9 +1,16 @@
-"""Benchmark datakit's Parquet reader and writer against arrow,
-nanoparquet and DuckDB in R, check plan 0018's four speed and memory
-targets, and write bench/results/parquet.md.
+"""Benchmark our Parquet reader and writer against the other libraries
+of one language, check plan 0018's speed and memory targets, and write
+bench/results/parquet.md (R) or parquet-julia.md (Julia).
 
-    python bench/parquet/run.py [--family F ...] [--libs L ...] [--tasks T ...]
-                                [--inputs I ...] [--only KEY ...] [--report]
+    python bench/parquet/run.py [--lang r|julia] [--family F ...] [--libs L ...]
+                                [--tasks T ...] [--inputs I ...] [--only KEY ...] [--report]
+
+R (the default): datakit's read_parquet() and save_parquet() against
+arrow, nanoparquet and duckdb. Julia (--lang julia): DtaParser's
+read_parquet and write_parquet against Parquet2.jl and DuckDB.jl, in
+bench/julia's environment (bench/parquet/case.jl). Target 4, other tools
+reading our files, does not depend on the language that wrote them, so
+the Julia run leaves it out.
 
 Run it from the repository root with a Python that has pyarrow, polars
 and duckdb; R needs datakit, arrow, nanoparquet, duckdb and jsonlite
@@ -55,7 +62,9 @@ MB = 1e6
 MIB = 1 << 20
 RUNS = 5
 TIMEOUT = 20 * 60
-LIBS = ["ours", "arrow", "nanoparquet", "duckdb"]
+LIBS_BY_LANG = {"r": ["ours", "arrow", "nanoparquet", "duckdb"], "julia": ["ours", "parquet2", "duckdb"]}
+LIBS = LIBS_BY_LANG["r"]
+LANG = "r"
 READS = ["full", "five", "window", "pass"]
 WRITES = ["write", "zstd"]
 INPUTS = ["pyarrow", "polars", "ours"]
@@ -168,6 +177,13 @@ def cached(path, make):
     return value
 
 
+def case_cmd(*args):
+    if LANG == "julia":
+        return ["julia", "--project=" + str(ROOT / "bench" / "julia"), "--startup-file=no",
+                str(HERE / "case.jl"), *args]
+    return ["Rscript", str(HERE / "case.R"), *args]
+
+
 def run_all(files, out, libs, tasks, inputs, tools):
     report = out / f"tmp-{os.getpid()}.json"
     for f in files:
@@ -177,8 +193,8 @@ def run_all(files, out, libs, tasks, inputs, tools):
             for inp in inputs:
                 warm(f["files"][inp])
                 for lib in libs:
-                    cmd = ["Rscript", str(HERE / "case.R"), lib, task, str(f["files"][inp]), str(report),
-                           ",".join(f["cols"]), str(f["skip"]), str(f["n"])]
+                    cmd = case_cmd(lib, task, str(f["files"][inp]), str(report),
+                                   ",".join(f["cols"]), str(f["skip"]), str(f["n"]))
                     path = out / "raw" / f["key"] / inp / f"{lib}-{task}.json"
                     t = time.time()
                     m = cached(path, lambda: measure(cmd, report))
@@ -188,14 +204,14 @@ def run_all(files, out, libs, tasks, inputs, tools):
         for task in [t for t in tasks if t in WRITES]:
             warm(f["dta"])
             for lib in libs:
-                cmd = ["Rscript", str(HERE / "case.R"), lib, task, str(f["dta"]), str(report), "", "0", "0"]
+                cmd = case_cmd(lib, task, str(f["dta"]), str(report), "", "0", "0")
                 path = out / "raw" / f["key"] / "dta" / f"{lib}-{task}.json"
                 t = time.time()
                 m = cached(path, lambda: measure(cmd, report))
                 if time.time() - t > 1 or "error" in m:
                     shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                     print(f"  {task} {lib}: {shown}", flush=True)
-        if "snappy" in tasks:
+        if "snappy" in tasks and LANG == "r":
             warm(f["dta"])
             cmd = ["Rscript", str(HERE / "case.R"), "ours", "snappy", str(f["dta"]), str(report), "", "0", "0"]
             path = out / "raw" / f["key"] / "dta" / "ours-snappy.json"
@@ -204,7 +220,7 @@ def run_all(files, out, libs, tasks, inputs, tools):
             if time.time() - t > 1 or "error" in m:
                 shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                 print(f"  snappy ours: {shown}", flush=True)
-        if "tool" in tasks:
+        if "tool" in tasks and LANG == "r":
             for tool in tools:
                 for inp in (tool, "ours", "ours_zstd"):
                     warm(f["files"][inp])
@@ -303,7 +319,7 @@ def evaluate(files, out):
 
 def report(files, out, dest):
     rows, tool_rows, misses = evaluate(files, out)
-    lines = ["# Parquet benchmarks (R)", "",
+    lines = [f"# Parquet benchmarks ({'Julia' if LANG == 'julia' else 'R'})", "",
              "Written by `bench/parquet/run.py`; see bench/RESULTS.md for what the numbers mean.", ""]
     loads = []
     versions = {}
@@ -334,10 +350,10 @@ def report(files, out, dest):
         lines.append(f"| {r['tool']} | {codec} | {FAMILIES[r['family']]} | {r['n']} | {r['ratio']:.2f} | {r['worst']} | "
                      f"{r['worst_ratio']:.2f} |")
     lines += ["", "## Our writes: zstd 3 against snappy (the default)", "",
-              "Ratios of our zstd write to our snappy write (geometric means), and how arrow, nanoparquet and DuckDB "
-              "(their defaults) compare with each (wall time).", "",
-              "| family | files | wall zstd/snappy | size zstd/snappy | vs arrow (zstd, snappy) | vs nanoparquet | vs duckdb |",
-              "|---|---|---|---|---|---|---|"]
+              "Ratios of our zstd write to our snappy write (geometric means), and how "
+              + ", ".join(LIBS[1:]) + " (their defaults) compare with each (wall time).", "",
+              "| family | files | wall zstd/snappy | size zstd/snappy | " + " | ".join(f"vs {l} (zstd, snappy)" for l in LIBS[1:]) + " |",
+              "|---|---|---|---|" + "---|" * len(LIBS[1:])]
     for fam in ("nsfg", "dhs", "synthetic"):
         fs = [f for f in files if f["family"] == fam]
         z = [load(out, f, "dta", "ours-zstd") for f in fs]
@@ -378,18 +394,26 @@ def report(files, out, dest):
 
 
 def main():
+    global LIBS, LANG
     ap = argparse.ArgumentParser()
+    ap.add_argument("--lang", choices=sorted(LIBS_BY_LANG), default="r")
     ap.add_argument("--family", nargs="*", default=list(FAMILIES))
-    ap.add_argument("--libs", nargs="*", default=LIBS)
+    ap.add_argument("--libs", nargs="*")
     ap.add_argument("--tasks", nargs="*", default=READS + WRITES + ["tool"])
     ap.add_argument("--inputs", nargs="*", default=INPUTS)
     ap.add_argument("--tools", nargs="*", default=TOOLS)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
-    ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-out")
+    ap.add_argument("--out")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet.md"))
+    ap.add_argument("--dest")
     a = ap.parse_args()
+    LANG = a.lang
+    LIBS = LIBS_BY_LANG[LANG]
+    julia = LANG == "julia"
+    a.libs = a.libs or LIBS
+    a.out = a.out or "/private/tmp/claude-501/pq-bench-out" + ("-julia" if julia else "")
+    a.dest = a.dest or str(ROOT / "bench" / "results" / ("parquet-julia.md" if julia else "parquet.md"))
     files = find_files(a.family)
     if a.only:
         files = [f for f in files if f["key"] in a.only or f["label"] in a.only]
