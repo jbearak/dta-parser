@@ -11,6 +11,7 @@ dta = { path = "../dta" }
 snap = "1"
 miniz_oxide = "0.8"
 lz4_flex = { version = "0.11", default-features = false, features = ["safe-encode", "safe-decode"] }
+brotli-decompressor = "6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 zstd = { version = "0.13", default-features = false }

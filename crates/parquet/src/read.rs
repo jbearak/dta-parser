@@ -1065,9 +1065,9 @@ impl Task<'_> {
     fn decoded(&self) -> u64 {
         let width = match &self.dest {
             Dest::I8(_) | Dest::U8(_) => 1,
-            Dest::I16(_) => 2,
-            Dest::I32(_) | Dest::F32(_) | Dest::Levels { .. } => 4,
-            Dest::I64(_) | Dest::F64(_) => 8,
+            Dest::I16(_) | Dest::U16(_) => 2,
+            Dest::I32(_) | Dest::U32(_) | Dest::F32(_) | Dest::Levels { .. } => 4,
+            Dest::I64(_) | Dest::U64(_) | Dest::F64(_) => 8,
             Dest::Text => 0,
         };
         (self.window.end - self.window.start).saturating_mul(width)

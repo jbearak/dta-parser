@@ -338,6 +338,18 @@ fn kind_of(
             None => Kind::Text,
         },
         ColumnType::Binary => Kind::Binary,
+        ColumnType::UInt8
+        | ColumnType::UInt16
+        | ColumnType::UInt32
+        | ColumnType::UInt64
+        | ColumnType::Time { .. }
+        | ColumnType::Decimal { .. } => {
+            return Err(Fail::Message(format!(
+                "column \"{}\" is {}, which read_parquet() does not read yet",
+                col.name,
+                logical_name(col).unwrap_or_else(|| "of a type".to_string())
+            )));
+        }
         ColumnType::Unsupported(why) => {
             return Err(Fail::Message(format!("column \"{}\" is {why}", col.name)));
         }
