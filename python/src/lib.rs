@@ -585,6 +585,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;
     m.add_function(wrap_pyfunction!(parquet::magic, m)?)?;
+    m.add_function(wrap_pyfunction!(parquet::parquet_fits, m)?)?;
     m.add_function(wrap_pyfunction!(parquet::parquet_meta, m)?)?;
     m.add_function(wrap_pyfunction!(parquet::parquet_read, m)?)?;
     m.add_function(wrap_pyfunction!(parquet::parquet_write, m)?)?;

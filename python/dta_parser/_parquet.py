@@ -19,9 +19,9 @@ import pandas as pd
 
 from . import _native
 from ._array import StataArray, StataDtype
-from ._read import _EPOCH_DAYS, _TEXT, DtaInfo, _as_dates, _count, _value_labels, date_kind
+from ._read import _EPOCH_DAYS, _TEXT, DtaInfo, _as_dates, _count, date_kind
 from ._read import read_meta as _read_dta_meta
-from ._write import _choose, _label_list
+from ._write import _label_list
 
 _NUMPY = {"byte": np.int8, "int": np.int16, "long": np.int32, "float": np.float32, "double": np.float64}
 _DAY = {"s": 86_400, "ms": 86_400_000, "us": 86_400_000_000, "ns": 86_400_000_000_000}
@@ -39,7 +39,13 @@ except ImportError:  # pragma: no cover - pandas without pyarrow
 _ARROW_TEXT = _pa is not None and getattr(_TEXT, "storage", None) == "pyarrow"
 
 
-def _alloc(dtype, n):
+def _alloc(dtype, n, count):
+    """A new array for the reader to fill, and its address: of `n`
+    elements, or with `count` > 0, a 2D array of `count` columns of `n`
+    (pandas' layout of a block), with a view of each column."""
+    if count:
+        a = np.empty((count, n), dtype=dtype)
+        return a, a.__array_interface__["data"][0], list(a)
     if dtype == "codes":
         a = np.zeros(n, dtype=np.uint8)
     elif dtype == "object":
@@ -144,6 +150,11 @@ def _make_column(item, storage, fmt):
     """The pandas column of one tuple from _native.parquet_read, and its
     display format."""
     tag = item[0]
+    if tag == "float_int":
+        # Read as floats, since the footer did not rule out nulls; integers
+        # again where the rows read hold none, as read_dta gives them.
+        _, values, nulls, int_dtype = item
+        return (values if nulls else values.astype(int_dtype)), fmt
     if tag == "int":
         return _int_values(item[1], item[2]), fmt
     if tag == "uint":
@@ -223,7 +234,7 @@ def _attrs(profile, names, storage, formats):
         "notes": notes,
         "characteristics": characteristics,
         "sort_order": list(p.get("sort") or []),
-        "value_labels": _value_labels(p.get("value_labels") or []),
+        "value_labels": p.get("value_labels") or {},
         "columns": columns,
     }
 
@@ -305,12 +316,51 @@ def read_parquet(source, columns=None, skip=0, n_max=None, nested="error"):
         fmt = (pcols.get(name) or {}).get("format") or ""
         data[name], fmt = _make_column(item, st, fmt)
         formats.append(fmt)
-    if data:
-        df = pd.DataFrame(data, copy=False)
-    else:
-        df = pd.DataFrame(index=pd.RangeIndex(raw["rows"]))
+    df = _frame(data, raw["blocks"], raw["rows"])
     df.attrs["dta"] = DtaInfo(_attrs(raw["profile"], names, storage, formats))
     return df
+
+
+try:
+    from pandas.api.internals import create_dataframe_from_blocks as _from_blocks
+except ImportError:  # pandas before 3
+    _from_blocks = None
+
+
+def _frame(data, blocks, rows):
+    """The DataFrame of the columns `data` (name to array). Columns read
+    into one 2D array per dtype keep it as their pandas block, without a
+    copy: each run of columns still in it (a column leaves when its dtype
+    changed after the read) is one block."""
+    names = list(data)
+    if not names:
+        return pd.DataFrame(index=pd.RangeIndex(rows))
+    if _from_blocks is None:
+        return pd.DataFrame(data, copy=False)
+    columns = list(data.values())
+    placed = [False] * len(columns)
+    out = []
+    for block, members in blocks:
+        start = None
+        for j, k in enumerate(members + [None]):
+            live = k is not None and columns[k] is not None and isinstance(columns[k], np.ndarray) \
+                and columns[k].base is block and np.shares_memory(columns[k], block[j])
+            if live and start is None:
+                start = j
+            if not live and start is not None:
+                out.append((block[start:j], np.array(members[start:j], dtype=np.intp)))
+                for m in members[start:j]:
+                    placed[m] = True
+                start = None
+    for k, values in enumerate(columns):
+        if placed[k]:
+            continue
+        if isinstance(values, np.ndarray):
+            values = values.reshape(1, -1)
+            if values.dtype.kind in "Mm":
+                values = pd.array(values[0])
+        out.append((values, np.array([k], dtype=np.intp)))
+    return _from_blocks(out, index=pd.RangeIndex(rows), columns=pd.Index(names))
 
 
 def _parquet_meta(src):
@@ -413,15 +463,11 @@ def _check_uint64(name, values):
                          "integer holds; Parquet files here hold signed 64-bit integers")
 
 
-def _datetimes(name, series, meta, keep):
+def _datetimes(name, arr, meta, keep):
     """(kind, data, dtype, codes, extra, unit for the profile) of a
     datetime64 column."""
-    dtype = series.dtype
-    tz = getattr(dtype, "tz", None)
-    if tz is not None:
-        values = np.asarray(series.array.tz_convert(None))
-    else:
-        values = series.to_numpy()
+    tz = getattr(arr.dtype, "tz", None)
+    values = np.asarray(arr.tz_convert(None) if tz is not None else arr)
     unit = np.datetime_data(values.dtype)[0]
     ints = _native_array(values.view(np.int64))
     nat = ints == np.iinfo(np.int64).min
@@ -458,74 +504,76 @@ def _datetimes(name, series, meta, keep):
     return "timestamp", ints, "i8", None, (out_unit, tz is not None, zone, scale), profile_unit
 
 
-def _column(name, series, meta, missing_letters, keep):
-    """(kind, data address, dtype, codes address, extra, unit) of one
-    column; `keep` gains the arrays the addresses point into."""
-    dtype = series.dtype
-    preferred = meta.get("storage")
-    unit = None
-    extra = None
-    codes = None
+_STORAGE_KIND = {"byte": "int8", "int": "int16", "long": "int32", "float": "float", "double": "double"}
+_MASKED = (pd.arrays.BooleanArray, pd.arrays.IntegerArray, pd.arrays.FloatingArray)
+
+
+def _numbers(values, codes, kind, keep, check=None):
+    values = _native_array(values)
+    keep.append(values)
+    if codes is not None:
+        codes = _native_array(np.asarray(codes, dtype=np.uint8))
+        keep.append(codes)
+    return [kind, values.ctypes.data, _code(values), 0 if codes is None else codes.ctypes.data, None, None, check]
+
+
+def _column(name, arr, meta, keep):
+    """[kind, data address, dtype, codes address, extra, unit, check] of
+    one column, `arr` its values (a numpy or extension array); `keep`
+    gains the arrays the addresses point into. `check` is (storage, kind
+    otherwise): write as `kind` if every value fits the storage type,
+    else as the other, as write_dta chooses."""
+    dtype = arr.dtype
+    if isinstance(arr, np.ndarray) and dtype.kind in "iufb":
+        if dtype.kind == "f":
+            values = arr if dtype.itemsize >= 4 else arr.astype(np.float32)
+            kind = "float" if values.dtype.itemsize == 4 else "double"
+            preferred = meta.get("storage")
+            if preferred in ("byte", "int", "long"):
+                return _numbers(values, None, _STORAGE_KIND[preferred], keep, (preferred, kind))
+            return _numbers(values, None, kind, keep)
+        if dtype.kind == "b":
+            return _numbers(arr, None, "bool", keep)
+        _check_uint64(name, arr)
+        return _numbers(arr, None, _INT_KIND[_code(arr)], keep)
     if isinstance(dtype, StataDtype):
-        arr = series.array
-        values, codes = arr._values, arr._codes
-        storage = _choose(name, values, codes != 0, dtype.storage, "double")
-        kind = {"byte": "int8", "int": "int16", "long": "int32", "float": "float", "double": "double"}[storage]
-        if not codes.any():
-            codes = None
-    elif isinstance(dtype, pd.CategoricalDtype):
-        cat = series.array
-        levels = cat.categories
+        codes = arr._codes
+        storage = dtype.storage
+        check = (storage, "double") if storage != "double" else None
+        return _numbers(arr._values, codes if codes.any() else None, _STORAGE_KIND[storage], keep, check)
+    if isinstance(dtype, pd.CategoricalDtype):
+        levels = arr.categories
         if not (levels.dtype == object or pd.api.types.is_string_dtype(levels.dtype)) or not all(
                 isinstance(v, str) for v in levels):
             raise TypeError(f"column {name!r}: a category whose categories are {levels.dtype}, not text; "
                             "Parquet categoricals here have text levels: convert with .astype(str), "
                             "or write the values")
-        values = cat.codes
-        kind, extra = "category", ([str(v) for v in levels], bool(dtype.ordered))
-    elif dtype.kind == "M":
-        kind, values, code, codes, extra, unit = _datetimes(name, series, meta, keep)
-        return kind, values.ctypes.data, code, 0 if codes is None else codes.ctypes.data, extra, unit
-    elif dtype.kind == "m":
+        spec = _numbers(arr.codes, None, "category", keep)
+        spec[4] = ([str(v) for v in levels], bool(dtype.ordered))
+        return spec
+    if dtype.kind == "M":
+        kind, values, code, codes, extra, unit = _datetimes(name, arr, meta, keep)
+        return [kind, values.ctypes.data, code, 0 if codes is None else codes.ctypes.data, extra, unit, None]
+    if dtype.kind == "m":
         raise TypeError(f"column {name!r}: cannot write timedelta64 columns; convert them to numbers first")
-    elif isinstance(series.array, (pd.arrays.BooleanArray, pd.arrays.IntegerArray, pd.arrays.FloatingArray)):
-        arr = series.array
+    if isinstance(arr, _MASKED):
         nan = np.asarray(arr.isna())
+        codes = nan.astype(np.uint8) if nan.any() else None
         if dtype.kind == "f":
             values = arr.to_numpy(dtype=np.float64 if dtype.itemsize == 8 else np.float32, na_value=np.nan)
-            kind = "double" if dtype.itemsize == 8 else "float"
-        elif dtype.kind == "b":
-            values = arr.to_numpy(dtype=np.uint8, na_value=0)
-            kind = "bool"
-        else:
-            values = arr.to_numpy(dtype=dtype.numpy_dtype, na_value=0)
-            _check_uint64(name, values)
-            kind = _INT_KIND[_code(values)]
-        codes = nan.astype(np.uint8) if nan.any() else None
-    elif isinstance(dtype, np.dtype) and dtype.kind == "b":
-        values, kind = series.to_numpy(), "bool"
-    elif isinstance(dtype, np.dtype) and dtype.kind in "iu":
-        values = series.to_numpy()
+            return _numbers(values, codes, "double" if dtype.itemsize == 8 else "float", keep)
+        if dtype.kind == "b":
+            return _numbers(arr.to_numpy(dtype=np.uint8, na_value=0), codes, "bool", keep)
+        values = arr.to_numpy(dtype=dtype.numpy_dtype, na_value=0)
         _check_uint64(name, values)
-        kind = _INT_KIND[_code(values)]
-    elif isinstance(dtype, np.dtype) and dtype.kind == "f":
-        values = series.to_numpy()
-        if dtype.itemsize < 4:
-            values = values.astype(np.float32)
-        kind = "float" if values.dtype.itemsize == 4 else "double"
-        if preferred in ("byte", "int", "long"):
-            nan = np.isnan(values)
-            if _choose(name, values, nan, preferred, "double") == preferred:
-                kind = {"byte": "int8", "int": "int16", "long": "int32"}[preferred]
-    elif isinstance(dtype, pd.StringDtype) or dtype == object:
-        arrow = None
+        return _numbers(values, codes, _INT_KIND[_code(values)], keep)
+    if isinstance(dtype, pd.StringDtype) or dtype == object:
         if getattr(dtype, "storage", None) == "pyarrow" and _pa is not None:
-            arrow = series.array.__arrow_array__()
+            arrow = arr.__arrow_array__()
             if not isinstance(arrow, _pa.ChunkedArray):
                 arrow = _pa.chunked_array([arrow])
             if arrow.type not in (_pa.string(), _pa.large_string()):
                 arrow = arrow.cast(_pa.large_string())
-        if arrow is not None:
             chunks = []
             for c in arrow.chunks:
                 bufs = c.buffers()
@@ -533,22 +581,29 @@ def _column(name, series, meta, missing_letters, keep):
                 chunks.append((0 if bufs[0] is None or c.null_count == 0 else bufs[0].address,
                                bufs[1].address, width, 0 if bufs[2] is None else bufs[2].address, len(c), c.offset))
             keep.append(arrow)
-            return "arrow_text", 0, "", 0, chunks, None
-        objects = series.to_numpy(dtype=object)
+            return ["arrow_text", 0, "", 0, chunks, None, None]
+        objects = np.asarray(arr, dtype=object)
         nan = np.asarray(pd.isna(objects), dtype=bool)
         if nan.any():
             objects = objects.copy()
             objects[nan] = None
         keep.append(objects)
-        return "objects", objects.ctypes.data, "O", 0, None, None
-    else:
-        raise TypeError(f"column {name!r}: cannot write a column of dtype {dtype}")
-    values = _native_array(np.asarray(values))
-    keep.append(values)
-    if codes is not None:
-        codes = _native_array(np.asarray(codes, dtype=np.uint8))
-        keep.append(codes)
-    return kind, values.ctypes.data, _code(values), 0 if codes is None else codes.ctypes.data, extra, unit
+        return ["objects", objects.ctypes.data, "O", 0, None, None, None]
+    raise TypeError(f"column {name!r}: cannot write a column of dtype {dtype}")
+
+
+def _arrays(df):
+    """Each column's values, without making a Series per column (pandas'
+    block manager gives them directly; a frame of thousands of columns
+    took tens of milliseconds the other way)."""
+    mgr = getattr(df, "_mgr", None)
+    get = getattr(mgr, "iget_values", None)
+    if get is not None:
+        try:
+            return [get(k) for k in range(df.shape[1])]
+        except Exception:  # pragma: no cover - another pandas
+            pass
+    return [df.iloc[:, k].array for k in range(df.shape[1])]
 
 
 def _is_default_index(index):
@@ -642,12 +697,25 @@ def write_parquet(df, path=None, *, label=None, variable_labels=None, compressio
     keep = []
     specs = []
     entries = []
-    for k, name in enumerate(names):
+    checks = []
+    for k, (name, arr) in enumerate(zip(names, _arrays(df))):
         meta = columns_meta.get(name) or {}
-        kind, addr, code, codes, extra, unit = _column(name, df.iloc[:, k], meta, missing_letters, keep)
-        specs.append((name, kind, addr, code, codes, extra))
+        spec = _column(name, arr, meta, keep)
+        if spec[6] is not None:
+            checks.append(k)
+        specs.append(spec)
         var_label = variable_labels.get(name, meta.get("label"))
-        entries.append((name, var_label or None, meta.get("format") or None, meta.get("value_labels") or None, unit))
+        entries.append((name, var_label or None, meta.get("format") or None, meta.get("value_labels") or None,
+                        spec[5]))
+    if checks:
+        # Each storage type is used where every value fits it, else the
+        # wider type, as write_dta chooses.
+        fits = _native.parquet_fits([(specs[k][1], specs[k][2], specs[k][3], specs[k][6][0]) for k in checks],
+                                    len(df))
+        for k, ok in zip(checks, fits):
+            if not ok:
+                specs[k][0] = _STORAGE_KIND[specs[k][6][1]] if specs[k][6][1] in _STORAGE_KIND else specs[k][6][1]
+    specs = [(name, spec[0], spec[1], spec[2], spec[3], spec[4]) for name, spec in zip(names, specs)]
     present = set(names) | {"_dta"}
     characteristics = []
     for variable, table in (info.get("characteristics") or {}).items():

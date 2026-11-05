@@ -282,8 +282,12 @@ fn prefix(e: PyErr, path: &str, py: Python<'_>) -> PyErr {
 enum Kind {
     /// INT32, INT(8) or INT(16): int32, int8 or int16, as Stata's long,
     /// byte and int; float64 or float32 when the rows read hold a null.
+    /// `codes`: the footer does not rule out nulls, so the values are
+    /// read straight into the float type, NaN for null, and made integers
+    /// again after the read if no null was read.
     Int { width: u8, codes: bool },
-    /// Unsigned 8 to 64 bits; with nulls float32, float64 or `UInt64`.
+    /// Unsigned 8 to 64 bits; with nulls float32, float64 or `UInt64`
+    /// (read as for `Int`, but for 64 bits, read with a code per row).
     UInt { width: u8, codes: bool },
     /// INT64: int64; with nulls `Int64`.
     Int64 { codes: bool },
@@ -357,6 +361,28 @@ fn some_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     })
 }
 
+/// Whether the statistics of a row group that `window` takes whole show
+/// a null in column `col`.
+fn nulls_in(
+    meta: &FileMetaData,
+    col: &ColumnInfo,
+    groups: &[dta_parquet::RowGroupInfo],
+    window: &std::ops::Range<u64>,
+) -> bool {
+    let leaf = col.leaf();
+    meta.row_groups.iter().zip(groups).any(|(g, info)| {
+        info.first_row >= window.start
+            && info.first_row + info.rows <= window.end
+            && info.rows > 0
+            && g.columns
+                .get(leaf)
+                .and_then(|c| c.meta.as_ref())
+                .and_then(|m| m.statistics.as_ref())
+                .and_then(|s| s.null_count)
+                .is_some_and(|n| n > 0)
+    })
+}
+
 /// Whether every row group's statistics show column `leaf`'s minimum
 /// above -2^63, numpy's NaT, so no value is taken for a missing one.
 fn min_ruled_out(meta: &FileMetaData, col: &ColumnInfo) -> bool {
@@ -413,6 +439,38 @@ fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>, meta: &FileMetaData)
         ColumnType::Binary => Kind::Binary,
         ColumnType::Unsupported(why) => return Err(format!("column \"{}\" is {why}", col.name)),
     })
+}
+
+/// The dtype of the 2D array a column is read into with others of its
+/// dtype, for the kinds whose values go straight into numpy memory.
+fn block_dtype(kind: &Kind) -> Option<&'static str> {
+    Some(match kind {
+        Kind::Int { width: 1 | 2, codes: true } | Kind::UInt { width: 1 | 2, codes: true } | Kind::Float32 => {
+            "float32"
+        }
+        Kind::Int { codes: true, .. } | Kind::UInt { width: 4, codes: true } => "float64",
+        Kind::Double { storage: None, logical: None } | Kind::DecimalFloat => "float64",
+        Kind::Int { width: 1, .. } => "int8",
+        Kind::Int { width: 2, .. } => "int16",
+        Kind::Int { .. } => "int32",
+        Kind::UInt { width: 1, codes: false } => "uint8",
+        Kind::UInt { width: 2, codes: false } => "uint16",
+        Kind::UInt { width: 4, codes: false } => "uint32",
+        Kind::UInt { width: 8, codes: false } => "uint64",
+        Kind::Int64 { codes: false } => "int64",
+        Kind::Bool { codes: false } => "bool",
+        Kind::Date => "datetime64[s]",
+        _ => return None,
+    })
+}
+
+fn itemsize(dtype: &str) -> usize {
+    match dtype {
+        "int8" | "uint8" | "bool" => 1,
+        "int16" | "uint16" => 2,
+        "int32" | "uint32" | "float32" => 4,
+        _ => 8,
+    }
 }
 
 /// The pandas dtype a whole-file read gives a column, from the footer's
@@ -546,10 +604,13 @@ fn codec_name(c: dta_parquet::format::Codec) -> String {
 // ---------------------------------------------------------------- profile
 
 /// The profile as a dict of plain Python values: label, timestamp,
-/// notes, characteristics (variable, name, text), sort, value_labels
-/// (name, [(value, missing code, text)]) and columns (name to a dict of
-/// label, format, value_labels, unit).
-fn profile_dict<'py>(py: Python<'py>, p: Option<&Profile>) -> PyResult<Bound<'py, PyDict>> {
+/// notes, characteristics (variable, name, text), sort, value_labels (as
+/// `read_dta` gives them in attrs: set name to {code: text}, a code an
+/// int where it is whole, else a float, `.a` to `.z` as
+/// `dta_parser.missing` values and `.` as NaN) and columns (name to a
+/// dict of label, format, value_labels), for the columns `names` (all
+/// when None).
+fn profile_dict<'py>(py: Python<'py>, p: Option<&Profile>, names: Option<&[String]>) -> PyResult<Bound<'py, PyDict>> {
     let out = PyDict::new(py);
     let Some(p) = p else {
         out.set_item("present", false)?;
@@ -563,14 +624,25 @@ fn profile_dict<'py>(py: Python<'py>, p: Option<&Profile>) -> PyResult<Bound<'py
         p.characteristics.iter().map(|c| (c.variable.as_str(), c.name.as_str(), c.value.as_str())).collect();
     out.set_item("characteristics", chars)?;
     out.set_item("sort", &p.sort)?;
-    let sets: Vec<LabelSet<&str>> = p
-        .value_labels
-        .iter()
-        .map(|s| (s.name.as_str(), s.labels.iter().map(|l| (l.value, l.missing, l.text.as_str())).collect()))
-        .collect();
+    let from_code = py.import("dta_parser.missing")?.getattr("from_code")?;
+    let sets = PyDict::new(py);
+    for set in &p.value_labels {
+        let table = PyDict::new(py);
+        for l in &set.labels {
+            if l.missing != 0 {
+                table.set_item(from_code.call1((l.missing,))?, &l.text)?;
+            } else if l.value.fract() == 0.0 && l.value.abs() < 9.0e15 {
+                table.set_item(l.value as i64, &l.text)?;
+            } else {
+                table.set_item(l.value, &l.text)?;
+            }
+        }
+        sets.set_item(&set.name, table)?;
+    }
     out.set_item("value_labels", sets)?;
     let cols = PyDict::new(py);
-    for c in &p.columns {
+    let wanted: Option<std::collections::HashSet<&str>> = names.map(|n| n.iter().map(String::as_str).collect());
+    for c in p.columns.iter().filter(|c| wanted.as_ref().is_none_or(|w| w.contains(c.name.as_str()))) {
         let d = PyDict::new(py);
         d.set_item("label", c.label.as_deref())?;
         d.set_item("format", c.format.as_deref())?;
@@ -611,7 +683,7 @@ pub fn parquet_meta<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> PyResul
         out.set_item("created_by", r.created_by())?;
         let codecs: Vec<String> = r.codecs().into_iter().map(codec_name).collect();
         out.set_item("compression", codecs)?;
-        out.set_item("profile", profile_dict(py, r.profile())?)?;
+        out.set_item("profile", profile_dict(py, r.profile(), None)?)?;
         let by_name = entries(r.profile());
         let meta = r.metadata();
         let cols = PyList::empty(py);
@@ -834,6 +906,8 @@ struct Col {
     /// addresses.
     arrays: Vec<Py<PyAny>>,
     addrs: Vec<usize>,
+    /// The footer shows a null in a row group the read takes whole.
+    nulls_known: bool,
 }
 
 impl Col {
@@ -937,16 +1011,53 @@ fn read_into<'py>(
     let meta = r.metadata();
     let infos = r.columns();
 
+    let groups = r.row_groups();
     let mut cols: Vec<Col> = Vec::with_capacity(selected.len());
     let mut sinks: Vec<Sink> = Vec::with_capacity(selected.len());
     let mut make = |dtype: &str| -> PyResult<(Py<PyAny>, usize)> {
-        let (a, addr): (Py<PyAny>, usize) = alloc.call1((dtype, rows))?.extract()?;
+        let (a, addr): (Py<PyAny>, usize) = alloc.call1((dtype, rows, 0))?.extract()?;
         Ok((a, addr))
     };
-    for &c in &selected {
+    let kinds: Vec<Kind> = selected
+        .iter()
+        .map(|&c| kind_of(&infos[c], by_name.get(infos[c].name.as_str()).copied(), meta).map_err(fail))
+        .collect::<PyResult<_>>()?;
+    // Numbers of one dtype go into one 2D array, a column per row, as
+    // pandas keeps them (its "blocks"); each block's columns, in order.
+    let mut blocks: Vec<(&'static str, Vec<usize>)> = Vec::new();
+    let block_of: Vec<Option<usize>> = kinds
+        .iter()
+        .enumerate()
+        .map(|(k, kind)| {
+            let dtype = block_dtype(kind)?;
+            let b = match blocks.iter().position(|(d, _)| *d == dtype) {
+                Some(b) => b,
+                None => {
+                    blocks.push((dtype, Vec::new()));
+                    blocks.len() - 1
+                }
+            };
+            blocks[b].1.push(k);
+            Some(b)
+        })
+        .collect();
+    let mut block_arrays: Vec<Py<PyAny>> = Vec::with_capacity(blocks.len());
+    let mut block_views: Vec<(usize, Vec<Py<PyAny>>)> = Vec::with_capacity(blocks.len());
+    for (dtype, members) in &blocks {
+        let (a, addr, views): (Py<PyAny>, usize, Vec<Py<PyAny>>) =
+            alloc.call1((*dtype, rows, members.len()))?.extract()?;
+        block_arrays.push(a);
+        block_views.push((addr, views));
+    }
+    for (k, (&c, kind)) in selected.iter().zip(kinds).enumerate() {
         let info = &infos[c];
-        let kind = kind_of(info, by_name.get(info.name.as_str()).copied(), meta).map_err(fail)?;
-        let mut col = Col { index: c, kind: kind.clone(), arrays: Vec::new(), addrs: Vec::new() };
+        let mut col = Col {
+            index: c,
+            kind: kind.clone(),
+            arrays: Vec::new(),
+            addrs: Vec::new(),
+            nulls_known: nulls_in(meta, info, &groups, &window),
+        };
         let mut sink = Sink::None;
         let add = |col: &mut Col, dtype: &str| -> PyResult<()> {
             let (a, addr) = make(dtype)?;
@@ -954,13 +1065,20 @@ fn read_into<'py>(
             col.addrs.push(addr);
             Ok(())
         };
+        if let Some(b) = block_of[k] {
+            let j = blocks[b].1.iter().position(|&m| m == k).unwrap_or(0);
+            let (addr, views) = &block_views[b];
+            col.arrays.push(views[j].clone_ref(py));
+            col.addrs.push(addr + j * rows * itemsize(blocks[b].0));
+            cols.push(col);
+            sinks.push(sink);
+            continue;
+        }
         match &kind {
-            Kind::Int { width, codes } => {
-                add(&mut col, ["", "int8", "int16", "", "int32"][*width as usize])?;
-                if *codes {
-                    add(&mut col, "codes")?;
-                }
+            Kind::Int { width, codes: true } | Kind::UInt { width: width @ (1 | 2 | 4), codes: true } => {
+                add(&mut col, if *width <= 2 { "float32" } else { "float64" })?
             }
+            Kind::Int { width, .. } => add(&mut col, ["", "int8", "int16", "", "int32"][*width as usize])?,
             Kind::UInt { width, codes } => {
                 add(&mut col, ["", "uint8", "uint16", "", "uint32", "", "", "", "uint64"][*width as usize])?;
                 if *codes {
@@ -1019,6 +1137,10 @@ fn read_into<'py>(
             }};
         }
         outputs.push(match &col.kind {
+            Kind::Int { width: 1 | 2, codes: true } | Kind::UInt { width: 1 | 2, codes: true } => {
+                Output::Float32(nums!(f32, f32::NAN))
+            }
+            Kind::Int { codes: true, .. } | Kind::UInt { width: 4, codes: true } => Output::Float64(nums!(f64, f64::NAN)),
             Kind::Int { width: 1, .. } => Output::Int8(nums!(i8, 0)),
             Kind::Int { width: 2, .. } => Output::Int16(nums!(i16, 0)),
             Kind::Int { .. } => Output::Int32(nums!(i32, 0)),
@@ -1087,9 +1209,14 @@ fn read_into<'py>(
         list.append(finish(py, col, sink, &names[k], rows, report.letters[k], &mut make)?)?;
     }
     out.set_item("rows", rows)?;
-    out.set_item("names", names)?;
+    let block_list = PyList::empty(py);
+    for (a, (_, members)) in block_arrays.into_iter().zip(&blocks) {
+        block_list.append((a, members.clone()))?;
+    }
+    out.set_item("blocks", block_list)?;
+    out.set_item("names", &names)?;
     out.set_item("columns", list)?;
-    out.set_item("profile", profile_dict(py, r.profile())?)?;
+    out.set_item("profile", profile_dict(py, r.profile(), Some(&names))?)?;
     out.set_item("warnings", r.warnings())?;
     let storage: Vec<Option<&str>> = cols.iter().map(|c| storage_name(&c.kind)).collect();
     out.set_item("storage", storage)?;
@@ -1147,6 +1274,17 @@ fn finish<'py>(
         Ok(())
     };
     Ok(match &col.kind {
+        Kind::Int { width, codes: true } | Kind::UInt { width: width @ (1 | 2 | 4), codes: true } => {
+            let nulls = col.nulls_known
+                || if *width <= 2 {
+                    unsafe { slice_mut::<f32>(col.values(), rows) }.iter().any(|x| x.is_nan())
+                } else {
+                    unsafe { slice_mut::<f64>(col.values(), rows) }.iter().any(|x| x.is_nan())
+                };
+            let signed = matches!(col.kind, Kind::Int { .. });
+            let int = format!("{}int{}", if signed { "" } else { "u" }, 8 * width);
+            ("float_int", a0, nulls, int).into_pyobject(py)?.into_any()
+        }
         Kind::Int { .. } => ("int", a0, codes).into_pyobject(py)?.into_any(),
         Kind::UInt { .. } => ("uint", a0, codes).into_pyobject(py)?.into_any(),
         Kind::Int64 { .. } => ("int64", a0, codes).into_pyobject(py)?.into_any(),
@@ -1325,6 +1463,10 @@ type ArrowChunk = (usize, usize, u8, usize, usize, usize);
 /// # Safety
 /// The arrays' buffers stay alive and unchanged for the write.
 unsafe fn arrow_text<'a>(chunks: Vec<ArrowChunk>) -> Box<dta_parquet::GetBytes<'a>> {
+    // One chunk (pandas' usual case): no search for the row's chunk.
+    if let [(validity, offsets, width, data, _, offset)] = chunks[..] {
+        return Box::new(move |r: usize| arrow_value(validity, offsets, width, data, r + offset));
+    }
     let mut starts = Vec::with_capacity(chunks.len());
     let mut at = 0usize;
     for c in &chunks {
@@ -1334,22 +1476,30 @@ unsafe fn arrow_text<'a>(chunks: Vec<ArrowChunk>) -> Box<dta_parquet::GetBytes<'
     Box::new(move |r: usize| {
         let k = starts.partition_point(|&s| s <= r) - 1;
         let (validity, offsets, width, data, _, offset) = chunks[k];
-        let i = r - starts[k] + offset;
-        if validity != 0 {
-            let byte = *(validity as *const u8).add(i / 8);
-            if byte & (1 << (i % 8)) == 0 {
-                return None;
-            }
-        }
-        let (from, to) = if width == 8 {
-            let o = offsets as *const i64;
-            (*o.add(i) as usize, *o.add(i + 1) as usize)
-        } else {
-            let o = offsets as *const i32;
-            (*o.add(i) as usize, *o.add(i + 1) as usize)
-        };
-        Some(if to == from { &[][..] } else { slice::from_raw_parts((data as *const u8).add(from), to - from) })
+        arrow_value(validity, offsets, width, data, r - starts[k] + offset)
     })
+}
+
+/// Value `i` of an Arrow string array's buffers.
+///
+/// # Safety
+/// The buffers hold value `i`, alive for `'a`.
+#[inline]
+unsafe fn arrow_value<'a>(validity: usize, offsets: usize, width: u8, data: usize, i: usize) -> Option<&'a [u8]> {
+    if validity != 0 {
+        let byte = *(validity as *const u8).add(i / 8);
+        if byte & (1 << (i % 8)) == 0 {
+            return None;
+        }
+    }
+    let (from, to) = if width == 8 {
+        let o = offsets as *const i64;
+        (*o.add(i) as usize, *o.add(i + 1) as usize)
+    } else {
+        let o = offsets as *const i32;
+        (*o.add(i) as usize, *o.add(i + 1) as usize)
+    };
+    Some(if to == from { &[][..] } else { slice::from_raw_parts((data as *const u8).add(from), to - from) })
 }
 
 /// (name, kind, data address, dtype, codes address, extra): see
@@ -1532,6 +1682,90 @@ unsafe fn check_objects(py: Python<'_>, name: &str, rows: *const *mut ffi::PyObj
         }
     }
     Ok(any_binary)
+}
+
+/// Whether every value of each numeric column fits a Stata storage type,
+/// as `write_dta` checks it (`_write._fits`): `checks` holds (data
+/// address, dtype `f4` or `f8`, codes address or 0, storage). Values with
+/// a missing code, and NaN, are not checked.
+#[pyfunction]
+pub fn parquet_fits(checks: Vec<(usize, String, usize, String)>, nobs: usize) -> PyResult<Vec<bool>> {
+    checks
+        .into_iter()
+        .map(|(addr, dtype, codes, storage)| {
+            if nobs == 0 {
+                return Ok(true);
+            }
+            let codes: Option<&[u8]> = (codes != 0).then(|| unsafe { slice::from_raw_parts(codes as *const u8, nobs) });
+            match dtype.as_str() {
+                "f4" => {
+                    let x = unsafe { slice::from_raw_parts(addr as *const f32, nobs) };
+                    fits_storage(x, codes, &storage)
+                }
+                "f8" => {
+                    let x = unsafe { slice::from_raw_parts(addr as *const f64, nobs) };
+                    fits_storage(x, codes, &storage)
+                }
+                other => Err(fail(format!("internal: fits takes floats, not {other}"))),
+            }
+        })
+        .collect()
+}
+
+/// A float type of a source array.
+trait Float: Copy {
+    fn f64(self) -> f64;
+}
+impl Float for f32 {
+    #[inline]
+    fn f64(self) -> f64 {
+        f64::from(self)
+    }
+}
+impl Float for f64 {
+    #[inline]
+    fn f64(self) -> f64 {
+        self
+    }
+}
+
+/// Whether every value of `x` without a code is NaN or `ok`. Without an
+/// early exit, so the loop vectorises: values almost always fit.
+fn all_ok<T: Float>(x: &[T], codes: Option<&[u8]>, ok: impl Fn(f64) -> bool) -> bool {
+    let mut good = true;
+    match codes {
+        Some(c) => {
+            for (v, &c) in x.iter().zip(c) {
+                let v = v.f64();
+                good &= (c != 0) | v.is_nan() | ok(v);
+            }
+        }
+        None => {
+            for v in x {
+                let v = v.f64();
+                good &= v.is_nan() | ok(v);
+            }
+        }
+    }
+    good
+}
+
+fn fits_storage<T: Float>(x: &[T], codes: Option<&[u8]>, storage: &str) -> PyResult<bool> {
+    let whole_in = |lo: f64, hi: f64| move |v: f64| (v.trunc() == v) & (v >= lo) & (v <= hi);
+    Ok(match storage {
+        "byte" => all_ok(x, codes, whole_in(-127.0, 100.0)),
+        "int" => all_ok(x, codes, whole_in(-32767.0, 32740.0)),
+        "long" => all_ok(x, codes, whole_in(-2_147_483_647.0, 2_147_483_620.0)),
+        "float" => {
+            let max = f64::from(f32::from_bits(0x7EFF_FFFF));
+            all_ok(x, codes, |v| (v.abs() <= max) & (f64::from(v as f32) == v))
+        }
+        "double" => {
+            let max = f64::from_bits(0x7FDF_FFFF_FFFF_FFFF);
+            all_ok(x, codes, |v| v.abs() <= max)
+        }
+        other => return Err(fail(format!("internal: unknown storage type {other}"))),
+    })
 }
 
 /// The first four bytes of a source: `PAR1` for Parquet.
