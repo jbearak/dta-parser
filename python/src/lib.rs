@@ -5,6 +5,9 @@
 //! numpy without its C API (the buffer protocol is not in the abi3 API
 //! before Python 3.11). Writing borrows numpy buffers the same way.
 //! Strings are made here, one Python object per distinct recent value.
+//! Parquet files (plan 0018) are read and written in `parquet`.
+
+mod parquet;
 
 use std::ffi::c_char;
 use std::slice;
@@ -581,5 +584,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(meta, m)?)?;
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;
+    m.add_function(wrap_pyfunction!(parquet::magic, m)?)?;
+    m.add_function(wrap_pyfunction!(parquet::parquet_meta, m)?)?;
+    m.add_function(wrap_pyfunction!(parquet::parquet_read, m)?)?;
+    m.add_function(wrap_pyfunction!(parquet::parquet_write, m)?)?;
+    m.add_class::<parquet::Buffer>()?;
     Ok(())
 }
