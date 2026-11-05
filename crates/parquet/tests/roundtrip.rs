@@ -829,3 +829,74 @@ fn a_write_on_threads_stops_at_the_first_error() {
     let e = write(&table(&bad, Profile::default()), Vec::new(), &threads).unwrap_err();
     assert!(e.message.contains("\"b\"") && e.message.contains("row 8"), "{}", e.message);
 }
+
+#[test]
+fn unsigned_integers_and_times_round_trip_with_unsigned_statistics() {
+    use dta_parquet::{Table, Values, WriteColumn};
+    let n = 6usize;
+    let u8s: Vec<u32> = vec![0, 1, 255, 7, 128, 0];
+    let u16s: Vec<u32> = vec![0, 65_535, 3, 40_000, 1, 0];
+    let u32s: Vec<u32> = vec![0, u32::MAX, 5, 1 << 31, 9, 0];
+    let u64s: Vec<u64> = vec![0, u64::MAX, 5, 1 << 63, 9, 0];
+    let times: Vec<i64> = vec![0, 86_399_999_999_999, 1, 43_200_000_000_123, 5, 0];
+    // Row 5 is null in every column.
+    let codes = [0u8, 0, 0, 0, 0, 1];
+    fn fill<'a, T: Copy + Sync>(v: &'a [T], c: &'a [u8]) -> Box<dta_parquet::Fill<'a, T>> {
+        Box::new(move |first, out: &mut [T], codes: &mut [u8]| {
+            let k = out.len();
+            out.copy_from_slice(&v[first..first + k]);
+            codes.copy_from_slice(&c[first..first + k]);
+        })
+    }
+    let table = Table {
+        rows: n,
+        columns: vec![
+            WriteColumn { name: "u8".into(), values: Values::UInt8(fill(&u8s, &codes)) },
+            WriteColumn { name: "u16".into(), values: Values::UInt16(fill(&u16s, &codes)) },
+            WriteColumn { name: "u32".into(), values: Values::UInt32(fill(&u32s, &codes)) },
+            WriteColumn { name: "u64".into(), values: Values::UInt64(fill(&u64s, &codes)) },
+            WriteColumn { name: "t".into(), values: Values::Time(fill(&times, &codes)) },
+        ],
+        profile: Profile::default(),
+    };
+    let mut bytes = Vec::new();
+    write(&table, &mut bytes, &WriteOptions::default()).unwrap();
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let kinds: Vec<ColumnType> = r.columns().iter().map(|c| c.kind.clone()).collect();
+    assert_eq!(&kinds[..4], &[ColumnType::UInt8, ColumnType::UInt16, ColumnType::UInt32, ColumnType::UInt64]);
+    assert!(matches!(kinds[4], ColumnType::Time { unit: dta_parquet::format::TimeUnit::Nanos, .. }));
+    for (k, want) in [(0usize, &u8s), (1, &u16s), (2, &u32s)] {
+        let mut v = vec![0u64; n];
+        let mut c = vec![0u8; n];
+        let mut outs = [Output::UInt64(Numbers::new(&mut v, 0).with_codes(&mut c))];
+        r.read(&[k], 0, u64::MAX, &mut outs, |_, _| Ok(())).unwrap();
+        assert_eq!(c, codes);
+        for i in 0..5 {
+            assert_eq!(v[i], u64::from(want[i]), "column {k} row {i}");
+        }
+    }
+    let mut v = vec![0u64; n];
+    let mut c = vec![0u8; n];
+    let mut outs = [Output::UInt64(Numbers::new(&mut v, 0).with_codes(&mut c))];
+    r.read(&[3], 0, u64::MAX, &mut outs, |_, _| Ok(())).unwrap();
+    assert_eq!(&v[..5], &u64s[..5]);
+    let mut v = vec![0i64; n];
+    let mut outs = [Output::Int64(Numbers::new(&mut v, 0))];
+    r.read(&[4], 0, u64::MAX, &mut outs, |_, _| Ok(())).unwrap();
+    assert_eq!(&v[..5], &times[..5]);
+    // Statistics in unsigned order: the largest value is the maximum.
+    let meta: &FileMetaData = r.metadata();
+    let stats = |k: usize| meta.row_groups[0].columns[k].meta.as_ref().unwrap().statistics.clone().unwrap();
+    assert_eq!(stats(2).max_value.unwrap(), u32::MAX.to_le_bytes());
+    assert_eq!(stats(2).min_value.unwrap(), 0u32.to_le_bytes());
+    assert_eq!(stats(3).max_value.unwrap(), u64::MAX.to_le_bytes());
+    // A value too wide for its type is an error naming the column.
+    let wide: Vec<u32> = vec![256];
+    let table = Table {
+        rows: 1,
+        columns: vec![WriteColumn { name: "w".into(), values: Values::UInt8(fill(&wide, &[0])) }],
+        profile: Profile::default(),
+    };
+    let e = write(&table, &mut Vec::new(), &WriteOptions::default()).unwrap_err();
+    assert!(e.message.contains("\"w\"") && e.message.contains("8 bits"), "{}", e.message);
+}

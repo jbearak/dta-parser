@@ -46,6 +46,14 @@ pub struct ReadOptions {
     /// then empty, and a damaged set is reported only when the sets are
     /// read.
     pub lazy_value_labels: bool,
+    /// The default thread rule for this reader's reads, in place of
+    /// [`READ_BYTES_PER_THREAD`](crate::READ_BYTES_PER_THREAD),
+    /// [`READ_THREADS`](crate::READ_THREADS) and
+    /// [`READ_THREADS_MOST`](crate::READ_THREADS_MOST): one thread per
+    /// `.0` bytes decoded, at least `.1` and at most `.2`. For outputs
+    /// measured to have their own (the Arrow outputs, plan 0019).
+    #[doc(hidden)]
+    pub thread_rule: Option<(u64, usize, usize)>,
 }
 
 impl Default for ReadOptions {
@@ -56,6 +64,7 @@ impl Default for ReadOptions {
             nested: Nested::Error,
             parallel_bytes: if small { 0 } else { 16 << 20 },
             lazy_value_labels: false,
+            thread_rule: None,
         }
     }
 }
@@ -871,13 +880,12 @@ impl<S: Source> Reader<S> {
         let bytes = tasks.iter().fold(0u64, |sum, t| {
             sum.saturating_add(ctx.uncompressed(t).max(t.decoded()))
         });
-        let threads = dta::threads::resolve_scaled(
-            self.options.threads,
-            bytes,
+        let (per_thread, least, most) = self.options.thread_rule.unwrap_or((
             crate::READ_BYTES_PER_THREAD,
             crate::READ_THREADS,
             crate::READ_THREADS_MOST,
-        );
+        ));
+        let threads = dta::threads::resolve_scaled(self.options.threads, bytes, per_thread, least, most);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
         let mut arrow: Vec<Option<ArrowAcc>> = is_arrow.iter().map(|&a| a.then(ArrowAcc::default)).collect();

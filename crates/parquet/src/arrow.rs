@@ -19,6 +19,9 @@ pub(crate) enum ArrowType {
     Int {
         bits: i32,
     },
+    UInt {
+        bits: i32,
+    },
     Float32,
     Float64,
     Bool,
@@ -29,6 +32,8 @@ pub(crate) enum ArrowType {
         unit: TimeUnit,
         zone: Option<String>,
     },
+    /// Nanoseconds since midnight (time64[ns]).
+    Time64Nanos,
     /// Strings, dictionary-encoded with 32-bit indices.
     Dictionary {
         ordered: bool,
@@ -181,15 +186,23 @@ const TYPE_BINARY: u8 = 4;
 const TYPE_UTF8: u8 = 5;
 const TYPE_BOOL: u8 = 6;
 const TYPE_DATE: u8 = 8;
+const TYPE_TIME: u8 = 9;
 const TYPE_TIMESTAMP: u8 = 10;
 
 fn int_table(bits: i32) -> Node {
-    Node::Table(vec![(0, Field::I32(bits)), (1, Field::Bool(true))])
+    signed_table(bits, true)
+}
+
+fn signed_table(bits: i32, signed: bool) -> Node {
+    Node::Table(vec![(0, Field::I32(bits)), (1, Field::Bool(signed))])
 }
 
 fn field(name: &str, ty: &ArrowType, dictionary_id: &mut i64) -> Node {
     let (tag, table, dictionary) = match ty {
         ArrowType::Int { bits } => (TYPE_INT, int_table(*bits), None),
+        ArrowType::UInt { bits } => (TYPE_INT, signed_table(*bits, false), None),
+        // TimeUnit NANOSECOND is 3; a 64-bit value.
+        ArrowType::Time64Nanos => (TYPE_TIME, Node::Table(vec![(0, Field::I16(3)), (1, Field::I32(64))]), None),
         ArrowType::Float32 => (TYPE_FLOAT, Node::Table(vec![(0, Field::I16(1))]), None),
         ArrowType::Float64 => (TYPE_FLOAT, Node::Table(vec![(0, Field::I16(2))]), None),
         ArrowType::Bool => (TYPE_BOOL, Node::Table(vec![]), None),
