@@ -20,6 +20,12 @@ byte lengths or physical values), write and zstd (FILE read by
 pl.read_parquet before timing; each library's defaults, and zstd level
 3).
 
+The .dta cases (published, not gated), FILE a .dta: dtaread, the whole
+file (ours: the native Arrow read into polars with the whole Meta;
+pandas: dta_parser.read_dta); dtawrite, the file read untimed by each,
+then written as release 118 (ours: the native writer from polars'
+export; pandas: dta_parser.write_dta).
+
 Only the task is timed (wall, and CPU as user plus system of the
 process); OUT gets a JSON report.
 """
@@ -37,7 +43,12 @@ skip, n = int(sys.argv[6]), int(sys.argv[7])
 import polars as pl  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-if lib == "ours":
+if lib == "pandas":
+    import dta_parser as dp
+
+    version = "dta_parser (pandas)"
+    threads = os.environ.get("DTA_THREADS") or "default"
+elif lib == "ours":
     import polars_meta as pm
 
     version = "dta_parser (Arrow path)"
@@ -148,7 +159,23 @@ WRITES = {
 }
 
 result = {"loaded": loaded, "version": version, "threads": threads}
-if task in ("write", "zstd"):
+if task == "dtaread":
+    t0, c0 = time.perf_counter(), cpu()
+    got = pm.read_dta(path) if lib == "ours" else dp.read_dta(path)
+    result["wall"], result["cpu"] = time.perf_counter() - t0, cpu() - c0
+    result["rows"] = got[0].height if lib == "ours" else len(got)
+elif task == "dtawrite":
+    dst = os.path.join(os.path.dirname(os.path.abspath(out_path)), f"w{os.getpid()}.dta")
+    frame = pm.read_dta(path) if lib == "ours" else dp.read_dta(path)
+    t0, c0 = time.perf_counter(), cpu()
+    if lib == "ours":
+        pm.save_dta(frame[0], dst, frame[1])
+    else:
+        dp.write_dta(frame, dst)
+    result["wall"], result["cpu"] = time.perf_counter() - t0, cpu() - c0
+    result["bytes"] = os.path.getsize(dst)
+    os.unlink(dst)
+elif task in ("write", "zstd"):
     frame = pl.read_parquet(path)
     if lib == "pyarrow":
         frame = frame.to_arrow()

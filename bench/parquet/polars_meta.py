@@ -83,6 +83,33 @@ def read_parquet(source, columns=None, skip=0, n_max=None, threads=0):
     return df, meta
 
 
+def _meta_of(frame, letters, m):
+    df = pl.DataFrame(frame)
+    meta = Meta(
+        label=m["label"],
+        notes=list(m["notes"]),
+        characteristics=m["characteristics"],
+        sort=list(m["sort"]),
+        timestamp=m["timestamp"],
+        columns={c[0]: Column(c[1], c[2], c[3], c[4]) for c in m["columns"]},
+        value_labels=m["value_labels"],
+        rows=m["rows"],
+    )
+    if letters is not None:
+        ldf = pl.DataFrame(letters)
+        meta.missing = {name: ldf.get_column(name) for name in ldf.columns}
+    meta._digests = {name: native.arrow_digest(df.get_column(name)) for name in meta.missing}
+    return df, meta
+
+
+def read_dta(path, columns=None, skip=0, n_max=None, timestamps="truncate"):
+    return _meta_of(*native.dta_read_arrow(str(path), columns, skip, n_max, None, timestamps))
+
+
+def save_dta(df, path, meta=None):
+    native.dta_write_arrow(df, str(path), _profile(meta), True, "truncate")
+
+
 def save_parquet(df, path=None, meta=None, compression="snappy", compression_level=None, threads=0):
     return native.parquet_write_arrow(df, path, _profile(meta), compression, compression_level, None, True, "error", threads)
 
