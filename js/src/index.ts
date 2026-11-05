@@ -7,6 +7,7 @@ import type { EncodingName, ReadAt } from "./wasm";
 export type { DtaError, EncodingName, ErrorCode, ReadAt };
 
 import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
+import { packNumbers, packTexts } from "./shared";
 
 export { MISSING, isMissing, missingValue };
 export type { Cell, Missing, MissingName, ValueLabels };
@@ -53,8 +54,25 @@ export interface Variable {
   valueLabels: string;
 }
 
+/**
+ * What every reader's `info` says: the file's format, its number of rows,
+ * its data label and the variables it is sorted by. `DtaReader.info`
+ * (`Info`) and `ParquetReader.info` (`ParquetInfo`) say more.
+ */
+export interface TableInfo {
+  /** `"dta"` or `"parquet"`. */
+  format: "dta" | "parquet";
+  /** Rows (observations). */
+  nobs: number;
+  /** Data label; empty when there is none. */
+  label: string;
+  /** Names of the variables the data is sorted by. */
+  sortedBy: string[];
+}
+
 /** What the file's header says about it. */
-export interface Info {
+export interface Info extends TableInfo {
+  format: "dta";
   /** The .dta release, such as 114 or 118. */
   release: number;
   byteOrder: "little" | "big";
@@ -79,10 +97,19 @@ export interface NumberColumn {
   missing: Uint8Array;
 }
 
-/** A string variable's values; binary strLs are Uint8Arrays. */
+/**
+ * A string variable's values; binary strLs (and Parquet's binary
+ * columns) are Uint8Arrays.
+ */
 export interface StringColumn {
   kind: "string";
   values: (string | Uint8Array)[];
+  /**
+   * Parquet files only (a .dta string is never missing): 1 where the
+   * value is null, when `values[i]` is an empty string (or an empty
+   * Uint8Array in a binary column), else 0.
+   */
+  missing?: Uint8Array;
 }
 
 /**
@@ -99,6 +126,26 @@ export interface PreviewColumn extends StringColumn {
 export type Column = NumberColumn | StringColumn;
 
 /**
+ * A Parquet INT64 column (or a timestamp, or unsigned 64-bit integers)
+ * whose values do not all fit a JavaScript number exactly, as
+ * `ParquetReader.readColumns` returns it: `values[i]` is a bigint (a
+ * BigUint64Array for unsigned 64-bit integers), and where `missing[i]`
+ * is 1 the value is null and `values[i]` is 0. See `int64` in
+ * `ParquetOptions` for when a column comes back this way.
+ */
+export interface BigIntColumn {
+  kind: "bigint";
+  values: BigInt64Array | BigUint64Array;
+  missing: Uint8Array;
+}
+
+/** Any column a reader returns. */
+export type TableColumn = Column | DictionaryColumn | BigIntColumn;
+
+/** One cell of `readRows` from any reader: a `Cell`, or a bigint from a `BigIntColumn`. */
+export type TableCell = Cell | bigint;
+
+/**
  * A string variable's values as a dictionary, which `readColumns` gives
  * with `strings: "dictionary"`: row `i` is `values[codes[i]]`. Codes
  * hold for one `readColumns` call only. Distinct values appear in
@@ -108,6 +155,11 @@ export interface DictionaryColumn {
   kind: "dictionary";
   codes: Uint32Array;
   values: string[];
+  /**
+   * Parquet files only: 1 where the value is null (and `codes[i]` means
+   * nothing), else 0.
+   */
+  missing?: Uint8Array;
 }
 
 /** Which rows `readColumns` reads, and how it returns strings. */
@@ -178,8 +230,49 @@ const unclosed = new FinalizationRegistry((held: { handle: number; generation: n
   held.onClose?.();
 });
 
+/**
+ * What `DtaReader` and `ParquetReader` both do, so one viewer can read
+ * either: `info`, `variables`, `readColumns`, `readRows`, `readRowsAt`,
+ * `valueLabels` and `close`, and `using`. Every call is synchronous.
+ */
+export interface TableReader {
+  readonly info: TableInfo;
+  readonly variables: readonly Variable[];
+  /** Read `count` rows from `start` (default all) of the variables given by index or name. */
+  readColumns(columns: readonly (number | string)[], range?: ReadRange): TableColumn[];
+  /** Rows as arrays of cells, one per variable asked for (default all). */
+  readRows(start: number, count: number, columns?: readonly (number | string)[]): TableCell[][];
+  /** The rows listed, in their order (repeats allowed), as `readRows` gives them. */
+  readRowsAt(rows: readonly number[], columns?: readonly (number | string)[]): TableCell[][];
+  /** The value label set `name`, or undefined. */
+  valueLabels(name: string): ValueLabels | undefined;
+  /** Release the file; further reads throw `DTA_CLOSED`. */
+  close(): void;
+  [Symbol.dispose](): void;
+}
+
+/**
+ * `TableReader` with promises, for files read through an async function
+ * (`openParquetAsync`): the same members, and the same results.
+ */
+export interface AsyncTableReader {
+  readonly info: TableInfo;
+  readonly variables: readonly Variable[];
+  /** As `TableReader.readColumns`. */
+  readColumns(columns: readonly (number | string)[], range?: ReadRange): Promise<TableColumn[]>;
+  /** As `TableReader.readRows`. */
+  readRows(start: number, count: number, columns?: readonly (number | string)[]): Promise<TableCell[][]>;
+  /** As `TableReader.readRowsAt`. */
+  readRowsAt(rows: readonly number[], columns?: readonly (number | string)[]): Promise<TableCell[][]>;
+  /** As `TableReader.valueLabels`. */
+  valueLabels(name: string): ValueLabels | undefined;
+  /** As `TableReader.close`. */
+  close(): void;
+  [Symbol.dispose](): void;
+}
+
 /** An open .dta file. Reads happen only when asked for. */
-export class DtaReader {
+export class DtaReader implements TableReader {
   readonly info: Info;
   readonly variables: readonly Variable[];
   private handle: number;
@@ -206,6 +299,7 @@ export class DtaReader {
     unclosed.register(this, { handle: this.handle, generation: this.generation, read, onClose }, this);
     this.variables = Object.freeze(meta.variables.map((v: Variable) => Object.freeze(v)));
     this.info = Object.freeze({
+      format: "dta" as const,
       release: meta.release,
       byteOrder: meta.byteOrder,
       nobs: meta.nobs,
@@ -482,20 +576,70 @@ export interface WriteVariable {
    * Strings become strN, or strL beyond 2045 bytes. A Uint8Array is a
    * binary strL, and makes the variable strL; it may sit among strings,
    * as `StringColumn.values` holds them.
+   *
+   * Also a column as `readColumns` returns it (`NumberColumn`,
+   * `StringColumn`, `DictionaryColumn`, `BigIntColumn`), so what a reader
+   * read writes back as it is. For Parquet (`writeParquet`) only: bigints
+   * (an array of bigint or null, or a BigInt64Array), `null` among
+   * strings, a `DictionaryColumn` written as a categorical, and a
+   * `BigIntColumn`. `writeDta` writes a `DictionaryColumn` as strings,
+   * and rejects the rest.
    */
-  values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[] | Float64Array;
+  values:
+    | readonly (number | Missing | null)[]
+    | readonly (string | Uint8Array)[]
+    | readonly (string | Uint8Array | null)[]
+    | Float64Array
+    | readonly (bigint | null)[]
+    | BigInt64Array
+    | TableColumn;
   /**
-   * With a Float64Array of values, each one's missing code as
-   * `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a` to
-   * `.z`); none missing when absent. So a column `readColumns` returned
-   * writes back as it is, without an array of values or `Missing`s.
+   * With a Float64Array (or BigInt64Array) of values, each one's missing
+   * code as `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27
+   * `.a` to `.z`); none missing when absent. So a column `readColumns`
+   * returned writes back as it is, without an array of values or
+   * `Missing`s.
    */
   missing?: Uint8Array;
   /**
    * Storage type of a numeric variable; default double. `strL` makes a
    * string variable strL whatever its length.
+   *
+   * `writeParquet` also takes `"bool"` (0 and 1), `"int64"`, `"date"`
+   * (days since 1970-01-01), `"timestamp"` (counts of `unit` since
+   * 1970-01-01 00:00), `"string"`, `"binary"` and `"categorical"`, and
+   * the types `ParquetReader` gives (`Variable.type`), so a variable read
+   * writes back with its type.
    */
-  type?: "byte" | "int" | "long" | "float" | "double" | "strL";
+  type?:
+    | "byte"
+    | "int"
+    | "long"
+    | "float"
+    | "double"
+    | "strL"
+    | "bool"
+    | "int64"
+    | "date"
+    | "timestamp"
+    | "string"
+    | "binary"
+    | "categorical"
+    | (string & {});
+  /** Parquet only: a timestamp's unit, `"s"`, `"ms"`, `"us"` (the default) or `"ns"`. */
+  unit?: string;
+  /**
+   * Parquet only: a timestamp's time zone. With one, the values are
+   * instants (adjusted to UTC) shown in that zone; without, clock times
+   * with no zone.
+   */
+  timeZone?: string;
+  /** Parquet only: a categorical's levels, when `values` holds level codes (0 the first level, null missing). */
+  levels?: readonly string[];
+  /** Parquet only: whether a categorical's levels are ordered. */
+  ordered?: boolean;
+  /** Parquet only: a categorical's levels and ordering, as `ParquetVariable.categorical` gives them. */
+  categorical?: { readonly levels: readonly string[] | null; readonly ordered: boolean };
   /** Display format; default the storage type's. */
   format?: string;
   label?: string;
@@ -532,46 +676,7 @@ export interface WriteDataset {
 
 const STORAGE = { byte: 0, int: 1, long: 2, float: 3, double: 4 } as const;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const encoder = new TextEncoder();
-
 const isText = (x: unknown): x is string | Uint8Array => typeof x === "string" || x instanceof Uint8Array;
-
-/**
- * UTF-8 bytes of `texts` (a Uint8Array as it is), end to end, with each
- * one's end offset. Encoded straight into one buffer, grown as needed: an
- * array per string cost about 100 bytes each, gigabytes for 10M strings.
- */
-function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uint8Array; ends: Uint32Array } {
-  let bytes = new Uint8Array(texts.reduce((n, t) => n + t.length, 0) + 64);
-  const ends = new Uint32Array(texts.length);
-  let at = 0;
-  texts.forEach((t, i) => {
-    // A UTF-16 unit is at most 3 bytes of UTF-8.
-    const most = typeof t === "string" ? 3 * t.length : t.length;
-    if (at + most > bytes.length) {
-      const grown = new Uint8Array(Math.max(2 * bytes.length, at + most));
-      grown.set(bytes.subarray(0, at));
-      bytes = grown;
-    }
-    if (typeof t === "string") at += encoder.encodeInto(t, bytes.subarray(at)).written;
-    else {
-      bytes.set(t, at);
-      at += t.length;
-    }
-    ends[i] = at;
-  });
-  return { bytes: bytes.subarray(0, at), ends };
-}
-
-/** Numbers and their missing codes, as the module takes them. */
-function packNumbers(values: readonly (number | Missing | null)[]): { values: Float64Array; missing: Uint8Array } {
-  const out = { values: new Float64Array(values.length), missing: new Uint8Array(values.length) };
-  values.forEach((v, i) => {
-    if (typeof v === "number") out.values[i] = v;
-    else out.missing[i] = v === null ? 1 : MISSING_NAMES.indexOf(v.missing) + 1;
-  });
-  return out;
-}
 
 /**
  * Write a .dta file (release 118), handing its bytes to `sink` in order.
@@ -583,8 +688,9 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     if (text?.includes("\0")) throw dtaError("DTA_INVALID", `${what} contains a NUL`, undefined, TypeError);
     return text ?? "";
   };
-  const nobs = data.variables[0]?.values.length ?? 0;
-  const parts: wasm.WritePart[] = data.variables.map((v) => {
+  const variables = data.variables.map(asDtaVariable);
+  const nobs = variables[0]?.values.length ?? 0;
+  const parts: wasm.WritePart[] = variables.map((v) => {
     if (v.values.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${v.values.length} values, not ${nobs}`, undefined, RangeError);
     const meta = [
       field(v.name, "a variable name"),
@@ -599,14 +705,16 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
       if (missing.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${missing.length} missing codes, not ${nobs}`, undefined, RangeError);
       return { kind: "numbers", meta, storage, values: v.values, missing };
     }
-    if (v.type === "strL" || (v.type === undefined && v.values.some(isText))) {
+    // A variable read (`{ ...variable, values: column }`) has its strN type.
+    const textType = v.type === "string" || /^str[0-9]+$/.test(v.type ?? "");
+    if (v.type === "strL" || textType || (v.type === undefined && v.values.some(isText))) {
       if (!v.values.every(isText)) throw dtaError("DTA_INVALID", `${v.name} mixes strings and numbers`, undefined, TypeError);
       const values = v.values as readonly (string | Uint8Array)[];
       const strL = v.type === "strL" || values.some((x) => x instanceof Uint8Array);
       const binary = strL ? Uint8Array.from(values, (x) => (x instanceof Uint8Array ? 1 : 0)) : undefined;
       return { kind: "strings", meta, ...packTexts(values), binary };
     }
-    const storage = STORAGE[v.type ?? "double"];
+    const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
     if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: unknown type ${v.type}`, undefined, TypeError);
     if (v.values.some(isText)) throw dtaError("DTA_INVALID", `${v.name} is ${v.type} but holds strings`, undefined, TypeError);
     return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
@@ -617,7 +725,7 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     const { bytes: texts, ends } = packTexts([...labels.values()]);
     parts.push({ kind: "labels", name, ...packNumbers(keys), texts, ends });
   }
-  const names = data.variables.map((v) => v.name);
+  const names = variables.map((v) => v.name);
   const kept = new Set([...names, "_dta"]);
   const chars = (data.characteristics ?? []).filter(
     (c) => kept.has(c.variable) && !(c.variable === "_dta" && /^note[0-9]+$/.test(c.name)),
@@ -649,6 +757,36 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
   wasm.write(nobs, parts, [field(data.label, "the data label"), stamp, ...notes], sink);
 }
 
+/** The variable as `writeDtaTo` takes it: a column object as plain values. */
+type DtaVariable = Omit<WriteVariable, "values"> & {
+  values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[] | Float64Array;
+};
+
+function asDtaVariable(v: WriteVariable): DtaVariable {
+  const x = v.values;
+  const reject = (what: string): never => {
+    throw dtaError("DTA_INVALID", `${v.name}: a .dta file cannot hold ${what}; use writeParquet`, undefined, TypeError);
+  };
+  if (x instanceof BigInt64Array || x instanceof BigUint64Array) return reject("64-bit integers");
+  if (x instanceof Float64Array || Array.isArray(x)) {
+    if ((x as readonly unknown[]).some?.((e) => typeof e === "bigint")) reject("64-bit integers");
+    return v as DtaVariable;
+  }
+  const c = x as TableColumn;
+  switch (c.kind) {
+    case "number":
+      return { ...v, values: c.values, missing: c.missing };
+    case "string":
+      if (c.missing?.includes(1)) reject("a missing string");
+      return { ...v, values: c.values };
+    case "dictionary":
+      if (c.missing?.includes(1)) reject("a missing string");
+      return { ...v, type: v.type === "categorical" ? undefined : v.type, values: Array.from(c.codes, (k) => c.values[k]) };
+    default:
+      return reject("64-bit integers");
+  }
+}
+
 /** Write a .dta file (release 118) into memory. */
 export function writeDta(data: WriteDataset): Uint8Array {
   const chunks: Uint8Array[] = [];
@@ -662,6 +800,8 @@ export function writeDta(data: WriteDataset): Uint8Array {
   return out;
 }
 export { formatValue } from "./format";
+export { AsyncParquetReader, ParquetReader, openParquet, openParquetAsync, toDate, writeParquet, writeParquetTo } from "./parquet";
+export type { ColumnChunk, ParquetInfo, ParquetOptions, ParquetVariable, ParquetWriteOptions, RowGroup, Statistic } from "./parquet";
 
 /** The first `count` rows of `cols` as arrays of cells. */
 function cells(cols: Column[], count: number): Cell[][] {

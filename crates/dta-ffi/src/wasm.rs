@@ -98,13 +98,13 @@ static ALLOCATOR: WithReserve = WithReserve;
 #[link(wasm_import_module = "env")]
 extern "C" {
     /// Fill `len` bytes at `ptr` from `file` at `offset`; 0 on success.
-    fn host_read(file: u32, ptr: *mut u8, len: usize, offset: f64) -> i32;
+    pub(crate) fn host_read(file: u32, ptr: *mut u8, len: usize, offset: f64) -> i32;
 }
 
 /// A file JavaScript holds, known to us by number.
-struct HostFile {
-    id: u32,
-    len: u64,
+pub(crate) struct HostFile {
+    pub(crate) id: u32,
+    pub(crate) len: u64,
 }
 
 impl Source for HostFile {
@@ -132,7 +132,7 @@ struct Handle {
     strings: Vec<Option<Strings>>,
 }
 
-struct State {
+pub(crate) struct State {
     handles: Vec<Option<Handle>>,
     /// Static when there was no memory to make a message.
     error: Cow<'static, str>,
@@ -146,7 +146,7 @@ struct State {
     /// opened from now (tests lower it).
     string_limit: usize,
     result: Vec<u8>,
-    result_len: usize,
+    pub(crate) result_len: usize,
 }
 
 impl Default for State {
@@ -183,19 +183,19 @@ pub extern "C" fn dta_test_set(budget: usize, chunk_bytes: usize, string_limit: 
 }
 
 /// An error for JavaScript: its kind (see `dta_error_kind`) and message.
-struct Fail {
-    kind: u32,
-    message: String,
+pub(crate) struct Fail {
+    pub(crate) kind: u32,
+    pub(crate) message: String,
 }
 
 // The kinds `dta_error_kind` returns.
-const CORRUPT: u32 = 1;
-const TOO_LARGE: u32 = 2;
-const IO: u32 = 3;
-const INVALID: u32 = 4;
-const OUT_OF_RANGE: u32 = 5;
-const INTERNAL: u32 = 6;
-const CLOSED: u32 = 7;
+pub(crate) const CORRUPT: u32 = 1;
+pub(crate) const TOO_LARGE: u32 = 2;
+pub(crate) const IO: u32 = 3;
+pub(crate) const INVALID: u32 = 4;
+pub(crate) const OUT_OF_RANGE: u32 = 5;
+pub(crate) const INTERNAL: u32 = 6;
+pub(crate) const CLOSED: u32 = 7;
 
 impl From<dta::Error> for Fail {
     fn from(e: dta::Error) -> Self {
@@ -225,7 +225,7 @@ impl From<&str> for Fail {
 }
 
 /// Run `f` on the state, turning an error or a panic into `fail`.
-fn call<T>(fail: T, f: impl FnOnce(&mut State) -> Result<T, Fail>) -> T {
+pub(crate) fn call<T>(fail: T, f: impl FnOnce(&mut State) -> Result<T, Fail>) -> T {
     STATE.with(|cell| {
         let mut state = cell.borrow_mut();
         state.error = Cow::Borrowed("");
@@ -260,7 +260,7 @@ fn handle(state: &mut State, h: u32) -> Result<&mut Handle, Fail> {
 }
 
 /// Leave `bytes` as the result and return a pointer to it.
-fn result(state: &mut State, bytes: Vec<u8>) -> *const u8 {
+pub(crate) fn result(state: &mut State, bytes: Vec<u8>) -> *const u8 {
     state.result_len = bytes.len();
     state.result = bytes;
     state.result.as_ptr()
@@ -549,7 +549,7 @@ pub extern "C" fn dta_column_mode(h: u32, k: usize) -> u32 {
 }
 
 /// Decoded bytes one read may hold in module memory (plus one row).
-const BUDGET: usize = 64 << 20;
+pub(crate) const BUDGET: usize = 64 << 20;
 
 /// V8's longest string, in UTF-16 units: 2^29 - 24.
 const STRING_LIMIT: usize = (1 << 29) - 24;
@@ -602,10 +602,10 @@ pub extern "C" fn dta_column_part(h: u32, k: usize, part: u32) -> *const u8 {
 #[link(wasm_import_module = "env")]
 extern "C" {
     /// Write `len` bytes at `ptr` to `file`; 0 on success.
-    fn host_write(file: u32, ptr: *const u8, len: usize) -> i32;
+    pub(crate) fn host_write(file: u32, ptr: *const u8, len: usize) -> i32;
 }
 
-struct HostSink(u32);
+pub(crate) struct HostSink(pub(crate) u32);
 
 impl std::io::Write for HostSink {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
@@ -651,7 +651,7 @@ thread_local! {
 
 /// # Safety
 /// `ptr` points to `len` readable elements of T.
-unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Result<Vec<T>, Fail> {
+pub(crate) unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Result<Vec<T>, Fail> {
     let mut v = Vec::new();
     if len > 0 {
         v.try_reserve_exact(len).map_err(|_| too_large(len * std::mem::size_of::<T>()))?;
@@ -660,13 +660,13 @@ unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Result<Vec<T>, Fail> {
     Ok(v)
 }
 
-fn too_large(bytes: usize) -> Fail {
+pub(crate) fn too_large(bytes: usize) -> Fail {
     Fail { kind: TOO_LARGE, message: format!("{bytes} bytes do not fit in module memory") }
 }
 
 /// Room for allocations of up to `bytes` that follow (see
 /// `dta::Source`'s `ensure_room`; this one is for the module's own).
-fn ensure_room(bytes: usize) -> Result<(), Fail> {
+pub(crate) fn ensure_room(bytes: usize) -> Result<(), Fail> {
     let mut probe: Vec<u8> = Vec::new();
     probe.try_reserve_exact(bytes).map_err(|_| too_large(bytes))?;
     std::hint::black_box(&probe);

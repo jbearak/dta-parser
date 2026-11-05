@@ -149,6 +149,47 @@ impl Dict {
         true
     }
 
+    /// The code of `value`, added if it is new; None if the dictionary
+    /// is full, after which it is given up.
+    pub fn add(&mut self, value: &[u8]) -> Option<u32> {
+        if self.gave_up {
+            return None;
+        }
+        let code = self.find_or_add(value);
+        self.gave_up = code.is_none();
+        code
+    }
+
+    /// Count `n` more rows coded; false (and the dictionary given up)
+    /// once too many of the values are distinct (ADR 0011's rule).
+    pub fn note_rows(&mut self, n: u64) -> bool {
+        self.rows += n;
+        if self.rows >= MIN_ROWS && self.ends.len() as u64 * 2 > self.rows {
+            self.gave_up = true;
+        }
+        !self.gave_up
+    }
+
+    /// Value `code`'s bytes.
+    pub fn bytes_of(&self, code: u32) -> &[u8] {
+        self.value(code as usize)
+    }
+
+    /// The values added since the last call: their bytes, end to end, and
+    /// cumulative UTF-16 ends.
+    pub fn take_new(&mut self) -> (Vec<u8>, Vec<u32>) {
+        let from = if self.sent == 0 { 0 } else { self.ends[self.sent - 1] };
+        let new_bytes = self.bytes[from..].to_vec();
+        let mut new_utf16 = Vec::with_capacity(self.ends.len() - self.sent);
+        let mut units = 0u32;
+        for code in self.sent..self.ends.len() {
+            units += utf16_len(self.value(code)) as u32;
+            new_utf16.push(units);
+        }
+        self.sent = self.ends.len();
+        (new_bytes, new_utf16)
+    }
+
     /// Code the rows of a call (`bytes` split at `ends`; `binary` true
     /// for binary strLs), or None if the column gives the dictionary up
     /// during it, after which it stays plain for the read.
