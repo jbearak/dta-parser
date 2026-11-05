@@ -1,13 +1,14 @@
 # The native library (crates/dta-ffi, declared in its include/dta.h).
 
-const ABI_VERSION = 3
+const ABI_VERSION = 4
 
 # cargo names the library dta_ffi.dll on Windows, libdta_ffi.* elsewhere.
 const libname = Sys.iswindows() ? "dta_ffi.dll" : Sys.isapple() ? "libdta_ffi.dylib" : "libdta_ffi.so"
 
 # Symbols, looked up when the package loads.
 const SYMBOLS = (:dta_abi_version, :dta_open, :dta_close, :dta_meta_json, :dta_string_free, :dta_read, :dta_write,
-                 :dta_fixed_width_to_dta)
+                 :dta_fixed_width_to_dta, :dta_pq_open, :dta_pq_close, :dta_pq_info_json, :dta_pq_read, :dta_pq_write,
+                 :dta_pq_bytes_free)
 const FNS = Dict{Symbol,Ptr{Cvoid}}()
 const LOAD_ERROR = Ref{String}("")
 

@@ -13,5 +13,6 @@ codes_of(c) = [stata_code(c, i) for i in eachindex(c)]
     include("dataframes.jl")
     include("write.jl")
     include("fixed_width.jl")
+    include("parquet.jl")
     include("docs.jl")
 end

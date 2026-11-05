@@ -94,6 +94,7 @@ end
 json(io::IO, x::AbstractString) = (print(io, '"'); json_escape(io, x); print(io, '"'))
 json(io::IO, x::Real) = isinteger(x) && abs(x) < 2^53 ? print(io, Int64(x)) : print(io, Float64(x))
 json(io::IO, ::Nothing) = print(io, "null")
+json(io::IO, x::Bool) = print(io, x ? "true" : "false")
 json(io::IO, x::Symbol) = json(io, String(x))
 function json(io::IO, x::AbstractVector)
     print(io, '[')
