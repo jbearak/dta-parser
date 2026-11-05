@@ -9,8 +9,8 @@ use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 use crate::decimal::{Unscaled, DOUBLE_DIGITS};
 use crate::decode::{
-    self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, Physical, Scratch,
-    TextChunk, Texts,
+    self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, PageCache, Physical,
+    Scratch, TextChunk, Texts,
 };
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
 use crate::profile::{self, Profile};
@@ -314,6 +314,7 @@ pub struct Reader<S: Source> {
     /// Offset indexes read so far, by row group and leaf.
     offset_indexes: HashMap<(usize, usize), Option<OffsetIndex>>,
     options: ReadOptions,
+    page_cache: Option<Mutex<PageCache>>,
 }
 
 const MAGIC: &[u8; 4] = b"PAR1";
@@ -462,6 +463,25 @@ impl<S: Source> Reader<S> {
             rows,
             offset_indexes: HashMap::new(),
             options,
+            page_cache: None,
+        })
+    }
+
+    /// Keep up to `bytes` of decompressed pages between reads (none with
+    /// 0, the default), for readers that read many small windows: each
+    /// page a window needs is then decompressed once while it stays in
+    /// the cache. Only reads of part of a column chunk use it.
+    pub fn set_page_cache(&mut self, bytes: usize) {
+        self.page_cache = (bytes > 0).then(|| Mutex::new(PageCache::new(bytes)));
+    }
+
+    /// The page cache's size now and its hits and misses so far: (bytes,
+    /// hits, misses).
+    pub fn page_cache_stats(&self) -> (usize, u64, u64) {
+        self.page_cache.as_ref().map_or((0, 0, 0), |c| {
+            let c = c.lock().unwrap_or_else(PoisonError::into_inner);
+            let (h, m) = c.hits_and_misses();
+            (c.bytes(), h, m)
         })
     }
 
@@ -597,6 +617,7 @@ impl<S: Source> Reader<S> {
             first_rows: &self.first_rows,
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
+            cache: self.page_cache.as_ref(),
         };
         for (g, local) in &groups {
             for &leaf in &leaves {
@@ -741,6 +762,7 @@ impl<S: Source> Reader<S> {
             first_rows: &self.first_rows,
             offset_indexes: &self.offset_indexes,
             file_len: self.source.len(),
+            cache: self.page_cache.as_ref(),
         };
         // What the read decodes: the larger of the pages' uncompressed
         // size and the values it writes out. Dictionary encoding makes the
@@ -1117,6 +1139,7 @@ struct Ctx<'r> {
     first_rows: &'r [u64],
     offset_indexes: &'r HashMap<(usize, usize), Option<OffsetIndex>>,
     file_len: u64,
+    cache: Option<&'r Mutex<PageCache>>,
 }
 
 impl Ctx<'_> {
@@ -1163,6 +1186,7 @@ impl Ctx<'_> {
                 .offset_indexes
                 .get(&(g, column.leaf))
                 .and_then(Option::as_ref),
+            cache: self.cache,
         })
     }
 

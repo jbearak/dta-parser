@@ -202,6 +202,41 @@ fn window_reads_fetch_only_the_pages_they_need() {
 }
 
 #[test]
+fn the_page_cache_serves_neighbouring_windows() {
+    let cols = every_type(3000);
+    let opts = WriteOptions { row_group_rows: Some(1000), page_bytes: 2000, ..Default::default() };
+    let bytes = bytes_of(&cols, Profile::default(), &opts);
+    let mut r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    r.set_page_cache(1 << 20);
+    let all = names(&cols);
+    // Batches of 50 rows: each page is decompressed once, then found in
+    // the cache, and the values are the same as without it.
+    for skip in (0..3000).step_by(50) {
+        let (got, _) = support::read_with(&mut r, &all, skip, 50).unwrap();
+        for (c, g) in cols.iter().zip(&got) {
+            assert!(same(&expected(c, skip as usize..skip as usize + 50), g), "{} at {skip}", c.name);
+        }
+    }
+    let (held, hits, misses) = r.page_cache_stats();
+    assert!(held > 0 && held <= 1 << 20, "{held}");
+    assert!(hits > 4 * misses, "{hits} hits, {misses} misses");
+    // A small budget evicts and still reads right.
+    r.set_page_cache(4096);
+    for skip in (0..3000).rev().step_by(70) {
+        let (got, _) = support::read_with(&mut r, &all, skip, 30).unwrap();
+        for (c, g) in cols.iter().zip(&got) {
+            let end = (skip as usize + 30).min(3000);
+            assert!(same(&expected(c, skip as usize..end), g), "{} at {skip}", c.name);
+        }
+    }
+    assert!(r.page_cache_stats().0 <= 4096);
+    // Whole chunks are not cached.
+    r.set_page_cache(1 << 20);
+    support::read_with(&mut r, &all, 0, 3000).unwrap();
+    assert_eq!(r.page_cache_stats(), (0, 0, 0));
+}
+
+#[test]
 fn every_codec_round_trips() {
     let cols = every_type(500);
     for c in [Compression::None, Compression::Snappy, Compression::Gzip, Compression::Zstd, Compression::Lz4Raw] {
