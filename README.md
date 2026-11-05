@@ -24,10 +24,12 @@ TypeScript, with one implementation of the format underneath all four.
 - **Reads and writes Parquet that keeps all of this** (in R, through
   datakit's `read_parquet()` and `save_parquet()`; in Python,
   `read_parquet` and `write_parquet`; in Julia, DtaParser's
-  `read_parquet` and `write_parquet`): labels, formats, notes and `.a`
-  to `.z` travel in the file's metadata, and the file is plain Parquet
-  that pyarrow, polars, DuckDB, arrow and nanoparquet read. A tibble or
-  DataFrame read from a `.dta` file comes back the same. See
+  `read_parquet` and `write_parquet`; in TypeScript,
+  `openParquetFile()` and `writeParquetFile()`): labels, formats,
+  notes and `.a` to `.z` travel in the file's metadata, and the file
+  is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
+  read. A tibble or DataFrame read from a `.dta` file comes back the
+  same. See
   [docs/parquet.md](docs/parquet.md).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
@@ -158,7 +160,7 @@ the table says how.
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
 | fixed-width text through a SAS setup file | datakit's `read_fixed_width` | `read_fixed_width` | `read_fixed_width` | |
-| Parquet keeping labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | `read_parquet`, `write_parquet` | | |
+| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | `read_parquet`, `write_parquet` | `read_parquet`, `write_parquet` | `openParquetFile`, `writeParquetFile`; the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `stata_key`, `stata_keys` | `stata_key` | `stataKey`, `stataKeys` |
