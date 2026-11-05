@@ -122,7 +122,12 @@ python -m pytest python/tests
 ```
 
 Run pytest from the repository root, not from `python/`, or Python
-imports the source directory instead of the installed package.
+imports the source directory instead of the installed package. With
+pyarrow, polars and duckdb installed too, the Parquet tests also check
+that those tools read back what `write_parquet` writes, and pandas keeps
+text in Arrow memory, which `read_parquet` then fills directly; CI runs
+the tests with and without them. `bench/parquet/run_py.py` runs the
+Python Parquet benchmarks (it also needs fastparquet).
 
 **Julia package** (Julia 1.10 or later):
 
