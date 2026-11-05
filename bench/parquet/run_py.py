@@ -79,7 +79,15 @@ class Lock:
         time.sleep(45)
 
 
-def run_all(files, out, libs, tasks, inputs):
+class NoLock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        pass
+
+
+def run_all(files, out, libs, tasks, inputs, one_lock=False):
     out.mkdir(parents=True, exist_ok=True)
     report = out / f"tmp-{os.getpid()}.json"
     case = HERE / "case_py.py"
@@ -107,7 +115,7 @@ def run_all(files, out, libs, tasks, inputs):
             continue
         print(f"{f['family']} {f['label']}: {f['rows']:,} rows, {f['ncols']:,} columns, {len(todo)} cases",
               flush=True)
-        with Lock():
+        with NoLock() if one_lock else Lock():
             warmed = set()
             for task, inp, lib, path, cmd in todo:
                 source = f["dta"] if inp == "dta" else f["files"][inp]
@@ -239,6 +247,8 @@ def main():
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
     ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-py-out")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--one-lock", action="store_true",
+                    help="hold the lock once for every file (for a few short cases)")
     ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-python.md"))
     a = ap.parse_args()
     files = base.find_files(a.family)
@@ -247,7 +257,12 @@ def main():
     files = base.prepare(files, Path(a.data))
     out = Path(a.out)
     if not a.report:
-        run_all(files, out, a.libs, a.tasks, a.inputs)
+        if a.one_lock:
+            # A few short cases over every file: one turn at the lock.
+            with Lock():
+                run_all(files, out, a.libs, a.tasks, a.inputs, one_lock=True)
+        else:
+            run_all(files, out, a.libs, a.tasks, a.inputs)
     report(files, out, Path(a.dest))
 
 
