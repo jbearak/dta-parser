@@ -286,8 +286,12 @@ write the file with `missing_letters = FALSE`.
   per-column work on the calling thread. Large files have more to
   share: long.dta (777 MiB) passed for reads up to four threads and
   wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
-  `DTA_THREADS` and each language's threads option set the count
-  instead. The measurements at 1 to 16 threads are in
+  Python's reads, measured the same way, pass at the same counts within
+  the noise, so every language uses this rule. A write encodes the next
+  row groups while it writes out the current one, so a long table of
+  few columns keeps its threads busy. `DTA_THREADS` and each
+  language's threads option set the count instead. The measurements at
+  1 to 16 threads are in
   [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 - **Memory for a read in R.** Before a large read, dtaparser has R
   make room for the whole result at once. R otherwise grows its memory
