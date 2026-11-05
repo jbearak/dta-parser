@@ -376,6 +376,9 @@ def _parquet_meta(src):
         entry = info["columns"].get(name) if role == "data" else None
         if entry is None:
             entry = {"storage": None, "format": "", "label": "", "value_labels": ""}
+        if dtype == "str":
+            # pandas' default text dtype: `str` from pandas 3, object before.
+            dtype = str(_TEXT)
         columns[name] = {**entry, "role": role, "physical_type": physical, "logical_type": logical, "dtype": dtype}
     info["columns"] = columns
     info["nobs"] = raw["rows"]

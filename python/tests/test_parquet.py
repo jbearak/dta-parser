@@ -353,7 +353,7 @@ def test_meta_of_both_formats(tmp_path):
     assert b["label"] == "B" and b["value_labels"] == "yn" and b["storage"] == "byte"
     assert m["columns"]["small"]["logical_type"] == "INT(8, signed)"
     assert m["columns"]["day"]["dtype"] == "datetime64[s]" and m["columns"]["day"]["logical_type"] == "DATE"
-    assert m["columns"]["s"]["dtype"] == "str"
+    assert m["columns"]["s"]["dtype"] == str(TEXT)
     assert m["label"] == d["label"] and m["notes"] == d["notes"]
     assert dp.read_meta((tmp_path / "x.dta").read_bytes())["nobs"] == 4
     assert dp.read_meta(open(tmp_path / "x.dta", "rb"))["nobs"] == 4
@@ -534,7 +534,7 @@ def test_files_from_other_tools_read_as_pyarrow_reads_them(path):
                     seen.append(v)
             assert got.cat.categories.tolist() == seen, name
         mine = as_expected(got, arrow_type)
-        if arrow_type in ("binary", "large_binary") and got.dtype != object:
+        if arrow_type in ("binary", "large_binary") and any(isinstance(v, str) for v in mine):
             # ENUM: pyarrow reads bytes, we read text.
             mine = [None if v is None else list(v.encode()) for v in mine]
         if arrow_type in ("float", "double") or (got.dtype.kind == "f" and arrow_type != "x"):
