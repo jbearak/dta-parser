@@ -638,7 +638,7 @@ Contents:
 Parquet needs nothing beyond this package ([Install](#install)): the
 reader and writer are in the same WebAssembly module, built from the
 same Rust core as the R, Python and Julia packages, with no Arrow or
-other JavaScript library. The module with Parquet is 2.2 MB, 420 KB
+other JavaScript library. The module with Parquet is 2.2 MB, 421 KB
 compressed with brotli. `openParquet`, `openParquetAsync`,
 `writeParquet` and `toDate` come from `@jbearak/dta-parser` and use no
 Node API, so they run in a browser; `openParquetFile` and

@@ -88,7 +88,7 @@ def measure(cmd, report, runs):
         base.RUNS = saved
 
 
-def run_all(files, out, libs, tasks, inputs, runs):
+def run_all(files, out, libs, tasks, inputs, runs, retry=False):
     out.mkdir(parents=True, exist_ok=True)
     report = out / f"tmp-{os.getpid()}.json"
     for f in files:
@@ -97,7 +97,7 @@ def run_all(files, out, libs, tasks, inputs, runs):
             for inp in inputs:
                 for lib in libs:
                     path = out / "raw" / f["key"] / inp / f"{lib}-{task}.json"
-                    if not path.exists():
+                    if not path.exists() and (retry or not path.with_suffix(".error").exists()):
                         todo.append((path, f["files"][inp], node_case(lib, task, f["files"][inp], report, f)))
         for task in [t for t in tasks if t in WRITES]:
             for lib in libs:
@@ -105,7 +105,7 @@ def run_all(files, out, libs, tasks, inputs, runs):
                 if wlib == "hyparquet-writer" and task == "zstd":
                     continue
                 path = out / "raw" / f["key"] / "dta" / f"{lib}-{task}.json"
-                if not path.exists():
+                if not path.exists() and (retry or not path.with_suffix(".error").exists()):
                     todo.append((path, f["dta"], ["node", str(HERE / "case.mjs"), wlib, task, str(f["dta"]), str(report), "", "0", "0"]))
         if not todo:
             continue
@@ -120,6 +120,7 @@ def run_all(files, out, libs, tasks, inputs, runs):
                 if "error" not in m:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(json.dumps(m))
+                    path.with_suffix(".error").unlink(missing_ok=True)
                 if time.time() - t > 2 or "error" in m:
                     shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                     print(f"  {cmd[2]} {cmd[3]} {path.parent.name}: {shown}", flush=True)
@@ -241,6 +242,9 @@ def main():
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
     ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-node")
     ap.add_argument("--report", action="store_true")
+    # A case that failed (another library out of memory, say) is not run
+    # again on a restart unless this is given.
+    ap.add_argument("--retry-errors", action="store_true")
     ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-node.md"))
     a = ap.parse_args()
     base.TIMEOUT = TIMEOUT
@@ -251,7 +255,7 @@ def main():
     files = base.prepare(files, Path(a.data))
     out = Path(a.out)
     if not a.report:
-        run_all(files, out, a.libs, a.tasks, a.inputs, a.runs)
+        run_all(files, out, a.libs, a.tasks, a.inputs, a.runs, a.retry_errors)
     report(files, out, Path(a.dest))
 
 
