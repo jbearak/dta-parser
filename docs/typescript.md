@@ -31,7 +31,7 @@ section.
 
 ## Install
 
-Version 1.0, described here, is not on npm yet; npm has 0.x, a
+Version 1.1 (1.0 with Parquet), described here, is not on npm yet; npm has 0.x, a
 different API. Build it from a checkout. You need Node 24 or later, and
 Rust with the WebAssembly target to build:
 

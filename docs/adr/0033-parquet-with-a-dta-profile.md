@@ -42,7 +42,12 @@ codec crates from crates.io; `crates/dta` stays free of dependencies.
   row, so R would make a string per row rather than per distinct value;
   with that layer, every column passes through Arrow arrays before the
   language's own vectors. Measurements are in
-  `docs/research/parquet-codecs.md`.
+  `docs/research/parquet-codecs.md`. It is also larger in the npm
+  package: our whole wasm module with Parquet reading and writing and
+  every codec is 1,880,574 bytes, 370,918 compressed with brotli
+  (quality 11), against parquet-wasm's 456 KB brotli-compressed for a
+  read-only build without codecs (its README); without Parquet the
+  module was 349,363 bytes, 92,056 with brotli.
 
 ## Consequences
 
