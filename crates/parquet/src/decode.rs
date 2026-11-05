@@ -1316,6 +1316,27 @@ impl Texts {
         Ok(())
     }
 
+    /// With a budget, before `more` bytes are added: an error if they
+    /// would pass it (as [`Texts::charge`] would after the page), else
+    /// room for them reserved, an error rather than an abort if there is
+    /// none. A large value then fails before it is copied.
+    #[inline]
+    fn room_for(&mut self, more: usize) -> Result<()> {
+        let Some(b) = &self.budget else { return Ok(()) };
+        let pending = self.chunk.bytes.len() - self.charged;
+        let held = b.held.load(std::sync::atomic::Ordering::Relaxed);
+        if held.saturating_add(pending).saturating_add(more) > b.most {
+            // Counted as held, as `charge` would, so the reader reports
+            // the budget passed.
+            b.held.fetch_add(pending.saturating_add(more), std::sync::atomic::Ordering::Relaxed);
+            self.charged = self.chunk.bytes.len();
+            return Err(Error::new(OVER_TEXT_BUDGET).of(ErrorKind::TooLarge));
+        }
+        self.chunk.bytes.try_reserve(more).map_err(|_| {
+            Error::new(format!("no memory for a text value of {more} bytes")).of(ErrorKind::TooLarge)
+        })
+    }
+
     /// Values of a FIXED_LEN_BYTE_ARRAY column, each `width` bytes.
     pub(crate) fn fixed(mut self, width: Option<usize>) -> Self {
         self.fixed = width;
@@ -1385,6 +1406,7 @@ impl Texts {
             let (v, used) = prefixed(rest, "a text value runs past the end of its page")?;
             at += used;
             if keep.contains(&i) {
+                self.room_for(v.len())?;
                 self.chunk.bytes.extend_from_slice(v);
                 self.chunk.ends.push(self.chunk.bytes.len());
             }
@@ -1446,7 +1468,11 @@ impl Consumer for Texts {
         if !self.chunk.ends.is_empty() {
             return Err(Error::new("a dictionary page comes after data pages"));
         }
-        self.push_plain(values, count, 0..count)?;
+        // Not checked against the budget either (below).
+        let budget = self.budget.take();
+        let pushed = self.push_plain(values, count, 0..count);
+        self.budget = budget;
+        pushed?;
         self.dictionary_len = count;
         self.chunk.codes = Some(Vec::with_capacity(self.chunk.rows));
         // Not counted: the dictionary is decoded whole however few rows

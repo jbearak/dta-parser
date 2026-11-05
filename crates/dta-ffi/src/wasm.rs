@@ -673,6 +673,22 @@ pub(crate) fn ensure_room(bytes: usize) -> Result<(), Fail> {
     Ok(())
 }
 
+/// Room for allocations of `parts` bytes each, held at once: for calls
+/// whose allocations are several buffers, which a heap with holes in it
+/// can hold where one block of their total would not fit.
+pub(crate) fn ensure_room_parts(parts: &[usize]) -> Result<(), Fail> {
+    let fail = || too_large(parts.iter().fold(0usize, |a, &b| a.saturating_add(b)));
+    let mut probes: Vec<Vec<u8>> = Vec::new();
+    probes.try_reserve_exact(parts.len()).map_err(|_| fail())?;
+    for &bytes in parts {
+        let mut probe: Vec<u8> = Vec::new();
+        probe.try_reserve_exact(bytes).map_err(|_| fail())?;
+        probes.push(probe);
+    }
+    std::hint::black_box(&probes);
+    Ok(())
+}
+
 /// Fields separated by NUL: name, format, label, value label set name.
 fn fields(bytes: &[u8]) -> Result<Vec<String>, String> {
     std::str::from_utf8(bytes)
