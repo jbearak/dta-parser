@@ -218,6 +218,23 @@ test("strings: dictionary gives DictionaryColumns for repeating text", () => {
   }
 });
 
+test("text is written exactly: short and long, ASCII and not, in blocks of rows", () => {
+  // Long strings are encoded a block of 65,536 rows at a time; a block
+  // with non-ASCII text, a lone surrogate or a missing value takes the
+  // slower route. Short strings always do.
+  const rows = 200_000;
+  const odd = (i) => (i === 70_000 ? "naïve résumé café, encore une fois" : i === 140_001 ? "lone \ud800 surrogate here" : i === 199_999 ? "😀 emoji at the end of it all" : null);
+  const long = Array.from({ length: rows }, (_, i) => odd(i) ?? (i % 997 === 5 ? null : `row ${i} of a longer text value`));
+  const short = Array.from({ length: rows }, (_, i) => (i === 3 ? "é" : `s${i % 50}`));
+  const r = openParquet(writeParquet({ variables: [{ name: "long", values: long }, { name: "short", values: short }] }));
+  const [a, b] = r.readColumns(["long", "short"]);
+  for (let i = 0; i < rows; i++) {
+    const want = long[i] === null ? "" : long[i].replace("\ud800", "�");
+    if (a.values[i] !== want || Boolean(a.missing[i]) !== (long[i] === null)) assert.fail(`long row ${i}: ${a.values[i]}`);
+    if (b.values[i] !== short[i]) assert.fail(`short row ${i}: ${b.values[i]}`);
+  }
+});
+
 for (const { stem, doc, bytes } of parquetFixtures()) {
   test(`${stem}.parquet reads as pyarrow reads it`, () => {
     const r = openParquet(bytes, doc.nested ? { nested: "skip" } : {});
