@@ -125,25 +125,27 @@ impl ReadAhead {
         Ok(ReadAhead { file: FileSource::open(path)?, id: NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) })
     }
 
-    /// Read through this thread's block, filling it with `fill`.
+    /// Read through this thread's block of the file `id` (of `len`
+    /// bytes), filling it with `fill`. It takes no borrow of the reader,
+    /// so `fill` may borrow the file mutably.
     fn read_with(
-        &self,
+        id: u64,
+        len: u64,
         offset: u64,
         buf: &mut [u8],
         fill: impl FnOnce(u64, &mut [u8]) -> dta::Result<()>,
     ) -> dta::Result<()> {
-        let len = self.file.len();
         if buf.len() >= BLOCK_BYTES / 4 || offset.checked_add(buf.len() as u64).is_none_or(|e| e > len) {
             return fill(offset, buf);
         }
         BLOCK.with(|b| {
             let mut b = b.borrow_mut();
             let end = offset + buf.len() as u64;
-            if !(b.id == self.id && b.start <= offset && end <= b.start + b.bytes.len() as u64) {
+            if !(b.id == id && b.start <= offset && end <= b.start + b.bytes.len() as u64) {
                 let n = (BLOCK_BYTES as u64).min(len - offset) as usize;
                 b.bytes.resize(n, 0);
                 fill(offset, &mut b.bytes)?;
-                b.id = self.id;
+                b.id = id;
                 b.start = offset;
             }
             let at = (offset - b.start) as usize;
@@ -172,10 +174,9 @@ impl Source for ReadAhead {
     }
 
     fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
-        let file = &self.file as *const FileSource as *mut FileSource;
-        // SAFETY: `fill` is the only user of the file while it runs, and
-        // `self` is borrowed mutably for the call.
-        self.read_with(offset, buf, |o, b| unsafe { (*file).read_at(o, b) })
+        let (id, len) = (self.id, self.file.len());
+        let file = &mut self.file;
+        Self::read_with(id, len, offset, buf, |o, b| file.read_at(o, b))
     }
 
     fn shared(&self) -> Option<&dyn dta::SharedSource> {
@@ -186,7 +187,7 @@ impl Source for ReadAhead {
 impl dta::SharedSource for ReadAhead {
     fn read_at_shared(&self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
         let shared = self.file.shared().ok_or_else(|| dta::Error::new("internal: the file has no shared reads"))?;
-        self.read_with(offset, buf, |o, b| shared.read_at_shared(o, b))
+        Self::read_with(self.id, self.file.len(), offset, buf, |o, b| shared.read_at_shared(o, b))
     }
 }
 
