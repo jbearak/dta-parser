@@ -80,6 +80,7 @@ class Lock:
 
 
 def run_all(files, out, libs, tasks, inputs):
+    out.mkdir(parents=True, exist_ok=True)
     report = out / f"tmp-{os.getpid()}.json"
     case = HERE / "case_py.py"
     for f in files:
