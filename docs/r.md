@@ -1079,12 +1079,13 @@ back exactly (such as `Sys.time()`'s, at times). Those columns are
 DOUBLE days or seconds since 1970, with `logical` `"date"` or
 `"timestamp"` in `read_parquet_info()`; other tools see numbers.
 
-Timestamps from other tools come back as `POSIXct`. One in nanoseconds
-that is not a whole number of microseconds is an error that says to
-pass `timestamps = "truncate"`, which drops the nanoseconds below a
-microsecond. A time zone that a file gives only in its arrow schema
-(pyarrow's and polars' zoned timestamps) is not read yet; those columns
-are in UTC, which is the same instant.
+Timestamps from other tools come back as `POSIXct`, INT96 ones too.
+One in nanoseconds that is not a whole number of microseconds is an
+error that says to pass `timestamps = "truncate"`, which drops the
+nanoseconds below a microsecond. The zone is the one `save_parquet()`
+recorded, else the one the file's arrow schema gives (arrow's, pyarrow's
+and polars' zoned timestamps), else UTC. A TIME (a clock time without a
+date) comes back as a `difftime` in seconds since midnight.
 
 ### Write a Parquet file
 
@@ -1158,43 +1159,75 @@ na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
 
 ### Parquet files from other tools
 
-`read_parquet()` reads the files pyarrow, pandas, polars, DuckDB, arrow
-and nanoparquet write with their defaults, and the codecs none, snappy,
-gzip, zstd and lz4_raw:
+`read_parquet()` reads the files pyarrow, pandas, polars, DuckDB,
+arrow, nanoparquet, fastparquet and others write: every encoding
+(dictionary, PLAIN, the DELTA encodings, BYTE_STREAM_SPLIT), data pages
+v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and brotli.
+A column that pandas, polars or arrow wrote as a category or factor (a
+dictionary of strings in the file's arrow schema) is a factor:
 
 ```r
 if (requireNamespace("arrow", quietly = TRUE)) {
-  arrow::write_parquet(data.frame(x = 1:3, f = factor(c("a", "b", "a"))), "from_arrow.parquet")
-  read_parquet("from_arrow.parquet")$f   # "a" "b" "a": character, for now
+  arrow::write_parquet(data.frame(f = factor(c("b", "a", "b"), levels = c("a", "b", "c"))), "from_arrow.parquet")
+  levels(read_parquet("from_arrow.parquet")$f)            # "b" "a"
+  levels(read_parquet("from_arrow.parquet", skip = 2)$f)  # "b"
 }
 ```
 
+Its levels are the distinct values of the rows read, in the order they
+first appear, and it is not ordered: the file does not say which levels
+the writer had or in what order. Reading another window of rows can
+give other levels; reading every row gives them all. A file
+`save_parquet()` wrote has every level, in order, whatever rows are
+read. `factors` does not change these columns.
+
+DECIMAL columns read as the nearest double to each value. A value with
+more than 15 significant digits, which a double cannot give back, is an
+error naming the column and row; `decimal = "character"` reads every
+digit as text:
+
+```r
+if (requireNamespace("arrow", quietly = TRUE)) {
+  price <- arrow::Array$create(c("2.50", "1234567890.123456789"))$cast(arrow::decimal128(19, 9))
+  arrow::write_parquet(arrow::arrow_table(price = price), "prices.parquet")
+  read_parquet("prices.parquet", n_max = 1)$price             # 2.5
+  read_parquet("prices.parquet", decimal = "character")$price # "2.500000000" "1234567890.123456789"
+  # read_parquet("prices.parquet") is an error: row 2 has 19 significant digits
+}
+```
+
+Unsigned 8- and 16-bit integers read as integers; unsigned 32- and
+64-bit ones follow the INT64 rules, so `int64 = "character"` keeps every
+digit (and an unsigned value of 2^63 or more is an error for
+`int64 = "integer64"`, which cannot hold it).
+
 What this version does not read, each an error that names the column
-and its type: DECIMAL, INT96 timestamps, TIME, unsigned integers,
-FIXED_LEN_BYTE_ARRAY, FLOAT16, the DELTA and BYTE_STREAM_SPLIT
-encodings, brotli, LZO, encryption. Nested columns (lists, maps,
-structs) are an error unless `col_select` leaves them out or
-`nested = "skip"` is given. A dictionary column that pandas, polars or
-arrow wrote as a category or factor reads as its values (character
-here), and a zone given only in the arrow schema is not read (UTC).
-Datasets of many files, Hive partitions and predicate pushdown are not
-part of datakit; use arrow's `open_dataset()` or DuckDB for those.
+and its type: FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO,
+encryption. Nested columns (lists, maps, structs) are an error unless
+`col_select` leaves them out or `nested = "skip"` is given. Datasets of
+many files, Hive partitions and predicate pushdown are not part of
+datakit; use arrow's `open_dataset()` or DuckDB for those.
 
 ### What each Parquet type becomes in R
 
 | Parquet | R |
 |---|---|
 | INT32: INT(8), INT(16) or none | integer; double where `.a` to `.z` appear in the rows read of a column written wider for them; a value of -2147483648, R's integer `NA`, is an error |
-| INT64 | `int64 = "double"` (default): double, and a value a double does not hold exactly is an error naming the column, the row and the option; `"integer64"` (bit64) or `"character"` keep every digit |
+| unsigned 8 and 16 bits | integer |
+| INT64, unsigned 32 and 64 bits | `int64 = "double"` (default): double, and a value a double does not hold exactly is an error naming the column, the row and the option; `"integer64"` (bit64) or `"character"` keep every digit (`"character"` only, for unsigned values of 2^63 or more) |
 | FLOAT, DOUBLE | double; `.a` to `.z` are tagged NAs, other NaN stay NaN |
+| DECIMAL, precision 15 or less | double, the nearest to each value |
+| DECIMAL, precision above 15 | `decimal = "double"` (default): double, and a value with more than 15 significant digits is an error naming the column, the row and `decimal = "character"`; `"character"` keeps every digit |
 | BOOLEAN | logical |
 | DATE | `Date` |
-| TIMESTAMP (milli-, micro-, nanoseconds) | `POSIXct`, in the zone `save_parquet()` recorded, else UTC; nanoseconds that are not whole microseconds are an error naming `timestamps = "truncate"` |
+| TIMESTAMP (milli-, micro-, nanoseconds), INT96 | `POSIXct`, in the zone `save_parquet()` recorded, else the one in `ARROW:schema`, else UTC; nanoseconds that are not whole microseconds are an error naming `timestamps = "truncate"` |
+| TIME (milli-, micro-, nanoseconds) | `difftime` in seconds since midnight |
 | STRING, ENUM, JSON | character |
-| BYTE_ARRAY without annotation | a list of raw vectors, `NULL` for null |
+| BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | a list of raw vectors, `NULL` for null |
 | a categorical `save_parquet()` wrote | factor, ordered if it was, every level kept |
-| a dictionary of any type in `ARROW:schema` | its values' type, by the rows above |
-| DECIMAL, INT96, TIME, unsigned integers, FIXED_LEN_BYTE_ARRAY, FLOAT16 | not read yet: an error naming the column and type |
+| a dictionary of strings in `ARROW:schema`, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered; levels are the distinct values of the rows read, in order of first appearance |
+| a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
+| FLOAT16, INTERVAL | not read: an error naming the column and type |
 
 ### Coming from arrow or nanoparquet
 

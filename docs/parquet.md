@@ -73,6 +73,15 @@ R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
 ### Read a file another tool wrote
 
 R: [Files from other tools](r.md#parquet-files-from-other-tools).
+Every encoding and codec other tools write by default is read, and
+the types plan 0018 lists: unsigned integers, DECIMAL, TIME, INT96,
+fixed-length binary, UUID, ENUM and JSON. A category or factor that
+pandas, polars or arrow wrote (a dictionary of strings in
+`ARROW:schema`) reads as a categorical whose levels are the values of
+the rows read, in order of first appearance, so two windows of one
+column can have different levels; a file we write carries every level
+in the profile instead. A timestamp's zone comes from the profile, else
+from `ARROW:schema`, else is UTC.
 
 ## The file
 
@@ -257,9 +266,11 @@ and of other tools reading our files, is in
 | `column "x" is not in the file; its columns are ...` | a name in `col_select` the file does not have | check the name against `read_parquet_info(file)$columns$name` |
 | `the file has nested columns, which are not read: "l", ...; select the columns wanted, or pass nested = "skip"` | a list, map or struct column, and no `col_select` that leaves it out | select the flat columns, or `nested = "skip"`; for the nested data, use arrow |
 | `column "x" is nested (a list, map or group), which is not read` | `col_select` names a nested column | leave it out |
-| `column "x" is DECIMAL, which this version does not read yet` (also INT96, TIME, unsigned integers, FIXED_LEN_BYTE_ARRAY, FLOAT16) | a type this version does not read | leave the column out with `col_select` |
-| `values encoded DELTA_BINARY_PACKED, which this version does not read yet` (also the other DELTA encodings and BYTE_STREAM_SPLIT); `BROTLI compression is not read yet`; `LZO compression is not supported` | an encoding or codec this version does not read | leave the column out, or rewrite the file with another tool's defaults |
-| `column "x": the value 9007199254740993 in row 1 cannot be held exactly as a double; read with int64 = "integer64" or int64 = "character" to keep every digit` | an INT64 value beyond 2^53 | as it says |
+| `column "x" is FLOAT16, which is not read` (also `an INTERVAL, which this version does not read`) | a type this version does not read | leave the column out with `col_select` |
+| `values encoded BIT_PACKED, which this version does not read yet`; `LZO compression is not supported`; `the Hadoop framing of LZ4 is not supported (LZ4_RAW is)` | an encoding or codec this version does not read | leave the column out, or rewrite the file with another tool's defaults |
+| `column "x": the value 9007199254740993 in row 1 cannot be held exactly as a double; read with int64 = "integer64" or int64 = "character" to keep every digit` | an INT64, or unsigned 32- or 64-bit, value a double does not hold exactly | as it says |
+| `column "x": the value 9252967440985262337 in row 302 cannot be held exactly as a 64-bit integer; read with int64 = "character" to keep every digit` | an unsigned 64-bit value of 2^63 or more, read with `int64 = "integer64"` | `int64 = "character"` |
+| `column "x": the value 12345678901234567.89 in row 1 has more than 15 significant digits, which a double cannot hold exactly; read with decimal = "character" to keep every digit` | a DECIMAL value a double cannot give back | `decimal = "character"` |
 | `column "x": row 2 is 1000000007 nanoseconds, which is not a whole number of microseconds; read with timestamps = "truncate" ...` | a nanosecond timestamp; a `POSIXct` holds microseconds | `timestamps = "truncate"` |
 | `column "x": the value -2147483648 in row n cannot be held as an R integer, whose NA it is` | a 32-bit integer equal to R's `NA_integer_` | none in R; read the column with another tool |
 | `not a Parquet file: it does not start and end with PAR1`; `the footer's length ... is more than the file holds` | not a Parquet file, or a truncated one | check the file |
