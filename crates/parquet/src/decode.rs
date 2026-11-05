@@ -26,6 +26,8 @@ pub(crate) struct Scratch {
     levels: Vec<u8>,
     indices: Vec<u32>,
     bools: Vec<u8>,
+    /// A chunk's validity bits, for Arrow outputs.
+    pub(crate) arrow_bits: Vec<u8>,
 }
 
 /// Reads bytes of the file.
@@ -442,6 +444,7 @@ pub(crate) fn decode(
         levels,
         indices,
         bools,
+        ..
     } = scratch;
     let codec = chunk.meta.codec;
     let optional = !chunk.column.required;
@@ -778,7 +781,7 @@ fn dictionary_indices(
     Ok(())
 }
 
-fn unsupported_encoding(e: Encoding) -> Error {
+pub(crate) fn unsupported_encoding(e: Encoding) -> Error {
     Error::new(format!(
         "values encoded {}, which this version does not read yet",
         e.name()
@@ -790,6 +793,8 @@ fn unsupported_encoding(e: Encoding) -> Error {
 /// A Parquet physical number type.
 pub(crate) trait Physical: Copy + Send + Sync + std::fmt::Debug + 'static {
     const WIDTH: usize;
+    /// Whether values can be tagged NaNs (`.a` to `.z`): doubles only.
+    const LETTERS: bool = false;
     fn from_le(b: &[u8]) -> Self;
     fn convert<T: crate::read::Element>(self) -> Option<T>;
     /// The value from the bits DELTA_BINARY_PACKED gives, for the integer
@@ -931,6 +936,7 @@ impl Physical for f32 {
 
 impl Physical for f64 {
     const WIDTH: usize = 8;
+    const LETTERS: bool = true;
     #[inline]
     fn from_le(b: &[u8]) -> Self {
         f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))
@@ -956,7 +962,7 @@ pub(crate) struct NumberOut<'o, T> {
 }
 
 /// An error for a value the output type cannot hold.
-fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
+pub(crate) fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
     Error::invalid(format!(
         "the value {value:?} in row {} cannot be held exactly as {target}",
         row + 1
@@ -1112,6 +1118,29 @@ impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
     }
 }
 
+/// A page's wanted booleans, 0 or 1 each: `bools[i]` is value
+/// `page.before + i`.
+pub(crate) fn booleans(page: &DataPage, bools: &mut Vec<u8>) -> Result<()> {
+    let before = page.before;
+    bools.clear();
+    match page.encoding {
+        Encoding::Plain => {
+            let bytes = page
+                .values
+                .get(..page.present.div_ceil(8))
+                .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
+            bools.extend((before..page.present).map(|i| (bytes[i >> 3] >> (i & 7)) & 1));
+        }
+        Encoding::Rle => {
+            let (data, _) = prefixed(page.values, "an RLE page ends early")?;
+            bools.resize(page.present - before, 0);
+            rle::decode_from(data, 1, before, &mut bools[..], |_, _| {})?;
+        }
+        other => return Err(unsupported_encoding(other)),
+    }
+    Ok(())
+}
+
 /// Booleans: PLAIN bit-packed or RLE, into any number type as 0 and 1.
 pub(crate) struct Booleans<'o, T> {
     pub(crate) out: NumberOut<'o, T>,
@@ -1123,24 +1152,8 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, bools: &mut Vec<u8>) -> Result<()> {
-        // The wanted values only: `bools[i]` is value `page.before + i`.
         let before = page.before;
-        bools.clear();
-        match page.encoding {
-            Encoding::Plain => {
-                let bytes = page
-                    .values
-                    .get(..page.present.div_ceil(8))
-                    .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
-                bools.extend((before..page.present).map(|i| (bytes[i >> 3] >> (i & 7)) & 1));
-            }
-            Encoding::Rle => {
-                let (data, _) = prefixed(page.values, "an RLE page ends early")?;
-                bools.resize(page.present - before, 0);
-                rle::decode_from(data, 1, before, &mut bools[..], |_, _| {})?;
-            }
-            other => return Err(unsupported_encoding(other)),
-        }
+        booleans(page, bools)?;
         let mut n = Numbers::<i32, T> {
             out: NumberOut {
                 values: &mut *self.out.values,

@@ -53,6 +53,7 @@
 
 mod arrow;
 mod codec;
+mod columnar;
 pub mod decimal;
 mod decode;
 mod encoding;
@@ -67,6 +68,7 @@ mod thrift;
 mod write;
 
 pub use codec::Compression;
+pub use columnar::{ArrowData, ArrowOutput, ArrowReport};
 
 // Default thread counts (plan 0018, "Threads"), set by plan 0007's
 // rule: each thread added must make the task at least half a thread's
