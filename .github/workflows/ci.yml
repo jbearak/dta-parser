@@ -171,6 +171,11 @@ jobs:
         env:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
+      # With pyarrow, pandas keeps text in Arrow memory, which
+      # read_parquet then fills directly; polars and DuckDB read back
+      # what write_parquet writes.
+      - run: pip install pyarrow polars duckdb
+      - run: python -m pytest python/tests
 
   # One abi3 wheel per supported platform, each installed into a fresh
   # venv and smoke-tested. Nothing is published.

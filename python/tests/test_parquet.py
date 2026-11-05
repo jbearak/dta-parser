@@ -467,14 +467,20 @@ def test_files_from_other_tools_read_as_pyarrow_reads_them(path):
     assert len(df) == expected["rows"]
     assert list(df.columns) == [c["name"] for c in expected["columns"]]
     meta = dp.read_meta(source)
-    pq = pytest.importorskip("pyarrow.parquet")
-    footer = pq.ParquetFile(source).metadata
-    for k, col in enumerate(expected["columns"]):
+    try:
+        import pyarrow.parquet as pq
+        footer = pq.ParquetFile(source).metadata
+    except ImportError:
+        footer = None
+    for col in expected["columns"]:
         name, arrow_type, want = col["name"], col["arrow_type"], col["values"]
         got = df[name]
-        stats = [footer.row_group(g).column(footer.schema.names.index(name)).statistics
-                 for g in range(footer.num_row_groups)] if name in footer.schema.names else []
-        counted = all(s is not None and s.has_null_count for s in stats)
+        # read_meta's dtype comes from the footer's null counts, where the
+        # writer gave them.
+        counted = footer is not None and name in footer.schema.names and all(
+            s is not None and s.has_null_count
+            for s in (footer.row_group(g).column(footer.schema.names.index(name)).statistics
+                      for g in range(footer.num_row_groups)))
         if counted or not any(v is None for v in want):
             assert meta["columns"][name]["dtype"] == str(got.dtype) or got.dtype == object, name
         if arrow_type.startswith(("decimal128(", "decimal256(")):
