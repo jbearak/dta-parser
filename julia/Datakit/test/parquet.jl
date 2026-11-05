@@ -1,28 +1,42 @@
-# read_parquet, write_parquet and read_meta on Parquet files (plan 0018).
+# read_parquet, save_parquet and read_parquet_info (plans 0018 and 0019),
+# moved from DtaParser's tests and rewritten for the DataFrame
+# read_parquet returns. Every check DtaParser had is kept; the ones on
+# read_meta are on read_parquet_info.
 #
-# The central check is the round trip: every table read_dta returns reads
-# back from write_parquet with isequal values, the same missing codes and
-# the same metadata, except what describes a .dta file rather than the
-# data (release, byte order, encoding, and a string column's strN width,
-# chosen again from the values). Files from other tools are compared
-# with pyarrow's reading of them (compat/parquet/expected).
+# The central check is the round trip: every fixture, as
+# DataFrame(read_dta(f)), reads back from save_parquet with isequal
+# values, the same missing code in every row and the same metadata,
+# except what describes a .dta file rather than the data (release, byte
+# order, encoding, and a string column's strN width, chosen again from
+# the values). Files from other tools are compared with pyarrow's
+# reading of them (compat/parquet/expected).
 
-using DtaParser, DataAPI, Dates, Tables, Test
+using Datakit, DataFrames, DataAPI, Dates, Tables, Test
+using DtaParser: read_dta, read_meta
 using CategoricalArrays, TimeZones
 
 const PQ_DIR = joinpath(@__DIR__, "..", "..", "..", "compat", "parquet")
 
-codes_or_nothing(c) = eltype(c) <: Union{Missing,Real} && !(eltype(c) <: Union{Missing,Bool}) ? codes_of(c) : nothing
+col(t, n) = Tables.getcolumn(t, Symbol(n))
 
-# Every column of `b` as `a` has it: type, values, codes and metadata.
+# A DtaColumn holding only `.` reads back as a Vector{Union{Missing,T}}:
+# a column is a DtaColumn only when the rows read hold .a to .z.
+function same_type(y, x)
+    typeof(y) == typeof(x) && return true
+    x isa DtaColumn && !any(>(0x01), x.codes) && return typeof(y) == Vector{Union{Missing,eltype(x.values)}}
+    false
+end
+
+# Every column of `b` as `a` has it: type, values, the missing code of
+# every row, and metadata.
 function same_table(b, a, what; storage_of_text=false)
     @test names(b) == names(a)
     for n in Symbol.(names(a))
-        x, y = a[n], b[n]
-        ok = typeof(y) == typeof(x) && isequal(collect(y), collect(x))
+        x, y = col(a, n), col(b, n)
+        ok = same_type(y, x) && isequal(collect(y), collect(x))
         ok || @info "$what: column $n differs" typeof(x) typeof(y) first(collect(x), 5) first(collect(y), 5)
         @test ok
-        x isa DtaColumn && @test codes_of(y) == codes_of(x)
+        @test codes_of(y) == codes_of(x)
         for key in ("label", "format", "value_labels", "storage")
             want, got = DataAPI.colmetadata(a, n, key), DataAPI.colmetadata(b, n, key)
             # A string column's strN width is chosen again from its values, and
@@ -39,12 +53,16 @@ function same_table(b, a, what; storage_of_text=false)
         isequal(want, got) || @info "$what: table metadata $key differs" want got
         @test isequal(want, got)
     end
+    if b isa DataFrame
+        @test all(k -> metadata(b, k; style=true)[2] === :note, metadatakeys(b))
+        @test all(n -> all(k -> colmetadata(b, n, k; style=true)[2] === :note, colmetadatakeys(b, n)), names(b))
+    end
 end
 
 function round_trip(t; kws...)
     p = tempname() * ".parquet"
     try
-        write_parquet(p, t; kws...)
+        save_parquet(p, t; kws...)
         return read_parquet(p)
     finally
         rm(p; force=true)
@@ -58,7 +76,7 @@ end
 function read_expected(path)
     text = read(path, String)
     text = replace(text, r"(?<=[,\[:])(-?[0-9]{16,})(?=[,\]}])" => s"\"\1\"")
-    DtaParser.parse_json(text)
+    Datakit.Internals.parse_json(text)
 end
 
 const PER_NS = Dict("s" => 1_000_000_000, "ms" => 1_000_000, "us" => 1_000, "ns" => 1)
@@ -107,10 +125,11 @@ function check_fixture(path, expected, skip, n_max, what)
     end
     ok = [spec["name"] for spec in expected["columns"] if !(spec["name"] in wide)]
     t = read_parquet(path; cols = ok, skip, n_max, timestamps = :truncate, nested)
+    @test t isa DataFrame
     @test names(t) == ok
     for spec in expected["columns"]
         spec["name"] in wide && continue
-        x = t[spec["name"]]
+        x = t[!, spec["name"]]
         want = spec["values"][rows]
         @test length(x) == length(want)
         bad = findfirst(i -> !same_value(want[i], x[i], spec["arrow_type"]), eachindex(want))
@@ -129,8 +148,8 @@ function check_fixture(path, expected, skip, n_max, what)
     end
     for name in wide
         err = try read_parquet(path; cols = [name], skip, n_max) catch e e end
-        @test err isa DtaParser.DtaError && occursin("decimal = :string", err.message)
-        s = read_parquet(path; cols = [name], skip, n_max, decimal = :string)[name]
+        @test err isa Datakit.Internals.DtaError && occursin("decimal = :string", err.message)
+        s = read_parquet(path; cols = [name], skip, n_max, decimal = :string)[!, name]
         spec = only(filter(s -> s["name"] == name, expected["columns"]))
         @test isequal(collect(s), [v === nothing ? missing : v for v in spec["values"][rows]])
     end
@@ -138,12 +157,20 @@ end
 
 @testset "parquet" begin
 
-@testset "every .dta fixture round-trips" begin
+@testset "every .dta fixture round-trips as a DataFrame" begin
     n = 0
     for file in sort(filter(endswith(".dta"), readdir(FIXTURES)))
         for dates in (true, false)
             t = read_dta(fixture(file); dates)
-            same_table(round_trip(t), t, "$file, dates = $dates")
+            df = DataFrame(t)
+            r = round_trip(df)
+            @test r isa DataFrame
+            same_table(r, df, "$file, dates = $dates")
+            # Saved again from the DataFrame read_parquet gave: everything
+            # equal, the strN widths too.
+            same_table(round_trip(r), r, "$file, dates = $dates, twice"; storage_of_text = true)
+            # A DtaTable is a Tables.jl table too.
+            same_table(round_trip(t), df, "$file, dates = $dates, from the DtaTable")
             n += 1
         end
     end
@@ -173,15 +200,19 @@ end
     )
     labels = Dict("yn" => Dict(0 => "No", 1 => "Yes", ".d" => "Don't know"))
     p = tempname() * ".parquet"
-    write_parquet(p, t; label = "Smoking survey", notes = ["Wave 2 only.", "Second note"], value_labels = labels,
+    save_parquet(p, t; label = "Smoking survey", notes = ["Wave 2 only.", "Second note"], value_labels = labels,
                   column_labels = Dict(:score => "Score", :region => "Region"), column_formats = Dict(:score => "%9.2f"),
                   column_value_labels = Dict(:smoker => "yn"))
     r = read_parquet(p)
+    @test r isa DataFrame
     for n in keys(t)
         n === :tiny && continue
-        @test isequal(collect(r[n]), collect(t[n]))
-        @test typeof(r[n]) == typeof(t[n]) || (t[n] isa CategoricalArray && r[n] isa CategoricalArray)
+        @test isequal(collect(r[!, n]), collect(t[n]))
+        @test same_type(r[!, n], t[n]) || (t[n] isa CategoricalArray && r[!, n] isa CategoricalArray)
     end
+    # Only columns holding .a to .z are DtaColumns.
+    @test r.score isa DtaColumn{Float64} && r.smoker isa DtaColumn{Int8} && r.weight isa DtaColumn{Float32}
+    @test r.big isa Vector{Union{Missing,Int64}} && r.id isa Vector{Int32}
     @test r.tiny == Int16[0, 1, 255, 7]
     @test codes_of(r.score) == UInt8[0, 1, 2, 0]
     @test codes_of(r.smoker) == UInt8[0, 0, 5, 1]
@@ -208,7 +239,7 @@ end
     same_table(round_trip(r; compression = :zstd, compression_level = 9), r, "zstd 9"; storage_of_text = true)
     # From an IO and from bytes.
     io = IOBuffer()
-    @test write_parquet(io, r) === io
+    @test save_parquet(io, r) === io
     bytes = take!(io)
     same_table(read_parquet(bytes), r, "bytes"; storage_of_text = true)
     same_table(read_parquet(IOBuffer(bytes)), r, "IO"; storage_of_text = true)
@@ -216,17 +247,19 @@ end
 end
 
 @testset "windows of rows and selections of columns" begin
-    t = read_dta(fixture("haven_118.dta"))
+    t = DataFrame(read_dta(fixture("haven_118.dta")))
     p = tempname() * ".parquet"
-    write_parquet(p, t; row_group_size = 2)
-    n = DataAPI.nrow(t)
+    save_parquet(p, t; row_group_size = 2)
+    n = nrow(t)
     for (skip, n_max) in ((0, 2), (1, 3), (4, nothing), (5, 10), (6, 1), (0, 0), (100, 3))
         got = read_parquet(p; skip, n_max)
         rows = (min(skip, n) + 1):(n_max === nothing ? n : min(n, skip + n_max))
-        @test DataAPI.nrow(got) == length(rows)
+        @test nrow(got) == length(rows)
         for c in Symbol.(names(t))
-            @test isequal(collect(got[c]), collect(t[c])[rows])
-            t[c] isa DtaColumn && got[c] isa DtaColumn && @test codes_of(got[c]) == codes_of(t[c])[rows]
+            @test isequal(collect(got[!, c]), collect(t[!, c])[rows])
+            @test codes_of(got[!, c]) == codes_of(t[!, c])[rows]
+            # A DtaColumn exactly when the window holds a letter.
+            @test (got[!, c] isa DtaColumn) == any(>(0x01), codes_of(t[!, c])[rows])
         end
     end
     first2 = Symbol.(names(t))[[2, 1]]
@@ -247,40 +280,54 @@ end
     r = round_trip(big; row_group_size = 1000)
     @test isequal(collect(r.distinct), big.distinct) && isequal(collect(r.few), big.few) && r.mixed == big.mixed
     p = tempname() * ".parquet"
-    write_parquet(p, big; row_group_size = 1000)
+    save_parquet(p, big; row_group_size = 1000)
     w = read_parquet(p; skip = 12_345, n_max = 2_500)
     @test isequal(collect(w.few), big.few[12_346:14_845]) && w.distinct == big.distinct[12_346:14_845]
     rm(p)
 end
 
-@testset "read_meta describes .dta and Parquet files" begin
+@testset "read_parquet_info describes a Parquet file" begin
     t = (id = Int32[1, 2, 3], smoker = DtaColumn(Int8[1, 0, 0], UInt8[0, 0, 5]), day = Date(2024) .+ Day.(0:2),
          region = categorical(["a", "b", "a"]), when = [DateTime(2024), missing, DateTime(2025)])
     p = tempname() * ".parquet"
-    write_parquet(p, t; label = "Survey", notes = ["A note"], row_group_size = 2,
-                  value_labels = Dict("yn" => Dict(0 => "No", 1 => "Yes")), column_labels = Dict(:smoker => "Smokes"),
-                  column_value_labels = Dict(:smoker => "yn"))
-    m = read_meta(p)
-    @test m["format"] === :parquet
+    save_parquet(p, t; label = "Survey", notes = ["A note"], row_group_size = 2,
+                 value_labels = Dict("yn" => Dict(0 => "No", 1 => "Yes")), column_labels = Dict(:smoker => "Smokes"),
+                 column_value_labels = Dict(:smoker => "yn"))
+    m = read_parquet_info(p)
+    @test !haskey(m, "format")
     @test m["nrows"] == 3
     @test [g.rows for g in m["row_groups"]] == [2, 1]
     @test all(g -> g.compressed_bytes > 0, m["row_groups"])
     @test startswith(m["created_by"], "dta-parquet")
     @test m["compression"] == ["snappy"]
     @test m["label"] == "Survey" && m["notes"] == ["A note"]
+    @test [kv.key for kv in m["key_value"]] == ["dta", "ARROW:schema"]
+    @test occursin("\"Smokes\"", only(kv.value for kv in m["key_value"] if kv.key == "dta"))
     cols = m["columns"]
-    @test [c["name"] for c in cols] == ["id", "smoker", "day", "region", "when"]
-    @test [c["role"] for c in cols] == fill("data", 5)
-    @test [c["physical_type"] for c in cols] == ["INT32", "DOUBLE", "INT32", "BYTE_ARRAY", "INT64"]
-    @test [c["logical_type"] for c in cols] == ["", "", "DATE", "STRING", "TIMESTAMP(MILLIS, local)"]
-    @test [c["eltype"] for c in cols] == [Int32, Union{Missing,Int8}, Date, CategoricalValue{String,UInt32},
-                                          Union{Missing,DateTime}]
-    @test cols[2]["label"] == "Smokes" && cols[2]["value_labels"] == "yn" && cols[2]["storage"] == "byte"
-    @test read_meta(read(p))["columns"] == cols
-    @test open(read_meta, p)["nrows"] == 3
-    d = read_meta(fixture("haven_118.dta"))
-    @test d["format"] === :dta && d["nrows"] == DataAPI.nrow(read_dta(fixture("haven_118.dta")))
-    @test read_meta(read(fixture("haven_118.dta")))["nrows"] == d["nrows"]
+    @test cols isa DataFrame
+    @test names(cols) == ["name", "role", "physical_type", "logical_type", "eltype", "label", "format", "value_labels",
+                          "storage"]
+    @test cols.name == ["id", "smoker", "day", "region", "when"]
+    @test cols.role == fill("data", 5)
+    @test cols.physical_type == ["INT32", "DOUBLE", "INT32", "BYTE_ARRAY", "INT64"]
+    @test cols.logical_type == ["", "", "DATE", "STRING", "TIMESTAMP(MILLIS, local)"]
+    @test cols.eltype == [Int32, Union{Missing,Int8}, Date, CategoricalValue{String,UInt32}, Union{Missing,DateTime}]
+    @test cols.label[2] == "Smokes" && cols.value_labels[2] == "yn" && cols.storage[2] == "byte"
+    @test isequal(read_parquet_info(read(p))["columns"], cols)
+    @test open(read_parquet_info, p)["nrows"] == 3
+    # The table metadata a whole-file read gives.
+    r = read_parquet(p)
+    for key in ("label", "notes", "characteristics", "sorted_by", "value_labels", "timestamp")
+        @test isequal(m[key], metadata(r, key))
+    end
+    # A file from another tool: its key-value entries, no profile.
+    other = read_parquet_info(joinpath(PQ_DIR, "fixtures", "pyarrow_default.parquet"))
+    @test [kv.key for kv in other["key_value"]] == ["ARROW:schema"]
+    @test other["label"] == "" && isempty(other["value_labels"])
+    # DtaParser 0.3 reads .dta only, and says where Parquet went.
+    err = try read_meta(p) catch e e end
+    @test err isa ArgumentError && occursin("read_parquet_info", err.msg)
+    @test_throws ArgumentError read_meta(read(p))
     rm(p)
 end
 
@@ -294,9 +341,9 @@ end
 
 @testset "without TimeZones and CategoricalArrays: DateTime in UTC and String, with one warning" begin
     p = tempname() * ".parquet"
-    write_parquet(p, (when = [ZonedDateTime(2024, 1, 1, 12, tz"Europe/Paris")], region = categorical(["a"])))
+    save_parquet(p, (when = [ZonedDateTime(2024, 1, 1, 12, tz"Europe/Paris")], region = categorical(["a"])))
     code = """
-        using DtaParser
+        using Datakit
         t = read_parquet(ARGS[1])
         print(typeof(t.when), " ", t.when[1], " ", typeof(t.region))
         """
@@ -315,35 +362,36 @@ end
     r = round_trip(t; missing_letters = false)
     @test codes_of(r.v) == UInt8[0, 1, 1]
     @test codes_of(r.b) == UInt8[0, 1, 0]
-    @test r.b isa DtaColumn{Int8}
+    # No letters left, so plain vectors.
+    @test r.b isa Vector{Union{Missing,Int8}} && r.v isa Vector{Union{Missing,Float64}}
 end
 
 @testset "errors name the column and say what to do" begin
     p = tempname() * ".parquet"
-    @test_throws ArgumentError write_parquet(p, (a = [1],); compression = :lzo)
-    err = try write_parquet(p, (a = [1],); compression = :zstd, compression_level = 99) catch e e end
+    @test_throws ArgumentError save_parquet(p, (a = [1],); compression = :lzo)
+    err = try save_parquet(p, (a = [1],); compression = :zstd, compression_level = 99) catch e e end
     @test occursin("zstd levels run from 1 to 22", sprint(showerror, err))
-    err = try write_parquet(p, (a = [1],); compression = :snappy, compression_level = 2) catch e e end
+    err = try save_parquet(p, (a = [1],); compression = :snappy, compression_level = 2) catch e e end
     @test occursin("snappy has no compression levels", sprint(showerror, err))
-    @test_throws ArgumentError write_parquet(p, (a = [1],); row_group_size = 0)
-    err = try write_parquet(p, (t = [Time(1)],)) catch e e end
+    @test_throws ArgumentError save_parquet(p, (a = [1],); row_group_size = 0)
+    err = try save_parquet(p, (t = [Time(1)],)) catch e e end
     @test occursin("column t: cannot write values of type Time", sprint(showerror, err))
-    err = try write_parquet(p, (z = [1 + 2im],)) catch e e end
+    err = try save_parquet(p, (z = [1 + 2im],)) catch e e end
     @test occursin("column z: cannot write", sprint(showerror, err))
-    err = try write_parquet(p, (c = categorical([1, 2]),)) catch e e end
+    err = try save_parquet(p, (c = categorical([1, 2]),)) catch e e end
     @test occursin("levels must be strings", sprint(showerror, err))
-    err = try write_parquet(p, (u = UInt64[typemax(UInt64)],)) catch e e end
+    err = try save_parquet(p, (u = UInt64[typemax(UInt64)],)) catch e e end
     @test occursin("more than a 64-bit integer holds", sprint(showerror, err))
-    err = try write_parquet(p, (b = DtaColumn(Int64[1, 0], UInt8[0, 2]),)) catch e e end
+    err = try save_parquet(p, (b = DtaColumn(Int64[1, 0], UInt8[0, 2]),)) catch e e end
     @test err isa Exception
     @test !isfile(p)
-    write_parquet(p, (v = [1.0],))
+    save_parquet(p, (v = [1.0],))
     @test_throws ArgumentError read_parquet(p; timestamps = :round)
     @test_throws ArgumentError read_parquet(p; decimal = :double)
     @test_throws ArgumentError read_parquet(p; nested = :yes)
     @test_throws ArgumentError read_parquet(p; skip = -1)
-    @test_throws DtaParser.DtaError read_parquet(UInt8[])
-    @test_throws DtaParser.DtaError read_parquet(fixture("haven_118.dta"))
+    @test_throws Datakit.Internals.DtaError read_parquet(UInt8[])
+    @test_throws Datakit.Internals.DtaError read_parquet(fixture("haven_118.dta"))
     @test_throws Exception read_parquet(tempname() * ".parquet")
     rm(p)
 end
@@ -368,11 +416,13 @@ end
     @test err isa ArgumentError && occursin("nested = :skip", err.msg) && occursin("\"tags\"", err.msg)
     err = try read_parquet(nested; cols = [:tags]) catch e e end
     @test occursin("is nested", err.msg)
-    @test "tags" in [c["name"] for c in read_meta(nested)["columns"]]
-    @test only(c["role"] for c in read_meta(nested)["columns"] if c["name"] == "tags") == "nested"
+    info = read_parquet_info(nested)["columns"]
+    @test "tags" in info.name
+    @test only(info.role[info.name .== "tags"]) == "nested"
+    @test only(info.eltype[info.name .== "tags"]) === nothing
     types = joinpath(PQ_DIR, "fixtures", "pyarrow_types.parquet")
     err = try read_parquet(types; cols = [:stamp]) catch e e end
-    @test err isa DtaParser.DtaError
+    @test err isa Datakit.Internals.DtaError
     @test occursin("read with read_parquet(\"$types\"; cols = [:stamp], timestamps = :truncate)", err.message)
     @test eltype(read_parquet(types; cols = [:t_us]).t_us) <: Union{Missing,Time}
     @test eltype(read_parquet(types; cols = [:u64]).u64) <: Union{Missing,UInt64}

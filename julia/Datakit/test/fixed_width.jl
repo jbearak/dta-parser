@@ -1,8 +1,9 @@
 # read_fixed_width reads fixed-width text through a SAS setup file (plan
-# 0009). What each value should be follows from the setup text written
-# here.
+# 0009) into a DataFrame (plan 0019). What each value should be follows
+# from the setup text written here. Moved from DtaParser's tests, which
+# checked a DtaTable; every check is kept, on the DataFrame.
 
-using DtaParser, DataAPI, Test
+using Datakit, DataFrames, DataAPI, Test
 
 const FW_SETUP = """
 /* A setup in CDC's style */
@@ -31,7 +32,17 @@ end
 @testset "read_fixed_width" begin
     dat, sas = fw_files()
     t = read_fixed_width(dat, sas)
+    @test t isa DataFrame
     @test names(t) == ["ID", "SEX", "KIDS"]
+    # read_parquet's metadata keys, style :note; not the keys of the .dta
+    # file made on the way.
+    @test issubset(["label", "notes", "characteristics", "sorted_by", "value_labels", "timestamp"],
+                   collect(metadatakeys(t)))
+    @test isempty(intersect(["release", "byte_order", "encoding"], collect(metadatakeys(t))))
+    @test all(metadata(t, k; style=true)[2] === :note for k in metadatakeys(t))
+    @test sort(collect(colmetadatakeys(t, :KIDS))) == ["format", "label", "storage", "value_labels"]
+    @test colmetadata(t, :KIDS, "label"; style=true) == ("k"^200, :note)
+    @test t.KIDS isa DtaColumn
     @test t.ID == Int8[1, 2, 3, 4, 5]
     @test codes_of(t.KIDS) == UInt8[0, 1, 1, 1, 0]
     @test DataAPI.colmetadata(t, :SEX, "label") == "R's sex"
@@ -70,7 +81,7 @@ end
     catch e
         e
     end
-    @test err isa DtaParser.DtaError
+    @test err isa Datakit.Internals.DtaError
     @test occursin("setup line 2: INPUT form not supported", sprint(showerror, err))
     @test readdir(tempdir()) == before
 end

@@ -1,12 +1,12 @@
-module DtaParserTimeZonesExt
+module DatakitTimeZonesExt
 
 # read_parquet returns timestamps with a zone as ZonedDateTime, and
-# write_parquet writes ZonedDateTime columns, when TimeZones.jl is
+# save_parquet writes ZonedDateTime columns, when TimeZones.jl is
 # loaded.
 
 using Dates
 using TimeZones
-using DtaParser: DtaParser, PqPrepared, PqColumn, W_ZONED, WriteError
+using Datakit: Datakit, PqPrepared, PqColumn, W_ZONED, WriteError, DtaError
 
 # A zone's name as the file gives it: an IANA name, or a fixed offset
 # such as "+01:00" (as Arrow writes them).
@@ -19,7 +19,7 @@ function zone(name::String)
         return FixedTimeZone(name)
     catch
     end
-    throw(DtaParser.DtaError("the time zone \"$name\" is not one TimeZones.jl knows"))
+    throw(DtaError("the time zone \"$name\" is not one TimeZones.jl knows"))
 end
 
 # DateTimes in UTC as ZonedDateTime in `name`, missing where the code is
@@ -32,7 +32,7 @@ function zoned(v::Vector{DateTime}, codes, name::String)
     Union{Missing,ZonedDateTime}[codes[i] == 0x00 ? ZonedDateTime(v[i], tz; from_utc=true) : missing for i in eachindex(v)]
 end
 
-function DtaParser.prepare_parquet(name, x::AbstractVector{<:Union{Missing,ZonedDateTime}})
+function Datakit.prepare_parquet(name, x::AbstractVector{<:Union{Missing,ZonedDateTime}})
     zones = unique(timezone(t) for t in x if !ismissing(t))
     length(zones) <= 1 ||
         throw(WriteError("column $name holds times in $(length(zones)) zones; a Parquet timestamp column has one. " *

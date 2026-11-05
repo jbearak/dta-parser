@@ -91,9 +91,24 @@ Base.copyto!(dest::DtaColumn, src::DtaColumn) = copyto!(dest, 1, src, 1, length(
 # Views of a DtaColumn, as `view` and some DataFrames operations make.
 const DtaView = SubArray{<:Any,1,<:DtaColumn}
 Base.copy(v::DtaView) = parent(v)[parentindices(v)[1]]
+# As Base's copyto!: `dest` may be longer than `src` (DataFrames' joins
+# copy the matched rows first, then the unmatched ones at an offset).
 function Base.copyto!(dest::DtaColumn, src::DtaView)
-    length(dest) == length(src) || throw(DimensionMismatch("lengths differ"))
-    dest[eachindex(dest)] = copy(src)
+    length(src) <= length(dest) || throw(ArgumentError("destination has fewer elements than required"))
+    copyto!(dest, 1, src, 1, length(src))
+end
+function Base.copyto!(dest::DtaColumn, doffs::Integer, src::DtaView, soffs::Integer, n::Integer)
+    n == 0 && return dest
+    n > 0 || throw(ArgumentError("tried to copy n=$n elements, but n should be nonnegative"))
+    checkbounds(dest, doffs:doffs+n-1)
+    checkbounds(src, soffs:soffs+n-1)
+    p, ix = parent(src), parentindices(src)[1]
+    @inbounds for k in 0:n-1
+        i = ix[soffs+k]
+        dest.values[doffs+k] = p.values[i]
+        dest.codes[doffs+k] = p.codes[i]
+    end
+    dest
 end
 
 function Base.vcat(a::DtaColumn, rest::DtaColumn...)

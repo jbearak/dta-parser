@@ -149,7 +149,7 @@ function metadata_of(doc)
     names, meta, colmeta
 end
 
-# A .dta file's metadata, for read_meta (in parquet_write.jl).
+# A .dta file's metadata, for read_meta.
 function dta_meta(path::AbstractString; encoding=nothing)
     doc = with_file(f -> parse_json(meta_json(f)), path, encoding)
     names, meta, colmeta = metadata_of(doc)
@@ -157,6 +157,56 @@ function dta_meta(path::AbstractString; encoding=nothing)
     meta["format"] = :dta
     meta["columns"] = [(c = colmeta[n]; c["name"] = String(n); c) for n in names]
     meta
+end
+
+# Whether `source` starts with Parquet's magic number. An IO is put back
+# where it was.
+function is_parquet(source)
+    if source isa AbstractString
+        return isfile(source) && open(io -> read(io, 4), source) == PAR1
+    elseif source isa AbstractVector{UInt8}
+        return length(source) >= 4 && source[1:4] == PAR1
+    elseif source isa IO
+        at = position(source)
+        head = read(source, 4)
+        seek(source, at)
+        return head == PAR1
+    end
+    false
+end
+
+"""
+    read_meta(source; encoding=nothing) -> Dict{String,Any}
+
+A `.dta` file's metadata without its data. `source` is a path, an `IO`
+or a `Vector{UInt8}`.
+
+The table metadata [`DtaTable`](@ref) lists (`"label"`, `"notes"`,
+`"value_labels"`, ...), `"nrows"`, `"format"` (`:dta`), and
+`"columns"`, one `Dict` per column with `"name"` and its column
+metadata (`"label"`, `"format"`, `"storage"`, `"value_labels"`).
+`encoding` is for files before release 118, as in [`read_dta`](@ref).
+
+A Parquet file is an `ArgumentError`: since DtaParser 0.3, Parquet is
+Datakit's (`read_parquet_info`); see docs/migration.md, "DtaParser 0.2
+to 0.3".
+"""
+function read_meta(source; encoding=nothing)
+    is_parquet(source) &&
+        throw(ArgumentError("this is a Parquet file; DtaParser reads .dta files only since 0.3. " *
+                            "Use Datakit: `using Datakit; read_parquet_info(source)`"))
+    source isa AbstractString && return dta_meta(source; encoding)
+    source isa Union{IO,AbstractVector{UInt8}} ||
+        throw(ArgumentError("source must be a path, an IO or a Vector{UInt8}, not $(typeof(source))"))
+    bytes = source isa IO ? read(source) : Vector{UInt8}(source)
+    path, io = mktemp()
+    try
+        write(io, bytes)
+        close(io)
+        dta_meta(path; encoding)
+    finally
+        rm(path; force=true)
+    end
 end
 
 """

@@ -1,20 +1,8 @@
-# Writing Parquet files (plan 0018): each column becomes a PqColumn
+# Writing Parquet files (plans 0018 and 0019): each column becomes a PqColumn
 # pointing at Julia arrays (the column's own where its layout allows,
 # such as a Vector{Float64} or a Vector{Date}, a converted copy
 # otherwise), and one library call writes the file while GC.@preserve
 # keeps them alive.
-
-# Must match dta_pq_column in dta.h.
-struct PqColumn
-    kind::UInt32
-    values::Ptr{Cvoid}
-    codes::Ptr{UInt8}
-    bytes::Ptr{UInt8}
-    offsets::Ptr{UInt64}
-end
-
-const W_INT8, W_INT16, W_INT32, W_INT64, W_FLOAT, W_DOUBLE, W_BOOL, W_DATE, W_DATETIME, W_ZONED, W_TEXT, W_BINARY,
-      W_CATEGORICAL = UInt32.(1:13)
 
 const W_KIND = Dict{DataType,UInt32}(Int8 => W_INT8, Int16 => W_INT16, Int32 => W_INT32, Int64 => W_INT64,
                                      Float32 => W_FLOAT, Float64 => W_DOUBLE, Bool => W_BOOL)
@@ -59,9 +47,9 @@ end
 numbers_kind(::Type{T}) where {T} = W_KIND[T]
 
 """
-    DtaParser.prepare_parquet(name, x) -> PqPrepared
+    Datakit.prepare_parquet(name, x) -> PqPrepared
 
-How `write_parquet` writes column `x`; the package's extensions add
+How `save_parquet` writes column `x`; the package's extensions add
 methods for `CategoricalArray` and `ZonedDateTime` vectors. Internal.
 """
 function prepare_parquet(name, x::DtaColumn{T}) where {T}
@@ -153,15 +141,15 @@ end
 const COMPRESSIONS = (:snappy, :zstd, :gzip, :lz4_raw, :none)
 
 """
-    write_parquet(path_or_io, table; label, notes, compression=:snappy, compression_level=nothing,
-                  row_group_size=nothing, missing_letters=true, value_labels, column_labels,
-                  column_formats, column_value_labels)
+    save_parquet(path_or_io, table; label, notes, compression=:snappy, compression_level=nothing,
+                 row_group_size=nothing, missing_letters=true, value_labels, column_labels,
+                 column_formats, column_value_labels)
 
 Write any Tables.jl table as a Parquet file that keeps its labels and
 `.a` to `.z`, and return `path_or_io`. Every Parquet tool reads the
 file; labels, formats, notes, value labels, factor levels and zones go
 into the file's dta profile, which our readers read back. See
-docs/julia.md, "Parquet files".
+docs/julia.md, "Write a Parquet file".
 
 Columns map to Parquet types:
 
@@ -185,11 +173,12 @@ Columns map to Parquet types:
 Anything else is an error naming the column.
 
 Metadata comes from the table through DataAPI when it has any (a
-[`DtaTable`](@ref), or a DataFrame made from one): the table's
+DataFrame from [`read_parquet`](@ref), `read_fixed_width` or
+`DataFrame(read_dta(f))`, or a `DtaTable`): the table's
 `"label"`, `"notes"`, `"timestamp"`, `"characteristics"`, `"sorted_by"`
 and `"value_labels"`, and each column's `"label"`, `"format"` and
-`"value_labels"`. The keyword arguments override it, as for
-[`write_dta`](@ref).
+`"value_labels"`. The keyword arguments override it, as for DtaParser's
+`write_dta`.
 
 - `compression`: `:snappy` (default), `:zstd`, `:gzip`, `:lz4_raw` or
   `:none`; `compression_level` for zstd (1 to 22) and gzip (0 to 9).
@@ -199,11 +188,11 @@ and `"value_labels"`, and each column's `"label"`, `"format"` and
   nulls, for tools that count NaN as a value (DuckDB, polars, Spark);
   the letters are then lost.
 """
-function write_parquet(dest, @nospecialize(table); label=nothing, notes=nothing, compression=:snappy,
-                       compression_level=nothing, row_group_size=nothing, missing_letters::Bool=true,
-                       value_labels=nothing, column_labels=nothing, column_formats=nothing, column_value_labels=nothing)
-    Tables.istable(table) || throw(ArgumentError("write_parquet needs a Tables.jl table"))
-    dest isa Union{AbstractString,IO} || throw(ArgumentError("write_parquet writes to a path or an IO, not $(typeof(dest))"))
+function save_parquet(dest, @nospecialize(table); label=nothing, notes=nothing, compression=:snappy,
+                      compression_level=nothing, row_group_size=nothing, missing_letters::Bool=true,
+                      value_labels=nothing, column_labels=nothing, column_formats=nothing, column_value_labels=nothing)
+    Tables.istable(table) || throw(ArgumentError("save_parquet needs a Tables.jl table"))
+    dest isa Union{AbstractString,IO} || throw(ArgumentError("save_parquet writes to a path or an IO, not $(typeof(dest))"))
     codec = Symbol(lowercase(string(compression)))
     codec in COMPRESSIONS ||
         throw(ArgumentError("compression must be :snappy, :zstd, :gzip, :lz4_raw or :none, not $(repr(compression))"))
@@ -259,76 +248,9 @@ function write_parquet(dest, @nospecialize(table); label=nothing, notes=nothing,
 
     ccols = PqColumn[p.col for p in prepared]
     keep = [p.keep for p in prepared]
-    err = zeros(UInt8, ERR_LEN)
-    out = Ref{Ptr{UInt8}}(C_NULL)
-    out_len = Ref{Csize_t}(0)
-    path = dest isa AbstractString ? String(dest) : nothing
-    level = compression_level === nothing ? 0 : Int(compression_level)
-    rows = row_group_size === nothing ? 0 : Int(row_group_size)
-    meta = json(doc)
-    rc = GC.@preserve keep ccols begin
-        if path === nothing
-            ccall(fn(:dta_pq_write), Cint,
-                  (Ptr{UInt8}, UInt64, Ptr{PqColumn}, Csize_t, Cstring, Cstring, Cint, Cint, UInt64, Cint,
-                   Ref{Ptr{UInt8}}, Ref{Csize_t}, Ptr{UInt8}, Csize_t),
-                  C_NULL, nrows, ccols, length(ccols), meta, String(codec), level, compression_level !== nothing,
-                  rows, missing_letters, out, out_len, err, ERR_LEN)
-        else
-            ccall(fn(:dta_pq_write), Cint,
-                  (Cstring, UInt64, Ptr{PqColumn}, Csize_t, Cstring, Cstring, Cint, Cint, UInt64, Cint,
-                   Ref{Ptr{UInt8}}, Ref{Csize_t}, Ptr{UInt8}, Csize_t),
-                  path, nrows, ccols, length(ccols), meta, String(codec), level, compression_level !== nothing,
-                  rows, missing_letters, out, out_len, err, ERR_LEN)
-        end
-    end
-    rc == 0 || throw(WriteError(error_text(err)))
-    if path === nothing
-        try
-            unsafe_write(dest, out[], out_len[])
-        finally
-            ccall(fn(:dta_pq_bytes_free), Cvoid, (Ptr{UInt8}, Csize_t), out[], out_len[])
-        end
-    end
+    target = dest isa AbstractString ? String(dest) : dest
+    GC.@preserve keep ccols pq_write(target, nrows, ccols, json(doc); codec=String(codec), level=compression_level,
+                                     rows=row_group_size === nothing ? 0 : Int(row_group_size),
+                                     missing_letters=missing_letters)
     dest
-end
-
-# ---------------------------------------------------------------- read_meta
-
-"""
-    read_meta(source; encoding=nothing) -> Dict{String,Any}
-
-A `.dta` or Parquet file's metadata without its data; which it is comes
-from the file's first bytes. `source` is a path, an `IO` or a
-`Vector{UInt8}`.
-
-For both: the table metadata [`DtaTable`](@ref) lists (`"label"`,
-`"notes"`, `"value_labels"`, ...), `"nrows"`, `"format"` (`:dta` or
-`:parquet`), and `"columns"`, one `Dict` per column with `"name"` and
-its column metadata (`"label"`, `"format"`, `"storage"`,
-`"value_labels"`).
-
-For Parquet also `"row_groups"` (`(rows, compressed_bytes,
-uncompressed_bytes)` of each), `"compression"` (the codecs used),
-`"created_by"`, `"warnings"` (about a damaged dta profile), and per
-column `"role"` (`"data"` or `"nested"`), `"physical_type"`,
-`"logical_type"` and `"eltype"`, the element type [`read_parquet`](@ref)
-gives the column (with `Missing` when the file's statistics show nulls;
-`nothing` for a column it does not read). A text column's `"storage"`
-is `""` until it is read.
-
-`encoding` is for `.dta` files before release 118, as in
-[`read_dta`](@ref).
-"""
-function read_meta(source; encoding=nothing)
-    is_parquet(source) && return parquet_meta(source)
-    source isa AbstractString && return dta_meta(source; encoding)
-    bytes = source isa IO ? read(source) : Vector{UInt8}(source)
-    path, io = mktemp()
-    try
-        write(io, bytes)
-        close(io)
-        dta_meta(path; encoding)
-    finally
-        rm(path; force=true)
-    end
 end

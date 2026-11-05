@@ -1,8 +1,19 @@
 module DtaParserDataFramesExt
 
 using DataFrames
-using DtaParser: DtaParser, DtaTable, read_dta, read_parquet, write_dta, write_parquet
+using DtaParser: DtaParser, DtaTable, DtaColumn, read_dta, write_dta
 import DataAPI, Tables
+
+# sort!, permute! and invpermute! of a DataFrame move each column's
+# elements one at a time, through this internal function of DataFrames;
+# element by element, a letter would become `.`. Move the codes too.
+if isdefined(DataFrames, :_cycle_permute!)
+    function DataFrames._cycle_permute!(v::DtaColumn, p::AbstractVector{<:Integer})
+        DataFrames._cycle_permute!(v.values, p)
+        DataFrames._cycle_permute!(v.codes, p)
+        v
+    end
+end
 
 """
     DataFrame(t::DtaTable; copycols=true)
@@ -32,11 +43,9 @@ end
 # so that the cache keeps it, DtaParser's methods included.)
 function workload()
     DtaParser.workload()
-    path = tempname() * ".parquet"
+    path = tempname() * ".dta"
     try
         df = DataFrame((x=[1.5, 2.0], s=["a", "b"], i=Int8[1, 2]))
-        write_parquet(path, df)
-        DataFrame(read_parquet(path))
         write_dta(path, df)
         DataFrame(read_dta(path))
     finally
