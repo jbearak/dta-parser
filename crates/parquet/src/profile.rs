@@ -200,6 +200,15 @@ impl Profile {
     /// not JSON, is too large or is not an object; otherwise the profile
     /// and a warning for each entry dropped.
     pub fn parse(text: &[u8]) -> (Option<Profile>, Vec<String>) {
+        Self::parse_some(text, None)
+    }
+
+    /// [`parse`](Self::parse), keeping only the entries of the columns
+    /// named in `columns` (all when `None`) and the value-label sets
+    /// they name. The rest of `columns` and `value_labels` is passed over
+    /// unparsed, so damage there gives no warning: a read of five
+    /// columns of a file with a large profile does not pay for all of it.
+    pub fn parse_some(text: &[u8], columns: Option<&[&str]>) -> (Option<Profile>, Vec<String>) {
         let mut warnings = Vec::new();
         if text.len() > MAX_BYTES {
             warnings.push(format!(
@@ -209,7 +218,15 @@ impl Profile {
             ));
             return (None, warnings);
         }
-        let members = match json::parse(text) {
+        let keep: Option<std::collections::HashSet<&str>> =
+            columns.map(|c| c.iter().copied().collect());
+        let parsed = match &keep {
+            None => json::parse(text),
+            Some(keep) => json::parse_skipping(text, &|member, key| {
+                (member == "columns" && !keep.contains(key)) || member == "value_labels"
+            }),
+        };
+        let members = match parsed {
             Ok(Value::Object(m)) => m,
             Ok(other) => {
                 warnings.push(format!(
@@ -231,6 +248,7 @@ impl Profile {
         };
         let mut warn = |w: String| warnings.push(w);
         let mut seen_version = false;
+        let mut sets = None;
         for (key, value) in unique(&members, "", &mut warn) {
             match key {
                 "version" => {
@@ -288,6 +306,9 @@ impl Profile {
                 "columns" => match value {
                     Value::Object(cols) => {
                         for (name, entry) in unique(cols, "columns.", &mut warn) {
+                            if matches!(entry, Value::Skipped(_)) {
+                                continue;
+                            }
                             if let Some(c) = column(name, entry, &mut warn) {
                                 p.columns.push(c);
                             }
@@ -295,18 +316,42 @@ impl Profile {
                     }
                     _ => warn(dropped("columns", "is not an object")),
                 },
-                "value_labels" => match value {
-                    Value::Object(sets) => {
-                        for (name, entry) in unique(sets, "value_labels.", &mut warn) {
-                            match label_set(name, entry) {
-                                Ok(set) => p.value_labels.push(set),
-                                Err(why) => warn(dropped(&format!("value_labels.{name}"), &why)),
-                            }
+                // After the columns, which say which sets are wanted.
+                "value_labels" => sets = Some(value),
+                _ => {}
+            }
+        }
+        if let Some(value) = sets {
+            let wanted: Option<std::collections::HashSet<&str>> = keep.as_ref().map(|_| {
+                p.columns.iter().filter_map(|c| c.value_labels.as_deref()).collect()
+            });
+            match value {
+                Value::Object(sets) => {
+                    for (name, entry) in unique(sets, "value_labels.", &mut warn) {
+                        if wanted.as_ref().is_some_and(|w| !w.contains(name)) {
+                            continue;
+                        }
+                        let whole;
+                        let entry = match entry {
+                            Value::Skipped(raw) => match json::parse(raw.as_bytes()) {
+                                Ok(v) => {
+                                    whole = v;
+                                    &whole
+                                }
+                                Err(e) => {
+                                    warn(dropped(&format!("value_labels.{name}"), &format!("is not JSON ({e})")));
+                                    continue;
+                                }
+                            },
+                            entry => entry,
+                        };
+                        match label_set(name, entry) {
+                            Ok(set) => p.value_labels.push(set),
+                            Err(why) => warn(dropped(&format!("value_labels.{name}"), &why)),
                         }
                     }
-                    _ => warn(dropped("value_labels", "is not an object")),
-                },
-                _ => {}
+                }
+                _ => warn(dropped("value_labels", "is not an object")),
             }
         }
         if !seen_version {
@@ -863,6 +908,40 @@ mod tests {
             text.contains(r#""agelbl":[[97,"Refused"],[".d","Don't know"],[-1.5,"half"]]"#),
             "{text}"
         );
+    }
+
+    #[test]
+    fn a_selection_reads_only_its_entries_and_sets() {
+        let mut p = full();
+        p.columns.push(ColumnProfile {
+            name: "other".into(),
+            value_labels: Some("otherlbl".into()),
+            ..Default::default()
+        });
+        p.value_labels.push(ValueLabelSet {
+            name: "otherlbl".into(),
+            labels: vec![ValueLabel { value: 1.0, missing: 0, text: "one".into() }],
+        });
+        let text = p.to_json().unwrap();
+        for keep in [&["age", "seen"][..], &["other"], &["region", "nothing"], &[]] {
+            let (some, w) = Profile::parse_some(text.as_bytes(), Some(keep));
+            assert!(w.is_empty(), "{w:?}");
+            let mut want = p.clone();
+            want.columns.retain(|c| keep.contains(&c.name.as_str()));
+            let sets: Vec<&str> = want.columns.iter().filter_map(|c| c.value_labels.as_deref()).collect();
+            want.value_labels.retain(|s| sets.contains(&s.name.as_str()));
+            same(&some.unwrap(), &want);
+        }
+        // Damage outside the selection is passed over; inside it, it is
+        // the warning a whole parse gives.
+        let damaged = text.replace(r#""otherlbl":[[1,"one"]]"#, r#""otherlbl":[[1,"one"],[1]]"#);
+        let (_, w) = Profile::parse_some(damaged.as_bytes(), Some(&["age"]));
+        assert!(w.is_empty(), "{w:?}");
+        let (_, whole) = Profile::parse(damaged.as_bytes());
+        let (_, some) = Profile::parse_some(damaged.as_bytes(), Some(&["other"]));
+        // The set, and the column's reference to it.
+        assert_eq!(whole.len(), 2, "{whole:?}");
+        assert_eq!(some, whole);
     }
 
     #[test]

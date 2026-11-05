@@ -248,18 +248,29 @@ fn with_reader<T>(
     options: ReadOptions,
     f: &mut dyn FnMut(&mut dyn Access) -> PyResult<T>,
 ) -> PyResult<T> {
+    with_reader_for(source, options, None, f)
+}
+
+/// [`with_reader`], reading only the profile entries of the columns in
+/// `selected` (all when `None`).
+fn with_reader_for<T>(
+    source: &Bound<'_, PyAny>,
+    options: ReadOptions,
+    selected: Option<&[&str]>,
+    f: &mut dyn FnMut(&mut dyn Access) -> PyResult<T>,
+) -> PyResult<T> {
     match input(source)? {
         Input::Path(p) => {
             let src = ReadAhead::open(&p).map_err(|e| fail(format!("{p}: {e}")))?;
-            let mut r = Reader::open(src, options).map_err(|e| fail(format!("{p}: {e}")))?;
+            let mut r = Reader::open_for(src, options, selected).map_err(|e| fail(format!("{p}: {e}")))?;
             f(&mut r).map_err(|e| prefix(e, &p, source.py()))
         }
         Input::Bytes(b) => {
-            let mut r = Reader::open(Bytes(b), options).map_err(fail)?;
+            let mut r = Reader::open_for(Bytes(b), options, selected).map_err(fail)?;
             f(&mut r)
         }
         Input::File(obj) => {
-            let mut r = Reader::open(PyFile::new(obj)?, options).map_err(fail)?;
+            let mut r = Reader::open_for(PyFile::new(obj)?, options, selected).map_err(fail)?;
             f(&mut r)
         }
     }
@@ -945,7 +956,14 @@ pub fn parquet_read<'py>(
         nested: if nested_skip { Nested::Skip } else { Nested::Error },
         ..ReadOptions::default()
     };
-    with_reader(source, options, &mut |r| read_into(py, r, columns.as_deref(), skip, n_max, nested_skip, alloc, arrow_text))
+    // Columns chosen by name: read only their entries of the profile,
+    // which for a survey file is mostly value labels of other columns.
+    let names: Option<Vec<String>> =
+        columns.as_ref().and_then(|c| c.iter().map(|w| w.extract::<String>().ok()).collect());
+    let names: Option<Vec<&str>> = names.as_ref().map(|n| n.iter().map(String::as_str).collect());
+    with_reader_for(source, options, names.as_deref(), &mut |r| {
+        read_into(py, r, columns.as_deref(), skip, n_max, nested_skip, alloc, arrow_text)
+    })
 }
 
 /// The columns asked for, as indices into the reader's columns.

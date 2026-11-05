@@ -345,7 +345,15 @@ impl<S: Source> Reader<S> {
     /// Open a file: check its magic numbers and read its footer, schema
     /// and profile. Damage in the profile is a warning
     /// ([`Reader::warnings`]), never an error.
-    pub fn open(mut source: S, options: ReadOptions) -> Result<Self> {
+    pub fn open(source: S, options: ReadOptions) -> Result<Self> {
+        Self::open_for(source, options, None)
+    }
+
+    /// [`open`](Self::open), reading only the profile entries of the
+    /// columns named in `columns` and the value-label sets they name
+    /// ([`Profile::parse_some`]); the other columns read as if the
+    /// profile said nothing of them.
+    pub fn open_for(mut source: S, options: ReadOptions, selected: Option<&[&str]>) -> Result<Self> {
         let len = source.len();
         if len < 12 {
             return Err(Error::new(
@@ -410,7 +418,7 @@ impl<S: Source> Reader<S> {
             .and_then(|kv| kv.value.as_ref())
         {
             Some(text) => {
-                let (p, w) = Profile::parse(text);
+                let (p, w) = Profile::parse_some(text, selected);
                 warnings.extend(w);
                 p
             }

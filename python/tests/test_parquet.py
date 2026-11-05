@@ -378,6 +378,39 @@ def test_damaged_profile_is_a_warning(tmp_path):
     assert back.attrs["dta"]["label"] == ""
 
 
+def test_a_selection_by_name_reads_only_its_profile_entries(tmp_path):
+    pq = pytest.importorskip("pyarrow.parquet")
+    df = labelled()
+    df.attrs["dta"]["columns"]["i"]["value_labels"] = "other"
+    df.attrs["dta"]["value_labels"]["other"] = {1: "one"}
+    raw = dp.write_parquet(df)
+    whole = dp.read_parquet(raw)
+    for cols in (["b", "s"], ["i"], ["small"]):
+        part = dp.read_parquet(raw, columns=cols)
+        want = whole.attrs["dta"]
+        got = part.attrs["dta"]
+        assert got["columns"] == {c: want["columns"][c] for c in cols}
+        named = {want["columns"][c]["value_labels"] for c in cols} - {""}
+        assert set(got["value_labels"]) == named
+        for name in named:
+            assert got["value_labels"][name] == want["value_labels"][name]
+    # A damaged set that no selected column names is passed over.
+    table = pq.read_table(io.BytesIO(raw))
+    meta = dict(pq.ParquetFile(io.BytesIO(raw)).metadata.metadata)
+    profile = json.loads(meta[b"dta"])
+    profile["value_labels"]["other"].append([2])
+    meta[b"dta"] = json.dumps(profile).encode()
+    pq.write_table(table.replace_schema_metadata(meta), tmp_path / "edited.parquet")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        dp.read_parquet(tmp_path / "edited.parquet", columns=["b"])
+    # Selected, it is dropped, and so is the column's reference to it.
+    with pytest.warns(UserWarning) as got:
+        dp.read_parquet(tmp_path / "edited.parquet", columns=["i"])
+    assert [str(w.message).split(" from")[0] for w in got] == [
+        'dropped "value_labels.other"', 'dropped "columns.i.value_labels"']
+
+
 def test_not_parquet():
     with pytest.raises(ValueError, match="not a Parquet file"):
         dp.read_parquet(b"PAR1 but not really a file at all PAR1x")

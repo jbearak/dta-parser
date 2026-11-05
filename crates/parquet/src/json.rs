@@ -21,6 +21,9 @@ pub(crate) enum Value<'a> {
     String(Text<'a>),
     Array(Vec<Value<'a>>),
     Object(Vec<(Text<'a>, Value<'a>)>),
+    /// A value [`parse_skipping`] passed over: its text, unparsed and
+    /// only checked to be balanced.
+    Skipped(&'a str),
 }
 
 impl Value<'_> {
@@ -32,6 +35,7 @@ impl Value<'_> {
             Value::String(_) => "text",
             Value::Array(_) => "an array",
             Value::Object(_) => "an object",
+            Value::Skipped(_) => "skipped",
         }
     }
 }
@@ -55,6 +59,73 @@ pub(crate) fn parse(text: &[u8]) -> Result<Value<'_>, String> {
         at: 0,
     };
     let v = p.value(0)?;
+    p.space();
+    if p.at != p.s.len() {
+        return Err(p.fail("text after the JSON value"));
+    }
+    Ok(v)
+}
+
+/// Parse a whole JSON text, passing over the members of the top-level
+/// object's object members for which `skip(member, key)` says so: each
+/// is a [`Value::Skipped`] holding its text, to parse later if needed.
+/// Scanning past a value costs a fraction of building it.
+pub(crate) fn parse_skipping<'t>(
+    text: &'t [u8],
+    skip: &dyn Fn(&str, &str) -> bool,
+) -> Result<Value<'t>, String> {
+    let text = std::str::from_utf8(text)
+        .map_err(|e| format!("text is not UTF-8 at byte {}", e.valid_up_to()))?;
+    let mut p = Parser {
+        s: text.as_bytes(),
+        text,
+        at: 0,
+    };
+    let v = if p.eat(b'{') {
+        let mut members = Vec::new();
+        if !p.eat(b'}') {
+            loop {
+                p.space();
+                let key = p.string()?;
+                if !p.eat(b':') {
+                    return Err(p.fail("expected :"));
+                }
+                let value = if p.eat(b'{') {
+                    let mut inner = Vec::new();
+                    if !p.eat(b'}') {
+                        loop {
+                            p.space();
+                            let k = p.string()?;
+                            if !p.eat(b':') {
+                                return Err(p.fail("expected :"));
+                            }
+                            let v = if skip(&key, &k) { p.skip()? } else { p.value(2)? };
+                            inner.push((k, v));
+                            if p.eat(b'}') {
+                                break;
+                            }
+                            if !p.eat(b',') {
+                                return Err(p.fail("expected , or }"));
+                            }
+                        }
+                    }
+                    Value::Object(inner)
+                } else {
+                    p.value(1)?
+                };
+                members.push((key, value));
+                if p.eat(b'}') {
+                    break;
+                }
+                if !p.eat(b',') {
+                    return Err(p.fail("expected , or }"));
+                }
+            }
+        }
+        Value::Object(members)
+    } else {
+        p.value(0)?
+    };
     p.space();
     if p.at != p.s.len() {
         return Err(p.fail("text after the JSON value"));
@@ -152,6 +223,61 @@ impl<'a> Parser<'a> {
             Some(b'-' | b'0'..=b'9') => self.number(),
             _ => Err(self.fail("expected a JSON value")),
         }
+    }
+
+    /// Pass over one value, to the comma or bracket after it: strings
+    /// to their closing quote, arrays and objects to their matching
+    /// bracket. Parsing its text later finds any other damage.
+    fn skip(&mut self) -> Result<Value<'a>, String> {
+        self.space();
+        let start = self.at;
+        let mut open = Vec::new();
+        loop {
+            let Some(&b) = self.s.get(self.at) else {
+                return Err(self.fail("unterminated JSON value"));
+            };
+            match b {
+                b'"' => {
+                    self.at += 1;
+                    loop {
+                        let run = self.s[self.at..]
+                            .iter()
+                            .position(|&b| b == b'"' || b == b'\\');
+                        let Some(n) = run else {
+                            return Err(self.fail("unterminated string"));
+                        };
+                        self.at += n + 1;
+                        if self.s[self.at - 1] == b'"' {
+                            break;
+                        }
+                        // After a backslash, pass over the character it
+                        // escapes.
+                        self.at += 1;
+                    }
+                }
+                b'[' | b'{' => {
+                    if open.len() >= 128 {
+                        return Err(self.fail("JSON nested too deeply"));
+                    }
+                    open.push(if b == b'[' { b']' } else { b'}' });
+                    self.at += 1;
+                }
+                b']' | b'}' if open.is_empty() => break,
+                b']' | b'}' => {
+                    if open.pop() != Some(b) {
+                        return Err(self.fail("unbalanced brackets"));
+                    }
+                    self.at += 1;
+                }
+                b',' if open.is_empty() => break,
+                _ => self.at += 1,
+            }
+        }
+        let raw = self.text[start..self.at].trim_end();
+        if raw.is_empty() {
+            return Err(self.fail("expected a JSON value"));
+        }
+        Ok(Value::Skipped(raw))
     }
 
     fn number(&mut self) -> Result<Value<'a>, String> {
@@ -333,6 +459,26 @@ mod tests {
         );
         assert_eq!(m[1].1, Value::String("x\"é😀".into()));
         assert_eq!(duplicate_key(m), Some("a"));
+    }
+
+    #[test]
+    fn skipped_members_keep_their_text() {
+        let text = br#"{"v": 1, "c": {"a": {"x": [1, "]}\"", {}]}, "b" : "t\"" , "d": -2.5e1 }, "s": {"a": 2}}"#;
+        let v = parse_skipping(text, &|m, k| m == "c" && k != "a").unwrap();
+        let Value::Object(m) = &v else { panic!() };
+        let Value::Object(c) = &m[1].1 else { panic!() };
+        assert!(matches!(c[0].1, Value::Object(_)));
+        assert_eq!(c[1].1, Value::Skipped(r#""t\"""#));
+        assert_eq!(c[2].1, Value::Skipped("-2.5e1"));
+        assert_eq!(m[2].1, parse(br#"{"a": 2}"#).unwrap());
+        // Parsing the skipped text gives what a whole parse gives.
+        let whole = parse(text).unwrap();
+        let Value::Object(w) = &whole else { panic!() };
+        let Value::Object(wc) = &w[1].1 else { panic!() };
+        assert_eq!(parse(r#""t\"""#.as_bytes()).unwrap(), wc[1].1);
+        for bad in [&br#"{"c": {"b": [1}}"#[..], br#"{"c": {"b": "x}}"#, br#"{"c": {"b": }}"#, br#"{"c": {"b": [}"#] {
+            assert!(parse_skipping(bad, &|_, _| true).is_err(), "{:?}", String::from_utf8_lossy(bad));
+        }
     }
 
     #[test]
