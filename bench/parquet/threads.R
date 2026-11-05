@@ -1,4 +1,4 @@
-# Parquet reads and writes at 1 to 12 threads (plan 0018, "Threads"), to
+# Parquet reads and writes at 1 to 16 threads (plan 0018, "Threads"), to
 # set the default by plan 0007's rule: CPU time at most 1.15 times one
 # thread's, and each thread added at least half efficient.
 #
@@ -6,17 +6,17 @@
 #
 # For each KEY, reads DATA_DIR/ours/KEY.parquet whole and five columns of
 # it, and writes what it read, with options(dtaparser.threads = n). Each
-# case runs once to warm up, then five times; the median wall and CPU
+# case runs once to warm up, then nine times; the median wall and CPU
 # (user plus system) time are kept. Run on a quiet machine.
-# THREAD_COUNTS (default 1,2,3,4,6,8,12), THREAD_RUNS (5) and
+# THREAD_COUNTS (default 1,2,3,4,6,8,12,16), THREAD_RUNS (9) and
 # THREAD_TASKS (read,five,write) narrow a run, to measure close cases
 # again.
 args <- commandArgs(trailingOnly = TRUE)
 dir <- args[[1]]; out <- args[[2]]; keys <- args[-(1:2)]
 suppressPackageStartupMessages({library(dtaparser); library(datakit)})
 env <- function(name, default) strsplit(Sys.getenv(name, default), ",", fixed = TRUE)[[1]]
-counts <- as.numeric(env("THREAD_COUNTS", "1,2,3,4,6,8,12"))
-runs <- as.integer(env("THREAD_RUNS", "5"))
+counts <- as.numeric(env("THREAD_COUNTS", "1,2,3,4,6,8,12,16"))
+runs <- as.integer(env("THREAD_RUNS", "9"))
 tasks <- env("THREAD_TASKS", "read,five,write")
 cpu <- function() { t <- proc.time(); t[["user.self"]] + t[["sys.self"]] }
 time_it <- function(f) {
