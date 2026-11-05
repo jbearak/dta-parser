@@ -301,6 +301,28 @@ fn dictionary_and_plain_fallback() {
 }
 
 #[test]
+fn nearly_all_distinct_numbers_give_up_the_dictionary_early() {
+    let n = 100_000;
+    let f64s = |name: &str, f: &dyn Fn(usize) -> f64| Col { name: name.into(), data: Data::F64((0..n).map(f).collect()), codes: vec![0; n] };
+    let cols = vec![
+        // All different: given up after the first 32,768 values.
+        f64s("distinct", &|r| r as f64 + 0.5),
+        // 20,000 values, repeated: 61% different at 32,768, and the
+        // dictionary pays over the page.
+        f64s("repeats", &|r| (r % 20_000) as f64),
+        // 92% different at 32,768: given up, though the dictionary would
+        // have paid over the whole page.
+        f64s("late", &|r| (r % 30_000) as f64),
+    ];
+    let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let dict = |k: usize| r.metadata().row_groups[0].columns[k].meta.clone().unwrap().dictionary_page_offset.is_some();
+    assert_eq!((dict(0), dict(1), dict(2)), (false, true, false));
+    check(&bytes, &cols, 0, n, serial());
+    check(&bytes, &cols, 40_000, 1000, serial());
+}
+
+#[test]
 fn statistics_are_written() {
     let cols = every_type(100);
     let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());

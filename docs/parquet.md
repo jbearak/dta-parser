@@ -269,7 +269,10 @@ write the file with `missing_letters = FALSE`.
 - **Pages** of about 1 MiB of values, data page v1, which every reader
   reads. Dictionary encoding for a column chunk while its dictionary
   stays under 1 MiB and smaller than 60% of the values it replaces;
-  past either, the rest of the chunk is PLAIN. No DELTA or
+  past either, the rest of the chunk is PLAIN. A chunk of numbers is
+  PLAIN from the start once 90% of its first 32,768 values are
+  different: such a dictionary seldom meets the 60% rule, and building
+  it was half the time to write wide.dta's random doubles. No DELTA or
   BYTE_STREAM_SPLIT encodings, which some readers cannot read.
 - **Threads: more for larger work.** Reads and writes of under 16 MB
   use one thread. Larger reads use one thread per 176 MiB of decoded

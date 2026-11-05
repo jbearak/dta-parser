@@ -27,6 +27,10 @@ use crate::rle;
 use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
 
+/// A numbers dictionary is given up once this many values of its first
+/// page are at least 90% different values.
+const DISTINCT_SAMPLE: usize = 32_768;
+
 /// The most rows a fill is asked for at once.
 pub const BLOCK: usize = 1024;
 
@@ -917,8 +921,33 @@ struct Scratch {
     page: Vec<u8>,
     packed: Vec<u8>,
     levels: Vec<u8>,
+    /// The largest numbers dictionary's table so far, empty, for the
+    /// next chunk: growing one from nothing to its limit took a third of
+    /// the time to write wide.dta.
+    numbers_map: NumbersMap,
 }
 
+type NumbersMap = HashMap<u64, u32, BuildHasherDefault<Fx>>;
+
+impl Scratch {
+    /// A table for a chunk of `rows` rows: the kept one, unless emptying
+    /// it again would cost more than the chunk's rows do.
+    fn numbers_map(&mut self, rows: usize) -> NumbersMap {
+        if self.numbers_map.capacity() <= rows.saturating_mul(4) {
+            std::mem::take(&mut self.numbers_map)
+        } else {
+            NumbersMap::default()
+        }
+    }
+
+    /// Keep a chunk's table, emptied, if it is the largest so far.
+    fn keep_numbers_map(&mut self, mut map: NumbersMap) {
+        if map.capacity() > self.numbers_map.capacity() {
+            map.clear();
+            self.numbers_map = map;
+        }
+    }
+}
 
 /// A page's place in its chunk's data pages.
 struct Page {
@@ -1170,7 +1199,10 @@ impl Encoder<'_> {
         let mut p = Pages::new(physical);
         let mut values = [T::default(); BLOCK];
         let mut codes = vec![0u8; BLOCK];
-        let mut dict: Option<Dictionary<u64, T>> = Some(Dictionary::default());
+        let mut dict: Option<Dictionary<u64, T>> = Some(Dictionary {
+            map: s.numbers_map(rows.len()),
+            ..Dictionary::default()
+        });
         let mut plain = Vec::new();
         let mut stats = Stats::<T>::default();
         let mut page_first = 0usize;
@@ -1179,6 +1211,43 @@ impl Encoder<'_> {
             let n = BLOCK.min(rows.end - first);
             codes[..n].fill(0);
             fill(first, &mut values[..n], &mut codes[..n]);
+            if let Some(d) = &dict {
+                // A first page whose values so far are nearly all
+                // different will not make a dictionary pay (60% of the
+                // plain values), so stop building one: for a column of
+                // measurements most of the write was the hashing.
+                let seen = d.indices.len();
+                if p.pages.is_empty() && seen >= DISTINCT_SAMPLE && d.values.len() * 10 >= seen * 9 {
+                    plain.clear();
+                    for &i in &d.indices {
+                        d.values[i as usize].put(&mut plain);
+                    }
+                    if let Some(d) = dict.take() {
+                        s.keep_numbers_map(d.map);
+                    }
+                }
+            }
+            // PLAIN, and the block cannot fill the page: the same as the
+            // loop below, without its checks on every value.
+            if dict.is_none()
+                && bits.is_none()
+                && plain.len() + n * T::WIDTH + (s.levels.len() + n) / 8 < self.options.page_bytes
+            {
+                plain.reserve(n * T::WIDTH);
+                for i in 0..n {
+                    let code = codes[i];
+                    if code == 0 {
+                        stats.add(values[i]);
+                        values[i].put(&mut plain);
+                    } else if code > missing::LAST {
+                        return Err(bad_code(name, first + i, code));
+                    } else {
+                        stats.nulls += 1;
+                    }
+                }
+                s.levels.extend(codes[..n].iter().map(|&c| u8::from(c == 0)));
+                continue;
+            }
             for i in 0..n {
                 let row = first + i - rows.start;
                 let code = codes[i];
@@ -1241,6 +1310,7 @@ impl Encoder<'_> {
         dict: &mut Option<Dictionary<u64, T>>,
     ) -> Result<()> {
         let Some(d) = dict.take() else { return Ok(()) };
+        s.keep_numbers_map(d.map);
         if !p.dict.is_empty() {
             return Ok(());
         }
@@ -1269,7 +1339,9 @@ impl Encoder<'_> {
                 for &i in &d.indices {
                     d.values[i as usize].put(plain);
                 }
-                *dict = None;
+                if let Some(d) = dict.take() {
+                    s.keep_numbers_map(d.map);
+                }
             } else {
                 let mut values = Vec::new();
                 d.encode_indices(&mut values);
