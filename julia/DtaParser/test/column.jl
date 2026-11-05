@@ -67,6 +67,19 @@ end
     b = sample()
     copyto!(b, 1, sample(), 3, 2)
     @test codes_of(b)[1:2] == [2, 0]
+    # From a view into a longer column, and at an offset, as DataFrames'
+    # rightjoin and outerjoin copy rows.
+    b = DtaColumn(zeros(7), zeros(UInt8, 7))
+    copyto!(b, view(sample(), [5, 3, 2]))
+    @test codes_of(b)[1:3] == [27, 2, 1]
+    copyto!(b, 5, view(sample(), [3, 4, 5]), 2, 2)
+    @test codes_of(b) == [27, 2, 1, 0, 0, 27, 0]
+    @test_throws ArgumentError copyto!(DtaColumn(zeros(1), zeros(UInt8, 1)), view(sample(), 1:2))
+    @test_throws BoundsError copyto!(b, 7, view(sample(), 1:3), 1, 2)
+    # A view of the column itself, reversed: the rows overlap.
+    c = sample()
+    copyto!(c, view(c, 5:-1:1))
+    @test codes_of(c) == reverse(codes_of(sample()))
     @test codes_of(append!(sample(), sample()[3:3])) == [0, 1, 2, 0, 27, 2]
     @test codes_of(push!(sample(), missing)) == [0, 1, 2, 0, 27, 1]
     @test codes_of(resize!(sample(), 6)) == [0, 1, 2, 0, 27, 1]

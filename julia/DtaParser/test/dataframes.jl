@@ -29,6 +29,10 @@ using DtaParser, DataFrames, Tables, Test
     @test codes_of(subset(df, :row => ByRow(>=(4))).num) == [2, 27, 0]
     @test codes_of(filter(:row => >(2), df).num) == [1, 2, 27, 0]
     @test codes_of(sort(df, :row; rev=true).num) == reverse(num)
+    # In place: sort!, permute! and invpermute! of the DataFrame.
+    @test codes_of(sort!(copy(df), :row; rev=true).num) == reverse(num)
+    @test codes_of(permute!(copy(df), [6, 5, 4, 3, 2, 1]).num) == reverse(num)
+    @test codes_of(invpermute!(permute!(copy(df), [2, 3, 1, 5, 6, 4]), [2, 3, 1, 5, 6, 4]).num) == num
     s = sort(df, :num)
     @test codes_of(s.num) == [0, 0, 0, 1, 2, 27]
     @test colmetadata(s, :num, "label") == "A double with extended missing values"

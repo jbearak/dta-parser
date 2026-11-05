@@ -430,6 +430,26 @@ fn info_json<S: Source>(r: &Reader<S>) -> String {
     push_strs(&mut o, &r.codecs().into_iter().map(codec_name).collect::<Vec<_>>());
     key(&mut o, "warnings");
     push_strs(&mut o, r.warnings());
+    // Every key-value entry of the footer, the profile and ARROW:schema
+    // included: the value as text (bytes that are not UTF-8 replaced), or
+    // null when the entry has none.
+    key(&mut o, "key_value");
+    o.push('[');
+    for (i, kv) in r.metadata().key_value.iter().enumerate() {
+        if i > 0 {
+            o.push(',');
+        }
+        o.push('{');
+        key(&mut o, "key");
+        push_str(&mut o, &kv.key);
+        key(&mut o, "value");
+        match &kv.value {
+            Some(v) => push_str(&mut o, &String::from_utf8_lossy(v)),
+            None => o.push_str("null"),
+        }
+        o.push('}');
+    }
+    o.push(']');
     let profile = r.profile();
     key(&mut o, "profile");
     o.push_str(if profile.is_some() { "true" } else { "false" });
@@ -1074,6 +1094,11 @@ mod tests {
         unsafe { crate::native::dta_string_free(info) };
         let doc = json::parse(&text).unwrap();
         assert_eq!(doc.str("timestamp").unwrap(), "01 Jan 2024 10:00");
+        let kv = doc.array("key_value").unwrap();
+        let keys: Vec<&str> = kv.iter().map(|e| e.str("key").unwrap()).collect();
+        assert!(keys.contains(&"dta") && keys.contains(&"ARROW:schema"), "{keys:?}");
+        let profile = kv.iter().find(|e| e.str("key").ok() == Some("dta")).unwrap();
+        assert!(profile.str("value").unwrap().contains("\"01 Jan 2024 10:00\""));
         let cols = doc.array("columns").unwrap();
         assert_eq!(cols[0].str("kind").unwrap(), "double");
         assert_eq!(cols[0].str("storage").unwrap(), "byte");

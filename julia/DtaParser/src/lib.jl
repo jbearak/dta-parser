@@ -1,6 +1,8 @@
 # The native library (crates/dta-ffi, declared in its include/dta.h).
 
-const ABI_VERSION = 4
+# The version of the library's C interface (DTA_ABI_VERSION in dta.h).
+# Datakit checks it too, through DtaParser.Internals.
+const ABI_VERSION = 5
 
 # cargo names the library dta_ffi.dll on Windows, libdta_ffi.* elsewhere.
 const libname = Sys.iswindows() ? "dta_ffi.dll" : Sys.isapple() ? "libdta_ffi.dylib" : "libdta_ffi.so"

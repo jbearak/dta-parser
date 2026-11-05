@@ -1,6 +1,6 @@
 """
     read_fixed_width(path, setup; recodes=:setup, cols=nothing, skip=0, n_max=nothing,
-                     commented_formats=true) -> DtaTable
+                     commented_formats=true) -> DataFrame
 
 Read a fixed-width text file through its SAS setup file: for data such
 as the National Survey of Family Growth files of 1973 to 2017-2019,
@@ -34,8 +34,10 @@ recodes (`IF (X = 98 OR X = 99) THEN X = .;`).
   comment. `false` reads every comment as a comment, so those files have
   no value labels.
 
-Columns are as `read_dta` returns them; numeric columns take the
-smallest storage type that holds their values. Statements the reader
+Returns a `DataFrame` with [`read_parquet`](@ref)'s metadata keys
+(style `:note`). Columns are as `DataFrame(read_dta(f))` gives them;
+numeric columns take the smallest storage type that holds their
+values. See docs/julia.md, "Fixed-width files with a SAS setup file". Statements the reader
 does not run (other data-step code, ranges in `VALUE`) give one warning;
 table metadata `"warnings"` lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray
 quotes inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS
@@ -56,25 +58,19 @@ function read_fixed_width(path::AbstractString, setup::Union{AbstractString,Abst
     dir = mktempdir(; cleanup=false)
     try
         out = joinpath(dir, "data.dta")
-        err = zeros(UInt8, ERR_LEN)
-        len = Ref{Csize_t}(0)
-        s = ccall(fn(:dta_fixed_width_to_dta), Ptr{UInt8},
-                  (Cstring, Ptr{Cstring}, Csize_t, Cstring, Cstring, Cint, Ref{Csize_t}, Ptr{UInt8}, Csize_t),
-                  String(path), setups, length(setups), out, String(recodes), commented_formats, len, err, ERR_LEN)
-        s == C_NULL && throw(DtaError(error_text(err)))
-        messages = try
-            Vector{String}(parse_json(unsafe_string(s, len[])))
-        finally
-            ccall(fn(:dta_string_free), Cvoid, (Ptr{UInt8},), s)
+        messages = fixed_width_to_dta(String(path), setups, out, String(recodes), commented_formats)
+        df = DataFrame(read_dta(out; cols=cols, skip=skip, n_max=n_max, dates=false); copycols=false)
+        # Keys that describe the .dta file made on the way, not the data.
+        for key in ("release", "byte_order", "encoding")
+            deletemetadata!(df, key)
         end
-        t = read_dta(out; cols=cols, skip=skip, n_max=n_max, dates=false)
         if !isempty(messages)
-            getfield(t, :meta)["warnings"] = messages
+            metadata!(df, "warnings", messages; style=:note)
             shown = [length(m) <= 100 ? m : first(m, 97) * "..." for m in messages[1:min(8, end)]]
-            length(messages) > 8 && push!(shown, "$(length(messages) - 8) more; see metadata(t, \"warnings\")")
+            length(messages) > 8 && push!(shown, "$(length(messages) - 8) more; see metadata(df, \"warnings\")")
             @warn "The setup file was read with warnings:\n" * join(("* " * m for m in shown), "\n")
         end
-        t
+        df
     finally
         rm(dir; recursive=true, force=true)
     end

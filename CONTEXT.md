@@ -61,12 +61,17 @@ with `save_dta`, and holds the Rust bridge that dtatools and datakit
 reach the core through.
 
 **datakit**:
-The R package for translating do-files to R: `d[i, name, by = g] :=
-value` on data frames under R's rules, `read_fixed_width`, and
-`read_parquet` and `save_parquet`. It imports dtaparser and reaches the
-Rust bridge through it.
-_Avoid_: using datakit for `.dta` reading or labels (those are
-dtaparser's)
+The package for translating do-files, one per language. In R: `d[i,
+name, by = g] := value` on data frames under R's rules,
+`read_fixed_width`, and `read_parquet`, `read_parquet_info` and
+`save_parquet`; it imports dtaparser and reaches the Rust bridge
+through it. In Julia, `Datakit`: `read_parquet`, `read_parquet_info`,
+`save_parquet` and `read_fixed_width` into DataFrames, labels in their
+metadata and `.a` to `.z` in `DtaColumn`s, with no `:=`; it reaches the
+native library through `DtaParser.Internals` and checks DtaParser's ABI
+version when it loads.
+_Avoid_: using datakit for `.dta` reading or labels in R or Julia
+(those are dtaparser's and DtaParser's)
 
 **dtatools**:
 The R package that reads files into dibbles, whose `dta_num` columns

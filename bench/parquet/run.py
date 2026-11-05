@@ -6,8 +6,9 @@ bench/results/parquet.md (R) or parquet-julia.md (Julia).
                                 [--tasks T ...] [--inputs I ...] [--only KEY ...] [--report]
 
 R (the default): datakit's read_parquet() and save_parquet() against
-arrow, nanoparquet and duckdb. Julia (--lang julia): DtaParser's
-read_parquet and write_parquet against Parquet2.jl and DuckDB.jl, in
+arrow, nanoparquet and duckdb. Julia (--lang julia): Datakit's
+read_parquet and save_parquet, into and from a DataFrame, against
+Parquet2.jl and DuckDB.jl, in
 bench/julia's environment (bench/parquet/case.jl). Target 4, other tools
 reading our files, does not depend on the language that wrote them, so
 the Julia run leaves it out.

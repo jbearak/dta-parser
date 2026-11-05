@@ -255,6 +255,31 @@ jobs:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
 
+  # Datakit (julia/Datakit), on DtaParser from the same checkout: its
+  # tests, which include the docs tests (docs/julia.md and its README),
+  # and installing both into a fresh depot. Julia 1.10 does not read
+  # [sources], so DtaParser is developed into Datakit's environment first.
+  datakit-julia:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        julia: ["1.10", "1"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia }}
+      - uses: julia-actions/cache@v2
+      - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.develop(path="julia/DtaParser"); Pkg.instantiate(); Pkg.build("DtaParser"); Pkg.test()'
+      - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.test()'
+        env:
+          DTA_TEST_SMALL_CHUNKS: "1"
+          DTA_THREADS: "4"
+      - run: julia --startup-file=no julia/Datakit/test/install.jl
+
   # Windows: the core's tests (writes may use threads there; reads stay
   # serial), and the native library builds (dta_ffi.dll), loads, and
   # reads and writes a path with non-ASCII characters.

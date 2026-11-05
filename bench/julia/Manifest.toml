@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "6f4834ddbb41f6691d9e3f9d3bd4413fee23d640"
+project_hash = "39d2f156eaa713bb4d67ac4eac89c41874e66885"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "2d9c9a55f9c93e8887ad391fbae72f8ef55e1177"
@@ -257,6 +257,17 @@ registries = "General"
 uuid = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
 version = "0.4.13"
 
+[[deps.Datakit]]
+deps = ["DataAPI", "DataFrames", "Dates", "DtaParser", "Tables"]
+path = "../../julia/Datakit"
+uuid = "54983395-386e-486c-b952-cb12510cfd6f"
+version = "0.3.0"
+weakdeps = ["CategoricalArrays", "TimeZones"]
+
+    [deps.Datakit.extensions]
+    DatakitCategoricalArraysExt = "CategoricalArrays"
+    DatakitTimeZonesExt = "TimeZones"
+
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -302,13 +313,11 @@ version = "1.7.0"
 deps = ["DataAPI", "Dates", "Tables"]
 path = "../../julia/DtaParser"
 uuid = "ee9ad68f-98e7-466d-9cbe-ce539a64be9d"
-version = "0.2.0"
-weakdeps = ["CategoricalArrays", "DataFrames", "TimeZones"]
+version = "0.3.0"
+weakdeps = ["DataFrames"]
 
     [deps.DtaParser.extensions]
-    DtaParserCategoricalArraysExt = "CategoricalArrays"
     DtaParserDataFramesExt = "DataFrames"
-    DtaParserTimeZonesExt = "TimeZones"
 
 [[deps.DuckDB]]
 deps = ["DBInterface", "Dates", "DuckDB_jll", "FixedPointDecimals", "Tables", "UUIDs", "WeakRefStrings"]

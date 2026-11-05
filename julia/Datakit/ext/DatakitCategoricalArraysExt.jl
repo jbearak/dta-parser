@@ -1,10 +1,10 @@
-module DtaParserCategoricalArraysExt
+module DatakitCategoricalArraysExt
 
 # read_parquet returns categorical columns as CategoricalArrays, and
-# write_parquet writes them, when CategoricalArrays.jl is loaded.
+# save_parquet writes them, when CategoricalArrays.jl is loaded.
 
 using CategoricalArrays
-using DtaParser: DtaParser, PqPrepared, PqColumn, W_CATEGORICAL, WriteError
+using Datakit: Datakit, PqPrepared, PqColumn, W_CATEGORICAL, WriteError
 
 # The element type of a categorical column read_parquet gives.
 value_type() = CategoricalValue{String,UInt32}
@@ -16,7 +16,7 @@ function categorical(refs::Vector{UInt32}, levels::Vector{String}, ordered::Bool
                                 CategoricalArray{String,1}(refs, pool)
 end
 
-function DtaParser.prepare_parquet(name, x::CategoricalArray)
+function Datakit.prepare_parquet(name, x::CategoricalArray)
     lv = unwrap.(levels(x))
     all(l -> l isa AbstractString, lv) ||
         throw(WriteError("column $name: a categorical column is written as text, so its levels must be strings, " *

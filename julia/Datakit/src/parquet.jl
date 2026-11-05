@@ -1,21 +1,11 @@
-# Reading Parquet files (plan 0018). The library decodes each column
-# straight into vectors allocated here: numbers into a Vector of the
-# element type returned (Date, DateTime and Time through their Int64
-# counts), categoricals as level numbers, and text one column chunk at a
-# time through a callback, one String per distinct value of a
+# Reading Parquet files (plans 0018 and 0019). DtaParser's library
+# decodes each column straight into vectors allocated here: numbers into
+# a Vector of the element type returned (Date, DateTime and Time through
+# their Int64 counts), categoricals as level numbers, and text one column
+# chunk at a time through a callback, one String per distinct value of a
 # dictionary-encoded chunk. What each Parquet type becomes is plan
-# 0018's "Exactness" table, Julia column.
-
-# Must match dta_pq_output in dta.h.
-struct PqOutput
-    kind::UInt32
-    base::Int32
-    null::Int32
-    values::Ptr{Cvoid}
-    codes::Ptr{UInt8}
-end
-
-const PQ_I8, PQ_I16, PQ_I32, PQ_I64, PQ_F32, PQ_F64, PQ_U8, PQ_U16, PQ_U32, PQ_U64, PQ_LEVELS, PQ_TEXT = UInt32.(1:12)
+# 0018's "Exactness" table, Julia column. The columns become a DataFrame
+# (frame.jl).
 
 const OUT_KIND = Dict{DataType,UInt32}(Int8 => PQ_I8, Int16 => PQ_I16, Int32 => PQ_I32, Int64 => PQ_I64,
                                        Float32 => PQ_F32, Float64 => PQ_F64, UInt8 => PQ_U8, UInt16 => PQ_U16,
@@ -29,8 +19,6 @@ const DAYS_1960_TO_1970 = 3653
 const SECONDS_1960_TO_1970 = 315_619_200
 
 # ---------------------------------------------------------------- opening
-
-const PAR1 = b"PAR1"
 
 mutable struct PqFile
     ptr::Ptr{Cvoid}
@@ -50,52 +38,16 @@ function with_parquet(g, source, nested_skip::Bool)
 end
 
 function with_pq_open(g, path, ptr, len, nested_skip)
-    err = zeros(UInt8, ERR_LEN)
-    h = if path === nothing
-        ccall(fn(:dta_pq_open), Ptr{Cvoid}, (Ptr{UInt8}, Ptr{UInt8}, Csize_t, Cint, Ptr{UInt8}, Csize_t),
-              C_NULL, ptr, len, nested_skip, err, ERR_LEN)
-    else
-        ccall(fn(:dta_pq_open), Ptr{Cvoid}, (Cstring, Ptr{UInt8}, Csize_t, Cint, Ptr{UInt8}, Csize_t),
-              path, C_NULL, 0, nested_skip, err, ERR_LEN)
-    end
-    h == C_NULL && throw(DtaError(error_text(err)))
-    f = PqFile(h)
+    f = PqFile(path === nothing ? pq_open(ptr, len, nested_skip) : pq_open(path, nested_skip))
     try
         g(f)
     finally
-        ccall(fn(:dta_pq_close), Cvoid, (Ptr{Cvoid},), f.ptr)
+        pq_close(f.ptr)
         f.ptr = C_NULL
     end
 end
 
-function pq_info(f::PqFile)
-    err = zeros(UInt8, ERR_LEN)
-    len = Ref{Csize_t}(0)
-    s = ccall(fn(:dta_pq_info_json), Ptr{UInt8}, (Ptr{Cvoid}, Ref{Csize_t}, Ptr{UInt8}, Csize_t), f.ptr, len, err, ERR_LEN)
-    s == C_NULL && throw(DtaError(error_text(err)))
-    try
-        parse_json(unsafe_string(s, len[]))
-    finally
-        ccall(fn(:dta_string_free), Cvoid, (Ptr{UInt8},), s)
-    end
-end
-
-# Whether `source` starts with Parquet's magic number. An IO is put back
-# where it was.
-function is_parquet(source)
-    if source isa AbstractString
-        head = open(io -> read(io, 4), source)
-        return head == PAR1
-    elseif source isa AbstractVector{UInt8}
-        return length(source) >= 4 && source[1:4] == PAR1
-    elseif source isa IO
-        at = position(source)
-        head = read(source, 4)
-        seek(source, at)
-        return head == PAR1
-    end
-    throw(ArgumentError("source must be a path, an IO or a Vector{UInt8}, not $(typeof(source))"))
-end
+pq_info(f::PqFile) = parse_json(pq_info_json(f.ptr))
 
 str_or(x, default="") = x === nothing ? default : String(x)
 
@@ -253,10 +205,12 @@ end
 
 # ---------------------------------------------------------------- after the read
 
-# Numbers, with their codes when any row is missing.
+# Numbers: a DtaColumn when a row read holds .a to .z, which only it can
+# keep; else a Vector{T}, or a Vector{Union{Missing,T}} when a row is `.`.
 function numbers_of(values::Vector{T}, codes) where {T}
-    (codes === nothing || !any(!=(0x00), codes)) && return values
-    DtaColumn{T}(values, codes)
+    codes === nothing && return values
+    any(>(0x01), codes) && return DtaColumn{T}(values, codes)
+    with_missing(values, codes)
 end
 
 # A vector of `T` from values, with missing where the code is not 0.
@@ -316,8 +270,8 @@ end
 
 # Whether TimeZones.jl or CategoricalArrays.jl is loaded, through this
 # package's extension for it.
-tz_ext() = Base.get_extension(@__MODULE__, :DtaParserTimeZonesExt)
-cat_ext() = Base.get_extension(@__MODULE__, :DtaParserCategoricalArraysExt)
+tz_ext() = Base.get_extension(@__MODULE__, :DatakitTimeZonesExt)
+cat_ext() = Base.get_extension(@__MODULE__, :DatakitCategoricalArraysExt)
 
 const UTC_NAMES = ("UTC", "Etc/UTC", "Z", "+00:00", "GMT", "Etc/GMT", "UCT", "Universal", "Zulu")
 
@@ -415,13 +369,20 @@ end
 
 """
     read_parquet(source; cols=nothing, skip=0, n_max=nothing, timestamps=:error,
-                 decimal=:float, nested=:error) -> DtaTable
+                 decimal=:float, nested=:error) -> DataFrame
 
-Read a Parquet file into the [`DtaTable`](@ref) that [`read_dta`](@ref)
-returns, keeping what our [`write_parquet`](@ref) stored: variable and
-value labels, display formats, notes, `.a` to `.z` (as
+Read a Parquet file into a `DataFrame`, keeping what
+[`save_parquet`](@ref) (or R's and Python's datakit) stored: variable
+and value labels, display formats, notes, `.a` to `.z` (as
 [`DtaColumn`](@ref) codes), categoricals and time zones. Files from
-other tools read too. See docs/julia.md, "Parquet files".
+other tools read too. See docs/julia.md, "Read a Parquet file".
+
+Labels are metadata with style `:note`, under the keys
+`DataFrame(read_dta(f))` has: `colmetadata(df, :x, "label")`,
+`"format"`, `"value_labels"` (the name of the column's set) and
+`"storage"`; `metadata(df, "label")`, `"notes"`, `"timestamp"`,
+`"characteristics"`, `"sorted_by"` and `"value_labels"` (every set: a
+`Dict` from set name to a `Dict` from [`stata_key`](@ref) to text).
 
 `source` is a path, an `IO` (read to its end) or a `Vector{UInt8}`
 holding a whole file.
@@ -445,14 +406,17 @@ holding a whole file.
 
 Element types: Parquet's integers, floats and booleans as the same Julia
 type (`Int8` to `Int64`, `UInt8` to `UInt64`, `Float32`, `Float64`,
-`Bool`), a `DtaColumn` when any value is missing; a column our writer
-widened to DOUBLE for `.a` to `.z` as its storage type again. DATE as
-`Date`, TIMESTAMP and INT96 as `DateTime` (`ZonedDateTime` when the file
-gives a zone and TimeZones.jl is loaded), TIME as `Dates.Time`, text as
-`String`, bytes as `Vector{UInt8}`, categoricals as `CategoricalArray`
-when CategoricalArrays.jl is loaded (else `String`, with one warning).
-Missing dates, times and text are `missing` in a `Union{Missing,T}`
-vector.
+`Bool`); a column our writer widened to DOUBLE for `.a` to `.z` as its
+storage type again. A numeric column whose rows read hold any of `.a`
+to `.z` is a [`DtaColumn`](@ref), which keeps them; any other column
+with a missing value is a `Vector{Union{Missing,T}}`. A date or
+timestamp column whose rows read hold `.a` to `.z` is a `DtaColumn` of
+Stata's numbers: days since 1960 with a `%td` format, or milliseconds
+since 1960 with `%tc`. DATE as `Date`, TIMESTAMP and INT96 as
+`DateTime` (`ZonedDateTime` when the file gives a zone and TimeZones.jl
+is loaded), TIME as `Dates.Time`, text as `String`, bytes as
+`Vector{UInt8}`, categoricals as `CategoricalArray` when
+CategoricalArrays.jl is loaded (else `String`, with one warning).
 """
 function read_parquet(source; cols=nothing, skip::Integer=0, n_max::Union{Nothing,Integer}=nothing,
                       timestamps::Symbol=:error, decimal::Symbol=:float, nested::Symbol=:error)
@@ -502,23 +466,14 @@ function read_plans(f::PqFile, plans::Vector{Plan}, start::Int, count::Int, doc,
     state = PqReadState(sinks, nothing)
     cb = @cfunction(on_pq_text, Cint, (Ptr{Cvoid}, Csize_t, UInt64, UInt64, Ptr{UInt8}, Ptr{Csize_t}, Csize_t, Ptr{UInt32}, Ptr{UInt8}))
     idx = UInt32[p.index for p in plans]
-    err = zeros(UInt8, ERR_LEN)
-    report = Ref{Ptr{UInt8}}(C_NULL)
-    rlen = Ref{Csize_t}(0)
-    got = GC.@preserve buffers codes state outputs ccall(fn(:dta_pq_read), Int64,
-        (Ptr{Cvoid}, Ptr{UInt32}, Csize_t, UInt64, UInt64, Ptr{PqOutput}, Ptr{Cvoid}, Ptr{Cvoid}, Ref{Ptr{UInt8}},
-         Ref{Csize_t}, Ptr{UInt8}, Csize_t),
-        f.ptr, idx, n, start, count, outputs, cb, pointer_from_objref(state), report, rlen, err, ERR_LEN)
+    got, text = GC.@preserve buffers codes state outputs pq_read(f.ptr, idx, start, count, outputs, cb,
+                                                                   pointer_from_objref(state))
     if state.error !== nothing
         e, bt = state.error
         Base.throw(CapturedException(e, bt))
     end
-    got < 0 && throw(DtaError(read_error(error_text(err))))
-    rep = try
-        parse_json(unsafe_string(report[], rlen[]))
-    finally
-        ccall(fn(:dta_string_free), Cvoid, (Ptr{UInt8},), report[])
-    end
+    got < 0 && throw(DtaError(read_error(text)))
+    rep = parse_json(text)
 
     sets = label_sets_of(doc)
     names = Symbol[p.name for p in plans]
@@ -558,7 +513,7 @@ function read_plans(f::PqFile, plans::Vector{Plan}, start::Int, count::Int, doc,
                                "without their zones: $(join(zoneless, ", ")). Load it (using TimeZones) to get ZonedDateTime."
     isempty(plain_cats) || @warn "CategoricalArrays.jl is not loaded, so these categorical columns are String: " *
                                  "$(join(plain_cats, ", ")). Load it (using CategoricalArrays) to get CategoricalArray."
-    DtaTable(names, columns, count, table_meta_of(doc, names), colmeta)
+    frame(names, columns, table_meta_of(doc, names), colmeta)
 end
 
 # The library's message, with the argument of read_parquet that keeps
@@ -672,7 +627,33 @@ function eltype_of(info)
     info["nulls"] === true || widened ? Union{Missing,T} : T
 end
 
-function parquet_meta(source)
+"""
+    read_parquet_info(source) -> Dict{String,Any}
+
+A Parquet file's schema and metadata, from its footer only, without
+reading rows. `source` is a path, an `IO` or a `Vector{UInt8}`. See
+docs/julia.md, "A Parquet file's schema and metadata".
+
+The table metadata [`read_parquet`](@ref) gives (`"label"`, `"notes"`,
+`"timestamp"`, `"characteristics"`, `"sorted_by"`, `"value_labels"`),
+and:
+
+- `"nrows"`: the number of rows;
+- `"row_groups"`: `(rows, compressed_bytes, uncompressed_bytes)` of each;
+- `"compression"`: the codecs used; `"created_by"`: the writer;
+- `"key_value"`: every key-value entry of the footer as a
+  `(key, value)` named tuple, the value as text (`nothing` if the entry
+  has none), the `dta` profile and `ARROW:schema` included;
+- `"warnings"`: what is wrong with the file's dta profile, if anything;
+- `"columns"`: a `DataFrame` with a row per column of the file and the
+  columns `name`, `role` (`"data"`, or `"nested"` for a list, map or
+  struct, which is not read), `physical_type`, `logical_type`, `eltype`
+  (the element type `read_parquet` gives the column, with `Missing`
+  when the file's statistics show nulls; `nothing` for a column it does
+  not read), `label`, `format`, `value_labels` and `storage` (a text
+  column's is `""` until it is read).
+"""
+function read_parquet_info(source)
     with_parquet(source, true) do f
         doc = pq_info(f)
         warn_profile(doc)
@@ -680,27 +661,34 @@ function parquet_meta(source)
         names = Symbol[Symbol(c["name"]) for c in infos]
         meta = table_meta_of(doc, names)
         sets = meta["value_labels"]
-        meta["format"] = :parquet
         meta["nrows"] = Int(doc["rows"])
         meta["row_groups"] = [(rows=Int(g["rows"]), compressed_bytes=Int(g["compressed_bytes"]),
                                uncompressed_bytes=Int(g["uncompressed_bytes"])) for g in doc["row_groups"]]
         meta["compression"] = Vector{String}(doc["compression"])
         meta["created_by"] = str_or(doc["created_by"])
         meta["warnings"] = Vector{String}(doc["warnings"])
-        meta["columns"] = map(infos) do info
+        meta["key_value"] = [(key=String(kv["key"]), value=kv["value"] === nothing ? nothing : String(kv["value"]))
+                             for kv in doc["key_value"]]
+        cols = map(infos) do info
             c = try
                 column_meta_of(plan_of(info, 0, :float), sets)
             catch
                 Dict{String,Any}("label" => str_or(info["label"]), "format" => str_or(info["format"]),
                                  "storage" => "", "value_labels" => "")
             end
-            c["name"] = info["name"]
-            c["role"] = info["role"]
-            c["physical_type"] = str_or(info["physical_type"])
-            c["logical_type"] = str_or(info["logical_type"])
-            c["eltype"] = eltype_of(info)
             c
         end
+        meta["columns"] = DataFrame(
+            name = String[info["name"] for info in infos],
+            role = String[info["role"] for info in infos],
+            physical_type = String[str_or(info["physical_type"]) for info in infos],
+            logical_type = String[str_or(info["logical_type"]) for info in infos],
+            eltype = Any[eltype_of(info) for info in infos],
+            label = String[c["label"] for c in cols],
+            format = String[c["format"] for c in cols],
+            value_labels = String[c["value_labels"] for c in cols],
+            storage = String[c["storage"] for c in cols],
+        )
         meta
     end
 end

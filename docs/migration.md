@@ -1,4 +1,40 @@
-# Moving to @jbearak/dta-parser 1.0
+# Migration notes
+
+- [DtaParser 0.2 to 0.3](#dtaparser-02-to-03) (Julia): Parquet and
+  fixed-width text move to Datakit.
+- [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
+  (TypeScript).
+
+## DtaParser 0.2 to 0.3
+
+DtaParser 0.3 reads and writes `.dta` files only. Its Parquet and
+fixed-width functions move to a new package, Datakit, which builds on
+DtaParser and returns DataFrames (plan 0019, ADR 0034), as R's datakit
+builds on dtaparser. Install both from the checkout, DtaParser first
+([docs/julia.md, Install](julia.md#install)), and add `using Datakit`.
+
+| DtaParser 0.2 | Datakit 0.3 | what changes |
+|---|---|---|
+| `read_parquet(source; ...)` | `read_parquet(source; ...)` | returns a `DataFrame` with the metadata, not a `DtaTable`; `DataFrame(read_parquet(f))` is no longer needed. A numeric column is a `DtaColumn` only when the rows read hold `.a` to `.z`; a column with only `.` is a `Vector{Union{Missing,T}}`. The arguments are the same |
+| `write_parquet(path_or_io, table; ...)` | `save_parquet(path_or_io, table; ...)` | the name, as in R's datakit; the arguments and the file are the same |
+| `read_meta(parquet_file)` | `read_parquet_info(parquet_file)` | `"columns"` is a `DataFrame` with a row per column, not a vector of `Dict`s; new `"key_value"` (the footer's key-value entries); no `"format"` key. `read_meta` on a Parquet file is now an `ArgumentError` naming `read_parquet_info` |
+| `read_fixed_width(path, setup; ...)` | `read_fixed_width(path, setup; ...)` | returns a `DataFrame` with `read_parquet`'s metadata keys (no `"release"`, `"byte_order"` or `"encoding"`); the arguments are the same |
+| TimeZones.jl and CategoricalArrays.jl as DtaParser's extensions | as Datakit's extensions | nothing to change: load them as before |
+
+Everything else in DtaParser is unchanged: `read_dta`, `write_dta`,
+`read_meta` for `.dta` files, `DtaTable`, `DtaColumn`, `stata_code`,
+`set_stata_code!` and `stata_key`, which Datakit re-exports. Two fixes
+come with 0.3: DataFrames' `sort!`, `permute!` and `invpermute!` of a
+frame, and its `rightjoin` and `outerjoin` with a `DtaColumn` on the
+left, keep `.a` to `.z` (they made them `.`, or failed, before).
+
+DtaParser's native library still holds the Parquet code: Datakit calls
+it through `DtaParser.Internals`, which is for Datakit only, and checks
+the library's interface version when it loads. Its ABI version is now
+5 (the Parquet footer's key-value entries were added), so rebuild with
+`Pkg.build("DtaParser")` after updating.
+
+## Moving to @jbearak/dta-parser 1.0
 
 1.0 is a new API, not an update of 0.x. Everything is synchronous. The
 format is read by a wasm build of the Rust core, embedded in the
@@ -6,7 +42,7 @@ CommonJS bundle, so there is no `.wasm` file to ship. This note maps
 what manuscript-markdown, Sight and table-viewer use today onto 1.0. It
 changes nothing in those repositories.
 
-## Opening a file
+### Opening a file
 
 | Today | 1.0 |
 |---|---|
@@ -19,7 +55,7 @@ Release 104 to 119 files open the same way; there is no separate legacy
 path. Files over 4 GiB, with or without strLs, read through
 `openDtaFile`.
 
-## Metadata
+### Metadata
 
 | Today | 1.0 |
 |---|---|
@@ -30,7 +66,7 @@ path. Files over 4 GiB, with or without strLs, read through
 | `section_offsets`, `obs_length` | not exposed; the reader seeks for you |
 | notes, characteristics, sort order | `r.notes()`, `r.characteristics()`, `r.info.sortedBy` (new) |
 
-## Rows and columns
+### Rows and columns
 
 | Today | 1.0 |
 |---|---|
@@ -43,7 +79,7 @@ A `NumberColumn` has `values` (`Float64Array`) and `missing`
 (`Uint8Array`: 0, or 1 to 27 for `.` to `.z`). `missingValue(code)` turns
 a code into the frozen `MISSING` object.
 
-## Missing values and display
+### Missing values and display
 
 | Today | 1.0 |
 |---|---|
@@ -51,7 +87,7 @@ a code into the frozen `MISSING` object.
 | `missing_type_to_label_key` | not needed: value label maps are keyed by the same `MISSING` objects |
 | `apply_display_format(value, fmt)` | `formatValue(cell, format, labels?)` |
 
-## What users will see change
+### What users will see change
 
 - Node 24 or later is required.
 - Reading past the last row throws a `RangeError` with code
@@ -82,7 +118,7 @@ a code into the frozen `MISSING` object.
   cells). The R, Python and Julia packages reject them too.
 - A leading U+FEFF in a string or label is kept.
 
-## Not in 1.0
+### Not in 1.0
 
 - Arrow IPC (`ArrowBuffer` and friends); table-viewer has dropped it.
 - Listing value label set names without reading them, limits on

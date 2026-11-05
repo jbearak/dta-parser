@@ -3,8 +3,9 @@
 # Each ```julia block of README.md, docs/guide/*.md and docs/julia.md
 # runs, in order, in one module per file, in a fresh temporary
 # directory. Blocks whose info string says `norun` (installation) are
-# skipped. The docs live in the repository; outside a checkout this
-# skips.
+# skipped, and so are those marked `datakit`, which need Datakit;
+# Datakit's docs test runs them. The docs live in the repository;
+# outside a checkout this skips.
 
 using DtaParser, Test
 
@@ -31,7 +32,7 @@ function code_blocks(path)
         while stop <= length(lines) && !startswith(lines[stop], m[1])
             stop += 1
         end
-        if m[2] == "julia" && !occursin("norun", m[3])
+        if m[2] == "julia" && !occursin("norun", m[3]) && !occursin("datakit", m[3])
             push!(out, (i, join(lines[i+1:stop-1], '\n')))
         end
         i = stop + 1

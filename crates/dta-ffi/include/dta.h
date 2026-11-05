@@ -30,7 +30,7 @@ extern "C" {
 
 /* The ABI described here. A caller should refuse a library whose
  * dta_abi_version() differs. */
-#define DTA_ABI_VERSION 4
+#define DTA_ABI_VERSION 5
 
 /* Storage types (dta_column.storage). */
 #define DTA_BYTE 1   /* int8; . is 101, .a-.z 102-127 */
@@ -223,6 +223,8 @@ void dta_pq_close(dta_pq_file *file);
  * The footer as a JSON object (free it with dta_string_free): rows,
  * row_groups [{rows, compressed_bytes, uncompressed_bytes}], created_by,
  * compression (the codecs used), warnings (about the dta profile),
+ * key_value [{key, value}] (every key-value entry of the footer, the
+ * value as text, or null),
  * profile (whether there is one), label, notes, timestamp, sort,
  * characteristics [{variable, name, value}], valueLabels [{name, labels:
  * [[value or ".a"..".z", text], ...]}], and columns, one object per

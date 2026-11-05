@@ -1,6 +1,6 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R), dta_parser (Python), DtaParser (Julia) and the npm
+datakit (R), dta_parser (Python), Datakit (Julia) and the npm
 package (TypeScript) read and write Parquet files that keep a `.dta`
 file's value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
@@ -27,8 +27,9 @@ Each task links to its section on the language page.
 
 Nothing beyond the package: R, [Parquet: install](r.md#parquet-install);
 Python, [Parquet: install](python.md#parquet-install);
-Julia, [Parquet: install](julia.md#parquet-install) (TimeZones.jl and
-CategoricalArrays.jl are optional, for zones and categoricals).
+Julia, [Parquet: install](julia.md#parquet-install) (Datakit, installed
+with DtaParser from the checkout; TimeZones.jl and CategoricalArrays.jl
+are optional, for zones and categoricals).
 TypeScript, [Parquet: install](typescript.md#parquet-install).
 
 ### Read a whole file, and what each type becomes
@@ -65,7 +66,7 @@ none, by walking the page headers.
 R: [Schema and metadata](r.md#a-parquet-files-schema-and-metadata).
 Python: [Schema and metadata](python.md#a-parquet-files-schema-and-metadata).
 Julia: [Schema and metadata](julia.md#a-parquet-files-schema-and-metadata)
-(`read_meta`, which also reads `.dta` files).
+(`read_parquet_info`, with the footer's key-value entries).
 TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metadata).
 
 ### Value labels and variable labels
@@ -162,12 +163,19 @@ Missing values:
   `"logical": "date"` or `"timestamp"` (and the zone, `tz`) in the
   profile. So is an R `Date` with a fraction of a day, or a `POSIXct`
   whose seconds no whole number of microseconds gives back exactly, so
-  that it reads back unchanged.
+  that it reads back unchanged. R reads such a column back as `Date`
+  or `POSIXct` with tagged NAs. Julia's Datakit cannot: a `Vector{Date}`
+  has no place for the codes, so when the rows read hold any of `.a` to
+  `.z` the column is a `DtaColumn{Float64}` of Stata's numbers, as
+  `read_dta` reads a `%td` column with letters: days since 1960-01-01
+  with a `%td` format, or milliseconds since 1960-01-01 00:00 with
+  `%tc`. Rows without a letter read as `Date` or `DateTime`.
 - A reader takes a DOUBLE value as `.a` to `.z` only when its bits are
   exactly that pattern with a letter `a` to `z`; any other NaN is NaN,
   a value.
-- `save_parquet(missing_letters = FALSE)` (R) and
-  `write_parquet(missing_letters=False)` (Python) write `.a` to `.z` as
+- `save_parquet(missing_letters = FALSE)` (R),
+  `write_parquet(missing_letters=False)` (Python) and
+  `save_parquet(path, df; missing_letters = false)` (Julia) write `.a` to `.z` as
   nulls, for files meant for tools that count NaN as a value. The letters
   are then lost.
 
@@ -350,8 +358,8 @@ pandas, fastparquet and polars in Python, in
 | Python warning: `write_parquet writes columns only, not the index 'id'; call df.reset_index() first to keep it` | an index other than a default `RangeIndex` | `df.reset_index()` to keep it, `df.reset_index(drop=True)` to drop it |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
 
-Julia's `read_parquet` and `write_parquet` give the same messages with
-Julia's argument names, and these of their own:
+Julia's `read_parquet` and `save_parquet` (Datakit) give the same
+messages with Julia's argument names, and these of their own:
 
 | message | cause | what to do |
 |---|---|---|
@@ -360,8 +368,8 @@ Julia's argument names, and these of their own:
 | `column "x": the value ... in row 1 has more than 15 significant digits, ...; read with decimal = :string to keep every digit` | a DECIMAL value a `Float64` cannot give back | `decimal = :string` |
 | warning: `TimeZones.jl is not loaded, so these columns' times are DateTime in UTC, without their zones: when (Europe/Paris)` | a zoned timestamp, read without TimeZones.jl | `using TimeZones` and read again |
 | warning: `CategoricalArrays.jl is not loaded, so these categorical columns are String: region` | a categorical column, read without CategoricalArrays.jl | `using CategoricalArrays` and read again |
-| `compression must be :snappy, :zstd, :gzip, :lz4_raw or :none, not :lzo` (an `ArgumentError`) | `write_parquet(compression = )` | one of those |
-| `column t: cannot write values of type Time; Parquet TIME columns are read, not written` (also complex numbers and other types) | a column type `write_parquet` does not write | convert it first |
+| `compression must be :snappy, :zstd, :gzip, :lz4_raw or :none, not :lzo` (an `ArgumentError`) | `save_parquet(compression = )` | one of those |
+| `column t: cannot write values of type Time; Parquet TIME columns are read, not written` (also complex numbers and other types) | a column type `save_parquet` does not write | convert it first |
 | `column c: a categorical column is written as text, so its levels must be strings, not Int64; ...` | a `CategoricalArray` of numbers | `categorical(string.(x))`, or write the numbers |
 | `column z holds times in 2 zones; a Parquet timestamp column has one. ...` | a `ZonedDateTime` column with several zones | `astimezone` to one zone |
 The TypeScript package gives the same messages, with its own option

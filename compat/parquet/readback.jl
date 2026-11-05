@@ -1,5 +1,5 @@
-# Parquet2.jl reads the files DtaParser's write_parquet writes: every
-# type DtaParser writes, with nulls, .a to .z, categoricals and a zone,
+# Parquet2.jl reads the files Datakit's save_parquet writes: every
+# type Datakit writes, with nulls, .a to .z, categoricals and a zone,
 # in each codec, in one row group and in many. Values are checked
 # against what was written, as Parquet2 sees them: .a to .z are NaN with
 # the tagged bits (it keeps NaN payloads), a categorical is its text, a
@@ -7,13 +7,13 @@
 # entry it hands over without reading.
 #
 # Run from the repository root, in bench/julia's environment (it has
-# DtaParser, Parquet2, CategoricalArrays and TimeZones):
+# Datakit, Parquet2, CategoricalArrays and TimeZones):
 #
 #     julia --project=bench/julia compat/parquet/readback.jl
 #
 # Exits with status 1 if any check fails.
 
-using CategoricalArrays, DataFrames, Dates, DtaParser, Parquet2, TimeZones
+using CategoricalArrays, DataFrames, Dates, Datakit, Parquet2, TimeZones
 
 const N = 1_000
 masked(v, every) = [i % every == 3 ? missing : x for (i, x) in zip(0:length(v)-1, v)]
@@ -105,13 +105,13 @@ t = table()
 dir = mktempdir()
 for (codec, rows) in ((:snappy, nothing), (:zstd, nothing), (:gzip, nothing), (:none, nothing), (:snappy, 100))
     file = joinpath(dir, "$(codec)$(rows === nothing ? "" : "_rows$rows").parquet")
-    write_parquet(file, t; compression=codec, row_group_size=rows, label="Readback",
+    save_parquet(file, t; compression=codec, row_group_size=rows, label="Readback",
                   value_labels=Dict("yn" => Dict(0 => "No", 1 => "Yes", ".a" => "Refused")),
                   column_value_labels=Dict(:tagged => "yn"), column_labels=Dict(:word => "A word"))
     check(file, t)
 end
 
-println("Parquet2 ", pkgversion(Parquet2), ", DtaParser ", pkgversion(DtaParser), ": ", checked[], " columns checked")
+println("Parquet2 ", pkgversion(Parquet2), ", Datakit ", pkgversion(Datakit), ": ", checked[], " columns checked")
 if isempty(failures)
     println("every check passes")
 else
