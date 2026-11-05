@@ -17,7 +17,8 @@ reads (full, five, window, pass) on the pyarrow, polars and our files by
 ours and, into pandas, pyarrow (read_table().to_pandas()), pandas
 (read_parquet), fastparquet and polars (.to_pandas()): these are gated.
 pyarrow's Table, polars' DataFrame and DuckDB fetched to Arrow (full,
-five, window) are published, not gated: they are not pandas. Writes of
+five, window, on pyarrow's files) are published, not gated: they are
+not pandas. Writes of
 the frame dta_parser.read_dta gives, with each library's defaults and
 with zstd 3: ours, DataFrame.to_parquet (pyarrow), fastparquet and
 polars (from_pandas().write_parquet()).
@@ -87,7 +88,8 @@ def run_all(files, out, libs, tasks, inputs):
         for task in [t for t in tasks if t in READS]:
             for inp in inputs:
                 for lib in libs:
-                    if lib in PUBLISHED and task == "pass":
+                    # The published libraries (not gated) on pyarrow's files only.
+                    if lib in PUBLISHED and (task == "pass" or inp != "pyarrow"):
                         continue
                     path = out / "raw" / f["key"] / inp / f"{lib}-{task}.json"
                     if not path.exists():
@@ -161,7 +163,7 @@ def evaluate(files, out):
     published = []
     for lib in PUBLISHED:
         for task in ("full", "five", "window"):
-            for inp in INPUTS:
+            for inp in ["pyarrow"]:
                 for fam in ("nsfg", "dhs", "synthetic"):
                     fp = [(base.load(out, f, inp, f"ours-{task}"), base.load(out, f, inp, f"{lib}-{task}"))
                           for f in files if f["family"] == fam]
