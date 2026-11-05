@@ -75,7 +75,7 @@ def quoted(name):
 
 
 def duck(sql, *params):
-    return con.sql(sql, params=list(params) or None).fetch_arrow_table()
+    return con.sql(sql, params=list(params) or None).to_arrow_table()
 
 
 READS = {
