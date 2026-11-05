@@ -1,9 +1,9 @@
 //! Writing a table as Parquet with a dta profile (plan 0018, "What we
 //! write").
 //!
-//! Row groups are written in order; the columns of each are encoded on
-//! worker threads, and only that row group's encoded pages are held
-//! before they go to the output. Values come from the caller a block of
+//! Row groups are written in order; their column chunks are encoded on
+//! worker threads, the next row group's while this one's go out, and
+//! only a bounded number of bytes of encoded chunks wait for the output. Values come from the caller a block of
 //! rows at a time, so nothing holds a second copy of the table.
 
 use std::collections::HashMap;
@@ -175,9 +175,14 @@ pub struct WriteOptions {
     /// Write offset indexes (for measuring reads without them).
     #[doc(hidden)]
     pub offset_index: bool,
-    /// Row groups of fewer bytes than this are encoded on one thread.
+    /// Writes of fewer bytes of values than this are encoded on one
+    /// thread.
     #[doc(hidden)]
     pub parallel_bytes: usize,
+    /// At most about this many bytes of encoded column chunks wait for
+    /// the ones before them to be written.
+    #[doc(hidden)]
+    pub pipeline_bytes: usize,
 }
 
 impl Default for WriteOptions {
@@ -199,6 +204,7 @@ impl Default for WriteOptions {
             dictionary_bytes: 1 << 20,
             offset_index: true,
             parallel_bytes: if small { 0 } else { 16 << 20 },
+            pipeline_bytes: if small { 1 } else { 256 << 20 },
         }
     }
 }
@@ -278,36 +284,48 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
 
     let mut out = Counter { inner: out, at: 0 };
     out.put(b"PAR1")?;
-    let mut groups = Vec::new();
-    let mut indexes: Vec<Vec<OffsetIndex>> = Vec::new();
-    for (g, rows) in row_groups(table, options).into_iter().enumerate() {
-        let n_rows = rows.len();
-        let bytes: usize = table
-            .columns
-            .iter()
-            .map(|c| c.values.width() * n_rows)
-            .sum();
-        let job = |k: usize, s: &mut Scratch| {
-            let enc = Encoder {
-                options,
-                compression: options.compression,
-                level,
-            };
-            enc.column(&table.columns[k], rows.clone(), tagged[k], s)
+    let ranges = row_groups(table, options);
+    let n_cols = table.columns.len();
+    let mut groups: Vec<RowGroup> = Vec::with_capacity(ranges.len());
+    let mut indexes: Vec<Vec<OffsetIndex>> = Vec::with_capacity(ranges.len());
+    // One job per column of each row group, in file order: workers move
+    // on to the next row group's columns while the writer is still
+    // putting out this one's, so a row group of few columns does not
+    // leave threads idle. Chunks are written in order as soon as they
+    // and those before them are encoded; the encoded chunks waiting
+    // for the writer are held to `pipeline_bytes`, so peak memory stays
+    // bounded however many row groups are in flight.
+    let job = |j: usize, s: &mut Scratch| {
+        let enc = Encoder {
+            options,
+            compression: options.compression,
+            level,
         };
-        let threads_here = if bytes >= options.parallel_bytes {
-            threads
-        } else {
-            1
-        };
-        let mut chunks = Vec::with_capacity(schema.len() - 1);
-        let mut group_index = Vec::with_capacity(schema.len() - 1);
-        let start = out.at;
-        let (mut total, mut compressed) = (0i64, 0i64);
-        // Each column chunk is written as soon as it and those before it
-        // are encoded, so only a few are held at a time, not the row
-        // group (840 MB of wide.dta's).
-        parallel_ordered(threads_here, table.columns.len(), &scratch, &job, |k, e| {
+        let k = j % n_cols;
+        enc.column(&table.columns[k], ranges[j / n_cols].clone(), tagged[k], s)
+    };
+    let pipelined = if work >= options.parallel_bytes as u64 {
+        threads
+    } else {
+        1
+    };
+    let (mut start, mut total, mut compressed) = (0u64, 0i64, 0i64);
+    let mut chunks = Vec::with_capacity(n_cols);
+    let mut group_index = Vec::with_capacity(n_cols);
+    let jobs = if n_cols == 0 { 0 } else { ranges.len() * n_cols };
+    parallel_ordered(
+        pipelined,
+        jobs,
+        &scratch,
+        &job,
+        &|e: &Encoded| e.dict.len() + e.data.len(),
+        options.pipeline_bytes,
+        |j, e| {
+            let (g, k) = (j / n_cols, j % n_cols);
+            if k == 0 {
+                start = out.at;
+                (total, compressed) = (0, 0);
+            }
             let (cc, oi) = put_chunk(
                 &mut out,
                 &table.columns[k].name,
@@ -318,17 +336,32 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
             compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
             chunks.push(cc);
             group_index.push(oi);
+            if k + 1 == n_cols {
+                groups.push(RowGroup {
+                    columns: std::mem::replace(&mut chunks, Vec::with_capacity(n_cols)),
+                    total_byte_size: total,
+                    num_rows: ranges[g].len() as i64,
+                    file_offset: Some(start as i64),
+                    total_compressed_size: Some(compressed),
+                    ordinal: i16::try_from(g).ok(),
+                });
+                indexes.push(std::mem::replace(&mut group_index, Vec::with_capacity(n_cols)));
+            }
             Ok(())
-        })?;
-        groups.push(RowGroup {
-            columns: chunks,
-            total_byte_size: total,
-            num_rows: n_rows as i64,
-            file_offset: Some(start as i64),
-            total_compressed_size: Some(compressed),
-            ordinal: i16::try_from(g).ok(),
-        });
-        indexes.push(group_index);
+        },
+    )?;
+    if n_cols == 0 {
+        for (g, rows) in ranges.iter().enumerate() {
+            groups.push(RowGroup {
+                columns: Vec::new(),
+                total_byte_size: 0,
+                num_rows: rows.len() as i64,
+                file_offset: Some(out.at as i64),
+                total_compressed_size: Some(0),
+                ordinal: i16::try_from(g).ok(),
+            });
+            indexes.push(Vec::new());
+        }
     }
     if options.offset_index {
         for (g, group_index) in groups.iter_mut().zip(indexes) {
@@ -748,13 +781,16 @@ fn parallel<T: Send>(
 /// Run `f(k)` for `k` in `0..n` on up to `threads` threads, and give
 /// each result to `sink` on the calling thread, in order, as soon as it
 /// and those before it are done. Workers run at most two results per
-/// thread ahead of `sink`, so few are held at once. Stops at the first
-/// error.
+/// thread ahead of `sink`, and start nothing new while the results
+/// waiting for `sink` come to `budget` bytes or more (by `size`), so
+/// few are held at once. Stops at the first error.
 fn parallel_ordered<T: Send>(
     threads: usize,
     n: usize,
     scratch: &[Mutex<Scratch>],
     f: &(dyn Fn(usize, &mut Scratch) -> Result<T> + Sync),
+    size: &(dyn Fn(&T) -> usize + Sync),
+    budget: usize,
     mut sink: impl FnMut(usize, T) -> Result<()>,
 ) -> Result<()> {
     let lock = |k: usize| scratch[k].lock().unwrap_or_else(PoisonError::into_inner);
@@ -771,8 +807,10 @@ fn parallel_ordered<T: Send>(
         results: Vec<Option<Result<T>>>,
         /// The next column to hand to a worker.
         next: usize,
-        /// Columns given to `sink` so far.
+        /// Results given to `sink` so far.
         done: usize,
+        /// Bytes of the results done but not yet given to `sink`.
+        held: usize,
         stop: bool,
     }
     let window = 2 * threads;
@@ -780,6 +818,7 @@ fn parallel_ordered<T: Send>(
         results: (0..n).map(|_| None).collect(),
         next: 0,
         done: 0,
+        held: 0,
         stop: false,
     });
     let changed = Condvar::new();
@@ -789,7 +828,12 @@ fn parallel_ordered<T: Send>(
         loop {
             let k = {
                 let mut st = guard();
-                while !st.stop && st.next < n && st.next >= st.done + window {
+                // While results are held, the one `sink` waits for is
+                // being encoded (jobs start in order), so this ends.
+                while !st.stop
+                    && st.next < n
+                    && (st.next >= st.done + window || (st.held >= budget && st.next > st.done))
+                {
                     st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
                 }
                 if st.stop || st.next >= n {
@@ -804,7 +848,11 @@ fn parallel_ordered<T: Send>(
                         .of(ErrorKind::Internal),
                 )
             });
-            guard().results[k] = Some(r);
+            let bytes = r.as_ref().map_or(0, size);
+            let mut st = guard();
+            st.results[k] = Some(r);
+            st.held += bytes;
+            drop(st);
             changed.notify_all();
         }
     };
@@ -825,6 +873,7 @@ fn parallel_ordered<T: Send>(
                 let mut st = guard();
                 loop {
                     if let Some(r) = st.results[k].take() {
+                        st.held -= r.as_ref().map_or(0, size);
                         break Some(r);
                     }
                     if started == 0 {
@@ -869,6 +918,7 @@ struct Scratch {
     packed: Vec<u8>,
     levels: Vec<u8>,
 }
+
 
 /// A page's place in its chunk's data pages.
 struct Page {

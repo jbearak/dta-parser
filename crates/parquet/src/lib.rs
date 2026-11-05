@@ -30,7 +30,8 @@
 //!
 //! **Writing.** [`write`] takes a [`Table`] of [`WriteColumn`]s, each
 //! filled a block of rows at a time, and writes row group by row group,
-//! encoding a row group's columns on worker threads.
+//! encoding column chunks on worker threads, several row groups' at
+//! once when a row group has few columns.
 //!
 //! **What is read.** Every flat column of every type plan 0018 lists
 //! ([`ColumnType`]): integers signed and unsigned, floats, booleans,

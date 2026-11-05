@@ -230,6 +230,10 @@ fn many_row_groups_with_threads() {
     // The same bytes with one thread.
     let one = bytes_of(&cols, Profile::default(), &WriteOptions { threads: 1, ..opts });
     assert_eq!(bytes, one);
+    // And with row groups pipelined under the smallest budget, where
+    // each chunk waits for the one before it to be written.
+    let tight = bytes_of(&cols, Profile::default(), &WriteOptions { pipeline_bytes: 1, ..opts });
+    assert_eq!(bytes, tight);
     check(&bytes, &cols, 0, 20_000, threaded());
     check(&bytes, &cols, 4321, 9000, threaded());
 }
