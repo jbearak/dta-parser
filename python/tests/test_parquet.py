@@ -604,3 +604,15 @@ def test_duckdb_reads_our_files(tmp_path):
     kinds = dict(con.execute("SELECT column_name, column_type FROM (DESCRIBE SELECT * FROM read_parquet(?))",
                              [str(path)]).fetchall())
     assert kinds["small"] == "TINYINT" and kinds["day"] == "DATE" and kinds["s"] == "VARCHAR"
+
+
+@pytest.mark.parametrize("unit", ["ms", "us", "ns"])
+def test_a_timestamp_equal_to_nat_is_an_error(unit, tmp_path):
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    path = tmp_path / "nat.parquet"
+    values = pa.array([0, -9223372036854775808], type=pa.int64()).cast(pa.timestamp(unit))
+    pq.write_table(pa.table({"t": values}), path)
+    with pytest.raises(ValueError, match="cannot be held, since numpy uses it for NaT"):
+        dp.read_parquet(path)
+

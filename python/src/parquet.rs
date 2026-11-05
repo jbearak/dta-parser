@@ -436,7 +436,7 @@ fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>, meta: &FileMetaData)
             unit: *unit,
             tz: utc.then(|| zone_of(col, entry)),
             seconds: *unit == TimeUnit::Millis && entry.and_then(|e| e.unit.as_deref()) == Some("s"),
-            codes: matches!(unit, TimeUnit::Micros | TimeUnit::Nanos) && !min_ruled_out(meta, col),
+            codes: !min_ruled_out(meta, col),
         },
         ColumnType::Time { unit, .. } => Kind::Time {
             unit: *unit,
