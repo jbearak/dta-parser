@@ -127,7 +127,9 @@ pyarrow, polars and duckdb installed too, the Parquet tests also check
 that those tools read back what `write_parquet` writes, and pandas keeps
 text in Arrow memory, which `read_parquet` then fills directly; CI runs
 the tests with and without them. `bench/parquet/run_py.py` runs the
-Python Parquet benchmarks (it also needs fastparquet).
+Python Parquet benchmarks (it also needs fastparquet), and
+`bench/parquet/threads_py.py` times Python's reads and writes at 1 to 16
+threads.
 
 **Julia package** (Julia 1.10 or later):
 
