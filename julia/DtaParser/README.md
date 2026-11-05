@@ -38,6 +38,16 @@ write_dta("new.dta", (id=1:3, when=[Date(2024, 1, 1), Date(2024, 1, 2), missing]
 
 `read_meta(path)` gives the metadata without the data.
 
+## Parquet and fixed-width text
+
+Since 0.3, DtaParser reads and writes `.dta` files only. Parquet
+(`read_parquet`, `read_parquet_info`, `save_parquet`) and
+`read_fixed_width` are in [Datakit](../Datakit), which builds on
+DtaParser and returns DataFrames; see
+[docs/migration.md](../../docs/migration.md#dtaparser-02-to-03).
+DtaParser's library still holds the Parquet code, which Datakit calls
+through `DtaParser.Internals` (for Datakit only, not an API).
+
 ## How Stata's values arrive
 
 - A numeric column is a `Vector` of its storage type (`Int8` byte,
@@ -46,12 +56,14 @@ write_dta("new.dta", (id=1:3, when=[Date(2024, 1, 1), Date(2024, 1, 2), missing]
   and `stata_code` tells `.` from `.a` to `.z`.
 - Slicing, `view`, `copy`, `similar`, `sort`, `permute!`, `vcat` and
   `append!` of `DtaColumn`s, and assigning a `DtaColumn` into a slice of
-  another, keep the codes. So do DataFrames' row selection, `sort`,
-  `subset`, `filter`, `copy`, and `select`/`transform` on grouped frames.
+  another, keep the codes. So do DataFrames' row selection, `sort` and
+  `sort!`, `subset`, `filter`, `copy`, joins, and `select`/`transform`
+  passing the column through.
 - Assigning a single element (`b[i] = a[i]`) copies `missing`, which
-  becomes `.`. DataFrames' `combine` on groups and `vcat` of DataFrames
-  build plain vectors: `.` is kept, the letters are lost. `groupby` on a
-  `DtaColumn` puts all missing values in one group.
+  becomes `.`. DataFrames' `combine` on groups, `vcat` of DataFrames and
+  any function over the column build plain vectors: `.` is kept, the
+  letters are lost. `groupby` on a `DtaColumn` puts all missing values
+  in one group.
 - `stata_key(x)` gives a `Float64` that sorts and compares as Stata does:
   numbers, then `.`, `.a`, ..., `.z` (the same keys as dtatools and the
   npm package).

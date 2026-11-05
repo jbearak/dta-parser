@@ -4,14 +4,16 @@
 #
 #   julia --project=bench/julia bench/parquet/case.jl LIB TASK FILE OUT COLS SKIP N
 #
-# LIB is ours (DtaParser), parquet2 (Parquet2.jl) or duckdb (DuckDB.jl).
+# LIB is ours (Datakit), parquet2 (Parquet2.jl) or duckdb (DuckDB.jl).
+# Every read gives a DataFrame (plan 0019): Datakit's read_parquet returns
+# one, with its metadata; Parquet2's and DuckDB's are collected into one.
 # TASK is one of
-#   full    read the whole file into a table
+#   full    read the whole file into a DataFrame
 #   five    read five named columns (COLS, comma-separated)
 #   window  read N rows from row SKIP (0-based)
 #   pass    read the whole file, then one pass over every value
-#   write   read FILE (a .dta) with DtaParser, then time writing it with
-#           LIB's defaults
+#   write   read FILE (a .dta) with DtaParser into a DataFrame, then time
+#           writing it with LIB's defaults
 #   zstd    the same, with zstd at level 3 (Parquet2 has no levels: its
 #           zstd default)
 # Only the task is timed (wall time, and CPU time of the process and its
@@ -25,6 +27,9 @@ const skip, n = parse(Int, ARGS[6]), parse(Int, ARGS[7])
 
 using DataFrames, Dates, DtaParser
 import Tables
+if lib == "ours"
+    using Datakit
+end
 if lib == "parquet2"
     using Parquet2
 elseif lib == "duckdb"
@@ -112,7 +117,7 @@ end
 
 function write_case(lib, task, d, dst)
     if lib == "ours"
-        task == "zstd" ? write_parquet(dst, d; compression=:zstd, compression_level=3) : write_parquet(dst, d)
+        task == "zstd" ? save_parquet(dst, d; compression=:zstd, compression_level=3) : save_parquet(dst, d)
     elseif lib == "parquet2"
         task == "zstd" ? Parquet2.writefile(dst, d; compression_codec=:zstd) : Parquet2.writefile(dst, d)
     else
@@ -124,12 +129,12 @@ function write_case(lib, task, d, dst)
     end
 end
 
-# A frame as each library takes it: ours the DtaTable read_dta returns;
-# the others a DataFrame of plain vectors (not timed), since a DtaColumn
-# is not a type they know.
+# A frame as each library takes it: ours the DataFrame of read_dta's
+# table, with its DtaColumns and metadata; the others a DataFrame of
+# plain vectors (not timed), since a DtaColumn is not a type they know.
 function frame_for(lib, t)
-    lib == "ours" && return t
     d = DataFrame(t; copycols=false)
+    lib == "ours" && return d
     for name in names(d)
         x = d[!, name]
         x isa DtaColumn && (d[!, name] = collect(x))
@@ -137,7 +142,7 @@ function frame_for(lib, t)
     d
 end
 
-const versions = Dict("ours" => () -> string(pkgversion(DtaParser)),
+const versions = Dict("ours" => () -> string(pkgversion(Datakit)),
                       "parquet2" => () -> string(pkgversion(Parquet2)),
                       "duckdb" => () -> string(pkgversion(DuckDB)))
 threads = lib == "ours" ? get(ENV, "DTA_THREADS", "default") :

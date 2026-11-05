@@ -23,8 +23,8 @@ TypeScript, with one implementation of the format underneath all four.
   (`read_fixed_width` in R, Python and Julia).
 - **Reads and writes Parquet that keeps all of this** (in R, through
   datakit's `read_parquet()` and `save_parquet()`; in Python,
-  `read_parquet` and `write_parquet`; in Julia, DtaParser's
-  `read_parquet` and `write_parquet`; in TypeScript,
+  `read_parquet` and `write_parquet`; in Julia, Datakit's
+  `read_parquet` and `save_parquet`; in TypeScript,
   `openParquetFile()` and `writeParquetFile()`): labels, formats,
   notes and `.a` to `.z` travel in the file's metadata, and the file
   is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
@@ -52,6 +52,7 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, `tagged_na()` and `with_labels()` make them, and `save_dta()` writes them, dates included |
 | Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
+| Julia | `Datakit` | [docs/julia.md](docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes) | a DataFrame from Parquet or fixed-width text, labels in its metadata, `.a` to `.z` in `DtaColumn`s; built on DtaParser |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
@@ -62,7 +63,9 @@ reading and writing: `d[i, name, by = g] := value` for `generate`,
 with a SAS setup file, and `read_parquet` and `save_parquet` for
 Parquet files. A translated script attaches
 `library(dtaparser); library(datakit)`, datakit last. datakit imports
-dtaparser; dtatools imports both.
+dtaparser; dtatools imports both. Julia has the same split: DtaParser
+reads and writes `.dta`, and Datakit, built on it, reads Parquet and
+fixed-width text into DataFrames and saves Parquet.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust

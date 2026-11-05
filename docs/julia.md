@@ -53,7 +53,7 @@ import Pkg
 Pkg.develop(path="dta-parser/julia/DtaParser")
 Pkg.develop(path="dta-parser/julia/Datakit")   # optional: Parquet and fixed-width text
 Pkg.build("DtaParser")      # runs cargo; takes a minute the first time
-Pkg.add("DataFrames")       # for DataFrame(t); Datakit brings it anyway
+Pkg.add("DataFrames")       # for DataFrame(t), and `using DataFrames` beside Datakit
 ```
 
 Run this from the directory you cloned into (the paths are relative to

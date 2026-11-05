@@ -88,9 +88,9 @@ first appearance, which the test checks against pyarrow's values.
     cargo run -p dta-parquet --example samples -- DIR
     python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB
     Rscript compat/parquet/readback.R DIR      # arrow, nanoparquet
-    julia --project=bench/julia compat/parquet/readback.jl   # Parquet2.jl
+    julia --project=bench/julia compat/parquet/readback.jl   # Parquet2.jl reads Datakit's files
 
-`readback.jl` writes its own files with DtaParser's `write_parquet`
+`readback.jl` writes its own files with Datakit's `save_parquet`
 (every type it writes, with nulls, `.a` to `.z`, categoricals and a
 zone, in snappy, zstd, gzip and no compression, and in row groups of
 100 rows) and checks what Parquet2.jl 0.2.37 reads from them: every
@@ -146,6 +146,35 @@ with hyparquet-compressors 1.1.3 (`bench/node`) reads each file and
 every value is checked against what was written, by hyparquet's own
 rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
 `.a` to `.z` as NaN). Result: 315,000 values checked, none differ.
+
+## Across languages
+
+    sh compat/parquet/cross_language.sh [DIR]
+
+R's datakit writes a file (`cross_language.R write`) and Julia's
+Datakit checks it cell by cell (`cross_language.jl check`); then Julia
+writes one and R checks it. Both scripts make the same literal data, so
+each checks every row's value and missing code (`.` or which of `.a`
+to `.z`), the variable labels, display formats, value label sets (with
+labels on letters), the data label and notes. The data has a double, a
+byte, a long and a float column holding letters (the long one written
+as DOUBLE with `"storage": "long"`), an integer with nulls, text,
+a factor with an unused level, dates with a format, and zoned times.
+R's file also has the exactness edges: a `Date` with a fraction of a
+day, which Julia reads exactly as Stata's days since 1960 with `%td`,
+and a `POSIXct` whose seconds no whole number of microseconds gives
+back, which Julia refuses by default (the error names the column, the
+row and `timestamps = :truncate`) and truncates to the millisecond with
+it. Julia's file has a date column holding letters, as Julia holds one
+(Stata's days since 1960), which R reads as numbers with their `%td`
+format. Python's datakit adds its half with plan 0019's PR 2b.
+
+Result with R 4.6.1 (dtaparser and datakit from this checkout) and
+Julia 1.13.3: Julia checked 94 values and labels in R's file, R checked
+60 in Julia's, and none differ. One value had to change while writing
+the script: R parses the literal `1e300` as `1.0000000000000006e300`
+(its own string-to-double conversion is not correctly rounded), so the
+scripts use `2^1000`, which both languages hold exactly.
 
 ## Credits
 

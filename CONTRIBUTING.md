@@ -37,7 +37,8 @@ people and by coding agents alike:
 | `r/datakit` | the R package for translating do-files: `:=`, `read_fixed_width`, and Parquet's `read_parquet` and `save_parquet`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
 | `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser, takes `:=` from datakit ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
 | `python` | the Python package, a PyO3 extension | Python, Rust |
-| `julia/DtaParser` | the Julia package, over the C interface | Julia |
+| `julia/DtaParser` | the Julia package for `.dta`, over the C interface; `DtaParser.Internals` holds what Datakit uses | Julia |
+| `julia/Datakit` | the Julia package for translated do-files: Parquet and `read_fixed_width` into DataFrames; reaches the C interface through DtaParser ([ADR 0034](docs/adr/0034-datakit-in-python-and-julia.md)) | Julia |
 | `js` | the npm package, over the WebAssembly module | TypeScript |
 | `compat` | fixtures and what other readers make of them | |
 | `bench` | benchmarks | |

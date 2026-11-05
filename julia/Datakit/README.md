@@ -45,7 +45,13 @@ import Pkg
 Pkg.develop(path="dta-parser/julia/DtaParser")   # first: Datakit needs DtaParser 0.3
 Pkg.develop(path="dta-parser/julia/Datakit")
 Pkg.build("DtaParser")                            # runs cargo
+Pkg.add("DataFrames")                             # for `using DataFrames` in your scripts
 ```
+
+Run this from the directory you cloned into, in the environment you
+want the packages in. Datakit depends on DataFrames 1.4 or later and
+loads it; add it to your environment as well to call its functions
+(`nrow`, `colmetadata`, ...) by name.
 
 TimeZones.jl and CategoricalArrays.jl are optional: with them loaded,
 zoned timestamps and categorical columns read and write as
