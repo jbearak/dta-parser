@@ -394,10 +394,6 @@ impl Block {
     pub(crate) fn addr(&self) -> usize {
         self.ptr as usize
     }
-
-    pub(crate) fn len(&self) -> usize {
-        self.len
-    }
 }
 
 impl Drop for Block {
@@ -437,7 +433,6 @@ impl Plan {
 pub(crate) struct InField {
     pub(crate) name: String,
     pub(crate) format: String,
-    pub(crate) flags: i64,
     pub(crate) metadata: Vec<(String, Vec<u8>)>,
     pub(crate) children: Vec<InField>,
     pub(crate) dictionary: Option<Box<InField>>,
@@ -487,7 +482,6 @@ unsafe fn read_field(s: *const ArrowSchema) -> InField {
     InField {
         name: cstr(s.name),
         format: cstr(s.format),
-        flags: s.flags,
         metadata: read_metadata(s.metadata),
         children,
         dictionary: (!s.dictionary.is_null()).then(|| Box::new(read_field(s.dictionary))),

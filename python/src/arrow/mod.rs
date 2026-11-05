@@ -5,6 +5,7 @@
 //! `ABI_VERSION`; datakit is their only caller.
 
 pub(crate) mod digest;
+pub(crate) mod dta;
 pub(crate) mod ffi;
 pub(crate) mod read;
 pub(crate) mod write;

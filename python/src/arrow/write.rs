@@ -159,7 +159,7 @@ fn texts<'a>(col: &'a Column<'a>, format: &'a str) -> Box<GetBytes<'a>> {
 /// An Enum or Categorical: its levels (an Enum's every category; a
 /// Categorical's that its rows use, in polars' order) and each chunk's
 /// key to level map.
-fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> PyResult<(Vec<String>, Vec<Vec<i32>>)> {
+pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> PyResult<(Vec<String>, Vec<Vec<i32>>)> {
     let dict_field = col.field.dictionary.as_deref().expect("a dictionary");
     let df = dict_field.format.as_str();
     if !matches!(df, "u" | "U" | "vu") {
@@ -205,7 +205,7 @@ fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> PyResult<(Ve
 
 /// Each row's `.a` to `.z` (2 to 27), or 0, from a `LETTERS` Series or a
 /// String one.
-fn letter_codes(name: &str, obj: &Bound<'_, PyAny>, rows: usize) -> PyResult<Vec<u8>> {
+pub(crate) fn letter_codes(name: &str, obj: &Bound<'_, PyAny>, rows: usize) -> PyResult<Vec<u8>> {
     let imported = import_stream(obj)?;
     let (field, child) = if imported.schema.format == "+s" {
         (imported.schema.children.first().ok_or_else(|| fail("an empty letters frame"))?, true)
@@ -283,7 +283,7 @@ fn dtype_of(format: &str) -> String {
 
 /// The value label sets of `meta`: {name: {code: text}}, a code an int,
 /// a float or `.`/`.a`-`.z` as text.
-fn label_sets(sets: &Bound<'_, PyDict>) -> PyResult<Vec<ValueLabelSet>> {
+pub(crate) fn label_sets(sets: &Bound<'_, PyDict>) -> PyResult<Vec<ValueLabelSet>> {
     const MAX_EXACT: f64 = 9_007_199_254_740_992.0;
     let mut out = Vec::with_capacity(sets.len());
     for (name, table) in sets.iter() {
