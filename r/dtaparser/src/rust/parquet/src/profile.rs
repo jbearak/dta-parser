@@ -36,6 +36,9 @@ pub struct Profile {
     pub characteristics: Vec<Characteristic>,
     /// Names of the columns the data is sorted by.
     pub sort: Vec<String>,
+    /// The `.dta` file's time stamp, as that file gave it, where the
+    /// language keeps one (Python and Julia do).
+    pub timestamp: Option<String>,
     /// Per-column entries, in the order written.
     pub columns: Vec<ColumnProfile>,
     pub value_labels: Vec<ValueLabelSet>,
@@ -254,6 +257,10 @@ impl Profile {
                     Some(v) => p.sort = v,
                     None => warn(dropped("sort", "is not an array of text")),
                 },
+                "timestamp" => match value {
+                    Value::String(s) => p.timestamp = Some(s.to_string()),
+                    _ => warn(dropped("timestamp", "is not text")),
+                },
                 "characteristics" => match value {
                     Value::Object(vars) => {
                         for (var, entry) in unique(vars, "characteristics.", &mut warn) {
@@ -372,6 +379,10 @@ impl Profile {
         if !self.sort.is_empty() {
             o.push_str(",\"sort\":");
             string_array(&mut o, &self.sort);
+        }
+        if let Some(t) = &self.timestamp {
+            o.push_str(",\"timestamp\":");
+            json::string(&mut o, t);
         }
         let columns: Vec<&ColumnProfile> = self.columns.iter().filter(|c| !c.is_empty()).collect();
         if !columns.is_empty() {
@@ -755,6 +766,7 @@ mod tests {
                 },
             ],
             sort: vec!["id".into()],
+            timestamp: Some("01 Mar 2024 09:30".into()),
             columns: vec![
                 ColumnProfile {
                     name: "age".into(),
@@ -902,6 +914,7 @@ mod tests {
             "label": 3,
             "notes": ["a", 1],
             "sort": "id",
+            "timestamp": 20240301,
             "characteristics": {"_dta": {"note0": 1}},
             "columns": {
                 "a": {"label": "ok", "format": 9, "value_labels": "nosuch"},
@@ -933,6 +946,7 @@ mod tests {
             "\"label\"",
             "\"notes\"",
             "\"sort\"",
+            "\"timestamp\"",
             "\"characteristics._dta\"",
             "\"columns.a.format\"",
             "\"columns.b\"",

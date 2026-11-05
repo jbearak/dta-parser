@@ -27,20 +27,26 @@ Each task links to its section on the language page.
 ### Install
 
 Nothing beyond the package: R, [Parquet: install](r.md#parquet-install).
-Python, Julia, TypeScript: not yet.
+Julia, [Parquet: install](julia.md#parquet-install) (TimeZones.jl and
+CategoricalArrays.jl are optional, for zones and categoricals).
+Python, TypeScript: not yet.
 
 ### Read a whole file, and what each type becomes
 
 R: [Read a Parquet file](r.md#read-a-parquet-file) and
 [What each Parquet type becomes](r.md#what-each-parquet-type-becomes-in-r).
+Julia: [Read a Parquet file](julia.md#read-a-parquet-file) and
+[What each Parquet type becomes](julia.md#what-each-parquet-type-becomes-in-julia).
 
 ### Read some columns
 
 R: [Read some columns](r.md#read-some-columns-of-a-parquet-file).
+Julia: [Read some columns](julia.md#read-some-columns-of-a-parquet-file).
 
 ### Read a range of rows
 
 R: [Read a range of rows](r.md#read-a-range-of-rows-of-a-parquet-file).
+Julia: [Read a range of rows](julia.md#read-a-range-of-rows-of-a-parquet-file).
 Only the row groups that hold the rows are read, and within them only
 the pages that do: through the file's offset index, or, when it has
 none, by walking the page headers.
@@ -48,31 +54,41 @@ none, by walking the page headers.
 ### Get the schema and metadata without the data
 
 R: [Schema and metadata](r.md#a-parquet-files-schema-and-metadata).
+Julia: [Schema and metadata](julia.md#a-parquet-files-schema-and-metadata)
+(`read_meta`, which also reads `.dta` files).
 
 ### Value labels and variable labels
 
 R: [Labels](r.md#labels-in-parquet-files).
+Julia: [Labels](julia.md#labels-in-parquet-files).
 
 ### Dates and timestamps, with time zones
 
 R: [Dates and time zones](r.md#dates-and-time-zones-in-parquet-files).
+Julia: [Dates and time zones](julia.md#dates-and-time-zones-in-parquet-files).
 
 ### Write a table; compression and row groups
 
-R: [Write a Parquet file](r.md#write-a-parquet-file). The defaults are
-[below](#defaults-and-the-measurements-behind-them).
+R: [Write a Parquet file](r.md#write-a-parquet-file).
+Julia: [Write a Parquet file](julia.md#write-a-parquet-file). The
+defaults are [below](#defaults-and-the-measurements-behind-them).
 
 ### Write labels and a data label, and check them
 
 R: [Write labels](r.md#write-labels-to-a-parquet-file).
+Julia: [Write labels](julia.md#write-labels-to-a-parquet-file).
 
 ### Keep `.a` to `.z` through a write and a read
 
 R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
+Julia: [Keep .a to .z](julia.md#keep-a-to-z-in-a-parquet-file).
 
 ### Read a file another tool wrote
 
 R: [Files from other tools](r.md#parquet-files-from-other-tools).
+Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
+pandas, pyarrow and polars write microsecond timestamps, so Julia reads
+their files with `timestamps = :truncate`.
 Every encoding and codec other tools write by default is read, and
 the types plan 0018 lists: unsigned integers, DECIMAL, TIME, INT96,
 fixed-length binary, UUID, ENUM and JSON. A category or factor that
@@ -285,3 +301,18 @@ and of other tools reading our files, is in
 | warning: `dropped "columns.x.storage" from the dta profile: ...` (and other `dropped ...` warnings) | a damaged or hand-edited profile | none needed; the values are read, the entry is not |
 | warning: `the dta profile is not JSON (...); the file is read as plain Parquet` | the `dta` entry is damaged | as for any file from another tool |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
+
+Julia's `read_parquet` and `write_parquet` give the same messages with
+Julia's argument names, and these of their own:
+
+| message | cause | what to do |
+|---|---|---|
+| `column "x": row 2 is 1577836801000003 microseconds, which is not a whole number of milliseconds, all a DateTime holds; read with read_parquet("f.parquet"; timestamps = :truncate) ...` | a microsecond or nanosecond timestamp, as pandas, pyarrow and polars write them | the call it gives |
+| `the file has nested columns, which are not read: "l", ...; select the columns wanted with cols, or pass nested = :skip` (an `ArgumentError`) | a list, map or struct column, and no `cols` that leaves it out | `nested = :skip`, or `cols`; for the nested data, DuckDB.jl |
+| `column "x": the value ... in row 1 has more than 15 significant digits, ...; read with decimal = :string to keep every digit` | a DECIMAL value a `Float64` cannot give back | `decimal = :string` |
+| warning: `TimeZones.jl is not loaded, so these columns' times are DateTime in UTC, without their zones: when (Europe/Paris)` | a zoned timestamp, read without TimeZones.jl | `using TimeZones` and read again |
+| warning: `CategoricalArrays.jl is not loaded, so these categorical columns are String: region` | a categorical column, read without CategoricalArrays.jl | `using CategoricalArrays` and read again |
+| `compression must be :snappy, :zstd, :gzip, :lz4_raw or :none, not :lzo` (an `ArgumentError`) | `write_parquet(compression = )` | one of those |
+| `column t: cannot write values of type Time; Parquet TIME columns are read, not written` (also complex numbers and other types) | a column type `write_parquet` does not write | convert it first |
+| `column c: a categorical column is written as text, so its levels must be strings, not Int64; ...` | a `CategoricalArray` of numbers | `categorical(string.(x))`, or write the numbers |
+| `column z holds times in 2 zones; a Parquet timestamp column has one. ...` | a `ZonedDateTime` column with several zones | `astimezone` to one zone |

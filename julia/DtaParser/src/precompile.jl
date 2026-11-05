@@ -1,5 +1,6 @@
 # A workload run while the package precompiles, so that the first
-# read_dta, read_meta and write_dta in a session do not wait for the
+# read_dta, read_meta, write_dta, read_parquet and write_parquet in a
+# session do not wait for the
 # compiler (they took about 0.1 to 0.5 s before). Skipped when the
 # library is not built yet.
 
@@ -23,6 +24,20 @@ function workload()
         read_dta(path; skip=1, n_max=1)
         read_dta(path; dates=false)
         read_meta(path)
+        pq = path * ".parquet"
+        try
+            write_parquet(pq, t)
+            write_parquet(pq, table; label="workload", column_value_labels=Dict(:b => "yn"),
+                          value_labels=Dict("yn" => Dict(1 => "yes", ".a" => "no answer")))
+            p = read_parquet(pq)
+            write_parquet(pq, p)
+            read_parquet(pq; cols=[:x, :s], skip=1, n_max=1)
+            read_parquet(read(pq); cols=["x"])
+            read_meta(pq)
+            write_parquet(IOBuffer(), p)
+        finally
+            rm(pq; force=true)
+        end
     finally
         rm(path; force=true)
     end

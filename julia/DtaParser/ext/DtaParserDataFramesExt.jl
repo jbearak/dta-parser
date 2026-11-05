@@ -1,7 +1,7 @@
 module DtaParserDataFramesExt
 
 using DataFrames
-using DtaParser: DtaTable
+using DtaParser: DtaParser, DtaTable, read_dta, read_parquet, write_dta, write_parquet
 import DataAPI, Tables
 
 """
@@ -22,6 +22,41 @@ function DataFrames.DataFrame(t::DtaTable; copycols::Bool=true)
         colmetadata!(df, n, key, DataAPI.colmetadata(t, n, key); style=:note)
     end
     df
+end
+
+# Loading DataFrames invalidates some of DtaParser's compiled code; run
+# its workload again, with DataFrames, so that this extension's cache
+# holds it and the first read in a session does not wait for the
+# compiler.
+# (As in DtaParser's precompile.jl, what the workload compiles is tagged
+# so that the cache keeps it, DtaParser's methods included.)
+function workload()
+    DtaParser.workload()
+    path = tempname() * ".parquet"
+    try
+        df = DataFrame((x=[1.5, 2.0], s=["a", "b"], i=Int8[1, 2]))
+        write_parquet(path, df)
+        DataFrame(read_parquet(path))
+        write_dta(path, df)
+        DataFrame(read_dta(path))
+    finally
+        rm(path; force=true)
+    end
+end
+
+if ccall(:jl_generating_output, Cint, ()) == 1 && !isempty(DtaParser.FNS)
+    tag = try
+        cglobal(:jl_tag_newly_inferred_enable)
+        true
+    catch
+        false
+    end
+    tag && ccall(:jl_tag_newly_inferred_enable, Cvoid, ())
+    try
+        workload()
+    finally
+        tag && ccall(:jl_tag_newly_inferred_disable, Cvoid, ())
+    end
 end
 
 end

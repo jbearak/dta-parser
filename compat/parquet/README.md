@@ -88,6 +88,16 @@ first appearance, which the test checks against pyarrow's values.
     cargo run -p dta-parquet --example samples -- DIR
     python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB
     Rscript compat/parquet/readback.R DIR      # arrow, nanoparquet
+    julia --project=bench/julia compat/parquet/readback.jl   # Parquet2.jl
+
+`readback.jl` writes its own files with DtaParser's `write_parquet`
+(every type it writes, with nulls, `.a` to `.z`, categoricals and a
+zone, in snappy, zstd, gzip and no compression, and in row groups of
+100 rows) and checks what Parquet2.jl 0.2.37 reads from them: every
+value as written, `.a` to `.z` as NaN with their tagged bits, a
+categorical as its text, a zoned time as its UTC `DateTime`, INT(8) and
+INT(16) as `Int8` and `Int16`, and the `dta` key in the file's
+metadata. Every check passes.
 
 `samples` writes every type with nulls, `.a` to `.z`, categoricals
 (ordered and not, with an unused level) and time zones; the same in each

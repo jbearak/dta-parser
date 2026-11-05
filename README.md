@@ -22,7 +22,8 @@ TypeScript, with one implementation of the format underneath all four.
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
   (`read_fixed_width` in R, Python and Julia).
 - **Reads and writes Parquet that keeps all of this** (in R, through
-  datakit's `read_parquet()` and `save_parquet()`): labels, formats,
+  datakit's `read_parquet()` and `save_parquet()`; in Julia, through
+  DtaParser's `read_parquet` and `write_parquet`): labels, formats,
   notes and `.a` to `.z` travel in the file's metadata, and the file is
   plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
   read. A tibble read from a `.dta` file comes back identical. See

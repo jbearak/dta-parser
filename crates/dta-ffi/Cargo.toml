@@ -11,6 +11,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 dta = { path = "../dta" }
+dta-parquet = { path = "../parquet" }
 
 [features]
 # Test builds of the wasm module: `dta_test_set` lowers the read budget

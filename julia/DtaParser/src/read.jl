@@ -149,17 +149,12 @@ function metadata_of(doc)
     names, meta, colmeta
 end
 
-"""
-    read_meta(path; encoding=nothing) -> Dict{String,Any}
-
-The file's metadata without its data: the table metadata [`DtaTable`](@ref)
-lists, `"nrows"`, and `"columns"`, one `Dict` per variable with `"name"`
-and the column metadata.
-"""
-function read_meta(path::AbstractString; encoding=nothing)
+# A .dta file's metadata, for read_meta (in parquet_write.jl).
+function dta_meta(path::AbstractString; encoding=nothing)
     doc = with_file(f -> parse_json(meta_json(f)), path, encoding)
     names, meta, colmeta = metadata_of(doc)
     meta["nrows"] = Int(doc["nobs"])
+    meta["format"] = :dta
     meta["columns"] = [(c = colmeta[n]; c["name"] = String(n); c) for n in names]
     meta
 end
