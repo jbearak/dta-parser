@@ -398,6 +398,11 @@ def test_datetimes_with_letters_hold_whole_microseconds():
     far = pl.DataFrame({"ts": pl.Series([dt.datetime(2300, 1, 1, 0, 0, 0, 1), None])})
     # Past 2^53 microseconds, where the microseconds as a double round too.
     odd = pl.DataFrame({"ts": pl.Series([9007199254740995, None], dtype=pl.Int64).cast(pl.Datetime("us"))})
+    # Far, but whole seconds a double holds exactly: written.
+    whole = pl.DataFrame({"ts": pl.Series([9210000000000000000, None], dtype=pl.Int64).cast(pl.Datetime("us"))})
+    for mode in ("error", "truncate"):
+        written = native.parquet_write_arrow(whole, None, {"missing": {"ts": pl.Series([None, ".a"], dtype=LETTERS)}}, timestamps=mode)
+        assert read_parquet(written)[0]["ts"].cast(pl.Int64)[0] == 9210000000000000000
     for frame in (far, odd):
         for mode in ("error", "truncate"):
             with pytest.raises(ValueError, match='column "ts", row 1: .*too far from 1970'):

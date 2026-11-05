@@ -405,7 +405,9 @@ pub fn parquet_write_arrow<'py>(
                 let x = seconds_of(us);
                 let back = (x * 1e6).round();
                 // In integers: past 2^53 `us as f64` would round too.
-                back.abs() < 9.2e18 && back as i64 == us && back / 1e6 == x
+                (-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&back)
+                    && back as i64 == us
+                    && back / 1e6 == x
             });
             *o = us.ok_or_else(|| {
                 fail(format!(
