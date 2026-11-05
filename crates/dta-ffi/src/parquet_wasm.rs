@@ -889,12 +889,27 @@ struct TextAcc {
     bytes: Vec<u8>,
     ends: Vec<u32>,
     missing: Vec<u8>,
+    /// The most bytes `bytes` may grow to in this chunk (the call's text
+    /// budget less the other columns'); `over` once a row would pass it.
+    limit: usize,
+    over: bool,
 }
 
 impl TextAcc {
+    /// Every row copied out of a chunk comes through here, a dictionary
+    /// value once per row that uses it, so this is where the text is
+    /// counted: a column whose few large values repeat over many rows
+    /// is small to decode and large to hand over.
     fn push_plain(&mut self, value: Option<&[u8]>) {
+        if self.over {
+            return;
+        }
         match value {
             Some(v) => {
+                if self.bytes.len() + v.len() > self.limit {
+                    self.over = true;
+                    return;
+                }
                 self.bytes.extend_from_slice(v);
                 self.missing.push(0);
             }
@@ -1078,6 +1093,8 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                             bytes: Vec::new(),
                             ends: if coded { Vec::new() } else { Vec::with_capacity(rows) },
                             missing: if coded { Vec::new() } else { Vec::with_capacity(rows) },
+                            limit: usize::MAX,
+                            over: false,
                         };
                         (Out::Coded { codes: Vec::new(), new_bytes: Vec::new(), new_utf16: Vec::new() }, Some(acc))
                     }
@@ -1116,15 +1133,21 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                     })
                     .collect();
                 let mut on_text = |k: usize, chunk: &TextChunk| -> dta::Result<()> {
+                    // What the other columns hold, against the same budget.
+                    let others: usize = texts.iter().enumerate().filter(|&(j, _)| j != k).filter_map(|(_, a)| a.as_ref()).map(|a| a.bytes.len()).sum();
                     if let Some(acc) = texts[k].as_mut() {
+                        acc.limit = if max_text > 0.0 { ((max_text / 2.0) as usize).saturating_sub(others) } else { usize::MAX };
                         let dict = dicts.entry(acc.column).or_default();
                         acc.add(chunk, dict);
+                        if acc.over {
+                            return Err(dta::Error::new("a read's text passed its budget").of(ErrorKind::TooLarge));
+                        }
                     }
                     Ok(())
                 };
                 read_into(reader, &cols, start as u64, count as u64, &mut outputs, &mut on_text)
             };
-            if report.is_err() && reader.text_budget_passed() {
+            if report.is_err() && (reader.text_budget_passed() || texts.iter().flatten().any(|a| a.over)) {
                 // JavaScript reads these rows in smaller calls.
                 return Ok(OVER_BUDGET);
             }

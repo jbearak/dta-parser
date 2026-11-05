@@ -79,3 +79,23 @@ test("a few large values among many small ones are read within the budget", { sk
   assert.throws(() => h.readColumns(["h"]), (e) => e.code === "DTA_TOO_LARGE" && /row 0/.test(e.message));
   h.close();
 });
+
+test("a few large dictionary values repeated over many rows are read within the budget", { skip }, () => {
+  // Three distinct values of 300 KiB over 1,000 rows: the chunk is a
+  // 900 KiB dictionary and codes, small to decode, but each row of a
+  // binary column is copied out in full, about 300 MB in all.
+  const n = 1000;
+  const distinct = [0, 1, 2].map((k) => new Uint8Array(300 << 10).map((_, i) => (i * (k + 3)) % 251));
+  const values = Array.from({ length: n }, (_, i) => distinct[i % 3]);
+  const bytes = ordinary.writeParquet({ variables: [{ name: "b", type: "binary", values }] });
+  const r = capped.openParquet(bytes);
+  const [chunk] = r.variables[0].chunks;
+  // Dictionary-coded throughout: the chunk is little more than its dictionary.
+  assert.ok(chunk.dictionaryPageBytes > 0 && chunk.uncompressedBytes < 1 << 20, JSON.stringify(chunk));
+  const [b] = r.readColumns(["b"]);
+  assert.ok(capped.test.memoryBytes() <= 64 << 20, `${capped.test.memoryBytes()}`);
+  for (let i = 0; i < n; i++) {
+    if (b.values[i].length !== distinct[i % 3].length || b.values[i][7] !== distinct[i % 3][7]) assert.fail(`row ${i}`);
+  }
+  r.close();
+});
