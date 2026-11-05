@@ -1098,6 +1098,10 @@ struct Done {
     letters: bool,
 }
 
+/// The uncompressed size of a page, as most writers make it, for
+/// counting the work of a chunk read in part.
+const PAGE_GUESS: u64 = 1 << 20;
+
 /// What every task reads.
 struct Ctx<'r> {
     reader_columns: &'r [ColumnInfo],
@@ -1164,9 +1168,17 @@ impl Ctx<'_> {
             .as_ref()
             .map_or(0, |m| m.total_uncompressed_size.max(0) as u64);
         let rows = g.num_rows.max(1) as u128;
-        (u128::from(size) * u128::from(t.window.end - t.window.start) / rows)
+        let share: u64 = (u128::from(size) * u128::from(t.window.end - t.window.start) / rows)
             .try_into()
-            .unwrap_or(u64::MAX)
+            .unwrap_or(u64::MAX);
+        // A chunk read in part still decompresses whole pages, which most
+        // writers make about 1 MiB: a 1,000-row window of a 400-column file
+        // pyarrow wrote decompressed 400 MB on one thread, counted as 3 MB.
+        if share < size {
+            share.max(size.min(PAGE_GUESS))
+        } else {
+            share
+        }
     }
 }
 
