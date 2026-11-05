@@ -770,7 +770,7 @@ console.log(r.info.keyValue.map((kv) => kv.key));   // [ 'dta', 'ARROW:schema' ]
 | `info.rowGroups` | per row group: `firstRow`, `rows`, `compressedBytes`, `uncompressedBytes` |
 | `info.compression`, `info.createdBy` | the codecs used; the writer the file names |
 | `info.footerBytes`, `info.keyValue` | the footer's size; each key-value metadata entry's `key` and `bytes` |
-| `info.warnings` | warnings about a damaged or newer dta profile (the values are still read) |
+| `info.warnings` | warnings about a damaged or newer dta profile (the values are still read); value label sets are read when `valueLabels` is first called, and a damaged one is then left out |
 | `variables[i].name`, `.type`, `.format`, `.label`, `.valueLabels` | as for `.dta`; `type` is listed under [What each type becomes](#what-each-parquet-type-becomes-in-typescript) |
 | `.role` | `"data"`, or `"nested"` for a list, map or struct, which is not read |
 | `.physicalType`, `.logicalType` | Parquet's own types, such as `"INT32"` and `"INT(8, signed)"` |

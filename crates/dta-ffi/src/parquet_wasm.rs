@@ -447,6 +447,7 @@ fn labels_apply(col: &ColumnInfo, how: &How) -> bool {
         && col.profile_logical.is_none()
 }
 
+#[inline(never)]
 fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut o: String) -> String {
     let profile = r.profile();
     let meta = r.metadata();
@@ -507,8 +508,7 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
         Some((a, b)) => o.push_str(&format!("[{a},{b}]")),
         None => o.push_str("null"),
     }
-    let sets: HashMap<&str, ()> =
-        profile.map_or_else(HashMap::new, |p| p.value_labels.iter().map(|s| (s.name.as_str(), ())).collect());
+    let sets: HashMap<&str, ()> = r.value_label_set_names().into_iter().map(|n| (n, ())).collect();
     let entries: HashMap<&str, &ColumnProfile> =
         profile.map_or_else(HashMap::new, |p| p.columns.iter().map(|c| (c.name.as_str(), c)).collect());
     key(&mut o, "variables");
@@ -518,7 +518,31 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
             o.push(',');
         }
         let entry = entries.get(col.name.as_str()).copied();
-        variable_json(&mut o, col, entry, &how[k], reasons[k].as_deref(), &sets, meta);
+        variable_json(&mut o, col, entry, &how[k], reasons[k].as_deref(), &sets);
+    }
+    o.push(']');
+    // Each text column's size per row group (null for other columns), for
+    // JavaScript to keep each read under its budget without the chunks'
+    // details.
+    key(&mut o, "textBytes");
+    o.push('[');
+    for (k, col) in r.columns().iter().enumerate() {
+        if k > 0 {
+            o.push(',');
+        }
+        if !matches!(how[k], How::Text { .. }) {
+            o.push_str("null");
+            continue;
+        }
+        o.push('[');
+        for (g, group) in meta.row_groups.iter().enumerate() {
+            if g > 0 {
+                o.push(',');
+            }
+            let m = group.columns.get(col.leaf()).and_then(|c| c.meta.as_ref());
+            num(&mut o, m.map_or(0, |m| m.total_uncompressed_size.max(0)) as f64);
+        }
+        o.push(']');
     }
     o.push_str("]}");
     o
@@ -536,7 +560,6 @@ fn variable_json(
     h: &How,
     reason: Option<&str>,
     sets: &HashMap<&str, ()>,
-    meta: &FileMetaData,
 ) {
     o.push('{');
     key(o, "name");
@@ -604,20 +627,6 @@ fn variable_json(
         key(o, "ordered");
         o.push_str(if cat.is_some_and(|c| c.ordered) && col.levels == Some(LevelsFrom::Profile) { "true" } else { "false" });
         o.push('}');
-    }
-    if matches!(h, How::Text { .. }) {
-        // A text column's size per row group, for JavaScript to keep
-        // each read under its budget without the chunks' details.
-        key(o, "textBytes");
-        o.push('[');
-        for (g, group) in meta.row_groups.iter().enumerate() {
-            if g > 0 {
-                o.push(',');
-            }
-            let m = group.columns.get(col.leaf()).and_then(|c| c.meta.as_ref());
-            num(o, m.map_or(0, |m| m.total_uncompressed_size.max(0)) as f64);
-        }
-        o.push(']');
     }
     o.push('}');
 }
@@ -704,6 +713,10 @@ pub extern "C" fn pq_open(file: u32, len: f64, flags: u32, cache_bytes: f64) -> 
         let options = ReadOptions {
             threads: 1,
             nested: if flags & 1 != 0 { Nested::Skip } else { Nested::Error },
+            // Label sets are read when JavaScript first asks for them
+            // (pq_value_labels): most of a survey file's profile, and a
+            // read of a few columns does not need them.
+            lazy_value_labels: true,
             ..ReadOptions::default()
         };
         let mut reader = Reader::open(source, options)?;
@@ -764,7 +777,10 @@ pub extern "C" fn pq_chunks(h: u32) -> *const u8 {
 pub extern "C" fn pq_value_labels(h: u32) -> *const u8 {
     call(std::ptr::null(), |state: &mut State| {
         let text = with_handle(h, |handle| {
-            Ok(json::value_labels(handle.reader.profile().map_or(&[][..], |p| &p.value_labels[..])))
+            // A set that cannot be read is left out, as one was when the
+            // profile was read at open.
+            let (sets, _) = handle.reader.value_label_sets();
+            Ok(json::value_labels(&sets))
         })?;
         Ok(result(state, text.into_bytes()))
     })

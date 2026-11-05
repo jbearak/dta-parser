@@ -104,7 +104,12 @@ export interface ParquetInfo extends TableInfo {
   footerBytes: number;
   /** Each key-value metadata entry's key and size in bytes (see `ParquetReader.keyValue`). */
   keyValue: { key: string; bytes: number }[];
-  /** Warnings about a damaged or newer dta profile; the values are still read. */
+  /**
+   * Warnings about a damaged or newer dta profile; the values are still
+   * read. Value label sets are read when `valueLabels` is first called,
+   * not at open, so a damaged set is not among these: it is left out
+   * then, and `valueLabels` gives undefined for it.
+   */
   warnings: string[];
 }
 
@@ -208,6 +213,24 @@ interface Call {
 }
 
 /**
+ * A variable of an open Parquet file: its fields are copied from the
+ * module's JSON, and `chunks` is a getter on the prototype (one function
+ * for every variable, where a getter defined on each of thousands of
+ * variables made opening a wide file a few milliseconds slower).
+ */
+class FileVariable {
+  readonly #reader: ParquetReader;
+  readonly #column: number;
+  constructor(reader: ParquetReader, column: number) {
+    this.#reader = reader;
+    this.#column = column;
+  }
+  get chunks(): (ColumnChunk | null)[] {
+    return this.#reader._chunksOf(this.#column);
+  }
+}
+
+/**
  * An open Parquet file, read synchronously; open one with `openParquet`
  * or `openParquetFile`. Opening reads only the footer, and each read
  * reads only the pages it needs.
@@ -259,24 +282,19 @@ export class ParquetReader implements TableReader {
       throw e;
     }
     unclosed.register(this, { handle: this.handle, generation: this.generation, read, onClose }, this);
-    const chunksOf = (k: number) => this.chunksOf(k);
-    const texts: (number[] | undefined)[] = [];
-    const all: ParquetVariable[] = meta.variables.map((v: ParquetVariable & { textBytes?: number[] }, k: number) => {
-      const { textBytes, ...rest } = v;
-      texts.push(textBytes);
-      if (rest.categorical) Object.freeze(rest.categorical);
-      Object.defineProperty(rest, "chunks", { get: () => chunksOf(k), enumerable: true });
-      return Object.freeze(rest as ParquetVariable);
-    });
+    const texts: (number[] | null)[] = meta.textBytes;
     this.core = [];
     this.textBytes = [];
     const kept: ParquetVariable[] = [];
-    all.forEach((v, k) => {
-      if (nestedMode === "skip" && v.role === "nested") return;
+    const vars: Record<string, unknown>[] = meta.variables;
+    for (let k = 0; k < vars.length; k++) {
+      const v = vars[k];
+      if (nestedMode === "skip" && v.role === "nested") continue;
+      if (v.categorical) Object.freeze(v.categorical);
+      kept.push(Object.freeze(Object.assign(new FileVariable(this, k), v)) as unknown as ParquetVariable);
       this.core.push(k);
-      this.textBytes.push(texts[k]);
-      kept.push(v);
-    });
+      this.textBytes.push(texts[k] ?? undefined);
+    }
     this.nested = kept.filter((v) => v.role === "nested").map((v) => v.name);
     this.variables = Object.freeze(kept);
     this._indexSpan = meta.indexSpan;
@@ -295,8 +313,8 @@ export class ParquetReader implements TableReader {
     });
   }
 
-  /** The chunks of the file's column `k`, all columns' read once. */
-  private chunksOf(k: number): (ColumnChunk | null)[] {
+  /** The chunks of the file's column `k`, all columns' read once. @internal */
+  _chunksOf(k: number): (ColumnChunk | null)[] {
     if (!this.chunkCache) {
       const parsed: (Record<string, unknown> | null)[][] = JSON.parse(wasm.pqChunksJson(this.open));
       this.chunkCache = parsed.map((cs) =>
@@ -311,7 +329,10 @@ export class ParquetReader implements TableReader {
     return this.handle;
   }
 
-  /** The value label set `name` from the dta profile, or undefined. */
+  /**
+   * The value label set `name` from the dta profile, or undefined. The
+   * first call reads every set (opening the file does not).
+   */
   valueLabels(name: string): ValueLabels | undefined {
     if (!this.labels) {
       this.labels = new Map();

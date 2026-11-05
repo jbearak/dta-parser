@@ -42,11 +42,42 @@ impl Value<'_> {
 
 /// The first key that appears twice in an object's own members.
 pub(crate) fn duplicate_key<'m>(members: &'m [(Text<'_>, Value<'_>)]) -> Option<&'m str> {
-    let mut seen = std::collections::HashSet::with_capacity(members.len());
-    members
-        .iter()
-        .map(|(k, _)| &**k)
-        .find(|k| !seen.insert(*k))
+    let keys: Vec<&str> = members.iter().map(|(k, _)| &**k).collect();
+    let repeated = repeated_keys(&keys);
+    if repeated.is_empty() {
+        return None;
+    }
+    // The first key seen a second time, in the members' order.
+    let mut seen = vec![false; repeated.len()];
+    keys.into_iter().find(|k| match repeated.binary_search(k) {
+        Ok(i) => std::mem::replace(&mut seen[i], true),
+        Err(_) => false,
+    })
+}
+
+/// The keys that appear more than once, sorted, each once. Small objects
+/// (a column's entry in the dta profile) are compared pairwise with no
+/// allocation; larger ones are sorted, which no choice of keys can slow
+/// down the way colliding hashes could.
+pub(crate) fn repeated_keys<'k>(keys: &[&'k str]) -> Vec<&'k str> {
+    let mut out = Vec::new();
+    if keys.len() <= 16 {
+        for (i, k) in keys.iter().enumerate() {
+            if keys[..i].contains(k) && !out.contains(k) {
+                out.push(*k);
+            }
+        }
+        out.sort_unstable();
+        return out;
+    }
+    let mut sorted = keys.to_vec();
+    sorted.sort_unstable();
+    for w in sorted.windows(2) {
+        if w[0] == w[1] && out.last() != Some(&w[0]) {
+            out.push(w[0]);
+        }
+    }
+    out
 }
 
 /// Parse a whole JSON text.
@@ -438,6 +469,20 @@ pub(crate) fn number(out: &mut String, v: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn repeated_keys_small_and_large() {
+        assert!(repeated_keys(&["a", "b", "c"]).is_empty());
+        assert_eq!(repeated_keys(&["b", "a", "b", "a", "b"]), vec!["a", "b"]);
+        let mut many: Vec<String> = (0..40).map(|i| format!("k{i}")).collect();
+        let keys: Vec<&str> = many.iter().map(String::as_str).collect();
+        assert!(repeated_keys(&keys).is_empty());
+        many.push("k7".into());
+        many.push("k31".into());
+        many.push("k7".into());
+        let keys: Vec<&str> = many.iter().map(String::as_str).collect();
+        assert_eq!(repeated_keys(&keys), vec!["k31", "k7"]);
+    }
 
     #[test]
     fn parses_values() {

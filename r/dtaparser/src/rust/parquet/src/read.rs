@@ -15,7 +15,7 @@ use crate::decode::{
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
 use crate::profile::{self, Profile};
 use crate::schema::{self, ColumnInfo, ColumnType, LevelsFrom, Role};
-use dta::{missing, Error, ErrorKind, Result, SharedSource, Source};
+use dta::{missing, Error, ErrorKind, Result, SharedSource, Source, ValueLabelSet};
 
 /// What to do with nested columns (lists, maps, groups), which are not
 /// read.
@@ -39,6 +39,12 @@ pub struct ReadOptions {
     /// Reads of fewer uncompressed bytes than this stay on one thread.
     #[doc(hidden)]
     pub parallel_bytes: u64,
+    /// Leave the dta profile's value-label sets unread when the file is
+    /// opened, reading them when [`Reader::value_label_sets`] asks
+    /// ([`Profile::parse_lazy_labels`]). The profile's `value_labels` is
+    /// then empty, and a damaged set is reported only when the sets are
+    /// read.
+    pub lazy_value_labels: bool,
 }
 
 impl Default for ReadOptions {
@@ -48,6 +54,7 @@ impl Default for ReadOptions {
             threads: 0,
             nested: Nested::Error,
             parallel_bytes: if small { 0 } else { 16 << 20 },
+            lazy_value_labels: false,
         }
     }
 }
@@ -308,6 +315,9 @@ pub struct Reader<S: Source> {
     meta: FileMetaData,
     columns: Vec<ColumnInfo>,
     profile: Option<Profile>,
+    /// With `lazy_value_labels`: each unread set's name and where its JSON
+    /// is in the profile's text.
+    label_spans: Vec<crate::profile::LabelSpan>,
     warnings: Vec<String>,
     first_rows: Vec<u64>,
     rows: u64,
@@ -412,6 +422,7 @@ impl<S: Source> Reader<S> {
                 .ok_or_else(|| Error::new("the row groups hold too many rows"))?;
         }
         let mut warnings = Vec::new();
+        let mut label_spans = Vec::new();
         let mut profile = match meta
             .key_value
             .iter()
@@ -419,7 +430,13 @@ impl<S: Source> Reader<S> {
             .and_then(|kv| kv.value.as_ref())
         {
             Some(text) => {
-                let (p, w) = Profile::parse_some(text, selected);
+                let (p, w) = if options.lazy_value_labels {
+                    let (p, w, spans) = Profile::parse_lazy_labels(text, selected);
+                    label_spans = spans;
+                    (p, w)
+                } else {
+                    Profile::parse_some(text, selected)
+                };
                 warnings.extend(w);
                 p
             }
@@ -458,6 +475,7 @@ impl<S: Source> Reader<S> {
             meta,
             columns,
             profile,
+            label_spans,
             warnings,
             first_rows,
             rows,
@@ -584,6 +602,38 @@ impl<S: Source> Reader<S> {
     /// The dta profile, if the file has a usable one.
     pub fn profile(&self) -> Option<&Profile> {
         self.profile.as_ref()
+    }
+
+    /// The names of the profile's value-label sets, in order, whether or
+    /// not they have been read.
+    pub fn value_label_set_names(&self) -> Vec<&str> {
+        let read = self.profile.iter().flat_map(|p| &p.value_labels).map(|s| s.name.as_str());
+        read.chain(self.label_spans.iter().map(|(n, _)| n.as_str())).collect()
+    }
+
+    /// The profile's value-label sets, with a warning for each one dropped
+    /// because it could not be read. Without `lazy_value_labels` these
+    /// are the profile's own, read when the file was opened.
+    pub fn value_label_sets(&self) -> (Vec<ValueLabelSet>, Vec<String>) {
+        let mut sets: Vec<ValueLabelSet> = self.profile.iter().flat_map(|p| p.value_labels.iter().cloned()).collect();
+        let mut warnings = Vec::new();
+        if self.label_spans.is_empty() {
+            return (sets, warnings);
+        }
+        let text = self
+            .meta
+            .key_value
+            .iter()
+            .find(|kv| kv.key == profile::KEY)
+            .and_then(|kv| kv.value.as_deref())
+            .unwrap_or_default();
+        for (name, span) in &self.label_spans {
+            match Profile::parse_label_set(text, name, span.clone()) {
+                Ok(set) => sets.push(set),
+                Err(w) => warnings.push(w),
+            }
+        }
+        (sets, warnings)
     }
 
     /// Warnings from opening the file, about its profile.
