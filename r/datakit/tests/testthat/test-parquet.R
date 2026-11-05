@@ -273,13 +273,111 @@ test_that("read_parquet checks its arguments", {
 
 per_second <- c(s = 1, ms = 1e3, us = 1e6, ns = 1e9)
 
+# The unit in an Arrow type such as "timestamp[ns, tz=UTC]" or "time64[us]".
+arrow_unit <- function(arrow_type) sub("^[a-z0-9]+\\[([a-z]+).*$", "\\1", arrow_type)
+
+# INT64 and unsigned 32- and 64-bit columns, and decimals: read as
+# numbers by default and as text with int64 = "character" and decimal =
+# "character".
+text_kind <- function(arrow_type) grepl("^(int64|uint32|uint64|decimal)", arrow_type)
+
+# The significant digits of a decimal written as text.
+significant_digits <- function(text) nchar(sub("0+$", "", sub("^0+", "", gsub("[-.]", "", text))))
+
+# Integers in the JSON of 16 digits or more are read as text
+# (read_expected) and worked on here as digits: jsonlite and as.numeric()
+# do not round them to the nearest double.
+
+# The expected values of a fixture.
+read_expected <- function(path) {
+  json <- paste(readLines(path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  json <- gsub("(?<=[,\\[:])(-?[0-9]{16,})(?=[,\\]}])", "\"\\1\"", json, perl = TRUE)
+  jsonlite::fromJSON(json, simplifyVector = FALSE)
+}
+
+# Half of the digits of an even number.
+half_digits <- function(d) {
+  digits <- as.integer(strsplit(d, "", fixed = TRUE)[[1]])
+  carry <- 0L
+  for (i in seq_along(digits)) {
+    v <- carry * 10L + digits[i]
+    digits[i] <- v %/% 2L
+    carry <- v %% 2L
+  }
+  sub("^0+(?=.)", "", paste(digits, collapse = ""), perl = TRUE)
+}
+
+# Whether the integer written as text is a double exactly: its odd part
+# is at most 2^53.
+exact_double <- function(text) {
+  d <- sub("^-", "", text)
+  while (nchar(d) > 16 || (nchar(d) == 16 && d > "9007199254740992")) {
+    if (as.integer(substring(d, nchar(d))) %% 2L) return(FALSE)
+    d <- half_digits(d)
+  }
+  TRUE
+}
+
+# A decimal of at most 15 significant digits as C's "%.14e" writes the
+# nearest double to it: those digits. NA for zero.
+decimal_e <- function(text) {
+  parts <- strsplit(sub("^-", "", text), ".", fixed = TRUE)[[1]]
+  digits <- paste(parts, collapse = "")
+  lead <- nchar(sub("[1-9].*$", "", digits))
+  if (lead == nchar(digits)) return(NA_character_)
+  digits <- substr(paste0(substring(digits, lead + 1), strrep("0", 15)), 1, 15)
+  exponent <- nchar(parts[1]) - lead - 1
+  sprintf("%s%s.%se%s%02d", if (startsWith(text, "-")) "-" else "", substr(digits, 1, 1), substring(digits, 2),
+          if (exponent < 0) "-" else "+", abs(exponent))
+}
+
+# Nanoseconds written as text, as whole microseconds (rounded down).
+micros_of_nanos <- function(text) {
+  d <- sub("^-", "", text)
+  n <- nchar(d)
+  q <- if (n > 3) as.numeric(substr(d, 1, n - 3)) else 0
+  r <- if (n > 3) as.numeric(substring(d, n - 2)) else as.numeric(d)
+  if (startsWith(text, "-")) -(q + (r > 0)) else q
+}
+
+# What read_parquet()'s error says of a value its defaults cannot hold, or
+# NA if they hold it: an integer a double does not hold exactly, a decimal
+# with more than 15 significant digits, and R's integer NA in an INT32.
+too_wide <- function(v, arrow_type) {
+  if (is.null(v)) return(NA_character_)
+  if (startsWith(arrow_type, "decimal") && significant_digits(v) > 15) return("decimal = \"character\"")
+  if (is.character(v) && grepl("^(int64|uint32|uint64)$", arrow_type) && !exact_double(v)) {
+    return("int64 = \"integer64\" or int64 = \"character\"")
+  }
+  if (arrow_type == "int32" && isTRUE(v == -2147483648)) return("cannot be held as an R integer")
+  NA_character_
+}
+
+# The class read_parquet() gives a column of `arrow_type` (pyarrow's
+# reading of it) with its default arguments. `logical` is the column's
+# Parquet logical type: pyarrow reads an ENUM as binary, ours as text.
+r_class <- function(arrow_type, logical = NA) {
+  if (identical(logical, "ENUM")) return("character")
+  if (grepl("^u?int(8|16)$", arrow_type) || arrow_type == "int32") return("integer")
+  if (grepl("^(int64|uint32|uint64|float|double|decimal)", arrow_type)) return("numeric")
+  if (arrow_type == "bool") return("logical")
+  if (grepl("^dictionary<values=(large_)?string", arrow_type)) return("factor")
+  if (startsWith(arrow_type, "dictionary<")) return(r_class(sub("^dictionary<values=([^,]+),.*$", "\\1", arrow_type)))
+  if (grepl("string|arrow\\.json", arrow_type)) return("character")
+  if (grepl("binary|arrow\\.uuid", arrow_type)) return("list")
+  if (startsWith(arrow_type, "date32")) return("Date")
+  if (startsWith(arrow_type, "timestamp")) return("POSIXct")
+  if (startsWith(arrow_type, "time")) return("difftime")
+  stop("unknown type ", arrow_type)
+}
+
 # A column's values as plain R values to compare with the expected JSON.
 plain_values <- function(x, arrow_type) {
   if (startsWith(arrow_type, "timestamp[")) {
-    unit <- sub("^timestamp\\[([a-z]+).*$", "\\1", arrow_type)
     # Nanoseconds come back to the microsecond (timestamps = "truncate").
-    return(round(as.numeric(x) * min(per_second[[unit]], 1e6)))
+    return(round(as.numeric(x) * min(per_second[[arrow_unit(arrow_type)]], 1e6)))
   }
+  if (inherits(x, "difftime")) return(round(as.numeric(x, units = "secs") * per_second[[arrow_unit(arrow_type)]]))
   if (inherits(x, "Date")) return(as.numeric(x))
   if (is.factor(x)) return(as.character(x))
   x
@@ -288,56 +386,210 @@ plain_values <- function(x, arrow_type) {
 same_value <- function(want, got, arrow_type) {
   if (is.null(want)) return(is.null(got) || (length(got) == 1 && is.na(got) && !is.nan(got)))
   if (identical(want, "NaN")) return(is.numeric(got) && is.nan(got))
-  if (is.list(want)) return(identical(as.integer(unlist(want)), as.integer(got)))
+  # Bytes; an ENUM, which pyarrow reads as binary, as the bytes of its text.
+  if (is.list(want)) return(identical(as.integer(unlist(want)), as.integer(if (is.character(got)) charToRaw(got) else got)))
   if (is.null(got) || is.na(got)) return(FALSE)
-  if (startsWith(arrow_type, "timestamp[ns")) want <- floor(want / 1000)
+  if (is.character(got)) {
+    if (is.numeric(want)) want <- sprintf("%.0f", want)
+    return(identical(enc2utf8(got), enc2utf8(want)))
+  }
+  if (startsWith(arrow_type, "timestamp[ns")) {
+    want <- if (is.character(want)) micros_of_nanos(want) else floor(want / 1000)
+  }
+  # Decimals (at most 15 significant digits here) and integers of 16
+  # digits or more are text in the JSON, compared as digits.
+  if (is.character(want) && startsWith(arrow_type, "decimal")) {
+    e <- decimal_e(want)
+    return(if (is.na(e)) identical(got, 0) else identical(sprintf("%.14e", got), e))
+  }
+  if (is.character(want)) return(identical(sprintf("%.0f", got), want))
   if (is.numeric(want) && want == 0 && is.numeric(got)) return(got == 0 && (1 / want) == (1 / got))
   isTRUE(all.equal(want, got, tolerance = 0))
 }
 
-expect_fixture <- function(df, expected, rows, what) {
+expect_fixture <- function(df, expected, rows, what, names = NULL) {
   for (spec in expected$columns) {
-    got <- plain_values(df[[spec$name]], spec$arrow_type)
+    if (!is.null(names) && !(spec$name %in% names)) next
+    x <- df[[spec$name]]
+    got <- plain_values(x, spec$arrow_type)
     want <- spec$values[rows]
     expect(length(got) == length(want), paste0(what, ": ", spec$name, " has ", length(got), " rows, not ", length(want)))
     bad <- which(!vapply(seq_along(want), function(i) {
       same_value(want[[i]], if (is.list(got)) got[[i]] else got[i], spec$arrow_type)
     }, NA))
     expect(!length(bad), paste0(what, ": ", spec$name, " row ", bad[1], " is ", format(got[bad[1]]), ", not ", format(want[[bad[1]]])))
+    if (is.factor(x)) {
+      # Levels from ARROW:schema are the values read, in order of first
+      # appearance, and unordered.
+      seen <- unique(as.character(x[!is.na(x)]))
+      expect(identical(levels(x), seen) && !is.ordered(x), paste0(what, ": ", spec$name, "'s levels are not the values read in order"))
+    }
   }
 }
 
-r_class <- function(arrow_type) {
-  if (grepl("^int(8|16|32)$", arrow_type)) return("integer")
-  if (arrow_type %in% c("int64", "float", "double")) return("numeric")
-  if (arrow_type == "bool") return("logical")
-  if (grepl("string|dictionary", arrow_type)) return("character")
-  if (grepl("binary", arrow_type)) return("list")
-  if (startsWith(arrow_type, "date32")) return("Date")
-  if (startsWith(arrow_type, "timestamp")) return("POSIXct")
-  stop("unknown type ", arrow_type)
+# Read rows skip + 1 to skip + n_max of fixture f and compare with
+# pyarrow's reading: with the default arguments every column whose values
+# they hold, the others as an error naming the argument that keeps them;
+# and the INT64, unsigned and decimal columns as text.
+# `errors` holds too_wide() of each column's values.
+check_fixture <- function(f, expected, info, errors, skip, n_max, what) {
+  nested <- if (length(expected$nested)) "skip" else "error"
+  rows <- seq_len(expected$rows)
+  rows <- rows[rows > skip][seq_len(min(n_max, max(expected$rows - skip, 0)))]
+  logical <- stats::setNames(info$columns$logical_type, info$columns$name)
+  wide <- vapply(errors, function(e) {
+    e <- e[rows][!is.na(e[rows])]
+    if (length(e)) e[[1]] else NA_character_
+  }, "")
+  names <- vapply(expected$columns, `[[`, "", "name")
+  ok <- names[is.na(wide)]
+  df <- read_parquet(f, col_select = ok, skip = skip, n_max = n_max, timestamps = "truncate", nested = nested)
+  expect_identical(names(df), ok, info = what)
+  for (spec in expected$columns[is.na(wide)]) {
+    x <- df[[spec$name]]
+    want <- r_class(spec$arrow_type, logical[[spec$name]])
+    expect(inherits(x, want), paste0(what, ": ", spec$name, " is ", class(x)[1], ", not ", want))
+    if (want == "POSIXct") {
+      zone <- if (grepl("tz=", spec$arrow_type)) sub("^.*tz=([^]]+)\\]$", "\\1", spec$arrow_type) else "UTC"
+      expect(identical(attr(x, "tzone"), zone), paste0(what, ": ", spec$name, " is in ", format(attr(x, "tzone")), ", not ", zone))
+    }
+    if (want == "difftime") expect(identical(units(x), "secs"), paste0(what, ": ", spec$name, " is not in seconds"))
+  }
+  expect_fixture(df, expected, rows, what, ok)
+  for (k in which(!is.na(wide))) {
+    expect_error(read_parquet(f, col_select = names[k], skip = skip, n_max = n_max, timestamps = "truncate"),
+                 wide[[k]], fixed = TRUE, info = paste(what, names[k]))
+  }
+  text <- names[vapply(expected$columns, function(s) text_kind(s$arrow_type), NA)]
+  if (length(text)) {
+    df <- read_parquet(f, col_select = text, skip = skip, n_max = n_max, int64 = "character", decimal = "character")
+    for (n in text) expect(is.character(df[[n]]), paste0(what, ": ", n, " is not character with int64 and decimal \"character\""))
+    expect_fixture(df, expected, rows, paste(what, "as text"), text)
+  }
 }
 
-test_that("files from pyarrow, polars, DuckDB, arrow and nanoparquet read as pyarrow reads them", {
+test_that("files from pyarrow, polars, DuckDB, arrow, nanoparquet and others read as pyarrow reads them", {
   skip_if_not_installed("jsonlite")
   dir <- parquet_fixtures()
   for (f in Sys.glob(file.path(dir, "fixtures", "*.parquet"))) {
     stem <- sub("\\.parquet$", "", basename(f))
-    expected <- jsonlite::fromJSON(file.path(dir, "expected", paste0(stem, ".json")), simplifyVector = FALSE)
-    nested <- if (length(expected$nested)) "skip" else "error"
-    df <- read_parquet(f, timestamps = "truncate", nested = nested)
-    expect_identical(names(df), vapply(expected$columns, `[[`, "", "name"), info = stem)
-    for (spec in expected$columns) {
-      expect(inherits(df[[spec$name]], r_class(spec$arrow_type)),
-             paste0(stem, ": ", spec$name, " is ", class(df[[spec$name]])[1], ", not ", r_class(spec$arrow_type)))
-    }
-    expect_fixture(df, expected, seq_len(expected$rows), stem)
+    expected <- read_expected(file.path(dir, "expected", paste0(stem, ".json")))
+    info <- read_parquet_info(f)
+    errors <- lapply(expected$columns, function(s) vapply(s$values, too_wide, "", s$arrow_type))
+    check_fixture(f, expected, info, errors, 0, Inf, stem)
     for (w in list(c(0, 7), c(150, 101), c(599, 5), c(250, 300))) {
-      rows <- seq(w[1] + 1, min(w[1] + w[2], expected$rows))
-      part <- read_parquet(f, skip = w[1], n_max = w[2], timestamps = "truncate", nested = nested)
-      expect_fixture(part, expected, rows, paste(stem, "rows", w[1] + 1, "to", max(rows)))
+      what <- paste(stem, "rows", w[1] + 1, "to", min(w[1] + w[2], expected$rows))
+      check_fixture(f, expected, info, errors, w[1], w[2], what)
     }
   }
+})
+
+test_that("read_parquet_info gives the R type of each Parquet type", {
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_types.parquet")
+  cols <- read_parquet_info(f)$columns
+  r_type <- stats::setNames(cols$r_type, cols$name)
+  expect_identical(r_type[c("u8", "u16", "u32", "u64")], c(u8 = "integer", u16 = "integer", u32 = "double", u64 = "double"))
+  expect_identical(unname(r_type[c("t_ms", "t_us", "t_ns")]), rep("difftime", 3))
+  expect_identical(unname(r_type[c("dec9", "dec18", "dec38", "dec50")]), rep("double", 4))
+  expect_identical(unname(r_type[c("fixed", "uid", "js", "icat", "stamp")]), c("list", "list", "character", "double", "POSIXct"))
+  # The INT96 column.
+  expect_identical(cols$physical_type[cols$name == "stamp"], "INT96")
+  hy <- read_parquet_info(file.path(parquet_fixtures(), "fixtures", "hyparquet_default.parquet"))$columns
+  expect_identical(hy$r_type[hy$logical_type %in% "ENUM"], "character")
+  pa <- read_parquet_info(file.path(parquet_fixtures(), "fixtures", "pyarrow_default.parquet"))$columns
+  expect_identical(pa$r_type[pa$name == "cat"], "factor")
+})
+
+test_that("a decimal with more than 15 significant digits is an error unless read as text", {
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_types.parquet")
+  expect_error(read_parquet(f, col_select = "dec38"),
+               "column \"dec38\": the value -370370367037037036.7037037100 in row 1 has more than 15 significant digits, which a double cannot hold exactly; read with decimal = \"character\" to keep every digit",
+               fixed = TRUE)
+  text <- read_parquet(f, col_select = c("dec38", "dec9"), decimal = "character", n_max = 2)
+  expect_identical(text$dec38, c("-370370367037037036.7037037100", "-369135799146913579.9146913643"))
+  expect_identical(text$dec9, c("-3000.00", "-2987.63"))
+  # Precision 15 or less: the nearest double, also in decimal = "double".
+  expect_identical(read_parquet(f, col_select = "dec9", n_max = 2)$dec9, c(-3000, -2987.63))
+  # Precision 18, every value read with at most 15 significant digits.
+  expect_identical(read_parquet(f, col_select = "dec18", n_max = 2)$dec18, c(-9000000000, -8990123456.7899))
+})
+
+test_that("unsigned integers read as integer, or with the INT64 rules", {
+  skip_if_not_installed("bit64")
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_types.parquet")
+  small <- read_parquet(f, col_select = c("u8", "u16", "u32"), n_max = 3)
+  expect_identical(small$u8, 0:2)
+  expect_identical(small$u16, c(0L, 109L, 218L))
+  expect_identical(small$u32, c(0, 7158271, 14316542))
+  expect_error(read_parquet(f, col_select = "u64"),
+               "column \"u64\": the value 30740755617891237 in row 2 cannot be held exactly as a double; read with int64 = \"integer64\" or int64 = \"character\" to keep every digit",
+               fixed = TRUE)
+  expect_identical(read_parquet(f, col_select = "u64", n_max = 3, int64 = "character")$u64,
+                   c("0", "30740755617891237", "61481511235782474"))
+  expect_identical(read_parquet(f, col_select = "u64", n_max = 3, int64 = "integer64")$u64,
+                   bit64::as.integer64(c("0", "30740755617891237", "61481511235782474")))
+  expect_identical(read_parquet(f, col_select = "u32", n_max = 2, int64 = "character")$u32, c("0", "7158271"))
+  # 2^63 and above: no integer64 holds it.
+  expect_error(read_parquet(f, col_select = "u64", int64 = "integer64"),
+               "column \"u64\": the value 9252967440985262337 in row 302 cannot be held exactly as a 64-bit integer; read with int64 = \"character\" to keep every digit",
+               fixed = TRUE)
+  big <- read_parquet(f, col_select = "u64", int64 = "character")$u64
+  expect_identical(big[302], "9252967440985262337")
+})
+
+test_that("TIME reads as difftime in seconds, INT96 as POSIXct in UTC", {
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_types.parquet")
+  x <- read_parquet(f, col_select = c("t_ms", "t_us", "t_ns", "stamp"), n_max = 2, timestamps = "truncate")
+  expect_s3_class(x$t_ms, "difftime")
+  expect_identical(units(x$t_ms), "secs")
+  expect_identical(as.numeric(x$t_ms), c(0, 143.999))
+  expect_identical(as.numeric(x$t_us), c(0, 143.999999))
+  expect_equal(as.numeric(x$t_ns), c(0, 143.999999999), tolerance = 0)
+  expect_s3_class(x$stamp, "POSIXct")
+  expect_identical(attr(x$stamp, "tzone"), "UTC")
+  # -98999999993 nanoseconds, truncated to the microsecond below.
+  expect_identical(as.numeric(x$stamp), c(-100, -99))
+})
+
+test_that("a dictionary of strings in ARROW:schema is a factor with the levels read", {
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_default.parquet")
+  whole <- read_parquet(f, col_select = "cat")$cat
+  expect_s3_class(whole, "factor")
+  expect_false(is.ordered(whole))
+  expect_identical(levels(whole), c("low", "mid", "high"))
+  # Another window, other levels: those of its rows, as they appear.
+  part <- read_parquet(f, col_select = "cat", skip = 1, n_max = 2)$cat
+  expect_identical(levels(part), c("mid", "high"))
+  expect_identical(as.character(part), c("mid", "high"))
+  expect_identical(levels(read_parquet(f, col_select = "cat", skip = 1, n_max = 3)$cat), c("mid", "high"))
+  expect_identical(levels(read_parquet(f, col_select = "cat", skip = 4)$cat), c("mid", "high", "low"))
+  # factors = TRUE is about value labels; it leaves these alone.
+  expect_identical(read_parquet(f, col_select = "cat", factors = TRUE)$cat, whole)
+  # A dictionary of integers reads as its values.
+  ty <- file.path(parquet_fixtures(), "fixtures", "pyarrow_types.parquet")
+  expect_identical(read_parquet(ty, col_select = "icat", n_max = 3)$icat, c(0, 1000, 2000))
+})
+
+test_that("an arrow factor reads with the levels of its rows, not arrow's", {
+  skip_if_not_installed("arrow")
+  p <- tempfile(fileext = ".parquet")
+  arrow::write_parquet(data.frame(f = factor(c("a", "a", "z", NA), levels = c("z", "a", "unused"))), p)
+  x <- read_parquet(p)$f
+  expect_identical(levels(x), c("a", "z"))
+  expect_identical(as.character(x), c("a", "a", "z", NA))
+  expect_identical(levels(read_parquet(p, skip = 2)$f), "z")
+  expect_identical(read_parquet_info(p)$columns$r_type, "factor")
+})
+
+test_that("a timestamp's zone comes from ARROW:schema when the profile has none", {
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_default.parquet")
+  x <- read_parquet(f, col_select = c("ts_us_ny", "ts_ms", "ts_ns_local"), timestamps = "truncate", n_max = 2)
+  expect_identical(attr(x$ts_us_ny, "tzone"), "America/New_York")
+  expect_identical(attr(x$ts_ms, "tzone"), "UTC")
+  # A local time, without zone: UTC.
+  expect_identical(attr(x$ts_ns_local, "tzone"), "UTC")
+  a <- read_parquet(file.path(parquet_fixtures(), "fixtures", "arrow_r_default.parquet"), col_select = "when")
+  expect_identical(attr(a$when, "tzone"), "Europe/Paris")
 })
 
 test_that("nanoseconds that are not whole microseconds are an error unless truncated", {

@@ -35,14 +35,16 @@ and within them the pages, that hold the rows wanted are read.}
 \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}. A factor cannot hold \code{.a} to \code{.z}, so the
 default keeps the numbers.}
 
-\item{int64}{How to return 64-bit integer columns: \code{"double"} (the
-default; a value a double cannot hold exactly is an error naming the
-column and row), \code{"integer64"} (bit64's class, every value exact) or
-\code{"character"}.}
+\item{int64}{How to return 64-bit integer columns, signed or not, and
+unsigned 32-bit ones: \code{"double"} (the default; a value a double cannot
+hold exactly is an error naming the column and row), \code{"integer64"}
+(bit64's class, every value exact; an unsigned value of 2^63 or more
+is an error) or \code{"character"}, every digit kept.}
 
-\item{decimal}{How to return DECIMAL columns: \code{"double"} or
-\code{"character"}. This version reads no DECIMAL column yet; one selected
-is an error that names it.}
+\item{decimal}{How to return DECIMAL columns: \code{"double"} (the default),
+the nearest double to each value, where a value with more than 15
+significant digits is an error naming the column and row; or
+\code{"character"}, every digit kept.}
 
 \item{timestamps}{What to do with nanosecond timestamps that are not a
 whole number of microseconds: \code{"error"} (the default) or
@@ -59,13 +61,17 @@ turns \code{.a} to \code{.z} into plain \code{NA}.}
 A tibble, with the column types of \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}:\tabular{ll}{
    Parquet \tab R \cr
    INT32 (INT(8), INT(16) or none), BOOLEAN \tab integer, logical \cr
-   INT64 \tab double; see \code{int64} \cr
+   unsigned 8 and 16 bits \tab integer \cr
+   INT64, unsigned 32 and 64 bits \tab double; see \code{int64} \cr
    FLOAT, DOUBLE \tab double \cr
+   DECIMAL \tab double; see \code{decimal} \cr
    DATE \tab \code{Date} \cr
-   TIMESTAMP \tab \code{POSIXct}, in the zone the file names, else UTC \cr
+   TIMESTAMP, INT96 \tab \code{POSIXct}, in the zone the file names, else UTC \cr
+   TIME \tab \code{difftime} in seconds \cr
    STRING, ENUM, JSON \tab character \cr
-   BYTE_ARRAY without annotation \tab a list of raw vectors (\code{NULL} for null) \cr
+   BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID \tab a list of raw vectors (\code{NULL} for null) \cr
    a categorical \code{save_parquet()} wrote \tab factor, ordered if it was \cr
+   a dictionary of strings in \code{ARROW:schema} (an arrow factor, a pandas \code{category}, a polars \code{Categorical}) \tab factor, unordered \cr
 }
 
 
@@ -82,13 +88,19 @@ String columns come back packed, as \code{read_dta()}'s do: R makes each
 string when it is first used, and a column with few distinct values
 is kept as those values and a code per row.
 
-Not read yet, each an error naming the column and its type: DECIMAL,
-INT96 timestamps, TIME, unsigned integers, FIXED_LEN_BYTE_ARRAY and
-FLOAT16, the DELTA and BYTE_STREAM_SPLIT encodings, and brotli. A
-column pandas, polars or arrow stored as a dictionary type (a
-\code{category}, \code{Categorical} or factor) reads as its values, here
-character; time zones that only \code{ARROW:schema} gives are not read, so
-such timestamps are in UTC.
+A time zone comes from the \code{dta} entry, else from the \code{ARROW:schema}
+entry that arrow, pyarrow and polars write, else is UTC. An INT96
+timestamp, which has no zone, is in UTC, as pyarrow reads it.
+
+A dictionary of strings in \code{ARROW:schema}, with no levels in the
+\code{dta} entry, is a factor whose levels are the distinct values of the
+rows read, in the order they first appear: another window of rows can
+give other levels, and reading every row gives them all; a level no
+row holds is not among them. \code{factors} does not apply to these. A
+dictionary of another type reads as its values' type.
+
+Not read, each an error naming the column and its type: FLOAT16 and
+INTERVAL.
 }
 \description{
 \code{read_parquet()} reads a Parquet file as \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}} reads

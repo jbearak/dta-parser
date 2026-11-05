@@ -25,13 +25,15 @@
 #' @param factors Whether columns with value labels become factors, as in
 #'   [dtaparser::read_dta()]. A factor cannot hold `.a` to `.z`, so the
 #'   default keeps the numbers.
-#' @param int64 How to return 64-bit integer columns: `"double"` (the
-#'   default; a value a double cannot hold exactly is an error naming the
-#'   column and row), `"integer64"` (bit64's class, every value exact) or
-#'   `"character"`.
-#' @param decimal How to return DECIMAL columns: `"double"` or
-#'   `"character"`. This version reads no DECIMAL column yet; one selected
-#'   is an error that names it.
+#' @param int64 How to return 64-bit integer columns, signed or not, and
+#'   unsigned 32-bit ones: `"double"` (the default; a value a double cannot
+#'   hold exactly is an error naming the column and row), `"integer64"`
+#'   (bit64's class, every value exact; an unsigned value of 2^63 or more
+#'   is an error) or `"character"`, every digit kept.
+#' @param decimal How to return DECIMAL columns: `"double"` (the default),
+#'   the nearest double to each value, where a value with more than 15
+#'   significant digits is an error naming the column and row; or
+#'   `"character"`, every digit kept.
 #' @param timestamps What to do with nanosecond timestamps that are not a
 #'   whole number of microseconds: `"error"` (the default) or
 #'   `"truncate"`, which drops the nanoseconds below a microsecond.
@@ -45,13 +47,17 @@
 #'   | Parquet | R |
 #'   |---|---|
 #'   | INT32 (INT(8), INT(16) or none), BOOLEAN | integer, logical |
-#'   | INT64 | double; see `int64` |
+#'   | unsigned 8 and 16 bits | integer |
+#'   | INT64, unsigned 32 and 64 bits | double; see `int64` |
 #'   | FLOAT, DOUBLE | double |
+#'   | DECIMAL | double; see `decimal` |
 #'   | DATE | `Date` |
-#'   | TIMESTAMP | `POSIXct`, in the zone the file names, else UTC |
+#'   | TIMESTAMP, INT96 | `POSIXct`, in the zone the file names, else UTC |
+#'   | TIME | `difftime` in seconds |
 #'   | STRING, ENUM, JSON | character |
-#'   | BYTE_ARRAY without annotation | a list of raw vectors (`NULL` for null) |
+#'   | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID | a list of raw vectors (`NULL` for null) |
 #'   | a categorical `save_parquet()` wrote | factor, ordered if it was |
+#'   | a dictionary of strings in `ARROW:schema` (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered |
 #'
 #'   Every missing value is `NA`. In doubles `.a` to `.z` are tagged NAs
 #'   that keep their letter ([dtaparser::na_tag()]), as `read_dta()` keeps
@@ -66,13 +72,19 @@
 #'   string when it is first used, and a column with few distinct values
 #'   is kept as those values and a code per row.
 #'
-#'   Not read yet, each an error naming the column and its type: DECIMAL,
-#'   INT96 timestamps, TIME, unsigned integers, FIXED_LEN_BYTE_ARRAY and
-#'   FLOAT16, the DELTA and BYTE_STREAM_SPLIT encodings, and brotli. A
-#'   column pandas, polars or arrow stored as a dictionary type (a
-#'   `category`, `Categorical` or factor) reads as its values, here
-#'   character; time zones that only `ARROW:schema` gives are not read, so
-#'   such timestamps are in UTC.
+#'   A time zone comes from the `dta` entry, else from the `ARROW:schema`
+#'   entry that arrow, pyarrow and polars write, else is UTC. An INT96
+#'   timestamp, which has no zone, is in UTC, as pyarrow reads it.
+#'
+#'   A dictionary of strings in `ARROW:schema`, with no levels in the
+#'   `dta` entry, is a factor whose levels are the distinct values of the
+#'   rows read, in the order they first appear: another window of rows can
+#'   give other levels, and reading every row gives them all; a level no
+#'   row holds is not among them. `factors` does not apply to these. A
+#'   dictionary of another type reads as its values' type.
+#'
+#'   Not read, each an error naming the column and its type: FLOAT16 and
+#'   INTERVAL.
 #' @seealso [read_parquet_info()] for the columns and their types without
 #'   the data; [save_parquet()] to write.
 #' @examples
@@ -93,7 +105,7 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
   if (!rlang::is_bool(factors)) stop("factors must be TRUE or FALSE", call. = FALSE)
   if (!rlang::is_bool(warn_extended_missing)) stop("warn_extended_missing must be TRUE or FALSE", call. = FALSE)
   int64 <- one_of(int64, c("double", "integer64", "character"), "int64")
-  one_of(decimal, c("double", "character"), "decimal")
+  decimal <- one_of(decimal, c("double", "character"), "decimal")
   timestamps <- one_of(timestamps, c("error", "truncate"), "timestamps")
   nested <- one_of(nested, c("error", "skip"), "nested")
   if (int64 == "integer64") rlang::check_installed("bit64", "to read 64-bit integers as integer64")
@@ -101,7 +113,8 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
   cols <- parquet_selection(rlang::enquo(col_select), file, nested)
   options <- c(match(int64, c("double", "integer64", "character")),
                match(timestamps, c("error", "truncate")),
-               match(nested, c("error", "skip"))) - 1L
+               match(nested, c("error", "skip")),
+               match(decimal, c("double", "character"))) - 1L
   res <- .Call(C_dta_parquet_read, file, cols, floor(skip), floor(n_max), options)
   for (w in res$warnings) warning(w, call. = FALSE)
   values <- res$columns

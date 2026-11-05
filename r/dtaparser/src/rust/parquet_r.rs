@@ -15,8 +15,8 @@ use std::ffi::{c_char, c_int, CStr};
 use dta::{missing, Bytes, Characteristic, FileSource, Source, ValueLabel, ValueLabelSet};
 use dta_parquet::format::{LogicalType, TimeUnit};
 use dta_parquet::{
-    tagged_nan, ColumnInfo, ColumnType, Compression, Logical, Nested, Numbers, Output, Profile, ReadOptions, Reader,
-    Role, Storage, Table, TextChunk, Values, WriteColumn, WriteOptions,
+    tagged_nan, ColumnInfo, ColumnType, Compression, LevelsFrom, Logical, Nested, Numbers, Output, Profile,
+    ReadOptions, Reader, Role, Storage, Table, TextChunk, Values, WriteColumn, WriteOptions,
 };
 
 use super::{
@@ -264,7 +264,7 @@ impl<S: Source> Access for Reader<S> {
 
 // ---------------------------------------------------------------- types
 
-/// How `read_parquet` returns INT64 columns.
+/// How `read_parquet` returns INT64 and unsigned 32- and 64-bit columns.
 #[derive(Clone, Copy, PartialEq)]
 enum Int64Mode {
     /// Doubles; a value a double does not hold exactly is an error.
@@ -275,10 +275,33 @@ enum Int64Mode {
     Character,
 }
 
+/// How `read_parquet` returns DECIMAL columns.
+#[derive(Clone, Copy, PartialEq)]
+enum DecimalMode {
+    /// The nearest double; a value with more than 15 significant digits
+    /// is an error.
+    Double,
+    /// Character, every digit kept.
+    Character,
+}
+
+/// The arguments of `read_parquet` that choose a column's R type.
+#[derive(Clone, Copy)]
+struct Modes {
+    int64: Int64Mode,
+    decimal: DecimalMode,
+}
+
+impl Modes {
+    /// `read_parquet`'s defaults.
+    const DEFAULT: Modes = Modes { int64: Int64Mode::Double, decimal: DecimalMode::Double };
+}
+
 /// What a selected column becomes in R.
 #[derive(Clone, PartialEq)]
 enum Kind {
-    /// INT32 (any width) as an integer vector.
+    /// INT32 (any width, signed, or unsigned 8 or 16 bits) as an integer
+    /// vector.
     Integer,
     Logical,
     /// FLOAT or DOUBLE; `integer` when the profile says it was a byte,
@@ -292,64 +315,73 @@ enum Kind {
     /// or microseconds (read as counts, then divided), or a DOUBLE with
     /// `logical` timestamp (`per_second` 1).
     Seconds { per_second: f64, tz: Option<String> },
-    /// A TIMESTAMP in nanoseconds, read as 64-bit integers into the
-    /// double vector's memory and converted after the read.
+    /// A TIMESTAMP in nanoseconds (or INT96), read as 64-bit integers
+    /// into the double vector's memory and converted after the read.
     Nanos { tz: Option<String> },
+    /// A TIME: a count of units since midnight, read as doubles and
+    /// divided into seconds, class `difftime`.
+    Time { per_second: f64 },
+    /// INT64, or an unsigned 32- or 64-bit integer.
     Int64(Int64Mode),
-    Factor { levels: Vec<String>, ordered: bool },
+    /// A categorical: levels from the profile, or (`rows`) a dictionary of
+    /// strings in `ARROW:schema`, whose levels are the distinct values of
+    /// the rows read, filled in after the read.
+    Factor { levels: Vec<String>, ordered: bool, rows: bool },
     Text,
     Binary,
 }
 
 /// The time zone a timestamp column reads with: the profile's (`""` for
-/// an instant without one, which has no `tzone`), else UTC.
-fn zone_of(profile: Option<&dta_parquet::ColumnProfile>) -> Option<String> {
+/// an instant without one, which has no `tzone`), else the one
+/// `ARROW:schema` gives, else UTC.
+fn zone_of(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>) -> Option<String> {
     match profile.and_then(|p| p.tz.as_deref()) {
         Some("") => None,
         Some(z) => Some(z.to_string()),
-        None => Some("UTC".to_string()),
+        None => Some(col.zone.as_deref().filter(|z| !z.is_empty()).unwrap_or("UTC").to_string()),
     }
 }
 
-fn kind_of(
-    col: &ColumnInfo,
-    profile: Option<&dta_parquet::ColumnProfile>,
-    int64: Int64Mode,
-) -> Res<Kind> {
+fn per_second(unit: TimeUnit) -> f64 {
+    match unit {
+        TimeUnit::Millis => 1e3,
+        TimeUnit::Micros => 1e6,
+        TimeUnit::Nanos => 1e9,
+    }
+}
+
+fn kind_of(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>, modes: Modes) -> Res<Kind> {
     Ok(match &col.kind {
-        ColumnType::Int8 | ColumnType::Int16 | ColumnType::Int32 => Kind::Integer,
+        ColumnType::Int8 | ColumnType::Int16 | ColumnType::Int32 | ColumnType::UInt8 | ColumnType::UInt16 => {
+            Kind::Integer
+        }
         ColumnType::Boolean => Kind::Logical,
         ColumnType::Float => Kind::Double { integer: false },
         ColumnType::Double => match (col.profile_logical, col.storage) {
             (Some(Logical::Date), _) => Kind::Date,
-            (Some(Logical::Timestamp), _) => Kind::Seconds { per_second: 1.0, tz: zone_of(profile) },
+            (Some(Logical::Timestamp), _) => Kind::Seconds { per_second: 1.0, tz: zone_of(col, profile) },
             (None, Some(Storage::Byte | Storage::Int | Storage::Long)) => Kind::Double { integer: true },
             _ => Kind::Double { integer: false },
         },
-        ColumnType::Int64 => Kind::Int64(int64),
+        ColumnType::Int64 | ColumnType::UInt32 | ColumnType::UInt64 => Kind::Int64(modes.int64),
         ColumnType::Date => Kind::Date,
         ColumnType::Timestamp { unit, .. } => match unit {
-            TimeUnit::Millis => Kind::Seconds { per_second: 1e3, tz: zone_of(profile) },
-            TimeUnit::Micros => Kind::Seconds { per_second: 1e6, tz: zone_of(profile) },
-            TimeUnit::Nanos => Kind::Nanos { tz: zone_of(profile) },
+            TimeUnit::Millis | TimeUnit::Micros => {
+                Kind::Seconds { per_second: per_second(*unit), tz: zone_of(col, profile) }
+            }
+            TimeUnit::Nanos => Kind::Nanos { tz: zone_of(col, profile) },
         },
-        ColumnType::Text => match profile.and_then(|p| p.categorical.as_ref()) {
-            Some(cat) => Kind::Factor { levels: cat.levels.clone(), ordered: cat.ordered },
-            None => Kind::Text,
+        ColumnType::Time { unit, .. } => Kind::Time { per_second: per_second(*unit) },
+        ColumnType::Decimal { .. } => match modes.decimal {
+            DecimalMode::Double => Kind::Double { integer: false },
+            DecimalMode::Character => Kind::Text,
+        },
+        ColumnType::Text => match (profile.and_then(|p| p.categorical.as_ref()), col.levels) {
+            (Some(cat), _) => Kind::Factor { levels: cat.levels.clone(), ordered: cat.ordered, rows: false },
+            (None, Some(LevelsFrom::Rows)) => Kind::Factor { levels: Vec::new(), ordered: false, rows: true },
+            (None, _) => Kind::Text,
         },
         ColumnType::Binary => Kind::Binary,
-        ColumnType::UInt8
-        | ColumnType::UInt16
-        | ColumnType::UInt32
-        | ColumnType::UInt64
-        | ColumnType::Time { .. }
-        | ColumnType::Decimal { .. } => {
-            return Err(Fail::Message(format!(
-                "column \"{}\" is {}, which read_parquet() does not read yet",
-                col.name,
-                logical_name(col).unwrap_or_else(|| "of a type".to_string())
-            )));
-        }
         ColumnType::Unsupported(why) => {
             return Err(Fail::Message(format!("column \"{}\" is {why}", col.name)));
         }
@@ -362,7 +394,7 @@ fn r_type(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>, labell
     if col.role == Role::Nested {
         return None;
     }
-    let kind = kind_of(col, profile, Int64Mode::Double).ok()?;
+    let kind = kind_of(col, profile, Modes::DEFAULT).ok()?;
     Some(match kind {
         Kind::Integer | Kind::Double { .. } | Kind::Int64(_) if labelled => "dtaparser_labelled",
         Kind::Integer => "integer",
@@ -370,6 +402,7 @@ fn r_type(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>, labell
         Kind::Double { .. } | Kind::Int64(_) => "double",
         Kind::Date => "Date",
         Kind::Seconds { .. } | Kind::Nanos { .. } => "POSIXct",
+        Kind::Time { .. } => "difftime",
         Kind::Factor { ordered: true, .. } => "ordered",
         Kind::Factor { .. } => "factor",
         Kind::Text => "character",
@@ -580,7 +613,7 @@ fn optional_string_elt(parent: Sexp, i: usize, v: Option<&str>) -> Res<()> {
 /// times or factors, as `read_dta` keeps them.
 fn labels_apply(col: &ColumnInfo, entry: Option<&dta_parquet::ColumnProfile>) -> bool {
     matches!(
-        kind_of(col, entry, Int64Mode::Double),
+        kind_of(col, entry, Modes::DEFAULT),
         Ok(Kind::Integer | Kind::Double { .. } | Kind::Int64(Int64Mode::Double))
     )
 }
@@ -597,8 +630,11 @@ struct Col {
     x: Sexp,
     /// A missing code per row, when one is needed after the read.
     codes: Vec<u8>,
-    /// int64 as character: the values, converted after the read.
+    /// int64 as character: the values, converted after the read (the
+    /// bits of `u64`s for an unsigned 64-bit column).
     int64s: Vec<i64>,
+    /// An unsigned 64-bit column, read as `u64`.
+    unsigned: bool,
     /// INT32: whether a value may be -2^31, which R's integers cannot
     /// hold (it is their NA), so the codes are needed to tell it apart.
     check_min: bool,
@@ -634,7 +670,8 @@ fn min_ruled_out(meta: &dta_parquet::format::FileMetaData, leaf: usize, width: u
 /// `names` selects columns by name (NULL for every data column); `int64`
 /// is 0 for doubles, 1 for integer64, 2 for character; `timestamps` 0
 /// to make nanoseconds that are not whole microseconds an error, 1 to
-/// drop them; `nested` 0 to make nested columns an error, 1 to skip them.
+/// drop them; `nested` 0 to make nested columns an error, 1 to skip them;
+/// `decimal` 0 for doubles, 1 for character.
 ///
 /// # Safety
 /// The pointers come from init.c; `names` is R_NilValue or a character
@@ -652,6 +689,7 @@ pub unsafe extern "C" fn dtaparser_parquet_read_rs(
     int64: c_int,
     timestamps: c_int,
     nested: c_int,
+    decimal: c_int,
     threads: c_int,
     holder: Sexp,
     err: *mut c_char,
@@ -667,13 +705,15 @@ pub unsafe extern "C" fn dtaparser_parquet_read_rs(
             1 => Int64Mode::Integer64,
             _ => Int64Mode::Character,
         };
+        let decimal = if decimal == 1 { DecimalMode::Character } else { DecimalMode::Double };
+        let modes = Modes { int64, decimal };
         let options = ReadOptions {
             threads: threads.max(0) as usize,
             nested: if nested == 1 { Nested::Skip } else { Nested::Error },
             ..ReadOptions::default()
         };
         with_reader(&input, options, &mut |r| {
-            read_into(r, wanted.as_deref(), prefer.as_deref(), skip, n_max, int64, timestamps == 1, holder)
+            read_into(r, wanted.as_deref(), prefer.as_deref(), skip, n_max, modes, timestamps == 1, holder)
         })
     })
 }
@@ -711,7 +751,7 @@ fn read_into(
     prefer: Option<&str>,
     skip: f64,
     n_max: f64,
-    int64: Int64Mode,
+    modes: Modes,
     truncate: bool,
     holder: Sexp,
 ) -> Res<()> {
@@ -741,7 +781,7 @@ fn read_into(
                 info.name
             )));
         }
-        kinds.push(kind_of(info, entry_of(info.name.as_str()), int64)?);
+        kinds.push(kind_of(info, entry_of(info.name.as_str()), modes)?);
     }
     // The R vectors the read makes: 4 or 8 bytes a row, and for text at
     // least the 8-byte end of each value.
@@ -755,7 +795,15 @@ fn read_into(
     let mut sinks = Vec::with_capacity(selected.len());
     for ((k, &c), kind) in selected.iter().enumerate().zip(kinds) {
         let info = &reader_cols[c];
-        let mut col = Col { index: c, kind: kind.clone(), x: std::ptr::null_mut(), codes: Vec::new(), int64s: Vec::new(), check_min: false };
+        let mut col = Col {
+            index: c,
+            kind: kind.clone(),
+            x: std::ptr::null_mut(),
+            codes: Vec::new(),
+            int64s: Vec::new(),
+            unsigned: info.kind == ColumnType::UInt64,
+            check_min: false,
+        };
         let mut sink = Sink::None;
         match &kind {
             Kind::Integer => {
@@ -767,13 +815,14 @@ fn read_into(
             }
             Kind::Logical => col.x = alloc_elt(out, k, LGLSXP, rows)?,
             Kind::Factor { .. } => col.x = alloc_elt(out, k, INTSXP, rows)?,
-            Kind::Double { .. } | Kind::Date | Kind::Seconds { .. } | Kind::Nanos { .. } => {
+            Kind::Double { .. } | Kind::Date | Kind::Seconds { .. } | Kind::Nanos { .. } | Kind::Time { .. } => {
                 col.x = alloc_elt(out, k, REALSXP, rows)?
             }
             Kind::Int64(Int64Mode::Double) => col.x = alloc_elt(out, k, REALSXP, rows)?,
             Kind::Int64(Int64Mode::Integer64) => {
                 col.x = alloc_elt(out, k, REALSXP, rows)?;
-                col.check_min = !min_ruled_out(meta, info.leaf(), 8);
+                // Unsigned values are never -2^63, integer64's NA.
+                col.check_min = info.kind == ColumnType::Int64 && !min_ruled_out(meta, info.leaf(), 8);
                 if col.check_min {
                     col.codes = vec![0; rows];
                 }
@@ -805,7 +854,11 @@ fn read_into(
                     Output::Int32(n)
                 }
                 Kind::Factor { .. } => Output::Levels { codes: slice_mut(INTEGER(col.x), rows), base: 1, null: NA_INTEGER },
-                Kind::Double { .. } | Kind::Date | Kind::Seconds { .. } | Kind::Int64(Int64Mode::Double) => {
+                Kind::Double { .. }
+                | Kind::Date
+                | Kind::Seconds { .. }
+                | Kind::Time { .. }
+                | Kind::Int64(Int64Mode::Double) => {
                     Output::Float64(Numbers::new(slice_mut(REAL(col.x), rows), na_real()).with_missing(r_missing))
                 }
                 Kind::Nanos { .. } => {
@@ -818,6 +871,10 @@ fn read_into(
                     }
                     Output::Int64(n)
                 }
+                Kind::Int64(Int64Mode::Character) if col.unsigned => Output::UInt64(
+                    Numbers::new(slice_mut(col.int64s.as_mut_ptr() as *mut u64, rows), 0)
+                        .with_codes(codes.expect("codes")),
+                ),
                 Kind::Int64(Int64Mode::Character) => Output::Int64(
                     Numbers::new(slice_mut(col.int64s.as_mut_ptr(), rows), 0).with_codes(codes.expect("codes")),
                 ),
@@ -845,8 +902,10 @@ fn read_into(
         .iter()
         .map(|c| {
             let info = &reader_cols[c.index];
-            matches!(info.kind, ColumnType::Int8 | ColumnType::Int16 | ColumnType::Int32)
-                || matches!(info.storage, Some(Storage::Byte | Storage::Int | Storage::Long))
+            matches!(
+                info.kind,
+                ColumnType::Int8 | ColumnType::Int16 | ColumnType::Int32 | ColumnType::UInt8 | ColumnType::UInt16
+            ) || matches!(info.storage, Some(Storage::Byte | Storage::Int | Storage::Long))
         })
         .collect();
     let data_label = profile.and_then(|p| nonempty(&p.label)).map(String::from);
@@ -854,7 +913,7 @@ fn read_into(
     let warnings: Vec<String> = r.warnings().to_vec();
     let int64_names: Vec<String> = cols
         .iter()
-        .filter(|c| reader_cols[c.index].kind == ColumnType::Int64)
+        .filter(|c| matches!(reader_cols[c.index].kind, ColumnType::Int64 | ColumnType::UInt32 | ColumnType::UInt64))
         .map(|c| format!("column \"{}\":", reader_cols[c.index].name))
         .collect();
     drop(by_name);
@@ -877,14 +936,10 @@ fn read_into(
         r.read(&selected_ix, skip, n, &mut outputs, &mut text)
     };
     drop(outputs);
-    let report = match (report, failed) {
+    let mut report = match (report, failed) {
         (_, Some(f)) => return Err(f),
         (Err(e), None) => {
-            let mut m = e.to_string();
-            if m.contains("cannot be held exactly as a double") && int64_names.iter().any(|n| m.starts_with(n.as_str())) {
-                m.push_str("; read with int64 = \"integer64\" or int64 = \"character\" to keep every digit");
-            }
-            return Err(Fail::Message(m));
+            return Err(Fail::Message(read_error(e.to_string(), &int64_names)));
         }
         (Ok(report), None) => report,
     };
@@ -895,6 +950,9 @@ fn read_into(
         let name = &names[k];
         let entry = entry_ix[k].and_then(|i| profile.map(|p| &p.columns[i]));
         let set = set_ix[k].and_then(|i| profile.map(|p| (i, &p.value_labels[i])));
+        if let Kind::Factor { levels, rows: true, .. } = &mut col.kind {
+            *levels = report.levels.get_mut(k).and_then(Option::take).unwrap_or_default();
+        }
         let x = finish(out, k, col, sink, name, rows, report.letters[k], truncate)?;
         set_column_attributes(x, &col.kind, entry, set, &mut shared)?;
     }
@@ -908,6 +966,25 @@ fn read_into(
     }
     super::doubles_elt(out_list, 6, &[rows as f64])?;
     Ok(())
+}
+
+/// The message of a read's error, with the argument of `read_parquet`
+/// that keeps the value added where the core names another way.
+/// `int64_names` are the `column "name":` prefixes of the INT64 and
+/// unsigned 32- and 64-bit columns read.
+fn read_error(mut m: String, int64_names: &[String]) -> String {
+    const DECIMAL: &str = "read the column as text to keep every digit";
+    if m.contains(DECIMAL) {
+        return m.replace(DECIMAL, "read with decimal = \"character\" to keep every digit");
+    }
+    if int64_names.iter().any(|n| m.starts_with(n.as_str())) {
+        if m.contains("cannot be held exactly as a double") {
+            m.push_str("; read with int64 = \"integer64\" or int64 = \"character\" to keep every digit");
+        } else if m.contains("cannot be held exactly as a 64-bit integer") {
+            m.push_str("; read with int64 = \"character\" to keep every digit");
+        }
+    }
+    m
 }
 
 /// # Safety
@@ -983,8 +1060,10 @@ fn finish(out: Sexp, k: usize, col: &mut Col, sink: Sink, name: &str, rows: usiz
             let x = alloc_elt(out, k, STRSXP, rows)?;
             let mut bytes = Vec::with_capacity(rows * 8);
             let mut ends = Vec::with_capacity(rows);
-            for (v, &c) in col.int64s.iter().zip(&col.codes) {
-                if c == 0 {
+            for (&v, &c) in col.int64s.iter().zip(&col.codes) {
+                if c == 0 && col.unsigned {
+                    bytes.extend_from_slice((v as u64).to_string().as_bytes());
+                } else if c == 0 {
                     bytes.extend_from_slice(v.to_string().as_bytes());
                 }
                 ends.push(bytes.len());
@@ -993,7 +1072,7 @@ fn finish(out: Sexp, k: usize, col: &mut Col, sink: Sink, name: &str, rows: usiz
             col.int64s = Vec::new();
             Ok(x)
         }
-        Kind::Seconds { per_second, .. } if *per_second != 1.0 => {
+        Kind::Seconds { per_second, .. } | Kind::Time { per_second } if *per_second != 1.0 => {
             let v = unsafe { slice_mut(REAL(col.x), rows) };
             for d in v.iter_mut() {
                 if !d.is_nan() {
@@ -1117,7 +1196,11 @@ fn set_column_attributes(
                 shared.text(x, c"tzone", &[tz])?;
             }
         }
-        Kind::Factor { levels, ordered } => {
+        Kind::Time { .. } => {
+            shared.text(x, c"class", &["difftime"])?;
+            shared.text(x, c"units", &["secs"])?;
+        }
+        Kind::Factor { levels, ordered, .. } => {
             let l = alloc_attr(x, c"levels", STRSXP, levels.len())?;
             set_strs(l, levels)?;
             if *ordered {

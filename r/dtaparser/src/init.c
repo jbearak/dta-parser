@@ -208,7 +208,7 @@ int dtaparser_parquet_info_rs(const char *path, const unsigned char *raw, size_t
                               size_t err_len);
 int dtaparser_parquet_read_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP names,
                               const char *prefer, double skip, double n_max, int int64, int timestamps, int nested,
-                              int threads, SEXP holder, char *err, size_t err_len);
+                              int decimal, int threads, SEXP holder, char *err, size_t err_len);
 int dtaparser_parquet_write_rs(const char *path, SEXP spec, const char *compression, int level, int has_level,
                                double row_group_size, int missing_letters, int threads, char *err, size_t err_len);
 
@@ -349,11 +349,11 @@ static SEXP parquet_info(SEXP file) {
   return finish(dtaparser_parquet_info_rs(path, raw, raw_len, holder, err, sizeof err), holder, err);
 }
 
-// options: an integer vector c(int64, timestamps, nested), as lib.rs's
-// dtaparser_parquet_read_rs takes them; cols NULL or column names. When
-// cols has a "prefer" attribute (the name of the variable that held
-// them), a column of that name, if the file has one, is read instead, as
-// tidyselect would pick it.
+// options: an integer vector c(int64, timestamps, nested, decimal), as
+// parquet_r.rs's dtaparser_parquet_read_rs takes them; cols NULL or
+// column names. When cols has a "prefer" attribute (the name of the
+// variable that held them), a column of that name, if the file has one,
+// is read instead, as tidyselect would pick it.
 static SEXP parquet_read(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP options) {
   const char *path;
   const unsigned char *raw;
@@ -363,7 +363,7 @@ static SEXP parquet_read(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP optio
   if (TYPEOF(cols) == STRSXP)
     for (R_xlen_t i = 0; i < XLENGTH(cols); i++)
       if (STRING_ELT(cols, i) == NA_STRING) Rf_error("column names must not be NA");
-  if (TYPEOF(options) != INTSXP || XLENGTH(options) != 3) Rf_error("internal: read options must be 3 integers");
+  if (TYPEOF(options) != INTSXP || XLENGTH(options) != 4) Rf_error("internal: read options must be 4 integers");
   double s = Rf_asReal(skip), n = Rf_asReal(n_max);
   if (ISNAN(s) || s < 0 || ISNAN(n) || n < 0) Rf_error("skip and n_max must be numbers >= 0");
   const int *o = INTEGER(options);
@@ -374,8 +374,8 @@ static SEXP parquet_read(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP optio
   }
   SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
   char err[4096] = "";
-  return finish(dtaparser_parquet_read_rs(path, raw, raw_len, cols, prefer, s, n, o[0], o[1], o[2], threads_option(),
-                                          holder, err, sizeof err),
+  return finish(dtaparser_parquet_read_rs(path, raw, raw_len, cols, prefer, s, n, o[0], o[1], o[2], o[3],
+                                          threads_option(), holder, err, sizeof err),
                 holder, err);
 }
 
