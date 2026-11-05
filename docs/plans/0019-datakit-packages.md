@@ -712,10 +712,11 @@ df = read_fixed_width(path, setup; ...)   # DtaParser's arguments; a DataFrame
 - **What keeps the codes**, from DtaParser's own tests
   (`test/dataframes.jl`) and to be extended in the PR: indexing,
   `filter`, `sort`, `subset`, and `select`, `transform` or `transform!`
-  that pass the column through, by name or through a function that
-  returns or copies it (`:x`, `:x => identity => :x`, `copy`), with or
-  without `groupby`. What loses them (letters become `missing`, which
-  saves as `.`): `vcat` of DataFrames, `combine` of groups, and any
+  that pass the column through, by name or through `identity`, with or
+  without `groupby`, and through `copy` without `groupby`. What loses
+  them (letters become `missing`, which saves as `.`): `vcat` of
+  DataFrames, `combine` of groups, `copy` within `groupby` (DataFrames
+  then assembles a plain vector from the groups' pieces), and any
   function that builds a new vector (broadcasting, arithmetic, `ByRow`).
   Metadata follows DataFrames' own rule: kept for a column passed
   through, renamed or not, when the function is `identity` or `copy`,
