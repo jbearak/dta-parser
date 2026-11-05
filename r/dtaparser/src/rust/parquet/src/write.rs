@@ -12,7 +12,7 @@ use std::io::Write;
 use std::ops::Range;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Condvar, Mutex, PoisonError};
 
 use crate::arrow::{self, ArrowType};
 use crate::codec::{Codecs, Compression};
@@ -300,14 +300,14 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
         } else {
             1
         };
-        let encoded: Vec<Encoded> = parallel(threads_here, table.columns.len(), &scratch, &job)
-            .into_iter()
-            .collect::<Result<_>>()?;
         let mut chunks = Vec::with_capacity(schema.len() - 1);
         let mut group_index = Vec::with_capacity(schema.len() - 1);
         let start = out.at;
         let (mut total, mut compressed) = (0i64, 0i64);
-        for (k, e) in encoded.into_iter().enumerate() {
+        // Each column chunk is written as soon as it and those before it
+        // are encoded, so only a few are held at a time, not the row
+        // group (840 MB of wide.dta's).
+        parallel_ordered(threads_here, table.columns.len(), &scratch, &job, |k, e| {
             let (cc, oi) = put_chunk(
                 &mut out,
                 &table.columns[k].name,
@@ -318,7 +318,8 @@ pub fn write(table: &Table, out: impl Write, options: &WriteOptions) -> Result<W
             compressed += cc.meta.as_ref().map_or(0, |m| m.total_compressed_size);
             chunks.push(cc);
             group_index.push(oi);
-        }
+            Ok(())
+        })?;
         groups.push(RowGroup {
             columns: chunks,
             total_byte_size: total,
@@ -742,6 +743,112 @@ fn parallel<T: Send>(
                 })
         })
         .collect()
+}
+
+/// Run `f(k)` for `k` in `0..n` on up to `threads` threads, and give
+/// each result to `sink` on the calling thread, in order, as soon as it
+/// and those before it are done. Workers run at most two results per
+/// thread ahead of `sink`, so few are held at once. Stops at the first
+/// error.
+fn parallel_ordered<T: Send>(
+    threads: usize,
+    n: usize,
+    scratch: &[Mutex<Scratch>],
+    f: &(dyn Fn(usize, &mut Scratch) -> Result<T> + Sync),
+    mut sink: impl FnMut(usize, T) -> Result<()>,
+) -> Result<()> {
+    let lock = |k: usize| scratch[k].lock().unwrap_or_else(PoisonError::into_inner);
+    let threads = threads.min(n).min(scratch.len());
+    if threads <= 1 {
+        let mut s = lock(0);
+        for k in 0..n {
+            let t = f(k, &mut s)?;
+            sink(k, t)?;
+        }
+        return Ok(());
+    }
+    struct State<T> {
+        results: Vec<Option<Result<T>>>,
+        /// The next column to hand to a worker.
+        next: usize,
+        /// Columns given to `sink` so far.
+        done: usize,
+        stop: bool,
+    }
+    let window = 2 * threads;
+    let state = Mutex::new(State {
+        results: (0..n).map(|_| None).collect(),
+        next: 0,
+        done: 0,
+        stop: false,
+    });
+    let changed = Condvar::new();
+    let guard = || state.lock().unwrap_or_else(PoisonError::into_inner);
+    let work = |w: usize| {
+        let mut s = lock(w);
+        loop {
+            let k = {
+                let mut st = guard();
+                while !st.stop && st.next < n && st.next >= st.done + window {
+                    st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
+                }
+                if st.stop || st.next >= n {
+                    break;
+                }
+                st.next += 1;
+                st.next - 1
+            };
+            let r = catch_unwind(AssertUnwindSafe(|| f(k, &mut s))).unwrap_or_else(|p| {
+                Err(
+                    Error::new(format!("a write thread panicked: {}", panic_text(&*p)))
+                        .of(ErrorKind::Internal),
+                )
+            });
+            guard().results[k] = Some(r);
+            changed.notify_all();
+        }
+    };
+    let work = &work;
+    std::thread::scope(|scope| {
+        let mut started = 0;
+        for w in 0..threads {
+            if std::thread::Builder::new()
+                .spawn_scoped(scope, move || work(w))
+                .is_ok()
+            {
+                started += 1;
+            }
+        }
+        let mut outcome = Ok(());
+        for k in 0..n {
+            let r = {
+                let mut st = guard();
+                loop {
+                    if let Some(r) = st.results[k].take() {
+                        break Some(r);
+                    }
+                    if started == 0 {
+                        break None;
+                    }
+                    st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
+                }
+            };
+            // No worker started: encode here.
+            let r = r.unwrap_or_else(|| f(k, &mut lock(0)));
+            outcome = r.and_then(|t| sink(k, t));
+            let mut st = guard();
+            st.done = k + 1;
+            if outcome.is_err() {
+                st.stop = true;
+            }
+            drop(st);
+            changed.notify_all();
+            if outcome.is_err() {
+                break;
+            }
+        }
+        outcome
+    })
 }
 
 fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
