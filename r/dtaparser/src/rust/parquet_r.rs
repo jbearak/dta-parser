@@ -720,9 +720,8 @@ fn read_into(
     let meta = r.metadata();
     let limits = DictLimits::from_env();
 
-    let mut cols = Vec::with_capacity(selected.len());
-    let mut sinks = Vec::with_capacity(selected.len());
-    for (k, &c) in selected.iter().enumerate() {
+    let mut kinds = Vec::with_capacity(selected.len());
+    for &c in &selected {
         let info = &reader_cols[c];
         if info.role == Role::Nested {
             return Err(Fail::Message(format!(
@@ -730,8 +729,20 @@ fn read_into(
                 info.name
             )));
         }
-        let entry = entry_of(info.name.as_str());
-        let kind = kind_of(info, entry, int64)?;
+        kinds.push(kind_of(info, entry_of(info.name.as_str()), int64)?);
+    }
+    // The R vectors the read makes: 4 or 8 bytes a row, and for text at
+    // least the 8-byte end of each value.
+    let width = |kind: &Kind| match kind {
+        Kind::Integer | Kind::Logical | Kind::Factor { .. } => 4,
+        _ => 8,
+    };
+    super::reserve(kinds.iter().map(width).sum::<usize>().saturating_mul(rows))?;
+
+    let mut cols = Vec::with_capacity(selected.len());
+    let mut sinks = Vec::with_capacity(selected.len());
+    for ((k, &c), kind) in selected.iter().enumerate().zip(kinds) {
+        let info = &reader_cols[c];
         let mut col = Col { index: c, kind: kind.clone(), x: std::ptr::null_mut(), codes: Vec::new(), int64s: Vec::new(), check_min: false };
         let mut sink = Sink::None;
         match &kind {

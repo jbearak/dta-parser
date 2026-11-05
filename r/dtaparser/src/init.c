@@ -59,6 +59,20 @@ int dtaparser_alloc_elt(SEXP parent, R_xlen_t i, int type, R_xlen_t n, SEXP *out
   return try_r(do_alloc_elt, &a, out);
 }
 
+// Make room in R's vector heap for about `bytes` of vectors about to be
+// allocated. R grows the heap a step at a time, with a full collection
+// at each step: allocating the output of a 600 MB read in a new session
+// took 13 collections. Allocating one vector of that size, never
+// written (so never resident) and dropped at once, grows the heap in
+// one; a cold read of long.dta's Parquet file then took 5.
+static SEXP do_reserve(void *p) {
+  return Rf_allocVector(RAWSXP, *(R_xlen_t *) p);
+}
+
+int dtaparser_reserve(R_xlen_t bytes) {
+  return try_r(do_reserve, &bytes, NULL);
+}
+
 // Allocate a vector and attach it to x as attribute `name`.
 struct alloc_attr { SEXP x; const char *name; SEXPTYPE type; R_xlen_t n; };
 

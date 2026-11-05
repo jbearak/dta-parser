@@ -41,6 +41,7 @@ extern "C" {
     static R_NaString: Sexp;
     // The shims in init.c; each returns 0, or 1 if R raised an error.
     fn dtaparser_alloc_elt(parent: Sexp, i: isize, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
+    fn dtaparser_reserve(bytes: isize) -> c_int;
     fn dtaparser_alloc_attr(x: Sexp, name: *const c_char, kind: c_int, n: isize, out: *mut Sexp) -> c_int;
     fn dtaparser_set_strings(x: Sexp, first: isize, bytes: *const u8, ends: *const usize, n: isize) -> c_int;
     #[allow(clippy::too_many_arguments)]
@@ -89,6 +90,15 @@ fn alloc_elt(parent: Sexp, i: usize, kind: c_int, n: usize) -> Res<Sexp> {
     let mut out = std::ptr::null_mut();
     status(unsafe { dtaparser_alloc_elt(parent, i as isize, kind, n as isize, &mut out) })?;
     Ok(out)
+}
+
+/// Make room in R's vector heap for about `bytes` of new vectors in one
+/// step (see init.c); nothing for reads too small to need it.
+fn reserve(bytes: usize) -> Res<()> {
+    if bytes >= 64 << 20 {
+        status(unsafe { dtaparser_reserve(bytes.min(isize::MAX as usize) as isize) })?;
+    }
+    Ok(())
 }
 
 /// A packed string column (see strings.c), as element `i` of the list
