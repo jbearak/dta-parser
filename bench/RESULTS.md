@@ -731,7 +731,9 @@ on pyarrow's, polars' and our Parquet copy. Every number is in
 this section is written by hand from it.
 
 **Targets 1 and 2 hold. Target 3 misses on one case**: five columns of
-our own survey files against hyparquet, on CPU time only (below).
+our own survey files against hyparquet, on CPU time only. The user
+accepted this miss as V8's compiler overhead (below), on the profiling
+evidence given there.
 
 Ours over theirs, geometric means of wall time on pyarrow's files (NSFG,
 DHS); below 1 is faster. Reads of polars' files are within 0.1 of these
@@ -753,8 +755,9 @@ or faster; reads of our own files are in the full report.
   long.dta, 2.46 s against our 2.67 (1.09), and of NSFG 1995_FemResp,
   453 ms against 454.
 - **Target 3** (CPU at most theirs times the larger of 1.15 and our
-  speedup): **misses** on five columns of our own files against
-  hyparquet, on 25 of the 46 survey files: by 3 to 34 ms of CPU (NSFG
+  speedup): **misses, accepted by the user**, on five columns of our
+  own files against hyparquet, on 25 of the 46 survey files: by 3 to 34
+  ms of CPU (NSFG
   2017_2019_Male: 80 ms against 46 allowed 52; DHS Tajikistan 2017 wm:
   88 against 58 allowed 67). Wall time on those files is 0.93 to 1.04
   of hyparquet's. The excess is V8 compiling the module's hot functions
