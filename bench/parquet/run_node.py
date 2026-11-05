@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import statistics
 import sys
 import time
@@ -231,6 +232,8 @@ def report(files, out, dest):
 
 
 def main():
+    # Terminated (a time limit): unwind, so the lock is released.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit("terminated"))
     ap = argparse.ArgumentParser()
     ap.add_argument("--family", nargs="*", default=list(base.FAMILIES))
     ap.add_argument("--libs", nargs="*", default=LIBS)
