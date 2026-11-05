@@ -823,21 +823,49 @@ impl Strings {
             }
             // The dictionary was given up: add this chunk plainly.
         }
-        if self.dict.is_none() && tc.codes.is_none() && !tc.missing.contains(&1) {
-            // Plain values and no missing rows: the chunk in one copy.
-            let base = self.bytes.len();
-            let first = self.ends.len();
-            self.ends.extend(tc.ends.iter().map(|&e| base + e));
-            self.bytes.extend_from_slice(&tc.bytes);
-            if let Some(nas) = &mut self.nas {
-                nas.extend(first as i32..self.ends.len() as i32);
+        if self.dict.is_some() {
+            for r in 0..tc.rows {
+                self.add(tc.row(r));
             }
             return Ok(());
         }
-        for r in 0..tc.rows {
-            self.add(tc.row(r));
+        // Plain: rows whose values follow one another in the chunk (every
+        // row of a chunk without a dictionary, and the PLAIN pages of one
+        // whose writer gave up its dictionary) are copied a run at a time.
+        let value_of = |r: usize| -> Option<usize> {
+            match &tc.codes {
+                Some(codes) => (codes[r] != dta_parquet::TextChunk::NULL).then_some(codes[r] as usize),
+                None => (tc.missing[r] == 0).then_some(r),
+            }
+        };
+        let mut r = 0;
+        while r < tc.rows {
+            let Some(first) = value_of(r) else {
+                self.push_na();
+                r += 1;
+                continue;
+            };
+            let mut end = r + 1;
+            while end < tc.rows && value_of(end) == Some(first + (end - r)) {
+                end += 1;
+            }
+            self.push_values(tc, first..first + (end - r));
+            r = end;
         }
         Ok(())
+    }
+
+    /// Append values `values` of a chunk, one row each, in one copy.
+    fn push_values(&mut self, tc: &dta_parquet::TextChunk, values: std::ops::Range<usize>) {
+        let from = if values.start == 0 { 0 } else { tc.ends[values.start - 1] };
+        let to = tc.ends[values.end - 1];
+        let base = self.bytes.len();
+        let first = self.ends.len();
+        self.ends.extend(tc.ends[values].iter().map(|&e| base + (e - from)));
+        self.bytes.extend_from_slice(&tc.bytes[from..to]);
+        if let Some(nas) = &mut self.nas {
+            nas.extend(first as i32..self.ends.len() as i32);
+        }
     }
 
     /// Append a chunk, checking that R can hold every value.
