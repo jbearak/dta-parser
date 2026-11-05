@@ -970,13 +970,11 @@ export async function openParquetAsync(
 /** How `writeParquet` writes. */
 export interface ParquetWriteOptions {
   /**
-   * The codec: `"snappy"` (the default), `"zstd"`, `"gzip"`, `"lz4_raw"`
-   * or `"none"`. This package writes zstd with a pure-Rust encoder that
-   * has one level: it is slower than snappy, and its files are larger
-   * than other tools' zstd files (it reads every tool's zstd files).
+   * The codec: `"snappy"` (the default), `"zstd"` (C libzstd), `"gzip"`,
+   * `"lz4_raw"` or `"none"`.
    */
   compression?: "snappy" | "zstd" | "gzip" | "lz4_raw" | "none";
-  /** The codec's level (gzip 0 to 10); default the codec's own. */
+  /** The codec's level (gzip 0 to 10, zstd 1 to 22); default the codec's own (zstd 3). */
   compressionLevel?: number;
   /**
    * Rows per row group. By default a row group holds up to 262,144 rows

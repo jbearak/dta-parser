@@ -44,7 +44,8 @@ codec crates from crates.io; `crates/dta` stays free of dependencies.
   language's own vectors. Measurements are in
   `docs/research/parquet-codecs.md`. It is also larger in the npm
   package: our whole wasm module with Parquet reading and writing and
-  every codec is 1,899,927 bytes, 374,306 compressed with brotli
+  every codec (C libzstd included) is 2,192,414 bytes, 420,125
+  compressed with brotli
   (quality 11), against parquet-wasm's 456 KB brotli-compressed for a
   read-only build without codecs (its README); without Parquet the
   module was 349,363 bytes, 92,056 with brotli.
@@ -52,8 +53,9 @@ codec crates from crates.io; `crates/dta` stays free of dependencies.
 ## Consequences
 
 - The core takes its first third-party crates: `snap`, `lz4_flex`,
-  `miniz_oxide`, `brotli-decompressor` and, on native targets, `zstd`
-  (C libzstd); `ruzstd` on wasm. They are pinned, vendored in the R
+  `miniz_oxide`, `brotli-decompressor` and `zstd` (C libzstd, which in
+  the npm package's wasm module needs a clang that targets wasm32 to
+  build). They are pinned, vendored in the R
   tarball and Python sdist, and checked by `cargo deny`.
 - dtaparser's bridge registers `dtaparser_parquet_read` and
   `dtaparser_parquet_write`, and the ABI number goes from 2 to 3, so the

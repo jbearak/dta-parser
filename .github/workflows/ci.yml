@@ -14,8 +14,13 @@ jobs:
           targets: wasm32-unknown-unknown
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      # The Parquet core builds for wasm, with ruzstd in place of libzstd.
+      # The Parquet core builds for wasm; libzstd needs a clang that
+      # targets wasm32 (scripts/build-wasm.sh).
+      - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: cargo build -p dta-parquet --target wasm32-unknown-unknown
+        env:
+          CC_wasm32_unknown_unknown: clang
+          AR_wasm32_unknown_unknown: llvm-ar
       # Reported, not gated: wall and CPU time of reads and writes with 1
       # to 8 threads on x86 (plan 0007), on a 1.4 GB file it writes.
       - name: Thread scaling on x86
@@ -84,6 +89,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      # libzstd in the module needs a clang that targets wasm32.
+      - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh
       - run: npm ci
         working-directory: js
@@ -289,6 +296,12 @@ jobs:
           extra-packages: any::vctrs
       - run: pip install pandas
       - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
+      # libzstd in the module needs a clang that targets wasm32.
+      - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh && cd js && npm ci && npm run build
       - run: Rscript compat/readback.R "$RUNNER_TEMP/r" && python3 compat/readback.py "$RUNNER_TEMP/r"
       - run: node compat/readback.mjs "$RUNNER_TEMP/js" && python3 compat/readback.py "$RUNNER_TEMP/js"
+      # hyparquet reads back the Parquet files the npm package writes.
+      - run: npm ci
+        working-directory: bench/node
+      - run: node compat/parquet/readback.mjs bench/node/node_modules

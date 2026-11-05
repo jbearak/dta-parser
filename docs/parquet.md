@@ -269,9 +269,8 @@ write the file with `missing_letters = FALSE`.
   files were 16 to 17% smaller than snappy ones, and writing them took
   3 to 11% longer. `zstd` (with
   `compression_level`), `gzip`, `lz4_raw` and `none` are there on
-  request. The npm package writes zstd with the pure-Rust `ruzstd`,
-  which has one level and makes larger files than libzstd (plan 0018,
-  "What we write"); it reads every codec.
+  request, in every language, the npm package included: its wasm
+  module carries C libzstd too.
 - **Row groups: up to 262,144 rows (polars' default) and about 1 GiB of
   values.** The plan had 64 MiB, which made a DHS file of 5,000 columns
   four row groups where pyarrow and polars write one; pyarrow then took

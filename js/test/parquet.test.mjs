@@ -218,6 +218,23 @@ test("strings: dictionary gives DictionaryColumns for repeating text", () => {
   }
 });
 
+test("zstd is libzstd: its levels change the file, and every level reads back", () => {
+  const rows = 50_000;
+  const data = { variables: [{ name: "x", values: Array.from({ length: rows }, (_, i) => `value ${i % 5000} of a text column`) }, { name: "y", values: Array.from({ length: rows }, (_, i) => (i * 7919) % 100_003) }] };
+  const sizes = [1, 3, 19].map((compressionLevel) => {
+    const bytes = writeParquet(data, { compression: "zstd", compressionLevel });
+    const r = openParquet(bytes);
+    assert.deepEqual(r.info.compression, ["zstd"]);
+    const [x, y] = r.readColumns(["x", "y"]);
+    assert.equal(x.values[4321], data.variables[0].values[4321]);
+    assert.equal(y.values[rows - 1], data.variables[1].values[rows - 1]);
+    return r.variables[0].chunks[0].compressedBytes;
+  });
+  // Data-dependent in general; on this column's text, level 19 finds
+  // more than level 1 does.
+  assert.ok(sizes[2] < sizes[0], `level 19 (${sizes[2]} bytes) should be smaller than level 1 (${sizes[0]})`);
+});
+
 test("text is written exactly: short and long, ASCII and not, in blocks of rows", () => {
   // Long strings are encoded a block of 65,536 rows at a time; a block
   // with non-ASCII text, a lone surrogate or a missing value takes the

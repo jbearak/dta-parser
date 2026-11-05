@@ -638,7 +638,7 @@ Contents:
 Parquet needs nothing beyond this package ([Install](#install)): the
 reader and writer are in the same WebAssembly module, built from the
 same Rust core as the R, Python and Julia packages, with no Arrow or
-other JavaScript library. The module with Parquet is 1.9 MB, 374 KB
+other JavaScript library. The module with Parquet is 2.2 MB, 420 KB
 compressed with brotli. `openParquet`, `openParquetAsync`,
 `writeParquet` and `toDate` come from `@jbearak/dta-parser` and use no
 Node API, so they run in a browser; `openParquetFile` and
@@ -907,16 +907,12 @@ leaves no file.
 
 The options (`ParquetWriteOptions`): `compression` is `"snappy"` (the
 default), `"zstd"`, `"gzip"`, `"lz4_raw"` or `"none"`, with
-`compressionLevel` where the codec has levels. Snappy is the default
-because this package writes zstd with a pure-Rust encoder that has one
-level: in plan 0018's measurements it compressed to 6% of the input
-where C libzstd reached 2%, and a zstd write of a large table takes
-three to six times as long as a snappy one, and about three times as
-long as parquet-wasm's, which uses libzstd. The other languages' packages write zstd with libzstd.
-zstd is also the slowest codec to read, since the decoder is pure Rust
-too: polars writes zstd by default, and reading polars' copy of a 10
-million row table took 3.5 s against 0.9 s for pyarrow's snappy copy
-(hyparquet and parquet-wasm took longer on both). `rowGroupSize` sets rows per row group; by default a row
+`compressionLevel` where the codec has levels. Snappy is the default,
+as in the other languages' packages, because other tools read our
+snappy files faster than our zstd ones
+([the measurements](parquet.md#defaults-and-the-measurements-behind-them));
+zstd files of survey data are about a sixth smaller. zstd is C libzstd,
+compiled into the module, with all its levels. `rowGroupSize` sets rows per row group; by default a row
 group holds up to 262,144 rows and about 1 GiB of values, so a survey
 file is one row group, as pyarrow and polars write it. `missingLetters`
 is described [below](#keep-a-to-z-in-a-parquet-file). Every file has
