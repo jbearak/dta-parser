@@ -795,20 +795,51 @@ impl ArrowText {
         let first = chunk.first as usize;
         match &chunk.codes {
             Some(codes) => {
-                // Size first: the bytes of each row's value.
-                let lens: Vec<usize> = (0..chunk.ends.len())
-                    .map(|i| chunk.ends[i] - if i == 0 { 0 } else { chunk.ends[i - 1] })
+                // Each dictionary value's start and length, and the bytes
+                // with room to copy 16 at a time past the last: most
+                // survey text is short, and a copy call per row was most
+                // of the time spent here.
+                const WIDE: usize = 16;
+                let n = chunk.ends.len();
+                let spans: Vec<(usize, usize)> = (0..n)
+                    .map(|i| {
+                        let start = if i == 0 { 0 } else { chunk.ends[i - 1] };
+                        (start, chunk.ends[i] - start)
+                    })
                     .collect();
-                let total: usize = codes.iter().map(|&c| if c == TextChunk::NULL { 0 } else { lens[c as usize] }).sum();
-                self.data.reserve(total);
+                let mut dict = Vec::with_capacity(chunk.bytes.len() + WIDE);
+                dict.extend_from_slice(&chunk.bytes);
+                dict.resize(chunk.bytes.len() + WIDE, 0);
+                let total: usize =
+                    codes.iter().map(|&c| if c == TextChunk::NULL { 0 } else { spans[c as usize].1 }).sum();
+                let at = self.data.len();
+                self.data.reserve(total + WIDE);
+                self.offsets.reserve(codes.len());
+                let mut end = at;
+                let base = self.data.as_mut_ptr();
                 for (i, &c) in codes.iter().enumerate() {
                     if c == TextChunk::NULL {
                         self.null(first + i);
                     } else {
-                        self.data.extend_from_slice(chunk.value(c as usize));
+                        let (start, len) = spans[c as usize];
+                        // SAFETY: `data` has room for `total + WIDE` bytes
+                        // past `at`, and `end + len <= at + total`; `dict`
+                        // has WIDE bytes past every value's start.
+                        unsafe {
+                            let src = dict.as_ptr().add(start);
+                            let dst = base.add(end);
+                            if len <= WIDE {
+                                std::ptr::copy_nonoverlapping(src, dst, WIDE);
+                            } else {
+                                std::ptr::copy_nonoverlapping(src, dst, len);
+                            }
+                        }
+                        end += len;
                     }
-                    self.offsets.push(self.data.len() as i64);
+                    self.offsets.push(end as i64);
                 }
+                // SAFETY: bytes `at..end` were written above.
+                unsafe { self.data.set_len(end) };
             }
             None => {
                 let base = self.data.len() as i64;
@@ -1319,7 +1350,12 @@ fn finish<'py>(
                     }
                 }
                 codes_arr = Some(arr);
-            } else {
+            } else if matches!(storage, Some(Storage::Byte | Storage::Int | Storage::Long))
+                || logical.is_some()
+            {
+                // Only these need it (integers again, or dates); a scan
+                // of every double on this thread was a third of a
+                // threaded read of wide.dta.
                 nan = v.iter().any(|x| x.is_nan());
             }
             (
