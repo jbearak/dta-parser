@@ -786,7 +786,7 @@ class RangeStore {
     );
   }
 
-  /** Drop the least recently used ranges that are not pinned, down to the budget. */
+  /** @internal Drop the least recently used ranges that are not pinned, down to the budget. */
   trim(): void {
     let held = this.entries.reduce((n, e) => n + (e.pinned ? 0 : e.end - e.start), 0);
     if (held <= this.budget) return;
