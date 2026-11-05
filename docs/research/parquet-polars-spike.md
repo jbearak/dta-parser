@@ -440,8 +440,11 @@ suggests a per-column cost on wide files.
 
 ## Reproducing
 
+From a checkout of branch `spike/polars-arrow` (commit `3ec678a`), at
+the repository root, in a venv with polars and pyarrow:
+
 ```sh
-cd python && maturin develop --release   # in a venv with polars and pyarrow
+(cd python && maturin develop --release)
 python bench/parquet/spike/check.py      # equality and the GC test
 python bench/parquet/spike/run.py        # the matrix; writes results.json
 python bench/parquet/spike/table.py      # the tables above

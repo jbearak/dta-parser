@@ -437,12 +437,12 @@ Recipes in the docs, each a test:
   UInt64, UInt32 and Boolean columns with letters are errors, as plan
   0018 decided (a double cannot hold them). A date or timestamp column
   with letters is DOUBLE with `"logical"` in the profile, as plan 0018
-  writes R's; a timestamp there is seconds in a double, so a value that
-  a double does not give back to the microsecond (a Datetime("ns")
-  value below a microsecond, or any value far enough from 1970, past
-  about the year 2255, that a double of seconds no longer holds its
-  microseconds) is an error naming the column and row, unless
-  `timestamps="truncate"`. UInt8 and UInt16 columns with letters are errors too (a
+  writes R's; a timestamp there is seconds in a double. A Datetime("ns")
+  value with a part below a microsecond is an error naming the column
+  and row, unless `timestamps="truncate"`, which drops that part. A
+  value far enough from 1970 (past about the year 2255) that a double of
+  seconds no longer holds its whole microseconds is an error in both
+  modes, since truncating to the microsecond does not make it fit. UInt8 and UInt16 columns with letters are errors too (a
   file never gives them letters; only a cast could). An Enum or
   Categorical column with letters is an error,
   since a categorical cannot hold a tagged NaN; the error names the column and says to save it as `.dta`
@@ -511,7 +511,11 @@ Python's datakit reads and writes `.dta` into the same `(df, meta)`:
   as dta_parser does; `encoding` is dta_parser's, for text in files
   before release 118. Columns: byte, int, long, float, double as Int8,
   Int16, Int32, Float32, Float64 with nulls; strN and text strLs as
-  String, binary strLs as Binary. Dates, by display format: `%td` is
+  String, binary strLs as Binary. A strL column that mixes text and
+  binary values (which dta_parser keeps as `str` and `bytes` side by
+  side) is Binary, its text values as their UTF-8 bytes, as plan 0018
+  reads such a column from Parquet; the cell-by-cell test expects those
+  bytes. Dates, by display format: `%td` is
   Date, and a value with a fraction of a day is an error naming the
   column and row unless `timestamps="truncate"` (one outside Date's
   range is an error in both modes); `%tc` is
@@ -585,9 +589,11 @@ memory".
   not a documented interface), or by a cast after import. PR 2a
   measures both and records which it uses; if the key, the polars pin
   stays `<3` and a test fails loudly when polars stops honouring it.
-- **Writing.** polars exports strings as string views, an Enum as a
-  dictionary with uint8 indices and string-view values, and a
-  Categorical with uint32 indices; a frame may come in several chunks,
+- **Writing.** polars exports strings as string views, and an Enum or
+  Categorical as a dictionary of string views whose indices are uint8,
+  uint16 or uint32 by the number of categories; the reader dispatches on
+  the exported index type and tests all three widths. A frame may come
+  in several chunks,
   and arrays may be slices. The writer reads all of these without
   copying the text.
 - The Arrow C structures are hand-written for the types above (the
@@ -705,11 +711,15 @@ df = read_fixed_width(path, setup; ...)   # DtaParser's arguments; a DataFrame
   result is a DataFrame whose letter columns are `DtaColumn`s.
 - **What keeps the codes**, from DtaParser's own tests
   (`test/dataframes.jl`) and to be extended in the PR: indexing,
-  `filter`, `sort`, `subset`, and `groupby` with `select` or `transform`
-  of the column as is. What loses them (letters become `missing`,
-  which saves as `.`): `vcat` of DataFrames, `combine`, and any
-  function that builds a new vector (broadcasting, `transform!` or
-  `select` with a function). Joins (`innerjoin`, `leftjoin`, `outerjoin`) are tested in
+  `filter`, `sort`, `subset`, and `select`, `transform` or `transform!`
+  that pass the column through, by name or through a function that
+  returns or copies it (`:x`, `:x => identity => :x`, `copy`), with or
+  without `groupby`. What loses them (letters become `missing`, which
+  saves as `.`): `vcat` of DataFrames, `combine` of groups, and any
+  function that builds a new vector (broadcasting, arithmetic, `ByRow`).
+  Metadata follows DataFrames' own rule: kept for a column passed
+  through, renamed or not, when the function is `identity` or `copy`,
+  and dropped for any other function under a new name. Joins (`innerjoin`, `leftjoin`, `outerjoin`) are tested in
   the PR and the docs give the result; they are not promised.
 - **Setting a letter** (`replace x = .d if age < 15`). `set_stata_code!`
   needs a `DtaColumn`, so a plain column is converted first, in place in
@@ -723,10 +733,10 @@ df = read_fixed_width(path, setup; ...)   # DtaParser's arguments; a DataFrame
   `df[!, :x] = ...` keeps the column's `:note` metadata (checked on
   DataFrames 1.8.2). So do `transform!(df, :x => f => :x)`, `select`,
   `combine` and `vcat` under the same name; only a new output name
-  (`:x => f => :y`) starts without it. The codes are another matter:
-  all of those except indexing build plain vectors, so a function over
-  `x` turns its letters into `missing`. The docs show this beside the
-  recipe. Datakit re-exports `DtaColumn`, `stata_code`,
+  (`:x => f => :y`) starts without it, unless `f` is `identity` or
+  `copy`. The codes are another matter: a function that builds a new
+  vector from `x` turns its letters into `missing`, whatever its name.
+  The docs show this beside the recipe. Datakit re-exports `DtaColumn`, `stata_code`,
   `set_stata_code!` and `stata_key`.
 - **Labels in metadata**, style `:note`: `colmetadata(df, :x, "label")`,
   `"format"`, `"value_labels"` (the set's name) and `"storage"`;
@@ -738,7 +748,9 @@ df = read_fixed_width(path, setup; ...)   # DtaParser's arguments; a DataFrame
 - **Types** are DtaParser's Parquet types, unchanged (plan 0018's
   table), as plain vectors. One difference from Python: a date or
   timestamp column holding `.a` to `.z` reads as a `DtaColumn` of its
-  numbers (days, or seconds), as DtaParser reads it now, since a
+  Stata numbers, days since 1960 with a `%td` format or milliseconds
+  since 1960 with `%tc`, as DtaParser reads it now
+  (`logical_date`, `logical_timestamp` in `src/parquet.jl`), since a
   `Vector{Date}` cannot carry the codes; Python returns Date with the
   letters beside it. `docs/parquet.md`'s type table says so.
 - `read_parquet_info` returns what DtaParser's `read_meta` returned for
