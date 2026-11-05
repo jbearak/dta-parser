@@ -2,7 +2,8 @@
 
 `dta_parser` reads Stata `.dta` files into pandas DataFrames and writes
 DataFrames back as `.dta` files. It reads every release from 104 to 119
-and writes release 118. Unlike `pandas.read_stata` and pyreadstat, it
+and writes release 118. It also reads and writes Parquet files that keep
+the same labels and missing values ([Parquet files](#parquet-files)). Unlike `pandas.read_stata` and pyreadstat, it
 keeps Stata's extended missing values `.a` to `.z` per value, through
 filtering, sorting, merging and writing.
 
@@ -20,6 +21,9 @@ Contents:
 [Recipes](#recipes) ·
 [Coming from pandas.read_stata](#coming-from-pandasread_stata) ·
 [Coming from pyreadstat](#coming-from-pyreadstat) ·
+[Fixed-width files](#fixed-width-files-with-a-sas-setup-file) ·
+[Parquet files](#parquet-files) ·
+[Threads](#threads) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -597,11 +601,467 @@ df = dp.read_fixed_width("survey.dat", "commented.sas", recodes="none", commente
 print(df.attrs["dta"]["value_labels"])   # {}
 ```
 
+## Parquet files
+
+`read_parquet` and `write_parquet` read and write Parquet files that
+keep what a `.dta` file says: variable labels, value labels, display
+formats, `.a` to `.z`, the data label, notes and characteristics, and
+also categories and time zones. `read_parquet` returns the DataFrame
+`read_dta` returns, so a script that reads a `.dta` file can switch to
+Parquet by changing one name, and a frame `read_dta` gave comes back
+from `write_parquet` and `read_parquet` equal (`assert_frame_equal`),
+with the same `attrs["dta"]`. The files are plain Parquet that pyarrow,
+pandas, polars, DuckDB and R's arrow read;
+[docs/parquet.md](parquet.md) says what each of them sees and gives the
+file's specification. Only flat tables are read and written: for lists,
+maps or structs, use pyarrow or polars. And if you want a pyarrow
+`Table` or a polars `DataFrame` rather than pandas, read with pyarrow or
+polars: `read_parquet` returns pandas only.
+
+Contents:
+[Install](#parquet-install) ·
+[Read a Parquet file](#read-a-parquet-file) ·
+[Read some columns](#read-some-columns-of-a-parquet-file) ·
+[Read a range of rows](#read-a-range-of-rows-of-a-parquet-file) ·
+[Schema and metadata](#a-parquet-files-schema-and-metadata) ·
+[Labels](#labels-in-parquet-files) ·
+[Dates and time zones](#dates-and-time-zones-in-parquet-files) ·
+[Write a Parquet file](#write-a-parquet-file) ·
+[Write labels](#write-labels-to-a-parquet-file) ·
+[Keep .a to .z](#keep-a-to-z-in-a-parquet-file) ·
+[Files from other tools](#parquet-files-from-other-tools) ·
+[What each type becomes](#what-each-parquet-type-becomes-in-python) ·
+[The index](#the-index-and-parquet-files) ·
+[Coming from pyarrow, pandas or polars](#coming-from-pyarrow-pandas-or-polars)
+
+### Parquet: install
+
+Parquet needs nothing beyond `dta_parser` ([Install](#install)): the
+reader and writer are in its Rust core, with the codecs (snappy, zstd,
+gzip, lz4, brotli) built in, so pyarrow is not needed. Where pyarrow is
+installed, pandas 3 keeps text in Arrow memory, and `read_parquet` fills
+that memory directly. A build from source also compiles the zstd C
+library, with the C compiler the build already uses.
+
+### Read a Parquet file
+
+This writes the example file as Parquet and reads it back:
+
+```python
+import dta_parser as dp
+import pandas as pd
+
+df = dp.read_dta("survey.dta")
+dp.write_parquet(df, "survey.parquet")
+back = dp.read_parquet("survey.parquet")
+pd.testing.assert_frame_equal(back, df)   # no error: the same values and dtypes
+print(back["income"].array.codes)         # [ 0  5  0  1 19  0]
+print([str(t) for t in back.dtypes])
+# ['int8', 'int8', 'int8', 'stata[double]', 'datetime64[s]', 'str']
+```
+
+`read_parquet(source, columns=None, skip=0, n_max=None, nested="error")`
+takes a path (`str` or `os.PathLike`), the file as `bytes`, or a binary
+file object with `read` and `seek`, and returns a DataFrame with a
+default `RangeIndex`:
+
+```python
+with open("survey.parquet", "rb") as f:
+    print(len(dp.read_parquet(f)))                       # 6
+raw = open("survey.parquet", "rb").read()
+print(dp.read_parquet(raw)["id"].tolist())               # [1, 2, 3, 4, 5, 6]
+```
+
+Columns get `read_dta`'s types: numbers in their storage type's width,
+`NaN` for `.`, a `StataArray` where a column holds `.a` to `.z`,
+`datetime64` for dates and pandas' default text dtype for text.
+[What each type becomes](#what-each-parquet-type-becomes-in-python)
+gives the type of every Parquet column, including those of files
+other tools write.
+
+### Read some columns of a Parquet file
+
+`columns` takes names or 0-based positions (of the file's data
+columns), or a mix, and returns them in the order given; only those
+columns are read from the file:
+
+```python
+part = dp.read_parquet("survey.parquet", columns=["income", 0])
+print(list(part.columns))      # ['income', 'id']
+```
+
+A name the file does not have raises `KeyError`, listing the file's
+columns (`column "weight" is not in the file; its columns are "id",
+"region", ...`); a position out of range raises `IndexError`. Naming a
+column twice reads it once.
+
+### Read a range of rows of a Parquet file
+
+`skip` rows are skipped, then at most `n_max` are read (all when
+`None`), as in `read_dta`:
+
+```python
+print(dp.read_parquet("survey.parquet", skip=2, n_max=2)["id"].tolist())   # [3, 4]
+```
+
+Only the row groups that hold the rows are read, and within them only
+the pages that do (through the file's offset index, or, where a file has
+none, by walking the page headers), so a window of a large file is
+quick. Rows past the end give fewer rows, or an empty frame with the
+right columns; it is not an error. A column's dtype follows the rows
+read, as in `read_dta`: an integer column with a missing value only
+outside the window comes back as integers.
+
+### A Parquet file's schema and metadata
+
+`read_meta(source)` reads the footer only, for a Parquet file or a
+`.dta` file (it tells them apart by their first bytes). For Parquet it
+gives what `read_parquet` puts in `attrs["dta"]` for every column, and
+also the row count, the row groups, the codecs, the writer and, per
+column, Parquet's types and the pandas dtype `read_parquet` will give:
+
+```python
+meta = dp.read_meta("survey.parquet")
+print(meta["nobs"], meta["format"], meta["compression"])      # 6 parquet ['snappy']
+print(meta["row_groups"])
+# [{'rows': 6, 'compressed_bytes': 329, 'uncompressed_bytes': 329}]
+print(meta["created_by"])                                     # dta-parquet version 0.1.0
+print(meta["columns"]["region"])
+# {'storage': 'byte', 'format': '%8.0g', 'label': 'Region', 'value_labels': 'region',
+#  'role': 'data', 'physical_type': 'INT32', 'logical_type': 'INT(8, signed)', 'dtype': 'int8'}
+print(meta["label"], meta["notes"])
+# Household survey (example) ['Made up for the dta_parser documentation.']
+```
+
+Each column's entry has:
+
+| key | holds |
+|---|---|
+| `role` | `"data"`, or `"nested"` for a list, map or struct, which is not read |
+| `physical_type`, `logical_type` | Parquet's types, such as `"INT32"` and `"INT(8, signed)"`, `"DOUBLE"` and `None`, `"BYTE_ARRAY"` and `"STRING"` |
+| `dtype` | the pandas dtype `read_parquet` gives when it reads every row, judged from the footer's null counts (`"float32"` for an `INT(8)` column with nulls; as if there were none where a writer gave no counts). A DOUBLE column holding `.a` to `.z` shows `"float64"` unless it was written wider (`"stata[byte]"` for a byte column), since the footer does not count them |
+| `storage` | the Stata storage type the column has in `attrs["dta"]`: `"byte"`, `"int"`, `"long"`, `"float"`, `"double"`, `"str"` (text), `"strL"` (bytes); `None` for types Stata has no storage type for (64-bit and unsigned integers, booleans, categories, times) |
+| `format`, `label`, `value_labels` | the display format, variable label and value label set's name, from the file's dta profile (`""` if none) |
+
+The other keys are those of `attrs["dta"]` (`label`, `notes`,
+`characteristics`, `sort_order`, `value_labels`, `timestamp`), plus
+`nobs`, `format` (`"parquet"`), `row_groups`, `compression` and
+`created_by`. Other key-value metadata in the file is not returned; use
+`pyarrow.parquet.read_metadata(path).metadata` for it.
+
+### Labels in Parquet files
+
+Labels are where `read_dta` puts them, in `df.attrs["dta"]`, and are
+used the same way ([Value labels](#value-labels)):
+
+```python
+back = dp.read_parquet("survey.parquet")
+info = back.attrs["dta"]
+print(info["columns"]["age"]["label"])               # Age in years
+labels = info["value_labels"][info["columns"]["region"]["value_labels"]]
+print(back["region"].map(labels).tolist())           # ['North', 'South', 'South', 'East', 'West', 'North']
+print(info["value_labels"]["nonresponse"][missing.d])   # Don't know
+```
+
+Other tools do not read labels: they see the codes. A file from another
+tool has none, unless it has a `dta` entry in its metadata (written by
+`write_parquet`, by R's datakit, or by another library writing the same
+entry; see [docs/parquet.md](parquet.md#the-profile)). pandas' own
+`df.attrs`, which `DataFrame.to_parquet` keeps in its `PANDAS_ATTRS`
+entry, is not read.
+
+### Dates and time zones in Parquet files
+
+A `%td` column (`datetime64[s]` from `read_dta`) is written as a
+Parquet DATE and reads back as `datetime64[s]`. Any other `datetime64`
+column is a TIMESTAMP in its own unit, and a tz-aware one is stored as
+an instant with its zone kept:
+
+```python
+visits = pd.DataFrame({
+    "at": pd.to_datetime(["2024-03-01 09:30", "2024-03-01 17:05"]).tz_localize("America/New_York"),
+    "local": pd.to_datetime(["2024-03-01 09:30:00.000001", None]),
+})
+dp.write_parquet(visits, "visits.parquet")
+v = dp.read_parquet("visits.parquet")
+print(v["at"].dtype, v["local"].dtype)    # datetime64[us, America/New_York] datetime64[us]
+print(v["at"][0])                         # 2024-03-01 09:30:00-05:00
+```
+
+| pandas | written as | read back as |
+|---|---|---|
+| `datetime64` with a `%td` format in `attrs` | DATE | `datetime64[s]` |
+| `datetime64[s]` | TIMESTAMP(MILLIS), with `"unit": "s"` in the profile | `datetime64[s]` |
+| `datetime64[ms]`, `[us]`, `[ns]` | TIMESTAMP in that unit, not adjusted to UTC (a clock time) | the same, without a zone |
+| `datetime64[unit, tz]` | TIMESTAMP in that unit, adjusted to UTC (an instant), the zone in the profile and `ARROW:schema` | the same, in that zone |
+
+A `%td` column with a time of day, or with a time zone, is an error
+naming the column and the first such row, which says to drop the format
+from `attrs["dta"]["columns"]` to write it as a timestamp. pyarrow and
+polars read our zones too.
+
+Dates and timestamps from other tools: DATE is `datetime64[s]`; a
+TIMESTAMP is `datetime64` in its own unit (pandas holds every unit
+Parquet has, so nothing is rounded), tz-aware when the file stores
+instants (adjusted to UTC), in the zone the file's dta profile or
+`ARROW:schema` gives, else UTC; INT96 timestamps are `datetime64[ns]`; a
+TIME is `timedelta64` in its unit. Null is `NaT`. `datetime64[s]` holds
+dates far beyond any a Parquet DATE can hold, so no date is out of
+range.
+
+### Write a Parquet file
+
+`write_parquet(df, path=None, *, label=None, variable_labels=None, compression="snappy", compression_level=None, row_group_size=None, missing_letters=True)`
+writes what `write_dta` writes, and also categories, booleans, tz-aware
+times, 64-bit integers, nullable dtypes and text of any length. With a
+path it returns `None`; without one it returns the file as `bytes`:
+
+```python
+dp.write_parquet(df, "small.parquet", compression="zstd", compression_level=3, row_group_size=2)
+print([g["rows"] for g in dp.read_meta("small.parquet")["row_groups"]])   # [2, 2, 2]
+data = dp.write_parquet(df)
+print(type(data).__name__, data[:4])                                     # bytes b'PAR1'
+```
+
+`compression` is `"snappy"` by default, which pyarrow, polars and
+DuckDB read fastest; `"zstd"`, `"gzip"`, `"lz4_raw"` and `"none"` are
+the others, and `compression_level` sets zstd's (1 to 22, default 3) or
+gzip's (0 to 9, default 6). zstd makes survey files about a sixth
+smaller, and slower to read. Row groups hold up to 262,144 rows and
+about 1 GiB of values unless `row_group_size` gives the rows.
+[docs/parquet.md](parquet.md#defaults-and-the-measurements-behind-them)
+gives the measurements behind these defaults. The file is written
+beside the target and renamed, so a failed write leaves an existing
+file as it was.
+
+What each dtype becomes:
+
+| pandas | Parquet |
+|---|---|
+| `int8`, `int16`, `int32`, `int64` | INT(8), INT(16), INT32, INT64 |
+| `uint8`, `uint16`, `uint32`, `uint64` | INT(16), INT32, INT64, INT64 (a value of 2^63 or more is an error) |
+| `float32`, `float64` (also `float16`) | FLOAT, DOUBLE; `NaN` is null. A float column whose `attrs` storage is byte, int or long (as `read_dta` gives one holding `.`) is that integer type, where every value fits it |
+| `StataArray` | its storage type; `.` is null, `.a` to `.z` tagged NaNs in a DOUBLE column ([below](#keep-a-to-z-in-a-parquet-file)) |
+| nullable `Int*`, `UInt*`, `Float*`, `boolean` | as the plain dtype, `pd.NA` null |
+| `bool` | BOOLEAN |
+| `category` with text categories | a dictionary-encoded STRING whose dictionary is every category, in order; whether it is ordered is kept |
+| `datetime64`, tz-aware or not | DATE or TIMESTAMP ([Dates](#dates-and-time-zones-in-parquet-files)) |
+| `str`, `object` of `str` | STRING; `None`, `NaN` and `pd.NA` are null |
+| `object` of `bytes` | BYTE_ARRAY |
+| `object` mixing `str` and `bytes` | BYTE_ARRAY; every value reads back as `bytes` |
+
+`timedelta64`, a category of numbers or dates, and `object` columns of
+anything else raise `TypeError` naming the column (convert them first,
+for example with `.astype(str)`), and an unknown `compression` a
+`ValueError` listing the codecs. Column names must be text; any text
+will do, unlike in `.dta` files.
+
+### Write labels to a Parquet file
+
+Labels are written from `attrs["dta"]`, as `write_dta` takes them
+([Write a file](#write-a-file)), with `label=` and `variable_labels=`
+over them:
+
+```python
+smoking = pd.DataFrame({"smoker": pd.Series([1, 0, missing.d], dtype="stata[byte]")})
+smoking.attrs["dta"] = {
+    "columns": {"smoker": {"value_labels": "yesno", "format": "%8.0g"}},
+    "value_labels": {"yesno": {0: "No", 1: "Yes", missing.d: "Don't know"}},
+    "notes": ["Wave 2 only."],
+}
+dp.write_parquet(smoking, "smoking.parquet", label="Smoking", variable_labels={"smoker": "Smokes daily"})
+s = dp.read_parquet("smoking.parquet")
+print(s.attrs["dta"]["label"], s.attrs["dta"]["notes"])     # Smoking ['Wave 2 only.']
+print(s.attrs["dta"]["columns"]["smoker"])
+# {'storage': 'byte', 'format': '%8.0g', 'label': 'Smokes daily', 'value_labels': 'yesno'}
+print(s.attrs["dta"]["value_labels"]["yesno"])              # {0: 'No', 1: 'Yes', .d: "Don't know"}
+```
+
+Value label codes keep their type: whole numbers come back as `int`,
+others as `float`, and `.a` to `.z` as `missing.a` ... `missing.z`
+(the file stores them as JSON numbers and `".d"`, not as text keys).
+Unlike `.dta` files, a Parquet file can label codes that are not
+integers, such as `1.5`. The data label, notes, characteristics, sort
+order and time stamp go into the file too. Categories need no value
+labels: their text is the data.
+
+### Keep .a to .z in a Parquet file
+
+`.a` to `.z` are written as tagged NaNs, the bits R holds them in, in a
+DOUBLE column whose storage type the file records; they come back with
+their letters, and as R's tagged NAs in R's arrow and nanoparquet:
+
+```python
+back = dp.read_parquet("survey.parquet")
+print(back["income"].tolist())            # [2100.0, .d, 1850.0, nan, .r, 3200.0]
+print(back["income"][1] is missing.d)     # True
+```
+
+Other tools see `NaN`. pandas counts it as missing, but DuckDB SQL and
+polars count `NaN` as a value: `IS NULL` is false for it, `count(x)`
+counts it and `mean(x)` is `NaN`. To treat `.a` to `.z` as missing
+there, test for both:
+
+```python
+import importlib.util
+if importlib.util.find_spec("polars"):
+    import polars as pl
+    income = pl.read_parquet("survey.parquet")["income"]
+    print((income.is_null() | income.is_nan()).to_list())   # [False, True, False, True, True, False]
+if importlib.util.find_spec("duckdb"):
+    import duckdb
+    print(duckdb.sql("SELECT count(*) FILTER (WHERE income IS NULL OR isnan(income)) "
+                     "FROM 'survey.parquet'").fetchall())   # [(3,)]
+```
+
+For files meant for such tools, `missing_letters=False` writes `.a` to
+`.z` as plain nulls; the letters are then lost:
+
+```python
+dp.write_parquet(df, "nulls.parquet", missing_letters=False)
+print(dp.read_parquet("nulls.parquet")["income"].tolist())   # [2100.0, nan, 1850.0, nan, nan, 3200.0]
+```
+
+### Parquet files from other tools
+
+`read_parquet` reads the files pyarrow, pandas, polars, DuckDB, R's
+arrow and nanoparquet, fastparquet and others write: every encoding
+(dictionary, PLAIN, the DELTA encodings, BYTE_STREAM_SPLIT), data pages
+v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and brotli.
+A column that pandas, polars or arrow wrote as a category or factor (a
+dictionary of text in the file's `ARROW:schema`) reads as `category`:
+
+```python
+if importlib.util.find_spec("pyarrow"):
+    pd.DataFrame({
+        "size": pd.Categorical(["b", "a", "b"], categories=["a", "b", "c"]),
+        "n": pd.array([1, None, 3], dtype="Int64"),
+    }).to_parquet("from_pandas.parquet")
+    other = dp.read_parquet("from_pandas.parquet")
+    print(other["size"].cat.categories.tolist())       # ['b', 'a']
+    print(dp.read_parquet("from_pandas.parquet", skip=2)["size"].cat.categories.tolist())   # ['b']
+    print(other["n"].dtype)                            # Int64
+```
+
+Its categories are the distinct values of the rows read, in the order
+they first appear, and it is not ordered: the file does not say which
+categories the writer had, or in what order. Reading another window of
+rows can give other categories; reading every row gives all that are
+used. A file `write_parquet` wrote has every category, in order,
+whatever rows are read.
+
+DECIMAL columns of up to 15 digits read as `float64`, the nearest double
+to each value; longer ones as `decimal.Decimal` objects, every digit
+kept. Unsigned integers, INT96 and TIME are read too (see the table
+below), and so are the files' other types: text annotated ENUM or JSON
+as text, UUID and fixed-length bytes as `bytes`.
+
+What is not read, each an error that names the column and its type:
+FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO, and encrypted files.
+Nested columns (lists, maps, structs) raise an error unless `columns`
+leaves them out or `nested="skip"` is given; `read_meta` lists them
+with role `"nested"`. Datasets of many files, Hive partitions and
+filters on values are not part of `dta_parser`: read each file, or use
+pyarrow's `dataset` or DuckDB. pandas' `PANDAS_ATTRS` and the `pandas`
+metadata entry are not read, so an index pandas stored is an ordinary
+column ([below](#the-index-and-parquet-files)).
+
+### What each Parquet type becomes in Python
+
+| Parquet | pandas |
+|---|---|
+| INT32: INT(8), INT(16) or none | `int8`, `int16`, `int32` (Stata's byte, int and long); where the rows read hold a null, `float32` (8 and 16 bits) or `float64`, with `NaN`, as `read_dta` gives `.` |
+| INT64 | `int64`; with nulls `Int64` |
+| unsigned 8 and 16 bits | `uint8`, `uint16`; with nulls `float32` |
+| unsigned 32 and 64 bits | `uint32`, `uint64`; with nulls `float64` (32 bits) or `UInt64` (64 bits) |
+| FLOAT, DOUBLE | `float32`, `float64`; null is `NaN` |
+| DOUBLE holding `.a` to `.z` (tagged NaNs) in the rows read | `StataArray` of the storage type the file records; any other NaN is `.` |
+| DOUBLE written wider for `.a` to `.z`, none in the rows read | the storage type's dtype, as `read_dta` gives it |
+| DECIMAL, precision 15 or less | `float64`, the nearest double to each value |
+| DECIMAL, precision above 15 | `object` of `decimal.Decimal`, every digit kept; `None` for null |
+| BOOLEAN | `bool`; with nulls `boolean` |
+| DATE | `datetime64[s]` |
+| TIMESTAMP (milli-, micro-, nanoseconds) | `datetime64` in the file's unit (`[s]` where `write_parquet` wrote `datetime64[s]`), tz-aware where adjusted to UTC: in the zone the profile records, else the one in `ARROW:schema`, else UTC |
+| INT96 | `datetime64[ns]` |
+| TIME (milli-, micro-, nanoseconds) | `timedelta64` in the file's unit |
+| STRING, ENUM, JSON | pandas' default text dtype (`str` on pandas 3, `object` before); null is `NaN` |
+| BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text type, UUID | `object` of `bytes`; `None` for null |
+| a category `write_parquet` wrote | `category`, every category in order, ordered if it was |
+| a dictionary of text in `ARROW:schema`, with no categories in the profile (pandas `category`, polars `Categorical`, an arrow factor) | `category`, unordered; categories are the distinct values of the rows read, in order of first appearance |
+| a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
+| a DOUBLE R wrote for a date or time holding `.a` to `.z` | Stata's days or milliseconds since 1960 with a `%td` or `%tc` format, as `read_dta` gives such a column |
+| FLOAT16, INTERVAL | not read: an error naming the column and type |
+
+Every conversion is exact: no value is rounded. A timestamp whose value
+is numpy's `NaT` (-2^63) is an error naming the column and row.
+
+**What a round trip does not keep.** A frame `read_dta` gave comes back
+equal, values, dtypes and `attrs["dta"]` alike, except: `attrs` has no
+`release`, `byte_order` or `encoding` (they describe a `.dta` file, not
+the data); a string column's storage type is `"str"`, its strN width or
+strL being chosen again when it is written to `.dta`; and a `%td` or
+`%tc` column's storage type is `"long"` or `"double"`, whatever the
+`.dta` file used, since a Parquet DATE or TIMESTAMP has no Stata
+storage type. A column mixing text and binary values comes back as
+`bytes` throughout.
+
+### The index and Parquet files
+
+`write_parquet` writes columns only, as `write_dta` does. When the
+index is anything but a default `RangeIndex` (named, or of another
+kind), it warns once, naming the index and saying to call
+`df.reset_index()` first to keep it; `read_parquet` always returns a
+default `RangeIndex`:
+
+```python
+keyed = df.set_index("id")
+import warnings
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    dp.write_parquet(keyed, "keyed.parquet")
+print(caught[0].message)
+# write_parquet writes columns only, not the index 'id'; call df.reset_index() first to keep it
+dp.write_parquet(keyed.reset_index(), "keyed.parquet")
+print(dp.read_parquet("keyed.parquet").set_index("id").index.tolist())   # [1, 2, 3, 4, 5, 6]
+```
+
+A file pandas wrote with an index (`df.to_parquet` stores any index but
+a default `RangeIndex` as a column) reads with that index as an
+ordinary column, named after the index or `__index_level_0__`; restore
+it with `set_index`, as above.
+
+### Coming from pyarrow, pandas or polars
+
+| pyarrow | pandas | polars | dta_parser | what changes |
+|---|---|---|---|---|
+| `pq.read_table(p).to_pandas()` | `pd.read_parquet(p)` | `pl.read_parquet(p).to_pandas()` | `dp.read_parquet(p)` | labels, `.a` to `.z`, formats and notes kept; `read_dta`'s dtypes; decoded straight into pandas, with no Arrow table in between |
+| `pq.read_table(p, columns=["a", "b"])` | `pd.read_parquet(p, columns=["a", "b"])` | `pl.read_parquet(p, columns=["a", 1])` | `dp.read_parquet(p, columns=["a", 1])` | names or positions; an unknown name is a `KeyError` listing the file's columns |
+| `pq.ParquetFile(p).read_row_groups([...])`, `.iter_batches()`, or `read_table(p).slice(100, 50)` | none; read, then `.iloc[100:150]` | `pl.scan_parquet(p).slice(100, 50).collect()` | `dp.read_parquet(p, skip=100, n_max=50)` | only the pages that hold the rows are read |
+| `pq.read_metadata(p)`, `pq.read_schema(p)` | none | `pl.read_parquet_schema(p)`, `pl.read_parquet_metadata(p)` | `dp.read_meta(p)` | one dictionary: rows, row groups, codecs, labels, and the pandas dtype of each column |
+| `df.to_parquet(p)`, or `pq.write_table(pa.Table.from_pandas(df), p)` (snappy) | `df.to_parquet(p)` (snappy) | `pl.from_pandas(df).write_parquet(p)` (zstd) | `dp.write_parquet(df, p)` (snappy) | labels, `StataArray` columns and their letters written; `attrs` with missing-value keys, which `to_parquet` cannot write, is fine |
+| `df.to_parquet(None)` | `df.to_parquet(None)` | `write_parquet(io.BytesIO())` | `dp.write_parquet(df)` | returns `bytes` |
+| `compression="zstd", compression_level=3` | the same | the same | the same | |
+| `row_group_size=n` | the same (passed to pyarrow) | the same | the same | |
+| `df.to_parquet(p, index=True)` | the same | (no index) | `dp.write_parquet(df.reset_index(), p)` | the index is never written; a warning says so |
+| `df.attrs` in `PANDAS_ATTRS` (JSON, keys become text) | the same | `write_parquet(metadata={...})` | `attrs["dta"]` in the `dta` entry | value label codes stay numbers and `.a` ... `.z`; R's datakit reads it too |
+| `read_table(p, use_threads=False)` | | `POLARS_MAX_THREADS=1` | `DTA_THREADS=1` | |
+| `to_pandas(types_mapper=...)`, `dtype_backend=` | `dtype_backend="pyarrow"` | `to_pandas(use_pyarrow_extension_array=True)` | none | the dtypes are fixed, by the table above |
+| `pq.read_table(p)` (an Arrow `Table`) | | `pl.read_parquet(p)` (a polars `DataFrame`) | none | `dta_parser` returns pandas only; read with pyarrow or polars for those |
+
+What changes in the values: integer columns with nulls are `float32`
+or `float64`, as `read_dta` gives them (pyarrow gives `float64`, polars
+and pandas' nullable backends `Int*`); dates are `datetime64[s]` (pyarrow
+gives `datetime.date` objects); timestamps keep their unit (pyarrow
+turns seconds into milliseconds); `.a` to `.z` are kept (the others
+give `NaN` or drop them).
+
 ## Threads
 
 Reading and writing large files uses up to three threads: workers decode the rows and fill numeric columns, released from the GIL, while the calling thread makes the strings. On x86, where processors pair their hardware threads, the most is half the processor count, up to three. Reads that need a strL column, small reads and writes (under 16 MB of selected data) and every read on Windows use one thread. In our measurements the threads together used at most 15% more CPU time than one thread doing the same work.
 
-Set the `DTA_THREADS` environment variable to `1` to use one thread, or to another number to change the most; it is read at each call. While `write_dta` runs, nothing may change the DataFrame's arrays, from Python or from another thread.
+Parquet reads and writes of 16 MB or more use two threads or more, which decode or compress column chunks with the GIL released while the calling thread gathers the text. Survey files use two: a third added less than half a thread's worth of speed. Larger work uses more: a read one thread per 176 MiB of values, up to eight, and a write one per 256 MiB, up to six. Measured from Python, reads pass the rule at the same counts. The rule and the numbers are in [docs/parquet.md](parquet.md#defaults-and-the-measurements-behind-them).
+
+Set the `DTA_THREADS` environment variable to `1` to use one thread, or to another number to change the most; it is read at each call. While `write_dta` or `write_parquet` runs, nothing may change the DataFrame's arrays, from Python or from another thread.
 
 ## Troubleshooting
 
@@ -640,6 +1100,27 @@ categories.** Pass `key=dp.stata_keys`.
 **Labels disappeared after `merge`.** pandas dropped `attrs`; set
 `merged.attrs = left.attrs`.
 
+**`read_parquet` raises "the file has nested columns, which are not
+read".** The file has a list, map or struct column. Pass `columns=` with
+the flat columns, or `nested="skip"`; for the nested data, use pyarrow
+or polars.
+
+**`write_parquet` warns "writes columns only, not the index".** The
+frame has an index other than a default `RangeIndex`. Call
+`df.reset_index()` first to keep it as a column, or
+`df.reset_index(drop=True)` to drop it and silence the warning.
+
+**`write_parquet` raises "row 2 is not midnight, but the column's
+format '%td' says it is a date".** A `datetime64` column whose `attrs`
+format is a date holds a time of day. Remove the format
+(`del df.attrs["dta"]["columns"]["x"]["format"]`) to write it as a
+timestamp.
+
+**A warning "dropped ... from the dta profile".** The file's `dta`
+entry was damaged or edited by hand. The values are read; that entry
+is not. [docs/parquet.md](parquet.md#errors-and-warnings) lists every
+error and warning.
+
 ## API reference
 
 The docstrings (`help(dp.read_dta)`) are the reference. Exports:
@@ -652,8 +1133,12 @@ The docstrings (`help(dp.read_dta)`) are the reference. Exports:
   [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
 - `FixedWidthWarning`: the warning `read_fixed_width` gives for
   statements it skipped.
-- `read_meta(path, encoding=None)`: the metadata dictionary and `nobs`,
-  without data.
+- `read_meta(source, encoding=None)`: the metadata dictionary and `nobs`,
+  without data, of a `.dta` or Parquet file.
+- `read_parquet(source, columns=None, skip=0, n_max=None, nested="error")`:
+  read a Parquet file into a DataFrame (see [Parquet files](#parquet-files)).
+- `write_parquet(df, path=None, *, label=None, variable_labels=None, compression="snappy", compression_level=None, row_group_size=None, missing_letters=True)`:
+  write a DataFrame as Parquet; returns `bytes` without a path.
 - `write_dta(df, path, *, label=None, variable_labels=None, timestamp=None)`:
   write release 118.
 - `StataArray(values, codes=None, storage="double", copy=False)`: numbers

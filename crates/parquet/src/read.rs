@@ -323,8 +323,13 @@ const ARROW_SCHEMA: &str = "ARROW:schema";
 /// text column is a dictionary (a categorical, when the profile gives it
 /// no levels), and a timestamp's zone. Fields match columns by name.
 fn apply_arrow(columns: &mut [ColumnInfo], fields: &[crate::arrow::ArrowField]) {
+    // By name, the first of each: a wide file has thousands of fields.
+    let mut by_name: HashMap<&str, &crate::arrow::ArrowField> = HashMap::with_capacity(fields.len());
+    for f in fields {
+        by_name.entry(f.name.as_str()).or_insert(f);
+    }
     for col in columns.iter_mut().filter(|c| c.role == Role::Data) {
-        let Some(f) = fields.iter().find(|f| f.name == col.name) else {
+        let Some(f) = by_name.get(col.name.as_str()) else {
             continue;
         };
         if f.dictionary && f.text && col.kind == ColumnType::Text && col.levels.is_none() {
@@ -340,7 +345,15 @@ impl<S: Source> Reader<S> {
     /// Open a file: check its magic numbers and read its footer, schema
     /// and profile. Damage in the profile is a warning
     /// ([`Reader::warnings`]), never an error.
-    pub fn open(mut source: S, options: ReadOptions) -> Result<Self> {
+    pub fn open(source: S, options: ReadOptions) -> Result<Self> {
+        Self::open_for(source, options, None)
+    }
+
+    /// [`open`](Self::open), reading only the profile entries of the
+    /// columns named in `columns` and the value-label sets they name
+    /// ([`Profile::parse_some`]); the other columns read as if the
+    /// profile said nothing of them.
+    pub fn open_for(mut source: S, options: ReadOptions, selected: Option<&[&str]>) -> Result<Self> {
         let len = source.len();
         if len < 12 {
             return Err(Error::new(
@@ -405,7 +418,7 @@ impl<S: Source> Reader<S> {
             .and_then(|kv| kv.value.as_ref())
         {
             Some(text) => {
-                let (p, w) = Profile::parse(text);
+                let (p, w) = Profile::parse_some(text, selected);
                 warnings.extend(w);
                 p
             }
@@ -413,9 +426,10 @@ impl<S: Source> Reader<S> {
         };
         if let Some(p) = &mut profile {
             check_widened(&mut columns, p, &mut warnings);
+            let at = first_by_name(&columns, false);
             for c in &p.columns {
                 if c.categorical.is_some() {
-                    if let Some(col) = columns.iter_mut().find(|x| x.name == c.name) {
+                    if let Some(col) = at.get(c.name.as_str()).map(|&k| &mut columns[k]) {
                         if col.kind != ColumnType::Text {
                             warnings.push(format!("the dta profile gives levels for column \"{}\", which is not text; they are ignored", c.name));
                         } else {
@@ -930,14 +944,12 @@ fn accepts<T: Element>(
 /// Keep each `storage` and `logical` the profile gives a DOUBLE column;
 /// drop, with a warning, one given any other column.
 fn check_widened(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec<String>) {
+    let at = first_by_name(columns, true);
     for entry in &mut p.columns {
         if entry.storage.is_none() && entry.logical.is_none() {
             continue;
         }
-        let Some(col) = columns
-            .iter_mut()
-            .find(|c| c.name == entry.name && c.role == Role::Data)
-        else {
+        let Some(col) = at.get(entry.name.as_str()).map(|&k| &mut columns[k]) else {
             continue;
         };
         if col.kind == ColumnType::Double {
@@ -958,6 +970,19 @@ fn check_widened(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec
             ));
         }
     }
+}
+
+/// Each name's first column (with `data_only`, its first data column),
+/// by index: matching the profile's entries to a wide file's columns one
+/// search at a time took most of opening it.
+fn first_by_name(columns: &[ColumnInfo], data_only: bool) -> HashMap<String, usize> {
+    let mut at = HashMap::with_capacity(columns.len());
+    for (k, c) in columns.iter().enumerate() {
+        if !data_only || c.role == Role::Data {
+            at.entry(c.name.clone()).or_insert(k);
+        }
+    }
+    at
 }
 
 /// One output's part for one row group.
@@ -1081,6 +1106,10 @@ struct Done {
     letters: bool,
 }
 
+/// The uncompressed size of a page, as most writers make it, for
+/// counting the work of a chunk read in part.
+const PAGE_GUESS: u64 = 1 << 20;
+
 /// What every task reads.
 struct Ctx<'r> {
     reader_columns: &'r [ColumnInfo],
@@ -1147,9 +1176,17 @@ impl Ctx<'_> {
             .as_ref()
             .map_or(0, |m| m.total_uncompressed_size.max(0) as u64);
         let rows = g.num_rows.max(1) as u128;
-        (u128::from(size) * u128::from(t.window.end - t.window.start) / rows)
+        let share: u64 = (u128::from(size) * u128::from(t.window.end - t.window.start) / rows)
             .try_into()
-            .unwrap_or(u64::MAX)
+            .unwrap_or(u64::MAX);
+        // A chunk read in part still decompresses whole pages, which most
+        // writers make about 1 MiB: a 1,000-row window of a 400-column file
+        // pyarrow wrote decompressed 400 MB on one thread, counted as 3 MB.
+        if share < size {
+            share.max(size.min(PAGE_GUESS))
+        } else {
+            share
+        }
     }
 }
 

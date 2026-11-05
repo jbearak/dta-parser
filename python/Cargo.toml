@@ -1,6 +1,6 @@
 [package]
 name = "dta-parser-python"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 rust-version = "1.82"
@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 dta = { path = "../crates/dta" }
+dta-parquet = { path = "../crates/parquet" }
 pyo3 = { version = "0.27", features = ["extension-module", "abi3-py310"] }
 
 # Not part of the dta-parser workspace.

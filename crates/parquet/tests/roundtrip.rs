@@ -230,6 +230,10 @@ fn many_row_groups_with_threads() {
     // The same bytes with one thread.
     let one = bytes_of(&cols, Profile::default(), &WriteOptions { threads: 1, ..opts });
     assert_eq!(bytes, one);
+    // And with row groups pipelined under the smallest budget, where
+    // each chunk waits for the one before it to be written.
+    let tight = bytes_of(&cols, Profile::default(), &WriteOptions { pipeline_bytes: 1, ..opts });
+    assert_eq!(bytes, tight);
     check(&bytes, &cols, 0, 20_000, threaded());
     check(&bytes, &cols, 4321, 9000, threaded());
 }
@@ -294,6 +298,28 @@ fn dictionary_and_plain_fallback() {
     check(&bytes, &cols, 0, n, serial());
     check(&bytes, &cols, 50_000, 1000, serial());
     check(&bytes, &cols, 0, n, threaded());
+}
+
+#[test]
+fn nearly_all_distinct_numbers_give_up_the_dictionary_early() {
+    let n = 100_000;
+    let f64s = |name: &str, f: &dyn Fn(usize) -> f64| Col { name: name.into(), data: Data::F64((0..n).map(f).collect()), codes: vec![0; n] };
+    let cols = vec![
+        // All different: given up after the first 32,768 values.
+        f64s("distinct", &|r| r as f64 + 0.5),
+        // 20,000 values, repeated: 61% different at 32,768, and the
+        // dictionary pays over the page.
+        f64s("repeats", &|r| (r % 20_000) as f64),
+        // 92% different at 32,768: given up, though the dictionary would
+        // have paid over the whole page.
+        f64s("late", &|r| (r % 30_000) as f64),
+    ];
+    let bytes = bytes_of(&cols, Profile::default(), &WriteOptions::default());
+    let r = Reader::open(dta::Bytes(&bytes[..]), serial()).unwrap();
+    let dict = |k: usize| r.metadata().row_groups[0].columns[k].meta.clone().unwrap().dictionary_page_offset.is_some();
+    assert_eq!((dict(0), dict(1), dict(2)), (false, true, false));
+    check(&bytes, &cols, 0, n, serial());
+    check(&bytes, &cols, 40_000, 1000, serial());
 }
 
 #[test]

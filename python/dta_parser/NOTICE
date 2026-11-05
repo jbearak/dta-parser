@@ -1,0 +1,36 @@
+dta_parser bundles Rust code from this repository (the dta and
+dta-parquet crates, GPL-3.0-only) and these crates from crates.io, at
+the versions in python/Cargo.lock.
+
+Compiled into the package, for reading and writing Parquet files:
+
+  snap 1.1.2             BSD-3-Clause   https://github.com/BurntSushi/rust-snappy
+  lz4_flex 0.11.6        MIT            https://github.com/pseitz/lz4_flex
+  miniz_oxide 0.8.9      MIT OR Zlib OR Apache-2.0
+                                        https://github.com/Frommi/miniz_oxide
+  adler2 2.0.1           0BSD OR MIT OR Apache-2.0
+                                        https://github.com/oyvindln/adler2
+  brotli-decompressor 6.2.0
+                         BSD-3-Clause OR MIT
+                                        https://github.com/dropbox/rust-brotli-decompressor
+  alloc-no-stdlib 3.0.0, alloc-stdlib 0.3.0
+                         BSD-3-Clause   https://github.com/dropbox/rust-alloc-no-stdlib
+  zstd 0.13.4            BSD-3-Clause   https://github.com/gyscos/zstd-rs
+  zstd-safe 7.4.0        BSD-3-Clause   https://github.com/gyscos/zstd-rs
+  zstd-sys 2.1.2         BSD-3-Clause   https://github.com/gyscos/zstd-rs
+    with Zstandard (libzstd) 1.5.7, by Meta Platforms, Inc. and
+    affiliates, BSD-3-Clause (dual-licensed BSD or GPLv2)
+                                        https://github.com/facebook/zstd
+
+Compiled into the package, for the bridge to Python:
+
+  pyo3 0.27.2 (with pyo3-ffi, pyo3-macros, pyo3-macros-backend and
+  pyo3-build-config)     MIT OR Apache-2.0
+                                        https://github.com/PyO3/pyo3
+
+Used only to build zstd-sys's C code:
+
+  cc 1.11.0, find-msvc-tools 0.1.15, jobserver 0.1.35, shlex 2.0.1,
+  pkg-config 0.3.34, getrandom 0.4.3, libc 0.2.191, cfg-if 1.0.5
+                         MIT OR Apache-2.0
+  r-efi 6.0.0            MIT OR Apache-2.0 OR LGPL-2.1-or-later

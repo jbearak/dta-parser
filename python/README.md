@@ -3,6 +3,8 @@
 Reads and writes Stata `.dta` files with pandas, on the same Rust core as
 the R and npm packages. It reads releases 104 to 119 in either byte
 order, writes release 118, and keeps Stata's missing values `.a` to `.z`.
+It also reads and writes Parquet files that keep the same labels and
+missing values (see [Parquet](#parquet)).
 
 ## Install from source
 
@@ -110,3 +112,22 @@ chooses the rest from the dtypes:
 Anything else is an error naming the column, as is a column name Stata
 cannot hold (1 to 32 letters, digits or `_`, not starting with a digit,
 not a reserved word). The index is not written.
+
+## Parquet
+
+```python
+dp.write_parquet(df, "survey.parquet")              # snappy; compression="zstd" too
+back = dp.read_parquet("survey.parquet")            # the frame read_dta gave, attrs too
+part = dp.read_parquet("survey.parquet", columns=["id", 2], skip=1000, n_max=500)
+meta = dp.read_meta("survey.parquet")               # footer only: rows, row groups, dtypes
+```
+
+The file is plain Parquet that pyarrow, polars and DuckDB read; labels,
+formats and notes go into its `dta` metadata entry, and `.a` to `.z`
+into tagged NaNs in DOUBLE columns. The guide is the Parquet section of
+[docs/python.md](../docs/python.md#parquet-files); the file is
+specified in [docs/parquet.md](../docs/parquet.md).
+
+The crates compiled into the package and their licences are listed in
+`dta_parser/NOTICE`.
+
