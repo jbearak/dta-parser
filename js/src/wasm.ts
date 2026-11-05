@@ -1,8 +1,31 @@
 // The wasm module and the raw calls into it. Everything above this file
 // deals in JavaScript values; everything here deals in pointers.
 
-import wasmBytes from "../build/dta.wasm";
+import embedded from "../build/dta.wasm";
 import { dtaError, type ErrorCode } from "./errors";
+import { inflateRaw } from "./inflate";
+
+/**
+ * The module's bytes. build.mjs embeds them deflated (a 4-byte length,
+ * then raw DEFLATE): a quarter the size, and parsing the bundle's
+ * base64 text cost Node about 10 MB more than the module itself. Node
+ * inflates with its zlib; elsewhere (a browser) `inflateRaw` does. A
+ * bundle made with the plain module (the tests' capped build) passes
+ * through.
+ */
+function moduleBytes(b: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  if (b[0] === 0 && b[1] === 0x61 && b[2] === 0x73 && b[3] === 0x6d) return b;
+  const size = (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
+  const proc = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
+  const zlib = proc?.getBuiltinModule?.("node:zlib") as { inflateRawSync(b: Uint8Array): Uint8Array } | undefined;
+  if (zlib) {
+    const out = zlib.inflateRawSync(b.subarray(4));
+    return new Uint8Array(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)) as Uint8Array<ArrayBuffer>;
+  }
+  return inflateRaw(b.subarray(4), size) as Uint8Array<ArrayBuffer>;
+}
+
+const wasmBytes = moduleBytes(embedded);
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -53,7 +76,7 @@ interface Exports {
   pq_directory(handle: number): number;
   pq_read_end(handle: number): void;
   pq_write_begin(rows: number): void;
-  pq_write_numbers(meta: number, metaLen: number, kind: number, unit: number, values: number, codes: number): number;
+  pq_write_numbers(meta: number, metaLen: number, kind: number, unit: number, id: number): number;
   pq_write_bigints(meta: number, metaLen: number, kind: number, unit: number, values: number, codes: number): number;
   pq_write_texts(meta: number, metaLen: number, binary: number, bytes: number, bytesLen: number, ends: number, missing: number): number;
   pq_write_categorical(
@@ -87,6 +110,8 @@ export type ReadAt = (into: Uint8Array, offset: number) => void;
 const files = new Map<number, ReadAt>();
 /** Where the file being written goes; takes each run of bytes. */
 const sinks = new Map<number, (bytes: Uint8Array) => void>();
+/** The number columns of the Parquet table being written, which the module asks for a block at a time. */
+const fills = new Map<number, { values: Float64Array; missing: Uint8Array }>();
 let nextFile = 1;
 /** What the last `ReadAt` or sink threw, for the `DTA_IO` error's cause. */
 let hostError: unknown;
@@ -103,6 +128,18 @@ const imports = {
     host_read(file: number, ptr: number, len: number, offset: number): number {
       try {
         files.get(file)!(new Uint8Array(wasm.memory.buffer, ptr >>> 0, len >>> 0), offset);
+        return 0;
+      } catch (e) {
+        hostError = e;
+        return 1;
+      }
+    },
+    host_fill(id: number, first: number, n: number, values: number, codes: number): number {
+      try {
+        const src = fills.get(id)!;
+        const buffer = wasm.memory.buffer;
+        new Float64Array(buffer, values >>> 0, n >>> 0).set(src.values.subarray(first, first + (n >>> 0)));
+        new Uint8Array(buffer, codes >>> 0, n >>> 0).set(src.missing.subarray(first, first + (n >>> 0)));
         return 0;
       } catch (e) {
         hostError = e;
@@ -595,6 +632,7 @@ export function pqWrite(
     try {
       pqWriteParts(rows, parts, info, options, sink);
     } catch (e) {
+      fills.clear();
       if (!(e instanceof WebAssembly.RuntimeError)) wasm.pq_write_begin(0);
       throw e;
     }
@@ -624,9 +662,14 @@ function pqWriteParts(
     let ok: number;
     try {
       switch (part.kind) {
-        case "numbers":
-          ok = wasm.pq_write_numbers(...text(part.meta), part.type, part.unit, own(part.values), own(part.missing));
+        case "numbers": {
+          // Not copied in: the module asks for a block at a time as it
+          // writes (host_fill).
+          const id = fills.size + 1;
+          fills.set(id, part);
+          ok = wasm.pq_write_numbers(...text(part.meta), part.type, part.unit, id);
           break;
+        }
         case "bigints":
           ok = wasm.pq_write_bigints(...text(part.meta), part.type, part.unit, own(part.values), own(part.missing));
           break;
@@ -663,6 +706,7 @@ function pqWriteParts(
     wasm.dta_free(a, infoBytes.length);
     if (b !== 0) wasm.dta_free(b, codec.length);
     sinks.delete(file);
+    fills.clear();
   }
 }
 

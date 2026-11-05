@@ -96,6 +96,11 @@ fn with_handle<T>(h: u32, f: impl FnOnce(&mut PqHandle) -> Result<T, Fail>) -> R
 
 fn push_str(o: &mut String, s: &str) {
     o.push('"');
+    if s.bytes().all(|b| b >= 0x20 && b != b'"' && b != b'\\') {
+        o.push_str(s);
+        o.push('"');
+        return;
+    }
     for c in s.chars() {
         match c {
             '"' => o.push_str("\\\""),
@@ -442,10 +447,10 @@ fn labels_apply(col: &ColumnInfo, how: &How) -> bool {
         && col.profile_logical.is_none()
 }
 
-fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>]) -> String {
+fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut o: String) -> String {
     let profile = r.profile();
     let meta = r.metadata();
-    let mut o = String::from("{");
+    o.push('{');
     key(&mut o, "nobs");
     num(&mut o, r.rows() as f64);
     key(&mut o, "label");
@@ -683,9 +688,14 @@ pub extern "C" fn pq_info(h: u32, int64: u32) -> *const u8 {
     call(std::ptr::null(), |state: &mut State| {
         let text = with_handle(h, |handle| {
             let (_, reasons) = plan_columns(&handle.reader, int64);
-            let footer: usize = handle.reader.metadata().key_value.iter().map(|kv| kv.value.as_ref().map_or(0, Vec::len)).sum();
-            ensure_room(footer.saturating_add(handle.reader.columns().len() * 1024).saturating_mul(2))?;
-            Ok(info_json(&handle.reader, &handle.how, &reasons))
+            // About what the JSON takes: a few hundred bytes a column and
+            // a hundred a column chunk (every row group's statistics).
+            let chunks = handle.reader.columns().len() * handle.reader.row_groups().len().max(1);
+            let estimate = (handle.reader.columns().len() * 400).saturating_add(chunks * 160).saturating_add(64 << 10);
+            ensure_room(estimate)?;
+            let mut text = String::new();
+            text.try_reserve(estimate).map_err(|_| crate::wasm::too_large(estimate))?;
+            Ok(info_json(&handle.reader, &handle.how, &reasons, text))
         })?;
         Ok(result(state, text.into_bytes()))
     })
@@ -1116,7 +1126,10 @@ pub extern "C" fn pq_read_end(h: u32) {
 
 /// What each written column's values are, as JavaScript gave them.
 enum WData {
-    Numbers(Vec<f64>, Vec<u8>),
+    /// Doubles and missing codes JavaScript hands over a block at a time
+    /// as the writer asks for them (`host_fill`), so the numbers of a
+    /// table are never all copied into module memory.
+    Hosted(u32),
     BigInts(Vec<i64>, Vec<u8>),
     Texts { bytes: Vec<u8>, ends: Vec<u32>, missing: Vec<u8>, binary: bool },
     Levels { codes: Vec<i32>, levels: Vec<String>, ordered: bool },
@@ -1182,19 +1195,19 @@ pub extern "C" fn pq_write_begin(rows: f64) {
 }
 
 /// Add a column of doubles with missing codes (0 a value, 1 `.`, 2 to 27
-/// `.a` to `.z`), `rows` of each; `kind` and `unit` as in `WCol`.
+/// `.a` to `.z`), which JavaScript's `host_fill` gives as source `id`
+/// while the table is written; `kind` and `unit` as in `WCol` (kind 9:
+/// days since 1970 as doubles, a date that DATE cannot hold).
 ///
 /// # Safety
-/// The pointers hold the stated lengths.
+/// `meta` holds `meta_len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn pq_write_numbers(meta: *const u8, meta_len: usize, kind: u32, unit: u32, values: *const f64, codes: *const u8) -> u32 {
+pub unsafe extern "C" fn pq_write_numbers(meta: *const u8, meta_len: usize, kind: u32, unit: u32, id: u32) -> u32 {
     call(0, |_| {
         let meta = copy(meta, meta_len)?;
         WRITE.with(|w| {
-            let mut w = w.borrow_mut();
-            let n = w.rows;
-            let col = column_meta(&meta, kind, unit, WData::Numbers(copy(values, n)?, copy(codes, n)?))?;
-            w.columns.push(col);
+            let col = column_meta(&meta, kind, unit, WData::Hosted(id))?;
+            w.borrow_mut().columns.push(col);
             Ok(1)
         })
     })
@@ -1356,11 +1369,6 @@ fn bad(name: &str, r: usize, v: f64, what: &str) -> Fail {
     Fail { kind: INVALID, message: format!("column \"{name}\": row {r} holds {v}, which {what}") }
 }
 
-/// The first row holding a value (not a missing code) that `ok` rejects.
-fn first_bad(values: &[f64], codes: &[u8], ok: impl Fn(f64) -> bool) -> Option<usize> {
-    values.iter().zip(codes).position(|(&v, &c)| c == 0 && !ok(v))
-}
-
 fn time_unit(u: u32) -> TimeUnit {
     match u {
         1 => TimeUnit::Millis,
@@ -1369,13 +1377,142 @@ fn time_unit(u: u32) -> TimeUnit {
     }
 }
 
-fn fill<'a, T: Copy + Default + 'a>(values: &'a [f64], codes: &'a [u8], conv: impl Fn(f64) -> T + Sync + 'a) -> Box<dta_parquet::Fill<'a, T>> {
-    Box::new(move |first, out: &mut [T], c: &mut [u8]| {
-        for (i, (d, m)) in out.iter_mut().zip(c.iter_mut()).enumerate() {
-            let code = codes[first + i];
-            *m = code;
-            *d = if code == 0 { conv(values[first + i]) } else { T::default() };
+#[link(wasm_import_module = "env")]
+extern "C" {
+    /// Write `n` values of number source `id`, from row `first`, to
+    /// `values`, and their missing codes to `codes`; 0 on success.
+    fn host_fill(id: u32, first: f64, n: u32, values: *mut f64, codes: *mut u8) -> i32;
+}
+
+/// Rows of one column fetched from JavaScript at once: as many as a row
+/// group holds by default, at most 2.3 MB.
+const WINDOW: usize = 262_144;
+
+/// The window of one number source fetched last, its values checked.
+/// The writer reads each column's blocks more than once (a scan for `.a`
+/// to `.z`, then the encoding), one column at a time, so one window
+/// serves the passes.
+#[derive(Default)]
+struct Window {
+    id: u32,
+    start: usize,
+    values: Vec<f64>,
+    codes: Vec<u8>,
+    /// For an integer column, the values as `i32`, converted once.
+    ints: Vec<i32>,
+}
+
+thread_local! {
+    static STAGE: RefCell<Window> = RefCell::new(Window::default());
+    /// The first value a write's fills found that its column cannot
+    /// hold; the write is then an error.
+    static FILL_FAIL: RefCell<Option<Fail>> = const { RefCell::new(None) };
+}
+
+fn fill_failed(f: Fail) {
+    FILL_FAIL.with(|e| {
+        let mut e = e.borrow_mut();
+        if e.is_none() {
+            *e = Some(f);
         }
+    })
+}
+
+/// A fill that takes each block of source `id` (of `rows` rows) from
+/// JavaScript, a window at a time, checks each value with `ok` once
+/// (else the write fails, naming `what` the column cannot hold), and
+/// converts it with `conv`.
+fn hosted<'a, T: Copy + Default + 'a>(
+    id: u32,
+    rows: usize,
+    name: &'a str,
+    what: &'static str,
+    ok: impl Fn(f64) -> bool + Sync + 'a,
+    conv: impl Fn(f64) -> T + Sync + 'a,
+) -> Box<dta_parquet::Fill<'a, T>> {
+    Box::new(move |first, out: &mut [T], codes: &mut [u8]| {
+        let n = out.len().min(codes.len());
+        STAGE.with(|stage| {
+            let mut w = stage.borrow_mut();
+            if !(w.id == id && w.start <= first && first + n <= w.start + w.values.len()) {
+                let len = WINDOW.max(n).min(rows.saturating_sub(first)).max(n);
+                w.id = 0;
+                w.values.resize(len, 0.0);
+                w.codes.resize(len, 0);
+                let status = unsafe { host_fill(id, first as f64, len as u32, w.values.as_mut_ptr(), w.codes.as_mut_ptr()) };
+                if status != 0 {
+                    fill_failed(Fail { kind: crate::wasm::IO, message: format!("column \"{name}\": its values could not be read") });
+                    w.codes.fill(1);
+                }
+                for i in 0..len {
+                    let c = w.codes[i];
+                    if c == 0 {
+                        if !ok(w.values[i]) {
+                            fill_failed(bad(name, first + i, w.values[i], what));
+                        }
+                    } else if c > 27 {
+                        fill_failed(Fail { kind: INVALID, message: format!("column \"{name}\": row {} has missing code {c}; codes run from 0 to 27", first + i) });
+                        w.codes[i] = 1;
+                    }
+                }
+                w.id = id;
+                w.start = first;
+            }
+            let at = first - w.start;
+            let (values, cs) = (&w.values[at..at + n], &w.codes[at..at + n]);
+            codes[..n].copy_from_slice(cs);
+            for i in 0..n {
+                out[i] = if cs[i] == 0 { conv(values[i]) } else { T::default() };
+            }
+        })
+    })
+}
+
+/// `hosted` for an integer column of values from `lo` to `hi`: each
+/// window's values are checked and made `i32`s once, and each pass of
+/// the writer over them copies them.
+fn hosted_int<'a>(id: u32, rows: usize, name: &'a str, what: &'static str, lo: i32, hi: i32) -> Box<dta_parquet::Fill<'a, i32>> {
+    Box::new(move |first, out: &mut [i32], codes: &mut [u8]| {
+        let n = out.len().min(codes.len());
+        STAGE.with(|stage| {
+            let mut w = stage.borrow_mut();
+            if !(w.id == id && w.start <= first && first + n <= w.start + w.ints.len()) {
+                let len = WINDOW.max(n).min(rows.saturating_sub(first)).max(n);
+                let Window { values, codes: cs, ints, .. } = &mut *w;
+                // Kept from window to window: JavaScript and the loop
+                // below write every element, so none is zeroed again.
+                values.resize(len, 0.0);
+                cs.resize(len, 0);
+                ints.resize(len, 0);
+                let status = unsafe { host_fill(id, first as f64, len as u32, values.as_mut_ptr(), cs.as_mut_ptr()) };
+                if status != 0 {
+                    fill_failed(Fail { kind: crate::wasm::IO, message: format!("column \"{name}\": its values could not be read") });
+                    cs.fill(1);
+                }
+                let mut bad_row = None;
+                for (i, ((&x, c), slot)) in values[..len].iter().zip(cs[..len].iter_mut()).zip(ints[..len].iter_mut()).enumerate() {
+                    let v = x as i32;
+                    *slot = v;
+                    if *c == 0 {
+                        if (v as f64 != x || v < lo || v > hi) && bad_row.is_none() {
+                            bad_row = Some(i);
+                        }
+                    } else if *c > 27 {
+                        fill_failed(Fail { kind: INVALID, message: format!("column \"{name}\": row {} has missing code {}; codes run from 0 to 27", first + i, *c) });
+                        *c = 1;
+                    }
+                }
+                if let Some(i) = bad_row {
+                    fill_failed(bad(name, first + i, values[i], what));
+                }
+                w.id = id;
+                w.start = first;
+            }
+            let at = first - w.start;
+            // A missing row's value is ignored by the writer.
+            out[..n].copy_from_slice(&w.ints[at..at + n]);
+            codes[..n].copy_from_slice(&w.codes[at..at + n]);
+        })
     })
 }
 
@@ -1383,9 +1520,13 @@ fn fill<'a, T: Copy + Default + 'a>(values: &'a [f64], codes: &'a [u8], conv: im
 /// labels, formats and the rest.
 fn table_of(w: &WState, mut profile: Profile) -> Result<Table<'_>, Fail> {
     let mut out = Vec::with_capacity(w.columns.len());
+    profile.columns.reserve(w.columns.len());
     for c in &w.columns {
         let name = c.name.as_str();
-        let entry = profile.column_mut(name);
+        // An entry per column, in order (the writer rejects two columns of
+        // one name); a search per column would be quadratic.
+        profile.columns.push(ColumnProfile::named(name));
+        let entry = profile.columns.last_mut().expect("just pushed");
         if !c.label.is_empty() {
             entry.label = Some(c.label.clone());
         }
@@ -1396,73 +1537,39 @@ fn table_of(w: &WState, mut profile: Profile) -> Result<Table<'_>, Fail> {
             entry.value_labels = Some(c.value_labels.clone());
         }
         let values: Values = match &c.data {
-            WData::Numbers(v, m) => {
+            WData::Hosted(id) => {
+                let id = *id;
                 let whole_in = |lo: f64, hi: f64| move |x: f64| x.fract() == 0.0 && x >= lo && x <= hi;
+                let any = |_: f64| true;
                 match c.kind {
-                    0..=2 => {
-                        let (lo, hi, what) = match c.kind {
-                            0 => (-128.0, 127.0, "a byte column cannot hold"),
-                            1 => (-32768.0, 32767.0, "an int column cannot hold"),
-                            _ => (-2147483648.0, 2147483647.0, "a long column cannot hold"),
-                        };
-                        if let Some(r) = first_bad(v, m, whole_in(lo, hi)) {
-                            return Err(bad(name, r, v[r], what));
-                        }
-                        let f = fill(v, m, |x| x as i32);
-                        match c.kind {
-                            0 => Values::Int8(f),
-                            1 => Values::Int16(f),
-                            _ => Values::Int32(f),
-                        }
-                    }
-                    3 => {
-                        if let Some(r) = first_bad(v, m, |x| (x as f32) as f64 == x || x.is_nan()) {
-                            return Err(bad(name, r, v[r], "a float column does not hold exactly"));
-                        }
-                        Values::Float(fill(v, m, |x| x as f32))
-                    }
-                    5 => {
-                        if let Some(r) = first_bad(v, m, |x| x == 0.0 || x == 1.0) {
-                            return Err(bad(name, r, v[r], "a bool column cannot hold (only 0 and 1)"));
-                        }
-                        Values::Bool(fill(v, m, |x| x as u8))
-                    }
-                    6 => {
-                        if first_bad(v, m, whole_in(i32::MIN as f64, i32::MAX as f64)).is_none() {
-                            Values::Date(fill(v, m, |x| x as i32))
-                        } else {
-                            // Fractions of a day, or days an INT32 cannot
-                            // hold: days as doubles, a date again for our
-                            // readers.
-                            entry.logical = Some(Logical::Date);
-                            Values::Double(fill(v, m, |x| x))
-                        }
+                    0 => Values::Int8(hosted_int(id, w.rows, name, "a byte column cannot hold", -128, 127)),
+                    1 => Values::Int16(hosted_int(id, w.rows, name, "an int column cannot hold", -32768, 32767)),
+                    2 => Values::Int32(hosted_int(id, w.rows, name, "a long column cannot hold", i32::MIN, i32::MAX)),
+                    3 => Values::Float(hosted(id, w.rows, name, "a float column does not hold exactly", |x| (x as f32) as f64 == x || x.is_nan(), |x| x as f32)),
+                    5 => Values::Bool(hosted(id, w.rows, name, "a bool column cannot hold (only 0 and 1)", |x| x == 0.0 || x == 1.0, |x| x as u8)),
+                    6 => Values::Date(hosted_int(id, w.rows, name, "a date column cannot hold", i32::MIN, i32::MAX)),
+                    9 => {
+                        // Fractions of a day, or days an INT32 cannot hold
+                        // (JavaScript looked): days as doubles, a date again
+                        // for our readers.
+                        entry.logical = Some(Logical::Date);
+                        Values::Double(hosted(id, w.rows, name, "", any, |x| x))
                     }
                     7 if c.unit == 0 => {
                         // Seconds: no Parquet unit, so doubles, a
                         // timestamp again for our readers.
                         entry.logical = Some(Logical::Timestamp);
                         entry.tz = Some(c.zone.clone().unwrap_or_default());
-                        Values::Double(fill(v, m, |x| x))
+                        Values::Double(hosted(id, w.rows, name, "", any, |x| x))
                     }
-                    7 => {
-                        if let Some(r) = first_bad(v, m, whole_in(-SAFE, SAFE)) {
-                            return Err(bad(name, r, v[r], "is not a whole number of the column's unit within the safe integers"));
-                        }
-                        Values::Timestamp {
-                            unit: time_unit(c.unit),
-                            utc: c.zone.is_some(),
-                            zone: c.zone.clone().filter(|z| !z.is_empty()),
-                            fill: fill(v, m, |x| x as i64),
-                        }
-                    }
-                    8 => {
-                        if let Some(r) = first_bad(v, m, whole_in(-SAFE, SAFE)) {
-                            return Err(bad(name, r, v[r], "an int64 column given as numbers cannot hold exactly (pass bigints)"));
-                        }
-                        Values::Int64(fill(v, m, |x| x as i64))
-                    }
-                    _ => Values::Double(fill(v, m, |x| x)),
+                    7 => Values::Timestamp {
+                        unit: time_unit(c.unit),
+                        utc: c.zone.is_some(),
+                        zone: c.zone.clone().filter(|z| !z.is_empty()),
+                        fill: hosted(id, w.rows, name, "is not a whole number of the column's unit within the safe integers", whole_in(-SAFE, SAFE), |x| x as i64),
+                    },
+                    8 => Values::Int64(hosted(id, w.rows, name, "an int64 column given as numbers cannot hold exactly (pass bigints)", whole_in(-SAFE, SAFE), |x| x as i64)),
+                    _ => Values::Double(hosted(id, w.rows, name, "", any, |x| x)),
                 }
             }
             WData::BigInts(v, m) => {
@@ -1556,15 +1663,27 @@ pub unsafe extern "C" fn pq_write_finish(
             value_labels: state.sets.clone(),
             ..Profile::default()
         };
+        FILL_FAIL.with(|e| *e.borrow_mut() = None);
+        STAGE.with(|s| *s.borrow_mut() = Window::default());
         let table = table_of(&state, profile)?;
         // A buffer, so the many small writes of page headers cross into
         // JavaScript a megabyte at a time.
         let mut sink = std::io::BufWriter::with_capacity(1 << 20, HostSink(file));
-        dta_parquet::write(&table, &mut sink, &options).map_err(|e| match e.kind {
+        let written = dta_parquet::write(&table, &mut sink, &options);
+        STAGE.with(|s| *s.borrow_mut() = Window::default());
+        // A value a fill found its column cannot hold is the cause of any
+        // error the writer then met.
+        if let Some(f) = FILL_FAIL.with(|e| e.borrow_mut().take()) {
+            return Err(f);
+        }
+        written.map_err(|e| match e.kind {
             ErrorKind::Io => Fail { kind: crate::wasm::IO, message: e.to_string() },
             _ => Fail::from(e),
         })?;
         sink.flush().map_err(|e| Fail { kind: crate::wasm::IO, message: e.to_string() })?;
+        if let Some(f) = FILL_FAIL.with(|e| e.borrow_mut().take()) {
+            return Err(f);
+        }
         Ok(1)
     })
 }

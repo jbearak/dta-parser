@@ -1038,8 +1038,19 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
       }
       return categorical(codes, levels!);
     }
-    const kind = NUMBER_TYPES[type ?? "double"];
+    let kind = NUMBER_TYPES[type ?? "double"];
     if (kind === undefined) fail(`numbers cannot be written as ${JSON.stringify(type)}`);
+    if (kind === 6) {
+      // A date with a fraction of a day, or beyond an INT32 of days, is
+      // written as doubles (kind 9), a date again for our readers.
+      for (let i = 0; i < rows; i++) {
+        const x = values[i];
+        if (missing[i] === 0 && !(Number.isInteger(x) && x >= -(2 ** 31) && x < 2 ** 31)) {
+          kind = 9;
+          break;
+        }
+      }
+    }
     return { kind: "numbers", meta, type: kind, unit: kind === 7 ? unit() : 0, values, missing };
   };
   const bigints = (values: BigInt64Array | BigUint64Array, missing: Uint8Array): wasm.ParquetPart => {
