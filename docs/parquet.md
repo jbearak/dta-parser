@@ -293,7 +293,9 @@ write the file with `missing_letters = FALSE`.
 
 The speed of reads and writes against arrow, nanoparquet and DuckDB,
 and of other tools reading our files, is in
-[bench/RESULTS.md](../bench/RESULTS.md#parquet).
+[bench/RESULTS.md](../bench/RESULTS.md#parquet); against pyarrow,
+pandas, fastparquet and polars in Python, in
+[Parquet in Python](../bench/RESULTS.md#parquet-in-python).
 
 ## Errors and warnings
 
