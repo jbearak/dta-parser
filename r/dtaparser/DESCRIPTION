@@ -19,6 +19,7 @@ Imports:
 Suggests:
     dplyr,
     haven,
+    readstata13,
     survey,
     testthat (>= 3.0.0),
     tidyr
