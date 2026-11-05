@@ -333,7 +333,21 @@ pub fn parquet_write_arrow<'py>(
 ) -> PyResult<Option<Bound<'py, PyBytes>>> {
     let mode = Stamps::from_name(timestamps)?;
     let compression = Compression::from_name(compression).map_err(fail)?;
-    let options = WriteOptions { compression, compression_level, row_group_rows: row_group_size, missing_letters, threads, ..WriteOptions::default() };
+    let defaults = WriteOptions::default();
+    let options = WriteOptions {
+        compression,
+        compression_level,
+        row_group_rows: row_group_size,
+        missing_letters,
+        threads,
+        parallel_bytes: defaults.parallel_bytes.min(super::read::ARROW_PARALLEL_BYTES as usize),
+        thread_rule: Some((
+            super::read::ARROW_WRITE_BYTES_PER_THREAD,
+            super::read::ARROW_WRITE_THREADS,
+            super::read::ARROW_WRITE_THREADS_MOST,
+        )),
+        ..defaults
+    };
     let imported = import_stream(df)?;
     let rows = height(&imported);
     let cols = columns(&imported)?;

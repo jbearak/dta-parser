@@ -24,11 +24,21 @@ use crate::parquet::{entries, kind_of, no_nulls, read_error, select, unit_code, 
 /// The thread rule of Arrow reads (plan 0019, step 3): one thread per
 /// this many bytes decoded, at least `ARROW_THREADS`, at most
 /// `ARROW_THREADS_MOST` (and never more than the machine's cores).
-pub(crate) const ARROW_BYTES_PER_THREAD: u64 = 8 << 20;
-pub(crate) const ARROW_THREADS: usize = 1;
-pub(crate) const ARROW_THREADS_MOST: usize = 16;
-/// Reads of fewer bytes than this stay on one thread.
+/// Chosen against polars, which uses every core, for its targets 1 (wall
+/// time) and 3 (CPU time within max(1.15, the speedup) of polars') together:
+/// NSFG 2002 FemResp (90 MiB) passed both at four threads, DHS Tajikistan
+/// 2017 wm (212 MiB) at four to six, groups (286 MiB) at eight and long
+/// (954 MiB) at twelve (bench/RESULTS.md, "Threads for polars").
+pub(crate) const ARROW_BYTES_PER_THREAD: u64 = 32 << 20;
+pub(crate) const ARROW_THREADS: usize = 4;
+pub(crate) const ARROW_THREADS_MOST: usize = 12;
+/// Reads and writes of fewer bytes than this stay on one thread.
 pub(crate) const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
+/// The thread rule of writes from polars' export: our CPU time stayed
+/// below polars' at every count to 16 while the wall time kept falling.
+pub(crate) const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
+pub(crate) const ARROW_WRITE_THREADS: usize = 4;
+pub(crate) const ARROW_WRITE_THREADS_MOST: usize = 16;
 
 /// polars' Enum of `.a` to `.z` (datakit's `LETTERS`).
 pub(crate) fn letter_names() -> Vec<String> {
