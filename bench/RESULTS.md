@@ -723,69 +723,51 @@ second run); the other libraries' cases are from the first.
 Plan 0018's gate for the npm package (PR 7): `openParquetFile` and
 `writeParquetFile` in Node 26.12.1 against hyparquet 1.32.0 (with
 hyparquet-compressors 1.1.3), hyparquet-writer 0.18.0 and parquet-wasm
-0.9.0 (with apache-arrow 21.2.0 to bring its tables into JavaScript).
-Every number is in [results/parquet-node.md](results/parquet-node.md),
-written by `bench/parquet/run_node.py` (each case in
-`bench/parquet/case.mjs`); this section is written by hand from it.
+0.9.0 (with apache-arrow 21.2.0 to bring its tables into JavaScript), on
+the 36 NSFG files, the 10 DHS files and the three synthetic files, each
+on pyarrow's, polars' and our Parquet copy. Every number is in
+[results/parquet-node.md](results/parquet-node.md), written by
+`bench/parquet/run_node.py` (each case in `bench/parquet/case.mjs`);
+this section is written by hand from it.
 
-**Incomplete.** The run covered the three synthetic files and 9 of the
-36 NSFG files (1973_FemResp to 1995_FemResp). It shared the benchmark
-lock with two other agents' runs and was stopped at its two-hour limit
-before the other 27 NSFG files and the 10 DHS files. It can be resumed
-(finished cases are kept) with
-`python bench/parquet/run_node.py --family nsfg dhs`. So target 1 is
-evaluated on those 9 NSFG files only, and not on DHS.
+**Targets 1 and 2 hold. Target 3 misses on one case**: five columns of
+our own survey files against hyparquet, on CPU time only (below).
 
-Ours over theirs, geometric means of wall time over the 9 NSFG files,
-on pyarrow's files; below 1 is faster. Reads of polars' files are
-within 0.05 of these; reads of our own files are in the full report and
-discussed below.
+Ours over theirs, geometric means of wall time on pyarrow's files (NSFG,
+DHS); below 1 is faster. Reads of polars' files are within 0.1 of these
+or faster; reads of our own files are in the full report.
 
-| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) | write (zstd) |
+| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) | write (zstd 3) |
 |---|---|---|---|---|---|---|
-| hyparquet, hyparquet-writer | 0.25 | 0.71 | 0.22 | 0.32 | 0.38 | (none) |
-| parquet-wasm | 0.38 | 0.12 | 0.61 | 0.48 | 0.78 | 0.80 |
-
-Peak RSS, same means: 0.54 to 0.76 against hyparquet except five
-columns (below); 0.31 to 0.73 against parquet-wasm.
+| hyparquet, hyparquet-writer | 0.24, 0.12 | 0.66, 0.68 | 0.20, 0.08 | 0.30, 0.15 | 0.32, 0.30 | (none) |
+| parquet-wasm | 0.32, 0.18 | 0.10, 0.03 | 0.49, 0.43 | 0.41, 0.23 | 0.62, 0.94 | 0.45, 0.56 |
 
 - **Target 1** (geometric mean of wall and of peak RSS at most 1.05
-  times theirs): holds against parquet-wasm in every case. Against
-  hyparquet it holds except for five columns: peak RSS 1.11 (pyarrow's
-  files), 1.17 (polars') and 1.18 (ours), and wall 1.11 on our files.
-  These reads take 8 to 40 ms. Most of our peak is a fixed cost: loading
-  the module adds about 16 MB, and V8 then compiles the three
-  functions an open runs over every column (the footer's Thrift parser,
-  the dta profile's parser and the variables' JSON) with its optimizing
-  compiler, which takes about 18 MB more for a moment. With
-  `node --liftoff-only` the same read peaks at 62 MB instead of 80
-  (hyparquet: 64), but that flag is the user's to set, not a
-  library's. Our files are slower than pyarrow's to open (41 ms against
-  21 on 1995_FemResp) because they carry the dta profile: the labels,
-  formats and notes, which are parsed at open.
+  times theirs, over NSFG and over DHS, on every input): holds. The
+  highest wall ratio is 1.04, five columns of our DHS files against
+  hyparquet (0.93 on NSFG); the highest peak RSS ratio 1.03, the same
+  case on NSFG. Against parquet-wasm the highest are 0.94 (writes, DHS)
+  and 0.79.
 - **Target 2** (no file over 1.25 times, unless by under 20 ms or 16
-  MiB): the five-column reads of our files against hyparquet (RSS up to
-  1.29, by 17 to 19 MB, on 1973_FemResp, 1982_FemResp and 1988_Preg,
-  for the reason above); parquet-wasm's default write of NSFG
-  1995_FemResp, 573 ms against 453 (1.27: our writer converts the 5,754
-  columns' JavaScript numbers twice, once to look for .a to .z and once
-  to encode); zstd writes of long.dta (10.4 s against 4.0) and wide.dta
-  (69 s; parquet-wasm could not write it). In wasm we write zstd with
-  the pure-Rust ruzstd, whose compressor took 6.5 of the 10.4 s; this
-  is why snappy is the default. hyparquet-writer used half our memory
-  writing groups.dta (785 MB against 1,515): it writes from the arrays
-  it is given, where we copy a table's text into the module.
+  MiB): holds. Among the closest: parquet-wasm's default write of
+  long.dta, 2.46 s against our 2.67 (1.09), and of NSFG 1995_FemResp,
+  453 ms against 454.
 - **Target 3** (CPU at most theirs times the larger of 1.15 and our
-  speedup): the five-column reads of our NSFG files against hyparquet
-  (for example 46 ms of CPU against 25 on 1973_FemResp: the module
-  compile above runs partly on V8's background threads), and the zstd write of
-  long.dta against parquet-wasm.
-- **zstd reads.** ruzstd decodes too: polars, which writes zstd by
-  default, made files we read up to 15 times slower than pyarrow's
-  snappy files (long.dta: 3.5 s against 0.9; wide.dta: 23 s against
-  1.5). We are still the fastest
-  of the three on them (long.dta: 3.5 s against 5.7 for parquet-wasm
-  and 11.1 for hyparquet).
+  speedup): **misses** on five columns of our own files against
+  hyparquet, on 25 of the 46 survey files: by 3 to 34 ms of CPU (NSFG
+  2017_2019_Male: 80 ms against 46 allowed 52; DHS Tajikistan 2017 wm:
+  88 against 58 allowed 67). Wall time on those files is 0.93 to 1.04
+  of hyparquet's. The excess is V8 compiling the module's hot functions
+  with its optimizing compiler, on background threads, during a read
+  of 10 to 40 ms: opening a file runs the footer's parser, the dta
+  profile's and the variables' JSON once per column, and V8 optimizes
+  each function that runs that long (37 functions, 46 ms of compiling,
+  on 2017_2019_Male). With `node --liftoff-only` the same read takes the
+  same wall time and 21 ms of CPU (hyparquet: 43), and on DHS Tajikistan
+  2017 wm 33 ms (hyparquet: 57). WebAssembly gives a module no way to
+  keep V8 from optimizing it, and a library must not set V8's flags for
+  the process it runs in. On pyarrow's and polars' copies, which carry
+  no dta profile, the case passes.
 - **Not compared.** hyparquet's and parquet-wasm's whole-file routes
   take the file as one buffer, and Node will not read the 4.8 GB
   wide.dta files into one (ERR_FS_FILE_TOO_LARGE); parquet-wasm takes
@@ -794,24 +776,38 @@ columns (below); 0.31 to 0.73 against parquet-wasm.
   table into its wasm memory, which holds at most 4 GiB ("offset is out
   of bounds"). hyparquet's whole-file read (and read + pass) of our
   long.dta ran out of V8's default heap in the benchmark runs; run
-  again by hand it finished in 7.4 s at 5.8 GB, so it is close to the
-  limit, not failing outright.
+  again by hand it finished in 7.4 s at 5.8 GB, so it is near the
+  limit.
 
 Fixed because of these runs (each its own commit on the branch):
 
-1. **Lazy chunk statistics.** Opening a wide file built and parsed
-   every column's per-row-group sizes and statistics; they now load on
-   first use.
-2. **Number dictionaries sized once** (core): a column of distinct
-   doubles spent a third of its encoding time growing the dictionary's
-   table before dropping it. In wasm the dictionary hash also uses
-   64-bit multiplies (a 128-bit multiply is a helper call there). Files
-   are byte for byte the same. long.dta's write went from 4.25 s to
-   3.5 s.
-3. **Text packed faster**: ASCII copied directly, and long strings
-   joined and encoded a block at a time. groups.dta's write went from
-   1.94 s to 1.07 s; long.dta's to 2.93 s; wide.dta's from 12.2 s to
-   8.0 s.
+1. **C libzstd in wasm.** The module had the pure-Rust ruzstd, whose
+   decoder made polars' zstd files slow to read and whose encoder made
+   zstd writes miss against parquet-wasm (long.dta: 10.4 s against
+   4.0). zstd-sys builds libzstd for wasm32 with a clang that targets
+   it (CI installs one). polars' long.dta now reads in 1.49 s (was
+   3.5), its wide.dta in 6.1 s (was 23), and long.dta writes with zstd
+   in 3.6 s; zstd levels now take effect. The module is 2,197,612
+   bytes, 420,996 with brotli (was 1,899,927 and 374,306).
+2. **.a to .z found while JavaScript hands the numbers over.** The
+   writer read every number column once more to find them. NSFG
+   1995_FemResp (5,754 columns): 454 ms, was 573 (parquet-wasm 453).
+3. **Less memory at the peak of a small read.** V8 compiled the large
+   functions an open runs per column with its optimizing compiler, whose
+   memory grows with a function's size; their callees are now functions
+   of their own. Five columns of NSFG 1973_FemResp: 68 MB (was 83,
+   hyparquet 64).
+4. **Text written as codes when it repeats, and one copy fewer.**
+   groups.dta's write: 491 MB at the peak (was 1,515; hyparquet-writer
+   785), 0.99 s; long.dta's 1,965 MB (was 2,259).
+5. **Our own files open faster.** The dta profile's value label sets,
+   half of its reading time, are read when `valueLabels` first asks;
+   duplicate checks no longer build a hash set per object; variables
+   share one prototype getter. Five columns of our DHS files: 1.04 of
+   hyparquet's wall time (was 1.17).
+6. Earlier, while building: chunk statistics loaded on first use,
+   number dictionaries sized once and hashed for wasm, text packed in
+   blocks (wide.dta's write 12.2 s to 7.2 s).
 
 Method: as above (five runs per case in fresh processes under
 `/usr/bin/time -l`, medians, the file in the page cache, task timed
@@ -819,12 +815,11 @@ inside the process after its packages loaded). Writes time writing a
 table already in the library's own form: our `WriteDataset`, plain
 arrays for hyparquet-writer, and an apache-arrow table for parquet-wasm
 (its copy into wasm is timed). Every library runs on one thread. The
-one-minute load average before each run was 10.1 to 13.2 (median
-10.7) over 2,345 runs. Our writes of long, wide (default codec),
-groups, 1973_FemResp and 1976_FemResp were measured again after fixes
-2 and 3; wide.dta's zstd write was not (69 s a run), and was measured
-before them.
-
+machine was shared with two other benchmark runs, taking turns on a
+lock; the one-minute load average before each run was 8.8 to 25.6
+(median 10.8) over 9,930 runs. Our read cases were run again after fix
+5; the other libraries' cases and our writes are from the run before
+it, with the same build of everything else.
 
 ## Method
 
