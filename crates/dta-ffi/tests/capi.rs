@@ -143,7 +143,7 @@ fn same(a: &[Vec<Row>], b: &[Vec<Row>]) -> bool {
 
 #[test]
 fn version() {
-    assert_eq!(dta_abi_version(), 3);
+    assert_eq!(dta_abi_version(), 4);
 }
 
 #[test]

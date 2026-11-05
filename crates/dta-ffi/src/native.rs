@@ -14,7 +14,7 @@ use dta::{Characteristic, Column, Encoding, FileSource, Options, Reader, Storage
 
 use crate::json::{self, Value};
 
-pub const ABI_VERSION: u32 = 3;
+pub const ABI_VERSION: u32 = 4;
 
 // Storage types, as `DtaColumn::storage`.
 pub const BYTE: u32 = 1;

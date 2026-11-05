@@ -30,7 +30,7 @@ extern "C" {
 
 /* The ABI described here. A caller should refuse a library whose
  * dta_abi_version() differs. */
-#define DTA_ABI_VERSION 3
+#define DTA_ABI_VERSION 4
 
 /* Storage types (dta_column.storage). */
 #define DTA_BYTE 1   /* int8; . is 101, .a-.z 102-127 */
@@ -197,6 +197,146 @@ int dta_write(const char *path, uint64_t nrows, const dta_column *columns, size_
 char *dta_fixed_width_to_dta(const char *data_path, const char *const *setup_paths, size_t n_setups,
                              const char *out_path, const char *recodes, int commented_formats, size_t *len,
                              char *err, size_t err_len);
+
+/* ---------------------------------------------------------------- Parquet
+ *
+ * Parquet files with a dta profile (docs/plans/0018-parquet.md,
+ * docs/parquet.md). The caller allocates every output and decides from
+ * dta_pq_info_json what each column becomes.
+ */
+
+typedef struct dta_pq_file dta_pq_file;
+
+/*
+ * Open the Parquet file at `path`, or, when `path` is NULL, the `len`
+ * bytes at `bytes`, which must stay alive and unchanged until
+ * dta_pq_close. Reads only the footer. With `nested_skip` nonzero, a
+ * read of every column leaves nested columns (lists, maps, groups) out;
+ * otherwise it is an error naming them. Returns NULL on failure.
+ */
+dta_pq_file *dta_pq_open(const char *path, const uint8_t *bytes, size_t len, int nested_skip, char *err,
+                         size_t err_len);
+
+void dta_pq_close(dta_pq_file *file);
+
+/*
+ * The footer as a JSON object (free it with dta_string_free): rows,
+ * row_groups [{rows, compressed_bytes, uncompressed_bytes}], created_by,
+ * compression (the codecs used), warnings (about the dta profile),
+ * profile (whether there is one), label, notes, timestamp, sort,
+ * characteristics [{variable, name, value}], valueLabels [{name, labels:
+ * [[value or ".a"..".z", text], ...]}], and columns, one object per
+ * top-level column: name, role ("data" or "nested"), physical_type,
+ * logical_type, kind ("int8", "int16", "int32", "int64", "uint8" to
+ * "uint64", "float", "double", "bool", "text", "binary", "date",
+ * "timestamp" with unit ("ms", "us", "ns") and utc, "time" with unit,
+ * "decimal" with precision and scale, "unsupported" with why, or
+ * "nested"), zone (a timestamp's: the profile's, "" for an instant
+ * without one, else ARROW:schema's), levels ("profile", "rows" or null:
+ * whether it is a categorical, and where its levels come from),
+ * categories and ordered (levels from the profile), storage and logical
+ * (the profile's, on a DOUBLE column written so for .a to .z), label,
+ * format, value_labels (the set's name), unit_profile, and nulls (whether
+ * any row group's statistics count nulls, or do not say).
+ */
+char *dta_pq_info_json(dta_pq_file *file, size_t *len, char *err, size_t err_len);
+
+/* dta_pq_output.kind */
+enum {
+    DTA_PQ_I8 = 1, DTA_PQ_I16 = 2, DTA_PQ_I32 = 3, DTA_PQ_I64 = 4, DTA_PQ_F32 = 5, DTA_PQ_F64 = 6,
+    DTA_PQ_U8 = 7, DTA_PQ_U16 = 8, DTA_PQ_U32 = 9, DTA_PQ_U64 = 10,
+    DTA_PQ_LEVELS = 11, /* int32 level codes in values: base for the first level, null for missing */
+    DTA_PQ_TEXT = 12    /* through the callback */
+};
+
+/*
+ * Where one selected column goes: `values` holds the window's rows of
+ * the kind's type (0, or NaN in floats, for a missing value); `codes`,
+ * NULL or one byte per row, receives 0 for a value, 1 for a null, 2 to
+ * 27 for .a to .z (tagged NaNs in a DOUBLE column). A column reads into
+ * a type that holds its values: DATE, TIMESTAMP and TIME as their counts
+ * into DTA_PQ_I64, BOOLEAN into DTA_PQ_U8, a DOUBLE column the profile
+ * gives a storage type into that type; a value the type cannot hold is
+ * an error naming the column and row.
+ */
+typedef struct dta_pq_output {
+    uint32_t kind;
+    int32_t base;
+    int32_t null;
+    void *values;
+    uint8_t *codes;
+} dta_pq_output;
+
+/*
+ * Called on the calling thread with each column chunk of a text column
+ * read as DTA_PQ_TEXT, in row order for each column: `k` is the column's
+ * place in the selection, `first` the chunk's first row in the read.
+ * Value i is bytes[ends[i-1]..ends[i]] (from 0 for i = 0). With a
+ * dictionary, codes[r] is row r's value, or UINT32_MAX for a missing row,
+ * and `missing` is NULL; without one, row r is value r, missing where
+ * missing[r] is not 0 (`missing` may be NULL when none is). Return
+ * nonzero to stop the read.
+ */
+typedef int (*dta_pq_text_fn)(void *user, size_t k, uint64_t first, uint64_t rows, const uint8_t *bytes,
+                              const size_t *ends, size_t nvalues, const uint32_t *codes, const uint8_t *missing);
+
+/*
+ * Read rows skip to skip + n (clipped to the file) of the `ncols`
+ * columns `cols` (0-based, any order) into `outputs`. Column chunks are
+ * decoded on worker threads for large reads (DTA_THREADS sets the
+ * count). *report receives a JSON object (free it with dta_string_free):
+ * letters, per column whether any .a to .z was read, and levels, per
+ * column the levels found in the rows read for a categorical whose
+ * levels come from the rows (null otherwise). Returns the rows read, -2
+ * when the callback stopped the read, or -1 on failure.
+ */
+int64_t dta_pq_read(dta_pq_file *file, const uint32_t *cols, size_t ncols, uint64_t skip, uint64_t n,
+                    const dta_pq_output *outputs, dta_pq_text_fn callback, void *user, char **report,
+                    size_t *report_len, char *err, size_t err_len);
+
+/* dta_pq_column.kind */
+enum {
+    DTA_PQ_W_INT8 = 1, DTA_PQ_W_INT16 = 2, DTA_PQ_W_INT32 = 3, DTA_PQ_W_INT64 = 4, DTA_PQ_W_FLOAT = 5,
+    DTA_PQ_W_DOUBLE = 6,
+    DTA_PQ_W_BOOL = 7,        /* uint8_t, 0 or 1 */
+    DTA_PQ_W_DATE = 8,        /* int64_t days since 0000-12-31 (Julia's Date) */
+    DTA_PQ_W_DATETIME = 9,    /* int64_t milliseconds since 0000-12-31 00:00, without zone */
+    DTA_PQ_W_ZONED = 10,      /* the same in UTC; the zone in the metadata */
+    DTA_PQ_W_TEXT = 11,       /* UTF-8 bytes and nrows + 1 offsets */
+    DTA_PQ_W_BINARY = 12,
+    DTA_PQ_W_CATEGORICAL = 13 /* uint32_t level numbers from 1, 0 for missing */
+};
+
+/*
+ * One column to write: `values` of the kind's type, `codes` NULL or one
+ * byte per row (0 a value, 1 missing, 2 to 27 .a to .z; for text and
+ * binary, nonzero is missing), `bytes` and `offsets` for text and binary.
+ */
+typedef struct dta_pq_column {
+    uint32_t kind;
+    const void *values;
+    const uint8_t *codes;
+    const uint8_t *bytes;
+    const uint64_t *offsets;
+} dta_pq_column;
+
+/*
+ * Write `ncols` columns of `nrows` rows as Parquet to `path`, beside it
+ * and renamed into place; or, when `path` is NULL, to memory returned in
+ * *out and *out_len (free it with dta_pq_bytes_free). `meta_json` is an
+ * object: label, notes, timestamp, sort (column names), characteristics,
+ * valueLabels (as dta_write's) and columns, one {name, label, format,
+ * valueLabels, levels, ordered, zone} per column. `compression` is
+ * "snappy", "zstd", "gzip", "lz4_raw" or "none"; `level` is used when
+ * `has_level` is nonzero; `row_group_rows` 0 for the default;
+ * `missing_letters` 0 writes .a to .z as nulls. Returns 0, or -1.
+ */
+int dta_pq_write(const char *path, uint64_t nrows, const dta_pq_column *columns, size_t ncols,
+                 const char *meta_json, const char *compression, int level, int has_level,
+                 uint64_t row_group_rows, int missing_letters, uint8_t **out, size_t *out_len, char *err,
+                 size_t err_len);
+
+void dta_pq_bytes_free(uint8_t *p, size_t len);
 
 #ifdef __cplusplus
 }
