@@ -368,6 +368,158 @@ one carried other work throughout, with a one-minute load average of
 measurements are noisier than the plan intended; every comparison ran
 under the same load.
 
+## Parquet in Python
+
+Plan 0018's speed and memory gate for Python (PR 5): dta_parser's
+`read_parquet` and `write_parquet` against pyarrow 26.0.1
+(`read_table().to_pandas()`, `DataFrame.to_parquet`), pandas 3.1.1
+(`read_parquet`), fastparquet 2026.9.0 and polars 2.1.0
+(`.to_pandas()`, `from_pandas().write_parquet()`), all of which return
+or take a pandas DataFrame and are gated; and, published but not gated,
+pyarrow's `Table`, polars' `DataFrame` and DuckDB 2.0.0 fetched to Arrow,
+which are other kinds of result. The inputs are the files the R run
+made: the 36 NSFG files, the 10 DHS files and the three synthetic files,
+each as Parquet from our writer, pyarrow and polars. Every file and
+number is in [results/parquet-python.md](results/parquet-python.md),
+written by `bench/parquet/run_py.py`; this section is written by hand
+from it.
+
+**Target 1 holds for wall time everywhere, and for peak RSS against
+every library but fastparquet.** Ours over theirs, geometric means of
+wall time over the files (NSFG, DHS), reads of pyarrow's files (reads of
+polars' and our files are within a few hundredths, except five columns
+of our files, below); below 1 is faster:
+
+| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) |
+|---|---|---|---|---|---|
+| pyarrow → pandas | 0.17, 0.43 | 0.05, 0.09 | 0.11, 0.24 | 0.36, 0.70 | 0.34, 0.28 |
+| pandas.read_parquet | 0.17, 0.43 | 0.05, 0.09 | 0.11, 0.21 | 0.36, 0.71 | (pyarrow's) |
+| fastparquet | 0.15, 0.15 | 0.13, 0.09 | 0.10, 0.07 | 0.34, 0.30 | 0.19, 0.16 |
+| polars → pandas | 0.44, 0.65 | 0.30, 0.44 | 0.36, 0.52 | 0.70, 0.87 | 0.64, 0.71 |
+
+The highest wall ratio of any gated geometric mean is 0.93 (five
+columns of our own DHS files, against polars). Peak RSS is 0.24 to 0.95
+of pyarrow's, pandas' and polars' in every case.
+
+**What misses.** 79 checks, in four groups:
+
+1. **Peak RSS against fastparquet** (59 of the 79): target 1 on whole-file
+   reads of the DHS files (geometric mean 1.51 to 1.54 times, by input),
+   the read and pass of the DHS files (1.16 to 1.18), and whole-file
+   reads and the read and pass of our NSFG files (1.06 and 1.05); target 2 on 51 single files: whole-file reads and reads
+   and passes of the DHS files and the widest NSFG files (up to 1.94
+   times, Myanmar 2016 wm: 642 MB against 332), and five columns and the
+   read and pass of groups.dta (1.75 to 1.99). These are the types the
+   plan fixes, not waste: our result is the data, at the baseline of a
+   Python with pandas loaded plus 8 bytes a value. These files hold their
+   survey codes as INT32 with nulls (the R writer made them from R
+   integers), which `read_parquet` returns as float64, as `read_dta`
+   returns a long holding `.` (plan 0018, "Exactness"). fastparquet
+   returns pandas' nullable Int32, 5 bytes a value. For groups.dta,
+   fastparquet returns text as `object` pointing at a few shared `str`
+   objects (8 bytes a row) where we return pandas' `str` (offsets and
+   bytes per row). A file `write_parquet` wrote from `read_dta`'s frame
+   keeps byte and int columns as INT(8) and INT(16), read as float32 with
+   nulls, half the size. Against pyarrow, pandas and polars our peak is
+   0.24 to 0.95 of theirs.
+2. **Writes of the synthetic files against polars** (target 2 in six
+   cases, target 3 in two):
+   long.dta 1.09 s against 0.39 (2.8 times; 3.8 with zstd), groups.dta
+   0.31 s against 0.13 (2.4), wide.dta 1.51 s against 0.88 (1.7; 2.7 with
+   zstd), with CPU over target 3's allowance on wide.dta (9.8 s against
+   7.2, 1.36 times; zstd 14.2 against 7.2). The writer in `crates/parquet`
+   encodes a row group's columns in parallel but the row groups one after
+   another, so each waits for its slowest column: long.dta's column of 10
+   million distinct ids took 0.6 s on one thread, and at twelve threads
+   the write still took 0.75 s. polars encodes about five cores' worth at
+   once. Pipelining row groups is a change to the core's writer, shared
+   with R, and is left for later. On the survey files our writes take 0.64
+   to 0.73 of polars' time.
+3. **Writes against fastparquet on wide.dta and long.dta** (target 3, and
+   target 2 on wide.dta: 1.51 s against 1.17): fastparquet writes PLAIN
+   values with no dictionary, compression or text statistics (an 852 MB
+   file of long.dta where ours is 633 MB), so its CPU time is a fraction
+   of any writer that compresses; ours was 9.75 s against 1.13 on
+   wide.dta. With zstd for both, ours took 0.39 of its wall time over the
+   three files (geometric mean).
+4. **Reads against pyarrow, pandas and polars on long.dta** (target 2, 7
+   cases): five columns of polars' file 191 ms against pyarrow's 88 and
+   polars' 120, five columns of our file 117 ms against 84, and the
+   whole of polars' file 201 ms against 151. The read uses the thread
+   count plan 0007's rule set for Parquet (two threads for these 400 MB
+   reads), where the others use sixteen, and polars' files are zstd,
+   which our reader decodes at about a third of the speed of snappy
+   (R's measurements). One CPU case: five columns of our NSFG 1995
+   FemResp against polars, 16 ms of CPU against 12 (polars took half the
+   wall time): our file's 1.5 MB dta profile, with 37,030 value labels, is
+   read and its labels made into Python objects, which polars skips.
+
+**Not compared.** DuckDB could not read pyarrow's 4.8 GB wide.dta file,
+as in the R run; that published case has no comparison. Target 4 (other
+tools reading our files) concerns the file, and `write_parquet` writes
+the same files as R's `save_parquet` through the same writer, so the R
+run's measurements stand for it.
+
+**Into Arrow and polars types** (published, not gated): our pandas
+frame against pyarrow's `Table`, polars' `DataFrame` and DuckDB's Arrow
+table from the same files, geometric means of wall time (NSFG, DHS):
+whole file 0.21, 0.64 (pyarrow), 0.78, 1.67 (polars), 0.25, 0.19
+(DuckDB); five columns 0.05, 0.09; 0.36, 0.52; 0.32, 0.31; 1,000 rows
+0.13, 0.32; 0.73, 1.59; 0.15, 0.14. A user who wants a polars or Arrow
+table should read with polars or pyarrow (docs/python.md says so).
+
+### Fixed because of these runs
+
+Each is its own commit on the branch.
+
+1. **Columns go into pandas blocks.** Columns of one dtype are decoded
+   into one 2D array, a column per row, and become one pandas block
+   (`pandas.api.internals.create_dataframe_from_blocks`, pandas 3), not
+   one block per column through `pd.DataFrame(dict)`: 40 ms of a 125 ms
+   read of DHS Myanmar 2016 wm went to building the frame.
+2. **Nullable integers straight into floats.** An integer column whose
+   footer shows nulls is decoded into float32 or float64 with NaN, as
+   `read_dta` returns it, instead of into integers and codes that were
+   then widened (69 ms of that read, and its peak memory). It becomes
+   integers again only if the rows read hold no null.
+3. **The footer of a wide file.** Opening a file matched `ARROW:schema`
+   fields and profile entries to columns one search at a time, quadratic
+   in the columns: 15 ms of the 16 ms open of a 5,000-column file, now
+   2.6 ms (`crates/parquet`, so R gains too). Only the selected columns'
+   profile entries reach Python, and the value labels are built as Python
+   dictionaries in Rust.
+4. **Writes from blocks.** Each column's values come from the frame's
+   blocks without a Series per column, and storage types are checked in
+   one native call: NSFG 2006-2010 FemResp wrote in 240 ms, then 165.
+5. **Windows on threads.** A read's thread count comes from its work,
+   which counted a chunk read in part by the rows wanted; a window still
+   decompresses whole pages. Counted as at least a page per chunk, a
+   1,000-row window of the wide.dta file pyarrow wrote (400 columns, no
+   offset index) uses two threads: 155 ms, then 83 (polars: 94 on
+   sixteen) (`crates/parquet`).
+
+### Method
+
+As for R above: Apple M4 Max, 128 GB, macOS 26.7.1; Python 3.14.7 in a
+fresh virtual environment with the versions above. Every case ran five
+times (three for wide.dta), each in a fresh process under
+`/usr/bin/time -l` with the file in the page cache; medians of the
+task's wall and CPU time, timed inside the process after its imports,
+and of the process's peak RSS. Each library used its default threads
+(pyarrow, pandas, polars and DuckDB sixteen, fastparquet one, ours by
+the rule in [docs/parquet.md](../docs/parquet.md#defaults-and-the-measurements-behind-them)).
+Writes time writing the frame `dta_parser.read_dta` returns; the other
+libraries get it with `StataArray` columns as float64 and no `attrs`,
+which they cannot write. The read and pass is the whole read and one
+loop over every column (sum of the numbers as float64, count of missing
+values, total length of the text), the same loop for every library.
+The machine was shared with the Julia and TypeScript benchmarks, which
+took turns with this one file by file under a common lock; the
+one-minute load average before each run was 9.3 to 16.6 (median 11.0).
+The 1,000-row windows of our reader were measured again after fix 5
+(one turn at the lock for all files), the rest before it; fix 5 changes
+only reads of part of a row group.
+
 ### Julia
 
 Plan 0018's gate for Julia (PR 6): DtaParser's `read_parquet` and
