@@ -677,6 +677,21 @@ impl<S: Source> Reader<S> {
         (sets, warnings)
     }
 
+    /// With `lazy_value_labels`, the profile's text and each unread
+    /// value-label set's name and where its JSON is in that text: for a
+    /// binding that builds its own objects from the JSON, falling back to
+    /// [`Profile::parse_label_set`] for a set it does not take.
+    pub fn label_set_spans(&self) -> (&[u8], &[crate::profile::LabelSpan]) {
+        let text = self
+            .meta
+            .key_value
+            .iter()
+            .find(|kv| kv.key == profile::KEY)
+            .and_then(|kv| kv.value.as_deref())
+            .unwrap_or_default();
+        (text, &self.label_spans)
+    }
+
     /// Warnings from opening the file, about its profile.
     pub fn warnings(&self) -> &[String] {
         &self.warnings
@@ -1358,6 +1373,7 @@ impl Ctx<'_> {
                 .get(&(g, column.leaf))
                 .and_then(Option::as_ref),
             cache: self.cache,
+            raw_levels: false,
         })
     }
 
@@ -1388,7 +1404,8 @@ impl Ctx<'_> {
 /// Decode one task's chunk into its destination.
 fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) -> Result<Done> {
     let column = &ctx.reader_columns[task.column];
-    let chunk = ctx.chunk(task.group, column, task.window.clone())?;
+    let mut chunk = ctx.chunk(task.group, column, task.window.clone())?;
+    chunk.raw_levels = matches!(task.dest, Dest::Arrow(_));
     let rows = (task.window.end - task.window.start) as usize;
     let file_row = chunk.file_row + task.window.start;
     let mut done = Done {

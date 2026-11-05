@@ -708,6 +708,113 @@ pub(crate) fn label_sets<'py>(py: Python<'py>, sets: &[dta::ValueLabelSet]) -> P
     Ok(out)
 }
 
+/// One value-label set's JSON, `[[code, "text"], ...]`, straight into a
+/// dict, for the common case: numbers or `.`/`.a`-`.z` as codes, text
+/// without escapes, no code twice. `None` for anything else, which the
+/// core's parser then reads (and warns about, as it would have).
+fn fast_set<'py>(py: Python<'py>, json: &[u8]) -> PyResult<Option<Bound<'py, PyDict>>> {
+    const EXACT: f64 = 9_007_199_254_740_992.0;
+    let out = PyDict::new(py);
+    let mut at = 0usize;
+    let ws = |at: &mut usize| {
+        while json.get(*at).is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r')) {
+            *at += 1;
+        }
+    };
+    let eat = |at: &mut usize, c: u8| -> bool {
+        ws(at);
+        if json.get(*at) == Some(&c) {
+            *at += 1;
+            true
+        } else {
+            false
+        }
+    };
+    // A string without escapes or control characters, as its text.
+    let string = |at: &mut usize| -> Option<&str> {
+        if !eat(at, b'"') {
+            return None;
+        }
+        let start = *at;
+        let n = json[start..].iter().position(|&b| b == b'"' || b == b'\\' || b < 0x20)?;
+        if json[start + n] != b'"' {
+            return None;
+        }
+        *at = start + n + 1;
+        std::str::from_utf8(&json[start..start + n]).ok()
+    };
+    if !eat(&mut at, b'[') {
+        return Ok(None);
+    }
+    let mut pairs = 0usize;
+    if !eat(&mut at, b']') {
+        loop {
+            if !eat(&mut at, b'[') {
+                return Ok(None);
+            }
+            ws(&mut at);
+            let key: Bound<'py, PyAny> = if json.get(at) == Some(&b'"') {
+                let Some(code) = string(&mut at) else { return Ok(None) };
+                if dta::missing::from_name(code).is_none() {
+                    return Ok(None);
+                }
+                PyString::new(py, code).into_any()
+            } else {
+                let start = at;
+                while json.get(at).is_some_and(|b| matches!(b, b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9')) {
+                    at += 1;
+                }
+                let text = std::str::from_utf8(&json[start..at]).unwrap_or("");
+                match text.parse::<i64>() {
+                    Ok(v) if v.unsigned_abs() < 9_000_000_000_000_000 => v.into_pyobject(py)?.into_any(),
+                    _ => match text.parse::<f64>() {
+                        Ok(v) if v.is_finite() && !(v.fract() == 0.0 && v.abs() > EXACT) => label_key(py, v, 0)?,
+                        _ => return Ok(None),
+                    },
+                }
+            };
+            if !eat(&mut at, b',') {
+                return Ok(None);
+            }
+            let Some(text) = string(&mut at) else { return Ok(None) };
+            if !eat(&mut at, b']') {
+                return Ok(None);
+            }
+            out.set_item(key, text)?;
+            pairs += 1;
+            if eat(&mut at, b']') {
+                break;
+            }
+            if !eat(&mut at, b',') {
+                return Ok(None);
+            }
+        }
+    }
+    ws(&mut at);
+    Ok((at == json.len() && out.len() == pairs).then_some(out))
+}
+
+/// The profile's value-label sets as {name: {code: text}}, and a warning
+/// for each set dropped: built from the profile's JSON where
+/// [`fast_set`] takes a set, through the core's parser otherwise.
+fn profile_label_sets<'py>(py: Python<'py>, r: &dyn Access) -> PyResult<(Bound<'py, PyDict>, Vec<String>)> {
+    let read: Vec<dta::ValueLabelSet> = r.profile().map_or_else(Vec::new, |p| p.value_labels.clone());
+    let out = label_sets(py, &read)?;
+    let mut warnings = Vec::new();
+    let (text, spans) = r.label_set_spans();
+    for (name, span) in spans {
+        if let Some(d) = text.get(span.clone()).map(|j| fast_set(py, j)).transpose()?.flatten() {
+            out.set_item(name, d)?;
+            continue;
+        }
+        match dta_parquet::Profile::parse_label_set(text, name, span.clone()) {
+            Ok(set) => out.set_item(name, label_sets(py, std::slice::from_ref(&set))?.get_item(name)?)?,
+            Err(w) => warnings.push(w),
+        }
+    }
+    Ok((out, warnings))
+}
+
 /// What `Meta` is made from: rows, names, columns [(name, label, format,
 /// value_labels, ordered, storage, flag, eligible)], value_labels, label,
 /// notes, characteristics {variable: {name: text}}, sort, timestamp and
@@ -734,8 +841,8 @@ fn meta_dict<'py>(py: Python<'py>, r: &dyn Access, cols: &[Col], names: &[&str],
         ))?;
     }
     out.set_item("columns", list)?;
-    let (sets, mut warnings) = r.value_label_sets();
-    out.set_item("value_labels", label_sets(py, &sets)?)?;
+    let (sets, mut warnings) = profile_label_sets(py, r)?;
+    out.set_item("value_labels", sets)?;
     out.set_item("label", p.and_then(|p| p.label.as_deref()))?;
     out.set_item("notes", p.map_or(&[][..], |p| p.notes.as_slice()))?;
     let chars = PyDict::new(py);

@@ -96,7 +96,7 @@ pub const WRITE_BYTES_PER_THREAD: u64 = 256 << 20;
 /// The most write threads: wide.dta passed at six and failed at eight.
 pub const WRITE_THREADS_MOST: usize = 6;
 pub use decode::TextChunk;
-pub use profile::{Categorical, ColumnProfile, Logical, Profile, Storage};
+pub use profile::{Categorical, ColumnProfile, LabelSpan, Logical, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};
 pub use schema::{ColumnInfo, ColumnType, LevelsFrom, Role};
 pub use tagged::{tagged_code, tagged_nan, NA_BITS};

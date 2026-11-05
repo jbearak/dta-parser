@@ -173,7 +173,7 @@ pub(crate) trait Access: Send {
     fn row_groups(&self) -> Vec<dta_parquet::RowGroupInfo>;
     fn codecs(&self) -> Vec<dta_parquet::format::Codec>;
     fn created_by(&self) -> Option<&str>;
-    fn value_label_sets(&self) -> (Vec<ValueLabelSet>, Vec<String>);
+    fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]);
     fn read(
         &mut self,
         columns: &[usize],
@@ -212,8 +212,8 @@ impl<S: Source + Send> Access for Reader<S> {
     fn created_by(&self) -> Option<&str> {
         Reader::created_by(self)
     }
-    fn value_label_sets(&self) -> (Vec<ValueLabelSet>, Vec<String>) {
-        Reader::value_label_sets(self)
+    fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]) {
+        Reader::label_set_spans(self)
     }
     fn read(
         &mut self,

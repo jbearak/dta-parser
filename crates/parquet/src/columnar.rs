@@ -289,13 +289,47 @@ fn merge(dst: &[AtomicU8], at: usize, src: &[u8], n: usize) {
     }
 }
 
-/// Set a page's rows' validity bits.
+/// Set a page's rows' validity bits, decoding its levels when they come
+/// undecoded; returns the page's values before its wanted rows and up to
+/// their end.
 #[inline]
-fn page_bits(bits: &mut [u8], page: &DataPage) {
-    match page.levels {
-        None => set_range(bits, page.out_at, page.take.len()),
-        Some(l) => pack_into(bits, page.out_at, l),
+fn page_levels(bits: &mut [u8], page: &DataPage) -> Result<(usize, usize)> {
+    match (page.raw_levels, page.levels) {
+        (Some(raw), _) => {
+            let (before, ones) = crate::rle::levels_bits(raw, page.take.clone(), bits, page.out_at)?;
+            Ok((before, before + ones))
+        }
+        (None, Some(l)) => {
+            pack_into(bits, page.out_at, l);
+            Ok((page.before, page.present))
+        }
+        (None, None) => {
+            set_range(bits, page.out_at, page.take.len());
+            Ok((page.before, page.present))
+        }
     }
+}
+
+/// Bits `start..start + len` (at most 64) of `bits`, the first lowest.
+#[inline]
+fn bits_at(bits: &[u8], start: usize, len: usize) -> u64 {
+    let mut b = [0u8; 16];
+    let from = start / 8;
+    let n = (bits.len() - from).min(9);
+    b[..n].copy_from_slice(&bits[from..from + n]);
+    let w = u128::from_le_bytes(b) >> (start % 8);
+    let w = w as u64;
+    if len >= 64 {
+        w
+    } else {
+        w & ((1u64 << len) - 1)
+    }
+}
+
+/// Whether row `r` has a value.
+#[inline]
+fn valid_at(bits: &[u8], r: usize) -> bool {
+    (bits[r / 8] >> (r % 8)) & 1 == 1
 }
 
 // ---- filling a page's rows ----
@@ -305,28 +339,40 @@ const BATCH: usize = 1024;
 /// Fill a page's rows `out` with its values, taken in order by `next`,
 /// which writes the next `dst.len()` present values into `dst` and
 /// returns false if one needs the slow path (a letter, or a value the
-/// output type cannot hold). Rows without a value are left as they are.
+/// output type cannot hold). Which rows have a value is in `bits` from
+/// bit `at`; `dense` says every row has. Rows without a value are left
+/// as they are.
 #[inline]
 fn scatter<T: Copy + Default>(
     out: &mut [T],
-    levels: Option<&[u8]>,
+    bits: &[u8],
+    at: usize,
+    dense: bool,
     tmp: &mut Vec<T>,
     mut next: impl FnMut(&mut [T]) -> Result<bool>,
 ) -> Result<bool> {
-    let Some(levels) = levels else {
+    if dense {
         for block in out.chunks_mut(BATCH) {
             if !next(block)? {
                 return Ok(false);
             }
         }
         return Ok(true);
-    };
-    for (block, lv) in out.chunks_mut(BATCH).zip(levels.chunks(BATCH)) {
-        let present: usize = lv.iter().map(|&l| usize::from(l)).sum();
+    }
+    for (b, block) in out.chunks_mut(BATCH).enumerate() {
+        let first = at + b * BATCH;
+        let n = block.len();
+        let mut present = 0usize;
+        let mut k = 0;
+        while k < n {
+            let len = (n - k).min(64);
+            present += bits_at(bits, first + k, len).count_ones() as usize;
+            k += len;
+        }
         if present == 0 {
             continue;
         }
-        if present == block.len() {
+        if present == n {
             if !next(block)? {
                 return Ok(false);
             }
@@ -339,26 +385,21 @@ fn scatter<T: Copy + Default>(
         }
         let mut j = 0;
         let mut k = 0;
-        while k + 8 <= block.len() {
-            let w = u64::from_le_bytes(lv[k..k + 8].try_into().expect("8 bytes"));
-            if w == 0x0101_0101_0101_0101 {
-                block[k..k + 8].copy_from_slice(&tmp[j..j + 8]);
-                j += 8;
-            } else if w != 0 {
-                for t in k..k + 8 {
-                    if lv[t] != 0 {
-                        block[t] = tmp[j];
-                        j += 1;
-                    }
+        while k < n {
+            let len = (n - k).min(64);
+            let mut w = bits_at(bits, first + k, len);
+            if w == u64::MAX {
+                block[k..k + 64].copy_from_slice(&tmp[j..j + 64]);
+                j += 64;
+            } else {
+                while w != 0 {
+                    let t = w.trailing_zeros() as usize;
+                    block[k + t] = tmp[j];
+                    j += 1;
+                    w &= w - 1;
                 }
             }
-            k += 8;
-        }
-        for t in k..block.len() {
-            if lv[t] != 0 {
-                block[t] = tmp[j];
-                j += 1;
-            }
+            k += len;
         }
     }
     Ok(true)
@@ -396,14 +437,14 @@ fn gather<T: Copy>(h: &mut Hybrid, dict: &[T], dst: &mut [T], idx: &mut Vec<u32>
     Ok(())
 }
 
-/// The dictionary indices of a page, at its wanted values.
-fn indices<'p>(page: &DataPage<'p>) -> Result<Hybrid<'p>> {
+/// The dictionary indices of a page, from its value `before`.
+fn indices<'p>(page: &DataPage<'p>, before: usize) -> Result<Hybrid<'p>> {
     let width = *page
         .values
         .first()
         .ok_or_else(|| Error::new("a dictionary-encoded page has no bit width"))?;
     let mut h = Hybrid::new(&page.values[1..], width)?;
-    h.skip(page.before)?;
+    h.skip(before)?;
     Ok(h)
 }
 
@@ -451,13 +492,14 @@ struct State {
 fn slow<P: Physical, T: Element + Default>(
     out: &mut [T],
     page: &DataPage,
+    before: usize,
     st: &mut State,
     mut value: impl FnMut(usize) -> P,
 ) -> Result<()> {
     let at = page.out_at;
-    let mut vi = page.before;
+    let mut vi = before;
     for (k, o) in out.iter_mut().enumerate() {
-        if page.levels.is_some_and(|l| l[k] == 0) {
+        if !valid_at(&st.bits, at + k) {
             continue;
         }
         let p = value(vi);
@@ -511,65 +553,69 @@ impl<P: Physical, T: Element + Default> Consumer for Num<'_, P, T> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, _: &mut Vec<u8>) -> Result<()> {
-        page_bits(&mut self.st.bits, page);
+        let (before, present) = page_levels(&mut self.st.bits, page)?;
+        if present == before {
+            return Ok(());
+        }
         let n = page.take.len();
-        let out = &mut self.out[page.out_at..page.out_at + n];
+        let at = page.out_at;
+        let dense = present - before == n;
+        let out = &mut self.out[at..at + n];
         match page.encoding {
             Encoding::Plain => {
-                let need = page.present.saturating_mul(P::WIDTH);
+                let need = present.saturating_mul(P::WIDTH);
                 let bytes = page
                     .values
                     .get(..need)
                     .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
-                let mut at = page.before * P::WIDTH;
-                let fast = scatter(out, page.levels, &mut self.tmp, |dst| {
-                    let end = at + dst.len() * P::WIDTH;
-                    let ok = convert::<P, T>(&bytes[at..end], dst);
-                    at = end;
+                let mut from = before * P::WIDTH;
+                let fast = scatter(out, &self.st.bits, at, dense, &mut self.tmp, |dst| {
+                    let end = from + dst.len() * P::WIDTH;
+                    let ok = convert::<P, T>(&bytes[from..end], dst);
+                    from = end;
                     Ok(ok)
                 })?;
                 if !fast {
-                    slow(out, page, self.st, |i| P::from_le(&bytes[i * P::WIDTH..]))?;
+                    slow(out, page, before, self.st, |i| P::from_le(&bytes[i * P::WIDTH..]))?;
                 }
                 Ok(())
             }
             Encoding::PlainDictionary | Encoding::RleDictionary => {
                 if self.dict_clean {
-                    let mut h = indices(page)?;
+                    let mut h = indices(page, before)?;
                     let (dict, idx) = (&self.dict_t, &mut self.idx);
-                    scatter(out, page.levels, &mut self.tmp, |dst| gather(&mut h, dict, dst, idx).map(|()| true))?;
+                    scatter(out, &self.st.bits, at, dense, &mut self.tmp, |dst| gather(&mut h, dict, dst, idx).map(|()| true))?;
                     return Ok(());
                 }
                 // Letters (or values the output cannot hold) in the
                 // dictionary: a row at a time, which says which rows.
-                let mut h = indices(page)?;
+                let mut h = indices(page, before)?;
                 self.idx.clear();
-                self.idx.resize(page.present - page.before, 0);
+                self.idx.resize(present - before, 0);
                 h.next(&mut self.idx)?;
                 if self.idx.iter().any(|&i| i as usize >= self.dict.len()) {
                     return Err(Error::new("a dictionary index is past the end of the dictionary"));
                 }
-                let (dict, idx, before) = (&self.dict, &self.idx, page.before);
-                slow(out, page, self.st, |i| dict[idx[i - before] as usize])
+                let (dict, idx) = (&self.dict, &self.idx);
+                slow(out, page, before, self.st, |i| dict[idx[i - before] as usize])
             }
             Encoding::DeltaBinaryPacked if P::from_bits(0).is_some() => {
                 let mut buf = std::mem::take(&mut self.decoded);
                 buf.clear();
-                buf.resize(page.present - page.before, 0);
-                let before = page.before;
+                buf.resize(present - before, 0);
                 let result = encoding::delta_values(page.values, before, &mut buf).and_then(|()| {
-                    slow(out, page, self.st, |i| P::from_bits(buf[i - before]).expect("an integer type"))
+                    slow(out, page, before, self.st, |i| P::from_bits(buf[i - before]).expect("an integer type"))
                 });
                 self.decoded = buf;
                 result
             }
             Encoding::ByteStreamSplit => {
                 let count = encoding::split_count(page.values, P::WIDTH)?;
-                if count < page.present {
+                if count < present {
                     return Err(Error::new("a page holds fewer values than its levels say"));
                 }
                 let values = page.values;
-                slow(out, page, self.st, |i| {
+                slow(out, page, before, self.st, |i| {
                     let mut b = [0u8; 16];
                     encoding::split_value(values, count, i, &mut b[..P::WIDTH]);
                     P::from_le(&b)
@@ -592,12 +638,11 @@ impl<T: Element + Default> Consumer for Bools<'_, T> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, bools: &mut Vec<u8>) -> Result<()> {
-        page_bits(&mut self.st.bits, page);
-        decode::booleans(page, bools)?;
-        let before = page.before;
+        let (before, present) = page_levels(&mut self.st.bits, page)?;
+        decode::booleans(page, before, present, bools)?;
         let out = &mut self.out[page.out_at..page.out_at + page.take.len()];
         let bools = &*bools;
-        slow(out, page, self.st, |i| i32::from(bools[i - before]))
+        slow(out, page, before, self.st, |i| i32::from(bools[i - before]))
     }
 }
 
@@ -754,23 +799,28 @@ impl Consumer for Views<'_> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, scratch: &mut Vec<u8>) -> Result<()> {
-        page_bits(&mut self.st.bits, page);
+        let (before, count) = page_levels(&mut self.st.bits, page)?;
+        if count == before {
+            return Ok(());
+        }
         let n = page.take.len();
         let at = page.out_at;
+        let dense = count - before == n;
         let mut present = std::mem::take(&mut self.tmp);
         present.clear();
         let result = match page.encoding {
             Encoding::PlainDictionary | Encoding::RleDictionary => {
-                let mut h = indices(page)?;
+                let mut h = indices(page, before)?;
                 let (dict, idx) = (&self.dict, &mut self.idx);
                 let out = &mut self.out[at..at + n];
-                return scatter(out, page.levels, &mut present, |dst| gather(&mut h, dict, dst, idx).map(|()| true))
-                    .map(|_| self.tmp = present);
+                let r = scatter(out, &self.st.bits, at, dense, &mut present, |dst| gather(&mut h, dict, dst, idx).map(|()| true));
+                self.tmp = present;
+                return r.map(|_| ());
             }
-            Encoding::Plain => self.plain(page.values, page.before, page.present, &mut present),
+            Encoding::Plain => self.plain(page.values, before, count, &mut present),
             Encoding::DeltaLengthByteArray if self.fixed.is_none() => {
                 let mut vals = Vec::new();
-                let r = encoding::delta_length_byte_array(page.values, page.before, page.present - page.before, |v| {
+                let r = encoding::delta_length_byte_array(page.values, before, count - before, |v| {
                     vals.push(self.view(v)?);
                     Ok(())
                 });
@@ -779,7 +829,7 @@ impl Consumer for Views<'_> {
             }
             Encoding::DeltaByteArray => {
                 let mut vals = Vec::new();
-                let r = encoding::delta_byte_array(page.values, page.before, page.present - page.before, scratch, |v| {
+                let r = encoding::delta_byte_array(page.values, before, count - before, scratch, |v| {
                     vals.push(self.view(v)?);
                     Ok(())
                 });
@@ -788,14 +838,14 @@ impl Consumer for Views<'_> {
             }
             Encoding::ByteStreamSplit if self.fixed.is_some() => {
                 let w = self.fixed.expect("fixed");
-                let count = encoding::split_count(page.values, w)?;
-                if count < page.present {
+                let stored = encoding::split_count(page.values, w)?;
+                if stored < count {
                     return Err(Error::new("a page holds fewer values than its levels say"));
                 }
                 let mut b = vec![0u8; w];
                 let mut r = Ok(());
-                for i in page.before..page.present {
-                    encoding::split_value(page.values, count, i, &mut b);
+                for i in before..count {
+                    encoding::split_value(page.values, stored, i, &mut b);
                     match self.view(&b) {
                         Ok(v) => present.push(v),
                         Err(e) => {
@@ -809,13 +859,13 @@ impl Consumer for Views<'_> {
             other => Err(decode::unsupported_encoding(other)),
         };
         result?;
-        if present.len() != page.present - page.before {
+        if present.len() != count - before {
             return Err(Error::new("a page holds fewer values than its levels say"));
         }
         let out = &mut self.out[at..at + n];
         let mut from = 0;
         let mut tmp = Vec::new();
-        scatter(out, page.levels, &mut tmp, |dst| {
+        scatter(out, &self.st.bits, at, dense, &mut tmp, |dst| {
             dst.copy_from_slice(&present[from..from + dst.len()]);
             from += dst.len();
             Ok(true)
@@ -892,9 +942,13 @@ impl Consumer for Keys<'_> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, _: &mut Vec<u8>) -> Result<()> {
-        page_bits(&mut self.st.bits, page);
+        let (before, count) = page_levels(&mut self.st.bits, page)?;
+        if count == before {
+            return Ok(());
+        }
         let n = page.take.len();
         let at = page.out_at;
+        let dense = count - before == n;
         // The page's present values as level codes, or for each value
         // not a level, its dictionary entry or its text.
         let mut codes = std::mem::take(&mut self.tmp);
@@ -902,8 +956,8 @@ impl Consumer for Keys<'_> {
         let mut bad: Option<Vec<u8>> = None;
         match page.encoding {
             Encoding::PlainDictionary | Encoding::RleDictionary => {
-                let mut h = indices(page)?;
-                codes.resize(page.present - page.before, 0);
+                let mut h = indices(page, before)?;
+                codes.resize(count - before, 0);
                 // Entries, then codes: the entry of a value not a level is
                 // needed for its message.
                 h.next(&mut codes)?;
@@ -921,8 +975,8 @@ impl Consumer for Keys<'_> {
             Encoding::Plain => {
                 let mut i = 0;
                 let levels = self.levels;
-                byte_arrays(page.values, page.present, |v| {
-                    if i >= page.before {
+                byte_arrays(page.values, count, |v| {
+                    if i >= before {
                         let k = levels.get(v).map_or(UNKNOWN, |&c| c as u32);
                         if k == UNKNOWN && bad.is_none() {
                             bad = Some(v.to_vec());
@@ -938,13 +992,13 @@ impl Consumer for Keys<'_> {
         let out = &mut self.out[at..at + n];
         let mut from = 0;
         let mut tmp = Vec::new();
-        scatter(out, page.levels, &mut tmp, |dst| {
+        scatter(out, &self.st.bits, at, dense, &mut tmp, |dst| {
             dst.copy_from_slice(&codes[from..from + dst.len()]);
             from += dst.len();
             Ok(true)
         })?;
         if let Some(value) = bad {
-            let k = (0..n).find(|&k| out[k] == UNKNOWN && page.levels.is_none_or(|l| l[k] != 0)).unwrap_or(0);
+            let k = (0..n).find(|&k| out[k] == UNKNOWN && valid_at(&self.st.bits, at + k)).unwrap_or(0);
             return Err(self.not_a_level(&value, at + k));
         }
         self.tmp = codes;
