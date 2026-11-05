@@ -133,6 +133,20 @@ those tools:
   tools see its categoricals with no levels. Ours read them from the
   profile.
 
+### hyparquet reads the npm package's files
+
+    node compat/parquet/readback.mjs bench/node/node_modules
+
+writes, with the npm package's `writeParquet`, a table of every type it
+writes (byte, int, long, float, double with NaN, `.a` to `.z`, int64
+past 2^53, bool, date, zoned and local timestamps, text, binary and an
+ordered categorical with an unused level), with nulls, in every codec,
+in small row groups, and with `missingLetters: false`; hyparquet 1.32.0
+with hyparquet-compressors 1.1.3 (`bench/node`) reads each file and
+every value is checked against what was written, by hyparquet's own
+rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
+`.a` to `.z` as NaN). Result: 315,000 values checked, none differ.
+
 ## Credits
 
 The fixtures were written with, and the expected values read by, these
@@ -147,6 +161,9 @@ open-source projects:
 - [Parquet2.jl](https://gitlab.com/ExpandingMan/Parquet2.jl), MIT, with
   [DecFP.jl](https://github.com/JuliaMath/DecFP.jl), BSD-2-Clause, for its
   decimals
-- [hyparquet-writer](https://github.com/hyparam/hyparquet-writer), MIT
+- [hyparquet-writer](https://github.com/hyparam/hyparquet-writer), MIT,
+  and [hyparquet](https://github.com/hyparam/hyparquet) and
+  [hyparquet-compressors](https://github.com/hyparam/hyparquet-compressors),
+  MIT, for the npm package's readback
 - [pandas](https://pandas.pydata.org/), BSD-3-Clause, for the readback
 - [haven](https://haven.tidyverse.org/), MIT, for the readback's tagged NAs
