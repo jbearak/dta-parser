@@ -10,11 +10,15 @@ const encoder = new TextEncoder();
  * array per string cost about 100 bytes each, gigabytes for 10M strings.
  */
 export function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uint8Array; ends: Uint32Array } {
-  const n = texts.length;
+  return packTextsBy(texts.length, (i) => texts[i]);
+}
+
+/** `packTexts` of the `n` values `get` gives, so a caller need not copy a column into an array first. */
+export function packTextsBy(n: number, get: (i: number) => string | Uint8Array): { bytes: Uint8Array; ends: Uint32Array } {
   let size = 64;
   let strings = true;
   for (let i = 0; i < n; i++) {
-    const t = texts[i];
+    const t = get(i);
     size += t.length;
     if (typeof t !== "string") strings = false;
   }
@@ -30,7 +34,7 @@ export function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uin
   /** Rows `from` to `to` one at a time. */
   const each = (from: number, to: number) => {
     for (let i = from; i < to; i++) {
-      const t = texts[i];
+      const t = get(i);
       if (typeof t === "string") {
         // ASCII is copied a unit at a time, which is faster than a call
         // to the encoder per string; anything else goes to the encoder.
@@ -66,13 +70,15 @@ export function packTexts(texts: readonly (string | Uint8Array)[]): { bytes: Uin
   // string at a time.
   for (let from = 0; from < n; from += JOIN_ROWS) {
     const to = Math.min(n, from + JOIN_ROWS);
-    const block = (texts as readonly string[]).slice(from, to).join("");
+    const part = new Array<string>(to - from);
+    for (let i = from; i < to; i++) part[i - from] = get(i) as string;
+    const block = part.join("");
     const start = at;
     room(block.length);
     const done = encoder.encodeInto(block, bytes.subarray(at));
     if (done.read === block.length && done.written === block.length) {
       for (let i = from; i < to; i++) {
-        at += texts[i].length;
+        at += part[i - from].length;
         ends[i] = at;
       }
     } else {

@@ -6,7 +6,7 @@ import * as wasm from "./wasm";
 import type { ReadAt } from "./wasm";
 import { dtaError, isAllocationFailure } from "./errors";
 import { MISSING, missingValue, type ValueLabels } from "./values";
-import { packNumbers, packTexts } from "./shared";
+import { packNumbers, packTexts, packTextsBy } from "./shared";
 import type {
   AsyncTableReader,
   BigIntColumn,
@@ -1024,6 +1024,53 @@ function rowsOf(v: WriteVariable): number {
 }
 
 /** One variable as the module takes it. */
+/** Rows sampled, spread over the column, to judge whether its text repeats. */
+const CODE_PROBE = 4096;
+
+/**
+ * A text column as its distinct values and a code per row (-1 for a
+ * null), when values repeat: far less to copy into the module than the
+ * text of every row. Undefined when a sample of rows spread over the
+ * column is mostly distinct, or once the distinct values pass an eighth
+ * of the rows.
+ */
+function textCodes(values: readonly (string | Uint8Array | null)[], missing: Uint8Array | undefined): { bytes: Uint8Array; ends: Uint32Array; codes: Int32Array } | undefined {
+  const rows = values.length;
+  if (rows > 2 * CODE_PROBE) {
+    const sample = new Set<string>();
+    const step = rows / CODE_PROBE;
+    let looked = 0;
+    for (let j = 0; j < CODE_PROBE; j++) {
+      const i = Math.floor(j * step);
+      const x = values[i];
+      if (x === null || missing?.[i]) continue;
+      sample.add(x as string);
+      looked++;
+    }
+    if (sample.size > looked / 2) return undefined;
+  }
+  const most = Math.max(256, rows >>> 3);
+  const seen = new Map<string, number>();
+  const distinct: string[] = [];
+  const codes = new Int32Array(rows);
+  for (let i = 0; i < rows; i++) {
+    const x = values[i];
+    if (x === null || missing?.[i]) {
+      codes[i] = -1;
+      continue;
+    }
+    let k = seen.get(x as string);
+    if (k === undefined) {
+      k = distinct.length;
+      if (k >= most) return undefined;
+      seen.set(x as string, k);
+      distinct.push(x as string);
+    }
+    codes[i] = k;
+  }
+  return { ...packTexts(distinct), codes };
+}
+
 function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
   const fail = (why: string): never => {
     throw dtaError("DTA_INVALID", `${v.name}: ${why}`, undefined, TypeError);
@@ -1093,21 +1140,28 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
   const texts = (values: readonly (string | Uint8Array | null)[], missing?: Uint8Array): wasm.ParquetPart => {
     length(values.length);
     if (type !== undefined && !TEXT_TYPES.has(type) && !/^str/.test(type)) fail(`text cannot be written as ${JSON.stringify(type)}`);
-    const flags = new Uint8Array(rows);
     let binary = type === "binary";
-    const plain: (string | Uint8Array)[] = new Array(rows);
     for (let i = 0; i < rows; i++) {
+      const x = values[i];
+      if (x === null || missing?.[i] || typeof x === "string") continue;
+      if (x instanceof Uint8Array) binary = true;
+      else fail(`row ${i} holds ${typeof x}, among strings`);
+    }
+    if (!binary) {
+      const coded = textCodes(values, missing);
+      if (coded) return { kind: "textCodes", meta, ...coded };
+    }
+    const flags = new Uint8Array(rows);
+    // Packed from the column itself, a missing row as "".
+    const packed = packTextsBy(rows, (i) => {
       const x = values[i];
       if (x === null || missing?.[i]) {
         flags[i] = 1;
-        plain[i] = "";
-      } else if (typeof x === "string") plain[i] = x;
-      else if (x instanceof Uint8Array) {
-        binary = true;
-        plain[i] = x;
-      } else fail(`row ${i} holds ${typeof x}, among strings`);
-    }
-    return { kind: "texts", meta, binary, ...packTexts(plain), missing: flags };
+        return "";
+      }
+      return x;
+    });
+    return { kind: "texts", meta, binary, ...packed, missing: flags };
   };
   const categorical = (codes: Int32Array, levels: readonly string[]): wasm.ParquetPart => {
     const packed = packTexts(levels);
@@ -1153,7 +1207,16 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
         for (let i = 0; i < rows; i++) codes[i] = c.missing?.[i] ? -1 : c.codes[i];
         return categorical(codes, c.values);
       }
-      return texts(Array.from(c.codes, (k, i) => (c.missing?.[i] ? null : c.values[k])));
+      if (type !== undefined && !TEXT_TYPES.has(type) && !/^str/.test(type)) fail(`text cannot be written as ${JSON.stringify(type)}`);
+      // Already codes and distinct values: handed over as they are.
+      const codes = new Int32Array(rows);
+      for (let i = 0; i < rows; i++) {
+        const k = c.codes[i];
+        if (c.missing?.[i]) codes[i] = -1;
+        else if (k >= c.values.length) fail(`row ${i} has code ${k}, but there are ${c.values.length} values`);
+        else codes[i] = k;
+      }
+      return { kind: "textCodes", meta, ...packTexts(c.values), codes };
     }
     default:
       return fail("values of an unknown kind");
@@ -1169,7 +1232,9 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
  */
 export function writeParquetTo(data: WriteDataset, sink: (bytes: Uint8Array) => void, options: ParquetWriteOptions = {}): void {
   const rows = data.variables.length ? rowsOf(data.variables[0]) : 0;
-  const parts: wasm.ParquetPart[] = data.variables.map((v) => partOf(v, rows));
+  // Each variable's part is made as it is handed to the module, so only
+  // one column's packed text is held at a time.
+  const parts: (wasm.ParquetPart | (() => wasm.ParquetPart))[] = data.variables.map((v) => () => partOf(v, rows));
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
     nul(name, "a value label set name");
     const keys = [...labels.keys()];

@@ -77,6 +77,7 @@ interface Exports {
   pq_write_numbers(meta: number, metaLen: number, kind: number, unit: number, id: number, letters: number): number;
   pq_write_bigints(meta: number, metaLen: number, kind: number, unit: number, values: number, codes: number): number;
   pq_write_texts(meta: number, metaLen: number, binary: number, bytes: number, bytesLen: number, ends: number, missing: number): number;
+  pq_write_text_codes(meta: number, metaLen: number, bytes: number, bytesLen: number, ends: number, nvalues: number, codes: number, codesLen: number): number;
   pq_write_categorical(
     meta: number,
     metaLen: number,
@@ -618,6 +619,8 @@ export type ParquetPart =
   | { kind: "numbers"; meta: string; type: number; unit: number; values: Float64Array; missing: Uint8Array }
   | { kind: "bigints"; meta: string; type: number; unit: number; values: BigInt64Array; missing: Uint8Array }
   | { kind: "texts"; meta: string; binary: boolean; bytes: Uint8Array; ends: Uint32Array; missing: Uint8Array }
+  // Distinct values (bytes end to end, and their ends) and a code per row, -1 for a null.
+  | { kind: "textCodes"; meta: string; bytes: Uint8Array; ends: Uint32Array; codes: Int32Array }
   | { kind: "categorical"; meta: string; ordered: boolean; codes: Int32Array; levels: Uint8Array; ends: Uint32Array }
   | { kind: "labels"; name: string; values: Float64Array; missing: Uint8Array; texts: Uint8Array; ends: Uint32Array }
   | { kind: "characteristics"; text: string }
@@ -651,7 +654,7 @@ function lettersIn(missing: Uint8Array, kind: number): number {
 
 export function pqWrite(
   rows: number,
-  parts: ParquetPart[],
+  parts: (ParquetPart | (() => ParquetPart))[],
   info: string[],
   options: { compression: string; level: number; rowGroupRows: number; missingLetters: boolean },
   sink: (bytes: Uint8Array) => void,
@@ -670,13 +673,16 @@ export function pqWrite(
 
 function pqWriteParts(
   rows: number,
-  parts: ParquetPart[],
+  parts: (ParquetPart | (() => ParquetPart))[],
   info: string[],
   options: { compression: string; level: number; rowGroupRows: number; missingLetters: boolean },
   sink: (bytes: Uint8Array) => void,
 ): void {
   wasm.pq_write_begin(rows);
-  for (const part of parts) {
+  // A part given as a function is made only now, just before it goes
+  // into the module, so a table's text is not all packed at once.
+  for (const made of parts) {
+    const part = typeof made === "function" ? made() : made;
     const owned: [number, number][] = [];
     const own = (data: Uint8Array | Float64Array | Uint32Array | Int32Array | BigInt64Array) => {
       const ptr = put(data);
@@ -701,9 +707,23 @@ function pqWriteParts(
         case "bigints":
           ok = wasm.pq_write_bigints(...text(part.meta), part.type, part.unit, own(part.values), own(part.missing));
           break;
-        case "texts":
-          ok = wasm.pq_write_texts(...text(part.meta), part.binary ? 1 : 0, own(part.bytes), part.bytes.length, own(part.ends), own(part.missing));
+        case "texts": {
+          // The bytes are the module's once handed over (it frees them),
+          // so they are put in last, after anything that could fail.
+          const [meta, metaLen] = text(part.meta);
+          const ends = own(part.ends);
+          const missing = own(part.missing);
+          ok = wasm.pq_write_texts(meta, metaLen, part.binary ? 1 : 0, put(part.bytes), part.bytes.length, ends, missing);
           break;
+        }
+        case "textCodes": {
+          const [meta, metaLen] = text(part.meta);
+          const bytes = own(part.bytes);
+          const ends = own(part.ends);
+          // Handed over, as the texts' bytes are.
+          ok = wasm.pq_write_text_codes(meta, metaLen, bytes, part.bytes.length, ends, part.ends.length, put(part.codes), part.codes.byteLength);
+          break;
+        }
         case "categorical":
           ok = wasm.pq_write_categorical(...text(part.meta), part.ordered ? 1 : 0, own(part.codes), own(part.levels), part.levels.length, own(part.ends), part.ends.length);
           break;

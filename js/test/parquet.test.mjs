@@ -258,6 +258,24 @@ test("zstd is libzstd: its levels change the file, and every level reads back", 
   assert.ok(sizes[2] < sizes[0], `level 19 (${sizes[2]} bytes) should be smaller than level 1 (${sizes[0]})`);
 });
 
+test("repeating text and DictionaryColumns go in as codes and come back exactly", () => {
+  // A column of 300 values in scrambled order (the first rows all
+  // differ), nulls and non-ASCII among them; the file is the same as
+  // the one written from plain text.
+  const rows = 20_000;
+  const words = Array.from({ length: 300 }, (_, i) => (i % 7 === 0 ? `résumé ${i}` : `survey ${i} of 300`));
+  const values = Array.from({ length: rows }, (_, i) => (i % 101 === 3 ? null : words[(i * 7919) % 300]));
+  const coded = writeParquet({ variables: [{ name: "s", values }] });
+  const [c] = openParquet(coded).readColumns(["s"]);
+  for (let i = 0; i < rows; i++) {
+    if (Boolean(c.missing[i]) !== (values[i] === null) || (values[i] !== null && c.values[i] !== values[i])) assert.fail(`row ${i}: ${c.values[i]}`);
+  }
+  const dict = { kind: "dictionary", values: words, codes: Uint32Array.from(values, (v) => (v === null ? 0 : words.indexOf(v))), missing: Uint8Array.from(values, (v) => (v === null ? 1 : 0)) };
+  const fromDict = writeParquet({ variables: [{ name: "s", type: "string", values: dict }] });
+  assert.deepEqual(fromDict, coded);
+  assert.throws(() => writeParquet({ variables: [{ name: "s", type: "string", values: { ...dict, codes: Uint32Array.of(0, 300), missing: undefined, values: words } }] }), /code 300/);
+});
+
 test("text is written exactly: short and long, ASCII and not, in blocks of rows", () => {
   // Long strings are encoded a block of 65,536 rows at a time; a block
   // with non-ASCII text, a lone surrogate or a missing value takes the

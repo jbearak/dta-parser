@@ -1226,6 +1226,9 @@ enum WData {
     Hosted(u32),
     BigInts(Vec<i64>, Vec<u8>),
     Texts { bytes: Vec<u8>, ends: Vec<u32>, missing: Vec<u8>, binary: bool },
+    /// Text as its distinct values (bytes end to end, and their ends) and
+    /// a code per row, 4 bytes little-endian, negative for a null.
+    TextCodes { bytes: Vec<u8>, ends: Vec<u32>, codes: Vec<u8> },
     Levels { codes: Vec<i32>, levels: Vec<String>, ordered: bool },
 }
 
@@ -1337,21 +1340,34 @@ pub unsafe extern "C" fn pq_write_bigints(meta: *const u8, meta_len: usize, kind
     })
 }
 
-/// Add a text (or, with `binary`, bytes) column: the values' bytes end
-/// to end, `rows` end offsets, and `rows` null flags.
+/// A buffer JavaScript filled after `dta_alloc(len)`, taken over rather
+/// than copied: the largest a table holds, so one copy fewer in module
+/// memory, which never shrinks.
 ///
 /// # Safety
-/// The pointers hold the stated lengths.
+/// `ptr` and `len` come from one `dta_alloc` call, and JavaScript does not
+/// free it.
+unsafe fn adopt(ptr: *mut u8, len: usize) -> Vec<u8> {
+    Vec::from_raw_parts(ptr, len, len.max(1))
+}
+
+/// Add a text (or, with `binary`, bytes) column: the values' bytes end
+/// to end, `rows` end offsets, and `rows` null flags. Takes `bytes` over
+/// (see `adopt`), whether or not it succeeds.
+///
+/// # Safety
+/// The pointers hold the stated lengths; `bytes` as `adopt` says.
 #[no_mangle]
 pub unsafe extern "C" fn pq_write_texts(
     meta: *const u8,
     meta_len: usize,
     binary: u32,
-    bytes: *const u8,
+    bytes: *mut u8,
     bytes_len: usize,
     ends: *const u32,
     missing: *const u8,
 ) -> u32 {
+    let bytes = adopt(bytes, bytes_len);
     call(0, |_| {
         let meta = copy(meta, meta_len)?;
         WRITE.with(|w| {
@@ -1361,7 +1377,51 @@ pub unsafe extern "C" fn pq_write_texts(
             if ends.iter().any(|&e| e as usize > bytes_len) || ends.windows(2).any(|p| p[0] > p[1]) {
                 return Err("string offsets out of order".into());
             }
-            let data = WData::Texts { bytes: copy(bytes, bytes_len)?, ends, missing: copy(missing, n)?, binary: binary != 0 };
+            let data = WData::Texts { bytes, ends, missing: copy(missing, n)?, binary: binary != 0 };
+            let col = column_meta(&meta, 0, 0, data)?;
+            w.columns.push(col);
+            Ok(1)
+        })
+    })
+}
+
+/// Add a text column given as its `nvalues` distinct values (UTF-8 bytes
+/// end to end, and their end offsets) and a code per row (`rows` i32s,
+/// little-endian, negative for a null), which is far smaller than the
+/// text of every row when values repeat. Takes `codes` over (see
+/// `adopt`; `rows * 4` bytes), whether or not it succeeds.
+///
+/// # Safety
+/// The pointers hold the stated lengths; `codes` as `adopt` says.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pq_write_text_codes(
+    meta: *const u8,
+    meta_len: usize,
+    bytes: *const u8,
+    bytes_len: usize,
+    ends: *const u32,
+    nvalues: usize,
+    codes: *mut u8,
+    codes_len: usize,
+) -> u32 {
+    let codes = adopt(codes, codes_len);
+    call(0, |_| {
+        let meta = copy(meta, meta_len)?;
+        WRITE.with(|w| {
+            let mut w = w.borrow_mut();
+            let n = w.rows;
+            let ends = copy(ends, nvalues)?;
+            if ends.iter().any(|&e| e as usize > bytes_len) || ends.windows(2).any(|p| p[0] > p[1]) {
+                return Err("string offsets out of order".into());
+            }
+            if codes.len() != n.saturating_mul(4) {
+                return Err("a code per row is needed".into());
+            }
+            if let Some(r) = codes.chunks_exact(4).position(|c| i32::from_le_bytes([c[0], c[1], c[2], c[3]]) >= nvalues as i32) {
+                return Err(format!("row {r} has a code past the {nvalues} values").into());
+            }
+            let data = WData::TextCodes { bytes: copy(bytes, bytes_len)?, ends, codes };
             let col = column_meta(&meta, 0, 0, data)?;
             w.columns.push(col);
             Ok(1)
@@ -1706,6 +1766,16 @@ fn table_of(w: &WState, mut profile: Profile) -> Result<Table<'_>, Fail> {
                 } else {
                     Values::Text(get)
                 }
+            }
+            WData::TextCodes { bytes, ends, codes } => {
+                let get: Box<dta_parquet::GetBytes> = Box::new(move |r| {
+                    let at = 4 * r;
+                    let code = i32::from_le_bytes([codes[at], codes[at + 1], codes[at + 2], codes[at + 3]]);
+                    let k = usize::try_from(code).ok()?;
+                    let start = if k == 0 { 0 } else { ends[k - 1] as usize };
+                    Some(&bytes[start..ends[k] as usize])
+                });
+                Values::Text(get)
             }
             WData::Levels { codes, levels, ordered } => {
                 if let Some(r) = codes.iter().position(|&x| x >= 0 && x as usize >= levels.len()) {
