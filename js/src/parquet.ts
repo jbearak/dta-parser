@@ -148,8 +148,12 @@ export interface ParquetVariable extends Variable {
    * appearance.
    */
   categorical?: { levels: string[] | null; ordered: boolean };
-  /** Per row group, the column chunk's sizes, codec and statistics. */
-  chunks: (ColumnChunk | null)[];
+  /**
+   * Per row group, the column chunk's sizes, codec and statistics. Read
+   * from the footer (for every column at once) the first time any
+   * variable's `chunks` is used, which must be before `close()`.
+   */
+  readonly chunks: (ColumnChunk | null)[];
 }
 
 const DEFAULT_CACHE = 8 * 2 ** 20;
@@ -218,6 +222,10 @@ export class ParquetReader implements TableReader {
   private labels?: Map<string, ValueLabels>;
   /** Each variable's column in the file. */
   private readonly core: number[];
+  /** Each variable's text bytes per row group (text columns only), for planning reads. */
+  private readonly textBytes: (number[] | undefined)[];
+  /** Every column's chunks, by column in the file, once read. */
+  private chunkCache?: (ColumnChunk | null)[][];
   private readonly nested: string[];
   /** @internal Where the offset indexes are, for the async reader. */
   readonly _indexSpan: [number, number] | null;
@@ -251,16 +259,22 @@ export class ParquetReader implements TableReader {
       throw e;
     }
     unclosed.register(this, { handle: this.handle, generation: this.generation, read, onClose }, this);
-    const all: ParquetVariable[] = meta.variables.map((v: ParquetVariable & { chunks: (Record<string, unknown> | null)[] }) => {
-      const out: ParquetVariable = { ...v, chunks: v.chunks.map((c) => (c ? Object.freeze({ ...c, min: statistic(c.min as never), max: statistic(c.max as never) }) as ColumnChunk : null)) };
-      if (out.categorical) Object.freeze(out.categorical);
-      return Object.freeze(out);
+    const chunksOf = (k: number) => this.chunksOf(k);
+    const texts: (number[] | undefined)[] = [];
+    const all: ParquetVariable[] = meta.variables.map((v: ParquetVariable & { textBytes?: number[] }, k: number) => {
+      const { textBytes, ...rest } = v;
+      texts.push(textBytes);
+      if (rest.categorical) Object.freeze(rest.categorical);
+      Object.defineProperty(rest, "chunks", { get: () => chunksOf(k), enumerable: true });
+      return Object.freeze(rest as ParquetVariable);
     });
     this.core = [];
+    this.textBytes = [];
     const kept: ParquetVariable[] = [];
     all.forEach((v, k) => {
       if (nestedMode === "skip" && v.role === "nested") return;
       this.core.push(k);
+      this.textBytes.push(texts[k]);
       kept.push(v);
     });
     this.nested = kept.filter((v) => v.role === "nested").map((v) => v.name);
@@ -279,6 +293,17 @@ export class ParquetReader implements TableReader {
       keyValue: meta.keyValue,
       warnings: meta.warnings,
     });
+  }
+
+  /** The chunks of the file's column `k`, all columns' read once. */
+  private chunksOf(k: number): (ColumnChunk | null)[] {
+    if (!this.chunkCache) {
+      const parsed: (Record<string, unknown> | null)[][] = JSON.parse(wasm.pqChunksJson(this.open));
+      this.chunkCache = parsed.map((cs) =>
+        Object.freeze(cs.map((c) => (c ? (Object.freeze({ ...c, min: statistic(c.min as never), max: statistic(c.max as never) }) as ColumnChunk) : null))) as (ColumnChunk | null)[],
+      );
+    }
+    return this.chunkCache[k];
   }
 
   private get open(): number {
@@ -449,9 +474,9 @@ export class ParquetReader implements TableReader {
     const perRow = (k: number, g: number): number => {
       const v = this.variables[idx[k]];
       if (v.columnKind === "string") {
-        const c = v.chunks[g];
+        const bytes = this.textBytes[idx[k]]?.[g];
         const rows = groups[g].rows || 1;
-        return 9 + (c ? c.uncompressedBytes / rows : 64);
+        return 9 + (bytes !== undefined ? bytes / rows : 64);
       }
       return v.columnKind === "dictionary" ? 4 : 9;
     };

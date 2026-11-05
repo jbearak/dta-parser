@@ -68,6 +68,7 @@ interface Exports {
   pq_close(handle: number): void;
   pq_info(handle: number, int64: number): number;
   pq_value_labels(handle: number): number;
+  pq_chunks(handle: number): number;
   pq_characteristics(handle: number): number;
   pq_key_value(handle: number, name: number, len: number): number;
   pq_cache_stats(handle: number): number;
@@ -499,6 +500,10 @@ export function pqClose(handle: number): void {
 
 export function pqInfoJson(handle: number, int64: number): string {
   return guard(() => resultText(wasm.pq_info(handle, int64)));
+}
+
+export function pqChunksJson(handle: number): string {
+  return guard(() => resultText(wasm.pq_chunks(handle)));
 }
 
 export function pqValueLabelsJson(handle: number): string {

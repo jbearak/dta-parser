@@ -586,7 +586,37 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
             o.push_str(if cat.is_some_and(|c| c.ordered) && col.levels == Some(LevelsFrom::Profile) { "true" } else { "false" });
             o.push('}');
         }
-        key(&mut o, "chunks");
+        if matches!(h, How::Text { .. }) {
+            // A text column's size per row group, for JavaScript to keep
+            // each read under its budget without the chunks' details.
+            key(&mut o, "textBytes");
+            o.push('[');
+            for (g, group) in meta.row_groups.iter().enumerate() {
+                if g > 0 {
+                    o.push(',');
+                }
+                let m = group.columns.get(col.leaf()).and_then(|c| c.meta.as_ref());
+                num(&mut o, m.map_or(0, |m| m.total_uncompressed_size.max(0)) as f64);
+            }
+            o.push(']');
+        }
+        o.push('}');
+    }
+    o.push_str("]}");
+    o
+}
+
+/// Per column, its chunks (one per row group: sizes, codec, encodings,
+/// statistics) as a JSON array of arrays; `ParquetVariable.chunks`
+/// reads it the first time it is used.
+fn chunks_json(r: &Reader<HostFile>, how: &[How]) -> String {
+    let meta = r.metadata();
+    let mut o = String::from("[");
+    for (k, col) in r.columns().iter().enumerate() {
+        if k > 0 {
+            o.push(',');
+        }
+        let h = &how[k];
         o.push('[');
         if col.role == Role::Data {
             for (g, group) in meta.row_groups.iter().enumerate() {
@@ -640,9 +670,8 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
             }
         }
         o.push(']');
-        o.push('}');
     }
-    o.push_str("]}");
+    o.push(']');
     o
 }
 
@@ -690,12 +719,25 @@ pub extern "C" fn pq_info(h: u32, int64: u32) -> *const u8 {
             let (_, reasons) = plan_columns(&handle.reader, int64);
             // About what the JSON takes: a few hundred bytes a column and
             // a hundred a column chunk (every row group's statistics).
-            let chunks = handle.reader.columns().len() * handle.reader.row_groups().len().max(1);
-            let estimate = (handle.reader.columns().len() * 400).saturating_add(chunks * 160).saturating_add(64 << 10);
+            let groups = handle.reader.row_groups().len().max(1);
+            let estimate = (handle.reader.columns().len() * (300 + 12 * groups)).saturating_add(64 << 10);
             ensure_room(estimate)?;
             let mut text = String::new();
             text.try_reserve(estimate).map_err(|_| crate::wasm::too_large(estimate))?;
             Ok(info_json(&handle.reader, &handle.how, &reasons, text))
+        })?;
+        Ok(result(state, text.into_bytes()))
+    })
+}
+
+/// Every column's chunks as JSON (see `chunks_json`).
+#[no_mangle]
+pub extern "C" fn pq_chunks(h: u32) -> *const u8 {
+    call(std::ptr::null(), |state: &mut State| {
+        let text = with_handle(h, |handle| {
+            let chunks = handle.reader.columns().len() * handle.reader.row_groups().len().max(1);
+            ensure_room(chunks.saturating_mul(200).saturating_add(64 << 10))?;
+            Ok(chunks_json(&handle.reader, &handle.how))
         })?;
         Ok(result(state, text.into_bytes()))
     })
