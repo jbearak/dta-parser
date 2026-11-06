@@ -1,7 +1,7 @@
 {
   "name": "@jbearak/dta-parser",
   "version": "1.1.0",
-  "description": "Read and write Stata .dta files",
+  "description": "Read and write Stata .dta files, and Parquet files that keep their labels and .a to .z",
   "license": "GPL-3.0-only",
   "type": "commonjs",
   "main": "dist/index.js",

@@ -1,8 +1,9 @@
 # @jbearak/dta-parser
 
-Read Stata `.dta` files (releases 104 to 119) and write release 118, in
-Node, synchronously. The format is implemented once, in Rust, and runs
-here as an embedded wasm module.
+Read Stata `.dta` files (releases 104 to 119) and write release 118,
+and read and write Parquet files that keep a `.dta` file's labels and
+`.a` to `.z`, in Node, synchronously. Both formats are implemented once,
+in Rust, and run here as an embedded wasm module.
 
 ```ts
 import { openDta, formatValue, MISSING, type Missing } from "@jbearak/dta-parser";
@@ -29,8 +30,8 @@ writeDtaFile("out.dta", {
 });
 ```
 
-Parquet files too, keeping labels, `.a` to `.z`, categoricals and time
-zones, through the same reader interface (`TableReader`):
+Parquet files keep labels, `.a` to `.z`, categoricals and time zones,
+and are read through the same reader interface (`TableReader`):
 
 ```ts
 import { openParquet, writeParquet, toDate } from "@jbearak/dta-parser";
