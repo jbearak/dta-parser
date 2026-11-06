@@ -1351,7 +1351,7 @@ Ubuntu, the Visual Studio Build Tools on Windows.
 extension. Without network access, install maturin some other way and
 build without isolation:
 `pip install --no-build-isolation ./dta-parser/python ./dta-parser/python/datakit`
-(setuptools 64 or later, numpy, pandas and polars must then be
+(setuptools 77 or later, numpy, pandas and polars must then be
 installed already). cargo also fetches Rust crates from crates.io, so
 they must be in its cache from an earlier build.
 
