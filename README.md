@@ -57,15 +57,27 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
-rules. `datakit` adds data preparation beyond reading and writing:
-`d[i, name, by = g] := value` for `generate`,
-`replace` and `bysort`, `read_fixed_width` for fixed-width text
-with a SAS setup file, and `read_parquet` and `save_parquet` for
-Parquet files. A script that uses both attaches
-`library(dtaparser); library(datakit)`, datakit last. datakit imports
-dtaparser; dtatools imports both. Julia has the same split: DtaParser
-reads and writes `.dta`, and Datakit, built on it, reads Parquet and
-fixed-width text into DataFrames and saves Parquet.
+rules. `datakit`, built on dtaparser, is for data preparation:
+
+- `d[i, name, by = g] := value` makes or changes a column for some rows
+  within groups, as `generate`, `replace` and `bysort` do. Python, Julia
+  and Stata do this in a line; for a data frame, R has no ergonomic way
+  to otherwise.
+- With dtaparser, it reads Stata `.dta` files and fixed-width `.dat`
+  files through their SAS setup files (`read_fixed_width`), and writes
+  `.dta`.
+- Columns keep value labels and the missing values `.a` to `.z`, so
+  haven and labelled are not needed.
+- `read_parquet` and `save_parquet` read and write Parquet files that
+  keep them: an interchange format with readers and writers in R,
+  Python, Julia and TypeScript, so data goes between them with its
+  labels and letters.
+
+A script that uses both attaches `library(dtaparser); library(datakit)`,
+datakit last. datakit imports dtaparser; dtatools imports both. Julia
+has the same split, without `:=`: DtaParser reads and writes `.dta`, and
+Datakit, built on it, reads Parquet and fixed-width text into DataFrames
+and saves Parquet.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust

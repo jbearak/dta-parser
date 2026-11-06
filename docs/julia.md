@@ -9,10 +9,12 @@ Two packages:
   slicing, sorting, filtering and writing, and labels travel as DataAPI
   metadata.
 - **Datakit**, built on DtaParser, is for data preparation: it reads
-  [Parquet files](#parquet-files)
-  and [fixed-width text](#fixed-width-files-with-a-sas-setup-file) into
-  a DataFrame, and saves any table as Parquet, keeping the same labels
-  and missing values ([Datakit](#datakit-parquet-and-fixed-width-text-into-dataframes)).
+  [fixed-width `.dat` files](#fixed-width-files-with-a-sas-setup-file)
+  through their SAS setup files, and [Parquet files](#parquet-files),
+  into a DataFrame, and saves any table as Parquet, keeping the same
+  labels and missing values. Its Parquet files go between Julia, R,
+  Python and TypeScript with them
+  ([Datakit](#datakit-parquet-and-fixed-width-text-into-dataframes)).
 
 Contents:
 [Install](#install) ·
