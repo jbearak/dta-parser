@@ -2,7 +2,7 @@
 # reads and writes .dta files and reads and sets labels and .a to .z.
 
 reexported <- c("read_dta", "save_dta", "read_meta", "var_label", "val_labels", "val_label",
-                "with_labels", "tagged_na", "na_tag", "is_tagged_na", "missing_rank")
+                "with_labels", "tagged_na", "na_tag", "is_tagged_na", "missing_rank", "drop_labels")
 
 test_that("every function dtaparser exports is datakit's too, the same function", {
   expect_setequal(intersect(getNamespaceExports("dtaparser"), getNamespaceExports("datakit")),
