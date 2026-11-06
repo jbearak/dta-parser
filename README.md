@@ -22,8 +22,8 @@ TypeScript, with one implementation of the format underneath all four.
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
   (`read_fixed_width` in R, Python and Julia).
 - **Reads and writes Parquet that keeps all of this** (in R, through
-  datakit's `read_parquet()` and `save_parquet()`; in Python,
-  `read_parquet` and `write_parquet`; in Julia, Datakit's
+  datakit's `read_parquet()` and `save_parquet()`; in Python, datakit's
+  `read_parquet` and `save_parquet`, into polars; in Julia, Datakit's
   `read_parquet` and `save_parquet`; in TypeScript,
   `openParquetFile()` and `writeParquetFile()`): labels, formats,
   notes and `.a` to `.z` travel in the file's metadata, and the file
@@ -51,6 +51,7 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
 | R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, `tagged_na()` and `with_labels()` make them, and `save_dta()` writes them, dates included |
 | Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
+| Python | `datakit` | [docs/python.md](docs/python.md#datakit-parquet-dta-and-fixed-width-files-in-polars) | a polars DataFrame from Parquet, `.dta` or fixed-width text, with labels and `.a` to `.z` in a `Meta` beside it |
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
 | Julia | `Datakit` | [docs/julia.md](docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes) | a DataFrame from Parquet or fixed-width text, labels in its metadata, `.a` to `.z` in `DtaColumn`s |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
@@ -81,7 +82,10 @@ label functions for dibbles, so a script uses one of the two. Julia
 has the same split, without `:=`: DtaParser reads and writes `.dta`, and
 Datakit reads Parquet and fixed-width text into DataFrames, saves
 Parquet, and re-exports DtaParser's functions, so `using Datakit` is
-enough.
+enough. Python's datakit works in polars rather than pandas: it reads
+and saves Parquet, `.dta` and fixed-width text as a polars frame and a
+`Meta` of labels and letters, while `dta_parser` stays the pandas
+package for `.dta` files.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust
@@ -120,7 +124,7 @@ import pandas as pd
 import dta_parser as dp
 from dta_parser import missing
 
-df = pd.DataFrame({"id": [1, 2, 3], "smoker": pd.Series([1, 0, missing.d], dtype="stata[byte]")})
+df = pd.DataFrame({"id": [1, 2, 3], "smoker": pd.Series([1, 0, missing.d], dtype="dta[byte]")})
 df.attrs["dta"] = {"columns": {"smoker": {"value_labels": "yesno"}},
                    "value_labels": {"yesno": {0: "No", 1: "Yes", missing.d: "Don't know"}}}
 dp.write_dta(df, "smokers.dta")
@@ -176,11 +180,11 @@ the table says how.
 | storage types, variable labels, display formats, data label, notes | ✓ | ✓ | ✓ | ✓ |
 | timestamp, characteristics, sort order | ✓ | ✓ | ✓ | ✓ |
 | value labels, including labels on `.a` to `.z` | ✓ | ✓ | ✓ | ✓ |
-| `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `StataArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
+| `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `DtaArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | `read_fixed_width` | `read_fixed_width` | |
-| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | `read_parquet`, `write_parquet` | `read_parquet`, `write_parquet` | `openParquetFile`, `writeParquetFile`; the same reader interface as `.dta` |
+| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | |
+| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `read_parquet`, `save_parquet` (polars) | Datakit's `read_parquet`, `save_parquet` | `openParquetFile`, `writeParquetFile`; the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `dta_key`, `dta_keys` | `dta_key` | `dtaKey`, `dtaKeys` |
@@ -202,7 +206,8 @@ than release 118 comes back as UTF-8.
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
 | `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width`, and Parquet's `read_parquet` and `save_parquet` |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
-| `python` | the Python package |
+| `python` | the Python package `dta_parser` |
+| `python/datakit` | the Python package for data preparation in polars: Parquet, `.dta`, and fixed-width text with labels and `.a` to `.z` |
 | `julia/DtaParser` | the Julia package |
 | `js` | the npm package |
 | `compat` | test files from haven, pandas and ReadStat, and what those readers make of them |

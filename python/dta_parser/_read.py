@@ -1,12 +1,13 @@
 import copy
 import os
 import re
+import tempfile
 
 import numpy as np
 import pandas as pd
 
 from . import _native
-from ._array import StataArray
+from ._array import DtaArray
 from .missing import from_code
 
 _NUMPY = {"byte": np.int8, "int": np.int16, "long": np.int32, "float": np.float32, "double": np.float64}
@@ -98,18 +99,42 @@ def _info(raw, cols):
     }
 
 
-def read_meta(path, encoding=None):
-    """What a file says about itself, without its data: the dictionary
-    `read_dta` puts in `df.attrs["dta"]`, for every column, plus "nobs",
-    the number of rows.
+def read_meta(source, encoding=None):
+    """What a .dta file says about itself, without its data: the
+    dictionary `read_dta` puts in `df.attrs["dta"]`, for every column,
+    plus "nobs", the number of rows.
 
-    `encoding` decodes text in files older than release 118:
-    "windows-1252" (the default), "latin1" or "utf-8".
+    source: a path, the file as bytes, or a binary file object with read.
+    encoding: decodes text in files older than release 118:
+        "windows-1252" (the default), "latin1" or "utf-8".
+
+    Parquet files are datakit's: `datakit.read_parquet_info` describes
+    one (docs/python.md, "A Parquet file's schema and metadata").
     """
-    raw = _native.meta(_open_path(path), encoding)
+    if isinstance(source, (str, os.PathLike)):
+        path = _open_path(source)
+        with open(path, "rb") as f:
+            _not_parquet(f.read(4))
+        raw = _native.meta(path, encoding)
+    else:
+        data = bytes(source) if isinstance(source, (bytes, bytearray, memoryview)) else source.read()
+        _not_parquet(data[:4])
+        fd, tmp = tempfile.mkstemp(suffix=".dta")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            raw = _native.meta(tmp, encoding)
+        finally:
+            os.unlink(tmp)
     info = _info(raw, range(len(raw["variables"])))
     info["nobs"] = raw["nobs"]
     return info
+
+
+def _not_parquet(head):
+    if head == b"PAR1":
+        raise ValueError("this is a Parquet file; dta_parser 0.3 reads .dta files only. "
+                         "Use datakit.read_parquet_info (pip install ./python/datakit)")
 
 
 def _select(columns, names):
@@ -174,7 +199,7 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
     Numeric columns keep their storage width (int8, int16, int32, float32,
     float64) when no value is missing; with only `.` missing they become
     float32 (byte, int, float) or float64 (long, double) with NaN; with any
-    of `.a` to `.z` they are a StataArray, which keeps each row's code.
+    of `.a` to `.z` they are a DtaArray, which keeps each row's code.
     Text is pandas' default string dtype; a strL column holding binary
     values is object, with `bytes` for those values.
 
@@ -236,7 +261,7 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
                 values[codes == 1] = np.nan
             data[name] = values
         else:
-            data[name] = StataArray(values.astype(np.float64, copy=False), codes, storage)
+            data[name] = DtaArray(values.astype(np.float64, copy=False), codes, storage)
     df = pd.DataFrame(data, copy=False)
     if not data:
         df = pd.DataFrame(index=pd.RangeIndex(count))

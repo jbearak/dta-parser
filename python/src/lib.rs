@@ -595,6 +595,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ABI_VERSION", arrow::ABI_VERSION)?;
     m.add_class::<arrow::ffi::ArrowTable>()?;
     m.add_function(wrap_pyfunction!(arrow::read::parquet_read_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::read::parquet_info_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(arrow::digest::arrow_digest, m)?)?;
     m.add_function(wrap_pyfunction!(arrow::write::parquet_write_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(arrow::dta::dta_read_arrow, m)?)?;

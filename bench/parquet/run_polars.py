@@ -1,13 +1,13 @@
-"""Plan 0019's Python benchmark for PR 2a: dta_parser's native Arrow read
-and write, through the thin builder that makes datakit's whole Meta
-(bench/parquet/polars_meta.py), against polars and pyarrow; check plan
-0018's targets 1 to 3 and write bench/results/parquet-polars.md.
+"""Plan 0019's Python benchmark: datakit's read_parquet and save_parquet
+(and read_dta, save_dta), against polars and pyarrow; check plan 0018's
+targets 1 to 3 and write bench/results/parquet-datakit.md (PR 2a's run,
+through a stand-in for datakit, is in bench/results/parquet-polars.md).
 
     python bench/parquet/run_polars.py [--family F ...] [--libs L ...] [--tasks T ...]
                                        [--inputs I ...] [--only KEY ...] [--report]
 
-Run it from the repository root with a Python that has dta_parser built
-from this checkout, polars and pyarrow. The inputs are bench/parquet/
+Run it from the repository root with a Python that has dta_parser and
+datakit installed from this checkout, polars and pyarrow. The inputs are bench/parquet/
 run.py's (every file converted to Parquet by our writer, and from that by
 pyarrow and polars with their defaults, in --data).
 
@@ -50,7 +50,7 @@ WRITES = base.WRITES
 DTA_TASKS = ["dtaread", "dtawrite"]
 INPUTS = base.INPUTS
 MB, MIB = base.MB, base.MIB
-LIB_NAMES = {"ours": "ours (Arrow path, whole Meta)", "polars": "polars", "pyarrow": "pyarrow (Table)",
+LIB_NAMES = {"ours": "datakit", "polars": "polars", "pyarrow": "pyarrow (Table)",
              "pandas": "dta_parser (pandas)"}
 TASK_NAMES = dict(base.TASK_NAMES, dtaread=".dta read", dtawrite=".dta write")
 
@@ -65,7 +65,7 @@ class Lock:
                 break
             except FileExistsError:
                 time.sleep(30)
-        (LOCK / "owner").write_text(f"plan 0019 PR 2a Python benchmark (bench/parquet/run_polars.py), pid {os.getpid()}\n")
+        (LOCK / "owner").write_text(f"plan 0019 Python benchmark (bench/parquet/run_polars.py), pid {os.getpid()}\n")
         return self
 
     def __exit__(self, *exc):
@@ -171,7 +171,7 @@ def evaluate(files, out):
 
 def report(files, out, dest):
     rows, published, misses = evaluate(files, out)
-    lines = ["# Parquet benchmarks (Python, polars)", "",
+    lines = ["# Parquet benchmarks (Python, datakit into polars)", "",
              "Written by `bench/parquet/run_polars.py`; bench/RESULTS.md says what the numbers mean.", ""]
     loads, versions = [], {}
     for f in files:
@@ -228,9 +228,9 @@ def main():
     ap.add_argument("--inputs", nargs="*", default=INPUTS)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
-    ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-polars-out")
+    ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-datakit-out")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-polars.md"))
+    ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-datakit.md"))
     a = ap.parse_args()
     files = base.find_files(a.family)
     if a.only:

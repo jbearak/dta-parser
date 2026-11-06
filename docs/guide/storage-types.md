@@ -27,11 +27,11 @@ strL. See [strLs](strls.md).
 
 | storage | R | Python (no missing) | Python (only `.` missing) | Python (any `.a` to `.z`) | Julia (no missing) | Julia (any missing) | TypeScript |
 |---|---|---|---|---|---|---|---|
-| byte | `dta_num` (double) | `int8` | `float32` | `StataArray` | `Vector{Int8}` | `DtaColumn{Int8}` | `Float64Array` |
-| int | `dta_num` | `int16` | `float32` | `StataArray` | `Vector{Int16}` | `DtaColumn{Int16}` | `Float64Array` |
-| long | `dta_num` | `int32` | `float64` | `StataArray` | `Vector{Int32}` | `DtaColumn{Int32}` | `Float64Array` |
-| float | `dta_num` | `float32` | `float32` | `StataArray` | `Vector{Float32}` | `DtaColumn{Float32}` | `Float64Array` |
-| double | `dta_num` | `float64` | `float64` | `StataArray` | `Vector{Float64}` | `DtaColumn{Float64}` | `Float64Array` |
+| byte | `dta_num` (double) | `int8` | `float32` | `DtaArray` | `Vector{Int8}` | `DtaColumn{Int8}` | `Float64Array` |
+| int | `dta_num` | `int16` | `float32` | `DtaArray` | `Vector{Int16}` | `DtaColumn{Int16}` | `Float64Array` |
+| long | `dta_num` | `int32` | `float64` | `DtaArray` | `Vector{Int32}` | `DtaColumn{Int32}` | `Float64Array` |
+| float | `dta_num` | `float32` | `float32` | `DtaArray` | `Vector{Float32}` | `DtaColumn{Float32}` | `Float64Array` |
+| double | `dta_num` | `float64` | `float64` | `DtaArray` | `Vector{Float64}` | `DtaColumn{Float64}` | `Float64Array` |
 | strN, strL | character | text (`str` on pandas 3, `object` on 2.2) | | | `Vector{String}` | | `string[]` |
 | strL holding binary | an error | `object` of `bytes` | | | `Vector{UInt8}` elements | | `Uint8Array` elements |
 

@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "dta-parser"
-version = "0.2.0"
-description = "Read and write Stata .dta files, and Parquet files that keep what they say, into pandas, keeping .a to .z missing values"
+version = "0.3.0"
+description = "Read and write Stata .dta files into pandas, keeping .a to .z missing values"
 readme = "README.md"
 license = "GPL-3.0-only"
 requires-python = ">=3.10"
@@ -23,6 +23,8 @@ module-name = "dta_parser._native"
 python-source = "."
 python-packages = ["dta_parser"]
 features = ["pyo3/extension-module"]
+# datakit, beside dta_parser in python/, is its own package.
+exclude = [{ path = "datakit/**/*", format = "sdist" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

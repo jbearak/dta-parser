@@ -2,8 +2,10 @@
 
 Each ```python block of README.md, docs/guide/*.md and docs/python.md
 runs, in order, in one namespace per file, in a fresh temporary
-directory. Blocks whose info string says `norun` are skipped. The docs
-live in the repository; outside a checkout these tests skip.
+directory. Blocks whose info string says `norun` are skipped. Of
+docs/python.md, these are the blocks before its datakit part
+(`DATAKIT`), which python/datakit/tests/test_docs.py runs with the rest.
+The docs live in the repository; outside a checkout these tests skip.
 """
 
 import contextlib
@@ -18,6 +20,7 @@ import dta_parser
 
 ROOT = Path(__file__).resolve().parents[2]
 PAGE = ROOT / "docs" / "python.md"
+DATAKIT = "## datakit: Parquet, .dta and fixed-width files in polars"
 pytestmark = pytest.mark.skipif(not PAGE.exists(), reason="docs/python.md is not here")
 
 
@@ -28,8 +31,12 @@ def doc_files():
 
 
 def code_blocks(path, lang):
-    """(line, code) of each block of `lang` in a Markdown file."""
-    lines = path.read_text(encoding="utf-8").split("\n")
+    """(line, code) of each block of `lang` in a Markdown file; of
+    docs/python.md, those before its datakit part."""
+    text = path.read_text(encoding="utf-8")
+    if path == PAGE:
+        text = text[:text.index(DATAKIT)]
+    lines = text.split("\n")
     out = []
     i = 0
     while i < len(lines):

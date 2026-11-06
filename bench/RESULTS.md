@@ -479,7 +479,9 @@ made: the 36 NSFG files, the 10 DHS files and the three synthetic files,
 each as Parquet from our writer, pyarrow and polars. Every file and
 number is in [results/parquet-python.md](results/parquet-python.md),
 written by `bench/parquet/run_py.py`; this section is written by hand
-from it.
+from it. These are dta_parser 0.2's pandas reader and writer, which
+plan 0019 moved to datakit, in polars; the scripts were removed then
+and are in the history before it (`git show 73ecfd1:bench/parquet/run_py.py`).
 
 **Target 1 holds for wall time everywhere, and for peak RSS against
 every library but fastparquet.** Ours over theirs, geometric means of
@@ -756,7 +758,8 @@ second run); the other libraries' cases are from the first.
 Plan 0019's gate for the Arrow path that Python's datakit (PR 2b) will
 read and write through: `dta_parser._native.parquet_read_arrow` into a
 polars DataFrame with the whole Meta built eagerly
-(`bench/parquet/polars_meta.py`, a thin stand-in for 2b's API), against
+(`bench/parquet/polars_meta.py`, a thin stand-in for 2b's API, since
+replaced by datakit itself), against
 polars 2.1.0 (`pl.read_parquet`, with `columns=` for five columns and
 `scan_parquet().slice().collect()` for 1,000 rows) and pyarrow 26.0.1
 (`pq.read_table`); writes through `parquet_write_arrow` from polars'
@@ -909,6 +912,104 @@ median is slower by more than the larger of the two five-run spreads.
    now falls back to room per column, and a text value too large for
    the budget fails as `DTA_TOO_LARGE` before it is copied instead of
    aborting the module.
+
+## Parquet into polars, through datakit (plan 0019, PR 2b)
+
+The same gate as PR 2a's (above), now through Python datakit's public
+functions: `dk.read_parquet`, which builds the frame and its whole
+`Meta`, and `dk.save_parquet`, against polars 2.1.0 and pyarrow 26.0.1.
+Every file and number is in
+[results/parquet-datakit.md](results/parquet-datakit.md), written by
+`bench/parquet/run_polars.py`.
+
+**What was measured, and the load.** Every file: the 36 NSFG files, the
+10 DHS files and the three synthetic files, each read as written by
+pyarrow, by polars and by us, and written at the defaults and at zstd
+level 3. Five runs per case in fresh processes (three for wide.dta,
+over 1 GB), medians, the shared benchmark lock held per file; 2026-11-05,
+21:31 to 23:26. The one-minute load average before each run had a
+median of 12.5 (9.1 to 31.3); plan 0018 asks for under 2. The build
+measured is this PR's but for one later change, an exact count of text
+bytes in the write's row-group rule (`bytes_bound`); measured alone on
+groups.dta, the slowest case for it, it left the write at about half of
+polars' time.
+
+**Ours over polars, geometric means of wall time** (below 1 is faster),
+reads by the writer of the file (pyarrow's, polars', ours):
+
+| case | NSFG | DHS | synthetic |
+|---|---|---|---|
+| whole file | 0.39, 0.38, 0.47 | 0.64, 0.62, 0.75 | 0.85, 0.70, 0.81 |
+| five columns | 0.33, 0.31, 0.42 | 0.50, 0.44, 0.61 | 0.95, 0.55, 0.93 |
+| 1,000 rows | 0.44, 0.38, 0.55 | 0.70, 0.64, 0.83 | 0.34, 0.29, 0.27 |
+| read + pass | 0.71, 0.68, 0.74 | 0.80, 0.78, 0.91 | 1.03, 0.78, 0.88 |
+| write, defaults / zstd 3 | 0.81 / 0.90 | 0.72 / 0.80 | 0.91 / 1.10 |
+
+Target 1 holds for every case, wall and peak RSS, on NSFG and DHS. CPU
+time as a geometric mean is at most 1.03 of polars' on NSFG and DHS.
+Against pyarrow's `Table`, ours takes at most 0.48 of its wall time on
+reads and 0.21 on writes.
+
+**What changed in the write path since PR 2a** (2a's writes were 1.02
+and 1.16 of polars' wall time on NSFG and DHS at the defaults, and 1.05
+and 1.20 at zstd):
+
+1. **Encode ahead.** The core writes column chunks in file order on the
+   calling thread while workers encode the next ones; workers could run
+   at most two chunks per thread ahead. A wide survey file is thousands
+   of small chunks of uneven size, so one slow chunk stalled every
+   thread, and each finished chunk woke all of them. The Arrow path now
+   lets workers run as far ahead as the pipeline's byte budget allows
+   (`WriteOptions::ahead`, which R, Julia and npm leave at two per
+   thread). DHS Tajikistan 2017 wm, medians of warm runs in one
+   process: 83 ms and 460 ms of CPU before, 38 ms and 290 ms after,
+   against polars' 57 ms and 370 ms.
+2. **No row-by-row text scan.** To cap a row group at about 1 GiB, the
+   core added up every text value's length on the calling thread before
+   encoding anything: 35 ms for groups.dta's 15 million strings. The
+   binding now counts the frame's bytes from its Arrow buffers and,
+   when the whole frame is under the cap, gives the core the row count
+   that scan would have found.
+3. **Numbers a block at a time.** For a block of values with no nulls on
+   the PLAIN path, the core takes the values a run at a time (statistics
+   over the run, the bytes copied at once) instead of one by one, ending
+   each run where the per-value loop would end the page. A column of 10
+   million random doubles wrote in 35 ms of CPU instead of 60. The files
+   are byte for byte the same: 37 files of every family, codec and row
+   group size, hashed before and after.
+
+**What still misses** ([results/parquet-datakit.md](results/parquet-datakit.md#misses)).
+The user accepted these four misses on 2026-11-06 and merged the PR
+with them, as plan 0019 allows:
+
+1. **Target 2, peak RSS of the long.dta and groups.dta writes**: 1.34 to
+   1.46 times polars' and 1.39 to 1.43 times pyarrow's (2a: 1.27 to
+   1.38). The extra is the sixteen write threads' working buffers; a
+   smaller pipeline budget saved 300 MB on long.dta but cost 40% of its
+   wall time, and left groups.dta as it was.
+2. **Target 2, wall time of the read and pass of pyarrow's long.dta**:
+   164 ms against polars' 123.
+3. **Target 3, CPU time of 13 read cases**, up to 19% over the
+   allowance (2 to 19%): whole-file
+   reads of groups.dta, NSFG 1995 FemResp, NSFG 2006-2010 FemResp, and
+   DHS Senegal 2019 and Myanmar 2016 wm (ours), and of long.dta, groups.dta
+   and NSFG 1995 FemResp (pyarrow's); five columns of long.dta (ours and
+   pyarrow's) and groups.dta (ours); the read and pass of pyarrow's
+   long.dta and groups.dta. 2a had 19 such cases.
+4. **Target 3, the zstd write of wide.dta**: 9.4 s of CPU against
+   polars' 7.0, at 0.91 of its speed. Compressing 4.8 GB of random
+   doubles is most of it; polars' writes of that file cost it the same
+   CPU with zstd as with snappy, while ours spend about 3 s more, which
+   is what zstd at level 3 costs on that data in our tests of a single
+   column, where polars paid it too.
+
+The synthetic family's zstd writes, 1.10 as a geometric mean, are over
+1.05, but plan 0018 sets target 1 for NSFG and DHS.
+
+**.dta into polars against dta_parser's pandas path** (published, not
+gated): `dk.read_dta` takes 0.04 (NSFG), 0.12 (DHS) and 0.31 (synthetic)
+of `dp.read_dta`'s wall time; `dk.save_dta` takes 1.12, 1.17 and 0.59 of
+`dp.write_dta`'s, at 0.37 to 0.47 of its peak RSS.
 
 ## Parquet in TypeScript (npm package)
 

@@ -1,7 +1,7 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R), dta_parser (Python), Datakit (Julia) and the npm
-package (TypeScript) read and write Parquet files that keep a `.dta`
+datakit (R), datakit (Python, into polars), Datakit (Julia) and the
+npm package (TypeScript) read and write Parquet files that keep a `.dta`
 file's value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
 file it writes is ordinary Parquet that pyarrow, pandas, polars,
@@ -72,7 +72,8 @@ TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metad
 ### Value labels and variable labels
 
 R: [Labels](r.md#labels-in-parquet-files).
-Python: [Labels](python.md#labels-in-parquet-files).
+Python: [Labels](python.md#labels-in-parquet-files), and
+[through polars operations](python.md#labels-and-a-to-z-through-polars-operations).
 Julia: [Labels](julia.md#labels-in-parquet-files).
 TypeScript: [Labels](typescript.md#labels-in-parquet-files).
 
@@ -86,9 +87,7 @@ TypeScript: [Dates and time zones](typescript.md#dates-and-time-zones-in-parquet
 ### Write a table; compression and row groups
 
 R: [Write a Parquet file](r.md#write-a-parquet-file).
-Python: [Write a Parquet file](python.md#write-a-parquet-file), and
-[the index](python.md#the-index-and-parquet-files), which is not
-written.
+Python: [Write a Parquet file](python.md#write-a-parquet-file).
 Julia: [Write a Parquet file](julia.md#write-a-parquet-file).
 TypeScript: [Write a Parquet file](typescript.md#write-a-parquet-file).
 The defaults are [below](#defaults-and-the-measurements-behind-them).
@@ -103,7 +102,8 @@ TypeScript: [Write labels](typescript.md#write-labels-to-a-parquet-file).
 ### Keep `.a` to `.z` through a write and a read
 
 R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
-Python: [Keep .a to .z](python.md#keep-a-to-z-in-a-parquet-file).
+Python: [Keep .a to .z](python.md#keep-a-to-z-in-a-parquet-file)
+(in `meta.missing` or companion columns).
 Julia: [Keep .a to .z](julia.md#keep-a-to-z-in-a-parquet-file).
 TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
@@ -111,7 +111,7 @@ TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
 R: [Files from other tools](r.md#parquet-files-from-other-tools).
 Python: [Files from other tools](python.md#parquet-files-from-other-tools),
-and [coming from pyarrow, pandas or polars](python.md#coming-from-pyarrow-pandas-or-polars).
+and [coming from polars, pyarrow or pandas](python.md#coming-from-pyarrow-pandas-or-polars).
 Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
 pandas, pyarrow and polars write microsecond timestamps, so Julia reads
 their files with `timestamps = :truncate`.
@@ -135,19 +135,25 @@ arrow restore factors and time zones. What each value becomes:
 
 | what is written | Parquet physical type | logical type |
 |---|---|---|
-| Stata byte; pandas `int8` | INT32 | INT(8, signed) |
-| Stata int; pandas `int16`, `uint8` | INT32 | INT(16, signed) |
-| Stata long; R integer; pandas `int32`, `uint16` | INT32 | none |
-| R `integer64`; pandas `int64`, `uint32`, `uint64` (below 2^63) | INT64 | none |
-| Stata float; pandas `float32` | FLOAT | none |
-| Stata double; R double; pandas `float64` | DOUBLE | none |
-| R logical; pandas `bool`, `boolean` | BOOLEAN | none |
-| text: strN, strL, R character, pandas `str` | BYTE_ARRAY | STRING |
-| binary: a binary strL, an R list of raw vectors, Python `bytes` (and a column mixing text and `bytes`) | BYTE_ARRAY | none |
-| R `Date`; a pandas `datetime64` column with a `%td` format | INT32 | DATE |
-| R `POSIXct`; a tz-aware pandas `datetime64` | INT64 | TIMESTAMP(MICROS for R, the column's unit for pandas, adjusted to UTC); the zone in the profile and `ARROW:schema` |
-| any other pandas `datetime64` | INT64 | TIMESTAMP(its unit, not adjusted to UTC); `[s]` as MILLIS with `"unit": "s"` in the profile |
-| R factor; pandas `category` of text | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
+| Stata byte; polars `Int8` | INT32 | INT(8, signed) |
+| Stata int; polars `Int16` | INT32 | INT(16, signed) |
+| Stata long; R integer; polars `Int32` | INT32 | none |
+| R `integer64`; polars `Int64` | INT64 | none |
+| polars `UInt8` to `UInt64` | INT32 or INT64 | INT(8 to 64, unsigned), with unsigned statistics |
+| Stata float; polars `Float32` | FLOAT | none |
+| Stata double; R double; polars `Float64`, and an all-null `Null` column | DOUBLE | none |
+| R logical; polars `Boolean` | BOOLEAN | none |
+| text: strN, strL, R character, polars `String` | BYTE_ARRAY | STRING |
+| binary: a binary strL, an R list of raw vectors, polars `Binary` | BYTE_ARRAY | none |
+| R `Date`; polars `Date` | INT32 | DATE |
+| R `POSIXct`; a polars `Datetime` with a zone | INT64 | TIMESTAMP(MICROS for R, the column's unit for polars, adjusted to UTC); the zone in the profile and `ARROW:schema` |
+| a polars `Datetime` without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
+| polars `Time` | INT64 | TIME(NANOS) |
+| R factor; polars `Enum`, `Categorical` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
+
+Files dta_parser 0.2 wrote from pandas read too: its `datetime64[s]`
+columns are TIMESTAMP(MILLIS) with `"unit": "s"` in the profile, which
+polars reads as `Datetime("ms")`.
 
 Missing values:
 
@@ -174,7 +180,7 @@ Missing values:
   exactly that pattern with a letter `a` to `z`; any other NaN is NaN,
   a value.
 - `save_parquet(missing_letters = FALSE)` (R),
-  `write_parquet(missing_letters=False)` (Python) and
+  `save_parquet(df, missing_letters=False)` (Python) and
   `save_parquet(path, df; missing_letters = false)` (Julia) write `.a` to `.z` as
   nulls, for files meant for tools that count NaN as a value. The letters
   are then lost.
@@ -213,7 +219,7 @@ metadata:
   display format), `value_labels` (the name of a set), `categorical`
   (`levels`, every level in order, unused ones too, and `ordered`),
   `tz` (a timestamp's zone; `""` for an instant without one), `unit`
-  (`"s"` where Parquet has no such unit), and on a DOUBLE column
+  (`"s"` where Parquet has no such unit; dta_parser 0.2 wrote it), and on a DOUBLE column
   written so because of `.a` to `.z`, `storage` or `logical`.
 - `value_labels` maps a set's name to an array of `[code, text]` pairs.
   A code is a JSON number, finite and within ±2^53 if it is an integer,
@@ -222,7 +228,7 @@ metadata:
 - `characteristics` maps `_dta` or a column name to its named texts;
   `notes` and `sort` (column names) are arrays of text; `label` is the
   data label; `timestamp` is the `.dta` file's time stamp, as text, where
-  a language keeps one (Python does).
+  a language keeps one (Python's `meta.timestamp` does).
 - **Reading is forgiving.** `version` is 1; a higher one is read for
   what is known, with one warning. The profile must be a JSON object of
   at most 64 MiB with no duplicate keys at any level. An entry that
@@ -316,7 +322,10 @@ write the file with `missing_letters = FALSE`.
   nothing to the calling thread in row order, so more threads stay
   busy. A write encodes the next
   row groups while it writes out the current one, so a long table of
-  few columns keeps its threads busy. `DTA_THREADS` and each
+  few columns keeps its threads busy. On the Arrow path the workers encode as
+  far ahead of the column chunk being written out as 256 MiB of encoded
+  chunks allows, rather than two chunks per thread, so a wide survey
+  file's many small chunks keep every thread busy. `DTA_THREADS` and each
   language's threads option set the count instead. The measurements at
   1 to 16 threads are in
   [bench/RESULTS.md](../bench/RESULTS.md#parquet).
@@ -329,7 +338,9 @@ The speed of reads and writes against arrow, nanoparquet and DuckDB,
 and of other tools reading our files, is in
 [bench/RESULTS.md](../bench/RESULTS.md#parquet); against pyarrow,
 pandas, fastparquet and polars in Python, in
-[Parquet in Python](../bench/RESULTS.md#parquet-in-python).
+[Parquet in Python](../bench/RESULTS.md#parquet-in-python) (dta_parser
+0.2's pandas reader); datakit's, into polars, in
+[Parquet into polars, through datakit](../bench/RESULTS.md#parquet-into-polars-through-datakit-plan-0019-pr-2b).
 
 ## Errors and warnings
 
@@ -356,14 +367,22 @@ pandas, fastparquet and polars in Python, in
 | `save_parquet: columns sharing label set "yn" have different labels` | two columns name one set with different labels | give one a different `label_set` |
 | warning: `dropped "columns.x.storage" from the dta profile: ...` (and other `dropped ...` warnings) | a damaged or hand-edited profile | none needed; the values are read, the entry is not |
 | warning: `the dta profile is not JSON (...); the file is read as plain Parquet` | the `dta` entry is damaged | as for any file from another tool |
-| warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit or dta_parser |
-| Python: `KeyError: 'column "x" is not in the file; its columns are ...'`; `IndexError: there is no column 9; the file has 6 data columns` | a name or position in `columns` the file does not have | check against `read_meta(file)["columns"]` |
-| Python: `the file has nested columns, which are not read: "l", ...; select the columns wanted, or pass nested="skip"` | a list, map or struct column, and no `columns` that leaves it out | select the flat columns, or `nested="skip"`; for the nested data, use pyarrow or polars |
-| Python: `column 'd': row 2 is not midnight, but the column's format '%td' says it is a date; drop the format ...` (also `has a time zone`) | a `datetime64` column whose `attrs` format is `%td` holds a time or a zone | remove the format from `attrs["dta"]["columns"]` to write a timestamp |
-| Python: `column 't': cannot write timedelta64 columns`; `column 'c': a category whose categories are int64, not text`; `column "o": row 2 holds a int; a text column holds str, bytes or missing values` | a dtype Parquet files here do not hold | convert the column first (`.astype(str)` for a category) |
-| Python: `column 'u': row 1 holds 9223372036854775808, more than a 64-bit integer holds` | a `uint64` value of 2^63 or more | write it as `float64` or text |
-| Python: `column "x": the value -9223372036854775808 in row 1 cannot be held, since numpy uses it for NaT` | a timestamp or time of -2^63 units | read the column with pyarrow |
-| Python warning: `write_parquet writes columns only, not the index 'id'; call df.reset_index() first to keep it` | an index other than a default `RangeIndex` | `df.reset_index()` to keep it, `df.reset_index(drop=True)` to drop it |
+| warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
+| Python: `KeyError: 'column "x" is not in the file; its columns are ...'`; `IndexError: there is no column 9; the file has 6 data columns` | a name or position in `columns` the file does not have | check against `read_parquet_info(file).columns["name"]` |
+| Python: `the file has nested columns, which are not read: "l", ...; select the columns wanted, or pass nested="skip"` | a list, map or struct column, and no `columns` that leaves it out | select the flat columns, or `nested="skip"`; for the nested data, use polars |
+| Python: `column "x", row 1: the date 19000.5 (days since 1970) has a fraction of a day; pass timestamps="truncate" to drop it` (also `the timestamp ... is not a whole number of microseconds`) | a DOUBLE date or timestamp that `Date` or `Datetime("us")` cannot hold exactly, as R writes one | `timestamps="truncate"` |
+| Python: `column "x", row 1: the timestamp ... (seconds since 1970) is outside polars' Datetime range` (also `Date range`) | a value polars cannot hold | none in polars; read the column with another tool |
+| Python: `column "x" is Decimal, which save_parquet does not write; cast it to Float64 or String` (also Duration, List, Array, Struct, Object, Int128) | a dtype the files here do not hold | cast the column first |
+| Python: `column "x" is Int64 and has .a to .z, which Int64 cannot hold; drop its letters or cast it` (also unsigned, Boolean, String, Binary) | letters on a column a double cannot hold | cast to `Float64`, or `meta.missing.pop("x")` |
+| Python: `column "x" is an Enum or Categorical and has .a to .z, ...; save it as .dta, drop its letters (meta.missing.pop), or read without factors` | a `factors=True` column with letters | as it says |
+| Python: `column "x" has changed since it was read, so meta.missing["x"] may no longer line up with its rows; carry the letters with letters_to_columns before changing rows, or drop them with meta.missing.pop("x")` (also `have 6 rows, but the frame has 2`) | a filter, sort, join or new values after a read with `letters="meta"` | read with `letters="columns"` or call `letters_to_columns` first |
+| Python: `column "x": row 2 holds a value and the letter .d; set one of them to null` | a row with both a value and a letter in its companion | set the companion to null where a value is set |
+| Python: `column "x" is in the frame but its letters' column "x_letter" is not; ...` (also `"x_letter" holds the letters of column "x", which is not in the frame`) | a companion dropped while its column was kept, or the reverse | keep both, or `del meta.letter_columns["x"]` |
+| Python: `column "t", row 1: the timestamp has a part below a microsecond, which a column with .a to .z (written as seconds) cannot hold; pass timestamps="truncate" to drop it` (also `too far from 1970`) | a `Datetime("ns")` column with letters | `timestamps="truncate"`, or drop the letters |
+| Python: `save_parquet takes a polars DataFrame, not a LazyFrame; call .collect() on it first` | a `LazyFrame` | as it says |
+| Python warning: `meta.sort (x) does not describe the order of the frame's rows, so it is not saved; ...` | rows reordered since the read, or sorted with nulls first | sort as the guide shows, or clear `meta.sort` |
+| Python warning: `"x_letter" is a column of datakit.LETTERS that no pair in meta.letter_columns names, ...` | a companion saved without its pair | add the pair to `meta.letter_columns`, or drop the column |
+| Python: `ImportError: datakit 0.3.0 needs dta_parser's native functions at ABI version 1, but the installed dta_parser ... has ABI version ...` | datakit and dta_parser from different checkouts | `pip install --force-reinstall ./python ./python/datakit` |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
 
 Julia's `read_parquet` and `save_parquet` (Datakit) give the same

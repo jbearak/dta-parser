@@ -2,6 +2,7 @@
 # languages"). Julia's half:
 #
 #     julia --project=bench/julia compat/parquet/cross_language.jl check DIR   # reads DIR/from_r.parquet
+#                                                                              # and DIR/from_python*.parquet
 #     julia --project=bench/julia compat/parquet/cross_language.jl write DIR   # writes DIR/from_julia.parquet
 #
 # compat/parquet/cross_language.sh runs both halves of each language in
@@ -120,7 +121,44 @@ check(colmetadata(df, :dayfrac, "format") == "%td", "dayfrac: format")
 # The POSIXct not whole microseconds, truncated to the millisecond.
 check(isequal(utc_ms.(df.whenfrac), [1000, 2000, missing, 3500, -1, 6000]), "whenfrac: truncated")
 
-println("Julia checked ", checked[], " values and labels in R's file")
+# Python's files: the letters from meta.missing, and from companion
+# columns. A timestamp holding letters is Stata's milliseconds as a
+# Float64 here, seconds since 1960 times 1000, so 1.000001 s keeps its
+# microsecond.
+const MS1960 = 3653 * 86_400_000
+for f in ("from_python.parquet", "from_python_columns.parquet")
+    p = read_parquet(joinpath(DIR, f); timestamps = :truncate)
+    w(what) = "$f $what"
+    check(metadata(p, "label") == "From Python" && metadata(p, "notes") == ["A note from Python."], w("label, notes"))
+    check(p.id == 1:6 && p.id isa Vector{Int32}, w("id"))
+    check(p.score isa DtaColumn{Float64}, w("score: type"))
+    cells(p.score, [1.5, 0, 0, -2.25, 0, 2.0^1000], [0, 1, 2, 0, 27, 0], w("score"))
+    check(colmetadata(p, :score, "label") == "A score" && colmetadata(p, :score, "format") == "%9.2f", w("score: label"))
+    check(metadata(p, "value_labels")["scorelab"] == Dict(1.5 => "Low", L(".a") => "Refused", L(".z") => "Other"),
+          w("score: labels"))
+    check(p.small isa DtaColumn{Int8}, w("small: type"))
+    cells(p.small, [1, 0, 0, 100, -127, 0], [0, 0, 5, 0, 0, 1], w("small"))
+    check(p.long isa DtaColumn{Int32}, w("long: type"))
+    cells(p.long, [2147483620, -2147483647, 0, 0, 0, 7], [0, 0, 3, 0, 1, 0], w("long"))
+    check(p.fl isa DtaColumn{Float32}, w("fl: type"))
+    cells(p.fl, Float32[0.5, 0, 3.25, 0, -1, 2], [0, 4, 0, 1, 0, 0], w("fl"))
+    cells(p.count, [3, 0, 0, -5, 2147483647, 1], [0, 1, 0, 0, 0, 0], w("count"))
+    check(isequal(p.word, ["a", missing, "", "été", "x y", "z"]), w("word"))
+    check(p.region isa CategoricalArray && levels(p.region) == ["S", "N", "E", "W"], w("region: levels"))
+    check(isequal(p.day, [Date(2024, 3, 1), missing, Date(1960), Date(1900, 2, 28), Date(2100, 12, 31), Date(1970)]),
+          w("day"))
+    check(colmetadata(p, :day, "format") == "%tdCCYY-NN-DD", w("day: format"))
+    check(isequal(utc_ms.(p.when), [0, 1_709_285_400_250, missing, -1000, 86_400_000, 1_000_000_000_000]), w("when"))
+    # A date and a timestamp holding letters: Stata's days and
+    # milliseconds since 1960, with %td and %tc.
+    cells(p.seen, [23436.0, 0, 23437, 0, 0, 0], [0, 5, 0, 1, 0, 27], w("seen"))
+    check(colmetadata(p, :seen, "format") == "%td", w("seen: format"))
+    cells(p.stamp, Float64[MS1960 + 500, 0, MS1960 + 1_000_000_000_000, 0, MS1960 - 86_400_250, (1.000001 + 3653 * 86_400) * 1000],
+          [0, 12, 0, 1, 0, 0], w("stamp"))
+    check(colmetadata(p, :stamp, "format") == "%tc", w("stamp: format"))
+end
+
+println("Julia checked ", checked[], " values and labels in R's and Python's files")
 if !isempty(failures)
     println("FAILED:")
     foreach(f -> println("  ", f), failures)

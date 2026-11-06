@@ -86,9 +86,18 @@ first appearance, which the test checks against pyarrow's values.
 ## Readback
 
     cargo run -p dta-parquet --example samples -- DIR
-    python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB
+    python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB; and datakit's own files
     Rscript compat/parquet/readback.R DIR      # arrow, nanoparquet
     julia --project=bench/julia compat/parquet/readback.jl   # Parquet2.jl reads Datakit's files
+
+Where Python's datakit is installed, `readback.py` also writes its own
+files with `save_parquet` (every dtype it writes, with nulls, `.a` to
+`.z` in byte, int, long, float, double, date and zoned timestamp
+columns, an ordered Enum with an unused level, in snappy, zstd, gzip and
+no compression, in row groups of 64 rows, and with `missing_letters`
+off) and checks what pyarrow, polars and DuckDB read, value by value:
+letters as NaN, and the levels and zone. With pyarrow 26.0.1, polars
+2.1.0 and DuckDB 2.0.0, every check passes.
 
 `readback.jl` writes its own files with Datakit's `save_parquet`
 (every type it writes, with nulls, `.a` to `.z`, categoricals and a
@@ -151,9 +160,12 @@ rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
 
     sh compat/parquet/cross_language.sh [DIR]
 
-R's datakit writes a file (`cross_language.R write`) and Julia's
-Datakit checks it cell by cell (`cross_language.jl check`); then Julia
-writes one and R checks it. Both scripts make the same literal data, so
+R's datakit and Python's datakit each write a file
+(`cross_language.R write`, `cross_language.py write`; Python's twice,
+with its letters in `meta.missing` and in companion columns). Julia's
+Datakit checks R's and Python's cell by cell (`cross_language.jl
+check`); then Julia writes one, R checks Julia's and Python's, and
+Python checks R's and Julia's, in both of its letter modes. Both scripts make the same literal data, so
 each checks every row's value and missing code (`.` or which of `.a`
 to `.z`), the variable labels, display formats, value label sets (with
 labels on letters), the data label and notes. The data has a double, a
@@ -167,11 +179,21 @@ back, which Julia refuses by default (the error names the column, the
 row and `timestamps = :truncate`) and truncates to the millisecond with
 it. Julia's file has a date column holding letters, as Julia holds one
 (Stata's days since 1960), which R reads as numbers with their `%td`
-format. Python's datakit adds its half with plan 0019's PR 2b.
+format. Python reads R's exactness edges as errors naming the column,
+the row and `timestamps="truncate"`, and with it as the truncated date
+and microsecond. Python's file adds a date and a timestamp holding
+letters, which R reads as `Date` and `POSIXct` with tagged NAs and Julia
+as Stata's days and milliseconds, and two labelled columns for
+`factors`: R writes the levels and values its `read_parquet(factors =
+TRUE)` gives for its file and Python's (`factors_r.json`), and Python's
+`factors=True` must give the same (a set with two codes labelled "Yes",
+and numbers as R writes them, such as `1e+05`).
 
 Result with R 4.6.1 (dtaparser and datakit from this checkout) and
 Julia 1.13.3: Julia checked 94 values and labels in R's file, R checked
-60 in Julia's, and none differ. One value had to change while writing
+60 in Julia's, and none differ. With Python 3.14 and polars 2.1.0 (plan
+0019, PR 2b): Julia checked 276 in R's and Python's files, R 202 in
+Julia's and Python's, and Python 321 in R's and Julia's; none differ. One value had to change while writing
 the script: R parses the literal `1e300` as `1.0000000000000006e300`
 (its own string-to-double conversion is not correctly rounded), so the
 scripts use `2^1000`, which both languages hold exactly.

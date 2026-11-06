@@ -69,9 +69,34 @@ through it. In Julia, `Datakit`: `read_parquet`, `read_parquet_info`,
 `save_parquet` and `read_fixed_width` into DataFrames, labels in their
 metadata and `.a` to `.z` in `DtaColumn`s, with no `:=`; it reaches the
 native library through `DtaParser.Internals` and checks DtaParser's ABI
-version when it loads.
+version when it loads. In Python, `datakit` (distribution
+`dta-datakit`): `read_parquet`, `read_parquet_info`, `save_parquet`,
+`read_dta`, `save_dta` and `read_fixed_width` into polars DataFrames,
+with labels and `.a` to `.z` in a **Meta** beside the frame and no `:=`;
+it is pure Python, calls `dta_parser._native`, and checks its
+`ABI_VERSION` when imported. Python's has `.dta` too because its frames
+are polars and dta_parser's are pandas.
 _Avoid_: using datakit for `.dta` reading or labels in R or Julia
 (those are dtaparser's and DtaParser's)
+
+**Meta**:
+In Python's datakit, the dataclass returned beside every polars frame,
+since a polars `DataFrame` has no column metadata: the data label,
+notes, characteristics, sort order, time stamp, each column's `Column`
+(variable label, display format, value label set, `ordered`), the value
+label sets, and the letters: `missing`, a Series of `LETTERS` per column
+aligned with the rows as read, and `letter_columns`, the companion
+column pairs. It does not follow polars operations.
+_Avoid_: attrs (pandas'), metadata (unqualified)
+
+**Companion column**:
+In Python's datakit, a column `x_letter` of dtype `LETTERS` (polars'
+Enum of `.a` to `.z`) beside column `x` in the frame, holding `x`'s
+letters where `x` is null and null elsewhere. Being a column, it follows
+its rows through filter, sort, join and concat, where `meta.missing`
+does not; saving writes its letters into `x` and does not write it as
+a column.
+_Avoid_: letter column (ambiguous with a column of letters as values)
 
 **dtatools**:
 The R package that reads files into dibbles, whose `dta_num` columns

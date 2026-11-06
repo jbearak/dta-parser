@@ -1,9 +1,74 @@
 # Migration notes
 
+- [dta_parser 0.2 to 0.3](#dta_parser-02-to-03) (Python): Parquet and
+  fixed-width text move to datakit, in polars; `StataArray` becomes
+  `DtaArray`, and `stata_key` becomes `dta_key`.
 - [DtaParser 0.2 to 0.3](#dtaparser-02-to-03) (Julia): Parquet and
   fixed-width text move to Datakit.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
+
+## dta_parser 0.2 to 0.3
+
+dta_parser 0.3 reads and writes `.dta` files with pandas, and nothing
+else, and its pandas types are renamed after the format rather than
+after Stata:
+
+| dta_parser 0.2 | dta_parser 0.3 |
+|---|---|
+| `StataArray` | `DtaArray` |
+| `StataDtype` | `DtaDtype` |
+| the dtype strings `"stata[byte]"` ... `"stata[double]"`, and `"stata"` | `"dta[byte]"` ... `"dta[double]"`, and `"dta"` |
+| `stata_key(value)`, `stata_keys(column)` | `dta_key(value)`, `dta_keys(column)` |
+
+The old names are gone, with no aliases: replace them (for example
+`sed -e 's/StataArray/DtaArray/g; s/StataDtype/DtaDtype/g; s/"stata\[/"dta[/g; s/stata_key/dta_key/g'`).
+They behave as before. A pickle of a 0.2 frame holding a `StataArray`
+does not load in 0.3; write it as `.dta` with 0.2 and read it back.
+
+Its Parquet and fixed-width functions move to a new package,
+datakit (distribution `dta-datakit`, import `datakit`), which works in
+polars, not pandas (plan 0019, ADR 0034). Install both from the
+checkout and import datakit:
+
+    pip install ./python ./python/datakit
+
+    import datakit as dk
+
+A datakit read returns a tuple: a polars `DataFrame`, in which `.` and
+`.a` to `.z` are all nulls, and a `Meta` holding what `df.attrs["dta"]`
+held: the data label, notes, characteristics, sort order, each column's
+label, format and value label set, the sets, and the letters.
+
+| dta_parser 0.2 | datakit 0.3 | what changes |
+|---|---|---|
+| `df = dp.read_parquet(source, columns=, skip=, n_max=, nested=)` | `df, meta = dk.read_parquet(source, columns=, skip=, n_max=, nested=)` | a polars frame and a `Meta`; `df.attrs["dta"]` becomes `meta`; a `StataArray` (now `DtaArray`) column becomes a nullable polars column with its letters in `meta.missing` (or a companion column with `letters="columns"`); an integer column with nulls stays an integer column; dates are `Date` and `Datetime`; a categorical is an `Enum` |
+| `dp.write_parquet(df, path, label=, variable_labels=, ...)` | `dk.save_parquet(df, path, meta=meta, ...)` | the name, as in R's and Julia's datakits; labels go in `meta` (`meta.label`, `meta.columns[name].label`), not in arguments; `compression`, `compression_level`, `row_group_size` and `missing_letters` are the same; there is no index to warn about |
+| `dp.read_meta(parquet_file)` | `dk.read_parquet_info(parquet_file)` | a `ParquetInfo`: `rows` for `"nobs"`, `columns` as a polars frame with each column's polars dtype, `meta` for the labels, new `key_value`; `dp.read_meta` on a Parquet file is now a `ValueError` naming `read_parquet_info` |
+| `df = dp.read_fixed_width(path, setup, ...)` | `df, meta = dk.read_fixed_width(path, setup, ...)` | a polars frame and a `Meta`; the warnings' full list is `FixedWidthWarning.messages`, not `df.attrs["warnings"]`; new `letters=` |
+| `dp.FixedWidthWarning` | `dk.FixedWidthWarning` | |
+| none | `dk.read_dta`, `dk.save_dta` | `.dta` files into polars and back, without pandas |
+
+**Staying in pandas.** `meta` cannot follow a pandas frame, so the
+pandas route for labelled data is `.dta`: `dk.save_dta(df, "x.dta",
+meta=meta)` and then `dp.read_dta("x.dta")` gives the frame dta_parser
+0.2's `read_parquet` gave, with `DtaArray` columns and `attrs["dta"]`
+included. For plain values, `df.to_pandas()` (pyarrow needed) converts
+the polars frame; `.a` to `.z` are then missing values in pandas, and
+their letters stay in `meta`.
+
+Everything else in dta_parser is unchanged: `read_dta`, `write_dta`,
+`read_meta` for `.dta` files (from a path, bytes or a file object),
+`DtaArray`, `DtaDtype`, `missing`, `MissingValue`, `missing_codes`,
+`dta_key` and `dta_keys`, but for their names. `import dta_parser` no longer imports
+pandas until one of these is used, so that datakit can use dta_parser's
+compiled core without loading pandas; the `dta[...]` dtype is still
+registered with pandas as soon as both are imported, in either order.
+
+dta_parser's compiled module still holds the Parquet code: datakit
+calls it through functions that are for datakit only, and checks
+`dta_parser._native.ABI_VERSION` when it is imported. Install both from
+one checkout.
 
 ## DtaParser 0.2 to 0.3
 

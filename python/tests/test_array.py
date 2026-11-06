@@ -1,4 +1,4 @@
-"""StataArray keeps each row's missing code through the pandas operations
+"""DtaArray keeps each row's missing code through the pandas operations
 the plan lists, and orders and groups values as Stata does."""
 
 import copy
@@ -8,11 +8,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dta_parser import MissingValue, StataArray, StataDtype, missing, missing_codes, stata_key, stata_keys
+from dta_parser import MissingValue, DtaArray, DtaDtype, missing, missing_codes, dta_key, dta_keys
 
 
 def frame():
-    x = StataArray([3.0, np.nan, 1.0, np.nan, np.nan, 2.0], [0, 27, 0, 1, 2, 0], storage="long")
+    x = DtaArray([3.0, np.nan, 1.0, np.nan, np.nan, 2.0], [0, 27, 0, 1, 2, 0], storage="long")
     return pd.DataFrame({"x": x, "row": [0, 1, 2, 3, 4, 5]})
 
 
@@ -30,25 +30,25 @@ def test_missing_scalars():
     assert sorted([missing.c, 5, missing.a, -1.0]) == [-1.0, 5, missing.a, missing.c]
 
 
-def test_stata_key_orders_numbers_then_missing_values():
+def test_dta_key_orders_numbers_then_missing_values():
     values = [missing.z, 3, np.nan, -1e300, missing.a, 8.98e307, 0, None]
-    ordered = sorted(values, key=stata_key)
+    ordered = sorted(values, key=dta_key)
     assert ordered[:4] == [-1e300, 0, 3, 8.98e307]
-    assert [stata_key(v) for v in ordered[4:]] == sorted(stata_key(v) for v in [np.nan, None, missing.a, missing.z])
-    assert stata_key(missing.a) < stata_key(missing.b)
-    assert np.isfinite(stata_key(missing.z))
+    assert [dta_key(v) for v in ordered[4:]] == sorted(dta_key(v) for v in [np.nan, None, missing.a, missing.z])
+    assert dta_key(missing.a) < dta_key(missing.b)
+    assert np.isfinite(dta_key(missing.z))
     # The doubles Stata stores for `.` and `.a`.
-    assert np.float64(stata_key(np.nan)).view(np.uint64) == 0x7FE0000000000000
-    assert np.float64(stata_key(missing.a)).view(np.uint64) == 0x7FE0000000000000 + (1 << 40)
+    assert np.float64(dta_key(np.nan)).view(np.uint64) == 0x7FE0000000000000
+    assert np.float64(dta_key(missing.a)).view(np.uint64) == 0x7FE0000000000000 + (1 << 40)
 
 
-def test_stata_keys_of_columns():
+def test_dta_keys_of_columns():
     df = frame()
-    keys = stata_keys(df["x"])
+    keys = dta_keys(df["x"])
     assert keys[0] == 3.0 and keys[2] == 1.0
-    assert keys[3] == stata_key(np.nan) and keys[4] == stata_key(missing.a) and keys[1] == stata_key(missing.z)
-    assert stata_keys(pd.Series([1.0, np.nan])).tolist() == [1.0, stata_key(np.nan)]
-    assert stata_keys(pd.array([1, None], dtype="Int64")).tolist() == [1.0, stata_key(np.nan)]
+    assert keys[3] == dta_key(np.nan) and keys[4] == dta_key(missing.a) and keys[1] == dta_key(missing.z)
+    assert dta_keys(pd.Series([1.0, np.nan])).tolist() == [1.0, dta_key(np.nan)]
+    assert dta_keys(pd.array([1, None], dtype="Int64")).tolist() == [1.0, dta_key(np.nan)]
     assert missing_codes(df["x"]).tolist() == [0, 27, 0, 1, 2, 0]
     assert missing_codes(pd.Series([1.0, np.nan])).tolist() == [0, 1]
 
@@ -91,8 +91,8 @@ def test_sort_values_in_stata_order():
     out = df.sort_values("x", ascending=False)
     assert out["row"].tolist() == [0, 5, 2, 1, 4, 3]
     # Several columns sort through pandas' Categorical, which takes no missing
-    # categories; stata_keys as the key sorts them in Stata order.
-    out = df.sort_values(["x", "row"], key=stata_keys)
+    # categories; dta_keys as the key sorts them in Stata order.
+    out = df.sort_values(["x", "row"], key=dta_keys)
     assert out["row"].tolist() == [2, 5, 0, 3, 4, 1]
     assert df["x"].sort_values().array.codes.tolist() == [0, 0, 0, 1, 2, 27]
 
@@ -101,21 +101,21 @@ def test_concat_and_merge_keep_codes():
     a, b = frame(), frame()
     both = pd.concat([a, b], ignore_index=True)
     assert codes(both["x"]) == [0, 27, 0, 1, 2, 0] * 2
-    other = pd.DataFrame({"row": [1, 4, 9], "y": StataArray([np.nan, 5.0, np.nan], [3, 0, 1], storage="byte")})
+    other = pd.DataFrame({"row": [1, 4, 9], "y": DtaArray([np.nan, 5.0, np.nan], [3, 0, 1], storage="byte")})
     merged = a.merge(other, on="row", how="left")
     assert codes(merged["x"]) == [0, 27, 0, 1, 2, 0]
     assert codes(merged["y"]) == [1, 3, 1, 1, 0, 1]
-    assert merged["y"].dtype == StataDtype("byte")
+    assert merged["y"].dtype == DtaDtype("byte")
     inner = a.merge(other, on="row")
     assert codes(inner["x"]) == [27, 2] and codes(inner["y"]) == [3, 0]
     # Concatenating different storage types widens.
-    wide = pd.concat([pd.Series(StataArray([1.0], storage="byte")), pd.Series(StataArray([2.0], storage="long"))])
-    assert wide.dtype == StataDtype("long")
+    wide = pd.concat([pd.Series(DtaArray([1.0], storage="byte")), pd.Series(DtaArray([2.0], storage="long"))])
+    assert wide.dtype == DtaDtype("long")
 
 
 def test_merge_on_a_stata_array_column():
-    left = pd.DataFrame({"k": StataArray([1.0, np.nan, np.nan], [0, 2, 3]), "a": [1, 2, 3]})
-    right = pd.DataFrame({"k": StataArray([np.nan, 1.0], [3, 0]), "b": ["b", "one"]})
+    left = pd.DataFrame({"k": DtaArray([1.0, np.nan, np.nan], [0, 2, 3]), "a": [1, 2, 3]})
+    right = pd.DataFrame({"k": DtaArray([np.nan, 1.0], [3, 0]), "b": ["b", "one"]})
     out = left.merge(right, on="k")
     assert out["a"].tolist() == [1, 3]
     assert codes(out["k"]) == [0, 3]
@@ -139,7 +139,7 @@ def test_copy_keeps_codes_and_is_independent():
 
 
 def test_groupby_keeps_each_missing_value_its_own_group():
-    x = StataArray([1.0, np.nan, np.nan, 1.0, np.nan, np.nan], [0, 1, 2, 0, 2, 27])
+    x = DtaArray([1.0, np.nan, np.nan, 1.0, np.nan, np.nan], [0, 1, 2, 0, 2, 27])
     df = pd.DataFrame({"x": x, "n": [1, 2, 3, 4, 5, 6]})
     sums = df.groupby("x")["n"].sum()
     assert sums.tolist() == [5, 2, 8, 6]
@@ -152,8 +152,8 @@ def test_groupby_keeps_each_missing_value_its_own_group():
 
 
 def test_construction_and_conversion():
-    s = pd.Series([1, None, missing.a, 2.5], dtype="stata[int]")
-    assert s.dtype == StataDtype("int")
+    s = pd.Series([1, None, missing.a, 2.5], dtype="dta[int]")
+    assert s.dtype == DtaDtype("int")
     assert codes(s) == [0, 1, 2, 0]
     assert s.to_numpy().dtype == np.float64
     assert np.isnan(s.to_numpy()[2])
@@ -164,15 +164,15 @@ def test_construction_and_conversion():
     assert s.unique().codes.tolist() == [0, 1, 2, 0]
     assert len(s.unique()) == 4
     assert "a" in repr(s)
-    assert StataArray([1.0, np.nan]).codes.tolist() == [0, 1]
+    assert DtaArray([1.0, np.nan]).codes.tolist() == [0, 1]
     with pytest.raises(ValueError):
-        StataArray([1.0], [28])
+        DtaArray([1.0], [28])
     assert s.array.equals(s.array.copy())
-    assert not s.array.equals(StataArray._from_sequence([1, None, missing.b, 2.5], dtype="stata[int]"))
+    assert not s.array.equals(DtaArray._from_sequence([1, None, missing.b, 2.5], dtype="dta[int]"))
 
 
 def test_sum_and_prod_honour_min_count():
-    s = pd.Series(StataArray([1.0, np.nan], [0, 2]))
+    s = pd.Series(DtaArray([1.0, np.nan], [0, 2]))
     assert np.isnan(s.sum(min_count=2))
     assert s.sum(min_count=1) == 1.0
     assert np.isnan(s.prod(min_count=2))

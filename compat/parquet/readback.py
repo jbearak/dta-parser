@@ -8,6 +8,12 @@ Run from the repository root:
     cargo run -p dta-parquet --example samples -- DIR
     python3 compat/parquet/readback.py DIR
 
+Where Python's datakit is installed, it also writes its own files into
+DIR/datakit (every dtype save_parquet writes, with nulls, `.a` to `.z`
+in each type that holds them, an ordered Enum with an unused level, and
+a zone, in four codecs and in small row groups) and checks what pyarrow,
+polars and DuckDB read from them, value by value (plan 0019).
+
 Needs pyarrow, pandas, polars and duckdb.
 """
 
@@ -281,6 +287,162 @@ for file, spec in EXPECTED.items():
             check(file, spec)
         except Exception as e:  # noqa: BLE001 - report every tool's failure
             fail(check.__name__[6:], file, f"{type(e).__name__}: {e}")
+
+
+
+# ---- datakit's own files ----
+
+def datakit_files():
+    """(name, frame, meta, save options) of the files datakit writes."""
+    import datetime as dt
+
+    import datakit as dk
+
+    n = 300
+    r = list(range(n))
+    def nulls(values, every=7):
+        return [None if i % every == 3 else v for i, v in enumerate(values)]
+    # A letter where every 11th row is null-by-letter; the value is null there.
+    letter = [f".{chr(97 + i % 26)}" if i % 11 == 5 else None for i in r]
+    def holed(values):
+        return [None if letter[i] is not None else v for i, v in enumerate(values)]
+    frame = pl.DataFrame({
+        "i8": pl.Series(holed(nulls([i % 100 - 50 for i in r])), dtype=pl.Int8),
+        "i16": pl.Series(holed(nulls([i * 97 - 9000 for i in r])), dtype=pl.Int16),
+        "i32": pl.Series(holed(nulls([i * 7_000_001 - 10**9 for i in r])), dtype=pl.Int32),
+        "f32": pl.Series(holed(nulls([i / 4 - 20 for i in r])), dtype=pl.Float32),
+        "f64": pl.Series(holed(nulls([i * 1.5e10 - 1e12 for i in r])), dtype=pl.Float64),
+        "nan": pl.Series(nulls([float("nan") if i % 5 == 0 else i / 3 for i in r]), dtype=pl.Float64),
+        "i64": pl.Series(nulls([2**62 - i for i in r]), dtype=pl.Int64),
+        "u8": pl.Series(nulls([i % 256 for i in r]), dtype=pl.UInt8),
+        "u64": pl.Series(nulls([2**64 - 1 - i for i in r]), dtype=pl.UInt64),
+        "flag": pl.Series(nulls([i % 2 == 0 for i in r]), dtype=pl.Boolean),
+        "text": pl.Series(nulls([f"value {i} " + "é" * (i % 4) for i in r])),
+        "blob": pl.Series(nulls([bytes([i % 256, 0, 255]) for i in r])),
+        "day": pl.Series(holed(nulls([dt.date(1900, 1, 1) + dt.timedelta(days=97 * i) for i in r]))),
+        "local": pl.Series(nulls([dt.datetime(1960, 1, 1) + dt.timedelta(microseconds=123_456_789 * i) for i in r]),
+                           dtype=pl.Datetime("us")),
+        "zoned": pl.Series(holed(nulls([dt.datetime(2024, 3, 1) + dt.timedelta(minutes=37 * i) for i in r])),
+                           dtype=pl.Datetime("us")).dt.replace_time_zone("UTC").dt.convert_time_zone("Asia/Tokyo"),
+        "ns": pl.Series(nulls([dt.datetime(2001, 1, 1) + dt.timedelta(seconds=i) for i in r]),
+                        dtype=pl.Datetime("ns")),
+        "cat": pl.Series(nulls([["lo", "mid", "hi"][i % 3] for i in r]), dtype=pl.Enum(["lo", "mid", "hi", "unused"])),
+    })
+    letters = pl.Series(letter, dtype=dk.LETTERS)
+    meta = dk.Meta(
+        label="datakit readback", notes=["Written by compat/parquet/readback.py."],
+        columns={"cat": dk.Column(ordered=True), "i8": dk.Column(label="A byte", value_labels="v")},
+        value_labels={"v": {1: "one", ".a": "skipped"}},
+        missing={c: letters.alias(c) for c in ("i8", "i16", "i32", "f32", "f64", "day", "zoned")},
+        rows=n,
+    )
+    out = []
+    for codec in ("snappy", "zstd", "gzip", "none"):
+        out.append((f"datakit_{codec}", frame, meta, {"compression": codec}))
+    out.append(("datakit_groups", frame, meta, {"row_group_size": 64}))
+    out.append(("datakit_nulls", frame, meta, {"missing_letters": False}))
+    return out
+
+
+def check_datakit(name, frame, meta, path, letters_kept):
+    """What pyarrow, polars and DuckDB read from a file datakit wrote."""
+    tagged = set(meta.missing) if letters_kept else set()
+    def want(c):
+        """The values other tools read: a letter is NaN, not null."""
+        values = frame[c].to_list()
+        if c in tagged:
+            lt = meta.missing[c].to_list()
+            values = ["NaN" if l is not None else v for v, l in zip(values, lt)]
+        return values
+
+    def plain(c, values):
+        """Our frame's values as the other tools give them."""
+        t = frame.schema[c]
+        if isinstance(t, pl.Datetime) and c in tagged:
+            # Written as seconds since 1970 in a DOUBLE.
+            return values
+        return values
+
+    table = pq.read_table(path)
+    kv = pq.read_metadata(path).metadata or {}
+    if b"dta" not in kv:
+        fail("pyarrow", name, "no dta key")
+    tdf = pl.read_parquet(path)
+    con = duckdb.connect()
+    for c in frame.columns:
+        src = frame[c]
+        t = src.dtype
+        if c in tagged:
+            # DOUBLE: numbers, days or seconds since 1970, NaN for letters.
+            if isinstance(t, pl.Datetime):
+                base = src.dt.epoch("us").to_list()
+                expect = [None if v is None else v / 1e6 for v in base]
+            elif t == pl.Date:
+                expect = src.to_physical().to_list()
+            else:
+                expect = src.cast(pl.Float64).to_list()
+            lt = meta.missing[c].to_list()
+            expect = ["NaN" if l is not None else (None if v is None else float(v)) for v, l in zip(expect, lt)]
+            compare("pyarrow", name, c, expect, table.column(c).to_pylist())
+            compare("polars", name, c, expect, tdf[c].to_list())
+            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+            continue
+        if isinstance(t, pl.Enum):
+            expect = src.cast(pl.String).to_list()
+            col = table.column(c)
+            for chunk in col.chunks:
+                if chunk.dictionary.to_pylist() != list(t.categories) or not col.type.ordered:
+                    fail("pyarrow", name, f"{c}: levels {chunk.dictionary.to_pylist()}, ordered {col.type.ordered}")
+            compare("pyarrow", name, c, expect, col.cast(pa.string()).to_pylist())
+            compare("polars", name, c, expect, tdf[c].cast(pl.String).to_list())
+            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+            continue
+        if isinstance(t, pl.Datetime):
+            unit = t.time_unit
+            expect = src.dt.epoch(unit).to_list()
+            if (t.time_zone or None) != (tdf[c].dtype.time_zone or None):
+                fail("polars", name, f"{c}: zone {tdf[c].dtype.time_zone}, not {t.time_zone}")
+            compare("pyarrow", name, c, expect, pc.cast(table.column(c), pa.int64()).to_pylist())
+            compare("polars", name, c, expect, tdf[c].dt.epoch(unit).to_list())
+            fn = {"ms": "epoch_ms", "us": "epoch_us", "ns": "epoch_ns"}[unit]
+            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT {fn}("{c}") FROM \'{path}\'').fetchall()])
+            continue
+        if t == pl.Date:
+            expect = src.to_physical().to_list()
+            compare("pyarrow", name, c, expect, pc.cast(table.column(c), pa.int32()).to_pylist())
+            compare("polars", name, c, expect, tdf[c].to_physical().to_list())
+            compare("duckdb", name, c, expect,
+                    [r[0] for r in con.execute(f'SELECT ("{c}" - DATE \'1970-01-01\') FROM \'{path}\'').fetchall()])
+            continue
+        expect = src.to_list()
+        if t == pl.Float64 or t == pl.Float32:
+            expect = ["NaN" if isinstance(v, float) and math.isnan(v) else v for v in expect]
+        if tdf.schema[c] != t:
+            fail("polars", name, f"{c}: dtype {tdf.schema[c]}, not {t}")
+        compare("pyarrow", name, c, expect, table.column(c).to_pylist())
+        compare("polars", name, c, expect, tdf[c].to_list())
+        compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+    for tool in ("pyarrow", "polars", "duckdb"):
+        checked[tool] = checked.get(tool, 0) + 1
+
+
+try:
+    import datakit as _dk
+except ImportError:
+    _dk = None
+if _dk is not None:
+    out_dir = os.path.join(DIR, "datakit")
+    os.makedirs(out_dir, exist_ok=True)
+    for name, frame, meta, options in datakit_files():
+        path = os.path.join(out_dir, name + ".parquet")
+        try:
+            _dk.save_parquet(frame, path, meta=meta, **options)
+            check_datakit(name, frame, meta, path, options.get("missing_letters", True))
+            back, back_meta = _dk.read_parquet(path)
+            if not back.equals(frame) and not options.get("missing_letters", True) is False:
+                fail("datakit", name, "does not read back equal")
+        except Exception as e:  # noqa: BLE001 - report every failure
+            fail("datakit", name, f"{type(e).__name__}: {e}")
 
 print(
     f"pyarrow {pa.__version__}, polars {pl.__version__}, duckdb {duckdb.__version__}: "

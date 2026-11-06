@@ -45,7 +45,7 @@ distinct value. [ADR 0010](../adr/0010-packed-strings-in-r.md) and
 
 **Python.** The extension fills numpy arrays that Python allocated, in
 their storage width (an `int8` column takes one byte per row), and
-builds Python strings in Rust. A `StataArray` costs one extra byte per
+builds Python strings in Rust. A `DtaArray` costs one extra byte per
 row for its codes. Python strings cost about 50 bytes each plus the
 text, which dominates for string-heavy files.
 

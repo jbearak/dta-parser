@@ -49,11 +49,11 @@ number, and never give `NA`).
 
 **Python.** A column with `.` as its only missing value is a float
 column with `NaN`, as pandas expects. A column with any of `.a` to `.z`
-is a `StataArray`, a pandas extension array that stores a code per row.
+is a `DtaArray`, a pandas extension array that stores a code per row.
 `.` reads as `NaN`; the letters read as `dta_parser.missing.a` to
 `.z`, one object per letter. `isna()` is true for all 27. The codes
 follow their rows through boolean and positional selection, `loc` and
-`iloc`, `sort_values`, `concat` and `merge` of `StataArray` columns,
+`iloc`, `sort_values`, `concat` and `merge` of `DtaArray` columns,
 `reindex` (new rows are `.`), `copy`, and `groupby` on the column (where
 `.`, `.a`, ... are separate groups, as in Stata). Arithmetic and other
 operations may turn the letters into `NaN`.

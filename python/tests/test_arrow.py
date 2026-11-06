@@ -67,7 +67,7 @@ def cells_ours(df, letters, name):
 
 def cells_pandas(series):
     arr = series.array
-    if isinstance(series.dtype, dp.StataDtype):
+    if isinstance(series.dtype, dp.DtaDtype):
         return [("m", int(c)) if c else ("v", v) for v, c in zip(arr._values, arr._codes)]
     out = []
     for v in series.to_numpy(dtype=object):
@@ -143,11 +143,11 @@ def made_dta(tmp_path_factory):
     d = tmp_path_factory.mktemp("dta")
     n = 40
     df = pd.DataFrame({
-        "b": dp.StataArray([i % 50 for i in range(n)], codes=[2 if i % 7 == 1 else 1 if i % 5 == 0 else 0 for i in range(n)], storage="byte"),
-        "i": dp.StataArray([i * 300 for i in range(n)], codes=[27 if i % 9 == 2 else 0 for i in range(n)], storage="int"),
-        "l": dp.StataArray([i * 100_000 for i in range(n)], codes=[3 if i % 4 == 3 else 0 for i in range(n)], storage="long"),
-        "f": dp.StataArray([i / 4 for i in range(n)], codes=[4 if i == 6 else 0 for i in range(n)], storage="float"),
-        "d": dp.StataArray([i / 3 for i in range(n)], codes=[5 if i == 8 else 0 for i in range(n)], storage="double"),
+        "b": dp.DtaArray([i % 50 for i in range(n)], codes=[2 if i % 7 == 1 else 1 if i % 5 == 0 else 0 for i in range(n)], storage="byte"),
+        "i": dp.DtaArray([i * 300 for i in range(n)], codes=[27 if i % 9 == 2 else 0 for i in range(n)], storage="int"),
+        "l": dp.DtaArray([i * 100_000 for i in range(n)], codes=[3 if i % 4 == 3 else 0 for i in range(n)], storage="long"),
+        "f": dp.DtaArray([i / 4 for i in range(n)], codes=[4 if i == 6 else 0 for i in range(n)], storage="float"),
+        "d": dp.DtaArray([i / 3 for i in range(n)], codes=[5 if i == 8 else 0 for i in range(n)], storage="double"),
         "day": pd.to_datetime([dt.date(2000, 1, 1) + dt.timedelta(days=i * 37) for i in range(n)]),
         "when": pd.to_datetime([dt.datetime(1950, 1, 1) + dt.timedelta(milliseconds=i * 123_456_789) for i in range(n)]),
         "s": ["short" if i % 2 else f"a value longer than twelve bytes {i}" for i in range(n)],

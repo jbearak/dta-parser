@@ -6,7 +6,7 @@ import pytest
 
 import dta_parser as dp
 from conftest import FIXTURES, fixture_paths
-from dta_parser import StataArray, missing, read_dta, read_meta
+from dta_parser import DtaArray, missing, read_dta, read_meta
 
 TEXT = pd.Series(["a"]).dtype
 
@@ -37,8 +37,8 @@ def test_only_system_missing_gives_floats_with_nan():
 def test_extended_missing_values_give_a_stata_array():
     df = read_dta(FIXTURES / "haven_118.dta")
     num = df["num"]
-    assert isinstance(num.array, StataArray)
-    assert num.dtype == dp.StataDtype("double")
+    assert isinstance(num.array, DtaArray)
+    assert num.dtype == dp.DtaDtype("double")
     assert num.array.codes.tolist() == [0, 0, 1, 2, 27, 0]
     assert num[0] == 1.5
     assert np.isnan(num[2])
@@ -85,8 +85,9 @@ def test_many_numeric_columns_take_little_memory_beyond_the_frame(tmp_path):
     dp.write_dta(pd.DataFrame({f"v{k}": np.arange(100, dtype=np.int8) for k in range(2000)}), path)
     code = (
         "import resource, sys, dta_parser as dp\n"
+        "read = dp.read_dta  # loads pandas, which dta_parser imports when first used\n"
         "before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
-        "dp.read_dta(sys.argv[1])\n"
+        "read(sys.argv[1])\n"
         "after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
         "print((after - before) / (1 if sys.platform == 'darwin' else 1 / 1024))\n"
     )
@@ -130,9 +131,9 @@ def test_skip_and_n_max_read_a_window_of_rows(path):
         for name in full.columns:
             expected = full[name].iloc[rows].reset_index(drop=True)
             got = part[name]
-            if isinstance(full[name].array, StataArray):
+            if isinstance(full[name].array, DtaArray):
                 codes = full[name].array.codes[rows]
-                if isinstance(got.array, StataArray):
+                if isinstance(got.array, DtaArray):
                     assert got.array.codes.tolist() == codes.tolist()
                 else:
                     # A window without .a to .z reads narrower.
@@ -196,7 +197,7 @@ def test_dates_convert_unless_asked_not_to():
 
 def test_dates_stay_numbers_with_extended_missing_values_or_fractions(tmp_path):
     df = pd.DataFrame({
-        "d": dp.StataArray([0.0, 1.0, np.nan], [0, 0, 2]),
+        "d": dp.DtaArray([0.0, 1.0, np.nan], [0, 0, 2]),
         "half": [0.5, 1.0, 2.0],
         "ms": [1.0, 2.0, 3.0],
         "leap": [0.0, 1000.0, np.nan],
@@ -207,7 +208,7 @@ def test_dates_stay_numbers_with_extended_missing_values_or_fractions(tmp_path):
     path = tmp_path / "dates.dta"
     dp.write_dta(df, path)
     back = read_dta(path)
-    assert isinstance(back["d"].array, StataArray)
+    assert isinstance(back["d"].array, DtaArray)
     assert back["half"].dtype == np.float64
     assert back["ms"].dtype == "datetime64[ms]"
     assert back["ms"][0] == pd.Timestamp("1960-01-01 00:00:00.001")

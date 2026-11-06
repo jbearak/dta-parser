@@ -37,7 +37,8 @@ jobs:
 
   # Parquet (plan 0018): pyarrow's reading of the committed fixtures is
   # still what compat/parquet/expected holds, and pyarrow, pandas, polars
-  # and DuckDB read back the files dta-parquet writes.
+  # and DuckDB read back the files dta-parquet writes, and those Python's
+  # datakit writes (plan 0019).
   parquet-python:
     runs-on: ubuntu-latest
     steps:
@@ -46,7 +47,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install pyarrow pandas polars duckdb
+      - run: pip install pyarrow pandas polars duckdb maturin
+      - run: maturin build --release --out dist
+        working-directory: python
+      - run: pip install python/dist/*.whl ./python/datakit
       - run: python compat/parquet/expected.py
       - name: Committed expected values match pyarrow's reading
         run: git diff --exit-code -- compat/parquet/expected
@@ -178,11 +182,49 @@ jobs:
         env:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
-      # With pyarrow, pandas keeps text in Arrow memory, which
-      # read_parquet then fills directly; polars and DuckDB read back
-      # what write_parquet writes.
-      - run: pip install pyarrow polars duckdb
+      # With pyarrow and polars, the tests of dta_parser's Arrow path
+      # (python/tests/test_arrow.py) run too.
+      - run: pip install pyarrow polars
       - run: python -m pytest python/tests
+
+  # Python's datakit (plan 0019): pure Python on dta_parser's wheel. Its
+  # tests (the docs' examples among them), with small chunks and threads
+  # too; then both sdists build offline and install into a fresh venv,
+  # which imports datakit without pandas.
+  datakit-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install maturin setuptools
+      - run: maturin build --release --out dist
+        working-directory: python
+      - run: pip install python/dist/*.whl ./python/datakit pytest pyarrow duckdb
+      - run: python -m pytest python/datakit/tests
+      - run: python -m pytest python/datakit/tests
+        env:
+          DTA_TEST_SMALL_CHUNKS: "1"
+          DTA_THREADS: "4"
+      - name: Both sdists build offline
+        run: |
+          maturin sdist --out "$RUNNER_TEMP/sdist"
+          (cd datakit && python -c "from setuptools import build_meta as b; b.build_sdist('$RUNNER_TEMP/sdist')")
+          CARGO_NET_OFFLINE=true pip wheel --no-index --no-build-isolation --no-deps -w "$RUNNER_TEMP/wheels" "$RUNNER_TEMP"/sdist/*.tar.gz
+        working-directory: python
+      - name: A fresh venv installs both and imports datakit without pandas
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install "$RUNNER_TEMP"/wheels/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/venv/bin/python" -c "import sys, datakit; assert 'pandas' not in sys.modules"
 
   # One abi3 wheel per supported platform, each installed into a fresh
   # venv and smoke-tested. Nothing is published.
