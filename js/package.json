@@ -3,6 +3,11 @@
   "version": "1.1.0",
   "description": "Read and write Stata .dta files, and Parquet files that keep their labels and .a to .z",
   "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jbearak/dta-parser.git",
+    "directory": "js"
+  },
   "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
