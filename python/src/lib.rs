@@ -5,7 +5,8 @@
 //! numpy without its C API (the buffer protocol is not in the abi3 API
 //! before Python 3.11). Writing borrows numpy buffers the same way.
 //! Strings are made here, one Python object per distinct recent value.
-//! Parquet files (plan 0018) are read and written in `parquet`.
+//! Parquet goes through `arrow`, for datakit only (plan 0019), with
+//! helpers it shares in `parquet`.
 
 mod arrow;
 mod parquet;
@@ -585,12 +586,6 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(meta, m)?)?;
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;
-    m.add_function(wrap_pyfunction!(parquet::magic, m)?)?;
-    m.add_function(wrap_pyfunction!(parquet::parquet_fits, m)?)?;
-    m.add_function(wrap_pyfunction!(parquet::parquet_meta, m)?)?;
-    m.add_function(wrap_pyfunction!(parquet::parquet_read, m)?)?;
-    m.add_function(wrap_pyfunction!(parquet::parquet_write, m)?)?;
-    m.add_class::<parquet::Buffer>()?;
     // For datakit only (plan 0019): versioned by ABI_VERSION.
     m.add("ABI_VERSION", arrow::ABI_VERSION)?;
     m.add_class::<arrow::ffi::ArrowTable>()?;
