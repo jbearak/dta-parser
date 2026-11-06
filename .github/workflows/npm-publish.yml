@@ -1,0 +1,53 @@
+# Publish the npm package @jbearak/dta-parser (js/) on a tag v<version>,
+# through npm's trusted publishing: npm trusts this workflow's GitHub
+# OIDC token, so no npm token is stored anywhere, and the package gets a
+# provenance statement linking it to this repository and commit.
+#
+# npmjs.com must name this workflow as the package's trusted publisher
+# (package Settings > Trusted publishing > GitHub Actions: owner jbearak,
+# repository dta-parser, workflow npm-publish.yml).
+#
+# The tag must match js/package.json's version. The package is built and
+# tested as CI's npm job does before it is published.
+
+name: npm-publish
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag matches js/package.json
+        run: |
+          version=$(node -p 'require("./js/package.json").version')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match js/package.json's version $version" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@latest
+      # libzstd in the module needs a clang that targets wasm32.
+      - run: sudo apt-get update && sudo apt-get install -y clang llvm
+      - run: scripts/build-wasm.sh
+      - run: npm ci
+        working-directory: js
+      - run: npm run build
+        working-directory: js
+      - run: npm test
+        working-directory: js
+      - run: npm publish --access public
+        working-directory: js
