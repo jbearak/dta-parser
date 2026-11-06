@@ -1,7 +1,7 @@
 # datakit re-exports dtaparser's functions, so that library(datakit) alone
 # reads and writes .dta files and reads and sets labels and .a to .z.
 
-reexported <- c("read_dta", "save_dta", "var_label", "val_labels", "val_label",
+reexported <- c("read_dta", "save_dta", "read_meta", "var_label", "val_labels", "val_label",
                 "with_labels", "tagged_na", "na_tag", "is_tagged_na")
 
 test_that("every function dtaparser exports is datakit's too, the same function", {

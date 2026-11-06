@@ -63,9 +63,9 @@ rules. `datakit` is for data preparation:
   within groups, as `generate`, `replace`, and `bysort` do. Python, Julia,
   and Stata do this in a line; for a data frame, R has no ergonomic way
   to otherwise.
-- It reads and writes Stata `.dta` files (`read_dta`, `save_dta`) and
-  reads fixed-width `.dat` files through their SAS setup files
-  (`read_fixed_width`).
+- It reads and writes Stata `.dta` files (`read_dta`, `read_meta`,
+  `save_dta`) and reads fixed-width `.dat` files through their SAS
+  setup files (`read_fixed_width`).
 - Columns keep value labels and the missing values `.a` to `.z`, read
   and set with `var_label`, `val_labels`, `with_labels`, `tagged_na`,
   and `na_tag`, so haven and labelled are not needed.

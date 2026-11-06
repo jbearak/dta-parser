@@ -10,6 +10,10 @@ dtaparser::read_dta
 #' @export
 dtaparser::save_dta
 
+#' @importFrom dtaparser read_meta
+#' @export
+dtaparser::read_meta
+
 #' @importFrom dtaparser var_label
 #' @export
 dtaparser::var_label
