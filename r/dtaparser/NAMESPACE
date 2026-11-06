@@ -1,6 +1,7 @@
 useDynLib(dtaparser, .registration = TRUE, .fixes = "C_")
 export(read_dta)
 export(save_dta)
+export(read_meta)
 export(na_tag)
 export(is_tagged_na)
 export(tagged_na)

@@ -670,6 +670,25 @@ from `read_dta(factors = TRUE)` therefore comes back with codes 1 to k,
 not the file's own codes, which that read did not keep; to write the
 file's codes, read with `factors = FALSE`, the default.
 
+`read_meta(file)` reads what the file says about itself, without its
+rows: each variable's storage type and display format, and the
+dataset's sort order. Comparing two files needs these: `float` and
+`double` hold different precision, and the sort keys pair rows.
+
+```r
+meta <- dtaparser::read_meta("survey.dta")
+meta$nobs                 # 6
+meta$variables$storage    # "long" "byte" "byte" "double" "long" "str18"
+meta$variables$label_set  # "" "region" "" "income" "" ""
+meta$sort_order           # character(0): the file records no sort order
+```
+
+The list also holds `release`, `label`, `timestamp`, `value_labels`
+(each set's codes, named by their text), `notes` and `characteristics`.
+`variables` is a tibble with columns `name`, `storage`, `format`,
+`label` and `label_set`. Text fields hold `""` when the file has none.
+Python's and Julia's `read_meta` return the same facts.
+
 Code that compares with labels, as in `region == "South"`, reads more
 clearly than code that compares with codes. For that, read with
 `factors = TRUE`, at the cost of `.a` to `.z` in labelled columns:
@@ -1319,8 +1338,8 @@ Each function has a help page (`?read_dta`). Exports:
   `dta_group_tag(..., missing = FALSE)`, `dta_setequal(x, y)`,
   `dta_setdiff(x, y)`: Stata's tabulation, grouping and set operations.
 
-dtaparser exports `read_dta()` (see
-[Plain R types](#plain-r-types-dtaparser)), `save_dta()` (which
+dtaparser exports `read_dta()` and `read_meta(file, encoding = NULL)`
+(see [Plain R types](#plain-r-types-dtaparser)), `save_dta()` (which
 dtatools re-exports), five accessors for the columns `read_dta()`
 returns, `tagged_na(x)` to make
 `.a` to `.z`, and `with_labels(x, labels, label = NULL)` to make a

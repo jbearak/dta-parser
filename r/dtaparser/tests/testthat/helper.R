@@ -17,8 +17,10 @@ col <- function(x, storage, format = "%9.0g", labels = NULL) {
 
 # Write a release-118 file through dtaparser's writer directly (the one
 # save_dta uses), with the storage types and formats save_dta and
-# haven's writer cannot make from R vectors. Each labelled column gets a label set of its name.
-write_fixture <- function(...) {
+# haven's writer cannot make from R vectors. Each labelled column gets a
+# label set of its name; `sort_order` names the columns the file says it
+# is sorted by.
+write_fixture <- function(..., sort_order = character(), data_label = "") {
   cols <- list(...)
   path <- tempfile(fileext = ".dta")
   labelled <- names(cols)[vapply(cols, function(c) !is.null(c$labels), TRUE)]
@@ -33,11 +35,11 @@ write_fixture <- function(...) {
       labels <- cols[[n]]$labels
       list(name = n, codes = as.double(unname(labels)), texts = names(labels))
     })),
-    data_label = "",
+    data_label = data_label,
     timestamp = "01 Jan 2026 00:00",
     notes = character(),
     characteristics = list(character(), character(), character()),
-    sort_order = integer()
+    sort_order = match(sort_order, names(cols)) - 1L
   )
   .Call(dtaparser:::C_dta_write, path, spec)
   path
