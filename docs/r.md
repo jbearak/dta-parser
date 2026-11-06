@@ -763,6 +763,19 @@ It takes doubles, integers, logicals, `Date`, `POSIXct` and labelled
 columns. Integers and logicals hold no letters, so they rank only 0 or
 1. Every number ranks 0, so compare numbers with each other as usual.
 
+`drop_labels(x)` takes off a column's value labels and variable label
+and keeps everything else, for copying a column without its labels as
+Stata's `gen y = x` does. A labelled column becomes its plain codes,
+`.a` to `.z` kept; a `Date` stays a `Date` and a `POSIXct` keeps its
+time zone, where `as.vector(x)` would give bare numbers. A column with
+no labels comes back as it is:
+
+```r
+when <- structure(as.Date("2024-01-31"), label = "Interview date")
+dtaparser::drop_labels(when)         # "2024-01-31", a Date with no label
+dtaparser::na_tag(dtaparser::drop_labels(df$income))  # NA "d" NA NA "r" NA
+```
+
 ### Labelled columns
 
 A column with value labels is a `dtaparser_labelled`: its codes, with
@@ -1366,6 +1379,8 @@ labelled column (see [Labelled columns](#labelled-columns)):
   0 for a number, 1 for `.`, 2 to 27 for `.a` to `.z`.
 - `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
   and value labels.
+- `drop_labels(x)`: `x` without its variable and value labels, its
+  other attributes and class kept.
 
 datakit exports:
 

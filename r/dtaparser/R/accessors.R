@@ -210,3 +210,44 @@ val_label <- function(x, values = x) {
   out[tagged] <- text[has_tag][match(tags[tagged], code_tags[has_tag])]
   out
 }
+
+#' A column without its labels
+#'
+#' `drop_labels(x)` gives `x` without its value labels (the `labels`
+#' attribute) and its variable label (the `label` attribute), and
+#' without the `dtaparser_labelled` class if it has it. Everything else
+#' stays: the values, `.a` to `.z` with their letters, names, a `Date`
+#' or `POSIXct` class and its time zone, and the display format
+#' [save_dta()] writes. A vector with no labels comes back as it is.
+#'
+#' It is for copying a column without its labels while keeping its date
+#' class, as Stata's `gen y = x` copies values but not labels.
+#' `as.vector(x)` and `as.numeric(x)` drop the labels too, but also every
+#' other attribute: a `Date` becomes a number of days.
+#'
+#' @param x A vector: double, integer, logical or character, a `Date`, a
+#'   `POSIXct`, a factor, or a labelled column from [with_labels()] or
+#'   [read_dta()]. A list or data frame is an error.
+#' @return `x` without its `labels` and `label` attributes; a labelled
+#'   column becomes its plain codes.
+#' @seealso [var_label()], [val_labels()], [with_labels()].
+#' @examples
+#' x <- with_labels(c(1, 0, tagged_na("r")), c(No = 0, Yes = 1), label = "Wants a baby")
+#' y <- drop_labels(x)
+#' y                    # 1 0 NA
+#' na_tag(y)            # NA NA "r"
+#' val_labels(y)        # NULL
+#'
+#' d <- structure(as.Date("2024-01-31"), label = "Interview date")
+#' drop_labels(d)       # "2024-01-31", still a Date
+#' var_label(drop_labels(d))  # NULL
+#' @export
+drop_labels <- function(x) {
+  if (is.list(x)) stop("x must be a column, not a ", class(x)[1], call. = FALSE)
+  # The labelled class is always c("dtaparser_labelled", "vctrs_vctr")
+  # around bare codes; unclass() keeps names and format.
+  if (inherits(x, "dtaparser_labelled")) x <- unclass(x)
+  attr(x, "labels") <- NULL
+  attr(x, "label") <- NULL
+  x
+}
