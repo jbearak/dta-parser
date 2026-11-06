@@ -68,11 +68,13 @@ changes the function's copy. To keep \code{d} as it was, copy it first:
 data.table is an error: use its own \code{d[i, name := value]}.
 
 dtatools re-exports this \verb{:=} and gives its dibbles Stata's rules
-through \code{colon_equals()}, so attaching both packages, in either order,
-changes nothing. rlang and data.table each export a \verb{:=} too, only to
+through \code{colon_equals()}, so the \verb{:=} is the same whichever of the two
+is attached last. Their \code{read_dta()}, \code{save_dta()}, \code{val_label()} and
+\code{val_labels()} are not: dtatools' are for dibbles, datakit's are
+dtaparser's, so a script attaches one of the two. rlang and data.table each export a \verb{:=} too, only to
 report misuse, and the package attached last is the one R finds:
 attach datakit after them, as in
-\verb{library(dplyr); library(dtaparser); library(datakit)}, or bind it
+\verb{library(dplyr); library(datakit)}, or bind it
 with \code{`:=` <- datakit::`:=`}. Their own uses of \verb{:=}, such as
 data.table's \code{dt[, b := 1]} or dplyr's \code{mutate(d, !!nm := 1)}, keep
 working, as they read \verb{:=} without calling it.
