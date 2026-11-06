@@ -751,6 +751,165 @@ one-minute load average before each run was 9.3 to 15.2 (median 10.9).
 Every case of our reader was measured again after fixes 6 to 9 (the
 second run); the other libraries' cases are from the first.
 
+## Parquet into polars (plan 0019, PR 2a)
+
+Plan 0019's gate for the Arrow path that Python's datakit (PR 2b) will
+read and write through: `dta_parser._native.parquet_read_arrow` into a
+polars DataFrame with the whole Meta built eagerly
+(`bench/parquet/polars_meta.py`, a thin stand-in for 2b's API), against
+polars 2.1.0 (`pl.read_parquet`, with `columns=` for five columns and
+`scan_parquet().slice().collect()` for 1,000 rows) and pyarrow 26.0.1
+(`pq.read_table`); writes through `parquet_write_arrow` from polars'
+export against `write_parquet` and `pq.write_table(df.to_arrow())`, at
+each library's defaults and at zstd level 3. Plan 0018's method: five
+runs in fresh processes, medians, the shared benchmark lock held.
+Every file and number is in
+[results/parquet-polars.md](results/parquet-polars.md), written by
+`bench/parquet/run_polars.py`.
+
+**What was measured, and the load.** Not every file: a full run, shared
+with the no-regression runs below and another worktree's benchmarks,
+measured 12 files in two hours, so the gate ran on 13 of the 36 NSFG
+files (the eight from 1973 to 1988, and one from each later round: 2002 and
+2006-2010 FemResp, 2011-2013 Male, 2015-2017 FemPreg, and 2022-2023
+FemResp), all 10 DHS files, and the three synthetic files. The
+one-minute load average before each run had a median of 14.4 (11.2 to
+28.0); plan 0018 asks for under 2.
+
+**Step 0, the baseline.** The spike's build (3ec678a), before any of
+this PR: ours at its defaults over polars, geometric means over four
+files from three writers, wall time 2.03 for whole files and 1.83 for
+the read and pass, CPU 1.24 and 1.15; tuned by hand, 1.04 and 1.15
+([results/parquet-polars-step0.md](results/parquet-polars-step0.md)).
+
+**Reads: target 1 holds.** Ours over polars, geometric means of wall
+time, by the writer of the file (pyarrow, polars, and ours); below 1 is
+faster:
+
+| case | NSFG | DHS | synthetic |
+|---|---|---|---|
+| whole file | 0.40, 0.38, 0.50 | 0.61, 0.59, 0.73 | 0.91, 0.72, 0.82 |
+| five columns | 0.33, 0.30, 0.42 | 0.50, 0.47, 0.66 | 1.05, 0.92, 0.98 |
+| 1,000 rows | 0.44, 0.38, 0.56 | 0.69, 0.63, 0.80 | 0.38, 0.28, 0.34 |
+| read + pass | 0.70, 0.66, 0.75 | 0.81, 0.79, 0.92 | 0.90, 0.72, 0.83 |
+
+As geometric means, peak RSS is 0.27 to 0.94 of polars' in every read
+case, and wall time at most 0.45 of pyarrow's `read_table`.
+
+**Writes: target 1 misses on DHS.** Ours over polars: NSFG 1.02 (wall),
+0.73 (CPU), 0.90 (RSS) at the defaults and 1.05, 0.83, 0.92 at zstd 3;
+DHS 1.16, 0.95, 0.91 and 1.20, 1.03, 0.93. Against pyarrow, 0.20 to
+0.24 of its wall time.
+
+**What misses** ([results/parquet-polars.md](results/parquet-polars.md#misses)):
+
+1. Target 1, writes on DHS against polars (above).
+2. Target 2, writes of the synthetic files, DHS Senegal 2019 bh, and
+   Myanmar 2016 wm against polars (1.36 to 2.19 times, and 1.27 to 1.38
+   times polars' and pyarrow's RSS for long.dta and groups.dta), and
+   the read and pass of our DHS Tajikistan 2017 wm (107 ms against 78).
+3. Target 3, CPU time: 19 read cases, on long.dta, groups.dta,
+   wide.dta, DHS Myanmar 2016 wm, and NSFG 2006-2010 FemResp, up to 22
+   percent over what the rule allows; and the zstd writes of long.dta,
+   wide.dta, and NSFG 2002 FemResp.
+
+The reads' CPU misses are where twelve threads (long.dta) or eight
+(groups.dta) buy wall time at more CPU than polars spends; fewer
+threads would trade them for target 1 misses (the study below).
+
+### Threads for polars
+
+The Arrow path's thread rule was chosen against polars, which uses every
+core, for targets 1 and 3 together (`bench/parquet/threads_polars.py`,
+results in [results/parquet-polars-threads.jsonl](results/parquet-polars-threads.jsonl);
+three runs per cell, load 15 to 24). Each cell: ours over polars, wall;
+CPU. Bold: target 3 fails there.
+
+Whole-file reads of our files, by threads:
+
+| file (bytes the rule sees) | polars | 1 | 2 | 4 | 8 | 12 | 16 |
+|---|---|---|---|---|---|---|---|
+| NSFG 2002 FemResp (90 MiB) | 22 ms, 34 ms CPU | 1.29; 0.84 | 1.01; 1.01 | 0.90; 1.12 | **0.78; 1.45** | **0.77; 1.69** | **0.76; 1.64** |
+| DHS Tajikistan 2017 wm (212 MiB) | 25 ms, 65 ms CPU | 2.46; 0.71 | 1.19; 0.70 | 1.05; 0.88 | **0.90; 1.19** | **0.93; 1.39** | **0.93; 1.79** |
+| groups (286 MiB) | 15 ms, 83 ms CPU | 3.82; 0.70 | 2.21; 0.79 | 1.24; 0.86 | 0.91; 1.14 | **0.94; 1.45** | **0.89; 1.32** |
+| long (954 MiB) | 50 ms, 399 ms CPU | 6.81; 0.86 | 3.54; 0.88 | 1.95; 0.95 | 1.17; 1.01 | 1.07; 1.09 | 1.05; 1.14 |
+
+Writes:
+
+| file (bytes the rule sees) | polars | 1 | 2 | 4 | 8 | 12 | 16 |
+|---|---|---|---|---|---|---|---|
+| NSFG 2002 FemResp (90 MiB) | 44 ms, 178 ms CPU | 2.73; 0.67 | 1.52; 0.76 | 1.10; 0.96 | 1.08; 1.07 | 1.25; 1.10 | 1.06; 1.15 |
+| DHS Tajikistan 2017 wm (212 MiB) | 52 ms, 366 ms CPU | 4.47; 0.64 | 2.58; 0.75 | 1.39; 0.75 | 1.19; 0.99 | 1.20; 0.98 | 1.07; 0.97 |
+| groups (286 MiB) | 61 ms, 446 ms CPU | 6.02; 0.82 | 3.47; 0.84 | 2.26; 0.89 | 1.95; 1.07 | 1.67; 0.99 | 1.56; 0.97 |
+| long (954 MiB) | 183 ms, 1914 ms CPU | 7.32; 0.75 | 3.90; 0.76 | 2.83; 0.80 | 1.85; 0.91 | 1.80; 0.96 | 1.50; 0.93 |
+
+So reads take one thread per 32 MiB, at least four and at most twelve
+(NSFG 2002 FemResp gets four, DHS Tajikistan six, groups eight, long
+twelve), and writes one per 8 MiB, at least four and at most sixteen:
+our write's CPU time stays within 1.15 times polars' at every count. Under 256 KiB,
+one thread. The classic reads and writes (R, Julia, npm, pandas) keep
+plan 0018's rule.
+
+### polars' Enum: the metadata route
+
+polars imports an Enum from Arrow when the field's metadata names its
+categories (`_PL_ENUM_VALUES2`); without it, a dictionary column comes
+in as Categorical and needs a cast. 20 million rows, median of runs:
+
+| levels | route | import | whole read | CPU | peak RSS |
+|---|---|---|---|---|---|
+| 40 | metadata | 20 ms | 36 ms | 75 ms | 186 MB |
+| 40 | Categorical, then cast | 183 ms | 199 ms | 240 ms | 278 MB |
+| 300 | metadata | 22 ms | 36 ms | 75 ms | 210 MB |
+| 300 | Categorical, then cast | 169 ms | 182 ms | 225 ms | 303 MB |
+
+The metadata route is taken. It is polars' own, not a documented
+interface, so `python/tests/test_arrow.py` has a test that fails if
+polars stops making an Enum from it.
+
+### .dta into polars (published, not gated)
+
+`dta_read_arrow` and `dta_write_arrow` against dta_parser's pandas path
+(`read_dta`, `write_dta`), same files: reads 0.61 (NSFG), 0.42 (DHS),
+and 0.41 (synthetic) of the wall time, 0.33 to 0.62 of the RSS; writes
+1.22, 1.14, and 0.66 of the wall time, at 0.36 to 0.47 of the RSS. On
+survey files the Arrow write is the slower; it was not profiled in this
+PR.
+
+### No regression in R, Julia, and npm
+
+Plan 0018's Parquet benchmarks, ours only, main's build and this
+branch's back to back per file; a case regresses when the branch's
+median is slower by more than the larger of the two five-run spreads.
+
+- R (main at 0b96824, the same R code as ba27613): 168 cases on 10 files
+  (the synthetic three, NSFG 1973, 1976, 1995, 2002, and 2022-2023
+  FemResp, DHS Tajikistan 2017 and Myanmar 2016 wm); geometric mean
+  0.973; two cases past the spread, by 3 and 8 percent.
+- Julia, through Datakit (main at ba27613): 602 cases on 43 of the 49
+  files; geometric mean 1.001; 15 cases past the spread, by 2 to 18
+  percent, none in a file or task more than once or twice.
+- npm (main at 0b96824, the same npm code as ba27613): 140 cases on the
+  same 10 files as R; geometric mean 0.962; three cases past the spread,
+  by 1 to 4 percent. That is after fix 1 below; before it, 43 cases were
+  past it.
+
+### Fixed because of these runs
+
+1. **npm: a first read of a wide file 85 ms slower.** The first npm run
+   found reads 1.1 to 2.4 times main's in a fresh process (NSFG
+   2022-2023 FemResp, 142 ms against 58), while later reads in the same
+   process were the same. The cause was this PR's wasm memory fix
+   below, which asked for room column by column: thousands of probes on
+   a wide file. It now asks for one block first, as main does, and
+   column by column only when that fails.
+2. **npm: the 64 MiB test module ran out of memory on this branch.**
+   Whether one block of a read call's size was free depended on the
+   heap's layout: main fails the same test at 2,010,000 rows. A read
+   now falls back to room per column, and a text value too large for
+   the budget fails as `DTA_TOO_LARGE` before it is copied instead of
+   aborting the module.
+
 ## Parquet in TypeScript (npm package)
 
 Plan 0018's gate for the npm package (PR 7): `openParquetFile` and
