@@ -25,13 +25,13 @@ to make:
 ## Fixed-width files with SAS setup files
 
 Found while building `read_fixed_width` (plan 0009) on CDC's NSFG setup
-files of 1973 to 1995. These are limits of tools built for other inputs,
+files of 1973 to 2017-2019. These are limits of tools built for other inputs,
 not bugs:
 
 | reader | limit |
 |---|---|
 | ReadStat 1.1.9's command line | stops on CDC's setup files as published, at `libname "data-file-path";` and then at an unnamed `DATA ;`; has no record-type selection |
-| asciiSetupReader 3.0.0 | reads fixed-length records with no line breaks (1988) as one row, and a file holding two record types (1976, 1982) without selecting one; keeps the first of two `LABEL`s for a variable where SAS keeps the last; skips `LABEL` entries without `=`; misreads a `VALUE` with no space after a label, and the `VALUE`s after it; does not run data-step assignments, as it says |
+| asciiSetupReader 3.0.0 | reads fixed-length records with no line breaks (1988) as one row, and a file holding two record types (1976, 1982) without selecting one; keeps the first of two `LABEL`s for a variable where SAS keeps the last; skips `LABEL` entries without `=`; misreads a `VALUE` with no space after a label, and the `VALUE`s after it; does not run data-step assignments, as it says; makes each run of spaces in a value label one space (2011-2013 FemResp's `1 = "1  PARTNER"`); takes one setup file, so 2002's three are joined for it |
 
 ## Before reporting a difference to another project
 
