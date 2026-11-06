@@ -41,3 +41,7 @@ dtaparser::na_tag
 #' @importFrom dtaparser is_tagged_na
 #' @export
 dtaparser::is_tagged_na
+
+#' @importFrom dtaparser missing_rank
+#' @export
+dtaparser::missing_rank
