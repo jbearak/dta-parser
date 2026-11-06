@@ -2,17 +2,18 @@
 #'
 #' `val_labels(x)` gives `x`'s value labels as a named `dta_num`: the codes,
 #' named by their text. `val_label(x, values)` gives the text of each of
-#' `values` (NA where unlabelled). `labelbook(data)` lists every labelled
+#' `values` (NA where unlabelled); with the default `values = x`, each
+#' row's label. `labelbook(data)` lists every labelled
 #' column's labels, in Stata's order.
 #'
 #' @param x A labelled column, such as one `read_dta` returned.
-#' @param values Codes to look up.
+#' @param values Codes to look up; by default `x` itself.
 #' @return See above. `labelbook()` returns `list(mappings = <data.frame>)`
 #'   with columns `variable`, `label_set`, `code`, `code_text` and `text`.
 #' @examples
 #' x <- dta_num(c(1, 2, .d), labels = c(Yes = 1, No = 2, "Don't know" = .d))
 #' val_labels(x)
-#' val_label(x, x)
+#' val_label(x)
 #' labelbook(dibble(x = x))$mappings
 #' @export
 val_labels <- function(x) {
@@ -26,7 +27,7 @@ val_labels <- function(x) {
 
 #' @rdname val_labels
 #' @export
-val_label <- function(x, values) {
+val_label <- function(x, values = x) {
   labels <- attr(x, "labels", exact = TRUE)
   if (is.null(labels)) return(rep(NA_character_, length(values)))
   unname(names(labels)[match(dta_keys(values), dta_keys(labels))])
