@@ -217,8 +217,8 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
         Kind::UInt { width: 2, .. } => col(Elem::U16, "S", may_null, Post::None),
         Kind::UInt { width: 4, .. } => col(Elem::U32, "I", may_null, Post::None),
         Kind::UInt { .. } => col(Elem::U64, "L", may_null, Post::None),
-        Kind::Int64 { .. } => col(Elem::I64, "l", may_null, Post::None),
-        Kind::Bool { .. } => col(Elem::U8, "b", may_null, Post::Bool),
+        Kind::Int64 => col(Elem::I64, "l", may_null, Post::None),
+        Kind::Bool => col(Elem::U8, "b", may_null, Post::Bool),
         Kind::Float32 => col(Elem::F32, "f", may_null, Post::None),
         // A DOUBLE can hold tagged NaNs, so it always has a bitmap.
         Kind::Double { logical: Some(Logical::Date), .. } => col(Elem::F64, "tdD", true, Post::Days),
@@ -454,7 +454,7 @@ fn read_arrow<'py>(
     for &c in &selected {
         let info = &infos[c];
         let entry = by_name.get(info.name.as_str()).copied();
-        let kind = kind_of(info, entry, meta).map_err(fail)?;
+        let kind = kind_of(info, entry).map_err(fail)?;
         let mut col = plan_column(c, &info.name, &kind, !no_nulls(meta, info), entry.and_then(|e| e.tz.as_deref()));
         if let ColumnType::Decimal { precision, scale } = info.kind {
             col.decimal = Some((precision, scale));
@@ -674,7 +674,7 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
             let mut col = if nested {
                 None
             } else {
-                kind_of(c, entry, meta).ok().map(|kind| {
+                kind_of(c, entry).ok().map(|kind| {
                     let mut col = plan_column(k, &c.name, &kind, !no_nulls(meta, c), entry.and_then(|e| e.tz.as_deref()));
                     if let ColumnType::Decimal { precision, scale } = c.kind {
                         col.decimal = Some((precision, scale));
