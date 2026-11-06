@@ -214,7 +214,10 @@ jobs:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
       - name: Both sdists build offline
+        # Without build isolation the runner's own setuptools builds
+        # datakit; it needs 77 or later for an SPDX license string.
         run: |
+          pip install "setuptools>=77"
           maturin sdist --out "$RUNNER_TEMP/sdist"
           (cd datakit && python -c "from setuptools import build_meta as b; b.build_sdist('$RUNNER_TEMP/sdist')")
           CARGO_NET_OFFLINE=true pip wheel --no-index --no-build-isolation --no-deps -w "$RUNNER_TEMP/wheels" "$RUNNER_TEMP"/sdist/*.tar.gz
