@@ -1,6 +1,6 @@
 # dta-parser
 
-Read and write Stata `.dta` files from R, Python, Julia and
+Read and write Stata `.dta` files from R, Python, Julia, and
 TypeScript, with one implementation of the format underneath all four.
 
 - **Reads every release from 104 to 119**, from either byte order, and
@@ -60,7 +60,7 @@ for missing values matter; `dtaparser` is for analysing data under R's
 rules. `datakit` is for data preparation:
 
 - `d[i, name, by = g] := value` makes or changes a column for some rows
-  within groups, as `generate`, `replace` and `bysort` do. Python, Julia
+  within groups, as `generate`, `replace`, and `bysort` do. Python, Julia,
   and Stata do this in a line; for a data frame, R has no ergonomic way
   to otherwise.
 - It reads fixed-width `.dat` files through their SAS setup files
@@ -70,7 +70,7 @@ rules. `datakit` is for data preparation:
   haven and labelled are not needed.
 - `read_parquet` and `save_parquet` read and write Parquet files that
   keep them: an interchange format with readers and writers in R,
-  Python, Julia and TypeScript, so data goes between them with its
+  Python, Julia, and TypeScript, so data goes between them with its
   labels and letters.
 
 A script that uses both attaches `library(dtaparser); library(datakit)`,

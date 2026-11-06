@@ -4,7 +4,7 @@ Version: 3.1.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Data preparation in R. d[i, name, by = g] := value makes or
     changes a column of a data frame or tibble for the rows i, within
-    groups g: one line in Python, Julia or Stata, with no ergonomic
+    groups g: one line in Python, Julia, or Stata, with no ergonomic
     counterpart for data frames in R otherwise. read_fixed_width() reads
     fixed-width .dat files, such as the National Survey of Family
     Growth's, through their SAS setup files, and Stata .dta files are
@@ -12,7 +12,7 @@ Description: Data preparation in R. d[i, name, by = g] := value makes or
     extended missing values .a to .z, without haven or labelled.
     read_parquet() and save_parquet() read and write Parquet files that
     keep them too: an interchange format with readers and writers in R,
-    Python, Julia and TypeScript, so data moves between the four with
+    Python, Julia, and TypeScript, so data moves between the four with
     its labels.
 License: GPL-3
 Depends: R (>= 4.2)

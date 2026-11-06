@@ -13,7 +13,7 @@ Two packages:
   through their SAS setup files, and [Parquet files](#parquet-files),
   into a DataFrame, and saves any table as Parquet, keeping the same
   labels and missing values. Its Parquet files go between Julia, R,
-  Python and TypeScript with them
+  Python, and TypeScript with them
   ([Datakit](#datakit-parquet-and-fixed-width-text-into-dataframes)).
 
 Contents:
