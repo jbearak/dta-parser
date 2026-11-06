@@ -55,3 +55,22 @@ test_that(":= keeps a display format on labelled and plain columns, codes widene
   expect_identical(attr(d$v, "format"), "%3.0f")
   expect_identical(attr(d$w, "format"), "%5.0f")
 })
+
+test_that(":= copies a column without its labels through drop_labels(), keeping its date class", {
+  d <- tibble::tibble(
+    g = c(1, 1, 2),
+    v = with_labels(c(1, tagged_na("r"), 0), c(No = 0, Yes = 1, tagged_na(c(Refused = "r"))), label = "V"),
+    when = structure(as.Date(c("2024-01-31", NA, "1960-01-01")), label = "When")
+  )
+  d[, w] := drop_labels(v)
+  d[, day] := drop_labels(when)
+  expect_false(inherits(d$w, "dtaparser_labelled"))
+  expect_null(val_labels(d$w))
+  expect_null(var_label(d$w))
+  expect_identical(na_tag(d$w), c(NA, "r", NA))
+  expect_identical(d$day, as.Date(c("2024-01-31", NA, "1960-01-01")))
+  expect_s3_class(d$v, "dtaparser_labelled")
+  expect_identical(var_label(d$when), "When")
+  d[g == 2, w, by = g] := 5
+  expect_identical(d$w, c(1, tagged_na("r"), 5))
+})
