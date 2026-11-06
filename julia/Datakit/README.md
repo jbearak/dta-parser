@@ -76,3 +76,7 @@ Datakit also exports DtaParser's `DtaColumn`, `stata_code`,
 `set_stata_code!` and `dta_key`. The guide is
 [docs/julia.md](../../docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes);
 the file format is [docs/parquet.md](../../docs/parquet.md).
+
+The open-source projects studied for the Parquet code, and the codec
+crates it uses, are listed with their licenses in
+[docs/acknowledgements.md](../../docs/acknowledgements.md).

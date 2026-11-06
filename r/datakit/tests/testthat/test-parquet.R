@@ -174,6 +174,18 @@ test_that("read_parquet_info describes the file without reading it", {
   expect_identical(cols$label, c(NA, "Smokes", NA, NA))
   expect_identical(cols$value_labels, c(NA, "smoker", NA, NA))
   expect_identical(read_parquet_info(readBin(p, "raw", file.size(p)))$columns, cols)
+  kv <- info$key_value
+  expect_identical(names(kv), c("key", "value"))
+  expect_true("dta" %in% kv$key)
+  expect_match(kv$value[kv$key == "dta"], "\"Survey\"", fixed = TRUE)
+})
+
+test_that("read_parquet_info lists another writer's key-value entries", {
+  dir <- parquet_fixtures()
+  kv <- read_parquet_info(file.path(dir, "fixtures", "pyarrow_default.parquet"))$key_value
+  expect_true("ARROW:schema" %in% kv$key)
+  expect_false("dta" %in% kv$key)
+  expect_type(kv$value, "character")
 })
 
 test_that("a raw vector reads as the file does", {

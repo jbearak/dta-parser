@@ -42,9 +42,12 @@ section.
 ## Install
 
 DtaParser and Datakit need Julia 1.10 or later, on Linux, macOS or
-Windows. Neither is in the General registry yet. DtaParser builds its
-native library from a checkout of the repository with Rust's `cargo`
-([rustup.rs](https://rustup.rs)), and Datakit uses that library:
+Windows. Neither is in the General registry: you install both from a
+checkout of this repository. DtaParser builds its native library there
+with Rust's `cargo` ([rustup.rs](https://rustup.rs)) and a C compiler,
+which builds the zstd library (Xcode's command line tools on macOS, gcc
+or clang on Linux, the Visual Studio Build Tools on Windows), and
+Datakit uses that library:
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
@@ -54,7 +57,7 @@ git clone https://github.com/jbearak/dta-parser
 import Pkg
 Pkg.develop(path="dta-parser/julia/DtaParser")
 Pkg.develop(path="dta-parser/julia/Datakit")   # optional: Parquet and fixed-width text
-Pkg.build("DtaParser")      # runs cargo; takes a minute the first time
+Pkg.build("DtaParser")      # runs cargo: a few minutes the first time, with no output until it ends
 Pkg.add("DataFrames")       # for DataFrame(t), and `using DataFrames` beside Datakit
 ```
 
@@ -730,11 +733,23 @@ Contents:
 
 ### Parquet: install
 
-Parquet is in Datakit, which [Install](#install) covers: it reads and
-writes through DtaParser's Rust library, with no Arrow or other Parquet
-package. Datakit depends on DataFrames (1.4 or later), so
-`using Datakit` loads it. Two packages are optional, and Datakit uses
-them when they are loaded (as package extensions):
+Parquet is in Datakit, which needs DtaParser: develop both from the
+checkout, DtaParser first, and build DtaParser's library
+([Install](#install) gives the requirements and what to do when the
+build fails):
+
+```julia norun
+import Pkg
+Pkg.develop(path="dta-parser/julia/DtaParser")
+Pkg.develop(path="dta-parser/julia/Datakit")
+Pkg.build("DtaParser")
+using Datakit
+```
+
+Datakit reads and writes through DtaParser's Rust library, with no
+Arrow or other Parquet package. It depends on DataFrames (1.4 or
+later), so `using Datakit` loads it. Two packages are optional, and
+Datakit uses them when they are loaded (as package extensions):
 
 - [TimeZones.jl](https://github.com/JuliaTime/TimeZones.jl), to read a
   timestamp with a zone as `ZonedDateTime` and to write `ZonedDateTime`
@@ -1082,10 +1097,13 @@ timestamps = :truncate) to drop what is below a millisecond
 ```
 
 `read_parquet` reads the files pyarrow, pandas, polars, DuckDB, arrow,
-nanoparquet, fastparquet, Parquet2.jl and hyparquet write: every
-encoding (dictionary, PLAIN, RLE, the DELTA encodings,
-BYTE_STREAM_SPLIT), data pages v1 and v2, and the codecs none, snappy,
-gzip, zstd, lz4_raw and brotli. A column that pandas, polars or arrow
+nanoparquet, fastparquet, Parquet2.jl and hyparquet write: the
+encodings dictionary, PLAIN, RLE, the DELTA encodings and
+BYTE_STREAM_SPLIT, data pages v1 and v2, and the codecs none, snappy,
+gzip, zstd, lz4_raw and brotli. The one encoding not read is
+BIT_PACKED for values, which the format has deprecated and current
+writers do not use (BIT_PACKED repetition and definition levels are
+read). A column that pandas, polars or arrow
 wrote as a category or factor (a dictionary of strings in the file's
 Arrow schema) reads as a categorical. Its levels are the distinct values
 of the rows read, in the order they first appear, and it is not
@@ -1118,7 +1136,7 @@ names(read_parquet(nested_file; nested = :skip))   # ["id", "name"]
 
 What this version does not read, each an error that names the column
 and its type: FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO and
-encrypted files. Datasets of many files, Hive partitions and filters
+encrypted files. Values encoded BIT_PACKED are an error too. Datasets of many files, Hive partitions and filters
 pushed into the read are not part of Datakit; use DuckDB.jl for
 those. What other tools see in files `save_parquet` writes is in
 [docs/parquet.md](parquet.md#what-other-tools-see-in-our-files).
@@ -1126,7 +1144,9 @@ those. What other tools see in files `save_parquet` writes is in
 ### What each Parquet type becomes in Julia
 
 Every conversion is exact or an error that names the column, the row
-and the option that keeps the value. A numeric column whose rows read
+and the option that keeps the value, with one exception: DECIMAL reads
+by default as `Float64`, the nearest double, which may not equal the
+decimal value exactly (`decimal = :string` keeps every digit). A numeric column whose rows read
 hold any of `.a` to `.z` is a `DtaColumn{T}`; any other column with a
 missing value is a `Vector{Union{Missing,T}}`.
 
@@ -1141,7 +1161,7 @@ missing value is a `Vector{Union{Missing,T}}`.
 | DECIMAL | `decimal = :float` (default): `Float64`, the nearest to each value, and a value with more than 15 significant digits is an error naming `decimal = :string`; `:string` keeps every digit as text |
 | BOOLEAN | `Bool` |
 | DATE | `Date` |
-| TIMESTAMP (milli-, micro-, nanoseconds), INT96 | `DateTime` (milliseconds): values that are not whole milliseconds are an error naming `timestamps = :truncate`; `ZonedDateTime` when the file gives a zone and TimeZones.jl is loaded, else `DateTime` in UTC with one warning |
+| TIMESTAMP (milli-, micro-, nanoseconds), INT96 | `DateTime` (milliseconds); values that are not whole milliseconds are an error naming `timestamps = :truncate`. A clock time (not adjusted to UTC) is a `DateTime` as written. An instant (adjusted to UTC) is a `ZonedDateTime` in the file's zone when the file names one and TimeZones.jl is loaded; without TimeZones.jl, a `DateTime` in UTC with one warning; with no zone named, a `DateTime` in UTC |
 | TIME (milli-, micro-, nanoseconds) | `Dates.Time` |
 | STRING, ENUM, JSON | `String` |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | `Vector{UInt8}` |
@@ -1179,7 +1199,9 @@ Datakit's Parquet reads and writes follow their own rule, measured on Parquet fi
 
 **`Pkg.build` fails, or "could not load library".** Building needs
 `cargo`; install Rust from [rustup.rs](https://rustup.rs), then run
-`Pkg.build("DtaParser")` again. On Windows the library is `dta_ffi.dll`;
+`Pkg.build("DtaParser")` again. An error from `cc`, `clang` or
+`link.exe` while building zstd means there is no C compiler: install
+one ([Install](#install) says which) and build again. On Windows the library is `dta_ffi.dll`;
 on Linux, `libdta_ffi.so`.
 
 **"unsupported .dta release".** The file is not a `.dta` file, or its

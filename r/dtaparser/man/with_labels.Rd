@@ -89,9 +89,9 @@ x                   # 1 [Yes] 0 [No] NA(r) [Refused] 1 [Yes] NA
 x == 1              # TRUE FALSE NA TRUE NA
 x == "Yes"          # the same
 x[2] <- "Yes"       # code 1
-val_label(x)        # "Yes" "No" "Refused" "Yes" NA
-as.character(x)     # "Yes" "No" NA "Yes" NA
-table(x)            # No 1, Yes 2
+val_label(x)        # "Yes" "Yes" "Refused" "Yes" NA
+as.character(x)     # "Yes" "Yes" NA "Yes" NA
+table(x)            # Yes 3
 
 # Labels survive dplyr; the union is kept.
 y <- with_labels(c(0, tagged_na("d")), c(No = 0, Yes = 1, tagged_na(c("Don't know" = "d"))))

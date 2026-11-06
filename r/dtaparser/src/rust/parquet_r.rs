@@ -505,7 +505,9 @@ fn label_set(sets: &HashMap<&str, usize>, entry: Option<&dta_parquet::ColumnProf
 /// rows, row_groups (a list of rows, compressed and uncompressed bytes),
 /// created_by, compression, label, notes, columns (a list of character
 /// vectors: name, role, r_type, physical_type, logical_type, label,
-/// value_labels, storage, logical) and warnings.
+/// value_labels, storage, logical), warnings and key_value (a list of
+/// character vectors: key, value; the value as text, bytes that are not
+/// UTF-8 replaced, NA when the entry has none).
 ///
 /// # Safety
 /// The pointers come from init.c.
@@ -524,6 +526,7 @@ pub unsafe extern "C" fn dtaparser_parquet_info_rs(
         with_reader(&input, options, &mut |r| {
             let names = [
                 "rows", "row_groups", "created_by", "compression", "label", "notes", "columns", "warnings",
+                "key_value",
             ];
             let out = named_list(holder, 0, &names)?;
             super::doubles_elt(out, 0, &[r.rows() as f64])?;
@@ -566,6 +569,13 @@ pub unsafe extern "C" fn dtaparser_parquet_info_rs(
                 optional_strings_elt(list, k, v)?;
             }
             strings_elt(out, 7, r.warnings())?;
+            let kv = &r.metadata().key_value;
+            let pairs = named_list(out, 8, &["key", "value"])?;
+            let keys: Vec<Option<String>> = kv.iter().map(|e| Some(e.key.clone())).collect();
+            let values: Vec<Option<String>> =
+                kv.iter().map(|e| e.value.as_deref().map(|v| String::from_utf8_lossy(v).into_owned())).collect();
+            optional_strings_elt(pairs, 0, &keys)?;
+            optional_strings_elt(pairs, 1, &values)?;
             Ok(())
         })
     })

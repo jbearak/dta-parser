@@ -31,18 +31,33 @@ section.
 
 ## Install
 
-Version 1.1 (1.0 with Parquet), described here, is not on npm yet; npm has 0.x, a
-different API. Build it from a checkout. You need Node 24 or later, and
-Rust with the WebAssembly target to build:
+The package this page describes (1.1) is not on npm: you build it from
+a checkout of this repository. (npm has only the old 0.x releases,
+whose API differs.) It runs on Node 24 or later; its types are checked
+with TypeScript 5.9 and 7. In a browser, through your bundler, the
+`@jbearak/dta-parser` entry point needs WebAssembly and `BigInt64Array`.
+
+Building needs:
+
+- Rust from [rustup.rs](https://rustup.rs), with the WebAssembly target
+  (`rustup target add wasm32-unknown-unknown`);
+- a clang and `llvm-ar` that target WebAssembly, which build the zstd
+  library: on macOS, Homebrew's `llvm` (Apple's clang does not target
+  WebAssembly); on Linux, the distribution's `clang` and `llvm`
+  packages.
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
 cd dta-parser
 rustup target add wasm32-unknown-unknown
-scripts/build-wasm.sh
+scripts/build-wasm.sh            # several minutes the first time
 cd js && npm ci && npm run build
 cd /path/to/your/project && npm install /path/to/dta-parser/js
 ```
+
+If the build fails, see [Troubleshooting](#troubleshooting): most often
+the `cargo` first on your `PATH` is not rustup's, or the clang cannot
+target WebAssembly.
 
 The package has two entry points:
 
@@ -791,7 +806,7 @@ Variable labels, value labels, the data label and notes are in the file
 (in its dta profile), and the reader gives them as a `DtaReader` does:
 
 ```ts
-import { formatValue } from "@jbearak/dta-parser";
+import { formatValue, type Cell } from "@jbearak/dta-parser";
 import { openParquetFile } from "@jbearak/dta-parser/node";
 
 using r = openParquetFile("survey.parquet");
@@ -803,15 +818,46 @@ const [codes] = r.readColumns(["region"]);
 if (codes.kind === "number") console.log(Array.from(codes.values, (c) => labels.get(c)));
 // [ 'North', 'South', 'South', 'East', 'West', 'North' ]
 const [row] = r.readRows(1, 1, ["income"]);
-console.log(formatValue(row[0], r.variables[3].format, r.valueLabels("nonresponse")));   // Don't know
+// A Parquet cell can be a bigint, which formatValue does not take; this one is a number or missing.
+console.log(formatValue(row[0] as Cell, r.variables[3].format, r.valueLabels("nonresponse")));   // Don't know
 console.log(r.info.label, r.notes());
 // Household survey (example) [ 'Made up for the dta-parser documentation.' ]
 ```
 
-Value labels map codes, including missing values, to text, as for
-`.dta` ([Value labels](#value-labels)). A categorical (a `DictionaryColumn`)
-already holds its text: `values[codes[i]]`. Other tools do not read our
-labels: they see the codes. A file from another tool has none.
+A value label set maps numeric codes, and missing values such as
+`MISSING[".d"]`, to text, as for `.dta` ([Value labels](#value-labels)).
+JavaScript has no categorical type; this package's is the
+`DictionaryColumn`, which holds each level once (`values`) and a code
+per row (`codes`), and `writeParquetFile` writes it as a categorical.
+To turn a labelled column into one, with one level per labelled code in
+code order, and a null wherever the value is missing or has no label:
+
+```ts
+import type { DictionaryColumn } from "@jbearak/dta-parser";
+import { openParquetFile, writeParquetFile } from "@jbearak/dta-parser/node";
+
+using r = openParquetFile("survey.parquet");
+const labels = r.valueLabels("region")!;
+const coded = [...labels.keys()].filter((k): k is number => typeof k === "number").sort((a, b) => a - b);
+const level = new Map(coded.map((k, i) => [k, i]));
+const [col] = r.readColumns(["region"]);
+if (col.kind !== "number") throw new Error("region is not numeric");
+const region: DictionaryColumn = {
+  kind: "dictionary",
+  values: coded.map((k) => labels.get(k)!),
+  codes: Uint32Array.from(col.values, (x, i) => (col.missing[i] ? 0 : level.get(x) ?? 0)),
+  missing: Uint8Array.from(col.values, (x, i) => (col.missing[i] || !level.has(x) ? 1 : 0)),
+};
+console.log(region.values);                                       // [ 'North', 'South', 'East', 'West' ]
+console.log(Array.from(region.codes, (c) => region.values[c]));    // [ 'North', 'South', 'South', 'East', 'West', 'North' ]
+writeParquetFile("regions.parquet", { variables: [{ name: "region", values: region }] });
+using back = openParquetFile("regions.parquet");
+console.log(back.variables[0].type, back.variables[0].categorical); // categorical { levels: [ 'North', 'South', 'East', 'West' ], ordered: false }
+```
+
+A categorical read from a file is already a `DictionaryColumn`: row `i`
+is `values[codes[i]]`. Other tools do not read our labels: they see the
+codes. A file from another tool has none.
 
 ### Dates and time zones in Parquet files
 
@@ -993,7 +1039,9 @@ The reader reads every flat file pyarrow, pandas, polars, DuckDB, arrow
 - **Types**: every type in the [table below](#what-each-parquet-type-becomes-in-typescript).
   FLOAT16 and INTERVAL columns are listed with `columnKind` null and
   `notRead` saying why; reading them is an error.
-- **Not read**: nested columns (lists, maps, structs). They are listed
+- **Not read**: values encoded BIT_PACKED, an encoding the format has
+  deprecated and current writers do not use (BIT_PACKED levels are
+  read); reading such a column is an error. Nested columns (lists, maps, structs). They are listed
   with `role` `"nested"`; reading one, or reading every column of a
   file that has any, is an error naming them. Select the columns you
   want, or open with `{ nested: "skip" }` to leave them out of
@@ -1024,7 +1072,11 @@ says what other tools see in the files this package writes.
 
 ### What each Parquet type becomes in TypeScript
 
-Every conversion is exact or an error; no value changes without one.
+Every conversion is exact or an error, with one exception: DECIMAL of
+precision 15 or less becomes the nearest double, which may not equal
+the decimal value exactly (printed to 15 significant digits, it gives
+the written value back). DECIMAL of higher precision is text with every
+digit.
 
 | Parquet | `variables[i].type` | `readColumns` gives | `readRows` cell |
 |---|---|---|---|
@@ -1168,6 +1220,20 @@ the file; check `r.variables`.
 WebAssembly target must be installed for the toolchain that builds it:
 run `rustup target add wasm32-unknown-unknown` with the same `rustup`
 default (or `RUSTUP_TOOLCHAIN`) the script uses, then rerun it.
+
+**"can't find crate for `core`" or "for `std`" during the build.** The
+`cargo` first on your `PATH` is not rustup's (Homebrew's Rust, for
+example) and has no WebAssembly target. Point the script at rustup's:
+`CARGO=~/.cargo/bin/cargo scripts/build-wasm.sh`, or, if rustup keeps its
+toolchains elsewhere, put the toolchain's `bin` first on `PATH`
+(`PATH="$(dirname "$(rustup which cargo)"):$PATH" scripts/build-wasm.sh`),
+so that its `rustc` is used too.
+
+**"does not target wasm32; install LLVM's clang".** The clang the script
+found cannot build zstd for WebAssembly. On macOS, `brew install llvm`
+(the script finds it); on Debian and Ubuntu, `apt-get install clang
+llvm`. `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown`
+choose another clang and `llvm-ar`.
 `npm run build` embeds the existing `js/build/dta.wasm` and does not rebuild it, so run
 the script again after changing Rust code.
 

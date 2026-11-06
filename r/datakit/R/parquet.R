@@ -163,6 +163,9 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 #'     `logical`, the storage type (`"byte"`, `"int"`, `"long"`,
 #'     `"float"`) or the date or time (`"date"`, `"timestamp"`) of a
 #'     column written as DOUBLE because it holds `.a` to `.z`.
+#'   - `key_value`: a tibble of every key-value entry in the footer,
+#'     `key` and `value` (as text, `NA` for an entry with no value): the
+#'     `dta` profile, `ARROW:schema` and any other writer's entries.
 #' @seealso [read_parquet()].
 #' @examples
 #' path <- tempfile(fileext = ".parquet")
@@ -181,8 +184,18 @@ read_parquet_info <- function(file) {
     compression = info$compression,
     label = info$label,
     notes = info$notes,
-    columns = tibble::new_tibble(info$columns, nrow = length(info$columns$name))
+    columns = tibble::new_tibble(info$columns, nrow = length(info$columns$name)),
+    key_value = key_value_table(info$key_value)
   )
+}
+
+# The footer's key-value entries, which a dtaparser built before they
+# were added (with the same ABI number) does not return.
+key_value_table <- function(kv) {
+  if (is.null(kv)) {
+    stop("datakit needs dtaparser built from the same release; reinstall dtaparser", call. = FALSE)
+  }
+  tibble::new_tibble(kv, nrow = length(kv$key))
 }
 
 #' Write a data frame as a Parquet file

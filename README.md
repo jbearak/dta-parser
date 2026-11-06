@@ -25,12 +25,17 @@ TypeScript, with one implementation of the format underneath all four.
   datakit's `read_parquet()` and `save_parquet()`; in Python, datakit's
   `read_parquet` and `save_parquet`, into polars; in Julia, Datakit's
   `read_parquet` and `save_parquet`; in TypeScript,
-  `openParquetFile()` and `writeParquetFile()`): labels, formats,
-  notes and `.a` to `.z` travel in the file's metadata, and the file
-  is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
+  `openParquetFile()` and `writeParquetFile()`): labels, formats and
+  notes travel in the file's metadata and `.a` to `.z` in its values
+  (as NaNs that carry the letter), and the file is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
   read. A tibble or DataFrame read from a `.dta` file comes back the
-  same. See
-  [docs/parquet.md](docs/parquet.md).
+  same. See [docs/parquet.md](docs/parquet.md), whose headings are the
+  tasks (install, read, columns, rows, metadata, labels, dates, write,
+  `.a` to `.z`, other tools' files), or go to each language's Parquet
+  section: [R](docs/r.md#parquet-files),
+  [Python](docs/python.md#parquet-files),
+  [Julia](docs/julia.md#parquet-files) and
+  [TypeScript](docs/typescript.md#parquet-files).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -87,11 +92,23 @@ and saves Parquet, `.dta` and fixed-width text as a polars frame and a
 `Meta` of labels and letters, while `dta_parser` stays the pandas
 package for `.dta` files.
 
-None of them is on a package registry yet; each page says how to
-install from this repository. Building needs Rust
-([rustup.rs](https://rustup.rs)). The R packages are also published
-with binaries for macOS, Windows and Ubuntu, which need no Rust:
-`install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))`.
+None of them is on a package registry (CRAN, PyPI, Julia's General
+registry or npm). Install them from this repository:
+
+- **R**: [Install](docs/r.md#install). The project's own R package
+  repository has binaries for macOS, Windows and Ubuntu, which need no
+  Rust:
+  `install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))`.
+- **Python**: [Install](docs/python.md#install), from a checkout:
+  `pip install ./dta-parser/python ./dta-parser/python/datakit`.
+- **Julia**: [Install](docs/julia.md#install), from a checkout with
+  `Pkg.develop`.
+- **TypeScript**: [Install](docs/typescript.md#install), built from a
+  checkout.
+
+Building from a checkout needs Rust ([rustup.rs](https://rustup.rs))
+and a C compiler; each Install section says what else, and what to do
+when the build fails.
 
 The [guide](docs/guide/README.md) explains the parts of a `.dta` file
 that matter when you use it (releases, storage types, missing values,
@@ -252,6 +269,11 @@ open-source projects:
   Anthoff) and [@irbisadm/statfmt](https://github.com/irbisadm/statfmt)
   (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
   documentation with that of each of them except StatFiles.jl.
+- **Parquet**: the reader and writer are our own code, written after
+  studying the Parquet format specification and the open-source
+  libraries in [docs/acknowledgements.md](docs/acknowledgements.md),
+  which lists each with its license and what we learned from it, and
+  the codec crates we use.
 
 ## License
 

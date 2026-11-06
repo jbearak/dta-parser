@@ -5,6 +5,8 @@ test_that("a dtaparser with another ABI number is refused", {
   expect_invisible(datakit:::check_abi(3L, 3L))
   expect_error(datakit:::check_abi(2L, 3L), "reinstall dtaparser")
   expect_error(datakit:::check_abi(NA_integer_, 3L), "reinstall dtaparser")
+  # A dtaparser of the same ABI from before read_parquet_info()$key_value.
+  expect_error(datakit:::key_value_table(NULL), "reinstall dtaparser")
 })
 
 test_that("attached after dplyr, as a translated script does, datakit's := is found", {
