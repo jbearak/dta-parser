@@ -87,3 +87,7 @@ There are no Stata-style assignment helpers: polars'
 
 The crates compiled into `dta_parser`, which datakit calls, and their
 licences are listed in `python/dta_parser/NOTICE`.
+
+The open-source projects studied for the Parquet code, and the codec
+crates it uses, are listed with their licenses in
+[docs/acknowledgements.md](../../docs/acknowledgements.md).

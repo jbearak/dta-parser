@@ -806,7 +806,7 @@ Variable labels, value labels, the data label and notes are in the file
 (in its dta profile), and the reader gives them as a `DtaReader` does:
 
 ```ts
-import { formatValue } from "@jbearak/dta-parser";
+import { formatValue, type Cell } from "@jbearak/dta-parser";
 import { openParquetFile } from "@jbearak/dta-parser/node";
 
 using r = openParquetFile("survey.parquet");
@@ -818,7 +818,8 @@ const [codes] = r.readColumns(["region"]);
 if (codes.kind === "number") console.log(Array.from(codes.values, (c) => labels.get(c)));
 // [ 'North', 'South', 'South', 'East', 'West', 'North' ]
 const [row] = r.readRows(1, 1, ["income"]);
-console.log(formatValue(row[0], r.variables[3].format, r.valueLabels("nonresponse")));   // Don't know
+// A Parquet cell can be a bigint, which formatValue does not take; this one is a number or missing.
+console.log(formatValue(row[0] as Cell, r.variables[3].format, r.valueLabels("nonresponse")));   // Don't know
 console.log(r.info.label, r.notes());
 // Household survey (example) [ 'Made up for the dta-parser documentation.' ]
 ```
@@ -1223,7 +1224,10 @@ default (or `RUSTUP_TOOLCHAIN`) the script uses, then rerun it.
 **"can't find crate for `core`" or "for `std`" during the build.** The
 `cargo` first on your `PATH` is not rustup's (Homebrew's Rust, for
 example) and has no WebAssembly target. Point the script at rustup's:
-`CARGO=~/.cargo/bin/cargo scripts/build-wasm.sh`.
+`CARGO=~/.cargo/bin/cargo scripts/build-wasm.sh`, or, if rustup keeps its
+toolchains elsewhere, put the toolchain's `bin` first on `PATH`
+(`PATH="$(dirname "$(rustup which cargo)"):$PATH" scripts/build-wasm.sh`),
+so that its `rustc` is used too.
 
 **"does not target wasm32; install LLVM's clang".** The clang the script
 found cannot build zstd for WebAssembly. On macOS, `brew install llvm`

@@ -991,7 +991,9 @@ write `datakit::read_parquet()`. An argument only arrow's has, such as
 Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet read;
 [docs/parquet.md](parquet.md) says what each of them sees, and gives the
 file's specification. Only flat tables are read and written: for lists,
-maps or structs, use arrow.
+maps or structs, use arrow. The open-source projects studied for this
+code, and the codec crates dtaparser compiles in, are listed with their
+licenses in [docs/acknowledgements.md](acknowledgements.md).
 
 Contents:
 [Install](#parquet-install) ·
@@ -1150,8 +1152,11 @@ v$at                  # "2024-03-01 09:30:00 EST" "2024-03-01 17:05:00 EST"
 attr(v$at, "tzone")   # "America/New_York"
 ```
 
-arrow, pyarrow and polars read the zone too. A `POSIXct` without a
-`tzone` attribute comes back without one. Two cases are written as
+arrow, pyarrow and polars read the zone too. A `POSIXct` is always an
+instant, so R writes no timestamp without a zone: one with no `tzone`
+(or `tzone = ""`, the session's zone) is written as an instant adjusted
+to UTC, the same moment, and comes back with no `tzone` attribute, shown
+in the session's zone. Two cases are written as
 numbers so that they come back unchanged: a `Date` with a fraction of a
 day, and a `POSIXct` whose seconds no whole number of microseconds gives
 back exactly (such as `Sys.time()`'s, at times). Those columns are
@@ -1163,7 +1168,9 @@ One in nanoseconds that is not a whole number of microseconds is an
 error that says to pass `timestamps = "truncate"`, which drops the
 nanoseconds below a microsecond. The zone is the one `save_parquet()`
 recorded, else the one the file's arrow schema gives (arrow's, pyarrow's
-and polars' zoned timestamps), else UTC. A TIME (a clock time without a
+and polars' zoned timestamps), else UTC. A clock time without a zone,
+as polars and pandas write a naive datetime (`TIMESTAMP(..., local)`),
+comes back as that clock reading in UTC. A TIME (a clock time without a
 date) comes back as a `difftime` in seconds since midnight.
 
 ### Write a Parquet file

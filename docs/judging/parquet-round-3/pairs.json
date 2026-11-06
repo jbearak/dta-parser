@@ -1,0 +1,62 @@
+{
+  "seed": 2026110603,
+  "commit": "1e54804f5767ce2fbcf5a5351433c5c561b379f0",
+  "pairs": [
+    {
+      "language": "R",
+      "other": "arrow",
+      "ours": "B",
+      "prompt": "r-arrow.md",
+      "chars": 182567
+    },
+    {
+      "language": "R",
+      "other": "nanoparquet",
+      "ours": "B",
+      "prompt": "r-nanoparquet.md",
+      "chars": 173762
+    },
+    {
+      "language": "Python",
+      "other": "pyarrow",
+      "ours": "A",
+      "prompt": "python-pyarrow.md",
+      "chars": 212037
+    },
+    {
+      "language": "Python",
+      "other": "pandas",
+      "ours": "B",
+      "prompt": "python-pandas.md",
+      "chars": 157190
+    },
+    {
+      "language": "Python",
+      "other": "polars",
+      "ours": "B",
+      "prompt": "python-polars.md",
+      "chars": 146272
+    },
+    {
+      "language": "Julia",
+      "other": "Parquet2",
+      "ours": "A",
+      "prompt": "julia-Parquet2.md",
+      "chars": 132744
+    },
+    {
+      "language": "TypeScript",
+      "other": "hyparquet",
+      "ours": "A",
+      "prompt": "typescript-hyparquet.md",
+      "chars": 209467
+    },
+    {
+      "language": "TypeScript",
+      "other": "parquet-wasm",
+      "ours": "A",
+      "prompt": "typescript-parquet-wasm.md",
+      "chars": 204039
+    }
+  ]
+}

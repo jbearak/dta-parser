@@ -45,11 +45,14 @@ repository, which needs Rust and a C compiler (for the zstd library).
 
 Each language's type table gives what every Parquet type becomes. Every
 conversion is exact or an error naming the option that keeps the value,
-with one exception: DECIMAL. R, Julia and TypeScript read it by default
-as the nearest double, which may not equal the decimal value exactly.
-R's `decimal = "character"` and Julia's `decimal = :string` keep every
-digit as text, and TypeScript reads precision above 15 as text. Python
-reads it exactly, as polars' `Decimal`.
+with one exception: DECIMAL. R and Julia read it by default as the
+nearest double, which may not equal the decimal value exactly; a value
+with more than 15 significant digits, which a double cannot give back,
+is an error, and R's `decimal = "character"` and Julia's
+`decimal = :string` keep every digit as text. TypeScript reads
+precision up to 15 as the nearest double and higher precision as text.
+Python reads precision up to 38 exactly, as polars' `Decimal`, and
+higher precision as text.
 
 R: [Read a Parquet file](r.md#read-a-parquet-file) and
 [What each Parquet type becomes](r.md#what-each-parquet-type-becomes-in-r).
@@ -133,17 +136,22 @@ Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
 pandas, pyarrow and polars write microsecond timestamps, so Julia reads
 their files with `timestamps = :truncate`.
 TypeScript: [Files from other tools](typescript.md#parquet-files-from-other-tools).
-Every encoding and codec other tools write by default is read. The one
-encoding not read is BIT_PACKED for values, which the format has
-deprecated and current writers do not use. These types are read too:
+Every encoding and codec other tools write by default is read. Of the
+encodings, only BIT_PACKED for values is not, which the format has
+deprecated and current writers do not use; what else is not read
+(nested columns, FLOAT16, INTERVAL, LZO, the Hadoop framing of LZ4 and
+encrypted files) is listed in each language's section. These types are read too:
 unsigned integers, DECIMAL, TIME, INT96, fixed-length binary, UUID,
 ENUM and JSON. A category or factor that
 pandas, polars or arrow wrote (a dictionary of strings in
 `ARROW:schema`) reads as a categorical whose levels are the values of
 the rows read, in order of first appearance, so two windows of one
 column can have different levels; a file we write carries every level
-in the profile instead. A timestamp's zone comes from the profile, else
-from `ARROW:schema`, else is UTC.
+in the profile instead. An instant's zone (a timestamp adjusted to UTC)
+comes from the profile, else from `ARROW:schema`, else is UTC. A clock
+time (not adjusted to UTC) has no zone: Python, Julia and TypeScript
+read it without one, and R, whose `POSIXct` needs one, reads its clock
+reading as UTC.
 
 ## The file
 

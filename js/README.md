@@ -48,3 +48,8 @@ variable descriptors, and `readColumns` decodes just the requested
 variables and rows. Each call into the module holds at most 64 MiB of
 decoded data. See [docs/migration.md](https://github.com/jbearak/dta-parser/blob/main/docs/migration.md)
 for moving from 0.x.
+
+The open-source projects studied for the Parquet code, and the codec
+crates it uses, are listed with their licenses in
+[docs/acknowledgements.md](https://github.com/jbearak/dta-parser/blob/main/docs/acknowledgements.md);
+the crates' licence texts are in `THIRD-PARTY-NOTICES`.

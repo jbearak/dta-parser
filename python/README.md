@@ -132,3 +132,7 @@ still holds the Parquet code, which datakit calls.
 
 The crates compiled into the package and their licences are listed in
 `dta_parser/NOTICE`.
+
+The open-source projects studied for the Parquet code, and the codec
+crates it uses, are listed with their licenses in
+[docs/acknowledgements.md](../docs/acknowledgements.md).

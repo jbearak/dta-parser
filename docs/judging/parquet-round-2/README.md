@@ -7,6 +7,9 @@ documentation (task 1) below pyarrow's: 2.50 against 2.75. Our packages
 are not published, so under the rubric's install rule, rule 1 fails
 for Python and plan 0018 asks the user how to proceed.
 
+The user chose to keep the packages unpublished and change our docs;
+[round 3](../parquet-round-3/README.md) judged them and passes.
+
 Round 2 judged the same docs as [round 1](../parquet-round-1/README.md),
 whose blinding was broken. Our bundled files are unchanged from
 `eb4c5e0`. Only the prompts changed: blinding now works, and the coin

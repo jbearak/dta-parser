@@ -88,3 +88,7 @@ through `DtaParser.Internals` (for Datakit only, not an API).
 
 Anything else, and any column name Stata cannot hold, is an error naming
 the column.
+
+The open-source projects studied for the Parquet code in its native
+library, and the codec crates it uses, are listed with their licenses in
+[docs/acknowledgements.md](../../docs/acknowledgements.md).

@@ -54,8 +54,9 @@ version we studied.
   `row_group_size` arguments are the names we use, and its errors on an
   unknown column name, listing the valid ones, are the model for ours.
   datakit for Python returns polars frames.
-- **[pandas](https://github.com/pandas-dev/pandas) 3.1.1** (the pandas
-  development team; BSD-3-Clause). Its `df.attrs` in Parquet showed what
+- **[pandas](https://github.com/pandas-dev/pandas) 3.1.1** (AQR Capital
+  Management, Lambda Foundry, the PyData Development Team and open
+  source contributors; BSD-3-Clause). Its `df.attrs` in Parquet showed what
   JSON does to label codes (numbers become strings, and missing codes
   cannot be keys), so our profile stores value labels as arrays of
   pairs.
@@ -83,7 +84,7 @@ version we studied.
   labels, and the gap we fill: `.a` to `.z` read as `missing`.
 - **[hyparquet](https://github.com/hyparam/hyparquet) 1.32.0 and
   [hyparquet-writer](https://github.com/hyparam/hyparquet-writer)
-  0.18.0** (Hyperparam; MIT). hyparquet reads only a file's footer when
+  0.18.0** (MIT). hyparquet reads only a file's footer when
   it opens it, as our readers do, and returns footer statistics typed,
   which the npm package's `info` gives too.
 - **[parquet-wasm](https://github.com/kylebarron/parquet-wasm) 0.9.0**

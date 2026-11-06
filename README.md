@@ -25,9 +25,9 @@ TypeScript, with one implementation of the format underneath all four.
   datakit's `read_parquet()` and `save_parquet()`; in Python, datakit's
   `read_parquet` and `save_parquet`, into polars; in Julia, Datakit's
   `read_parquet` and `save_parquet`; in TypeScript,
-  `openParquetFile()` and `writeParquetFile()`): labels, formats,
-  notes and `.a` to `.z` travel in the file's metadata, and the file
-  is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
+  `openParquetFile()` and `writeParquetFile()`): labels, formats and
+  notes travel in the file's metadata and `.a` to `.z` in its values
+  (as NaNs that carry the letter), and the file is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
   read. A tibble or DataFrame read from a `.dta` file comes back the
   same. See [docs/parquet.md](docs/parquet.md), whose headings are the
   tasks (install, read, columns, rows, metadata, labels, dates, write,
@@ -269,6 +269,11 @@ open-source projects:
   Anthoff) and [@irbisadm/statfmt](https://github.com/irbisadm/statfmt)
   (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
   documentation with that of each of them except StatFiles.jl.
+- **Parquet**: the reader and writer are our own code, written after
+  studying the Parquet format specification and the open-source
+  libraries in [docs/acknowledgements.md](docs/acknowledgements.md),
+  which lists each with its license and what we learned from it, and
+  the codec crates we use.
 
 ## License
 
