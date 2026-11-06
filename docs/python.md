@@ -40,32 +40,46 @@ section.
 
 ## Install
 
-`dta_parser` needs Python 3.10 or later, numpy 1.23 or later and pandas
-2.2 or later (pandas 3 works). It is not on PyPI yet, so install it from
-a checkout of the repository. Building needs a Rust toolchain
-([rustup.rs](https://rustup.rs)):
+There are two packages, and neither is on PyPI: you install them from
+a checkout of this repository, and pip builds them on your machine.
+
+- `dta_parser` reads and writes `.dta` files with pandas. It holds the
+  compiled core.
+- `datakit` reads and writes Parquet, `.dta` and fixed-width files with
+  polars ([datakit](#datakit-parquet-dta-and-fixed-width-files-in-polars)).
+  It is pure Python and needs `dta_parser`'s core, so install the two
+  together.
+
+You need Python 3.10 or later (not a free-threaded build) on macOS,
+Linux or Windows, a Rust toolchain ([rustup.rs](https://rustup.rs)), and
+a C compiler, which builds the zstd library: Xcode's command line tools
+on macOS, `build-essential` or your distribution's gcc on Linux, and
+the Visual Studio Build Tools on Windows. From the directory you want
+the checkout in:
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
-pip install ./dta-parser/python
-```
-
-pip builds the extension with maturin and installs it. Check it:
-
-```sh
-python -c "import dta_parser; print(dta_parser.read_dta)"
-```
-
-Wheels are built for macOS (arm64), Linux (x86_64, aarch64) and Windows
-(x86_64); one wheel serves every Python from 3.10. Free-threaded Python
-builds are not supported.
-
-For datakit, install both packages from the checkout; datakit also
-needs polars 2 ([Parquet: install](#parquet-install)):
-
-```sh
 pip install ./dta-parser/python ./dta-parser/python/datakit
+python -c "import dta_parser, datakit; print(dta_parser.read_dta, datakit.read_parquet)"
 ```
+
+For `.dta` files with pandas only, `pip install ./dta-parser/python` is
+enough. pip builds the extension with maturin (it downloads maturin
+the first time) and installs numpy 1.23 or later and pandas 2.2 or
+later (pandas 3 works); datakit adds polars 2. The extension works with
+every Python from 3.10 on, so one build serves them all.
+
+If the build fails:
+
+- "cargo not found", or a Rust error: install Rust from
+  [rustup.rs](https://rustup.rs), open a new shell, and run the same
+  `pip install` again.
+- An error from `cc`, `clang` or `link.exe` while building zstd: install
+  the C compiler above.
+- pip cannot reach PyPI: see [Troubleshooting](#troubleshooting).
+- `import datakit` says the two packages come from different checkouts:
+  run the same command with `--force-reinstall`:
+  `pip install --force-reinstall ./dta-parser/python ./dta-parser/python/datakit`.
 
 ## The example file
 
@@ -687,11 +701,11 @@ Contents:
 
 ### Parquet: install
 
-datakit is a pure-Python package that uses `dta_parser`'s compiled
-core, so install both from a checkout of the repository. You need
-Python 3.10 or later, a Rust toolchain ([rustup.rs](https://rustup.rs))
-and a C compiler (the build compiles the zstd C library), as for
-`dta_parser` alone ([Install](#install)):
+Parquet is in datakit, which needs `dta_parser`; install both from a
+checkout of this repository, in one command. You need Python 3.10 or
+later, a Rust toolchain ([rustup.rs](https://rustup.rs)) and a C
+compiler ([Install](#install) says which, and what to do when the build
+fails):
 
 ```sh
 git clone https://github.com/jbearak/dta-parser
@@ -702,14 +716,15 @@ python -c "import datakit as dk; print(dk.read_parquet)"
 That installs polars 2 (datakit needs `polars>=2.0,<3`) and, through
 `dta_parser`, numpy and pandas; importing datakit does not load pandas.
 The codecs (snappy, zstd, gzip, lz4, brotli) are built in, so pyarrow is
-not needed. Neither package is on PyPI yet. The distribution is named
-`dta-datakit`, because `datakit` on PyPI is another project; the import
-name is `datakit`, so the two cannot be installed in one environment.
+not needed. Neither package is on PyPI. datakit's distribution name is
+`dta-datakit` (`pip show dta-datakit`) and its import name `datakit`;
+an unrelated PyPI package called `datakit` uses the same import name,
+so do not install both in one environment.
 
 If `import datakit` stops with "needs dta_parser's native functions at
 ABI version 1", the two packages come from different checkouts;
-reinstall both from one:
-`pip install --force-reinstall ./python ./python/datakit`.
+reinstall both from one, with the same paths as above:
+`pip install --force-reinstall ./dta-parser/python ./dta-parser/python/datakit`.
 
 ### Read a Parquet file
 
@@ -812,7 +827,9 @@ print(info.meta.label, sorted(info.key_value))        # Household survey (exampl
 | `storage` | for a DOUBLE column written so because it holds `.a` to `.z`, the Stata storage type it reads as (`"byte"`, `"int"`, `"long"`, `"float"`) |
 
 `info.row_groups` has `rows`, `compressed_bytes` and
-`uncompressed_bytes` per row group. For polars' own view of a file, use
+`uncompressed_bytes` per row group. `info.key_value` is a `dict` of every
+key-value entry in the footer, key to value as text: the `dta` profile,
+`ARROW:schema`, pandas' metadata, anything another writer put there. For polars' own view of a file, use
 `pl.read_parquet_schema(p)` and `pl.read_parquet_metadata(p)`.
 
 ### Labels in Parquet files
@@ -1080,9 +1097,12 @@ either way.
 ### Parquet files from other tools
 
 `read_parquet` reads the files pyarrow, pandas, polars, DuckDB, R's
-arrow and nanoparquet, fastparquet and others write: every encoding
-(dictionary, PLAIN, the DELTA encodings, BYTE_STREAM_SPLIT), data pages
-v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and brotli.
+arrow and nanoparquet, fastparquet and others write: the encodings
+dictionary, PLAIN, RLE, the DELTA encodings and BYTE_STREAM_SPLIT, data
+pages v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and
+brotli. The one encoding not read is BIT_PACKED for values, which the
+format has deprecated and current writers do not use (BIT_PACKED
+repetition and definition levels are read).
 A column that pandas, polars or arrow wrote as a category or factor (a
 dictionary of text in the file's `ARROW:schema`) reads as a
 `Categorical`:
@@ -1106,7 +1126,7 @@ JSON as `String`, UUID and fixed-length bytes as `Binary`.
 
 What is not read, each an error that names the column and its type:
 FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO, and encrypted files.
-Nested columns (lists, maps, structs) raise an error unless `columns`
+Values encoded BIT_PACKED are an error too. Nested columns (lists, maps, structs) raise an error unless `columns`
 leaves them out or `nested="skip"` is given; `read_parquet_info` lists
 them with role `"nested"`. Datasets of many files, Hive partitions and
 filters on values are not part of datakit: use `pl.scan_parquet`.
@@ -1135,7 +1155,9 @@ filters on values are not part of datakit: use `pl.scan_parquet`.
 | FLOAT16, INTERVAL | not read: an error naming the column and type |
 | nested (LIST, MAP, groups) | an error naming them, or left out with `nested="skip"` |
 
-Every value is exact or an error. polars' Enum always compares and
+Every value is exact or an error; unlike R, Julia and TypeScript, which
+read DECIMAL as the nearest double by default, polars' `Decimal` holds
+it exactly. polars' Enum always compares and
 sorts by level order, so an unordered factor from R reads as an Enum
 that still sorts by level; `meta.columns[name].ordered` keeps the
 file's `ordered` and writes it back.
@@ -1320,10 +1342,18 @@ you run Python from inside `dta-parser/python`. Change directory.
 **`pip install` fails with "cargo not found" or a Rust error.** Install
 Rust from [rustup.rs](https://rustup.rs) and open a new shell.
 
+**`pip install` fails compiling zstd (an error from `cc`, `clang` or
+`link.exe`).** Install a C compiler: Xcode's command line tools on
+macOS (`xcode-select --install`), `build-essential` on Debian and
+Ubuntu, the Visual Studio Build Tools on Windows.
+
 **`pip install` cannot reach PyPI.** pip downloads maturin to build the
 extension. Without network access, install maturin some other way and
 build without isolation:
-`pip install --no-build-isolation ./dta-parser/python`.
+`pip install --no-build-isolation ./dta-parser/python ./dta-parser/python/datakit`
+(setuptools 64 or later, numpy, pandas and polars must then be
+installed already). cargo also fetches Rust crates from crates.io, so
+they must be in its cache from an earlier build.
 
 **`ValueError: unsupported .dta release`.** The file is not a `.dta`
 file, or is a release older than 104 or newer than 119. See
@@ -1350,13 +1380,13 @@ categories.** Pass `key=dp.dta_keys`.
 
 **`AttributeError: dta_parser.read_parquet moved to datakit.read_parquet`.**
 Parquet and fixed-width text are datakit's from dta_parser 0.3. Install
-it (`pip install ./python/datakit`) and see
+it (`pip install ./dta-parser/python ./dta-parser/python/datakit`) and see
 [the migration notes](migration.md#dta_parser-02-to-03).
 
 **`ImportError: datakit 0.3.0 needs dta_parser's native functions at
 ABI version 1`.** datakit and dta_parser come from different
 checkouts. Reinstall both from one:
-`pip install --force-reinstall ./python ./python/datakit`.
+`pip install --force-reinstall ./dta-parser/python ./dta-parser/python/datakit`.
 
 **`AttributeError: 'tuple' object has no attribute 'filter'`.** Every
 datakit read returns `(df, meta)`; unpack it first.

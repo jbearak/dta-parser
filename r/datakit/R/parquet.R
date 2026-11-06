@@ -163,6 +163,9 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 #'     `logical`, the storage type (`"byte"`, `"int"`, `"long"`,
 #'     `"float"`) or the date or time (`"date"`, `"timestamp"`) of a
 #'     column written as DOUBLE because it holds `.a` to `.z`.
+#'   - `key_value`: a tibble of every key-value entry in the footer,
+#'     `key` and `value` (as text, `NA` for an entry with no value): the
+#'     `dta` profile, `ARROW:schema` and any other writer's entries.
 #' @seealso [read_parquet()].
 #' @examples
 #' path <- tempfile(fileext = ".parquet")
@@ -181,7 +184,8 @@ read_parquet_info <- function(file) {
     compression = info$compression,
     label = info$label,
     notes = info$notes,
-    columns = tibble::new_tibble(info$columns, nrow = length(info$columns$name))
+    columns = tibble::new_tibble(info$columns, nrow = length(info$columns$name)),
+    key_value = tibble::new_tibble(info$key_value, nrow = length(info$key_value$key))
   )
 }
 

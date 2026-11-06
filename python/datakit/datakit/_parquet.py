@@ -139,11 +139,15 @@ def save_parquet(df, path=None, meta=None, *, compression="snappy", compression_
     """Write a polars DataFrame as Parquet, with what `meta` says.
 
     The file keeps the data label, notes, characteristics, sort order,
-    time stamp, variable labels, display formats, value labels and `.a` to
-    `.z` in its "dta" profile, which R's and Julia's datakits read; other
-    tools read it as plain Parquet. Returns None, or the file as bytes
-    when path is None. The file is written beside `path` and renamed, so a
-    failed write leaves an existing file as it was.
+    time stamp, variable labels, display formats and value labels in its
+    "dta" profile, a JSON entry of the footer's key-value metadata, which
+    R's and Julia's datakits read too. `.a` to `.z` are in the data: a
+    column holding any is DOUBLE, each letter a tagged NaN (the profile
+    names the column's storage type), which pyarrow, polars and DuckDB
+    read as NaN. Other tools read the file as plain Parquet. Returns None,
+    or the file as bytes when path is None. The file is written beside
+    `path` and renamed, so a failed write leaves an existing file as it
+    was.
 
     df: a polars DataFrame (a LazyFrame is a TypeError: collect it first).
     meta: a Meta, or None. Entries for columns not in df are dropped.

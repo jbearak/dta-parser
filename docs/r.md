@@ -1010,12 +1010,30 @@ Contents:
 
 ### Parquet: install
 
-Parquet needs nothing beyond datakit, which [Install](#install) covers;
-it reads and writes through dtaparser's Rust core, with no arrow or
-other library. A source package (`datakit_*.tar.gz` and
-`dtaparser_*.tar.gz` from the releases) carries the Rust crates it
-needs and builds offline; an install from GitHub fetches them from
-crates.io.
+Parquet is in datakit, which needs dtaparser; it reads and writes
+through dtaparser's Rust core, with no arrow or other Parquet package.
+Install the two from the project's R package repository (binaries for
+macOS, Windows and Ubuntu 24.04; see [Install](#install) for Ubuntu's
+URL):
+
+```r norun
+install.packages(c("dtaparser", "datakit"), repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+library(datakit)
+```
+
+dtatools installs both too. Elsewhere, build from a clone, dtaparser
+first; that needs Rust (`cargo`, from [rustup.rs](https://rustup.rs))
+and a C compiler, which builds the zstd library:
+
+```sh
+R CMD INSTALL dta-parser/r/dtaparser
+R CMD INSTALL dta-parser/r/datakit
+```
+
+A source package (`datakit_*.tar.gz` and `dtaparser_*.tar.gz` from the
+releases) carries the Rust crates it needs and builds offline; an
+install from GitHub fetches them from crates.io. If the build stops
+with "building needs cargo", see [Troubleshooting](#troubleshooting).
 
 ### Read a Parquet file
 
@@ -1043,11 +1061,13 @@ gives the type of each Parquet column.
 
 ### Read some columns of a Parquet file
 
-`col_select` takes names or a tidyselect expression, and returns the
-columns in the order given; only those columns are read from the file:
+`col_select` takes names, 1-based positions or a tidyselect
+expression, and returns the columns in the order given; only those
+columns are read from the file:
 
 ```r
 read_parquet("survey.parquet", col_select = c("income", "id"))    # income, id
+read_parquet("survey.parquet", col_select = c(4, 1))              # income, id
 read_parquet("survey.parquet", col_select = tidyselect::starts_with("i"))  # id, income, interviewed
 ```
 
@@ -1062,13 +1082,19 @@ window of a large file is quick:
 
 ```r
 read_parquet("survey.parquet", skip = 2, n_max = 2)$id   # 3 4
+nrow(read_parquet("survey.parquet", skip = 4, n_max = 10))  # 2
+nrow(read_parquet("survey.parquet", skip = 10))             # 0
 ```
+
+A window that runs past the last row gives the rows there are, and a
+`skip` past the end gives a tibble with no rows; neither is an error.
 
 ### A Parquet file's schema and metadata
 
 `read_parquet_info()` reads the footer only. It gives the number of
 rows, the row groups, the writer, the codecs, the data label and notes,
-and per column the R type `read_parquet()` gives it:
+per column the R type `read_parquet()` gives it, and the footer's
+key-value entries:
 
 ```r
 info <- read_parquet_info("survey.parquet")
@@ -1079,7 +1105,13 @@ info$columns$name          # "id" "region" "age" "income" "interviewed" "comment
 info$columns$r_type        # "integer" "dtaparser_labelled" "integer" "dtaparser_labelled" "Date" "character"
 info$columns$physical_type # "INT32" "INT32" "INT32" "DOUBLE" "INT32" "BYTE_ARRAY"
 info$columns$value_labels  # NA "region" NA "income" NA NA
+info$key_value$key         # "dta" "ARROW:schema"
 ```
+
+`key_value` is a tibble of every key-value entry, `key` and `value`
+(the value as text): here the `dta` entry with the labels
+([the profile](parquet.md#the-profile)) and arrow's schema; a file from
+another tool has that tool's entries.
 
 `role` is `"nested"` for a list, map or group, which is not read, and
 `storage` and `logical` show what a column written as DOUBLE because it
@@ -1207,9 +1239,13 @@ na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
 ### Parquet files from other tools
 
 `read_parquet()` reads the files pyarrow, pandas, polars, DuckDB,
-arrow, nanoparquet, fastparquet and others write: every encoding
-(dictionary, PLAIN, the DELTA encodings, BYTE_STREAM_SPLIT), data pages
-v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and brotli.
+arrow, nanoparquet, fastparquet and others write: the encodings
+dictionary, PLAIN, RLE, the DELTA encodings and BYTE_STREAM_SPLIT, data
+pages v1 and v2, and the codecs none, snappy, gzip, zstd, lz4_raw and
+brotli. The one encoding not read is BIT_PACKED for values, which the
+format has deprecated and current writers do not use; reading such a
+column is an error (BIT_PACKED repetition and definition levels are
+read).
 A column that pandas, polars or arrow wrote as a category or factor (a
 dictionary of strings in the file's arrow schema) is a factor:
 
@@ -1250,12 +1286,17 @@ digit (and an unsigned value of 2^63 or more is an error for
 
 What this version does not read, each an error that names the column
 and its type: FLOAT16, INTERVAL, the Hadoop framing of LZ4, LZO,
-encryption. Nested columns (lists, maps, structs) are an error unless
+encryption. Values encoded BIT_PACKED are an error too. Nested columns (lists, maps, structs) are an error unless
 `col_select` leaves them out or `nested = "skip"` is given. Datasets of
 many files, Hive partitions and predicate pushdown are not part of
 datakit; use arrow's `open_dataset()` or DuckDB for those.
 
 ### What each Parquet type becomes in R
+
+Every conversion is exact or an error that names the column, the row
+and the option that keeps the value, with one exception: DECIMAL reads
+by default as the nearest double, which may not equal the decimal
+value exactly (`decimal = "character"` keeps every digit).
 
 | Parquet | R |
 |---|---|
@@ -1281,10 +1322,10 @@ datakit; use arrow's `open_dataset()` or DuckDB for those.
 | arrow | nanoparquet | datakit | what changes |
 |---|---|---|---|
 | `read_parquet(file)` | `read_parquet(file)` | `read_parquet(file)` | labels, `.a` to `.z`, formats, notes kept; a tibble of `read_dta()`'s types |
-| `read_parquet(file, col_select = c(a, b))` | `read_parquet(file, col_select = c("a", "b"))` | `read_parquet(file, col_select = c(a, b))` | names or tidyselect; an unknown name lists the file's columns |
+| `read_parquet(file, col_select = c(a, b))` | `read_parquet(file, col_select = c("a", "b"))` | `read_parquet(file, col_select = c(a, b))` | names, positions or tidyselect; an unknown name lists the file's columns |
 | `open_dataset(file) \|> ... \|> head(n)` or `$ReadRowGroup()` | (no rows) | `read_parquet(file, skip = 100, n_max = 50)` | only the pages that hold the rows are read |
 | `read_parquet(file, as_data_frame = FALSE)` | (none) | (none) | no Arrow tables; use arrow for those |
-| `ParquetFileReader$create(file)$GetSchema()` | `read_parquet_schema(file)`, `read_parquet_info(file)` | `read_parquet_info(file)` | one call: rows, row groups, codecs, labels, and the R type of each column |
+| `ParquetFileReader$create(file)$GetSchema()` | `read_parquet_schema(file)`, `read_parquet_info(file)` | `read_parquet_info(file)` | one call: rows, row groups, codecs, key-value entries, labels, and the R type of each column |
 | `write_parquet(x, sink)` (snappy) | `write_parquet(x, file)` (snappy) | `save_parquet(x, file)` (snappy) | labels, letters, zones, ordered factors written; returns `x` invisibly |
 | `compression = "zstd", compression_level = 3` | `compression = "zstd", options = parquet_options(compression_level = 3)` | `compression = "zstd", compression_level = 3` | |
 | `chunk_size = n` | `options = parquet_options(num_rows_per_row_group = n)` | `row_group_size = n` | |

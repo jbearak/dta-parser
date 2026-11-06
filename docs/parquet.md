@@ -25,14 +25,31 @@ Each task links to its section on the language page.
 
 ### Install
 
-Nothing beyond the package: R, [Parquet: install](r.md#parquet-install);
-Python, [Parquet: install](python.md#parquet-install);
-Julia, [Parquet: install](julia.md#parquet-install) (Datakit, installed
-with DtaParser from the checkout; TimeZones.jl and CategoricalArrays.jl
-are optional, for zones and categoricals).
-TypeScript, [Parquet: install](typescript.md#parquet-install).
+Parquet needs no Arrow or other Parquet library: the packages read and
+write it through their own Rust core. In R, Python and Julia it is in
+datakit, which needs the format package (dtaparser, `dta_parser`,
+DtaParser); in TypeScript it is in the npm package itself. R installs
+from the project's package repository, with binaries for macOS, Windows
+and Ubuntu. Python, Julia and npm install from a checkout of this
+repository, which needs Rust and a C compiler (for the zstd library).
+
+- R: [Parquet: install](r.md#parquet-install).
+- Python: [Parquet: install](python.md#parquet-install); `dta_parser`
+  and datakit in one `pip install`.
+- Julia: [Parquet: install](julia.md#parquet-install); DtaParser and
+  Datakit from the checkout. TimeZones.jl and CategoricalArrays.jl are
+  optional, for zones and categoricals.
+- TypeScript: [Parquet: install](typescript.md#parquet-install).
 
 ### Read a whole file, and what each type becomes
+
+Each language's type table gives what every Parquet type becomes. Every
+conversion is exact or an error naming the option that keeps the value,
+with one exception: DECIMAL. R, Julia and TypeScript read it by default
+as the nearest double, which may not equal the decimal value exactly.
+R's `decimal = "character"` and Julia's `decimal = :string` keep every
+digit as text, and TypeScript reads precision above 15 as text. Python
+reads it exactly, as polars' `Decimal`.
 
 R: [Read a Parquet file](r.md#read-a-parquet-file) and
 [What each Parquet type becomes](r.md#what-each-parquet-type-becomes-in-r).
@@ -116,9 +133,11 @@ Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
 pandas, pyarrow and polars write microsecond timestamps, so Julia reads
 their files with `timestamps = :truncate`.
 TypeScript: [Files from other tools](typescript.md#parquet-files-from-other-tools).
-Every encoding and codec other tools write by default is read, and
-the types plan 0018 lists: unsigned integers, DECIMAL, TIME, INT96,
-fixed-length binary, UUID, ENUM and JSON. A category or factor that
+Every encoding and codec other tools write by default is read. The one
+encoding not read is BIT_PACKED for values, which the format has
+deprecated and current writers do not use. These types are read too:
+unsigned integers, DECIMAL, TIME, INT96, fixed-length binary, UUID,
+ENUM and JSON. A category or factor that
 pandas, polars or arrow wrote (a dictionary of strings in
 `ARROW:schema`) reads as a categorical whose levels are the values of
 the rows read, in order of first appearance, so two windows of one
@@ -380,9 +399,11 @@ pandas, fastparquet and polars in Python, in
 | Python: `column "x" is in the frame but its letters' column "x_letter" is not; ...` (also `"x_letter" holds the letters of column "x", which is not in the frame`) | a companion dropped while its column was kept, or the reverse | keep both, or `del meta.letter_columns["x"]` |
 | Python: `column "t", row 1: the timestamp has a part below a microsecond, which a column with .a to .z (written as seconds) cannot hold; pass timestamps="truncate" to drop it` (also `too far from 1970`) | a `Datetime("ns")` column with letters | `timestamps="truncate"`, or drop the letters |
 | Python: `save_parquet takes a polars DataFrame, not a LazyFrame; call .collect() on it first` | a `LazyFrame` | as it says |
+| Python: `ValueError: compression is "snappy", "zstd", "gzip", "lz4_raw" or "none", not 'lzo'` | `save_parquet(compression=)` | one of those |
+| Python: `ValueError: zstd levels run from 1 to 22, not 99`; `ValueError: snappy has no compression levels` | `compression_level` | a level the codec has, or `None` |
 | Python warning: `meta.sort (x) does not describe the order of the frame's rows, so it is not saved; ...` | rows reordered since the read, or sorted with nulls first | sort as the guide shows, or clear `meta.sort` |
 | Python warning: `"x_letter" is a column of datakit.LETTERS that no pair in meta.letter_columns names, ...` | a companion saved without its pair | add the pair to `meta.letter_columns`, or drop the column |
-| Python: `ImportError: datakit 0.3.0 needs dta_parser's native functions at ABI version 1, but the installed dta_parser ... has ABI version ...` | datakit and dta_parser from different checkouts | `pip install --force-reinstall ./python ./python/datakit` |
+| Python: `ImportError: datakit 0.3.0 needs dta_parser's native functions at ABI version 1, but the installed dta_parser ... has ABI version ...` | datakit and dta_parser from different checkouts | `pip install --force-reinstall ./dta-parser/python ./dta-parser/python/datakit` |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
 
 Julia's `read_parquet` and `save_parquet` (Datakit) give the same
@@ -399,9 +420,12 @@ messages with Julia's argument names, and these of their own:
 | `column t: cannot write values of type Time; Parquet TIME columns are read, not written` (also complex numbers and other types) | a column type `save_parquet` does not write | convert it first |
 | `column c: a categorical column is written as text, so its levels must be strings, not Int64; ...` | a `CategoricalArray` of numbers | `categorical(string.(x))`, or write the numbers |
 | `column z holds times in 2 zones; a Parquet timestamp column has one. ...` | a `ZonedDateTime` column with several zones | `astimezone` to one zone |
+
 The TypeScript package gives the same messages, with its own option
 names, and a `code` on each error ([Errors](typescript.md#errors)):
+
 | message (TypeScript) | cause | what to do |
+|---|---|---|
 | `no variable "x"; the file's are ...` (`DTA_OUT_OF_RANGE`) | a name or index in `columns` the file does not have | check `r.variables` |
 | `the file has nested columns, which are not read: "l"; select the columns wanted, or open with nested: "skip"` | `readRows` without `columns` on a file with a list, map or struct | select columns, or `{ nested: "skip" }` |
 | `column "n": the value 9007199254740993 in row 1 ... read with int64: "bigint" to keep every digit` | `int64: "number"`, or statistics that understated a column's range | `{ int64: "bigint" }` |

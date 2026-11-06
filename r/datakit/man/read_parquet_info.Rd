@@ -28,6 +28,9 @@ arguments (\code{NA} for a column it does not read); \code{physical_type} and
 \code{logical}, the storage type (\code{"byte"}, \code{"int"}, \code{"long"},
 \code{"float"}) or the date or time (\code{"date"}, \code{"timestamp"}) of a
 column written as DOUBLE because it holds \code{.a} to \code{.z}.
+\item \code{key_value}: a tibble of every key-value entry in the footer,
+\code{key} and \code{value} (as text, \code{NA} for an entry with no value): the
+\code{dta} profile, \code{ARROW:schema} and any other writer's entries.
 }
 }
 \description{
