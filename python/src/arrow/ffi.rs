@@ -461,7 +461,7 @@ unsafe fn read_metadata(p: *const c_char) -> Vec<(String, Vec<u8>)> {
         *at = at.add(4);
         v.max(0) as usize
     }
-    let mut at = p as *const u8;
+    let mut at = p.cast::<u8>();
     let n = int(&mut at);
     let mut out = Vec::with_capacity(n);
     for _ in 0..n {
