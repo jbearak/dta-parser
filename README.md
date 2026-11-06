@@ -79,8 +79,9 @@ uses them, so that its `:=` is the one R finds. datakit re-exports
 dtaparser's functions; dtatools has its own `read_dta`, `save_dta`, and
 label functions for dibbles, so a script uses one of the two. Julia
 has the same split, without `:=`: DtaParser reads and writes `.dta`, and
-Datakit reads Parquet and fixed-width text into DataFrames
-and saves Parquet.
+Datakit reads Parquet and fixed-width text into DataFrames, saves
+Parquet, and re-exports DtaParser's functions, so `using Datakit` is
+enough.
 
 None of them is on a package registry yet; each page says how to
 install from this repository. Building needs Rust

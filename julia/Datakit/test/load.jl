@@ -15,6 +15,21 @@ using Datakit, DtaParser, Test
     # The re-exports are DtaParser's own.
     @test Datakit.DtaColumn === DtaParser.DtaColumn && Datakit.stata_code === DtaParser.stata_code
     @test Datakit.set_stata_code! === DtaParser.set_stata_code! && Datakit.stata_key === DtaParser.stata_key
+    # Every DtaParser export is Datakit's, the same object, so `using
+    # Datakit` alone reads and writes .dta.
+    for name in names(DtaParser)
+        name === :DtaParser && continue
+        @test name in names(Datakit) && getfield(Datakit, name) === getfield(DtaParser, name)
+    end
+    script = """
+        using Datakit, DataFrames
+        p = tempname() * ".dta"
+        write_dta(p, DataFrame(id = [1, 2]))
+        t = read_dta(p)
+        print(t isa DtaTable, " ", DataFrame(t).id, " ", isdefined(Main, :DtaParser))
+    """
+    out = read(`$(Base.julia_cmd()) --startup-file=no --project=$(Base.active_project()) -e $script`, String)
+    @test out == "true Int8[1, 2] false"
     # DtaParser no longer exports Parquet.
     @test !(:read_parquet in names(DtaParser)) && !(:write_parquet in names(DtaParser))
     @test !(:read_fixed_width in names(DtaParser))

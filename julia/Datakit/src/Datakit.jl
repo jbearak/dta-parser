@@ -17,11 +17,12 @@ using Dates
 using DataFrames
 import DataAPI
 import Tables
-using DtaParser: DtaParser, DtaColumn, stata_code, set_stata_code!, stata_key, read_dta
+using DtaParser: DtaParser, DtaColumn, DtaTable, stata_code, set_stata_code!, stata_key, read_dta, read_meta, write_dta
 using DtaParser.Internals
 
+# DtaParser's exports too, so `using Datakit` alone reads and writes .dta.
 export read_parquet, read_parquet_info, save_parquet, read_fixed_width, DtaColumn, stata_code, set_stata_code!,
-       stata_key
+       stata_key, read_dta, read_meta, write_dta, DtaTable
 
 # The version of DtaParser's C interface this package was written for.
 const DTAPARSER_ABI = 5
