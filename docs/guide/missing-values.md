@@ -25,9 +25,9 @@ or grouping on the keys follows Stata.
 | language | key of one value | keys of a column |
 |---|---|---|
 | R | `dta_num` comparisons and `order()` already use it | |
-| Python | `dta_parser.stata_key(v)` | `dta_parser.stata_keys(col)` |
-| Julia | `stata_key(x)`, `stata_key(".a")` | `stata_key(col)` |
-| TypeScript | `stataKey(cell)` | `stataKeys(column)` |
+| Python | `dta_parser.dta_key(v)` | `dta_parser.dta_keys(col)` |
+| Julia | `dta_key(x)`, `dta_key(".a")` | `dta_key(col)` |
+| TypeScript | `dtaKey(cell)` | `dtaKeys(column)` |
 
 The keys are equal across languages, so a key computed in Python
 matches one computed in Julia.

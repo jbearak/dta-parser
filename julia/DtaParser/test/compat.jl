@@ -55,7 +55,7 @@ theirs_values(c) = map(plain, collect(c isa LabeledArray ? refarray(c) : c))
                 theirs_sets = getvaluelabels(theirs)
                 @test Set(keys(sets)) == Set(String.(keys(theirs_sets)))
                 for (name, labels) in theirs_sets
-                    want = Dict((k isa Char ? stata_key(".$k") : Float64(k)) => v for (k, v) in labels)
+                    want = Dict((k isa Char ? dta_key(".$k") : Float64(k)) => v for (k, v) in labels)
                     @test sets[String(name)] == want
                 end
             end
@@ -76,7 +76,7 @@ end
                 col = ours[Symbol(name)]
                 eltype(col) <: Union{Missing,Real} || continue
                 for (i, cell) in enumerate(cells)
-                    code = cell isa AbstractDict ? DtaParser.key_code(stata_key(cell["missing"])) : 0x00
+                    code = cell isa AbstractDict ? DtaParser.key_code(dta_key(cell["missing"])) : 0x00
                     @test stata_code(col, i) == code
                     checked += 1
                 end

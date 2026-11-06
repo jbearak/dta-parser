@@ -103,7 +103,7 @@ function label_set(labels)
     set = Dict{Float64,String}()
     sizehint!(set, length(labels))
     for pair in labels
-        set[stata_key(pair[1])] = pair[2]
+        set[dta_key(pair[1])] = pair[2]
     end
     set
 end

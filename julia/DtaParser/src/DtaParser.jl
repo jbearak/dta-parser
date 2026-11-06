@@ -13,7 +13,7 @@ using Dates
 import DataAPI
 import Tables
 
-export read_dta, read_meta, write_dta, DtaTable, DtaColumn, stata_code, set_stata_code!, stata_key
+export read_dta, read_meta, write_dta, DtaTable, DtaColumn, stata_code, set_stata_code!, dta_key
 
 include("lib.jl")
 include("json.jl")

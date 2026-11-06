@@ -141,7 +141,7 @@ write_dta("smokers.dta", (id = [1, 2, 3], smoker = DtaColumn(Int8[1, 0, 0], UInt
 
 back = read_dta("smokers.dta")
 stata_code(back.smoker, 3)                                  # 0x05, that is .d
-metadata(back, "value_labels")["yesno"][stata_key(".d")]    # "Don't know"
+metadata(back, "value_labels")["yesno"][dta_key(".d")]    # "Don't know"
 ```
 
 **TypeScript**
@@ -183,7 +183,7 @@ the table says how.
 | Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | `read_parquet`, `write_parquet` | `read_parquet`, `write_parquet` | `openParquetFile`, `writeParquetFile`; the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
-| a key that sorts and compares as Stata does | built into `dta_num` | `stata_key`, `stata_keys` | `stata_key` | `stataKey`, `stataKeys` |
+| a key that sorts and compares as Stata does | built into `dta_num` | `dta_key`, `dta_keys` | `dta_key` | `dtaKey`, `dtaKeys` |
 | Stata comparisons, arithmetic and logic on columns; `tab`, group ids, sets | ✓ | | | |
 
 **Round trips.** In every language, reading a file and writing what was

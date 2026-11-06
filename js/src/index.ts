@@ -24,15 +24,15 @@ const MISSING_KEYS = Float64Array.from({ length: 27 }, (_, k) => {
  * A number that sorts and compares as Stata does: a number is itself, and
  * `.` < `.a` < ... < `.z` come after every number. Use it to sort, group or
  * compare with missing values in Stata's order:
- * `rows.sort((a, b) => stataKey(a) - stataKey(b))`.
+ * `rows.sort((a, b) => dtaKey(a) - dtaKey(b))`.
  */
-export function stataKey(value: number | Missing): number {
+export function dtaKey(value: number | Missing): number {
   if (typeof value === "number") return Number.isNaN(value) ? MISSING_KEYS[0] : value;
   return MISSING_KEYS[MISSING_NAMES.indexOf(value.missing)];
 }
 
-/** `stataKey` for every value of a NumberColumn. */
-export function stataKeys(column: NumberColumn): Float64Array {
+/** `dtaKey` for every value of a NumberColumn. */
+export function dtaKeys(column: NumberColumn): Float64Array {
   const out = new Float64Array(column.values.length);
   for (let i = 0; i < out.length; i++) {
     const code = column.missing[i];
@@ -40,6 +40,12 @@ export function stataKeys(column: NumberColumn): Float64Array {
   }
   return out;
 }
+
+/** @deprecated The 1.0 name of {@link dtaKey}, kept for 1.x. */
+export const stataKey = dtaKey;
+
+/** @deprecated The 1.0 name of {@link dtaKeys}, kept for 1.x. */
+export const stataKeys = dtaKeys;
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {

@@ -1,5 +1,5 @@
 # DtaColumn keeps its missing codes through the bulk operations the docs
-# list, and stata_key gives the doubles R and npm give.
+# list, and dta_key gives the doubles R and npm give.
 
 using DtaParser, Test
 
@@ -87,21 +87,21 @@ end
     @test codes_of(insert!(sample(), 1, missing)) == [1, 0, 1, 2, 0, 27]
 end
 
-@testset "stata_key" begin
+@testset "dta_key" begin
     bits(x) = reinterpret(UInt64, x)
     # The doubles dtatools and the npm package use: 0x7fe0000000000000 + (code - 1) << 40.
-    @test bits(stata_key(missing)) == 0x7fe0000000000000
-    @test bits(stata_key(".")) == 0x7fe0000000000000
-    @test bits(stata_key(".a")) == 0x7fe0010000000000
-    @test bits(stata_key(".z")) == 0x7fe01a0000000000
-    @test bits(stata_key(NaN)) == 0x7fe0000000000000
-    @test stata_key(3) === 3.0
-    @test_throws ArgumentError stata_key(".A")
-    keys = stata_key(sample())
+    @test bits(dta_key(missing)) == 0x7fe0000000000000
+    @test bits(dta_key(".")) == 0x7fe0000000000000
+    @test bits(dta_key(".a")) == 0x7fe0010000000000
+    @test bits(dta_key(".z")) == 0x7fe01a0000000000
+    @test bits(dta_key(NaN)) == 0x7fe0000000000000
+    @test dta_key(3) === 3.0
+    @test_throws ArgumentError dta_key(".A")
+    keys = dta_key(sample())
     @test keys[1] == 1.5 && keys[4] == -2.0
     @test keys[2] < keys[3] < keys[5]
     @test all(k -> k > floatmax(Float64) / 2, keys[[2, 3, 5]])
-    @test stata_key(sample(), 3) == stata_key(".a")
-    @test stata_key([1, missing]) == [1.0, stata_key(".")]
-    @test stata_key(view(sample(), 3:3)) == [stata_key(".a")]
+    @test dta_key(sample(), 3) == dta_key(".a")
+    @test dta_key([1, missing]) == [1.0, dta_key(".")]
+    @test dta_key(view(sample(), 3:3)) == [dta_key(".a")]
 end

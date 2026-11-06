@@ -268,26 +268,26 @@ letters become `.`. The full list, as the tests observe it, is under
 [Labels and .a to .z through DataFrames operations](#labels-and-a-to-z-through-dataframes-operations).
 `groupby` on a `DtaColumn` puts all its missing values in one group; to
 keep `.d` apart from `.r`, add a key column and group on it:
-`df.income_key = stata_key(df.income); groupby(df, :income_key)`.
+`df.income_key = dta_key(df.income); groupby(df, :income_key)`.
 
 **Order.** `sort(col)` on a `DtaColumn` follows Stata: numbers, then
 `.`, `.a`, ..., `.z`. DataFrames' `sort(df, :income)` keeps each code
 with its row but sees every missing value as `missing`, so it puts them
 last in their original order. To sort a DataFrame in Stata's order, sort
-by the keys. `stata_key(x)` turns a value into a `Float64` that sorts
-that way: `stata_key(2.5) == 2.5`, `stata_key(missing)` and
-`stata_key(".")` are `.`, `stata_key(".a")` is `.a`; `stata_key(col)`
+by the keys. `dta_key(x)` turns a value into a `Float64` that sorts
+that way: `dta_key(2.5) == 2.5`, `dta_key(missing)` and
+`dta_key(".")` are `.`, `dta_key(".a")` is `.a`; `dta_key(col)`
 gives every row's key.
 
 ```julia
-s = df[sortperm(stata_key(df.income)), :]
+s = df[sortperm(dta_key(df.income)), :]
 [stata_code(s.income, i) for i in 1:6]        # UInt8[0, 0, 0, 5, 19, 20]
 [stata_code(sort(df.income), i) for i in 1:6] # the same order
-stata_key(".a") > stata_key(missing) > 1e300  # true
+dta_key(".a") > dta_key(missing) > 1e300  # true
 ```
 
 For several columns, add key columns and sort on them:
-`df.income_key = stata_key(df.income); sort(df, [:region, :income_key])`.
+`df.income_key = dta_key(df.income); sort(df, [:region, :income_key])`.
 
 The keys are the same in R, Python and TypeScript.
 
@@ -302,12 +302,12 @@ set = colmetadata(t, :region, "value_labels")       # "region"
 labels = metadata(t, "value_labels")[set]           # Dict(1.0 => "North", ...)
 labels[2]                                           # "South"
 [get(labels, x, string(x)) for x in t.region]       # ["North", "South", "South", "East", "West", "North"]
-metadata(t, "value_labels")["nonresponse"][stata_key(".d")]   # "Don't know"
+metadata(t, "value_labels")["nonresponse"][dta_key(".d")]   # "Don't know"
 ```
 
 Keys are `Float64`, and Julia's `Dict` finds `1.0` when given `1`, so
 `labels[2]` works on an `Int8` value. A missing value's key is
-`stata_key(".d")`, or `stata_key(col, i)` for row `i`.
+`dta_key(".d")`, or `dta_key(col, i)` for row `i`.
 
 As a categorical vector, with every label as a level in code order (needs
 CategoricalArrays.jl):
@@ -394,7 +394,7 @@ write_dta("smokers.dta", smokers;
 back = read_dta("smokers.dta")
 metadata(back, "label")                       # "Smoking"
 colmetadata(back, :smoker, "label")           # "Smokes daily"
-metadata(back, "value_labels")["yesno"][stata_key(".d")]   # "Don't know"
+metadata(back, "value_labels")["yesno"][dta_key(".d")]   # "Don't know"
 ```
 
 ## Recipes
@@ -404,7 +404,7 @@ metadata(back, "value_labels")["yesno"][stata_key(".d")]   # "Don't know"
 ```julia
 df = DataFrame(read_dta("survey.dta"))
 older = subset(df, :age => ByRow(>=(40)))
-older = older[sortperm(stata_key(older.income)), :]
+older = older[sortperm(dta_key(older.income)), :]
 write_dta("older.dta", older)
 back = read_dta("older.dta")
 [stata_code(back.income, i) for i in 1:3]     # UInt8[1, 5, 19]: ., .d, .r
@@ -477,7 +477,7 @@ reads with the same labels and letters.
 | `read_fixed_width(path, setup; ...)` | reads fixed-width text through its SAS setup file into a `DataFrame` |
 
 It also re-exports `DtaColumn`, `stata_code`, `set_stata_code!` and
-`stata_key` from DtaParser, so `using Datakit, DataFrames` is all a
+`dta_key` from DtaParser, so `using Datakit, DataFrames` is all a
 script needs. `.dta` files stay DtaParser's: `DataFrame(read_dta(f))`
 gives a frame with the same metadata keys as `read_parquet(g)`.
 
@@ -564,7 +564,7 @@ count(i -> stata_code(lost.income, i) > 1, 1:6)     # 0: no letters left
 ```
 
 To keep why a value is missing through an aggregation, aggregate a key
-column made with `stata_key` (see [Missing values](#missing-values)),
+column made with `dta_key` (see [Missing values](#missing-values)),
 or count the codes before combining.
 
 **Set a letter** (`replace x = .d if age < 15` in a do-file).
@@ -634,7 +634,7 @@ letter:
 ```julia datakit
 fw = read_fixed_width("survey.dat", "survey.sas"; recodes=:tagged)
 [stata_code(fw.KIDS, i) for i in 1:4]      # UInt8[0, 2, 3, 0]
-metadata(fw, "value_labels")["kidsf"][stata_key(".a")]   # "(98) DK"
+metadata(fw, "value_labels")["kidsf"][dta_key(".a")]   # "(98) DK"
 ```
 
 A letter means what that variable's labels say: `.a` is 98 "DK" here,
@@ -881,7 +881,7 @@ colmetadata(p, :age, "label")                     # "Age in years"
 colmetadata(p, :region, "value_labels")           # "region"
 labels = metadata(p, "value_labels")["region"]    # Dict(1.0 => "North", 2.0 => "South", ...)
 [labels[x] for x in p.region]                     # ["North", "South", "South", "East", "West", "North"]
-metadata(p, "value_labels")["nonresponse"][stata_key(p.income, 2)]   # "Don't know"
+metadata(p, "value_labels")["nonresponse"][dta_key(p.income, 2)]   # "Don't know"
 metadata(p, "label"), metadata(p, "notes")        # ("Household survey (example)", ["Made up for the DtaParser documentation."])
 ```
 
@@ -1029,7 +1029,7 @@ metadata(s, "label")                       # "Smoking"
 colmetadata(s, :id, "label")               # "Person"
 colmetadata(s, :smoker, "label")           # "Smokes daily"
 yesno = metadata(s, "value_labels")["yesno"]
-[get(yesno, stata_key(s.smoker, i), "") for i in 1:3]   # ["Yes", "No", "Don't know"]
+[get(yesno, dta_key(s.smoker, i), "") for i in 1:3]   # ["Yes", "No", "Don't know"]
 ```
 
 ### Keep .a to .z in a Parquet file
@@ -1257,11 +1257,11 @@ DtaParser:
   codes.
 - `stata_code(col, i)`, `set_stata_code!(col, i, code)`: read and set a
   missing code.
-- `stata_key(x)`, `stata_key(col)`, `stata_key(col, i)`: `Float64`s that
+- `dta_key(x)`, `dta_key(col)`, `dta_key(col, i)`: `Float64`s that
   sort as Stata does.
 
 Datakit (which also exports `DtaColumn`, `stata_code`,
-`set_stata_code!` and `stata_key`):
+`set_stata_code!` and `dta_key`):
 
 - `read_parquet(source; cols, skip, n_max, timestamps, decimal,
   nested)`: read a Parquet file into a `DataFrame` (see

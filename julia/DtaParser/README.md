@@ -25,7 +25,7 @@ t = read_dta("survey.dta")                 # a DtaTable: Tables.jl, DataAPI meta
 t = read_dta("survey.dta"; cols=[:age, :region], skip=100, n_max=1000)
 df = DataFrame(t)                          # keeps DtaColumns and metadata
 colmetadata(df, :region, "label")          # variable label
-metadata(df, "value_labels")["yesno"][stata_key(".d")]
+metadata(df, "value_labels")["yesno"][dta_key(".d")]
 
 stata_code(df.answer, 3)                   # 0 for a value, 1 for ., 2 to 27 for .a to .z
 set_stata_code!(df.answer, 3, 5)           # make row 3 .d
@@ -64,7 +64,7 @@ through `DtaParser.Internals` (for Datakit only, not an API).
   any function over the column build plain vectors: `.` is kept, the
   letters are lost. `groupby` on a `DtaColumn` puts all missing values
   in one group.
-- `stata_key(x)` gives a `Float64` that sorts and compares as Stata does:
+- `dta_key(x)` gives a `Float64` that sorts and compares as Stata does:
   numbers, then `.`, `.a`, ..., `.z` (the same keys as dtatools and the
   npm package).
 - Strings are `Vector{String}`; binary strLs are `Vector{UInt8}`.
