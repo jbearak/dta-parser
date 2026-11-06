@@ -8,14 +8,14 @@
 \usage{
 val_labels(x)
 
-val_label(x, values)
+val_label(x, values = x)
 
 labelbook(data)
 }
 \arguments{
 \item{x}{A labelled column, such as one \code{read_dta} returned.}
 
-\item{values}{Codes to look up.}
+\item{values}{Codes to look up; by default \code{x} itself.}
 
 \item{data}{A data frame.}
 }
@@ -26,12 +26,13 @@ with columns \code{variable}, \code{label_set}, \code{code}, \code{code_text} an
 \description{
 \code{val_labels(x)} gives \code{x}'s value labels as a named \code{dta_num}: the codes,
 named by their text. \code{val_label(x, values)} gives the text of each of
-\code{values} (NA where unlabelled). \code{labelbook(data)} lists every labelled
-column's labels, in Stata's order.
+\code{values} (NA where unlabelled); with the default \code{values = x}, each
+row's label. \code{labelbook(data)} lists every labelled column's labels, in
+Stata's order.
 }
 \examples{
 x <- dta_num(c(1, 2, .d), labels = c(Yes = 1, No = 2, "Don't know" = .d))
 val_labels(x)
-val_label(x, x)
+val_label(x)
 labelbook(dibble(x = x))$mappings
 }

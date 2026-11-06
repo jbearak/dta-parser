@@ -102,14 +102,15 @@ know" answer, then reads it back.
 **R**
 
 ```r
-library(dtatools)
+library(dtaparser)
 
-df <- dibble(id = 1:3, smoker = dta_num(c(1, 0, .d), labels = c(No = 0, Yes = 1, "Don't know" = .d)))
-save_dta(df, "smokers.dta")
+smoker <- with_labels(c(1, 0, tagged_na("d")),
+                      c(No = 0, Yes = 1, tagged_na(c("Don't know" = "d"))))
+save_dta(data.frame(id = 1:3, smoker = smoker), "smokers.dta")
 
 back <- read_dta("smokers.dta")
-back$smoker                          # 1 0 .d
-val_label(back$smoker, back$smoker)  # "Yes" "No" "Don't know"
+back$smoker             # 1 [Yes]  0 [No]  NA(d) [Don't know]
+val_label(back$smoker)  # "Yes" "No" "Don't know"
 ```
 
 **Python**

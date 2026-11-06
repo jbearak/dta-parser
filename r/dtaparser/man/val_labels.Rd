@@ -50,7 +50,7 @@ These are labelled's names. labelled's \code{val_labels()} and
 \code{val_label()} read only class \code{haven_labelled}, so on dtaparser's
 columns they give \code{NULL}; its \code{val_label(x, v)} looks up one value.
 dtatools exports \code{val_labels()} and \code{val_label()} too, for its
-\code{dta_num} columns; its \code{val_label()} needs \code{values}. With either
+\code{dta_num} columns. With either
 package attached as well, call these as \code{dtaparser::val_label()}.
 }
 \examples{

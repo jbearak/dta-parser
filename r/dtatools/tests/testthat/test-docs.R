@@ -1,7 +1,8 @@
 # The documentation's R examples run, and every export is documented.
 #
 # Each ```r block of README.md, docs/guide/*.md and docs/r.md runs, in
-# order, in one environment per file, in a fresh temporary directory.
+# order, in one environment per file, in a fresh temporary directory, and
+# the packages a file attaches are detached after it.
 # Blocks whose info string says `norun` (installation) are skipped. The
 # docs live in the repository, not the package, so this skips when the
 # package is tested outside a checkout.
@@ -45,6 +46,7 @@ test_that("every R example in the docs runs", {
     dir <- tempfile("docs-")
     dir.create(dir)
     old <- setwd(dir)
+    attached <- search()
     env <- new.env(parent = globalenv())
     for (b in blocks) {
       where <- paste0(basename(path), ":", b$line)
@@ -56,6 +58,10 @@ test_that("every R example in the docs runs", {
     }
     setwd(old)
     unlink(dir, recursive = TRUE)
+    # A file's library() calls attach for the whole session; detach them
+    # so that, say, README.md's dtaparser does not mask dtatools' read_dta
+    # in docs/r.md.
+    for (name in setdiff(search(), attached)) detach(name, character.only = TRUE)
   }
 })
 

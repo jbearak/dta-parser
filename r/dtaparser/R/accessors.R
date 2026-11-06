@@ -111,7 +111,7 @@ tagged_na <- function(x) {
 #' `val_label()` read only class `haven_labelled`, so on dtaparser's
 #' columns they give `NULL`; its `val_label(x, v)` looks up one value.
 #' dtatools exports `val_labels()` and `val_label()` too, for its
-#' `dta_num` columns; its `val_label()` needs `values`. With either
+#' `dta_num` columns. With either
 #' package attached as well, call these as `dtaparser::val_label()`.
 #'
 #' @param x A column, such as one `read_dta()` returned; for
