@@ -450,6 +450,40 @@ static SEXP na_tag(SEXP x) {
   return out;
 }
 
+// Each element's place in Stata's missing-value order, as a plain
+// integer vector: 0 for a number, 1 for `.` (NA or any other NaN), 2 to
+// 27 for .a to .z. The letter is read before the NaN test, as a tagged
+// NA is a NaN. An integer or logical vector holds no letter.
+static SEXP missing_rank(SEXP x) {
+  R_xlen_t n = XLENGTH(x);
+  SEXP out = PROTECT(Rf_allocVector(INTSXP, n));
+  int *o = INTEGER(out);
+  switch (TYPEOF(x)) {
+  case REALSXP: {
+    const double *p = REAL_RO(x);
+    for (R_xlen_t i = 0; i < n; i++) {
+      char c = letter_of(p[i]);
+      o[i] = c ? c - 'a' + 2 : ISNAN(p[i]);
+    }
+    break;
+  }
+  case INTSXP: {
+    const int *p = INTEGER_RO(x);
+    for (R_xlen_t i = 0; i < n; i++) o[i] = p[i] == NA_INTEGER;
+    break;
+  }
+  case LGLSXP: {
+    const int *p = LOGICAL_RO(x);
+    for (R_xlen_t i = 0; i < n; i++) o[i] = p[i] == NA_LOGICAL;
+    break;
+  }
+  default:
+    Rf_error("missing_rank: x must be a double, integer or logical vector");
+  }
+  UNPROTECT(1);
+  return out;
+}
+
 SEXP dtaparser_packed_state(SEXP x);
 SEXP dtaparser_dictionary(SEXP x);
 void dtaparser_init_packed(DllInfo *dll);
@@ -465,6 +499,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_parquet_info", (DL_FUNC) &parquet_info, 1},
   {"dta_parquet_read", (DL_FUNC) &parquet_read, 5},
   {"dta_parquet_write", (DL_FUNC) &parquet_write, 3},
+  {"dta_missing_rank", (DL_FUNC) &missing_rank, 1},
   {NULL, NULL, 0}
 };
 
