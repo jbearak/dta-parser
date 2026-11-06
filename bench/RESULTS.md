@@ -978,7 +978,9 @@ and 1.20 at zstd):
    are byte for byte the same: 37 files of every family, codec and row
    group size, hashed before and after.
 
-**What still misses** ([results/parquet-datakit.md](results/parquet-datakit.md#misses)):
+**What still misses** ([results/parquet-datakit.md](results/parquet-datakit.md#misses)).
+The user accepted these four misses on 2026-11-06 and merged the PR
+with them, as plan 0019 allows:
 
 1. **Target 2, peak RSS of the long.dta and groups.dta writes**: 1.34 to
    1.46 times polars' and 1.39 to 1.43 times pyarrow's (2a: 1.27 to
