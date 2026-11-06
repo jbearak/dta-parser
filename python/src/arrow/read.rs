@@ -35,7 +35,8 @@ pub(crate) const ARROW_THREADS_MOST: usize = 12;
 /// Reads and writes of fewer bytes than this stay on one thread.
 pub(crate) const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
 /// The thread rule of writes from polars' export: our CPU time stayed
-/// below polars' at every count to 16 while the wall time kept falling.
+/// within 1.15 times polars' at every count to 16 while the wall time
+/// kept falling.
 pub(crate) const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
 pub(crate) const ARROW_WRITE_THREADS: usize = 4;
 pub(crate) const ARROW_WRITE_THREADS_MOST: usize = 16;
