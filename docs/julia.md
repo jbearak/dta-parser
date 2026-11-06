@@ -8,7 +8,7 @@ Two packages:
   118. Numeric columns keep Stata's missing values `.a` to `.z` through
   slicing, sorting, filtering and writing, and labels travel as DataAPI
   metadata.
-- **Datakit**, built on DtaParser, is for data preparation: it reads
+- **Datakit** is for data preparation: it reads
   [fixed-width `.dat` files](#fixed-width-files-with-a-sas-setup-file)
   through their SAS setup files, and [Parquet files](#parquet-files),
   into a DataFrame, and saves any table as Parquet, keeping the same
@@ -462,8 +462,7 @@ numbers, and old files decode as Windows-1252 unless you say otherwise.
 
 ## Datakit: Parquet and fixed-width text into DataFrames
 
-Datakit is a second package, built on DtaParser, for data
-preparation. It reads Parquet files and
+Datakit is a second package, for data preparation. It reads Parquet files and
 fixed-width text into a `DataFrame` and saves any table as Parquet,
 keeping what a `.dta` file says: value labels, variable labels, display
 formats, notes and `.a` to `.z`. It is the Julia counterpart of R's

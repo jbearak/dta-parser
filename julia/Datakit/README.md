@@ -1,9 +1,9 @@
 # Datakit.jl
 
-Data preparation in Julia, built on [DtaParser](../DtaParser), which
-reads and writes Stata `.dta` files. Datakit reads fixed-width `.dat`
-files through their SAS setup files, and Parquet files, into a
-`DataFrame`, and saves any table as Parquet. Columns keep Stata's value
+Data preparation in Julia. Datakit reads fixed-width `.dat` files
+through their SAS setup files, and Parquet files, into a `DataFrame`,
+and saves any table as Parquet; Stata `.dta` files are read and written
+with [DtaParser](../DtaParser). Columns keep Stata's value
 labels, variable labels, display formats, notes and the missing values
 `.a` to `.z`. Its Parquet files are an interchange format, with readers
 and writers in Julia, R, Python and TypeScript: data goes between them
