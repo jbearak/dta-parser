@@ -37,13 +37,23 @@ their own oracle: asciiSetupReader (R, MIT), which reads such files and
 applies their missing-value recodes. `compat/fixed_width/` holds a
 synthetic setup and data file, and `compat/expected/fixed_width.json`
 what asciiSetupReader reads from them. It cannot read fixed-length
-records without line breaks or two record types in one file, and it
-turns variable labels into column names; `scripts/check-nsfg.R`, which
-compares the NSFG files themselves, gives it equivalent input for the
-first two and compares labels by their letters and digits. Its other
-limits there (a label written twice, a `VALUE` with no space after a
-label, `LABEL` without `=`) are listed in that script, each checked
-against the setup text. For `recodes = "tagged"`, the expected values
+records without line breaks, two record types in one file, or a setup
+split over several files, and it turns variable labels into column
+names; `scripts/check-nsfg.R`, which compares the NSFG female
+respondent and pregnancy files of 1973 to 2017-2019 themselves, gives
+it equivalent input for the first three (2002's three setup files
+joined into one) and compares labels by their letters and digits. It
+reads the `PROC FORMAT` step and `FORMAT` statement that the setups of
+2006-2010 on wrap in block comments. Where the rules of plan 0009 and
+ADR 0030 differ from it, the script compares by those rules: it drops
+value labels whose keys are ranges or `.`, and those of `$` formats,
+which Stata cannot hold. Two of its limits are allowed only where the
+setup holds our text as written: a double-quoted variable label with a
+quote inside, which it ends at that quote as SAS does, is compared up
+to there, and a value label with runs of spaces, which it makes one
+space, is compared that way. Its other limits there (a label written
+twice, a `VALUE` with no space after a label, `LABEL` without `=`) are
+listed in that script, each checked against the setup text. For `recodes = "tagged"`, the expected values
 are asciiSetupReader's codes read without the recodes, made into haven
 tagged NAs in the order its `parse_setup()` lists the recodes; the
 converted file is also read with haven, readstata13, pandas and
