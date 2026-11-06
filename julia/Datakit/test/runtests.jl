@@ -7,6 +7,7 @@ codes_of(c) = UInt8[stata_code(c, i) for i in eachindex(c)]
 
 @testset "Datakit" begin
     include("load.jl")
+    include("smoke.jl")
     include("parquet.jl")
     include("operations.jl")
     include("fixed_width.jl")
