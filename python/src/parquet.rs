@@ -506,8 +506,8 @@ fn dtype_name(col: &ColumnInfo, kind: &Kind, meta: &FileMetaData) -> String {
         Kind::Bool { .. } if nulls => "boolean".into(),
         Kind::Bool { .. } => "bool".into(),
         Kind::Float32 => "float32".into(),
-        Kind::Double { storage: Some(s), .. } => format!("stata[{}]", s.name()),
-        Kind::Double { logical: Some(_), .. } => "stata[double]".into(),
+        Kind::Double { storage: Some(s), .. } => format!("dta[{}]", s.name()),
+        Kind::Double { logical: Some(_), .. } => "dta[double]".into(),
         Kind::Double { .. } | Kind::DecimalFloat => "float64".into(),
         Kind::DecimalText | Kind::Binary => "object".into(),
         Kind::Date => "datetime64[s]".into(),
@@ -542,7 +542,7 @@ pub(crate) fn storage_name(kind: &Kind) -> Option<&'static str> {
     })
 }
 
-fn logical_name(col: &ColumnInfo) -> Option<String> {
+pub(crate) fn logical_name(col: &ColumnInfo) -> Option<String> {
     let unit_name = |u: TimeUnit| match u {
         TimeUnit::Millis => "MILLIS",
         TimeUnit::Micros => "MICROS",
@@ -601,7 +601,7 @@ fn logical_name(col: &ColumnInfo) -> Option<String> {
     Some(name.into())
 }
 
-fn codec_name(c: dta_parquet::format::Codec) -> String {
+pub(crate) fn codec_name(c: dta_parquet::format::Codec) -> String {
     use dta_parquet::format::Codec::*;
     match c {
         Uncompressed => "none".into(),

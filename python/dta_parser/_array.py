@@ -1,6 +1,6 @@
-"""StataArray: numbers that keep Stata's missing codes (`.`, `.a` to `.z`).
+"""DtaArray: numbers that keep Stata's missing codes (`.`, `.a` to `.z`).
 
-A StataArray holds float64 values and a uint8 missing code per row (see
+A DtaArray holds float64 values and a uint8 missing code per row (see
 `dta_parser.missing`); values are NaN where the code is not 0. Sorting
 and factorising (so `groupby`) use the Stata key, which puts missing
 values after every number in the order `.`, `.a`, ..., `.z`.
@@ -39,8 +39,8 @@ def _wider(a, b):
 
 
 @register_extension_dtype
-class StataDtype(ExtensionDtype):
-    """The dtype of a StataArray: `stata[byte]` ... `stata[double]`, after the
+class DtaDtype(ExtensionDtype):
+    """The dtype of a DtaArray: `dta[byte]` ... `dta[double]`, after the
     Stata storage type the values are written in."""
 
     _metadata = ("storage",)
@@ -56,26 +56,26 @@ class StataDtype(ExtensionDtype):
 
     @property
     def name(self):
-        return f"stata[{self.storage}]"
+        return f"dta[{self.storage}]"
 
     @classmethod
     def construct_array_type(cls):
-        return StataArray
+        return DtaArray
 
     @classmethod
     def construct_from_string(cls, string):
         if not isinstance(string, str):
             raise TypeError(f"'construct_from_string' expects a string, got {type(string)}")
-        if string == "stata":
+        if string == "dta":
             return cls()
-        m = re.fullmatch(r"stata\[(\w+)\]", string)
+        m = re.fullmatch(r"dta\[(\w+)\]", string)
         if m and m.group(1) in STORAGE:
             return cls(m.group(1))
-        raise TypeError(f"Cannot construct a 'StataDtype' from '{string}'")
+        raise TypeError(f"Cannot construct a 'DtaDtype' from '{string}'")
 
     def _get_common_dtype(self, dtypes):
-        if all(isinstance(d, StataDtype) for d in dtypes):
-            return StataDtype(functools.reduce(_wider, (d.storage for d in dtypes)))
+        if all(isinstance(d, DtaDtype) for d in dtypes):
+            return DtaDtype(functools.reduce(_wider, (d.storage for d in dtypes)))
         return None
 
 
@@ -90,7 +90,7 @@ def _scalar(value):
         return (np.nan, 1) if value != value else (value, 0)
     if isinstance(value, (bool, np.bool_)):
         return float(value), 0
-    raise TypeError(f"a StataArray holds numbers and missing values, not {value!r}")
+    raise TypeError(f"a DtaArray holds numbers and missing values, not {value!r}")
 
 
 def _from_keys(keys):
@@ -109,7 +109,7 @@ def _from_keys(keys):
     return values, codes
 
 
-class StataArray(ExtensionArray):
+class DtaArray(ExtensionArray):
     """Numbers with Stata missing codes: `values` (float64) and `codes`
     (uint8: 0 not missing, 1 `.`, 2 to 27 `.a` to `.z`)."""
 
@@ -132,7 +132,7 @@ class StataArray(ExtensionArray):
             codes = np.where(np.isnan(values) & ~missing, np.uint8(1), codes)
         self._values = values
         self._codes = codes
-        self._dtype = StataDtype(storage)
+        self._dtype = DtaDtype(storage)
 
     @classmethod
     def _simple(cls, values, codes, dtype):
@@ -161,10 +161,10 @@ class StataArray(ExtensionArray):
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
         dtype = pandas_dtype(dtype) if dtype is not None else None
-        storage = dtype.storage if isinstance(dtype, StataDtype) else None
-        if isinstance(scalars, StataArray):
+        storage = dtype.storage if isinstance(dtype, DtaDtype) else None
+        if isinstance(scalars, DtaArray):
             out = scalars.copy() if copy else scalars
-            return out if storage is None else cls._simple(out._values, out._codes, StataDtype(storage))
+            return out if storage is None else cls._simple(out._values, out._codes, DtaDtype(storage))
         if isinstance(scalars, pd.Series):
             scalars = scalars.array
         if isinstance(scalars, np.ndarray) and scalars.dtype.kind in "biuf":
@@ -176,7 +176,7 @@ class StataArray(ExtensionArray):
         pairs = [_scalar(v) for v in scalars]
         values = np.fromiter((p[0] for p in pairs), dtype=np.float64, count=len(pairs))
         codes = np.fromiter((p[1] for p in pairs), dtype=np.uint8, count=len(pairs))
-        return cls._simple(values, codes, StataDtype(storage or "double"))
+        return cls._simple(values, codes, DtaDtype(storage or "double"))
 
     @classmethod
     def _from_sequence_of_strings(cls, strings, *, dtype=None, copy=False):
@@ -218,7 +218,7 @@ class StataArray(ExtensionArray):
         if not is_integer(key) and not isinstance(key, slice):
             key = check_array_indexer(self, key)
         if is_list_like(value) and not isinstance(value, (str, bytes, MissingValue)):
-            other = value if isinstance(value, StataArray) else StataArray._from_sequence(value)
+            other = value if isinstance(value, DtaArray) else DtaArray._from_sequence(value)
             v, c = other._values, other._codes
         else:
             v, c = _scalar(value)
@@ -254,10 +254,10 @@ class StataArray(ExtensionArray):
         storage = functools.reduce(_wider, (a.dtype.storage for a in to_concat), to_concat[0].dtype.storage)
         values = np.concatenate([a._values for a in to_concat])
         codes = np.concatenate([a._codes for a in to_concat])
-        return cls._simple(values, codes, StataDtype(storage))
+        return cls._simple(values, codes, DtaDtype(storage))
 
     def keys(self):
-        """The Stata key of each row (see `dta_parser.stata_keys`)."""
+        """The Stata key of each row (see `dta_parser.dta_keys`)."""
         keys = self._values.copy()
         missing = self._codes != 0
         if missing.any():
@@ -295,7 +295,7 @@ class StataArray(ExtensionArray):
         return pd.Series(counts, index=index, name="count")
 
     def equals(self, other):
-        if not isinstance(other, StataArray) or self.dtype != other.dtype or len(self) != len(other):
+        if not isinstance(other, DtaArray) or self.dtype != other.dtype or len(self) != len(other):
             return False
         if not np.array_equal(self._codes, other._codes):
             return False
@@ -323,7 +323,7 @@ class StataArray(ExtensionArray):
 
     def astype(self, dtype, copy=True):
         dtype = pandas_dtype(dtype)
-        if isinstance(dtype, StataDtype):
+        if isinstance(dtype, DtaDtype):
             out = self.copy() if copy else self
             return self._simple(out._values, out._codes, dtype)
         if isinstance(dtype, ExtensionDtype):
@@ -355,7 +355,7 @@ class StataArray(ExtensionArray):
             else:
                 result = ops[name](values)
         else:
-            raise TypeError(f"StataArray does not support {name}")
+            raise TypeError(f"DtaArray does not support {name}")
         return np.array([result]) if keepdims else result
 
     def _compare(self, other, op):
@@ -364,14 +364,14 @@ class StataArray(ExtensionArray):
         if isinstance(other, MissingValue):
             hit = self._codes == other.code
             return hit if op is operator.eq else ~hit if op is operator.ne else op(self._values, np.nan)
-        if isinstance(other, StataArray):
+        if isinstance(other, DtaArray):
             other = other._values
         return op(self._values, np.asarray(other) if is_list_like(other) else other)
 
     def _arith(self, other, op):
         if isinstance(other, (pd.Series, pd.Index, pd.DataFrame)):
             return NotImplemented
-        if isinstance(other, StataArray):
+        if isinstance(other, DtaArray):
             other = other._values
         elif isinstance(other, MissingValue):
             other = np.nan
@@ -393,20 +393,20 @@ def _reflected(op):
 
 for _name, _op in [("eq", operator.eq), ("ne", operator.ne), ("lt", operator.lt),
                    ("le", operator.le), ("gt", operator.gt), ("ge", operator.ge)]:
-    setattr(StataArray, f"__{_name}__", lambda self, other, op=_op: self._compare(other, op))
+    setattr(DtaArray, f"__{_name}__", lambda self, other, op=_op: self._compare(other, op))
 
 for _name, _op in [("add", operator.add), ("sub", operator.sub), ("mul", operator.mul),
                    ("truediv", operator.truediv), ("floordiv", operator.floordiv),
                    ("mod", operator.mod), ("pow", operator.pow)]:
-    setattr(StataArray, f"__{_name}__", lambda self, other, op=_op: self._arith(other, op))
-    setattr(StataArray, f"__r{_name}__", lambda self, other, op=_reflected(_op): self._arith(other, op))
+    setattr(DtaArray, f"__{_name}__", lambda self, other, op=_op: self._arith(other, op))
+    setattr(DtaArray, f"__r{_name}__", lambda self, other, op=_reflected(_op): self._arith(other, op))
 
 
-def stata_key(value):
+def dta_key(value):
     """A float that sorts and compares as Stata does: a number is itself, and
     `.` (NaN, None, pd.NA) < `missing.a` < ... < `missing.z` come after every
     number. Use it to sort, group or compare with missing values in Stata's
-    order: `sorted(values, key=stata_key)`."""
+    order: `sorted(values, key=dta_key)`."""
     if isinstance(value, MissingValue):
         return float(_KEYS[value.code - 1])
     if value is None or value is pd.NA or value is pd.NaT:
@@ -415,15 +415,15 @@ def stata_key(value):
     return float(_KEYS[0]) if value != value else value
 
 
-def stata_keys(values):
-    """`stata_key` of every value of a numeric column (a Series, StataArray,
+def dta_keys(values):
+    """`dta_key` of every value of a numeric column (a Series, DtaArray,
     numpy array or nullable array), as a float64 numpy array. Other columns
-    (text, dates) come back unchanged, so `df.sort_values(by, key=stata_keys)`
+    (text, dates) come back unchanged, so `df.sort_values(by, key=dta_keys)`
     sorts by several columns in Stata's order."""
     original = values
     if isinstance(values, (pd.Series, pd.Index)):
         values = values.array
-    if isinstance(values, StataArray):
+    if isinstance(values, DtaArray):
         return values.keys()
     if isinstance(values, ExtensionArray):
         if not values.dtype._is_numeric or values.dtype.kind not in "biuf":
@@ -436,7 +436,7 @@ def stata_keys(values):
         return keys
     if values.dtype == object:
         try:
-            return np.fromiter((stata_key(v) for v in values), dtype=np.float64, count=len(values))
+            return np.fromiter((dta_key(v) for v in values), dtype=np.float64, count=len(values))
         except (TypeError, ValueError):
             pass
     return original
@@ -447,7 +447,7 @@ def missing_codes(values):
     1 `.` (NaN, NaT, None, pd.NA), 2 to 27 `.a` to `.z`."""
     if isinstance(values, (pd.Series, pd.Index)):
         values = values.array
-    if isinstance(values, StataArray):
+    if isinstance(values, DtaArray):
         return values.codes.copy()
     if isinstance(values, np.ndarray) and values.dtype == object:
         return np.fromiter(

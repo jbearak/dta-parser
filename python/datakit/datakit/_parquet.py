@@ -1,0 +1,181 @@
+"""Parquet files into polars and back, keeping labels and `.a` to `.z`."""
+
+from __future__ import annotations
+
+import os
+
+import polars as pl
+
+from . import _frame as f
+from ._meta import GUIDE, ParquetInfo
+from ._native import native
+
+_COMPRESSION = ("snappy", "zstd", "gzip", "lz4_raw", "none")
+_UNITS = {"m": "ms", "u": "us", "n": "ns", "s": "ms"}
+
+
+def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letters="meta",
+                 letter_suffix="_letter", timestamps="error", nested="error"):
+    """Read a Parquet file into a polars DataFrame and its Meta.
+
+    Returns a tuple, `df, meta = read_parquet(path)`. In `df`, `.` and
+    `.a` to `.z` are all polars nulls; `meta` holds the data label, notes,
+    each column's variable label, display format and value label set, the
+    sets, and the letters (below). A file with a "dta" profile (written by
+    save_parquet, R's datakit or Julia's Datakit) gives back what was
+    saved; any other Parquet file reads with an empty Meta.
+
+    source: a path, the file as bytes, or a binary file object with read
+        and seek.
+    columns: names or 0-based positions of the file's data columns, in
+        the order wanted; None reads every column. An unknown name is a
+        KeyError listing the file's columns; a position out of range an
+        IndexError.
+    skip, n_max: skip that many rows, then read at most n_max (all when
+        None). Only the pages holding those rows are read.
+    factors: make each column with value labels an Enum of its labels, as
+        R's datakit does with factors = TRUE. The codes are then gone from
+        the frame, and codes sharing a label become one level; saving does
+        not bring them back. `.a` to `.z` are kept as `letters` says.
+    letters: where `.a` to `.z` go. "meta" (the default): in
+        `meta.missing`, a Series of LETTERS per column holding any, aligned
+        with the rows as read. "columns": a companion column `x_letter`
+        after every column that can hold a letter (byte, int, long, float,
+        double, date, timestamp), which follows its rows through filter,
+        sort and join. A list of names: companions for those columns, the
+        rest in `meta.missing`. None: drop the letters.
+    letter_suffix: the companion's suffix, "_letter" by default.
+    timestamps: "error" (the default) or "truncate": what to do with a
+        date held as a number of days with a fraction, or a timestamp held
+        as seconds that no whole number of microseconds gives back
+        exactly. Values out of polars' range are errors either way.
+    nested: "error" (the default) or "skip" for files with list, map or
+        struct columns, which are not read.
+
+    Guide: {guide}#read-a-parquet-file
+    """
+    columns = f.check_columns(columns)
+    f.check_window(skip, n_max)
+    letters = f.check_letters(letters, letter_suffix)
+    f.check_choice("timestamps", timestamps, ("error", "truncate"))
+    f.check_choice("nested", nested, ("error", "skip"))
+    if not isinstance(factors, bool):
+        raise TypeError(f"factors must be True or False, not {factors!r}")
+    src = f.source_of(source)
+    frame, found, m = native.parquet_read_arrow(src, columns, skip, n_max, nested == "skip", timestamps)
+    return f.finish(frame, found, m, factors=factors, letters=letters, letter_suffix=letter_suffix)
+
+
+def _dtype(fmt, flag, levels):
+    """The polars dtype of a column read with Arrow format `fmt`, as text."""
+    if fmt is None:
+        return None
+    if levels is not None:
+        return pl.Enum(levels)
+    if flag == "categorical":
+        return pl.Categorical()
+    if flag is not None and flag.startswith("decimal("):
+        p, s = map(int, flag[len("decimal("):-1].split(","))
+        return pl.Decimal(p, s) if p <= 38 else pl.String()
+    if fmt.startswith("ts"):
+        zone = fmt[4:] or None
+        return pl.Datetime(_UNITS[fmt[2]], zone)
+    return {
+        "c": pl.Int8, "s": pl.Int16, "i": pl.Int32, "l": pl.Int64,
+        "C": pl.UInt8, "S": pl.UInt16, "I": pl.UInt32, "L": pl.UInt64,
+        "b": pl.Boolean, "f": pl.Float32, "g": pl.Float64, "tdD": pl.Date, "ttn": pl.Time,
+        "vu": pl.String, "vz": pl.Binary,
+    }[fmt]()
+
+
+def read_parquet_info(source):
+    """Describe a Parquet file without reading its data: only the footer is
+    read. Returns a ParquetInfo: rows, row_groups, compression,
+    created_by, key_value, meta (the Meta a whole-file read gives, without
+    `missing`) and columns (each column's polars dtype as read_parquet
+    gives it, Parquet's types, label, value label set and storage).
+
+    source: a path, the file as bytes, or a binary file object with read
+        and seek.
+
+    Guide: {guide}#a-parquet-files-schema-and-metadata
+    """
+    info = native.parquet_info_arrow(f.source_of(source))
+    for w in info["meta"]["warnings"]:
+        f.warn(w)
+    cols = info["columns"]
+    columns = pl.DataFrame(
+        {
+            "name": [c[0] for c in cols],
+            "role": [c[1] for c in cols],
+            "dtype": [None if c[2] is None else str(_dtype(c[2], c[3], c[4])) for c in cols],
+            "physical_type": [c[5] for c in cols],
+            "logical_type": [c[6] for c in cols],
+            "label": [c[7] for c in cols],
+            "value_labels": [c[8] for c in cols],
+            "storage": [c[9] for c in cols],
+        },
+        schema={k: pl.String for k in ("name", "role", "dtype", "physical_type", "logical_type", "label",
+                                         "value_labels", "storage")},
+    )
+    groups = info["row_groups"]
+    return ParquetInfo(
+        rows=info["rows"],
+        row_groups=pl.DataFrame(
+            {"rows": [g[0] for g in groups], "compressed_bytes": [g[1] for g in groups],
+             "uncompressed_bytes": [g[2] for g in groups]},
+            schema={"rows": pl.Int64, "compressed_bytes": pl.Int64, "uncompressed_bytes": pl.Int64},
+        ),
+        compression=list(info["compression"]),
+        created_by=info["created_by"],
+        key_value=dict(info["key_value"]),
+        meta=f.meta_of(info["meta"]),
+        columns=columns,
+    )
+
+
+def save_parquet(df, path=None, meta=None, *, compression="snappy", compression_level=None, row_group_size=None,
+                 missing_letters=True, timestamps="error"):
+    """Write a polars DataFrame as Parquet, with what `meta` says.
+
+    The file keeps the data label, notes, characteristics, sort order,
+    time stamp, variable labels, display formats, value labels and `.a` to
+    `.z` in its "dta" profile, which R's and Julia's datakits read; other
+    tools read it as plain Parquet. Returns None, or the file as bytes
+    when path is None. The file is written beside `path` and renamed, so a
+    failed write leaves an existing file as it was.
+
+    df: a polars DataFrame (a LazyFrame is a TypeError: collect it first).
+    meta: a Meta, or None. Entries for columns not in df are dropped.
+    compression: "snappy" (the default), "zstd", "gzip", "lz4_raw" or
+        "none"; compression_level sets zstd's (1 to 22) or gzip's (0 to 9).
+    row_group_size: rows per row group (by default up to 262,144 rows and
+        about 1 GiB of values).
+    missing_letters: False writes `.a` to `.z` as plain nulls.
+    timestamps: "error" or "truncate", for a Datetime("ns") column with
+        letters, which is written as seconds and so must be whole
+        microseconds.
+
+    Letters come from companion columns (meta.letter_columns), which are
+    not written as columns, and from meta.missing, whose columns must be
+    unchanged since they were read. Every dtype polars has that Parquet
+    and the profile can keep is written; Decimal, Duration, List, Array,
+    Struct and Object are errors naming the column and what to cast to.
+
+    Guide: {guide}#write-a-parquet-file
+    """
+    f.check_choice("compression", compression, _COMPRESSION)
+    f.check_choice("timestamps", timestamps, ("error", "truncate"))
+    if row_group_size is not None and (isinstance(row_group_size, bool) or not isinstance(row_group_size, int)
+                                       or row_group_size < 1):
+        raise ValueError(f"row_group_size must be a whole number of rows >= 1, not {row_group_size!r}")
+    if not isinstance(missing_letters, bool):
+        raise TypeError(f"missing_letters must be True or False, not {missing_letters!r}")
+    out, profile = f.prepare(df, meta, missing_letters, "save_parquet")
+    target = None if path is None else os.fsdecode(os.fspath(path))
+    return native.parquet_write_arrow(out, target, profile, compression, compression_level, row_group_size,
+                                      missing_letters, timestamps)
+
+
+for _fn in (read_parquet, read_parquet_info, save_parquet):
+    _fn.__doc__ = _fn.__doc__.replace("{guide}", GUIDE)

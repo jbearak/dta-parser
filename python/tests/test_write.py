@@ -10,7 +10,7 @@ import pytest
 from pandas.io.stata import StataReader
 
 import dta_parser as dp
-from dta_parser import StataArray, missing, read_dta, read_meta, write_dta
+from dta_parser import DtaArray, missing, read_dta, read_meta, write_dta
 from test_compat import READERS, known
 
 TEXT = pd.Series(["a"]).dtype
@@ -22,7 +22,7 @@ def same_column(a, b):
     assert dp.missing_codes(a).tolist() == dp.missing_codes(b).tolist()
     if a.dtype.kind == "M" or b.dtype.kind == "M":
         assert a.tolist() == b.tolist()
-    elif a.dtype.kind in "iuf" or isinstance(a.dtype, dp.StataDtype):
+    elif a.dtype.kind in "iuf" or isinstance(a.dtype, dp.DtaDtype):
         x, y = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
         assert np.array_equal(x, y, equal_nan=True)
     else:
@@ -134,7 +134,7 @@ def test_integers_beyond_2_53_are_an_error(tmp_path):
 
 
 def test_stata_array_keeps_storage_and_codes(tmp_path):
-    x = StataArray([1.0, np.nan, np.nan, 4.0], [0, 1, 3, 0], storage="int")
+    x = DtaArray([1.0, np.nan, np.nan, 4.0], [0, 1, 3, 0], storage="int")
     path = written(pd.DataFrame({"x": x}), tmp_path)
     assert storage(path) == {"x": "int"}
     back = read_dta(path)
@@ -205,7 +205,7 @@ def test_text(tmp_path):
 
 def test_metadata_from_attrs(tmp_path):
     df = pd.DataFrame({
-        "a": StataArray([1.0, 2.0, np.nan], [0, 0, 5], storage="byte"),
+        "a": DtaArray([1.0, 2.0, np.nan], [0, 0, 5], storage="byte"),
         "b": ["x", "y", "z"],
         "c": [0.25, 0.5, 1.0],
     })

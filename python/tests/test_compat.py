@@ -16,7 +16,7 @@ import pytest
 from pandas.io.stata import StataMissingValue, StataReader
 
 from conftest import fixture_paths
-from dta_parser import StataArray, read_dta
+from dta_parser import DtaArray, read_dta
 
 LATIN1 = "pandas decodes text before 118 as Latin-1, not Windows-1252"
 
@@ -48,7 +48,7 @@ def missing_name(code):
 
 def our_cells(series):
     array = series.array
-    if isinstance(array, StataArray):
+    if isinstance(array, DtaArray):
         return [v if c == 0 else missing_name(c) for v, c in zip(array.to_numpy().tolist(), array.codes.tolist())]
     if series.dtype.kind in "iuf":
         return ["." if v != v else float(v) for v in series.to_numpy().tolist()]
@@ -209,7 +209,7 @@ def test_missing_codes_match_pandas_and_pyreadstat():
     for path in [p for p in fixture_paths() if p.stem.startswith("haven_1")]:
         df = read_dta(path, dates=False)
         for name in df.columns:
-            if isinstance(df[name].array, StataArray):
+            if isinstance(df[name].array, DtaArray):
                 seen += 1
                 ours_codes = df[name].array.codes
                 assert ours_codes.max() > 1

@@ -1,6 +1,6 @@
 """Stata's extended missing values `.a` to `.z`.
 
-`missing.a` ... `missing.z` are the values a `StataArray` gives back for
+`missing.a` ... `missing.z` are the values a `DtaArray` gives back for
 them, and what assignment into one accepts. System missing `.` is NaN,
 as everywhere else in pandas.
 

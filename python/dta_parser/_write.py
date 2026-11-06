@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from . import _native
-from ._array import StataDtype
+from ._array import DtaDtype
 from ._read import _EPOCH_DAYS, date_kind
 from .missing import MissingValue
 
@@ -129,7 +129,7 @@ def _column(name, series, meta, sets):
     set_name = meta.get("value_labels", "")
     preferred = meta.get("storage")
     missing = None
-    if isinstance(dtype, StataDtype):
+    if isinstance(dtype, DtaDtype):
         arr = series.array
         values, codes = arr._values, arr._codes
         storage = _choose(name, values, codes != 0, dtype.storage, "double")
@@ -224,7 +224,7 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
     - bool: byte; integers: the smallest of byte, int and long that holds
       every value, else double (an error beyond ±2^53);
     - float32, float64: float, double, NaN as `.`; nullable dtypes: their
-      values, NA as `.`; StataArray: its storage and missing codes;
+      values, NA as `.`; DtaArray: its storage and missing codes;
     - category: its codes as long, its categories as value labels;
     - datetime64: %td (long) if every value is midnight, else %tc (double,
       milliseconds); NaT as `.`;

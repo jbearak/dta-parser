@@ -209,6 +209,14 @@ pub struct WriteOptions {
     /// measured to have their own (polars' Arrow export, plan 0019).
     #[doc(hidden)]
     pub thread_rule: Option<(u64, usize, usize)>,
+    /// How many column chunks the workers may encode ahead of the one
+    /// being written out: `None` for two per thread. `Some(usize::MAX)`
+    /// leaves only `pipeline_bytes` to bound them, which keeps every
+    /// thread busy on a wide file whose chunks differ in size (polars'
+    /// Arrow export, plan 0019: a 5,160-column DHS file wrote in about
+    /// 0.6 of the time, with a third less CPU, than at two per thread).
+    #[doc(hidden)]
+    pub ahead: Option<usize>,
 }
 
 impl Default for WriteOptions {
@@ -232,6 +240,7 @@ impl Default for WriteOptions {
             parallel_bytes: if small { 0 } else { 16 << 20 },
             pipeline_bytes: if small { 1 } else { 256 << 20 },
             thread_rule: None,
+            ahead: None,
         }
     }
 }
@@ -366,6 +375,7 @@ pub fn write_with_letters(
         &job,
         &|e: &Encoded| e.dict.len() + e.data.len(),
         options.pipeline_bytes,
+        options.ahead,
         |j, e| {
             let (g, k) = (j / n_cols, j % n_cols);
             if k == 0 {
@@ -845,10 +855,11 @@ fn parallel<T: Send>(
 
 /// Run `f(k)` for `k` in `0..n` on up to `threads` threads, and give
 /// each result to `sink` on the calling thread, in order, as soon as it
-/// and those before it are done. Workers run at most two results per
-/// thread ahead of `sink`, and start nothing new while the results
-/// waiting for `sink` come to `budget` bytes or more (by `size`), so
-/// few are held at once. Stops at the first error.
+/// and those before it are done. Workers run at most `ahead` results
+/// (two per thread when None) ahead of `sink`, and start nothing new
+/// while the results waiting for `sink` come to `budget` bytes or more
+/// (by `size`), so few are held at once. Stops at the first error.
+#[allow(clippy::too_many_arguments)]
 fn parallel_ordered<T: Send>(
     threads: usize,
     n: usize,
@@ -856,6 +867,7 @@ fn parallel_ordered<T: Send>(
     f: &(dyn Fn(usize, &mut Scratch) -> Result<T> + Sync),
     size: &(dyn Fn(&T) -> usize + Sync),
     budget: usize,
+    ahead: Option<usize>,
     mut sink: impl FnMut(usize, T) -> Result<()>,
 ) -> Result<()> {
     let lock = |k: usize| scratch[k].lock().unwrap_or_else(PoisonError::into_inner);
@@ -878,7 +890,7 @@ fn parallel_ordered<T: Send>(
         held: usize,
         stop: bool,
     }
-    let window = 2 * threads;
+    let window = ahead.unwrap_or(2 * threads).max(1);
     let state = Mutex::new(State {
         results: (0..n).map(|_| None).collect(),
         next: 0,
@@ -897,7 +909,7 @@ fn parallel_ordered<T: Send>(
                 // being encoded (jobs start in order), so this ends.
                 while !st.stop
                     && st.next < n
-                    && (st.next >= st.done + window || (st.held >= budget && st.next > st.done))
+                    && (st.next >= st.done.saturating_add(window) || (st.held >= budget && st.next > st.done))
                 {
                     st = changed.wait(st).unwrap_or_else(PoisonError::into_inner);
                 }
@@ -963,6 +975,28 @@ fn parallel_ordered<T: Send>(
         }
         outcome
     })
+}
+
+/// How many of the next `left` values (none null) to add to a PLAIN page
+/// holding `plain` bytes and `levels` definition levels: up to and
+/// including the first after which the page reaches `page_bytes`
+/// (`plain + levels / 8`, as `numbers` measures it), else all of them.
+fn until_full(plain: usize, levels: usize, width: usize, page_bytes: usize, left: usize) -> usize {
+    let size = |j: usize| plain + width * j + (levels + j) / 8;
+    if size(left) < page_bytes {
+        return left;
+    }
+    // The smallest j >= 1 with size(j) >= page_bytes; size grows with j.
+    let (mut lo, mut hi) = (1, left);
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if size(mid) >= page_bytes {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    lo
 }
 
 fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
@@ -1294,6 +1328,31 @@ impl Encoder<'_> {
                         s.keep_numbers_map(d.map);
                     }
                 }
+            }
+            if dict.is_none() && codes[..n].iter().all(|&c| c == 0) {
+                // PLAIN and no nulls in the block: the values a run at a
+                // time, each run ending where the loop below would end
+                // the page, so the pages are the same.
+                let mut i = 0;
+                while i < n {
+                    let take = until_full(plain.len(), s.levels.len(), T::WIDTH, self.options.page_bytes, n - i);
+                    let run = &values[i..i + take];
+                    if let Some(bits) = bits {
+                        if let Some(j) = run.iter().position(|v| !v.fits(bits)) {
+                            let v = run[j];
+                            return Err(Error::invalid(format!("column \"{name}\": the value {v:?} in row {} does not fit in {bits} bits", first + i + j + 1)));
+                        }
+                    }
+                    stats.add_all(run);
+                    T::put_all(run, &mut plain);
+                    s.levels.resize(s.levels.len() + take, 1);
+                    i += take;
+                    if plain.len() + s.levels.len() / 8 >= self.options.page_bytes {
+                        self.flush_numbers(s, &mut p, &mut dict, &mut plain, page_first)?;
+                        page_first = first + i - rows.start;
+                    }
+                }
+                continue;
             }
             for i in 0..n {
                 let row = first + i - rows.start;
@@ -1873,7 +1932,23 @@ impl Hasher for Fx {
 /// A number type the writer encodes.
 trait Number: Copy + Default + Send + std::fmt::Debug + PartialOrd {
     const WIDTH: usize;
+    /// The value is held in memory as `put` writes it: `WIDTH` bytes,
+    /// little-endian.
+    const NATIVE: bool = false;
     fn put(self, out: &mut Vec<u8>);
+    /// Every value of `values`, as `put` writes each.
+    fn put_all(values: &[Self], out: &mut Vec<u8>) {
+        if Self::NATIVE && cfg!(target_endian = "little") && std::mem::size_of::<Self>() == Self::WIDTH {
+            // SAFETY: NATIVE types are plain numbers of WIDTH bytes, laid
+            // out as put writes them on a little-endian target.
+            let bytes = unsafe { std::slice::from_raw_parts(values.as_ptr().cast::<u8>(), std::mem::size_of_val(values)) };
+            out.extend_from_slice(bytes);
+        } else {
+            for &v in values {
+                v.put(out);
+            }
+        }
+    }
     /// The bits, for the dictionary: -0.0 and 0.0, and NaNs with
     /// different payloads, stay distinct.
     fn key(self) -> u64;
@@ -1891,6 +1966,7 @@ trait Number: Copy + Default + Send + std::fmt::Debug + PartialOrd {
 
 impl Number for i32 {
     const WIDTH: usize = 4;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -1905,6 +1981,7 @@ impl Number for i32 {
 
 impl Number for i64 {
     const WIDTH: usize = 8;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -1918,6 +1995,7 @@ impl Number for i64 {
 
 impl Number for f32 {
     const WIDTH: usize = 4;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -1940,6 +2018,7 @@ impl Number for f32 {
 
 impl Number for f64 {
     const WIDTH: usize = 8;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -1967,6 +2046,7 @@ impl Number for f64 {
 /// the statistics follow the column's unsigned order.
 impl Number for u32 {
     const WIDTH: usize = 4;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -1980,6 +2060,7 @@ impl Number for u32 {
 
 impl Number for u64 {
     const WIDTH: usize = 8;
+    const NATIVE: bool = true;
     fn put(self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -2035,6 +2116,24 @@ impl<T: Number> Stats<T> {
         if self.max.is_none_or(|m| v > m) {
             self.max = Some(v);
         }
+    }
+
+    /// `add` of every value of `values`, as it would leave the
+    /// statistics.
+    fn add_all(&mut self, values: &[T]) {
+        let mut it = values.iter().copied().filter(|v| !v.is_nan());
+        let Some(first) = it.next() else { return };
+        let (mut lo, mut hi) = (first, first);
+        for v in it {
+            if v < lo {
+                lo = v;
+            }
+            if v > hi {
+                hi = v;
+            }
+        }
+        self.add(lo);
+        self.add(hi);
     }
 
     fn finish(self) -> Statistics {

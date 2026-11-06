@@ -112,7 +112,7 @@ def checksum(df):
         if is_text(s):
             length += int(s.str.len().fillna(0).sum())
             continue
-        if hasattr(s.array, "codes"):  # a StataArray
+        if hasattr(s.array, "codes"):  # a DtaArray
             v, miss = s.array._values, s.array.codes != 0
         else:
             v = s.to_numpy(dtype=np.float64, na_value=np.nan)

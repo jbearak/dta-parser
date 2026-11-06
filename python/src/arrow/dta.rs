@@ -546,10 +546,11 @@ pub fn dta_write_arrow<'py>(
             format = f.unwrap_or_default();
             set = s.unwrap_or_default();
         }
-        if format.ends_with('s') {
+        let f = c.field.format.as_str();
+        // A text format (%9s) is for text columns only, as write_dta keeps it.
+        if format.ends_with('s') && !matches!(f, "u" | "U" | "vu" | "z" | "Z" | "vz") {
             format.clear();
         }
-        let f = c.field.format.as_str();
         // The present values' range, for the storage type.
         let range = |as_f64: &dyn Fn(&Chunk, usize) -> f64| {
             let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -688,7 +689,7 @@ pub fn dta_write_arrow<'py>(
                         }))
                     };
                     let storage = if binary { StorageType::StrL } else { StorageType::Str(1) };
-                    if format.ends_with('s') {
+                    if !format.ends_with('s') {
                         format.clear();
                     }
                     variables.push(WriteVariable { name, storage, format, label, value_labels: set, values });

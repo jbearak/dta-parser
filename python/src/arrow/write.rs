@@ -116,18 +116,35 @@ fn numbers<'a, T: Copy + Default + Send + Sync + 'a>(
             codes.fill(missing::SYSTEM);
             return;
         }
+        // A chunk's rows at a time; one without nulls is a plain copy.
+        let n = out.len();
         let mut k = col.find(first);
-        for (i, (o, c)) in out.iter_mut().zip(codes.iter_mut()).enumerate() {
+        let mut i = 0;
+        while i < n {
             let r = first + i;
             k = col.seek(k, r);
-            let (chunk, j) = col.at(k, r);
-            if valid(&chunk.a, j) {
-                *o = get(chunk, j);
-                *c = 0;
+            let chunk = &col.chunks[k];
+            let m = (chunk.start + chunk.len).saturating_sub(r).min(n - i).max(1);
+            let j0 = chunk.off + r - chunk.start;
+            let (o, c) = (&mut out[i..i + m], &mut codes[i..i + m]);
+            if chunk.a.null_count() == 0 || chunk.a.buffer(0) == 0 {
+                for (t, o) in o.iter_mut().enumerate() {
+                    *o = get(chunk, j0 + t);
+                }
+                c.fill(0);
             } else {
-                *o = T::default();
-                *c = letters.map_or(missing::SYSTEM, |l| if l[r] != 0 { l[r] } else { missing::SYSTEM });
+                for (t, (o, c)) in o.iter_mut().zip(c.iter_mut()).enumerate() {
+                    if valid(&chunk.a, j0 + t) {
+                        *o = get(chunk, j0 + t);
+                        *c = 0;
+                    } else {
+                        *o = T::default();
+                        let row = r + t;
+                        *c = letters.map_or(missing::SYSTEM, |l| if l[row] != 0 { l[row] } else { missing::SYSTEM });
+                    }
+                }
             }
+            i += m;
         }
     })
 }
@@ -268,6 +285,51 @@ fn seconds_of(us: i64) -> f64 {
     }
 }
 
+/// The bytes the core's row-group rule counts for the whole frame, or
+/// more: each value's plain width, and text its length too, read from
+/// the offsets or from each string view's length.
+fn bytes_bound(cols: &[Column], rows: usize) -> u64 {
+    let mut total = 0u64;
+    for c in cols {
+        let f = c.field.format.as_str();
+        let width: u64 = match f {
+            _ if c.field.dictionary.is_some() => 4,
+            "b" => 1,
+            "c" | "s" | "i" | "C" | "S" | "I" | "f" | "tdD" | "u" | "U" | "vu" | "z" | "Z" | "vz" => 4,
+            _ => 8,
+        };
+        total = total.saturating_add(width.saturating_mul(rows as u64));
+        if c.field.dictionary.is_some() {
+            continue;
+        }
+        for ch in &c.chunks {
+            let (a, j, n) = (&ch.a, ch.off, ch.len);
+            // SAFETY: the formats say the buffers' layout.
+            let text: u64 = unsafe {
+                match f {
+                    "u" | "z" => {
+                        let o = a.buffer(1) as *const i32;
+                        (*o.add(j + n) - *o.add(j)).max(0) as u64
+                    }
+                    "U" | "Z" => {
+                        let o = a.buffer(1) as *const i64;
+                        (*o.add(j + n) - *o.add(j)).max(0) as u64
+                    }
+                    "vu" | "vz" => {
+                        // A view's first four bytes are its length; a long
+                        // value shared by many views counts once per row.
+                        let views = (a.buffer(1) as *const u8).add(16 * j);
+                        (0..n).map(|r| u64::from(std::ptr::read_unaligned(views.add(16 * r) as *const u32))).sum()
+                    }
+                    _ => 0,
+                }
+            };
+            total = total.saturating_add(text);
+        }
+    }
+    total
+}
+
 /// A polars dtype's name for an Arrow format, for errors.
 fn dtype_of(format: &str) -> String {
     match format {
@@ -346,11 +408,23 @@ pub fn parquet_write_arrow<'py>(
             super::read::ARROW_WRITE_THREADS,
             super::read::ARROW_WRITE_THREADS_MOST,
         )),
+        // Encode ahead as far as the pipeline's byte budget allows
+        // (bench/RESULTS.md, "Parquet into polars, through datakit").
+        ahead: Some(usize::MAX),
         ..defaults
     };
     let imported = import_stream(df)?;
     let rows = height(&imported);
     let cols = columns(&imported)?;
+    // The core caps a row group at `row_group_bytes`, counting text row
+    // by row on the calling thread (15 million rows of text: 35 ms
+    // before any encoding starts). When the whole frame is smaller than
+    // the cap, its rows per group are the answer that count gives.
+    let options = if row_group_size.is_none() && bytes_bound(&cols, rows) < options.row_group_bytes as u64 {
+        WriteOptions { row_group_rows: Some(options.row_group_max_rows), ..options }
+    } else {
+        options
+    };
     let get = |k: &str| -> PyResult<Option<Bound<'py, PyAny>>> {
         match meta {
             Some(m) => Ok(m.get_item(k)?.filter(|v| !v.is_none())),

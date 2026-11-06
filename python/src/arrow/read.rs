@@ -650,6 +650,80 @@ fn read_arrow<'py>(
     PyTuple::new(py, [Py::new(py, frame)?.into_any(), letters_obj.map_or_else(|| py.None(), Py::into_any), out.into_any().unbind()])
 }
 
+/// The footer of a Parquet file, for datakit's `read_parquet_info`: a
+/// dict of rows, row_groups [(rows, compressed, uncompressed)],
+/// created_by, compression, key_value [(key, text)], meta (as
+/// `parquet_read_arrow` gives it, for every data column it reads, with
+/// the file's rows) and columns [(name, role, format, flag, levels,
+/// physical_type, logical_type, label, value_labels, storage)], where
+/// `format` is the Arrow format a read gives (None for a column it does
+/// not read), `flag` as in `meta`'s columns, and `levels` an Enum's
+/// levels. For datakit only.
+#[pyfunction]
+pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
+    let options = ReadOptions { threads: 1, nested: Nested::Skip, lazy_value_labels: true, ..ReadOptions::default() };
+    with_reader_for(source, options, None, &mut |r| {
+        let by_name = entries(r.profile());
+        let meta = r.metadata();
+        let infos = r.columns();
+        let mut cols = Vec::new();
+        let list = PyList::empty(py);
+        for (k, c) in infos.iter().enumerate() {
+            let entry = by_name.get(c.name.as_str()).copied();
+            let nested = c.role == dta_parquet::Role::Nested;
+            let mut col = if nested {
+                None
+            } else {
+                kind_of(c, entry, meta).ok().map(|kind| {
+                    let mut col = plan_column(k, &c.name, &kind, !no_nulls(meta, c), entry.and_then(|e| e.tz.as_deref()));
+                    if let ColumnType::Decimal { precision, scale } = c.kind {
+                        col.decimal = Some((precision, scale));
+                        col.flag = Some(format!("decimal({precision},{scale})"));
+                    }
+                    col
+                })
+            };
+            list.append((
+                &c.name,
+                if nested { "nested" } else { "data" },
+                col.as_ref().map(|c| c.format.clone()),
+                col.as_ref().and_then(|c| c.flag.clone()),
+                col.as_ref().and_then(|c| c.levels.as_ref().map(|(l, _)| l.clone())),
+                c.physical.map(|p| p.name()),
+                crate::parquet::logical_name(c),
+                entry.and_then(|e| e.label.as_deref()),
+                entry.and_then(|e| e.value_labels.as_deref()),
+                c.storage.map(|s| s.name()),
+            ))?;
+            if let Some(col) = col.take() {
+                cols.push(col);
+            }
+        }
+        drop(by_name);
+        let names: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
+        let m = meta_dict(py, r, &cols, &names, usize::try_from(r.rows()).unwrap_or(usize::MAX))?;
+        m.set_item("letter_columns", Vec::<String>::new())?;
+        let out = PyDict::new(py);
+        out.set_item("rows", r.rows())?;
+        let groups: Vec<(u64, u64, u64)> =
+            r.row_groups().iter().map(|g| (g.rows, g.compressed_bytes, g.uncompressed_bytes)).collect();
+        out.set_item("row_groups", groups)?;
+        out.set_item("created_by", r.created_by())?;
+        let codecs: Vec<String> = r.codecs().into_iter().map(crate::parquet::codec_name).collect();
+        out.set_item("compression", codecs)?;
+        let kv: Vec<(String, String)> = r
+            .metadata()
+            .key_value
+            .iter()
+            .map(|kv| (kv.key.clone(), kv.value.as_deref().map(|v| String::from_utf8_lossy(v).into_owned()).unwrap_or_default()))
+            .collect();
+        out.set_item("key_value", kv)?;
+        out.set_item("columns", list)?;
+        out.set_item("meta", m)?;
+        Ok(out)
+    })
+}
+
 /// The `.a` to `.z` of each column holding any, as a table of Enum
 /// columns (`LETTERS`), null where a row has none.
 pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> PyResult<Option<ArrowTable>> {

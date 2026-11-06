@@ -123,14 +123,24 @@ python -m pytest python/tests
 ```
 
 Run pytest from the repository root, not from `python/`, or Python
-imports the source directory instead of the installed package. With
-pyarrow, polars and duckdb installed too, the Parquet tests also check
-that those tools read back what `write_parquet` writes, and pandas keeps
-text in Arrow memory, which `read_parquet` then fills directly; CI runs
-the tests with and without them. `bench/parquet/run_py.py` runs the
-Python Parquet benchmarks (it also needs fastparquet), and
-`bench/parquet/threads_py.py` times Python's reads and writes at 1 to 16
-threads.
+imports the source directory instead of the installed package.
+
+**datakit for Python** (`python/datakit`, pure Python on `dta_parser`'s
+compiled core): build `dta_parser` as a wheel and install it, then
+datakit, and run its tests:
+
+    (cd python && maturin build --release --out dist) && pip install python/dist/*.whl
+    pip install -e python/datakit pytest pyarrow duckdb
+    python -m pytest python/datakit/tests
+
+Use a wheel rather than `maturin develop`: an editable `dta_parser`
+puts `python/` on the import path, where the directory `python/datakit`
+hides the installed package. With pyarrow and duckdb installed, the
+tests also check that those tools and polars read back what
+`save_parquet` writes. `bench/parquet/run_polars.py` runs the Python
+Parquet benchmarks against polars and pyarrow, and
+`bench/parquet/threads_polars.py` times the Arrow path's reads and
+writes at 1 to 16 threads.
 
 **Julia package** (Julia 1.10 or later):
 

@@ -1,6 +1,5 @@
 """Smoke test for an installed wheel: write a small frame under a
-non-ASCII path, as .dta and as Parquet, read it back, check values and a
-`.a` code.
+non-ASCII path as .dta, read it back, check values and a `.a` code.
 
 Run from outside the checkout so the installed package is imported:
 python path/to/smoke.py
@@ -20,7 +19,7 @@ with tempfile.TemporaryDirectory() as tmp:
     path = os.path.join(folder, "smoke ü.dta")
     df = pd.DataFrame({
         "n": [1, 2, 3],
-        "x": dp.StataArray([1.5, np.nan, np.nan], [0, 2, 1]),
+        "x": dp.DtaArray([1.5, np.nan, np.nan], [0, 2, 1]),
         "s": ["a", "é", "中文"],
     })
     dp.write_dta(df, path)
@@ -31,10 +30,4 @@ with tempfile.TemporaryDirectory() as tmp:
     assert back["x"][1] is dp.missing.a
     assert back["x"][0] == 1.5
     assert dp.read_meta(path)["nobs"] == 3
-    parquet = os.path.join(folder, "smoke ü.parquet")
-    dp.write_parquet(back, parquet)
-    again = dp.read_parquet(parquet)
-    assert again["x"].array.codes.tolist() == [0, 2, 1], again["x"]
-    assert again["s"].tolist() == ["a", "é", "中文"], again["s"]
-    assert dp.read_meta(parquet)["format"] == "parquet"
 print("smoke test passed")

@@ -1,13 +1,11 @@
-"""One case of plan 0019's Python benchmark (PR 2a), in a fresh process;
+"""One case of plan 0019's Python benchmark, in a fresh process;
 bench/parquet/run_polars.py runs it under /usr/bin/time -l.
 
     python bench/parquet/case_polars.py LIB TASK FILE OUT COLS SKIP N
 
 LIB:
-  ours     dta_parser's native Arrow read through bench/parquet/
-           polars_meta.py, which makes the whole Meta eagerly; writes
-           through its save_parquet (the native writer reading polars'
-           own export)
+  ours     datakit's public functions: read_parquet (the frame and its
+           whole Meta), save_parquet (from polars' own export)
   polars   pl.read_parquet (whole and columns=), pl.scan_parquet(...)
            .slice(skip, n).collect() (the window); DataFrame.write_parquet
   pyarrow  pyarrow.parquet.read_table (whole and columns=), and for the
@@ -21,10 +19,10 @@ pl.read_parquet before timing; each library's defaults, and zstd level
 3).
 
 The .dta cases (published, not gated), FILE a .dta: dtaread, the whole
-file (ours: the native Arrow read into polars with the whole Meta;
-pandas: dta_parser.read_dta); dtawrite, the file read untimed by each,
-then written as release 118 (ours: the native writer from polars'
-export; pandas: dta_parser.write_dta).
+file (ours: datakit.read_dta, into polars with the whole Meta; pandas:
+dta_parser.read_dta); dtawrite, the file read untimed by each, then
+written as release 118 (ours: datakit.save_dta; pandas:
+dta_parser.write_dta).
 
 Only the task is timed (wall, and CPU as user plus system of the
 process); OUT gets a JSON report.
@@ -49,9 +47,9 @@ if lib == "pandas":
     version = "dta_parser (pandas)"
     threads = os.environ.get("DTA_THREADS") or "default"
 elif lib == "ours":
-    import polars_meta as pm
+    import datakit as pm
 
-    version = "dta_parser (Arrow path)"
+    version = f"datakit {pm.__version__}"
     threads = os.environ.get("DTA_THREADS") or "default"
 elif lib == "polars":
     version = pl.__version__
@@ -161,15 +159,15 @@ WRITES = {
 result = {"loaded": loaded, "version": version, "threads": threads}
 if task == "dtaread":
     t0, c0 = time.perf_counter(), cpu()
-    got = pm.read_dta(path) if lib == "ours" else dp.read_dta(path)
+    got = pm.read_dta(path, timestamps="truncate") if lib == "ours" else dp.read_dta(path)
     result["wall"], result["cpu"] = time.perf_counter() - t0, cpu() - c0
     result["rows"] = got[0].height if lib == "ours" else len(got)
 elif task == "dtawrite":
     dst = os.path.join(os.path.dirname(os.path.abspath(out_path)), f"w{os.getpid()}.dta")
-    frame = pm.read_dta(path) if lib == "ours" else dp.read_dta(path)
+    frame = pm.read_dta(path, timestamps="truncate") if lib == "ours" else dp.read_dta(path)
     t0, c0 = time.perf_counter(), cpu()
     if lib == "ours":
-        pm.save_dta(frame[0], dst, frame[1])
+        pm.save_dta(frame[0], dst, meta=frame[1], timestamps="truncate")
     else:
         dp.write_dta(frame, dst)
     result["wall"], result["cpu"] = time.perf_counter() - t0, cpu() - c0

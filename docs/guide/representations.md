@@ -6,10 +6,10 @@ part of the file.
 | part of the file | R (dtatools) | Python (dta_parser) | Julia (DtaParser) | TypeScript (@jbearak/dta-parser) |
 |---|---|---|---|---|
 | the table | a dibble (a tibble subclass) | a pandas `DataFrame` | a `DtaTable` (Tables.jl); `DataFrame(t)` | a `DtaReader`; columns on request |
-| a numeric column | `dta_num` (double) | numpy array in its storage width, `float` with `NaN`, or `StataArray` | `Vector{T}` or `DtaColumn{T}` | `NumberColumn`: `values` + `missing` |
+| a numeric column | `dta_num` (double) | numpy array in its storage width, `float` with `NaN`, or `DtaArray` | `Vector{T}` or `DtaColumn{T}` | `NumberColumn`: `values` + `missing` |
 | a string column | character | `str` / `object` | `Vector{String}` | `StringColumn`: `values` |
 | `.` | `NA` | `NaN` | `missing` (code 1) | code 1; `MISSING["."]` |
-| `.a` to `.z` | `NA` with the letter in its bits; `.a` ... `.z` | `dta_parser.missing.a` ... `.z` in a `StataArray` | `missing` (codes 2 to 27); `stata_code` | codes 2 to 27; `MISSING[".a"]` |
+| `.a` to `.z` | `NA` with the letter in its bits; `.a` ... `.z` | `dta_parser.missing.a` ... `.z` in a `DtaArray` | `missing` (codes 2 to 27); `stata_code` | codes 2 to 27; `MISSING[".a"]` |
 | storage type | `attr(x, "storage")` | `attrs["dta"]["columns"][c]["storage"]` and the dtype | `colmetadata(t, c, "storage")` | `variables[i].type` |
 | variable label | `attr(x, "label")` | `attrs["dta"]["columns"][c]["label"]` | `colmetadata(t, c, "label")` | `variables[i].label` |
 | display format | `attr(x, "format")` | `attrs["dta"]["columns"][c]["format"]` | `colmetadata(t, c, "format")` | `variables[i].format` |
