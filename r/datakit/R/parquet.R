@@ -185,8 +185,17 @@ read_parquet_info <- function(file) {
     label = info$label,
     notes = info$notes,
     columns = tibble::new_tibble(info$columns, nrow = length(info$columns$name)),
-    key_value = tibble::new_tibble(info$key_value, nrow = length(info$key_value$key))
+    key_value = key_value_table(info$key_value)
   )
+}
+
+# The footer's key-value entries, which a dtaparser built before they
+# were added (with the same ABI number) does not return.
+key_value_table <- function(kv) {
+  if (is.null(kv)) {
+    stop("datakit needs dtaparser built from the same release; reinstall dtaparser", call. = FALSE)
+  }
+  tibble::new_tibble(kv, nrow = length(kv$key))
 }
 
 #' Write a data frame as a Parquet file
