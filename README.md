@@ -57,11 +57,11 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
-rules. `datakit` adds what a do-file translated to R needs beyond
-reading and writing: `d[i, name, by = g] := value` for `generate`,
+rules. `datakit` adds data preparation beyond reading and writing:
+`d[i, name, by = g] := value` for `generate`,
 `replace` and `bysort`, `read_fixed_width` for fixed-width text
 with a SAS setup file, and `read_parquet` and `save_parquet` for
-Parquet files. A translated script attaches
+Parquet files. A script that uses both attaches
 `library(dtaparser); library(datakit)`, datakit last. datakit imports
 dtaparser; dtatools imports both. Julia has the same split: DtaParser
 reads and writes `.dta`, and Datakit, built on it, reads Parquet and
@@ -183,7 +183,7 @@ than release 118 comes back as UTF-8.
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
 | `crates/dta-ffi` | the WebAssembly interface (for TypeScript) and C interface (for Julia) |
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
-| `r/datakit` | the R package for translating do-files to R: `:=` and `read_fixed_width`, built on dtaparser |
+| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width`, and Parquet's `read_parquet` and `save_parquet`, built on dtaparser |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
 | `python` | the Python package |
 | `julia/DtaParser` | the Julia package |

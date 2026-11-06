@@ -1,6 +1,6 @@
 # Datakit.jl
 
-Data preparation for Stata do-files translated to Julia. Datakit reads
+Data preparation in Julia, keeping what a `.dta` file says. Datakit reads
 Parquet files and fixed-width text into a `DataFrame` and saves any
 table as Parquet, keeping Stata's value labels, variable labels, display
 formats, notes and the missing values `.a` to `.z`. It is the Julia

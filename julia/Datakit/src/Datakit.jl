@@ -1,5 +1,5 @@
 """
-Data preparation for do-files translated to Julia: Parquet files and
+Data preparation in Julia: Parquet files and
 fixed-width text read into DataFrames, keeping Stata's labels and its
 missing values `.a` to `.z`.
 

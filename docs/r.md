@@ -47,8 +47,7 @@ macOS and Windows:
 install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
-To analyse data under R's rules or translate a do-file, without
-dibbles, install dtaparser and datakit instead:
+To analyse or prepare data under R's rules, without dibbles, install dtaparser and datakit instead:
 
 ```r norun
 install.packages(c("dtaparser", "datakit"), repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
