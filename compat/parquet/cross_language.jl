@@ -17,7 +17,7 @@ const MODE, DIR = ARGS[1], ARGS[2]
 mkpath(DIR)
 
 codes(c) = UInt8[stata_code(c, i) for i in eachindex(c)]
-const L = stata_key   # value label keys: L(".a")
+const L = dta_key   # value label keys: L(".a")
 
 if MODE == "write"
     df = DataFrame(

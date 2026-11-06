@@ -99,7 +99,7 @@ end
     p = joinpath(dir, "meta.dta")
     write_dta(p, DataFrame(x=[1, 2, missing], s=["a", "b", "c"]);
               label="A label", notes=["one", "two"],
-              value_labels=Dict("yn" => Dict(1 => "Yes", 2 => "No", stata_key(".a") => "Refused", ".b" => "Skipped")),
+              value_labels=Dict("yn" => Dict(1 => "Yes", 2 => "No", dta_key(".a") => "Refused", ".b" => "Skipped")),
               column_labels=Dict(:x => "Answer"), column_value_labels=Dict("x" => "yn"),
               column_formats=Dict(:x => "%9.2f", :s => "%-5s"), timestamp="01 Jan 2020 00:00")
     t = read_dta(p)
@@ -107,7 +107,7 @@ end
     @test DataAPI.metadata(t, "notes") == ["one", "two"]
     @test DataAPI.metadata(t, "timestamp") == "01 Jan 2020 00:00"
     @test DataAPI.metadata(t, "value_labels")["yn"] ==
-          Dict(1.0 => "Yes", 2.0 => "No", stata_key(".a") => "Refused", stata_key(".b") => "Skipped")
+          Dict(1.0 => "Yes", 2.0 => "No", dta_key(".a") => "Refused", dta_key(".b") => "Skipped")
     @test DataAPI.colmetadata(t, :x, "label") == "Answer"
     @test DataAPI.colmetadata(t, :x, "value_labels") == "yn"
     @test DataAPI.colmetadata(t, :x, "format") == "%9.2f"

@@ -182,7 +182,7 @@ const ORDER_KEYS = (:by, :lt, :order)
 
 function Base.sortperm(c::DtaColumn; kws...)
     any(k -> haskey(kws, k), ORDER_KEYS) && return invoke(sortperm, Tuple{AbstractVector}, c; kws...)
-    sortperm(stata_key(c); kws...)
+    sortperm(dta_key(c); kws...)
 end
 
 function Base.sort!(c::DtaColumn; kws...)
@@ -218,9 +218,9 @@ set_stata_code!(v::DtaView, i::Integer, code::Integer) = set_stata_code!(parent(
 const MISSING_KEYS = Tuple(reinterpret(Float64, 0x7fe0000000000000 + UInt64(k) << 40) for k in 0:26)
 
 """
-    stata_key(x)
-    stata_key(col::AbstractVector)
-    stata_key(col, i)
+    dta_key(x)
+    dta_key(col::AbstractVector)
+    dta_key(col, i)
 
 A Float64 that sorts and compares as Stata orders values: a number is
 itself; `.`, `.a`, ..., `.z` come after every number, in that order.
@@ -231,19 +231,19 @@ keys dtatools (R) and the npm package give.
 `".a"`. On a column it gives every row's key; value label sets use these
 keys too.
 """
-stata_key(x::Real) = isnan(x) ? MISSING_KEYS[1] : Float64(x)
-stata_key(::Missing) = MISSING_KEYS[1]
-function stata_key(name::AbstractString)
+dta_key(x::Real) = isnan(x) ? MISSING_KEYS[1] : Float64(x)
+dta_key(::Missing) = MISSING_KEYS[1]
+function dta_key(name::AbstractString)
     name == "." && return MISSING_KEYS[1]
     (length(name) == 2 && name[1] == '.' && 'a' <= name[2] <= 'z') || throw(ArgumentError("\"$name\" is not a missing value"))
     MISSING_KEYS[name[2]-'a'+2]
 end
-stata_key(c::DtaColumn, i::Integer) = c.codes[i] == 0 ? Float64(c.values[i]) : MISSING_KEYS[c.codes[i]]
-stata_key(c::AbstractVector, i::Integer) = stata_key(c[i])
-stata_key(c::DtaColumn) = [stata_key(c, i) for i in eachindex(c)]
-stata_key(v::AbstractVector) = [stata_key(x) for x in v]
-stata_key(v::DtaView) = [stata_key(v, i) for i in eachindex(v)]
-stata_key(v::DtaView, i::Integer) = stata_key(parent(v), parentindices(v)[1][i])
+dta_key(c::DtaColumn, i::Integer) = c.codes[i] == 0 ? Float64(c.values[i]) : MISSING_KEYS[c.codes[i]]
+dta_key(c::AbstractVector, i::Integer) = dta_key(c[i])
+dta_key(c::DtaColumn) = [dta_key(c, i) for i in eachindex(c)]
+dta_key(v::AbstractVector) = [dta_key(x) for x in v]
+dta_key(v::DtaView) = [dta_key(v, i) for i in eachindex(v)]
+dta_key(v::DtaView, i::Integer) = dta_key(parent(v), parentindices(v)[1][i])
 
 # The missing code a key stands for, or 0 for a number.
 function key_code(k::Real)

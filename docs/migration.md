@@ -22,8 +22,9 @@ builds on dtaparser. Install both from the checkout, DtaParser first
 | TimeZones.jl and CategoricalArrays.jl as DtaParser's extensions | as Datakit's extensions | nothing to change: load them as before |
 
 Everything else in DtaParser is unchanged: `read_dta`, `write_dta`,
-`read_meta` for `.dta` files, `DtaTable`, `DtaColumn`, `stata_code`,
-`set_stata_code!` and `stata_key`, which Datakit re-exports. Two fixes
+`read_meta` for `.dta` files, `DtaTable`, `DtaColumn`, `stata_code`
+and `set_stata_code!`, which Datakit re-exports, and `stata_key`, now
+named `dta_key` (Datakit re-exports it too). Two fixes
 come with 0.3: DataFrames' `sort!`, `permute!` and `invpermute!` of a
 frame, and its `rightjoin` and `outerjoin` with a `DtaColumn` on the
 left, keep `.a` to `.z` (they made them `.`, or failed, before).

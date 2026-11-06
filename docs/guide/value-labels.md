@@ -29,12 +29,12 @@ How a labelled missing value appears as a key:
 |---|---|
 | R | the code `.d` (`dtatools::.d`) inside the named vector |
 | Python | `dta_parser.missing.d` |
-| Julia | `stata_key(".d")` |
+| Julia | `dta_key(".d")` |
 | TypeScript | `MISSING[".d"]` |
 
 In Julia every key is a `Float64` Stata key, so look up a number with
 `labels[1]` (Julia's `Dict` treats `1` and `1.0` as the same key) and a
-missing value with `labels[stata_key(".d")]`.
+missing value with `labels[dta_key(".d")]`.
 
 ## Turning codes into text
 

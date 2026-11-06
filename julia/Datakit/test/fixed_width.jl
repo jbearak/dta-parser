@@ -55,7 +55,7 @@ end
     @test codes_of(t.KIDS) == UInt8[0, 2, 3, 3, 0]
     @test count(ismissing, t.KIDS) == 3
     labels = DataAPI.metadata(t, "value_labels")["kidsf"]
-    @test labels[stata_key(".a")] == "(98) DK" && labels[stata_key(".b")] == "(99) Not ascertained"
+    @test labels[dta_key(".a")] == "(98) DK" && labels[dta_key(".b")] == "(99) Not ascertained"
 
     t = read_fixed_width(dat, sas; recodes=:none)
     @test t.KIDS == Int8[2, 98, 99, 99, 0]

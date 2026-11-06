@@ -382,7 +382,7 @@ Labels are metadata with style `:note`, under the keys
 `"format"`, `"value_labels"` (the name of the column's set) and
 `"storage"`; `metadata(df, "label")`, `"notes"`, `"timestamp"`,
 `"characteristics"`, `"sorted_by"` and `"value_labels"` (every set: a
-`Dict` from set name to a `Dict` from [`stata_key`](@ref) to text).
+`Dict` from set name to a `Dict` from [`dta_key`](@ref) to text).
 
 `source` is a path, an `IO` (read to its end) or a `Vector{UInt8}`
 holding a whole file.

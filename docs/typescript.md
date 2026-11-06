@@ -334,7 +334,7 @@ missing).
   number or string.
 
 ```ts
-import { MISSING, isMissing, missingValue, stataKey } from "@jbearak/dta-parser";
+import { MISSING, isMissing, missingValue, dtaKey } from "@jbearak/dta-parser";
 import { openDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
@@ -350,21 +350,21 @@ r.close();
 ```
 
 **Order.** Stata sorts missing values after every number, in the order
-`.` < `.a` < ... < `.z`. `stataKey(cell)` turns a number or missing
-value into a number that sorts that way, and `stataKeys(column)` does
+`.` < `.a` < ... < `.z`. `dtaKey(cell)` turns a number or missing
+value into a number that sorts that way, and `dtaKeys(column)` does
 the same for a whole `NumberColumn`:
 
 ```ts
-import { stataKey, stataKeys } from "@jbearak/dta-parser";
+import { dtaKey, dtaKeys } from "@jbearak/dta-parser";
 import { openDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
 const cells = r.readRows(0, 6, ["income"]).map((row) => row[0]);
-cells.sort((a, b) => stataKey(a as number) - stataKey(b as number));
+cells.sort((a, b) => dtaKey(a as number) - dtaKey(b as number));
 console.log(cells);   // [ 1850, 2100, 3200, { missing: '.' }, { missing: '.d' }, { missing: '.r' } ]
 const [income] = r.readColumns(["income"]);
 if (income.kind === "number") {
-  const keys = stataKeys(income);
+  const keys = dtaKeys(income);
   const order = [...keys.keys()].sort((i, j) => keys[i] - keys[j]);
   console.log(order);   // [ 2, 0, 5, 3, 1, 4 ]
 }
@@ -1208,7 +1208,9 @@ From `@jbearak/dta-parser`:
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
-- `stataKey(cell)`, `stataKeys(column)`: Stata's sort order as numbers.
+- `dtaKey(cell)`, `dtaKeys(column)`: Stata's sort order as numbers.
+  `stataKey` and `stataKeys`, their names in 1.0, still work and are
+  deprecated.
 - `formatValue(cell, format, labels?)`: show a value for display, as
   R prints it.
 - `openParquet(bytes, options?)`: open a Parquet file held in a

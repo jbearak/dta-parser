@@ -14,7 +14,7 @@ using Datakit, DtaParser, Test
     @test occursin("Pkg.develop(path=\"julia/DtaParser\")", msg) && occursin("Pkg.build(\"DtaParser\")", msg)
     # The re-exports are DtaParser's own.
     @test Datakit.DtaColumn === DtaParser.DtaColumn && Datakit.stata_code === DtaParser.stata_code
-    @test Datakit.set_stata_code! === DtaParser.set_stata_code! && Datakit.stata_key === DtaParser.stata_key
+    @test Datakit.set_stata_code! === DtaParser.set_stata_code! && Datakit.dta_key === DtaParser.dta_key
     # Every DtaParser export is Datakit's, the same object, so `using
     # Datakit` alone reads and writes .dta.
     for name in names(DtaParser)

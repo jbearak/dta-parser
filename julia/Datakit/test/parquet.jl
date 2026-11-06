@@ -223,7 +223,7 @@ end
     @test timezone(r.zoned[1]) == tz"America/New_York"
     @test DataAPI.metadata(r, "label") == "Smoking survey"
     @test DataAPI.metadata(r, "notes") == ["Wave 2 only.", "Second note"]
-    @test DataAPI.metadata(r, "value_labels")["yn"][stata_key(".d")] == "Don't know"
+    @test DataAPI.metadata(r, "value_labels")["yn"][dta_key(".d")] == "Don't know"
     @test DataAPI.colmetadata(r, :smoker, "value_labels") == "yn"
     @test DataAPI.colmetadata(r, :score, "label") == "Score"
     @test DataAPI.colmetadata(r, :score, "format") == "%9.2f"

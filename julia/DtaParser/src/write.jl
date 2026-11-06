@@ -202,7 +202,7 @@ function label_sets_json(sets)
     for (name, labels) in sets
         pairs = Any[]
         for (k, text) in labels
-            key = stata_key(k)
+            key = dta_key(k)
             push!(pairs, Any[key_code(key) > 0 ? missing_name(key_code(key)) : key, String(text)])
         end
         push!(out, Dict("name" => String(name), "labels" => pairs))
@@ -241,7 +241,7 @@ Metadata comes from the table through DataAPI when it has any (as a
 `"value_labels"`, and each column's `"label"`, `"format"`,
 `"value_labels"` and `"storage"` (used when the values fit it). Keyword
 arguments override it: `value_labels` is a `Dict` from set name to a
-`Dict` from value (a number or [`stata_key`](@ref)) to text;
+`Dict` from value (a number or [`dta_key`](@ref)) to text;
 `column_labels`, `column_formats` and `column_value_labels` are `Dict`s
 from column name to text.
 """

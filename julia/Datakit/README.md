@@ -73,6 +73,6 @@ zoned timestamps and categorical columns read and write as
   the NSFG files, through its SAS setup file.
 
 Datakit also exports DtaParser's `DtaColumn`, `stata_code`,
-`set_stata_code!` and `stata_key`. The guide is
+`set_stata_code!` and `dta_key`. The guide is
 [docs/julia.md](../../docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes);
 the file format is [docs/parquet.md](../../docs/parquet.md).

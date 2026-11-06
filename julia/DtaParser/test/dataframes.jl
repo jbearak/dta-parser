@@ -16,7 +16,7 @@ using DtaParser, DataFrames, Tables, Test
     @test colmetadata(df, :answer, "value_labels") == "answer"
     @test colmetadata(df, :day, "format") == "%td"
     @test metadata(df, "label") == "haven fixture"
-    @test metadata(df, "value_labels")["answer"][stata_key(".d")] == "Don't know"
+    @test metadata(df, "value_labels")["answer"][dta_key(".d")] == "Don't know"
 
     # Tables.jl conversion hands over the columns themselves.
     @test Tables.columntable(t).num === t.num
