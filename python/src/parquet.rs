@@ -163,7 +163,7 @@ impl Source for PyFile {
 }
 
 /// What the bridge needs of a reader, whatever its source.
-trait Access: Send {
+pub(crate) trait Access: Send {
     fn columns(&self) -> &[ColumnInfo];
     fn profile(&self) -> Option<&Profile>;
     fn warnings(&self) -> &[String];
@@ -173,6 +173,7 @@ trait Access: Send {
     fn row_groups(&self) -> Vec<dta_parquet::RowGroupInfo>;
     fn codecs(&self) -> Vec<dta_parquet::format::Codec>;
     fn created_by(&self) -> Option<&str>;
+    fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]);
     fn read(
         &mut self,
         columns: &[usize],
@@ -210,6 +211,9 @@ impl<S: Source + Send> Access for Reader<S> {
     }
     fn created_by(&self) -> Option<&str> {
         Reader::created_by(self)
+    }
+    fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]) {
+        Reader::label_set_spans(self)
     }
     fn read(
         &mut self,
@@ -253,7 +257,7 @@ fn with_reader<T>(
 
 /// [`with_reader`], reading only the profile entries of the columns in
 /// `selected` (all when `None`).
-fn with_reader_for<T>(
+pub(crate) fn with_reader_for<T>(
     source: &Bound<'_, PyAny>,
     options: ReadOptions,
     selected: Option<&[&str]>,
@@ -290,7 +294,7 @@ fn prefix(e: PyErr, path: &str, py: Python<'_>) -> PyErr {
 
 /// What a selected column becomes in pandas.
 #[derive(Clone, Debug, PartialEq)]
-enum Kind {
+pub(crate) enum Kind {
     /// INT32, INT(8) or INT(16): int32, int8 or int16, as Stata's long,
     /// byte and int; float64 or float32 when the rows read hold a null.
     /// `codes`: the footer does not rule out nulls, so the values are
@@ -324,7 +328,7 @@ enum Kind {
     Binary,
 }
 
-fn unit_code(u: TimeUnit) -> &'static str {
+pub(crate) fn unit_code(u: TimeUnit) -> &'static str {
     match u {
         TimeUnit::Millis => "ms",
         TimeUnit::Micros => "us",
@@ -335,7 +339,7 @@ fn unit_code(u: TimeUnit) -> &'static str {
 /// The zone a timestamp reads with, for one adjusted to UTC: the
 /// profile's (`""`, an instant written without one, reads as UTC), else
 /// the one `ARROW:schema` gives, else UTC.
-fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String {
+pub(crate) fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String {
     match entry.and_then(|p| p.tz.as_deref()) {
         Some(z) if !z.is_empty() => z.to_string(),
         Some(_) => "UTC".into(),
@@ -344,7 +348,7 @@ fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String {
 }
 
 /// Whether every row group's statistics show column `leaf` has no null.
-fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
+pub(crate) fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     if col.required {
         return true;
     }
@@ -410,7 +414,7 @@ fn min_ruled_out(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     })
 }
 
-fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>, meta: &FileMetaData) -> Result<Kind, String> {
+pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>, meta: &FileMetaData) -> Result<Kind, String> {
     let codes = || !no_nulls(meta, col);
     Ok(match &col.kind {
         ColumnType::Int8 => Kind::Int { width: 1, codes: codes() },
@@ -524,7 +528,7 @@ fn datetime_name(unit: &str, tz: &Option<String>) -> String {
 
 /// The Stata storage type a column has in `attrs["dta"]`, where it has
 /// one: from Parquet's type, or the profile's for a column written wider.
-fn storage_name(kind: &Kind) -> Option<&'static str> {
+pub(crate) fn storage_name(kind: &Kind) -> Option<&'static str> {
     Some(match kind {
         Kind::Int { width: 1, .. } => "byte",
         Kind::Int { width: 2, .. } => "int",
@@ -672,7 +676,7 @@ type LabelSet<S> = (S, Vec<(f64, u8, S)>);
 /// its data address.
 type Alloc<'f> = dyn FnMut(&str) -> PyResult<(Py<PyAny>, usize)> + 'f;
 
-fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile> {
+pub(crate) fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile> {
     profile.map_or_else(HashMap::new, |p| p.columns.iter().map(|c| (c.name.as_str(), c)).collect())
 }
 
@@ -998,7 +1002,7 @@ pub fn parquet_read<'py>(
 }
 
 /// The columns asked for, as indices into the reader's columns.
-fn select(r: &dyn Access, wanted: Option<&[Bound<'_, PyAny>]>, nested_skip: bool) -> PyResult<Vec<usize>> {
+pub(crate) fn select(r: &dyn Access, wanted: Option<&[Bound<'_, PyAny>]>, nested_skip: bool) -> PyResult<Vec<usize>> {
     let cols = r.columns();
     let data: Vec<usize> = (0..cols.len()).filter(|&k| cols[k].role == Role::Data).collect();
     let Some(wanted) = wanted else {
@@ -1268,7 +1272,7 @@ fn read_into<'py>(
 }
 
 /// The message of a read's error, with what Python offers instead.
-fn read_error(m: String, decimal_names: &[String]) -> String {
+pub(crate) fn read_error(m: String, decimal_names: &[String]) -> String {
     const DECIMAL: &str = "read the column as text to keep every digit";
     if decimal_names.iter().any(|n| m.starts_with(n.as_str())) && m.contains(DECIMAL) {
         return m.replace(DECIMAL, "this should not happen for a DECIMAL of 15 digits or fewer");

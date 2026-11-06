@@ -53,6 +53,7 @@
 
 mod arrow;
 mod codec;
+mod columnar;
 pub mod decimal;
 mod decode;
 mod encoding;
@@ -67,6 +68,7 @@ mod thrift;
 mod write;
 
 pub use codec::Compression;
+pub use columnar::{ArrowData, ArrowOutput, ArrowReport};
 
 // Default thread counts (plan 0018, "Threads"), set by plan 0007's
 // rule: each thread added must make the task at least half a thread's
@@ -94,7 +96,7 @@ pub const WRITE_BYTES_PER_THREAD: u64 = 256 << 20;
 /// The most write threads: wide.dta passed at six and failed at eight.
 pub const WRITE_THREADS_MOST: usize = 6;
 pub use decode::TextChunk;
-pub use profile::{Categorical, ColumnProfile, Logical, Profile, Storage};
+pub use profile::{Categorical, ColumnProfile, LabelSpan, Logical, Profile, Storage};
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};
 pub use schema::{ColumnInfo, ColumnType, LevelsFrom, Role};
 pub use tagged::{tagged_code, tagged_nan, NA_BITS};

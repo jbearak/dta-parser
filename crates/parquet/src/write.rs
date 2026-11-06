@@ -58,6 +58,14 @@ pub enum Values<'a> {
     Int16(Box<Fill<'a, i32>>),
     Int32(Box<Fill<'a, i32>>),
     Int64(Box<Fill<'a, i64>>),
+    /// INT32 annotated INT(8, false): every value must fit in 8 bits.
+    UInt8(Box<Fill<'a, u32>>),
+    /// INT32 annotated INT(16, false).
+    UInt16(Box<Fill<'a, u32>>),
+    /// INT32 annotated INT(32, false), its statistics ordered unsigned.
+    UInt32(Box<Fill<'a, u32>>),
+    /// INT64 annotated INT(64, false).
+    UInt64(Box<Fill<'a, u64>>),
     Float(Box<Fill<'a, f32>>),
     /// DOUBLE. A `logical` given for the column in [`Table::profile`]
     /// is kept: days or seconds since 1970 that DATE or TIMESTAMP cannot
@@ -77,6 +85,9 @@ pub enum Values<'a> {
         zone: Option<String>,
         fill: Box<Fill<'a, i64>>,
     },
+    /// Nanoseconds since midnight: INT64 annotated TIME(NANOS), not
+    /// adjusted to UTC (a time of day, as polars' `Time`).
+    Time(Box<Fill<'a, i64>>),
     /// UTF-8 text, checked.
     Text(Box<GetBytes<'a>>),
     /// Bytes.
@@ -121,8 +132,11 @@ impl<'a> Values<'a> {
             | Values::Int32(_)
             | Values::Float(_)
             | Values::Date(_)
+            | Values::UInt8(_)
+            | Values::UInt16(_)
+            | Values::UInt32(_)
             | Values::Categorical { .. } => 4,
-            Values::Int64(_) | Values::Double(_) | Values::Timestamp { .. } => 8,
+            Values::Int64(_) | Values::UInt64(_) | Values::Time(_) | Values::Double(_) | Values::Timestamp { .. } => 8,
             Values::Bool(_) => 1,
             Values::Text(_) | Values::Binary(_) => 4,
         }
@@ -187,6 +201,14 @@ pub struct WriteOptions {
     /// the ones before them to be written.
     #[doc(hidden)]
     pub pipeline_bytes: usize,
+    /// The default thread rule for this write, in place of
+    /// [`WRITE_BYTES_PER_THREAD`](crate::WRITE_BYTES_PER_THREAD),
+    /// [`WRITE_THREADS`](crate::WRITE_THREADS) and
+    /// [`WRITE_THREADS_MOST`](crate::WRITE_THREADS_MOST): one thread per
+    /// `.0` bytes of values, at least `.1` and at most `.2`. For inputs
+    /// measured to have their own (polars' Arrow export, plan 0019).
+    #[doc(hidden)]
+    pub thread_rule: Option<(u64, usize, usize)>,
 }
 
 impl Default for WriteOptions {
@@ -209,6 +231,7 @@ impl Default for WriteOptions {
             offset_index: true,
             parallel_bytes: if small { 0 } else { 16 << 20 },
             pipeline_bytes: if small { 1 } else { 256 << 20 },
+            thread_rule: None,
         }
     }
 }
@@ -271,13 +294,12 @@ pub fn write_with_letters(
     let work = table.columns.iter().fold(0u64, |sum, c| {
         sum.saturating_add((c.values.width() as u64).saturating_mul(table.rows as u64))
     });
-    let threads = dta::threads::resolve_scaled(
-        options.threads,
-        work,
+    let (per_thread, least, most) = options.thread_rule.unwrap_or((
         crate::WRITE_BYTES_PER_THREAD,
         crate::WRITE_THREADS,
         crate::WRITE_THREADS_MOST,
-    );
+    ));
+    let threads = dta::threads::resolve_scaled(options.threads, work, per_thread, least, most);
     let scratch: Vec<Mutex<Scratch>> = (0..threads.max(1))
         .map(|_| Mutex::new(Scratch::default()))
         .collect();
@@ -527,7 +549,9 @@ fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
         Values::Double(f) => scan(f.as_ref(), rows, name, true),
         Values::Date(f) => scan(f.as_ref(), rows, name, true),
         Values::Timestamp { fill: f, .. } => scan(f.as_ref(), rows, name, true),
-        Values::Int64(f) => scan(f.as_ref(), rows, name, false),
+        Values::Int64(f) | Values::Time(f) => scan(f.as_ref(), rows, name, false),
+        Values::UInt8(f) | Values::UInt16(f) | Values::UInt32(f) => scan(f.as_ref(), rows, name, false),
+        Values::UInt64(f) => scan(f.as_ref(), rows, name, false),
         Values::Bool(f) => scan(f.as_ref(), rows, name, false),
         Values::Text(_) | Values::Binary(_) | Values::Categorical { .. } => Ok(false),
     }
@@ -614,6 +638,7 @@ fn schema_for(table: &Table, tagged: &[bool]) -> Vec<SchemaElement> {
         ..Default::default()
     });
     let int = |bits| Some(LogicalType::Integer { bits, signed: true });
+    let uint = |bits| Some(LogicalType::Integer { bits, signed: false });
     for (c, &tagged) in table.columns.iter().zip(tagged) {
         let (physical, logical, conv) = match &c.values {
             _ if tagged => (PhysicalType::Double, None, None),
@@ -621,6 +646,17 @@ fn schema_for(table: &Table, tagged: &[bool]) -> Vec<SchemaElement> {
             Values::Int16(_) => (PhysicalType::Int32, int(16), Some(converted::INT_16)),
             Values::Int32(_) => (PhysicalType::Int32, None, None),
             Values::Int64(_) => (PhysicalType::Int64, None, None),
+            Values::UInt8(_) => (PhysicalType::Int32, uint(8), Some(converted::UINT_8)),
+            Values::UInt16(_) => (PhysicalType::Int32, uint(16), Some(converted::UINT_16)),
+            Values::UInt32(_) => (PhysicalType::Int32, uint(32), Some(converted::UINT_32)),
+            Values::UInt64(_) => (PhysicalType::Int64, uint(64), Some(converted::UINT_64)),
+            // TIME_MICROS and TIME_MILLIS mean times adjusted to UTC, and
+            // there is no converted type for nanoseconds.
+            Values::Time(_) => (
+                PhysicalType::Int64,
+                Some(LogicalType::Time { utc: false, unit: Some(TimeUnit::Nanos) }),
+                None,
+            ),
             Values::Float(_) => (PhysicalType::Float, None, None),
             Values::Double(_) => (PhysicalType::Double, None, None),
             Values::Bool(_) => (PhysicalType::Boolean, None, None),
@@ -677,6 +713,11 @@ fn arrow_schema_for(table: &Table, tagged: &[bool]) -> String {
                 Values::Int16(_) => ArrowType::Int { bits: 16 },
                 Values::Int32(_) => ArrowType::Int { bits: 32 },
                 Values::Int64(_) => ArrowType::Int { bits: 64 },
+                Values::UInt8(_) => ArrowType::UInt { bits: 8 },
+                Values::UInt16(_) => ArrowType::UInt { bits: 16 },
+                Values::UInt32(_) => ArrowType::UInt { bits: 32 },
+                Values::UInt64(_) => ArrowType::UInt { bits: 64 },
+                Values::Time(_) => ArrowType::Time64Nanos,
                 Values::Float(_) => ArrowType::Float32,
                 Values::Double(_) => ArrowType::Float64,
                 Values::Bool(_) => ArrowType::Bool,
@@ -1190,9 +1231,13 @@ impl Encoder<'_> {
             Values::Int32(f) | Values::Date(f) => {
                 self.numbers(&mut f.as_ref(), rows, s, name, Int32, None)
             }
-            Values::Int64(f) | Values::Timestamp { fill: f, .. } => {
+            Values::Int64(f) | Values::Time(f) | Values::Timestamp { fill: f, .. } => {
                 self.numbers(&mut f.as_ref(), rows, s, name, Int64, None)
             }
+            Values::UInt8(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(8)),
+            Values::UInt16(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, Some(16)),
+            Values::UInt32(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int32, None),
+            Values::UInt64(f) => self.numbers(&mut f.as_ref(), rows, s, name, Int64, None),
             Values::Float(f) => self.numbers(&mut f.as_ref(), rows, s, name, Float, None),
             Values::Double(f) => self.numbers(&mut f.as_ref(), rows, s, name, Double, None),
             Values::Bool(f) => self.booleans(f.as_ref(), rows, s, name),
@@ -1915,6 +1960,34 @@ impl Number for f64 {
     }
     fn negative_zero() -> Self {
         -0.0
+    }
+}
+
+/// INT32 annotated unsigned: written as its bits, compared unsigned, so
+/// the statistics follow the column's unsigned order.
+impl Number for u32 {
+    const WIDTH: usize = 4;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        u64::from(self)
+    }
+    fn fits(self, bits: u32) -> bool {
+        bits >= 32 || self < 1 << bits
+    }
+}
+
+impl Number for u64 {
+    const WIDTH: usize = 8;
+    fn put(self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.to_le_bytes());
+    }
+    fn key(self) -> u64 {
+        self
+    }
+    fn fits(self, _: u32) -> bool {
+        true
     }
 }
 

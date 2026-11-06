@@ -74,16 +74,20 @@ end
     @test length(DataAPI.metadata(t, "warnings")) == 11
 
     dat, sas = fw_files("DATA;\nINPUT X 1. ;", "1\n")
-    before = readdir(tempdir())
-    err = try
-        read_fixed_width(dat, sas)
-        nothing
-    catch e
-        e
+    # A temp directory of the test's own, since other processes write to
+    # the shared one while this runs.
+    private = mktempdir()
+    err = withenv("TMPDIR" => private) do
+        try
+            read_fixed_width(dat, sas)
+            nothing
+        catch e
+            e
+        end
     end
     @test err isa Datakit.Internals.DtaError
     @test occursin("setup line 2: INPUT form not supported", sprint(showerror, err))
-    @test readdir(tempdir()) == before
+    @test isempty(readdir(private))
 end
 
 # CDC's setups from 2006-2010 on put the PROC FORMAT step and the FORMAT

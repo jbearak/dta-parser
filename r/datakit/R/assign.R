@@ -50,11 +50,13 @@
 #' data.table is an error: use its own `d[i, name := value]`.
 #'
 #' dtatools re-exports this `:=` and gives its dibbles Stata's rules
-#' through `colon_equals()`, so attaching both packages, in either order,
-#' changes nothing. rlang and data.table each export a `:=` too, only to
+#' through `colon_equals()`, so the `:=` is the same whichever of the two
+#' is attached last. Their `read_dta()`, `save_dta()`, `val_label()` and
+#' `val_labels()` are not: dtatools' are for dibbles, datakit's are
+#' dtaparser's, so a script attaches one of the two. rlang and data.table each export a `:=` too, only to
 #' report misuse, and the package attached last is the one R finds:
 #' attach datakit after them, as in
-#' `library(dplyr); library(dtaparser); library(datakit)`, or bind it
+#' `library(dplyr); library(datakit)`, or bind it
 #' with `` `:=` <- datakit::`:=` ``. Their own uses of `:=`, such as
 #' data.table's `dt[, b := 1]` or dplyr's `mutate(d, !!nm := 1)`, keep
 #' working, as they read `:=` without calling it.

@@ -26,6 +26,8 @@ pub(crate) struct Scratch {
     levels: Vec<u8>,
     indices: Vec<u32>,
     bools: Vec<u8>,
+    /// A chunk's validity bits, for Arrow outputs.
+    pub(crate) arrow_bits: Vec<u8>,
 }
 
 /// Reads bytes of the file.
@@ -47,6 +49,10 @@ pub(crate) struct Chunk<'r> {
     /// Decompressed pages kept between reads, used when the window is
     /// only part of the chunk.
     pub(crate) cache: Option<&'r Mutex<PageCache>>,
+    /// Hand RLE definition levels to the consumer undecoded
+    /// ([`DataPage::raw_levels`]): the Arrow outputs decode them straight
+    /// into a validity bitmap.
+    pub(crate) raw_levels: bool,
 }
 
 /// Decompressed pages kept between reads, by each page's offset in the
@@ -411,6 +417,10 @@ pub(crate) struct DataPage<'p> {
     /// Per row of `take`, 1 where there is a value; `None` when every
     /// one has a value.
     pub(crate) levels: Option<&'p [u8]>,
+    /// With [`Chunk::raw_levels`], a page's RLE definition levels as the
+    /// page holds them (width 1, every row of the page); `levels`,
+    /// `before` and `present` are then not filled in.
+    pub(crate) raw_levels: Option<&'p [u8]>,
     /// The number of values (non-null rows) in the page before `take`,
     /// and up to its end.
     pub(crate) before: usize,
@@ -442,6 +452,7 @@ pub(crate) fn decode(
         levels,
         indices,
         bools,
+        ..
     } = scratch;
     let codec = chunk.meta.codec;
     let optional = !chunk.column.required;
@@ -519,6 +530,7 @@ pub(crate) fn decode(
                         rows as usize,
                         &take,
                         optional,
+                        chunk.raw_levels,
                         page,
                         levels,
                         cache.map(|c| (c, offset)),
@@ -528,14 +540,19 @@ pub(crate) fn decode(
                         Where::Body(r) => &body[r.clone()],
                         Where::Page(r) => &page[r.clone()],
                     };
+                    let raw_levels = p.raw.as_ref().map(|w| match w {
+                        Where::Body(r) => &body[r.clone()],
+                        Where::Page(r) => &page[r.clone()],
+                    });
                     let data = DataPage {
                         take,
                         out_at,
-                        levels: if p.all_present {
+                        levels: if p.all_present || raw_levels.is_some() {
                             None
                         } else {
                             Some(&levels[..])
                         },
+                        raw_levels,
                         before: p.before,
                         present: p.present,
                         encoding: p.encoding,
@@ -580,6 +597,8 @@ enum Where {
 
 struct Prepared {
     values: Where,
+    /// The RLE definition levels, undecoded ([`Chunk::raw_levels`]).
+    raw: Option<Where>,
     /// Values before the wanted rows, and up to their end.
     before: usize,
     present: usize,
@@ -650,12 +669,13 @@ fn prepare(
     rows: usize,
     take: &Range<usize>,
     optional: bool,
+    raw: bool,
     page: &mut Vec<u8>,
     levels: &mut Vec<u8>,
     cache: Cached,
 ) -> Result<Prepared> {
     levels.clear();
-    if optional {
+    if optional && !raw {
         // At most the rows the caller asked for, whose output is already
         // allocated.
         levels.resize(take.len(), 0);
@@ -664,6 +684,7 @@ fn prepare(
         if !optional {
             return Prepared {
                 values,
+                raw: None,
                 before: take.start,
                 present: take.end,
                 all_present: true,
@@ -673,6 +694,7 @@ fn prepare(
         let here = levels.iter().filter(|&&l| l == 1).count();
         Prepared {
             values,
+            raw: None,
             before,
             present: before + here,
             all_present: here == take.len(),
@@ -690,7 +712,7 @@ fn prepare(
         let level_bytes = body
             .get(..def)
             .ok_or_else(|| Error::new("a page's levels run past the page"))?;
-        let before = if optional {
+        let before = if optional && !raw {
             rle_levels(level_bytes, take, levels)?
         } else {
             0
@@ -709,6 +731,16 @@ fn prepare(
             }
             Where::Body(def..body.len())
         };
+        if optional && raw {
+            return Ok(Prepared {
+                values,
+                raw: Some(Where::Body(0..def)),
+                before: 0,
+                present: 0,
+                all_present: false,
+                encoding: d.encoding,
+            });
+        }
         return Ok(finish(values, before, levels, d.encoding));
     }
     let d = header
@@ -726,6 +758,18 @@ fn prepare(
     };
     let mut at = 0;
     let mut before = 0;
+    if optional && raw && d.definition_level_encoding == Encoding::Rle {
+        let (_, used) = prefixed(bytes, "a page's levels run past the page")?;
+        let (values, raw) = match base {
+            None => (Where::Body(used..bytes.len()), Where::Body(4..used)),
+            Some(_) => (Where::Page(used..bytes.len()), Where::Page(4..used)),
+        };
+        return Ok(Prepared { values, raw: Some(raw), before: 0, present: 0, all_present: false, encoding: d.encoding });
+    }
+    if optional && raw {
+        // The older BIT_PACKED levels: decoded here, as for every output.
+        levels.resize(take.len(), 0);
+    }
     if optional {
         (at, before) = match d.definition_level_encoding {
             Encoding::Rle => {
@@ -778,7 +822,7 @@ fn dictionary_indices(
     Ok(())
 }
 
-fn unsupported_encoding(e: Encoding) -> Error {
+pub(crate) fn unsupported_encoding(e: Encoding) -> Error {
     Error::new(format!(
         "values encoded {}, which this version does not read yet",
         e.name()
@@ -790,6 +834,8 @@ fn unsupported_encoding(e: Encoding) -> Error {
 /// A Parquet physical number type.
 pub(crate) trait Physical: Copy + Send + Sync + std::fmt::Debug + 'static {
     const WIDTH: usize;
+    /// Whether values can be tagged NaNs (`.a` to `.z`): doubles only.
+    const LETTERS: bool = false;
     fn from_le(b: &[u8]) -> Self;
     fn convert<T: crate::read::Element>(self) -> Option<T>;
     /// The value from the bits DELTA_BINARY_PACKED gives, for the integer
@@ -931,6 +977,7 @@ impl Physical for f32 {
 
 impl Physical for f64 {
     const WIDTH: usize = 8;
+    const LETTERS: bool = true;
     #[inline]
     fn from_le(b: &[u8]) -> Self {
         f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))
@@ -956,7 +1003,7 @@ pub(crate) struct NumberOut<'o, T> {
 }
 
 /// An error for a value the output type cannot hold.
-fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
+pub(crate) fn cannot_hold(value: &dyn std::fmt::Debug, row: u64, target: &str) -> Error {
     Error::invalid(format!(
         "the value {value:?} in row {} cannot be held exactly as {target}",
         row + 1
@@ -1112,6 +1159,28 @@ impl<P: Physical, T: crate::read::Element> Consumer for Numbers<'_, P, T> {
     }
 }
 
+/// A page's wanted booleans, 0 or 1 each: `bools[i]` is value
+/// `page.before + i`.
+pub(crate) fn booleans(page: &DataPage, before: usize, present: usize, bools: &mut Vec<u8>) -> Result<()> {
+    bools.clear();
+    match page.encoding {
+        Encoding::Plain => {
+            let bytes = page
+                .values
+                .get(..present.div_ceil(8))
+                .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
+            bools.extend((before..present).map(|i| (bytes[i >> 3] >> (i & 7)) & 1));
+        }
+        Encoding::Rle => {
+            let (data, _) = prefixed(page.values, "an RLE page ends early")?;
+            bools.resize(present - before, 0);
+            rle::decode_from(data, 1, before, &mut bools[..], |_, _| {})?;
+        }
+        other => return Err(unsupported_encoding(other)),
+    }
+    Ok(())
+}
+
 /// Booleans: PLAIN bit-packed or RLE, into any number type as 0 and 1.
 pub(crate) struct Booleans<'o, T> {
     pub(crate) out: NumberOut<'o, T>,
@@ -1123,24 +1192,8 @@ impl<T: crate::read::Element> Consumer for Booleans<'_, T> {
     }
 
     fn page(&mut self, page: &DataPage, _: &mut Vec<u32>, bools: &mut Vec<u8>) -> Result<()> {
-        // The wanted values only: `bools[i]` is value `page.before + i`.
         let before = page.before;
-        bools.clear();
-        match page.encoding {
-            Encoding::Plain => {
-                let bytes = page
-                    .values
-                    .get(..page.present.div_ceil(8))
-                    .ok_or_else(|| Error::new("a page holds fewer values than its levels say"))?;
-                bools.extend((before..page.present).map(|i| (bytes[i >> 3] >> (i & 7)) & 1));
-            }
-            Encoding::Rle => {
-                let (data, _) = prefixed(page.values, "an RLE page ends early")?;
-                bools.resize(page.present - before, 0);
-                rle::decode_from(data, 1, before, &mut bools[..], |_, _| {})?;
-            }
-            other => return Err(unsupported_encoding(other)),
-        }
+        booleans(page, page.before, page.present, bools)?;
         let mut n = Numbers::<i32, T> {
             out: NumberOut {
                 values: &mut *self.out.values,
@@ -1263,6 +1316,27 @@ impl Texts {
         Ok(())
     }
 
+    /// With a budget, before `more` bytes are added: an error if they
+    /// would pass it (as [`Texts::charge`] would after the page), else
+    /// room for them reserved, an error rather than an abort if there is
+    /// none. A large value then fails before it is copied.
+    #[inline]
+    fn room_for(&mut self, more: usize) -> Result<()> {
+        let Some(b) = &self.budget else { return Ok(()) };
+        let pending = self.chunk.bytes.len() - self.charged;
+        let held = b.held.load(std::sync::atomic::Ordering::Relaxed);
+        if held.saturating_add(pending).saturating_add(more) > b.most {
+            // Counted as held, as `charge` would, so the reader reports
+            // the budget passed.
+            b.held.fetch_add(pending.saturating_add(more), std::sync::atomic::Ordering::Relaxed);
+            self.charged = self.chunk.bytes.len();
+            return Err(Error::new(OVER_TEXT_BUDGET).of(ErrorKind::TooLarge));
+        }
+        self.chunk.bytes.try_reserve(more).map_err(|_| {
+            Error::new(format!("no memory for a text value of {more} bytes")).of(ErrorKind::TooLarge)
+        })
+    }
+
     /// Values of a FIXED_LEN_BYTE_ARRAY column, each `width` bytes.
     pub(crate) fn fixed(mut self, width: Option<usize>) -> Self {
         self.fixed = width;
@@ -1332,6 +1406,7 @@ impl Texts {
             let (v, used) = prefixed(rest, "a text value runs past the end of its page")?;
             at += used;
             if keep.contains(&i) {
+                self.room_for(v.len())?;
                 self.chunk.bytes.extend_from_slice(v);
                 self.chunk.ends.push(self.chunk.bytes.len());
             }
@@ -1393,7 +1468,11 @@ impl Consumer for Texts {
         if !self.chunk.ends.is_empty() {
             return Err(Error::new("a dictionary page comes after data pages"));
         }
-        self.push_plain(values, count, 0..count)?;
+        // Not checked against the budget either (below).
+        let budget = self.budget.take();
+        let pushed = self.push_plain(values, count, 0..count);
+        self.budget = budget;
+        pushed?;
         self.dictionary_len = count;
         self.chunk.codes = Some(Vec::with_capacity(self.chunk.rows));
         // Not counted: the dictionary is decoded whole however few rows

@@ -7,6 +7,7 @@
 //! Strings are made here, one Python object per distinct recent value.
 //! Parquet files (plan 0018) are read and written in `parquet`.
 
+mod arrow;
 mod parquet;
 
 use std::ffi::c_char;
@@ -590,5 +591,13 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parquet::parquet_read, m)?)?;
     m.add_function(wrap_pyfunction!(parquet::parquet_write, m)?)?;
     m.add_class::<parquet::Buffer>()?;
+    // For datakit only (plan 0019): versioned by ABI_VERSION.
+    m.add("ABI_VERSION", arrow::ABI_VERSION)?;
+    m.add_class::<arrow::ffi::ArrowTable>()?;
+    m.add_function(wrap_pyfunction!(arrow::read::parquet_read_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::digest::arrow_digest, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::write::parquet_write_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::dta::dta_read_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::dta::dta_write_arrow, m)?)?;
     Ok(())
 }

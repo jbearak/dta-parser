@@ -4,9 +4,10 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
+use crate::columnar::{self, ArrowDone, ArrowOutput, ArrowReport};
 use crate::decimal::{Unscaled, DOUBLE_DIGITS};
 use crate::decode::{TextBudget, 
     self, Booleans, Chunk, Int96, NumberOut, Numbers as NumberConsumer, PageCache, Physical,
@@ -45,6 +46,14 @@ pub struct ReadOptions {
     /// then empty, and a damaged set is reported only when the sets are
     /// read.
     pub lazy_value_labels: bool,
+    /// The default thread rule for this reader's reads, in place of
+    /// [`READ_BYTES_PER_THREAD`](crate::READ_BYTES_PER_THREAD),
+    /// [`READ_THREADS`](crate::READ_THREADS) and
+    /// [`READ_THREADS_MOST`](crate::READ_THREADS_MOST): one thread per
+    /// `.0` bytes decoded, at least `.1` and at most `.2`. For outputs
+    /// measured to have their own (the Arrow outputs, plan 0019).
+    #[doc(hidden)]
+    pub thread_rule: Option<(u64, usize, usize)>,
 }
 
 impl Default for ReadOptions {
@@ -55,6 +64,7 @@ impl Default for ReadOptions {
             nested: Nested::Error,
             parallel_bytes: if small { 0 } else { 16 << 20 },
             lazy_value_labels: false,
+            thread_rule: None,
         }
     }
 }
@@ -285,6 +295,12 @@ pub enum Output<'a> {
     /// at a time. A DECIMAL column reads as text too, every digit kept
     /// ([`crate::decimal`]).
     Text,
+    /// Arrow's layout ([`ArrowOutput`]): values, a validity bitmap, and
+    /// in [`ReadReport::arrow`] the rows holding `.a` to `.z` and a text
+    /// column's data buffers. Each column chunk is decoded on a worker
+    /// straight into its rows; a read whose outputs are all Arrow needs
+    /// no delivery in row order.
+    Arrow(ArrowOutput<'a>),
 }
 
 /// What a read did besides filling the outputs.
@@ -298,6 +314,9 @@ pub struct ReadReport {
     /// the rows read ([`LevelsFrom::Rows`]), those levels: the distinct
     /// values, in order of first appearance. `None` for other columns.
     pub levels: Vec<Option<Vec<String>>>,
+    /// Per selected column read as [`Output::Arrow`], what the read left
+    /// besides its outputs; `None` for other columns.
+    pub arrow: Vec<Option<ArrowReport>>,
 }
 
 /// A row group: its rows and size.
@@ -658,6 +677,21 @@ impl<S: Source> Reader<S> {
         (sets, warnings)
     }
 
+    /// With `lazy_value_labels`, the profile's text and each unread
+    /// value-label set's name and where its JSON is in that text: for a
+    /// binding that builds its own objects from the JSON, falling back to
+    /// [`Profile::parse_label_set`] for a set it does not take.
+    pub fn label_set_spans(&self) -> (&[u8], &[crate::profile::LabelSpan]) {
+        let text = self
+            .meta
+            .key_value
+            .iter()
+            .find(|kv| kv.key == profile::KEY)
+            .and_then(|kv| kv.value.as_deref())
+            .unwrap_or_default();
+        (text, &self.label_spans)
+    }
+
     /// Warnings from opening the file, about its profile.
     pub fn warnings(&self) -> &[String] {
         &self.warnings
@@ -764,17 +798,19 @@ impl<S: Source> Reader<S> {
         let levels: Vec<Option<HashMap<&[u8], i32>>> = columns
             .iter()
             .zip(outputs.iter())
-            .map(|(&c, out)| match out {
-                Output::Levels { base, .. } => {
-                    levels_in(&self.profile, &self.columns[c].name).map(|levels| {
-                        levels
-                            .iter()
-                            .enumerate()
-                            .map(|(i, l)| (l.as_bytes(), i as i32 + base))
-                            .collect()
-                    })
-                }
-                _ => None,
+            .map(|(&c, out)| {
+                let base = match out {
+                    Output::Levels { base, .. } => *base,
+                    Output::Arrow(ArrowOutput { data: columnar::ArrowData::Keys(_), .. }) => 0,
+                    _ => return None,
+                };
+                levels_in(&self.profile, &self.columns[c].name).map(|levels| {
+                    levels
+                        .iter()
+                        .enumerate()
+                        .map(|(i, l)| (l.as_bytes(), i as i32 + base))
+                        .collect()
+                })
             })
             .collect();
         let sizes: Vec<usize> = groups
@@ -784,9 +820,23 @@ impl<S: Source> Reader<S> {
         // Split each output into one destination per row group. Levels
         // found in the rows read are assigned here, in row order, from
         // each chunk's text; the codes stay with this thread.
+        let counters: Vec<AtomicU32> = columns.iter().map(|_| AtomicU32::new(0)).collect();
+        let is_arrow: Vec<bool> = outputs.iter().map(|o| matches!(o, Output::Arrow(_))).collect();
+        let all_arrow = !is_arrow.is_empty() && is_arrow.iter().all(|&a| a);
         let mut per_column: Vec<std::vec::IntoIter<Dest<'_>>> = Vec::with_capacity(columns.len());
         let mut found: Vec<Option<Found<'_>>> = Vec::with_capacity(columns.len());
-        for ((out, lv), &c) in outputs.iter_mut().zip(&levels).zip(columns) {
+        for (((out, lv), &c), counter) in outputs.iter_mut().zip(&levels).zip(columns).zip(&counters) {
+            if let Output::Arrow(a) = out {
+                found.push(None);
+                per_column.push(
+                    columnar::split(a, &sizes, counter, lv.as_ref())
+                        .into_iter()
+                        .map(Dest::Arrow)
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                );
+                continue;
+            }
             let rows_levels = self.columns[c].levels == Some(LevelsFrom::Rows)
                 && matches!(out, Output::Levels { .. });
             if rows_levels {
@@ -845,17 +895,21 @@ impl<S: Source> Reader<S> {
         let bytes = tasks.iter().fold(0u64, |sum, t| {
             sum.saturating_add(ctx.uncompressed(t).max(t.decoded()))
         });
-        let threads = dta::threads::resolve_scaled(
-            self.options.threads,
-            bytes,
+        let (per_thread, least, most) = self.options.thread_rule.unwrap_or((
             crate::READ_BYTES_PER_THREAD,
             crate::READ_THREADS,
             crate::READ_THREADS_MOST,
-        );
+        ));
+        let threads = dta::threads::resolve_scaled(self.options.threads, bytes, per_thread, least, most);
         let parallel = threads > 1 && tasks.len() > 1 && bytes >= self.options.parallel_bytes;
         let mut letters = vec![false; columns.len()];
+        let mut arrow: Vec<Option<ArrowAcc>> = is_arrow.iter().map(|&a| a.then(ArrowAcc::default)).collect();
         let mut deliver = |k: usize, done: Done| -> Result<()> {
             letters[k] |= done.letters;
+            if let (Some(d), Some(acc)) = (done.arrow, arrow[k].as_mut()) {
+                letters[k] |= !d.letters.is_empty();
+                acc.add(d);
+            }
             match (done.text, &mut found[k]) {
                 (Some(chunk), Some(f)) => f.add(&chunk),
                 (Some(chunk), None) => text(k, &chunk),
@@ -864,6 +918,11 @@ impl<S: Source> Reader<S> {
         };
         let shared = if parallel { self.source.shared() } else { None };
         match shared {
+            Some(shared) if all_arrow => {
+                for (k, done) in run_unordered(tasks, &ctx, threads, shared)? {
+                    deliver(k, done)?;
+                }
+            }
             Some(shared) => {
                 run_parallel(tasks, &ctx, threads, shared, columns.len(), &mut deliver)?
             }
@@ -883,6 +942,7 @@ impl<S: Source> Reader<S> {
             rows: rows as u64,
             letters,
             levels: found.into_iter().map(|f| f.map(|f| f.levels)).collect(),
+            arrow: arrow.into_iter().map(|a| a.map(ArrowAcc::finish)).collect(),
         })
     }
 
@@ -927,6 +987,26 @@ impl<S: Source> Reader<S> {
                 col.kind,
                 ColumnType::Text | ColumnType::Binary | ColumnType::Decimal { .. }
             )),
+            Output::Arrow(a) => {
+                if let columnar::ArrowData::Keys(_) = a.data {
+                    if !(col.levels == Some(LevelsFrom::Profile) && levels_in(&self.profile, &col.name).is_some()) {
+                        return Err(Error::invalid(format!(
+                            "column \"{}\" has no levels in the dta profile; read it as text",
+                            col.name
+                        )));
+                    }
+                }
+                let kind = if matches!(a.data, columnar::ArrowData::Views(_) | columnar::ArrowData::Keys(_)) {
+                    col.kind.clone()
+                } else {
+                    kind
+                };
+                if !a.data.accepts(&kind) {
+                    Err(a.data.name())
+                } else {
+                    Ok(a.data.len() == rows && a.validity.as_ref().is_none_or(|v| v.len() >= rows.div_ceil(8)))
+                }
+            }
         };
         match ok {
             Ok(true) => Ok(()),
@@ -1100,6 +1180,7 @@ enum Dest<'a> {
         levels: &'a HashMap<&'a [u8], i32>,
     },
     Text,
+    Arrow(columnar::ArrowDest<'a>),
 }
 
 /// Cut `s` into pieces of `sizes`.
@@ -1166,6 +1247,7 @@ fn split<'a>(
                 .collect()
         }
         Output::Text => sizes.iter().map(|_| Dest::Text).collect(),
+        Output::Arrow(_) => unreachable!("split by columnar::split"),
     }
 }
 
@@ -1191,6 +1273,7 @@ impl Task<'_> {
             Dest::I32(_) | Dest::U32(_) | Dest::F32(_) | Dest::Levels { .. } => 4,
             Dest::I64(_) | Dest::U64(_) | Dest::F64(_) => 8,
             Dest::Text => 0,
+            Dest::Arrow(a) => a.data.width() as u64,
         };
         (self.window.end - self.window.start).saturating_mul(width)
     }
@@ -1201,6 +1284,33 @@ struct Done {
     text: Option<TextChunk>,
     /// Whether any `.a` to `.z` was read.
     letters: bool,
+    arrow: Option<ArrowDone>,
+}
+
+/// An Arrow column's report, gathered from its chunks in any order.
+#[derive(Default)]
+struct ArrowAcc {
+    nulls: u64,
+    letters: Vec<(u64, u8)>,
+    buffers: Vec<(u32, Vec<u8>)>,
+}
+
+impl ArrowAcc {
+    fn add(&mut self, d: ArrowDone) {
+        self.nulls += d.nulls;
+        self.letters.extend(d.letters);
+        self.buffers.extend(d.buffers);
+    }
+
+    fn finish(mut self) -> ArrowReport {
+        self.letters.sort_unstable_by_key(|&(r, _)| r);
+        self.buffers.sort_unstable_by_key(|&(i, _)| i);
+        ArrowReport {
+            nulls: self.nulls,
+            letters: self.letters,
+            buffers: self.buffers.into_iter().map(|(_, b)| b).collect(),
+        }
+    }
 }
 
 /// The uncompressed size of a page, as most writers make it, for
@@ -1263,6 +1373,7 @@ impl Ctx<'_> {
                 .get(&(g, column.leaf))
                 .and_then(Option::as_ref),
             cache: self.cache,
+            raw_levels: false,
         })
     }
 
@@ -1293,12 +1404,14 @@ impl Ctx<'_> {
 /// Decode one task's chunk into its destination.
 fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) -> Result<Done> {
     let column = &ctx.reader_columns[task.column];
-    let chunk = ctx.chunk(task.group, column, task.window.clone())?;
+    let mut chunk = ctx.chunk(task.group, column, task.window.clone())?;
+    chunk.raw_levels = matches!(task.dest, Dest::Arrow(_));
     let rows = (task.window.end - task.window.start) as usize;
     let file_row = chunk.file_row + task.window.start;
     let mut done = Done {
         text: None,
         letters: false,
+        arrow: None,
     };
     macro_rules! numbers {
         ($out:expr) => {{
@@ -1359,6 +1472,9 @@ fn run(ctx: &Ctx, task: Task, read: &mut decode::ReadAt, scratch: &mut Scratch) 
         }
         Dest::Text if matches!(column.kind, ColumnType::Decimal { .. }) => {
             done.text = decode_decimal(&chunk, task.first, rows, None, read, scratch)?;
+        }
+        Dest::Arrow(dest) => {
+            done.arrow = Some(columnar::decode_task(&chunk, dest, read, scratch)?);
         }
         Dest::Text => {
             let mut t = Texts::new(task.first, rows, column.kind == ColumnType::Text)
@@ -1770,6 +1886,74 @@ fn run_parallel(
             cv.notify_all();
         }
         Ok(())
+    })
+}
+
+/// Decode `tasks` on `threads` threads (the calling thread one of them),
+/// in any order: for reads whose outputs are all Arrow, where each task
+/// writes its own rows and nothing need reach the calling thread in
+/// order. Returns each task's position in the selection and result.
+fn run_unordered(
+    tasks: Vec<Task<'_>>,
+    ctx: &Ctx,
+    threads: usize,
+    shared: &dyn SharedSource,
+) -> Result<Vec<(usize, Done)>> {
+    let n = tasks.len();
+    let slots: Vec<Mutex<Option<Task>>> = tasks.into_iter().map(|t| Mutex::new(Some(t))).collect();
+    let next = AtomicUsize::new(0);
+    let stop = AtomicBool::new(false);
+    // Tasks a run at a time, so a wide file's thousands of small chunks
+    // do not each cost a trip to the shared counter.
+    let batch = (n / (threads * 8)).clamp(1, 32);
+    let work = || -> Result<Vec<(usize, Done)>> {
+        let mut scratch = Scratch::default();
+        let mut read = |offset: u64, buf: &mut [u8]| shared.read_at_shared(offset, buf);
+        let mut out = Vec::new();
+        loop {
+            let first = next.fetch_add(batch, Ordering::Relaxed);
+            if first >= n || stop.load(Ordering::Relaxed) {
+                return Ok(out);
+            }
+            for slot in &slots[first..(first + batch).min(n)] {
+                let Some(task) = slot.lock().unwrap_or_else(PoisonError::into_inner).take() else { continue };
+                let k = task.k;
+                let result = catch_unwind(AssertUnwindSafe(|| run(ctx, task, &mut read, &mut scratch)))
+                    .unwrap_or_else(|p| {
+                        Err(Error::new(format!("a read thread panicked: {}", panic_text(&*p))).of(ErrorKind::Internal))
+                    });
+                match result {
+                    Ok(d) => out.push((k, d)),
+                    Err(e) => {
+                        stop.store(true, Ordering::Relaxed);
+                        return Err(e);
+                    }
+                }
+            }
+        }
+    };
+    std::thread::scope(|s| {
+        let handles: Vec<_> = (1..threads.max(1))
+            .filter_map(|_| std::thread::Builder::new().spawn_scoped(s, work).ok())
+            .collect();
+        let mut first_error = None;
+        let mut all = Vec::with_capacity(n);
+        let mut gather = |r: Result<Vec<(usize, Done)>>| match r {
+            Ok(v) => all.extend(v),
+            Err(e) => {
+                first_error.get_or_insert(e);
+            }
+        };
+        gather(work());
+        for h in handles {
+            gather(h.join().unwrap_or_else(|p| {
+                Err(Error::new(format!("a read thread panicked: {}", panic_text(&*p))).of(ErrorKind::Internal))
+            }));
+        }
+        match first_error {
+            Some(e) => Err(e),
+            None => Ok(all),
+        }
     })
 }
 

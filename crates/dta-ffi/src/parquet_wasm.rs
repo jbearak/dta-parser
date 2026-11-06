@@ -30,7 +30,7 @@ use dta_parquet::{
 
 use crate::json;
 use crate::strings::{utf16_len, Dict};
-use crate::wasm::{call, copy, ensure_room, result, Fail, HostFile, HostSink, State, CLOSED, INVALID};
+use crate::wasm::{call, copy, ensure_room, ensure_room_parts, result, Fail, HostFile, HostSink, State, CLOSED, INVALID};
 
 /// The largest safe integer: every integer of at most this size is a
 /// distinct double, and JavaScript's `Number.isSafeInteger` holds for it.
@@ -1066,7 +1066,10 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
             }
             let window = reader.window(start as u64, count as u64);
             let rows = (window.end - window.start) as usize;
-            let width: usize = cols
+            // Each column's buffers and as much again for decoding, as
+            // one block per column: the buffers are allocated apart, and a
+            // heap with holes can hold them where one block could not.
+            let parts: Vec<usize> = cols
                 .iter()
                 .map(|&c| match how[c] {
                     How::Number { .. } | How::BigInt { .. } => 9,
@@ -1074,8 +1077,9 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                     How::Text { .. } => 9,
                     How::NotRead(_) => 0,
                 })
-                .sum();
-            ensure_room(width.saturating_mul(rows).saturating_mul(2))?;
+                .flat_map(|width: usize| [width.saturating_mul(rows); 2])
+                .collect();
+            ensure_room_parts(&parts)?;
             let mut texts: Vec<Option<TextAcc>> = Vec::with_capacity(cols.len());
             for &c in &cols {
                 let (out, text) = match &how[c] {

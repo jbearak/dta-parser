@@ -306,7 +306,15 @@ write the file with `missing_letters = FALSE`.
   share: long.dta (777 MiB) passed for reads up to four threads and
   wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
   Python's reads, measured the same way, pass at the same counts within
-  the noise, so every language uses this rule. A write encodes the next
+  the noise, so every language uses this rule. The Arrow path that
+  datakit uses with polars (plan 0019) has its own rule, set against
+  polars, which uses every core: reads of 256 KiB or more use one
+  thread per 32 MiB, at least four and at most twelve, and writes one
+  per 8 MiB, at least four and at most sixteen. There the measure is
+  polars' wall time, with CPU time within the larger of 1.15 times
+  polars' and the speed gained. A read on the Arrow path also hands
+  nothing to the calling thread in row order, so more threads stay
+  busy. A write encodes the next
   row groups while it writes out the current one, so a long table of
   few columns keeps its threads busy. `DTA_THREADS` and each
   language's threads option set the count instead. The measurements at

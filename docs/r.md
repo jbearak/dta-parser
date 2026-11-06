@@ -47,8 +47,7 @@ macOS and Windows:
 install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
-To analyse data under R's rules or translate a do-file, without
-dibbles, install dtaparser and datakit instead:
+To analyse or prepare data under R's rules, without dibbles, install dtaparser and datakit instead:
 
 ```r norun
 install.packages(c("dtaparser", "datakit"), repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
@@ -792,8 +791,9 @@ the old code's label.
 
 datakit's `:=` works on any data frame or tibble, so a do-file can
 become an R script one line at a time without dibbles. A translated
-script starts with `library(dtaparser); library(datakit)`, after dplyr
-and tidyr if it uses them: attached last, datakit's `:=` masks rlang's,
+script starts with `library(datakit)`, which also gives dtaparser's
+`read_dta`, `save_dta`, and label functions, after dplyr and tidyr if it
+uses them: attached last, datakit's `:=` masks rlang's,
 which dplyr re-exports. It is the same `:=` as dtatools' (dtatools
 re-exports it), but on a data frame it follows R's rules: missing values compare as `NA`, and `NA` in `i`
 selects no row. Compare with labels, which needs `factors = TRUE`:
@@ -993,7 +993,6 @@ crates.io.
 This writes the example file as Parquet and reads it back:
 
 ```r
-library(dtaparser)
 library(datakit)
 
 df <- read_dta("survey.dta")

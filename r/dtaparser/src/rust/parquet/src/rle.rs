@@ -229,6 +229,309 @@ pub(crate) fn decode_bit_packed(
     Ok((bytes, ones))
 }
 
+/// The hybrid encoding read a batch at a time, keeping its place between
+/// calls: for decoding a page's dictionary indices in small batches that
+/// stay in cache, where [`decode_from`] would start from the page's first
+/// value each time. Used by the Arrow outputs ([`crate::columnar`]).
+pub(crate) struct Hybrid<'a> {
+    buf: &'a [u8],
+    at: usize,
+    width: u8,
+    /// Values left in the current RLE run, and its value.
+    rle_left: usize,
+    rle_value: u32,
+    /// The current bit-packed run: the next group's first byte, the
+    /// values left in groups not yet unpacked, and the end of its bytes.
+    packed_at: usize,
+    packed_left: usize,
+    packed_end: usize,
+    /// The group unpacked last: its values, how many are there, and how
+    /// many have been taken.
+    group: [u32; 8],
+    group_len: usize,
+    group_pos: usize,
+}
+
+impl<'a> Hybrid<'a> {
+    pub(crate) fn new(buf: &'a [u8], width: u8) -> Result<Self> {
+        if width > 32 {
+            return Err(Error::new(format!("RLE bit width {width} is more than 32")));
+        }
+        Ok(Hybrid {
+            buf,
+            at: 0,
+            width,
+            rle_left: 0,
+            rle_value: 0,
+            packed_at: 0,
+            packed_left: 0,
+            packed_end: 0,
+            group: [0; 8],
+            group_len: 0,
+            group_pos: 0,
+        })
+    }
+
+    /// Start the next run.
+    fn header(&mut self) -> Result<()> {
+        let header = varint(self.buf, &mut self.at)?;
+        let w = self.width as usize;
+        if header & 1 == 0 {
+            let run = usize::try_from(header >> 1).unwrap_or(usize::MAX);
+            if run == 0 {
+                return Err(Error::new("empty RLE run"));
+            }
+            let value_bytes = w.div_ceil(8);
+            let bytes = self
+                .buf
+                .get(self.at..)
+                .and_then(|b| b.get(..value_bytes))
+                .ok_or_else(|| Error::new("RLE data ends early"))?;
+            let mut v = 0u32;
+            for (k, b) in bytes.iter().enumerate() {
+                v |= u32::from(*b) << (8 * k);
+            }
+            if w < 32 && v >> w != 0 {
+                return Err(Error::new("RLE value wider than its bit width"));
+            }
+            self.at += value_bytes;
+            self.rle_left = run;
+            self.rle_value = v;
+        } else {
+            let groups = usize::try_from(header >> 1).unwrap_or(usize::MAX);
+            if groups == 0 {
+                return Err(Error::new("empty bit-packed run"));
+            }
+            // Some writers end the last run's bytes early: the values
+            // asked for must still be there, which `load` checks.
+            let end = self.at.saturating_add(groups.saturating_mul(w)).min(self.buf.len());
+            self.packed_at = self.at;
+            self.packed_end = end;
+            self.packed_left = groups.saturating_mul(8);
+            self.at = end;
+        }
+        Ok(())
+    }
+
+    /// Unpack the current run's next group into `group`.
+    fn load(&mut self) -> Result<()> {
+        let w = self.width as usize;
+        let start = self.packed_at.min(self.packed_end);
+        let end = (start + w).min(self.packed_end);
+        let have = ((end - start) * 8).checked_div(w).map_or(8, |n| n.min(8));
+        if have == 0 {
+            return Err(Error::new("bit-packed run ends early"));
+        }
+        unpack8(&self.buf[start..end], self.width, &mut self.group);
+        self.group_len = have;
+        self.group_pos = 0;
+        self.packed_at = start + w;
+        self.packed_left -= 8;
+        Ok(())
+    }
+
+    /// The current RLE run, if the next values are one: its value and
+    /// how many of them (at most `most`), which are taken.
+    #[inline]
+    pub(crate) fn run(&mut self, most: usize) -> Result<Option<(u32, usize)>> {
+        if self.rle_left == 0 && self.group_pos >= self.group_len && self.packed_left == 0 {
+            self.header()?;
+        }
+        if self.rle_left > 0 {
+            let n = self.rle_left.min(most);
+            self.rle_left -= n;
+            return Ok(Some((self.rle_value, n)));
+        }
+        Ok(None)
+    }
+
+    /// Values left in the current bit-packed run (0 inside an RLE run).
+    #[inline]
+    pub(crate) fn literal_left(&self) -> usize {
+        if self.rle_left > 0 {
+            0
+        } else {
+            self.group_len - self.group_pos.min(self.group_len) + self.packed_left
+        }
+    }
+
+    /// Fill `out` with the next values.
+    pub(crate) fn next(&mut self, out: &mut [u32]) -> Result<()> {
+        let w = self.width as usize;
+        let mut i = 0;
+        while i < out.len() {
+            if self.rle_left > 0 {
+                let n = self.rle_left.min(out.len() - i);
+                out[i..i + n].fill(self.rle_value);
+                self.rle_left -= n;
+                i += n;
+                continue;
+            }
+            if self.group_pos < self.group_len {
+                let n = (self.group_len - self.group_pos).min(out.len() - i);
+                out[i..i + n].copy_from_slice(&self.group[self.group_pos..self.group_pos + n]);
+                self.group_pos += n;
+                i += n;
+                continue;
+            }
+            if self.packed_left > 0 {
+                // Whole groups straight into `out`, while their bytes are
+                // all there.
+                let mut groups = (out.len() - i).min(self.packed_left) / 8;
+                while groups > 0 && self.packed_at + w <= self.packed_end {
+                    unpack8(&self.buf[self.packed_at..self.packed_at + w], self.width, &mut out[i..i + 8]);
+                    self.packed_at += w;
+                    self.packed_left -= 8;
+                    i += 8;
+                    groups -= 1;
+                }
+                if i < out.len() && self.packed_left > 0 {
+                    self.load()?;
+                }
+                continue;
+            }
+            self.header()?;
+        }
+        Ok(())
+    }
+
+    /// Pass over the next `n` values.
+    pub(crate) fn skip(&mut self, mut n: usize) -> Result<()> {
+        let w = self.width as usize;
+        while n > 0 {
+            if self.rle_left > 0 {
+                let k = self.rle_left.min(n);
+                self.rle_left -= k;
+                n -= k;
+                continue;
+            }
+            if self.group_pos < self.group_len {
+                let k = (self.group_len - self.group_pos).min(n);
+                self.group_pos += k;
+                n -= k;
+                continue;
+            }
+            if self.packed_left > 0 {
+                let groups = n.min(self.packed_left) / 8;
+                if groups > 0 {
+                    self.packed_at = self.packed_at.saturating_add(groups * w);
+                    self.packed_left -= groups * 8;
+                    n -= groups * 8;
+                } else {
+                    self.load()?;
+                }
+                continue;
+            }
+            self.header()?;
+        }
+        Ok(())
+    }
+}
+
+/// Set `len` bits of `dst` from bit `to`, copied from `src` from bit
+/// `from`; `dst`'s bits there are zero.
+fn copy_bits(dst: &mut [u8], to: usize, src: &[u8], from: usize, len: usize) {
+    let mut k = 0;
+    // A source byte at a time, shifted into place.
+    while k < len {
+        let s = from + k;
+        let byte = (src[s / 8] >> (s % 8)) | src.get(s / 8 + 1).map_or(0, |b| b.checked_shl(8 - (s % 8) as u32).unwrap_or(0));
+        let n = (len - k).min(8);
+        let byte = if n < 8 { byte & ((1u8 << n) - 1) } else { byte };
+        let d = to + k;
+        dst[d / 8] |= byte << (d % 8);
+        if d % 8 != 0 && d % 8 + n > 8 {
+            dst[d / 8 + 1] |= byte >> (8 - d % 8);
+        }
+        k += n;
+    }
+}
+
+/// Set bits `to..to + len` of `dst`.
+fn set_bits(dst: &mut [u8], to: usize, len: usize) {
+    let end = to + len;
+    let mut i = to;
+    while i < end && i % 8 != 0 {
+        dst[i / 8] |= 1 << (i % 8);
+        i += 1;
+    }
+    let whole = (end - i) / 8;
+    dst[i / 8..i / 8 + whole].fill(0xff);
+    i += whole * 8;
+    while i < end {
+        dst[i / 8] |= 1 << (i % 8);
+        i += 1;
+    }
+}
+
+/// Decode a page's RLE definition levels (width 1) for rows `take` into
+/// validity bits: row `take.start + k` is bit `to + k` of `bits`, set
+/// where the row has a value (`bits` is zero there). Runs of values set
+/// a range, runs of nulls cost nothing, and bit-packed groups are copied
+/// as they are, being already one bit per row, the first lowest. Returns
+/// the values before `take` and within it.
+pub(crate) fn levels_bits(buf: &[u8], take: std::ops::Range<usize>, bits: &mut [u8], to: usize) -> Result<(usize, usize)> {
+    let (mut before, mut ones) = (0usize, 0usize);
+    let mut at = 0;
+    let mut pos = 0usize;
+    while pos < take.end {
+        let header = varint(buf, &mut at)?;
+        if header & 1 == 0 {
+            let run = usize::try_from(header >> 1).unwrap_or(usize::MAX);
+            if run == 0 {
+                return Err(Error::new("empty RLE run"));
+            }
+            let v = *buf.get(at).ok_or_else(|| Error::new("RLE data ends early"))?;
+            at += 1;
+            if v > 1 {
+                return Err(Error::new("RLE value wider than its bit width"));
+            }
+            let end = pos.saturating_add(run).min(take.end);
+            if v == 1 {
+                before += end.min(take.start).saturating_sub(pos);
+                let (s, e) = (pos.max(take.start), end);
+                if e > s {
+                    set_bits(bits, to + s - take.start, e - s);
+                    ones += e - s;
+                }
+            }
+            pos = end;
+        } else {
+            let groups = usize::try_from(header >> 1).unwrap_or(usize::MAX);
+            if groups == 0 {
+                return Err(Error::new("empty bit-packed run"));
+            }
+            let n = groups.saturating_mul(8).min(take.end - pos);
+            let have = (buf.len() - at).min(groups);
+            if have * 8 < n {
+                return Err(Error::new("bit-packed run ends early"));
+            }
+            let run = &buf[at..at + have];
+            // Ones before the window: whole bytes by count, then the part.
+            let skip = take.start.saturating_sub(pos).min(n);
+            before += run[..skip / 8].iter().map(|b| b.count_ones() as usize).sum::<usize>();
+            if skip % 8 != 0 {
+                before += (run[skip / 8] & ((1u8 << (skip % 8)) - 1)).count_ones() as usize;
+            }
+            if n > skip {
+                let len = n - skip;
+                let d = to + pos + skip - take.start;
+                copy_bits(bits, d, run, skip, len);
+                // The ones copied, counted from the source.
+                let mut k = skip;
+                while k < n {
+                    let m = (n - k).min(8 - k % 8);
+                    ones += ((run[k / 8] >> (k % 8)) & ((1u16 << m) - 1) as u8).count_ones() as usize;
+                    k += m;
+                }
+            }
+            at += have;
+            pos += n;
+        }
+    }
+    Ok((before, ones))
+}
+
 /// Bit-packed literal runs are cut at this many groups of eight, as other
 /// writers do, so a run header always fits in one byte.
 const MAX_GROUPS: usize = 63;
@@ -381,6 +684,97 @@ mod tests {
         })
         .unwrap();
         assert_eq!((got[0], ones), (1, 1_999_999_999));
+    }
+
+    #[test]
+    fn the_stateful_reader_gives_what_decode_gives() {
+        let mut seed = 99u64;
+        let mut next = || {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) as usize
+        };
+        for width in [0u8, 1, 3, 8, 13, 32] {
+            let max = if width == 32 { u32::MAX } else { (1u32 << width).wrapping_sub(1) };
+            let values: Vec<u32> = (0..3000)
+                .map(|i| if (i / 40) % 3 == 0 { max } else { (i as u32).wrapping_mul(2654435761) & max })
+                .collect();
+            let mut buf = Vec::new();
+            encode(&values, width, &mut buf);
+            for _ in 0..50 {
+                let mut h = Hybrid::new(&buf, width).unwrap();
+                let mut at = 0;
+                while at < values.len() {
+                    let n = (next() % 70).min(values.len() - at);
+                    if next() % 3 == 0 {
+                        h.skip(n).unwrap();
+                    } else if next() % 2 == 0 {
+                        match h.run(n).unwrap() {
+                            Some((v, k)) => {
+                                assert!(values[at..at + k].iter().all(|&x| x == v));
+                                at += k;
+                                continue;
+                            }
+                            None => {
+                                let k = n.min(h.literal_left());
+                                let mut got = vec![0u32; k];
+                                h.next(&mut got).unwrap();
+                                assert_eq!(got, &values[at..at + k]);
+                                at += k;
+                                continue;
+                            }
+                        }
+                    } else {
+                        let mut got = vec![0u32; n];
+                        h.next(&mut got).unwrap();
+                        assert_eq!(got, &values[at..at + n], "width {width} at {at}");
+                    }
+                    at += n;
+                }
+            }
+        }
+        // Damage is an error, not a panic.
+        let mut out = [0u32; 10];
+        assert!(Hybrid::new(&[0x03, 0x01], 8).unwrap().next(&mut out).is_err());
+        assert!(Hybrid::new(&[], 3).unwrap().next(&mut out).is_err());
+        assert!(Hybrid::new(&[0x00], 3).unwrap().skip(4).is_err());
+    }
+
+    #[test]
+    fn levels_decode_straight_into_bits() {
+        let mut seed = 7u64;
+        let mut next = || {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) as usize
+        };
+        for case in 0..60 {
+            let n = 1 + next() % 3000;
+            // Runs of nulls and values mixed with scattered ones.
+            let levels: Vec<u8> = (0..n)
+                .map(|i| match case % 3 {
+                    0 => u8::from((i / 37) % 2 == 0),
+                    1 => u8::from(next() % 5 != 0),
+                    _ => u8::from((i / 300) % 3 != 1 && i % 7 != 3),
+                })
+                .collect();
+            let mut buf = Vec::new();
+            encode(&levels, 1, &mut buf);
+            for _ in 0..10 {
+                let s = next() % n;
+                let e = s + next() % (n - s + 1);
+                let to = next() % 13;
+                let mut bits = vec![0u8; (to + e - s).div_ceil(8) + 1];
+                let (before, ones) = levels_bits(&buf, s..e, &mut bits, to).unwrap();
+                assert_eq!(before, levels[..s].iter().filter(|&&l| l == 1).count());
+                assert_eq!(ones, levels[s..e].iter().filter(|&&l| l == 1).count());
+                for k in 0..e - s {
+                    assert_eq!((bits[(to + k) / 8] >> ((to + k) % 8)) & 1, levels[s + k], "case {case} row {k}");
+                }
+                assert!((to + e - s..bits.len() * 8).all(|b| (bits[b / 8] >> (b % 8)) & 1 == 0));
+            }
+        }
+        let mut bits = [0u8; 4];
+        assert!(levels_bits(&[0x03], 0..8, &mut bits, 0).is_err());
+        assert!(levels_bits(&[0x04, 2], 0..2, &mut bits, 0).is_err());
     }
 
     #[test]

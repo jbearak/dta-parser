@@ -61,7 +61,7 @@ with `save_dta`, and holds the Rust bridge that dtatools and datakit
 reach the core through.
 
 **datakit**:
-The package for translating do-files, one per language. In R: `d[i,
+The data preparation package, one per language. In R: `d[i,
 name, by = g] := value` on data frames under R's rules,
 `read_fixed_width`, and `read_parquet`, `read_parquet_info` and
 `save_parquet`; it imports dtaparser and reaches the Rust bridge
