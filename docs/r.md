@@ -747,6 +747,22 @@ haven's `tagged_na()` drops names, so with haven attached too, write
 a tag from any character, where dtaparser's takes one vector and only
 `"a"` to `"z"`.
 
+R's comparisons give `NA` for a missing value. For comparisons that
+follow Stata's missing-value order instead (numbers < `.` < `.a` < ...
+< `.z`), `missing_rank(x)` gives each value's place in it: 0 for a
+number, 1 for `NA` or `NaN`, and 2 to 27 for `.a` to `.z`. It returns a
+plain integer vector, never `NA`, so Stata's `x > .a` is one line:
+
+```r
+x <- c(5, NA, dtaparser::tagged_na(c("a", "d")))
+dtaparser::missing_rank(x)                                         # 0 1 2 5
+dtaparser::missing_rank(x) > dtaparser::missing_rank(dtaparser::tagged_na("a"))  # FALSE FALSE FALSE TRUE
+```
+
+It takes doubles, integers, logicals, `Date`, `POSIXct` and labelled
+columns. Integers and logicals hold no letters, so they rank only 0 or
+1. Every number ranks 0, so compare numbers with each other as usual.
+
 ### Labelled columns
 
 A column with value labels is a `dtaparser_labelled`: its codes, with
@@ -1346,6 +1362,8 @@ labelled column (see [Labelled columns](#labelled-columns)):
 
 - `na_tag(x)`, `is_tagged_na(x, tag = NULL)`: the letters of `.a` to
   `.z`. `tagged_na(x)`: `.a` to `.z` from their letters.
+- `missing_rank(x)`: each value's place in Stata's missing-value order,
+  0 for a number, 1 for `.`, 2 to 27 for `.a` to `.z`.
 - `var_label(x)`, `val_labels(x)`, `val_label(x, values = x)`: variable
   and value labels.
 

@@ -84,6 +84,44 @@ tagged_na <- function(x) {
   out
 }
 
+#' A value's place in Stata's missing-value order
+#'
+#' Stata puts every number below `.`, `.` below `.a`, and `.a` to `.z`
+#' in order, and a comparison with a missing value is never missing.
+#' `missing_rank()` gives each value's place in that order, so that
+#' comparisons that follow Stata's missing-value order are one line of
+#' R: Stata's `x > .a` is `missing_rank(x) > missing_rank(tagged_na("a"))`,
+#' and the same holds for `>=`, `<` and `<=`. The ranks never are `NA`.
+#'
+#' Only the missing values are ranked: every number is 0, so compare
+#' numbers with each other as usual. The letter of a tagged NA is read
+#' before anything else, so `.a` to `.z` are never taken for `.`.
+#' An integer or logical vector cannot hold a letter, so it ranks only 0
+#' or 1; a `Date` or `POSIXct` read by [read_dta()] keeps its letters
+#' and ranks them like any double.
+#'
+#' @param x A double, integer or logical vector, including a `Date`, a
+#'   `POSIXct` and a labelled column from [with_labels()] or [read_dta()].
+#'   A character vector, factor, list or data frame is an error.
+#' @return A plain integer vector as long as `x`, with no names or other
+#'   attributes: `0L` for a number, `1L` for `NA` or `NaN` (Stata's `.`),
+#'   and `2L` to `27L` for `.a` to `.z`.
+#' @seealso [na_tag()] for the letters themselves.
+#' @examples
+#' x <- c(5, NA, NaN, tagged_na(c("a", "b", "z")))
+#' missing_rank(x)                                # 0 1 1 2 3 27
+#' missing_rank(x) > missing_rank(tagged_na("a")) # Stata's x > .a
+#' missing_rank(x) <= missing_rank(tagged_na("b")) # Stata's x <= .b
+#' missing_rank(c(1L, NA))                        # 0 1
+#' @export
+missing_rank <- function(x) {
+  if (is.factor(x) || !(is.double(x) || is.integer(x) || is.logical(x))) {
+    stop("x must be a double, integer, logical, Date, POSIXct or labelled vector, not ",
+         class(x)[1], call. = FALSE)
+  }
+  .Call(C_dta_missing_rank, x)
+}
+
 #' Variable and value labels
 #'
 #' [read_dta()] keeps each column's variable label in its `label`
