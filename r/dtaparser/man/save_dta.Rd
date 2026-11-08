@@ -46,6 +46,13 @@ factor from \code{read_dta(factors = TRUE)} therefore comes back with
 codes 1 to k, not the file's own codes, which that read did not
 keep. To keep them, read with \code{factors = FALSE}, the default.
 
+Each factor also gets a characteristic, \code{dtaparser_factor}, saying
+whether it was ordered and naming its label set (\code{"ordered size"}),
+so that \code{\link[=read_dta]{read_dta()}} reads it back as the same factor. Stata keeps
+the characteristic, and other readers do not act on it. Markers already in
+the \code{characteristics} attribute are dropped and written afresh, so a
+column that is no longer a factor loses its marker.
+
 \strong{Strings.} Character columns are strN, or strL beyond 2045 bytes;
 \code{NA} is written as \code{""}, since Stata strings have no missing value.
 Strings must be UTF-8 (see \code{\link[=enc2utf8]{enc2utf8()}}).

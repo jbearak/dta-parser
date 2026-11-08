@@ -664,10 +664,16 @@ identical(again$interviewed, df$interviewed)  # TRUE
 dtaparser::na_tag(again$income)               # NA "d" NA NA "r" NA
 ```
 
-A factor is written as codes 1 to k labelled with its levels. A factor
-from `read_dta(factors = TRUE)` therefore comes back with codes 1 to k,
-not the file's own codes, which that read did not keep; to write the
-file's codes, read with `factors = FALSE`, the default.
+A factor is written as codes 1 to k labelled with its levels, and marked
+with a characteristic, `dtaparser_factor`, so that `read_dta()` reads it
+back as the same factor, ordered or not, with its unused levels, even
+with `factors = FALSE` (plan 0020). If the file has changed since (its
+label set renamed, a value without a label, or `.a` to `.z` added), the
+column reads as an unmarked one would, with a warning. dtatools reads
+such a column as a `dta_num`, and saving that drops the mark. A factor
+from `read_dta(factors = TRUE)` comes back with codes 1 to k, not the
+file's own codes, which that read did not keep; to write the file's
+codes, read with `factors = FALSE`, the default.
 
 `read_meta(file)` reads what the file says about itself, without its
 rows: each variable's storage type and display format, and the

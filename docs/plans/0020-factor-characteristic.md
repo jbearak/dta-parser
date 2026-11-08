@@ -1,6 +1,6 @@
 # Plan: factors survive a .dta round trip, marked by a characteristic
 
-Status: draft; the user settled its questions on 2026-11-08 (below). No code yet.
+Status: implemented in R and Python; the user settled its questions on 2026-11-08 (below).
 
 ## Problem
 
@@ -36,6 +36,8 @@ characteristics, and readstata13 lists them without acting on them.
 
 - the column's value label set is the one the marker names;
 - every non-missing value has a label;
+- no two codes share a text (pandas categories must differ, and no
+  factor `save_dta()` writes has two);
 - there is no `.a` to `.z`.
 
 The levels and codes come from the label set as `factors = TRUE` makes

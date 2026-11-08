@@ -96,10 +96,12 @@ test_that("a factor is written as codes 1 to k labelled with its levels", {
   expect_identical(levels(f$region), c("North", "South", "East"))
   path2 <- saved(f)
   expect_identical(unname(storage_of(path2)), "long")
-  codes <- read_dta(path2)$region
   # The file's codes were 3 and 7; a factor no longer has them.
-  expect_identical(vctrs::vec_data(codes), c(1L, 2L, 1L, NA))
-  expect_identical(val_labels(codes), c(North = 1, South = 2, East = 3))
+  codes <- .Call(dtaparser:::C_dta_read, path2, 0L, 0, Inf, NULL, 0L)[[1]]
+  expect_identical(as.integer(codes), c(1L, 2L, 1L, NA))
+  expect_identical(attr(codes, "labels"), c(North = 1, South = 2, East = 3))
+  # Marked as a factor (plan 0020), it reads back as one either way.
+  expect_identical(read_dta(path2), f)
   expect_identical(read_dta(path2, factors = TRUE), f)
 })
 

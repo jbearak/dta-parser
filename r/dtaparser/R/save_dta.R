@@ -30,6 +30,13 @@
 #' codes 1 to k, not the file's own codes, which that read did not
 #' keep. To keep them, read with `factors = FALSE`, the default.
 #'
+#' Each factor also gets a characteristic, `dtaparser_factor`, saying
+#' whether it was ordered and naming its label set (`"ordered size"`),
+#' so that [read_dta()] reads it back as the same factor. Stata keeps
+#' the characteristic, and other readers do not act on it. Markers already in
+#' the `characteristics` attribute are dropped and written afresh, so a
+#' column that is no longer a factor loses its marker.
+#'
 #' **Strings.** Character columns are strN, or strL beyond 2045 bytes;
 #' `NA` is written as `""`, since Stata strings have no missing value.
 #' Strings must be UTF-8 (see [enc2utf8()]).
@@ -84,7 +91,7 @@ save_dta <- function(data, file) {
     vapply(data, function(x) enc2utf8(attr(x, name, exact = TRUE) %||% ""), "", USE.NAMES = FALSE)
   }
   notes <- enc2utf8(attr(data, "notes", exact = TRUE) %||% character())
-  chars <- kept_characteristics(attr(data, "characteristics", exact = TRUE), names(data))
+  chars <- with_factor_marks(kept_characteristics(attr(data, "characteristics", exact = TRUE), names(data)), data, cols)
   chars <- lapply(c("variable", "name", "value"), function(n) enc2utf8(as.character(chars[[n]])))
   keys <- kept_sort_order(attr(data, "sort_order", exact = TRUE), names(data))
   timestamp <- attr(data, "timestamp", exact = TRUE) %||% stata_timestamp(Sys.time())
@@ -162,6 +169,25 @@ kept_characteristics <- function(chars, names) {
   chars <- chars[chars$variable %in% c("_dta", names) & !note, c("variable", "name", "value"), drop = FALSE]
   rownames(chars) <- NULL
   if (nrow(chars)) chars
+}
+
+# The characteristic that marks a factor column (plan 0020); its value
+# is "ordered" or "unordered", a space, and the column's label set.
+FACTOR_MARK <- "dtaparser_factor"
+
+# `chars` without factor marks, plus one for each factor in `data`.
+with_factor_marks <- function(chars, data, cols) {
+  if (!is.null(chars)) chars <- chars[chars$name != FACTOR_MARK, , drop = FALSE]
+  factor <- vapply(data, is.factor, NA, USE.NAMES = FALSE)
+  if (!any(factor)) return(chars)
+  marks <- data.frame(
+    variable = names(data)[factor],
+    name = FACTOR_MARK,
+    value = paste(ifelse(vapply(data[factor], is.ordered, NA), "ordered", "unordered"),
+                  vapply(cols[factor], function(c) c$label_set, "", USE.NAMES = FALSE)),
+    stringsAsFactors = FALSE
+  )
+  rbind(chars, marks)
 }
 
 # The leading keys of a sort order that are among `names`: data sorted

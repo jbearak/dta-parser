@@ -155,6 +155,64 @@ def test_category_writes_codes_and_value_labels(tmp_path):
     assert meta.variable_value_labels["c"] == {0: "lo", 1: "hi"}
 
 
+def categories():
+    return pd.DataFrame({
+        "size": pd.Categorical(["small", "large", None, "small"], categories=["small", "medium", "large"], ordered=True),
+        "g": pd.Categorical(["b", "a", "b", "a"]),
+    })
+
+
+def test_category_reads_back_as_written(tmp_path):
+    """Plan 0020: a marked category comes back the same, ordered and
+    unused categories included, and again through a second write."""
+    path = written(categories(), tmp_path)
+    assert read_meta(path)["characteristics"] == {
+        "size": {"dtaparser_factor": "ordered size"}, "g": {"dtaparser_factor": "unordered g"}}
+    back = read_dta(path)
+    for name in ("size", "g"):
+        assert back[name].equals(categories()[name])
+    again = tmp_path / "again.dta"
+    write_dta(back, again)
+    assert read_dta(again)["size"].equals(categories()["size"])
+
+
+def test_other_readers_read_a_marked_file_as_before(tmp_path):
+    path = written(categories(), tmp_path)
+    theirs = pd.read_stata(path)
+    assert theirs["size"].tolist()[:2] == ["small", "large"] and theirs["g"].tolist() == ["b", "a", "b", "a"]
+    _, meta = pyreadstat.read_dta(str(path))
+    assert meta.variable_value_labels["size"] == {0: "small", 1: "medium", 2: "large"}
+
+
+def test_write_replaces_factor_marks(tmp_path):
+    df = categories()
+    df["g"] = df["g"].cat.codes.astype("int32")
+    df.attrs["dta"] = {"characteristics": {"g": {"dtaparser_factor": "unordered g", "unit": "x"}}}
+    path = written(df, tmp_path)
+    assert read_meta(path)["characteristics"] == {"g": {"unit": "x"}, "size": {"dtaparser_factor": "ordered size"}}
+
+
+def long_bytes(v):
+    return int(v).to_bytes(4, "little", signed=True)
+
+
+@pytest.mark.parametrize("why, old, new, after", [
+    ("renamed set", b"ordered size", b"ordered sizz", b""),
+    ("unlabelled value", long_bytes(2), long_bytes(7), b"<data>"),
+    (".a", long_bytes(2), long_bytes(2147483622), b"<data>"),
+    ("shared text", b"medium\0", b"large\0\0", b"<value_labels>"),
+])
+def test_stale_mark_reads_unmarked_with_a_warning(tmp_path, why, old, new, after):
+    path = written(categories(), tmp_path)
+    data = path.read_bytes()
+    at = data.index(old, data.index(after))
+    path.write_bytes(data[:at] + new + data[at + len(old):])
+    with pytest.warns(UserWarning, match="wrote size as categories"):
+        back = read_dta(path)
+    assert not isinstance(back["size"].dtype, pd.CategoricalDtype)
+    assert back["g"].equals(categories()["g"])
+
+
 def test_datetimes(tmp_path):
     df = pd.DataFrame({
         "day": pd.to_datetime(["1960-01-02", None, "2026-10-28"]),

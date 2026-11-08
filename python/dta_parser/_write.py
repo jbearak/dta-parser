@@ -7,7 +7,7 @@ import pandas as pd
 
 from . import _native
 from ._array import DtaDtype
-from ._read import _EPOCH_DAYS, date_kind
+from ._read import _EPOCH_DAYS, FACTOR_MARK, date_kind
 from .missing import MissingValue
 
 _RESERVED = {
@@ -225,7 +225,9 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
       every value, else double (an error beyond ±2^53);
     - float32, float64: float, double, NaN as `.`; nullable dtypes: their
       values, NA as `.`; DtaArray: its storage and missing codes;
-    - category: its codes as long, its categories as value labels;
+    - category: its codes as long, its categories as value labels, and
+      a characteristic, dtaparser_factor, so that read_dta reads it back
+      as the same category, ordered or not;
     - datetime64: %td (long) if every value is midnight, else %tc (double,
       milliseconds); NaT as `.`;
     - text: strN up to 2045 bytes, else strL; None, NaN and pd.NA as "";
@@ -270,7 +272,12 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
     characteristics = []
     for variable, table in (info.get("characteristics") or {}).items():
         if variable in present:
-            characteristics.extend((variable, n, str(v)) for n, v in table.items())
+            characteristics.extend((variable, n, str(v)) for n, v in table.items() if n != FACTOR_MARK)
+    # Each categorical is marked, so read_dta reads it back as one.
+    for spec, (_, column) in zip(specs, df.items()):
+        if isinstance(column.dtype, pd.CategoricalDtype):
+            order = "ordered" if column.dtype.ordered else "unordered"
+            characteristics.append((spec[0], FACTOR_MARK, f"{order} {spec[4]}"))
     notes = info.get("notes") or []
     if notes:
         characteristics.append(("_dta", "note0", str(len(notes))))
