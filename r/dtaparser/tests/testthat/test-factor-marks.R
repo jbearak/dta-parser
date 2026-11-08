@@ -94,3 +94,11 @@ test_that("haven and readstata13 read a marked file's codes and labels as an unm
   chars <- attr(r, "expansion.fields")
   expect_true(list(c("size", "dtaparser_factor", "ordered size")) %in% chars)
 })
+
+test_that("a factor without levels reads back as one, without a warning", {
+  data <- data.frame(e = factor(c(NA, NA), levels = character()))
+  path <- tempfile(fileext = ".dta")
+  save_dta(data, path)
+  expect_no_warning(back <- read_dta(path))
+  expect_identical(back$e, data$e)
+})

@@ -2,6 +2,7 @@
 mapping for frames that did not come from read_dta, and its errors."""
 
 import datetime
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -182,6 +183,14 @@ def test_other_readers_read_a_marked_file_as_before(tmp_path):
     assert theirs["size"].tolist()[:2] == ["small", "large"] and theirs["g"].tolist() == ["b", "a", "b", "a"]
     _, meta = pyreadstat.read_dta(str(path))
     assert meta.variable_value_labels["size"] == {0: "small", 1: "medium", 2: "large"}
+
+
+def test_category_without_categories_reads_back(tmp_path):
+    df = pd.DataFrame({"e": pd.Categorical([None, None], categories=[], ordered=True)})
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        back = read_dta(written(df, tmp_path))
+    assert back["e"].equals(df["e"])
 
 
 def test_write_replaces_factor_marks(tmp_path):

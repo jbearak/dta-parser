@@ -111,19 +111,23 @@ def _marked_factor(mark, set_name, sets, values, codes, flag):
     value has no label, two codes share a text, or it holds .a to .z."""
     m = re.fullmatch(r"(ordered|unordered) (.+)", mark)
     table = sets.get(set_name)
-    if m is None or m.group(2) != set_name or not table or flag > 1:
+    if m is None or m.group(2) != set_name or table is None or flag > 1:
         return None
     labels = sorted((float(k), t) for k, t in table.items() if not isinstance(k, MissingValue))
     texts = [t for _, t in labels]
-    if not labels or len(set(texts)) != len(texts):
+    if len(set(texts)) != len(texts):
         return None
-    keys = np.asarray([k for k, _ in labels])
+    ordered = m.group(1) == "ordered"
     present = codes == 0
+    if not labels:
+        # A category with no categories holds only missing values.
+        return None if present.any() else pd.Categorical.from_codes(np.full(len(codes), -1), categories=[], ordered=ordered)
+    keys = np.asarray([k for k, _ in labels])
     at = np.searchsorted(keys, values.astype(np.float64))
     at = np.minimum(at, len(keys) - 1)
     if not (keys[at] == values)[present].all():
         return None
-    return pd.Categorical.from_codes(np.where(present, at, -1), categories=texts, ordered=m.group(1) == "ordered")
+    return pd.Categorical.from_codes(np.where(present, at, -1), categories=texts, ordered=ordered)
 
 
 def read_meta(source, encoding=None):
