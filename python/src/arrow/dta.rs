@@ -9,6 +9,7 @@
 //! and a strL column mixing the two as Binary (text as its UTF-8 bytes).
 //! Writing makes release 118 as `write_dta` does, from polars' export.
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -532,6 +533,16 @@ pub fn dta_write_arrow<'py>(
         Some(s) => super::write::label_sets(&s.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.value_labels is not a dict"))?)?,
         None => Vec::new(),
     };
+    // Each column's value label set as meta names it.
+    let mut named: Vec<String> = Vec::with_capacity(cols.len());
+    for c in &cols {
+        let set = match entries.as_ref().map(|e| e.get_item(&c.field.name)).transpose()?.flatten() {
+            Some(e) => e.extract::<(Option<String>, Option<String>, Option<String>, Option<bool>)>()?.2.unwrap_or_default(),
+            None => String::new(),
+        };
+        named.push(set);
+    }
+    let category_sets = category_sets(&cols, &named, &sets);
     let mut made: Vec<ValueLabelSet> = Vec::new();
     let mut variables = Vec::with_capacity(cols.len());
     // Per column, the Enum's key to code (1 to k) maps, kept for the fill.
@@ -586,11 +597,11 @@ pub fn dta_write_arrow<'py>(
             // levels in order.
             let every = c.field.meta("_PL_ENUM_VALUES2").is_some();
             let (levels, maps) = super::write::categorical(&name, c, every)?;
+            set = category_sets[k].clone().expect("a set for each categorical");
             made.push(ValueLabelSet {
-                name: name.clone(),
+                name: set.clone(),
                 labels: levels.iter().enumerate().map(|(i, t)| dta::ValueLabel { value: (i + 1) as f64, missing: 0, text: t.clone() }).collect(),
             });
-            set = name.clone();
             format.clear();
             cat_maps[k] = Some(maps);
             (StorageType::Long, None)
@@ -748,6 +759,9 @@ pub fn dta_write_arrow<'py>(
         }));
         variables.push(WriteVariable { name, storage, format, label, value_labels: set, values });
     }
+    // A categorical's set replaces meta's set of its name, which no other
+    // column uses (category_sets saw to that).
+    sets.retain(|s| !made.iter().any(|m| m.name == s.name));
     sets.extend(made);
     // Characteristics and notes, sort, label, time stamp.
     let names: Vec<&str> = cols.iter().map(|c| c.field.name.as_str()).collect();
@@ -795,4 +809,37 @@ pub fn dta_write_arrow<'py>(
         fail(format!("{path}: {e}"))
     })?;
     Ok(())
+}
+
+/// The value label set each categorical column (an Enum or Categorical)
+/// is written with, None for other columns: the column's own name,
+/// replacing meta's set of that name, unless another column's labels
+/// (`named`) use that set; then the first free name of name_2, name_3,
+/// ... (cut to 32 characters), so that column keeps its labels.
+fn category_sets(cols: &[Column], named: &[String], sets: &[ValueLabelSet]) -> Vec<Option<String>> {
+    let categorical = |c: &Column| c.field.dictionary.is_some();
+    let used: HashSet<&str> =
+        cols.iter().zip(named).filter(|(c, n)| !categorical(c) && !n.is_empty()).map(|(_, n)| n.as_str()).collect();
+    let mut taken: HashSet<String> = sets.iter().map(|s| s.name.clone()).chain(used.iter().map(|n| n.to_string())).collect();
+    taken.extend(cols.iter().filter(|c| categorical(c)).map(|c| c.field.name.clone()));
+    cols.iter()
+        .map(|c| {
+            if !categorical(c) {
+                return None;
+            }
+            let name = &c.field.name;
+            if !used.contains(name.as_str()) {
+                return Some(name.clone());
+            }
+            let chosen = (2..)
+                .map(|k| {
+                    let suffix = format!("_{k}");
+                    name.chars().take(32 - suffix.len()).collect::<String>() + &suffix
+                })
+                .find(|n| !taken.contains(n))
+                .expect("a free name");
+            taken.insert(chosen.clone());
+            Some(chosen)
+        })
+        .collect()
 }

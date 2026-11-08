@@ -121,9 +121,10 @@ def _datetimes(name, series, meta):
     return out, nat, storage, fmt
 
 
-def _column(name, series, meta, sets):
+def _column(name, series, meta, sets, category_set=None):
     """(storage, format, value label set, dtype code, data, codes) of one
-    column; `sets` gains a value label set for a categorical."""
+    column; `sets` gains a value label set, named `category_set`, for a
+    categorical."""
     dtype = series.dtype
     fmt = meta.get("format", "")
     set_name = meta.get("value_labels", "")
@@ -140,8 +141,8 @@ def _column(name, series, meta, sets):
         nan = values == -1
         missing = nan if nan.any() else None
         storage = "long"
-        set_name = name
-        sets[name] = {i: str(c) for i, c in enumerate(cat.categories)}
+        set_name = category_set
+        sets[set_name] = {i: str(c) for i, c in enumerate(cat.categories)}
         fmt = ""
     elif dtype.kind == "M":
         values, nat, storage, fmt = _datetimes(name, series, meta)
@@ -191,6 +192,27 @@ def _column(name, series, meta, sets):
     return storage, fmt, set_name, code, values, codes
 
 
+def _category_sets(names, dtypes, columns_meta, sets):
+    """The value label set each categorical column is written with: its
+    own name, replacing a set of that name, unless another column's
+    labels use that set; then the first free name of name_2, name_3, ...
+    (cut to 32 characters), so that column keeps its labels."""
+    categorical = [n for n, t in zip(names, dtypes) if isinstance(t, pd.CategoricalDtype)]
+    used = {(columns_meta.get(n) or {}).get("value_labels") for n in names if n not in categorical}
+    taken = set(sets) | used | set(categorical)
+    out = {}
+    for name in categorical:
+        if name not in used:
+            out[name] = name
+            continue
+        k = 2
+        while (chosen := name[:32 - len(f"_{k}")] + f"_{k}") in taken:
+            k += 1
+        out[name] = chosen
+        taken.add(chosen)
+    return out
+
+
 def _label_list(sets):
     out = []
     for name, table in sets.items():
@@ -225,7 +247,9 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
       every value, else double (an error beyond ±2^53);
     - float32, float64: float, double, NaN as `.`; nullable dtypes: their
       values, NA as `.`; DtaArray: its storage and missing codes;
-    - category: its codes as long, its categories as value labels, and
+    - category: its codes as long, its categories as value labels (a set
+      named after the column, or name_2, name_3, ... when another
+      column's labels use that name), and
       a characteristic, dtaparser_factor, so that read_dta reads it back
       as the same category, ordered or not;
     - datetime64: %td (long) if every value is midnight, else %tc (double,
@@ -256,12 +280,14 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
         dup = next(n for n in names if names.count(n) > 1)
         raise ValueError(f"column {dup!r} appears more than once")
     sets = dict(info.get("value_labels") or {})
+    category_sets = _category_sets(names, df.dtypes, columns_meta, sets)
     made = {}
     specs = []
     keep = []
     for k, name in enumerate(names):
         meta = columns_meta.get(name) or {}
-        storage, fmt, set_name, code, values, codes = _column(name, df.iloc[:, k], meta, made)
+        storage, fmt, set_name, code, values, codes = _column(name, df.iloc[:, k], meta, made,
+                                                              category_sets.get(name))
         keep.append((values, codes))
         var_label = variable_labels.get(name, meta.get("label", ""))
         specs.append((name, storage, fmt or "", var_label or "", set_name or "", code,
