@@ -1,12 +1,18 @@
-# TypeScript and JavaScript: @jbearak/dta-parser
+# TypeScript and JavaScript: @jbearak/dta-parser and @jbearak/datakit
 
 `@jbearak/dta-parser` reads Stata `.dta` files and writes them, in
-Node, synchronously. It reads every release from 104 to 119 and writes
+Node and browsers, synchronously. It reads every release from 104 to 119 and writes
 release 118. The format code is the Rust core compiled to WebAssembly
 and embedded in the package, so there is no `.wasm` file to ship and no
 native build. It reads only what you ask for: opening a file reads the
 header and variable descriptors, and each read decodes just the
 requested variables and rows, so files larger than memory work.
+
+`@jbearak/datakit`, built on the same Rust core, is data preparation
+that keeps Stata's labels and `.a` to `.z`: Parquet files, fixed-width
+text through SAS setup files, and whole tables in memory that you change
+and save as Parquet or `.dta`. See
+[datakit](#datakit-parquet-files-fixed-width-files-and-whole-datasets).
 
 Contents:
 [Install](#install) ·
@@ -22,7 +28,8 @@ Contents:
 [Recipes](#recipes) ·
 [Coming from @irbisadm/statfmt](#coming-from-irbisadmstatfmt) ·
 [Coming from @jbearak/dta-parser 0.x](#coming-from-jbearakdta-parser-0x) ·
-[Parquet files](#parquet-files) ·
+[Coming from @jbearak/dta-parser 1.x](#coming-from-jbearakdta-parser-1x) ·
+[datakit: Parquet, fixed-width files, whole datasets](#datakit-parquet-files-fixed-width-files-and-whole-datasets) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -31,9 +38,10 @@ section.
 
 ## Install
 
-The package this page describes (1.1) is not on npm: you build it from
-a checkout of this repository. (npm has only the old 0.x releases,
-whose API differs.) It runs on Node 24 or later; its types are checked
+The packages this page describes (dta-parser 2.0 and datakit 2.0) are
+not on npm: you build them from a checkout of this repository. (npm has
+dta-parser's 0.x and 1.x releases; 1.1 read Parquet itself, which
+datakit now does.) It runs on Node 24 or later; its types are checked
 with TypeScript 5.9 and 7. In a browser, through your bundler, the
 `@jbearak/dta-parser` entry point needs WebAssembly and `BigInt64Array`.
 
@@ -55,6 +63,9 @@ cd js && npm ci && npm run build
 cd /path/to/your/project && npm install /path/to/dta-parser/js
 ```
 
+`scripts/build-wasm.sh` builds both packages' modules; for datakit see
+[datakit: install](#datakit-install).
+
 If the build fails, see [Troubleshooting](#troubleshooting): most often
 the `cargo` first on your `PATH` is not rustup's, or the clang cannot
 target WebAssembly.
@@ -66,6 +77,8 @@ The package has two entry points:
   `formatValue`. It uses no Node API.
 - `@jbearak/dta-parser/node`: reading and writing files on disk
   (`openDtaFile`, `writeDtaFile`).
+- `@jbearak/dta-parser/format`: `formatValue`, the missing values and
+  `dtaKey`, with no WebAssembly and no Node built-ins, for webviews.
 
 It is a CommonJS package with TypeScript types; `import` and `require`
 both work.
@@ -315,6 +328,7 @@ console.log(r.variables[3]);
 // { name: 'income', type: 'double', format: '%10.0g', label: 'Monthly income', valueLabels: 'nonresponse' }
 console.log(r.notes());              // [ 'Made up for the dta-parser documentation.' ]
 console.log(r.characteristics());    // [ { variable: '_dta', name: 'note0', value: '1' }, ... ]
+console.log(r.valueLabelNames());    // [ 'region', 'nonresponse' ]
 r.close();
 ```
 
@@ -331,6 +345,7 @@ r.close();
 | `variables[i].format`, `.label`, `.valueLabels` | display format; variable label; name of its value label set (`""` if none) |
 | `notes()` | the dataset's notes, in order |
 | `characteristics()` | every characteristic, notes included: `{ variable, name, value }` |
+| `valueLabelNames()` | the names of every value label set in the file, used or not |
 
 All of it is available right after opening; no rows are read.
 
@@ -615,24 +630,44 @@ only Stata.
 1.0 is a new, synchronous API. [docs/migration.md](migration.md) maps
 each 0.x call to its 1.0 replacement.
 
-## Parquet files
+## Coming from @jbearak/dta-parser 1.x
 
-The package reads and writes Parquet files too, keeping what a `.dta`
-file says: value labels, variable labels, display formats, `.a` to `.z`,
-the data label and notes, and also categoricals (with their levels and
-ordering) and time zones. `openParquetFile(path)` returns a
-`ParquetReader`, which has the members of `DtaReader` (it implements
-the same `TableReader` interface), so code that reads `.dta` files reads
-Parquet by changing the open call. `writeParquet` takes the same
-`WriteDataset` as `writeDta`. Reads are synchronous; `openParquetAsync`
-is the async reader for browsers and remote files. The files are plain
-Parquet that pyarrow, pandas, polars, DuckDB, arrow (R), nanoparquet and
-hyparquet read; [docs/parquet.md](parquet.md) says what each of them
-sees and gives the file's specification. Only flat tables are read and
-written: for lists, maps or structs, use parquet-wasm or DuckDB.
+2.0 moved Parquet to `@jbearak/datakit`: the same functions under the
+same names, imported from `@jbearak/datakit` and
+`@jbearak/datakit/node`. `TableReader` gained `valueLabelNames()`,
+`characteristics()` and `notes()`, so a class of yours that implements
+it needs them too. [docs/migration.md](migration.md#dta-parser-1x-to-20)
+lists every change.
+
+## datakit: Parquet files, fixed-width files and whole datasets
+
+`@jbearak/datakit` is data preparation that keeps what a `.dta` file
+says, as R's, Python's and Julia's datakits are. It reads and writes
+Parquet files with the same labels, display formats, `.a` to `.z`, data
+label and notes, and also categoricals (with their levels and ordering)
+and time zones; it reads fixed-width text through a SAS setup file; and
+it reads a whole table, from either format, into a `Dataset` you change
+and save as Parquet or `.dta`. `@jbearak/dta-parser` alone is enough
+when you only read or write `.dta` files.
+
+The Parquet files are plain Parquet that pyarrow, pandas, polars,
+DuckDB, arrow (R), nanoparquet and hyparquet read, and R's, Python's and
+Julia's datakits read them with their labels;
+[docs/parquet.md](parquet.md) says what each tool sees and gives the
+file's specification. `openParquetFile(path)` returns a `ParquetReader`,
+which implements dta-parser's `TableReader`, so code that reads `.dta`
+files reads Parquet by changing the open call. Reads are synchronous;
+`openParquetAsync` is the async reader for browsers and remote files.
+Only flat tables are read and written: for lists, maps or structs, use
+parquet-wasm or DuckDB.
 
 Contents:
-[Install](#parquet-install) ·
+[Install](#datakit-install) ·
+[Read a whole file](#read-a-whole-file) ·
+[Save a dataset](#save-a-dataset) ·
+[.dta to Parquet and back](#dta-to-parquet-and-back) ·
+[Fixed-width files](#fixed-width-files-with-a-sas-setup-file) ·
+[Into Arquero](#into-arquero) ·
 [Read a Parquet file](#read-a-parquet-file) ·
 [Read some columns](#read-some-columns-of-a-parquet-file) ·
 [Read a range of rows](#read-a-range-of-rows-of-a-parquet-file) ·
@@ -648,23 +683,278 @@ Contents:
 [One reader for both formats](#one-reader-for-dta-and-parquet) ·
 [Coming from hyparquet or parquet-wasm](#coming-from-hyparquet-or-parquet-wasm)
 
-### Parquet: install
+### datakit: install
 
-Parquet needs nothing beyond this package ([Install](#install)): the
-reader and writer are in the same WebAssembly module, built from the
-same Rust core as the R, Python and Julia packages, with no Arrow or
-other JavaScript library. The module with Parquet is 2.2 MB, 433 KB
-compressed with brotli. `openParquet`, `openParquetAsync`,
-`writeParquet` and `toDate` come from `@jbearak/dta-parser` and use no
-Node API, so they run in a browser; `openParquetFile` and
-`writeParquetFile` come from `@jbearak/dta-parser/node`.
+datakit is built from the same checkout ([Install](#install)), after
+dta-parser, and installed beside it; `@jbearak/dta-parser` 2.0 is its
+peer dependency, so a project has one copy of it:
+
+```sh
+cd js/datakit && npm ci && npm run build
+cd /path/to/your/project && npm install /path/to/dta-parser/js /path/to/dta-parser/js/datakit
+```
+
+Its WebAssembly module holds the Parquet reader and writer, with every
+codec (zstd is C libzstd, compiled in), and the fixed-width reader,
+built from the same Rust core as the R, Python and Julia packages, with
+no Arrow or other JavaScript library: 2.8 MB, 457 KB compressed with
+brotli. dta-parser's own module, for `.dta`, is 344 KB (91 KB with
+brotli); a script that imports only datakit's main entry never loads it.
+
+- `@jbearak/datakit` uses no Node API, so it runs in a browser:
+  `openParquet`, `openParquetAsync`, `writeParquet`, `writeParquetTo`,
+  `toDate`, `readDataset`, `readDatasetAsync` and `convertFixedWidth`.
+  It also gives dta-parser's `MISSING`, `isMissing`, `missingValue`,
+  `dtaKey`, `dtaKeys` and `formatValue`: the same objects and functions,
+  so `import { MISSING } from "@jbearak/datakit"` finds labels either
+  package read.
+- `@jbearak/datakit/node` takes paths: `readParquet`,
+  `readParquetInfo`, `saveParquet`, `readDta`, `saveDta`,
+  `readFixedWidth`, `openParquetFile` and `writeParquetFile`.
+
+### Read a whole file
+
+`readDta(path)` and `readParquet(path)` read a whole table (or the
+`columns`, `start` and `count` you ask for) into a `ReadDataset`: its
+`variables`, each with its name, type, format, label, value label set
+name and `values` (the column `readColumns` gives), and the dataset's
+`label`, `notes`, every value label set (`valueLabels`, used or not),
+`characteristics`, `sortedBy` and, for `.dta`, `timestamp`:
+
+```ts
+import { readDta } from "@jbearak/datakit/node";
+import { MISSING } from "@jbearak/dta-parser";
+
+const ds = readDta("survey.dta");
+console.log(ds.variables.map((v) => `${v.name}:${v.type}`).join(" "));
+// id:long region:byte age:byte income:double interviewed:long comment:str18
+const income = ds.variables.find((v) => v.name === "income")!;
+console.log(income.values.kind === "number" && Array.from(income.values.missing));   // [ 0, 5, 0, 1, 19, 0 ]
+console.log(income.valueLabels, ds.valueLabels.nonresponse.get(MISSING[".d"]));     // nonresponse Don't know
+console.log(ds.label, ds.notes);   // Household survey (example) [ 'Made up for the dta-parser documentation.' ]
+```
+
+A `ReadDataset` is plain data: add, drop, reorder or replace
+`variables` and their `values`, then save it. The letters `.a` to `.z`
+are in each column's `missing` codes, so they follow whatever your code
+does to the column, with no companion column or side table to keep in
+step.
+
+`readDataset(reader)` does the same from any open reader (a
+`DtaReader`, a `ParquetReader`, or your own `TableReader`), which is how
+a browser gets one: `readDataset(openDta(bytes))`. `readDatasetAsync`
+takes an `AsyncTableReader`. Both take `columns`, `start`, `count` and
+`onWarning` (`ReadDatasetOptions`; `readParquet` adds `int64` and
+`nested`, `ReadParquetOptions`, and `readDta` adds `encoding`,
+`ReadDtaOptions`).
+
+**Factors.** A column R's dtaparser or Python's dta_parser saved from a
+factor (marked with the `dtaparser_factor` characteristic, plan 0020)
+comes back as a categorical: a `DictionaryColumn` of its levels, with
+`categorical` giving the levels, whether they are ordered, the value
+label set they came from (`labelSet`) and each level's code (`codes`),
+so `saveDta` writes the same codes and set back. If the file was
+changed after it was written, so that the marker no longer holds (a
+value with no label, a `.a` to `.z`, two codes with one text), the
+column comes back as labelled numbers and one warning names it
+(`onWarning`, or a process warning with code `DATAKIT_FACTOR`).
+
+`readParquetInfo(path)` reads only the footer (`ParquetFileInfo`):
+`info`, `variables` (with their column chunks), every value label set
+and the characteristics.
+
+### Save a dataset
+
+`saveParquet(dataset, path, options?)` writes a `Dataset` as Parquet
+(`options` as for `writeParquet`, below); `saveDta(dataset, path,
+options?)` writes it as a `.dta` file (release 118). A `Dataset` is
+what the read functions return, or one you build: `variables` (each a
+`DatasetVariable`: `name`, `values`, and optionally `type`, `format`,
+`label`, `valueLabels`, `missing`, and for Parquet `unit`, `timeZone`,
+`levels`, `ordered`, `categorical`), `label`, `notes`, `valueLabels`,
+`characteristics`, `sortedBy` and `timestamp`:
+
+```ts
+import { readDta, saveDta, saveParquet } from "@jbearak/datakit/node";
+import { MISSING } from "@jbearak/dta-parser";
+
+const ds = readDta("survey.dta");
+// Keep the interviewed households, with a new variable: income per year.
+const income = ds.variables.find((v) => v.name === "income")!.values;
+if (income.kind === "number") {
+  ds.variables.push({
+    name: "income_year",
+    type: "double",
+    format: "%10.0g",
+    label: "Yearly income",
+    valueLabels: "nonresponse",
+    values: income.values.map((x) => x * 12),
+    missing: income.missing,
+  });
+}
+saveParquet(ds, "survey_year.parquet");
+saveDta(ds, "survey_year.dta");
+const back = readDta("survey_year.dta");
+const year = back.variables.find((v) => v.name === "income_year")!.values;
+console.log(year.kind === "number" && Array.from(year.values.slice(0, 3)), year.kind === "number" && year.missing[1]);
+// [ 25200, NaN, 22200 ] 5
+console.log(back.valueLabels.nonresponse.get(MISSING[".d"]));   // Don't know
+```
+
+`saveDta` converts what a `.dta` file holds differently, as Python's
+datakit `save_dta` does (`SaveDtaOptions`):
+
+| `type` | written as |
+|---|---|
+| `byte`, `int`, `long`, `float`, `double`, strN, `strL` | as they are |
+| `string` | strN up to 2,045 bytes, else strL; `binary`: strL |
+| `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
+| `date` (days since 1970) | long `%td`, days since 1960 |
+| `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
+| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors |
+| `decimal` read as a number | double |
+
+Dates and timestamps are converted exactly, in integer arithmetic, from
+any unit (`s`, `ms`, `us`, `ns`). A fraction of a day or of a
+millisecond is an error naming the variable and row, unless you pass
+`{ timestamps: "truncate" }`, which rounds toward minus infinity. A
+timestamp with a `timeZone` is an error (a `.dta` file holds clock
+times): drop the zone after converting to the clock time you want.
+
+A null in a numeric, date or timestamp column is `.`, and `.a` to `.z`
+stay letters. A `.dta` string has no missing value, so a null string is
+an error naming the variable and row; fill it (with `""`, say) first.
+`time`, a `decimal` read as text (more than 15 digits), and a
+categorical given a letter are errors that say what to do instead. A
+value label set that already has the name a categorical's set would take
+is reused if it maps the same codes to the same texts, and otherwise
+kept, the new set taking `name_2`, `name_3`, and so on.
+
+### .dta to Parquet and back
+
+```ts
+import { readDta, readParquet, saveDta, saveParquet } from "@jbearak/datakit/node";
+
+saveParquet(readDta("survey.dta"), "survey_copy.parquet");
+saveDta(readParquet("survey_copy.parquet"), "survey_copy.dta");
+console.log(readDta("survey_copy.dta").variables.map((v) => v.name).join(" "));
+// id region age income interviewed comment
+```
+
+Labels, `.a` to `.z`, notes and characteristics go both ways. A string
+variable comes back from Parquet with type `string`, which `saveDta`
+writes as strN or strL again.
+
+### Fixed-width files with a SAS setup file
+
+`readFixedWidth(path, setup, options?)` reads fixed-width text, such as
+the National Survey of Family Growth files of 1973 to 2017-2019 that
+CDC publishes as `.dat` files with a SAS setup file, into a
+`ReadDataset`. The setup gives each variable's columns (INPUT), label
+(LABEL), value labels (PROC FORMAT and FORMAT), record-type selection
+(IF ... THEN DELETE) and missing-value recodes (`IF (X = 98 OR X = 99)
+THEN X = .;`). `setup` is a path, or a list of paths read in order as
+one setup (CDC's 2002 files come in three). It is the reader R's and
+Python's datakits use:
+
+```ts
+import { writeFileSync } from "node:fs";
+import { readFixedWidth } from "@jbearak/datakit/node";
+
+writeFileSync("kids.sas", [
+  "PROC FORMAT;",
+  "  VALUE kidsf 0='(0) None' 98='(98) DK' 99='(99) Not ascertained' ;",
+  "DATA ;",
+  "INPUT ID 1-3 SEX 4 KIDS 5-6 ;",
+  "LABEL ID = 'Case number' KIDS = 'Number of children' ;",
+  "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
+  "FORMAT KIDS kidsf. ;",
+  "RUN ;",
+].join("\n"));
+writeFileSync("kids.dat", "0011 2\n002298\n003199\n0052 0\n");
+
+const ds = readFixedWidth("kids.dat", "kids.sas", { recodes: "tagged" });
+const kids = ds.variables.find((v) => v.name === "KIDS")!;
+console.log(kids.label, kids.values.kind === "number" && Array.from(kids.values.missing));
+// Number of children [ 0, 2, 3, 0 ]
+console.log(ds.valueLabels[kids.valueLabels]);
+// Map(3) { 0 => '(0) None', { missing: '.a' } => '(98) DK', { missing: '.b' } => '(99) Not ascertained' }
+```
+
+`recodes` (`FixedWidthOptions`) is `"setup"` (the default: a code
+recoded to `.` is `.`, one recoded to `.A` is `.a`), `"tagged"` (per
+variable, the codes recoded to `.` become `.a`, `.b`, ... in the order
+the setup names them, and their labels move to those letters, so you
+still know why each value is missing), or `"none"` (the codes stay
+numbers). `commentedFormats` (true by default) reads a PROC FORMAT step
+or FORMAT statement that the setup puts alone in a block comment as
+code, as CDC's setups from 2006-2010 on do. Numeric columns take the
+smallest type that holds their values. Statements the reader does not
+run, value labels Stata cannot hold, unknown names, fields that are not
+numbers and short records are warnings: one process warning (code
+`DATAKIT_FIXED_WIDTH`) listing the first eight, or every message to
+`onWarning(messages)` (`ReadFixedWidthOptions`). `columns`, `start` and
+`count` choose what is kept.
+
+The data file is read straight into the module's memory, and the
+`.dta` it becomes goes through a temporary file (removed afterwards),
+so the peak is about the data file and the converter's working memory,
+or the dataset, whichever is larger. A data file of 2 GiB or more is a
+`DTA_TOO_LARGE` error.
+
+`convertFixedWidth(data, setups, options?)` does the conversion in
+memory, with no Node API: `data` is the data file's bytes and `setups`
+the setup files' (bytes or text); it returns `{ dta, warnings }`, the
+`.dta` file's bytes, for `openDta`, and the warnings. It holds the data,
+its copy in the module and the `.dta` bytes at once.
+
+### Into Arquero
+
+No data-frame library is part of datakit. A `ReadDataset`'s columns are
+typed arrays, which data-frame libraries take as they are. This recipe
+takes one into [Arquero](https://idl.uw.edu/arquero/) and back, the
+letters `.a` to `.z` travelling as a companion column of letter names
+beside each numeric column that has any (nodejs-polars, which runs only
+in Node, takes the same arrays):
+
+```ts
+import * as aq from "arquero";
+import { readDta, readParquet, saveParquet } from "@jbearak/datakit/node";
+import { MISSING, missingValue } from "@jbearak/dta-parser";
+
+const ds = readDta("survey.dta");
+const columns: Record<string, unknown[]> = {};
+for (const v of ds.variables) {
+  const c = v.values;
+  if (c.kind === "number") {
+    columns[v.name] = Array.from(c.values, (x, i) => (c.missing[i] ? null : x));
+    if (c.missing.some((m) => m > 1)) columns[`${v.name}_letter`] = Array.from(c.missing, (m) => (m > 1 ? missingValue(m).missing : null));
+  } else if (c.kind === "string") {
+    columns[v.name] = c.values;
+  }
+}
+const south = aq.table(columns).filter((d: any) => d.region === 2).derive({ income_year: (d: any) => d.income * 12 });
+console.log(south.numRows(), south.array("income_letter"));   // 2 [ '.d', null ]
+
+// Back: each letter column becomes the letters of its column.
+const letters = (name: string) => (south.columnNames().includes(`${name}_letter`) ? south.array(`${name}_letter`) : []);
+const variables = south.columnNames().filter((n) => !n.endsWith("_letter")).map((name) => {
+  const from = ds.variables.find((v) => v.name === name);
+  const values = Array.from(south.array(name) as ArrayLike<unknown>, (x, i) => (letters(name)[i] ? MISSING[letters(name)[i] as string] : x));
+  return { ...from, name, type: from?.type ?? "double", values };
+});
+saveParquet({ ...ds, variables } as any, "south.parquet");
+console.log(readParquet("south.parquet").variables.map((v) => v.name).join(" "));
+// id region age income interviewed comment income_year
+```
 
 ### Read a Parquet file
 
 This writes the example file as Parquet and reads it back:
 
 ```ts
-import { openDtaFile, openParquetFile, writeParquetFile } from "@jbearak/dta-parser/node";
+import { openDtaFile } from "@jbearak/dta-parser/node";
+import { openParquetFile, writeParquetFile } from "@jbearak/datakit/node";
 
 // survey.dta as Parquet, labels and all.
 const dta = openDtaFile("survey.dta");
@@ -713,7 +1003,7 @@ the order you want, and only those columns' pages are read from the
 file:
 
 ```ts
-import { openParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet");
 console.log(r.readRows(0, 2, ["income", "id"]));   // [ [ 2100, 1 ], [ { missing: '.d' }, 2 ] ]
@@ -736,7 +1026,7 @@ neighbouring windows, such as a scan in batches, decompress each page
 once:
 
 ```ts
-import { openParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet", { pageCacheBytes: 16 * 2 ** 20 });
 const [id] = r.readColumns(["id"], { start: 2, count: 3 });
@@ -763,7 +1053,7 @@ per variable its type, the column kind it reads as, its Parquet types,
 labels, and each row group's sizes and statistics.
 
 ```ts
-import { openParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet");
 const { nobs, rowGroups, compression, createdBy, label } = r.info;
@@ -807,7 +1097,7 @@ Variable labels, value labels, the data label and notes are in the file
 
 ```ts
 import { formatValue, type Cell } from "@jbearak/dta-parser";
-import { openParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet");
 const region = r.variables[1];
@@ -834,7 +1124,7 @@ code order, and a null wherever the value is missing or has no label:
 
 ```ts
 import type { DictionaryColumn } from "@jbearak/dta-parser";
-import { openParquetFile, writeParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile, writeParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet");
 const labels = r.valueLabels("region")!;
@@ -871,7 +1161,7 @@ and null otherwise. A timestamp with `timeZone` is an instant, shown in
 that zone; one without is a clock time with no zone.
 
 ```ts
-import { toDate, writeParquet, openParquet } from "@jbearak/dta-parser";
+import { toDate, writeParquet, openParquet } from "@jbearak/datakit";
 
 const bytes = writeParquet({
   variables: [
@@ -913,12 +1203,14 @@ reads it too: `toDate(23436, { format: "%td" })` is 2024-03-01.
 `writeParquetFile(path, dataset, options?)` writes a file;
 `writeParquet(dataset, options?)` returns its bytes, and
 `writeParquetTo(dataset, sink, options?)` hands them to `sink` in order.
-The dataset is `writeDta`'s `WriteDataset` ([Write a file](#write-a-file)),
-and a variable's `values` may also be a column a reader returned:
+(`saveParquet` is `writeParquetFile`.) The dataset is a `Dataset`: as
+`writeDta`'s `WriteDataset` ([Write a file](#write-a-file)), with the
+Parquet types below, and a variable's `values` may also be a column a
+reader returned:
 
 ```ts
 import { MISSING } from "@jbearak/dta-parser";
-import { openParquetFile, writeParquetFile } from "@jbearak/dta-parser/node";
+import { openParquetFile, writeParquetFile } from "@jbearak/datakit/node";
 
 writeParquetFile("people.parquet", {
   variables: [
@@ -972,7 +1264,8 @@ naming a set in the dataset's `valueLabels`, and the dataset's `label`
 and `notes`. Read them back to check:
 
 ```ts
-import { MISSING, openParquet, writeParquet, type Missing } from "@jbearak/dta-parser";
+import { MISSING, type Missing } from "@jbearak/dta-parser";
+import { openParquet, writeParquet } from "@jbearak/datakit";
 
 const bytes = writeParquet({
   label: "Smoking survey, 2024",
@@ -999,7 +1292,8 @@ and so on, told apart from `.` (code 1) and from `NaN`, which is a
 value:
 
 ```ts
-import { MISSING, openParquet, writeParquet } from "@jbearak/dta-parser";
+import { MISSING } from "@jbearak/dta-parser";
+import { openParquet, writeParquet } from "@jbearak/datakit";
 
 const bytes = writeParquet({
   variables: [{ name: "x", type: "byte", values: [1, null, MISSING[".a"], MISSING[".z"]] }],
@@ -1049,7 +1343,7 @@ The reader reads every flat file pyarrow, pandas, polars, DuckDB, arrow
   over several files (open each file).
 
 ```ts
-import { openParquet, writeParquet } from "@jbearak/dta-parser";
+import { openParquet, writeParquet } from "@jbearak/datakit";
 
 // A stand-in for another tool's file: plain columns, no dta profile.
 const bytes = writeParquet({ variables: [{ name: "id", values: [1, 2] }, { name: "city", values: ["Oslo", null] }] });
@@ -1114,7 +1408,7 @@ return promises; the rest is as `ParquetReader`.
 
 ```ts
 import { readFileSync } from "node:fs";
-import { openParquetAsync } from "@jbearak/dta-parser";
+import { openParquetAsync } from "@jbearak/datakit";
 
 const file = readFileSync("survey.parquet");
 // In a browser: fetch(url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } })
@@ -1129,16 +1423,18 @@ neighbouring windows do not fetch again.
 
 ### One reader for .dta and Parquet
 
-`DtaReader` and `ParquetReader` both implement `TableReader`: `info`
-(with `format`, `nobs`, `label`, `sortedBy`), `variables`,
-`readColumns`, `readRows`, `readRowsAt`, `valueLabels`, `close` and
-`[Symbol.dispose]`, all synchronous. `AsyncParquetReader` implements
+`DtaReader` (from dta-parser) and `ParquetReader` (from datakit) both
+implement dta-parser's `TableReader`: `info` (with `format`, `nobs`,
+`label`, `sortedBy`), `variables`, `readColumns`, `readRows`,
+`readRowsAt`, `valueLabels`, `valueLabelNames`, `notes`,
+`characteristics`, `close` and `[Symbol.dispose]`, all synchronous. `AsyncParquetReader` implements
 `AsyncTableReader`, the same members with promises. A viewer can take
 either file:
 
 ```ts
 import { type TableReader } from "@jbearak/dta-parser";
-import { openDtaFile, openParquetFile } from "@jbearak/dta-parser/node";
+import { openDtaFile } from "@jbearak/dta-parser/node";
+import { openParquetFile } from "@jbearak/datakit/node";
 
 const open = (path: string): TableReader => (path.endsWith(".parquet") ? openParquetFile(path) : openDtaFile(path));
 for (const path of ["survey.dta", "survey.parquet"]) {
@@ -1234,7 +1530,8 @@ found cannot build zstd for WebAssembly. On macOS, `brew install llvm`
 (the script finds it); on Debian and Ubuntu, `apt-get install clang
 llvm`. `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown`
 choose another clang and `llvm-ar`.
-`npm run build` embeds the existing `js/build/dta.wasm` and does not rebuild it, so run
+`npm run build` embeds the existing `js/build/dta.wasm` (datakit's
+build, `js/datakit/build/datakit.wasm`) and does not rebuild it, so run
 the script again after changing Rust code.
 
 **"the file is closed".** You called a method after `close()`.
@@ -1257,7 +1554,7 @@ values) or all strings.
 
 ## API reference
 
-TSDoc comments in the package's `.d.ts` files describe each export.
+TSDoc comments in the packages' `.d.ts` files describe each export.
 
 From `@jbearak/dta-parser`:
 
@@ -1269,35 +1566,22 @@ From `@jbearak/dta-parser`:
   `count`, `strings: "dictionary"` for `DictionaryColumn`s, and
   `maxStringBytes` for `PreviewColumn`s), `readRows(start, count, columns?)`,
   `readRowsAt(rows, columns?)`,
-  `valueLabels(name)`, `notes()`, `characteristics()`, `strlIndex()`,
-  `close()`, and
+  `valueLabels(name)`, `valueLabelNames()`, `notes()`,
+  `characteristics()`, `strlIndex()`, `close()`, and
   `[Symbol.dispose]()` (so `using` closes it).
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
+  `MISSING`'s objects are shared by every copy of the packages in a
+  process (dta-parser 2.0 or later), so labels read by one are found with
+  another's keys.
 - `dtaKey(cell)`, `dtaKeys(column)`: Stata's sort order as numbers.
   `stataKey` and `stataKeys`, their names in 1.0, still work and are
   deprecated.
 - `formatValue(cell, format, labels?)`: show a value for display, as
   R prints it.
-- `openParquet(bytes, options?)`: open a Parquet file held in a
-  `Uint8Array`; `class ParquetReader`, the open file, with the members
-  of `DtaReader` (but `strlIndex`) and `keyValue(key)`. `new
-  ParquetReader(read, length, options?)` opens any source given a
-  `ReadAt`. `options` is a `ParquetOptions`: `nested` (`"error"` or
-  `"skip"`), `int64` (`"auto"`, `"bigint"` or `"number"`) and
-  `pageCacheBytes`. See [Parquet files](#parquet-files).
-- `openParquetAsync(readAt, size, options?)`: a Parquet file read
-  through an async function; resolves to an `AsyncParquetReader`.
-- `writeParquet(dataset, options?)`, `writeParquetTo(dataset, sink,
-  options?)`: write Parquet; `options` is a `ParquetWriteOptions`
-  (`compression`, `compressionLevel`, `rowGroupSize`, `missingLetters`).
-- `toDate(value, variable)`: a date or timestamp value as a `Date`, or
-  null.
-- Types for both formats: `TableReader` and `AsyncTableReader` (what
-  `DtaReader`, `ParquetReader` and `AsyncParquetReader` implement),
-  `TableInfo`, `TableColumn`, `TableCell`, `BigIntColumn`. For Parquet:
-  `ParquetInfo`, `ParquetVariable`, `RowGroup`, `ColumnChunk`,
-  `Statistic`, `ParquetOptions`, `ParquetWriteOptions`.
+- Types for any reader: `TableReader` and `AsyncTableReader` (what
+  `DtaReader` and datakit's readers implement), `TableInfo`,
+  `TableColumn`, `TableCell`, `BigIntColumn`.
 - Types: `DtaError` (an error with a `code`), `ErrorCode` (the codes
   under [Errors](#errors)), `Missing`, `MissingName` (`"."` and `".a"` to `".z"`), `Cell`, `Variable`, `Info`, `NumberColumn`,
   `StringColumn`, `Column`, `DictionaryColumn`, `PreviewColumn`, `ReadRange`, `ValueLabels`, `Characteristic`, `Options`
@@ -1306,14 +1590,55 @@ From `@jbearak/dta-parser`:
 
 From `@jbearak/dta-parser/format` (no WebAssembly, no Node built-ins):
 
-- `formatValue`, `MISSING`, `missingValue`, `isMissing`, and the types
-  `Cell`, `Missing`, `MissingName`, `ValueLabels`, as above.
+- `formatValue`, `MISSING`, `missingValue`, `isMissing`, `dtaKey`,
+  `dtaKeys`, and the types `Cell`, `Missing`, `MissingName`,
+  `ValueLabels`, as above: the same objects and functions as the main
+  entry's.
 
 From `@jbearak/dta-parser/node`:
 
 - `openDtaFile(pathOrFd, options?)`: open a file on disk.
 - `writeDtaFile(path, dataset)`: write a file to disk; on an error the
   partial file is removed.
+
+From `@jbearak/datakit` (no Node API):
+
+- `openParquet(bytes, options?)`: open a Parquet file held in a
+  `Uint8Array`; `class ParquetReader`, the open file, with the members
+  of `DtaReader` (but `strlIndex`) and `keyValue(key)`. `new
+  ParquetReader(read, length, options?)` opens any source given a
+  `ReadAt`. `options` is a `ParquetOptions`: `nested` (`"error"` or
+  `"skip"`), `int64` (`"auto"`, `"bigint"` or `"number"`) and
+  `pageCacheBytes`. See [Read a Parquet file](#read-a-parquet-file).
+- `openParquetAsync(readAt, size, options?)`: a Parquet file read
+  through an async function; resolves to an `AsyncParquetReader`.
+- `writeParquet(dataset, options?)`, `writeParquetTo(dataset, sink,
+  options?)`: write Parquet; `options` is a `ParquetWriteOptions`
+  (`compression`, `compressionLevel`, `rowGroupSize`, `missingLetters`).
+- `toDate(value, variable)`: a date or timestamp value as a `Date`, or
+  null.
+- `readDataset(reader, options?)`, `readDatasetAsync(reader, options?)`:
+  a whole table from any reader as a `ReadDataset`; `options` is a
+  `ReadDatasetOptions` (`columns`, `start`, `count`, `onWarning`).
+- `convertFixedWidth(data, setups, options?)`: fixed-width bytes into
+  `.dta` bytes; `options` is a `FixedWidthOptions` (`recodes`,
+  `commentedFormats`).
+- dta-parser's `MISSING`, `isMissing`, `missingValue`, `dtaKey`,
+  `dtaKeys` and `formatValue`, and its types.
+- Types: `Dataset`, `DatasetVariable` (what the save functions take),
+  `ReadDataset`, `ReadVariable` (what the read functions return),
+  `ParquetInfo`, `ParquetVariable`, `RowGroup`, `ColumnChunk`,
+  `Statistic`, `ParquetOptions`, `ParquetWriteOptions`.
+
+From `@jbearak/datakit/node`:
+
+- `readParquet(path, options?)` (`ReadParquetOptions`),
+  `readDta(path, options?)` (`ReadDtaOptions`),
+  `readFixedWidth(path, setup, options?)` (`ReadFixedWidthOptions`): a
+  `ReadDataset`.
+- `readParquetInfo(path)`: a `ParquetFileInfo`, from the footer.
+- `saveParquet(dataset, path, options?)`, `saveDta(dataset, path,
+  options?)` (`SaveDtaOptions`): write a dataset.
 - `openParquetFile(pathOrFd, options?)`: open a Parquet file on disk.
 - `writeParquetFile(path, dataset, options?)`: write a Parquet file to
   disk; on an error the partial file is removed.

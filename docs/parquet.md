@@ -1,7 +1,7 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R), datakit (Python, into polars), Datakit (Julia) and the
-npm package (TypeScript) read and write Parquet files that keep a `.dta`
+datakit (R), datakit (Python, into polars), Datakit (Julia) and
+`@jbearak/datakit` (TypeScript) read and write Parquet files that keep a `.dta`
 file's value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
 file it writes is ordinary Parquet that pyarrow, pandas, polars,
@@ -28,7 +28,7 @@ Each task links to its section on the language page.
 Parquet needs no Arrow or other Parquet library: the packages read and
 write it through their own Rust core. In R, Python and Julia it is in
 datakit, which needs the format package (dtaparser, `dta_parser`,
-DtaParser); in TypeScript it is in the npm package itself. R installs
+DtaParser, `@jbearak/dta-parser`). R installs
 from the project's package repository, with binaries for macOS, Windows
 and Ubuntu. Python, Julia and npm install from a checkout of this
 repository, which needs Rust and a C compiler (for the zstd library).
@@ -39,7 +39,8 @@ repository, which needs Rust and a C compiler (for the zstd library).
 - Julia: [Parquet: install](julia.md#parquet-install); DtaParser and
   Datakit from the checkout. TimeZones.jl and CategoricalArrays.jl are
   optional, for zones and categoricals.
-- TypeScript: [Parquet: install](typescript.md#parquet-install).
+- TypeScript: [datakit: install](typescript.md#datakit-install);
+  `@jbearak/datakit` beside `@jbearak/dta-parser`.
 
 ### Read a whole file, and what each type becomes
 

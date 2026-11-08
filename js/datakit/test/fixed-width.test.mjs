@@ -143,14 +143,24 @@ test("every kind of warning reaches onWarning, or one process warning", async ()
 });
 
 test("the temporary directory is gone after a read and after an error", () => {
-  const ours = () => readdirSync(tmpdir()).filter((f) => f.startsWith("datakit-") && !f.startsWith("datakit-fw-test-")).sort();
-  const before = ours();
-  node.readFixedWidth(...files());
-  assert.deepEqual(ours(), before);
-  assert.throws(() => node.readFixedWidth(...files("INPUT ;\nIF (( THEN ;")), /./);
-  assert.deepEqual(ours(), before);
-  assert.throws(() => node.readFixedWidth(...files(), { onWarning: () => {}, columns: ["NOPE"] }), /no variable "NOPE"/);
-  assert.deepEqual(ours(), before);
+  // A directory of this test's own as the temporary directory, since
+  // other test files run at the same time.
+  const own = mkdtempSync(join(tmpdir(), "datakit-fw-tmp-"));
+  const input = files();
+  const bad = files("INPUT ;\nIF (( THEN ;")[1];
+  const saved = process.env.TMPDIR;
+  process.env.TMPDIR = own;
+  try {
+    node.readFixedWidth(...input);
+    assert.deepEqual(readdirSync(own), []);
+    assert.throws(() => node.readFixedWidth(input[0], bad), /./);
+    assert.deepEqual(readdirSync(own), []);
+    assert.throws(() => node.readFixedWidth(...input, { onWarning: () => {}, columns: ["NOPE"] }), /no variable "NOPE"/);
+    assert.deepEqual(readdirSync(own), []);
+  } finally {
+    if (saved === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = saved;
+  }
 });
 
 test("convertFixedWidth gives the same .dta in memory; readFixedWidth gives the module's memory back", () => {

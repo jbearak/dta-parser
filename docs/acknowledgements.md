@@ -1,7 +1,8 @@
 # Acknowledgements: Parquet
 
-The Parquet reader and writer in `crates/parquet`, and datakit's and the
-npm package's Parquet functions built on it, are our own code. Before
+The Parquet reader and writer in `crates/parquet`, and the datakits'
+Parquet functions built on it (`@jbearak/datakit`'s in TypeScript), are
+our own code. Before
 writing them we studied the Parquet specification and the open-source
 Parquet libraries below: their documentation, their behaviour on files
 we made, and in places their source. No code was copied from any of
@@ -96,7 +97,7 @@ version we studied.
 ## Codecs we use
 
 These crates are compiled into our packages; their notices ship with
-them ([js/THIRD-PARTY-NOTICES](../js/THIRD-PARTY-NOTICES),
+them ([js/datakit/THIRD-PARTY-NOTICES](../js/datakit/THIRD-PARTY-NOTICES),
 `python/dta_parser/NOTICE` and `r/dtaparser/inst/NOTICE`). The versions
 are those in `Cargo.lock`.
 
