@@ -57,7 +57,10 @@ def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
     of one is an error naming the column and row unless
     timestamps="truncate", and a time zone is an error. An Enum or
     Categorical is written as Stata's `encode` makes one: codes 1 to k,
-    stored as long, labelled with its levels in order, its letters kept.
+    stored as long, labelled with its levels in order, its letters kept,
+    in a value label set named after the column (replacing meta's set of
+    that name), or name_2, name_3, ... when another column's labels use
+    that name.
     Time, Duration, Decimal and nested dtypes are errors naming the
     column, as is a name Stata cannot hold.
 

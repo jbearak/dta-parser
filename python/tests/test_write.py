@@ -156,6 +156,40 @@ def test_category_writes_codes_and_value_labels(tmp_path):
     assert meta.variable_value_labels["c"] == {0: "lo", 1: "hi"}
 
 
+def test_category_set_moves_aside_for_a_column_using_its_name(tmp_path):
+    """x uses set f; the category f must not replace it."""
+    df = pd.DataFrame({"f": pd.Categorical(["new"]), "x": [1]})
+    df.attrs["dta"] = {"value_labels": {"f": {1: "original"}, "f_2": {5: "taken"}},
+                       "columns": {"x": {"value_labels": "f"}}}
+    meta = read_meta(written(df, tmp_path))
+    assert meta["columns"]["x"]["value_labels"] == "f"
+    assert meta["columns"]["f"]["value_labels"] == "f_3"
+    assert meta["value_labels"]["f"] == {1: "original"}
+    assert meta["value_labels"]["f_3"] == {0: "new"}
+
+
+def test_category_set_replaces_its_own_name_when_no_other_column_uses_it(tmp_path):
+    """Reading and saving again must not pile up f_2 sets."""
+    df = pd.DataFrame({"f": pd.Categorical(["new"]), "x": [1]})
+    df.attrs["dta"] = {"value_labels": {"f": {1: "old"}}, "columns": {"f": {"value_labels": "f"}}}
+    path = written(df, tmp_path)
+    meta = read_meta(path)
+    assert meta["columns"]["f"]["value_labels"] == "f"
+    assert meta["value_labels"] == {"f": {0: "new"}}
+    again = tmp_path / "again.dta"
+    write_dta(read_dta(path), again)
+    assert read_meta(again)["value_labels"] == {"f": {0: "new"}}
+
+
+def test_category_set_name_is_cut_to_fit(tmp_path):
+    name = "c" * 32
+    df = pd.DataFrame({name: pd.Categorical(["a"]), "x": [1]})
+    df.attrs["dta"] = {"value_labels": {name: {1: "one"}}, "columns": {"x": {"value_labels": name}}}
+    meta = read_meta(written(df, tmp_path))
+    assert meta["columns"][name]["value_labels"] == "c" * 30 + "_2"
+    assert meta["value_labels"][name] == {1: "one"}
+
+
 def categories():
     return pd.DataFrame({
         "size": pd.Categorical(["small", "large", None, "small"], categories=["small", "medium", "large"], ordered=True),

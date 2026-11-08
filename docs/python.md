@@ -402,7 +402,7 @@ Columns without metadata get a storage type from their dtype:
 | `float32`, `float64` | float, double; `NaN` is `.` |
 | nullable `Int*`, `boolean`, `Float*` | as above; `pd.NA` is `.` |
 | `DtaArray` | its storage type and missing codes |
-| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column; missing is `.`. A characteristic, `dtaparser_factor`, marks it, so `read_dta` reads it back as the same category, ordered or not (plan 0020) |
+| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column (or the first free of `name_2`, `name_3`, ... when another column's labels use that name); missing is `.`. A characteristic, `dtaparser_factor`, marks it, so `read_dta` reads it back as the same category, ordered or not (plan 0020) |
 | `datetime64` | `%td` (long) if every value is midnight, else `%tc` (double, milliseconds); `NaT` is `.` |
 | text (`str`, `object` of `str`) | strN up to 2045 bytes, else strL; `None`, `NaN` and `pd.NA` become `""` |
 | `bytes` values | binary strL |

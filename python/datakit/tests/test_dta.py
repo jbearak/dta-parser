@@ -222,3 +222,22 @@ def test_read_dta_arguments(tmp_path):
         dk.read_dta(path, columns=["nope"])
     with pytest.raises(FileNotFoundError):
         dk.read_dta(tmp_path / "none.dta")
+
+
+def test_save_dta_enum_set_moves_aside_for_a_column_using_its_name(tmp_path):
+    """x uses set f; the Enum f must not replace it."""
+    df = pl.DataFrame({"f": pl.Series(["new"], dtype=pl.Enum(["new"])), "x": [1]})
+    meta = dk.Meta(columns={"x": dk.Column(value_labels="f")}, value_labels={"f": {1: "original"}, "f_2": {5: "taken"}})
+    path = tmp_path / "t.dta"
+    dk.save_dta(df, path, meta)
+    got = dp.read_meta(path)
+    assert (got["columns"]["x"]["value_labels"], got["columns"]["f"]["value_labels"]) == ("f", "f_3")
+    assert got["value_labels"]["f"] == {1: "original"} and got["value_labels"]["f_3"] == {1: "new"}
+
+
+def test_save_dta_enum_set_replaces_its_own_name_when_no_other_column_uses_it(tmp_path):
+    df = pl.DataFrame({"f": pl.Series(["new"], dtype=pl.Enum(["new"])), "x": [1]})
+    meta = dk.Meta(columns={"f": dk.Column(value_labels="f")}, value_labels={"f": {1: "old"}})
+    path = tmp_path / "t.dta"
+    dk.save_dta(df, path, meta)
+    assert dp.read_meta(path)["value_labels"] == {"f": {1: "new"}}
