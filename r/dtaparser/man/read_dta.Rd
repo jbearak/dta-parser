@@ -63,6 +63,16 @@ with the same text share a level, and missing values, labelled or
 not, are \code{NA}. A factor cannot keep \code{.a} to \code{.z}, so this warns
 when it loses them (see \code{warn_extended_missing}).
 
+A column that \code{\link[=save_dta]{save_dta()}} wrote from a factor is a factor again,
+ordered if it was, whatever \code{factors} says: its levels and their
+order come from its value labels. save_dta() marks such columns
+with a characteristic; a marked column is read as a factor only if
+the file still holds what that factor held: the same label set,
+a label on every non-missing value, no two codes with the same
+text, and no \code{.a} to \code{.z}. Otherwise (the file was changed in
+Stata, say) it is read as it would be unmarked, with one warning
+naming such columns.
+
 A column whose labels are all on missing values keeps its numbers
 as a \code{dtaparser_labelled} either way (a date column stays a date
 and drops them).

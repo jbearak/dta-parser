@@ -402,7 +402,7 @@ Columns without metadata get a storage type from their dtype:
 | `float32`, `float64` | float, double; `NaN` is `.` |
 | nullable `Int*`, `boolean`, `Float*` | as above; `pd.NA` is `.` |
 | `DtaArray` | its storage type and missing codes |
-| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column; missing is `.` |
+| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column; missing is `.`. A characteristic, `dtaparser_factor`, marks it, so `read_dta` reads it back as the same category, ordered or not (plan 0020) |
 | `datetime64` | `%td` (long) if every value is midnight, else `%tc` (double, milliseconds); `NaT` is `.` |
 | text (`str`, `object` of `str`) | strN up to 2045 bytes, else strL; `None`, `NaN` and `pd.NA` become `""` |
 | `bytes` values | binary strL |
@@ -485,7 +485,7 @@ array with every missing value as `NaN`.
 | `columns=[...]` | `columns=[...]` (names or positions) |
 | `iterator=True`, `chunksize=n`, `StataReader.read(nrows)` | `skip=`, `n_max=` |
 | `convert_dates=False` | `dates=False` |
-| `convert_categoricals=True` (the default) | not done; codes stay numbers; see [Value labels](#value-labels) |
+| `convert_categoricals=True` (the default) | not done; codes stay numbers; see [Value labels](#value-labels). A column `write_dta` wrote from a category, or R's `save_dta` from a factor, is a category again |
 | `convert_missing=True` (an `object` column of `StataMissingValue`) | always on: a `DtaArray` |
 | `preserve_dtypes=False` | not available; columns keep their storage width |
 | `index_col="id"` | `dp.read_dta(path).set_index("id")` |

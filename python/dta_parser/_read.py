@@ -2,13 +2,14 @@ import copy
 import os
 import re
 import tempfile
+import warnings
 
 import numpy as np
 import pandas as pd
 
 from . import _native
 from ._array import DtaArray
-from .missing import from_code
+from .missing import MissingValue, from_code
 
 _NUMPY = {"byte": np.int8, "int": np.int16, "long": np.int32, "float": np.float32, "double": np.float64}
 
@@ -97,6 +98,36 @@ def _info(raw, cols):
         "value_labels": _value_labels(raw["value_labels"]),
         "columns": columns,
     }
+
+
+# The characteristic that marks a column written from a categorical
+# (plan 0020): "ordered" or "unordered", a space, and its label set.
+FACTOR_MARK = "dtaparser_factor"
+
+
+def _marked_factor(mark, set_name, sets, values, codes, flag):
+    """The categorical a column marked with `mark` was written from, or
+    None when the file no longer holds it: its label set changed, a
+    value has no label, two codes share a text, or it holds .a to .z."""
+    m = re.fullmatch(r"(ordered|unordered) (.+)", mark)
+    table = sets.get(set_name)
+    if m is None or m.group(2) != set_name or table is None or flag > 1:
+        return None
+    labels = sorted((float(k), t) for k, t in table.items() if not isinstance(k, MissingValue))
+    texts = [t for _, t in labels]
+    if len(set(texts)) != len(texts):
+        return None
+    ordered = m.group(1) == "ordered"
+    present = codes == 0
+    if not labels:
+        # A category with no categories holds only missing values.
+        return None if present.any() else pd.Categorical.from_codes(np.full(len(codes), -1), categories=[], ordered=ordered)
+    keys = np.asarray([k for k, _ in labels])
+    at = np.searchsorted(keys, values.astype(np.float64))
+    at = np.minimum(at, len(keys) - 1)
+    if not (keys[at] == values)[present].all():
+        return None
+    return pd.Categorical.from_codes(np.where(present, at, -1), categories=texts, ordered=ordered)
 
 
 def read_meta(source, encoding=None):
@@ -207,6 +238,15 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
     characteristics and the sort order are in `df.attrs["dta"]` (see
     `read_meta`).
 
+    A column that write_dta wrote from a category (or R's save_dta from
+    a factor) is a category again, ordered if it was, with its value
+    labels as categories in order of code. It is marked by a
+    characteristic, and read as a category only if the file still holds
+    what it held: the same label set, a label on every non-missing
+    value, no two codes with the same text, and no .a to .z. Otherwise
+    it is read as it would be unmarked, with one warning naming such
+    columns.
+
     columns: names or 0-based indices, read in the order given; all when None.
     skip, n_max: skip that many rows, then read at most n_max (all when None).
     encoding: for files before release 118: "windows-1252" (the default),
@@ -238,12 +278,21 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
             targets.append((objects.ctypes.data, 0))
     flags = _native.read(path, encoding, cols, start, count, targets)
 
+    marks = {v: value for v, n, value in raw["characteristics"] if n == FACTOR_MARK}
+    sets = _value_labels(raw["value_labels"]) if marks else {}
+    stale = []
     data = {}
     for i, (values, codes), flag in zip(cols, arrays, flags):
         name, storage, fmt = variables[i][:3]
         if codes is None:
             data[name] = values if flag else pd.array(values, dtype=_TEXT) if _TEXT != object else values
             continue
+        if name in marks:
+            factor = _marked_factor(marks[name], variables[i][4], sets, values, codes, flag)
+            if factor is not None:
+                data[name] = factor
+                continue
+            stale.append(name)
         kind = date_kind(fmt) if dates else None
         if kind and flag <= 1:
             converted = _as_dates(values, codes == 1 if flag else None, kind)
@@ -262,6 +311,11 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
             data[name] = values
         else:
             data[name] = DtaArray(values.astype(np.float64, copy=False), codes, storage)
+    if stale:
+        shown = ", ".join(stale)
+        warnings.warn(f"write_dta wrote {shown} as categories, but the file has changed since: their value "
+                      "label set changed, a value has no label or shares its text, or they hold .a to .z; "
+                      "read as unmarked columns", UserWarning, stacklevel=2)
     df = pd.DataFrame(data, copy=False)
     if not data:
         df = pd.DataFrame(index=pd.RangeIndex(count))

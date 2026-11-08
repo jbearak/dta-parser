@@ -38,6 +38,16 @@
 #'   not, are `NA`. A factor cannot keep `.a` to `.z`, so this warns
 #'   when it loses them (see `warn_extended_missing`).
 #'
+#'   A column that [save_dta()] wrote from a factor is a factor again,
+#'   ordered if it was, whatever `factors` says: its levels and their
+#'   order come from its value labels. save_dta() marks such columns
+#'   with a characteristic; a marked column is read as a factor only if
+#'   the file still holds what that factor held: the same label set,
+#'   a label on every non-missing value, no two codes with the same
+#'   text, and no `.a` to `.z`. Otherwise (the file was changed in
+#'   Stata, say) it is read as it would be unmarked, with one warning
+#'   naming such columns.
+#'
 #'   A column whose labels are all on missing values keeps its numbers
 #'   as a `dtaparser_labelled` either way (a date column stays a date
 #'   and drops them).
@@ -98,10 +108,22 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
   mode <- if (dates) 2L else 0L
   values <- .Call(C_dta_read, file, as.integer(cols - 1L), floor(skip), floor(n_max), encoding, mode)
   names(values) <- names[cols]
+  marked <- factor_marks(meta$characteristics, names(values))
+  stale <- character()
+  for (i in which(!is.na(marked))) {
+    if (marked_factor_holds(values[[i]], marked[[i]], meta$label_sets[cols[i]])) {
+      x <- labelled_factor(values[[i]], meta$storage[cols[i]] %in% c("byte", "int", "long"))
+      if (startsWith(marked[[i]], "ordered ")) class(x) <- c("ordered", "factor")
+      values[[i]] <- x
+    } else {
+      stale <- c(stale, names(values)[i])
+    }
+  }
+  if (length(stale)) warn_stale(stale)
   if (factors) {
     lost <- character()
     for (i in seq_along(values)) {
-      if (!any(!is.na(attr(values[[i]], "labels", exact = TRUE)))) next
+      if (is.factor(values[[i]]) || !any(!is.na(attr(values[[i]], "labels", exact = TRUE)))) next
       if (warn_extended_missing && .Call(C_dta_has_letters, values[[i]])) lost <- c(lost, names(values)[i])
       values[[i]] <- labelled_factor(values[[i]], meta$storage[cols[i]] %in% c("byte", "int", "long"))
     }
@@ -119,13 +141,48 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
   out
 }
 
-# One warning naming the columns whose factors lost .a to .z.
-warn_lost <- function(cols) {
+# The factor mark (plan 0020) of each of `names`, NA where none.
+factor_marks <- function(chars, names) {
+  marks <- rep(NA_character_, length(names))
+  if (is.null(chars) || !length(chars$name)) return(marks)
+  mark <- chars$name == FACTOR_MARK
+  marks[match(chars$variable[mark], names, nomatch = 0)] <- chars$value[mark][chars$variable[mark] %in% names]
+  marks
+}
+
+# Whether `x`, read from a column with label set `set` marked as a
+# factor with `mark`, still holds what that factor held.
+marked_factor_holds <- function(x, mark, set) {
+  m <- regmatches(mark, regexec("^(ordered|unordered) (.+)$", mark))[[1]]
+  labels <- attr(x, "labels", exact = TRUE)
+  if (!length(m) || is.null(labels) || !identical(set, m[[3]])) return(FALSE)
+  codes <- labels[!is.na(labels)]
+  if (anyDuplicated(names(codes)) || .Call(C_dta_has_letters, x)) return(FALSE)
+  all(x[!is.na(x)] %in% codes)
+}
+
+# One warning naming marked factor columns read as unmarked.
+warn_stale <- function(cols) {
+  rlang::warn(
+    paste0("save_dta() wrote ", show_columns(cols), " as factors, but the file has changed since: ",
+           "their label set changed, a value has no label or shares its text, or they hold .a to .z; ",
+           "read as unmarked columns."),
+    class = "dtaparser_stale_factor"
+  )
+}
+
+# `a`, `a` and `b`, or `a`, `b`, `c`, `d`, `e` and 2 more.
+show_columns <- function(cols) {
   shown <- paste0("`", utils::head(cols, 5), "`")
   if (length(cols) > 5) shown <- c(shown, paste(length(cols) - 5, "more"))
   if (length(shown) > 1) shown <- paste(paste(shown[-length(shown)], collapse = ", "), "and", shown[length(shown)])
+  shown
+}
+
+# One warning naming the columns whose factors lost .a to .z.
+warn_lost <- function(cols) {
   rlang::warn(
-    paste0("Extended missing values (.a to .z) in ", shown, " are plain NA in their factors; ",
+    paste0("Extended missing values (.a to .z) in ", show_columns(cols), " are plain NA in their factors; ",
            "read with factors = FALSE to keep them, or warn_extended_missing = FALSE to silence this."),
     class = "dtaparser_extended_missing"
   )
