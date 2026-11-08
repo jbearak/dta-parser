@@ -1,6 +1,6 @@
 # Plan: factors survive a .dta round trip, marked by a characteristic
 
-Status: draft, for the user's approval. No code yet.
+Status: draft; the user settled its questions on 2026-11-08 (below). No code yet.
 
 ## Problem
 
@@ -53,14 +53,12 @@ with `rename`, and is the format's place for data about a variable.
 
 ## Other languages
 
-None of these changes how R reads or writes; each is a question for the
-user before it is built.
-
-- **Python.** `write_dta` writes a `category` with codes 0 to k-1, and
-  `read_dta` has no categorical option. Proposed: write the same
-  marker, read a marked column as `category` (`ordered` from the
-  marker) under the same checks. The codes differ from R's (0-based),
-  which the marker makes harmless: each side reads the label set.
+- **Python, in the same PR as R.** `write_dta` writes a `category` with
+  codes 0 to k-1, and `read_dta` has no categorical option. It will
+  write the same marker, and read a marked column as `category`
+  (`ordered` from the marker) under the same checks, warning the same
+  way. The codes differ from R's (0-based), which the marker makes
+  harmless: each side reads the label set.
 - **Julia.** DtaParser does not write `CategoricalArray`; Datakit
   depends on CategoricalArrays for Parquet. Proposed: leave DtaParser
   alone and keep the marker as a characteristic its readers see.
@@ -82,10 +80,10 @@ user before it is built.
 Labelled missing values as factor levels (ADR 0017 decided against
 them); changing the `factors` default.
 
-## Questions for the user
+## Decisions (the user, 2026-11-08)
 
-1. The characteristic's name and value format (`dtaparser_factor` =
-   `ordered region`).
-2. Warn, or stay silent, when a marker is stale.
-3. Python: build the marked `category` read and write in the same PR,
-   later, or not at all.
+1. The marker is `dtaparser_factor` = `ordered region` or `unordered
+   region`: the ordering, a space, and the value label set's name.
+2. A stale marker gives labelled codes and one warning per file naming
+   the columns.
+3. Python is built in the same PR as R.
