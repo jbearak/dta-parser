@@ -122,16 +122,23 @@ from_readstata13 <- function(path) {
   )
 }
 
-args <- commandArgs(trailingOnly = TRUE)
-paths <- if (length(args)) args else Sys.glob(file.path("compat", "fixtures", "*.dta"))
-for (path in paths) {
-  stem <- sub("\\.dta$", "", basename(path))
-  for (reader in c("haven", "readstata13")) {
-    result <- tryCatch(
-      if (reader == "haven") from_haven(path) else from_readstata13(path),
-      error = function(e) list(reader = reader, error = conditionMessage(e))
-    )
-    jsonlite::write_json(result, file.path("compat", "expected", paste0(stem, ".", reader, ".json")),
-                         auto_unbox = TRUE, null = "null", digits = I(17), pretty = TRUE)
+# What `reader` reads from `path`, or the error it gives, as JSON at `to`.
+dump_json <- function(path, reader, to) {
+  result <- tryCatch(
+    if (reader == "haven") from_haven(path) else from_readstata13(path),
+    error = function(e) list(reader = reader, error = conditionMessage(e))
+  )
+  jsonlite::write_json(result, to, auto_unbox = TRUE, null = "null", digits = I(17), pretty = TRUE)
+}
+
+# compat/readback/dump.R sources this file for the functions above.
+if (sys.nframe() == 0) {
+  args <- commandArgs(trailingOnly = TRUE)
+  paths <- if (length(args)) args else Sys.glob(file.path("compat", "fixtures", "*.dta"))
+  for (path in paths) {
+    stem <- sub("\\.dta$", "", basename(path))
+    for (reader in c("haven", "readstata13")) {
+      dump_json(path, reader, file.path("compat", "expected", paste0(stem, ".", reader, ".json")))
+    }
   }
 }

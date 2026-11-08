@@ -344,9 +344,12 @@ jobs:
       - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.develop(path="julia/DtaParser"); Pkg.instantiate()'
       - run: julia --project=julia/Datakit julia/Datakit/test/smoke.jl
 
-  # Files written by dtatools and by the npm package read back in pandas
-  # as their originals do (haven and readstata13 are checked in the R
-  # tests).
+  # Every writer's files read back in every other reader: dtaparser and
+  # dtatools (R), dta_parser (Python), DtaParser (Julia) and the npm
+  # package save the fixtures and compat/readback's strL inputs again,
+  # and haven, readstata13, pandas and pyreadstat must read each copy as
+  # they read its input (compat/readback/check.py, with its known
+  # exceptions).
   readback:
     runs-on: ubuntu-latest
     steps:
@@ -360,20 +363,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs
-      - run: pip install pandas
+          extra-packages: any::vctrs, any::haven, any::readstata13, any::jsonlite
+      - run: pip install maturin
+      - run: maturin build --release --out dist
+        working-directory: python
+      - run: pip install python/dist/*.whl pyreadstat
       - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
+      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
       # libzstd in the module needs a clang that targets wasm32.
       - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh && cd js && npm ci && npm run build
-      - run: Rscript compat/readback.R "$RUNNER_TEMP/r" && python3 compat/readback.py "$RUNNER_TEMP/r"
-      - run: node compat/readback.mjs "$RUNNER_TEMP/js" && python3 compat/readback.py "$RUNNER_TEMP/js"
+      - run: sh compat/readback/run.sh "$RUNNER_TEMP/readback"
       # hyparquet reads back the Parquet files the npm package writes.
       - run: npm ci
         working-directory: bench/node

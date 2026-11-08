@@ -6,7 +6,7 @@
 set -e
 out=$(mktemp -d)
 printf "| case | tool | write s | peak RSS MB | RSS over data MB | file MB |\n|---|---|---|---|---|---|\n"
-for case in numeric strn strl_repeated strl_distinct strl_several; do
+for case in numeric strn strl_repeated strl_distinct strl_several strl_several_distinct; do
   base=0
   for tool in none haven dtatools; do
     file="$out/$case-$tool.dta"

@@ -1,18 +1,26 @@
-// Write every fixture again with the npm package into the directory
-// given, for compat/readback.py to read with pandas.
-//   node compat/readback.mjs <out-dir>
+// Save every input again with the npm package's openDta and
+// writeDtaFile, for compat/readback/check.py to read with other readers.
+// Inputs are the fixtures in compat/fixtures, and strls.dta and binary.dta
+// in compat/readback.
+//   node compat/readback/write.mjs <out-dir>
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const { openDta, missingValue } = require("../js/dist/index.js");
-const { writeDtaFile } = require("../js/dist/node.js");
+const { openDta, missingValue } = require("../../js/dist/index.js");
+const { writeDtaFile } = require("../../js/dist/node.js");
 
 const out = process.argv[2];
 mkdirSync(out, { recursive: true });
-for (const name of readdirSync("compat/fixtures").filter((f) => f.endsWith(".dta"))) {
-  const r = openDta(readFileSync(join("compat/fixtures", name)));
+const inputs = readdirSync("compat/fixtures")
+  .filter((f) => f.endsWith(".dta"))
+  .sort()
+  .map((f) => join("compat/fixtures", f));
+inputs.push("compat/readback/strls.dta", "compat/readback/binary.dta");
+for (const path of inputs) {
+  const name = basename(path);
+  const r = openDta(readFileSync(path));
   const cols = r.readColumns(r.variables.map((_, i) => i));
   const valueLabels = {};
   for (const v of r.variables) {
