@@ -1,12 +1,14 @@
-// Parquet files (plan 0018): `ParquetReader`, a `TableReader` like
-// `DtaReader`; an async reader for files read through a callback; and a
-// writer that takes what `writeDta` takes.
+// Parquet files (plan 0018, moved to datakit by plan 0021):
+// `ParquetReader`, a `TableReader` like dta-parser's `DtaReader`; an async
+// reader for files read through a callback; and a writer that takes a
+// `Dataset`.
 
 import * as wasm from "./wasm";
 import type { ReadAt } from "./wasm";
-import { dtaError, isAllocationFailure } from "./errors";
-import { MISSING, missingValue, type ValueLabels } from "./values";
-import { packNumbers, packTexts, packTextsBy } from "./shared";
+import { dtaError, isAllocationFailure } from "./_shared/errors";
+import { MISSING, missingValue, type ValueLabels } from "@jbearak/dta-parser/format";
+import { packNumbers, packTexts, packTextsBy } from "./_shared/shared";
+import type { Dataset, DatasetVariable } from "./types";
 import type {
   AsyncTableReader,
   BigIntColumn,
@@ -20,9 +22,7 @@ import type {
   TableInfo,
   TableReader,
   Variable,
-  WriteDataset,
-  WriteVariable,
-} from "./index";
+} from "@jbearak/dta-parser";
 
 /** Options for opening a Parquet file. */
 export interface ParquetOptions {
@@ -343,6 +343,12 @@ export class ParquetReader implements TableReader {
       }
     }
     return this.labels.get(name);
+  }
+
+  /** The names of every value label set in the dta profile, used or not, in order. */
+  valueLabelNames(): string[] {
+    this.valueLabels("");
+    return [...this.labels!.keys()];
   }
 
   /** Every characteristic in the dta profile, as `DtaReader.characteristics` gives them. */
@@ -963,6 +969,11 @@ export class AsyncParquetReader implements AsyncTableReader {
     return this.sync.valueLabels(name);
   }
 
+  /** As `ParquetReader.valueLabelNames`. */
+  valueLabelNames(): string[] {
+    return this.sync.valueLabelNames();
+  }
+
   /** As `ParquetReader.characteristics`. */
   characteristics(): Characteristic[] {
     return this.sync.characteristics();
@@ -1086,7 +1097,7 @@ function nul(text: string | undefined, what: string): string {
 }
 
 /** How many values a variable holds. */
-function rowsOf(v: WriteVariable): number {
+function rowsOf(v: DatasetVariable): number {
   const x = v.values as unknown;
   if (Array.isArray(x) || ArrayBuffer.isView(x)) return (x as { length: number }).length;
   const c = x as TableColumn;
@@ -1141,7 +1152,7 @@ function textCodes(values: readonly (string | Uint8Array | null)[], missing: Uin
   return { ...packTexts(distinct), codes };
 }
 
-function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
+function partOf(v: DatasetVariable, rows: number): wasm.ParquetPart {
   const fail = (why: string): never => {
     throw dtaError("DTA_INVALID", `${v.name}: ${why}`, undefined, TypeError);
   };
@@ -1172,7 +1183,8 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
       const codes = new Int32Array(rows);
       for (let i = 0; i < rows; i++) {
         const x = values[i];
-        if (missing[i]) codes[i] = -1;
+        if (missing[i] > 1) fail(`row ${i} holds ${missingValue(missing[i]).missing}; a categorical cannot hold .a to .z, so make it labelled numbers (a numeric type with a value label set), which keep them`);
+        else if (missing[i]) codes[i] = -1;
         else if (!Number.isInteger(x) || x < 0 || x >= levels!.length) fail(`row ${i} holds ${x}, not a level code from 0 to ${levels!.length - 1}`);
         else codes[i] = x;
       }
@@ -1295,12 +1307,12 @@ function partOf(v: WriteVariable, rows: number): wasm.ParquetPart {
 
 /**
  * Write a Parquet file, handing its bytes to `sink` in order. It takes
- * the `WriteDataset` that `writeDta` takes: variable labels, display
+ * a `Dataset` (as `saveParquet` does): variable labels, display
  * formats and value labels go into the file's dta profile, `.` is a null
  * and `.a` to `.z` are kept (see `missingLetters`). A value that does not
  * fit its type is an error naming the variable and row.
  */
-export function writeParquetTo(data: WriteDataset, sink: (bytes: Uint8Array) => void, options: ParquetWriteOptions = {}): void {
+export function writeParquetTo(data: Dataset, sink: (bytes: Uint8Array) => void, options: ParquetWriteOptions = {}): void {
   const rows = data.variables.length ? rowsOf(data.variables[0]) : 0;
   // Each variable's part is made as it is handed to the module, so only
   // one column's packed text is held at a time.
@@ -1347,7 +1359,7 @@ export function writeParquetTo(data: WriteDataset, sink: (bytes: Uint8Array) => 
 }
 
 /** Write a Parquet file into memory; see `writeParquetTo`. */
-export function writeParquet(data: WriteDataset, options: ParquetWriteOptions = {}): Uint8Array {
+export function writeParquet(data: Dataset, options: ParquetWriteOptions = {}): Uint8Array {
   const chunks: Uint8Array[] = [];
   writeParquetTo(data, (bytes) => chunks.push(bytes.slice()), options);
   const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));

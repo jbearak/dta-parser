@@ -263,6 +263,7 @@ fn field(out: &mut String, name: &str, value: &str) {
     string(out, value);
 }
 
+#[cfg_attr(all(target_arch = "wasm32", not(feature = "wasm-dta")), allow(dead_code))]
 pub fn metadata(m: &Metadata) -> String {
     let mut o = String::from("{");
     o.push_str(&format!("\"release\":{},\"nobs\":{},", m.release, m.nobs));

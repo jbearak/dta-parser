@@ -30,7 +30,7 @@ use dta_parquet::{
 
 use crate::json;
 use crate::strings::{utf16_len, Dict};
-use crate::wasm::{call, copy, ensure_room, ensure_room_parts, result, Fail, HostFile, HostSink, State, CLOSED, INVALID};
+use crate::wasm_common::{call, copy, ensure_room, ensure_room_parts, result, Fail, HostFile, HostSink, State, CLOSED, INVALID};
 
 /// The largest safe integer: every integer of at most this size is a
 /// distinct double, and JavaScript's `Number.isSafeInteger` holds for it.
@@ -752,7 +752,7 @@ pub extern "C" fn pq_info(h: u32, int64: u32) -> *const u8 {
             let estimate = (handle.reader.columns().len() * (300 + 12 * groups)).saturating_add(64 << 10);
             ensure_room(estimate)?;
             let mut text = String::new();
-            text.try_reserve(estimate).map_err(|_| crate::wasm::too_large(estimate))?;
+            text.try_reserve(estimate).map_err(|_| crate::wasm_common::too_large(estimate))?;
             Ok(info_json(&handle.reader, &handle.how, &reasons, text))
         })?;
         Ok(result(state, text.into_bytes()))
@@ -864,7 +864,7 @@ pub unsafe extern "C" fn pq_plan(h: u32, cols: *const u32, ncols: usize, start: 
 fn check_columns(handle: &PqHandle, cols: &[usize]) -> Result<(), Fail> {
     for &c in cols {
         match handle.how.get(c) {
-            None => return Err(Fail { kind: crate::wasm::OUT_OF_RANGE, message: format!("there is no column {c}") }),
+            None => return Err(Fail { kind: crate::wasm_common::OUT_OF_RANGE, message: format!("there is no column {c}") }),
             Some(How::NotRead(why)) => return Err(Fail { kind: INVALID, message: why.clone() }),
             Some(_) => {}
         }
@@ -1663,7 +1663,7 @@ fn hosted<'a, T: Copy + Default + 'a>(
                 w.codes.resize(len, 0);
                 let status = unsafe { host_fill(id, first as f64, len as u32, w.values.as_mut_ptr(), w.codes.as_mut_ptr()) };
                 if status != 0 {
-                    fill_failed(Fail { kind: crate::wasm::IO, message: format!("column \"{name}\": its values could not be read") });
+                    fill_failed(Fail { kind: crate::wasm_common::IO, message: format!("column \"{name}\": its values could not be read") });
                     w.codes.fill(1);
                 }
                 for i in 0..len {
@@ -1708,7 +1708,7 @@ fn hosted_int<'a>(id: u32, rows: usize, name: &'a str, what: &'static str, lo: i
                 ints.resize(len, 0);
                 let status = unsafe { host_fill(id, first as f64, len as u32, values.as_mut_ptr(), cs.as_mut_ptr()) };
                 if status != 0 {
-                    fill_failed(Fail { kind: crate::wasm::IO, message: format!("column \"{name}\": its values could not be read") });
+                    fill_failed(Fail { kind: crate::wasm_common::IO, message: format!("column \"{name}\": its values could not be read") });
                     cs.fill(1);
                 }
                 let mut bad_row = None;
@@ -1912,10 +1912,10 @@ pub unsafe extern "C" fn pq_write_finish(
             return Err(f);
         }
         written.map_err(|e| match e.kind {
-            ErrorKind::Io => Fail { kind: crate::wasm::IO, message: e.to_string() },
+            ErrorKind::Io => Fail { kind: crate::wasm_common::IO, message: e.to_string() },
             _ => Fail::from(e),
         })?;
-        sink.flush().map_err(|e| Fail { kind: crate::wasm::IO, message: e.to_string() })?;
+        sink.flush().map_err(|e| Fail { kind: crate::wasm_common::IO, message: e.to_string() })?;
         if let Some(f) = FILL_FAIL.with(|e| e.borrow_mut().take()) {
             return Err(f);
         }
