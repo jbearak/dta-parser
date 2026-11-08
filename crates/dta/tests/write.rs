@@ -588,3 +588,89 @@ fn strls_are_read_once_and_in_batches() {
         }
     }
 }
+
+/// strL entries go in order of observation, then of variable, as every
+/// other writer writes them (haven 2.5.5 reads some strLs of a file
+/// ordered otherwise as empty); each variable's repeated texts still share
+/// one entry, and every reference names an entry the file holds.
+#[test]
+fn strl_entries_are_in_observation_then_variable_order() {
+    // Rows of (a, b, c): a repeats, b is empty twice, c is binary once.
+    let rows: [[(&[u8], bool); 3]; 5] = [
+        [(b"one", false), (b"", false), (b"x", false)],
+        [(b"two", false), (b"p", false), (b"\0\x01", true)],
+        [(b"one", false), (b"", false), (b"x", false)],
+        [(b"three", false), (b"q", false), (b"y", false)],
+        [(b"two", false), (b"p", false), (b"z", false)],
+    ];
+    let strl = |name: &str, j: usize| WriteVariable {
+        name: name.into(),
+        storage: StorageType::StrL,
+        format: String::new(),
+        label: String::new(),
+        value_labels: String::new(),
+        values: Values::StrLs(Box::new(move |i| rows[i][j])),
+    };
+    let data = Dataset {
+        nobs: rows.len(),
+        label: String::new(),
+        timestamp: String::new(),
+        variables: vec![
+            WriteVariable {
+                name: "id".into(),
+                storage: StorageType::Long,
+                format: String::new(),
+                label: String::new(),
+                value_labels: String::new(),
+                values: Values::numbers_by_row(|i| (i as f64, 0)),
+            },
+            strl("a", 0),
+            strl("b", 1),
+            strl("c", 2),
+        ],
+        value_labels: vec![],
+        characteristics: vec![],
+        sort_order: vec![],
+    };
+    let mut out = Vec::new();
+    write(&data, &mut out).unwrap();
+
+    // (variable, observation) of each entry, 1-based, in file order.
+    let at = |tag: &[u8]| out.windows(tag.len()).position(|w| w == tag).unwrap();
+    let mut i = at(b"<strls>") + 7;
+    let mut entries = Vec::new();
+    while &out[i..i + 3] == b"GSO" {
+        let v = u32::from_le_bytes(out[i + 3..i + 7].try_into().unwrap());
+        let o = u64::from_le_bytes(out[i + 7..i + 15].try_into().unwrap());
+        let len = u32::from_le_bytes(out[i + 16..i + 20].try_into().unwrap());
+        entries.push((v, o));
+        i += 20 + len as usize;
+    }
+    assert_eq!(
+        entries,
+        [(2, 1), (3, 1), (4, 1), (2, 2), (3, 2), (4, 2), (2, 4), (3, 4), (4, 4), (4, 5)],
+    );
+
+    // Each strL cell (4 + 8 + 8 + 8 bytes per row) references an entry.
+    let data_at = at(b"<data>") + 6;
+    for row in 0..rows.len() {
+        for j in 0..3 {
+            let cell = &out[data_at + row * 28 + 4 + j * 8..][..8];
+            let v = u16::from_le_bytes(cell[..2].try_into().unwrap()) as u32;
+            let mut o = [0u8; 8];
+            o[..6].copy_from_slice(&cell[2..]);
+            let o = u64::from_le_bytes(o);
+            assert_eq!(v, j as u32 + 2, "row {row}");
+            assert!(o <= row as u64 + 1 && entries.contains(&(v, o)), "row {row} var {v} -> obs {o}");
+        }
+    }
+
+    let mut reader = Reader::open(Bytes(out), Options::default()).unwrap();
+    let columns = reader.read(&[1, 2, 3], 0, rows.len() as u64).unwrap();
+    for (j, column) in columns.iter().enumerate() {
+        let Column::Strings { binary, .. } = column else { panic!("not strings") };
+        for (r, row) in rows.iter().enumerate() {
+            assert_eq!((column.bytes(r), binary[r]), row[j], "row {r} var {j}");
+        }
+    }
+}

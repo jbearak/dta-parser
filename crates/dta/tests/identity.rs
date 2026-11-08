@@ -141,7 +141,10 @@ fn fnv(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3))
 }
 
-/// The hashes of `dataset(0..30)` as the writer wrote them before plan 0007.
+/// The hashes of `dataset(0..30)` as the writer wrote them before plan 0007,
+/// except seeds 7, 12, 20 and 24: they have two or three strL variables
+/// and more than one row, so their strL entries changed order when the
+/// writer took observation-then-variable order.
 const EXPECTED: [u64; 30] = [
     0x5d5a5b650801cc2b,
     0xb3a3d53111645b08,
@@ -150,12 +153,12 @@ const EXPECTED: [u64; 30] = [
     0x503a590e6c670312,
     0xa1d2072adce97aa5,
     0x25f3bd7d048fb075,
-    0xc723a0451cfbd205,
+    0x2f45c44935006845,
     0x06ead0c3f4155b13,
     0x19a1eafedfa80a2c,
     0x155ea03470d2d56a,
     0xbc8dee448d64df16,
-    0xcbe25e1b1b43a35a,
+    0x47b3b8143cb1d510,
     0x0b491a95f733e933,
     0x0b3d35ecd0550c04,
     0x4d956537de65011d,
@@ -163,11 +166,11 @@ const EXPECTED: [u64; 30] = [
     0x39b7f99506d668c7,
     0x5299904b81579ea3,
     0xd79f8c26518125aa,
-    0x1c27167330e53ca0,
+    0xf4186907fe057c58,
     0x5674d4ba6b599214,
     0x66e50e8557d21e19,
     0xc5b363b0e97f7137,
-    0xe7125200e4220884,
+    0xf4a69a7955194ae4,
     0xb050846473a01174,
     0xa5689c0d0eea553b,
     0xeb3479662eaccaf2,

@@ -7,7 +7,8 @@
 //! at a time and column by column within it. Nothing holds a second copy
 //! of the data.
 
-use std::collections::HashMap;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 use std::hash::{BuildHasherDefault, Hasher};
 use std::io::Write;
 
@@ -509,25 +510,35 @@ impl<'a> Plan<'a> {
         }
     }
 
+    /// The strL entries in order of observation, then of variable, as
+    /// every other writer orders them: haven 2.5.5 reads some strLs of a
+    /// file ordered otherwise as empty strings. Each variable's rows are
+    /// already in order, so a heap with one entry per strL variable
+    /// merges them, and an entry is never written after a later row's.
     fn write_strls(&self, data: &Dataset, out: &mut impl Write) -> Result<()> {
-        for (j, (v, t)) in data.variables.iter().zip(&self.types).enumerate() {
-            if *t != StorageType::StrL {
-                continue;
+        // (row, variable, position in that variable's rows), smallest first.
+        let mut next: BinaryHeap<Reverse<(usize, usize, usize)>> = self
+            .strl_rows
+            .iter()
+            .enumerate()
+            .filter_map(|(j, rows)| rows.first().map(|&r| Reverse((r, j, 0))))
+            .collect();
+        while let Some(Reverse((r, j, k))) = next.pop() {
+            if let Some(&after) = self.strl_rows[j].get(k + 1) {
+                next.push(Reverse((after, j, k + 1)));
             }
-            for &r in &self.strl_rows[j] {
-                let (s, binary) = v.values.string(r);
-                let mut head = Vec::with_capacity(20);
-                head.extend_from_slice(b"GSO");
-                head.extend_from_slice(&(j as u32 + 1).to_le_bytes());
-                head.extend_from_slice(&(r as u64 + 1).to_le_bytes());
-                // Binary is stored as is; text ends with a NUL.
-                head.push(if binary { 129 } else { 130 });
-                head.extend_from_slice(&(s.len() as u32 + !binary as u32).to_le_bytes());
-                out.write_all(&head)?;
-                out.write_all(s)?;
-                if !binary {
-                    out.write_all(&[0])?;
-                }
+            let (s, binary) = data.variables[j].values.string(r);
+            let mut head = Vec::with_capacity(20);
+            head.extend_from_slice(b"GSO");
+            head.extend_from_slice(&(j as u32 + 1).to_le_bytes());
+            head.extend_from_slice(&(r as u64 + 1).to_le_bytes());
+            // Binary is stored as is; text ends with a NUL.
+            head.push(if binary { 129 } else { 130 });
+            head.extend_from_slice(&(s.len() as u32 + !binary as u32).to_le_bytes());
+            out.write_all(&head)?;
+            out.write_all(s)?;
+            if !binary {
+                out.write_all(&[0])?;
             }
         }
         Ok(())

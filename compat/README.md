@@ -56,6 +56,25 @@ test's `KNOWN` list (see `docs/adr/0005-oracles.md`):
 None of these is an open bug in that project; see
 [docs/other-readers.md](../docs/other-readers.md).
 
+## Our writers, read back by other readers
+
+`readback/` checks every writer we ship against every reader above.
+dtaparser and dtatools (R), dta_parser (Python), DtaParser (Julia) and
+the npm package each save the fixtures again, and also `readback/strls.dta`
+and `readback/binary.dta`: several strL variables over many rows,
+repeated texts, empty strLs, a binary strL, `.a` to `.z`, value labels
+with a long text, and a long variable label (`readback/make_inputs.py`
+writes both and gives their values). haven, readstata13, pandas and
+pyreadstat must then read each copy as they read its input, and the two
+strL inputs as `make_inputs.py` built them. CI's `readback` job runs
+it; locally, with everything installed and built:
+
+    sh compat/readback/run.sh /tmp/readback
+
+`readback/check.py` lists, in `KNOWN`, each place a reader is no
+oracle, with the reason: the input differences above, R's lack of
+binary strings, and readers that take every strL for text.
+
 Notes are compared where haven reports them. readstata13's
 characteristics are recorded in `expected/` but not yet compared, and
 sort order is read but not yet checked against any reader.

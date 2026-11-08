@@ -37,6 +37,9 @@ data <- switch(case,
   strl_distinct = data.frame(id = seq_len(1e5), s = texts(1e5, 3000, 1e5)),
   # 100k rows of three strL columns, each drawn from 50 texts.
   strl_several = data.frame(a = texts(1e5, 3000, 50), b = texts(1e5, 2500, 50), c = texts(1e5, 4000, 50)),
+  # 100k rows of three strL columns, every text distinct: 300k strL
+  # entries, merged into observation-then-variable order.
+  strl_several_distinct = data.frame(a = texts(1e5, 2100, 1e5), b = texts(1e5, 2200, 1e5), c = texts(1e5, 2300, 1e5)),
   stop("unknown case ", case)
 )
 if (case == "numeric") {

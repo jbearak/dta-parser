@@ -21,6 +21,11 @@ to make:
 | readstata13 returns pre-113 missing values as the stored number with `missing.type = TRUE` | documented: it warns that the option applies only to newer files; the default gives `NA` (`compat/expected.R` maps the stored numbers to `.`) |
 | readstata13 reads an empty strL as `NA` (an empty `str#` as `""`) | defensible: Stata has no separate missing string and treats `""` as missing |
 | pandas decodes text before release 118 as Latin-1, not Windows-1252 | defensible: those files do not record their encoding, so every reader guesses; we and haven guess Windows-1252 |
+| haven 2.5.5 reads some strLs as empty when the file's strL entries are not in order of observation, then variable | our bug, not haven's: haven, pandas, readstata13 and pyreadstat all write that order; our writer went variable by variable until November 2026 |
+| haven 2.5.5 and pyreadstat cannot open a file holding a binary strL that is not UTF-8 | defensible: both give every strL as text |
+| readstata13 reads a binary strL as text ending at its first NUL, with a warning | defensible: an R string cannot hold a NUL |
+| pandas gives a binary strL as the text of a Python bytes literal (`"b'\\x00...'"`) | a convention: the text holds the exact bytes |
+| readstata13 reads pandas' empty strL, a (0, 0) reference with no entry, as `NA` | defensible, as above; an entry holding `""`, which haven and we write, reads as `""` |
 
 ## Fixed-width files with SAS setup files
 

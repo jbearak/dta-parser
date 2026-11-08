@@ -1,6 +1,6 @@
 # save_dta writes release 118 that reads back as written: through
 # read_dta, and through haven and readstata13 (independent of us; pandas
-# is checked by compat/readback.py).
+# and pyreadstat are checked by compat/readback/check.py).
 
 # NA tags, as in test-read_dta.R: NA for a number, "" for ., or the letter.
 tags <- function(x) {
