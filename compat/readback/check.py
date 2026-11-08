@@ -218,7 +218,7 @@ def differences(reader, writer, stem, ours, theirs, compare_types):
         if compare_types and b.get("type") and not str(b["type"]).startswith("str"):
             check(f"{name}.type", a["type"], b["type"])
         got = ours["values"].get(name)
-        if reader == "pandas" and got is not None:
+        if reader == "pandas" and got is not None and len(got) == len(theirs["values"][name]):
             got = [{"hex": bytes_literal(a).hex()} if isinstance(b, dict) and "hex" in b and bytes_literal(a) is not None
                    else a for a, b in zip(got, theirs["values"][name])]
         check(f"{name}.values", got, theirs["values"][name], text=True)
