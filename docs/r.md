@@ -861,6 +861,8 @@ Where Stata and R differ, the line follows R:
   `levels(df$region) <- c(levels(df$region), "Abroad")`. A number is an
   error too. Beware `i`: `region == 3` on a factor compares with the
   level text and matches nothing, without an error.
+- `by` puts `NA`, `NaN` and each of `.a` to `.z` in a group of its own,
+  as `bysort` does.
 - A data.table is an error; use its own `dt[i, name := value]`.
 
 The rest is as in [Make and change columns](#make-and-change-columns):

@@ -58,6 +58,51 @@ test_that("a factor column takes labels, never codes", {
   expect_identical(d$copy, d$region)
 })
 
+test_that("by puts NA, NaN and each of .a to .z in a group of its own", {
+  a <- tagged_na("a")
+  b <- tagged_na("b")
+  d <- tibble::tibble(g = c(1, NA, a, b, NA, a, NaN), x = 1:7)
+  d[, n, by = g] := .N
+  expect_identical(d$n, c(1L, 2L, 2L, 1L, 2L, 2L, 1L))
+  d[, s, by = g] := sum(x)
+  expect_identical(d$s, c(1L, 7L, 9L, 4L, 7L, 9L, 7L))
+  # i that drops the tagged rows, and one that keeps them.
+  d[x != 3 & x != 6, m, by = g] := .N
+  expect_identical(d$m, c(1L, 2L, NA, 1L, 2L, NA, 1L))
+  d[x > 2, k, by = g] := .N
+  expect_identical(d$k, c(NA, NA, 2L, 1L, 1L, 2L, 1L))
+  # Only tagged values; a labelled column, grouped by its codes.
+  d <- tibble::tibble(g = c(a, b, a), h = with_labels(c(1, a, a), c(One = 1, tagged_na(c(DK = "a")))))
+  d[, n, by = g] := .N
+  expect_identical(d$n, c(2L, 1L, 2L))
+  d[, n, by = h] := .N
+  expect_identical(d$n, c(1L, 2L, 2L))
+  # Two by columns, both with NA, .a and .z, and one that has none.
+  z <- tagged_na("z")
+  d <- tibble::tibble(g = c(NA, a, z, NA, a, z, NA, a), h = c(a, a, NA, NA, a, NA, a, z), u = c(1, 1, 1, 1, 2, 1, 1, 1))
+  d[, n, by = .(g, h)] := .N
+  expect_identical(d$n, c(2L, 2L, 2L, 1L, 2L, 2L, 2L, 1L))
+  d[, n, by = .(g, u)] := .N
+  expect_identical(d$n, c(3L, 2L, 2L, 3L, 1L, 2L, 3L, 2L))
+})
+
+test_that("by tells .a to .z apart among many rows and groups", {
+  # Few missing rows read only those rows; many read the whole column.
+  # Each is checked against counts by the values' text.
+  key <- function(v) ifelse(is.nan(v), "NaN", ifelse(is.na(v), paste0("NA", na_tag(v)), format(v)))
+  for (share in c(0.01, 0.5)) {
+    set.seed(1)
+    n <- 4000
+    id <- sample(200, n, TRUE)
+    g <- sample(1:3, n, TRUE) + 0
+    gone <- runif(n) < share
+    g[gone] <- sample(c(NA, NaN, tagged_na(c("a", "q"))), sum(gone), TRUE)
+    d <- tibble::tibble(id = id, g = g)
+    d[, n, by = .(id, g)] := .N
+    expect_identical(d$n, as.integer(ave(seq_len(n), id, key(g), FUN = length)))
+  }
+})
+
 test_that("i picking no rows leaves an existing column alone", {
   d <- tibble::tibble(x = 1:2)
   d[x > 5, x] := stop("not evaluated")

@@ -35,8 +35,9 @@
 #' - Other columns, such as character or `Date`, take values vctrs can
 #'   convert to their type.
 #' - `by` names grouping columns: `by = g`, `by = c("g", "h")` or
-#'   `by = .(g, h)`. All `NA`s are one group. A `by` column cannot be
-#'   changed.
+#'   `by = .(g, h)`. `NA`, `NaN` and each of `.a` to `.z`
+#'   ([tagged_na()]) are groups of their own, as `bysort` makes them. A
+#'   `by` column cannot be changed.
 #' - A value of `NULL` drops the column (not with `i` or `by`).
 #' - When `i` picks no rows, an existing column is left as it is and its
 #'   value is not evaluated.
@@ -139,7 +140,7 @@ colon_equals.data.frame <- function(x, i, name, value, by, env) {
   if (!length(rows) && !all_rows && !is.null(old)) return(x)
   groups <- if (length(by) && length(rows)) {
     keys <- vctrs::new_data_frame(lapply(unclass(x)[by], unattributed), n = n)
-    vctrs::vec_group_loc(vctrs::vec_slice(keys, rows))$loc
+    by_groups(vctrs::vec_slice(keys, rows))
   }
   new <- if (!length(rows)) {
     # Evaluated once on zero rows only for the new column's type.
@@ -161,6 +162,24 @@ colon_equals.data.frame <- function(x, i, name, value, by, env) {
   }
   x[[name]] <- if (is.null(old)) made(new, rows, n) else replaced(old, new, rows, name)
   x
+}
+
+# The rows of each group of `keys`, a data frame of the by columns. NA
+# and each of .a to .z are groups of their own: vctrs groups them as
+# one, so a double column that holds .a to .z in a group whose key is
+# NA (checked in C, without allocating) is grouped again with its
+# missing_rank(), which tells them apart, as another key.
+by_groups <- function(keys) {
+  groups <- vctrs::vec_group_loc(keys)
+  cols <- unclass(keys)
+  tagged <- vapply(seq_along(cols), function(j) {
+    is.double(cols[[j]]) && .Call(C_dta_na_groups_tagged, cols[[j]], groups$key[[j]], groups$loc)
+  }, NA)
+  if (!any(tagged)) return(groups$loc)
+  ranks <- lapply(cols[tagged], dtaparser::missing_rank)
+  names(ranks) <- paste0("rank", seq_along(ranks))
+  names(cols) <- paste0("key", seq_along(cols))
+  vctrs::vec_group_loc(vctrs::new_data_frame(c(cols, ranks), n = vctrs::vec_size(keys)))$loc
 }
 
 # x without its class and attributes, so that vctrs groups any column

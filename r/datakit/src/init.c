@@ -57,12 +57,15 @@ static SEXP parquet_write(SEXP file, SEXP spec, SEXP options) {
   return parquet_write_fn(file, spec, options);
 }
 
+SEXP dta_na_groups_tagged(SEXP x, SEXP key, SEXP loc);
+
 static const R_CallMethodDef routines[] = {
   {"dta_link", (DL_FUNC) &link, 0},
   {"dta_fixed_width", (DL_FUNC) &fixed_width, 5},
   {"dta_parquet_info", (DL_FUNC) &parquet_info, 1},
   {"dta_parquet_read", (DL_FUNC) &parquet_read, 5},
   {"dta_parquet_write", (DL_FUNC) &parquet_write, 3},
+  {"dta_na_groups_tagged", (DL_FUNC) &dta_na_groups_tagged, 3},
   {NULL, NULL, 0}
 };
 

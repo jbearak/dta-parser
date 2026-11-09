@@ -3,6 +3,12 @@
 ADR 0032 moves `:=` and `colon_equals()` from dtaparser to datakit; the
 rules here are unchanged.
 
+Since November 2026, `by` puts `NA` and each of `.a` to `.z` in a group
+of its own, as `bysort` does and dtatools' dibble method already did;
+the bullet below on `NA`s in one group no longer holds. vctrs still
+groups them, and a column found to hold `.a` to `.z` is grouped again
+with their letters as another key.
+
 A do-file translated to R reads best line by line, and
 `d[i, name, by = g] := value` (ADR 0021) keeps the shape of a
 `generate`, `replace ... if` or `bysort` line. Only dibbles had it, and
