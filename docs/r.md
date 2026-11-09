@@ -142,18 +142,20 @@ df
 
 ```text
 # A tibble: 6 × 6
-  id    region age   income interviewed comment             
-  <dta> <dta>  <dta> <dta>  <dta>       <chr>               
-1 1     1      34    2100   23436       ""                  
-2 2     2      51    .d     23436       "moved in 2023"     
-3 3     2      29    1850   23437       ""                  
-4 4     3      62    .      23439       ""                  
-5 5     4      45    .r     23439       "asked to call back"
-6 6     1      38    3200   23440       ""                  
+  id    region    age   income            interviewed comment             
+  <dta> <dta+lbl> <dta> <dta+lbl>         <dta>       <chr>               
+1 1     1 [North] 34    2100              23436       ""                  
+2 2     2 [South] 51      .d [Don't know] 23436       "moved in 2023"     
+3 3     2 [South] 29    1850              23437       ""                  
+4 4     3 [East]  62       .              23439       ""                  
+5 5     4 [West]  45      .r [Refused]    23439       "asked to call back"
+6 6     1 [North] 38    3200              23440       ""                  
 ```
 
 `read_dta(file)` returns a *dibble*: a tibble whose numeric columns are
-`dta_num` vectors. Use it as any tibble, with base R or dplyr.
+`dta_num` vectors. Use it as any tibble, with base R or dplyr. A column
+with value labels (`<dta+lbl>`) shows each value with its label, as
+haven's labelled columns do; `print(df$region)` lists its labels.
 
 | in the file | in R |
 |---|---|

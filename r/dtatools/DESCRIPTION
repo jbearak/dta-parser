@@ -10,6 +10,7 @@ Depends: R (>= 4.2)
 Imports:
     datakit (>= 3.1.0),
     dtaparser (>= 3.1.0),
+    pillar,
     rlang,
     tibble,
     tidyselect,

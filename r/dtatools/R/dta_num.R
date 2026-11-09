@@ -25,6 +25,10 @@ MISSING_NAMES <- c(".", paste0(".", letters))
 #'   when it is nonzero or missing. `sum()`, `mean()`, `max()` and the
 #'   like keep R's rules. For `pmax()` and `pmin()`, use [dta_pmax()]
 #'   and [dta_pmin()].
+#'
+#'   In a tibble, a column with value labels (`<dta+lbl>`) shows each
+#'   value with its label, `1 [Low]` or `.d [Don't know]`, as haven's
+#'   labelled columns do. `print(x)` lists the labels after the values.
 #' @examples
 #' x <- dta_num(c(1, 5, NA, .d), labels = c(Low = 1, High = 5), label = "Score")
 #' x > 3          # missing values are above every number, as in Stata
@@ -237,7 +241,28 @@ print.dta_num <- function(x, ...) {
   label <- attr(x, "label", exact = TRUE)
   if (!is.null(label)) cat("<", label, ">\n", sep = "")
   print(format(x), quote = FALSE)
+  labels <- attr(x, "labels", exact = TRUE)
+  if (length(labels)) {
+    labels <- labels[order(dta_keys(labels))]
+    cat("\nLabels:\n")
+    print(data.frame(value = code_text(labels), label = names(labels)), row.names = FALSE)
+  }
   invisible(x)
+}
+
+# In a tibble, a labelled column shows each code with its label, as
+# haven's labelled columns do: `1 [Yes]`, `.r [Refused]`. The codes are
+# right-aligned and the labels dimmed; a narrow column cuts the labels
+# short first.
+pillar_shaft.dta_num <- function(x, ...) {
+  labels <- attr(x, "labels", exact = TRUE)
+  if (!length(labels)) return(NextMethod())
+  codes <- trimws(format(x))
+  codes <- formatC(codes, width = max(0L, nchar(codes)))
+  text <- val_label(x)
+  shown <- ifelse(is.na(text), "", pillar::style_subtle(paste0(" [", text, "]")))
+  pillar::new_pillar_shaft_simple(paste0(codes, shown), align = "left",
+                                  min_width = max(0L, nchar(codes)) + if (any(!is.na(text))) 4L else 0L)
 }
 
 #' @export
@@ -251,7 +276,7 @@ vec_restore.dta_num <- function(x, to, ...) restore(x, to)
 vec_proxy_equal.dta_num <- function(x, ...) dta_keys(x)
 vec_proxy_compare.dta_num <- function(x, ...) dta_keys(x)
 vec_proxy_order.dta_num <- function(x, ...) dta_keys(x)
-vec_ptype_abbr.dta_num <- function(x, ...) "dta"
+vec_ptype_abbr.dta_num <- function(x, ...) if (length(attr(x, "labels", exact = TRUE))) "dta+lbl" else "dta"
 vec_ptype2.dta_num.dta_num <- function(x, y, ...) restore(double(), x)
 vec_ptype2.dta_num.double <- function(x, y, ...) restore(double(), x)
 vec_ptype2.double.dta_num <- function(x, y, ...) restore(double(), y)
