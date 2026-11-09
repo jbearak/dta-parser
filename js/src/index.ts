@@ -659,6 +659,7 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     return text ?? "";
   };
   const variables = data.variables.map(asDtaVariable);
+  warnReserved(variables.map((v) => v.name));
   const nobs = variables[0]?.values.length ?? 0;
   const parts: wasm.WritePart[] = variables.map((v) => {
     if (v.values.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${v.values.length} values, not ${nobs}`, undefined, RangeError);
@@ -731,6 +732,26 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
 type DtaVariable = Omit<WriteVariable, "values"> & {
   values: readonly (number | Missing | null)[] | readonly (string | Uint8Array)[] | Float64Array;
 };
+
+// Words Stata reserves, which it cannot use as variable names (the list
+// the R, Python and Julia writers check too), and str followed by digits.
+const RESERVED = new Set(["_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long", "_n", "_N", "_pi", "_pred", "_rc", "_skip", "strL", "using", "with"]);
+
+/**
+ * One warning naming the variables called by a word Stata reserves: the
+ * file is still written, but Stata cannot use them until they are
+ * renamed. A process warning (code `DTA_RESERVED_NAME`) in Node, else
+ * `console.warn`.
+ */
+function warnReserved(names: readonly string[]): void {
+  const reserved = names.filter((n) => RESERVED.has(n) || /^str[0-9]+$/.test(n));
+  if (reserved.length === 0) return;
+  const one = reserved.length === 1;
+  const text = `${reserved.map((n) => JSON.stringify(n)).join(", ")} ${one ? "is a word" : "are words"} Stata reserves; rename ${one ? "it" : "them"} before using the file in Stata`;
+  const proc = (globalThis as { process?: { emitWarning?: (w: string, o: { code: string }) => void } }).process;
+  if (proc?.emitWarning) proc.emitWarning(text, { code: "DTA_RESERVED_NAME" });
+  else console.warn(`DTA_RESERVED_NAME: ${text}`);
+}
 
 function asDtaVariable(v: WriteVariable): DtaVariable {
   const x = v.values;

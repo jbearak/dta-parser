@@ -8,12 +8,9 @@ import pandas as pd
 from . import _native
 from ._array import DtaDtype
 from ._read import _EPOCH_DAYS, FACTOR_MARK, date_kind
+from ._names import reserved_warning
 from .missing import MissingValue
 
-_RESERVED = {
-    "_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long", "_n", "_N",
-    "_pi", "_pred", "_rc", "_skip", "strL", "using", "with",
-}
 # A letter or _, then up to 31 letters, digits or _.
 _NAME = re.compile(r"[^\W\d]\w{0,31}")
 
@@ -29,11 +26,11 @@ _FINE = {"us": 1000, "ns": 1_000_000}
 
 
 def _check_name(name):
-    if not isinstance(name, str) or not _NAME.fullmatch(name) or name in _RESERVED or re.fullmatch(r"str\d+", name):
+    if not isinstance(name, str) or not _NAME.fullmatch(name):
         raise ValueError(
-            f"column {name!r} is not a name Stata can hold: 1 to 32 letters, digits or _, "
-            "not starting with a digit, and not a reserved word"
+            f"column {name!r} is not a name Stata can hold: 1 to 32 letters, digits or _, not starting with a digit"
         )
+
 
 
 def _fits(values, storage):
@@ -276,6 +273,7 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
     names = list(df.columns)
     for name in names:
         _check_name(name)
+    reserved_warning(names, "write_dta")
     if len(set(names)) != len(names):
         dup = next(n for n in names if names.count(n) > 1)
         raise ValueError(f"column {dup!r} appears more than once")

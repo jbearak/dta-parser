@@ -10,6 +10,7 @@ import warnings
 from . import _frame as f
 from ._meta import GUIDE
 from ._native import native
+from dta_parser._names import reserved_warning
 
 
 def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters="meta", letter_suffix="_letter",
@@ -73,6 +74,7 @@ def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
     if not isinstance(missing_letters, bool):
         raise TypeError(f"missing_letters must be True or False, not {missing_letters!r}")
     out, profile = f.prepare(df, meta, missing_letters, "save_dta")
+    reserved_warning(df.columns, "save_dta")
     native.dta_write_arrow(out, os.fsdecode(os.fspath(path)), profile, missing_letters, timestamps)
 
 

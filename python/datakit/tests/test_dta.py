@@ -110,6 +110,13 @@ def test_read_dta_agrees_with_dta_parser_per_cell(path):
         assert meta.columns[name] == dk.Column(c["label"] or None, c["format"] or None, c["value_labels"] or None)
 
 
+def test_save_dta_warns_once_about_a_name_stata_reserves(tmp_path):
+    with pytest.warns(UserWarning, match='save_dta: "in" is a word Stata reserves; rename it before using the file in Stata'):
+        dk.save_dta(pl.DataFrame({"in": [1], "ok": [2]}), tmp_path / "r.dta")
+    df, _ = dk.read_dta(tmp_path / "r.dta")
+    assert df.columns == ["in", "ok"]
+
+
 @pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)
 def test_save_dta_reads_back_with_dta_parser(path, tmp_path):
     df, meta = dk.read_dta(path, timestamps="truncate")

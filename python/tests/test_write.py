@@ -347,8 +347,20 @@ def test_stored_storage_used_only_when_values_fit(tmp_path):
     assert storage(written(df, tmp_path)) == {"x": "double", "y": "byte"}
 
 
+def test_a_column_named_with_a_word_stata_reserves_is_written_with_one_warning(tmp_path):
+    df = pd.DataFrame({"long": [1], "_n": [2], "str12": [3], "longer": [4], "str": [5]})
+    with pytest.warns(UserWarning) as got:
+        path = written(df, tmp_path)
+    assert [str(w.message) for w in got] == [
+        'write_dta: "long", "_n", "str12" are words Stata reserves; rename them before using the file in Stata']
+    assert list(read_dta(path).columns) == ["long", "_n", "str12", "longer", "str"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        written(pd.DataFrame({"Long": [1], "in_": [2]}), tmp_path)
+
+
 def test_errors_name_the_column(tmp_path):
-    for name in ["1st", "has space", "x" * 33, "_n", "int", "str12", 3, ""]:
+    for name in ["1st", "has space", "x" * 33, 3, ""]:
         with pytest.raises(ValueError, match="not a name Stata can hold"):
             written(pd.DataFrame({name: [1]}), tmp_path)
     with pytest.raises(ValueError, match="more than once"):
