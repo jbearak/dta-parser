@@ -167,10 +167,10 @@ test("categoricals become labelled codes with plan 0020's marker", () => {
     { variable: "g", name: "dtaparser_factor", value: "ordered g_2" },
     { variable: "h", name: "dtaparser_factor", value: "unordered h" },
   ]);
-  assert.throws(
-    () => one({ name: "c", type: "categorical", levels: ["a"], values: [0, MISSING[".a"]] }),
-    /c: row 1 holds \.a; a categorical cannot hold \.a to \.z, so make it labelled numbers/,
-  );
+  // .a to .z are kept (plan 0022); the variable then has no marker.
+  const lettered = one({ name: "c", type: "categorical", levels: ["a"], values: [0, MISSING[".a"]] });
+  assert.deepEqual(Array.from(lettered.cols[0].missing), [0, 2]);
+  assert.deepEqual(lettered.chars, []);
   assert.throws(() => one({ name: "c", type: "categorical", values: [0] }), /c: a categorical needs its levels/);
   assert.throws(
     () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["a"], ordered: false, labelSet: "s", codes: [1, 2] } }),

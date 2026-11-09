@@ -22,7 +22,7 @@ use crate::format::{
     PageLocation, PageType, PhysicalType, Repetition, RowGroup, SchemaElement, Statistics,
     TimeUnit,
 };
-use crate::profile::{self, Categorical, ColumnProfile, Logical, Profile, Storage};
+use crate::profile::{self, Categorical, ColumnProfile, Logical, Profile, SetName, Storage};
 use crate::rle;
 use crate::tagged::tagged_nan;
 use dta::{missing, Error, ErrorKind, Result};
@@ -46,7 +46,11 @@ pub type Fill<'a, T> = dyn Fn(usize, &mut [T], &mut [u8]) + Sync + 'a;
 pub type GetBytes<'a> = dyn Fn(usize) -> Option<&'a [u8]> + Sync + 'a;
 
 /// Fills a block of level codes: from 0 for the first level, negative for
-/// a null.
+/// a missing value: -1 for `.`, -2 to -27 for `.a` to `.z` (the missing
+/// code, negated; plan 0022). Any other negative is `.`, as every
+/// negative was before `.a` to `.z` could be given. A categorical holding
+/// `.a` to `.z` is written as DOUBLE (level numbers from 1), unless
+/// [`WriteOptions::missing_letters`] is off.
 pub type FillCodes<'a> = dyn Fn(usize, &mut [i32]) + Sync + 'a;
 
 /// A column's values and the type to write them as (plan 0018, "Column
@@ -563,8 +567,25 @@ fn holds_letters(c: &WriteColumn, rows: usize) -> Result<bool> {
         Values::UInt8(f) | Values::UInt16(f) | Values::UInt32(f) => scan(f.as_ref(), rows, name, false),
         Values::UInt64(f) => scan(f.as_ref(), rows, name, false),
         Values::Bool(f) => scan(f.as_ref(), rows, name, false),
-        Values::Text(_) | Values::Binary(_) | Values::Categorical { .. } => Ok(false),
+        Values::Categorical { codes: fill, .. } => {
+            let mut codes = vec![0i32; BLOCK];
+            for first in (0..rows).step_by(BLOCK) {
+                let n = BLOCK.min(rows - first);
+                codes[..n].fill(-1);
+                fill(first, &mut codes[..n]);
+                if codes[..n].iter().any(|&c| letter_of_code(c).is_some()) {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        Values::Text(_) | Values::Binary(_) => Ok(false),
     }
+}
+
+/// The missing code (2 to 27) of a level code -2 to -27: `.a` to `.z`.
+fn letter_of_code(c: i32) -> Option<u8> {
+    (-(missing::LAST as i32)..=-(missing::SYSTEM as i32 + 1)).contains(&c).then(|| (-c) as u8)
 }
 
 /// What a column written as DOUBLE because it holds `.a` to `.z` was.
@@ -579,11 +600,12 @@ fn storage_of(values: &Values) -> Option<Storage> {
 }
 
 /// What a column written as DOUBLE because it holds `.a` to `.z` was,
-/// when it was a date or a timestamp.
+/// when it was a date, a timestamp or a categorical.
 fn logical_of(values: &Values) -> Option<Logical> {
     match values {
         Values::Date(_) => Some(Logical::Date),
         Values::Timestamp { .. } => Some(Logical::Timestamp),
+        Values::Categorical { .. } => Some(Logical::Categorical),
         _ => None,
     }
 }
@@ -607,9 +629,11 @@ fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
         let entry = &mut p.columns[i];
         // A Double column keeps the date or timestamp type its caller
         // gives it: R's `Date` and `POSIXct` are written so when DATE or
-        // TIMESTAMP cannot hold their values exactly.
+        // TIMESTAMP cannot hold their values exactly. Nothing else of
+        // `logical` or `categorical` comes from the caller: both follow
+        // the values (plan 0022).
         let given = match c.values {
-            Values::Double(_) => entry.logical,
+            Values::Double(_) => entry.logical.filter(|l| matches!(l, Logical::Date | Logical::Timestamp)),
             _ => None,
         };
         (entry.storage, entry.logical) = if tagged[k] {
@@ -617,6 +641,7 @@ fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
         } else {
             (None, given)
         };
+        entry.categorical = None;
         match &c.values {
             Values::Categorical {
                 levels, ordered, ..
@@ -624,7 +649,32 @@ fn profile_for(table: &Table, tagged: &[bool]) -> Result<String> {
                 entry.categorical = Some(Categorical {
                     levels: levels.clone(),
                     ordered: *ordered,
-                })
+                });
+                if tagged[k] {
+                    // Its set: the caller's if it fits, else the first
+                    // of name, name_2, ... that fits or is free.
+                    let fits = |name: &str| {
+                        p.value_labels.iter().find(|s| s.name == name).map(|s| profile::set_fits_levels(s, levels))
+                    };
+                    let entry = &p.columns[i];
+                    let name = match entry.value_labels.as_deref() {
+                        Some(g) if fits(g) == Some(true) => g.to_string(),
+                        _ => {
+                            let other_column = |n: &str| n != c.name && table.columns.iter().any(|o| o.name == n);
+                            let (name, found) = profile::categorical_set_name(&c.name, |n| match fits(n) {
+                                None if other_column(n) => SetName::Taken,
+                                None => SetName::Free,
+                                Some(true) => SetName::Fits,
+                                Some(false) => SetName::Taken,
+                            });
+                            if found == SetName::Free {
+                                p.value_labels.push(profile::levels_set(&name, levels));
+                            }
+                            name
+                        }
+                    };
+                    p.columns[i].value_labels = Some(name);
+                }
             }
             Values::Timestamp { utc, zone, .. } => {
                 entry.tz = match (zone, utc) {
@@ -1277,6 +1327,43 @@ impl Encoder<'_> {
             Values::Bool(f) => self.booleans(f.as_ref(), rows, s, name),
             Values::Text(g) => self.texts(g.as_ref(), rows, s, name, true),
             Values::Binary(g) => self.texts(g.as_ref(), rows, s, name, false),
+            // Level numbers from 1, `.a` to `.z` as tagged NaNs (plan 0022).
+            Values::Categorical { levels, codes, .. } if tagged => {
+                let n_levels = levels.len();
+                let mut buf = vec![0i32; BLOCK];
+                let mut bad: Option<(usize, i32)> = None;
+                let mut fill = |first: usize, values: &mut [f64], missing: &mut [u8]| {
+                    let n = values.len();
+                    buf[..n].fill(-1);
+                    codes(first, &mut buf[..n]);
+                    for (i, ((v, m), &c)) in values.iter_mut().zip(missing.iter_mut()).zip(&buf[..n]).enumerate() {
+                        if c >= 0 {
+                            if c as usize >= n_levels {
+                                bad.get_or_insert((first + i, c));
+                                *v = 0.0;
+                                *m = missing::SYSTEM;
+                            } else {
+                                *v = f64::from(c) + 1.0;
+                                *m = 0;
+                            }
+                        } else if let Some(letter) = letter_of_code(c) {
+                            *v = tagged_nan(letter);
+                            *m = 0;
+                        } else {
+                            *v = 0.0;
+                            *m = missing::SYSTEM;
+                        }
+                    }
+                };
+                let out = self.numbers(&mut fill, rows, s, name, Double, None);
+                if let Some((row, c)) = bad {
+                    return Err(Error::invalid(format!(
+                        "column \"{name}\": row {} has level code {c}, but there are {n_levels} levels",
+                        row + 1
+                    )));
+                }
+                out
+            }
             Values::Categorical { levels, codes, .. } => {
                 self.categorical(levels, codes.as_ref(), rows, s, name)
             }

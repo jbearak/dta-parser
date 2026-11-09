@@ -121,10 +121,12 @@ datakit's peer dependency.
 | `TableReader`, `AsyncTableReader` | gain `valueLabelNames()`, `characteristics()` and `notes()`; `TableInfo` gains an optional `timestamp`, `Variable` optional `unit`, `timeZone` and `categorical`. A class of yours that implements `TableReader` adds the three methods |
 | `DtaReader` | gains `valueLabelNames()` |
 | `dtaKey`, `dtaKeys` | also from `@jbearak/dta-parser/format` (the same functions) |
-| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | an error saying to make the column labelled numbers |
+| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | kept: the column is written as DOUBLE level numbers and reads back as a categorical with its letters (plan 0022) |
+| `DictionaryColumn.missing` held 0 or 1 | it may hold 2 to 27 for `.a` to `.z` in a categorical read from a file written so; code that tests `missing[i] === 1` for a missing value should test `missing[i] !== 0` |
 
-Nothing else changes: the Parquet functions read and write the same
-files the same way.
+Nothing else changes: apart from categoricals holding `.a` to `.z`
+(above), the Parquet functions read and write the same files the same
+way.
 
 `MISSING`'s objects are now one set per process, shared by every copy of
 dta-parser 2.0 or later and by datakit, so a `ValueLabels` map one read

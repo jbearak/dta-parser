@@ -145,6 +145,9 @@ impl Storage {
 pub enum Logical {
     Date,
     Timestamp,
+    /// A categorical holding `.a` to `.z` (plan 0022): level numbers
+    /// from 1, with the levels in the column's `categorical` entry.
+    Categorical,
 }
 
 impl Logical {
@@ -153,6 +156,7 @@ impl Logical {
         match self {
             Logical::Date => "date",
             Logical::Timestamp => "timestamp",
+            Logical::Categorical => "categorical",
         }
     }
 
@@ -160,6 +164,7 @@ impl Logical {
         match name {
             "date" => Some(Logical::Date),
             "timestamp" => Some(Logical::Timestamp),
+            "categorical" => Some(Logical::Categorical),
             _ => None,
         }
     }
@@ -207,7 +212,7 @@ impl Profile {
     /// unparsed, so damage there gives no warning: a read of five
     /// columns of a file with a large profile does not pay for all of it.
     pub fn parse_some(text: &[u8], columns: Option<&[&str]>) -> (Option<Profile>, Vec<String>) {
-        Self::parse_inner(text, columns, false, &mut Vec::new())
+        Self::parse_inner(text, columns, false, &mut Vec::new(), &mut Vec::new())
     }
 
     /// [`parse_some`](Self::parse_some), leaving the value-label sets it
@@ -220,8 +225,25 @@ impl Profile {
     /// need not read.
     pub fn parse_lazy_labels(text: &[u8], columns: Option<&[&str]>) -> (Option<Profile>, Vec<String>, Vec<LabelSpan>) {
         let mut spans = Vec::new();
-        let (p, warnings) = Self::parse_inner(text, columns, true, &mut spans);
+        let (p, warnings) = Self::parse_inner(text, columns, true, &mut spans, &mut Vec::new());
         (p, warnings, spans)
+    }
+
+    /// [`parse_some`](Self::parse_some), or with `lazy_labels`
+    /// [`parse_lazy_labels`](Self::parse_lazy_labels), also giving the
+    /// name of every set in the profile's `value_labels`, read or passed
+    /// over, so a reader of a few columns can still tell which names the
+    /// file uses (plan 0022), with where the JSON of each one passed over
+    /// is in `text`. What a set holds is not read for this.
+    pub fn parse_with_names(
+        text: &[u8],
+        columns: Option<&[&str]>,
+        lazy_labels: bool,
+    ) -> (Option<Profile>, Vec<String>, Vec<LabelSpan>, Vec<SetEntry>) {
+        let mut spans = Vec::new();
+        let mut names = Vec::new();
+        let (p, warnings) = Self::parse_inner(text, columns, lazy_labels, &mut spans, &mut names);
+        (p, warnings, spans, names)
     }
 
     /// The value-label set `name` from `text[span]`, as
@@ -245,6 +267,7 @@ impl Profile {
         columns: Option<&[&str]>,
         lazy_labels: bool,
         spans: &mut Vec<LabelSpan>,
+        names: &mut Vec<SetEntry>,
     ) -> (Option<Profile>, Vec<String>) {
         let mut warnings = Vec::new();
         if text.len() > MAX_BYTES {
@@ -363,6 +386,16 @@ impl Profile {
             match value {
                 Value::Object(sets) => {
                     for (name, entry) in unique(sets, || "value_labels.".to_string(), &mut warn) {
+                        names.push((
+                            name.to_string(),
+                            match entry {
+                                Value::Skipped(raw) => {
+                                    let at = raw.as_ptr() as usize - text.as_ptr() as usize;
+                                    Some(at..at + raw.len())
+                                }
+                                _ => None,
+                            },
+                        ));
                         if wanted.as_ref().is_some_and(|w| !w.contains(name)) {
                             continue;
                         }
@@ -663,6 +696,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
         return None;
     };
     let mut c = ColumnProfile::named(name);
+    let mut bad_categorical = false;
     // Made only for a warning: most columns have none.
     let path = || format!("columns.{name}.");
     for (key, value) in unique(members, path, warn) {
@@ -691,7 +725,7 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
                     Some(l) => c.logical = Some(l),
                     None => warn(dropped(
                         &format!("{}logical", path()),
-                        "is not one of \"date\" and \"timestamp\"",
+                        "is not one of \"date\", \"timestamp\" and \"categorical\"",
                     )),
                 }
                 continue;
@@ -699,7 +733,10 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
             "categorical" => {
                 match categorical(value) {
                     Ok(cat) => c.categorical = Some(cat),
-                    Err(why) => warn(dropped(&format!("{}categorical", path()), &why)),
+                    Err(why) => {
+                        bad_categorical = true;
+                        warn(dropped(&format!("{}categorical", path()), &why))
+                    }
                 }
                 continue;
             }
@@ -709,6 +746,12 @@ fn column(name: &str, v: &Value, warn: &mut impl FnMut(String)) -> Option<Column
             Some(s) => *slot = Some(s),
             None => warn(dropped(&format!("{}{key}", path()), "is not text")),
         }
+    }
+    // A categorical holding .a to .z without its levels reads as numbers;
+    // the warning about the levels says so, and `logical` goes with them
+    // (plan 0022).
+    if bad_categorical && c.logical == Some(Logical::Categorical) {
+        c.logical = None;
     }
     Some(c)
 }
@@ -750,9 +793,81 @@ fn first_duplicate(items: &[String]) -> Option<&str> {
     items.iter().map(String::as_str).find(|s| !seen.insert(*s))
 }
 
+/// Whether `set` fits a categorical of `levels` (plan 0022): its entries
+/// other than `.a` to `.z` are exactly 1 to the number of levels, each
+/// labelled with its level. Labels on `.a` to `.z` may be there too.
+pub fn set_fits_levels(set: &ValueLabelSet, levels: &[String]) -> bool {
+    let mut seen = vec![false; levels.len()];
+    for l in &set.labels {
+        if l.missing == 0 {
+            let v = l.value;
+            if v.fract() != 0.0 || v < 1.0 || v > levels.len() as f64 {
+                return false;
+            }
+            let i = v as usize - 1;
+            if seen[i] || l.text != levels[i] {
+                return false;
+            }
+            seen[i] = true;
+        } else if !(missing::SYSTEM + 1..=missing::LAST).contains(&l.missing) {
+            return false;
+        }
+    }
+    seen.iter().all(|&s| s)
+}
+
+/// The set that labels 1 to the number of levels with the levels.
+pub fn levels_set(name: &str, levels: &[String]) -> ValueLabelSet {
+    ValueLabelSet {
+        name: name.to_string(),
+        labels: levels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| ValueLabel { value: (i + 1) as f64, missing: 0, text: l.clone() })
+            .collect(),
+    }
+}
+
+/// What a name is among a file's sets, for [`categorical_set_name`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SetName {
+    /// No set has the name.
+    Free,
+    /// A set by that name fits the levels.
+    Fits,
+    /// A set by that name says something else (or cannot be read).
+    Taken,
+}
+
+/// The name a categorical holding `.a` to `.z` records for its set when
+/// the caller names none that fits (plan 0022): the first of `column`,
+/// `column_2`, `column_3`, ... that is [`SetName::Free`] or
+/// [`SetName::Fits`], so no set another column uses is changed. `state`
+/// says [`SetName::Taken`] for the name of another column in the file
+/// too: a made name is then the column's own or `column_k`, which no
+/// other column makes, so columns that make their sets apart never make
+/// one name for two sets.
+pub fn categorical_set_name(column: &str, mut state: impl FnMut(&str) -> SetName) -> (String, SetName) {
+    let mut name = column.to_string();
+    let mut k = 2u64;
+    loop {
+        match state(&name) {
+            SetName::Taken => {
+                name = format!("{column}_{k}");
+                k += 1;
+            }
+            found => return (name, found),
+        }
+    }
+}
+
 /// An unread value-label set: its name, and where its JSON is in the
 /// profile's text ([`Profile::parse_lazy_labels`]).
 pub type LabelSpan = (String, Range<usize>);
+
+/// A value-label set's name, and where its JSON is in the profile's text
+/// when it was passed over unparsed ([`Profile::parse_with_names`]).
+pub type SetEntry = (String, Option<Range<usize>>);
 
 /// What identifies a label's code within its set: a number's bits (with
 /// -0.0 as 0.0), or a missing code.

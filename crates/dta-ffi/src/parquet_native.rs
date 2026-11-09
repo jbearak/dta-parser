@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use dta::{missing, Bytes, Characteristic, FileSource, Source, ValueLabel, ValueLabelSet};
 use dta_parquet::format::{converted as cv, Codec, LogicalType, TimeUnit};
 use dta_parquet::{
-    ColumnInfo, ColumnProfile, ColumnType, Compression, LevelsFrom, Nested, Numbers, Output, Profile,
+    ColumnInfo, ColumnProfile, ColumnType, Compression, LevelsFrom, Logical, Nested, Numbers, Output, Profile,
     ReadOptions, Reader, Role, Table, TextChunk, Values, WriteColumn, WriteOptions,
 };
 
@@ -408,7 +408,25 @@ fn may_have_nulls<S: Source>(r: &Reader<S>, col: &ColumnInfo) -> bool {
     })
 }
 
+/// Each categorical holding `.a` to `.z` (DOUBLE, `logical` categorical;
+/// plan 0022): its column, its value-label set (the recorded one, or one
+/// made from its levels), and the warning about a recorded set that does
+/// not fit.
+fn categorical_sets<S: Source>(r: &Reader<S>) -> Vec<(usize, ValueLabelSet, Option<String>)> {
+    (0..r.columns().len()).filter_map(|k| r.categorical_labels(k).map(|(s, w)| (k, s, w))).collect()
+}
+
+/// The number of levels of a categorical holding `.a` to `.z`, or `None`
+/// for any other column.
+fn letter_levels<S: Source>(r: &Reader<S>, col: &ColumnInfo) -> Option<usize> {
+    if col.kind != ColumnType::Double || col.profile_logical != Some(Logical::Categorical) {
+        return None;
+    }
+    r.profile().and_then(|p| p.column(&col.name)).and_then(|e| e.categorical.as_ref()).map(|c| c.levels.len())
+}
+
 fn info_json<S: Source>(r: &Reader<S>) -> String {
+    let categoricals = categorical_sets(r);
     let mut o = String::from("{");
     key(&mut o, "rows");
     o.push_str(&r.rows().to_string());
@@ -429,7 +447,9 @@ fn info_json<S: Source>(r: &Reader<S>) -> String {
     key(&mut o, "compression");
     push_strs(&mut o, &r.codecs().into_iter().map(codec_name).collect::<Vec<_>>());
     key(&mut o, "warnings");
-    push_strs(&mut o, r.warnings());
+    let mut warnings = r.warnings().to_vec();
+    warnings.extend(categoricals.iter().filter_map(|(_, _, w)| w.clone()));
+    push_strs(&mut o, &warnings);
     // Every key-value entry of the footer, the profile and ARROW:schema
     // included: the value as text (bytes that are not UTF-8 replaced), or
     // null when the entry has none.
@@ -463,8 +483,16 @@ fn info_json<S: Source>(r: &Reader<S>) -> String {
     push_strs(&mut o, profile.map_or(&[][..], |p| &p.sort[..]));
     key(&mut o, "characteristics");
     o.push_str(&json::characteristics(profile.map_or(&[][..], |p| &p.characteristics[..])));
+    // The profile's sets, and each set made for a categorical holding .a
+    // to .z, which the profile does not have.
+    let mut sets: Vec<ValueLabelSet> = profile.map_or_else(Vec::new, |p| p.value_labels.clone());
+    for (_, set, _) in &categoricals {
+        if !sets.iter().any(|s| s.name == set.name) {
+            sets.push(set.clone());
+        }
+    }
     key(&mut o, "valueLabels");
-    o.push_str(&json::value_labels(profile.map_or(&[][..], |p| &p.value_labels[..])));
+    o.push_str(&json::value_labels(&sets));
     let by_name: std::collections::HashMap<&str, &ColumnProfile> =
         profile.map_or_else(Default::default, |p| p.columns.iter().map(|c| (c.name.as_str(), c)).collect());
     key(&mut o, "columns");
@@ -530,7 +558,10 @@ fn info_json<S: Source>(r: &Reader<S>) -> String {
                 LevelsFrom::Rows => "rows",
             }),
         );
-        if let (Some(LevelsFrom::Profile), Some(cat)) = (c.levels, entry.and_then(|e| e.categorical.as_ref())) {
+        // A categorical holding .a to .z (DOUBLE) has its levels from the
+        // profile too.
+        let from_profile = c.levels == Some(LevelsFrom::Profile) || c.profile_logical == Some(Logical::Categorical);
+        if let (true, Some(cat)) = (from_profile, entry.and_then(|e| e.categorical.as_ref())) {
             key(&mut o, "categories");
             push_strs(&mut o, &cat.levels);
             key(&mut o, "ordered");
@@ -545,7 +576,10 @@ fn info_json<S: Source>(r: &Reader<S>) -> String {
         key(&mut o, "format");
         push_opt(&mut o, entry.and_then(|e| e.format.as_deref()));
         key(&mut o, "value_labels");
-        push_opt(&mut o, entry.and_then(|e| e.value_labels.as_deref()));
+        match categoricals.iter().find(|(k, _, _)| *k == i) {
+            Some((_, set, _)) => push_str(&mut o, &set.name),
+            None => push_opt(&mut o, entry.and_then(|e| e.value_labels.as_deref())),
+        }
         key(&mut o, "unit_profile");
         push_opt(&mut o, entry.and_then(|e| e.unit.as_deref()));
         key(&mut o, "nulls");
@@ -681,6 +715,8 @@ fn read_with<S: Source>(
         Err(_) if cancelled => return Ok((u64::MAX, String::new())),
         Err(e) => return Err(e.to_string()),
     };
+    drop(outs);
+    let bad = level_numbers(r, cols, outputs, rows)?;
     let mut o = String::from("{\"letters\":[");
     for (i, l) in report.letters.iter().enumerate() {
         if i > 0 {
@@ -698,16 +734,53 @@ fn read_with<S: Source>(
             None => o.push_str("null"),
         }
     }
+    o.push_str("],\"bad\":[");
+    for (i, b) in bad.iter().enumerate() {
+        if i > 0 {
+            o.push(',');
+        }
+        match b {
+            Some(row) => o.push_str(&row.to_string()),
+            None => o.push_str("null"),
+        }
+    }
     o.push_str("]}");
     Ok((report.rows, o))
+}
+
+/// For each selected categorical holding `.a` to `.z` (plan 0022), read
+/// as doubles with a missing code per row: a value that is not one of its
+/// level numbers (`dta_parquet::level_index`) becomes `.`. Returns, per
+/// selected column, the first such row of the read (from 0), or `None`.
+fn level_numbers<S: Source>(r: &Reader<S>, cols: &[usize], outputs: &[PqOutput], rows: usize) -> Result<Vec<Option<u64>>, String> {
+    let mut bad = vec![None; cols.len()];
+    for (k, (&c, o)) in cols.iter().zip(outputs).enumerate() {
+        let Some(n) = letter_levels(r, &r.columns()[c]) else { continue };
+        if o.kind != OUT_F64 || o.codes.is_null() {
+            continue;
+        }
+        let values = unsafe { slice_mut(o.values as *mut f64, rows, "values")? };
+        let codes = unsafe { slice_mut(o.codes, rows, "codes")? };
+        for (i, (x, m)) in values.iter_mut().zip(codes.iter_mut()).enumerate() {
+            if *m == 0 && dta_parquet::level_index(*x, n).is_none() {
+                bad[k].get_or_insert(i as u64);
+                *x = f64::NAN;
+                *m = 1;
+            }
+        }
+    }
+    Ok(bad)
 }
 
 /// Read rows `skip` to `skip + n` (clipped to the file) of the columns
 /// `cols` (0-based) into `outputs`. Returns the rows read, -2 when the
 /// callback stopped the read, -1 on error. `report` receives a JSON
 /// object (free it with `dta_string_free`): `letters`, per column whether
-/// any `.a` to `.z` was read, and `levels`, per column the levels found
-/// in the rows read (null where the levels are not from the rows).
+/// any `.a` to `.z` was read, `levels`, per column the levels found in
+/// the rows read (null where the levels are not from the rows), and
+/// `bad`, per column the first row of the read (from 0) of a categorical
+/// holding `.a` to `.z` whose value is not a level number, read as `.`
+/// (null where there is none).
 ///
 /// # Safety
 /// See dta.h: each output's buffers hold the window's rows; `callback`
@@ -1162,12 +1235,86 @@ mod tests {
         assert_eq!(got_codes, [0, 2, 1]);
         assert_eq!(seen, vec![Some("a".to_string()), None, Some("bcd".to_string())]);
         let rep = unsafe { CStr::from_ptr(report) }.to_str().unwrap().to_string();
-        assert_eq!(rep, r#"{"letters":[true,false],"levels":[null,null]}"#);
+        assert_eq!(rep, r#"{"letters":[true,false],"levels":[null,null],"bad":[null,null]}"#);
         unsafe {
             crate::native::dta_string_free(report);
             dta_pq_close(file);
             dta_pq_bytes_free(out, len);
         }
+    }
+
+    #[test]
+    fn a_categorical_holding_letters_reads_as_level_numbers() {
+        // low, .a | high, mid in two row groups; then high's 3.0 made 1.5.
+        let codes: Vec<i32> = vec![0, -2, 2, 1];
+        let levels = vec!["low".to_string(), "mid".to_string(), "high".to_string()];
+        let column = WriteColumn {
+            name: "grade".into(),
+            values: Values::Categorical {
+                levels,
+                ordered: true,
+                codes: Box::new(move |first, out: &mut [i32]| out.copy_from_slice(&codes[first..first + out.len()])),
+            },
+        };
+        let table = Table { rows: 4, columns: vec![column], profile: Profile::default() };
+        let options = WriteOptions {
+            compression: Compression::from_name("none").unwrap(),
+            row_group_rows: Some(2),
+            ..WriteOptions::default()
+        };
+        let mut bytes = Vec::new();
+        dta_parquet::write(&table, &mut bytes, &options).unwrap();
+        let (three, half) = (3.0f64.to_le_bytes(), 1.5f64.to_le_bytes());
+        let mut n = 0;
+        for i in 0..bytes.len() - 7 {
+            if bytes[i..i + 8] == three {
+                bytes[i..i + 8].copy_from_slice(&half);
+                n += 1;
+            }
+        }
+        assert!(n > 0);
+
+        let mut err = [0 as c_char; 256];
+        let file = unsafe { dta_pq_open(std::ptr::null(), bytes.as_ptr(), bytes.len(), 0, err.as_mut_ptr(), 256) };
+        assert!(!file.is_null(), "{:?}", unsafe { CStr::from_ptr(err.as_ptr()) });
+        let mut len = 0usize;
+        let info = unsafe { dta_pq_info_json(file, &mut len, err.as_mut_ptr(), 256) };
+        let doc = json::parse(unsafe { CStr::from_ptr(info) }.to_str().unwrap()).unwrap();
+        unsafe { crate::native::dta_string_free(info) };
+        assert!(doc.array("warnings").unwrap().is_empty());
+        let col = &doc.array("columns").unwrap()[0];
+        assert_eq!(col.str("kind").unwrap(), "double");
+        assert_eq!(col.str("logical").unwrap(), "categorical");
+        assert_eq!(col.str("value_labels").unwrap(), "grade");
+        assert_eq!(col.array("categories").unwrap().len(), 3);
+        let sets = doc.array("valueLabels").unwrap();
+        assert_eq!(sets.len(), 1);
+        assert_eq!(sets[0].str("name").unwrap(), "grade");
+        assert_eq!(sets[0].array("labels").unwrap().len(), 3);
+
+        let read = |skip: u64, n: u64| -> (Vec<f64>, Vec<u8>, String) {
+            let rows = (4 - skip).min(n) as usize;
+            let mut values = vec![0f64; rows];
+            let mut codes = vec![0u8; rows];
+            let outputs = [PqOutput { kind: OUT_F64, base: 0, null: 0, values: values.as_mut_ptr() as *mut c_void, codes: codes.as_mut_ptr() }];
+            let (mut report, mut rlen) = (std::ptr::null_mut(), 0usize);
+            let mut err = [0 as c_char; 256];
+            let got = unsafe {
+                dta_pq_read(file, [0u32].as_ptr(), 1, skip, n, outputs.as_ptr(), None, std::ptr::null_mut(), &mut report, &mut rlen, err.as_mut_ptr(), 256)
+            };
+            assert_eq!(got, rows as i64, "{:?}", unsafe { CStr::from_ptr(err.as_ptr()) });
+            let rep = unsafe { CStr::from_ptr(report) }.to_str().unwrap().to_string();
+            unsafe { crate::native::dta_string_free(report) };
+            (values, codes, rep)
+        };
+        let (values, codes, rep) = read(0, 2);
+        assert_eq!((values[0], &codes[..]), (1.0, &[0u8, 2][..]));
+        assert!(rep.ends_with(r#""bad":[null]}"#), "{rep}");
+        let (values, codes, rep) = read(1, 3);
+        assert_eq!(codes, [2, 1, 0]);
+        assert_eq!(values[2], 2.0);
+        assert!(rep.ends_with(r#""bad":[1]}"#), "{rep}");
+        unsafe { dta_pq_close(file) };
     }
 
     #[test]

@@ -3,7 +3,7 @@
 // follow Python datakit's `save_dta`.
 
 import type { Characteristic, Missing, ValueLabels, WriteDataset, WriteVariable } from "@jbearak/dta-parser";
-import { isMissing, missingValue } from "@jbearak/dta-parser/format";
+import { isMissing } from "@jbearak/dta-parser/format";
 import { dtaError } from "./_shared/errors";
 import { FACTOR_MARK, warn } from "./dataset";
 import type { Dataset, DatasetVariable } from "./types";
@@ -319,11 +319,15 @@ function nullCheck(name: string, texts: Texts): void {
 function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, characteristics: Characteristic[]): WriteVariable {
   const c = v.values as { kind?: string };
   let levels: readonly string[];
-  let index: Int32Array; // per row: level index, -1 for `.`
+  let index: Int32Array; // per row: level index, -1 for `.`, -2 to -27 for `.a` to `.z`
   if (c.kind === "dictionary") {
     const d = v.values as { codes: Uint32Array; values: string[]; missing?: Uint8Array };
     levels = d.values;
-    index = Int32Array.from(d.codes, (k, i) => (d.missing?.[i] ? -1 : k));
+    index = Int32Array.from(d.codes, (k, i) => {
+      const m = d.missing?.[i] ?? 0;
+      if (m > 27) throw range(`${v.name}: row ${i} has missing code ${m}; codes run from 0 to 27`);
+      return m ? -m : k;
+    });
   } else {
     const lv = v.levels ?? v.categorical?.levels;
     if (!lv) throw invalid(`${v.name}: a categorical needs its levels (levels, or a DictionaryColumn)`);
@@ -332,11 +336,9 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
     if (!nums) throw invalid(`${v.name}: a categorical's values are level codes from 0, or a DictionaryColumn`);
     index = new Int32Array(nums.values.length);
     for (let i = 0; i < index.length; i++) {
-      if (nums.missing[i] > 1) {
-        throw range(`${v.name}: row ${i} holds ${missingValue(nums.missing[i]).missing}; a categorical cannot hold .a to .z, so make it labelled numbers (a numeric type with a value label set), which keep them`);
-      }
       const x = nums.values[i];
-      if (nums.missing[i]) index[i] = -1;
+      if (nums.missing[i] > 27) throw range(`${v.name}: row ${i} has missing code ${nums.missing[i]}; codes run from 0 to 27`);
+      if (nums.missing[i]) index[i] = -nums.missing[i];
       else if (!Number.isInteger(x) || x < 0 || x >= levels.length) throw range(`${v.name}: row ${i} holds ${x}, not a level code from 0 to ${levels.length - 1}`);
       else index[i] = x;
     }
@@ -349,21 +351,30 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
   const codes = given ?? levels.map((_, i) => i + 1);
   const labels: ValueLabels = new Map(levels.map((text, i) => [codes[i], text]));
   if (new Set(levels).size !== levels.length) throw invalid(`${v.name}: two levels share a text`);
-  // The set's name: the one it came from, else the column's; reused when a
-  // set by that name says the same, else name_2, name_3, ...
-  const base = v.categorical?.labelSet ?? v.name;
+  // Labels on .a to .z in the set the variable names (a categorical read
+  // from Parquet holding them has one, plan 0022) are kept.
+  const named = v.valueLabels ? sets[v.valueLabels] : undefined;
+  if (named) for (const [k, text] of named) if (isMissing(k) && k.missing !== ".") labels.set(k, text);
+  // The set's name: the one it came from, else the one it names, else the
+  // column's; reused when a set by that name says the same, else name_2,
+  // name_3, ...
+  const base = v.categorical?.labelSet ?? (v.valueLabels || v.name);
   let name = base;
   for (let k = 2; sets[name] !== undefined && !sameLabels(sets[name], labels); k++) name = `${base}_${k}`;
   sets[name] = sets[name] ?? labels;
   const ordered = v.categorical?.ordered ?? v.ordered ?? false;
-  characteristics.push({ variable: v.name, name: FACTOR_MARK, value: `${ordered ? "ordered" : "unordered"} ${name}` });
   const values = new Float64Array(index.length);
   const missing = new Uint8Array(index.length);
+  let letters = false;
   for (let i = 0; i < index.length; i++) {
     if (index[i] < 0) {
       values[i] = NaN;
-      missing[i] = 1;
+      missing[i] = -index[i];
+      if (missing[i] > 1) letters = true;
     } else values[i] = codes[index[i]];
   }
+  // The marker says the variable reads back as a factor; one holding .a
+  // to .z reads back as labelled numbers, which keep them (plan 0022).
+  if (!letters) characteristics.push({ variable: v.name, name: FACTOR_MARK, value: `${ordered ? "ordered" : "unordered"} ${name}` });
   return { name: v.name, label: v.label, type: "long", valueLabels: name, values, missing };
 }

@@ -817,7 +817,7 @@ datakit `save_dta` does (`SaveDtaOptions`):
 | `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
 | `date` (days since 1970) | long `%td`, days since 1960 |
 | `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
-| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors |
+| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and such a variable gets no marker: it reads back as labelled numbers, which keep them, as Python's `save_dta` writes it. Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
 | `decimal` read as a number | double |
 
 Dates and timestamps are converted exactly, in integer arithmetic, from
@@ -830,8 +830,8 @@ times): drop the zone after converting to the clock time you want.
 A null in a numeric, date or timestamp column is `.`, and `.a` to `.z`
 stay letters. A `.dta` string has no missing value, so a null string is
 an error naming the variable and row; fill it (with `""`, say) first.
-`time`, a `decimal` read as text (more than 15 digits), and a
-categorical given a letter are errors that say what to do instead. A
+`time` and a `decimal` read as text (more than 15 digits) are errors
+that say what to do instead. A
 value label set that already has the name a categorical's set would take
 is reused if it maps the same codes to the same texts, and otherwise
 kept, the new set taking `name_2`, `name_3`, and so on.
@@ -1243,6 +1243,7 @@ console.log(r.variables.map((v) => `${v.name}:${v.physicalType}:${v.columnKind}`
 | `"string"`, `"strL"`, strN, or none with strings | text | BYTE_ARRAY STRING |
 | `"binary"`, or any Uint8Array among the values | bytes (text values become their UTF-8 bytes) | BYTE_ARRAY |
 | `"categorical"`, or a `DictionaryColumn` | level codes from 0 with `levels` (and `ordered`) | dictionary-encoded BYTE_ARRAY STRING, every level in order in every row group |
+| the same holding `.a` to `.z` (`MISSING` values among the codes, or a `DictionaryColumn`'s `missing` 2 to 27) | as above | DOUBLE level numbers from 1, the letters as tagged NaNs, with the levels and a value label set (the variable's `valueLabels` if it labels 1 to k with the levels, else one named after the column) in the profile ([Parquet: missing values](parquet.md#the-file)); with `missingLetters: false`, text with nulls |
 
 In every column `null` (and `MISSING["."]`) is a null. A value that does
 not fit its type is an error naming the variable and row (`row 0 holds
@@ -1394,6 +1395,7 @@ digit.
 | STRING, ENUM, JSON | `string` | `StringColumn`; `missing[i]` 1 for a null | `string`, or `MISSING["."]` for a null |
 | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY (with UUID) unannotated | `binary` | `StringColumn` of `Uint8Array` | `Uint8Array` |
 | a categorical (dta profile) | `categorical` | `DictionaryColumn`: every level, in order; `categorical.ordered` | `string` |
+| a categorical holding `.a` to `.z` (DOUBLE, `"logical": "categorical"`) | `categorical` | `DictionaryColumn` as above, `missing[i]` 2 to 27 for `.a` to `.z`; `valueLabels` names its set. A value that is not a level number reads as `.`, with one process warning per reader and column (code `DATAKIT_CATEGORICAL`) | `string`, or `MISSING[".a"]` ... |
 | a dictionary of strings in `ARROW:schema` | `categorical` | `DictionaryColumn`, levels from the rows read | `string` |
 | a dictionary of other values in `ARROW:schema` | its value type | as that type | as that type |
 | null, anywhere | | `missing[i]` 1 | `MISSING["."]` |

@@ -33,7 +33,8 @@ and within them the pages, that hold the rows wanted are read.}
 
 \item{factors}{Whether columns with value labels become factors, as in
 \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}. A factor cannot hold \code{.a} to \code{.z}, so the
-default keeps the numbers.}
+default keeps the numbers. A categorical holding \code{.a} to \code{.z} stays a
+labelled double either way.}
 
 \item{int64}{How to return 64-bit integer columns, signed or not, and
 unsigned 32-bit ones: \code{"double"} (the default; a value a double cannot
@@ -71,6 +72,7 @@ A tibble, with the column types of \code{\link[dtaparser:read_dta]{dtaparser::re
    STRING, ENUM, JSON \tab character \cr
    BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID \tab a list of raw vectors (\code{NULL} for null) \cr
    a categorical \code{save_parquet()} wrote \tab factor, ordered if it was \cr
+   a categorical holding \code{.a} to \code{.z} (DOUBLE level numbers, which Python's and TypeScript's datakit write) \tab \code{\link[dtaparser:with_labels]{dtaparser_labelled}} double, whatever \code{factors} says \cr
    a dictionary of strings in \code{ARROW:schema} (an arrow factor, a pandas \code{category}, a polars \code{Categorical}) \tab factor, unordered \cr
 }
 
@@ -98,6 +100,16 @@ rows read, in the order they first appear: another window of rows can
 give other levels, and reading every row gives them all; a level no
 row holds is not among them. \code{factors} does not apply to these. A
 dictionary of another type reads as its values' type.
+
+A categorical holding \code{.a} to \code{.z} is written as DOUBLE level
+numbers, 1 for the first level, with tagged NaNs for the letters. A
+factor cannot hold the letters, so it reads as a labelled double: the
+numbers 1 to k, \code{.a} to \code{.z} as tagged NAs, \code{labels} from its value
+label set (the levels, and any labels on letters), and its attribute
+\code{label_set} the set's name. A value that is not a level number (a
+fraction, a number past the levels) is \code{NA}, with one warning per call
+naming the column and the first such row read. \code{\link[=save_parquet]{save_parquet()}}
+writes the column back as labelled numbers, not as a categorical.
 
 Not read, each an error naming the column and its type: FLOAT16 and
 INTERVAL.

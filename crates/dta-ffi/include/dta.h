@@ -236,10 +236,14 @@ void dta_pq_close(dta_pq_file *file);
  * "nested"), zone (a timestamp's: the profile's, "" for an instant
  * without one, else ARROW:schema's), levels ("profile", "rows" or null:
  * whether it is a categorical, and where its levels come from),
- * categories and ordered (levels from the profile), storage and logical
- * (the profile's, on a DOUBLE column written so for .a to .z), label,
- * format, value_labels (the set's name), unit_profile, and nulls (whether
- * any row group's statistics count nulls, or do not say).
+ * categories and ordered (levels from the profile; also on a DOUBLE
+ * column whose logical is "categorical", a categorical holding .a to .z
+ * written as level numbers from 1), storage and logical (the profile's,
+ * on a DOUBLE column written so for .a to .z), label, format,
+ * value_labels (the set's name; for a categorical holding .a to .z, the
+ * set it records or one made from its levels, which the profile's
+ * valueLabels then includes), unit_profile, and nulls (whether any row
+ * group's statistics count nulls, or do not say).
  */
 char *dta_pq_info_json(dta_pq_file *file, size_t *len, char *err, size_t err_len);
 
@@ -289,7 +293,10 @@ typedef int (*dta_pq_text_fn)(void *user, size_t k, uint64_t first, uint64_t row
  * count). *report receives a JSON object (free it with dta_string_free):
  * letters, per column whether any .a to .z was read, and levels, per
  * column the levels found in the rows read for a categorical whose
- * levels come from the rows (null otherwise). Returns the rows read, -2
+ * levels come from the rows (null otherwise), and bad, per column the
+ * first row of the read (from 0) of a categorical holding .a to .z whose
+ * value is not a level number, which the caller reads as . (null
+ * otherwise). Returns the rows read, -2
  * when the callback stopped the read, or -1 on failure.
  */
 int64_t dta_pq_read(dta_pq_file *file, const uint32_t *cols, size_t ncols, uint64_t skip, uint64_t n,

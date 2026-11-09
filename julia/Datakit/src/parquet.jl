@@ -59,7 +59,8 @@ struct Plan
     name::Symbol
     index::Int          # 0-based, in the file's columns
     info::Dict{String,Any}
-    how::Symbol         # :number, :date, :timestamp, :time, :logical_date, :logical_timestamp, :levels, :text, :binary
+    how::Symbol         # :number, :date, :timestamp, :time, :logical_date, :logical_timestamp, :levels,
+                        # :letter_levels, :text, :binary
     T::DataType         # the element type of the values buffer
     codes::Bool         # whether a missing code per row is needed
 end
@@ -82,6 +83,10 @@ function plan_of(info, index::Int, decimal::Symbol)
         logical = info["logical"]
         logical == "date" && return Plan(name, index, info, :logical_date, Float64, true)
         logical == "timestamp" && return Plan(name, index, info, :logical_timestamp, Float64, true)
+        # A categorical holding .a to .z (plan 0022): level numbers from 1,
+        # read as labelled numbers, since a CategoricalArray cannot hold
+        # the letters.
+        logical == "categorical" && return Plan(name, index, info, :letter_levels, Float64, true)
         T = storage === nothing ? Float64 : STORAGE_TYPE[storage]
         # A DOUBLE column may hold .a to .z as tagged NaNs.
         return Plan(name, index, info, :number, T, true)
@@ -286,11 +291,13 @@ function label_sets_of(doc)
 end
 
 # Value labels apply to numbers that are not dates, times or categoricals,
-# as read_dta keeps them.
-labels_apply(p::Plan) = p.how === :number
+# as read_dta keeps them, and to a categorical holding .a to .z, read as
+# labelled numbers.
+labels_apply(p::Plan) = p.how === :number || p.how === :letter_levels
 
 function storage_of(p::Plan, width::Int=-1)
     p.how === :number && return get(STORAGE_OF, p.T, p.T === Bool ? "byte" : "")
+    p.how === :letter_levels && return "double"
     p.how === :date && return "long"
     p.how === :timestamp && return "double"
     p.how === :text && return width < 0 ? "" : width > 2045 ? "strL" : "str$(max(width, 1))"
@@ -417,6 +424,15 @@ since 1960 with `%tc`. DATE as `Date`, TIMESTAMP and INT96 as
 is loaded), TIME as `Dates.Time`, text as `String`, bytes as
 `Vector{UInt8}`, categoricals as `CategoricalArray` when
 CategoricalArrays.jl is loaded (else `String`, with one warning).
+
+A categorical holding `.a` to `.z` (written by Python's or TypeScript's
+datakit as DOUBLE level numbers) is labelled numbers, since a
+`CategoricalArray` cannot hold the letters: the level numbers 1 to k as a
+`DtaColumn{Float64}`, whatever rows are read, with
+`colmetadata(df, :x, "value_labels")` naming a set that labels 1 to k
+with the levels (and any labels on letters). A value in such a column
+that is not a level number reads as `.`, with one warning per call
+naming the column and the first such row.
 """
 function read_parquet(source; cols=nothing, skip::Integer=0, n_max::Union{Nothing,Integer}=nothing,
                       timestamps::Symbol=:error, decimal::Symbol=:float, nested::Symbol=:error)
@@ -481,6 +497,7 @@ function read_plans(f::PqFile, plans::Vector{Plan}, start::Int, count::Int, doc,
     colmeta = Dict{Symbol,Dict{String,Any}}()
     zoneless = String[]
     plain_cats = String[]
+    bad = get(rep, "bad", nothing)
     for (k, p) in enumerate(plans)
         cm = column_meta_of(p, sets)
         columns[k] = if p.how === :number
@@ -502,6 +519,19 @@ function read_plans(f::PqFile, plans::Vector{Plan}, start::Int, count::Int, doc,
             logical_date(buffers[k], codes[k], p, cm)
         elseif p.how === :logical_timestamp
             logical_timestamp(buffers[k], codes[k], p, cm, truncate, call, zoneless)
+        elseif p.how === :letter_levels
+            # The library made each value that is not a level number `.`
+            # and gives the first such row of the read.
+            b = bad === nothing ? nothing : bad[k]
+            if b !== nothing
+                nlevels = length(get(p.info, "categories", ()))
+                @warn "column \"$(p.name)\": row $(start + Int(b) + 1) of the file holds a value that is not one of " *
+                      "its $nlevels level numbers; it is read as `.`"
+            end
+            # A DtaColumn in every window, letters or not: the type is the
+            # file's, not the rows'.
+            c = codes[k] === nothing ? zeros(UInt8, length(buffers[k])) : codes[k]
+            DtaColumn{Float64}(buffers[k], c)
         elseif p.how === :levels
             levels = p.info["levels"] == "profile" ? Vector{String}(p.info["categories"]) : Vector{String}(rep["levels"][k])
             ordered = p.info["levels"] == "profile" && p.info["ordered"] === true

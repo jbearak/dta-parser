@@ -5,7 +5,8 @@
 //! by the core's Arrow outputs on its worker threads, finished here
 //! (booleans packed to bits, days and seconds held as doubles made dates
 //! and timestamps, times made nanoseconds, categorical keys narrowed to
-//! polars' width), and handed over through `__arrow_c_stream__` with no
+//! polars' width, a categorical's level numbers held as doubles made
+//! keys), and handed over through `__arrow_c_stream__` with no
 //! copy. `.a` to `.z` come back as a second table of `LETTERS` columns.
 
 use std::sync::Arc;
@@ -159,6 +160,10 @@ enum Post {
     Scale(i64),
     /// Keys narrowed to polars' width for this many levels.
     Narrow(usize),
+    /// Level numbers from 1 held as doubles (a categorical holding `.a`
+    /// to `.z`, plan 0022) made keys of polars' width for this many
+    /// levels; a value that is not a level number is read as `.`.
+    LevelNumbers(usize),
 }
 
 struct Col {
@@ -253,6 +258,13 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
             c.levels = Some((levels.clone(), *ordered));
             c
         }
+        Kind::LetterCategory { levels, ordered } => {
+            // The core reads it as a DOUBLE with letters; the keys are made
+            // in place over the doubles after the read.
+            let mut c = col(Elem::F64, key_format(key_width(levels.len())), true, Post::LevelNumbers(levels.len()));
+            c.levels = Some((levels.clone(), *ordered));
+            c
+        }
         Kind::Category { rows: true, .. } => {
             let mut c = col(Elem::Views, "vu", may_null, Post::None);
             c.flag = Some("categorical".into());
@@ -263,7 +275,12 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
     };
     c.eligible = matches!(
         kind,
-        Kind::Int { .. } | Kind::Float32 | Kind::Double { .. } | Kind::Date | Kind::Timestamp { .. }
+        Kind::Int { .. }
+            | Kind::Float32
+            | Kind::Double { .. }
+            | Kind::Date
+            | Kind::Timestamp { .. }
+            | Kind::LetterCategory { .. }
     );
     c
 }
@@ -281,6 +298,41 @@ unsafe fn slice<'a, T>(addr: usize, n: usize) -> &'a mut [T] {
 
 fn bit(bits: &[u8], r: usize) -> bool {
     (bits[r / 8] >> (r % 8)) & 1 == 1
+}
+
+/// Make level numbers from 1 held as doubles keys of polars' width for
+/// `levels` levels, in place; a value that is not a level number
+/// ([`dta_parquet::level_index`]) is made null (`.`). Returns how many
+/// were, and the first one's row in the read (from 0).
+fn level_keys(values: usize, bits: &mut [u8], rows: usize, levels: usize) -> (usize, Option<usize>) {
+    let w = key_width(levels);
+    let (mut bad, mut first) = (0, None);
+    for r in 0..rows {
+        // SAFETY: the buffer holds `rows` doubles; the key written at r
+        // (at most 4 bytes) overlaps only the double at r, already read.
+        let x = unsafe { *(values as *const f64).add(r) };
+        let key = if bit(bits, r) {
+            match dta_parquet::level_index(x, levels) {
+                Some(i) => i,
+                None => {
+                    bits[r / 8] &= !(1 << (r % 8));
+                    bad += 1;
+                    first.get_or_insert(r);
+                    0
+                }
+            }
+        } else {
+            0
+        };
+        unsafe {
+            match w {
+                1 => *(values as *mut u8).add(r) = key as u8,
+                2 => *(values as *mut u16).add(r) = key as u16,
+                _ => *(values as *mut u32).add(r) = key,
+            }
+        }
+    }
+    (bad, first)
 }
 
 /// A row's message: the column, the file's row (1-based), and the text.
@@ -534,6 +586,9 @@ fn read_arrow<'py>(
     let mut col_text: Vec<Vec<usize>> = vec![Vec::new(); cols.len()];
     let mut nulls: Vec<usize> = vec![0; cols.len()];
     let mut letters: Vec<(usize, Vec<(u64, u8)>)> = Vec::new();
+    // A value of a categorical holding .a to .z that is not a level
+    // number: one warning per read and column (plan 0022).
+    let mut bad_levels: Vec<String> = Vec::new();
     for (k, col) in cols.iter().enumerate() {
         let bits = if col.validity { unsafe { slice::<u8>(base + col.validity_at, rows.div_ceil(8)) } } else { &mut [][..] };
         if let Some(d) = decimals[k].take() {
@@ -572,6 +627,17 @@ fn read_arrow<'py>(
                 }
             }
             Post::Scale(_) => {}
+            Post::LevelNumbers(n) => {
+                let (bad, first) = level_keys(v, bits, rows, *n);
+                nulls[k] += bad;
+                if let Some(r) = first {
+                    bad_levels.push(format!(
+                        "column \"{}\": row {} holds a value that is not one of its {n} level numbers; it is read as .",
+                        col.name,
+                        first_row + r as u64 + 1
+                    ));
+                }
+            }
             Post::Narrow(n) => {
                 let w = key_width(*n);
                 let keys = v as *mut u32;
@@ -639,7 +705,7 @@ fn read_arrow<'py>(
 
     let t = Instant::now();
     let names: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
-    let out = meta_dict(py, r, &cols, &names, rows)?;
+    let out = meta_dict(py, r, &cols, &names, rows, bad_levels)?;
     out.set_item("letter_columns", letters.iter().map(|(k, _)| cols[*k].name.as_str()).collect::<Vec<_>>())?;
     steps.push(("meta", t.elapsed().as_secs_f64()));
     out.set_item("steps", steps)?;
@@ -692,7 +758,11 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
                 c.physical.map(|p| p.name()),
                 crate::parquet::logical_name(c),
                 entry.and_then(|e| e.label.as_deref()),
-                entry.and_then(|e| e.value_labels.as_deref()),
+                match r.categorical_labels(k) {
+                    // A categorical holding .a to .z: the set it reads with.
+                    Some((set, _)) => Some(set.name),
+                    None => entry.and_then(|e| e.value_labels.clone()),
+                },
                 c.storage.map(|s| s.name()),
             ))?;
             if let Some(col) = col.take() {
@@ -701,7 +771,7 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
         }
         drop(by_name);
         let names: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
-        let m = meta_dict(py, r, &cols, &names, usize::try_from(r.rows()).unwrap_or(usize::MAX))?;
+        let m = meta_dict(py, r, &cols, &names, usize::try_from(r.rows()).unwrap_or(usize::MAX), Vec::new())?;
         m.set_item("letter_columns", Vec::<String>::new())?;
         let out = PyDict::new(py);
         out.set_item("rows", r.rows())?;
@@ -903,25 +973,56 @@ fn profile_label_sets<'py>(py: Python<'py>, r: &dyn Access) -> PyResult<(Bound<'
     Ok((out, warnings))
 }
 
+/// Each categorical holding `.a` to `.z` among `cols` (plan 0022): its
+/// value-label set, the one its profile entry names or one made from its
+/// levels ([`Access::categorical_labels`]), by its place in `cols`; and
+/// the warnings about recorded sets that do not fit.
+fn categorical_sets(r: &dyn Access, cols: &[usize]) -> (Vec<Option<dta::ValueLabelSet>>, Vec<String>) {
+    let mut warnings = Vec::new();
+    let sets = cols
+        .iter()
+        .map(|&c| {
+            r.categorical_labels(c).map(|(set, w)| {
+                warnings.extend(w);
+                set
+            })
+        })
+        .collect();
+    (sets, warnings)
+}
+
 /// What `Meta` is made from: rows, names, columns [(name, label, format,
 /// value_labels, ordered, storage, flag, eligible)], value_labels, label,
 /// notes, characteristics {variable: {name: text}}, sort, timestamp and
-/// warnings.
-fn meta_dict<'py>(py: Python<'py>, r: &dyn Access, cols: &[Col], names: &[&str], rows: usize) -> PyResult<Bound<'py, PyDict>> {
+/// warnings (the reader's, then `more`). A categorical holding `.a` to
+/// `.z` names the set [`categorical_sets`] gives it, which value_labels
+/// holds.
+fn meta_dict<'py>(
+    py: Python<'py>,
+    r: &dyn Access,
+    cols: &[Col],
+    names: &[&str],
+    rows: usize,
+    mut more: Vec<String>,
+) -> PyResult<Bound<'py, PyDict>> {
     let out = PyDict::new(py);
     out.set_item("rows", rows)?;
     out.set_item("names", names)?;
     let p = r.profile();
     let by_name = entries(p);
     let infos = r.columns();
+    let (cat_sets, cat_warnings) = categorical_sets(r, &cols.iter().map(|c| c.index).collect::<Vec<_>>());
     let list = PyList::empty(py);
-    for c in cols {
+    for (c, cat) in cols.iter().zip(&cat_sets) {
         let e = by_name.get(c.name.as_str()).copied();
         list.append((
             &c.name,
             e.and_then(|e| e.label.as_deref()),
             e.and_then(|e| e.format.as_deref()),
-            e.and_then(|e| e.value_labels.as_deref()),
+            match cat {
+                Some(set) => Some(set.name.as_str()),
+                None => e.and_then(|e| e.value_labels.as_deref()),
+            },
             c.levels.as_ref().map(|(_, o)| *o),
             infos[c.index].storage.map(|s| s.name()),
             c.flag.as_deref(),
@@ -930,6 +1031,11 @@ fn meta_dict<'py>(py: Python<'py>, r: &dyn Access, cols: &[Col], names: &[&str],
     }
     out.set_item("columns", list)?;
     let (sets, mut warnings) = profile_label_sets(py, r)?;
+    for set in cat_sets.iter().flatten() {
+        if !sets.contains(&set.name)? {
+            sets.set_item(&set.name, label_sets(py, std::slice::from_ref(set))?.get_item(&set.name)?)?;
+        }
+    }
     out.set_item("value_labels", sets)?;
     out.set_item("label", p.and_then(|p| p.label.as_deref()))?;
     out.set_item("notes", p.map_or(&[][..], |p| p.notes.as_slice()))?;
@@ -950,6 +1056,8 @@ fn meta_dict<'py>(py: Python<'py>, r: &dyn Access, cols: &[Col], names: &[&str],
     out.set_item("timestamp", p.and_then(|p| p.timestamp.as_deref()))?;
     let mut all = r.warnings().to_vec();
     all.append(&mut warnings);
+    all.extend(cat_warnings);
+    all.append(&mut more);
     out.set_item("warnings", all)?;
     let _ = unit_code;
     Ok(out)

@@ -47,6 +47,10 @@ enum How {
     Text { binary: bool },
     /// A categorical, as level codes.
     Levels,
+    /// A categorical holding `.a` to `.z` (plan 0022): DOUBLE level
+    /// numbers from 1 of this many levels, read as level codes with the
+    /// letters' missing codes.
+    LetterLevels(usize),
     /// Not read; the text says why.
     NotRead(String),
 }
@@ -61,9 +65,12 @@ enum Out {
     /// Every row's bytes, byte ends, null flags, and UTF-16 ends unless
     /// the text is all ASCII (or the column binary).
     Plain { bytes: Vec<u8>, ends: Vec<u32>, missing: Vec<u8>, utf16: Option<Vec<u32>>, binary: bool },
-    /// Level codes from 0 (-1 for a null), and the levels found in the
-    /// rows of this call, for a categorical whose levels come from the rows.
-    Levels { codes: Vec<i32>, found_bytes: Vec<u8>, found_utf16: Vec<u32> },
+    /// Level codes from 0 (-1 for a null, -2 to -27 for `.a` to `.z`),
+    /// and the levels found in the rows of this call, for a categorical
+    /// whose levels come from the rows; `bad`: the first row (from 1) of a
+    /// categorical holding `.a` to `.z` whose value is not a level number,
+    /// read as `.`, or 0.
+    Levels { codes: Vec<i32>, found_bytes: Vec<u8>, found_utf16: Vec<u32>, bad: u32 },
 }
 
 struct PqHandle {
@@ -237,6 +244,7 @@ fn type_name(col: &ColumnInfo) -> &'static str {
         ColumnType::Double => match (col.profile_logical, col.storage) {
             (Some(Logical::Date), _) => "date",
             (Some(Logical::Timestamp), _) => "timestamp",
+            (Some(Logical::Categorical), _) => "categorical",
             (None, Some(s)) => s.name(),
             _ => "double",
         },
@@ -323,6 +331,9 @@ fn plan_columns(r: &Reader<HostFile>, int64: u32) -> (Vec<How>, Vec<Option<Strin
                 ColumnType::Unsupported(why) => How::NotRead(format!("column \"{}\" is {why}", col.name)),
                 ColumnType::Text if col.levels == Some(LevelsFrom::Profile) && levels.contains_key(col.name.as_str()) => How::Levels,
                 ColumnType::Text if col.levels == Some(LevelsFrom::Rows) => How::Levels,
+                ColumnType::Double if col.profile_logical == Some(Logical::Categorical) => How::LetterLevels(
+                    profile.and_then(|p| p.column(&col.name)).and_then(|e| e.categorical.as_ref()).map_or(0, |c| c.levels.len()),
+                ),
                 ColumnType::Text => How::Text { binary: false },
                 ColumnType::Binary => How::Text { binary: true },
                 ColumnType::Decimal { precision, .. } if *precision > 15 => How::Text { binary: false },
@@ -372,7 +383,7 @@ fn unit_of(col: &ColumnInfo) -> Option<&'static str> {
         ColumnType::Double => match col.profile_logical {
             Some(Logical::Date) => Some("day"),
             Some(Logical::Timestamp) => Some("s"),
-            None => None,
+            Some(Logical::Categorical) | None => None,
         },
         _ => None,
     }
@@ -447,6 +458,13 @@ fn labels_apply(col: &ColumnInfo, how: &How) -> bool {
         && col.profile_logical.is_none()
 }
 
+/// Each categorical holding `.a` to `.z` (plan 0022): its column, its
+/// value-label set (recorded, or made from its levels), and the warning
+/// about a recorded set that does not fit.
+fn categorical_sets(r: &Reader<HostFile>) -> Vec<(usize, ValueLabelSet, Option<String>)> {
+    (0..r.columns().len()).filter_map(|k| r.categorical_labels(k).map(|(s, w)| (k, s, w))).collect()
+}
+
 #[inline(never)]
 fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut o: String) -> String {
     let profile = r.profile();
@@ -465,7 +483,9 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
     key(&mut o, "compression");
     o.push_str(&json::strings(&r.codecs().into_iter().map(codec_name).collect::<Vec<_>>()));
     key(&mut o, "warnings");
-    o.push_str(&json::strings(r.warnings()));
+    let mut warnings = r.warnings().to_vec();
+    warnings.extend(categorical_sets(r).into_iter().filter_map(|(_, _, w)| w));
+    o.push_str(&json::strings(&warnings));
     key(&mut o, "keyValue");
     o.push('[');
     for kv in &meta.key_value {
@@ -509,6 +529,7 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
         None => o.push_str("null"),
     }
     let sets: HashMap<&str, ()> = r.value_label_set_names().into_iter().map(|n| (n, ())).collect();
+    let made: HashMap<usize, String> = categorical_sets(r).into_iter().map(|(k, s, _)| (k, s.name)).collect();
     let entries: HashMap<&str, &ColumnProfile> =
         profile.map_or_else(HashMap::new, |p| p.columns.iter().map(|c| (c.name.as_str(), c)).collect());
     key(&mut o, "variables");
@@ -518,7 +539,7 @@ fn info_json(r: &Reader<HostFile>, how: &[How], reasons: &[Option<String>], mut 
             o.push(',');
         }
         let entry = entries.get(col.name.as_str()).copied();
-        variable_json(&mut o, col, entry, &how[k], reasons[k].as_deref(), &sets);
+        variable_json(&mut o, col, entry, &how[k], reasons[k].as_deref(), &sets, made.get(&k).map(String::as_str));
     }
     o.push(']');
     // Each text column's size per row group (null for other columns), for
@@ -560,6 +581,7 @@ fn variable_json(
     h: &How,
     reason: Option<&str>,
     sets: &HashMap<&str, ()>,
+    categorical_set: Option<&str>,
 ) {
     o.push('{');
     key(o, "name");
@@ -573,6 +595,7 @@ fn variable_json(
     let set = entry
         .and_then(|e| e.value_labels.as_deref())
         .filter(|s| sets.contains_key(s) && labels_apply(col, h))
+        .or(categorical_set)
         .unwrap_or("");
     key(o, "valueLabels");
     push_str(o, set);
@@ -587,7 +610,7 @@ fn variable_json(
         How::Number { .. } => push_str(o, "number"),
         How::BigInt { .. } => push_str(o, "bigint"),
         How::Text { .. } => push_str(o, "string"),
-        How::Levels => push_str(o, "dictionary"),
+        How::Levels | How::LetterLevels(_) => push_str(o, "dictionary"),
         How::NotRead(why) => {
             o.push_str("null");
             key(o, "notRead");
@@ -615,17 +638,18 @@ fn variable_json(
         key(o, "storage");
         push_str(o, s.name());
     }
-    if matches!(h, How::Levels) {
+    if matches!(h, How::Levels | How::LetterLevels(_)) {
         let cat = entry.and_then(|e| e.categorical.as_ref());
+        let from_profile = col.levels == Some(LevelsFrom::Profile) || matches!(h, How::LetterLevels(_));
         key(o, "categorical");
         o.push('{');
         key(o, "levels");
-        match cat.filter(|_| col.levels == Some(LevelsFrom::Profile)) {
+        match cat.filter(|_| from_profile) {
             Some(c) => o.push_str(&json::strings(&c.levels)),
             None => o.push_str("null"),
         }
         key(o, "ordered");
-        o.push_str(if cat.is_some_and(|c| c.ordered) && col.levels == Some(LevelsFrom::Profile) { "true" } else { "false" });
+        o.push_str(if cat.is_some_and(|c| c.ordered) && from_profile { "true" } else { "false" });
         o.push('}');
     }
     o.push('}');
@@ -779,7 +803,13 @@ pub extern "C" fn pq_value_labels(h: u32) -> *const u8 {
         let text = with_handle(h, |handle| {
             // A set that cannot be read is left out, as one was when the
             // profile was read at open.
-            let (sets, _) = handle.reader.value_label_sets();
+            let (mut sets, _) = handle.reader.value_label_sets();
+            // And each set made for a categorical holding .a to .z.
+            for (_, set, _) in categorical_sets(&handle.reader) {
+                if !sets.iter().any(|s| s.name == set.name) {
+                    sets.push(set);
+                }
+            }
             Ok(json::value_labels(&sets))
         })?;
         Ok(result(state, text.into_bytes()))
@@ -1072,7 +1102,7 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
             let parts: Vec<usize> = cols
                 .iter()
                 .map(|&c| match how[c] {
-                    How::Number { .. } | How::BigInt { .. } => 9,
+                    How::Number { .. } | How::BigInt { .. } | How::LetterLevels(_) => 9,
                     How::Levels => 4,
                     How::Text { .. } => 9,
                     How::NotRead(_) => 0,
@@ -1083,9 +1113,9 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
             let mut texts: Vec<Option<TextAcc>> = Vec::with_capacity(cols.len());
             for &c in &cols {
                 let (out, text) = match &how[c] {
-                    How::Number { .. } => (Out::Number { values: vec![0.0; rows], codes: vec![0; rows] }, None),
+                    How::Number { .. } | How::LetterLevels(_) => (Out::Number { values: vec![0.0; rows], codes: vec![0; rows] }, None),
                     How::BigInt { unsigned } => (Out::BigInt { values: vec![0; rows], codes: vec![0; rows], unsigned: *unsigned }, None),
-                    How::Levels => (Out::Levels { codes: vec![0; rows], found_bytes: Vec::new(), found_utf16: Vec::new() }, None),
+                    How::Levels => (Out::Levels { codes: vec![0; rows], found_bytes: Vec::new(), found_utf16: Vec::new(), bad: 0 }, None),
                     How::Text { binary } => {
                         let dict = dicts.entry(c).or_default();
                         let coded = flags & DICTIONARY != 0 && !*binary && !dict.gave_up;
@@ -1185,6 +1215,30 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                     };
                 }
             }
+            // A categorical holding .a to .z: its level numbers as codes.
+            for (k, &c) in cols.iter().enumerate() {
+                if let (How::LetterLevels(n), Out::Number { values, codes }) = (&how[c], &outs[k]) {
+                    let mut bad = 0u32;
+                    let levels: Vec<i32> = values
+                        .iter()
+                        .zip(codes)
+                        .enumerate()
+                        .map(|(i, (&x, &m))| match m {
+                            0 => dta_parquet::level_index(x, *n).map_or_else(
+                                || {
+                                    if bad == 0 {
+                                        bad = i as u32 + 1;
+                                    }
+                                    -1
+                                },
+                                |l| l as i32,
+                            ),
+                            m => -i32::from(m),
+                        })
+                        .collect();
+                    outs[k] = Out::Levels { codes: levels, found_bytes: Vec::new(), found_utf16: Vec::new(), bad };
+                }
+            }
             for (k, out) in outs.iter_mut().enumerate() {
                 if let (Out::Levels { found_bytes, found_utf16, .. }, Some(Some(levels))) = (out, report.levels.get(k)) {
                     pack_levels(levels, found_bytes, found_utf16);
@@ -1230,8 +1284,9 @@ pub unsafe extern "C" fn pq_read(h: u32, cols: *const u32, ncols: usize, start: 
                             ul,
                         ]);
                     }
-                    Out::Levels { codes, found_bytes, found_utf16 } => {
+                    Out::Levels { codes, found_bytes, found_utf16, bad } => {
                         d[0] = 6;
+                        d[8] = *bad;
                         d[2..8].copy_from_slice(&[
                             p(codes.as_ptr() as *const u8),
                             codes.len() as u32,
@@ -1515,8 +1570,12 @@ pub unsafe extern "C" fn pq_write_categorical(
         WRITE.with(|w| {
             let mut w = w.borrow_mut();
             let n = w.rows;
-            let data = WData::Levels { codes: copy(codes, n)?, levels: lv, ordered: ordered != 0 };
-            let col = column_meta(&meta, 0, 0, data)?;
+            let codes = copy(codes, n)?;
+            // -2 to -27 are .a to .z (plan 0022): the writer need not look.
+            let letters = codes.iter().any(|&c| (-27..=-2).contains(&c));
+            let data = WData::Levels { codes, levels: lv, ordered: ordered != 0 };
+            let mut col = column_meta(&meta, 0, 0, data)?;
+            col.letters = Some(letters);
             w.columns.push(col);
             Ok(1)
         })

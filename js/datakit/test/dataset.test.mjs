@@ -218,9 +218,7 @@ test("readParquetInfo reads the footer, every label set and the characteristics,
   }
 });
 
-test("a categorical built with a letter is an error in writeParquet, not a silent null", () => {
-  assert.throws(
-    () => writeParquet({ variables: [{ name: "g", type: "categorical", levels: ["a", "b"], values: [0, MISSING[".a"]] }] }),
-    /g: row 1 holds \.a; a categorical cannot hold \.a to \.z, so make it labelled numbers/,
-  );
+test("a categorical built with a letter keeps it in writeParquet, not a silent null", () => {
+  const r = openParquet(writeParquet({ variables: [{ name: "g", type: "categorical", levels: ["a", "b"], values: [0, MISSING[".a"]] }] }));
+  assert.deepEqual(r.readRows(0, 2).map((row) => row[0]), ["a", MISSING[".a"]]);
 });

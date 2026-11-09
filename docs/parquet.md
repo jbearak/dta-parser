@@ -178,6 +178,7 @@ arrow restore factors and time zones. What each value becomes:
 | a polars `Datetime` without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
 | polars `Time` | INT64 | TIME(NANOS) |
 | R factor; polars `Enum`, `Categorical` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
+| a categorical holding `.a` to `.z`: a polars `Enum` with letters (from `read_dta(factors=True)`, say); a TypeScript `DictionaryColumn` whose `missing` holds 2 to 27 | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
 
 Files dta_parser 0.2 wrote from pandas read too: its `datetime64[s]`
 columns are TIMESTAMP(MILLIS) with `"unit": "s"` in the profile, which
@@ -204,6 +205,24 @@ Missing values:
   `read_dta` reads a `%td` column with letters: days since 1960-01-01
   with a `%td` format, or milliseconds since 1960-01-01 00:00 with
   `%tc`. Rows without a letter read as `Date` or `DateTime`.
+- A categorical holding them is DOUBLE too (plan 0022): each value is
+  its level's number counted from 1, `.` is a null, `.a` to `.z` are
+  tagged NaNs, and the profile has `"logical": "categorical"` beside
+  its `categorical` levels, and `value_labels` naming a set that labels
+  1 to the number of levels with the levels (and may label letters,
+  "Refused" on `.r`, say). The set is the one the writer was given for
+  the column if it fits, else the first of the column's name,
+  `name_2`, `name_3`, ... that fits or is free, so no other column's set
+  changes and the name stays the same through any number of writes and
+  reads. A categorical without letters stays text. Python and
+  TypeScript read the column as a categorical with its letters (an
+  `Enum` with `meta.missing`; a `DictionaryColumn` with `missing` 2 to
+  27); R and Julia, whose factor and `CategoricalArray` cannot hold
+  letters, read it as labelled numbers: the level numbers with the
+  letters and the set (R's `factors = TRUE` leaves it so). R and Julia
+  write it back as labelled numbers, not a categorical. A value that is
+  not a level number (another tool rewrote the column) reads as `.`,
+  with one warning naming the column and the first such row.
 - A reader takes a DOUBLE value as `.a` to `.z` only when its bits are
   exactly that pattern with a letter `a` to `z`; any other NaN is NaN,
   a value.
@@ -248,7 +267,9 @@ metadata:
   (`levels`, every level in order, unused ones too, and `ordered`),
   `tz` (a timestamp's zone; `""` for an instant without one), `unit`
   (`"s"` where Parquet has no such unit; dta_parser 0.2 wrote it), and on a DOUBLE column
-  written so because of `.a` to `.z`, `storage` or `logical`.
+  written so because of `.a` to `.z`, `storage` or `logical` (`"date"`,
+  `"timestamp"` or `"categorical"`; a categorical has `categorical` and
+  `value_labels` too).
 - `value_labels` maps a set's name to an array of `[code, text]` pairs.
   A code is a JSON number, finite and within ±2^53 if it is an integer,
   or a missing code as text: `"."` or `".a"` to `".z"`. An array keeps
@@ -263,7 +284,12 @@ metadata:
   breaks a rule (a label set that is not a list of pairs, a code given
   twice, a `levels` list with a level twice, a `value_labels` name with
   no set, a `storage` or `logical` on a column that is not DOUBLE) is
-  dropped with one warning naming it, and the rest is used. A profile
+  dropped with one warning naming it, and the rest is used. A
+  `"logical": "categorical"` without valid `categorical` levels, or
+  beside a `storage`, is dropped with its levels, and the column reads
+  as numbers; a categorical whose `value_labels` names no set or one
+  that does not fit gets a set made from its levels, named as the
+  writer would. A profile
   that is not JSON, too large, or not an object gives one warning, and
   the file reads as plain Parquet. Damaged metadata is never an error:
   the values are intact.
@@ -281,6 +307,7 @@ nanoparquet 0.5.2):
 | value labels, variable labels, formats, notes | lost (the profile is ignored) | lost | lost | lost | lost |
 | `.a` to `.z` | pyarrow: NaN, not null; pandas: missing | NaN, not null | SQL: NaN, not NULL; DuckDB in R: tagged NA, letter kept | tagged NA, letter kept | tagged NA, letter kept |
 | a categorical | dictionary, ordered kept; pandas `category` | `Categorical` | VARCHAR | factor, ordered kept | factor, not ordered |
+| a categorical holding `.a` to `.z` | double: the level numbers 1 to k, the letters NaN | Float64, the letters NaN | DOUBLE, the letters NaN | double, tagged NA, letter kept | double, tagged NA, letter kept |
 | a zoned timestamp | tz-aware, our zone | our zone | TIMESTAMP WITH TIME ZONE | `POSIXct` in our zone | `POSIXct` in UTC |
 | INT(8), INT(16) | int8, int16 (pandas: float64 with nulls) | Int8, Int16 | TINYINT, SMALLINT | integer | integer |
 
@@ -402,7 +429,9 @@ pandas, fastparquet and polars in Python, in
 | Python: `column "x", row 1: the timestamp ... (seconds since 1970) is outside polars' Datetime range` (also `Date range`) | a value polars cannot hold | none in polars; read the column with another tool |
 | Python: `column "x" is Decimal, which save_parquet does not write; cast it to Float64 or String` (also Duration, List, Array, Struct, Object, Int128) | a dtype the files here do not hold | cast the column first |
 | Python: `column "x" is Int64 and has .a to .z, which Int64 cannot hold; drop its letters or cast it` (also unsigned, Boolean, String, Binary) | letters on a column a double cannot hold | cast to `Float64`, or `meta.missing.pop("x")` |
-| Python: `column "x" is an Enum or Categorical and has .a to .z, ...; save it as .dta, drop its letters (meta.missing.pop), or read without factors` | a `factors=True` column with letters | as it says |
+| Python: `column "x" is an Enum without a value label set and has .a to .z, ...` (also `is a Categorical and has .a to .z`) | letters on an `Enum` that `meta.columns` gives no set, or on a `Categorical` | name its set in `meta.columns["x"].value_labels`, cast a `Categorical` to an `Enum`, or `meta.missing.pop("x")` |
+| warning: `column "x": row 3 holds a value that is not one of its 3 level numbers; it is read as .` (R: `as NA`; TypeScript counts rows from 0, code `DATAKIT_CATEGORICAL`) | another tool wrote a value into a categorical holding `.a` to `.z` | none needed; the value reads as `.` |
+| warning: `column "x" is a categorical whose value label set "s" does not label 1 to 3 with its levels; a set made from the levels is used` | a hand-edited profile | none needed |
 | Python: `column "x" has changed since it was read, so meta.missing["x"] may no longer line up with its rows; carry the letters with letters_to_columns before changing rows, or drop them with meta.missing.pop("x")` (also `have 6 rows, but the frame has 2`) | a filter, sort, join or new values after a read with `letters="meta"` | read with `letters="columns"` or call `letters_to_columns` first |
 | Python: `column "x": row 2 holds a value and the letter .d; set one of them to null` | a row with both a value and a letter in its companion | set the companion to null where a value is set |
 | Python: `column "x" is in the frame but its letters' column "x_letter" is not; ...` (also `"x_letter" holds the letters of column "x", which is not in the frame`) | a companion dropped while its column was kept, or the reverse | keep both, or `del meta.letter_columns["x"]` |

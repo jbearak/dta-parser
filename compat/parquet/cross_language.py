@@ -63,13 +63,17 @@ if MODE == "write":
         # For factors: two codes sharing a text, and numbers as R writes them.
         "dup": pl.Series([1, 2, 3, 1, 5, None], dtype=pl.Int8),
         "w": [0.5, 2.0, 100000.0, None, 1e-4, 3.0],
+        # A categorical holding letters (plan 0022): written as DOUBLE
+        # level numbers with its set.
+        "grade": pl.Series(["low", None, "high", None, None, "mid"], dtype=pl.Enum(["low", "mid", "high"])),
     })
     meta = dk.Meta(
         label="From Python", notes=["A note from Python."],
         columns={c: dk.Column() for c in df.columns},
         value_labels={"scorelab": {1.5: "Low", ".a": "Refused", ".z": "Other"},
                       "yn": {0: "No", 1: "Yes", ".d": "Don't know"},
-                      "dupl": {1: "Yes", 2: "No", 3: "Yes"}, "wl": {3: "three"}},
+                      "dupl": {1: "Yes", 2: "No", 3: "Yes"}, "wl": {3: "three"},
+                      "grade": {1: "low", 2: "mid", 3: "high"}},
         missing={
             "score": L(None, None, ".a", None, ".z", None, name="score"),
             "small": L(None, None, ".d", None, None, None, name="small"),
@@ -77,6 +81,7 @@ if MODE == "write":
             "fl": L(None, ".c", None, None, None, None, name="fl"),
             "seen": L(None, ".d", None, None, None, ".z", name="seen"),
             "stamp": L(None, ".k", None, None, None, None, name="stamp"),
+            "grade": L(None, ".a", None, None, ".z", None, name="grade"),
         },
         rows=6,
     )
@@ -87,6 +92,7 @@ if MODE == "write":
     meta.columns["day"].format = "%tdCCYY-NN-DD"
     meta.columns["dup"].value_labels = "dupl"
     meta.columns["w"].value_labels = "wl"
+    meta.columns["grade"] = dk.Column(value_labels="grade", ordered=True)
     dk.save_parquet(df, os.path.join(DIR, "from_python.parquet"), meta=meta)
     companions = meta.copy()
     with_companions = dk.letters_to_columns(df, companions)
@@ -256,6 +262,13 @@ if os.path.exists(path):
         check(meta.letters("stamp").to_list() == [None, ".k", None, None, None, None] if mode == "meta" else
               df["stamp_letter"].to_list() == [None, ".k", None, None, None, None], "ts: stamp letters")
         cells(df, meta, "dup", [1, 2, 3, 1, 5, 0], [0, 0, 0, 0, 0, 1])
+        # A categorical holding letters (plan 0022): an Enum, its letters
+        # kept, and its set (made by the writer: TypeScript names none).
+        check(df["grade"].dtype == pl.Enum(["low", "mid", "high"]) and meta.columns["grade"].ordered is True,
+              "ts: grade levels")
+        cells(df, meta, "grade", ["low", None, "high", None, None, "mid"], [0, 2, 0, 1, 27, 0])
+        check(meta.columns["grade"].value_labels == "grade" and
+              meta.value_labels["grade"] == {1: "low", 2: "mid", 3: "high"}, "ts: grade set")
 else:
     print("no from_typescript.parquet in", DIR, "(run TypeScript's write first); TypeScript's file not checked")
 

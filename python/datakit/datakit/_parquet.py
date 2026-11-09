@@ -36,12 +36,17 @@ def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letter
     factors: make each column with value labels an Enum of its labels, as
         R's datakit does with factors = TRUE. The codes are then gone from
         the frame, and codes sharing a label become one level; saving does
-        not bring them back. `.a` to `.z` are kept as `letters` says.
+        not bring them back. `.a` to `.z` are kept as `letters` says. A
+        categorical holding `.a` to `.z` (stored as level numbers) reads
+        as an Enum of its levels either way, `meta.columns[x].value_labels`
+        naming its set; a value that is not a level number reads as null,
+        with a warning.
     letters: where `.a` to `.z` go. "meta" (the default): in
         `meta.missing`, a Series of LETTERS per column holding any, aligned
         with the rows as read. "columns": a companion column `x_letter`
         after every column that can hold a letter (byte, int, long, float,
-        double, date, timestamp), which follows its rows through filter,
+        double, date, timestamp, or a categorical stored with letters),
+        which follows its rows through filter,
         sort and join. A list of names: companions for those columns, the
         rest in `meta.missing`. None: drop the letters.
     letter_suffix: the companion's suffix, "_letter" by default.
@@ -144,7 +149,12 @@ def save_parquet(df, path=None, meta=None, *, compression="snappy", compression_
     R's and Julia's datakits read too. `.a` to `.z` are in the data: a
     column holding any is DOUBLE, each letter a tagged NaN (the profile
     names the column's storage type), which pyarrow, polars and DuckDB
-    read as NaN. Other tools read the file as plain Parquet. Returns None,
+    read as NaN. An Enum holding letters needs a value label set in
+    meta.columns: it is written as its level numbers from 1 (DOUBLE), with
+    its levels and a set labelling them, its own set when that fits, else
+    one made from the levels named after the column (or name_2, ...).
+    An Enum without a set, or a Categorical, with letters is an error.
+    Other tools read the file as plain Parquet. Returns None,
     or the file as bytes when path is None. The file is written beside
     `path` and renamed, so a failed write leaves an existing file as it
     was.
