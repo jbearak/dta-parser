@@ -1,0 +1,11 @@
+.libPaths(c(file.path(Sys.getenv("TMPDIR"), "polars2-research/rlib"), .libPaths()))
+suppressPackageStartupMessages({library(arrow); library(dplyr); library(nanoarrow); library(haven)})
+nan_letters <- function(x) { n <- as_nanoarrow_array(x); valid <- !is.na(x) | !is.na(na_tag(x))
+  as_arrow_array(nanoarrow_array_modify(n, list(null_count = sum(!valid), buffers = list(as_nanoarrow_array(valid)$buffers[[2]], n$buffers[[2]])))) }
+x <- c(1, tagged_na("a"), tagged_na("b"), NA, tagged_na("a"), 2)
+b <- nan_letters(x)
+cat("is_in(x, {.a}):", paste(as.vector(call_function("is_in", b, options = list(value_set = nan_letters(tagged_na("a")), skip_nulls = FALSE))), collapse = " "), "\n")
+tb <- arrow_table(x = b)
+r <- tryCatch(nrow(tb |> filter(x %in% !!nan_letters(tagged_na("a"))) |> collect()), error = function(e) conditionMessage(e))
+cat("dplyr filter(x %in% <.a array>):", r, "\n")
+cat("dplyr mean, NaN as NA first:", (tb |> summarise(m = mean(if_else(is.nan(x), NA_real_, x), na.rm = TRUE)) |> collect())$m, "\n")

@@ -1,0 +1,13 @@
+.libPaths(c(file.path(Sys.getenv("TMPDIR"), "polars2-research/rlib"), .libPaths()))
+suppressPackageStartupMessages({library(arrow); library(dplyr); library(nanoarrow); library(haven)})
+nan_letters <- function(x) { n <- as_nanoarrow_array(x); valid <- !is.na(x) | !is.na(na_tag(x))
+  as_arrow_array(nanoarrow_array_modify(n, list(null_count = sum(!valid), buffers = list(as_nanoarrow_array(valid)$buffers[[2]], n$buffers[[2]])))) }
+b <- nan_letters(c(tagged_na("a"), tagged_na("a"), 1))
+tb <- arrow_table(x = b, k = c(1, -1, 1)) |> mutate(y = x * k) |> compute()
+hi <- function(v) sprintf("%08x", readBin(writeBin(v, raw(), endian = "little")[5:8], "integer", endian = "little"))
+y <- as.vector(tb$y); cat("high words of y:", hi(y[1]), hi(y[2]), " na_tag:", na_tag(y), "\n")
+gb <- tb |> group_by(y) |> summarise(n = n()) |> collect(); cat("groups:", nrow(gb), "\n")
+t2 <- arrow_table(x = b, k = c(1, -1, 1)) |> mutate(z = if_else(k > 0, x, x * 2)) |> compute()
+z <- as.vector(t2$z); cat("z high words:", hi(z[1]), hi(z[2]), " na_tag:", na_tag(z), "\n")
+g2 <- t2 |> group_by(z) |> summarise(n = n()) |> collect(); cat("groups of z (two .a, one 1):", nrow(g2), "\n")
+cat("is_in(z, {.a}):", paste(as.vector(call_function("is_in", t2$z, options = list(value_set = nan_letters(tagged_na("a")), skip_nulls = FALSE))), collapse = " "), "\n")
