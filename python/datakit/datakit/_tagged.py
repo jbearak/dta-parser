@@ -68,7 +68,7 @@ def na_tag(x):
 def _na_tag(e):
     # Any other dtype holds no letter: cast so that the expression works
     # on it too (a cast never makes R's tag pattern).
-    bits = e.cast(pl.Float64, strict=False).reinterpret(dtype=pl.UInt64)
+    bits = e.to_physical().cast(pl.Float64, strict=False).reinterpret(dtype=pl.UInt64)
     byte = (bits // (1 << 32)) % 256
     tagged = (bits & pl.lit(_MASK, pl.UInt64)) == pl.lit(NA_BITS, pl.UInt64)
     letter = byte.replace_strict(_BYTE_TO_LETTER, default=None, return_dtype=LETTERS)
