@@ -1,0 +1,18 @@
+.libPaths(c(file.path(Sys.getenv("TMPDIR"), "polars2-research/rlib"), .libPaths()))
+suppressPackageStartupMessages({library(arrow); library(dplyr); library(nanoarrow); library(haven)})
+nan_letters <- function(x) { n <- as_nanoarrow_array(x); valid <- !is.na(x) | !is.na(na_tag(x))
+  as_arrow_array(nanoarrow_array_modify(n, list(null_count = sum(!valid), buffers = list(as_nanoarrow_array(valid)$buffers[[2]], n$buffers[[2]])))) }
+x <- c(1, 5000, tagged_na("a"), tagged_na("b"), NA)
+at <- arrow_table(x = nan_letters(x)); rt <- tibble::tibble(x = x)
+cat("rows: 1, 5000, .a, .b, .\n")
+q <- function(label, f) { a <- tryCatch(paste(collect(f(at))$r, collapse = " "), error = function(e) paste("error:", conditionMessage(e)))
+  r <- paste(f(rt)$r, collapse = " "); cat(sprintf("%-26s arrow: %-28s R tibble: %s\n", label, a, r)) }
+q("x == 1", function(d) transmute(d, r = x == 1))
+q("x != 1", function(d) transmute(d, r = x != 1))
+q("!(x == 1)", function(d) transmute(d, r = !(x == 1)))
+q("x > 3000", function(d) transmute(d, r = x > 3000))
+q("x < 3000", function(d) transmute(d, r = x < 3000))
+q("if_else(x > 3000,'hi','lo')", function(d) transmute(d, r = if_else(x > 3000, "hi", "lo")))
+cat(sprintf("%-26s arrow: %-28s R tibble: %s\n", "nrow(filter(x != 1))", nrow(collect(filter(at, x != 1))), nrow(filter(rt, x != 1))))
+cat(sprintf("%-26s arrow: %-28s R tibble: %s\n", "sum(x > 3000, na.rm=T)", collect(summarise(at, r = sum(x > 3000, na.rm = TRUE)))$r, sum(rt$x > 3000, na.rm = TRUE)))
+cat(sprintf("%-26s arrow: %-28s R tibble: %s\n", "max(x, na.rm=T)", format(collect(summarise(at, r = max(x, na.rm = TRUE)))$r), max(rt$x, na.rm = TRUE)))

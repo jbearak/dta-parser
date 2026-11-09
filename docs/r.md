@@ -788,6 +788,23 @@ It takes doubles, integers, logicals, `Date`, `POSIXct` and labelled
 columns. Integers and logicals hold no letters, so they rank only 0 or
 1. Every number ranks 0, so compare numbers with each other as usual.
 
+R's grouping and matching treat every `NA` as one value, so they put
+`.` and `.a` to `.z` together. These all do: base `unique()`,
+`duplicated()`, `match()`, `%in%`, `table()`, `factor()` and
+`split()`; vctrs' `vec_unique()`, `vec_group_id()` and `vec_in()`; and
+dplyr's `group_by()`, `distinct()`, `count()` and joins, where an `.a`
+row matches both `.a` and `.b` rows of the other table. Sorting,
+subsetting, `ifelse()`, `if_else()`, arithmetic and `bind_rows()` keep
+each letter. To group or join by the letter too, add it as a column of
+its own:
+
+```r
+x <- c(1, dtaparser::tagged_na("a"), dtaparser::tagged_na("b"), NA)
+unique(x)                                       # 1 NA: the letters merged
+d <- tibble::tibble(x = x)
+dplyr::count(d, x, letter = dtaparser::na_tag(x))  # 1, .a, .b and . apart
+```
+
 `drop_labels(x)` takes off a column's value labels and variable label
 and keeps everything else, for copying a column without its labels as
 Stata's `gen y = x` does. A labelled column becomes its plain codes,
