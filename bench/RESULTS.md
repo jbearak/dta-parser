@@ -1011,6 +1011,31 @@ gated): `dk.read_dta` takes 0.04 (NSFG), 0.12 (DHS) and 0.31 (synthetic)
 of `dp.read_dta`'s wall time; `dk.save_dta` takes 1.12, 1.17 and 0.59 of
 `dp.write_dta`'s, at 0.37 to 0.47 of its peak RSS.
 
+## Parquet into polars from R (plan 0025, stage 4)
+
+R's `read_parquet_pl()` against polars' own `pl$read_parquet()` and
+datakit's tibble `read_parquet()`, on one file: DHS Albania 2018 wm
+(15,000 rows, 4,962 columns), written as Parquet by datakit. Ten runs
+of each in one R process after a warm-up, best wall time; R 4.6.1,
+polars 2.1.0, load average 2. No target. The numbers are in
+[results/parquet-polars-r.md](results/parquet-polars-r.md), written by
+`bench/parquet/polars_r.R`.
+
+| case | `read_parquet_pl()` | `pl$read_parquet()` | `read_parquet()` (tibble) |
+|---|---|---|---|
+| whole file | 119 ms | 12 ms | 35 ms |
+| five columns | 12 ms | 4.7 ms | 6.0 ms |
+
+**Where the time goes.** On the whole file, about 90 ms of the 119 ms
+is one call, `df$schema`, which R polars answers by making an R object
+for each of the 4,962 dtypes; `finish_pl()` asks for the schema to
+check which columns are Enums. Python datakit's `dk.read_parquet()`
+reads the same file in 15 ms. Asking only about the columns it needs
+(on a plain read, those holding letters) would remove most of the gap;
+it is not done here, since this stage only measures.
+On five columns, the native read and the import into polars take about
+3 ms, and the rest is datakit's R code around them.
+
 ## Parquet in TypeScript (npm package)
 
 Plan 0018's gate for the npm package (PR 7): `openParquetFile` and
