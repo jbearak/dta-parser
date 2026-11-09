@@ -1,6 +1,6 @@
 # Plan: Parquet categoricals that keep `.a` to `.z`
 
-Status: draft, revision 5, for Gate 1 (Claude Sonnet and GPT Terra;
+Status: approved at Gate 1 (revision 5; Claude Sonnet and GPT Terra;
 record in `docs/judging/categorical-letters/`).
 
 ## Problem
