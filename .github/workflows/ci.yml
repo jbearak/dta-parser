@@ -58,17 +58,47 @@ jobs:
       - run: python compat/parquet/readback.py "$RUNNER_TEMP/parquet"
 
   # arrow (R) and nanoparquet read back the files dta-parquet writes.
+  # Then R's and Python's datakits read the same Parquet and .dta files,
+  # and each other's saves, into polars, and Python compares the frames
+  # and metadata (plan 0025, stage 4).
   parquet-r:
     runs-on: ubuntu-latest
+    env:
+      DATAKIT_REQUIRE_POLARS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-      - run: Rscript -e 'install.packages(c("arrow", "nanoparquet", "haven", "jsonlite"))'
+      - run: Rscript -e 'install.packages(c("arrow", "nanoparquet", "haven", "jsonlite", "nanoarrow", "rlang", "tibble", "tidyselect", "vctrs"))'
+      # R-multiverse has no polars binary for Ubuntu 24.04, so polars
+      # installs from source; NOT_CRAN=true makes it download its
+      # prebuilt Rust library instead of compiling it.
+      - name: Install polars from R-multiverse
+        shell: Rscript {0}
+        env:
+          NOT_CRAN: "true"
+        run: install.packages("polars", repos = c("https://community.r-multiverse.org", getOption("repos")))
+      # install.packages() only warns when an install fails.
+      - name: polars and nanoarrow load
+        run: Rscript -e 'library(polars); library(nanoarrow)'
       - run: cargo run -p dta-parquet --example samples -- "$RUNNER_TEMP/parquet"
       - run: Rscript compat/parquet/readback.R "$RUNNER_TEMP/parquet"
+      - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datparser && R CMD INSTALL r/datakit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Python's polars is the release R's polars tracks, so both sides
+      # run the same polars.
+      - name: Install dta_parser, datakit, pyarrow and the polars R has
+        run: |
+          pip install maturin pyarrow "polars==$(Rscript -e 'cat(format(packageVersion("polars")[, 1:2]))').*"
+          (cd python && maturin build --release --out dist)
+          pip install python/dist/*.whl ./python/datakit
+      - run: sh compat/parquet/cross_language_polars.sh "$RUNNER_TEMP/polars"
+        env:
+          PYTHON: python
 
   # Relative links and anchors in the Markdown docs. The docs' code
   # examples run in each language's own job (test-docs.R, test_docs.py,
@@ -113,6 +143,10 @@ jobs:
 
   r:
     runs-on: ubuntu-latest
+    # datakit's polars tests (plan 0025) fail instead of skipping when
+    # polars or nanoarrow is missing, and so do the docs' polars examples.
+    env:
+      DATAKIT_REQUIRE_POLARS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -125,7 +159,18 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::arrow, any::nanoparquet
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::arrow, any::nanoparquet, any::nanoarrow
+      # R-multiverse has no polars binary for Ubuntu 24.04, so polars
+      # installs from source; NOT_CRAN=true makes it download its
+      # prebuilt Rust library instead of compiling it.
+      - name: Install polars from R-multiverse
+        shell: Rscript {0}
+        env:
+          NOT_CRAN: "true"
+        run: install.packages("polars", repos = c("https://community.r-multiverse.org", getOption("repos")))
+      # install.packages() only warns when an install fails.
+      - name: polars and nanoarrow load
+        run: Rscript -e 'library(polars); library(nanoarrow)'
       # Build the source packages, then install them from outside the
       # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh

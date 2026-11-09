@@ -27,6 +27,7 @@ Contents:
 [From a do-file to R](#from-a-do-file-to-r) ·
 [Fixed-width files](#fixed-width-files-with-a-sas-setup-file) ·
 [Parquet files](#parquet-files) ·
+[polars frames](#polars-frames) ·
 [Threads](#threads) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
@@ -1475,6 +1476,268 @@ arrow writes R attributes into its own `r` metadata entry, which only
 arrow reads; datakit neither writes nor reads it, so labels written by
 arrow are not read here, and arrow's `haven_labelled` columns come back
 as plain numbers. nanoparquet drops labels and time zones.
+
+## polars frames
+
+datakit's `read_parquet_pl()`, `read_dta_pl()`, and `read_fixed_width_pl()`
+read into a polars DataFrame instead of a tibble. Each returns
+`list(df, meta)`: the frame, and a `datakit_meta` holding what a polars
+frame cannot, such as variable labels, display formats, value labels,
+notes, and the data label. `save_parquet()` and `save_dta()` take the
+frame and its `meta` back. Python's datakit reads the same way and
+returns the same pair: both read through dtaparser's native code, so a
+file gives the same columns, dtypes, values, and metadata in both
+languages (`compat/parquet/cross_language_polars.sh` checks this, cell
+by cell). The tibble functions in the sections above are unchanged.
+
+Contents:
+[Install](#polars-install) ·
+[Read into polars](#read-into-polars) ·
+[.a to .z in a polars frame](#a-to-z-in-a-polars-frame) ·
+[Save a polars frame](#save-a-polars-frame)
+
+### polars: install
+
+The polars functions need R 4.3 or later, nanoarrow from CRAN, and
+polars from R-multiverse, since polars is not on CRAN:
+
+```r norun
+install.packages("nanoarrow")
+install.packages("polars", repos = c("https://community.r-multiverse.org", "https://cloud.r-project.org"))
+```
+
+R-multiverse has binaries for macOS and Windows. On Linux, polars
+installs from source: run `Sys.setenv(NOT_CRAN = "true")` first, and
+the install downloads polars' prebuilt Rust library instead of
+compiling it. datakit installs and works without either package; the
+polars functions say which one is missing.
+
+### Read into polars
+
+```r polars
+library(polars)
+
+res <- read_parquet_pl("survey.parquet")
+df <- res$df
+meta <- res$meta
+df$schema$income                         # Float64
+meta$columns$income$label                # "Monthly income"
+read_dta_pl("survey.dta")$df$schema$age  # Int8
+```
+
+In a `.dta` file, byte, int, long, float, and double become Int8,
+Int16, Int32, Float32, and Float64; strN and text strLs become String;
+a `%td` column becomes a Date, and a `%tc` column a Datetime in
+milliseconds. `survey.parquet` was saved from a tibble, where byte
+columns are R integers, so its `age` is Int32. `col_select`, `skip`, `n_max`, and `factors` work as in
+`read_parquet()`; `factors = TRUE` makes each labelled column an Enum.
+`read_fixed_width_pl(file, setup)` reads fixed-width text through its
+SAS setup file into the same pair.
+
+`meta` is a list with the fields of Python's `Meta`, under the same
+names: `label`, `notes`, `characteristics`, `sort`, `timestamp`,
+`columns`, `value_labels`, `rows`, and `storage`. Change it as you
+would any list. It does not follow polars operations: when you rename,
+drop, or add a column, change `meta$columns` to match.
+
+**Lifetime.** A frame read this way keeps its values in memory that
+dtaparser allocated, and polars calls into dtaparser's library to free
+it. Do not unload dtaparser (with `unloadNamespace()`, or by reloading
+it during development) while such frames exist. datakit imports
+dtaparser, so R does not unload it on its own.
+
+### .a to .z in a polars frame
+
+Every read keeps `.a` to `.z` in the frame, as Python's datakit does. A
+column holding any of them in the rows read is Float64, and each letter
+is a NaN tagged with it: R's `NA_real_` with the letter's code in its
+fifth byte, as `tagged_na()` makes. `.` is a null. An Int8, Int16,
+Int32, or Float32 column holding letters is cast to Float64, and
+`meta$storage` keeps its dtype, so that saving writes it back as byte,
+int, long, or float when its values still fit. `letters = FALSE` reads
+the letters as nulls instead, and the column keeps its dtype. These
+functions read, make, and test letters:
+
+- `na_tag_pl(x)`: the letter of each row of `x` (a column name, a
+  polars expression or a Series), as an Enum of `".a"` to `".z"`, null
+  where the row has none;
+- `is_tagged_na_pl(x, letter = NULL)`: true where a row holds a letter,
+  or the letter given;
+- `tagged_na_pl(letter)`: an expression holding the letter, for
+  anywhere polars takes one. `pl$lit(tagged_na("a"))` does not work:
+  polars reads an R `NA` as a null;
+- `is_missing(x)`, or `is_na(x)`: true where a row is `.` or one of
+  `.a` to `.z`, as R's `is.na()` says;
+- `datakit_by_pl(..., .suffix = "_letter")`: each column and its
+  letters, to group and join with the letters kept apart.
+
+```r polars
+as.character(df$select(na_tag_pl("income"))$to_series()$to_r_vector())   # NA ".d" NA NA ".r" NA
+df$filter(is_tagged_na_pl("income", ".d"))$get_column("id")$to_r_vector() # 2
+na_tag(df$get_column("income")$to_r_vector())                              # NA "d" NA NA "r" NA
+```
+
+A Float64 Series turned into an R vector gives each letter as a tagged
+`NA`, which `na_tag()` reads, as the last line shows. A letter is a
+value in its row, so it follows the row through `$filter()`, `$sort()`,
+`$join()`, and `$group_by()`, and it survives arithmetic: `x * 2` keeps
+`.d` where `x` held it, as Stata's `gen y = x * 2` does.
+
+**What polars counts.** polars treats a NaN as a number.
+`$null_count()` and `$is_null()` see only `.`, `$count()` counts the
+letters, and `$mean()` is NaN. `$fill_nan(NA)` makes every letter a
+null, which is how R and Stata treat them:
+
+```r polars
+x <- pl$col("income")
+df$select(x$null_count())$to_series()$to_r_vector()          # 1
+df$select(x$count())$to_series()$to_r_vector()               # 5
+df$select(x$fill_nan(NA)$count())$to_series()$to_r_vector()  # 3
+df$select(x$mean()$is_nan())$to_series()$to_r_vector()       # TRUE
+df$select(x$fill_nan(NA)$mean())$to_series()$to_r_vector()  # 2383.333
+```
+
+**The rules.** polars compares a NaN as a number greater than every
+other and equal to every other NaN. `.` is a null, which polars treats
+as missing. For `x <- pl$col("x")` and the rows `1, 5000, .a, .b, .`:
+
+| expression | rows `$filter()` keeps |
+|---|---|
+| `x != 1` | 3: `5000`, `.a`, and `.b` |
+| `x != 1 & x$is_not_null()`, R's `x != 1 & !is.na(x)` written naively | 3: `$is_not_null()` sees only `.` |
+| `x != 1 & !is_na(x)` | 1: `5000` |
+| `x$fill_nan(NA) != 1` | 1: `5000` |
+| `x$is_null()` | `.` only |
+| `x$is_nan()` | `.a` and `.b` only |
+| `is_na(x)`, R's `is.na(x)` | `.`, `.a`, and `.b` |
+
+So where R code tests `is.na()`, write `is_na()` (or `is_missing()`),
+not `$is_null()`:
+
+```r polars
+ids <- function(rows) rows$get_column("id")$to_r_vector()
+ids(df$filter(x != 1850 & x$is_not_null()))   # 1 2 5 6: the letters stay
+ids(df$filter(x != 1850 & !is_na(x)))          # 1 6
+ids(df$filter(x > 3000))                       # 2 5 6
+ids(df$filter(x > 3000 & !is_na(x)))           # 6
+```
+
+`x > 3000` is true for a letter, as Stata's `income > 3000` is, since
+Stata's missing values are greater than every number too;
+`& !is_na(x)` leaves them out. `.` is a null, so a comparison is null
+there and `$filter()` drops the row.
+
+`is_na()` takes an R vector, a polars expression, or a Series. Given an
+expression, it builds one, which works on number, Boolean, Decimal,
+date and time, Categorical, and Enum columns. On a text column it would
+count the text `"nan"` as missing, and on Binary, List, or Struct
+columns polars refuses it: there, use `$is_null()`, or pass the Series,
+which `is_na()` tests by its dtype:
+
+```r polars
+is_na(df$get_column("income"))$to_r_vector()   # FALSE TRUE FALSE TRUE TRUE FALSE
+is_na(c(1, NA, tagged_na("a")))                # FALSE TRUE TRUE
+```
+
+rlang exports an `is_na()` (a test for one `NA`) and an `is_missing()`
+(a test for a missing argument), and dtatools an `is_missing()` for its
+columns, where `""` is missing text, as in Stata. R uses the one from
+the package attached last: after `library(dtatools)` or `library(rlang)`
+following `library(datakit)`, `is_missing()` is no longer datakit's.
+Write `datakit::is_na()` to be sure.
+
+**Grouping.** polars puts every NaN in one group, so `$group_by()`,
+`$unique()`, and `$value_counts()` merge `.d` with `.r`.
+`datakit_by_pl()` adds each column's letters as a column of its own,
+in a list that polars takes spliced with `!!!`:
+
+```r polars
+df$group_by("income")$agg(pl$len())$height                   # 5: .d and .r in one group
+df$group_by(!!!datakit_by_pl("income"))$agg(pl$len())$height # 6
+df$with_columns(!!!datakit_by_pl("income"))$unique(subset = c("income", "income_letter"))$height  # 6
+```
+
+Each argument gets a letter column, all null for a column that is not
+Float64. polars groups nulls together, so `.` is a group of its own.
+
+**Joins.** A key holding letters joins as it groups: polars matches
+every NaN with every other, so `.a` on one side meets both `.a` and
+`.b` on the other, and `.`, a null, meets nothing unless the join says
+`nulls_equal = TRUE`. To keep the letters apart, join on the key and
+its letter column from `datakit_by_pl()`, with `nulls_equal = TRUE`.
+Without it, a row with no letter, whose letter column is null, matches
+nothing:
+
+```r polars
+k <- pl$col("k")
+left <- pl$DataFrame(k = c(1, 2, 3, NA))$with_columns(
+  pl$when(k == 2)$then(tagged_na_pl("a"))$when(k == 3)$then(tagged_na_pl("b"))$otherwise(k)$alias("k")
+)
+right <- left$with_columns(name = pl$lit(c("one", "a", "b", "dot")))
+left$join(right, on = "k")$height                       # 5: 1 meets 1, and .a and .b meet each other
+left$join(right, on = "k", nulls_equal = TRUE)$height   # 6: and . meets .
+left <- left$with_columns(!!!datakit_by_pl("k"))
+right <- right$with_columns(!!!datakit_by_pl("k"))
+left$join(right, on = c("k", "k_letter"), nulls_equal = TRUE, maintain_order = "left")$get_column("name")$to_r_vector()
+# "one" "a" "b" "dot"
+left$join(right, on = c("k", "k_letter"), maintain_order = "left")$get_column("name")$to_r_vector()
+# "a" "b": 1 and . have no letter, so they match nothing
+```
+
+**Set a letter** (Stata's `replace income = .r if age > 60`):
+
+```r polars
+df2 <- df$with_columns(
+  pl$when(pl$col("age") > 60)$then(tagged_na_pl("r"))$otherwise(pl$col("income"))$alias("income")
+)
+as.character(df2$select(na_tag_pl("income"))$to_series()$to_r_vector())   # NA ".d" NA ".r" ".r" NA
+```
+
+In an integer column polars makes the result Float64, and the letter is
+kept. To replace a letter with a value, test for it:
+`pl$when(is_tagged_na_pl("income", ".d"))$then(0)$otherwise(pl$col("income"))`.
+A new column (Stata's `gen y = .a`) is `tagged_na_pl("a")$alias("y")`.
+
+**Sort as Stata does** (values, then `.`, then `.a` to `.z`):
+
+```r polars
+stata <- df$sort(pl$col("income")$fill_nan(NA), na_tag_pl("income"), nulls_last = c(TRUE, FALSE),
+                 maintain_order = TRUE)
+na_tag(stata$get_column("income")$to_r_vector())   # NA NA NA NA "d" "r"
+ids(stata)                                         # 3 1 6 4 2 5
+```
+
+polars' own `df$sort("income")` puts `.` first and the letters last,
+with no order among the letters.
+
+**What loses them.** Only Float64 holds a letter: a cast to Float32 or
+an integer type loses it, and so does `$fill_nan()`. When two letters
+meet in arithmetic (`x + y`, both holding one), the result keeps one of
+the two.
+
+**Dates, timestamps, and categoricals.** A polars Date, Datetime, or Enum
+cannot hold a NaN. A column of one of these types that holds `.a` to
+`.z` in the rows read is read as numbers instead: a date as Stata's
+days since 1960 (format `%td`), a timestamp as its milliseconds since
+1960 (`%tc`), and a categorical as its level numbers from 1, labelled
+by its value label set, as `read_parquet()` reads such a categorical.
+`letters = FALSE` gives the Date, Datetime, or Enum, with the letters as
+nulls.
+
+### Save a polars frame
+
+```r polars
+save_parquet(df2, "survey_pl.parquet", meta = meta)
+save_dta(df2, "survey_pl.dta", meta = meta)
+na_tag(read_dta("survey_pl.dta")$income)   # NA "d" NA "r" "r" NA
+```
+
+The frame's letters are written as `.a` to `.z`, `meta`'s labels,
+formats, and notes with them, and a column a read widened to Float64 is
+written as its old type when its values still fit. `meta = NULL`, the
+default, writes the frame alone; `missing_letters = FALSE` writes every
+letter as `.`. A polars LazyFrame is an error: call `$collect()` on it
+first. The other arguments are those of the tibble methods.
 
 ## Threads
 

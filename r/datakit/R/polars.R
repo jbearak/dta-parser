@@ -262,7 +262,7 @@ finish_pl <- function(s, m, factors, letters, markers = FALSE) {
     counts <- unlist(as.list(ldf$select(polars::pl$all()$null_count()), as_series = FALSE))
     found <- names(counts)[counts < ldf$height]
   }
-  schema <- df$schema
+  schema <- schema_of(df, found)
   enums <- found[vapply(found, function(n) inherits(schema[[n]], "polars_dtype_enum"), NA)]
   if (markers) {
     restored <- restore_categoricals(df, meta, skip = if (factors) character() else found)
@@ -273,7 +273,7 @@ finish_pl <- function(s, m, factors, letters, markers = FALSE) {
   if (factors) {
     made <- to_factors(df, meta)
     df <- made
-    schema <- df$schema
+    schema <- schema_of(df, found)
     lost <- found[!(found %in% enums) & vapply(found, function(n) inherits(schema[[n]], "polars_dtype_enum"), NA)]
     if (length(lost)) {
       shown <- paste0("\"", lost, "\"", collapse = ", ")
@@ -343,6 +343,14 @@ present_values <- function(s) {
   v[!is.na(v)]
 }
 
+# The dtypes of `names` only: df$schema makes an R object for every
+# column, 90 ms on a frame of 5,000. By position, since select() reads
+# a name like "^x$" as a regular expression.
+schema_of <- function(df, names) {
+  if (length(names) == 0) return(list())
+  df$select(polars::pl$nth(match(names, df$columns) - 1L))$schema
+}
+
 is_numeric_dtype <- function(dt) inherits(dt, "polars_dtype_numeric") && !inherits(dt, "polars_dtype_decimal")
 
 # The levels a dtaparser_categorical mark gives a column whose set is
@@ -372,7 +380,7 @@ restore_categoricals <- function(df, meta, skip = character()) {
   pl <- polars::pl
   changes <- list()
   stale <- character()
-  schema <- df$schema
+  schema <- schema_of(df, intersect(df$columns, names(meta$characteristics)))
   for (name in df$columns) {
     chars <- meta$characteristics[[name]]
     if (is.null(chars) || !(CATEGORICAL_MARK %in% names(chars)) || name %in% skip) next
@@ -402,7 +410,8 @@ restore_categoricals <- function(df, meta, skip = character()) {
 to_factors <- function(df, meta) {
   pl <- polars::pl
   changes <- list()
-  schema <- df$schema
+  labelled <- names(meta$columns)[vapply(meta$columns, function(c) !is.null(c$value_labels), NA)]
+  schema <- schema_of(df, intersect(labelled, df$columns))
   for (name in names(meta$columns)) {
     set <- meta$columns[[name]]$value_labels
     if (!(name %in% df$columns) || is.null(set) || !is_numeric_dtype(schema[[name]])) next
@@ -424,7 +433,7 @@ to_factors <- function(df, meta) {
 # tagged NaNs (Python's with_letters).
 with_letters <- function(df, meta, ldf, found) {
   pl <- polars::pl
-  schema <- df$schema
+  schema <- schema_of(df, found)
   tmp <- unname(letter_temps(found, df$columns))
   df <- df$with_columns(!!!lapply(seq_along(found), function(i) ldf$get_column(found[[i]])$alias(tmp[[i]])))
   changes <- list()
@@ -520,8 +529,7 @@ prepare_pl <- function(data, meta, missing_letters, who) {
   }
   check_bool(missing_letters, "missing_letters")
   storage <- meta$storage %||% character()
-  schema <- data$schema
-  f64 <- names(schema)[vapply(schema, function(t) inherits(t, "polars_dtype_float64"), NA)]
+  f64 <- data$select(pl$col(pl$Float64))$columns
   tagged <- character()
   if (length(f64)) {
     any_letter <- lapply(f64, function(n) na_tag_expr(pl$col(n))$is_not_null()$any()$alias(n))
@@ -597,7 +605,7 @@ checked_sort <- function(df, sort, letters_df) {
     keys <- c(keys, name)
   }
   if (length(keys) == 0 || df$height < 2) return(keys)
-  schema <- df$schema
+  schema <- schema_of(df, keys)
   frame <- df$select(!!!lapply(keys, function(k) pl$col(k)))
   lettered <- intersect(keys, if (is.null(letters_df)) character() else letters_df$columns)
   tmp <- letter_temps(lettered, keys)

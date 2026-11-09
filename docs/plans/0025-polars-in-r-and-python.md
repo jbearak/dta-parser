@@ -1,7 +1,12 @@
 # Plan: polars in R and Python, with `is_missing()` and `is_na()`
 
 Status: approved at Gate 1 (revision 4; Claude Sonnet and GPT Sol;
-record in `docs/judging/polars-r-python/`). After the gate, on
+record in `docs/judging/polars-r-python/`). Done: stages 1 to 3
+merged (#92; #93 and #94 for stage 2; #96), with the joins PR (#95),
+and stage 4 (the cross-language check in
+`compat/parquet/cross_language_polars.sh`, polars in CI, the polars
+section of `docs/r.md`, and the benchmark in `bench/RESULTS.md`)
+completes the plan. After the gate, on
 2026-11-09, the user first dropped joins on columns holding `.a` to `.z`
 as no use case, then restored their tests and docs, so that a change in
 how polars joins them shows: the join recipes and join tests below
