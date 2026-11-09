@@ -270,6 +270,15 @@ test_that("a column named like datakit's temporary letter columns is kept", {
   expect_identical(na_tag(col(res$df, "x")), c(NA, "a"))
 })
 
+test_that("schema_of gives the dtypes of the names asked for, a name like a regex included", {
+  skip_without_polars()
+  df <- polars::pl$DataFrame(a = 1, "^x$" = 2L, x = 3, b = "s")
+  s <- schema_of(df, c("^x$", "b"))
+  expect_identical(names(s), c("^x$", "b"))
+  expect_identical(vapply(s, format, ""), c("^x$" = "Int32", b = "String"))
+  expect_length(schema_of(df, character()), 0)
+})
+
 test_that("meta$sort is saved only when the rows are in its order", {
   skip_without_polars()
   pl <- polars::pl

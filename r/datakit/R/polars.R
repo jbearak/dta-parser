@@ -344,10 +344,11 @@ present_values <- function(s) {
 }
 
 # The dtypes of `names` only: df$schema makes an R object for every
-# column, 90 ms on a frame of 5,000.
+# column, 90 ms on a frame of 5,000. By position, since select() reads
+# a name like "^x$" as a regular expression.
 schema_of <- function(df, names) {
   if (length(names) == 0) return(list())
-  df$select(!!!unname(names))$schema
+  df$select(polars::pl$nth(match(names, df$columns) - 1L))$schema
 }
 
 is_numeric_dtype <- function(dt) inherits(dt, "polars_dtype_numeric") && !inherits(dt, "polars_dtype_decimal")

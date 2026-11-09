@@ -252,7 +252,7 @@ if MODE != "compare":
 # ---------------------------------------------------------------- compare
 
 failures = []
-counts = {"cases": 0, "errors": 0, "columns": 0, "cells": 0, "fields": 0}
+counts = {"cases": 0, "columns": 0, "cells": 0, "fields": 0}
 
 
 def fail(case, what):
@@ -301,11 +301,10 @@ def compare_case(case):
     with open(path("python", name + ".json"), encoding="utf-8") as f:
         pm = json.load(f)
     counts["cases"] += 1
+    # Every case is a read that should succeed, so an error on either
+    # side fails, even when both fail alike.
     if "error" in rm or "error" in pm:
-        if not ("error" in rm and "error" in pm):
-            fail(name, f"one language failed: R {rm.get('error')!r}, Python {pm.get('error')!r}")
-        else:
-            counts["errors"] += 1
+        fail(name, f"a read failed: R {rm.get('error')!r}, Python {pm.get('error')!r}")
         return
     r = pl.read_ipc(path("r", name + ".arrow"))
     p = pl.read_ipc(path("python", name + ".arrow"))
@@ -336,7 +335,7 @@ with open(path("cases.json"), encoding="utf-8") as f:
     todo = json.load(f)
 for case in todo:
     compare_case(case)
-print(f"Compared {counts['cases']} reads made by R and by Python ({counts['errors']} failing in both): "
+print(f"Compared {counts['cases']} reads made by R and by Python: "
       f"{counts['columns']} columns, {counts['cells']} valid cells, {counts['fields']} metadata fields; "
       f"polars {pl.__version__} in Python")
 if failures:
