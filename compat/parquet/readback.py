@@ -9,8 +9,8 @@ Run from the repository root:
     python3 compat/parquet/readback.py DIR
 
 Where Python's datakit is installed, it also writes its own files into
-DIR/datakit (every dtype save_parquet writes, with nulls, `.a` to `.z`
-in each type that holds them, an ordered Enum with an unused level, and
+DIR/datakit (every pandas dtype save_parquet writes, with nulls, `.a` to `.z`
+in each storage type, an ordered category with an unused level, and
 a zone, in four codecs and in small row groups) and checks what pyarrow,
 polars and DuckDB read from them, value by value (plan 0019).
 
@@ -292,13 +292,18 @@ for file, spec in EXPECTED.items():
 
 # ---- datakit's own files ----
 
-# The storage types of datakit_files' Float64 columns holding letters.
-STORAGE = {"i8": pl.Int8, "i16": pl.Int16, "i32": pl.Int32, "f32": pl.Float32}
+# The storage types of datakit_files' DtaArray columns, and the polars
+# dtypes they are written as without letters.
+STORAGE = {"i8": "byte", "i16": "int", "i32": "long", "f32": "float", "f64": "double"}
+POLARS = {"byte": "Int8", "int": "Int16", "long": "Int32", "float": "Float32", "double": "Float64"}
 
 
 def datakit_files():
     """(name, frame, meta, save options) of the files datakit writes."""
     import datetime as dt
+
+    import numpy as np
+    import pandas as pd
 
     import datakit as dk
 
@@ -306,42 +311,41 @@ def datakit_files():
     r = list(range(n))
     def nulls(values, every=7):
         return [None if i % every == 3 else v for i, v in enumerate(values)]
-    # A letter in every 11th row, as a tagged NaN in a Float64 column
-    # (ADR 0036); the first four have the storage types a read of a byte,
-    # int, long and float column gives them.
+    # A letter in every 11th row of the DtaArray columns, one of each
+    # storage type (ADR 0040).
     letter = [f".{chr(97 + i % 26)}" if i % 11 == 5 else None for i in r]
-    def tagged(values):
-        return pl.Series([dk.tagged_na(letter[i]) if letter[i] is not None else v for i, v in enumerate(values)],
-                         dtype=pl.Float64)
-    frame = pl.DataFrame({
-        "i8": tagged(nulls([float(i % 100 - 50) for i in r])),
-        "i16": tagged(nulls([float(i * 97 - 9000) for i in r])),
-        "i32": tagged(nulls([float(i * 7_000_001 - 10**9) for i in r])),
-        "f32": tagged(nulls([i / 4 - 20 for i in r])),
-        "f64": tagged(nulls([i * 1.5e10 - 1e12 for i in r])),
-        "nan": pl.Series(nulls([float("nan") if i % 5 == 0 else i / 3 for i in r]), dtype=pl.Float64),
-        "i64": pl.Series(nulls([2**62 - i for i in r]), dtype=pl.Int64),
-        "u8": pl.Series(nulls([i % 256 for i in r]), dtype=pl.UInt8),
-        "u64": pl.Series(nulls([2**64 - 1 - i for i in r]), dtype=pl.UInt64),
-        "flag": pl.Series(nulls([i % 2 == 0 for i in r]), dtype=pl.Boolean),
-        "text": pl.Series(nulls([f"value {i} " + "é" * (i % 4) for i in r])),
-        "blob": pl.Series(nulls([bytes([i % 256, 0, 255]) for i in r])),
-        "day": pl.Series(nulls([dt.date(1900, 1, 1) + dt.timedelta(days=97 * i) for i in r])),
-        "local": pl.Series(nulls([dt.datetime(1960, 1, 1) + dt.timedelta(microseconds=123_456_789 * i) for i in r]),
-                           dtype=pl.Datetime("us")),
-        "zoned": pl.Series(nulls([dt.datetime(2024, 3, 1) + dt.timedelta(minutes=37 * i) for i in r]),
-                           dtype=pl.Datetime("us")).dt.replace_time_zone("UTC").dt.convert_time_zone("Asia/Tokyo"),
-        "ns": pl.Series(nulls([dt.datetime(2001, 1, 1) + dt.timedelta(seconds=i) for i in r]),
-                        dtype=pl.Datetime("ns")),
-        "cat": pl.Series(nulls([["lo", "mid", "hi"][i % 3] for i in r]), dtype=pl.Enum(["lo", "mid", "hi", "unused"])),
+    def lettered(values, storage):
+        return pd.Series([dk.tagged_na(letter[i]) if letter[i] is not None else v for i, v in enumerate(values)],
+                         dtype=f"dta[{storage}]")
+    def times(values, unit):
+        return pd.Series(values, dtype=f"datetime64[{unit}]")
+    frame = pd.DataFrame({
+        "i8": lettered(nulls([float(i % 100 - 50) for i in r]), "byte"),
+        "i16": lettered(nulls([float(i * 97 - 9000) for i in r]), "int"),
+        "i32": lettered(nulls([float(i * 7_000_001 - 10**9) for i in r]), "long"),
+        "f32": lettered(nulls([i / 4 - 20 for i in r]), "float"),
+        "f64": lettered(nulls([i * 1.5e10 - 1e12 for i in r]), "double"),
+        "nan": np.array(nulls([float("nan") if i % 5 == 0 else i / 3 for i in r]), dtype=np.float64),
+        "i64": pd.array(nulls([2**62 - i for i in r]), dtype="Int64"),
+        "u8": pd.array(nulls([i % 256 for i in r]), dtype="UInt8"),
+        "u64": pd.array(nulls([2**64 - 1 - i for i in r]), dtype="UInt64"),
+        "flag": pd.array(nulls([i % 2 == 0 for i in r]), dtype="boolean"),
+        "text": pd.Series(nulls([f"value {i} " + "é" * (i % 4) for i in r]), dtype=pd.Series(["a"]).dtype),
+        "blob": pd.Series(nulls([bytes([i % 256, 0, 255]) for i in r]), dtype=object),
+        "day": times(nulls([dt.datetime(1900, 1, 1) + dt.timedelta(days=97 * i) for i in r]), "s"),
+        "local": times(nulls([dt.datetime(1960, 1, 1) + dt.timedelta(microseconds=123_456_789 * i) for i in r]), "us"),
+        "zoned": times(nulls([dt.datetime(2024, 3, 1) + dt.timedelta(minutes=37 * i) for i in r]), "us")
+        .dt.tz_localize("UTC").dt.tz_convert("Asia/Tokyo"),
+        "ns": times(nulls([dt.datetime(2001, 1, 1) + dt.timedelta(seconds=i) for i in r]), "ns"),
+        "cat": pd.Categorical(nulls([["lo", "mid", "hi"][i % 3] for i in r]), categories=["lo", "mid", "hi", "unused"],
+                              ordered=True),
     })
     meta = dk.Meta(
         label="datakit readback", notes=["Written by compat/parquet/readback.py."],
-        columns={"cat": dk.Column(ordered=True), "i8": dk.Column(label="A byte", value_labels="v")},
+        columns={"day": dk.Column(format="%td"), "i8": dk.Column(label="A byte", value_labels="v")},
         value_labels={"v": {1: "one", ".a": "skipped"}},
         rows=n,
     )
-    meta._storage = dict(STORAGE)
     out = []
     for codec in ("snappy", "zstd", "gzip", "none"):
         out.append((f"datakit_{codec}", frame, meta, {"compression": codec}))
@@ -352,68 +356,101 @@ def datakit_files():
 
 def check_datakit(name, frame, meta, path, letters_kept):
     """What pyarrow, polars and DuckDB read from a file datakit wrote."""
-    lettered = {c for c in frame.columns if _dk.is_tagged_na(frame[c]).any()}
-    tagged = lettered if letters_kept else set()
+    import numpy as np
+    import pandas as pd
+
+    from dta_parser import DtaArray
+
     table = pq.read_table(path)
     kv = pq.read_metadata(path).metadata or {}
     if b"dta" not in kv:
         fail("pyarrow", name, "no dta key")
     tdf = pl.read_parquet(path)
     con = duckdb.connect()
+    def sql(expr):
+        return [r[0] for r in con.execute(f"SELECT {expr} FROM '{path}'").fetchall()]
     for c in frame.columns:
         src = frame[c]
         t = src.dtype
-        if c in lettered:
-            # With its letters: a DOUBLE, NaN for each letter. Without:
+        missing = src.isna().to_numpy()
+        if isinstance(src.array, DtaArray):
+            # With letters kept: a DOUBLE, NaN for each letter. Without:
             # its storage type, a null for each letter.
-            lt = _dk.na_tag(src).to_list()
-            gone = None if c in tagged else STORAGE.get(c, pl.Float64)
-            expect = [("NaN" if gone is None else None) if l is not None else v for v, l in zip(src.to_list(), lt)]
-            if gone is not None and gone != pl.Float32:
-                expect = [int(v) if isinstance(v, float) and gone != pl.Float64 else v for v in expect]
-            if gone is not None and tdf.schema[c] != gone:
-                fail("polars", name, f"{c}: dtype {tdf.schema[c]}, not {gone}")
+            codes = src.array.codes
+            storage = src.dtype.storage
+            kept = letters_kept and (codes > 1).any()
+            values = src.array._values.tolist()
+            integer = storage in ("byte", "int", "long") and not kept
+            expect = [("NaN" if kept and code > 1 else None) if code else (int(v) if integer else v)
+                      for v, code in zip(values, codes)]
+            want_type = "Float64" if kept else POLARS[storage]
+            if str(tdf.schema[c]) != want_type:
+                fail("polars", name, f"{c}: dtype {tdf.schema[c]}, not {want_type}")
+            if storage == "float" and not kept:
+                expect = [None if v is None else float(np.float32(v)) for v in expect]
             compare("pyarrow", name, c, expect, table.column(c).to_pylist())
             compare("polars", name, c, expect, tdf[c].to_list())
-            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+            compare("duckdb", name, c, expect, sql(f'"{c}"'))
             continue
-        if isinstance(t, pl.Enum):
-            expect = src.cast(pl.String).to_list()
+        if isinstance(t, pd.CategoricalDtype):
+            expect = [None if m else v for v, m in zip(src.astype(object).tolist(), missing)]
             col = table.column(c)
             for chunk in col.chunks:
-                if chunk.dictionary.to_pylist() != list(t.categories) or not col.type.ordered:
+                if chunk.dictionary.to_pylist() != list(t.categories) or col.type.ordered != t.ordered:
                     fail("pyarrow", name, f"{c}: levels {chunk.dictionary.to_pylist()}, ordered {col.type.ordered}")
             compare("pyarrow", name, c, expect, col.cast(pa.string()).to_pylist())
             compare("polars", name, c, expect, tdf[c].cast(pl.String).to_list())
-            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+            compare("duckdb", name, c, expect, sql(f'"{c}"'))
             continue
-        if isinstance(t, pl.Datetime):
-            unit = t.time_unit
-            expect = src.dt.epoch(unit).to_list()
-            if (t.time_zone or None) != (tdf[c].dtype.time_zone or None):
-                fail("polars", name, f"{c}: zone {tdf[c].dtype.time_zone}, not {t.time_zone}")
+        if t.kind == "M" and c == "day":
+            # %td at midnight: a DATE.
+            days = src.to_numpy().astype("datetime64[D]").view(np.int64)
+            expect = [None if m else int(d) for d, m in zip(days, missing)]
+            compare("pyarrow", name, c, expect, pc.cast(table.column(c), pa.int32()).to_pylist())
+            compare("polars", name, c, expect, tdf[c].to_physical().to_list())
+            compare("duckdb", name, c, expect, sql(f"(\"{c}\" - DATE '1970-01-01')"))
+            continue
+        if t.kind == "M":
+            unit = np.datetime_data(src.array._ndarray.dtype)[0]
+            expect = [None if m else int(v) for v, m in zip(src.array.asi8, missing)]
+            zone = str(t.tz) if isinstance(t, pd.DatetimeTZDtype) else None
+            if zone != (tdf[c].dtype.time_zone or None):
+                fail("polars", name, f"{c}: zone {tdf[c].dtype.time_zone}, not {zone}")
             compare("pyarrow", name, c, expect, pc.cast(table.column(c), pa.int64()).to_pylist())
             compare("polars", name, c, expect, tdf[c].dt.epoch(unit).to_list())
             fn = {"ms": "epoch_ms", "us": "epoch_us", "ns": "epoch_ns"}[unit]
-            compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT {fn}("{c}") FROM \'{path}\'').fetchall()])
+            compare("duckdb", name, c, expect, sql(f'{fn}("{c}")'))
             continue
-        if t == pl.Date:
-            expect = src.to_physical().to_list()
-            compare("pyarrow", name, c, expect, pc.cast(table.column(c), pa.int32()).to_pylist())
-            compare("polars", name, c, expect, tdf[c].to_physical().to_list())
-            compare("duckdb", name, c, expect,
-                    [r[0] for r in con.execute(f'SELECT ("{c}" - DATE \'1970-01-01\') FROM \'{path}\'').fetchall()])
-            continue
-        expect = src.to_list()
-        if t == pl.Float64 or t == pl.Float32:
-            expect = ["NaN" if isinstance(v, float) and math.isnan(v) else v for v in expect]
-        if tdf.schema[c] != t:
-            fail("polars", name, f"{c}: dtype {tdf.schema[c]}, not {t}")
+        # A NaN is `.`, a null (plan 0024).
+        expect = [None if m else v for v, m in zip(src.astype(object).tolist(), missing)]
         compare("pyarrow", name, c, expect, table.column(c).to_pylist())
         compare("polars", name, c, expect, tdf[c].to_list())
-        compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
+        compare("duckdb", name, c, expect, sql(f'"{c}"'))
     for tool in ("pyarrow", "polars", "duckdb"):
         checked[tool] = checked.get(tool, 0) + 1
+
+
+def reads_back_equal(frame, back):
+    """datakit reads its own file back: the same values and codes; a NaN
+    in a float column is `.`, so that column comes back a DtaArray."""
+    import numpy as np
+    import pandas as pd
+
+    from dta_parser import DtaArray
+
+    for c in frame.columns:
+        a, b = frame[c], back[c]
+        if c == "nan":
+            if not (isinstance(b.array, DtaArray) and np.array_equal(b.array.codes, a.isna().to_numpy())):
+                return False
+            continue
+        if isinstance(a.array, DtaArray) and not (isinstance(b.array, DtaArray) and a.array.equals(b.array)):
+            return False
+        try:
+            pd.testing.assert_series_equal(a, b)
+        except AssertionError:
+            return False
+    return True
 
 
 try:
@@ -429,11 +466,8 @@ if _dk is not None:
             _dk.save_parquet(frame, path, meta=meta, **options)
             check_datakit(name, frame, meta, path, options.get("missing_letters", True))
             back, back_meta = _dk.read_parquet(path)
-            if options.get("missing_letters", True):
-                equal = back.equals(frame) and all(_dk.na_tag(back[c]).equals(_dk.na_tag(frame[c]))
-                                                   for c in frame.columns if frame.schema[c] == pl.Float64)
-                if not equal or back_meta._storage != meta._storage:
-                    fail("datakit", name, "does not read back equal")
+            if options.get("missing_letters", True) and not reads_back_equal(frame, back):
+                fail("datakit", name, "does not read back equal")
         except Exception as e:  # noqa: BLE001 - report every failure
             fail("datakit", name, f"{type(e).__name__}: {e}")
 

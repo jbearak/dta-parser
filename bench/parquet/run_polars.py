@@ -1,23 +1,26 @@
-"""Plan 0019's Python benchmark: datakit's read_parquet and save_parquet
-(and read_dta, save_dta), against polars and pyarrow; check plan 0018's
-targets 1 to 3 and write bench/results/parquet-datakit.md (PR 2a's run,
-through a stand-in for datakit, is in bench/results/parquet-polars.md).
+"""Plan 0019's Python benchmark, into pandas since plan 0024: datakit's
+read_parquet and save_parquet (and read_dta, save_dta), against pandas
+(pyarrow engine), polars and pyarrow; report plan 0018's targets 1 to 3
+(plan 0024 sets no speed target) and write
+bench/results/parquet-datakit.md (PR 2a's run, through a stand-in for
+datakit, is in bench/results/parquet-polars.md).
 
     python bench/parquet/run_polars.py [--family F ...] [--libs L ...] [--tasks T ...]
                                        [--inputs I ...] [--only KEY ...] [--report]
 
 Run it from the repository root with a Python that has dta_parser and
-datakit installed from this checkout, polars and pyarrow. The inputs are bench/parquet/
+datakit installed from this checkout, pandas, polars and pyarrow. The inputs are bench/parquet/
 run.py's (every file converted to Parquet by our writer, and from that by
 pyarrow and polars with their defaults, in --data).
 
 Gated (bench/parquet/case_polars.py, each case in a fresh process):
 reads (full, five, window, pass) of the pyarrow, polars and our files by
-ours, pl.read_parquet (the window as pl.scan_parquet(...).slice().
-collect()) and pyarrow.parquet.read_table (the window as the row groups
-holding it, sliced); writes of the frame pl.read_parquet gives of our
-file, before timing, by ours, DataFrame.write_parquet and pq.write_table
-of df.to_arrow(), with each library's defaults (write) and zstd level 3
+ours, pd.read_parquet (pyarrow), pl.read_parquet (the window as
+pl.scan_parquet(...).slice().collect()) and pyarrow.parquet.read_table
+(the window as the row groups holding it, sliced); writes of the frame
+each library's reader gives of our file, before timing, by ours,
+pandas' to_parquet, DataFrame.write_parquet and pq.write_table of
+df.to_arrow(), with each library's defaults (write) and zstd level 3
 (zstd). Published, not gated: the .dta read and write (dtaread,
 dtawrite) against dta_parser's pandas reader and writer.
 
@@ -43,15 +46,15 @@ import run as base  # noqa: E402
 ROOT = base.ROOT
 HERE = base.HERE
 LOCK = Path("/tmp/claude-501/bench.lock")
-GATED = ["polars", "pyarrow"]
+GATED = ["pdarrow", "polars", "pyarrow"]
 LIBS = ["ours", *GATED]
 READS = base.READS
 WRITES = base.WRITES
 DTA_TASKS = ["dtaread", "dtawrite"]
 INPUTS = base.INPUTS
 MB, MIB = base.MB, base.MIB
-LIB_NAMES = {"ours": "datakit", "polars": "polars", "pyarrow": "pyarrow (Table)",
-             "pandas": "dta_parser (pandas)"}
+LIB_NAMES = {"ours": "datakit", "pdarrow": "pandas (pyarrow engine)", "polars": "polars",
+             "pyarrow": "pyarrow (Table)", "pandas": "dta_parser (pandas)"}
 TASK_NAMES = dict(base.TASK_NAMES, dtaread=".dta read", dtawrite=".dta write")
 
 
@@ -171,7 +174,7 @@ def evaluate(files, out):
 
 def report(files, out, dest):
     rows, published, misses = evaluate(files, out)
-    lines = ["# Parquet benchmarks (Python, datakit into polars)", "",
+    lines = ["# Parquet benchmarks (Python, datakit into pandas)", "",
              "Written by `bench/parquet/run_polars.py`; bench/RESULTS.md says what the numbers mean.", ""]
     loads, versions = [], {}
     for f in files:
@@ -189,22 +192,23 @@ def report(files, out, dest):
     lines += ["| library | version | threads |", "|---|---|---|"]
     for lib, (v, t) in sorted(versions.items()):
         lines.append(f"| {LIB_NAMES.get(lib, lib)} | {v} | {t} |")
-    lines += ["", "## Ratios, ours to theirs (geometric means), gated", "",
-              "Below 1 is better for us. Target 1 holds where wall and RSS are at most 1.05 on NSFG and DHS. "
-              "Writes are of the frame pl.read_parquet gives of our file.", "",
+    lines += ["", "## Ratios, ours to theirs (geometric means)", "",
+              "Below 1 is better for us. Plan 0024 sets no speed target; plan 0018's target 1 (wall and RSS "
+              "at most 1.05 on NSFG and DHS) is reported for comparison. Writes are of the frame each "
+              "library's reader gives of our file.", "",
               "| against | case | input | family | files | wall | CPU | peak RSS |", "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append(f"| {LIB_NAMES[r['lib']]} | {TASK_NAMES[r['task']]} | {r['input']} | {base.FAMILIES[r['family']]} | "
                      f"{r['n']} | {r['wall']:.2f} | {r['cpu']:.2f} | {r['rss']:.2f} |")
-    lines += ["", "## .dta into polars against dta_parser's pandas path (published, not gated)", "",
+    lines += ["", "## .dta into pandas against dta_parser's reader and writer (published, not gated)", "",
               "| case | family | files | wall | CPU | peak RSS |", "|---|---|---|---|---|---|"]
     for r in published:
         lines.append(f"| {TASK_NAMES[r['task']]} | {base.FAMILIES[r['family']]} | {r['n']} | {r['wall']:.2f} | "
                      f"{r['cpu']:.2f} | {r['rss']:.2f} |")
-    lines += ["", "## Misses", ""]
+    lines += ["", "## Plan 0018's targets that do not hold (reported, not required)", ""]
     lines += [f"- {m}" for m in misses] or ["None: every target holds."]
     lines += ["", "## Every file", "", "Each cell: wall / CPU / peak RSS (median of the runs).", ""]
-    libs = ["ours", "polars", "pyarrow"]
+    libs = ["ours", "pdarrow", "polars", "pyarrow"]
     for f in files:
         lines += [f"### {f['label']}", "", f"{f['rows']:,} rows, {f['ncols']:,} columns; .dta {f['dta_size'] / MB:.1f} MB.", "",
                   "| case | input | " + " | ".join(LIB_NAMES[l] for l in libs) + " |", "|---|---|" + "---|" * len(libs)]
@@ -228,7 +232,7 @@ def main():
     ap.add_argument("--inputs", nargs="*", default=INPUTS)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
-    ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-datakit-out")
+    ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-datakit-pandas-out")
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-datakit.md"))
     a = ap.parse_args()

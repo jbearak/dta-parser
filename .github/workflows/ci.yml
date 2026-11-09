@@ -169,6 +169,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python: ["3.10", "3.14"]
+        # pandas 2.2 too: DtaArray and datakit's frames are checked on it
+        # and on the latest pandas (plan 0024).
+        include:
+          - { os: ubuntu-latest, python: "3.12", pandas: "2.2.3" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -185,26 +189,30 @@ jobs:
       - run: maturin build --release --out dist
         working-directory: python
       - run: pip install python/dist/*.whl pytest pyreadstat
+      - if: matrix.pandas
+        run: pip install "pandas==${{ matrix.pandas }}"
       - run: python -m pytest python/tests
       - run: python -m pytest python/tests
         env:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
-      # With pyarrow and polars, the tests of dta_parser's Arrow path
-      # (python/tests/test_arrow.py) run too.
+      # With pyarrow and polars installed, the suite still passes.
       - run: pip install pyarrow polars
       - run: python -m pytest python/tests
 
-  # Python's datakit (plan 0019): pure Python on dta_parser's wheel. Its
-  # tests (the docs' examples among them), with small chunks and threads
-  # too; then both sdists build offline and install into a fresh venv,
-  # which imports datakit without pandas.
+  # Python's datakit (plan 0019; pandas since plan 0024): pure Python on
+  # dta_parser's wheel. Its tests (the docs' examples among them), with
+  # small chunks and threads too, on pandas 2.2 and the latest pandas;
+  # then both sdists build offline and install into a fresh venv, which
+  # imports datakit without polars.
   datakit-python:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python: ["3.10", "3.14"]
+        include:
+          - { os: ubuntu-latest, python: "3.12", pandas: "2.2.3" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -216,6 +224,8 @@ jobs:
       - run: maturin build --release --out dist
         working-directory: python
       - run: pip install python/dist/*.whl ./python/datakit pytest pyarrow duckdb
+      - if: matrix.pandas
+        run: pip install "pandas==${{ matrix.pandas }}"
       - run: python -m pytest python/datakit/tests
       - run: python -m pytest python/datakit/tests
         env:
@@ -230,12 +240,13 @@ jobs:
           (cd datakit && python -c "from setuptools import build_meta as b; b.build_sdist('$RUNNER_TEMP/sdist')")
           CARGO_NET_OFFLINE=true pip wheel --no-index --no-build-isolation --no-deps -w "$RUNNER_TEMP/wheels" "$RUNNER_TEMP"/sdist/*.tar.gz
         working-directory: python
-      - name: A fresh venv installs both and imports datakit without pandas
+      - name: A fresh venv installs both and imports datakit without polars
         run: |
           python -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install "$RUNNER_TEMP"/wheels/*.whl
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/venv/bin/python" -c "import sys, datakit; assert 'pandas' not in sys.modules"
+          "$RUNNER_TEMP/venv/bin/python" -c "import sys, datakit; assert 'polars' not in sys.modules"
+          "$RUNNER_TEMP/venv/bin/python" -c "import importlib.util as u; assert u.find_spec('polars') is None"
 
   # One abi3 wheel per supported platform, each installed into a fresh
   # venv and smoke-tested. Nothing is published.

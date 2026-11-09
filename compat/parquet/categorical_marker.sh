@@ -3,9 +3,9 @@
 # datakit and TypeScript's each save the same two categoricals, region
 # (no letters, unordered) and grade (ordered, with a label on .a), as
 # .dta with the dtaparser_categorical marker. TypeScript's grade holds
-# .a and .z; Python's cannot, since a polars Enum holds no tagged NaN
-# (ADR 0036). Python reads TypeScript's file, its grade as labelled
-# codes with the letters as tagged NaNs and as the Enum with
+# .a and .z; Python's cannot, since a pandas category holds no letter
+# (ADR 0040). Python reads TypeScript's file, its grade as labelled
+# codes, a DtaArray with its letters, and as the category with
 # letters=False; TypeScript reads Python's, getting the levels, the
 # order and the letter label back; R reads both, region as a factor,
 # grade as labelled numbers with its letters (TypeScript's) or an
@@ -23,14 +23,14 @@ mkdir -p "$DIR"
 
 "$PYTHON" - "$DIR" <<'EOF'
 import os, sys
-import polars as pl
+import pandas as pd
 import datakit as dk
 d = sys.argv[1]
-df = pl.DataFrame({
-    "region": pl.Series(["N", "S", None, "N", "E", "S"], dtype=pl.Enum(["S", "N", "E", "W"])),
-    "grade": pl.Series(["low", None, "high", None, None, "mid"], dtype=pl.Enum(["low", "mid", "high"])),
+df = pd.DataFrame({
+    "region": pd.Categorical(["N", "S", None, "N", "E", "S"], categories=["S", "N", "E", "W"]),
+    "grade": pd.Categorical(["low", None, "high", None, None, "mid"], categories=["low", "mid", "high"], ordered=True),
 })
-meta = dk.Meta(columns={"region": dk.Column(), "grade": dk.Column(value_labels="gl", ordered=True)},
+meta = dk.Meta(columns={"region": dk.Column(), "grade": dk.Column(value_labels="gl")},
                value_labels={"gl": {1: "low", 2: "mid", 3: "high", ".a": "Refused"}}, rows=6)
 dk.save_dta(df, os.path.join(d, "cat_python.dta"), meta=meta)
 EOF
@@ -51,23 +51,26 @@ EOF
 # Python reads TypeScript's file.
 "$PYTHON" - "$DIR" <<'EOF'
 import os, sys, warnings
-import polars as pl
+import pandas as pd
 import datakit as dk
 warnings.simplefilter("error")
+texts = lambda s: [None if v != v else v for v in s.tolist()]  # noqa: E731
 df, meta = dk.read_dta(os.path.join(sys.argv[1], "cat_typescript.dta"))
-assert df["region"].dtype == pl.Enum(["S", "N", "E", "W"]), df["region"].dtype
-assert df["region"].to_list() == ["N", "S", None, "N", "E", "S"]
+assert df["region"].dtype == pd.CategoricalDtype(["S", "N", "E", "W"]), df["region"].dtype
+assert texts(df["region"]) == ["N", "S", None, "N", "E", "S"]
 assert meta.columns["region"].ordered is False
-# grade holds letters: its codes, the letters tagged NaNs, the mark kept.
-assert df["grade"].dtype == pl.Float64
-assert df["grade"].fill_nan(None).to_list() == [1.0, None, 3.0, None, None, 2.0]
-assert dk.na_tag(df["grade"]).to_list() == [None, ".a", None, None, ".z", None]
+# grade holds letters: its codes, a DtaArray with the letters, the mark kept.
+assert str(df["grade"].dtype).startswith("dta["), df["grade"].dtype
+assert df["grade"].array.codes.tolist() == [0, 2, 0, 1, 27, 0]
+assert df["grade"].array._values[[0, 2, 5]].tolist() == [1.0, 3.0, 2.0]
+assert texts(dk.na_tag(df["grade"])) == [None, ".a", None, None, ".z", None]
 assert meta.labels("grade")[".a"] == "Refused", meta.labels("grade")
 assert meta.characteristics == {"grade": {"dtaparser_categorical": "ordered gl"}}, meta.characteristics
-# Without the letters, the Enum.
+# Without the letters, the category.
 df, meta = dk.read_dta(os.path.join(sys.argv[1], "cat_typescript.dta"), letters=False)
-assert df["grade"].dtype == pl.Enum(["low", "mid", "high"]) and meta.columns["grade"].ordered is True
-assert df["grade"].to_list() == ["low", None, "high", None, None, "mid"]
+assert df["grade"].dtype == pd.CategoricalDtype(["low", "mid", "high"], ordered=True)
+assert meta.columns["grade"].ordered is True
+assert texts(df["grade"]) == ["low", None, "high", None, None, "mid"]
 assert meta.labels("grade")[".a"] == "Refused", meta.labels("grade")
 assert not any(n in ("dtaparser_categorical", "dtaparser_factor") for c in meta.characteristics.values() for n in c)
 print("Python read TypeScript's categoricals")

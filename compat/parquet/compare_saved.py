@@ -19,7 +19,7 @@ import dta_parser
 d = sys.argv[1]
 # Where TypeScript differs from Python on purpose (plan 0021, "saveDta"):
 # a column read with a .dta storage type (Parquet's dta profile keeps it)
-# is written with that type, where Python's polars datakit takes the
+# is written with that type, where Python's datakit takes the
 # smallest type that holds the values.
 EXPECTED = {("id", "storage"), ("id", "format")}
 
