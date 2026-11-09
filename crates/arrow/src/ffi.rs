@@ -547,11 +547,17 @@ pub unsafe fn import_stream(p: *mut ArrowArrayStream) -> Result<Imported> {
 
 // ------------------------------------------------------------ layouts
 
-/// Whether row `i` (counting the array's offset) has a value.
+/// Whether row `i` (counting the array's offset) has a value. Panics if
+/// `i` is past the array's end, where the bitmap may not reach.
 #[inline]
 pub fn valid(a: &ArrayRef, i: usize) -> bool {
     let v = a.buffer(0);
-    v == 0 || a.null_count() == 0 || unsafe { (*(v as *const u8).add(i / 8) >> (i % 8)) & 1 == 1 }
+    if v == 0 || a.null_count() == 0 {
+        return true;
+    }
+    assert!(i < a.offset() + a.len(), "row {i} is past the array's end");
+    // SAFETY: the bitmap holds `offset + length` bits.
+    unsafe { (*(v as *const u8).add(i / 8) >> (i % 8)) & 1 == 1 }
 }
 
 /// The bytes of row `i` of a string array (`u`, `U`, `vu` and the binary

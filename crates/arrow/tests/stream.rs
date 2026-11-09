@@ -152,6 +152,8 @@ fn a_table_exported_and_imported_again_gives_the_same_buffers() {
     let first = imported.batches[0].get();
     let ints = first.child(0).unwrap();
     assert_eq!((0..5).map(|i| valid(&ints, i)).collect::<Vec<_>>(), [true, false, true, true, true]);
+    let past_the_end = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| valid(&ints, 5)));
+    assert!(past_the_end.is_err(), "valid() checks the row against the array's length");
     let text = first.child(1).unwrap();
     // SAFETY: a Utf8 array with five rows.
     let rows: Vec<&[u8]> = (0..5).map(|i| unsafe { text_at(&text, "u", i) }).collect();
