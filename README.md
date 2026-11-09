@@ -73,7 +73,8 @@ rules. `datakit` is for data preparation:
   to otherwise.
 - It reads and writes Stata `.dta` files (`read_dta`, `read_meta`,
   `save_dta`) and reads fixed-width `.dat` files through their SAS
-  setup files (`read_fixed_width`).
+  setup files (`read_fixed_width`, from `datparser`, which also stands
+  alone for those who need only that).
 - Columns keep value labels and the missing values `.a` to `.z`, read
   and set with `var_label`, `val_labels`, `with_labels`, `tagged_na`,
   and `na_tag`, so haven and labelled are not needed.
@@ -205,7 +206,7 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `DtaArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | datakit's `readFixedWidth` |
+| fixed-width text through a SAS setup file | datparser's and datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | datakit's `readFixedWidth` |
 | Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `read_parquet`, `save_parquet` (polars) | Datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
@@ -226,7 +227,8 @@ than release 118 comes back as UTF-8.
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
 | `crates/dta-ffi` | the WebAssembly interface (for TypeScript) and C interface (for Julia) |
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
-| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width`, and Parquet's `read_parquet` and `save_parquet` |
+| `r/datparser` | the R package that reads fixed-width text through a SAS setup file, `read_fixed_width`, on its own |
+| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width` (from datparser), and Parquet's `read_parquet` and `save_parquet` |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
 | `python` | the Python package `dta_parser` |
 | `python/datakit` | the Python package for data preparation in polars: Parquet, `.dta`, and fixed-width text with labels and `.a` to `.z` |

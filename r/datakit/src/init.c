@@ -1,5 +1,5 @@
-// datakit reads fixed-width and Parquet files through dtaparser (ADR
-// 0032, plan 0018): the routines here forward to the C functions
+// datakit reads Parquet files through dtaparser (plan 0018): the
+// routines here forward to the C functions
 // dtaparser registers with R_RegisterCCallable. dta_link fetches them;
 // .onLoad calls it once dtaparser's namespace, and so its library, is
 // loaded.
@@ -13,7 +13,6 @@ typedef SEXP (*sexp1_fn)(SEXP);
 typedef SEXP (*sexp3_fn)(SEXP, SEXP, SEXP);
 typedef SEXP (*sexp5_fn)(SEXP, SEXP, SEXP, SEXP, SEXP);
 
-static sexp5_fn fixed_width_fn;
 static sexp1_fn parquet_info_fn;
 static sexp5_fn parquet_read_fn;
 static sexp3_fn parquet_write_fn;
@@ -26,16 +25,10 @@ static SEXP link(void) {
   // An older dtaparser has no Parquet callables; .onLoad then refuses it
   // by its ABI number rather than fail here.
   if (found != 3) return Rf_ScalarInteger(found);
-  fixed_width_fn = (sexp5_fn) R_GetCCallable("dtaparser", "dtaparser_fixed_width");
   parquet_info_fn = (sexp1_fn) R_GetCCallable("dtaparser", "dtaparser_parquet_info");
   parquet_read_fn = (sexp5_fn) R_GetCCallable("dtaparser", "dtaparser_parquet_read");
   parquet_write_fn = (sexp3_fn) R_GetCCallable("dtaparser", "dtaparser_parquet_write");
   return Rf_ScalarInteger(found);
-}
-
-static SEXP fixed_width(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP commented_formats) {
-  if (!fixed_width_fn) Rf_error("datakit: dtaparser is not linked; reload datakit");
-  return fixed_width_fn(data, setup, out, recodes, commented_formats);
 }
 
 static void linked(void *fn) {
@@ -61,7 +54,6 @@ SEXP dta_na_groups_tagged(SEXP x, SEXP key, SEXP loc);
 
 static const R_CallMethodDef routines[] = {
   {"dta_link", (DL_FUNC) &link, 0},
-  {"dta_fixed_width", (DL_FUNC) &fixed_width, 5},
   {"dta_parquet_info", (DL_FUNC) &parquet_info, 1},
   {"dta_parquet_read", (DL_FUNC) &parquet_read, 5},
   {"dta_parquet_write", (DL_FUNC) &parquet_write, 3},

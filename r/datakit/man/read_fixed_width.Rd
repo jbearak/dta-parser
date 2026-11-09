@@ -33,12 +33,23 @@ is missing: per variable, the codes recoded to \code{.} become tagged NAs
 code's label (\code{"(98) DK"}); \code{"none"} ignores them, so the codes stay
 numbers.}
 
-\item{col_select, skip, n_max, warn_extended_missing}{As in \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}.
-\code{skip} and \code{n_max} apply after the whole file is read.}
+\item{col_select}{Columns to read: a character vector of names, or a
+tidyselect expression such as \code{tidyselect::all_of(names)}. All
+columns when \code{NULL}. Columns come back in the order selected. Only
+these are read, and only they are warned about.}
 
-\item{factors}{Whether columns with value labels become factors, as
-in \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}}. A factor cannot hold the tagged NAs that
-\code{recodes = "tagged"} makes.}
+\item{skip}{Rows to skip at the start, after records are selected.}
+
+\item{n_max}{The most rows to read; \code{Inf} for all.}
+
+\item{factors}{Whether columns with value labels become factors. A
+factor cannot hold the tagged NAs that \code{recodes = "tagged"} makes,
+so the default keeps the numbers.}
+
+\item{warn_extended_missing}{Whether to warn when \code{factors = TRUE}
+turns tagged NAs into plain \code{NA}. The warning has class
+\code{datparser_extended_missing} (and \code{dtaparser_extended_missing}, as
+\code{dtaparser::read_dta()} gives).}
 
 \item{commented_formats}{Whether to read a \verb{PROC FORMAT} step or a
 \code{FORMAT} statement that the setup has put in a block comment
@@ -51,28 +62,16 @@ comment. \code{FALSE} reads every comment as a comment, so those files
 have no value labels.}
 }
 \value{
-A tibble, as \code{\link[dtaparser:read_dta]{dtaparser::read_dta()}} returns. Numeric columns take the
-smallest type that holds their values: integers when every value is
-a whole number within R's integer range, doubles otherwise (and
-doubles when they hold tagged NAs). Value labels on recoded codes
-move to their tagged NA, or go when the code becomes a plain \code{NA}.
-
-Statements the reader does not run (other data-step code, ranges in
-\code{VALUE}) are skipped with one warning of class
-\code{datakit_fixed_width_warning}; the tibble's \code{warnings} attribute
-lists them all. A \code{LENGTH} statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes inside it, such as
-\verb{X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"} in CDC's
-2011-2013 to 2015-2017 setups, is read from its first quote to its
-last, without a warning.
+As \code{\link[datparser:read_fixed_width]{datparser::read_fixed_width()}} returns, with each numeric
+column that has value labels a \code{dtaparser_labelled}.
 }
 \description{
-Reads fixed-width ASCII data, such as the National Survey of Family
-Growth files of 1973 to 2017-2019 that CDC publishes as \code{.dat} files,
-using the SAS setup file (\code{.sas}) that describes it: each variable's
-columns from \code{INPUT}, its label from \code{LABEL}, its value labels from
-\verb{PROC FORMAT} and \code{FORMAT}, record-type selection
-(\verb{IF rec_type < 5 THEN DELETE; ELSE INPUT ...}) and the setup's
-missing-value recodes (\verb{IF (X = 98 OR X = 99) THEN X = .;}).
+datparser's \code{\link[datparser:read_fixed_width]{datparser::read_fixed_width()}}, whose columns with value
+labels come back as a \code{\link[dtaparser:with_labels]{dtaparser_labelled}},
+as \code{\link[=read_dta]{read_dta()}} gives them, rather than as plain vectors with a
+\code{labels} attribute: so their labels survive \code{x[i]}, \code{bind_rows()},
+\code{case_when()} and \code{if_else()}, and \code{\link[=val_label]{val_label()}}, \code{\link[=na_tag]{na_tag()}} and \verb{:=}
+work on them.
 }
 \examples{
 dir <- tempfile()
@@ -87,6 +86,6 @@ writeLines(c(
 writeLines(c("001 2", "00298", "00399", "004 0"), file.path(dir, "survey.dat"))
 df <- read_fixed_width(file.path(dir, "survey.dat"), file.path(dir, "survey.sas"),
                        recodes = "tagged")
-dtaparser::na_tag(df$KIDS)
-dtaparser::val_label(df$KIDS)
+na_tag(df$KIDS)
+val_label(df$KIDS)
 }

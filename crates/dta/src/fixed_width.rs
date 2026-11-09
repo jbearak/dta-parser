@@ -1,6 +1,8 @@
 //! Fixed-width text data read through a SAS setup file, as CDC publishes
-//! the National Survey of Family Growth from 1973 to 2017-2019, and
-//! written as release 118 for the language bindings to read back.
+//! the National Survey of Family Growth from 1973 to 2017-2019: held in
+//! memory as a [`FixedWidth`], which R's datparser builds its columns
+//! from, or written as release 118 for the other language bindings to
+//! read back.
 //!
 //! The setup file is parsed for what such files hold: `PROC FORMAT`
 //! value labels, `INFILE`'s record length, column `INPUT`, record-type
@@ -79,15 +81,201 @@ pub struct FixedWidthWarning {
     pub message: String,
 }
 
-/// Read `data` as `setups` describe and write it as release 118 to `out`.
-///
-/// `setups` are the setup's files, read in order as one setup; a
-/// statement may not run from one file into the next. With several,
-/// errors and warnings name the file by its place in `setups`, from 1.
-/// With `commented_formats`, a block comment that holds only a `PROC
-/// FORMAT` step or a `FORMAT` statement is read as code: CDC comments
-/// them out of its 2006 to 2019 setups so that SAS runs without the
-/// format catalog.
+/// A fixed-width file read through its setup, held in memory: the kept
+/// records, and per variable its name, label, value labels, storage type
+/// and values. [`fixed_width_to_dta`] writes one as release 118; R's
+/// datparser builds its columns from one directly (ADR 0039).
+pub struct FixedWidth<'d> {
+    data: Cow<'d, [u8]>,
+    program: Program,
+    kept: Vec<Rec>,
+    /// Per variable read, what its values need of a storage type, and
+    /// whether any is `.a` to `.z`.
+    stats: Vec<Stats>,
+    /// Per string variable read, its values.
+    strings: Vec<Option<Vec<String>>>,
+    sets: Sets,
+}
+
+/// A parsed setup: what [`FixedWidth::read`] reads data through. Parse
+/// it once to learn the variables' names before choosing which to read.
+pub struct FixedWidthSetup {
+    layout: Layout,
+    warnings: Vec<FixedWidthWarning>,
+}
+
+impl FixedWidthSetup {
+    /// Parse `setups`, the setup's files, read in order as one setup; a
+    /// statement may not run from one file into the next. With several,
+    /// errors and warnings name the file by its place in `setups`,
+    /// counting from 1. With `commented_formats`, a block comment that
+    /// holds only a `PROC FORMAT` step or a `FORMAT` statement is read as
+    /// code: CDC comments them out of its 2006 to 2019 setups so that SAS
+    /// runs without the format catalog.
+    pub fn parse(setups: &[&[u8]], commented_formats: bool) -> Result<Self> {
+        if setups.is_empty() {
+            return Err(Error::invalid("no setup file was given"));
+        }
+        let mut warnings = Vec::new();
+        let texts: Vec<Cow<str>> = setups.iter().map(|s| text(s)).collect();
+        let layout = parse_setup(&texts, commented_formats, &mut warnings)?;
+        Ok(FixedWidthSetup { layout, warnings })
+    }
+
+    /// The names of the variables the setup defines, in order.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.layout.vars.iter().map(|v| v.name.as_str())
+    }
+}
+
+impl<'d> FixedWidth<'d> {
+    /// Read `data` through `setup`. `columns` are the indices of the
+    /// variables whose values are wanted; `None` for all. Only those are
+    /// read, and only they are warned about; the others'
+    /// [`storage`](Self::storage), [`number`](Self::number) and
+    /// [`string`](Self::string) must not be asked for. The warnings
+    /// include the setup's.
+    pub fn read(
+        setup: FixedWidthSetup,
+        data: Cow<'d, [u8]>,
+        recodes: Recodes,
+        columns: Option<&[usize]>,
+    ) -> Result<(Self, Vec<FixedWidthWarning>)> {
+        let FixedWidthSetup { layout, mut warnings } = setup;
+        let n = layout.vars.len();
+        let wanted: Vec<bool> = match columns {
+            None => vec![true; n],
+            Some(cols) => {
+                let mut w = vec![false; n];
+                for &c in cols {
+                    *w.get_mut(c).ok_or_else(|| Error::invalid(format!("there is no column {}", c + 1)))? = true;
+                }
+                w
+            }
+        };
+        let records = split_records(&data, &layout)?;
+        let utf8 = std::str::from_utf8(&data).is_ok();
+        let program = Program::new(layout, recodes)?;
+        let kept: Vec<Rec> = records.into_iter().filter(|r| program.keep(&data, r)).collect();
+        if kept.is_empty() {
+            warn(&mut warnings, WarningKind::NoRecords, "no record of the data file was kept".into());
+        }
+        let layout = &program.layout;
+        let last_col = layout.vars.iter().filter_map(|v| v.cols.map(|(_, e)| e)).max().unwrap_or(0);
+        let last_col = layout.lrecl.map_or(last_col, |l| last_col.min(l));
+        let short = kept.iter().filter(|r| r.end - r.start < last_col).count();
+        if short > 0 {
+            warn(
+                &mut warnings,
+                WarningKind::ShortRecords,
+                format!("{short} records are shorter than column {last_col}; is this the data file the setup describes?"),
+            );
+        }
+
+        // One pass, record by record, for the numeric types, the invalid
+        // fields and the string values.
+        let mut stats = vec![Stats::default(); n];
+        let mut strings: Vec<Option<Vec<String>>> = layout
+            .vars
+            .iter()
+            .zip(&wanted)
+            .map(|(v, &w)| (w && v.is_str).then(|| Vec::with_capacity(kept.len())))
+            .collect();
+        let mut bad: Vec<(usize, usize)> = vec![(0, 0); n];
+        for rec in &kept {
+            for (k, var) in layout.vars.iter().enumerate() {
+                if !wanted[k] {
+                    continue;
+                }
+                if var.is_str {
+                    let s = program.string(&data, rec, k);
+                    strings[k].as_mut().unwrap().push(decode(s, utf8));
+                } else {
+                    let (v, code, invalid) = program.number(&data, rec, k);
+                    if invalid {
+                        if bad[k].0 == 0 {
+                            bad[k].1 = rec.number;
+                        }
+                        bad[k].0 += 1;
+                    }
+                    stats[k].add(v, code);
+                }
+            }
+        }
+        for (k, &(count, first)) in bad.iter().enumerate() {
+            if count > 0 {
+                warn(
+                    &mut warnings,
+                    WarningKind::NotANumber,
+                    format!("{}: {count} values are not numbers and read as `.` (the first in record {first} of the data file)", layout.vars[k].name),
+                );
+            }
+        }
+        let sets = program.value_label_sets()?;
+        Ok((FixedWidth { data, program, kept, stats, strings, sets }, warnings))
+    }
+
+    /// The number of records kept.
+    pub fn nrows(&self) -> usize {
+        self.kept.len()
+    }
+
+    /// The number of variables the setup defines.
+    pub fn ncols(&self) -> usize {
+        self.program.layout.vars.len()
+    }
+
+    pub fn name(&self, k: usize) -> &str {
+        &self.program.layout.vars[k].name
+    }
+
+    /// The variable label, or empty.
+    pub fn label(&self, k: usize) -> &str {
+        &self.program.layout.vars[k].label
+    }
+
+    pub fn is_string(&self, k: usize) -> bool {
+        self.program.layout.vars[k].is_str
+    }
+
+    /// The smallest storage type that holds a numeric variable's values:
+    /// byte, int or long when each is a whole number within its range,
+    /// double otherwise.
+    pub fn storage(&self, k: usize) -> StorageType {
+        if self.is_string(k) {
+            StorageType::Str(1)
+        } else {
+            self.stats[k].storage()
+        }
+    }
+
+    /// Whether any value of a numeric variable is `.a` to `.z`.
+    pub fn has_letters(&self, k: usize) -> bool {
+        self.stats[k].letters
+    }
+
+    /// A numeric variable's value labels, `.a` to `.z` among them, or
+    /// `None`.
+    pub fn value_labels(&self, k: usize) -> Option<&ValueLabelSet> {
+        let name = &self.sets.names[k];
+        (!name.is_empty()).then(|| self.sets.sets.iter().find(|s| &s.name == name)).flatten()
+    }
+
+    /// A numeric variable's value in a row (from 0) and its missing code:
+    /// 0, or 1 to 27 for `.` to `.z`.
+    pub fn number(&self, row: usize, k: usize) -> (f64, u8) {
+        let (v, c, _) = self.program.number(&self.data, &self.kept[row], k);
+        (v, c)
+    }
+
+    /// A string variable's value in a row (from 0).
+    pub fn string(&self, row: usize, k: usize) -> &str {
+        &self.strings[k].as_ref().expect("a string column that was read")[row]
+    }
+}
+
+/// Read `data` as `setups` describe (see [`FixedWidthSetup::parse`]) and
+/// write it as release 118 to `out`.
 pub fn fixed_width_to_dta(
     setups: &[&[u8]],
     data: &[u8],
@@ -95,67 +283,10 @@ pub fn fixed_width_to_dta(
     commented_formats: bool,
     out: impl Write,
 ) -> Result<Vec<FixedWidthWarning>> {
-    let mut warnings = Vec::new();
-    if setups.is_empty() {
-        return Err(Error::invalid("no setup file was given"));
-    }
-    let texts: Vec<Cow<str>> = setups.iter().map(|s| text(s)).collect();
-    let layout = parse_setup(&texts, commented_formats, &mut warnings)?;
-    let records = split_records(data, &layout)?;
-    let utf8 = std::str::from_utf8(data).is_ok();
-    let program = Program::new(&layout, recodes)?;
-    let kept: Vec<Rec> = records.into_iter().filter(|r| program.keep(data, r)).collect();
-    if kept.is_empty() {
-        warn(&mut warnings, WarningKind::NoRecords, "no record of the data file was kept".into());
-    }
-    let last_col = layout.vars.iter().filter_map(|v| v.cols.map(|(_, e)| e)).max().unwrap_or(0);
-    let last_col = layout.lrecl.map_or(last_col, |l| last_col.min(l));
-    let short = kept.iter().filter(|r| r.end - r.start < last_col).count();
-    if short > 0 {
-        warn(
-            &mut warnings,
-            WarningKind::ShortRecords,
-            format!("{short} records are shorter than column {last_col}; is this the data file the setup describes?"),
-        );
-    }
-
-    // One pass, record by record, for the numeric types, the invalid
-    // fields and the string values.
-    let n = layout.vars.len();
-    let mut stats = vec![Stats::default(); n];
-    let mut strings: Vec<Option<Vec<String>>> =
-        layout.vars.iter().map(|v| v.is_str.then(|| Vec::with_capacity(kept.len()))).collect();
-    let mut bad: Vec<(usize, usize)> = vec![(0, 0); n];
-    for rec in &kept {
-        for (k, var) in layout.vars.iter().enumerate() {
-            if var.is_str {
-                let s = program.string(data, rec, k);
-                strings[k].as_mut().unwrap().push(decode(s, utf8));
-            } else {
-                let (v, code, invalid) = program.number(data, rec, k);
-                if invalid {
-                    if bad[k].0 == 0 {
-                        bad[k].1 = rec.number;
-                    }
-                    bad[k].0 += 1;
-                }
-                stats[k].add(v, code);
-            }
-        }
-    }
-    for (k, &(count, first)) in bad.iter().enumerate() {
-        if count > 0 {
-            warn(
-                &mut warnings,
-                WarningKind::NotANumber,
-                format!("{}: {count} values are not numbers and read as `.` (the first in record {first} of the data file)", layout.vars[k].name),
-            );
-        }
-    }
-
-    let sets = program.value_label_sets(&layout)?;
-    let mut variables = Vec::with_capacity(n);
-    for (k, var) in layout.vars.iter().enumerate() {
+    let setup = FixedWidthSetup::parse(setups, commented_formats)?;
+    let (fw, mut warnings) = FixedWidth::read(setup, Cow::Borrowed(data), recodes, None)?;
+    let mut variables = Vec::with_capacity(fw.ncols());
+    for (k, var) in fw.program.layout.vars.iter().enumerate() {
         let mut label = var.label.clone();
         if label.len() > 320 {
             let mut cut = 320;
@@ -165,32 +296,31 @@ pub fn fixed_width_to_dta(
             label.truncate(cut);
             warn(&mut warnings, WarningKind::LabelCut, format!("the label of {} is cut to 320 bytes", var.name));
         }
-        let values = match &strings[k] {
-            Some(s) => Values::Strings(Box::new(move |row| s[row].as_bytes())),
-            None => {
-                let (program, kept) = (&program, &kept);
-                Values::Numbers(Box::new(move |first, values, codes| {
-                    for (i, (v, c)) in values.iter_mut().zip(codes.iter_mut()).enumerate() {
-                        (*v, *c, _) = program.number(data, &kept[first + i], k);
-                    }
-                }))
-            }
+        let fw = &fw;
+        let values = if var.is_str {
+            Values::Strings(Box::new(move |row| fw.string(row, k).as_bytes()))
+        } else {
+            Values::Numbers(Box::new(move |first, values, codes| {
+                for (i, (v, c)) in values.iter_mut().zip(codes.iter_mut()).enumerate() {
+                    (*v, *c) = fw.number(first + i, k);
+                }
+            }))
         };
         variables.push(WriteVariable {
             name: var.name.clone(),
-            storage: if var.is_str { StorageType::Str(1) } else { stats[k].storage() },
+            storage: fw.storage(k),
             format: String::new(),
             label,
-            value_labels: sets.names[k].clone(),
+            value_labels: fw.sets.names[k].clone(),
             values,
         });
     }
     let dataset = Dataset {
-        nobs: kept.len(),
+        nobs: fw.nrows(),
         label: String::new(),
         timestamp: String::new(),
         variables,
-        value_labels: sets.sets,
+        value_labels: fw.sets.sets.clone(),
         characteristics: Vec::new(),
         sort_order: Vec::new(),
     };
@@ -1202,14 +1332,14 @@ enum Step {
     Recode(Vec<(f64, u8)>),
 }
 
-struct Program<'l> {
-    layout: &'l Layout,
+struct Program {
+    layout: Layout,
     /// Per variable, its steps in order.
     steps: Vec<Vec<Step>>,
 }
 
-impl<'l> Program<'l> {
-    fn new(layout: &'l Layout, recodes: Recodes) -> Result<Self> {
+impl Program {
+    fn new(layout: Layout, recodes: Recodes) -> Result<Self> {
         let n = layout.vars.len();
         let mut steps: Vec<Vec<Step>> = (0..n).map(|_| Vec::new()).collect();
         // Letters `Tagged` gives each variable, by code.
@@ -1363,7 +1493,8 @@ impl<'l> Program<'l> {
     }
 
     /// The value-label sets and each variable's set name (plan 0009).
-    fn value_label_sets(&self, layout: &Layout) -> Result<Sets> {
+    fn value_label_sets(&self) -> Result<Sets> {
+        let layout = &self.layout;
         let mut reserved: HashSet<String> = layout.format_names.clone();
         let mut by_content: HashMap<(String, Vec<LabelKey>), String> = HashMap::new();
         let mut taken: HashSet<String> = HashSet::new();
@@ -1485,6 +1616,8 @@ fn order(a: (f64, u8), b: (f64, u8)) -> std::cmp::Ordering {
 #[derive(Debug, Clone, Copy)]
 struct Stats {
     any: bool,
+    /// Whether any value is `.a` to `.z`.
+    letters: bool,
     integer: bool,
     min: f64,
     max: f64,
@@ -1492,13 +1625,14 @@ struct Stats {
 
 impl Default for Stats {
     fn default() -> Self {
-        Stats { any: false, integer: true, min: 0.0, max: 0.0 }
+        Stats { any: false, letters: false, integer: true, min: 0.0, max: 0.0 }
     }
 }
 
 impl Stats {
     fn add(&mut self, v: f64, code: u8) {
         if code != NOT_MISSING {
+            self.letters |= code > SYSTEM;
             return;
         }
         if !self.any {

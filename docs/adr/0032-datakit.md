@@ -1,5 +1,9 @@
 # datakit holds what goes beyond the format: `:=` and `read_fixed_width`
 
+Superseded in part by ADR 0039: `read_fixed_width` moves to datparser,
+which datakit imports and wraps, and dtaparser no longer registers
+`dtaparser_fixed_width`.
+
 dtaparser grew from a `.dta` reader into a reader with `:=` (ADR 0027)
 and a reader of fixed-width text through SAS setup files (ADR 0018).
 Neither is about the `.dta` format, and a do-file translated to R needs
