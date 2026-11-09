@@ -599,34 +599,36 @@ def prepare(df, meta, missing_letters, who):
 
 
 def sort_key(s, missing_letters):
-    """A float64 or int64 array that sorts the rows of `s` as Stata
-    orders them: values, then `.`, then `.a` to `.z`."""
+    """Arrays that sort the rows of `s` as Stata orders them, the first
+    the most significant: values, then `.`, then `.a` to `.z`."""
     a = s.array
     dtype = s.dtype
     if isinstance(dtype, pd.CategoricalDtype):
         codes = s.cat.codes.to_numpy().astype(np.int64)
-        return np.where(codes < 0, np.iinfo(np.int64).max, codes)
+        return [codes < 0, codes]
     if dtype.kind in "Mm":
-        # Exact int64 counts, `NaT` last.
+        # Exact int64 counts, `NaT` last: missingness first, so that no
+        # value stands in for it.
         ints = a.asi8 if hasattr(a, "asi8") else s.to_numpy().view(np.int64)
-        return np.where(s.isna().to_numpy(), np.iinfo(np.int64).max, ints)
+        missing = s.isna().to_numpy()
+        return [missing, np.where(missing, 0, ints)]
     if dtype.kind in "iu" and not isinstance(a, DtaArray):
         # Exact integers (a float64 key would merge values above 2^53),
         # missing values of a nullable column last.
         int_dtype = np.uint64 if dtype.kind == "u" else np.int64
         missing = s.isna().to_numpy()
         values = s.to_numpy(dtype=int_dtype, na_value=0) if missing.any() else s.to_numpy().astype(int_dtype)
-        return np.where(missing, np.iinfo(int_dtype).max, values)
+        return [missing, values]
     if isinstance(dtype, np.dtype) and dtype.kind == "f":
         codes = _tagged.float_codes(s.to_numpy(dtype=np.float64))
         if not missing_letters:
             codes = np.minimum(codes, 1)
-        return dta_keys(DtaArray(s.to_numpy(dtype=np.float64), codes))
+        return [dta_keys(DtaArray(s.to_numpy(dtype=np.float64), codes))]
     if isinstance(a, DtaArray) or dtype.kind in "iub":
         keys = dta_keys(s)
         if isinstance(a, DtaArray) and not missing_letters:
             keys = dta_keys(DtaArray(a._values, np.minimum(a.codes, 1)))
-        return np.asarray(keys, dtype=np.float64)
+        return [np.asarray(keys, dtype=np.float64)]
     # Text (or bytes): a missing value sorts as empty text, as in Stata.
     values = s.to_numpy(dtype=object)
     null = pd.isna(values)
@@ -635,7 +637,7 @@ def sort_key(s, missing_letters):
     filled = values.copy()
     filled[null] = empty
     codes, _ = pd.factorize(filled, sort=True)
-    return codes
+    return [codes]
 
 
 def checked_sort(df, sort, missing_letters):
@@ -649,7 +651,7 @@ def checked_sort(df, sort, missing_letters):
         keys.append(name)
     if not keys or len(df) < 2:
         return keys
-    arrays = [sort_key(df[k], missing_letters) for k in keys]
+    arrays = [a for k in keys for a in sort_key(df[k], missing_letters)]
     order = np.lexsort(arrays[::-1])
     if np.array_equal(order, np.arange(len(df))):
         return keys

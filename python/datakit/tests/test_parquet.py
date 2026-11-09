@@ -725,3 +725,10 @@ def test_sort_order_is_checked_on_exact_integers(tmp_path):
         dk.save_parquet(stamps, tmp_path / "t.parquet", meta=dk.Meta(sort=["t"]))
     ordered = pd.DataFrame({"big": pd.array([2**53, 2**53 + 1, None], dtype="Int64")})
     quiet(dk.save_parquet, ordered, tmp_path / "ok.parquet", meta=dk.Meta(sort=["big"]))
+    # A missing value sorts after every value, the largest included.
+    for column in (pd.array([None, 2**63 - 1], dtype="Int64"), pd.array([None, 2**64 - 1], dtype="UInt64"),
+                   pd.Series([pd.NaT, pd.Timestamp.max])):
+        with pytest.warns(UserWarning, match="does not describe the order"):
+            dk.save_parquet(pd.DataFrame({"x": column}), tmp_path / "edge.parquet", meta=dk.Meta(sort=["x"]))
+    quiet(dk.save_parquet, pd.DataFrame({"x": pd.array([2**63 - 1, None], dtype="Int64")}), tmp_path / "e.parquet",
+          meta=dk.Meta(sort=["x"]))
