@@ -52,8 +52,9 @@ allowed.
 \item Other columns, such as character or \code{Date}, take values vctrs can
 convert to their type.
 \item \code{by} names grouping columns: \code{by = g}, \code{by = c("g", "h")} or
-\code{by = .(g, h)}. All \code{NA}s are one group. A \code{by} column cannot be
-changed.
+\code{by = .(g, h)}. \code{NA}, \code{NaN} and each of \code{.a} to \code{.z}
+(\code{\link[=tagged_na]{tagged_na()}}) are groups of their own, as \code{bysort} makes them. A
+\code{by} column cannot be changed.
 \item A value of \code{NULL} drops the column (not with \code{i} or \code{by}).
 \item When \code{i} picks no rows, an existing column is left as it is and its
 value is not evaluated.
