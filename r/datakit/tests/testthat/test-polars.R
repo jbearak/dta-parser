@@ -259,6 +259,17 @@ test_that("missing_letters = FALSE writes .a to .z as .", {
   expect_identical(na_tag(vctrs::vec_data(read_dta(q)$x)), rep(NA_character_, 4))
 })
 
+test_that("a column named like datakit's temporary letter columns is kept", {
+  skip_without_polars()
+  p <- tempfile(fileext = ".parquet")
+  d <- data.frame(x = c(1, tagged_na("a")), `__datakit_letters__x` = c(10, 20), check.names = FALSE)
+  save_parquet(d, p)
+  res <- read_parquet_pl(p)
+  expect_identical(res$df$columns, c("x", "__datakit_letters__x"))
+  expect_identical(col(res$df, "__datakit_letters__x"), c(10, 20))
+  expect_identical(na_tag(col(res$df, "x")), c(NA, "a"))
+})
+
 test_that("meta$sort is saved only when the rows are in its order", {
   skip_without_polars()
   pl <- polars::pl

@@ -425,7 +425,7 @@ to_factors <- function(df, meta) {
 with_letters <- function(df, meta, ldf, found) {
   pl <- polars::pl
   schema <- df$schema
-  tmp <- paste0("__datakit_letters__", found)
+  tmp <- unname(letter_temps(found, df$columns))
   df <- df$with_columns(!!!lapply(seq_along(found), function(i) ldf$get_column(found[[i]])$alias(tmp[[i]])))
   changes <- list()
   for (i in seq_along(found)) {
@@ -458,6 +458,13 @@ with_letters <- function(df, meta, ldf, found) {
   }
   df <- if (length(changes)) df$with_columns(!!!changes) else df
   list(df = df$drop(tmp), meta = meta)
+}
+
+# Names for temporary letter columns of `names`, none of them in `taken`.
+letter_temps <- function(names, taken) {
+  prefix <- "__datakit_letters__"
+  while (any(paste0(prefix, names) %in% taken)) prefix <- paste0("_", prefix)
+  stats::setNames(paste0(prefix, names), names)
 }
 
 set_format <- function(meta, name, fmt) {
@@ -593,8 +600,9 @@ checked_sort <- function(df, sort, letters_df) {
   schema <- df$schema
   frame <- df$select(!!!lapply(keys, function(k) pl$col(k)))
   lettered <- intersect(keys, if (is.null(letters_df)) character() else letters_df$columns)
+  tmp <- letter_temps(lettered, keys)
   if (length(lettered)) {
-    frame <- frame$with_columns(!!!lapply(lettered, function(k) letters_df$get_column(k)$alias(paste0("__datakit_letters__", k))))
+    frame <- frame$with_columns(!!!lapply(lettered, function(k) letters_df$get_column(k)$alias(tmp[[k]])))
   }
   parts <- list()
   for (k in keys) {
@@ -610,7 +618,7 @@ checked_sort <- function(df, sort, letters_df) {
     }
     nulls <- col$is_null()
     tier <- if (k %in% lettered) {
-      code <- pl$col(paste0("__datakit_letters__", k))$to_physical()$cast(pl$UInt8) + 2
+      code <- pl$col(tmp[[k]])$to_physical()$cast(pl$UInt8) + 2
       pl$when(nulls$not())$then(0)$otherwise(code$fill_null(1))
     } else {
       nulls$cast(pl$UInt8)
