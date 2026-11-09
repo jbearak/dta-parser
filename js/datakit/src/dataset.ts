@@ -6,12 +6,13 @@ import type {
   AsyncTableReader,
   Characteristic,
   DictionaryColumn,
+  NumberColumn,
   TableColumn,
   TableReader,
   ValueLabels,
   Variable,
 } from "@jbearak/dta-parser";
-import { isMissing } from "@jbearak/dta-parser/format";
+import { isMissing, missingCode } from "@jbearak/dta-parser/format";
 import { dtaError } from "./_shared/errors";
 import type { ReadDataset, ReadVariable } from "./types";
 
@@ -106,7 +107,10 @@ function assemble(
     const out: ReadVariable = { name: v.name, type: v.type, format: v.format, label: v.label, valueLabels: v.valueLabels, values: columns[j] };
     if (v.unit !== undefined) out.unit = v.unit;
     if (v.timeZone !== undefined) out.timeZone = v.timeZone;
-    if (v.categorical !== undefined) out.categorical = { levels: v.categorical.levels && [...v.categorical.levels], ordered: v.categorical.ordered };
+    // A categorical holding .a to .z in the rows read came back as its level
+    // numbers (ADR 0037): labelled doubles, as R, Julia and Python read it.
+    if (v.type === "categorical" && columns[j].kind === "number") out.type = "double";
+    else if (v.categorical !== undefined) out.categorical = { levels: v.categorical.levels && [...v.categorical.levels], ordered: v.categorical.ordered };
     return out;
   });
   const dataset: ReadDataset = {
@@ -161,6 +165,10 @@ function restoreFactors(dataset: ReadDataset, onWarning?: (messages: string[]) =
       continue;
     }
     const { set, ordered } = why;
+    // An Enum-like column cannot hold .a to .z (ADR 0037): one holding them
+    // stays its codes, with the letters, its marker kept.
+    const numbers = (v.values as NumberColumn).values;
+    if (numbers.some((x) => missingCode(x) > 1)) continue;
     const labels = dataset.valueLabels[set];
     // The levels are the texts of the set's numeric codes, in code order;
     // labels on .a to .z (a categorical's) are not levels.
@@ -174,13 +182,11 @@ function restoreFactors(dataset: ReadDataset, onWarning?: (messages: string[]) =
     const levels = entries.map(([, text]) => text);
     const codes = entries.map(([code]) => code);
     const index = new Map(codes.map((c, i) => [c, i]));
-    const column = v.values as { values: Float64Array; missing: Uint8Array };
-    const n = column.values.length;
+    const n = numbers.length;
     const dict: DictionaryColumn = { kind: "dictionary", codes: new Uint32Array(n), values: levels, missing: new Uint8Array(n) };
     for (let i = 0; i < n; i++) {
-      // 1 for `.`, 2 to 27 for `.a` to `.z` (only a categorical's).
-      if (column.missing[i]) dict.missing![i] = column.missing[i];
-      else dict.codes[i] = index.get(column.values[i])!;
+      if (missingCode(numbers[i])) dict.missing![i] = 1;
+      else dict.codes[i] = index.get(numbers[i])!;
     }
     v.values = dict;
     v.type = "categorical";
@@ -231,10 +237,11 @@ function check(
     if (texts.has(text)) return `two codes in its value label set share the text "${text}"`;
     texts.add(text);
   }
-  const { values, missing } = v.values;
+  const { values } = v.values;
   for (let i = 0; i < values.length; i++) {
-    if (missing[i] > 1 && !categorical) return `row ${i} holds an extended missing value (.a to .z)`;
-    if (missing[i] === 0 && !labels.has(values[i])) return `row ${i} holds ${values[i]}, which has no label`;
+    const code = missingCode(values[i]);
+    if (code > 1 && !categorical) return `row ${i} holds an extended missing value (.a to .z)`;
+    if (code === 0 && !labels.has(values[i])) return `row ${i} holds ${values[i]}, which has no label`;
   }
   return { set, ordered: order === "ordered" };
 }

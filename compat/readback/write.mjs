@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 import { basename, join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const { openDta, missingValue } = require("../../js/dist/index.js");
+const { openDta } = require("../../js/dist/index.js");
 const { writeDtaFile } = require("../../js/dist/node.js");
 
 const out = process.argv[2];
@@ -31,7 +31,8 @@ for (const path of inputs) {
     const c = cols[i];
     const common = { name: v.name, format: v.format, label: v.label, valueLabels: valueLabels[v.valueLabels] ? v.valueLabels : undefined };
     if (c.kind === "string") return { ...common, type: v.type === "strL" ? "strL" : undefined, values: c.values };
-    return { ...common, type: v.type, values: Array.from(c.values, (x, k) => (c.missing[k] ? missingValue(c.missing[k]) : x)) };
+    // A Float64Array holds its missing values (NA, tagged NaNs; ADR 0037).
+    return { ...common, type: v.type, values: c.values };
   });
   writeDtaFile(join(out, name), {
     label: r.info.label,

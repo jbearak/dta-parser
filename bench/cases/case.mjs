@@ -130,7 +130,8 @@ function checksum(result) {
   if (reader === "ours") {
     for (const c of result.columns) {
       if (c.kind === "string") for (const s of c.values) length += s.length;
-      else for (let i = 0; i < c.values.length; i++) c.missing[i] ? missing++ : (sum += c.values[i]);
+      // A missing value is a NaN (`NA` or a tagged NaN; ADR 0037).
+      else for (let i = 0; i < c.values.length; i++) c.values[i] !== c.values[i] ? missing++ : (sum += c.values[i]);
     }
   } else {
     const text = result.variables.map((v) => v.type === STRING || v.type === STRING_REF);
@@ -184,14 +185,16 @@ function canonColumn(c) {
     return { kind: "str", hash: short(h) };
   }
   const len = c.values.length;
+  // Our NumberColumn holds its missing values as NA and tagged NaNs (ADR 0037).
+  const codes = c.missing ?? (c.values instanceof Float64Array ? Uint8Array.from(c.values, require("../../js/dist/index.js").missingCode) : null);
   const v = new Float64Array(len), miss = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
-    const missing = c.missing ? c.missing[i] !== 0 : c.values[i] === null;
+    const missing = codes ? codes[i] !== 0 : c.values[i] === null;
     miss[i] = missing ? 1 : 0;
     v[i] = missing ? 0 : c.values[i];
   }
   const h = createHash("sha256").update(new Uint8Array(v.buffer)).update(miss);
-  return { kind: "num", hash: short(h), codes: c.missing ? short(createHash("sha256").update(c.missing)) : null };
+  return { kind: "num", hash: short(h), codes: codes ? short(createHash("sha256").update(codes)) : null };
 }
 
 const canonFrame = (f) => ({ nrows: f.columns.length ? f.columns[0].values.length : 0, columns: f.columns.map(canonColumn) });

@@ -8,6 +8,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { codesOf } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
 const dk = require("../dist/index.js");
@@ -22,8 +23,9 @@ const { readDataset, readDatasetAsync, openParquet, openParquetAsync, writeParqu
  */
 function cells(c) {
   const n = c.kind === "dictionary" ? c.codes.length : c.values.length;
+  const codes = codesOf(c);
   return Array.from({ length: n }, (_, i) => {
-    if (c.missing?.[i]) return { missing: c.missing[i] };
+    if (codes[i]) return { missing: codes[i] };
     if (c.kind === "dictionary") return c.values[c.codes[i]];
     const x = c.values[i];
     return typeof x === "bigint" ? Number(x) : x;
@@ -105,7 +107,7 @@ test("a dataset keeps every value label set, used or not, and a window of rows",
   assert.equal(ds.valueLabels.unused.get(MISSING[".a"]), "A");
   assert.deepEqual(ds.variables.map((v) => v.name), ["s", "x"]);
   assert.deepEqual(ds.variables[0].values.values, ["b", "c"]);
-  assert.deepEqual(Array.from(ds.variables[1].values.missing), [0, 2]);
+  assert.deepEqual(codesOf(ds.variables[1].values), [0, 2]);
   assert.deepEqual(ds.notes, ["n1"]);
   assert.throws(() => readDataset(r, { columns: ["nope"] }), /no variable "nope"/);
   r.close();
@@ -115,7 +117,7 @@ test("readDataset takes any TableReader, not only the package's", () => {
   const custom = {
     info: { format: "parquet", nobs: 2, label: "custom", sortedBy: ["k"] },
     variables: [{ name: "k", type: "long", format: "%12.0g", label: "", valueLabels: "s" }],
-    readColumns: () => [{ kind: "number", values: Float64Array.of(1, 2), missing: Uint8Array.of(0, 0) }],
+    readColumns: () => [{ kind: "number", values: Float64Array.of(1, 2) }],
     readRows: () => [],
     readRowsAt: () => [],
     valueLabels: (n) => (n === "s" ? new Map([[1, "a"]]) : undefined),

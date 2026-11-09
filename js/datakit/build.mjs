@@ -21,7 +21,7 @@ const deflated = {
 // dta-parser's glue that datakit shares (plan 0021), copied in as
 // src/_shared (not committed) so the bundle and its types have them.
 mkdirSync("src/_shared", { recursive: true });
-for (const f of ["errors", "inflate", "shared", "values", "wasm-core"]) {
+for (const f of ["errors", "inflate", "shared", "tagged", "values", "wasm-core"]) {
   const text = readFileSync(`../src/${f}.ts`, "utf8");
   writeFileSync(`src/_shared/${f}.ts`, `// Copied from js/src/${f}.ts by build.mjs; edit that file.\n\n${text}`);
 }

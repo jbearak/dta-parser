@@ -16,7 +16,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const { MISSING } = require("../../js/datakit/dist/index.js");
+const { MISSING, missingCode } = require("../../js/datakit/dist/index.js");
 const { readParquet, saveParquet } = require("../../js/datakit/dist/node.js");
 
 const [mode, dir] = process.argv.slice(2);
@@ -81,7 +81,9 @@ function cells(ds, name) {
   if (!c) return [`no ${name}`];
   if (c.kind === "string") return c.values.map((v, i) => (c.missing?.[i] ? "." : v));
   if (c.kind === "dictionary") return Array.from(c.codes, (k, i) => (c.missing?.[i] ? NAMES[c.missing[i] - 1] : c.values[k]));
-  return Array.from(c.values, (v, i) => (c.missing[i] ? NAMES[c.missing[i] - 1] : typeof v === "bigint" ? String(v) : String(Number(v.toPrecision(17)))));
+  // A NumberColumn holds its missing values as NA and tagged NaNs (ADR 0037).
+  const code = (v, i) => (c.kind === "number" ? missingCode(v) : c.missing[i]);
+  return Array.from(c.values, (v, i) => (code(v, i) ? NAMES[code(v, i) - 1] : typeof v === "bigint" ? String(v) : String(Number(v.toPrecision(17)))));
 }
 const num = (...xs) => xs.map((x) => (typeof x === "number" ? String(Number(x.toPrecision(17))) : x));
 const same = (ds, name, want, who) => {

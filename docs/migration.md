@@ -122,8 +122,10 @@ datakit's peer dependency.
 | `TableReader`, `AsyncTableReader` | gain `valueLabelNames()`, `characteristics()` and `notes()`; `TableInfo` gains an optional `timestamp`, `Variable` optional `unit`, `timeZone` and `categorical`. A class of yours that implements `TableReader` adds the three methods |
 | `DtaReader` | gains `valueLabelNames()` |
 | `dtaKey`, `dtaKeys` | also from `@jbearak/dta-parser/format` (the same functions) |
-| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | kept: the column is written as DOUBLE level numbers and reads back as a categorical with its letters (plan 0022) |
-| `DictionaryColumn.missing` held 0 or 1 | it may hold 2 to 27 for `.a` to `.z` in a categorical read from a file written so; code that tests `missing[i] === 1` for a missing value should test `missing[i] !== 0` |
+| `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing[i]` becomes `missingCode(values[i])`; `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new. A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
+| `WriteVariable.missing` (and datakit's `DatasetVariable.missing` for a Float64Array) beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values. `DatasetVariable.missing` stays for a BigInt64Array's nulls |
+| `dtaKeys(column)` read `column.missing` | reads the values |
+| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | kept: the column is written as DOUBLE level numbers and reads back, from `readColumns`, as a `NumberColumn` of the level numbers with the letters (plan 0022, ADR 0037); `readRows` gives the levels as text |
 
 Nothing else changes: apart from categoricals holding `.a` to `.z`
 (above), the Parquet functions read and write the same files the same

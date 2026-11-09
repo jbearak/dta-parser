@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { openDta, writeDta, MISSING, missingValue } = require("../dist/index.js");
+const { openDta, writeDta, MISSING, missingCode } = require("../dist/index.js");
 const { writeDtaFile, openDtaFile } = require("../dist/node.js");
 
 const compat = new URL("../../compat/", import.meta.url);
@@ -67,7 +67,7 @@ test("every fixture survives readColumns, writeDta, readColumns", () => {
       label: v.label,
       valueLabels: valueLabels[v.valueLabels] ? v.valueLabels : undefined,
       ...(cols[i].kind === "number"
-        ? { type: v.type, values: Array.from(cols[i].values, (x, k) => (cols[i].missing[k] ? missingValue(cols[i].missing[k]) : x)) }
+        ? { type: v.type, values: Array.from(cols[i].values) } // tagged NaNs in a plain array
         : { type: v.type === "strL" ? "strL" : undefined, values: cols[i].values }),
     }));
     const again = openDta(
@@ -81,7 +81,9 @@ test("every fixture survives readColumns, writeDta, readColumns", () => {
         timestamp: r.info.timestamp,
       }),
     );
-    assert.deepEqual(again.readColumns(again.variables.map((_, i) => i)), cols, name);
+    const back = again.readColumns(again.variables.map((_, i) => i));
+    assert.deepEqual(back, cols, name);
+    assert.deepEqual(back.map(codes), cols.map(codes), name);
     for (const set of Object.keys(valueLabels)) assert.deepEqual(again.valueLabels(set), valueLabels[set], name);
     assert.deepEqual(
       again.variables.map((v) => [v.name, v.format, v.label, v.type.startsWith("str") ? v.type === "strL" : v.type]),
@@ -102,17 +104,20 @@ test("number columns write back as readColumns gives them", () => {
     const cols = r.readColumns(r.variables.map((_, i) => i));
     const variables = r.variables.map((v, i) =>
       cols[i].kind === "number"
-        ? { name: v.name, type: v.type, values: cols[i].values, missing: cols[i].missing }
+        ? { name: v.name, type: v.type, values: cols[i].values }
         : { name: v.name, type: v.type === "strL" ? "strL" : undefined, values: cols[i].values },
     );
     const again = openDta(writeDta({ variables }));
-    assert.deepEqual(again.readColumns(again.variables.map((_, i) => i)), cols, name);
+    const back = again.readColumns(again.variables.map((_, i) => i));
+    assert.deepEqual(back, cols, name);
+    assert.deepEqual(back.map(codes), cols.map(codes), name);
   }
-  assert.throws(
-    () => writeDta({ variables: [{ name: "x", values: new Float64Array(2), missing: new Uint8Array(1) }] }),
-    /missing codes/,
-  );
 });
+
+/** Each number's missing code (deepEqual counts every NaN as equal, whatever its tag). */
+function codes(column) {
+  return column.kind === "number" ? Array.from(column.values, missingCode) : null;
+}
 
 /** A file with every kind of metadata and a strL column holding binary values. */
 function withEverything() {

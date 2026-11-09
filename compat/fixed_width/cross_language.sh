@@ -36,6 +36,7 @@ jsonlite::write_json(out, file.path(a[2], paste0("r_", a[1], ".json")), auto_unb
 ' "$mode" "$DIR"
   node -e '
 const node = require("./js/datakit/dist/node.js");
+const { missingCode } = require("./js/datakit/dist/index.js");
 const [mode, dir] = process.argv.slice(1);
 const want = JSON.parse(require("fs").readFileSync(`${dir}/r_${mode}.json`, "utf8"));
 const ds = node.readFixedWidth("compat/fixed_width/synthetic.dat", "compat/fixed_width/synthetic.sas", { recodes: mode, onWarning() {} });
@@ -46,7 +47,7 @@ for (const w of want) {
   const v = ds.variables.find((x) => x.name === w.name);
   if (!v) { bad.push(`${w.name}: missing`); continue; }
   const c = v.values;
-  const cells = c.kind === "string" ? c.values : Array.from(c.values, (x, i) => (c.missing[i] ? NAMES[c.missing[i] - 1] : x));
+  const cells = c.kind === "string" ? c.values : Array.from(c.values, (x) => (missingCode(x) ? NAMES[missingCode(x) - 1] : x));
   cells.forEach((x, i) => { n++; const r = w.cells[i]; const ok = typeof x === "number" ? Number(r) === x : x === r; if (!ok) bad.push(`${w.name} row ${i + 1}: ${x}, R ${r}`); });
   if (v.label !== w.label) bad.push(`${w.name}: label ${v.label}, R ${w.label}`);
   const set = v.valueLabels ? ds.valueLabels[v.valueLabels] : new Map();

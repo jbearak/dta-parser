@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { checkFixture, parquetFixtures } from "./parquet-expected.mjs";
+import { checkFixture, codesOf, parquetFixtures } from "./parquet-expected.mjs";
 
 process.env.DTA_TEST_PARQUET_BUDGET = "6000";
 const require = createRequire(import.meta.url);
@@ -26,8 +26,9 @@ test("text dictionaries carry across calls, and give up into plain strings", () 
   const r = openParquet(writeParquet({ variables: [{ name: "few", values: few }, { name: "many", values: many }] }, { rowGroupSize: 9000 }));
   for (const strings of ["plain", "dictionary"]) {
     const [a, b] = r.readColumns([0, 1], { strings });
+    const nulls = codesOf(a);
     for (let i = 0; i < n; i++) {
-      const x = a.kind === "dictionary" ? (a.missing[i] ? null : a.values[a.codes[i]]) : a.missing[i] ? null : a.values[i];
+      const x = nulls[i] ? null : a.kind === "dictionary" ? a.values[a.codes[i]] : a.values[i];
       assert.equal(x, few[i], `few ${i}`);
       const y = b.kind === "dictionary" ? b.values[b.codes[i]] : b.values[i];
       assert.equal(y, many[i], `many ${i}`);

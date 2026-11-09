@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, openSync, closeSync } f
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkFixture, parquetFixtures } from "./parquet-expected.mjs";
+import { checkFixture, codesOf, numbers, parquetFixtures } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
 const { openParquet, openParquetAsync, writeParquet, ParquetReader, MISSING, isMissing, toDate } = require("../dist/index.js");
@@ -134,11 +134,7 @@ function expectedColumn(v, from, to) {
   if (v.name === "region") {
     return { kind: "dictionary", codes: Uint32Array.from(xs, (x) => x ?? 0), values: [...v.levels], missing: Uint8Array.from(xs, (x) => (x === null ? 1 : 0)) };
   }
-  return {
-    kind: "number",
-    values: Float64Array.from(xs, (x) => (typeof x === "number" ? x : NaN)),
-    missing: Uint8Array.from(xs, code),
-  };
+  return numbers(xs.map((x) => (typeof x === "number" ? x : 0)), xs.map(code));
 }
 
 test("constructed data round trips: labels, .a to .z, dates, timestamps, categories, bigints, nulls", () => {
@@ -176,7 +172,11 @@ test("constructed data round trips: labels, .a to .z, dates, timestamps, categor
   assert.equal(byName.blob.type, "binary");
   for (const [from, to] of [[0, 5000], [0, 1], [1499, 1502], [2000, 2700], [4999, 5000], [3000, 3000]]) {
     const got = r.readColumns(r.variables.map((_, i) => i), { start: from, count: to - from });
-    data.variables.forEach((v, k) => assert.deepEqual(got[k], expectedColumn(v, from, to), `${v.name} rows ${from} to ${to}`));
+    data.variables.forEach((v, k) => {
+      const want = expectedColumn(v, from, to);
+      assert.deepEqual(got[k], want, `${v.name} rows ${from} to ${to}`);
+      assert.deepEqual(codesOf(got[k]), codesOf(want), `${v.name} rows ${from} to ${to}: missing codes`);
+    });
   }
   // Writing what was read gives the same file contents again.
   const cols = r.readColumns(r.variables.map((_, i) => i));
@@ -204,31 +204,27 @@ test("missingLetters: false writes .a to .z as nulls and keeps each column's typ
   assert.equal(age.physicalType, "INT32");
   assert.equal(age.storage, undefined);
   const [c] = r.readColumns(["age"]);
-  assert.ok(c.missing.every((m) => m <= 1));
-  assert.ok(c.missing.includes(1));
+  assert.ok(codesOf(c).every((m) => m <= 1));
+  assert.ok(codesOf(c).includes(1));
 });
 
-test(".a to .z are found wherever they are in a column's missing codes", () => {
-  // The writer is told which columns hold letters, from their codes
-  // looked at four at a time; codes not on a 4-byte boundary, and a
-  // letter in the first, a middle or the last row, all count.
+test(".a to .z are found wherever they are in a column", () => {
+  // A letter in the first, a middle or the last row makes the column
+  // DOUBLE; `.` alone does not.
   const rows = 1003;
   for (const at of [0, 1, 2, 500, rows - 1]) {
-    const backing = new Uint8Array(rows + 3);
-    const missing = backing.subarray(3);
-    missing[at] = 5; // .d
-    const values = new Float64Array(rows).map((_, i) => i % 100);
-    const r = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values, missing } }] }));
+    const codes = new Array(rows).fill(0);
+    codes[at] = 5; // .d
+    const r = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: numbers(Array.from({ length: rows }, (_, i) => i % 100), codes) }] }));
     assert.equal(r.variables[0].physicalType, "DOUBLE", `letter at ${at}`);
     const [c] = r.readColumns(["x"]);
-    assert.equal(c.missing[at], 5, `letter at ${at}`);
-    assert.equal(c.missing.reduce((n, m) => n + (m > 0 ? 1 : 0), 0), 1);
+    assert.deepEqual(codesOf(c), codes, `letter at ${at}`);
   }
-  const none = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values: new Float64Array(9), missing: Uint8Array.of(0, 1, 0, 1, 1, 0, 0, 0, 1) } }] }));
+  const none = openParquet(writeParquet({ variables: [{ name: "x", type: "byte", values: numbers(new Array(9).fill(0), [0, 1, 0, 1, 1, 0, 0, 0, 1]) }] }));
   assert.equal(none.variables[0].physicalType, "INT32");
-  // Codes the writer must report are still reported.
-  assert.throws(() => writeParquet({ variables: [{ name: "b", type: "bool", values: { kind: "number", values: new Float64Array(3), missing: Uint8Array.of(0, 2, 0) } }] }), /\.a to \.z can be written only/);
-  assert.throws(() => writeParquet({ variables: [{ name: "x", type: "byte", values: { kind: "number", values: new Float64Array(3), missing: Uint8Array.of(0, 28, 0) } }] }), /code 28/);
+  assert.deepEqual(codesOf(none.readColumns(["x"])[0]), [0, 1, 0, 1, 1, 0, 0, 0, 1]);
+  // A type that cannot hold a letter is an error.
+  assert.throws(() => writeParquet({ variables: [{ name: "b", type: "bool", values: numbers([0, 0, 1], [0, 2, 0]) }] }), /\.a to \.z can be written only/);
 });
 
 test("a variable asked for twice gives the same values twice, in arrays of its own", () => {

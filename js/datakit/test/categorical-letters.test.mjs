@@ -1,12 +1,14 @@
 // Categoricals that hold .a to .z (plan 0022): written as DOUBLE level
-// numbers, read back as DictionaryColumns with the letters; older readers;
-// a value that is not a level number; saveDta.
+// numbers, read back as NumberColumns of the level numbers with the
+// letters (ADR 0037) and as text by readRows; older readers; a value that
+// is not a level number; saveDta.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { codesOf } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
 const dk = require("../dist/index.js");
@@ -50,10 +52,9 @@ function checkGrade(bytes) {
   assert.equal(v.valueLabels, "grade");
   assert.deepEqual([...r.valueLabels("grade")], [[1, "low"], [2, "mid"], [3, "high"]]);
   const [c] = r.readColumns([0]);
-  assert.equal(c.kind, "dictionary");
-  assert.deepEqual(c.values, LEVELS);
-  assert.deepEqual(Array.from(c.missing), [0, 2, 0, 1, 27, 0]);
-  assert.deepEqual([0, 2, 5].map((i) => c.codes[i]), [0, 2, 1]);
+  assert.equal(c.kind, "number");
+  assert.deepEqual(codesOf(c), [0, 2, 0, 1, 27, 0]);
+  assert.deepEqual([0, 2, 5].map((i) => c.values[i]), [1, 3, 2]);
   assert.deepEqual(r.readRows(0, 6).map((row) => row[0]), ["low", MISSING[".a"], "high", MISSING["."], MISSING[".z"], "mid"]);
   r.close();
 }
@@ -71,7 +72,7 @@ test("a categorical with letters writes DOUBLE level numbers and reads back with
   // missingLetters: false writes the letters as nulls, so it stays text.
   const off = openParquet(writeParquet({ variables: [{ name: "g", type: "categorical", levels: LEVELS, values: CODES }] }, { missingLetters: false }));
   assert.equal(off.variables[0].physicalType, "BYTE_ARRAY");
-  assert.deepEqual(Array.from(off.readColumns([0])[0].missing), [0, 1, 0, 1, 1, 0]);
+  assert.deepEqual(codesOf(off.readColumns([0])[0]), [0, 1, 0, 1, 1, 0]);
 });
 
 test("the recorded set: the caller's if it fits, else the column's name or the next free one", () => {
@@ -123,15 +124,15 @@ test("a value that is not a level number reads as . with one warning per reader 
   // The first row group: clean, no warning.
   let got = await warnings("DATAKIT_CATEGORICAL", () => {
     const [c] = r.readColumns([0], { start: 0, count: 2 });
-    assert.equal(c.kind, "dictionary");
-    assert.deepEqual(Array.from(c.missing), [0, 2]);
+    assert.equal(c.kind, "number");
+    assert.deepEqual(codesOf(c), [0, 2]);
   });
   assert.deepEqual(got, []);
   got = await warnings("DATAKIT_CATEGORICAL", () => {
     const [c] = r.readColumns([0], { start: 1, count: 3 });
-    assert.equal(c.kind, "dictionary");
-    assert.deepEqual(Array.from(c.missing), [2, 1, 0]);
-    assert.equal(c.values[c.codes[2]], "mid");
+    assert.equal(c.kind, "number");
+    assert.deepEqual(codesOf(c), [2, 1, 0]);
+    assert.equal(c.values[2], 2);
   });
   assert.equal(got.length, 1);
   assert.match(got[0], /"grade": row 2 holds a value that is not one of its 3 level numbers/);
@@ -162,7 +163,7 @@ test("saveDta writes a categorical with letters as labelled codes, marked as a c
     assert.equal(r.variables[0].type, "long");
     assert.equal(r.variables[0].valueLabels, "grade");
     const [c] = r.readColumns([0]);
-    assert.deepEqual(Array.from(c.missing), [0, 2, 0, 1, 27, 0]);
+    assert.deepEqual(codesOf(c), [0, 2, 0, 1, 27, 0]);
     assert.deepEqual([0, 2, 5].map((i) => c.values[i]), [1, 3, 2]);
     assert.deepEqual([...r.valueLabels("grade")], [[1, "low"], [2, "mid"], [3, "high"]]);
     // Each categorical is marked, letters or not (plan 0023); the stale
@@ -192,6 +193,6 @@ test("saveDta keeps the labels on letters of the set a categorical read from Par
   assert.equal(r.variables[0].valueLabels, "grade");
   assert.deepEqual(r.valueLabelNames(), ["grade"]);
   assert.deepEqual([...r.valueLabels("grade")], [[1, "low"], [2, "mid"], [3, "high"], [MISSING[".r"], "Refused"]]);
-  assert.deepEqual(Array.from(r.readColumns([0])[0].missing), [0, 19, 0]);
+  assert.deepEqual(codesOf(r.readColumns([0])[0]), [0, 19, 0]);
   r.close();
 });

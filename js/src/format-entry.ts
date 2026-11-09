@@ -4,5 +4,6 @@
 
 export { formatValue } from "./format";
 export { MISSING, isMissing, missingValue } from "./values";
+export { NA, isTaggedNa, missingCode, naTag, taggedNa } from "./tagged";
 export { dtaKey, dtaKeys, stataKey, stataKeys } from "./keys";
 export type { Cell, Missing, MissingName, ValueLabels } from "./values";

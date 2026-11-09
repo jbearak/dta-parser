@@ -8,6 +8,7 @@ import type { ReadAt } from "./wasm";
 import { dtaError, isAllocationFailure } from "./_shared/errors";
 import { MISSING, missingValue, type ValueLabels } from "@jbearak/dta-parser/format";
 import { packNumbers, packTexts, packTextsBy } from "./_shared/shared";
+import { MISSING_NUMBERS, applyCodes, codesOf, missingCode } from "./_shared/tagged";
 import type { Dataset, DatasetVariable } from "./types";
 import type {
   AsyncTableReader,
@@ -417,12 +418,16 @@ export class ParquetReader implements TableReader {
    * `BigIntColumn`s (see `ParquetOptions.int64`), text and bytes as
    * `StringColumn`s (with `missing` for nulls), and categoricals as
    * `DictionaryColumn`s. With `strings: "dictionary"`, text columns whose
-   * values repeat come back as `DictionaryColumn`s too.
+   * values repeat come back as `DictionaryColumn`s too. `.` and `.a` to
+   * `.z` are `NA` and tagged NaNs in a `NumberColumn` (ADR 0037), so a
+   * categorical holding `.a` to `.z` in the rows read comes back as a
+   * `NumberColumn` of its level numbers from 1, which its value label
+   * set labels; `readRows` gives its levels as text.
    */
   readColumns(columns: readonly (number | string)[], range: ReadRange = {}): TableColumn[] {
     const idx = columns.map((c) => this.index(c));
     const { start, count } = this.rows(range);
-    return this.gather(idx, start, count, range.strings === "dictionary");
+    return this.gather(idx, start, count, range.strings === "dictionary").map(levelNumbers);
   }
 
   /** Rows as arrays of cells, one per variable asked for (default: all); a null is `MISSING["."]`. */
@@ -585,7 +590,7 @@ export class ParquetReader implements TableReader {
       out = vars.map((v): TableColumn => {
         switch (v.columnKind) {
           case "number":
-            return { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) };
+            return { kind: "number", values: new Float64Array(count) };
           case "bigint":
             return {
               kind: "bigint",
@@ -684,7 +689,7 @@ export class ParquetReader implements TableReader {
 function copyColumn(c: TableColumn): TableColumn {
   switch (c.kind) {
     case "number":
-      return { kind: "number", values: c.values.slice(), missing: c.missing.slice() };
+      return { kind: "number", values: c.values.slice() };
     case "bigint":
       return { kind: "bigint", values: c.values.slice(), missing: c.missing.slice() } as BigIntColumn;
     case "dictionary":
@@ -700,7 +705,7 @@ function place(col: TableColumn, d: Uint32Array, at: number, n: number, st: Gath
     case 0: {
       const c = col as NumberColumn;
       c.values.set(wasm.memView(d[2], d[3], "f64"), at);
-      c.missing.set(wasm.memView(d[4], d[5], "u8"), at);
+      applyCodes(c.values, wasm.memView(d[4], d[5], "u8"), at);
       return c;
     }
     case 1:
@@ -809,11 +814,26 @@ function place(col: TableColumn, d: Uint32Array, at: number, n: number, st: Gath
   }
 }
 
+/**
+ * A categorical holding `.a` to `.z` in the rows read, as its level
+ * numbers from 1 with the letters (ADR 0037), as R, Julia and Python read
+ * it: a dictionary's codes cannot hold them. Any other column as it is.
+ */
+function levelNumbers(c: TableColumn): TableColumn {
+  if (c.kind !== "dictionary" || !c.missing?.some((m) => m > 1)) return c;
+  const values = new Float64Array(c.codes.length);
+  for (let i = 0; i < values.length; i++) values[i] = c.missing[i] ? MISSING_NUMBERS[c.missing[i]] : c.codes[i] + 1;
+  return { kind: "number", values };
+}
+
 /** Row `i` of a column as a cell. */
 function cellOf(c: TableColumn, i: number): TableCell {
   switch (c.kind) {
-    case "number":
-      return c.missing[i] ? missingValue(c.missing[i]) : c.values[i];
+    case "number": {
+      const x = c.values[i];
+      const code = x === x ? 0 : missingCode(x);
+      return code ? missingValue(code) : x;
+    }
     case "bigint":
       return c.missing[i] ? MISSING["."] : c.values[i];
     case "dictionary":
@@ -1272,7 +1292,7 @@ function partOf(v: DatasetVariable, rows: number): wasm.ParquetPart {
   };
 
   const x = v.values;
-  if (x instanceof Float64Array) return numbers(x, v.missing ?? new Uint8Array(x.length));
+  if (x instanceof Float64Array) return numbers(x, codesOf(x));
   if (x instanceof BigInt64Array || x instanceof BigUint64Array) return bigints(x, v.missing ?? new Uint8Array(x.length));
   if (Array.isArray(x)) {
     const arr = x as readonly unknown[];
@@ -1298,7 +1318,7 @@ function partOf(v: DatasetVariable, rows: number): wasm.ParquetPart {
   const c = x as TableColumn;
   switch (c.kind) {
     case "number":
-      return numbers(c.values, c.missing);
+      return numbers(c.values, codesOf(c.values));
     case "bigint":
       return bigints(c.values, c.missing);
     case "string":
