@@ -2,10 +2,11 @@
 
 Status: approved at Gate 1 (revision 4; Claude Sonnet and GPT Sol;
 record in `docs/judging/polars-r-python/`). After the gate, on
-2026-11-09, the user said joins keyed on columns holding `.a` to `.z`
-are not a use case: the join recipes and join tests below are dropped,
-and `dk.by` and `datakit_by_pl` are documented for grouping and
-`unique` only.
+2026-11-09, the user first dropped joins on columns holding `.a` to `.z`
+as no use case, then restored their tests and docs, so that a change in
+how polars joins them shows: the join recipes and join tests below
+stand, in both languages (Python's in plan 0025's joins PR, R's in
+stage 3).
 
 ## Problem
 

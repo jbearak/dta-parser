@@ -409,6 +409,40 @@ def test_by_keeps_letters_apart_when_grouping():
     assert df.with_columns(dk.by("x")).unique(subset=["x", "x_letter"]).height == 5
 
 
+def join_sides():
+    # Keys 1, .a, .b, . on both sides, each row named by its key.
+    k = tagged([1.0, None, None, None], [None, ".a", ".b", None])
+    return pl.DataFrame({"k": k, "l": ["1", ".a", ".b", "."]}), pl.DataFrame({"k": k, "r": ["1", ".a", ".b", "."]})
+
+
+def matches(joined):
+    return sorted(zip(joined["l"], joined["r"].to_list()), key=str)
+
+
+def test_joins_on_a_key_holding_letters():
+    # Pins polars 2.1: every NaN equals every other, so .a and .b match
+    # each other; a null key matches only with nulls_equal=True.
+    left, right = join_sides()
+    letters_meet = [(".a", ".a"), (".a", ".b"), (".b", ".a"), (".b", ".b")]
+    assert matches(left.join(right, on="k", how="inner")) == sorted([("1", "1"), *letters_meet], key=str)
+    assert matches(left.join(right, on="k", how="left")) == sorted([("1", "1"), *letters_meet, (".", None)], key=str)
+    assert matches(left.join(right, on="k", how="inner", nulls_equal=True)) == sorted(
+        [("1", "1"), *letters_meet, (".", ".")], key=str
+    )
+
+
+def test_joins_on_by_keep_letters_apart():
+    left, right = join_sides()
+    left, right = left.with_columns(dk.by("k")), right.with_columns(dk.by("k"))
+    on = ["k", "k_letter"]
+    each_its_own = sorted([("1", "1"), (".a", ".a"), (".b", ".b"), (".", ".")], key=str)
+    assert matches(left.join(right, on=on, how="inner", nulls_equal=True)) == each_its_own
+    assert matches(left.join(right, on=on, how="left", nulls_equal=True)) == each_its_own
+    # Without nulls_equal, a row with no letter has a null k_letter and
+    # matches nothing: only the letters meet.
+    assert matches(left.join(right, on=on, how="inner")) == [(".a", ".a"), (".b", ".b")]
+
+
 def test_by_on_columns_that_hold_no_letters():
     df = pl.DataFrame({
         "i": pl.Series([1, 2, None], dtype=pl.Int64),
