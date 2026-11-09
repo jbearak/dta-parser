@@ -138,10 +138,11 @@ check(identical(attr(d$when, "tzone"), "America/New_York"), "when zone")
 check_cells(d$seen, c(num(23436), ".d", num(23437), ".", num(0), ".z"), "seen")
 check(identical(attr(d$seen, "format"), "%td"), "seen format")
 
-# Python's files: the letters from meta.missing, and from companion
-# columns, both written as tagged NaNs.
-# TypeScript's file (plan 0021) holds the same data as Python's.
-for (f in c("from_python.parquet", "from_python_columns.parquet", "from_typescript.parquet")) {
+# Python's file: the letters are tagged NaNs in its Float64 columns (ADR
+# 0036). TypeScript's file (plan 0021) holds the same data, but writes
+# its date, timestamp and categorical holding letters as such, which
+# polars cannot hold.
+for (f in c("from_python.parquet", "from_typescript.parquet")) {
   if (!file.exists(file.path(dir, f))) {
     cat("no", f, "in", dir, "; not checked\n")
     next
@@ -171,23 +172,41 @@ for (f in c("from_python.parquet", "from_python_columns.parquet", "from_typescri
   check(identical(attr(p$day, "format"), "%tdCCYY-NN-DD"), w("day format"))
   check(inherits(p$when, "POSIXct") && same_num(p$when, c(0, 1709285400.25, NA, -1, 86400, 1e9)) &&
         identical(attr(p$when, "tzone"), "America/New_York"), w("when"))
-  # A Date and a POSIXct holding letters, as tagged NAs.
-  check(inherits(p$seen, "Date"), w("seen: Date"))
-  check_cells(p$seen, c(num(19783), ".d", num(19784), ".", num(-3653), ".z"), w("seen"))
-  check(inherits(p$stamp, "POSIXct"), w("stamp: POSIXct"))
-  check_cells(p$stamp, c(num(0.5), ".k", num(1e9), ".", num(-86400.25), num(1000001 / 1e6)), w("stamp"))
+  if (who == "Python") {
+    # Python's date and timestamp holding letters: Stata's days and
+    # milliseconds since 1960, with %td and %tc, as Julia writes them.
+    ms <- 3653 * 86400000
+    check_cells(p$seen, c(num(23436), ".d", num(23437), ".", num(0), ".z"), w("seen"))
+    check(identical(attr(p$seen, "format"), "%td"), w("seen format"))
+    check_cells(p$stamp, c(num(ms + 500), ".k", num(ms + 1e12), ".", num(ms - 86400250), num(1000001 / 1000 + ms)),
+                w("stamp"))
+    check(identical(attr(p$stamp, "format"), "%tc"), w("stamp format"))
+  } else {
+    # A Date and a POSIXct holding letters, as tagged NAs.
+    check(inherits(p$seen, "Date"), w("seen: Date"))
+    check_cells(p$seen, c(num(19783), ".d", num(19784), ".", num(-3653), ".z"), w("seen"))
+    check(inherits(p$stamp, "POSIXct"), w("stamp: POSIXct"))
+    check_cells(p$stamp, c(num(0.5), ".k", num(1e9), ".", num(-86400.25), num(1000001 / 1e6)), w("stamp"))
+  }
   check_cells(p$dup, c("1", "2", "3", "1", "5", "."), w("dup"))
   check(identical(unname(attr(p$dup, "labels")), c(1, 2, 3)) &&
         identical(names(attr(p$dup, "labels")), c("Yes", "No", "Yes")), w("dup labels"))
   # A categorical holding letters (plan 0022): labelled codes with the
-  # letters, factors = TRUE or not.
+  # letters. Python writes them as labelled numbers, which factors = TRUE
+  # makes a factor; TypeScript as a categorical, which it leaves so.
   check(inherits(p$grade, "dtaparser_labelled") && !is.factor(p$grade), w("grade: labelled"))
   check_cells(p$grade, c("1", ".a", "3", ".", ".z", "2"), w("grade"))
   check(identical(unname(attr(p$grade, "labels")), c(1, 2, 3)) &&
         identical(names(attr(p$grade, "labels")), c("low", "mid", "high")) &&
-        identical(attr(p$grade, "label_set"), "grade"), w("grade labels"))
+        # R names the set (label_set) only for a categorical, as
+        # TypeScript writes one; Python's are labelled numbers.
+        (who == "Python" || identical(attr(p$grade, "label_set"), "grade")), w("grade labels"))
   pf <- read_parquet(file.path(dir, f), factors = TRUE, timestamps = "truncate", warn_extended_missing = FALSE)
-  check(inherits(pf$grade, "dtaparser_labelled") && !is.factor(pf$grade), w("grade with factors = TRUE"))
+  if (who == "Python") {
+    check(is.factor(pf$grade) && identical(levels(pf$grade), c("low", "mid", "high")), w("grade with factors = TRUE"))
+  } else {
+    check(inherits(pf$grade, "dtaparser_labelled") && !is.factor(pf$grade), w("grade with factors = TRUE"))
+  }
 }
 
 # factors = TRUE on R's file and Python's, for cross_language.py.

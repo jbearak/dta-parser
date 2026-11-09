@@ -3,8 +3,8 @@ from dta_parser's pandas tests and rewritten for polars.
 
 - Every frame `read_dta` gives from compat/fixtures comes back from
   save_parquet and read_parquet equal (`assert_frame_equal`, dtypes
-  checked) with an equal Meta, with letters="meta", "columns", a list
-  and None.
+  checked, letters too) with an equal Meta, with letters=True and
+  False.
 - Constructed frames cover what fixtures do not: every polars dtype
   save_parquet writes, and those it refuses.
 - Every file in compat/parquet/fixtures (written by pyarrow, polars,
@@ -26,7 +26,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import datakit as dk
-from conftest import PARQUET, fixture_paths
+from conftest import PARQUET, assert_same, fixture_paths, tagged, tags
 
 
 def quiet(fn, *args, **kw):
@@ -40,27 +40,17 @@ def round_trip(df, meta=None, **kw):
     return quiet(dk.read_parquet, quiet(dk.save_parquet, df, meta=meta, **kw), **read_kw)
 
 
-MODES = ["meta", "columns", None, "list"]
-
-
-def mode_of(mode, meta):
-    """The letters argument: a list names every column with letters."""
-    return sorted(meta.missing) if mode == "list" else mode
-
-
-@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("letters", [True, False])
 @pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)
-def test_every_fixture_round_trips(path, mode, tmp_path):
-    _, plain = dk.read_dta(path, timestamps="truncate")
-    letters = mode_of(mode, plain)
+def test_every_fixture_round_trips(path, letters, tmp_path):
     df, meta = dk.read_dta(path, letters=letters, timestamps="truncate")
     out = tmp_path / "out.parquet"
     quiet(dk.save_parquet, df, out, meta=meta)
     back, back_meta = quiet(dk.read_parquet, out, letters=letters)
-    assert_frame_equal(back, df)
-    assert back_meta == meta
-    if mode is None:
-        assert meta.missing == {} and meta.letter_columns == {}
+    assert_same(back, df)
+    assert back_meta == meta and back_meta._storage == meta._storage
+    if not letters:
+        assert meta._storage == {}
 
 
 @pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)
@@ -72,27 +62,31 @@ def test_every_fixture_reads_a_window_as_read_dta_does(path, tmp_path):
     for skip, n_max in [(0, 1), (1, 4), (n // 2, 5), (max(n - 1, 0), 10), (n + 5, 2)]:
         a, am = dk.read_dta(path, skip=skip, n_max=n_max, timestamps="truncate")
         b, bm = dk.read_parquet(out, skip=skip, n_max=n_max)
-        assert_frame_equal(b, a)
+        assert_same(b, a)
         assert bm == am
 
 
 # ---------------------------------------------------------------- constructed
 
+STORAGE = {"b": pl.Int8, "i": pl.Int16, "l": pl.Int32, "f": pl.Float32}
+
+
 def labelled():
-    """A frame of every Stata storage type with letters, and its Meta."""
+    """A frame of every Stata storage type with letters, as a read gives
+    it (the letters tagged NaNs in Float64, the storage types in meta),
+    and its Meta."""
     df = pl.DataFrame({
-        "b": pl.Series([1, None, None, 3], dtype=pl.Int8),
-        "i": pl.Series([300, None, 2, None], dtype=pl.Int16),
-        "l": pl.Series([70000, None, 1, 2], dtype=pl.Int32),
-        "f": pl.Series([1.5, None, 2.25, None], dtype=pl.Float32),
-        "d": pl.Series([1e300, None, None, -0.5], dtype=pl.Float64),
+        "b": tagged([1, None, None, 3], [None, ".a", None, None]),
+        "i": tagged([300, None, 2, None], [None, ".b", None, None]),
+        "l": tagged([70000, None, 1, 2], [None, ".z", None, None]),
+        "f": tagged([1.5, None, 2.25, None], [None, ".c", None, None]),
+        "d": tagged([1e300, None, None, -0.5], [None, ".d", None, None]),
         "small": pl.Series([1, 2, 3, 4], dtype=pl.Int8),
-        "day": [dt.date(2024, 3, 1), None, dt.date(1960, 1, 1), dt.date(1900, 2, 28)],
+        "day": tagged([23436, None, 0, -21857], [None, ".e", None, None]),
         "when": pl.Series([dt.datetime(2024, 3, 1, 9, 30, 0, 125000), None, dt.datetime(1960, 1, 1),
                            dt.datetime(2001, 9, 9, 1, 46, 40)]).cast(pl.Datetime("ms")),
         "s": ["a", "bb", "", "é"],
     })
-    letter = lambda *v: pl.Series(list(v), dtype=dk.LETTERS)  # noqa: E731
     meta = dk.Meta(
         label="Every storage type",
         timestamp="04 Nov 2026 10:00",
@@ -106,45 +100,52 @@ def labelled():
             "s": dk.Column(format="%-9s"),
         },
         value_labels={"yn": {0: "No", 1: "Yes", 1.5: "half", ".a": "Skipped", ".d": "Don't know"}},
-        missing={
-            "b": letter(None, ".a", None, None).alias("b"),
-            "i": letter(None, ".b", None, None).alias("i"),
-            "l": letter(None, ".z", None, None).alias("l"),
-            "f": letter(None, ".c", None, None).alias("f"),
-            "d": letter(None, ".d", None, None).alias("d"),
-            "day": letter(None, ".e", None, None).alias("day"),
-        },
         rows=4,
     )
+    meta._storage = dict(STORAGE)
     return df, meta
 
 
 def test_every_storage_type_with_letters_round_trips():
     df, meta = labelled()
     back, back_meta = round_trip(df, meta)
-    assert_frame_equal(back, df)
-    assert back_meta == meta
+    assert_same(back, df)
+    assert back_meta == meta and back_meta._storage == STORAGE
     assert back_meta.value_labels["yn"] == {0: "No", 1: "Yes", 1.5: "half", ".a": "Skipped", ".d": "Don't know"}
     assert list(back_meta.value_labels["yn"]) == [0, 1, 1.5, ".a", ".d"]
-    assert back_meta.letters("b").to_list() == [None, ".a", None, None]
-    assert back_meta.letters("small").to_list() == [None] * 4
+    assert tags(back["b"]) == [None, ".a", None, None]
 
 
-def test_letters_in_a_window_and_dtypes_that_follow_the_file():
+def test_letters_survive_polars_row_operations():
+    df, meta = labelled()
+    changed = (df.filter(pl.col("small") > 1)
+               .sort("small", descending=True)
+               .join(pl.DataFrame({"small": pl.Series([2, 3, 4], dtype=pl.Int8), "k": [1, 2, 3]}), on="small", maintain_order="left"))
+    changed = pl.concat([changed, changed])
+    assert tags(changed["b"]) == [None, None, ".a"] * 2
+    assert tags(changed["day"]) == [None, None, ".e"] * 2
+    meta.sort = []
+    back, _ = round_trip(changed, meta.select(list(df.columns)))
+    assert_same(back, changed)
+
+
+def test_a_window_without_letters_reads_the_storage_types():
     df, meta = labelled()
     raw = dk.save_parquet(df, meta=meta)
     part, pm = dk.read_parquet(raw, skip=2, n_max=2)
-    assert part.schema == df.schema  # one dtype per column, whatever the rows hold
-    assert pm.missing == {} and pm._digests == {}  # no letters in rows 3 and 4: no digests either
-    assert pm.letters("b").to_list() == [None, None]
-    assert pm.rows == 2
+    # No letters in rows 3 and 4: b, i, l and f are their storage types.
+    assert part.schema == {**df.schema, **STORAGE}
+    assert pm._storage == {} and pm.rows == 2
+    assert part["b"].to_list() == [None, 3]
 
 
 def test_missing_letters_false_writes_nulls():
     df, meta = labelled()
     back, bm = round_trip(df, meta, missing_letters=False)
-    assert_frame_equal(back, df)
-    assert bm.missing == {}
+    want = df.with_columns(pl.when(dk.is_tagged_na(c)).then(None).otherwise(pl.col(c)).alias(c)
+                           for c in ("b", "i", "l", "f", "d", "day")).with_columns(pl.col(c).cast(t) for c, t in STORAGE.items())
+    assert_frame_equal(back, want)
+    assert bm == meta and bm._storage == {}
 
 
 def test_selection_by_name_and_position():
@@ -152,7 +153,7 @@ def test_selection_by_name_and_position():
     raw = dk.save_parquet(df, meta=meta)
     part, pm = dk.read_parquet(raw, columns=["s", 0, "s"])
     assert part.columns == ["s", "b"] and list(pm.columns) == ["s", "b"]
-    assert list(pm.missing) == ["b"]
+    assert tags(part["b"]) == [None, ".a", None, None] and pm._storage == {"b": pl.Int8}
     assert dk.read_parquet(raw, columns="d")[0].columns == ["d"]
     with pytest.raises(KeyError, match='"nope" is not in the file; its columns are "b", "i"'):
         dk.read_parquet(raw, columns=["nope"])
@@ -170,7 +171,7 @@ def test_sources_path_bytes_and_file_objects(tmp_path):
     with open(path, "rb") as fh:
         for source in (path, str(path), raw, bytearray(raw), memoryview(raw), io.BytesIO(raw), fh):
             got, gm = dk.read_parquet(source)
-            assert_frame_equal(got, df)
+            assert_same(got, df)
             assert gm == meta
     assert dk.read_parquet_info(io.BytesIO(raw)).rows == 4
     with pytest.raises(FileNotFoundError):
@@ -189,7 +190,7 @@ def test_rows_past_the_end_and_empty_frames():
     df, meta = labelled()
     raw = dk.save_parquet(df, meta=meta)
     past, pm = dk.read_parquet(raw, skip=10)
-    assert past.height == 0 and past.schema == df.schema and pm.rows == 0
+    assert past.height == 0 and past.schema == {**df.schema, **STORAGE} and pm.rows == 0
     empty, _ = round_trip(df.head(0))
     assert empty.schema == df.schema and empty.height == 0
 
@@ -289,12 +290,13 @@ def test_read_parquet_info(tmp_path):
     assert set(info.key_value) >= {"dta", "ARROW:schema"}
     assert json.loads(info.key_value["dta"])["label"] == "Every storage type"
     read, read_meta = dk.read_parquet(path)
-    read_meta.missing = {}
     assert info.meta == read_meta
     cols = info.columns
     assert cols.columns == ["name", "role", "dtype", "physical_type", "logical_type", "label", "value_labels",
                             "storage"]
-    assert cols["dtype"].to_list() == [str(t) for t in read.schema.dtypes()]
+    # The dtype without letters: b, i, l and f are Float64 here only
+    # because the rows read hold letters.
+    assert cols["dtype"].to_list() == [str(STORAGE.get(n, t)) for n, t in read.schema.items()]
     b = cols.row(0, named=True)
     assert b == {"name": "b", "role": "data", "dtype": "Int8", "physical_type": "DOUBLE", "logical_type": None,
                  "label": "B", "value_labels": "yn", "storage": "byte"}
@@ -320,7 +322,7 @@ def test_damaged_profile_is_a_warning(tmp_path):
         _, bm = dk.read_parquet(tmp_path / "broken.parquet")
     # The labels are gone; the letters are in the values, so they are not.
     assert bm.label is None and bm.columns["b"] == dk.Column()
-    assert bm.missing["b"].to_list() == [None, ".a", None, None]
+    assert tags(back["b"]) == [None, ".a", None, None]
 
 
 def test_a_selection_reads_only_its_profile_entries():
@@ -343,8 +345,8 @@ def test_not_parquet_and_bad_arguments():
         dk.read_parquet(raw, nested="maybe")
     with pytest.raises(ValueError, match="timestamps is"):
         dk.read_parquet(raw, timestamps="round")
-    with pytest.raises(ValueError, match="letters is"):
-        dk.read_parquet(raw, letters="both")
+    with pytest.raises(TypeError, match="letters must be True or False"):
+        dk.read_parquet(raw, letters="meta")
     with pytest.raises(ValueError, match="skip"):
         dk.read_parquet(raw, skip=-1)
     with pytest.raises(TypeError, match="factors"):
@@ -359,17 +361,14 @@ def test_large_frames_on_threads(monkeypatch):
         "b": pl.int_range(n, eager=True).cast(pl.Float64).sqrt(),
         "s": pl.Series(["alpha", "beta", "gamma", "delta"] * (n // 4)),
         "u": pl.Series([f"id{i}" for i in range(n)]),
-    }).with_columns(c=pl.when(pl.col("a") > 50).then(None).otherwise(pl.col("b")))
-    letters = pl.Series("c", [".a" if i % 7 == 0 else None for i in range(n)], dtype=dk.LETTERS)
-    letters = pl.select(pl.when(df["c"].is_null()).then(letters)).to_series().alias("c")
-    meta = dk.Meta(missing={"c": letters}, rows=n)
-    raw = dk.save_parquet(df, meta=meta, row_group_size=50_000)
-    back, bm = dk.read_parquet(raw)
-    assert_frame_equal(back, df)
-    assert bm.missing["c"].equals(letters)
-    part, pm = dk.read_parquet(raw, skip=123_456, n_max=1000)
-    assert_frame_equal(part, df.slice(123_456, 1000))
-    assert pm.missing["c"].equals(letters.slice(123_456, 1000))
+    }).with_columns(c=pl.when(pl.col("a") > 50).then(pl.when(pl.int_range(n) % 7 == 0).then(dk.tagged_na(".a")))
+                    .otherwise(pl.col("b")))
+    assert dk.is_tagged_na(df["c"]).sum() > 1000 and df["c"].null_count() > 1000
+    raw = dk.save_parquet(df, row_group_size=50_000)
+    back, _ = dk.read_parquet(raw)
+    assert_same(back, df)
+    part, _ = dk.read_parquet(raw, skip=123_456, n_max=1000)
+    assert_same(part, df.slice(123_456, 1000))
 
 
 # ---------------------------------------------------------------- timestamps held as doubles
@@ -427,24 +426,21 @@ def test_doubles_out_of_range_are_errors_in_both_modes(tmp_path, mode):
             dk.read_parquet(path, timestamps=mode)
 
 
-def test_a_datetime_ns_with_letters():
-    df = pl.DataFrame({"t": pl.Series([dt.datetime(2024, 1, 1), None]).cast(pl.Datetime("ns"))})
-    df = df.with_columns(pl.col("t") + pl.duration(nanoseconds=pl.Series([1, 0])))
-    meta = dk.Meta(missing={"t": pl.Series("t", [None, ".a"], dtype=dk.LETTERS)}, rows=2)
-    with pytest.raises(ValueError, match='column "t", row 1: the timestamp has a part below a microsecond'):
-        dk.save_parquet(df, meta=meta)
-    back, bm = dk.read_parquet(dk.save_parquet(df, meta=meta, timestamps="truncate"))
-    assert back["t"].dtype == pl.Datetime("us")
-    assert back["t"].to_list() == [dt.datetime(2024, 1, 1), None]
-    assert bm.missing["t"].to_list() == [None, ".a"]
-
-
-@pytest.mark.parametrize("mode", ["error", "truncate"])
-def test_a_datetime_us_with_letters_beyond_what_seconds_hold(mode):
-    far = pl.Series([dt.datetime(2300, 1, 1, 0, 0, 0, 1), None]).cast(pl.Datetime("us"))
-    meta = dk.Meta(missing={"t": pl.Series("t", [None, ".a"], dtype=dk.LETTERS)}, rows=2)
-    with pytest.raises(ValueError, match="too far from 1970 for seconds in a double"):
-        dk.save_parquet(pl.DataFrame({"t": far}), meta=meta, timestamps=mode)
+def test_dates_and_timestamps_with_letters_read_as_statas_numbers(tmp_path):
+    # R writes a Date or POSIXct holding tagged NAs as a DOUBLE of days or
+    # seconds since 1970, tagged NaNs for the letters.
+    a = dk.tagged_na(".a")
+    path = doubles_file(tmp_path, [0.0, a, -3653.0, None], "date")
+    df, meta = quiet(dk.read_parquet, path)
+    assert df["x"].dtype == pl.Float64 and meta.columns["x"].format == "%td"
+    assert df["x"].fill_nan(None).to_list() == [3653.0, None, 0.0, None] and tags(df["x"]) == [None, ".a", None, None]
+    path = doubles_file(tmp_path, [1.5, a, None], "timestamp", "UTC")
+    df, meta = quiet(dk.read_parquet, path)
+    assert df["x"].dtype == pl.Float64 and meta.columns["x"].format == "%tc"
+    assert df["x"].fill_nan(None).to_list() == [315_619_201_500.0, None, None] and tags(df["x"]) == [None, ".a", None]
+    # Without letters in the rows read, they are a Date and a Datetime.
+    assert dk.read_parquet(path, skip=2)[0]["x"].dtype == pl.Datetime("us", "UTC")
+    assert dk.read_parquet(path, letters=False)[0]["x"].dtype == pl.Datetime("us", "UTC")
 
 
 # ---------------------------------------------------------------- other writers

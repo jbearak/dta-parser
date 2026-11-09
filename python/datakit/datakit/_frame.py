@@ -1,7 +1,7 @@
 """What every read and save shares: the frame and its `Meta` from the
-native reads, `.a` to `.z` in `meta.missing` or companion columns,
-`factors`, and the checks a save makes before handing the frame to the
-native writers."""
+native reads, `.a` to `.z` as tagged NaNs in the frame, `factors`, and
+the checks a save makes before handing the frame to the native
+writers."""
 
 from __future__ import annotations
 
@@ -11,12 +11,13 @@ import warnings
 
 import polars as pl
 
+from . import _tagged
 from ._meta import LETTERS, Column, Meta
-from ._native import native
 
-# Dtypes a letter can be written to (plan 0019, "eligible"): byte, int,
-# long, float and double; dates and timestamps.
-_ELIGIBLE = (pl.Int8, pl.Int16, pl.Int32, pl.Float32, pl.Float64, pl.Date, pl.Datetime)
+# Stata's dates count from 1960, polars' from 1970.
+_DAYS_1960 = 3653
+_MS_1960 = _DAYS_1960 * 86_400_000
+_UNIT_MS = {"ms": 1, "us": 1_000, "ns": 1_000_000}
 
 
 def warn(message, category=UserWarning):
@@ -48,17 +49,9 @@ def check_columns(columns):
     return columns
 
 
-def check_letters(letters, letter_suffix):
-    if not isinstance(letter_suffix, str) or not letter_suffix:
-        raise ValueError(f"letter_suffix must be non-empty text, not {letter_suffix!r}")
-    if letters is None or letters in ("meta", "columns"):
-        return letters
-    if isinstance(letters, str):
-        raise ValueError(f'letters is "meta", "columns", None, or a list of column names, not {letters!r}')
-    out = list(letters)
-    if not all(isinstance(n, str) for n in out):
-        raise TypeError("letters, as a list, holds column names")
-    return out
+def check_letters(letters):
+    if not isinstance(letters, bool):
+        raise TypeError(f"letters must be True or False, not {letters!r}")
 
 
 def check_choice(name, value, choices):
@@ -142,46 +135,81 @@ def decimal(text, precision, scale):
     return out
 
 
-def finish(native_frame, native_letters, m, *, factors, letters, letter_suffix, markers=False):
-    """`(df, meta)` from a native read, letters placed as `letters` says.
-    With `markers` (a .dta read), the columns marked `dtaparser_categorical`
-    are Enums again first (`restore_categoricals`)."""
+def finish(native_frame, native_letters, m, *, factors, letters, markers=False):
+    """`(df, meta)` from a native read. With `letters`, each column holding
+    `.a` to `.z` in the rows read is Float64 with them as tagged NaNs
+    (`with_letters`); without, they are nulls like `.`. With `markers` (a
+    .dta read), the columns marked `dtaparser_categorical` are Enums again
+    (`restore_categoricals`), unless they hold letters. `factors` makes
+    labelled columns Enums (`to_factors`), those holding letters too, as
+    R's datakit does: their letters become nulls, with one warning."""
     for w in m["warnings"]:
         warn(w)
     df = frame_of(native_frame, m)
     meta = meta_of(m)
+    found = {}
+    if native_letters is not None and letters:
+        ldf = pl.DataFrame(native_letters)
+        found = {name: ldf.get_column(name) for name in ldf.columns if ldf.get_column(name).null_count() < ldf.height}
+    enums = {n for n in found if isinstance(df.schema[n], pl.Enum)}
     if markers:
-        df, stale = restore_categoricals(df, meta)
+        df, stale = restore_categoricals(df, meta, skip=set() if factors else set(found))
         if stale:
             shown = ", ".join(f'"{n}"' for n in stale)
             warn(f"{'column' if len(stale) == 1 else 'columns'} {shown} {'was' if len(stale) == 1 else 'were'} "
                  "written as categoricals, but the file has changed since: their value label set changed, a value "
                  "has no label, two codes share a text, a code is not a whole number, `.` is labelled, a date format "
                  "was given, or a column has both markers; read as unmarked columns")
-    found = {}
-    if native_letters is not None and letters is not None:
-        ldf = pl.DataFrame(native_letters)
-        found = {name: ldf.get_column(name) for name in ldf.columns}
-    eligible = [c[0] for c in m["columns"] if c[7]]
     if factors:
         df = to_factors(df, meta)
-    if letters in (None, "meta"):
-        meta.missing = found
-    else:
-        wanted = eligible if letters == "columns" else letters
-        if letters != "columns":
-            ok = set(eligible)
-            for n in wanted:
-                if n not in df.columns:
-                    raise KeyError(f'letters names "{n}", which is not a column read')
-                if n not in ok:
-                    raise ValueError(f'letters names "{n}", whose type cannot hold .a to .z '
-                                     "(only byte, int, long, float, double, date and timestamp columns, "
-                                     "and categoricals stored with letters, can)")
-        df = add_companions(df, meta, wanted, letter_suffix, found)
-        meta.missing = found
-    meta._digests = {name: native.arrow_digest(df.get_column(name)) for name in meta.missing}
+        lost = [n for n in found if n not in enums and isinstance(df.schema[n], pl.Enum)]
+        if lost:
+            shown = ", ".join(f'"{n}"' for n in lost)
+            warn(f".a to .z in {shown} are nulls in {'its Enum' if len(lost) == 1 else 'their Enums'}; "
+                 "read with factors=False to keep them")
+            found = {n: v for n, v in found.items() if n not in lost}
+    if found:
+        df = with_letters(df, meta, found)
     return df, meta
+
+
+def with_letters(df, meta, found):
+    """`df` with each column of `found` (a Series of LETTERS per column)
+    Float64, its letters tagged NaNs. Integers and Float32 are cast, and
+    their dtype kept in `meta._storage`; a Date or Datetime becomes
+    Stata's number (days, or milliseconds, since 1960) with a `%td` or
+    `%tc` format; an Enum its level numbers from 1, its value label set
+    labelling them."""
+    changes = []
+    for name, letters in found.items():
+        s = df.get_column(name)
+        t = s.dtype
+        if t in (pl.Int8, pl.Int16, pl.Int32, pl.Float32):
+            meta._storage[name] = t
+            values = s.cast(pl.Float64)
+        elif t == pl.Float64:
+            values = s
+        elif t == pl.Date:
+            values = s.cast(pl.Int32).cast(pl.Float64) + _DAYS_1960
+            _set_format(meta, name, "%td")
+        elif isinstance(t, pl.Datetime):
+            values = s.dt.epoch(t.time_unit).cast(pl.Float64) / _UNIT_MS[t.time_unit] + _MS_1960
+            _set_format(meta, name, "%tc")
+        elif isinstance(t, pl.Enum):
+            values = s.to_physical().cast(pl.Float64) + 1
+            col = meta.columns.get(name) or Column()
+            if col.ordered is not None:
+                meta.columns[name] = Column(col.label, col.format, col.value_labels, None)
+        else:
+            continue
+        changes.append(_tagged.tag(values.alias(name), letters))
+    return df.with_columns(changes) if changes else df
+
+
+def _set_format(meta, name, fmt):
+    col = meta.columns.get(name) or Column()
+    if not (col.format or "").startswith(fmt):
+        meta.columns[name] = Column(col.label, fmt, col.value_labels, col.ordered)
 
 
 # The characteristics that mark a column written from a categorical:
@@ -214,7 +242,7 @@ def marked_levels(mark, set_name, value_labels):
     return [float(k) for k, _ in numeric], texts, m.group(1) == "ordered"
 
 
-def restore_categoricals(df, meta):
+def restore_categoricals(df, meta, skip=()):
     """`df` with each column marked `dtaparser_categorical` that passes the
     checks of plan 0023 an Enum of its set's texts in code order, unused
     ones included; its `meta.columns[name].ordered` from the mark, its mark
@@ -222,13 +250,15 @@ def restore_categoricals(df, meta):
     letters. The columns that fail (`marked_levels`, a column that is not
     numeric, as a `%td` one is once read, a value without a label, or both
     marks) are left as read, unmarked; their names are returned with
-    `df`. `dtaparser_factor` alone is left as it is (an R factor; plan
+    `df`. A column of `skip` (one holding `.a` to `.z`, which an Enum
+    cannot hold) is left as its numbers, its mark kept, without a
+    warning. `dtaparser_factor` alone is left as it is (an R factor; plan
     0020)."""
     changes = []
     stale = []
     for name in df.columns:
         chars = meta.characteristics.get(name) or {}
-        if CATEGORICAL_MARK not in chars:
+        if CATEGORICAL_MARK not in chars or name in skip:
             continue
         s = df.get_column(name)
         col = meta.columns.get(name) or Column()
@@ -254,34 +284,6 @@ def restore_categoricals(df, meta):
         else:
             del meta.characteristics[name]
     return (df.with_columns(changes) if changes else df), stale
-
-
-def add_companions(df, meta, names, suffix, found, *, what="letter_suffix"):
-    """`df` with a companion after each column of `names`, from `found`
-    (taken out of it) or all null; the pairs recorded in meta."""
-    names = [n for n in dict.fromkeys(names) if n not in meta.letter_columns]
-    if not names:
-        return df
-    taken = set(df.columns)
-    pairs = {}
-    for n in names:
-        comp = n + suffix
-        if comp in taken:
-            raise ValueError(f'the companion of column "{n}" would be "{comp}", which is already a column; '
-                             f"pass another {what}")
-        taken.add(comp)
-        pairs[n] = comp
-    new = []
-    for n, comp in pairs.items():
-        s = found.pop(n, None)
-        new.append(s.alias(comp) if s is not None else pl.lit(None, LETTERS).alias(comp))
-    order = []
-    for c in df.columns:
-        order.append(c)
-        if c in pairs:
-            order.append(pairs[c])
-    meta.letter_columns.update(pairs)
-    return df.with_columns(new).select(order)
 
 
 def r_number(v):
@@ -344,77 +346,54 @@ def check_frame(df, who):
         raise TypeError(f"{who} takes a polars DataFrame, not {type(df).__name__}")
 
 
-def digest_check(df, meta, name, series):
-    """The checks a save makes on `meta.missing[name]`: the frame's height,
-    and the column's digest as read."""
-    if not isinstance(series, pl.Series):
-        raise TypeError(f'meta.missing["{name}"] is not a polars Series')
-    advice = (f'carry the letters with letters_to_columns before changing rows, or drop them with '
-              f'meta.missing.pop("{name}")')
-    if series.len() != df.height:
-        raise ValueError(f'the letters of column "{name}" have {series.len()} rows, but the frame has {df.height}; '
-                         + advice)
-    want = meta._digests.get(name)
-    if want is not None and native.arrow_digest(df.get_column(name)) != want:
-        raise ValueError(f'column "{name}" has changed since it was read, so meta.missing["{name}"] may no longer '
-                         "line up with its rows; " + advice)
+_INT_RANGE = {pl.Int8: (-127, 100), pl.Int16: (-32_767, 32_740), pl.Int32: (-2_147_483_647, 2_147_483_620)}
+
+
+def stored(values, storage):
+    """`values` (Float64, its letters already null) as `storage`, the dtype
+    the read widened it from, when every value fits that type exactly;
+    else `values` as it is, written as double."""
+    if storage is None:
+        return values
+    present = values.drop_nulls()
+    if storage == pl.Float32:
+        if present.is_nan().any() or not present.cast(pl.Float32).cast(pl.Float64).equals(present):
+            return values
+        return values.cast(pl.Float32)
+    lo, hi = _INT_RANGE[storage]
+    if present.is_nan().any() or not (present == present.round(0)).all() or present.is_infinite().any():
+        return values
+    if present.len() and (present.min() < lo or present.max() > hi):
+        return values
+    return values.cast(storage)
 
 
 def prepare(df, meta, missing_letters, who):
-    """The frame to write (companions taken out), and what the native
-    writer takes of meta: label, notes, characteristics, sort (checked),
-    timestamp, columns, value_labels, and missing, the letters of each
-    column from its companion or meta.missing."""
+    """The frame to write, and what the native writer takes of meta:
+    label, notes, characteristics, sort (checked), timestamp, columns,
+    value_labels, and missing, the letters of each Float64 column holding
+    tagged NaNs (which the frame given the writer holds as nulls)."""
     check_frame(df, who)
     if meta is not None and not isinstance(meta, Meta):
         raise TypeError(f"meta is a datakit.Meta or None, not {type(meta).__name__}")
-    names = set(df.columns)
-    pairs = dict(meta.letter_columns) if meta is not None else {}
-    companions = {}
-    for x, comp in pairs.items():
-        if comp in companions:
-            raise ValueError(f'column "{comp}" is the companion of both "{companions[comp]}" and "{x}" '
-                             "in meta.letter_columns")
-        if comp in pairs:
-            raise ValueError(f'column "{comp}" is both a companion and a column with a companion in meta.letter_columns')
-        companions[comp] = x
+    storage = meta._storage if meta is not None else {}
     letters = {}
-    drop = []
-    for x, comp in pairs.items():
-        if x in names:
-            if comp not in names:
-                if missing_letters:
-                    raise ValueError(
-                        f'column "{x}" is in the frame but its letters\' column "{comp}" is not; keep "{comp}", '
-                        f'or remove the pair with del meta.letter_columns["{x}"], or pass missing_letters=False')
-                continue
-            drop.append(comp)
-            if not missing_letters:
-                continue
-            s = df.get_column(comp)
-            if s.dtype != LETTERS and s.dtype != pl.String:
-                raise TypeError(f'column "{comp}", the letters of "{x}", is {s.dtype}, not datakit.LETTERS or String')
-            if x in meta.missing:
-                raise ValueError(f'column "{x}" has letters both in column "{comp}" and in meta.missing; '
-                                 f'drop one (meta.missing.pop("{x}"))')
-            letters[x] = s
-        elif comp in names:
-            raise ValueError(
-                f'column "{comp}" holds the letters of column "{x}", which is not in the frame; drop "{comp}", '
-                f'or remove the pair with del meta.letter_columns["{x}"]')
-    if meta is not None and missing_letters:
-        for x, s in meta.missing.items():
-            if x in names:
-                digest_check(df, meta, x, s)
-                letters[x] = s
-    stray = [c for c, t in df.schema.items() if t == LETTERS and c not in companions]
-    if stray:
-        shown = ", ".join(f'"{c}"' for c in stray)
-        warn(f"{shown} {'is a column' if len(stray) == 1 else 'are columns'} of datakit.LETTERS that no pair in "
-             "meta.letter_columns names, written as an ordinary categorical; its letters belong to no column")
-    out = df.drop(drop) if drop else df
+    changes = []
+    for name, t in df.schema.items():
+        if t != pl.Float64:
+            continue
+        s = df.get_column(name)
+        plain, found = _tagged.untag(s)
+        if found is not None and missing_letters:
+            letters[name] = found
+        out = stored(plain, storage.get(name))
+        if found is not None or out.dtype != t:
+            changes.append(out)
+    out = df.with_columns(changes) if changes else df
     if meta is None:
-        return out, None
+        if not letters:
+            return out, None
+        meta = Meta()
     kept = set(out.columns)
     profile = {
         "label": meta.label,

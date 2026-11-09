@@ -121,13 +121,13 @@ check(colmetadata(df, :dayfrac, "format") == "%td", "dayfrac: format")
 # The POSIXct not whole microseconds, truncated to the millisecond.
 check(isequal(utc_ms.(df.whenfrac), [1000, 2000, missing, 3500, -1, 6000]), "whenfrac: truncated")
 
-# Python's files: the letters from meta.missing, and from companion
-# columns. A timestamp holding letters is Stata's milliseconds as a
-# Float64 here, seconds since 1960 times 1000, so 1.000001 s keeps its
+# Python's file: the letters are tagged NaNs in its Float64 columns (ADR
+# 0036). A timestamp holding letters is Stata's milliseconds as a Float64
+# here, seconds since 1960 times 1000, so 1.000001 s keeps its
 # microsecond.
 const MS1960 = 3653 * 86_400_000
 # TypeScript's file (plan 0021) holds the same data as Python's.
-for f in ("from_python.parquet", "from_python_columns.parquet", "from_typescript.parquet")
+for f in ("from_python.parquet", "from_typescript.parquet")
     isfile(joinpath(DIR, f)) || (println("no $f in $DIR; not checked"); continue)
     p = read_parquet(joinpath(DIR, f); timestamps = :truncate)
     w(what) = "$f $what"
@@ -156,7 +156,10 @@ for f in ("from_python.parquet", "from_python_columns.parquet", "from_typescript
     # milliseconds since 1960, with %td and %tc.
     cells(p.seen, [23436.0, 0, 23437, 0, 0, 0], [0, 5, 0, 1, 0, 27], w("seen"))
     check(colmetadata(p, :seen, "format") == "%td", w("seen: format"))
-    cells(p.stamp, Float64[MS1960 + 500, 0, MS1960 + 1_000_000_000_000, 0, MS1960 - 86_400_250, (1.000001 + 3653 * 86_400) * 1000],
+    # Python writes the milliseconds itself, from 1,000,001 microseconds;
+    # Julia makes them from TypeScript's seconds.
+    last = who == "Python" ? 1_000_001 / 1000 + MS1960 : (1.000001 + 3653 * 86_400) * 1000
+    cells(p.stamp, Float64[MS1960 + 500, 0, MS1960 + 1_000_000_000_000, 0, MS1960 - 86_400_250, last],
           [0, 12, 0, 1, 0, 0], w("stamp"))
     check(colmetadata(p, :stamp, "format") == "%tc", w("stamp: format"))
     # A categorical holding letters (plan 0022): labelled codes 1 to 3

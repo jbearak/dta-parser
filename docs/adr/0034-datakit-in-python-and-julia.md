@@ -1,7 +1,8 @@
 # datakit in Python and Julia; Parquet stays in the npm package
 
 Superseded in part by ADR 0035: its TypeScript paragraph (TypeScript
-now has a datakit).
+now has a datakit); and by ADR 0036: Python's datakit keeps `.a` to `.z`
+in the frame as tagged NaNs, not in `meta.missing` or companion columns.
 
 ADR 0032 split R's format package (dtaparser) from its data-prep package
 for translated do-files (datakit). Plan 0019 makes the same split in

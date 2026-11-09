@@ -1,5 +1,5 @@
 """`Meta`, `Column`, `ParquetInfo` and `LETTERS`: what polars cannot hold,
-kept beside the frame."""
+kept beside the frame, and the dtype of `na_tag`'s letters."""
 
 from __future__ import annotations
 
@@ -81,21 +81,17 @@ class Meta:
     columns: {name: Column}, one per column read.
     value_labels: {set name: {code: text}}. A code is an int or float, or
         a missing code as text: ".", ".a" to ".z".
-    missing: {name: Series of LETTERS}: for each column holding `.a` to
-        `.z` in the rows read, the letter of each row (null elsewhere),
-        aligned with the frame as read. Saving checks that the column
-        has not changed since the read; see `letters_to_columns` to keep
-        letters through row operations.
-    letter_columns: {name: companion}: columns whose letters are in a
-        companion column of the frame, such as {"x": "x_letter"}.
     rows: the frame's height as read.
 
-    Methods: `labels(name)`, `letters(name)`, `rename(mapping)`,
-    `select(names)` and `copy()`. `==` compares every field (Series with
-    `Series.equals`). Meta does not follow polars operations: a filter,
-    sort or join is yours to mirror (the guide shows how).
+    `.a` to `.z` are not in Meta: they are in the frame, as tagged NaNs
+    in Float64 columns (see `na_tag`).
 
-    Guide: {guide}#labels-and-a-to-z-through-polars-operations
+    Methods: `labels(name)`, `rename(mapping)`, `select(names)` and
+    `copy()`. `==` compares every field. Meta does not follow polars
+    operations: a join or a new column is yours to mirror (the guide
+    shows how).
+
+    Guide: {guide}#labels-through-polars-operations
     """
 
     label: str | None = None
@@ -105,12 +101,11 @@ class Meta:
     timestamp: str | None = None
     columns: dict[str, Column] = field(default_factory=dict)
     value_labels: dict[str, dict[int | float | str, str]] = field(default_factory=dict)
-    missing: dict[str, pl.Series] = field(default_factory=dict)
-    letter_columns: dict[str, str] = field(default_factory=dict)
     rows: int = 0
-    # The digest of each column of `missing` as read, which saving
-    # compares; not part of equality.
-    _digests: dict[str, int] = field(default_factory=dict, repr=False, compare=False)
+    # The dtype each column had in the file when a read made it Float64
+    # to hold .a to .z (Int8, Int16, Int32 or Float32), which saving
+    # gives it back when its values still fit; not part of equality.
+    _storage: dict[str, pl.DataType] = field(default_factory=dict, repr=False, compare=False)
 
     def __eq__(self, other):
         if not isinstance(other, Meta):
@@ -138,30 +133,12 @@ class Meta:
             return {}
         return self.value_labels.get(set_name, {})
 
-    def letters(self, name):
-        """Column `name`'s `.a` to `.z` as a Series of LETTERS, null where a
-        row has none: `missing[name]`, or all null (of `rows` rows) for a
-        column without letters. KeyError if meta.columns has no `name`;
-        ValueError if its letters are in a companion column, which is
-        where to look instead."""
-        self._known(name)
-        if name in self.letter_columns:
-            raise ValueError(f'the letters of column "{name}" are in the frame\'s column "{self.letter_columns[name]}", '
-                             "not in meta.missing")
-        if name in self.missing:
-            return self.missing[name]
-        return pl.Series(name, [None] * self.rows, dtype=LETTERS)
-
-    def _names(self):
-        """Every name a rename or select may give: columns and companions."""
-        return set(self.columns) | set(self.letter_columns.values())
 
     def rename(self, mapping):
         """A new Meta for `df.rename(mapping)`: the names in `columns`,
-        `missing` (each Series aliased), `letter_columns` (both sides),
         `characteristics` and `sort` renamed. KeyError for a name meta
         does not have; ValueError for a rename onto a name that stays."""
-        names = self._names()
+        names = set(self.columns)
         for old in mapping:
             if old not in names:
                 raise KeyError(f'meta.columns has no column "{old}"')
@@ -174,31 +151,26 @@ class Meta:
         r = lambda n: mapping.get(n, n)  # noqa: E731
         out = self.copy()
         out.columns = {r(k): v for k, v in out.columns.items()}
-        out.missing = {r(k): v.alias(r(k)) for k, v in out.missing.items()}
-        out._digests = {r(k): v for k, v in out._digests.items()}
-        out.letter_columns = {r(k): r(v) for k, v in out.letter_columns.items()}
+        out._storage = {r(k): v for k, v in out._storage.items()}
         out.characteristics = {r(k): v for k, v in out.characteristics.items()}
         out.sort = [r(n) for n in out.sort]
         return out
 
     def select(self, names):
         """A new Meta for `df.select(names)`: only those columns in
-        `columns`, `missing`, `letter_columns` and `characteristics`
-        ("_dta" kept), and `sort` up to its first column not selected.
+        `columns` and `characteristics` ("_dta" kept), and `sort` up to its first column not selected.
         Every value label set is kept. KeyError for a name meta does not
         have."""
         if isinstance(names, str):
             names = [names]
-        known = self._names()
+        known = set(self.columns)
         for n in names:
             if n not in known:
                 raise KeyError(f'meta.columns has no column "{n}"')
         keep = set(names)
         out = self.copy()
         out.columns = {n: out.columns[n] for n in names if n in out.columns}
-        out.missing = {k: v for k, v in out.missing.items() if k in keep}
-        out._digests = {k: v for k, v in out._digests.items() if k in keep}
-        out.letter_columns = {k: v for k, v in out.letter_columns.items() if k in keep}
+        out._storage = {k: v for k, v in out._storage.items() if k in keep}
         out.characteristics = {k: v for k, v in out.characteristics.items() if k in keep or k == "_dta"}
         sort = []
         for n in out.sort:
@@ -223,8 +195,7 @@ class ParquetInfo:
     created_by: the writer the file names, or None.
     key_value: every key-value entry of the footer as text, the "dta"
         profile and "ARROW:schema" among them.
-    meta: the Meta a whole-file read gives, with `missing` empty and
-        `rows` the file's.
+    meta: the Meta a whole-file read gives, with `rows` the file's.
     columns: a polars DataFrame with a row per Parquet column: `name`;
         `role` ("data", or "nested" for a list, map or struct, which is
         not read); `dtype`, the polars dtype `read_parquet` gives it, as

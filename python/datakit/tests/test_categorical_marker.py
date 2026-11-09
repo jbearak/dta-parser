@@ -1,7 +1,9 @@
 """`.dta` categoricals marked `dtaparser_categorical` (plan 0023): save_dta
-marks each Enum and Categorical, letters or not, and read_dta gives the
-Enum back with its levels, order, letters and letter labels, unless the
-file has changed since."""
+marks each Enum and Categorical, and read_dta gives the Enum back with
+its levels, order and letter labels, unless the file has changed since.
+A marked column holding `.a` to `.z` in the rows read (as TypeScript's
+saveDta writes one) reads as its codes, Float64 with tagged NaNs, since
+an Enum cannot hold them (ADR 0036)."""
 
 import re
 import warnings
@@ -11,7 +13,10 @@ import polars as pl
 import pytest
 
 import datakit as dk
+from conftest import tags
+from datakit import _frame
 from datakit._frame import restore_categoricals
+from datakit._native import native
 
 dp = pytest.importorskip("dta_parser")
 pd = pytest.importorskip("pandas")
@@ -30,7 +35,15 @@ def quiet(fn, *a, **k):
         return fn(*a, **k)
 
 
-def grade(path, **save):
+def save_with_letters(df, path, meta, letters, missing_letters=True):
+    """The file the native writer makes of an Enum with letters, as
+    TypeScript's saveDta makes one."""
+    out, profile = _frame.prepare(df, meta, missing_letters, "test")
+    profile["missing"].update(letters if missing_letters else {})
+    native.dta_write_arrow(out, str(path), profile, missing_letters, "error")
+
+
+def grade(path, missing_letters=True):
     """An ordered Enum with an unused level, `.a`, `.` and `.z`, its set
     named "gl" (not the column's name) with a label on `.r`."""
     df = pl.DataFrame({
@@ -40,10 +53,9 @@ def grade(path, **save):
     meta = dk.Meta(
         columns={"id": dk.Column(), "grade": dk.Column(label="Grade", value_labels="gl", ordered=True)},
         value_labels={"gl": {1: "low", 2: "mid", 3: "high", 4: "unused", ".r": "Refused"}},
-        missing={"grade": L(None, ".a", None, None, ".z", None)},
         rows=6,
     )
-    quiet(dk.save_dta, df, path, meta, **save)
+    save_with_letters(df, path, meta, {"grade": L(None, ".a", None, None, ".z", None)}, missing_letters)
     return df, meta
 
 
@@ -51,34 +63,33 @@ def chars(path):
     return dp.read_meta(path)["characteristics"]
 
 
-def test_an_enum_with_letters_round_trips(tmp_path):
+def test_a_marked_column_with_letters(tmp_path):
     path = tmp_path / "g.dta"
     df, _ = grade(path)
     assert chars(path) == {"grade": {"dtaparser_categorical": "ordered grade"}}
     sets = dp.read_meta(path)["value_labels"]
     assert sets["grade"] == {1: "low", 2: "mid", 3: "high", 4: "unused", dp.missing.r: "Refused"}
-    for letters in ("meta", "columns", None):
-        back, bm = quiet(dk.read_dta, path, letters=letters)
-        assert back["grade"].dtype == pl.Enum(LEVELS)
-        assert back["grade"].to_list() == df["grade"].to_list()
-        assert bm.columns["grade"] == dk.Column(label="Grade", format="%12.0g", value_labels="grade", ordered=True)
-        assert bm.labels("grade")[".r"] == "Refused"
-        assert "grade" not in bm.characteristics
-        want = [None, ".a", None, None, ".z", None]
-        if letters == "meta":
-            assert bm.missing["grade"].to_list() == want
-        elif letters == "columns":
-            assert back["grade_letter"].to_list() == want and "grade" not in bm.missing
-        else:
-            assert bm.missing == {} and "grade_letter" not in back.columns
-    # Written again from what was read: the same file, as far as it says.
+    # With its letters: the codes, the mark kept.
     back, bm = quiet(dk.read_dta, path)
+    assert back["grade"].dtype == pl.Float64
+    assert back["grade"].fill_nan(None).to_list() == [1.0, None, 3.0, None, None, 2.0]
+    assert tags(back["grade"]) == [None, ".a", None, None, ".z", None]
+    assert bm.columns["grade"] == dk.Column(label="Grade", format="%12.0g", value_labels="grade")
+    assert bm.labels("grade")[".r"] == "Refused"
+    assert bm.characteristics["grade"] == {"dtaparser_categorical": "ordered grade"}
+    # Without: the Enum.
+    plain, pm = quiet(dk.read_dta, path, letters=False)
+    assert plain["grade"].dtype == pl.Enum(LEVELS) and plain["grade"].to_list() == df["grade"].to_list()
+    assert pm.columns["grade"] == dk.Column(label="Grade", format="%12.0g", value_labels="grade", ordered=True)
+    assert "grade" not in pm.characteristics
+    # Written again from what was read: a labelled double, its letters kept,
+    # no mark (save_dta writes none from meta).
     again = tmp_path / "again.dta"
     quiet(dk.save_dta, back, again, bm)
-    assert chars(again) == chars(path)
+    assert chars(again) == {}
     back2, bm2 = quiet(dk.read_dta, again)
-    assert back2.equals(back) and bm2.missing["grade"].equals(bm.missing["grade"])
-    assert bm2.value_labels["grade"] == bm.value_labels["grade"] and bm2.columns == bm.columns
+    assert tags(back2["grade"]) == tags(back["grade"])
+    assert bm2.value_labels["grade"] == bm.value_labels["grade"]
 
 
 def test_dta_parser_reads_the_letters_as_numbers_and_the_rest_as_a_category(tmp_path):
@@ -122,7 +133,6 @@ def test_missing_letters_false_writes_dot_and_the_mark(tmp_path):
     assert dp.missing_codes(dp.read_dta(path)["grade"]).tolist() == [0, 1, 0, 1, 1, 0]
     back, bm = quiet(dk.read_dta, path)
     assert back["grade"].dtype == pl.Enum(LEVELS) and back["grade"].to_list() == df["grade"].to_list()
-    assert bm.missing == {}
 
 
 def written(path, columns, marks, value_labels=None, formats=None):
@@ -157,11 +167,10 @@ def test_codes_are_renumbered_from_one(tmp_path):
 def test_save_dta_drops_marks_meta_still_holds(tmp_path):
     path = tmp_path / "g.dta"
     grade(path)
-    back, bm = quiet(dk.read_dta, path)
+    back, bm = quiet(dk.read_dta, path, letters=False)
     # The column is integers now; a mark left in meta must not follow it.
     ints = back.with_columns(pl.col("grade").to_physical().cast(pl.Int32))
     im = bm.copy()
-    im.missing.pop("grade")
     im.characteristics["grade"] = {"dtaparser_categorical": "ordered grade", "dtaparser_factor": "ordered grade",
                                    "note": "kept"}
     im.characteristics["id"] = {"dtaparser_factor": "unordered gl"}
@@ -177,9 +186,13 @@ def test_save_dta_drops_marks_meta_still_holds(tmp_path):
 def test_factors_true(tmp_path):
     path = tmp_path / "g.dta"
     df, _ = grade(path)
-    back, bm = quiet(dk.read_dta, path, factors=True)
+    back, bm = quiet(dk.read_dta, path, factors=True, letters=False)
     assert back["grade"].dtype == pl.Enum(LEVELS) and back["grade"].to_list() == df["grade"].to_list()
-    assert bm.missing["grade"].to_list() == [None, ".a", None, None, ".z", None]
+    # With its letters, factors=True makes the Enum all the same, as R's
+    # datakit does, and warns that they are nulls.
+    with pytest.warns(UserWarning, match=r'\.a to \.z in "grade" are nulls in its Enum; read with factors=False'):
+        back, bm = dk.read_dta(path, factors=True)
+    assert back["grade"].dtype == pl.Enum(LEVELS) and back["grade"].to_list() == df["grade"].to_list()
     # A stale one is any labelled column to to_factors: the values read and
     # the labelled codes.
     stale = written(tmp_path / "s.dta", {"v": np.array([1, 2, 5], dtype=np.int32)},
@@ -193,7 +206,7 @@ def test_factors_true(tmp_path):
 def test_a_window_without_letters_is_an_enum(tmp_path):
     path = tmp_path / "g.dta"
     df, _ = grade(path)
-    for skip, n_max in ((0, 1), (2, 1), (5, 1), (1, 4)):
+    for skip, n_max in ((0, 1), (2, 1), (5, 1), (2, 2)):
         back, bm = quiet(dk.read_dta, path, skip=skip, n_max=n_max)
         assert back["grade"].dtype == pl.Enum(LEVELS)
         assert back["grade"].to_list() == df["grade"].to_list()[skip:skip + n_max]
@@ -280,7 +293,7 @@ def test_one_warning_names_every_stale_column(tmp_path):
 def test_a_label_on_a_letter_no_row_holds_passes(tmp_path):
     path = written(tmp_path / "t.dta", int_column(), MARK, {"v": {1: "a", 2: "b", dp.missing.r: "Refused"}})
     back, bm = quiet(dk.read_dta, path)
-    assert back["v"].dtype == pl.Enum(["a", "b"]) and bm.missing == {}
+    assert back["v"].dtype == pl.Enum(["a", "b"])
     assert bm.labels("v") == {1: "a", 2: "b", ".r": "Refused"}
 
 
@@ -305,9 +318,9 @@ def test_codes_that_are_not_whole_longs_fail(code):
 
 def test_an_enum_without_levels_holding_only_letters(tmp_path):
     df = pl.DataFrame({"e": pl.Series([None, None], dtype=pl.Enum([]))})
-    meta = dk.Meta(columns={"e": dk.Column(value_labels="s")}, value_labels={"s": {".a": "A"}},
-                   missing={"e": L(None, ".a", name="e")}, rows=2)
-    quiet(dk.save_dta, df, tmp_path / "e.dta", meta)
+    meta = dk.Meta(columns={"e": dk.Column(value_labels="s")}, value_labels={"s": {".a": "A"}}, rows=2)
+    save_with_letters(df, tmp_path / "e.dta", meta, {"e": L(None, ".a", name="e")})
     back, bm = quiet(dk.read_dta, tmp_path / "e.dta")
-    assert back["e"].dtype == pl.Enum([]) and back["e"].to_list() == [None, None]
-    assert bm.missing["e"].to_list() == [None, ".a"] and bm.labels("e") == {".a": "A"}
+    assert back["e"].dtype == pl.Float64 and tags(back["e"]) == [None, ".a"] and bm.labels("e") == {".a": "A"}
+    plain, _ = quiet(dk.read_dta, tmp_path / "e.dta", letters=False)
+    assert plain["e"].dtype == pl.Enum([]) and plain["e"].to_list() == [None, None]

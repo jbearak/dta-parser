@@ -94,7 +94,7 @@ TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metad
 
 R: [Labels](r.md#labels-in-parquet-files).
 Python: [Labels](python.md#labels-in-parquet-files), and
-[through polars operations](python.md#labels-and-a-to-z-through-polars-operations).
+[through polars operations](python.md#labels-through-polars-operations).
 Julia: [Labels](julia.md#labels-in-parquet-files).
 TypeScript: [Labels](typescript.md#labels-in-parquet-files).
 
@@ -124,7 +124,7 @@ TypeScript: [Write labels](typescript.md#write-labels-to-a-parquet-file).
 
 R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
 Python: [Keep .a to .z](python.md#keep-a-to-z-in-a-parquet-file)
-(in `meta.missing` or companion columns).
+(tagged NaNs in the frame, as R holds them).
 Julia: [Keep .a to .z](julia.md#keep-a-to-z-in-a-parquet-file).
 TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
@@ -214,13 +214,14 @@ Missing values:
   the column if it fits, else the first of the column's name,
   `name_2`, `name_3`, ... that fits or is free, so no other column's set
   changes and the name stays the same through any number of writes and
-  reads. A categorical without letters stays text. Python and
-  TypeScript read the column as a categorical with its letters (an
-  `Enum` with `meta.missing`; a `DictionaryColumn` with `missing` 2 to
-  27); R and Julia, whose factor and `CategoricalArray` cannot hold
-  letters, read it as labelled numbers: the level numbers with the
-  letters and the set (R's `factors = TRUE` leaves it so). R and Julia
-  write it back as labelled numbers, not a categorical. A value that is
+  reads. A categorical without letters stays text. TypeScript reads the
+  column as a categorical with its letters (a `DictionaryColumn` with
+  `missing` 2 to 27). R, Julia and Python, whose factor,
+  `CategoricalArray` and `Enum` cannot hold letters, read it as
+  labelled numbers: the level numbers with the letters and the set
+  (`factors = TRUE` leaves it so). Python reads the `Enum` when the rows
+  read hold no letters. R, Julia and Python write it back as labelled
+  numbers, not a categorical. A value that is
   not a level number (another tool rewrote the column) reads as `.`,
   with one warning naming the column and the first such row.
 - A reader takes a DOUBLE value as `.a` to `.z` only when its bits are
@@ -428,19 +429,12 @@ pandas, fastparquet and polars in Python, in
 | Python: `column "x", row 1: the date 19000.5 (days since 1970) has a fraction of a day; pass timestamps="truncate" to drop it` (also `the timestamp ... is not a whole number of microseconds`) | a DOUBLE date or timestamp that `Date` or `Datetime("us")` cannot hold exactly, as R writes one | `timestamps="truncate"` |
 | Python: `column "x", row 1: the timestamp ... (seconds since 1970) is outside polars' Datetime range` (also `Date range`) | a value polars cannot hold | none in polars; read the column with another tool |
 | Python: `column "x" is Decimal, which save_parquet does not write; cast it to Float64 or String` (also Duration, List, Array, Struct, Object, Int128) | a dtype the files here do not hold | cast the column first |
-| Python: `column "x" is Int64 and has .a to .z, which Int64 cannot hold; drop its letters or cast it` (also unsigned, Boolean, String, Binary) | letters on a column a double cannot hold | cast to `Float64`, or `meta.missing.pop("x")` |
-| Python: `column "x" is an Enum without a value label set and has .a to .z, ...` (also `is a Categorical and has .a to .z`) | letters on an `Enum` that `meta.columns` gives no set, or on a `Categorical` | name its set in `meta.columns["x"].value_labels`, cast a `Categorical` to an `Enum`, or `meta.missing.pop("x")` |
 | warning: `column "x": row 3 holds a value that is not one of its 3 level numbers; it is read as .` (R: `as NA`; TypeScript counts rows from 0, code `DATAKIT_CATEGORICAL`) | another tool wrote a value into a categorical holding `.a` to `.z` | none needed; the value reads as `.` |
 | warning: `column "x" is a categorical whose value label set "s" does not label 1 to 3 with its levels; a set made from the levels is used` | a hand-edited profile | none needed |
-| Python: `column "x" has changed since it was read, so meta.missing["x"] may no longer line up with its rows; carry the letters with letters_to_columns before changing rows, or drop them with meta.missing.pop("x")` (also `have 6 rows, but the frame has 2`) | a filter, sort, join or new values after a read with `letters="meta"` | read with `letters="columns"` or call `letters_to_columns` first |
-| Python: `column "x": row 2 holds a value and the letter .d; set one of them to null` | a row with both a value and a letter in its companion | set the companion to null where a value is set |
-| Python: `column "x" is in the frame but its letters' column "x_letter" is not; ...` (also `"x_letter" holds the letters of column "x", which is not in the frame`) | a companion dropped while its column was kept, or the reverse | keep both, or `del meta.letter_columns["x"]` |
-| Python: `column "t", row 1: the timestamp has a part below a microsecond, which a column with .a to .z (written as seconds) cannot hold; pass timestamps="truncate" to drop it` (also `too far from 1970`) | a `Datetime("ns")` column with letters | `timestamps="truncate"`, or drop the letters |
 | Python: `save_parquet takes a polars DataFrame, not a LazyFrame; call .collect() on it first` | a `LazyFrame` | as it says |
 | Python: `ValueError: compression is "snappy", "zstd", "gzip", "lz4_raw" or "none", not 'lzo'` | `save_parquet(compression=)` | one of those |
 | Python: `ValueError: zstd levels run from 1 to 22, not 99`; `ValueError: snappy has no compression levels` | `compression_level` | a level the codec has, or `None` |
 | Python warning: `meta.sort (x) does not describe the order of the frame's rows, so it is not saved; ...` | rows reordered since the read, or sorted with nulls first | sort as the guide shows, or clear `meta.sort` |
-| Python warning: `"x_letter" is a column of datakit.LETTERS that no pair in meta.letter_columns names, ...` | a companion saved without its pair | add the pair to `meta.letter_columns`, or drop the column |
 | Python: `ImportError: datakit 0.3.0 needs dta_parser's native functions at ABI version 1, but the installed dta_parser ... has ABI version ...` | datakit and dta_parser from different checkouts | `pip install --force-reinstall ./dta-parser/python ./dta-parser/python/datakit` |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
 
