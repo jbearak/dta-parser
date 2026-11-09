@@ -1,6 +1,6 @@
 Package: datakit
 Title: Grouped Assignment, Stata and SAS Data, and Portable Parquet
-Version: 3.2.0
+Version: 3.1.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Data preparation in R. d[i, name, by = g] := value makes or
     changes a column of a data frame or tibble for the rows i, within
@@ -19,8 +19,8 @@ Description: Data preparation in R. d[i, name, by = g] := value makes or
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
-    datparser (>= 3.2.0),
-    dtaparser (>= 3.2.0),
+    datparser (>= 3.1.0),
+    dtaparser (>= 3.1.0),
     rlang,
     stats,
     tibble,

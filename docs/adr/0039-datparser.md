@@ -55,10 +55,11 @@ asciiSetupReader and haven (ADR 0005).
 
 **Versions and ABI.** dtaparser no longer registers
 `dtaparser_fixed_width`, and datakit no longer fetches it. The ABI
-number stays 3: no 3.2.0 package fetches the callable, and a datakit
-3.1.0 that does fails to link, which its `.onLoad` reports as a
-mismatched dtaparser. The four R packages share version 3.2.0 and the
-`r-v<version>` tag.
+number stays 3: no package of the next release fetches the callable,
+and a datakit 3.1.0 that does fails to link, which its `.onLoad`
+reports as a mismatched dtaparser. datparser joins the shared version
+and the `r-v<version>` tag, starting at 3.1.0 with the others; they
+bump together at release.
 
 ## Considered options
 

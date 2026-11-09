@@ -486,10 +486,10 @@ static const R_CallMethodDef routines[] = {
 // dtaparser_fixed_width came (datakit's read_fixed_width). 3:
 // dtaparser_parquet_read, dtaparser_parquet_write and
 // dtaparser_parquet_info came (datakit's Parquet functions), and packed
-// columns may hold NA. dtaparser_fixed_width went in 3.2.0 without a new
-// number (datparser reads fixed-width files, ADR 0039): no package of
-// 3.2.0 fetches it, and a datakit 3.1.0 that does fails to link and
-// reports the mismatch as if the number differed.
+// columns may hold NA. dtaparser_fixed_width went after 3.1.0 without a
+// new number (datparser reads fixed-width files, ADR 0039): no package
+// of the same release fetches it, and a datakit 3.1.0 that does fails to
+// link and reports the mismatch as if the number differed.
 static int abi(void) {
   return 3;
 }

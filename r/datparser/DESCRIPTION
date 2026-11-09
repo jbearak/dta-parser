@@ -1,6 +1,6 @@
 Package: datparser
 Title: Read Fixed-Width Text Files Through Their SAS Setup Files
-Version: 3.2.0
+Version: 3.1.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: read_fixed_width() reads fixed-width .dat files, such as
     the National Survey of Family Growth's, through the SAS setup files
