@@ -156,7 +156,7 @@ function convertTime(
   offset: bigint,
   truncate: boolean,
   what: string,
-): number {
+): bigint {
   if (big === undefined && !Number.isFinite(value)) throw range(`${name}: row ${row} holds ${value}, which a ${what} cannot hold`);
   const [num, den] = big === undefined ? exact(value) : [big, 1n];
   const n = num * mul;
@@ -164,7 +164,7 @@ function convertTime(
   if (n % d !== 0n && !truncate) {
     throw range(`${name}: row ${row} holds ${value}, a fraction of a ${what === "date" ? "day" : "millisecond"}; pass timestamps: "truncate" to drop it`);
   }
-  return Number(floorDiv(n, d) + offset);
+  return floorDiv(n, d) + offset;
 }
 
 /** Whether two value label sets map the same codes to the same texts, and nothing else. */
@@ -231,10 +231,11 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
       const big = nums.big ? (nums.big[i] as bigint | null) ?? undefined : undefined;
       if (big === undefined && Number.isNaN(nums.values[i])) throw range(`${v.name}: row ${i} holds NaN, which is not a missing value; a ${t} cannot hold it`);
       const r = convertTime(v.name, i, nums.values[i], big, scale, offset, truncate, t);
-      if (t === "date" ? r < RANGES[2][1] || r > RANGES[2][2] : Math.abs(r) > Number(LIMIT)) {
+      // Checked exactly, before it becomes a double.
+      if (t === "date" ? r < BigInt(RANGES[2][1]) || r > BigInt(RANGES[2][2]) : r > LIMIT || r < -LIMIT) {
         throw range(`${v.name}: row ${i} is past what a ${t === "date" ? "long %td" : "double %tc"} holds`);
       }
-      values[i] = r;
+      values[i] = Number(r);
     }
     // A %td (or %tc) format the variable has, such as %tdCCYY-NN-DD, is kept.
     const kind = t === "date" ? "%td" : "%tc";

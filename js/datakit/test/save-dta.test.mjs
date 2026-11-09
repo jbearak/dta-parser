@@ -117,6 +117,8 @@ test("timestamps become %tc, milliseconds since 1960, in each unit, exactly", ()
   assert.deepEqual(at("s", [-0.0005], { timestamps: "truncate" }), [ms1960 - 1]);
   assert.throws(() => at("us", [1]), /a fraction of a millisecond/);
   assert.throws(() => at("ms", [2 ** 53]), /t: row 0 is past what a double %tc holds/);
+  // Exactly 2^53 + 1 ms, which a double would round to 2^53, is past it too.
+  assert.throws(() => at("ms", { kind: "bigint", values: BigInt64Array.of(2n ** 53n + 1n - 315619200000n), missing: Uint8Array.of(0) }), /past what a double %tc holds/);
   assert.throws(() => at("ns", [Infinity]), /row 0 holds Infinity/);
   const { variables } = one({ name: "t", type: "timestamp", unit: "ms", values: [1, null] });
   assert.equal(variables[0].format, "%tc");

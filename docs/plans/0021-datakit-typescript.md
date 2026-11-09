@@ -402,10 +402,11 @@ in the test that implements only the interface.
   when datakit's instance cannot be replaced. A data file larger than
   datakit's module can address (4 GiB for everything) is a
   `DTA_TOO_LARGE` error naming the file's size, before any copy.
-  Measured on the largest NSFG file (below). The expected bound, peak
-  RSS under twice the data file plus the dataset plus 256 MiB, is an
-  estimate: the PR records the measured peak and replaces the estimate
-  with it.
+  Measured on the largest NSFG file (below). The estimate before
+  measuring was peak RSS under twice the data file plus the dataset plus
+  256 MiB; measured (2026-11-08, Node 26, macOS arm64), the peak was the
+  dataset plus about 250 MB: 779 MB for 1995 FemResp (135 MB of data, a
+  536 MB dataset, 3.8 s), 545 MB for 2006-2010 FemResp (73 MB, 394 MB).
 - `openParquetFile`, `writeParquetFile`: unchanged from 1.1.
 
 ### `.` (no Node API)

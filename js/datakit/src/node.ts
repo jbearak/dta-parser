@@ -146,8 +146,7 @@ export function readParquetInfo(file: string): ParquetFileInfo {
   try {
     // Chunks are read from the footer on first use, which must be before close().
     for (const v of reader.variables) void v.chunks;
-    const valueLabels: Record<string, ValueLabels> = {};
-    for (const name of reader.valueLabelNames()) valueLabels[name] = reader.valueLabels(name)!;
+    const valueLabels: Record<string, ValueLabels> = Object.fromEntries(reader.valueLabelNames().map((name) => [name, reader.valueLabels(name)!]));
     return { info: reader.info, variables: [...reader.variables], valueLabels, characteristics: reader.characteristics() };
   } finally {
     reader.close();

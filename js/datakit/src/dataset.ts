@@ -95,8 +95,8 @@ function assemble(
   columns: TableColumn[],
   options: ReadDatasetOptions,
 ): ReadDataset {
-  const valueLabels: Record<string, ValueLabels> = {};
-  for (const name of reader.valueLabelNames()) valueLabels[name] = reader.valueLabels(name)!;
+  // Own properties, even for a set named "__proto__".
+  const valueLabels: Record<string, ValueLabels> = Object.fromEntries(reader.valueLabelNames().map((name) => [name, reader.valueLabels(name)!]));
   const variables: ReadVariable[] = ks.map((k, j) => {
     const v = reader.variables[k];
     const out: ReadVariable = { name: v.name, type: v.type, format: v.format, label: v.label, valueLabels: v.valueLabels, values: columns[j] };
