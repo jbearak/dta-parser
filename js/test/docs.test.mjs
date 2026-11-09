@@ -1,12 +1,14 @@
 // The documentation's TypeScript and JavaScript examples run, and every
 // export is documented.
 //
-// Each ```ts or ```js block of README.md, docs/guide/*.md and
-// docs/typescript.md runs, in order, as one module per file, in a fresh
+// Each ```ts or ```js block of README.md and docs/guide/*.md runs, in
+// order, as one module per file, in a fresh
 // temporary directory. Import lines are gathered at the top (merged per
 // module) and each block is wrapped in braces, so blocks share files on
 // disk but not variables. Blocks whose info string says `norun` are
-// skipped. Node strips the type annotations.
+// skipped. Node strips the type annotations. docs/typescript.md's blocks,
+// which import @jbearak/datakit as well, run in datakit's tests
+// (datakit/test/docs.test.mjs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -25,7 +27,7 @@ const skip = existsSync(page) ? false : "docs/typescript.md is not here";
 function docFiles() {
   const guide = join(root, "docs", "guide");
   const pages = existsSync(guide) ? readdirSync(guide).filter((f) => f.endsWith(".md")).sort().map((f) => join(guide, f)) : [];
-  return [join(root, "README.md"), ...pages, page];
+  return [join(root, "README.md"), ...pages];
 }
 
 /** [line, code] of each ts or js block. */
@@ -94,7 +96,7 @@ for (const path of docFiles()) {
 test("every export has TSDoc and appears in docs/typescript.md", { skip }, () => {
   const text = readFileSync(page, "utf8");
   const mentioned = (n) => text.includes(`\`${n}`) || text.includes(`.${n}(`) || text.includes(`{ ${n}`) || text.includes(`, ${n}`);
-  for (const src of ["index.ts", "node.ts", "format.ts", "parquet.ts"]) {
+  for (const src of ["index.ts", "node.ts", "format.ts", "keys.ts"]) {
     const lines = readFileSync(join(pkg, "src", src), "utf8").split("\n");
     lines.forEach((line, i) => {
       const m = /^export\s+(?:declare\s+)?(?:function|class|const|interface|type)\s+(\w+)/.exec(line);
@@ -105,11 +107,11 @@ test("every export has TSDoc and appears in docs/typescript.md", { skip }, () =>
       assert.ok(mentioned(m[1]), `docs/typescript.md does not mention ${m[1]}`);
     });
   }
-  for (const entry of ["../dist/index.js", "../dist/node.js"]) {
+  for (const entry of ["../dist/index.js", "../dist/node.js", "../dist/format.js"]) {
     for (const n of Object.keys(require(entry))) assert.ok(mentioned(n), `docs/typescript.md does not mention ${n}`);
   }
   // The readers' public methods (those marked @internal are not public).
-  for (const src of ["index.ts", "parquet.ts"]) {
+  for (const src of ["index.ts"]) {
     const lines = readFileSync(join(pkg, "src", src), "utf8").split("\n");
     lines.forEach((line, i) => {
       const m = /^  (\w+)\(.*\{$/.exec(line);

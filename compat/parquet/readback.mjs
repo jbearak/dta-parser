@@ -1,10 +1,10 @@
-// hyparquet reads back what the npm package writes (plan 0018, PR 7).
+// hyparquet reads back what @jbearak/datakit writes (plan 0018, PR 7; datakit since plan 0021).
 //
-// The npm package writes tables of every type it writes, with nulls,
+// datakit writes tables of every type it writes, with nulls,
 // .a to .z, a categorical and time zones, in each codec, and with small
 // row groups; hyparquet (with hyparquet-compressors for zstd, gzip and
 // lz4_raw) reads each file, and every value is checked against the data
-// written. Run from the repository root after building js/ and
+// written. Run from the repository root after building js/ and js/datakit/ and
 // installing bench/node:
 //
 //     node compat/parquet/readback.mjs bench/node/node_modules
@@ -25,7 +25,7 @@ const { parquetReadObjects, parquetMetadata } = await import(pathToFileURL(join(
 const { compressors } = await import(pathToFileURL(join(modules, 'hyparquet-compressors', 'src', 'index.js')).href)
 const version = (m) => createRequire(import.meta.url)(join(process.cwd(), modules, m, 'package.json')).version
 const require = createRequire(import.meta.url)
-const { writeParquet, MISSING } = require('../../js/dist/index.js')
+const { writeParquet, MISSING } = require('../../js/datakit/dist/index.js')
 
 const N = 3000
 const rows = Array.from({ length: N }, (_, i) => i)

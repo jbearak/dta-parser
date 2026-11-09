@@ -9,43 +9,11 @@ export type { DtaError, EncodingName, ErrorCode, ReadAt };
 import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 import { packNumbers, packTexts } from "./shared";
 
-export { MISSING, isMissing, missingValue };
 export type { Cell, Missing, MissingName, ValueLabels };
 
-// The doubles Stata itself stores for `.` to `.z`: finite, increasing,
-// and above every number Stata stores (code 1 is `.`).
-const KEY_BITS = new DataView(new ArrayBuffer(8));
-const MISSING_KEYS = Float64Array.from({ length: 27 }, (_, k) => {
-  KEY_BITS.setBigUint64(0, 0x7fe0000000000000n + (BigInt(k) << 40n));
-  return KEY_BITS.getFloat64(0);
-});
-
-/**
- * A number that sorts and compares as Stata does: a number is itself, and
- * `.` < `.a` < ... < `.z` come after every number. Use it to sort, group or
- * compare with missing values in Stata's order:
- * `rows.sort((a, b) => dtaKey(a) - dtaKey(b))`.
- */
-export function dtaKey(value: number | Missing): number {
-  if (typeof value === "number") return Number.isNaN(value) ? MISSING_KEYS[0] : value;
-  return MISSING_KEYS[MISSING_NAMES.indexOf(value.missing)];
-}
-
-/** `dtaKey` for every value of a NumberColumn. */
-export function dtaKeys(column: NumberColumn): Float64Array {
-  const out = new Float64Array(column.values.length);
-  for (let i = 0; i < out.length; i++) {
-    const code = column.missing[i];
-    out[i] = code === 0 ? column.values[i] : MISSING_KEYS[code - 1];
-  }
-  return out;
-}
-
-/** @deprecated The 1.0 name of {@link dtaKey}, kept for 1.x. */
-export const stataKey = dtaKey;
-
-/** @deprecated The 1.0 name of {@link dtaKeys}, kept for 1.x. */
-export const stataKeys = dtaKeys;
+// The same objects and functions as /format exports: build.mjs makes
+// this import the /format bundle, so there is one copy at run time.
+export { MISSING, dtaKey, dtaKeys, isMissing, missingValue, stataKey, stataKeys } from "./format-entry";
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {
@@ -58,6 +26,20 @@ export interface Variable {
   label: string;
   /** Name of the value label set attached; empty when there is none. */
   valueLabels: string;
+  /**
+   * Set by readers of formats that have it (Parquet, through
+   * @jbearak/datakit); a .dta reader never sets it. A date's, time's or
+   * timestamp's unit: values count days, seconds, ms, µs or ns since
+   * 1970-01-01 (since midnight for a time).
+   */
+  unit?: "day" | "s" | "ms" | "us" | "ns";
+  /** As `unit`: a timestamp that is an instant, the zone it is shown in. */
+  timeZone?: string;
+  /**
+   * As `unit`: a categorical's levels, in order (null when the file does
+   * not list them), and whether they are ordered.
+   */
+  categorical?: { levels: string[] | null; ordered: boolean };
 }
 
 /**
@@ -74,6 +56,8 @@ export interface TableInfo {
   label: string;
   /** Names of the variables the data is sorted by. */
   sortedBy: string[];
+  /** A .dta file's timestamp, as the file holds it (see `Info`); a Parquet file has none. */
+  timestamp?: string;
 }
 
 /** What the file's header says about it. */
@@ -252,6 +236,12 @@ export interface TableReader {
   readRowsAt(rows: readonly number[], columns?: readonly (number | string)[]): TableCell[][];
   /** The value label set `name`, or undefined. */
   valueLabels(name: string): ValueLabels | undefined;
+  /** The names of every value label set in the file, used or not, in file order. */
+  valueLabelNames(): string[];
+  /** Every characteristic, including the notes, in file order. */
+  characteristics(): Characteristic[];
+  /** The dataset's notes, in order. */
+  notes(): string[];
   /** Release the file; further reads throw `DTA_CLOSED`. */
   close(): void;
   [Symbol.dispose](): void;
@@ -259,7 +249,7 @@ export interface TableReader {
 
 /**
  * `TableReader` with promises, for files read through an async function
- * (`openParquetAsync`): the same members, and the same results.
+ * (`openParquetAsync` in @jbearak/datakit): the same members, and the same results.
  */
 export interface AsyncTableReader {
   readonly info: TableInfo;
@@ -272,6 +262,12 @@ export interface AsyncTableReader {
   readRowsAt(rows: readonly number[], columns?: readonly (number | string)[]): Promise<TableCell[][]>;
   /** As `TableReader.valueLabels`. */
   valueLabels(name: string): ValueLabels | undefined;
+  /** As `TableReader.valueLabelNames`. */
+  valueLabelNames(): string[];
+  /** As `TableReader.characteristics`. */
+  characteristics(): Characteristic[];
+  /** As `TableReader.notes`. */
+  notes(): string[];
   /** As `TableReader.close`. */
   close(): void;
   [Symbol.dispose](): void;
@@ -334,6 +330,12 @@ export class DtaReader implements TableReader {
       }
     }
     return this.labels.get(name);
+  }
+
+  /** The names of every value label set in the file, used or not, in file order. */
+  valueLabelNames(): string[] {
+    this.valueLabels("");
+    return [...this.labels!.keys()];
   }
 
   /**
@@ -584,25 +586,21 @@ export interface WriteVariable {
    * as `StringColumn.values` holds them.
    *
    * Also a column as `readColumns` returns it (`NumberColumn`,
-   * `StringColumn`, `DictionaryColumn`, `BigIntColumn`), so what a reader
-   * read writes back as it is. For Parquet (`writeParquet`) only: bigints
-   * (an array of bigint or null, or a BigInt64Array), `null` among
-   * strings, a `DictionaryColumn` written as a categorical, and a
-   * `BigIntColumn`. `writeDta` writes a `DictionaryColumn` as strings,
-   * and rejects the rest.
+   * `StringColumn`, `DictionaryColumn`), so what a reader read writes
+   * back as it is; a `DictionaryColumn` is written as its strings. A
+   * `BigIntColumn`, or a string column with nulls (both only from
+   * Parquet files), is an error: @jbearak/datakit's `saveDta` converts
+   * those.
    */
   values:
     | readonly (number | Missing | null)[]
     | readonly (string | Uint8Array)[]
-    | readonly (string | Uint8Array | null)[]
     | Float64Array
-    | readonly (bigint | null)[]
-    | BigInt64Array
     | TableColumn;
   /**
-   * With a Float64Array (or BigInt64Array) of values, each one's missing
-   * code as `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27
-   * `.a` to `.z`); none missing when absent. So a column `readColumns`
+   * With a Float64Array of values, each one's missing code as
+   * `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a`
+   * to `.z`); none missing when absent. So a column `readColumns`
    * returned writes back as it is, without an array of values or
    * `Missing`s.
    */
@@ -610,42 +608,8 @@ export interface WriteVariable {
   /**
    * Storage type of a numeric variable; default double. `strL` makes a
    * string variable strL whatever its length.
-   *
-   * `writeParquet` also takes `"bool"` (0 and 1), `"int64"`, `"date"`
-   * (days since 1970-01-01), `"timestamp"` (counts of `unit` since
-   * 1970-01-01 00:00), `"string"`, `"binary"` and `"categorical"`, and
-   * the types `ParquetReader` gives (`Variable.type`), so a variable read
-   * writes back with its type.
    */
-  type?:
-    | "byte"
-    | "int"
-    | "long"
-    | "float"
-    | "double"
-    | "strL"
-    | "bool"
-    | "int64"
-    | "date"
-    | "timestamp"
-    | "string"
-    | "binary"
-    | "categorical"
-    | (string & {});
-  /** Parquet only: a timestamp's unit, `"s"`, `"ms"`, `"us"` (the default) or `"ns"`. */
-  unit?: string;
-  /**
-   * Parquet only: a timestamp's time zone. With one, the values are
-   * instants (adjusted to UTC) shown in that zone; without, clock times
-   * with no zone.
-   */
-  timeZone?: string;
-  /** Parquet only: a categorical's levels, when `values` holds level codes (0 the first level, null missing). */
-  levels?: readonly string[];
-  /** Parquet only: whether a categorical's levels are ordered. */
-  ordered?: boolean;
-  /** Parquet only: a categorical's levels and ordering, as `ParquetVariable.categorical` gives them. */
-  categorical?: { readonly levels: readonly string[] | null; readonly ordered: boolean };
+  type?: "byte" | "int" | "long" | "float" | "double" | "strL" | (string & {});
   /** Display format; default the storage type's. */
   format?: string;
   label?: string;
@@ -771,7 +735,7 @@ type DtaVariable = Omit<WriteVariable, "values"> & {
 function asDtaVariable(v: WriteVariable): DtaVariable {
   const x = v.values;
   const reject = (what: string): never => {
-    throw dtaError("DTA_INVALID", `${v.name}: a .dta file cannot hold ${what}; use writeParquet`, undefined, TypeError);
+    throw dtaError("DTA_INVALID", `${v.name}: a .dta file cannot hold ${what}; use saveDta (which converts) or saveParquet from @jbearak/datakit`, undefined, TypeError);
   };
   if (x instanceof BigInt64Array || x instanceof BigUint64Array) return reject("64-bit integers");
   if (x instanceof Float64Array || Array.isArray(x)) {
@@ -805,9 +769,7 @@ export function writeDta(data: WriteDataset): Uint8Array {
   }
   return out;
 }
-export { formatValue } from "./format";
-export { AsyncParquetReader, ParquetReader, openParquet, openParquetAsync, toDate, writeParquet, writeParquetTo } from "./parquet";
-export type { ColumnChunk, ParquetInfo, ParquetOptions, ParquetVariable, ParquetWriteOptions, RowGroup, Statistic } from "./parquet";
+export { formatValue } from "./format-entry";
 
 /** The first `count` rows of `cols` as arrays of cells. */
 function cells(cols: Column[], count: number): Cell[][] {

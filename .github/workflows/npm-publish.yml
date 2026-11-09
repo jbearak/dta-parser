@@ -1,4 +1,6 @@
 # Publish the npm package @jbearak/dta-parser (js/) on a tag v<version>,
+# and only it: @jbearak/datakit (js/datakit) is published separately,
+# when its publishing is set up (plan 0021).
 # through npm's trusted publishing: npm trusts this workflow's GitHub
 # OIDC token, so no npm token is stored anywhere, and the package gets a
 # provenance statement linking it to this repository and commit.
@@ -40,9 +42,8 @@ jobs:
           registry-url: https://registry.npmjs.org
       # Trusted publishing needs npm 11.5.1 or later.
       - run: npm install -g npm@latest
-      # libzstd in the module needs a clang that targets wasm32.
-      - run: sudo apt-get update && sudo apt-get install -y clang llvm
-      - run: scripts/build-wasm.sh
+      # dta-parser's module alone (no libzstd: that is datakit's).
+      - run: scripts/build-wasm.sh dta
       - run: npm ci
         working-directory: js
       - run: npm run build

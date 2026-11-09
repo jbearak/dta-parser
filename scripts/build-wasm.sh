@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the wasm module the npm package embeds. Needs the
+# Build the wasm modules the npm packages embed. Needs the
 # wasm32-unknown-unknown target: rustup target add wasm32-unknown-unknown
 # CARGO may point at a rustup toolchain's cargo when the default one has
 # no wasm target.
@@ -35,11 +35,21 @@ fi
 # libzstd for size: as fast as -O3 in the benchmarks, 13 KB smaller with brotli.
 CFLAGS_wasm32_unknown_unknown="${CFLAGS_wasm32_unknown_unknown:--Os}"
 export CFLAGS_wasm32_unknown_unknown
-${CARGO:-cargo} build --release -p dta-ffi --target wasm32-unknown-unknown
-mkdir -p js/build
-cp target/wasm32-unknown-unknown/release/dta_ffi.wasm js/build/dta.wasm
-# A test build, for js/test/memory.test.mjs only: its memory is capped at
-# 64 MiB and it exports dta_test_set. Never published.
-RUSTFLAGS="-C link-arg=--max-memory=67108864" ${CARGO:-cargo} build --release -p dta-ffi \
-  --target wasm32-unknown-unknown --features test-hooks --target-dir target/wasm-test
-cp target/wasm-test/wasm32-unknown-unknown/release/dta_ffi.wasm js/build/dta-test.wasm
+# Two modules (plan 0021): the .dta one for @jbearak/dta-parser, and the
+# Parquet and fixed-width one for @jbearak/datakit. Each also has a test
+# build, for the memory tests only: its memory is capped at 64 MiB and it
+# exports dta_test_set. Never published.
+build() { # features, target dir, output
+  ${CARGO:-cargo} build --release -p dta-ffi --target wasm32-unknown-unknown \
+    --no-default-features --features "$1" --target-dir "$2"
+  mkdir -p "$(dirname "$3")"
+  cp "$2/wasm32-unknown-unknown/release/dta_ffi.wasm" "$3"
+}
+# `scripts/build-wasm.sh dta` builds dta-parser's alone (its publish
+# workflow needs no other).
+build wasm-dta target/wasm-dta js/build/dta.wasm
+RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-dta,test-hooks target/wasm-dta-test js/build/dta-test.wasm
+if [ "$1" != "dta" ]; then
+  build wasm-parquet target/wasm-parquet js/datakit/build/datakit.wasm
+  RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-parquet,test-hooks target/wasm-parquet-test js/datakit/build/datakit-test.wasm
+fi

@@ -20,12 +20,13 @@ TypeScript, with one implementation of the format underneath all four.
 - **Reads fixed-width text through a SAS setup file**, such as the
   National Survey of Family Growth from 1973 to 2017-2019, with the
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
-  (`read_fixed_width` in R, Python and Julia).
+  (`read_fixed_width` in R, Python and Julia, `readFixedWidth` in
+  TypeScript).
 - **Reads and writes Parquet that keeps all of this** (in R, through
   datakit's `read_parquet()` and `save_parquet()`; in Python, datakit's
   `read_parquet` and `save_parquet`, into polars; in Julia, Datakit's
-  `read_parquet` and `save_parquet`; in TypeScript,
-  `openParquetFile()` and `writeParquetFile()`): labels, formats and
+  `read_parquet` and `save_parquet`; in TypeScript, `@jbearak/datakit`'s
+  `readParquet()` and `saveParquet()`): labels, formats and
   notes travel in the file's metadata and `.a` to `.z` in its values
   (as NaNs that carry the letter), and the file is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
   read. A tibble or DataFrame read from a `.dta` file comes back the
@@ -35,7 +36,7 @@ TypeScript, with one implementation of the format underneath all four.
   section: [R](docs/r.md#parquet-files),
   [Python](docs/python.md#parquet-files),
   [Julia](docs/julia.md#parquet-files) and
-  [TypeScript](docs/typescript.md#parquet-files).
+  [TypeScript](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -60,6 +61,7 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
 | Julia | `Datakit` | [docs/julia.md](docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes) | a DataFrame from Parquet or fixed-width text, labels in its metadata, `.a` to `.z` in `DtaColumn`s |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
+| TypeScript, JavaScript | `@jbearak/datakit` | [docs/typescript.md](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets) | a `Dataset` of typed-array columns from Parquet, `.dta` or fixed-width text, with labels and `.a` to `.z`; a reader for Parquet like dta-parser's for `.dta` |
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
@@ -90,7 +92,10 @@ Parquet, and re-exports DtaParser's functions, so `using Datakit` is
 enough. Python's datakit works in polars rather than pandas: it reads
 and saves Parquet, `.dta` and fixed-width text as a polars frame and a
 `Meta` of labels and letters, while `dta_parser` stays the pandas
-package for `.dta` files.
+package for `.dta` files. TypeScript's `@jbearak/datakit` reads and
+saves Parquet, `.dta` and fixed-width text as a `Dataset` whose columns
+keep their letters, and reads Parquet through the same `TableReader`
+interface as `@jbearak/dta-parser` reads `.dta`.
 
 None of them is on a package registry (CRAN, PyPI, Julia's General
 registry or npm). Install them from this repository:
@@ -200,8 +205,8 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `DtaArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
 | binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | |
-| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `read_parquet`, `save_parquet` (polars) | Datakit's `read_parquet`, `save_parquet` | `openParquetFile`, `writeParquetFile`; the same reader interface as `.dta` |
+| fixed-width text through a SAS setup file | datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | datakit's `readFixedWidth` |
+| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `read_parquet`, `save_parquet` (polars) | Datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `dta_key`, `dta_keys` | `dta_key` | `dtaKey`, `dtaKeys` |

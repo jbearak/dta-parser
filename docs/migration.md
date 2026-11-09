@@ -5,6 +5,9 @@
   `DtaArray`, and `stata_key` becomes `dta_key`.
 - [DtaParser 0.2 to 0.3](#dtaparser-02-to-03) (Julia): Parquet and
   fixed-width text move to Datakit.
+- [dta-parser 1.x to 2.0](#dta-parser-1x-to-20) (TypeScript): Parquet
+  moves to `@jbearak/datakit`, which also reads fixed-width text and
+  whole datasets.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
 
@@ -99,6 +102,39 @@ it through `DtaParser.Internals`, which is for Datakit only, and checks
 the library's interface version when it loads. Its ABI version is now
 5 (the Parquet footer's key-value entries were added), so rebuild with
 `Pkg.build("DtaParser")` after updating.
+
+## dta-parser 1.x to 2.0
+
+`@jbearak/dta-parser` 2.0 reads and writes `.dta` only; Parquet moved to
+`@jbearak/datakit` (plan 0021), whose WebAssembly module carries the
+Parquet code, so dta-parser's is an eighth the size it was (344 KB
+against 2.8 MB). Install both from the checkout
+([datakit: install](typescript.md#datakit-install)); dta-parser is
+datakit's peer dependency.
+
+| 1.x | 2.0 |
+|---|---|
+| `openParquet`, `openParquetAsync`, `ParquetReader`, `AsyncParquetReader`, `writeParquet`, `writeParquetTo`, `toDate` from `@jbearak/dta-parser` | the same names from `@jbearak/datakit` |
+| `openParquetFile`, `writeParquetFile` from `@jbearak/dta-parser/node` | the same names from `@jbearak/datakit/node` |
+| the types `ParquetInfo`, `ParquetOptions`, `ParquetVariable`, `ParquetWriteOptions`, `RowGroup`, `ColumnChunk`, `Statistic` | from `@jbearak/datakit` |
+| `writeParquet`'s Parquet-only `WriteVariable` fields and types (`unit`, `timeZone`, `levels`, `ordered`, `categorical`; `bool` to `categorical`; bigint values) | datakit's `DatasetVariable`; dta-parser's `WriteVariable` is `.dta`'s |
+| `TableReader`, `AsyncTableReader` | gain `valueLabelNames()`, `characteristics()` and `notes()`; `TableInfo` gains an optional `timestamp`, `Variable` optional `unit`, `timeZone` and `categorical`. A class of yours that implements `TableReader` adds the three methods |
+| `DtaReader` | gains `valueLabelNames()` |
+| `dtaKey`, `dtaKeys` | also from `@jbearak/dta-parser/format` (the same functions) |
+| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | an error saying to make the column labelled numbers |
+
+Nothing else changes: the Parquet functions read and write the same
+files the same way.
+
+`MISSING`'s objects are now one set per process, shared by every copy of
+dta-parser 2.0 or later and by datakit, so a `ValueLabels` map one read
+is found with another's keys. A copy of 1.x makes its own objects, so do
+not mix 1.x and datakit in one project; npm reports the peer dependency
+conflict.
+
+New in datakit: `readParquet`, `readDta` and `readFixedWidth` read a
+whole table into a `Dataset`, which `saveParquet` and `saveDta` write
+([Read a whole file](typescript.md#read-a-whole-file)).
 
 ## Moving to @jbearak/dta-parser 1.0
 

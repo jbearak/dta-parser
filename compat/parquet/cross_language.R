@@ -140,11 +140,17 @@ check(identical(attr(d$seen, "format"), "%td"), "seen format")
 
 # Python's files: the letters from meta.missing, and from companion
 # columns, both written as tagged NaNs.
-for (f in c("from_python.parquet", "from_python_columns.parquet")) {
+# TypeScript's file (plan 0021) holds the same data as Python's.
+for (f in c("from_python.parquet", "from_python_columns.parquet", "from_typescript.parquet")) {
+  if (!file.exists(file.path(dir, f))) {
+    cat("no", f, "in", dir, "; not checked\n")
+    next
+  }
   p <- read_parquet(file.path(dir, f))
   w <- function(what) paste(f, what)
-  check(identical(attr(p, "label"), "From Python"), w("data label"))
-  check(identical(attr(p, "notes"), "A note from Python."), w("notes"))
+  who <- if (startsWith(f, "from_typescript")) "TypeScript" else "Python"
+  check(identical(attr(p, "label"), paste("From", who)), w("data label"))
+  check(identical(attr(p, "notes"), paste0("A note from ", who, ".")), w("notes"))
   check(identical(p$id, 1:6), w("id"))
   check_cells(p$score, c(num(1.5), ".", ".a", num(-2.25), ".z", num(2^1000)), w("score"))
   check(identical(attr(p$score, "label"), "A score") && identical(attr(p$score, "format"), "%9.2f"), w("score label, format"))
@@ -189,7 +195,7 @@ factors_of <- function(f) {
 jsonlite::write_json(list(from_r = factors_of("from_r.parquet"), from_python = factors_of("from_python.parquet")),
                      file.path(dir, "factors_r.json"), auto_unbox = TRUE, na = "null", digits = NA)
 
-cat("R checked", checked, "values and labels in Julia's and Python's files\n")
+cat("R checked", checked, "values and labels in Julia's, Python's and TypeScript's files\n")
 if (length(failures)) {
   cat("FAILED:\n", paste0("  ", failures, "\n"), sep = "")
   quit(status = 1)

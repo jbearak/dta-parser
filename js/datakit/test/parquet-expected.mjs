@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 
-export const parquetCompat = new URL("../../compat/parquet/", import.meta.url);
+export const parquetCompat = new URL("../../../compat/parquet/", import.meta.url);
 
 /** The fixtures, each with its expected JSON (integers past 2^53 as bigints). */
 export function parquetFixtures() {

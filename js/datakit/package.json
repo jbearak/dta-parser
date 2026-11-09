@@ -1,0 +1,52 @@
+{
+  "name": "@jbearak/datakit",
+  "version": "2.0.0",
+  "description": "Data preparation that keeps Stata's labels and .a to .z: Parquet files, fixed-width text through SAS setup files, and .dta",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jbearak/dta-parser.git",
+    "directory": "js/datakit"
+  },
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "node": [
+        "dist/node.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "THIRD-PARTY-NOTICES"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "peerDependencies": {
+    "@jbearak/dta-parser": "^2.0.0"
+  },
+  "scripts": {
+    "build": "node build.mjs && tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@jbearak/dta-parser": "file:..",
+    "@types/node": "^24.0.0",
+    "arquero": "^8.0.3",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

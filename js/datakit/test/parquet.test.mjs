@@ -10,10 +10,11 @@ import { join } from "node:path";
 import { checkFixture, parquetFixtures } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
-const { openDta, openParquet, openParquetAsync, writeParquet, writeDta, ParquetReader, MISSING, isMissing, toDate } = require("../dist/index.js");
+const { openParquet, openParquetAsync, writeParquet, ParquetReader, MISSING, isMissing, toDate } = require("../dist/index.js");
+const { openDta, writeDta } = require("@jbearak/dta-parser");
 const { openParquetFile, writeParquetFile } = require("../dist/node.js");
 
-const compat = new URL("../../compat/", import.meta.url);
+const compat = new URL("../../../compat/", import.meta.url);
 
 /** What a .dta file holds, as WriteDataset, from its reader. */
 function datasetOf(r) {
@@ -467,7 +468,7 @@ test("errors name what is wrong", () => {
   assert.throws(() => writeParquet({ variables: [{ name: "x", values: [1, 2] }, { name: "y", values: [1] }] }), /y has 1 values, not 2/);
   assert.throws(() => writeParquet({ variables: [{ name: "x", type: "float", values: [0.1] }] }), /a float column does not hold exactly/);
   assert.throws(() => writeParquet({ variables: [{ name: "x", type: "categorical", levels: ["a"], values: [1] }] }), /not a level code/);
-  assert.throws(() => writeDta({ variables: [{ name: "x", values: [1n] }] }), /cannot hold 64-bit integers; use writeParquet/);
+  assert.throws(() => writeDta({ variables: [{ name: "x", values: [1n] }] }), /cannot hold 64-bit integers; use saveDta \(which converts\) or saveParquet from @jbearak\/datakit/);
   // int64: "number" on values beyond the safe integers.
   const big = writeParquet({ variables: [{ name: "n", values: [1n, 2n ** 60n + 1n] }] });
   assert.throws(() => openParquet(big, { int64: "number" }).readColumns(["n"]), /int64: "bigint"/);

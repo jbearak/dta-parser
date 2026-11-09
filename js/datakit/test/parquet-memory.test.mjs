@@ -16,8 +16,8 @@ import { build } from "esbuild";
 const require = createRequire(import.meta.url);
 const ordinary = require("../dist/index.js");
 const src = fileURLToPath(new URL("../src/", import.meta.url));
-const testWasm = fileURLToPath(new URL("../build/dta-test.wasm", import.meta.url));
-const skip = existsSync(testWasm) ? false : "build/dta-test.wasm is missing (run scripts/build-wasm.sh)";
+const testWasm = fileURLToPath(new URL("../build/datakit-test.wasm", import.meta.url));
+const skip = existsSync(testWasm) ? false : "build/datakit-test.wasm is missing (run scripts/build-wasm.sh)";
 
 let capped;
 before(async () => {
@@ -32,7 +32,7 @@ before(async () => {
     target: "node24",
     outfile: out,
     loader: { ".wasm": "binary" },
-    plugins: [{ name: "test-wasm", setup: (b) => b.onResolve({ filter: /dta\.wasm$/ }, () => ({ path: testWasm })) }],
+    plugins: [{ name: "test-wasm", setup: (b) => b.onResolve({ filter: /datakit\.wasm$/ }, () => ({ path: testWasm })) }],
   });
   process.env.DTA_TEST_PARQUET_BUDGET = String(16 << 20);
   capped = require(out);

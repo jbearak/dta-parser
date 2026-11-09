@@ -126,10 +126,13 @@ check(isequal(utc_ms.(df.whenfrac), [1000, 2000, missing, 3500, -1, 6000]), "whe
 # Float64 here, seconds since 1960 times 1000, so 1.000001 s keeps its
 # microsecond.
 const MS1960 = 3653 * 86_400_000
-for f in ("from_python.parquet", "from_python_columns.parquet")
+# TypeScript's file (plan 0021) holds the same data as Python's.
+for f in ("from_python.parquet", "from_python_columns.parquet", "from_typescript.parquet")
+    isfile(joinpath(DIR, f)) || (println("no $f in $DIR; not checked"); continue)
     p = read_parquet(joinpath(DIR, f); timestamps = :truncate)
     w(what) = "$f $what"
-    check(metadata(p, "label") == "From Python" && metadata(p, "notes") == ["A note from Python."], w("label, notes"))
+    who = startswith(f, "from_typescript") ? "TypeScript" : "Python"
+    check(metadata(p, "label") == "From $who" && metadata(p, "notes") == ["A note from $who."], w("label, notes"))
     check(p.id == 1:6 && p.id isa Vector{Int32}, w("id"))
     check(p.score isa DtaColumn{Float64}, w("score: type"))
     cells(p.score, [1.5, 0, 0, -2.25, 0, 2.0^1000], [0, 1, 2, 0, 27, 0], w("score"))
@@ -158,7 +161,7 @@ for f in ("from_python.parquet", "from_python_columns.parquet")
     check(colmetadata(p, :stamp, "format") == "%tc", w("stamp: format"))
 end
 
-println("Julia checked ", checked[], " values and labels in R's and Python's files")
+println("Julia checked ", checked[], " values and labels in R's, Python's and TypeScript's files")
 if !isempty(failures)
     println("FAILED:")
     foreach(f -> println("  ", f), failures)

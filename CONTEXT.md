@@ -75,9 +75,25 @@ version when it loads. In Python, `datakit` (distribution
 with labels and `.a` to `.z` in a **Meta** beside the frame and no `:=`;
 it is pure Python, calls `dta_parser._native`, and checks its
 `ABI_VERSION` when imported. Python's has `.dta` too because its frames
-are polars and dta_parser's are pandas.
+are polars and dta_parser's are pandas. In TypeScript,
+`@jbearak/datakit`: Parquet (`ParquetReader`, `readParquet`,
+`saveParquet`), `readFixedWidth`, and `readDta` and `saveDta` into a
+**Dataset**; it has its own wasm module, not the format package's, and
+takes `MISSING` and the column types from `@jbearak/dta-parser`, its
+peer dependency.
 _Avoid_: using datakit for `.dta` reading or labels in R or Julia
 (those are dtaparser's and DtaParser's)
+
+**Dataset**:
+In TypeScript's datakit, a whole table in memory: `variables` (each a
+name, type, format, label, value label set name and `values`, a reader's
+column) and the dataset's label, notes, every value label set,
+characteristics, sort order and `.dta` timestamp. `readDta`,
+`readParquet`, `readFixedWidth` and `readDataset` return one
+(`ReadDataset`, every field filled); `saveParquet` and `saveDta` take
+one. Its columns hold `.a` to `.z` in their `missing` codes, so no
+**Meta** or companion column is needed.
+_Avoid_: frame, table (unqualified)
 
 **Meta**:
 In Python's datakit, the dataclass returned beside every polars frame,
