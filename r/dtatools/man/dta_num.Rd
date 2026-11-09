@@ -42,6 +42,10 @@ as a new \code{dta_num} without labels. In \code{&}, \code{|} and \code{!} a val
 when it is nonzero or missing. \code{sum()}, \code{mean()}, \code{max()} and the
 like keep R's rules. For \code{pmax()} and \code{pmin()}, use \code{\link[=dta_pmax]{dta_pmax()}}
 and \code{\link[=dta_pmin]{dta_pmin()}}.
+
+In a tibble, a column with value labels (\verb{<dta+lbl>}) shows each
+value with its label, \code{1 [Low]} or \verb{.d [Don't know]}, as haven's
+labelled columns do. \code{print(x)} lists the labels after the values.
 }
 \examples{
 x <- dta_num(c(1, 5, NA, .d), labels = c(Low = 1, High = 5), label = "Score")

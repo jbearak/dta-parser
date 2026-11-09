@@ -69,3 +69,32 @@ test_that("is_missing treats an empty string as missing, as Stata does", {
   expect_identical(is_missing(c("a", "", NA)), c(FALSE, TRUE, FALSE))
   expect_identical(is_missing(c(1L, NA)), c(FALSE, TRUE))
 })
+
+test_that("a tibble shows each labelled value with its label, as haven's labelled columns do", {
+  old <- options(width = 80, cli.num_colors = 1)
+  on.exit(options(old), add = TRUE)
+  d <- dibble(x = dta_num(c(1, 0, .r, NA, 1.5), labels = c(No = 0, Yes = 1, Refused = .r)),
+              y = dta_num(c(1, 2, 3, .a, NA)))
+  out <- capture.output(print(d))
+  expect_match(out[3], "<dta\\+lbl> +<dta>")
+  expect_match(out[4], "^1 1.0 \\[Yes\\] ")
+  expect_match(out[5], "^2 0.0 \\[No\\] ")
+  expect_match(out[6], "^3  .r \\[Refused\\] ")
+  expect_match(out[7], "^4   \\. +\\.a")
+  expect_match(out[8], "^5 1.5 +\\.")
+  # A column without labels shows only its values.
+  expect_identical(vctrs::vec_ptype_abbr(d$y), "dta")
+  expect_false(any(grepl("[", substring(out[4:8], 18), fixed = TRUE)))
+})
+
+test_that("print() lists a dta_num's labels after its values", {
+  x <- dta_num(c(1, .r), labels = c(Refused = .r, Yes = 1), label = "Wants")
+  out <- capture.output(print(x))
+  expect_identical(out[1], "<Wants>")
+  labels <- out[(which(out == "Labels:") + 1):length(out)]
+  expect_length(labels, 3)
+  expect_match(labels[1], "value +label")
+  expect_match(labels[2], "1 +Yes")
+  expect_match(labels[3], "\\.r +Refused")
+  expect_false(any(grepl("Labels:", capture.output(print(dta_num(1))))))
+})
