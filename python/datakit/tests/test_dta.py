@@ -5,6 +5,7 @@ tested against haven, pandas and ReadStat."""
 import datetime as dt
 import math
 import struct
+import warnings
 
 import numpy as np
 import polars as pl
@@ -108,6 +109,18 @@ def test_read_dta_agrees_with_dta_parser_per_cell(path):
     assert meta.sort == attrs["sort_order"]
     for name, c in attrs["columns"].items():
         assert meta.columns[name] == dk.Column(c["label"] or None, c["format"] or None, c["value_labels"] or None)
+
+
+def test_save_dta_warns_once_about_a_name_stata_reserves(tmp_path):
+    with pytest.warns(UserWarning, match='save_dta: "in" is a word Stata reserves; rename it before using the file in Stata'):
+        dk.save_dta(pl.DataFrame({"in": [1], "ok": [2]}), tmp_path / "r.dta")
+    df, _ = dk.read_dta(tmp_path / "r.dta")
+    assert df.columns == ["in", "ok"]
+    # A companion letter column is not written, so its name does not matter.
+    meta = dk.Meta(columns={"x": dk.Column()}, letter_columns={"x": "in"}, rows=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        dk.save_dta(pl.DataFrame({"x": [1.0], "in": pl.Series([None], dtype=dk.LETTERS)}), tmp_path / "c.dta", meta=meta)
 
 
 @pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)

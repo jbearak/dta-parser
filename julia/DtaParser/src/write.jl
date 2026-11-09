@@ -176,10 +176,21 @@ const RESERVED = Set(["_all", "_b", "byte", "_coef", "_cons", "double", "float",
                       "_pi", "_pred", "_rc", "_skip", "strL", "using", "with"])
 
 function check_name(name::AbstractString)
-    ok = 1 <= length(name) <= 32 && !isdigit(first(name)) && all(c -> c == '_' || isletter(c) || isdigit(c), name) &&
-         !(name in RESERVED) && match(r"^str[0-9]+$", name) === nothing
+    ok = 1 <= length(name) <= 32 && !isdigit(first(name)) && all(c -> c == '_' || isletter(c) || isdigit(c), name)
     ok || throw(WriteError("column name \"$name\" is not a valid Stata name: 1 to 32 letters, digits or _, " *
-                           "not starting with a digit, and not a reserved word"))
+                           "not starting with a digit"))
+end
+
+reserved_name(name) = name in RESERVED || match(r"^str[0-9]+$", name) !== nothing
+
+# One warning naming the columns called by a word Stata reserves: the file
+# is still written, but Stata cannot use them until they are renamed.
+function warn_reserved(names)
+    reserved = [n for n in names if reserved_name(n)]
+    isempty(reserved) && return
+    one = length(reserved) == 1
+    @warn "write_dta: $(join(("\"$n\"" for n in reserved), ", ")) $(one ? "is a word" : "are words") Stata reserves; " *
+          "rename $(one ? "it" : "them") before using the file in Stata"
 end
 
 numeric_format(f) = !isempty(f) && !endswith(f, "s")
@@ -261,6 +272,7 @@ function write_dta(path::AbstractString, table; label=nothing, notes=nothing, ti
     nrows = isempty(columns) ? something(Tables.rowcount(cols), 0) : length(columns[1])
     prepared = Prepared[]
     variables = Any[]
+    warn_reserved(String.(names))
     for (n, x) in zip(names, columns)
         name = String(n)
         check_name(name)

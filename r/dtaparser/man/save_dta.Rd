@@ -22,9 +22,12 @@ on the package that made them.
 \details{
 \strong{Numbers.} A numeric column keeps its \code{storage} attribute when it
 has one (dtatools' \code{dta_num} columns do); otherwise integers are
-written as long, doubles as double and logicals as byte. \code{NA} is
+written as long, doubles as double and logicals as byte. An integer
+column holding a value past what a long holds (-2,147,483,647 to
+2,147,483,620; the 27 values above are Stata's missing values) is
+written as double, which holds every integer exactly. \code{NA} is
 \code{.}, and a tagged NA (\code{\link[=tagged_na]{tagged_na()}}) is its letter, \code{.a} to \code{.z}. A
-value that does not fit its storage type is an error.
+value that does not fit a \code{storage} attribute's type is an error.
 
 \strong{Value labels.} A column's \code{labels} attribute, as a
 \code{\link[=with_labels]{dtaparser_labelled}} column has, is written as a value
@@ -58,6 +61,12 @@ column that is no longer a factor loses its marker.
 Strings must be UTF-8 (see \code{\link[=enc2utf8]{enc2utf8()}}).
 
 Other classes, such as \code{POSIXlt}, \code{difftime} or lists, are an error.
+
+\strong{Names.} A column named with a word Stata reserves (\verb{_all}, \verb{_b},
+\code{byte}, \verb{_coef}, \verb{_cons}, \code{double}, \code{float}, \code{if}, \verb{in}, \code{int},
+\code{long}, \verb{_n}, \verb{_N}, \verb{_pi}, \verb{_pred}, \verb{_rc}, \verb{_skip}, \code{strL}, \code{using},
+\code{with}, or \code{str} followed by digits) is written as named, with a
+warning, since Stata cannot use the variable until it is renamed.
 
 \strong{Metadata.} A column's \code{label} attribute is its variable label and
 its \code{format} its display format. The data frame's attributes give the

@@ -110,8 +110,9 @@ chooses the rest from the dtypes:
 | bytes | binary strL |
 
 Anything else is an error naming the column, as is a column name Stata
-cannot hold (1 to 32 letters, digits or `_`, not starting with a digit,
-not a reserved word). The index is not written.
+cannot hold (1 to 32 letters, digits or `_`, not starting with a digit).
+A name Stata reserves (such as `long` or `in`) is written, with a
+warning. The index is not written.
 
 ## Parquet
 

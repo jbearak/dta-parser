@@ -532,7 +532,13 @@ Strings are written as `strN` (N the longest value in bytes) up to
 2045 bytes and as strLs beyond, each distinct strL stored once.
 Stata has no missing string; write `""`. A number that does not fit
 its type (300 in a byte, 1.5 in an int, a value in the range Stata
-reserves for missing codes) throws an error naming the variable.
+reserves for missing codes) throws an error naming the variable. A
+variable named with a word Stata reserves (`_all`, `_b`, `byte`,
+`_coef`, `_cons`, `double`, `float`, `if`, `in`, `int`, `long`, `_n`,
+`_N`, `_pi`, `_pred`, `_rc`, `_skip`, `strL`, `using`, `with`, or `str`
+followed by digits) is written, with one warning (a process warning
+with code `DTA_RESERVED_NAME`), since Stata cannot use it until it is
+renamed.
 
 To write back what you read, pass each variable's `type`, `format`,
 `label` and `valueLabels` from `r.variables`, and the sets from

@@ -418,13 +418,9 @@ pub fn dta_read_arrow<'py>(
 
 // ---------------------------------------------------------------- write
 
-const RESERVED: &[&str] = &[
-    "_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long", "_n", "_N", "_pi", "_pred",
-    "_rc", "_skip", "strL", "using", "with",
-];
-
 /// Whether Stata can hold `name`: a letter or _, then up to 31 letters,
-/// digits or _; not reserved; not str followed by digits.
+/// digits or _. A word Stata reserves is allowed: datakit's `save_dta`
+/// warns about it (dta_parser's `reserved_warning`) and writes it.
 fn stata_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else { return false };
@@ -432,8 +428,6 @@ fn stata_name(name: &str) -> bool {
     (first.is_alphabetic() || first == '_')
         && name.chars().count() <= 32
         && chars.all(word)
-        && !RESERVED.contains(&name)
-        && !(name.starts_with("str") && name.len() > 3 && name[3..].bytes().all(|b| b.is_ascii_digit()))
 }
 
 const RANGES: [(StorageType, f64, f64); 3] = [
@@ -502,7 +496,7 @@ pub fn dta_write_arrow<'py>(
         let n = &c.field.name;
         if !stata_name(n) {
             return Err(PyValueError::new_err(format!(
-                "column \"{n}\" is not a name Stata can hold: 1 to 32 letters, digits or _, not starting with a digit, and not a reserved word"
+                "column \"{n}\" is not a name Stata can hold: 1 to 32 letters, digits or _, not starting with a digit"
             )));
         }
         if !seen.insert(n.as_str()) {

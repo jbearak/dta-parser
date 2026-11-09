@@ -133,6 +133,13 @@ end
     @test storage(read_dta(write_dta(p, df)), :x) == "double"
 end
 
+@testset "a column named with a word Stata reserves is written, with one warning" begin
+    p = joinpath(mktempdir(), "reserved.dta")
+    @test_logs (:warn, "write_dta: \"if\", \"_n\", \"str12\" are words Stata reserves; rename them before using the file in Stata") write_dta(p, (var"if"=[1], _n=[2], str12=[3], longer=[4]))
+    @test names(DataFrame(read_dta(p))) == ["if", "_n", "str12", "longer"]
+    @test_logs write_dta(p, (Long=[1], str=[2]))
+end
+
 @testset "write errors" begin
     dir = mktempdir()
     p = joinpath(dir, "bad.dta")
@@ -142,7 +149,7 @@ end
     catch e
         sprint(showerror, e)
     end
-    for bad in ("1x", "if", "_n", "str12", "a b", "x"^33, "")
+    for bad in ("1x", "a b", "x"^33, "")
         @test occursin("\"$bad\" is not a valid Stata name", message(() -> write_dta(p, NamedTuple{(Symbol(bad),)}(([1],)))))
     end
     @test occursin("column big", message(() -> write_dta(p, (big=[2^53 + 1],))))

@@ -408,9 +408,13 @@ Columns without metadata get a storage type from their dtype:
 | `bytes` values | binary strL |
 
 Anything else raises `TypeError` naming the column. A column name Stata
-cannot hold (1 to 32 letters, digits or `_`, not starting with a digit,
-not a reserved word such as `in` or `long`) raises `ValueError`; there
-is no silent renaming.
+cannot hold (1 to 32 letters, digits or `_`, not starting with a digit)
+raises `ValueError`; there is no silent renaming. A column named with a
+word Stata reserves (`_all`, `_b`, `byte`, `_coef`, `_cons`, `double`,
+`float`, `if`, `in`, `int`, `long`, `_n`, `_N`, `_pi`, `_pred`, `_rc`,
+`_skip`, `strL`, `using`, `with`, or `str` followed by digits) is
+written, with one `UserWarning`, since Stata cannot use it until it is
+renamed; datakit's `save_dta` does the same.
 
 Labels, by argument or through `attrs`:
 

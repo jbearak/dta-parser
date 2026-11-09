@@ -369,8 +369,10 @@ Columns map to storage types:
 | `Vector{UInt8}` | binary strL |
 
 Anything else, or a column name Stata cannot hold (1 to 32 letters,
-digits or `_`, not starting with a digit, not a reserved word), throws an
-error naming the column. A column whose metadata names a storage type
+digits or `_`, not starting with a digit), throws an error naming the
+column. A column named with a word Stata reserves (such as `long`, `in`
+or `str10`) is written, with one warning, since Stata cannot use it
+until it is renamed. A column whose metadata names a storage type
 keeps it when the values fit.
 
 Labels come from the table's metadata if it has any, and from keyword

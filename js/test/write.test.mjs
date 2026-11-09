@@ -12,6 +12,20 @@ const { writeDtaFile, openDtaFile } = require("../dist/node.js");
 
 const compat = new URL("../../compat/", import.meta.url);
 
+test("a variable named with a word Stata reserves is written, with one warning", async () => {
+  const seen = [];
+  const listen = (w) => seen.push(w);
+  process.on("warning", listen);
+  const bytes = writeDta({ variables: [{ name: "long", values: [1] }, { name: "if", values: [2] }, { name: "str10", values: [3] }, { name: "longer", values: [4] }] });
+  writeDta({ variables: [{ name: "str", values: [1] }, { name: "Long", values: [2] }] });
+  await new Promise((r) => setImmediate(r));
+  process.off("warning", listen);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].code, "DTA_RESERVED_NAME");
+  assert.equal(seen[0].message, '"long", "if", "str10" are words Stata reserves; rename them before using the file in Stata');
+  assert.deepEqual(openDta(bytes).variables.map((v) => v.name), ["long", "if", "str10", "longer"]);
+});
+
 test("a dataset reads back as written", () => {
   const bytes = writeDta({
     label: "Written by npm",

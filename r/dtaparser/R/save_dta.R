@@ -6,9 +6,12 @@
 #'
 #' **Numbers.** A numeric column keeps its `storage` attribute when it
 #' has one (dtatools' `dta_num` columns do); otherwise integers are
-#' written as long, doubles as double and logicals as byte. `NA` is
+#' written as long, doubles as double and logicals as byte. An integer
+#' column holding a value past what a long holds (-2,147,483,647 to
+#' 2,147,483,620; the 27 values above are Stata's missing values) is
+#' written as double, which holds every integer exactly. `NA` is
 #' `.`, and a tagged NA ([tagged_na()]) is its letter, `.a` to `.z`. A
-#' value that does not fit its storage type is an error.
+#' value that does not fit a `storage` attribute's type is an error.
 #'
 #' **Value labels.** A column's `labels` attribute, as a
 #' [`dtaparser_labelled`][with_labels] column has, is written as a value
@@ -42,6 +45,12 @@
 #' Strings must be UTF-8 (see [enc2utf8()]).
 #'
 #' Other classes, such as `POSIXlt`, `difftime` or lists, are an error.
+#'
+#' **Names.** A column named with a word Stata reserves (`_all`, `_b`,
+#' `byte`, `_coef`, `_cons`, `double`, `float`, `if`, `in`, `int`,
+#' `long`, `_n`, `_N`, `_pi`, `_pred`, `_rc`, `_skip`, `strL`, `using`,
+#' `with`, or `str` followed by digits) is written as named, with a
+#' warning, since Stata cannot use the variable until it is renamed.
 #'
 #' **Metadata.** A column's `label` attribute is its variable label and
 #' its `format` its display format. The data frame's attributes give the
@@ -77,6 +86,13 @@ save_dta <- function(data, file) {
   # doubles, integers, logicals and UTF-8 strings in place. Dates and
   # factors become the numbers Stata stores.
   cols <- Map(written_column, data, names(data))
+  reserved <- names(data)[is_reserved_name(names(data))]
+  if (length(reserved)) {
+    warning("save_dta: ", paste0("\"", reserved, "\"", collapse = ", "),
+            if (length(reserved) == 1) " is a word" else " are words",
+            " Stata reserves; rename ", if (length(reserved) == 1) "it" else "them",
+            " before using the file in Stata", call. = FALSE)
+  }
   label_sets <- vapply(cols, function(c) c$label_set, "", USE.NAMES = FALSE)
   sets <- list()
   for (c in cols) {
@@ -144,12 +160,28 @@ written_column <- function(x, name) {
     storage <- "str"
     labels <- NULL
   } else if (is.numeric(x) || is.logical(x)) {
-    storage <- storage %||% if (is.logical(x)) "byte" else if (is.integer(x)) "long" else "double"
+    storage <- storage %||% if (is.logical(x)) "byte" else if (is.integer(x)) integer_storage(x) else "double"
   } else {
     stop("save_dta: cannot write ", name, ", a column of class ", class(x)[[1]])
   }
   label_set <- if (is.null(labels)) "" else label_set %||% name
   list(x = x, storage = storage, format = format %||% "", labels = labels, label_set = label_set)
+}
+
+# long, or double when a value is past what a long holds: an R integer
+# reaches 2,147,483,647, but a long's numbers stop at 2,147,483,620 (the
+# codes above are `.` to `.z`). R's integer NA is -2,147,483,648, so the
+# lower end, -2,147,483,647, is always within.
+integer_storage <- function(x) {
+  if (any(x > 2147483620L, na.rm = TRUE)) "double" else "long"
+}
+
+# Words Stata reserves, which it cannot use as variable names (the list
+# Python's writer checks too), and str followed by digits.
+reserved_names <- c("_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long",
+                    "_n", "_N", "_pi", "_pred", "_rc", "_skip", "strL", "using", "with")
+is_reserved_name <- function(names) {
+  names %in% reserved_names | grepl("^str[0-9]+$", names)
 }
 
 # "28 Oct 2026 14:38", with English month names whatever the locale.
