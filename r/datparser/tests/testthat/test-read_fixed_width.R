@@ -96,7 +96,8 @@ test_that("errors name the setup line, and no file is written", {
   g <- fw_files()
   df <- read_fixed_width(g[["data"]], g[["setup"]])
   made <- setdiff(list.files(tempdir(), all.files = TRUE, recursive = TRUE), before)
-  expect_setequal(made, c(sub(paste0(tempdir(), "/"), "", c(f, g), fixed = TRUE)))
+  # Only the fixtures: each a directory and a file name under tempdir().
+  expect_setequal(made, file.path(basename(dirname(c(f, g))), basename(c(f, g))))
 })
 
 test_that("tagged NAs are haven's, and a long label is kept whole", {
