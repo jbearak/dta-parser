@@ -77,6 +77,9 @@ test("the root entry uses no Node API and loads no .dta module", async () => {
     bundle: true,
     format: "cjs",
     platform: "neutral",
+    // The oldest Node the package supports, as the published bundles
+    // (esbuild's default target uses Uint8Array.fromBase64, which Node 24 lacks).
+    target: "node24",
     mainFields: ["main"],
     outfile: out,
     loader: { ".wasm": "binary" },
