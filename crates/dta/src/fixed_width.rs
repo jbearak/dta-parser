@@ -97,6 +97,53 @@ pub struct FixedWidth<'d> {
     sets: Sets,
 }
 
+/// Values (records times columns) below which [`FixedWidth::read`] scans
+/// on one thread: a thread costs more than such a file takes.
+const SCAN_PARALLEL: usize = 1 << 20;
+
+/// What [`scan_columns`] learns of one wanted variable.
+struct ColumnScan {
+    k: usize,
+    stats: Stats,
+    /// A string variable's values.
+    strings: Option<Vec<String>>,
+    /// Fields that are not numbers, and the record number of the first.
+    bad: (usize, usize),
+}
+
+/// Read the variables `cols` of every kept record, record by record (a
+/// record's fields are near each other in memory).
+fn scan_columns(program: &Program, data: &[u8], kept: &[Rec], utf8: bool, cols: &[usize]) -> Vec<ColumnScan> {
+    let vars = &program.layout.vars;
+    let mut out: Vec<ColumnScan> = cols
+        .iter()
+        .map(|&k| ColumnScan {
+            k,
+            stats: Stats::default(),
+            strings: vars[k].is_str.then(|| Vec::with_capacity(kept.len())),
+            bad: (0, 0),
+        })
+        .collect();
+    for rec in kept {
+        for c in &mut out {
+            match &mut c.strings {
+                Some(s) => s.push(decode(program.string(data, rec, c.k), utf8)),
+                None => {
+                    let (v, code, invalid) = program.number(data, rec, c.k);
+                    if invalid {
+                        if c.bad.0 == 0 {
+                            c.bad.1 = rec.number;
+                        }
+                        c.bad.0 += 1;
+                    }
+                    c.stats.add(v, code);
+                }
+            }
+        }
+    }
+    out
+}
+
 /// A parsed setup: what [`FixedWidth::read`] reads data through. Parse
 /// it once to learn the variables' names before choosing which to read.
 pub struct FixedWidthSetup {
@@ -173,34 +220,28 @@ impl<'d> FixedWidth<'d> {
         }
 
         // One pass, record by record, for the numeric types, the invalid
-        // fields and the string values.
+        // fields and the string values: on several threads, each taking
+        // a run of the wanted columns, unless the file is small.
         let mut stats = vec![Stats::default(); n];
-        let mut strings: Vec<Option<Vec<String>>> = layout
-            .vars
-            .iter()
-            .zip(&wanted)
-            .map(|(v, &w)| (w && v.is_str).then(|| Vec::with_capacity(kept.len())))
-            .collect();
+        let mut strings: Vec<Option<Vec<String>>> = vec![None; n];
         let mut bad: Vec<(usize, usize)> = vec![(0, 0); n];
-        for rec in &kept {
-            for (k, var) in layout.vars.iter().enumerate() {
-                if !wanted[k] {
-                    continue;
-                }
-                if var.is_str {
-                    let s = program.string(&data, rec, k);
-                    strings[k].as_mut().unwrap().push(decode(s, utf8));
-                } else {
-                    let (v, code, invalid) = program.number(&data, rec, k);
-                    if invalid {
-                        if bad[k].0 == 0 {
-                            bad[k].1 = rec.number;
-                        }
-                        bad[k].0 += 1;
-                    }
-                    stats[k].add(v, code);
-                }
-            }
+        let cols: Vec<usize> = (0..n).filter(|&k| wanted[k]).collect();
+        let small = kept.len().saturating_mul(cols.len()) < SCAN_PARALLEL && !crate::threads::small_for_tests();
+        let workers = if small { 1 } else { crate::threads::resolve(0).min(cols.len()).max(1) };
+        let scan = |cols: &[usize]| scan_columns(&program, &data, &kept, utf8, cols);
+        let scans: Vec<ColumnScan> = if workers == 1 {
+            scan(&cols)
+        } else {
+            let size = cols.len().div_ceil(workers);
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = cols.chunks(size).map(|c| scope.spawn(move || scan(c))).collect();
+                handles.into_iter().flat_map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e))).collect()
+            })
+        };
+        for c in scans {
+            stats[c.k] = c.stats;
+            strings[c.k] = c.strings;
+            bad[c.k] = c.bad;
         }
         for (k, &(count, first)) in bad.iter().enumerate() {
             if count > 0 {
@@ -596,7 +637,16 @@ fn token(b: &[u8], i: usize, loc: Loc) -> Result<(Tok, usize)> {
             return Ok((Tok::Sym(op.into()), i + 2));
         }
     }
-    let len = std::str::from_utf8(&b[i..]).ok().and_then(|s| s.chars().next()).map_or(1, char::len_utf8);
+    // The character's length from its first byte: the source is valid
+    // UTF-8. Decoding from `b[i..]` would check the rest of the file each
+    // time, which made a 1.5 MB setup take half a second.
+    let len = match c {
+        0xc0..=0xdf => 2,
+        0xe0..=0xef => 3,
+        0xf0..=0xff => 4,
+        _ => 1,
+    }
+    .min(b.len() - i);
     Ok((Tok::Sym(String::from_utf8_lossy(&b[i..i + len]).into_owned()), i + len))
 }
 
@@ -1306,6 +1356,13 @@ fn parse_number(s: &[u8]) -> (f64, u8, bool) {
     if s.is_empty() || s == b"." {
         return (0.0, SYSTEM, false);
     }
+    // Most fields are a few digits. Up to 15 digits the integer is below
+    // 2^53, so converting it is exact and equals what `parse` gives;
+    // anything else (a sign, a point, an exponent) takes `parse` below.
+    if s.len() <= 15 && s.iter().all(u8::is_ascii_digit) {
+        let n = s.iter().fold(0u64, |n, &d| n * 10 + u64::from(d - b'0'));
+        return (n as f64, NOT_MISSING, false);
+    }
     let ok = s.iter().all(|c| c.is_ascii_digit() || matches!(c, b'+' | b'-' | b'.' | b'e' | b'E'));
     match std::str::from_utf8(s).ok().filter(|_| ok).and_then(|s| s.parse::<f64>().ok()) {
         Some(v) if v.is_finite() => (v, NOT_MISSING, false),
@@ -1694,6 +1751,22 @@ mod tests {
         assert_eq!(parse_number(b"1.5e2"), (150.0, NOT_MISSING, false));
         assert_eq!(parse_number(b"OOO0"), (0.0, SYSTEM, true));
         assert_eq!(parse_number(b"inf"), (0.0, SYSTEM, true));
+    }
+
+    /// The fast path for digits gives the same bits as `str::parse`.
+    #[test]
+    fn digits_parse_exactly() {
+        let slow = |s: &str| s.parse::<f64>().unwrap().to_bits();
+        for s in ["0", "7", "007", "98", "000000000000000", "999999999999999", "123456789012345", "9007199254740991"] {
+            let (v, code, bad) = parse_number(s.as_bytes());
+            assert_eq!((v.to_bits(), code, bad), (slow(s), NOT_MISSING, false), "{s}");
+        }
+        // Signs, points and exponents still go through `parse`.
+        assert_eq!(parse_number(b"-0").0.to_bits(), (-0.0f64).to_bits());
+        assert_eq!(parse_number(b"+5"), (5.0, NOT_MISSING, false));
+        assert_eq!(parse_number(b".5"), (0.5, NOT_MISSING, false));
+        assert_eq!(parse_number(b"1e3"), (1000.0, NOT_MISSING, false));
+        assert_eq!(parse_number(b"12345678901234567890"), (12345678901234567890.0, NOT_MISSING, false));
     }
 
     #[test]
