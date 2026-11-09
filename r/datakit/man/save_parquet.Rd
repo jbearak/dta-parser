@@ -2,22 +2,45 @@
 % Please edit documentation in R/parquet.R
 \name{save_parquet}
 \alias{save_parquet}
+\alias{save_parquet.default}
+\alias{save_parquet.polars_data_frame}
+\alias{save_parquet.polars_lazy_frame}
 \title{Write a data frame as a Parquet file}
 \usage{
-save_parquet(
+save_parquet(data, file, ...)
+
+\method{save_parquet}{default}(
   data,
   file,
   compression = "snappy",
   compression_level = NULL,
   row_group_size = NULL,
-  missing_letters = TRUE
+  missing_letters = TRUE,
+  ...
 )
+
+\method{save_parquet}{polars_data_frame}(
+  data,
+  file,
+  compression = "snappy",
+  compression_level = NULL,
+  row_group_size = NULL,
+  missing_letters = TRUE,
+  ...,
+  meta = NULL,
+  timestamps = "error"
+)
+
+\method{save_parquet}{polars_lazy_frame}(data, file, ...)
 }
 \arguments{
 \item{data}{A data frame, such as one \code{read_dta()} or \code{read_parquet()}
 returned.}
 
 \item{file}{Path to write.}
+
+\item{...}{For a polars DataFrame, \code{meta} and \code{timestamps}, by name;
+nothing else.}
 
 \item{compression}{The codec: \code{"snappy"} (the default), \code{"zstd"},
 \code{"gzip"}, \code{"lz4_raw"} or \code{"none"}. Other tools read snappy files
@@ -33,6 +56,14 @@ many rows in each as fit in about 1 GiB, at most 262,144.}
 \item{missing_letters}{Whether to keep \code{.a} to \code{.z} as tagged NaNs
 (\code{TRUE}) or write them as nulls (\code{FALSE}), for files meant for SQL
 engines and polars, which count NaN as a value.}
+
+\item{meta}{For a polars DataFrame, the \code{\link{datakit_meta}}
+a read gave with it, or \code{NULL}. Entries for columns not in the frame
+are dropped.}
+
+\item{timestamps}{For a polars DataFrame, \code{"error"} (the default) or
+\code{"truncate"}; kept for files written with letters in a Datetime
+column by R, Julia or TypeScript.}
 }
 \value{
 \code{data}, invisibly.
@@ -86,6 +117,20 @@ rest: \code{label}, \code{notes}, \code{characteristics} (a data frame with char
 columns \code{variable}, \code{name}, \code{value}) and \code{sort_order} (column names), as
 for \code{save_dta()}.
 }
+\section{polars frames}{
+
+\code{save_parquet()} is a generic. A polars DataFrame, as
+\code{\link[=read_parquet_pl]{read_parquet_pl()}} returns, is written with what its \code{meta} says, as
+Python datakit's \code{dk.save_parquet()} writes it: its \code{.a} to \code{.z} (the
+tagged NaNs of Float64 columns) are written as they are; a column a
+read made Float64 to hold them is written with its file's storage type
+in the profile when its values still fit it; \code{meta$sort} is kept only
+if the rows are still in that order. Decimal, Duration and nested
+dtypes are errors naming the column. A LazyFrame is an error: call
+\verb{$collect()} on it first. Neither polars nor nanoarrow is needed to
+save a data frame.
+}
+
 \examples{
 df <- data.frame(
   id = 1:3,

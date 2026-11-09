@@ -278,6 +278,25 @@ key_value_table <- function(kv) {
 #' @param missing_letters Whether to keep `.a` to `.z` as tagged NaNs
 #'   (`TRUE`) or write them as nulls (`FALSE`), for files meant for SQL
 #'   engines and polars, which count NaN as a value.
+#' @param ... For a polars DataFrame, `meta` and `timestamps`, by name;
+#'   nothing else.
+#' @param meta For a polars DataFrame, the [`datakit_meta`][datakit_meta]
+#'   a read gave with it, or `NULL`. Entries for columns not in the frame
+#'   are dropped.
+#' @param timestamps For a polars DataFrame, `"error"` (the default) or
+#'   `"truncate"`; kept for files written with letters in a Datetime
+#'   column by R, Julia or TypeScript.
+#' @section polars frames:
+#' `save_parquet()` is a generic. A polars DataFrame, as
+#' [read_parquet_pl()] returns, is written with what its `meta` says, as
+#' Python datakit's `dk.save_parquet()` writes it: its `.a` to `.z` (the
+#' tagged NaNs of Float64 columns) are written as they are; a column a
+#' read made Float64 to hold them is written with its file's storage type
+#' in the profile when its values still fit it; `meta$sort` is kept only
+#' if the rows are still in that order. Decimal, Duration and nested
+#' dtypes are errors naming the column. A LazyFrame is an error: call
+#' `$collect()` on it first. Neither polars nor nanoarrow is needed to
+#' save a data frame.
 #' @return `data`, invisibly.
 #' @seealso [read_parquet()].
 #' @examples
@@ -294,22 +313,15 @@ key_value_table <- function(kv) {
 #' back <- read_parquet(path)
 #' levels(back$region)   # "North" "South" "West"
 #' @export
-save_parquet <- function(data, file, compression = "snappy", compression_level = NULL,
-                         row_group_size = NULL, missing_letters = TRUE) {
+save_parquet <- function(data, file, ...) UseMethod("save_parquet")
+
+#' @rdname save_parquet
+#' @export
+save_parquet.default <- function(data, file, compression = "snappy", compression_level = NULL,
+                                 row_group_size = NULL, missing_letters = TRUE, ...) {
+  rlang::check_dots_empty()
   if (!is.data.frame(data)) stop("data must be a data frame", call. = FALSE)
-  if (!is.character(file) || length(file) != 1 || is.na(file)) stop("file must be a path", call. = FALSE)
-  if (!is.character(compression) || length(compression) != 1 || is.na(compression)) {
-    stop("compression must be one of \"snappy\", \"zstd\", \"gzip\", \"lz4_raw\" or \"none\"", call. = FALSE)
-  }
-  if (!is.null(compression_level) && !(is.numeric(compression_level) && length(compression_level) == 1 &&
-                                       !is.na(compression_level) && compression_level == round(compression_level))) {
-    stop("compression_level must be a whole number or NULL", call. = FALSE)
-  }
-  if (!is.null(row_group_size) && !(is.numeric(row_group_size) && length(row_group_size) == 1 &&
-                                    !is.na(row_group_size) && row_group_size >= 1)) {
-    stop("row_group_size must be a number of rows >= 1, or NULL", call. = FALSE)
-  }
-  if (!rlang::is_bool(missing_letters)) stop("missing_letters must be TRUE or FALSE", call. = FALSE)
+  check_parquet_options(file, compression, compression_level, row_group_size, missing_letters)
   names <- names(data)
   if (anyDuplicated(names)) stop("save_parquet: two columns are named \"", names[anyDuplicated(names)], "\"", call. = FALSE)
   cols <- Map(parquet_column, data, names)
@@ -352,6 +364,43 @@ save_parquet <- function(data, file, compression = "snappy", compression_level =
                   if (!is.null(row_group_size)) as.double(row_group_size), missing_letters)
   .Call(C_dta_parquet_write, path.expand(file), spec, options)
   invisible(data)
+}
+
+#' @rdname save_parquet
+#' @export
+save_parquet.polars_data_frame <- function(data, file, compression = "snappy", compression_level = NULL,
+                                           row_group_size = NULL, missing_letters = TRUE, ..., meta = NULL,
+                                           timestamps = "error") {
+  check_polars("save_parquet")
+  rlang::check_dots_empty()
+  check_parquet_options(file, compression, compression_level, row_group_size, missing_letters)
+  timestamps <- one_of(timestamps, c("error", "truncate"), "timestamps")
+  prep <- prepare_pl(data, meta, missing_letters, "save_parquet")
+  options <- list(compression, if (!is.null(compression_level)) as.integer(compression_level),
+                  if (!is.null(row_group_size)) as.double(row_group_size), missing_letters, timestamps)
+  .Call(C_dta_parquet_write_arrow, nanoarrow::as_nanoarrow_array_stream(prep$df), path.expand(file), prep$meta,
+        options)
+  invisible(data)
+}
+
+#' @rdname save_parquet
+#' @export
+save_parquet.polars_lazy_frame <- function(data, file, ...) check_frame(data, "save_parquet")
+
+check_parquet_options <- function(file, compression, compression_level, row_group_size, missing_letters) {
+  if (!is.character(file) || length(file) != 1 || is.na(file)) stop("file must be a path", call. = FALSE)
+  if (!is.character(compression) || length(compression) != 1 || is.na(compression)) {
+    stop("compression must be one of \"snappy\", \"zstd\", \"gzip\", \"lz4_raw\" or \"none\"", call. = FALSE)
+  }
+  if (!is.null(compression_level) && !(is.numeric(compression_level) && length(compression_level) == 1 &&
+                                       !is.na(compression_level) && compression_level == round(compression_level))) {
+    stop("compression_level must be a whole number or NULL", call. = FALSE)
+  }
+  if (!is.null(row_group_size) && !(is.numeric(row_group_size) && length(row_group_size) == 1 &&
+                                    !is.na(row_group_size) && row_group_size >= 1)) {
+    stop("row_group_size must be a number of rows >= 1, or NULL", call. = FALSE)
+  }
+  if (!rlang::is_bool(missing_letters)) stop("missing_letters must be TRUE or FALSE", call. = FALSE)
 }
 
 # What the writer gets for column `x` named `name`: the vector, the kind
