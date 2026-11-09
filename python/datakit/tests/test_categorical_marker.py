@@ -339,3 +339,24 @@ def test_a_category_without_levels_holding_only_letters(tmp_path):
     plain, _ = quiet(dk.read_dta, tmp_path / "e.dta", letters=False)
     assert isinstance(plain["e"].dtype, pd.CategoricalDtype) and len(plain["e"].cat.categories) == 0
     assert plain["e"].isna().all()
+
+
+def test_dta_parser_gives_the_same_columns(tmp_path):
+    """With default arguments, datakit and dta_parser read a marked
+    categorical alike: a category without letters in the rows read, the
+    codes with their letters with them (plan 0024, stage 4)."""
+    path = tmp_path / "g.dta"
+    grade(path)
+    for skip, n_max in ((0, None), (0, 1), (2, 1), (1, 2), (5, 1)):
+        ours, _ = quiet(dk.read_dta, path, skip=skip, n_max=n_max)
+        theirs = quiet(dp.read_dta, path, skip=skip, n_max=n_max)
+        for name in ours.columns:
+            a, b = ours[name], theirs[name]
+            assert str(a.dtype) == str(b.dtype), (skip, n_max, name, a.dtype, b.dtype)
+            if isinstance(b.dtype, pd.CategoricalDtype):
+                assert a.cat.codes.tolist() == b.cat.codes.tolist()
+                assert list(a.cat.categories) == list(b.cat.categories) and a.cat.ordered == b.cat.ordered
+            elif isinstance(b.array, dp.DtaArray):
+                assert a.array.codes.tolist() == b.array.codes.tolist()
+            else:
+                assert a.tolist() == b.tolist()
