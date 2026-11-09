@@ -91,8 +91,7 @@ column) and the dataset's label, notes, every value label set,
 characteristics, sort order and `.dta` timestamp. `readDta`,
 `readParquet`, `readFixedWidth` and `readDataset` return one
 (`ReadDataset`, every field filled); `saveParquet` and `saveDta` take
-one. Its columns hold `.a` to `.z` in their `missing` codes, so no
-**Meta** or companion column is needed.
+one. Its columns hold `.a` to `.z` in their `missing` codes.
 _Avoid_: frame, table (unqualified)
 
 **Meta**:
@@ -100,19 +99,18 @@ In Python's datakit, the dataclass returned beside every polars frame,
 since a polars `DataFrame` has no column metadata: the data label,
 notes, characteristics, sort order, time stamp, each column's `Column`
 (variable label, display format, value label set, `ordered`), the value
-label sets, and the letters: `missing`, a Series of `LETTERS` per column
-aligned with the rows as read, and `letter_columns`, the companion
-column pairs. It does not follow polars operations.
+label sets. The letters are not in it: they are **tagged NaNs** in the
+frame. It does not follow polars operations.
 _Avoid_: attrs (pandas'), metadata (unqualified)
 
-**Companion column**:
-In Python's datakit, a column `x_letter` of dtype `LETTERS` (polars'
-Enum of `.a` to `.z`) beside column `x` in the frame, holding `x`'s
-letters where `x` is null and null elsewhere. Being a column, it follows
-its rows through filter, sort, join and concat, where `meta.missing`
-does not; saving writes its letters into `x` and does not write it as
-a column.
-_Avoid_: letter column (ambiguous with a column of letters as values)
+**Tagged NaN**:
+How `.a` to `.z` are held in a double: R's `NA_real_` (a NaN whose low
+word is 1954) with the letter's ASCII code in bits 32 to 39, as haven,
+R's dtaparser, the Parquet files' DOUBLE columns and Python's datakit
+hold them. In Python's datakit a column holding letters is `Float64`, so
+the letters follow their rows through every polars operation (ADR
+0036); polars counts them as NaN values, not nulls.
+_Avoid_: companion column (the representation ADR 0036 replaced)
 
 **dtatools**:
 The R package that reads files into dibbles, whose `dta_num` columns

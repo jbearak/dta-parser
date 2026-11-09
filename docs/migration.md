@@ -38,17 +38,18 @@ checkout and import datakit:
 
     import datakit as dk
 
-A datakit read returns a tuple: a polars `DataFrame`, in which `.` and
-`.a` to `.z` are all nulls, and a `Meta` holding what `df.attrs["dta"]`
-held: the data label, notes, characteristics, sort order, each column's
-label, format and value label set, the sets, and the letters.
+A datakit read returns a tuple: a polars `DataFrame`, in which `.` is
+null and `.a` to `.z` are tagged NaNs in `Float64` columns, and a `Meta`
+holding what `df.attrs["dta"]` held: the data label, notes,
+characteristics, sort order, each column's label, format and value label
+set, and the sets.
 
 | dta_parser 0.2 | datakit 0.3 | what changes |
 |---|---|---|
-| `df = dp.read_parquet(source, columns=, skip=, n_max=, nested=)` | `df, meta = dk.read_parquet(source, columns=, skip=, n_max=, nested=)` | a polars frame and a `Meta`; `df.attrs["dta"]` becomes `meta`; a `StataArray` (now `DtaArray`) column becomes a nullable polars column with its letters in `meta.missing` (or a companion column with `letters="columns"`); an integer column with nulls stays an integer column; dates are `Date` and `Datetime`; a categorical is an `Enum` |
+| `df = dp.read_parquet(source, columns=, skip=, n_max=, nested=)` | `df, meta = dk.read_parquet(source, columns=, skip=, n_max=, nested=)` | a polars frame and a `Meta`; `df.attrs["dta"]` becomes `meta`; a `StataArray` (now `DtaArray`) column becomes a nullable polars column, `Float64` with its letters as tagged NaNs if it holds any (`dk.na_tag` reads them); an integer column with nulls and no letters stays an integer column; dates are `Date` and `Datetime`; a categorical is an `Enum` |
 | `dp.write_parquet(df, path, label=, variable_labels=, ...)` | `dk.save_parquet(df, path, meta=meta, ...)` | the name, as in R's and Julia's datakits; labels go in `meta` (`meta.label`, `meta.columns[name].label`), not in arguments; `compression`, `compression_level`, `row_group_size` and `missing_letters` are the same; there is no index to warn about |
 | `dp.read_meta(parquet_file)` | `dk.read_parquet_info(parquet_file)` | a `ParquetInfo`: `rows` for `"nobs"`, `columns` as a polars frame with each column's polars dtype, `meta` for the labels, new `key_value`; `dp.read_meta` on a Parquet file is now a `ValueError` naming `read_parquet_info` |
-| `df = dp.read_fixed_width(path, setup, ...)` | `df, meta = dk.read_fixed_width(path, setup, ...)` | a polars frame and a `Meta`; the warnings' full list is `FixedWidthWarning.messages`, not `df.attrs["warnings"]`; new `letters=` |
+| `df = dp.read_fixed_width(path, setup, ...)` | `df, meta = dk.read_fixed_width(path, setup, ...)` | a polars frame and a `Meta`; the warnings' full list is `FixedWidthWarning.messages`, not `df.attrs["warnings"]`; new `letters=` (False reads `.a` to `.z` as nulls) |
 | `dp.FixedWidthWarning` | `dk.FixedWidthWarning` | |
 | none | `dk.read_dta`, `dk.save_dta` | `.dta` files into polars and back, without pandas |
 

@@ -139,20 +139,25 @@ check(eq(micros(r, "when"), num(0, 1709285400250000, ".", -1000000, 86400000000,
 same(r, "dayfrac", num(19000.5, 0, ".", -1.25, 1, 2), "R");
 same(r, "dup", ["1", "2", "3", "1", "5", "."], "R");
 
-for (const f of ["from_python.parquet", "from_python_columns.parquet"]) {
+// Python's file: the letters are tagged NaNs in its Float64 columns (ADR
+// 0036), so its date, timestamp and categorical holding letters are
+// Stata's numbers, as Julia writes them.
+{
+  const f = "from_python.parquet";
   const p = readParquet(join(dir, f));
+  const MS1960 = 3653 * 86400000;
   check(p.label === "From Python" && eq(p.notes, ["A note from Python."]), `${f}: data label, notes`);
   common(p, f);
   check(eq(micros(p, "when"), num(0, 1709285400250000, ".", -1000000, 86400000000, 1e15)), `${f} when`);
-  same(p, "seen", num(19783, ".d", 19784, ".", -3653, ".z"), f);
-  check(variable(p, "seen").type === "date", `${f} seen: date`);
-  check(eq(micros(p, "stamp"), num(500000, ".k", 1e15, ".", -86400250000, 1000001)), `${f} stamp: ${micros(p, "stamp")}`);
+  same(p, "seen", num(23436, ".d", 23437, ".", 0, ".z"), f);
+  check(variable(p, "seen").format === "%td", `${f} seen: format`);
+  same(p, "stamp", num(MS1960 + 500, ".k", MS1960 + 1e12, ".", MS1960 - 86400250, 1000001 / 1000 + MS1960), f);
+  check(variable(p, "stamp").format === "%tc", `${f} stamp: format`);
   same(p, "dup", ["1", "2", "3", "1", "5", "."], f);
   check(eq(labels(p, "dup"), [[1, "Yes"], [2, "No"], [3, "Yes"]]), `${f} dup labels`);
-  // A categorical holding letters (plan 0022).
-  same(p, "grade", ["low", ".a", "high", ".", ".z", "mid"], f);
+  // A categorical holding letters (plan 0022): its level numbers, labelled.
+  same(p, "grade", ["1", ".a", "3", ".", ".z", "2"], f);
   const g = variable(p, "grade");
-  check(g.type === "categorical" && eq(g.categorical, { levels: ["low", "mid", "high"], ordered: true }), `${f} grade: levels`);
   check(g.valueLabels === "grade" && eq(labels(p, "grade"), [[1, "low"], [2, "mid"], [3, "high"]]), `${f} grade: set`);
 }
 

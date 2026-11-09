@@ -292,6 +292,10 @@ for file, spec in EXPECTED.items():
 
 # ---- datakit's own files ----
 
+# The storage types of datakit_files' Float64 columns holding letters.
+STORAGE = {"i8": pl.Int8, "i16": pl.Int16, "i32": pl.Int32, "f32": pl.Float32}
+
+
 def datakit_files():
     """(name, frame, meta, save options) of the files datakit writes."""
     import datetime as dt
@@ -302,16 +306,19 @@ def datakit_files():
     r = list(range(n))
     def nulls(values, every=7):
         return [None if i % every == 3 else v for i, v in enumerate(values)]
-    # A letter where every 11th row is null-by-letter; the value is null there.
+    # A letter in every 11th row, as a tagged NaN in a Float64 column
+    # (ADR 0036); the first four have the storage types a read of a byte,
+    # int, long and float column gives them.
     letter = [f".{chr(97 + i % 26)}" if i % 11 == 5 else None for i in r]
-    def holed(values):
-        return [None if letter[i] is not None else v for i, v in enumerate(values)]
+    def tagged(values):
+        return pl.Series([dk.tagged_na(letter[i]) if letter[i] is not None else v for i, v in enumerate(values)],
+                         dtype=pl.Float64)
     frame = pl.DataFrame({
-        "i8": pl.Series(holed(nulls([i % 100 - 50 for i in r])), dtype=pl.Int8),
-        "i16": pl.Series(holed(nulls([i * 97 - 9000 for i in r])), dtype=pl.Int16),
-        "i32": pl.Series(holed(nulls([i * 7_000_001 - 10**9 for i in r])), dtype=pl.Int32),
-        "f32": pl.Series(holed(nulls([i / 4 - 20 for i in r])), dtype=pl.Float32),
-        "f64": pl.Series(holed(nulls([i * 1.5e10 - 1e12 for i in r])), dtype=pl.Float64),
+        "i8": tagged(nulls([float(i % 100 - 50) for i in r])),
+        "i16": tagged(nulls([float(i * 97 - 9000) for i in r])),
+        "i32": tagged(nulls([float(i * 7_000_001 - 10**9) for i in r])),
+        "f32": tagged(nulls([i / 4 - 20 for i in r])),
+        "f64": tagged(nulls([i * 1.5e10 - 1e12 for i in r])),
         "nan": pl.Series(nulls([float("nan") if i % 5 == 0 else i / 3 for i in r]), dtype=pl.Float64),
         "i64": pl.Series(nulls([2**62 - i for i in r]), dtype=pl.Int64),
         "u8": pl.Series(nulls([i % 256 for i in r]), dtype=pl.UInt8),
@@ -319,23 +326,22 @@ def datakit_files():
         "flag": pl.Series(nulls([i % 2 == 0 for i in r]), dtype=pl.Boolean),
         "text": pl.Series(nulls([f"value {i} " + "é" * (i % 4) for i in r])),
         "blob": pl.Series(nulls([bytes([i % 256, 0, 255]) for i in r])),
-        "day": pl.Series(holed(nulls([dt.date(1900, 1, 1) + dt.timedelta(days=97 * i) for i in r]))),
+        "day": pl.Series(nulls([dt.date(1900, 1, 1) + dt.timedelta(days=97 * i) for i in r])),
         "local": pl.Series(nulls([dt.datetime(1960, 1, 1) + dt.timedelta(microseconds=123_456_789 * i) for i in r]),
                            dtype=pl.Datetime("us")),
-        "zoned": pl.Series(holed(nulls([dt.datetime(2024, 3, 1) + dt.timedelta(minutes=37 * i) for i in r])),
+        "zoned": pl.Series(nulls([dt.datetime(2024, 3, 1) + dt.timedelta(minutes=37 * i) for i in r]),
                            dtype=pl.Datetime("us")).dt.replace_time_zone("UTC").dt.convert_time_zone("Asia/Tokyo"),
         "ns": pl.Series(nulls([dt.datetime(2001, 1, 1) + dt.timedelta(seconds=i) for i in r]),
                         dtype=pl.Datetime("ns")),
         "cat": pl.Series(nulls([["lo", "mid", "hi"][i % 3] for i in r]), dtype=pl.Enum(["lo", "mid", "hi", "unused"])),
     })
-    letters = pl.Series(letter, dtype=dk.LETTERS)
     meta = dk.Meta(
         label="datakit readback", notes=["Written by compat/parquet/readback.py."],
         columns={"cat": dk.Column(ordered=True), "i8": dk.Column(label="A byte", value_labels="v")},
         value_labels={"v": {1: "one", ".a": "skipped"}},
-        missing={c: letters.alias(c) for c in ("i8", "i16", "i32", "f32", "f64", "day", "zoned")},
         rows=n,
     )
+    meta._storage = dict(STORAGE)
     out = []
     for codec in ("snappy", "zstd", "gzip", "none"):
         out.append((f"datakit_{codec}", frame, meta, {"compression": codec}))
@@ -346,23 +352,8 @@ def datakit_files():
 
 def check_datakit(name, frame, meta, path, letters_kept):
     """What pyarrow, polars and DuckDB read from a file datakit wrote."""
-    tagged = set(meta.missing) if letters_kept else set()
-    def want(c):
-        """The values other tools read: a letter is NaN, not null."""
-        values = frame[c].to_list()
-        if c in tagged:
-            lt = meta.missing[c].to_list()
-            values = ["NaN" if l is not None else v for v, l in zip(values, lt)]
-        return values
-
-    def plain(c, values):
-        """Our frame's values as the other tools give them."""
-        t = frame.schema[c]
-        if isinstance(t, pl.Datetime) and c in tagged:
-            # Written as seconds since 1970 in a DOUBLE.
-            return values
-        return values
-
+    lettered = {c for c in frame.columns if _dk.is_tagged_na(frame[c]).any()}
+    tagged = lettered if letters_kept else set()
     table = pq.read_table(path)
     kv = pq.read_metadata(path).metadata or {}
     if b"dta" not in kv:
@@ -372,17 +363,16 @@ def check_datakit(name, frame, meta, path, letters_kept):
     for c in frame.columns:
         src = frame[c]
         t = src.dtype
-        if c in tagged:
-            # DOUBLE: numbers, days or seconds since 1970, NaN for letters.
-            if isinstance(t, pl.Datetime):
-                base = src.dt.epoch("us").to_list()
-                expect = [None if v is None else v / 1e6 for v in base]
-            elif t == pl.Date:
-                expect = src.to_physical().to_list()
-            else:
-                expect = src.cast(pl.Float64).to_list()
-            lt = meta.missing[c].to_list()
-            expect = ["NaN" if l is not None else (None if v is None else float(v)) for v, l in zip(expect, lt)]
+        if c in lettered:
+            # With its letters: a DOUBLE, NaN for each letter. Without:
+            # its storage type, a null for each letter.
+            lt = _dk.na_tag(src).to_list()
+            gone = None if c in tagged else STORAGE.get(c, pl.Float64)
+            expect = [("NaN" if gone is None else None) if l is not None else v for v, l in zip(src.to_list(), lt)]
+            if gone is not None and gone != pl.Float32:
+                expect = [int(v) if isinstance(v, float) and gone != pl.Float64 else v for v in expect]
+            if gone is not None and tdf.schema[c] != gone:
+                fail("polars", name, f"{c}: dtype {tdf.schema[c]}, not {gone}")
             compare("pyarrow", name, c, expect, table.column(c).to_pylist())
             compare("polars", name, c, expect, tdf[c].to_list())
             compare("duckdb", name, c, expect, [r[0] for r in con.execute(f'SELECT "{c}" FROM \'{path}\'').fetchall()])
@@ -439,8 +429,11 @@ if _dk is not None:
             _dk.save_parquet(frame, path, meta=meta, **options)
             check_datakit(name, frame, meta, path, options.get("missing_letters", True))
             back, back_meta = _dk.read_parquet(path)
-            if not back.equals(frame) and not options.get("missing_letters", True) is False:
-                fail("datakit", name, "does not read back equal")
+            if options.get("missing_letters", True):
+                equal = back.equals(frame) and all(_dk.na_tag(back[c]).equals(_dk.na_tag(frame[c]))
+                                                   for c in frame.columns if frame.schema[c] == pl.Float64)
+                if not equal or back_meta._storage != meta._storage:
+                    fail("datakit", name, "does not read back equal")
         except Exception as e:  # noqa: BLE001 - report every failure
             fail("datakit", name, f"{type(e).__name__}: {e}")
 

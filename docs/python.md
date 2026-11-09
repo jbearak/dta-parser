@@ -8,8 +8,9 @@ filtering, sorting, merging and writing.
 
 `datakit` is data preparation in polars that keeps Stata's labels and
 `.a` to `.z`: it reads and saves Parquet files, `.dta` files, and
-fixed-width text with a SAS setup file as a polars `DataFrame` with a
-`Meta` of labels beside it ([datakit](#datakit-parquet-dta-and-fixed-width-files-in-polars)).
+fixed-width text with a SAS setup file as a polars `DataFrame`, with
+`.a` to `.z` as tagged NaNs in its columns and a `Meta` of labels beside
+it ([datakit](#datakit-parquet-dta-and-fixed-width-files-in-polars)).
 Parquet and fixed-width text moved there from `dta_parser` in 0.3
 ([migration notes](migration.md#dta_parser-02-to-03)).
 
@@ -561,10 +562,10 @@ Latin-1 (pass `encoding="latin1"` to match pandas).
 
 `datakit` is the data-preparation package beside `dta_parser`. It reads
 Parquet files, `.dta` files, and fixed-width text with a SAS setup file
-into a polars `DataFrame`, and it keeps what polars cannot hold in a
-`Meta` beside the frame: variable labels, value labels, display
-formats, notes, and Stata's missing values `.a` to `.z`. It saves both
-back as Parquet or `.dta`. The Parquet files carry the same `dta`
+into a polars `DataFrame`, with Stata's missing values `.a` to `.z` in
+the frame as tagged NaNs, and keeps what polars cannot hold in a `Meta`
+beside the frame: variable labels, value labels, display formats and
+notes. It saves both back as Parquet or `.dta`. The Parquet files carry the same `dta`
 profile R's and Julia's datakits write, so a file goes between the
 three languages with its labels and letters.
 
@@ -574,15 +575,18 @@ import datakit as dk
 df, meta = dk.read_dta("survey.dta")      # every read returns (frame, Meta)
 print(type(df).__name__, df.columns)
 # DataFrame ['id', 'region', 'age', 'income', 'interviewed', 'comment']
-print(df["income"].to_list())             # [2100.0, None, 1850.0, None, None, 3200.0]
-print(meta.missing["income"].to_list())   # [None, '.d', None, None, '.r', None]
+print(df["income"].to_list())             # [2100.0, nan, 1850.0, None, nan, 3200.0]
+print(dk.na_tag(df["income"]).to_list())  # [None, '.d', None, None, '.r', None]
 print(meta.columns["income"].label)       # Monthly income
 ```
 
-`.`, `.a` and `.z` are all polars nulls in the frame, so `is_null()`,
-`drop_nulls()`, `mean()` and `count()` treat them as Stata treats
-missing values; which letter each null was is in `meta`. Importing
-`datakit` does not import pandas.
+`.` is a polars null. `.a` to `.z` are NaNs tagged with their letter,
+the bits R and haven hold them in, so each letter is in its row and
+follows it through every polars operation. polars counts NaN as a
+value, though: call `fill_nan(None)` before `is_null()`, `drop_nulls()`,
+`mean()` or `count()` to treat the letters as Stata does
+([.a to .z in the frame](#a-to-z-in-the-frame)). Importing `datakit`
+does not import pandas.
 
 ## Fixed-width files with a SAS setup file
 
@@ -625,15 +629,16 @@ them, and each code's value label moves to its letter:
 
 ```python
 df, meta = dk.read_fixed_width("survey.dat", "survey.sas", recodes="tagged")
-print(meta.missing["KIDS"].to_list())   # [None, '.a', '.b', None]
+print(dk.na_tag(df["KIDS"]).to_list())  # [None, '.a', '.b', None]
 print(meta.labels("KIDS"))              # {0: '(0) None', '.a': '(98) DK', '.b': '(99) Not ascertained'}
 ```
 
 A letter means what that variable's labels say: `.a` is 98 "DK" here,
 but in a variable whose setup recodes 97 "Refused" first, `.a` is
 "Refused". `recodes="none"` ignores the recodes, keeping the codes as
-numbers. `letters=` places the letters as `read_parquet` does
-([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)).
+numbers. The letters are tagged NaNs, as in every read
+([.a to .z in the frame](#a-to-z-in-the-frame)); `letters=False` reads
+them as nulls.
 
 Numeric columns take the smallest storage type that holds their values
 (`Int8` for these), and records shorter than the setup's columns read
@@ -723,10 +728,11 @@ Contents:
 [Dates and time zones](#dates-and-time-zones-in-parquet-files) ·
 [Write a Parquet file](#write-a-parquet-file) ·
 [Write labels](#write-labels-to-a-parquet-file) ·
+[.a to .z in the frame](#a-to-z-in-the-frame) ·
 [Keep .a to .z](#keep-a-to-z-in-a-parquet-file) ·
 [Files from other tools](#parquet-files-from-other-tools) ·
 [What each type becomes](#what-each-parquet-type-becomes-in-python) ·
-[Labels and .a to .z through polars operations](#labels-and-a-to-z-through-polars-operations) ·
+[Labels through polars operations](#labels-through-polars-operations) ·
 [.dta files into polars](#dta-files-into-polars) ·
 [Coming from polars, pyarrow or pandas](#coming-from-pyarrow-pandas-or-polars)
 
@@ -770,14 +776,13 @@ df, meta = dk.read_dta("survey.dta")
 dk.save_parquet(df, "survey.parquet", meta=meta)
 back, back_meta = dk.read_parquet("survey.parquet")
 assert_frame_equal(back, df)             # no error: the same values and dtypes
-print(back_meta == meta)                 # True: labels, formats, notes, letters
+print(back_meta == meta)                 # True: labels, formats, notes
 print(back.schema)
 # Schema({'id': Int8, 'region': Int8, 'age': Int8, 'income': Float64, 'interviewed': Date, 'comment': String})
 ```
 
 `read_parquet(source, columns=None, skip=0, n_max=None, factors=False,
-letters="meta", letter_suffix="_letter", timestamps="error",
-nested="error")` takes a path (`str` or `os.PathLike`), the file as
+letters=True, timestamps="error", nested="error")` takes a path (`str` or `os.PathLike`), the file as
 `bytes`, or a binary file object with `read` and `seek`, and returns a
 tuple `(df, meta)`. Unpack it: `dk.read_parquet(p).filter(...)` fails,
 because a tuple has no `filter`.
@@ -789,10 +794,12 @@ raw = open("survey.parquet", "rb").read()
 print(dk.read_parquet(raw)[0]["id"].to_list())              # [1, 2, 3, 4, 5, 6]
 ```
 
-Each column gets one polars dtype, whatever the rows hold: Int8, Int16,
-Int32, Float32, and Float64 for Stata's byte, int, long, float, and
-double, with nulls for missing values; Date and Datetime for dates and
-timestamps; String for text; and an Enum for a categorical.
+Each column gets a polars dtype: Int8, Int16, Int32, Float32, and
+Float64 for Stata's byte, int, long, float, and double, with nulls for
+`.`; Date and Datetime for dates and timestamps; String for text; and
+an Enum for a categorical. A column holding `.a` to `.z` in the rows
+read is Float64 instead, so that it can hold them
+([.a to .z in the frame](#a-to-z-in-the-frame)).
 [What each type becomes](#what-each-parquet-type-becomes-in-python)
 gives every Parquet type, including those of files other tools write,
 and what is refused. No value is rounded: each is exact or an error.
@@ -827,15 +834,16 @@ Only the row groups that hold the rows are read, and within them only
 the pages that do (through the file's offset index, or, where a file has
 none, by walking the page headers), so a window of a large file is
 quick. Rows past the end give fewer rows, or an empty frame with the
-right columns and dtypes; it is not an error. `meta.missing` and
-`meta.rows` describe the rows read.
+right columns and dtypes; it is not an error. `meta.rows` describes
+the rows read, and a column is Float64 for its letters only when those
+rows hold one.
 
 ### A Parquet file's schema and metadata
 
 `dk.read_parquet_info(source)` reads the footer only and returns a
 `ParquetInfo`: the row count, row groups, codecs, the writer, every
-key-value entry of the footer, the `Meta` a whole-file read gives
-(without `missing`), and a polars frame of the columns:
+key-value entry of the footer, the `Meta` a whole-file read gives, and
+a polars frame of the columns:
 
 ```python
 info = dk.read_parquet_info("survey.parquet")
@@ -852,10 +860,10 @@ print(info.meta.label, sorted(info.key_value))        # Household survey (exampl
 |---|---|
 | `name` | the column's name |
 | `role` | `"data"`, or `"nested"` for a list, map or struct, which is not read |
-| `dtype` | the polars dtype `read_parquet` gives it, as text (`"Int8"`, `"Datetime(time_unit='us', time_zone='UTC')"`), null for a column it does not read |
+| `dtype` | the polars dtype `read_parquet` gives it when the rows read hold no `.a` to `.z` (with them, `Float64`), as text (`"Int8"`, `"Datetime(time_unit='us', time_zone='UTC')"`), null for a column it does not read |
 | `physical_type`, `logical_type` | Parquet's types, such as `"INT32"` and `"INT(8, signed)"`, `"DOUBLE"` and null, `"BYTE_ARRAY"` and `"STRING"` |
 | `label`, `value_labels` | the variable label and the value label set's name, from the `dta` profile |
-| `storage` | for a DOUBLE column written so because it holds `.a` to `.z`, the Stata storage type it reads as (`"byte"`, `"int"`, `"long"`, `"float"`) |
+| `storage` | for a DOUBLE column written so because it holds `.a` to `.z`, the Stata storage type it reads as without them (`"byte"`, `"int"`, `"long"`, `"float"`) |
 
 `info.row_groups` has `rows`, `compressed_bytes` and
 `uncompressed_bytes` per row group. `info.key_value` is a `dict` of every
@@ -893,20 +901,19 @@ and any other value as its number in text:
 df, meta = dk.read_parquet("survey.parquet", factors=True)
 print(df["region"].dtype)            # Enum(categories=['North', 'South', 'East', 'West'])
 print(df["region"].to_list())        # ['North', 'South', 'South', 'East', 'West', 'North']
-print(meta.missing["income"].to_list())   # [None, '.d', None, None, '.r', None]
+print(dk.na_tag(df["income"]).to_list())  # [None, '.d', None, None, '.r', None]
 ```
 
 **What `factors=True` loses:** the codes are gone from the frame, and
 codes that share a label (two codes both labelled "Yes") become one
 level that cannot be told apart again. Saving does not bring them back:
-`save_parquet` writes the Enum as a categorical of its levels (one
-holding `.a` to `.z` as its level numbers, 1 to k, labelled with the
-levels), and
+`save_parquet` writes the Enum as a categorical of its levels, and
 `save_dta` writes it as Stata's `encode` would, codes 1 to k labelled
 with the levels. To keep the file's codes, read with `factors=False`,
-the default. `.a` to `.z` are not lost: they stay in `meta.missing` or
-a companion column, and `meta.columns[name].value_labels` keeps the
-set's name.
+the default. An Enum cannot hold `.a` to `.z` either: in a column made
+an Enum they become nulls, with one warning naming the columns, as R's
+datakit does; `factors=False` keeps them. A categorical that a file
+stores with letters stays its level numbers, as in R.
 
 Other tools do not read labels: they see the codes. A file from another
 tool has none, unless it has a `dta` entry in its metadata (written by
@@ -991,15 +998,13 @@ What each dtype becomes:
 |---|---|
 | `Int8`, `Int16`, `Int32`, `Int64` | INT(8), INT(16), INT32, INT64 |
 | `UInt8`, `UInt16`, `UInt32`, `UInt64` | INT(8, unsigned) to INT(64, unsigned), with unsigned statistics; they read back as themselves |
-| `Float32`, `Float64` | FLOAT, DOUBLE; NaN is a value, null is null |
+| `Float32`, `Float64` | FLOAT, DOUBLE; NaN is a value, null is null, and a tagged NaN is `.a` to `.z` ([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)) |
 | `Boolean` | BOOLEAN |
 | `String`, `Binary` | BYTE_ARRAY, as STRING or without a type |
 | `Date`, `Datetime`, `Time` | DATE, TIMESTAMP, TIME(NANOS) ([Dates](#dates-and-time-zones-in-parquet-files)) |
 | `Enum` | a dictionary-encoded STRING whose dictionary is every level, in order; `meta.columns[name].ordered` is kept |
-| `Enum` with `.a` to `.z` | DOUBLE: each level's number from 1, `.` null, `.a` to `.z` tagged NaNs; the profile keeps every level, `ordered`, and a value label set labelling 1 to k with the levels ([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)) |
 | `Categorical` | the same, with the levels its rows use; it reads back as an `Enum` of them |
 | `Null` (an all-null column, as `pl.lit(None)` makes) | an all-null DOUBLE, as Stata's `gen x = .` makes a numeric column |
-| a column with `.a` to `.z` | DOUBLE with tagged NaNs ([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)) |
 
 `Decimal` raises `TypeError` naming the column and saying to cast it to
 `Float64` or `String` (writing DECIMAL needs an encoder no `.dta` or R
@@ -1014,13 +1019,12 @@ Build or change a `Meta` and pass it as `meta=`. Every field is a plain
 value to set:
 
 ```python
-smoking = pl.DataFrame({"smoker": pl.Series([1, 0, None], dtype=pl.Int8)})
+smoking = pl.DataFrame({"smoker": [1.0, 0.0, dk.tagged_na(".d")]})
 meta = dk.Meta(
     label="Smoking",
     notes=["Wave 2 only."],
     columns={"smoker": dk.Column(label="Smokes daily", format="%8.0g", value_labels="yesno")},
     value_labels={"yesno": {0: "No", 1: "Yes", ".d": "Don't know"}},
-    missing={"smoker": pl.Series("smoker", [None, None, ".d"], dtype=dk.LETTERS)},
     rows=3,
 )
 dk.save_parquet(smoking, "smoking.parquet", meta=meta)
@@ -1029,7 +1033,7 @@ print(s_meta.label, s_meta.notes)          # Smoking ['Wave 2 only.']
 print(s_meta.columns["smoker"])
 # Column(label='Smokes daily', format='%8.0g', value_labels='yesno', ordered=None)
 print(s_meta.labels("smoker"))             # {0: 'No', 1: 'Yes', '.d': "Don't know"}
-print(s_meta.missing["smoker"].to_list())  # [None, None, '.d']
+print(dk.na_tag(s["smoker"]).to_list())    # [None, None, '.d']
 ```
 
 The data label, notes, characteristics, sort order, time stamp, each
@@ -1042,63 +1046,120 @@ Unlike `.dta` files, a Parquet file can label codes that are not
 integers, such as `1.5`. Writing is strict: a code that is not finite or
 is beyond ±2^53, or a column naming a set `meta.value_labels` lacks, is
 an error. An Enum's levels are its text, so its `value_labels` name is
-not written, unless it holds `.a` to `.z`
-([below](#keep-a-to-z-in-a-parquet-file)). `meta.sort` is checked against the rows
-([below](#labels-and-a-to-z-through-polars-operations)).
+not written. `meta.sort` is checked against the rows
+([below](#labels-through-polars-operations)).
 
-### Keep .a to .z in a Parquet file
+### .a to .z in the frame
 
-In the frame, every `.a` to `.z` is null. `letters=` on every read says
-where the letters go, and `save_parquet` and `save_dta` take them from
-either place:
+Every read keeps `.a` to `.z` in the frame. A column holding any of
+them in the rows read is `Float64`, and each letter is a NaN tagged
+with it: R's `NA_real_` with the letter's code in its fifth byte, as
+haven's `tagged_na()` and R's dtaparser hold it. `.` stays a null. An
+integer or `Float32` column holding letters is cast to `Float64`, and
+`meta` keeps its type, so that saving writes it back as byte, int, long
+or float when its values still fit. Three functions read and make
+letters:
 
-- **In `meta.missing`** (the default, `letters="meta"`): for each column
-  holding a letter in the rows read, a polars Series of dtype
-  `dk.LETTERS` (an Enum of `".a"` to `".z"`), with the letter where a
-  row has one and null elsewhere. It lines up with the rows as read.
-  `meta.letters(name)` returns it, or an all-null Series for a column
-  without letters.
-- **In companion columns**: `letters="columns"` puts a column `x_letter`
-  after every column that can hold a letter (byte, int, long, float,
-  double, date or timestamp, and a categorical written with letters),
-  all null where it has none; a list
-  (`letters=["income"]`) does so for those columns only, the rest staying
-  in `meta.missing`. `meta.letter_columns` records each pair. A
-  companion follows its rows through `filter`, `sort`, `join` and
-  `concat`, because it is a column.
-- `letters=None` keeps none: they are nulls like `.`.
+- `dk.na_tag(x)`: the letter of each row of `x` (a column name, an
+  expression or a Series) as `dk.LETTERS`, polars' Enum of `".a"` to
+  `".z"`, null where the row has none;
+- `dk.is_tagged_na(x, letter=None)`: true where a row holds a letter,
+  or the letter given;
+- `dk.tagged_na(".d")`: the float that holds `.d`, for anywhere polars
+  takes a number.
 
 ```python
 df, meta = dk.read_parquet("survey.parquet")
-print(meta.missing["income"].to_list())     # [None, '.d', None, None, '.r', None]
-df, meta = dk.read_parquet("survey.parquet", letters="columns")
-print(df.columns)
-# ['id', 'id_letter', 'region', 'region_letter', 'age', 'age_letter', 'income', 'income_letter', 'interviewed', 'interviewed_letter', 'comment']
-print(df.filter(pl.col("income_letter") == ".d")["id"].to_list())   # [2]
-dk.save_parquet(df, "kept.parquet", meta=meta)   # the companions are not written as columns
-print(dk.read_parquet("kept.parquet")[1].missing["income"].to_list())   # [None, '.d', None, None, '.r', None]
+print(df.schema["income"], df["income"].null_count(), df["income"].is_nan().sum())   # Float64 1 2
+print(df.select(dk.na_tag("income"))["income"].to_list())   # [None, '.d', None, None, '.r', None]
+print(df.filter(dk.is_tagged_na("income", ".d"))["id"].to_list())   # [2]
 ```
 
-**Code that changes rows should use companion columns.** A translator
-or a script that filters, sorts or joins should read with
-`letters="columns"`, or name the columns it changes with
-`letters=[...]`, or call `dk.letters_to_columns(df, meta)` right after
-the read. `meta.missing` is positional: it describes the frame as read.
-`save_parquet` checks that a column with `meta.missing` letters still
-has the height and the values it had when read (a digest kept in
-`meta`), and stops otherwise, saying to carry the letters with
-`letters_to_columns` or drop them with `meta.missing.pop(name)`. That
-check catches a filter, a sort that moves values, or `fill_null`, but
-not a reordering that leaves every value in place, such as a sort of a
-column that is all missing.
+A letter is a value in its row, so it follows the row through `filter`,
+`sort`, `join`, `concat`, `slice` and `group_by`. It also survives
+arithmetic: `x * 2` keeps `.d` where `x` held it, as Stata's
+`gen y = x * 2` does.
 
-`.a` to `.z` are written as tagged NaNs, the bits R holds them in, in a
-DOUBLE column whose storage type the profile records, so `x` in a byte
-column comes back as `Int8` with its letters, and as R's tagged NAs in
-R. Other tools see `NaN`. pandas counts it as missing, but DuckDB SQL
-and polars count `NaN` as a value: `IS NULL` is false for it, `count(x)`
-counts it and `mean(x)` is `NaN`. To treat `.a` to `.z` as missing
-there, test for both:
+**What polars counts.** polars treats NaN as a number. `is_null()` and
+`null_count()` see only `.`, `count()` counts the letters, and `mean()`
+is NaN. Call `fill_nan(None)` first to make every letter a null, which
+is how Stata treats them:
+
+```python
+income = df["income"]
+print(income.mean(), income.fill_nan(None).mean())     # nan 2383.3333333333335
+print(income.count(), income.fill_nan(None).count())   # 5 3
+```
+
+Comparisons already work as in Stata. NaN is greater than every number
+in polars, and Stata's missing values are greater than every number
+too, so `pl.col("income") > 3000` is true for a letter, as Stata's
+`income > 3000` is. `.` is null, so a comparison is null there and
+`filter` drops the row, which Stata would keep; `ne_missing` and
+`eq_missing` keep it.
+
+**Set a letter** (Stata's `replace income = .r if age > 60`):
+
+```python
+df = df.with_columns(
+    pl.when(pl.col("age") > 60).then(dk.tagged_na(".r")).otherwise(pl.col("income")).alias("income"))
+print(dk.na_tag(df["income"]).to_list())   # [None, '.d', None, '.r', '.r', None]
+```
+
+In an integer column polars makes the result `Float64`, and the letter
+is kept. To replace a letter with a value, test for it:
+`pl.when(dk.is_tagged_na("income", ".d")).then(0.0).otherwise(pl.col("income"))`.
+A new column (Stata's `gen y = .a`) is `pl.lit(dk.tagged_na(".a"))`.
+
+**Sort as Stata does** (values, then `.`, then `.a` to `.z`):
+
+```python
+df, meta = dk.read_parquet("survey.parquet")
+stata = df.sort(pl.col("income").fill_nan(None), dk.na_tag("income"), nulls_last=[True, False],
+                maintain_order=True)
+print(stata["income"].to_list())              # [1850.0, 2100.0, 3200.0, None, nan, nan]
+print(dk.na_tag(stata["income"]).to_list())   # [None, None, None, None, '.d', '.r']
+```
+
+polars' own `df.sort("income")` puts `.` first and the letters last,
+with no order among the letters.
+
+**What loses them.** Only `Float64` holds a letter: a cast to `Float32`
+or an integer type loses it, and so does `fill_nan`. When two letters
+meet in arithmetic (`x + y`, both holding one), the result keeps one of
+the two.
+
+**Dates, timestamps and categoricals.** A polars `Date`, `Datetime` or
+`Enum` cannot hold NaN. A column of one of these types that holds `.a`
+to `.z` in the rows read is read as numbers instead. A date becomes
+Stata's count of days since 1960 (format `%td`), a timestamp its
+milliseconds since 1960 (`%tc`), and a categorical its level numbers
+from 1, labelled by its value label set, which is how R's and Julia's
+datakits read a categorical with letters. `letters=False` gives the
+`Date`, `Datetime` or `Enum`, with the letters as nulls. To make dates
+of the numbers, use
+`pl.date(1960, 1, 1) + pl.duration(days=pl.col("d").fill_nan(None))`.
+
+### Keep .a to .z in a Parquet file
+
+`save_parquet` and `save_dta` write the tagged NaNs of every `Float64`
+column as `.a` to `.z`. A NaN without a tag is written as NaN, a value.
+
+```python
+df, meta = dk.read_parquet("survey.parquet")
+dk.save_parquet(df, "kept.parquet", meta=meta)
+print(dk.na_tag(dk.read_parquet("kept.parquet")[0]["income"]).to_list())   # [None, '.d', None, None, '.r', None]
+```
+
+In the file, a letter is a tagged NaN in a DOUBLE column, in the bits R
+holds it in, so R reads the letters as its tagged NAs. The profile
+records the storage type of a column that a read made `Float64`
+(`income` was always a double), so `x` in a byte column comes back as a
+byte column in R and Julia, and as `Int8` here when the rows read hold
+no letters. Other tools see `NaN`. pandas counts it as missing, but
+DuckDB SQL and polars count `NaN` as a value: `IS NULL` is false for it,
+`count(x)` counts it and `mean(x)` is `NaN`. To treat `.a` to `.z` as
+missing there, test for both:
 
 ```python
 income = pl.read_parquet("survey.parquet")["income"]   # polars' own reader
@@ -1111,7 +1172,7 @@ if importlib.util.find_spec("duckdb"):
 ```
 
 For files meant for such tools, `missing_letters=False` writes `.a` to
-`.z` as plain nulls; the letters are then lost:
+`.z` as plain nulls, and the letters are then lost:
 
 ```python
 df, meta = dk.read_parquet("survey.parquet")
@@ -1119,27 +1180,9 @@ dk.save_parquet(df, "nulls.parquet", meta=meta, missing_letters=False)
 print(pl.read_parquet("nulls.parquet")["income"].null_count())   # 3
 ```
 
-Which columns can hold letters: Int8, Int16, Int32, Float32, Float64,
-Date and Datetime. An Int64, unsigned, Boolean, String or Binary column
-with letters is an error, since a double cannot hold all their values.
-
-An Enum can hold letters when `meta.columns[name].value_labels` names a
-set for it, as `read_parquet` and `factors=True` give one. It is then
-written as a DOUBLE of its level numbers, 1 to k, with `.a` to `.z` as
-tagged NaNs, the levels and `ordered` in the profile, and a set that
-labels 1 to k with the levels: the column's own set when it does so
-(labels on `.a` to `.z` in it are kept, such as `".r": "Refused"`), else
-one made from the levels and named after the column, or `name_2`,
-`name_3`, ... when another set has that name. `read_parquet` gives the
-same Enum back, with its letters and that set, whatever `factors` says;
-writing it back again names the same set. Other tools read the numbers.
-An Enum without a set, or a `Categorical`, with letters is an error:
-name a set, or drop the letters. `missing_letters=False` writes the
-letters as nulls, and the Enum stays text. A Datetime column with letters is written as seconds
-in a double, which holds whole microseconds up to about the year 2255: a
-`Datetime("ns")` value with a part below a microsecond is an error
-unless `timestamps="truncate"`, and one too far from 1970 is an error
-either way.
+Only `Float64` holds letters. To give another column letters, cast it
+to `Float64` first; `pl.when(...).then(dk.tagged_na(...))` does that
+for an integer column.
 
 ### Parquet files from other tools
 
@@ -1184,10 +1227,10 @@ filters on values are not part of datakit: use `pl.scan_parquet`.
 |---|---|
 | INT32: INT(8), INT(16) or none; INT64 | `Int8`, `Int16`, `Int32`, `Int64`, with nulls |
 | unsigned 8 to 64 bits | `UInt8` to `UInt64` |
-| a DOUBLE written so for `.a` to `.z` (profile `storage`) | its storage type again: `Int8` byte, `Int16` int, `Int32` long, `Float32` float |
-| a DOUBLE with profile `logical` `date` | `Date`; a fraction of a day is an error unless `timestamps="truncate"` |
-| a DOUBLE with profile `logical` `timestamp` | `Datetime("us", zone)`; a value no whole number of microseconds gives back is an error unless `timestamps="truncate"` |
-| FLOAT, DOUBLE | `Float32`, `Float64`; NaN stays a value, not a null |
+| a DOUBLE written so for `.a` to `.z` (profile `storage`) | `Float64` with tagged NaNs when the rows read hold letters, the storage type kept for saving; else its storage type again: `Int8` byte, `Int16` int, `Int32` long, `Float32` float |
+| a DOUBLE with profile `logical` `date` | `Date`; a fraction of a day is an error unless `timestamps="truncate"`. With letters in the rows read, `Float64` days since 1960 with tagged NaNs, format `%td` |
+| a DOUBLE with profile `logical` `timestamp` | `Datetime("us", zone)`; a value no whole number of microseconds gives back is an error unless `timestamps="truncate"`. With letters in the rows read, `Float64` milliseconds since 1960 with tagged NaNs, format `%tc` |
+| FLOAT, DOUBLE | `Float32`, `Float64`; NaN stays a value, not a null, and a tagged NaN in a DOUBLE is `.a` to `.z` |
 | DECIMAL, precision up to 38 | `Decimal(precision, scale)`, exact (`save_parquet` does not write it: cast first) |
 | DECIMAL, precision above 38 | `String`, every digit kept |
 | DATE | `Date` |
@@ -1197,7 +1240,7 @@ filters on values are not part of datakit: use `pl.scan_parquet`.
 | STRING, ENUM, JSON | `String` |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text type, UUID | `Binary` |
 | a categorical the profile lists | `Enum` of every level, in order, unused ones too |
-| a DOUBLE with profile `logical` `categorical` (a categorical holding `.a` to `.z`) | the same `Enum`, with `factors` true or false: `.` and `.a` to `.z` null, the letters as `letters=` says, `meta.columns[name].value_labels` naming its set. A value that is not a level number (1 to k) reads as null, with one warning per read naming the column and the first such row |
+| a DOUBLE with profile `logical` `categorical` (a categorical holding `.a` to `.z`) | the same `Enum` when the rows read hold no letters, with `factors` true or false. With letters, its level numbers (1 to k) as `Float64` with tagged NaNs, as R and Julia read it, `meta.columns[name].value_labels` naming the set that labels them. A value that is not a level number reads as null, with one warning per read naming the column and the first such row |
 | a dictionary of text in `ARROW:schema`, with no profile entry | `Categorical` |
 | BOOLEAN | `Boolean` |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |
@@ -1214,79 +1257,34 @@ file's `ordered` and writes it back, to Parquet and to `.dta`.
 gave come back from `save_parquet` and `read_parquet` equal, except: a
 `Categorical` comes back as an `Enum` of the levels it used; an all-null
 `Null` column comes back as `Float64`; an Enum that `factors=True` made
-comes back without its `value_labels` name, or, when it holds `.a` to
-`.z`, with a set made from its levels unless its own set labels 1 to k
-with them; and `Decimal` is not
-written. `.dta`'s release and encoding are not kept.
+comes back without its `value_labels` name; a date, timestamp or
+categorical that held `.a` to `.z` comes back as the numbers it was read
+as; and `Decimal` is not written. `.dta`'s release and encoding are not kept.
 
-### Labels and .a to .z through polars operations
+### Labels through polars operations
 
-`Meta` does not follow polars operations: a filter, sort, join or
-aggregation is yours to mirror. Companion columns are rows, so they
-follow every row operation; what they need is care in expressions.
+`.a` to `.z` are in the frame, so they follow every row operation.
+`Meta` does not follow polars operations. Labels describe columns, not
+rows, so a filter or a sort leaves them right, but a join, a rename, a
+new column or an aggregation is yours to mirror.
 
-**The traps.** `pl.col("x_letter") != ".d"` is null, not true, on every
-row without a letter, so a `filter` drops every valued row; Stata's
-`if x != .d` is `pl.col("x_letter").ne_missing(".d")`. polars sorts
-nulls first and does not keep the order of ties unless asked, while
-Stata sorts missing values last; Stata's `sort x` is
-`df.sort(["x", "x_letter"], nulls_last=[True, False], maintain_order=True)`:
-values, then `.`, then `.a` to `.z`, ties in their order.
+**Joins.** polars renames a right-hand column whose name is taken
+(`income_right`); copy the right frame's labels into `meta` yourself:
 
 ```python
-df, meta = dk.read_parquet("survey.parquet", letters=["income"])
-print(df.filter(pl.col("income_letter") != ".d").height)               # 1
-print(df.filter(pl.col("income_letter").ne_missing(".d")).height)      # 5
-stata = df.sort(["income", "income_letter"], nulls_last=[True, False], maintain_order=True)
-print(stata["income_letter"].to_list())   # [None, None, None, None, '.d', '.r']
-```
-
-**Set a letter** (Stata's `replace income = .d if age > 60`): set the
-value to null and the companion to the letter in one `with_columns`:
-
-```python
-cond = pl.col("age") > 60
-df = df.with_columns(
-    pl.when(cond).then(None).otherwise(pl.col("income")).alias("income"),
-    pl.when(cond).then(pl.lit(".d", dk.LETTERS)).otherwise(pl.col("income_letter")).alias("income_letter"),
-)
-print(df["income_letter"].to_list())      # [None, '.d', None, '.d', '.r', None]
-```
-
-**Replace a letter with a value**: set the value and set the companion
-to null in the same `with_columns`. A row where both hold something is
-an error when saving, never resolved silently.
-
-**A new column** (Stata's `gen y = .a`): `pl.lit(None, pl.Float64)` for
-`y` and `pl.lit(".a", dk.LETTERS)` for `y_letter`, then
-`meta.letter_columns["y"] = "y_letter"`:
-
-```python
-df = df.with_columns(pl.lit(None, pl.Float64).alias("y"), pl.lit(".a", dk.LETTERS).alias("y_letter"))
-meta.letter_columns["y"] = "y_letter"
-dk.save_parquet(df, "changed.parquet", meta=meta)
-print(dk.read_parquet("changed.parquet")[1].missing["y"].to_list())   # ['.a', '.a', '.a', '.a', '.a', '.a']
-```
-
-**Joins.** Companion columns travel with their rows. polars renames a
-right-hand column whose name is taken (`income_right`,
-`income_letter_right`); copy the right frame's labels and pairs into
-`meta` yourself:
-
-```python
-right, right_meta = dk.read_parquet("survey.parquet", columns=["id", "income"], letters=["income"])
-joined = df.join(right, on="id")
+df, meta = dk.read_parquet("survey.parquet")
+right, right_meta = dk.read_parquet("survey.parquet", columns=["id", "income"])
+joined = df.join(right, on="id", maintain_order="left")
 meta.columns["income_right"] = right_meta.columns["income"]
-meta.letter_columns["income_right"] = "income_letter_right"
 dk.save_parquet(joined, "joined.parquet", meta=meta)
-print(dk.read_parquet("joined.parquet")[1].missing["income_right"].to_list())
+print(dk.na_tag(dk.read_parquet("joined.parquet")[0]["income_right"]).to_list())
 # [None, '.d', None, None, '.r', None]
 ```
 
 **Aggregation** (`group_by().agg()`): a mean or a count of `x` is a new
-value, so its letters do not carry over; keep `x_letter` only if you
-aggregate it too (`pl.col("x_letter").first()`), and make `meta` for
-the new frame with `meta.select([...])`.
+value, so use `fill_nan(None)` first
+([What polars counts](#a-to-z-in-the-frame)), and make `meta` for the
+new frame with `meta.select([...])`.
 
 **`Meta`'s methods.** `meta.rename(mapping)` and `meta.select(names)`
 return a new `Meta` for `df.rename(mapping)` and `df.select(names)`;
@@ -1295,8 +1293,8 @@ return a new `Meta` for `df.rename(mapping)` and `df.select(names)`;
 `meta.sort` is checked when saving: if the rows are no longer in that
 order as Stata orders them (values, then `.`, then `.a` to `.z`),
 `save_parquet` and `save_dta` leave it out with one warning. polars'
-`df.sort("x")` puts nulls first, so it fails the check; the sort above
-passes.
+`df.sort("x")` puts nulls first, so it fails the check; the
+[Stata sort](#a-to-z-in-the-frame) passes.
 
 ```python
 by_region = df.sort("region", maintain_order=True)
@@ -1306,21 +1304,15 @@ dk.save_parquet(by_region.select("id", "region"), "regions.parquet", meta=region
 print(dk.read_parquet("regions.parquet")[1].sort)   # ['region']
 ```
 
-A column of `dk.LETTERS` that no pair names (saved with `meta=None`, or
-after its pair was removed) is written as an ordinary categorical, with
-a warning. A pair whose column was dropped but whose companion was
-kept is an error naming both.
-
 ### .dta files into polars
 
 `dk.read_dta(path, columns=None, skip=0, n_max=None, factors=False,
-letters="meta", letter_suffix="_letter", encoding=None,
-timestamps="error")` and `dk.save_dta(df, path, meta=None, *,
+letters=True, encoding=None, timestamps="error")` and `dk.save_dta(df, path, meta=None, *,
 missing_letters=True, timestamps="error")` read and write `.dta` files
 with the same `(df, meta)`, without pandas:
 
 ```python
-df, meta = dk.read_dta("survey.dta", letters="columns")
+df, meta = dk.read_dta("survey.dta")
 print(df.schema["interviewed"], meta.timestamp is not None)   # Date True
 dk.save_dta(df, "again.dta", meta=meta)
 back = dp.read_dta("again.dta")                                  # dta_parser's pandas reader
@@ -1329,7 +1321,10 @@ print(back["income"].tolist())   # [2100.0, .d, 1850.0, nan, .r, 3200.0]
 
 `read_dta` reads releases 104 to 119, as `dta_parser` does. byte, int,
 long, float and double are `Int8`, `Int16`, `Int32`, `Float32` and
-`Float64`; strN and text strLs `String`, binary strLs `Binary` (a strL
+`Float64`, and a column holding `.a` to `.z` in the rows read is
+`Float64` with them as tagged NaNs
+([.a to .z in the frame](#a-to-z-in-the-frame)); strN and text strLs
+`String`, binary strLs `Binary` (a strL
 column mixing text and binary values is `Binary`, its text as UTF-8
 bytes). `%td` is `Date`, and a value with a fraction of a day is an
 error naming the column and row unless `timestamps="truncate"`. `%tc`
@@ -1347,10 +1342,12 @@ strL. `Date` is `%td`; `Datetime` is `%tc`, which holds milliseconds,
 so a finer value is an error unless `timestamps="truncate"`, and a time
 zone is an error. An `Enum` or `Categorical` is written as Stata's
 `encode` makes one: codes 1 to k, stored as long, labelled with its
-levels, its letters kept. `Time`, `Duration`, `Decimal` and nested
+levels. `Time`, `Duration`, `Decimal` and nested
 dtypes are errors naming the column, as is a name Stata cannot hold.
-Letters come from companion columns and `meta.missing`, with the checks
-`save_parquet` makes.
+`.a` to `.z` are the tagged NaNs of `Float64` columns, as in
+`save_parquet`. A column that a read made `Float64` for its letters is
+written in its file's storage type again when its values still fit it,
+and as double when they do not.
 
 **Categoricals.** `save_dta` writes each `Enum` and `Categorical` with
 a value label set named after the column (replacing `meta`'s set of
@@ -1360,9 +1357,7 @@ that name), and marks it with a characteristic, `dtaparser_categorical`
 `meta.columns[name].ordered`). The set labels the levels at codes 1 to
 k, and keeps the labels on `.a` to `.z` of the set that
 `meta.columns[name].value_labels` names, so "Refused" on `.r` survives
-whatever that set is called. With `missing_letters=False` the letters
-are written as `.`, the set has no letter labels, and the mark is still
-written. A `dtaparser_factor` or `dtaparser_categorical` in
+whatever that set is called. A `dtaparser_factor` or `dtaparser_categorical` in
 `meta.characteristics` is not written, for any column: it describes
 what was written before, and the column may be integers now.
 
@@ -1370,24 +1365,27 @@ what was written before, and the column may be integers now.
 code order, unused ones included, whatever `factors` says, with
 `meta.columns[name].ordered` from the mark and
 `meta.columns[name].value_labels` naming its set, which
-`meta.value_labels` keeps; its letters go where `letters` puts them, and
-the mark leaves `meta.characteristics`:
+`meta.value_labels` keeps, and the mark leaves `meta.characteristics`:
 
 ```python
 grades = pl.DataFrame({"grade": pl.Series(["low", None, "high"], dtype=pl.Enum(["low", "mid", "high"]))})
 gmeta = dk.Meta(columns={"grade": dk.Column(value_labels="gl", ordered=True)},
-                value_labels={"gl": {".r": "Refused"}},
-                missing={"grade": pl.Series([None, ".r", None], dtype=dk.LETTERS)}, rows=3)
+                value_labels={"gl": {".r": "Refused"}}, rows=3)
 dk.save_dta(grades, "grades.dta", meta=gmeta)
 g, gm = dk.read_dta("grades.dta")
 print(g["grade"].dtype, g["grade"].to_list())   # Enum(categories=['low', 'mid', 'high']) ['low', None, 'high']
 print(gm.columns["grade"].ordered, gm.labels("grade"))
 # True {1: 'low', 2: 'mid', 3: 'high', '.r': 'Refused'}
-print(gm.missing["grade"].to_list())            # [None, '.r', None]
 ```
 
+An Enum cannot hold `.a` to `.z`. A marked column that holds them in
+the rows read, as TypeScript's `saveDta` writes one, reads as its codes:
+`Float64` with tagged NaNs, labelled by its set, its mark kept in
+`meta.characteristics`. `letters=False` gives the Enum, with the
+letters as nulls.
+
 Through `.dta`, then, a categorical keeps its levels, their order,
-unused levels, letters and letter labels, but its codes become 1 to k:
+unused levels and letter labels, but its codes become 1 to k:
 a file whose set has codes 10, 20, 30 is written back with 1, 2, 3 and
 the same texts. A `Categorical` comes back as an `Enum`. The mark is
 checked as `dta_parser` checks it ([Columns written from
@@ -1414,12 +1412,12 @@ as labelled numbers, as before.
 | `row_group_size=n` | the same | the same | the same | |
 | `write_parquet(metadata={...})` | `schema.with_metadata(...)` | `df.attrs` | `meta` | value label codes stay numbers and `.a` ... `.z` |
 | `POLARS_MAX_THREADS=1` | `use_threads=False` | | `DTA_THREADS=1` | |
-| `.to_pandas()` | `.to_pandas()` | | `df.to_pandas()` (pyarrow needed) | letters stay in `meta`, not in the pandas frame; for `DtaArray` columns save as `.dta` and use `dp.read_dta` |
+| `.to_pandas()` | `.to_pandas()` | | `df.to_pandas()` (pyarrow needed) | `.a` to `.z` become NaN, which pandas counts as missing, without their letters; for `DtaArray` columns save as `.dta` and use `dp.read_dta` |
 
 What changes in the values: an integer column with nulls stays an
-integer column (pandas would make it float); `.a` to `.z` are nulls in
-the frame with their letters in `meta` (polars, pyarrow and DuckDB see
-NaN); a categorical keeps every level and its order; and a profile's
+integer column (pandas would make it float), unless it holds `.a` to
+`.z`; those are tagged NaNs in `Float64` columns, as R holds them
+(polars' own reader, pyarrow and DuckDB see NaN); a categorical keeps every level and its order; and a profile's
 `Date`, `Datetime` and storage types come back as the writer gave them.
 
 ## Threads
@@ -1492,22 +1490,19 @@ datakit read returns `(df, meta)`; unpack it first.
 read".** The file has a list, map or struct column. Pass `columns=` with
 the flat columns, or `nested="skip"`; for the nested data, use polars.
 
-**`save_parquet` raises 'column "x" has changed since it was read'.**
-`meta.missing["x"]` lines up with the rows as read, and the rows have
-changed (a filter, sort, join or a new value). Read with
-`letters="columns"`, or call `dk.letters_to_columns(df, meta)` before
-changing rows, so the letters follow them; or drop them with
-`meta.missing.pop("x")`.
+**`mean()` is NaN, or `count()` and `is_null()` miss values that are
+missing.** The column holds `.a` to `.z`, which polars counts as NaN
+values. Call `fill_nan(None)` first
+([.a to .z in the frame](#a-to-z-in-the-frame)).
 
-**`save_parquet` raises 'row 2 holds a value and the letter .d'.** A
-row has both a value and a letter in its companion column. Set the
-companion to null where you set a value
-([recipes](#labels-and-a-to-z-through-polars-operations)).
+**A column read as `Float64` that is an integer, a date or a
+categorical in the file.** It holds `.a` to `.z` in the rows read, and
+only `Float64` can hold them. Pass `letters=False` to read the letters
+as nulls and keep the type.
 
 **A warning "meta.sort (x) does not describe the order of the frame's
 rows".** The rows were reordered, or sorted with polars' nulls first.
-Sort with `nulls_last=[True, False]` on the column and its companion,
-or clear `meta.sort`.
+Sort as the [recipe](#a-to-z-in-the-frame) does, or clear `meta.sort`.
 
 **A warning "dropped ... from the dta profile".** The file's `dta`
 entry was damaged or edited by hand. The values are read; that entry
@@ -1537,25 +1532,26 @@ reference. `dta_parser` exports:
 
 `datakit` exports:
 
-- `read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letters="meta", letter_suffix="_letter", timestamps="error", nested="error")`:
+- `read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letters=True, timestamps="error", nested="error")`:
   read a Parquet file into `(df, meta)` ([Parquet files](#parquet-files)).
 - `read_parquet_info(source)`: a `ParquetInfo` from the footer alone
   ([Schema and metadata](#a-parquet-files-schema-and-metadata)).
 - `save_parquet(df, path=None, meta=None, *, compression="snappy", compression_level=None, row_group_size=None, missing_letters=True, timestamps="error")`:
   write a polars frame as Parquet; returns `bytes` without a path.
-- `read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters="meta", letter_suffix="_letter", encoding=None, timestamps="error")`
+- `read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters=True, encoding=None, timestamps="error")`
   and `save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error")`:
   `.dta` files and polars ([.dta files into polars](#dta-files-into-polars)).
-- `read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None, commented_formats=True, letters="meta", letter_suffix="_letter")`:
+- `read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None, commented_formats=True, letters=True)`:
   fixed-width text through its SAS setup file, given as one path or a
   list of paths ([Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
-- `letters_to_columns(df, meta, columns=None, suffix="_letter")`: move
-  `.a` to `.z` from `meta.missing` into companion columns; returns the
-  new frame and changes `meta` in place.
-- `Meta`, `Column`: the labels, formats, notes and letters beside a frame
-  ([Labels](#labels-in-parquet-files)); `Meta` has `labels`, `letters`,
-  `rename`, `select` and `copy`.
+- `tagged_na(letter)`, `na_tag(x)`, `is_tagged_na(x, letter=None)`:
+  make `.a` to `.z` as tagged NaNs, and read them from a column name,
+  expression or Series ([.a to .z in the frame](#a-to-z-in-the-frame)).
+- `Meta`, `Column`: the labels, formats and notes beside a frame
+  ([Labels](#labels-in-parquet-files)); `Meta` has `labels`, `rename`,
+  `select` and `copy`.
 - `ParquetInfo`: what `read_parquet_info` returns.
-- `LETTERS`: the polars Enum of `".a"` to `".z"`, the dtype of letters.
+- `LETTERS`: the polars Enum of `".a"` to `".z"`, the dtype of what
+  `na_tag` returns.
 - `FixedWidthWarning`: the warning `read_fixed_width` gives for
   statements it skipped; `messages` lists them.

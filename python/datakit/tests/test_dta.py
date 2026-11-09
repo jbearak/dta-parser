@@ -13,7 +13,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import datakit as dk
-from conftest import fixture_paths
+from conftest import assert_same, fixture_paths, tagged, tags
 
 dp = pytest.importorskip("dta_parser")
 pd = pytest.importorskip("pandas")
@@ -27,9 +27,10 @@ def bits(x):
 
 def ours(df, meta, name):
     """Per row: ("m", code) for a missing value, else ("v", value): a
-    number, text, bytes, or days or milliseconds since 1960 for dates."""
+    number, text, bytes, or days or milliseconds since 1960 for dates
+    (a date column holding letters is those numbers already)."""
     s = df[name]
-    letters = meta.letters(name).to_physical().to_list() if name in meta.columns else [None] * df.height
+    letters = dk.na_tag(s).to_physical().to_list()
     out = []
     if s.dtype == pl.Date:
         values = [None if v is None else v + EPOCH_DAYS for v in s.to_physical().to_list()]
@@ -38,8 +39,10 @@ def ours(df, meta, name):
     else:
         values = s.to_list()
     for v, l in zip(values, letters):
-        if v is None:
-            out.append(("m", 1 if l is None else l + 2))
+        if l is not None:
+            out.append(("m", l + 2))
+        elif v is None:
+            out.append(("m", 1))
         else:
             out.append(("v", v))
     return out
@@ -116,11 +119,6 @@ def test_save_dta_warns_once_about_a_name_stata_reserves(tmp_path):
         dk.save_dta(pl.DataFrame({"in": [1], "ok": [2]}), tmp_path / "r.dta")
     df, _ = dk.read_dta(tmp_path / "r.dta")
     assert df.columns == ["in", "ok"]
-    # A companion letter column is not written, so its name does not matter.
-    meta = dk.Meta(columns={"x": dk.Column()}, letter_columns={"x": "in"}, rows=1)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        dk.save_dta(pl.DataFrame({"x": [1.0], "in": pl.Series([None], dtype=dk.LETTERS)}), tmp_path / "c.dta", meta=meta)
 
 
 @pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)
@@ -129,25 +127,31 @@ def test_save_dta_reads_back_with_dta_parser(path, tmp_path):
     out = tmp_path / "out.dta"
     dk.save_dta(df, out, meta=meta)
     back, back_meta = dk.read_dta(out, timestamps="truncate")
-    assert_frame_equal(back, df)
+    assert_same(back, df)
     back_meta.timestamp = meta.timestamp
-    assert back_meta == meta
+    assert back_meta == meta and back_meta._storage == meta._storage
     theirs_ = dp.read_dta(out)
     want = dp.read_dta(path)
     for name in df.columns:
         assert dp.missing_codes(theirs_[name]).tolist() == dp.missing_codes(want[name]).tolist(), name
+    # A column a read made Float64 for its letters is written in its
+    # file's storage type again.
+    written, original = dp.read_meta(out)["columns"], dp.read_meta(path)["columns"]
+    for name in meta._storage:
+        assert written[name]["storage"] == original[name]["storage"], name
 
 
-@pytest.mark.parametrize("path", fixture_paths()[:6], ids=lambda p: p.stem)
-@pytest.mark.parametrize("mode", ["columns", None])
-def test_read_dta_letter_modes(path, mode):
+@pytest.mark.parametrize("path", fixture_paths(), ids=lambda p: p.stem)
+def test_read_dta_letters_false_reads_them_as_nulls(path):
     df, meta = dk.read_dta(path, timestamps="truncate")
-    got, gm = dk.read_dta(path, letters=mode, timestamps="truncate")
-    if mode is None:
-        assert_frame_equal(got, df) and gm.missing == {}
-    else:
-        for name, comp in gm.letter_columns.items():
-            assert got[comp].equals(meta.letters(name).alias(comp))
+    got, gm = dk.read_dta(path, letters=False, timestamps="truncate")
+    assert gm == meta and gm._storage == {}
+    for name, t in df.schema.items():
+        s = got[name]
+        if name in meta._storage:
+            assert s.dtype == meta._storage[name], name
+        if t == pl.Float64 and dk.is_tagged_na(df[name]).any():
+            assert s.is_null().to_list() == (df[name].is_null() | dk.is_tagged_na(df[name])).to_list(), name
 
 
 def test_tc_fractions_and_range(tmp_path):
@@ -215,15 +219,57 @@ def test_save_dta_types_and_errors(tmp_path):
         dk.save_dta(df.lazy(), tmp_path / "z.dta")
 
 
-def test_save_dta_keeps_letters_from_both_places(tmp_path):
-    df = pl.DataFrame({"x": [1.0, None, None], "y": pl.Series([None, 2, None], dtype=pl.Int8)})
-    meta = dk.Meta(missing={"x": pl.Series("x", [None, ".b", None], dtype=dk.LETTERS)}, rows=3)
-    df = df.with_columns(pl.Series("y_letter", [".z", None, None], dtype=dk.LETTERS))
-    meta.letter_columns["y"] = "y_letter"
-    dk.save_dta(df, tmp_path / "l.dta", meta=meta)
-    back = dp.read_dta(tmp_path / "l.dta")
-    assert dp.missing_codes(back["x"]).tolist() == [0, 3, 1]
-    assert dp.missing_codes(back["y"]).tolist() == [27, 0, 1]
+def test_save_dta_writes_tagged_nans_as_letters(tmp_path):
+    df = pl.DataFrame({"x": tagged([1.0, None, None], [None, ".b", None]), "y": tagged([None, 2.0, None], [".z", None, None])})
+    for meta in (None, dk.Meta()):
+        dk.save_dta(df, tmp_path / "l.dta", meta=meta)
+        back = dp.read_dta(tmp_path / "l.dta")
+        assert dp.missing_codes(back["x"]).tolist() == [0, 3, 1]
+        assert dp.missing_codes(back["y"]).tolist() == [27, 0, 1]
+    got, _ = dk.read_dta(tmp_path / "l.dta")
+    assert_same(got, df)
+    dk.save_dta(df, tmp_path / "n.dta", missing_letters=False)
+    assert dp.missing_codes(dp.read_dta(tmp_path / "n.dta")["x"]).tolist() == [0, 1, 1]
+
+
+def test_storage_comes_back_only_when_the_values_fit(tmp_path):
+    pdf = pd.DataFrame({
+        "b": dp.DtaArray([1, None, 3], codes=[0, 2, 0], storage="byte"),
+        "i": dp.DtaArray([300, None, 1], codes=[0, 27, 0], storage="int"),
+        "l": dp.DtaArray([70000, None, 1], codes=[0, 3, 0], storage="long"),
+        "f": dp.DtaArray([1.5, None, 2.25], codes=[0, 4, 0], storage="float"),
+    })
+    dp.write_dta(pdf, tmp_path / "s.dta")
+    df, meta = dk.read_dta(tmp_path / "s.dta")
+    assert all(t == pl.Float64 for t in df.schema.dtypes())
+    assert meta._storage == {"b": pl.Int8, "i": pl.Int16, "l": pl.Int32, "f": pl.Float32}
+    assert tags(df["b"]) == [None, ".a", None] and tags(df["i"]) == [None, ".z", None]
+    dk.save_dta(df, tmp_path / "same.dta", meta=meta)
+    storage = {k: v["storage"] for k, v in dp.read_meta(tmp_path / "same.dta")["columns"].items()}
+    assert storage == {"b": "byte", "i": "int", "l": "long", "f": "float"}
+    # Values the storage type cannot hold are written as double.
+    changed = df.with_columns(pl.col("b") * 1000, pl.col("i") + 0.5, pl.col("f") + 0.1)
+    dk.save_dta(changed, tmp_path / "wider.dta", meta=meta)
+    storage = {k: v["storage"] for k, v in dp.read_meta(tmp_path / "wider.dta")["columns"].items()}
+    assert storage == {"b": "double", "i": "double", "l": "long", "f": "double"}
+    back, _ = dk.read_dta(tmp_path / "wider.dta")
+    assert tags(back["b"]) == [None, ".a", None] and back["b"].fill_nan(None).to_list() == [1000.0, None, 3000.0]
+
+
+def test_dates_with_letters_read_as_statas_numbers(tmp_path):
+    pdf = pd.DataFrame({"d": dp.DtaArray([0.0, None, 3653.0], codes=[0, 2, 0], storage="long"),
+                        "t": dp.DtaArray([1000.0, None, 0.0], codes=[0, 0, 27], storage="double"),
+                        "plain": dp.DtaArray([1.0, None], codes=[0, 1], storage="long").repeat(2)[:3]})
+    pdf.attrs["dta"] = {"columns": {"d": {"format": "%td"}, "t": {"format": "%tc"}, "plain": {"format": "%td"}}}
+    dp.write_dta(pdf, tmp_path / "d.dta")
+    df, meta = dk.read_dta(tmp_path / "d.dta")
+    assert df["d"].dtype == pl.Float64 and df["d"].fill_nan(None).to_list() == [0.0, None, 3653.0]
+    assert tags(df["d"]) == [None, ".a", None] and meta.columns["d"].format == "%td"
+    assert df["t"].dtype == pl.Float64 and tags(df["t"]) == [None, None, ".z"] and meta.columns["t"].format == "%tc"
+    assert df["plain"].dtype == pl.Date
+    dk.save_dta(df, tmp_path / "again.dta", meta=meta)
+    again, _ = dk.read_dta(tmp_path / "again.dta")
+    assert_same(again, df)
 
 
 def test_read_dta_arguments(tmp_path):

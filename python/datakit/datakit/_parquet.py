@@ -14,14 +14,14 @@ _COMPRESSION = ("snappy", "zstd", "gzip", "lz4_raw", "none")
 _UNITS = {"m": "ms", "u": "us", "n": "ns", "s": "ms"}
 
 
-def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letters="meta",
-                 letter_suffix="_letter", timestamps="error", nested="error"):
+def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letters=True,
+                 timestamps="error", nested="error"):
     """Read a Parquet file into a polars DataFrame and its Meta.
 
-    Returns a tuple, `df, meta = read_parquet(path)`. In `df`, `.` and
-    `.a` to `.z` are all polars nulls; `meta` holds the data label, notes,
-    each column's variable label, display format and value label set, the
-    sets, and the letters (below). A file with a "dta" profile (written by
+    Returns a tuple, `df, meta = read_parquet(path)`. In `df`, `.` is a
+    polars null and `.a` to `.z` are tagged NaNs (see `letters`); `meta`
+    holds the data label, notes, each column's variable label, display
+    format and value label set, and the sets. A file with a "dta" profile (written by
     save_parquet, R's datakit or Julia's Datakit) gives back what was
     saved; any other Parquet file reads with an empty Meta.
 
@@ -36,20 +36,19 @@ def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letter
     factors: make each column with value labels an Enum of its labels, as
         R's datakit does with factors = TRUE. The codes are then gone from
         the frame, and codes sharing a label become one level; saving does
-        not bring them back. `.a` to `.z` are kept as `letters` says. A
-        categorical holding `.a` to `.z` (stored as level numbers) reads
-        as an Enum of its levels either way, `meta.columns[x].value_labels`
-        naming its set; a value that is not a level number reads as null,
-        with a warning.
-    letters: where `.a` to `.z` go. "meta" (the default): in
-        `meta.missing`, a Series of LETTERS per column holding any, aligned
-        with the rows as read. "columns": a companion column `x_letter`
-        after every column that can hold a letter (byte, int, long, float,
-        double, date, timestamp, or a categorical stored with letters),
-        which follows its rows through filter,
-        sort and join. A list of names: companions for those columns, the
-        rest in `meta.missing`. None: drop the letters.
-    letter_suffix: the companion's suffix, "_letter" by default.
+        not bring them back. An Enum cannot hold `.a` to `.z`: in a
+        column made one they are nulls, with a warning, as in R's
+        datakit. A categorical stored with letters stays its level
+        numbers, as in R.
+    letters: True (the default) keeps `.a` to `.z` in the frame: each
+        column holding any in the rows read is Float64, each letter a NaN
+        tagged with it (`na_tag` reads them, `tagged_na` makes one). An
+        integer or Float32 column is cast; a date or timestamp becomes
+        Stata's number (days, or milliseconds, since 1960) with a `%td` or
+        `%tc` format; a categorical its level numbers from 1, labelled by
+        its value label set. polars counts NaN as a value: use
+        `fill_nan(None)` before `is_null`, `mean` or `count`. False reads
+        `.a` to `.z` as nulls, like `.`, and the column keeps its dtype.
     timestamps: "error" (the default) or "truncate": what to do with a
         date held as a number of days with a fraction, or a timestamp held
         as seconds that no whole number of microseconds gives back
@@ -61,14 +60,14 @@ def read_parquet(source, columns=None, skip=0, n_max=None, factors=False, letter
     """
     columns = f.check_columns(columns)
     f.check_window(skip, n_max)
-    letters = f.check_letters(letters, letter_suffix)
+    f.check_letters(letters)
     f.check_choice("timestamps", timestamps, ("error", "truncate"))
     f.check_choice("nested", nested, ("error", "skip"))
     if not isinstance(factors, bool):
         raise TypeError(f"factors must be True or False, not {factors!r}")
     src = f.source_of(source)
     frame, found, m = native.parquet_read_arrow(src, columns, skip, n_max, nested == "skip", timestamps)
-    return f.finish(frame, found, m, factors=factors, letters=letters, letter_suffix=letter_suffix)
+    return f.finish(frame, found, m, factors=factors, letters=letters)
 
 
 def _dtype(fmt, flag, levels):
@@ -96,8 +95,8 @@ def _dtype(fmt, flag, levels):
 def read_parquet_info(source):
     """Describe a Parquet file without reading its data: only the footer is
     read. Returns a ParquetInfo: rows, row_groups, compression,
-    created_by, key_value, meta (the Meta a whole-file read gives, without
-    `missing`) and columns (each column's polars dtype as read_parquet
+    created_by, key_value, meta (the Meta a whole-file read gives) and
+    columns (each column's polars dtype as read_parquet
     gives it, Parquet's types, label, value label set and storage).
 
     source: a path, the file as bytes, or a binary file object with read
@@ -146,15 +145,12 @@ def save_parquet(df, path=None, meta=None, *, compression="snappy", compression_
     The file keeps the data label, notes, characteristics, sort order,
     time stamp, variable labels, display formats and value labels in its
     "dta" profile, a JSON entry of the footer's key-value metadata, which
-    R's and Julia's datakits read too. `.a` to `.z` are in the data: a
-    column holding any is DOUBLE, each letter a tagged NaN (the profile
-    names the column's storage type), which pyarrow, polars and DuckDB
-    read as NaN. An Enum holding letters needs a value label set in
-    meta.columns: it is written as its level numbers from 1 (DOUBLE), with
-    its levels and a set labelling them, its own set when that fits, else
-    one made from the levels named after the column (or name_2, ...).
-    An Enum without a set, or a Categorical, with letters is an error.
-    Other tools read the file as plain Parquet. Returns None,
+    R's and Julia's datakits read too. `.a` to `.z`, the tagged NaNs of a
+    Float64 column, are written as they are: a DOUBLE whose letters R
+    reads as tagged NAs and pyarrow, polars and DuckDB as NaN. A column
+    that a read made Float64 to hold them is written with its file's
+    storage type in the profile, when its values still fit it. Other
+    tools read the file as plain Parquet. Returns None,
     or the file as bytes when path is None. The file is written beside
     `path` and renamed, so a failed write leaves an existing file as it
     was.
@@ -165,15 +161,13 @@ def save_parquet(df, path=None, meta=None, *, compression="snappy", compression_
         "none"; compression_level sets zstd's (1 to 22) or gzip's (0 to 9).
     row_group_size: rows per row group (by default up to 262,144 rows and
         about 1 GiB of values).
-    missing_letters: False writes `.a` to `.z` as plain nulls.
-    timestamps: "error" or "truncate", for a Datetime("ns") column with
-        letters, which is written as seconds and so must be whole
-        microseconds.
+    missing_letters: False writes `.a` to `.z` as plain nulls. A NaN that
+        is not tagged is written as NaN, a value.
+    timestamps: "error" or "truncate"; kept for files written with
+        letters in a Datetime column by R, Julia or TypeScript.
 
-    Letters come from companion columns (meta.letter_columns), which are
-    not written as columns, and from meta.missing, whose columns must be
-    unchanged since they were read. Every dtype polars has that Parquet
-    and the profile can keep is written; Decimal, Duration, List, Array,
+    Every dtype polars has that Parquet and the profile can keep is
+    written; Decimal, Duration, List, Array,
     Struct and Object are errors naming the column and what to cast to.
 
     Guide: {guide}#write-a-parquet-file

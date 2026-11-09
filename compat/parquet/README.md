@@ -92,8 +92,8 @@ first appearance, which the test checks against pyarrow's values.
 
 Where Python's datakit is installed, `readback.py` also writes its own
 files with `save_parquet` (every dtype it writes, with nulls, `.a` to
-`.z` in byte, int, long, float, double, date and zoned timestamp
-columns, an ordered Enum with an unused level, in snappy, zstd, gzip and
+`.z` as tagged NaNs in Float64 columns written with the storage types
+byte, int, long and float and as double, an ordered Enum with an unused level, in snappy, zstd, gzip and
 no compression, in row groups of 64 rows, and with `missing_letters`
 off) and checks what pyarrow, polars and DuckDB read, value by value:
 letters as NaN, and the levels and zone. With pyarrow 26.0.1, polars
@@ -161,11 +161,12 @@ rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
     sh compat/parquet/cross_language.sh [DIR]
 
 R's datakit and Python's datakit each write a file
-(`cross_language.R write`, `cross_language.py write`; Python's twice,
-with its letters in `meta.missing` and in companion columns). Julia's
-Datakit checks R's and Python's cell by cell (`cross_language.jl
-check`); then Julia writes one, R checks Julia's and Python's, and
-Python checks R's and Julia's, in both of its letter modes. Both scripts make the same literal data, so
+(`cross_language.R write`, `cross_language.py write`; Python's letters
+are tagged NaNs in Float64 columns, so its date, timestamp and
+categorical holding letters are Stata's numbers, as Julia writes them).
+Julia's Datakit checks R's and Python's cell by cell
+(`cross_language.jl check`); then Julia writes one, R checks Julia's
+and Python's, and Python checks R's and Julia's. Both scripts make the same literal data, so
 each checks every row's value and missing code (`.` or which of `.a`
 to `.z`), the variable labels, display formats, value label sets (with
 labels on letters), the data label and notes. The data has a double, a

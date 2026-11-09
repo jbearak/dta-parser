@@ -15,6 +15,7 @@ import polars as pl
 import pytest
 
 import datakit as dk
+from conftest import tags
 from dta_parser import _native
 
 SETUP = "\n".join([
@@ -56,7 +57,7 @@ def test_setup_mode(files):
     assert df["ID"].to_list() == [1, 2, 3, 4, 5]
     assert df["ID"].dtype == pl.Int8
     assert df["KIDS"].is_null().to_list() == [False, True, True, True, False]
-    assert meta.missing == {}
+    assert df["KIDS"].dtype == pl.Int8 and meta._storage == {}
     assert meta.columns["SEX"].label == "R's sex"
     assert meta.columns["KIDS"].label == "k" * 200
     # 98 and 99 can no longer occur, so their labels are gone.
@@ -65,13 +66,12 @@ def test_setup_mode(files):
 
 def test_tagged_mode(files):
     df, meta = dk.read_fixed_width(*files(), recodes="tagged")
-    assert df["KIDS"].is_null().to_list() == [False, True, True, True, False]
-    assert meta.missing["KIDS"].to_list() == [None, ".a", ".b", ".b", None]
+    assert df["KIDS"].dtype == pl.Float64 and meta._storage == {"KIDS": pl.Int8}
+    assert tags(df["KIDS"]) == [None, ".a", ".b", ".b", None]
+    assert df["KIDS"].fill_nan(None).is_null().to_list() == [False, True, True, True, False]
     assert meta.value_labels["kidsf"] == {0: "(0) None", ".a": "(98) DK", ".b": "(99) Not ascertained"}
-    df, meta = dk.read_fixed_width(*files(), recodes="tagged", letters="columns")
-    assert df.columns == ["ID", "ID_letter", "SEX", "SEX_letter", "KIDS", "KIDS_letter"]
-    assert df["KIDS_letter"].to_list() == [None, ".a", ".b", ".b", None]
-    assert meta.letter_columns["KIDS"] == "KIDS_letter" and meta.missing == {}
+    df, _ = dk.read_fixed_width(*files(), recodes="tagged", letters=False)
+    assert df["KIDS"].dtype == pl.Int8 and df["KIDS"].is_null().to_list() == [False, True, True, True, False]
 
 
 def test_none_mode_and_bad_mode(files):
