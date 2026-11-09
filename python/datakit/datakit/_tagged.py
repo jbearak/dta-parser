@@ -25,7 +25,6 @@ from ._meta import GUIDE, LETTERS
 
 NA_BITS = 0x7FF0_0000_0000_07A2
 _MASK = 0xFFFF_FFFF_FFFF_FFFF ^ ((1 << 63) | (1 << 51) | (0xFF << 32))
-_NAMES = [f".{chr(c)}" for c in range(ord("a"), ord("z") + 1)]
 
 
 def _code(letter):
@@ -127,5 +126,3 @@ def is_tagged_na(x, letter=None):
 
 for _fn in (tagged_na, na_tag, is_tagged_na):
     _fn.__doc__ = _fn.__doc__.replace("{guide}", GUIDE)
-
-__all__ = ["tagged_na", "na_tag", "is_tagged_na", "LETTERS", "_NAMES"]
