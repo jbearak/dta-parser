@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { codesOf, numbers } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
 const dk = require("../dist/index.js");
@@ -53,7 +54,7 @@ test("integer and untyped number columns take the smallest type that holds them"
     const { variables, cols } = one(v);
     assert.equal(variables[0].type, want, JSON.stringify(v, (_, x) => (typeof x === "bigint" ? `${x}n` : x)));
     const src = v.values.map((x) => (x === null ? null : Number(x)));
-    assert.deepEqual(Array.from(cols[0].values, (x, i) => (cols[0].missing[i] ? null : x)), src);
+    assert.deepEqual(Array.from(cols[0].values, (x) => (dk.missingCode(x) ? null : x)), src);
   }
   assert.throws(() => one({ name: "big", type: "int64", values: [2n ** 53n + 1n] }), /big: row 0 holds 9007199254740993, past ±2\^53/);
   assert.throws(
@@ -61,8 +62,8 @@ test("integer and untyped number columns take the smallest type that holds them"
     /big: row 1 holds -1152921504606846976, past ±2\^53/,
   );
   // Letters stay letters.
-  const { cols } = one({ name: "x", type: "int64", values: { kind: "number", values: Float64Array.of(1, NaN), missing: Uint8Array.of(0, 2) } });
-  assert.deepEqual(Array.from(cols[0].missing), [0, 2]);
+  const { cols } = one({ name: "x", type: "int64", values: numbers([1, 0], [0, 2]) });
+  assert.deepEqual(codesOf(cols[0]), [0, 2]);
 });
 
 test("Parquet strings become strN or strL; a null string is an error", () => {
@@ -92,14 +93,14 @@ test("dates become %td, counted from 1960, exactly", () => {
   assert.equal(variables[0].type, "long");
   assert.equal(variables[0].format, "%td");
   assert.deepEqual(Array.from(cols[0].values.slice(0, 3)), [3653, 0, 3654]);
-  assert.deepEqual(Array.from(cols[0].missing), [0, 0, 0, 1, 3]);
+  assert.deepEqual(codesOf(cols[0]), [0, 0, 0, 1, 3]);
   assert.equal(one({ name: "d", type: "date", format: "%tdCCYY-NN-DD", values: [0] }).variables[0].format, "%tdCCYY-NN-DD");
   assert.equal(one({ name: "d", type: "date", format: "%9.0g", values: [0] }).variables[0].format, "%td");
   assert.throws(() => one({ name: "d", type: "date", values: [0.5] }), /d: row 0 holds 0\.5, a fraction of a day; pass timestamps: "truncate"/);
   const t = one({ name: "d", type: "date", values: [0.5, -0.5, -1.25] }, { timestamps: "truncate" });
   assert.deepEqual(Array.from(t.cols[0].values), [3653, 3652, 3651]);
   assert.throws(() => one({ name: "d", type: "date", values: [Infinity] }), /d: row 0 holds Infinity/);
-  assert.throws(() => one({ name: "d", type: "date", values: { kind: "number", values: Float64Array.of(NaN), missing: Uint8Array.of(0) } }), /d: row 0 holds NaN, which is not a missing value/);
+  assert.throws(() => one({ name: "d", type: "date", values: { kind: "number", values: Float64Array.of(NaN) } }), /d: row 0 holds NaN, which is not a missing value/);
   assert.throws(() => one({ name: "d", type: "date", values: [2147483620] }), /d: row 0 is past what a long %td holds/);
 });
 
@@ -139,7 +140,7 @@ test("a value label set .dta cannot hold: an error if used, else left out with a
 });
 
 test("decimal, time and unknown types", () => {
-  const { variables } = one({ name: "x", type: "decimal", values: { kind: "number", values: Float64Array.of(1.25), missing: Uint8Array.of(0) } });
+  const { variables } = one({ name: "x", type: "decimal", values: { kind: "number", values: Float64Array.of(1.25) } });
   assert.equal(variables[0].type, "double");
   assert.throws(() => one({ name: "x", type: "decimal", values: { kind: "string", values: ["123456789012345678.5"] } }), /x: this decimal was read as text .* set type: "string"/);
   assert.throws(() => one({ name: "x", type: "time", values: [1] }), /x: a \.dta file has no time of day type/);
@@ -162,7 +163,7 @@ test("categoricals become labelled codes with plan 0023's marker", () => {
   assert.deepEqual([...labels.g_2], [[1, "low"], [2, "high"], [3, "unused"]]);
   assert.deepEqual([...labels.g], [[9, "something else"]]);
   assert.deepEqual(Array.from(cols[0].values.slice(0, 2)), [2, 1]);
-  assert.deepEqual(Array.from(cols[0].missing), [0, 0, 1]);
+  assert.deepEqual(codesOf(cols[0]), [0, 0, 1]);
   assert.deepEqual(chars, [
     { variable: "g", name: "dtaparser_categorical", value: "ordered g_2" },
     // No ordering given: unordered.
@@ -170,7 +171,7 @@ test("categoricals become labelled codes with plan 0023's marker", () => {
   ]);
   // .a to .z are kept (plan 0022), and the variable is marked too (plan 0023).
   const lettered = one({ name: "c", type: "categorical", levels: ["a"], values: [0, MISSING[".a"]] });
-  assert.deepEqual(Array.from(lettered.cols[0].missing), [0, 2]);
+  assert.deepEqual(codesOf(lettered.cols[0]), [0, 2]);
   assert.deepEqual(lettered.chars, [{ variable: "c", name: "dtaparser_categorical", value: "unordered c" }]);
   assert.throws(() => one({ name: "c", type: "categorical", values: [0] }), /c: a categorical needs its levels/);
   assert.throws(

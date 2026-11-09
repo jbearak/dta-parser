@@ -1,5 +1,8 @@
 # Python's datakit keeps .a to .z in the frame, as tagged NaNs
 
+Its paragraph on TypeScript is superseded by ADR 0037: TypeScript's
+`NumberColumn` now holds tagged NaNs too.
+
 Supersedes the paragraph of ADR 0034 on where Python's datakit keeps
 `.a` to `.z`, and the option it rejected, "letters as tagged NaNs in
 Float64 columns".

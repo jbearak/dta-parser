@@ -31,7 +31,7 @@ test("recodes: setup gives what asciiSetupReader gives", () => {
     assert.ok([alnum(v.label), alnum(v.label) + v.name].includes(alnum(want.label)), `${v.name}: ${v.label}`);
     const got = v.values.kind === "string"
       ? v.values.values.map((s) => (s === "" ? null : s))
-      : Array.from(v.values.values, (x, i) => (v.values.missing[i] ? null : x));
+      : Array.from(v.values.values, (x) => (dk.missingCode(x) ? null : x));
     assert.equal(got.length, oracle.nobs);
     got.forEach((x, i) => {
       const y = want.values[i];
@@ -50,7 +50,10 @@ test("recodes: tagged gives asciiSetupReader's codes with each recode a letter, 
   for (const want of oracle.variables) {
     if (!want.tagged) continue;
     const v = ds.variables.find((x) => x.name === want.name);
-    const got = Array.from(v.values.values, (x, i) => (v.values.missing[i] === 1 ? null : v.values.missing[i] ? MISSING_NAME(v.values.missing[i]) : x));
+    const got = Array.from(v.values.values, (x) => {
+      const code = dk.missingCode(x);
+      return code === 1 ? null : code ? MISSING_NAME(code) : x;
+    });
     assert.deepEqual(got, want.tagged.map((y) => (y && typeof y === "object" ? { missing: y.missing } : y)), v.name);
     const labels = v.valueLabels ? [...ds.valueLabels[v.valueLabels]].map(([k, t]) => [key(k), t]) : [];
     assert.deepEqual(labels.sort(), want.tagged_labels.sort(), v.name);
@@ -92,10 +95,10 @@ test("the small setup: types, labels, recodes and the three modes", () => {
   assert.deepEqual(ds.variables.map((v) => [v.name, v.type]), [["ID", "byte"], ["SEX", "byte"], ["KIDS", "byte"]]);
   const kids = ds.variables[2];
   assert.equal(kids.label, "k".repeat(200));
-  assert.deepEqual(Array.from(kids.values.missing), [0, 1, 1, 1, 0]);
+  assert.deepEqual(Array.from(kids.values.values, dk.missingCode), [0, 1, 1, 1, 0]);
   assert.deepEqual([...ds.valueLabels[kids.valueLabels]], [[0, "(0) None"]]);
   const tagged = node.readFixedWidth(...files(), { recodes: "tagged" });
-  assert.deepEqual(Array.from(tagged.variables[2].values.missing), [0, 2, 3, 3, 0]);
+  assert.deepEqual(Array.from(tagged.variables[2].values.values, dk.missingCode), [0, 2, 3, 3, 0]);
   assert.deepEqual([...tagged.valueLabels.kidsf], [[0, "(0) None"], [MISSING[".a"], "(98) DK"], [MISSING[".b"], "(99) Not ascertained"]]);
   const none = node.readFixedWidth(...files(), { recodes: "none" });
   assert.deepEqual(Array.from(none.variables[2].values.values), [2, 98, 99, 99, 0]);

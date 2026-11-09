@@ -177,16 +177,15 @@ import { openDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
 const [age, comment] = r.readColumns(["age", "comment"]);
-if (age.kind === "number") console.log(age.values, age.missing);
-// Float64Array(6) [ 34, 51, 29, 62, 45, 38 ] Uint8Array(6) [ 0, 0, 0, 0, 0, 0 ]
+if (age.kind === "number") console.log(age.values);   // Float64Array(6) [ 34, 51, 29, 62, 45, 38 ]
 if (comment.kind === "string") console.log(comment.values[1]);   // moved in 2023
 r.close();
 ```
 
 | in the file | `readColumns` | `readRows` cell |
 |---|---|---|
-| byte, int, long, float, double | `NumberColumn`: `values` (`Float64Array`) and `missing` (`Uint8Array`) | `number` |
-| `.`, `.a` to `.z` | `values[i]` is `NaN`, `missing[i]` is 1 to 27 | `MISSING["."]` ... `MISSING[".z"]` |
+| byte, int, long, float, double | `NumberColumn`: `values` (`Float64Array`) | `number` |
+| `.`, `.a` to `.z` | `values[i]` is `NA` or a tagged NaN (`missingCode(values[i])` is 1 to 27) | `MISSING["."]` ... `MISSING[".z"]` |
 | strN, strL text | `StringColumn`: `values` of `string` | `string` |
 | strL with binary values | `Uint8Array` elements | `Uint8Array` |
 | dates | numbers; see [Dates](#dates-and-display-formats) | `number` |
@@ -352,26 +351,32 @@ All of it is available right after opening; no rows are read.
 ## Missing values
 
 Stata has 27 numeric missing values: `.` and `.a` to `.z` (see the
-[guide](guide/missing-values.md)). The package numbers them with
-*missing codes*: 1 for `.`, 2 for `.a`, ..., 27 for `.z` (0 means not
-missing).
+[guide](guide/missing-values.md)).
 
-- In a `NumberColumn`, `missing[i]` holds the code and `values[i]` is
-  `NaN`.
-- In a row, a missing cell is one of the 27 frozen objects in `MISSING`,
-  so `cell === MISSING[".d"]` works. `missingValue(code)` gives the
-  object for a code, and `isMissing(cell)` tells a missing value from a
-  number or string.
+- **In a `NumberColumn`, a missing value is a number in `values`**, as R
+  and Python's datakit hold it: `.` is `NA` (R's `NA_real_`) and `.a` to
+  `.z` are NaNs tagged with their letter, in the bits haven's
+  `tagged_na()` uses. A value and its missing value are one number, so
+  they cannot come apart. `missingCode(x)` numbers them: 0 for a
+  number, 1 for `.`, 2 for `.a`, ..., 27 for `.z`. `naTag(x)` gives the
+  letter (`".d"`), `isTaggedNa(x, letter?)` tests for one, and
+  `taggedNa(".d")` and `NA` make them. Any other NaN, such as a Parquet
+  file's NaN, is a number.
+- **In a row, a missing cell is one of the 27 frozen objects in
+  `MISSING`**, so `cell === MISSING[".d"]` works. `missingValue(code)`
+  gives the object for a code, and `isMissing(cell)` tells a missing
+  value from a number or string.
 
 ```ts
-import { MISSING, isMissing, missingValue, dtaKey } from "@jbearak/dta-parser";
+import { MISSING, isMissing, missingCode, missingValue, naTag } from "@jbearak/dta-parser";
 import { openDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
 const [income] = r.readColumns(["income"]);
 if (income.kind === "number") {
-  console.log(income.missing);                   // Uint8Array(6) [ 0, 5, 0, 1, 19, 0 ]
-  console.log(missingValue(income.missing[1]));  // { missing: '.d' }
+  console.log(Array.from(income.values, missingCode));   // [ 0, 5, 0, 1, 19, 0 ]
+  console.log(naTag(income.values[1]));                  // .d
+  console.log(missingValue(missingCode(income.values[4])));   // { missing: '.r' }
 }
 const cells = r.readRows(0, 6, ["income"]).map((row) => row[0]);
 console.log(cells.filter((c) => c === MISSING[".r"]).length);   // 1
@@ -404,6 +409,13 @@ r.close();
 The keys are the doubles Stata stores for missing values: finite and
 larger than any number Stata stores. The same keys come out of the R,
 Python and Julia packages.
+
+**Keep the letters in a `Float64Array`.** It keeps a NaN's bits as they
+are. A plain array, or arithmetic, may quiet the NaN, which
+`missingCode` reads through. `Float64Array.prototype.sort()` makes every
+NaN the same and loses the letters, and `JSON.stringify` writes `null`:
+sort by `dtaKeys`, as above, and convert to cells (`readRows`) or codes
+(`missingCode`) before serializing.
 
 ## Value labels
 
@@ -521,8 +533,7 @@ Each variable:
 | field | meaning |
 |---|---|
 | `name` | 1 to 32 letters, digits or `_`, not starting with a digit |
-| `values` | numbers, with `null` or a `MISSING` value for missing; or strings, among which a `Uint8Array` is a binary strL; or a `Float64Array`, as a `NumberColumn` holds them |
-| `missing` | with a `Float64Array`: each value's missing code, as `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a` to `.z`) |
+| `values` | numbers, with `null`, a `MISSING` value, `NA` or a `taggedNa` for missing; or strings, among which a `Uint8Array` is a binary strL; or a `Float64Array`, as a `NumberColumn` holds them, `NA` and tagged NaNs its missing values |
 | `type` | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` (the default) for numbers; for strings, leave it out or give `"strL"` to write strL whatever the length |
 | `format` | display format such as `"%9.2f"` or `"%td"`; default the type's |
 | `label` | variable label |
@@ -559,7 +570,7 @@ const variables: WriteVariable[] = r.variables.map((v, i) => {
   const c = columns[i];
   const meta = { name: v.name, format: v.format, label: v.label, valueLabels: v.valueLabels };
   return c.kind === "number"
-    ? { ...meta, type: v.type as WriteVariable["type"], values: c.values, missing: c.missing }
+    ? { ...meta, type: v.type as WriteVariable["type"], values: c.values }
     : { ...meta, values: c.values };
 });
 const valueLabels: Record<string, ValueLabels> = {};
@@ -622,7 +633,7 @@ to `openDtaFile` or `openDta` if text looks wrong (see the
 | `ds.variables[i].name`, `.label`, `.format` | `r.variables[i].name`, `.label`, `.format` |
 | `ds.variables[i].valueLabels` (array of `{ value, label }`) | `r.valueLabels(r.variables[i].valueLabels)` (a `Map`) |
 | `ds.rows`, `ds.toObjects()` | `r.readRows(0, r.info.nobs)`; see [Rows as objects](#rows-as-objects) |
-| missing values as `null` | `MISSING["."]` ... `MISSING[".z"]` in rows; codes in columns |
+| missing values as `null` | `MISSING["."]` ... `MISSING[".z"]` in rows; `NA` and tagged NaNs in columns |
 | `writeDta({ variables, rows, valueLabelSets, fileLabel })` | `writeDta({ variables: [{ name, values }], valueLabels, label })`: values by column, not by row |
 | `ReadStatType.INT8` ... `DOUBLE`, `STRING` | `type: "byte"` ... `"double"`; strings need no type |
 | `writeDta({ version: 117 })` | always release 118 |
@@ -642,7 +653,10 @@ each 0.x call to its 1.0 replacement.
 same names, imported from `@jbearak/datakit` and
 `@jbearak/datakit/node`. `TableReader` gained `valueLabelNames()`,
 `characteristics()` and `notes()`, so a class of yours that implements
-it needs them too. [docs/migration.md](migration.md#dta-parser-1x-to-20)
+it needs them too. `NumberColumn` has no `missing` array: its missing
+values are numbers in `values` (`NA` and tagged NaNs, ADR 0037), so
+`missing[i]` becomes `missingCode(values[i])`, and a `WriteVariable` has
+no `missing` either. [docs/migration.md](migration.md#dta-parser-1x-to-20)
 lists every change.
 
 ## datakit: Parquet files, fixed-width files and whole datasets
@@ -711,7 +725,8 @@ brotli); a script that imports only datakit's main entry never loads it.
   `openParquet`, `openParquetAsync`, `writeParquet`, `writeParquetTo`,
   `toDate`, `readDataset`, `readDatasetAsync` and `convertFixedWidth`.
   It also gives dta-parser's `MISSING`, `isMissing`, `missingValue`,
-  `dtaKey`, `dtaKeys` and `formatValue`: the same objects and functions,
+  `NA`, `taggedNa`, `naTag`, `isTaggedNa`, `missingCode`, `dtaKey`,
+  `dtaKeys` and `formatValue`: the same objects and functions,
   so `import { MISSING } from "@jbearak/datakit"` finds labels either
   package read.
 - `@jbearak/datakit/node` takes paths: `readParquet`,
@@ -729,20 +744,21 @@ name and `values` (the column `readColumns` gives), and the dataset's
 
 ```ts
 import { readDta } from "@jbearak/datakit/node";
-import { MISSING } from "@jbearak/dta-parser";
+import { MISSING, missingCode } from "@jbearak/dta-parser";
 
 const ds = readDta("survey.dta");
 console.log(ds.variables.map((v) => `${v.name}:${v.type}`).join(" "));
 // id:long region:byte age:byte income:double interviewed:long comment:str18
 const income = ds.variables.find((v) => v.name === "income")!;
-console.log(income.values.kind === "number" && Array.from(income.values.missing));   // [ 0, 5, 0, 1, 19, 0 ]
+console.log(income.values.kind === "number" && Array.from(income.values.values, missingCode));   // [ 0, 5, 0, 1, 19, 0 ]
 console.log(income.valueLabels, ds.valueLabels.nonresponse.get(MISSING[".d"]));     // nonresponse Don't know
 console.log(ds.label, ds.notes);   // Household survey (example) [ 'Made up for the dta-parser documentation.' ]
 ```
 
 A `ReadDataset` is plain data: add, drop, reorder or replace
 `variables` and their `values`, then save it. The letters `.a` to `.z`
-are in each column's `missing` codes, so they follow whatever your code
+are in each column's values, as tagged NaNs
+([Missing values](#missing-values)), so they follow whatever your code
 does to the column, with no companion column or side table to keep in
 step.
 
@@ -764,11 +780,14 @@ categorical: a `DictionaryColumn` of its levels (the texts of its
 value label set's numeric codes, in code order, unused ones included),
 with `categorical` giving the levels, whether they are ordered, the
 value label set they came from (`labelSet`) and each level's code
-(`codes`), so `saveDta` writes the same codes and set back. In a
-`dtaparser_categorical` column, `.a` to `.z` stay in `missing` (2 to
-27), and when the set labels one of them the variable's `valueLabels`
-still names the set, which `valueLabels` keeps, so the labels on its
-letters are not lost.
+(`codes`), so `saveDta` writes the same codes and set back. When the
+set of a `dtaparser_categorical` column labels one of `.a` to `.z`, the
+variable's `valueLabels` still names the set, which `valueLabels`
+keeps, so the labels on its letters are not lost. A `DictionaryColumn`
+cannot hold `.a` to `.z`, so a `dtaparser_categorical` column holding
+them in the rows read stays labelled numbers, its codes with the
+letters, and keeps its marker in `characteristics`, as in Python, R and
+Julia; `saveDta` writes it back as labelled numbers.
 
 If the file was changed after it was written, so that the marker no
 longer holds, the column comes back as labelled numbers and one
@@ -793,16 +812,17 @@ and the characteristics.
 options?)` writes it as a `.dta` file (release 118). A `Dataset` is
 what the read functions return, or one you build: `variables` (each a
 `DatasetVariable`: `name`, `values`, and optionally `type`, `format`,
-`label`, `valueLabels`, `missing`, and for Parquet `unit`, `timeZone`,
+`label`, `valueLabels`, `missing` (the nulls of a `BigInt64Array`), and for Parquet `unit`, `timeZone`,
 `levels`, `ordered`, `categorical`), `label`, `notes`, `valueLabels`,
 `characteristics`, `sortedBy` and `timestamp`:
 
 ```ts
 import { readDta, saveDta, saveParquet } from "@jbearak/datakit/node";
-import { MISSING } from "@jbearak/dta-parser";
+import { MISSING, naTag } from "@jbearak/dta-parser";
 
 const ds = readDta("survey.dta");
-// Keep the interviewed households, with a new variable: income per year.
+// A new variable: income per year. Each .a to .z stays: arithmetic keeps
+// a tagged NaN's letter, as Stata's gen keeps the missing value.
 const income = ds.variables.find((v) => v.name === "income")!.values;
 if (income.kind === "number") {
   ds.variables.push({
@@ -812,15 +832,14 @@ if (income.kind === "number") {
     label: "Yearly income",
     valueLabels: "nonresponse",
     values: income.values.map((x) => x * 12),
-    missing: income.missing,
   });
 }
 saveParquet(ds, "survey_year.parquet");
 saveDta(ds, "survey_year.dta");
 const back = readDta("survey_year.dta");
 const year = back.variables.find((v) => v.name === "income_year")!.values;
-console.log(year.kind === "number" && Array.from(year.values.slice(0, 3)), year.kind === "number" && year.missing[1]);
-// [ 25200, NaN, 22200 ] 5
+console.log(year.kind === "number" && Array.from(year.values.slice(0, 3)), year.kind === "number" && naTag(year.values[1]));
+// [ 25200, NaN, 22200 ] .d
 console.log(back.valueLabels.nonresponse.get(MISSING[".d"]));   // Don't know
 ```
 
@@ -834,7 +853,7 @@ datakit `save_dta` does (`SaveDtaOptions`):
 | `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
 | `date` (days since 1970) | long `%td`, days since 1960 |
 | `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
-| `categorical` | codes 1 to k (a restored categorical's own `categorical.codes`, which must increase with the levels: a code given twice, or out of order, is an error) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_categorical` marker, `ordered <set>` or `unordered <set>` (`unordered` when no ordering is given), as Python's datakit `save_dta` writes it. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and `readDta` gives them back in the categorical. Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
+| `categorical` | codes 1 to k (a restored categorical's own `categorical.codes`, which must increase with the levels: a code given twice, or out of order, is an error) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_categorical` marker, `ordered <set>` or `unordered <set>` (`unordered` when no ordering is given), as Python's datakit `save_dta` writes it. `.a` to `.z` in it (`MISSING` values or tagged NaNs among the codes) stay letters, and `readDta` gives them back as labelled numbers holding them (a `DictionaryColumn` cannot hold them). Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
 | `decimal` read as a number | double |
 
 Dates and timestamps are converted exactly, in integer arithmetic, from
@@ -885,6 +904,7 @@ Python's datakits use:
 ```ts
 import { writeFileSync } from "node:fs";
 import { readFixedWidth } from "@jbearak/datakit/node";
+import { missingCode } from "@jbearak/dta-parser";
 
 writeFileSync("kids.sas", [
   "PROC FORMAT;",
@@ -900,7 +920,7 @@ writeFileSync("kids.dat", "0011 2\n002298\n003199\n0052 0\n");
 
 const ds = readFixedWidth("kids.dat", "kids.sas", { recodes: "tagged" });
 const kids = ds.variables.find((v) => v.name === "KIDS")!;
-console.log(kids.label, kids.values.kind === "number" && Array.from(kids.values.missing));
+console.log(kids.label, kids.values.kind === "number" && Array.from(kids.values.values, missingCode));
 // Number of children [ 0, 2, 3, 0 ]
 console.log(ds.valueLabels[kids.valueLabels]);
 // Map(3) { 0 => '(0) None', { missing: '.a' } => '(98) DK', { missing: '.b' } => '(99) Not ascertained' }
@@ -936,41 +956,33 @@ its copy in the module and the `.dta` bytes at once.
 ### Into Arquero
 
 No data-frame library is part of datakit. A `ReadDataset`'s columns are
-typed arrays, which data-frame libraries take as they are. This recipe
-takes one into [Arquero](https://idl.uw.edu/arquero/) and back, the
-letters `.a` to `.z` travelling as a companion column of letter names
-beside each numeric column that has any (nodejs-polars, which runs only
-in Node, takes the same arrays):
+typed arrays, which data-frame libraries take as they are, `.a` to `.z`
+in them (nodejs-polars, which runs only in Node, takes the same arrays).
+This recipe takes one into [Arquero](https://idl.uw.edu/arquero/) and
+back. Arquero counts NaN as a value, so test for missing values with
+`missingCode` (`isTaggedNa` for the letters alone):
 
 ```ts
 import * as aq from "arquero";
 import { readDta, readParquet, saveParquet } from "@jbearak/datakit/node";
-import { MISSING, missingValue } from "@jbearak/dta-parser";
+import { missingCode, naTag } from "@jbearak/dta-parser";
 
 const ds = readDta("survey.dta");
-const columns: Record<string, unknown[]> = {};
-for (const v of ds.variables) {
-  const c = v.values;
-  if (c.kind === "number") {
-    columns[v.name] = Array.from(c.values, (x, i) => (c.missing[i] ? null : x));
-    if (c.missing.some((m) => m > 1)) columns[`${v.name}_letter`] = Array.from(c.missing, (m) => (m > 1 ? missingValue(m).missing : null));
-  } else if (c.kind === "string") {
-    columns[v.name] = c.values;
-  }
-}
+const columns: Record<string, unknown> = {};
+for (const v of ds.variables) if (v.values.kind === "number" || v.values.kind === "string") columns[v.name] = v.values.values;
 const south = aq.table(columns).filter((d: any) => d.region === 2).derive({ income_year: (d: any) => d.income * 12 });
-console.log(south.numRows(), south.array("income_letter"));   // 2 [ '.d', null ]
+console.log(south.numRows(), Array.from(south.array("income_year") as ArrayLike<number>, naTag));   // 2 [ '.d', undefined ]
 
-// Back: each letter column becomes the letters of its column.
-const letters = (name: string) => (south.columnNames().includes(`${name}_letter`) ? south.array(`${name}_letter`) : []);
-const variables = south.columnNames().filter((n) => !n.endsWith("_letter")).map((name) => {
+// Back: the columns as they are, letters and all.
+const variables = south.columnNames().map((name) => {
   const from = ds.variables.find((v) => v.name === name);
-  const values = Array.from(south.array(name) as ArrayLike<unknown>, (x, i) => (letters(name)[i] ? MISSING[letters(name)[i] as string] : x));
-  return { ...from, name, type: from?.type ?? "double", values };
+  return { ...from, name, type: from?.type ?? "double", values: Array.from(south.array(name) as ArrayLike<unknown>) };
 });
 saveParquet({ ...ds, variables } as any, "south.parquet");
-console.log(readParquet("south.parquet").variables.map((v) => v.name).join(" "));
-// id region age income interviewed comment income_year
+const back = readParquet("south.parquet");
+console.log(back.variables.map((v) => v.name).join(" "));   // id region age income interviewed comment income_year
+const year = back.variables.find((v) => v.name === "income_year")!.values;
+console.log(year.kind === "number" && Array.from(year.values, missingCode));   // [ 5, 0 ]
 ```
 
 ### Read a Parquet file
@@ -999,8 +1011,7 @@ console.log(r.readRows(0, 2));
 // [ [ 1, 1, 34, 2100, 23436, '' ], [ 2, 2, 51, { missing: '.d' }, 23436, 'moved in 2023' ] ]
 const [income] = r.readColumns(["income"]);
 console.log(income);
-// { kind: 'number', values: Float64Array(6) [ 2100, NaN, 1850, NaN, NaN, 3200 ],
-//   missing: Uint8Array(6) [ 0, 5, 0, 1, 19, 0 ] }
+// { kind: 'number', values: Float64Array(6) [ 2100, NaN, 1850, NaN, NaN, 3200 ] }
 r.close();
 ```
 
@@ -1012,11 +1023,12 @@ and close yourself, so the file read is the one you checked.
 reader with `close()` or `using`, as for `.dta`.
 
 The columns are the ones `.dta` reads give, so the rest of this page
-applies: numbers are `NumberColumn`s (a `Float64Array` with a `missing`
-code per row), text is a `StringColumn`, and in `readRows` a missing
-value is a `MISSING` object. Parquet adds three things: a text column
-can hold nulls (`missing[i]` is 1 and the value is `""`), a categorical
-comes back as a `DictionaryColumn`, and a 64-bit integer column whose
+applies: numbers are `NumberColumn`s (a `Float64Array`, a null `NA`,
+`.a` to `.z` tagged NaNs), text is a `StringColumn`, and in `readRows`
+a missing value is a `MISSING` object. Parquet adds three things: a text
+column can hold nulls (`missing[i]` is 1 and the value is `""`), a
+categorical comes back as a `DictionaryColumn` (as level numbers, a
+`NumberColumn`, when it holds `.a` to `.z` in the rows read), and a 64-bit integer column whose
 values do not all fit a JavaScript number comes back as a
 `BigIntColumn`. [What each type becomes](#what-each-parquet-type-becomes-in-typescript)
 gives every type.
@@ -1148,7 +1160,7 @@ To turn a labelled column into one, with one level per labelled code in
 code order, and a null wherever the value is missing or has no label:
 
 ```ts
-import type { DictionaryColumn } from "@jbearak/dta-parser";
+import { missingCode, type DictionaryColumn } from "@jbearak/dta-parser";
 import { openParquetFile, writeParquetFile } from "@jbearak/datakit/node";
 
 using r = openParquetFile("survey.parquet");
@@ -1160,8 +1172,8 @@ if (col.kind !== "number") throw new Error("region is not numeric");
 const region: DictionaryColumn = {
   kind: "dictionary",
   values: coded.map((k) => labels.get(k)!),
-  codes: Uint32Array.from(col.values, (x, i) => (col.missing[i] ? 0 : level.get(x) ?? 0)),
-  missing: Uint8Array.from(col.values, (x, i) => (col.missing[i] || !level.has(x) ? 1 : 0)),
+  codes: Uint32Array.from(col.values, (x) => level.get(x) ?? 0),
+  missing: Uint8Array.from(col.values, (x) => (missingCode(x) || !level.has(x) ? 1 : 0)),
 };
 console.log(region.values);                                       // [ 'North', 'South', 'East', 'West' ]
 console.log(Array.from(region.codes, (c) => region.values[c]));    // [ 'North', 'South', 'South', 'East', 'West', 'North' ]
@@ -1262,7 +1274,7 @@ console.log(r.variables.map((v) => `${v.name}:${v.physicalType}:${v.columnKind}`
 | `"string"`, `"strL"`, strN, or none with strings | text | BYTE_ARRAY STRING |
 | `"binary"`, or any Uint8Array among the values | bytes (text values become their UTF-8 bytes) | BYTE_ARRAY |
 | `"categorical"`, or a `DictionaryColumn` | level codes from 0 with `levels` (and `ordered`) | dictionary-encoded BYTE_ARRAY STRING, every level in order in every row group |
-| the same holding `.a` to `.z` (`MISSING` values among the codes, or a `DictionaryColumn`'s `missing` 2 to 27) | as above | DOUBLE level numbers from 1, the letters as tagged NaNs, with the levels and a value label set (the variable's `valueLabels` if it labels 1 to k with the levels, else one named after the column) in the profile ([Parquet: missing values](parquet.md#the-file)); with `missingLetters: false`, text with nulls |
+| the same holding `.a` to `.z` (`MISSING` values or tagged NaNs among the codes) | as above | DOUBLE level numbers from 1, the letters as tagged NaNs, with the levels and a value label set (the variable's `valueLabels` if it labels 1 to k with the levels, else one named after the column) in the profile ([Parquet: missing values](parquet.md#the-file)); with `missingLetters: false`, text with nulls |
 
 In every column `null` (and `MISSING["."]`) is a null. A value that does
 not fit its type is an error naming the variable and row (`row 0 holds
@@ -1312,21 +1324,21 @@ missing value; two variables may share a set. `characteristics` and
 
 ### Keep .a to .z in a Parquet file
 
-`.a` to `.z` survive a write and a read: in a `NumberColumn` their
-`missing` codes are 2 to 27, and in `readRows` they are `MISSING[".a"]`
-and so on, told apart from `.` (code 1) and from `NaN`, which is a
-value:
+`.a` to `.z` survive a write and a read: in a `NumberColumn` they are
+tagged NaNs (`missingCode` 2 to 27), and in `readRows` they are
+`MISSING[".a"]` and so on, told apart from `.` (`NA`, code 1) and from
+`NaN`, which is a value:
 
 ```ts
-import { MISSING } from "@jbearak/dta-parser";
+import { MISSING, missingCode, taggedNa } from "@jbearak/dta-parser";
 import { openParquet, writeParquet } from "@jbearak/datakit";
 
 const bytes = writeParquet({
-  variables: [{ name: "x", type: "byte", values: [1, null, MISSING[".a"], MISSING[".z"]] }],
+  variables: [{ name: "x", type: "byte", values: [1, null, MISSING[".a"], taggedNa(".z")] }],
 });
 const r = openParquet(bytes);
 const [x] = r.readColumns(["x"]);
-console.log(x.kind === "number" && x.missing);   // Uint8Array(4) [ 0, 1, 2, 27 ]
+console.log(x.kind === "number" && Array.from(x.values, missingCode));   // [ 0, 1, 2, 27 ]
 console.log(r.readRows(0, 4).map((row) => row[0]));
 // [ 1, { missing: '.' }, { missing: '.a' }, { missing: '.z' } ]
 console.log(r.variables[0].type, r.variables[0].physicalType);   // byte DOUBLE
@@ -1403,8 +1415,8 @@ digit.
 | INT32: INT(8), INT(16), none | `byte`, `int`, `long` | `NumberColumn` (`Float64Array`, as for `.dta`) | `number` |
 | unsigned 8, 16, 32 bits | `uint8`, `uint16`, `uint32` | `NumberColumn` | `number` |
 | INT64, unsigned 64 bits | `int64`, `uint64` | `int64: "auto"` (default): `NumberColumn` when every row group's statistics keep every value within the safe integers (±(2^53 − 1)), else `BigIntColumn`; decided at open, so every window has one kind, and each value read as a number is checked | `number` or `bigint` |
-| FLOAT, DOUBLE | `float`, `double` | `NumberColumn`; NaN is a value (`missing[i]` 0) | `number` |
-| DOUBLE written for `.a` to `.z` | its storage type (`byte` ... `float`), or `date`/`timestamp` | `NumberColumn`, the letters as codes 2 to 27 | `number` or `Missing` |
+| FLOAT, DOUBLE | `float`, `double` | `NumberColumn`; NaN is a value (`missingCode` 0), a tagged NaN `.a` to `.z` | `number` |
+| DOUBLE written for `.a` to `.z` | its storage type (`byte` ... `float`), or `date`/`timestamp` | `NumberColumn`, the letters as tagged NaNs | `number` or `Missing` |
 | BOOLEAN | `bool` | `NumberColumn` of 0 and 1 | `number` |
 | DECIMAL, precision ≤ 15 | `decimal` | `NumberColumn`, the nearest double to each value | `number` |
 | DECIMAL, precision > 15 | `decimal` | `StringColumn`, every digit kept | `string` |
@@ -1414,10 +1426,10 @@ digit.
 | STRING, ENUM, JSON | `string` | `StringColumn`; `missing[i]` 1 for a null | `string`, or `MISSING["."]` for a null |
 | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY (with UUID) unannotated | `binary` | `StringColumn` of `Uint8Array` | `Uint8Array` |
 | a categorical (dta profile) | `categorical` | `DictionaryColumn`: every level, in order; `categorical.ordered` | `string` |
-| a categorical holding `.a` to `.z` (DOUBLE, `"logical": "categorical"`) | `categorical` | `DictionaryColumn` as above, `missing[i]` 2 to 27 for `.a` to `.z`; `valueLabels` names its set. A value that is not a level number reads as `.`, with one process warning per reader and column (code `DATAKIT_CATEGORICAL`) | `string`, or `MISSING[".a"]` ... |
+| a categorical holding `.a` to `.z` (DOUBLE, `"logical": "categorical"`) | `categorical` | `DictionaryColumn` as above when the rows read hold no `.a` to `.z`; with them, a `NumberColumn` of its level numbers from 1 and the letters as tagged NaNs, as R, Julia and Python read it (`readDta`/`readParquet` give such a variable type `double`); `valueLabels` names its set. A value that is not a level number reads as `.`, with one process warning per reader and column (code `DATAKIT_CATEGORICAL`) | `string`, or `MISSING[".a"]` ... |
 | a dictionary of strings in `ARROW:schema` | `categorical` | `DictionaryColumn`, levels from the rows read | `string` |
 | a dictionary of other values in `ARROW:schema` | its value type | as that type | as that type |
-| null, anywhere | | `missing[i]` 1 | `MISSING["."]` |
+| null, anywhere | | `NA` in a `NumberColumn`; elsewhere `missing[i]` 1 | `MISSING["."]` |
 
 Numbers are `Float64Array`s for every Parquet number type, as for
 `.dta`: that keeps one column type across both formats, at twice the
@@ -1493,7 +1505,7 @@ Cells and columns from a Parquet file may also be `bigint`s and
 | key-value metadata (`kvMetadata`) | `setKeyValueMetadata` | `keyValue(key)`; labels and formats in the dta profile, read for you | |
 | `parquetWriteBuffer({ columnData })` | `writeParquet(table, props)` | `writeParquet({ variables })`, `writeParquetFile` | snappy by default; statistics and offset index always |
 | `codec`, `rowGroupSize` | `setCompression`, `setMaxRowGroupSize` | `compression`, `rowGroupSize` | |
-| null | null | `missing[i]` 1; `MISSING["."]` in rows | `.a` to `.z` kept as well |
+| null | null | `NA` in numbers, `missing[i]` 1 in other columns; `MISSING["."]` in rows | `.a` to `.z` kept as well, as tagged NaNs |
 
 Nested columns are the one thing they read that this package does not.
 

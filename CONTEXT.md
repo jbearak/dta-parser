@@ -91,7 +91,8 @@ column) and the dataset's label, notes, every value label set,
 characteristics, sort order and `.dta` timestamp. `readDta`,
 `readParquet`, `readFixedWidth` and `readDataset` return one
 (`ReadDataset`, every field filled); `saveParquet` and `saveDta` take
-one. Its columns hold `.a` to `.z` in their `missing` codes.
+one. Its number columns hold `.` and `.a` to `.z` in their values, as
+`NA` and **tagged NaNs** (ADR 0037).
 _Avoid_: frame, table (unqualified)
 
 **Meta**:
@@ -106,10 +107,13 @@ _Avoid_: attrs (pandas'), metadata (unqualified)
 **Tagged NaN**:
 How `.a` to `.z` are held in a double: R's `NA_real_` (a NaN whose low
 word is 1954) with the letter's ASCII code in bits 32 to 39, as haven,
-R's dtaparser, the Parquet files' DOUBLE columns and Python's datakit
-hold them. In Python's datakit a column holding letters is `Float64`, so
-the letters follow their rows through every polars operation (ADR
-0036); polars counts them as NaN values, not nulls.
+R's dtaparser, the Parquet files' DOUBLE columns, Python's datakit and
+the npm packages' `NumberColumn` hold them. In Python's datakit a column
+holding letters is `Float64`, so the letters follow their rows through
+every polars operation (ADR 0036); polars counts them as NaN values, not
+nulls. In TypeScript `.` is `NA_real_` itself (ADR 0037), and
+`missingCode` reads either. Julia's `DtaColumn` keeps codes beside its
+values instead, reading every one as `missing`.
 _Avoid_: companion column (the representation ADR 0036 replaced)
 
 **dtatools**:

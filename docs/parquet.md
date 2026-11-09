@@ -178,7 +178,7 @@ arrow restore factors and time zones. What each value becomes:
 | a polars `Datetime` without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
 | polars `Time` | INT64 | TIME(NANOS) |
 | R factor; polars `Enum`, `Categorical` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
-| a categorical holding `.a` to `.z`: a polars `Enum` with letters (from `read_dta(factors=True)`, say); a TypeScript `DictionaryColumn` whose `missing` holds 2 to 27 | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
+| a categorical holding `.a` to `.z`: a polars `Enum` with letters (from `read_dta(factors=True)`, say); a TypeScript categorical given `MISSING` values or tagged NaNs among its codes | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
 
 Files dta_parser 0.2 wrote from pandas read too: its `datetime64[s]`
 columns are TIMESTAMP(MILLIS) with `"unit": "s"` in the profile, which
@@ -214,14 +214,14 @@ Missing values:
   the column if it fits, else the first of the column's name,
   `name_2`, `name_3`, ... that fits or is free, so no other column's set
   changes and the name stays the same through any number of writes and
-  reads. A categorical without letters stays text. TypeScript reads the
-  column as a categorical with its letters (a `DictionaryColumn` with
-  `missing` 2 to 27). R, Julia and Python, whose factor,
-  `CategoricalArray` and `Enum` cannot hold letters, read it as
-  labelled numbers: the level numbers with the letters and the set
-  (`factors = TRUE` leaves it so). Python reads the `Enum` when the rows
-  read hold no letters. R, Julia and Python write it back as labelled
-  numbers, not a categorical. A value that is
+  reads. A categorical without letters stays text. R, Julia, Python
+  and TypeScript, whose factor, `CategoricalArray`, `Enum` and
+  `DictionaryColumn` cannot hold letters, read it as labelled numbers:
+  the level numbers with the letters and the set (`factors = TRUE`
+  leaves it so). Python and TypeScript read the categorical when the
+  rows read hold no letters, and TypeScript's `readRows` gives its
+  levels as text. R, Julia and Python write it back as labelled numbers,
+  not a categorical. A value that is
   not a level number (another tool rewrote the column) reads as `.`,
   with one warning naming the column and the first such row.
 - A reader takes a DOUBLE value as `.a` to `.z` only when its bits are

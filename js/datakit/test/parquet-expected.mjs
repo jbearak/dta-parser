@@ -2,6 +2,27 @@
 // compat/parquet/fixtures with what pyarrow reads (compat/parquet/expected).
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
+const { NA, missingCode, taggedNa } = createRequire(import.meta.url)("../dist/index.js");
+
+/**
+ * A column's missing codes, 0 a value, 1 `.`, 2 to 27 `.a` to `.z`: a
+ * number column's from its values (ADR 0037), any other's from `missing`.
+ */
+export function codesOf(c) {
+  if (c.kind === "number") return Array.from(c.values, missingCode);
+  return Array.from(c.missing ?? new Uint8Array(c.kind === "dictionary" ? c.codes.length : c.values.length));
+}
+
+/** A NumberColumn of `values`, with the missing value of each nonzero code in `codes`. */
+export function numbers(values, codes = []) {
+  const out = Float64Array.from(values, (x) => (x === null ? 0 : x));
+  codes.forEach((k, i) => {
+    if (k === 1) out[i] = NA;
+    else if (k > 1) out[i] = taggedNa(String.fromCharCode(0x61 + k - 2));
+  });
+  return { kind: "number", values: out };
+}
 
 export const parquetCompat = new URL("../../../compat/parquet/", import.meta.url);
 
@@ -23,8 +44,8 @@ export function parquetFixtures() {
 function ours(column, i, variable, arrowType) {
   const c = column;
   if (c.kind === "number") {
-    if (c.missing[i]) return null;
     const x = c.values[i];
+    if (missingCode(x)) return null;
     if (Number.isNaN(x)) return "NaN";
     if (arrowType === "bool") return x === 1;
     return x;

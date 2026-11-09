@@ -10,7 +10,8 @@ import type { Characteristic, Missing, TableColumn, ValueLabels } from "@jbearak
 export interface DatasetVariable {
   name: string;
   /**
-   * Numbers, with `null` or a `Missing` for missing values; strings, with
+   * Numbers, with `null`, a `Missing`, `NA` or a `taggedNa` for missing
+   * values (in a Float64Array, `NA` and tagged NaNs); strings, with
    * `null` for a missing one (Parquet only); bigints; or a column as a
    * reader's `readColumns` returns it (`NumberColumn`, `StringColumn`,
    * `DictionaryColumn`, `BigIntColumn`), so what was read saves back as
@@ -25,9 +26,8 @@ export interface DatasetVariable {
     | BigInt64Array
     | TableColumn;
   /**
-   * With a Float64Array (or BigInt64Array) of values, each one's missing
-   * code as `NumberColumn.missing` holds them (0 a value, 1 `.` or null, 2
-   * to 27 `.a` to `.z`); none missing when absent.
+   * With a BigInt64Array of values, 1 where a value is null, else 0; none
+   * null when absent. A Float64Array holds its missing values itself.
    */
   missing?: Uint8Array;
   /**

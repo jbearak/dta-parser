@@ -1,12 +1,15 @@
 // Plan 0023's dtaparser_categorical: saveDta marks every categorical, and
-// readDta restores a marked one with its .a to .z and their labels, or reads
-// it as labelled numbers, with a warning, when the file changed since.
+// readDta restores a marked one with its letter labels, or reads it as
+// labelled numbers, with a warning, when the file changed since. One
+// holding .a to .z in the rows read stays labelled numbers holding them,
+// its marker kept (ADR 0037), as in Python.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { codesOf } from "./parquet-expected.mjs";
 
 const require = createRequire(import.meta.url);
 const dk = require("../dist/index.js");
@@ -46,43 +49,50 @@ test("saveDta marks a categorical with letters and letter labels; readDta gives 
   const { ds, got } = read(f);
   assert.deepEqual(got, []);
   const v = ds.variables[0];
-  assert.equal(v.type, "categorical");
-  assert.deepEqual(v.categorical, { levels: LEVELS, ordered: true, labelSet: "gl", codes: [1, 2, 3, 4] });
-  assert.deepEqual(v.values, DICT);
-  // The set labels a letter, so the variable still names it, and it is kept.
+  // It holds letters, so it stays its codes with them, labelled, the
+  // marker kept.
+  assert.equal(v.type, "long");
+  assert.equal(v.categorical, undefined);
+  assert.deepEqual(codesOf(v.values), [0, 2, 0, 1, 19, 0]);
+  assert.deepEqual([0, 2, 5].map((i) => v.values.values[i]), [1, 3, 2]);
   assert.equal(v.valueLabels, "gl");
   assert.deepEqual([...ds.valueLabels.gl], [[1, "low"], [2, "mid"], [3, "high"], [4, "unused"], [MISSING[".r"], "Refused"]]);
-  assert.deepEqual(ds.characteristics, []);
+  assert.deepEqual(ds.characteristics, [{ variable: "grade", name: "dtaparser_categorical", value: "ordered gl" }]);
   // The browser path gives the same.
   const b = dp.openDta(readFileSync(f));
   assert.deepEqual(readDataset(b), ds);
   b.close();
-  // Saved again: the same set, codes, letters and marker.
+  // Saved again: the same set, codes and letters, as labelled numbers.
   const again = path();
   node.saveDta(ds, again);
   const r2 = dp.openDtaFile(again);
   assert.deepEqual(r2.valueLabelNames(), ["gl"]);
   assert.deepEqual([...r2.valueLabels("gl")], [...ds.valueLabels.gl]);
-  assert.deepEqual(Array.from(r2.readColumns([0])[0].missing), [0, 2, 0, 1, 19, 0]);
-  assert.deepEqual(r2.characteristics(), [{ variable: "grade", name: "dtaparser_categorical", value: "ordered gl" }]);
+  assert.deepEqual(codesOf(r2.readColumns([0])[0]), [0, 2, 0, 1, 19, 0]);
+  assert.deepEqual(r2.characteristics(), []);
   r2.close();
-  assert.deepEqual(read(again).ds, ds);
 });
 
 test("a marked categorical without letter labels drops its set, as a factor does", () => {
-  for (const values of [[0, null, 2], [0, MISSING[".a"], 2]]) {
-    const f = path();
-    node.saveDta({ variables: [{ name: "g", type: "categorical", levels: ["a", "b", "c"], values }] }, f);
-    const { ds, got } = read(f);
-    assert.deepEqual(got, []);
-    const v = ds.variables[0];
-    assert.equal(v.type, "categorical");
-    // No ordering given: unordered.
-    assert.deepEqual(v.categorical, { levels: ["a", "b", "c"], ordered: false, labelSet: "g", codes: [1, 2, 3] });
-    assert.equal(v.valueLabels, "");
-    assert.deepEqual(Object.keys(ds.valueLabels), []);
-    assert.deepEqual(Array.from(v.values.missing), [0, values[1] === null ? 1 : 2, 0]);
-  }
+  const f = path();
+  node.saveDta({ variables: [{ name: "g", type: "categorical", levels: ["a", "b", "c"], values: [0, null, 2] }] }, f);
+  const { ds, got } = read(f);
+  assert.deepEqual(got, []);
+  const v = ds.variables[0];
+  assert.equal(v.type, "categorical");
+  // No ordering given: unordered.
+  assert.deepEqual(v.categorical, { levels: ["a", "b", "c"], ordered: false, labelSet: "g", codes: [1, 2, 3] });
+  assert.equal(v.valueLabels, "");
+  assert.deepEqual(Object.keys(ds.valueLabels), []);
+  assert.deepEqual(codesOf(v.values), [0, 1, 0]);
+  // With a letter: its codes, labelled, the letter kept.
+  const g = path();
+  node.saveDta({ variables: [{ name: "g", type: "categorical", levels: ["a", "b", "c"], values: [0, MISSING[".a"], 2] }] }, g);
+  const lettered = read(g);
+  assert.deepEqual(lettered.got, []);
+  assert.equal(lettered.ds.variables[0].type, "long");
+  assert.deepEqual(codesOf(lettered.ds.variables[0].values), [0, 2, 0]);
+  assert.equal(lettered.ds.variables[0].valueLabels, "g");
 });
 
 /** A .dta file with `region` marked `dtaparser_categorical` (and whatever `chars` adds), written by dta-parser. */
@@ -104,23 +114,29 @@ function marked({
 }
 
 test("a file's codes 10, 20, 30 stay the categorical's codes; a label on a letter no row holds passes", () => {
-  const { ds, got } = read(marked());
+  const { ds, got } = read(marked({ values: [10, 20, 30, null] }));
   assert.deepEqual(got, []);
   const v = ds.variables[0];
   assert.deepEqual(v.categorical, { levels: ["low", "mid", "high"], ordered: false, labelSet: "region", codes: [10, 20, 30] });
-  assert.deepEqual(v.values, { kind: "dictionary", codes: Uint32Array.of(0, 0, 2, 0, 0), values: ["low", "mid", "high"], missing: Uint8Array.of(0, 2, 0, 1, 27) });
+  assert.deepEqual(v.values, { kind: "dictionary", codes: Uint32Array.of(0, 1, 2, 0), values: ["low", "mid", "high"], missing: Uint8Array.of(0, 0, 0, 1) });
   assert.equal(v.valueLabels, "region");
   // Saved: the same codes.
   const out = path();
   node.saveDta(ds, out);
   const r = dp.openDtaFile(out);
-  assert.deepEqual(Array.from(r.readColumns([0])[0].values.slice(0, 3)).map((x) => (Number.isNaN(x) ? null : x)), [10, null, 30]);
+  assert.deepEqual(Array.from(r.readColumns([0])[0].values).map((x) => (Number.isNaN(x) ? null : x)), [10, 20, 30, null]);
   assert.deepEqual([...r.valueLabels("region")], [[10, "low"], [20, "mid"], [30, "high"], [MISSING[".a"], "Not asked"]]);
   r.close();
   // A label on .a that no row holds, whose text repeats a level's.
   const unused = read(marked({ labels: new Map([[1, "yes"], [2, "no"], [MISSING[".a"], "no"]]), values: [1, 2] }));
   assert.deepEqual(unused.got, []);
   assert.deepEqual(unused.ds.variables[0].categorical.levels, ["yes", "no"]);
+  // Holding .a and .z: its codes 10 and 30 with the letters, the marker kept.
+  const held = read(marked());
+  assert.deepEqual(held.got, []);
+  assert.equal(held.ds.variables[0].type, "long");
+  assert.deepEqual(codesOf(held.ds.variables[0].values), [0, 2, 0, 1, 27]);
+  assert.deepEqual(held.ds.characteristics.map((c) => c.name), ["dtaparser_categorical"]);
 });
 
 test("dtaparser_factor still restores, and letters in it still fail", () => {
@@ -224,10 +240,11 @@ test("stale factors and categoricals share one warning", () => {
     "x: row 0 holds 2, which has no label",
     "y: row 0 holds 3, which has no label",
   ]);
-  assert.deepEqual(ds.variables.map((v) => v.type), ["long", "long", "categorical"]);
-  // The set stays: x and y still use it.
+  // z holds .b, so it stays numbers too, without a warning.
+  assert.deepEqual(ds.variables.map((v) => v.type), ["long", "long", "long"]);
+  // The set stays: x, y and z still use it.
   assert.deepEqual(Object.keys(ds.valueLabels), ["s"]);
-  assert.deepEqual(ds.characteristics.map((c) => c.variable), ["x", "y"]);
+  assert.deepEqual(ds.characteristics.map((c) => c.variable), ["x", "y", "z"]);
 });
 
 test("this reader converts no dates, so a date format does not make the marker fail", () => {

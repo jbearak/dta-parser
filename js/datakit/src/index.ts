@@ -14,7 +14,7 @@ export type { Dataset, DatasetVariable, ReadDataset, ReadVariable } from "./type
 
 // dta-parser's values, keys and formatting, from its wasm-free entry: the
 // same objects and functions as `@jbearak/dta-parser` exports.
-export { MISSING, dtaKey, dtaKeys, formatValue, isMissing, missingValue } from "@jbearak/dta-parser/format";
+export { MISSING, NA, dtaKey, dtaKeys, formatValue, isMissing, isTaggedNa, missingCode, missingValue, naTag, taggedNa } from "@jbearak/dta-parser/format";
 export type { Cell, Missing, MissingName, ValueLabels } from "@jbearak/dta-parser/format";
 export type {
   AsyncTableReader,

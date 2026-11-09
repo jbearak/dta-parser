@@ -89,9 +89,9 @@ function passOurs(columns) {
   let sum = 0
   for (const c of columns) {
     if (c.kind === 'number') {
+      // Missing values are NaNs (NA and tagged NaNs; ADR 0037), as a NaN value counts 0.
       const v = c.values
-      const m = c.missing
-      for (let i = 0; i < v.length; i++) if (m[i] === 0) sum += v[i] === v[i] ? v[i] : 0
+      for (let i = 0; i < v.length; i++) sum += v[i] === v[i] ? v[i] : 0
     } else if (c.kind === 'bigint') {
       for (let i = 0; i < c.values.length; i++) if (!c.missing[i]) sum += Number(c.values[i] & 255n)
     } else if (c.kind === 'dictionary') {
@@ -189,7 +189,8 @@ function dtaFrame() {
 function withNulls(c) {
   if (c.kind === 'string') return c.values
   const out = new Array(c.values.length)
-  for (let i = 0; i < out.length; i++) out[i] = c.missing[i] ? null : c.values[i]
+  const { missingCode } = require(join(root, 'js', 'dist', 'index.js'))
+  for (let i = 0; i < out.length; i++) out[i] = (c.kind === 'number' ? missingCode(c.values[i]) : c.missing[i]) ? null : c.values[i]
   return out
 }
 

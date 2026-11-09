@@ -5,6 +5,7 @@
 import type { Characteristic, Missing, ValueLabels, WriteDataset, WriteVariable } from "@jbearak/dta-parser";
 import { isMissing } from "@jbearak/dta-parser/format";
 import { dtaError } from "./_shared/errors";
+import { codesOf, missingCode, withCodes } from "./_shared/tagged";
 import { CATEGORICAL_MARK, FACTOR_MARK, warn } from "./dataset";
 import type { Dataset, DatasetVariable } from "./types";
 
@@ -61,7 +62,7 @@ const isText = (x: unknown): x is string | Uint8Array => typeof x === "string" |
 
 function numbersOf(v: DatasetVariable): Numbers | undefined {
   const x = v.values as unknown;
-  if (x instanceof Float64Array) return { values: x, missing: v.missing ?? new Uint8Array(x.length) };
+  if (x instanceof Float64Array) return { values: x, missing: codesOf(x) };
   if (x instanceof BigInt64Array) {
     const missing = v.missing ?? new Uint8Array(x.length);
     return { values: Float64Array.from(x, Number), missing, big: x };
@@ -82,7 +83,10 @@ function numbersOf(v: DatasetVariable): Numbers | undefined {
         big ??= new Array(n).fill(null);
         big[i] = e;
         values[i] = Number(e);
-      } else values[i] = e as number;
+      } else {
+        values[i] = e as number;
+        if (values[i] !== values[i]) missing[i] = missingCode(values[i]);
+      }
       if (big && missing[i]) big[i] = null;
     }
     if (big) for (let i = 0; i < n; i++) if (big[i] === null && !missing[i]) big[i] = BigInt(values[i]);
@@ -90,8 +94,8 @@ function numbersOf(v: DatasetVariable): Numbers | undefined {
   }
   const c = x as { kind: string };
   if (c.kind === "number") {
-    const col = x as { values: Float64Array; missing: Uint8Array };
-    return { values: col.values, missing: col.missing };
+    const col = x as { values: Float64Array };
+    return { values: col.values, missing: codesOf(col.values) };
   }
   if (c.kind === "bigint") {
     const col = x as { values: BigInt64Array | BigUint64Array; missing: Uint8Array };
@@ -242,7 +246,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
     // A %td (or %tc) format the variable has, such as %tdCCYY-NN-DD, is kept.
     const kind = t === "date" ? "%td" : "%tc";
     const format = v.format?.startsWith(kind) ? v.format : kind;
-    return { ...base, type: t === "date" ? "long" : "double", format, values, missing: nums.missing };
+    return { ...base, type: t === "date" ? "long" : "double", format, values: withCodes(values, nums.missing) };
   }
   if (t === "time") throw invalid(`${v.name}: a .dta file has no time of day type; convert it to numbers (seconds since midnight, say) first`);
   if (t === "decimal") {
@@ -250,7 +254,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
     if (!nums) {
       throw invalid(`${v.name}: this decimal was read as text (more than 15 digits); parse it into numbers if doubles are close enough, or set type: "string" to keep the digits as text`);
     }
-    return { ...base, type: "double", format: v.format || undefined, values: nums.values, missing: nums.missing };
+    return { ...base, type: "double", format: v.format || undefined, values: withCodes(nums.values, nums.missing) };
   }
   if (t === "string" || t === "binary" || t === "strL" || (t !== undefined && /^str[0-9]+$/.test(t))) {
     const texts = textsOf(v);
@@ -278,7 +282,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
       // as Python's save_dta does.
       const r = RANGES.findIndex(([name]) => name === t);
       const fits = r < 0 || nums.values.every((x, i) => nums.missing[i] !== 0 || (x >= RANGES[r][1] && x <= RANGES[r][2]));
-      if (fits) return { ...base, type: t, format: v.format || undefined, values: nums.values, missing: nums.missing };
+      if (fits) return { ...base, type: t, format: v.format || undefined, values: withCodes(nums.values, nums.missing) };
     }
     const integer = t !== undefined && !DTA_TYPES.has(t);
     let whole = true;
@@ -302,7 +306,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
     // A Parquet integer type's display format would be its own; .dta's
     // default suits the storage type chosen.
     const format = integer || (t !== undefined && RANGES.some(([name]) => name === t)) ? undefined : v.format || undefined;
-    return { ...base, type: type as WriteVariable["type"], format, values: nums.values, missing: nums.missing };
+    return { ...base, type: type as WriteVariable["type"], format, values: withCodes(nums.values, nums.missing) };
   }
   throw invalid(`${v.name}: a .dta file cannot hold type ${JSON.stringify(t)}`);
 }
@@ -385,5 +389,5 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
   // The marker says the variable reads back as a categorical, with its
   // .a to .z and their labels (plan 0023).
   characteristics.push({ variable: v.name, name: CATEGORICAL_MARK, value: `${ordered ? "ordered" : "unordered"} ${name}` });
-  return { name: v.name, label: v.label, type: "long", valueLabels: name, values, missing };
+  return { name: v.name, label: v.label, type: "long", valueLabels: name, values: withCodes(values, missing) };
 }

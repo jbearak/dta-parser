@@ -62,7 +62,7 @@ function register(): Readonly<Record<string, Missing>> {
   return made;
 }
 
-/** The missing value for a code in a NumberColumn's `missing` array (1 to 27). */
+/** The missing value for a missing code (1 `.`, 2 to 27 `.a` to `.z`), as `missingCode` gives it. */
 export function missingValue(code: number): Missing {
   return MISSING[MISSING_NAMES[code - 1]];
 }

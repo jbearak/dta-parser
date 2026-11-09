@@ -1,5 +1,6 @@
 // Helpers both writers use; nothing here is exported from the package.
 
+import { missingCode } from "./tagged";
 import { MISSING_NAMES, type Missing } from "./values";
 
 const encoder = new TextEncoder();
@@ -97,8 +98,11 @@ const JOIN_ROWS = 1 << 16;
 export function packNumbers(values: readonly (number | Missing | null)[]): { values: Float64Array; missing: Uint8Array } {
   const out = { values: new Float64Array(values.length), missing: new Uint8Array(values.length) };
   values.forEach((v, i) => {
-    if (typeof v === "number") out.values[i] = v;
-    else out.missing[i] = v === null ? 1 : MISSING_NAMES.indexOf(v.missing) + 1;
+    if (typeof v === "number") {
+      const code = v === v ? 0 : missingCode(v);
+      if (code) out.missing[i] = code;
+      else out.values[i] = v;
+    } else out.missing[i] = v === null ? 1 : MISSING_NAMES.indexOf(v.missing) + 1;
   });
   return out;
 }

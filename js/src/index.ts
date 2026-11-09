@@ -8,12 +8,13 @@ export type { DtaError, EncodingName, ErrorCode, ReadAt };
 
 import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 import { packNumbers, packTexts } from "./shared";
+import { applyCodes, codesOf, missingCode } from "./tagged";
 
 export type { Cell, Missing, MissingName, ValueLabels };
 
 // The same objects and functions as /format exports: build.mjs makes
 // this import the /format bundle, so there is one copy at run time.
-export { MISSING, dtaKey, dtaKeys, isMissing, missingValue, stataKey, stataKeys } from "./format-entry";
+export { MISSING, NA, dtaKey, dtaKeys, isMissing, isTaggedNa, missingCode, missingValue, naTag, stataKey, stataKeys, taggedNa } from "./format-entry";
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {
@@ -77,14 +78,16 @@ export interface Info extends TableInfo {
 }
 
 /**
- * A numeric variable's values. Where `missing[i]` is not 0, `values[i]`
- * is NaN and the value is missing: 1 is `.`, 2 to 27 are `.a` to `.z`
- * (see `missingValue`).
+ * A numeric variable's values, missing values among them (ADR 0037):
+ * `.` is `NA` (R's `NA_real_`) and `.a` to `.z` are NaNs tagged with
+ * their letter (`taggedNa`), as R and Python's datakit hold them, so a
+ * value and its missing code are one number. `missingCode(values[i])`
+ * gives 0 for a number, 1 for `.` and 2 to 27 for `.a` to `.z`, and
+ * `naTag` the letter. Any other NaN (a Parquet file's NaN) is a number.
  */
 export interface NumberColumn {
   kind: "number";
   values: Float64Array;
-  missing: Uint8Array;
 }
 
 /**
@@ -146,10 +149,9 @@ export interface DictionaryColumn {
   codes: Uint32Array;
   values: string[];
   /**
-   * Parquet files only: 0 for a value, else the missing value (and
-   * `codes[i]` means nothing): 1 for `.` (a null), 2 to 27 for `.a` to
-   * `.z`, which a categorical written from a `.dta` file may hold, as
-   * `NumberColumn.missing`. Test `missing[i] !== 0` for any missing value.
+   * Parquet files only: 1 where the value is null (and `codes[i]` means
+   * nothing), else 0. A categorical holding `.a` to `.z` in the rows read
+   * comes back as a `NumberColumn` of its level numbers instead.
    */
   missing?: Uint8Array;
 }
@@ -423,7 +425,7 @@ export class DtaReader implements TableReader {
     try {
       out = indices.map((i) =>
         !/^str/.test(this.variables[i].type)
-          ? { kind: "number", values: new Float64Array(count), missing: new Uint8Array(count) }
+          ? { kind: "number", values: new Float64Array(count) }
           : asDictionary
             ? { kind: "dictionary", codes: new Uint32Array(count), values: [] }
             : cap !== undefined
@@ -446,7 +448,7 @@ export class DtaReader implements TableReader {
           const column = out[k];
           if (column.kind === "number") {
             column.values.set(wasm.part(handle, k, 0, "f64"), done);
-            column.missing.set(wasm.part(handle, k, 1, "u8"), done);
+            applyCodes(column.values, wasm.part(handle, k, 1, "u8"), done);
             continue;
           }
           if (wasm.mode(handle, k) === 2) {
@@ -582,7 +584,8 @@ export function openDta(bytes: Uint8Array, options: Options = {}): DtaReader {
 export interface WriteVariable {
   name: string;
   /**
-   * Numbers, with `null` or a `Missing` for missing values, or strings.
+   * Numbers, with `null`, a `Missing`, `NA` or a `taggedNa` for missing
+   * values, or strings.
    * Strings become strN, or strL beyond 2045 bytes. A Uint8Array is a
    * binary strL, and makes the variable strL; it may sit among strings,
    * as `StringColumn.values` holds them.
@@ -599,14 +602,6 @@ export interface WriteVariable {
     | readonly (string | Uint8Array)[]
     | Float64Array
     | TableColumn;
-  /**
-   * With a Float64Array of values, each one's missing code as
-   * `NumberColumn.missing` holds them (0 a number, 1 `.`, 2 to 27 `.a`
-   * to `.z`); none missing when absent. So a column `readColumns`
-   * returned writes back as it is, without an array of values or
-   * `Missing`s.
-   */
-  missing?: Uint8Array;
   /**
    * Storage type of a numeric variable; default double. `strL` makes a
    * string variable strL whatever its length.
@@ -674,9 +669,7 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     if (v.values instanceof Float64Array) {
       const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
       if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: a Float64Array cannot be ${v.type}`, undefined, TypeError);
-      const missing = v.missing ?? new Uint8Array(nobs);
-      if (missing.length !== nobs) throw dtaError("DTA_INVALID", `${v.name} has ${missing.length} missing codes, not ${nobs}`, undefined, RangeError);
-      return { kind: "numbers", meta, storage, values: v.values, missing };
+      return { kind: "numbers", meta, storage, values: v.values, missing: codesOf(v.values) };
     }
     // A variable read (`{ ...variable, values: column }`) has its strN type.
     const textType = v.type === "string" || /^str[0-9]+$/.test(v.type ?? "");
@@ -768,7 +761,7 @@ function asDtaVariable(v: WriteVariable): DtaVariable {
   const c = x as TableColumn;
   switch (c.kind) {
     case "number":
-      return { ...v, values: c.values, missing: c.missing };
+      return { ...v, values: c.values };
     case "string":
       if (c.missing?.includes(1)) reject("a missing string");
       return { ...v, values: c.values };
@@ -798,7 +791,12 @@ export { formatValue } from "./format-entry";
 function cells(cols: Column[], count: number): Cell[][] {
   const rows: Cell[][] = [];
   for (let i = 0; i < count; i++) {
-    rows.push(cols.map((c) => (c.kind === "string" ? c.values[i] : c.missing[i] ? missingValue(c.missing[i]) : c.values[i])));
+    rows.push(cols.map((c) => {
+      if (c.kind === "string") return c.values[i];
+      const x = c.values[i];
+      const code = x === x ? 0 : missingCode(x);
+      return code ? missingValue(code) : x;
+    }));
   }
   return rows;
 }

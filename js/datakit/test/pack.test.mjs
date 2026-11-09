@@ -40,7 +40,7 @@ test("the packed packages install and every entry imports", { timeout: 300_000 }
     node.saveParquet({ variables: [{ name: "x", values: [1, dk.MISSING[".a"]] }] }, f);
     const back = node.readParquet(f);
     node.saveDta(back, f + ".dta");
-    console.log(JSON.stringify(Array.from(node.readDta(f + ".dta").variables[0].values.missing)));`;
+    console.log(JSON.stringify(Array.from(node.readDta(f + ".dta").variables[0].values.values, dk.missingCode)));`;
   const run = spawnSync(process.execPath, ["-e", cjs], { cwd: app, encoding: "utf8" });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(run.stdout.trim(), "[0,2]");

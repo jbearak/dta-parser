@@ -1,6 +1,7 @@
 // Display formats: render a cell as its variable's %-format says.
 
-import type { Cell, Missing, ValueLabels } from "./values";
+import { missingCode } from "./tagged";
+import { missingValue, type Cell, type Missing, type ValueLabels } from "./values";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_MS = 86_400_000;
@@ -35,6 +36,11 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  * `%g` shows it). `formatValue` never throws.
  */
 export function formatValue(cell: Cell, format: string, labels?: ValueLabels): string {
+  // A number that is `.` or a tagged `.a` to `.z` shows as that missing value.
+  if (typeof cell === "number" && cell !== cell) {
+    const code = missingCode(cell);
+    if (code) cell = missingValue(code);
+  }
   const key = typeof cell === "object" && cell !== null && "missing" in cell ? cell : typeof cell === "number" ? cell : undefined;
   if (labels && key !== undefined) {
     if (labels.has(key)) return labels.get(key)!;
