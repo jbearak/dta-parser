@@ -292,14 +292,19 @@ def test_a_stray_companion_is_written_with_a_warning():
     assert back["x_letter"].dtype == dk.LETTERS
 
 
-def test_an_enum_with_letters_is_an_error():
+def test_an_enum_with_letters_is_written_as_level_numbers():
     df, meta = survey()
     df, meta = dk.read_parquet(dk.save_parquet(df, meta=meta), factors=True, columns=["z"])
     meta.missing["z"] = L(None, None, None, None, None, ".d", name="z")
     df = df.with_columns(pl.when(pl.int_range(6) == 5).then(None).otherwise(pl.col("z")).alias("z"))
     meta._digests.clear()
-    with pytest.raises(ValueError, match='"z" is an Enum or Categorical and has .a to .z.*save it as .dta'):
-        dk.save_parquet(df, meta=meta)
+    back, bm = dk.read_parquet(quiet(dk.save_parquet, df, meta=meta))
+    assert back["z"].dtype == df["z"].dtype and back["z"].to_list() == df["z"].to_list()
+    assert bm.missing["z"].to_list() == [None, None, None, None, None, ".d"]
+    # "yn" does not label 1 to 5 with the levels: a set named after the
+    # column is made, and "yn" kept as it was.
+    assert bm.columns["z"].value_labels == "z" and bm.value_labels["yn"] == meta.value_labels["yn"]
+    assert bm.value_labels["z"] == dict(enumerate(df["z"].dtype.categories.to_list(), start=1))
 
 
 def test_types_that_cannot_hold_letters():
@@ -437,9 +442,14 @@ def test_factors_as_r_makes_them():
 
 def test_what_saving_factors_writes(tmp_path):
     df, meta = dk.read_parquet(factors_file(), factors=True, letters="columns", columns=["z"])
-    # Parquet: a categorical of the levels, which cannot hold letters.
-    with pytest.raises(ValueError, match="Enum or Categorical and has .a to .z"):
-        dk.save_parquet(df, meta=meta)
+    # Parquet: with letters, level numbers from 1 with a set of the levels
+    # ("yn" does not fit them, so it is made under the column's name).
+    back, bm = dk.read_parquet(quiet(dk.save_parquet, df, meta=meta))
+    assert back["z"].dtype == pl.Enum(["Yes", "No", "5"]) and back["z"].to_list() == df["z"].to_list()
+    assert bm.columns["z"].value_labels == "z" and bm.value_labels["z"] == {1: "Yes", 2: "No", 3: "5"}
+    assert bm.missing["z"].to_list() == [None, None, None, ".d", None, None]
+    assert "yn" in bm.value_labels
+    # Without them, a categorical of the levels, as text.
     back, bm = dk.read_parquet(dk.save_parquet(df, meta=meta, missing_letters=False))
     assert back["z"].dtype == pl.Enum(["Yes", "No", "5"]) and bm.columns["z"].value_labels is None
     assert "yn" in bm.value_labels

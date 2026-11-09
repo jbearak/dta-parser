@@ -167,7 +167,9 @@ Columns map to Parquet types:
 - `String`: BYTE_ARRAY STRING; `Vector{UInt8}`: BYTE_ARRAY.
 - `CategoricalArray` of strings (with CategoricalArrays.jl loaded):
   dictionary-encoded STRING with every level, in order, and whether it is
-  ordered.
+  ordered. A `CategoricalArray` cannot hold `.a` to `.z`; a
+  categorical with them that [`read_parquet`](@ref) read as labelled
+  numbers is written back as labelled numbers.
 - `missing` in any column: a null.
 
 Anything else is an error naming the column.

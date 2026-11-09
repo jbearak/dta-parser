@@ -93,6 +93,18 @@ fn describe(c: &Col, letters_on: bool) -> Value {
         }
     };
     let mut values = values;
+    // A categorical holding .a to .z (plan 0022): DOUBLE level numbers
+    // from 1, `logical` categorical in the profile.
+    if let Data::Cat { codes, .. } = &c.data {
+        if letters_on && codes.iter().any(|&k| (-27..=-2).contains(&k)) {
+            let letters: Vec<Value> =
+                codes.iter().map(|&k| if (-27..=-2).contains(&k) { json!(format!(".{}", (b'a' + (-k) as u8 - 2) as char)) } else { Value::Null }).collect();
+            o.insert("letters".into(), Value::Array(letters));
+            o.insert("logical".into(), json!("categorical"));
+            values = codes.iter().map(|&k| if k < 0 { Value::Null } else { json!(f64::from(k + 1)) }).collect();
+            kind = "float64";
+        }
+    }
     if letters_on && c.codes.iter().any(|&k| k > 1) {
         let letters: Vec<Value> = c.codes.iter().map(|&k| if k > 1 { json!(format!(".{}", (b'a' + k - 2) as char)) } else { Value::Null }).collect();
         o.insert("letters".into(), Value::Array(letters));
@@ -173,6 +185,18 @@ fn main() {
     // since 1970; and with missing_letters off, as dates and timestamps.
     put("dated", &dated_columns(), Profile::default(), WriteOptions::default());
     put("dated_off", &dated_columns(), Profile::default(), WriteOptions { missing_letters: false, ..Default::default() });
+    // A categorical holding .a to .z, written as DOUBLE level numbers
+    // (plan 0022), beside one without; with missing_letters off, both text.
+    let cats = [
+        Col {
+            name: "grade".into(),
+            data: Data::Cat { levels: vec!["low".into(), "mid".into(), "high".into()], ordered: true, codes: vec![0, -2, 2, -1, -27, 1] },
+            codes: vec![],
+        },
+        Col { name: "plain".into(), data: Data::Cat { levels: vec!["a".into(), "b".into()], ordered: false, codes: vec![0, 1, -1, 0, 1, 0] }, codes: vec![] },
+    ];
+    put("categorical_letters", &cats, Profile::default(), WriteOptions::default());
+    put("categorical_letters_off", &cats, Profile::default(), WriteOptions { missing_letters: false, ..Default::default() });
     // 5,000 columns with large label sets (plan 0018, "Risks").
     let wide: Vec<Col> = (0..5000).map(|k| Col { name: format!("v{k}"), data: Data::I32(vec![k, k + 1, k + 2]), codes: vec![0, 1, 0] }).collect();
     let wide_profile = Profile {

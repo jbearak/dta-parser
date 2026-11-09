@@ -165,6 +165,9 @@ pub(crate) trait Access: Send {
     fn codecs(&self) -> Vec<dta_parquet::format::Codec>;
     fn created_by(&self) -> Option<&str>;
     fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]);
+    /// A categorical holding `.a` to `.z`'s value-label set, and a
+    /// warning to pass on ([`Reader::categorical_labels`]).
+    fn categorical_labels(&self, column: usize) -> Option<(dta::ValueLabelSet, Option<String>)>;
     fn read(
         &mut self,
         columns: &[usize],
@@ -205,6 +208,9 @@ impl<S: Source + Send> Access for Reader<S> {
     }
     fn label_set_spans(&self) -> (&[u8], &[dta_parquet::LabelSpan]) {
         Reader::label_set_spans(self)
+    }
+    fn categorical_labels(&self, column: usize) -> Option<(dta::ValueLabelSet, Option<String>)> {
+        Reader::categorical_labels(self, column)
     }
     fn read(
         &mut self,
@@ -299,6 +305,9 @@ pub(crate) enum Kind {
     Time { unit: TimeUnit },
     /// Text with levels: the profile's, or (`rows`) those of the rows read.
     Category { levels: Vec<String>, ordered: bool, rows: bool },
+    /// A categorical holding `.a` to `.z` (plan 0022): DOUBLE level
+    /// numbers from 1, the levels from the profile.
+    LetterCategory { levels: Vec<String>, ordered: bool },
     Text,
     Binary,
 }
@@ -350,7 +359,14 @@ pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> Result
         ColumnType::Int64 => Kind::Int64,
         ColumnType::Boolean => Kind::Bool,
         ColumnType::Float => Kind::Float32,
-        ColumnType::Double => Kind::Double { storage: col.storage, logical: col.profile_logical },
+        ColumnType::Double => match (col.profile_logical, entry.and_then(|p| p.categorical.as_ref())) {
+            // The core keeps `logical` categorical only beside valid levels.
+            (Some(Logical::Categorical), Some(cat)) => {
+                Kind::LetterCategory { levels: cat.levels.clone(), ordered: cat.ordered }
+            }
+            (Some(Logical::Categorical), None) => Kind::Double { storage: col.storage, logical: None },
+            _ => Kind::Double { storage: col.storage, logical: col.profile_logical },
+        },
         ColumnType::Decimal { precision, .. } => {
             if *precision as usize <= dta_parquet::decimal::DOUBLE_DIGITS {
                 Kind::DecimalFloat

@@ -1014,6 +1014,7 @@ Contents:
 [Write a Parquet file](#write-a-parquet-file) ·
 [Write labels](#write-labels-to-a-parquet-file) ·
 [Keep .a to .z](#keep-a-to-z-in-a-parquet-file) ·
+[Categoricals with .a to .z](#categoricals-that-hold-a-to-z) ·
 [Files from other tools](#parquet-files-from-other-tools) ·
 [What each type becomes](#what-each-parquet-type-becomes-in-r) ·
 [Coming from arrow or nanoparquet](#coming-from-arrow-or-nanoparquet)
@@ -1064,7 +1065,9 @@ class(back$interviewed) # "Date"
 Every missing value is `NA`; in doubles `.a` to `.z` keep their letter
 (`na_tag()`), and a double `NaN` stays `NaN`. Columns with value labels
 are `dtaparser_labelled` (see [Labelled columns](#labelled-columns)),
-and `factors = TRUE` makes them factors as in `read_dta()`. String
+and `factors = TRUE` makes them factors as in `read_dta()`, except a
+categorical holding `.a` to `.z` ([below](#categoricals-that-hold-a-to-z)),
+which stays a labelled double. String
 columns come back packed, as `read_dta()`'s do. `file` may also be a raw
 vector holding a whole file. [What each type becomes](#what-each-parquet-type-becomes-in-r)
 gives the type of each Parquet column.
@@ -1126,7 +1129,8 @@ another tool has that tool's entries.
 `role` is `"nested"` for a list, map or group, which is not read, and
 `storage` and `logical` show what a column written as DOUBLE because it
 holds `.a` to `.z` was: `"byte"`, `"int"`, `"long"` or `"float"`, or
-`"date"` or `"timestamp"`.
+`"date"` or `"timestamp"`. `logical` is `"categorical"` for a
+categorical, whether it is text or, holding `.a` to `.z`, DOUBLE.
 
 ### Labels in Parquet files
 
@@ -1251,6 +1255,35 @@ save_parquet(df, "nulls.parquet", missing_letters = FALSE)
 na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
 ```
 
+### Categoricals that hold .a to .z
+
+Python's and TypeScript's datakit write a categorical that holds `.a`
+to `.z` as DOUBLE level numbers (1 for the first level) with tagged
+NaNs for the letters ([docs/parquet.md](parquet.md)). A factor cannot
+hold the letters, so `read_parquet()` gives such a column as a
+`dtaparser_labelled` double: the numbers 1 to k, `.a` to `.z` as tagged
+NAs, `labels` from its value label set (each level, and any labels on
+letters) and attribute `label_set` the set's name. It stays a labelled
+double with `factors = TRUE`, and gives no warning about lost letters.
+For a column `grade` with levels low, mid and high, written by Python
+or TypeScript:
+
+```r norun
+g <- read_parquet("grades.parquet")$grade
+g                        # 1 [low] NA(a) 3 [high] NA NA(z) 2 [mid]
+attr(g, "label_set")     # "grade"
+read_parquet_info("grades.parquet")$columns$logical   # "categorical"
+```
+
+A value that is not a level number (another tool rewrote the column,
+say, and left 1.5 in it) reads as `NA`, with one warning per call that
+names the column and the first such row read.
+
+R has no categorical type that holds `.a` to `.z`, so `save_parquet()`
+writes the column back as labelled numbers with its letters and value
+label set, not as a categorical. Python and TypeScript then read it as
+labelled numbers too.
+
 ### Parquet files from other tools
 
 `read_parquet()` reads the files pyarrow, pandas, polars, DuckDB,
@@ -1328,6 +1361,7 @@ value exactly (`decimal = "character"` keeps every digit).
 | STRING, ENUM, JSON | character |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | a list of raw vectors, `NULL` for null |
 | a categorical `save_parquet()` wrote | factor, ordered if it was, every level kept |
+| a categorical holding `.a` to `.z` (DOUBLE level numbers, which Python's and TypeScript's datakit write) | `dtaparser_labelled` double: codes 1 to k, `.a` to `.z` as tagged NAs, `labels` and `label_set` from its value label set; `factors = TRUE` leaves it so; a value that is not a level number is `NA` with a warning |
 | a dictionary of strings in `ARROW:schema`, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered; levels are the distinct values of the rows read, in order of first appearance |
 | a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |

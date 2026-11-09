@@ -24,7 +24,8 @@
 #'   and within them the pages, that hold the rows wanted are read.
 #' @param factors Whether columns with value labels become factors, as in
 #'   [dtaparser::read_dta()]. A factor cannot hold `.a` to `.z`, so the
-#'   default keeps the numbers.
+#'   default keeps the numbers. A categorical holding `.a` to `.z` stays a
+#'   labelled double either way.
 #' @param int64 How to return 64-bit integer columns, signed or not, and
 #'   unsigned 32-bit ones: `"double"` (the default; a value a double cannot
 #'   hold exactly is an error naming the column and row), `"integer64"`
@@ -57,6 +58,7 @@
 #'   | STRING, ENUM, JSON | character |
 #'   | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID | a list of raw vectors (`NULL` for null) |
 #'   | a categorical `save_parquet()` wrote | factor, ordered if it was |
+#'   | a categorical holding `.a` to `.z` (DOUBLE level numbers, which Python's and TypeScript's datakit write) | [`dtaparser_labelled`][dtaparser::with_labels] double, whatever `factors` says |
 #'   | a dictionary of strings in `ARROW:schema` (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered |
 #'
 #'   Every missing value is `NA`. In doubles `.a` to `.z` are tagged NAs
@@ -82,6 +84,16 @@
 #'   give other levels, and reading every row gives them all; a level no
 #'   row holds is not among them. `factors` does not apply to these. A
 #'   dictionary of another type reads as its values' type.
+#'
+#'   A categorical holding `.a` to `.z` is written as DOUBLE level
+#'   numbers, 1 for the first level, with tagged NaNs for the letters. A
+#'   factor cannot hold the letters, so it reads as a labelled double: the
+#'   numbers 1 to k, `.a` to `.z` as tagged NAs, `labels` from its value
+#'   label set (the levels, and any labels on letters), and its attribute
+#'   `label_set` the set's name. A value that is not a level number (a
+#'   fraction, a number past the levels) is `NA`, with one warning per call
+#'   naming the column and the first such row read. [save_parquet()]
+#'   writes the column back as labelled numbers, not as a categorical.
 #'
 #'   Not read, each an error naming the column and its type: FLOAT16 and
 #'   INTERVAL.
@@ -124,6 +136,9 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     for (i in seq_along(values)) {
       x <- values[[i]]
       if (!inherits(x, "dtaparser_labelled")) next
+      # A categorical holding .a to .z stays a labelled double: a factor
+      # would lose the letters.
+      if (isTRUE(res$letter_levels[i])) next
       labels <- attr(x, "labels", exact = TRUE)
       if (!any(!is.na(labels))) next
       codes <- vctrs::vec_data(x)
@@ -162,7 +177,9 @@ read_parquet <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 #'     `value_labels`, the name of its value label set; and `storage` and
 #'     `logical`, the storage type (`"byte"`, `"int"`, `"long"`,
 #'     `"float"`) or the date or time (`"date"`, `"timestamp"`) of a
-#'     column written as DOUBLE because it holds `.a` to `.z`.
+#'     column written as DOUBLE because it holds `.a` to `.z`. `logical` is
+#'     `"categorical"` for a categorical, whether written as text or, when
+#'     it holds `.a` to `.z`, as DOUBLE level numbers.
 #'   - `key_value`: a tibble of every key-value entry in the footer,
 #'     `key` and `value` (as text, `NA` for an entry with no value): the
 #'     `dta` profile, `ARROW:schema` and any other writer's entries.

@@ -210,6 +210,7 @@ trait Access {
     fn row_groups(&self) -> Vec<dta_parquet::RowGroupInfo>;
     fn codecs(&self) -> Vec<dta_parquet::format::Codec>;
     fn created_by(&self) -> Option<&str>;
+    fn categorical_labels(&self, column: usize) -> Option<(ValueLabelSet, Option<String>)>;
     fn read(
         &mut self,
         columns: &[usize],
@@ -250,6 +251,9 @@ impl<S: Source> Access for Reader<S> {
     }
     fn created_by(&self) -> Option<&str> {
         Reader::created_by(self)
+    }
+    fn categorical_labels(&self, column: usize) -> Option<(ValueLabelSet, Option<String>)> {
+        Reader::categorical_labels(self, column)
     }
     fn read(
         &mut self,
@@ -328,6 +332,11 @@ enum Kind {
     /// strings in `ARROW:schema`, whose levels are the distinct values of
     /// the rows read, filled in after the read.
     Factor { levels: Vec<String>, ordered: bool, rows: bool },
+    /// A categorical holding `.a` to `.z` (plan 0022): DOUBLE level
+    /// numbers 1 to `levels`, read as a labelled double, since a factor
+    /// cannot hold the letters. A value that is not a level number is
+    /// NA, with a warning.
+    LetterLevels { levels: usize },
     Text,
     Binary,
 }
@@ -361,6 +370,9 @@ fn kind_of(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>, modes
         ColumnType::Double => match (col.profile_logical, col.storage) {
             (Some(Logical::Date), _) => Kind::Date,
             (Some(Logical::Timestamp), _) => Kind::Seconds { per_second: 1.0, tz: zone_of(col, profile) },
+            (Some(Logical::Categorical), _) => Kind::LetterLevels {
+                levels: profile.and_then(|p| p.categorical.as_ref()).map_or(0, |c| c.levels.len()),
+            },
             (None, Some(Storage::Byte | Storage::Int | Storage::Long)) => Kind::Double { integer: true },
             _ => Kind::Double { integer: false },
         },
@@ -398,6 +410,8 @@ fn r_type(col: &ColumnInfo, profile: Option<&dta_parquet::ColumnProfile>, labell
     let kind = kind_of(col, profile, Modes::DEFAULT).ok()?;
     Some(match kind {
         Kind::Integer | Kind::Double { .. } | Kind::Int64(_) if labelled => "dtaparser_labelled",
+        // Always labelled: its set is recorded or made from the levels.
+        Kind::LetterLevels { .. } => "dtaparser_labelled",
         Kind::Integer => "integer",
         Kind::Logical => "logical",
         Kind::Double { .. } | Kind::Int64(_) => "double",
@@ -550,25 +564,42 @@ pub unsafe extern "C" fn dtaparser_parquet_info_rs(
             ];
             let list = named_list(out, 6, &fields)?;
             let mut text: Vec<Vec<Option<String>>> = vec![Vec::with_capacity(cols.len()); fields.len()];
-            for c in cols {
+            let mut warnings = r.warnings().to_vec();
+            for (k, c) in cols.iter().enumerate() {
                 let entry = by_name.get(c.name.as_str()).copied();
                 let set = label_set(&sets, entry)
                     .filter(|_| c.role == Role::Data && labels_apply(c, entry))
-                    .and_then(|k| profile.map(|p| &p.value_labels[k]));
+                    .and_then(|k| profile.map(|p| &p.value_labels[k]))
+                    .map(|s| s.name.clone());
+                // A categorical holding .a to .z: its set, recorded or made.
+                let set = match r.categorical_labels(k) {
+                    Some((s, w)) => {
+                        warnings.extend(w);
+                        Some(s.name)
+                    }
+                    None => set,
+                };
                 text[0].push(Some(c.name.clone()));
                 text[1].push(Some(if c.role == Role::Data { "data" } else { "nested" }.into()));
                 text[2].push(r_type(c, entry, set.is_some()).map(String::from));
                 text[3].push(c.physical.map(|p| p.name()));
                 text[4].push(logical_name(c));
                 text[5].push(entry.and_then(|e| nonempty(&e.label)).map(String::from));
-                text[6].push(set.map(|s| s.name.clone()));
+                text[6].push(set);
                 text[7].push(c.storage.map(|s| s.name().to_string()));
-                text[8].push(c.profile_logical.map(|l| l.name().to_string()));
+                // Both forms of a categorical say so: text with levels in
+                // the profile, and DOUBLE level numbers (plan 0022).
+                let text_categorical = c.kind == ColumnType::Text && entry.is_some_and(|e| e.categorical.is_some());
+                text[8].push(
+                    c.profile_logical
+                        .map(|l| l.name().to_string())
+                        .or_else(|| text_categorical.then(|| Logical::Categorical.name().to_string())),
+                );
             }
             for (k, v) in text.iter().enumerate() {
                 optional_strings_elt(list, k, v)?;
             }
-            strings_elt(out, 7, r.warnings())?;
+            strings_elt(out, 7, &warnings)?;
             let kv = &r.metadata().key_value;
             let pairs = named_list(out, 8, &["key", "value"])?;
             let keys: Vec<Option<String>> = kv.iter().map(|e| Some(e.key.clone())).collect();
@@ -677,7 +708,9 @@ fn min_ruled_out(meta: &dta_parquet::format::FileMetaData, leaf: usize, width: u
 }
 
 /// Read columns of a Parquet file into R vectors, as element 0 of
-/// `holder`: list(columns, names, label, notes, warnings, integer, rows).
+/// `holder`: list(columns, names, label, notes, warnings, integer, rows,
+/// letter_levels), `letter_levels` TRUE for each categorical holding `.a`
+/// to `.z` (plan 0022), which `factors = TRUE` leaves a labelled double.
 /// `names` selects columns by name (NULL for every data column); `int64`
 /// is 0 for doubles, 1 for integer64, 2 for character; `timestamps` 0
 /// to make nanoseconds that are not whole microseconds an error, 1 to
@@ -776,7 +809,7 @@ fn read_into(
         profile.map_or_else(HashMap::new, |p| p.columns.iter().enumerate().map(|(k, c)| (c.name.as_str(), k)).collect());
     let set_names = sets_by_name(profile);
     let entry_of = |name: &str| by_name.get(name).and_then(|&k| profile.map(|p| &p.columns[k]));
-    let fields = ["columns", "names", "label", "notes", "warnings", "integer", "rows"];
+    let fields = ["columns", "names", "label", "notes", "warnings", "integer", "rows", "letter_levels"];
     let out_list = named_list(holder, 0, &fields)?;
     let out = alloc_elt(out_list, 0, VECSXP, selected.len())?;
     let reader_cols = r.reader_columns();
@@ -826,9 +859,12 @@ fn read_into(
             }
             Kind::Logical => col.x = alloc_elt(out, k, LGLSXP, rows)?,
             Kind::Factor { .. } => col.x = alloc_elt(out, k, INTSXP, rows)?,
-            Kind::Double { .. } | Kind::Date | Kind::Seconds { .. } | Kind::Nanos { .. } | Kind::Time { .. } => {
-                col.x = alloc_elt(out, k, REALSXP, rows)?
-            }
+            Kind::Double { .. }
+            | Kind::LetterLevels { .. }
+            | Kind::Date
+            | Kind::Seconds { .. }
+            | Kind::Nanos { .. }
+            | Kind::Time { .. } => col.x = alloc_elt(out, k, REALSXP, rows)?,
             Kind::Int64(Int64Mode::Double) => col.x = alloc_elt(out, k, REALSXP, rows)?,
             Kind::Int64(Int64Mode::Integer64) => {
                 col.x = alloc_elt(out, k, REALSXP, rows)?;
@@ -866,6 +902,7 @@ fn read_into(
                 }
                 Kind::Factor { .. } => Output::Levels { codes: slice_mut(INTEGER(col.x), rows), base: 1, null: NA_INTEGER },
                 Kind::Double { .. }
+                | Kind::LetterLevels { .. }
                 | Kind::Date
                 | Kind::Seconds { .. }
                 | Kind::Time { .. }
@@ -921,7 +958,21 @@ fn read_into(
         .collect();
     let data_label = profile.and_then(|p| nonempty(&p.label)).map(String::from);
     let notes: Vec<String> = profile.map_or_else(Vec::new, |p| p.notes.clone());
-    let warnings: Vec<String> = r.warnings().to_vec();
+    let mut warnings: Vec<String> = r.warnings().to_vec();
+    // Each categorical holding .a to .z: its value label set, recorded or
+    // made from the levels, and the warning about a recorded one that
+    // does not fit.
+    let letter_sets: Vec<Option<ValueLabelSet>> = cols
+        .iter()
+        .map(|c| match c.kind {
+            Kind::LetterLevels { .. } => r.categorical_labels(c.index).map(|(set, w)| {
+                warnings.extend(w);
+                set
+            }),
+            _ => None,
+        })
+        .collect();
+    let letter_levels: Vec<bool> = cols.iter().map(|c| matches!(c.kind, Kind::LetterLevels { .. })).collect();
     let int64_names: Vec<String> = cols
         .iter()
         .filter(|c| matches!(reader_cols[c.index].kind, ColumnType::Int64 | ColumnType::UInt32 | ColumnType::UInt64))
@@ -966,6 +1017,19 @@ fn read_into(
         }
         let x = finish(out, k, col, sink, name, rows, report.letters[k], truncate)?;
         set_column_attributes(x, &col.kind, entry, set, &mut shared)?;
+        if let Kind::LetterLevels { levels } = col.kind {
+            if let Some((row, v)) = bad_levels(x, rows, levels) {
+                warnings.push(format!(
+                    "column \"{name}\": row {} holds {v}, which is not one of its {levels} level numbers; it is read as NA",
+                    window.start + row as u64 + 1
+                ));
+            }
+            if let Some(set) = &letter_sets[k] {
+                set_labels(x, set)?;
+                string_attr(x, c"label_set", &set.name)?;
+                shared.text(x, c"class", &["dtaparser_labelled", "vctrs_vctr"])?;
+            }
+        }
     }
     strings_elt(out_list, 1, &names)?;
     optional_string_elt(out_list, 2, data_label.as_deref())?;
@@ -976,7 +1040,28 @@ fn read_into(
         *d = b as c_int;
     }
     super::doubles_elt(out_list, 6, &[rows as f64])?;
+    let flags = alloc_elt(out_list, 7, LGLSXP, letter_levels.len())?;
+    for (d, &b) in unsafe { slice_mut(LOGICAL(flags), letter_levels.len()) }.iter_mut().zip(&letter_levels) {
+        *d = b as c_int;
+    }
     Ok(())
+}
+
+/// A categorical holding `.a` to `.z` read as doubles: make each value
+/// that is not a level number from 1 to `levels` (a fraction, a number
+/// past the levels, a plain NaN) NA, `.`. Returns the first such row
+/// (from 0) and its value; NA and the tagged NAs `.a` to `.z` stay as
+/// they are.
+fn bad_levels(x: Sexp, rows: usize, levels: usize) -> Option<(usize, f64)> {
+    let v = unsafe { slice_mut(REAL(x), rows) };
+    let mut first = None;
+    for (i, d) in v.iter_mut().enumerate() {
+        if r_code_parquet(*d) == 0 && dta_parquet::level_index(*d, levels).is_none() {
+            first.get_or_insert((i, *d));
+            *d = na_real();
+        }
+    }
+    first
 }
 
 /// The message of a read's error, with the argument of `read_parquet`

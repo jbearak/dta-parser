@@ -5,7 +5,9 @@
 //! The writer reads polars' buffers in place: numbers a block of rows at
 //! a time, text through string views (or offsets), an Enum or Categorical
 //! through its dictionary, whose keys polars makes 8, 16 or 32 bits wide
-//! by the number of categories. A frame may come in several chunks, and
+//! by the number of categories; an Enum holding `.a` to `.z` is handed to
+//! the core with the letters as level codes -2 to -27, which writes it as
+//! level numbers from 1 (plan 0022). A frame may come in several chunks, and
 //! an array may be a slice. Nothing is copied but the values the encoder
 //! takes.
 
@@ -535,13 +537,24 @@ pub fn parquet_write_arrow<'py>(
     };
     let mut ordered_of: HashMap<String, bool> = HashMap::new();
     if let Some(entries) = &entries {
-        for c in &cols {
+        for (k, c) in cols.iter().enumerate() {
             let name = &c.field.name;
             let Some(e) = entries.get_item(name)? else { continue };
             type Entry = (Option<String>, Option<String>, Option<String>, Option<bool>);
             let (label, format, set, ordered): Entry = e.extract()?;
             let is_cat = c.field.dictionary.is_some();
-            let set = if is_cat { None } else { set };
+            if is_cat {
+                // A categorical's labels are its levels. One holding .a to
+                // .z is written as level numbers with a set (plan 0022):
+                // the one named here when meta.value_labels has it and it
+                // fits, else one the writer picks; the others have none.
+                let set = set.filter(|_| letters[k].is_some());
+                p.columns.push(ColumnProfile { name: name.clone(), label, format, value_labels: set, ..ColumnProfile::default() });
+                if let Some(o) = ordered {
+                    ordered_of.insert(name.clone(), o);
+                }
+                continue;
+            }
             if let Some(s) = &set {
                 if !p.value_labels.iter().any(|v| &v.name == s) {
                     return Err(PyKeyError::new_err(format!(
@@ -564,25 +577,40 @@ pub fn parquet_write_arrow<'py>(
         let l = letters[k].as_deref();
         let refuse = |what: &str| -> PyResult<()> {
             if l.is_some() {
-                return Err(fail(format!("column \"{name}\" is {what} and has .a to .z, which {what} cannot hold; {}", match what {
-                    "an Enum or Categorical" => "save it as .dta, drop its letters (meta.missing.pop), or read without factors",
-                    _ => "drop its letters or cast it",
-                })));
+                return Err(fail(format!("column \"{name}\" is {what} and has .a to .z, which {what} cannot hold; drop its letters or cast it")));
             }
             Ok(())
         };
         let values = if c.field.dictionary.is_some() {
-            refuse("an Enum or Categorical")?;
             let every = c.field.meta("_PL_ENUM_VALUES2").is_some() || c.field.meta("_PL_ENUM_VALUES").is_some();
+            if l.is_some() {
+                // Letters go on an Enum that meta gives a value label set,
+                // as read_parquet and read_dta(factors=True) make one.
+                if !every {
+                    return Err(fail(format!(
+                        "column \"{name}\" is a Categorical and has .a to .z, which a Categorical cannot hold; cast it to an Enum and name its value label set in meta.columns[\"{name}\"].value_labels, or drop its letters (meta.missing.pop)"
+                    )));
+                }
+                if !p.columns.iter().any(|e| e.name == name && e.value_labels.is_some()) {
+                    return Err(fail(format!(
+                        "column \"{name}\" is an Enum without a value label set and has .a to .z, which an Enum cannot hold without one; name its set in meta.columns[\"{name}\"].value_labels (a set labelling 1 to its number of levels with them, or a new name), or drop its letters (meta.missing.pop)"
+                    )));
+                }
+            }
             let (levels, maps) = categorical(&name, c, every)?;
             let kf = c.field.format.clone();
             let col = c;
             Values::Categorical {
                 levels,
                 ordered: ordered_of.get(&name).copied().unwrap_or(false),
+                // -1 for `.`, -2 to -27 for `.a` to `.z` (the missing code,
+                // negated).
                 codes: Box::new(move |first, out: &mut [i32]| {
+                    let null = |r: usize| l.map_or(-1, |l| if l[r] != 0 { -i32::from(l[r]) } else { -1 });
                     if col.chunks.is_empty() {
-                        out.fill(-1);
+                        for (i, o) in out.iter_mut().enumerate() {
+                            *o = null(first + i);
+                        }
                         return;
                     }
                     let mut kk = col.find(first);
@@ -594,7 +622,7 @@ pub fn parquet_write_arrow<'py>(
                             // SAFETY: keys of the field's format.
                             unsafe { key_at(&chunk.a, &kf, j) }.and_then(|key| maps[kk].get(key).copied()).unwrap_or(-1)
                         } else {
-                            -1
+                            null(r)
                         };
                     }
                 }),

@@ -146,8 +146,10 @@ export interface DictionaryColumn {
   codes: Uint32Array;
   values: string[];
   /**
-   * Parquet files only: 1 where the value is null (and `codes[i]` means
-   * nothing), else 0.
+   * Parquet files only: 0 for a value, else the missing value (and
+   * `codes[i]` means nothing): 1 for `.` (a null), 2 to 27 for `.a` to
+   * `.z`, which a categorical written from a `.dta` file may hold, as
+   * `NumberColumn.missing`. Test `missing[i] !== 0` for any missing value.
    */
   missing?: Uint8Array;
 }

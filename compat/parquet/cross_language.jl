@@ -159,6 +159,12 @@ for f in ("from_python.parquet", "from_python_columns.parquet", "from_typescript
     cells(p.stamp, Float64[MS1960 + 500, 0, MS1960 + 1_000_000_000_000, 0, MS1960 - 86_400_250, (1.000001 + 3653 * 86_400) * 1000],
           [0, 12, 0, 1, 0, 0], w("stamp"))
     check(colmetadata(p, :stamp, "format") == "%tc", w("stamp: format"))
+    # A categorical holding letters (plan 0022): labelled codes 1 to 3
+    # with the letters, and its set.
+    check(p.grade isa DtaColumn{Float64}, w("grade: type"))
+    cells(p.grade, [1.0, 0, 3, 0, 0, 2], [0, 2, 0, 1, 27, 0], w("grade"))
+    check(colmetadata(p, :grade, "value_labels") == "grade" &&
+          metadata(p, "value_labels")["grade"] == Dict(1.0 => "low", 2.0 => "mid", 3.0 => "high"), w("grade: set"))
 end
 
 println("Julia checked ", checked[], " values and labels in R's, Python's and TypeScript's files")

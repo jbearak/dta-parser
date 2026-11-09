@@ -14,7 +14,7 @@ use crate::decode::{TextBudget,
     Scratch, TextChunk, Texts,
 };
 use crate::format::{Codec, FileMetaData, OffsetIndex, PhysicalType};
-use crate::profile::{self, Profile};
+use crate::profile::{self, Logical, Profile};
 use crate::schema::{self, ColumnInfo, ColumnType, LevelsFrom, Role};
 use dta::{missing, Error, ErrorKind, Result, SharedSource, Source, ValueLabelSet};
 
@@ -337,6 +337,9 @@ pub struct Reader<S: Source> {
     /// With `lazy_value_labels`: each unread set's name and where its JSON
     /// is in the profile's text.
     label_spans: Vec<crate::profile::LabelSpan>,
+    /// The name of every set in the profile's `value_labels`, read or
+    /// passed over ([`Profile::parse_with_names`]).
+    all_set_names: Vec<crate::profile::SetEntry>,
     warnings: Vec<String>,
     first_rows: Vec<u64>,
     rows: u64,
@@ -446,6 +449,7 @@ impl<S: Source> Reader<S> {
         }
         let mut warnings = Vec::new();
         let mut label_spans = Vec::new();
+        let mut all_set_names = Vec::new();
         let mut profile = match meta
             .key_value
             .iter()
@@ -453,13 +457,9 @@ impl<S: Source> Reader<S> {
             .and_then(|kv| kv.value.as_ref())
         {
             Some(text) => {
-                let (p, w) = if options.lazy_value_labels {
-                    let (p, w, spans) = Profile::parse_lazy_labels(text, selected);
-                    label_spans = spans;
-                    (p, w)
-                } else {
-                    Profile::parse_some(text, selected)
-                };
+                let (p, w, spans, names) = Profile::parse_with_names(text, selected, options.lazy_value_labels);
+                label_spans = spans;
+                all_set_names = names;
                 warnings.extend(w);
                 p
             }
@@ -471,7 +471,10 @@ impl<S: Source> Reader<S> {
             for c in &p.columns {
                 if c.categorical.is_some() {
                     if let Some(col) = at.get(c.name.as_str()).map(|&k| &mut columns[k]) {
-                        if col.kind != ColumnType::Text {
+                        if col.kind == ColumnType::Double && col.profile_logical == Some(Logical::Categorical) {
+                            // A categorical holding .a to .z (plan 0022):
+                            // read as its doubles, mapped by `level_index`.
+                        } else if col.kind != ColumnType::Text {
                             warnings.push(format!("the dta profile gives levels for column \"{}\", which is not text; they are ignored", c.name));
                         } else {
                             col.levels = Some(LevelsFrom::Profile);
@@ -499,6 +502,7 @@ impl<S: Source> Reader<S> {
             columns,
             profile,
             label_spans,
+            all_set_names,
             warnings,
             first_rows,
             rows,
@@ -675,6 +679,71 @@ impl<S: Source> Reader<S> {
             }
         }
         (sets, warnings)
+    }
+
+    /// The name of every value-label set in the profile, read or passed
+    /// over: also those of columns not selected
+    /// ([`open_for`](Self::open_for)), which
+    /// [`value_label_set_names`](Self::value_label_set_names) leaves out.
+    pub fn all_value_label_set_names(&self) -> Vec<&str> {
+        self.all_set_names.iter().map(|(n, _)| n.as_str()).collect()
+    }
+
+    /// For a column read as a categorical holding `.a` to `.z` (DOUBLE,
+    /// with `logical` categorical; plan 0022), its value-label set: the
+    /// one its profile entry names, when that set fits the levels
+    /// ([`profile::set_fits_levels`]); else one made from the levels,
+    /// named by [`profile::categorical_set_name`] against every set name
+    /// and column name the file has. The warning, if any, is for a named set that is
+    /// missing, cannot be read or does not fit. `None` for any other
+    /// column.
+    pub fn categorical_labels(&self, column: usize) -> Option<(ValueLabelSet, Option<String>)> {
+        let col = self.columns.get(column)?;
+        if col.kind != ColumnType::Double || col.profile_logical != Some(profile::Logical::Categorical) {
+            return None;
+        }
+        let entry = self.profile.as_ref()?.column(&col.name)?;
+        let levels = &entry.categorical.as_ref()?.levels;
+        let read = |name: &str| -> Option<ValueLabelSet> {
+            if let Some(set) = self.profile.as_ref().and_then(|p| p.value_label_set(name)) {
+                return Some(set.clone());
+            }
+            // A set passed over: unread (lazy), or of a column not selected.
+            let (text, _) = self.label_set_spans();
+            let span = self.all_set_names.iter().find(|(n, _)| n == name)?.1.clone()?;
+            Profile::parse_label_set(text, name, span).ok()
+        };
+        let mut warning = None;
+        if let Some(name) = entry.value_labels.as_deref() {
+            match read(name) {
+                Some(set) if profile::set_fits_levels(&set, levels) => return Some((set, None)),
+                _ => {
+                    warning = Some(format!(
+                        "column \"{}\" is a categorical whose value label set \"{name}\" does not label 1 to {} with its levels; a set made from the levels is used",
+                        col.name,
+                        levels.len()
+                    ))
+                }
+            }
+        }
+        let (name, found) = profile::categorical_set_name(&col.name, |n| {
+            if !self.all_set_names.iter().any(|(s, _)| s == n) {
+                if n != col.name && self.columns.iter().any(|o| o.name == n) {
+                    profile::SetName::Taken
+                } else {
+                    profile::SetName::Free
+                }
+            } else if read(n).is_some_and(|set| profile::set_fits_levels(&set, levels)) {
+                profile::SetName::Fits
+            } else {
+                profile::SetName::Taken
+            }
+        });
+        let set = match found {
+            profile::SetName::Fits => read(&name).expect("it was read"),
+            _ => profile::levels_set(&name, levels),
+        };
+        Some((set, warning))
     }
 
     /// With `lazy_value_labels`, the profile's text and each unread
@@ -1130,6 +1199,25 @@ fn check_widened(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec
             continue;
         };
         if col.kind == ColumnType::Double {
+            if entry.logical == Some(Logical::Categorical) {
+                // Plan 0022: kept only beside valid levels and no storage.
+                let why = if entry.storage.is_some() {
+                    Some("it is given with a storage type")
+                } else if entry.categorical.is_none() {
+                    Some("the column has no valid \"categorical\" entry")
+                } else {
+                    None
+                };
+                if let Some(why) = why {
+                    // The levels go too: this one warning says why.
+                    entry.logical = None;
+                    entry.categorical = None;
+                    warnings.push(format!(
+                        "dropped \"columns.{}.logical\" from the dta profile: it makes the column a categorical, but {why}; the column is read as numbers",
+                        entry.name
+                    ));
+                }
+            }
             col.storage = entry.storage;
             col.profile_logical = entry.logical;
             continue;
@@ -1140,9 +1228,13 @@ fn check_widened(columns: &mut [ColumnInfo], p: &mut Profile, warnings: &mut Vec
                 entry.name
             ));
         }
-        if entry.logical.take().is_some() {
+        if let Some(l) = entry.logical.take() {
+            if l == Logical::Categorical && col.kind != ColumnType::Text {
+                // Its levels would only warn again.
+                entry.categorical = None;
+            }
             warnings.push(format!(
-                "dropped \"columns.{}.logical\" from the dta profile: it gives a date or timestamp type to a column that is not DOUBLE",
+                "dropped \"columns.{}.logical\" from the dta profile: it gives a date, timestamp or categorical type to a column that is not DOUBLE",
                 entry.name
             ));
         }

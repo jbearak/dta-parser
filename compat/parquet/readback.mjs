@@ -47,6 +47,9 @@ const columns = [
   ['uniq', { values: rows.map((i) => `value ${i} ${'x'.repeat(i % 40)}`) }, (i) => `value ${i} ${'x'.repeat(i % 40)}`],
   ['blob', { type: 'binary', values: rows.map((i) => (i % 31 === 0 ? null : Uint8Array.of(i & 255, 1, 2))) }, (i) => (i % 31 === 0 ? null : Uint8Array.of(i & 255, 1, 2))],
   ['cat', { type: 'categorical', levels: ['low', 'mid', 'high', 'unused'], ordered: true, values: rows.map((i) => (i % 37 === 0 ? null : i % 3)) }, (i) => (i % 37 === 0 ? null : ['low', 'mid', 'high'][i % 3])],
+  // A categorical holding .a to .z (plan 0022): DOUBLE level numbers from 1,
+  // the letters NaN; with missingLetters false, text with nulls.
+  ['catletters', { type: 'categorical', levels: ['low', 'mid', 'high'], values: rows.map((i) => (i % 5 === 1 ? letter(i) : i % 5 === 2 ? null : i % 3)) }, (i) => (i % 5 === 1 ? NaN : i % 5 === 2 ? null : (i % 3) + 1)],
 ]
 const data = {
   label: 'Readback',
@@ -81,6 +84,7 @@ for (const [label, options] of [
     for (const i of rows) {
       let w = want(i)
       if (name === 'letters' && options.missingLetters === false && i % 4 === 1) w = null
+      if (name === 'catletters' && options.missingLetters === false) w = i % 5 === 1 || i % 5 === 2 ? null : ['low', 'mid', 'high'][i % 3]
       let g = got[i][name]
       // hyparquet gives unannotated BYTE_ARRAY as bytes with utf8: false.
       if (typeof w === 'string' && g instanceof Uint8Array) g = new TextDecoder().decode(g)

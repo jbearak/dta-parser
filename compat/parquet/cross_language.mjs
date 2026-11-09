@@ -56,6 +56,9 @@ if (mode === "write") {
         { name: "stamp", type: "timestamp", unit: "us", timeZone: "UTC", values: at(us([0.5, null, 1e9, null, -86400.25, 1.000001]), [null, ".k", null, null, null, null]) },
         { name: "dup", type: "byte", valueLabels: "dupl", values: [1, 2, 3, 1, 5, null] },
         { name: "w", type: "double", valueLabels: "wl", values: [0.5, 2, 100000, null, 1e-4, 3] },
+        // A categorical holding letters (plan 0022): DOUBLE level numbers,
+        // with a set the writer makes from the levels.
+        { name: "grade", type: "categorical", categorical: { levels: ["low", "mid", "high"], ordered: true }, values: [0, L(".a"), 2, null, L(".z"), 1] },
       ],
     },
     join(dir, "from_typescript.parquet"),
@@ -77,7 +80,7 @@ function cells(ds, name) {
   const c = ds.variables.find((v) => v.name === name)?.values;
   if (!c) return [`no ${name}`];
   if (c.kind === "string") return c.values.map((v, i) => (c.missing?.[i] ? "." : v));
-  if (c.kind === "dictionary") return Array.from(c.codes, (k, i) => (c.missing?.[i] ? "." : c.values[k]));
+  if (c.kind === "dictionary") return Array.from(c.codes, (k, i) => (c.missing?.[i] ? NAMES[c.missing[i] - 1] : c.values[k]));
   return Array.from(c.values, (v, i) => (c.missing[i] ? NAMES[c.missing[i] - 1] : typeof v === "bigint" ? String(v) : String(Number(v.toPrecision(17)))));
 }
 const num = (...xs) => xs.map((x) => (typeof x === "number" ? String(Number(x.toPrecision(17))) : x));
@@ -146,6 +149,11 @@ for (const f of ["from_python.parquet", "from_python_columns.parquet"]) {
   check(eq(micros(p, "stamp"), num(500000, ".k", 1e15, ".", -86400250000, 1000001)), `${f} stamp: ${micros(p, "stamp")}`);
   same(p, "dup", ["1", "2", "3", "1", "5", "."], f);
   check(eq(labels(p, "dup"), [[1, "Yes"], [2, "No"], [3, "Yes"]]), `${f} dup labels`);
+  // A categorical holding letters (plan 0022).
+  same(p, "grade", ["low", ".a", "high", ".", ".z", "mid"], f);
+  const g = variable(p, "grade");
+  check(g.type === "categorical" && eq(g.categorical, { levels: ["low", "mid", "high"], ordered: true }), `${f} grade: levels`);
+  check(g.valueLabels === "grade" && eq(labels(p, "grade"), [[1, "low"], [2, "mid"], [3, "high"]]), `${f} grade: set`);
 }
 
 const jl = join(dir, "from_julia.parquet");

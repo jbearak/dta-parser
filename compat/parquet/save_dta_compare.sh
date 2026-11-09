@@ -18,7 +18,8 @@ PYTHON=${PYTHON:-python3}
 # The columns a .dta file can hold from that file: not the instants in
 # zones (.dta holds clock times), "score" (its labels' code 1.5) or "long"
 # (a word Stata reserves), which are errors in every language.
-COLS=id,small,fl,count,region,day,seen,dup,w
+# grade is a categorical holding .a to .z (plan 0022).
+COLS=id,small,fl,count,region,day,seen,dup,w,grade
 "$PYTHON" - "$DIR" "$COLS" <<'EOF'
 import os, sys
 import datakit as dk

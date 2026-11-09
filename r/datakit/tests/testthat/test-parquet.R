@@ -666,3 +666,98 @@ test_that("nanoparquet reads save_parquet's files", {
   expect_identical(as.numeric(a$when), as.numeric(x$when))
   expect_identical(levels(a$region), c("S", "N", "W"))
 })
+
+# ---- categoricals holding .a to .z (plan 0022)
+#
+# R cannot write one, so the files in fixtures/ were written by
+# TypeScript's datakit; fixtures/make-categorical-letters.js makes them
+# again. Each has `grade`, levels low < mid < high.
+
+letters_fixture <- function(name) testthat::test_path("fixtures", paste0("categorical-letters", name, ".parquet"))
+
+# grade as read_parquet() gives it: rows low, .a, high, ., .z, mid.
+grade_read <- function(set = "grade") {
+  x <- with_labels(c(1, tagged_na("a"), 3, NA, tagged_na("z"), 2), c(low = 1, mid = 2, high = 3))
+  attr(x, "label_set") <- set
+  x
+}
+
+test_that("a categorical holding .a to .z reads as a labelled double, factors or not", {
+  p <- letters_fixture("")
+  expect_no_warning(x <- read_parquet(p))
+  expect_identical(x$grade, grade_read())
+  expect_identical(na_tag(vctrs::vec_data(x$grade)), c(NA, "a", NA, NA, "z", NA))
+  # factors = TRUE leaves it as it is, with no warning about lost letters.
+  expect_no_warning(y <- read_parquet(p, factors = TRUE))
+  expect_identical(y, x)
+  expect_identical(read_parquet(p, skip = 2, n_max = 3)$grade, grade_read()[3:5])
+  cols <- read_parquet_info(p)$columns
+  expect_identical(cols$r_type, "dtaparser_labelled")
+  expect_identical(cols$physical_type, "DOUBLE")
+  expect_identical(cols$logical, "categorical")
+  expect_identical(cols$value_labels, "grade")
+})
+
+test_that("a categorical without letters is a factor and its logical says categorical", {
+  p <- tempfile(fileext = ".parquet")
+  save_parquet(data.frame(f = factor(c("b", NA, "a"))), p)
+  cols <- read_parquet_info(p)$columns
+  expect_identical(cols$r_type, "factor")
+  expect_identical(cols$physical_type, "BYTE_ARRAY")
+  expect_identical(cols$logical, "categorical")
+})
+
+test_that("save_parquet writes it back as labelled numbers", {
+  x <- read_parquet(letters_fixture(""))
+  p <- tempfile(fileext = ".parquet")
+  save_parquet(x, p)
+  expect_no_warning(y <- read_parquet(p))
+  want <- grade_read()
+  attr(want, "label_set") <- NULL
+  expect_identical(y$grade, want)
+  expect_identical(na_tag(vctrs::vec_data(y$grade)), c(NA, "a", NA, NA, "z", NA))
+  cols <- read_parquet_info(p)$columns
+  expect_identical(cols$physical_type, "DOUBLE")
+  expect_identical(cols$logical, NA_character_)
+  expect_identical(cols$value_labels, "grade")
+})
+
+test_that("a value that is not a level number is NA, with one warning per read", {
+  p <- letters_fixture("-bad")
+  # Rows 1 and 2 (low, .a) are in the first row group; row 3 holds 1.5.
+  expect_no_warning(x <- read_parquet(p, n_max = 2))
+  expect_identical(x$grade, grade_read()[1:2])
+  for (round in 1:2) {
+    expect_warning(y <- read_parquet(p, skip = 1), "column \"grade\": row 3 holds 1.5, which is not one of its 3 level numbers; it is read as NA", fixed = TRUE)
+    expect_identical(y$grade, structure(with_labels(c(tagged_na("a"), NA, 2), c(low = 1, mid = 2, high = 3)),
+                                        label_set = "grade"))
+  }
+  w <- character()
+  withCallingHandlers(read_parquet(p, factors = TRUE), warning = function(c) {
+    w <<- c(w, conditionMessage(c))
+    invokeRestart("muffleWarning")
+  })
+  expect_length(w, 1)
+})
+
+test_that("a set that does not fit the categorical keeps its name for the column that uses it", {
+  p <- letters_fixture("-collision")
+  expect_no_warning(x <- read_parquet(p))
+  expect_identical(x$grade, grade_read("grade_2"))
+  expect_identical(attr(x$other, "labels"), c(yes = 1))
+  cols <- read_parquet_info(p)$columns
+  expect_identical(cols$value_labels, c("grade_2", "grade"))
+  expect_identical(cols$logical, c("categorical", NA))
+  # Read alone, the categorical makes the same name.
+  expect_identical(read_parquet(p, col_select = "grade")$grade, grade_read("grade_2"))
+  expect_identical(read_parquet(p, col_select = grade)$grade, grade_read("grade_2"))
+  # Written back, both sets are kept: grade_2 by its label_set, and the
+  # other column's labels under its own name (R columns carry no
+  # label_set unless one is given).
+  q <- tempfile(fileext = ".parquet")
+  save_parquet(x, q)
+  y <- read_parquet(q)
+  expect_identical(attr(y$grade, "labels"), c(low = 1, mid = 2, high = 3))
+  expect_identical(attr(y$other, "labels"), c(yes = 1))
+  expect_identical(read_parquet_info(q)$columns$value_labels, c("grade_2", "other"))
+})

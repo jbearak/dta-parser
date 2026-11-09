@@ -203,6 +203,8 @@ interface Gathering {
   /** Levels found in the rows read, and their codes. */
   found: string[];
   foundIndex: Map<string, number>;
+  /** A categorical holding .a to .z: the first row read whose value is not a level number. */
+  bad?: number;
 }
 
 /** A call to make: positions in the read's columns, and rows. */
@@ -239,6 +241,8 @@ export class ParquetReader implements TableReader {
   readonly info: ParquetInfo;
   readonly variables: readonly ParquetVariable[];
   private handle: number;
+  /** Columns already warned about a value that is not a level number (once per reader and column). */
+  private warnedCategorical = new Set<number>();
   private readonly generation: number;
   private readonly read: ReadAt;
   private readonly onClose?: () => void;
@@ -631,6 +635,10 @@ export class ParquetReader implements TableReader {
         const at = call.start - start;
         call.cols.forEach((k, j) => {
           out[k] = place(out[k], dir.subarray(10 * j, 10 * j + 10), at, n, state[k], vars[k]);
+          // Mode 6 (level codes) gives, for a categorical holding .a to .z,
+          // the first row (from 1) whose value is not a level number.
+          const bad = dir[10 * j] === 6 ? dir[10 * j + 8] : 0;
+          if (bad && (state[k].bad === undefined || call.start + bad - 1 < state[k].bad!)) state[k].bad = call.start + bad - 1;
         });
       }
     } catch (e) {
@@ -640,6 +648,17 @@ export class ParquetReader implements TableReader {
       throw e;
     } finally {
       wasm.pqReadEnd(handle);
+    }
+    const bad: string[] = [];
+    state.forEach((st, k) => {
+      if (st.bad === undefined || this.warnedCategorical.has(idx[k])) return;
+      this.warnedCategorical.add(idx[k]);
+      bad.push(`column ${JSON.stringify(vars[k].name)}: row ${st.bad} holds a value that is not one of its ${vars[k].categorical?.levels?.length ?? 0} level numbers; it is read as .`);
+    });
+    if (bad.length) {
+      const proc = (globalThis as { process?: { emitWarning?: (w: string, o: { code: string }) => void } }).process;
+      if (proc?.emitWarning) proc.emitWarning(bad.join("\n"), { code: "DATAKIT_CATEGORICAL" });
+      else console.warn(`DATAKIT_CATEGORICAL: ${bad.join("\n")}`);
     }
     return out;
   }
@@ -781,7 +800,8 @@ function place(col: TableColumn, d: Uint32Array, at: number, n: number, st: Gath
       }
       for (let i = 0; i < n; i++) {
         const k = codes[i];
-        if (k < 0) c.missing![at + i] = 1;
+        // -1 is ., -2 to -27 .a to .z (a categorical holding them, plan 0022).
+        if (k < 0) c.missing![at + i] = -k;
         else c.codes[at + i] = map ? map[k] : k;
       }
       return c;
@@ -797,7 +817,7 @@ function cellOf(c: TableColumn, i: number): TableCell {
     case "bigint":
       return c.missing[i] ? MISSING["."] : c.values[i];
     case "dictionary":
-      return c.missing?.[i] ? MISSING["."] : c.values[c.codes[i]];
+      return c.missing?.[i] ? missingValue(c.missing[i]) : c.values[c.codes[i]];
     default:
       return c.missing?.[i] ? MISSING["."] : c.values[i];
   }
@@ -1183,8 +1203,9 @@ function partOf(v: DatasetVariable, rows: number): wasm.ParquetPart {
       const codes = new Int32Array(rows);
       for (let i = 0; i < rows; i++) {
         const x = values[i];
-        if (missing[i] > 1) fail(`row ${i} holds ${missingValue(missing[i]).missing}; a categorical cannot hold .a to .z, so make it labelled numbers (a numeric type with a value label set), which keep them`);
-        else if (missing[i]) codes[i] = -1;
+        // -1 is ., -2 to -27 .a to .z (plan 0022).
+        if (missing[i] > 27) fail(`row ${i} has missing code ${missing[i]}; codes run from 0 to 27`);
+        else if (missing[i]) codes[i] = -missing[i];
         else if (!Number.isInteger(x) || x < 0 || x >= levels!.length) fail(`row ${i} holds ${x}, not a level code from 0 to ${levels!.length - 1}`);
         else codes[i] = x;
       }
@@ -1286,7 +1307,11 @@ function partOf(v: DatasetVariable, rows: number): wasm.ParquetPart {
       length(c.codes.length);
       if (type === undefined || type === "categorical") {
         const codes = new Int32Array(rows);
-        for (let i = 0; i < rows; i++) codes[i] = c.missing?.[i] ? -1 : c.codes[i];
+        for (let i = 0; i < rows; i++) {
+          const m = c.missing?.[i] ?? 0;
+          if (m > 27) fail(`row ${i} has missing code ${m}; codes run from 0 to 27`);
+          codes[i] = m ? -m : c.codes[i];
+        }
         return categorical(codes, c.values);
       }
       if (type !== undefined && !TEXT_TYPES.has(type) && !/^str/.test(type)) fail(`text cannot be written as ${JSON.stringify(type)}`);

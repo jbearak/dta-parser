@@ -872,7 +872,9 @@ print(meta.missing["income"].to_list())   # [None, '.d', None, None, '.r', None]
 **What `factors=True` loses:** the codes are gone from the frame, and
 codes that share a label (two codes both labelled "Yes") become one
 level that cannot be told apart again. Saving does not bring them back:
-`save_parquet` writes the Enum as a categorical of its levels, and
+`save_parquet` writes the Enum as a categorical of its levels (one
+holding `.a` to `.z` as its level numbers, 1 to k, labelled with the
+levels), and
 `save_dta` writes it as Stata's `encode` would, codes 1 to k labelled
 with the levels. To keep the file's codes, read with `factors=False`,
 the default. `.a` to `.z` are not lost: they stay in `meta.missing` or
@@ -967,6 +969,7 @@ What each dtype becomes:
 | `String`, `Binary` | BYTE_ARRAY, as STRING or without a type |
 | `Date`, `Datetime`, `Time` | DATE, TIMESTAMP, TIME(NANOS) ([Dates](#dates-and-time-zones-in-parquet-files)) |
 | `Enum` | a dictionary-encoded STRING whose dictionary is every level, in order; `meta.columns[name].ordered` is kept |
+| `Enum` with `.a` to `.z` | DOUBLE: each level's number from 1, `.` null, `.a` to `.z` tagged NaNs; the profile keeps every level, `ordered`, and a value label set labelling 1 to k with the levels ([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)) |
 | `Categorical` | the same, with the levels its rows use; it reads back as an `Enum` of them |
 | `Null` (an all-null column, as `pl.lit(None)` makes) | an all-null DOUBLE, as Stata's `gen x = .` makes a numeric column |
 | a column with `.a` to `.z` | DOUBLE with tagged NaNs ([Keep .a to .z](#keep-a-to-z-in-a-parquet-file)) |
@@ -1012,7 +1015,8 @@ Unlike `.dta` files, a Parquet file can label codes that are not
 integers, such as `1.5`. Writing is strict: a code that is not finite or
 is beyond ±2^53, or a column naming a set `meta.value_labels` lacks, is
 an error. An Enum's levels are its text, so its `value_labels` name is
-not written. `meta.sort` is checked against the rows
+not written, unless it holds `.a` to `.z`
+([below](#keep-a-to-z-in-a-parquet-file)). `meta.sort` is checked against the rows
 ([below](#labels-and-a-to-z-through-polars-operations)).
 
 ### Keep .a to .z in a Parquet file
@@ -1029,7 +1033,8 @@ either place:
   without letters.
 - **In companion columns**: `letters="columns"` puts a column `x_letter`
   after every column that can hold a letter (byte, int, long, float,
-  double, date or timestamp), all null where it has none; a list
+  double, date or timestamp, and a categorical written with letters),
+  all null where it has none; a list
   (`letters=["income"]`) does so for those columns only, the rest staying
   in `meta.missing`. `meta.letter_columns` records each pair. A
   companion follows its rows through `filter`, `sort`, `join` and
@@ -1089,10 +1094,21 @@ print(pl.read_parquet("nulls.parquet")["income"].null_count())   # 3
 
 Which columns can hold letters: Int8, Int16, Int32, Float32, Float64,
 Date and Datetime. An Int64, unsigned, Boolean, String or Binary column
-with letters is an error, since a double cannot hold all their values;
-so is an Enum or Categorical (`factors=True`), since a categorical
-cannot hold a tagged NaN: save it as `.dta`, drop its letters, or read
-without `factors`. A Datetime column with letters is written as seconds
+with letters is an error, since a double cannot hold all their values.
+
+An Enum can hold letters when `meta.columns[name].value_labels` names a
+set for it, as `read_parquet` and `factors=True` give one. It is then
+written as a DOUBLE of its level numbers, 1 to k, with `.a` to `.z` as
+tagged NaNs, the levels and `ordered` in the profile, and a set that
+labels 1 to k with the levels: the column's own set when it does so
+(labels on `.a` to `.z` in it are kept, such as `".r": "Refused"`), else
+one made from the levels and named after the column, or `name_2`,
+`name_3`, ... when another set has that name. `read_parquet` gives the
+same Enum back, with its letters and that set, whatever `factors` says;
+writing it back again names the same set. Other tools read the numbers.
+An Enum without a set, or a `Categorical`, with letters is an error:
+name a set, or drop the letters. `missing_letters=False` writes the
+letters as nulls, and the Enum stays text. A Datetime column with letters is written as seconds
 in a double, which holds whole microseconds up to about the year 2255: a
 `Datetime("ns")` value with a part below a microsecond is an error
 unless `timestamps="truncate"`, and one too far from 1970 is an error
@@ -1154,6 +1170,7 @@ filters on values are not part of datakit: use `pl.scan_parquet`.
 | STRING, ENUM, JSON | `String` |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text type, UUID | `Binary` |
 | a categorical the profile lists | `Enum` of every level, in order, unused ones too |
+| a DOUBLE with profile `logical` `categorical` (a categorical holding `.a` to `.z`) | the same `Enum`, with `factors` true or false: `.` and `.a` to `.z` null, the letters as `letters=` says, `meta.columns[name].value_labels` naming its set. A value that is not a level number (1 to k) reads as null, with one warning per read naming the column and the first such row |
 | a dictionary of text in `ARROW:schema`, with no profile entry | `Categorical` |
 | BOOLEAN | `Boolean` |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |
@@ -1170,7 +1187,9 @@ file's `ordered` and writes it back.
 gave come back from `save_parquet` and `read_parquet` equal, except: a
 `Categorical` comes back as an `Enum` of the levels it used; an all-null
 `Null` column comes back as `Float64`; an Enum that `factors=True` made
-comes back without its `value_labels` name; and `Decimal` is not
+comes back without its `value_labels` name, or, when it holds `.a` to
+`.z`, with a set made from its levels unless its own set labels 1 to k
+with them; and `Decimal` is not
 written. `.dta`'s release and encoding are not kept.
 
 ### Labels and .a to .z through polars operations

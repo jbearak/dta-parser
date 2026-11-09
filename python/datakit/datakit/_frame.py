@@ -165,7 +165,8 @@ def finish(native_frame, native_letters, m, *, factors, letters, letter_suffix):
                     raise KeyError(f'letters names "{n}", which is not a column read')
                 if n not in ok:
                     raise ValueError(f'letters names "{n}", whose type cannot hold .a to .z '
-                                     "(only byte, int, long, float, double, date and timestamp columns can)")
+                                     "(only byte, int, long, float, double, date and timestamp columns, "
+                                     "and categoricals stored with letters, can)")
         df = add_companions(df, meta, wanted, letter_suffix, found)
         meta.missing = found
     meta._digests = {name: native.arrow_digest(df.get_column(name)) for name in meta.missing}

@@ -96,7 +96,16 @@ pub const WRITE_BYTES_PER_THREAD: u64 = 256 << 20;
 /// The most write threads: wide.dta passed at six and failed at eight.
 pub const WRITE_THREADS_MOST: usize = 6;
 pub use decode::TextChunk;
-pub use profile::{Categorical, ColumnProfile, LabelSpan, Logical, Profile, Storage};
+pub use profile::{Categorical, ColumnProfile, LabelSpan, Logical, Profile, SetName, Storage};
+
+/// The level index of a value of a categorical holding `.a` to `.z`
+/// (plan 0022), which is written as level numbers from 1: `Some(x - 1)`
+/// for a whole number `x` from 1 to `levels`, `None` for anything else.
+/// The caller has already taken out nulls and `.a` to `.z`; a `None`
+/// is read as `.`, with a warning.
+pub fn level_index(x: f64, levels: usize) -> Option<u32> {
+    (x.fract() == 0.0 && x >= 1.0 && x <= levels as f64 && x <= f64::from(u32::MAX)).then(|| x as u32 - 1)
+}
 pub use read::{Element, Nested, Numbers, Output, ReadOptions, ReadReport, Reader, RowGroupInfo};
 pub use schema::{ColumnInfo, ColumnType, LevelsFrom, Role};
 pub use tagged::{tagged_code, tagged_nan, NA_BITS};
