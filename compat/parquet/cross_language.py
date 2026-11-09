@@ -221,7 +221,45 @@ if os.path.exists(path):
 else:
     print("no from_julia.parquet in", DIR, "(run Julia's write first); Julia's file not checked")
 
-print(f"Python checked {checked[0]} values and labels in R's and Julia's files")
+# ---------------------------------------------------------------- TypeScript's file
+
+# The same data as Python's own file (plan 0021).
+path = os.path.join(DIR, "from_typescript.parquet")
+if os.path.exists(path):
+    for mode in ("meta", "columns"):
+        df, meta = dk.read_parquet(path, letters=mode)
+        check(meta.label == "From TypeScript" and meta.notes == ["A note from TypeScript."], "ts: data label and notes")
+        check(df["id"].dtype == pl.Int32 and df["id"].to_list() == [1, 2, 3, 4, 5, 6], "ts: id")
+        cells(df, meta, "score", [1.5, 0, 0, -2.25, 0, 2.0**1000], [0, 1, 2, 0, 27, 0])
+        check(meta.labels("score") == {1.5: "Low", ".a": "Refused", ".z": "Other"}, "ts: score labels")
+        check(meta.columns["score"] == dk.Column("A score", "%9.2f", "scorelab"), "ts: score column")
+        check(df["small"].dtype == pl.Int8, "ts: small Int8")
+        cells(df, meta, "small", [1, 0, 0, 100, -127, 0], [0, 0, 5, 0, 0, 1])
+        check(meta.labels("small") == {0: "No", 1: "Yes", ".d": "Don't know"}, "ts: small labels")
+        check(df["long"].dtype == pl.Int32, "ts: long Int32")
+        cells(df, meta, "long", [2147483620, -2147483647, 0, 0, 0, 7], [0, 0, 3, 0, 1, 0])
+        check(df["fl"].dtype == pl.Float32, "ts: fl Float32")
+        cells(df, meta, "fl", [0.5, 0, 3.25, 0, -1.0, 2.0], [0, 4, 0, 1, 0, 0])
+        cells(df, meta, "count", [3, 0, 0, -5, 2147483647, 1], [0, 1, 0, 0, 0, 0])
+        check(df["word"].to_list() == ["a", None, "", "été", "x y", "z"], "ts: word")
+        check(df["region"].dtype == pl.Enum(["S", "N", "E", "W"]) and
+              df["region"].to_list() == ["N", "S", None, "N", "E", "S"], "ts: region")
+        check(df["day"].to_list() == [dt.date(2024, 3, 1), None, dt.date(1960, 1, 1), dt.date(1900, 2, 28),
+                                      dt.date(2100, 12, 31), dt.date(1970, 1, 1)], "ts: day")
+        check(meta.columns["day"].format == "%tdCCYY-NN-DD", "ts: day format")
+        check(df["when"].dtype == pl.Datetime("us", NY) and df["when"].dt.epoch("us").to_list() ==
+              [0, 1_709_285_400_250_000, None, -1_000_000, 86_400_000_000, 1_000_000_000_000_000], "ts: when")
+        cells(df, meta, "seen", [dt.date(2024, 3, 1), None, dt.date(2024, 3, 2), None, dt.date(1960, 1, 1), None],
+              [0, 5, 0, 1, 0, 27])
+        check(df["stamp"].dt.epoch("us").to_list() == [500_000, None, 1_000_000_000_000_000, None, -86_400_250_000,
+                                                       1_000_001], "ts: stamp")
+        check(meta.letters("stamp").to_list() == [None, ".k", None, None, None, None] if mode == "meta" else
+              df["stamp_letter"].to_list() == [None, ".k", None, None, None, None], "ts: stamp letters")
+        cells(df, meta, "dup", [1, 2, 3, 1, 5, 0], [0, 0, 0, 0, 0, 1])
+else:
+    print("no from_typescript.parquet in", DIR, "(run TypeScript's write first); TypeScript's file not checked")
+
+print(f"Python checked {checked[0]} values and labels in R's, Julia's and TypeScript's files")
 if failures:
     print("FAILED:")
     for f_ in failures:

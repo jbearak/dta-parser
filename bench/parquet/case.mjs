@@ -34,11 +34,12 @@ const require = createRequire(join(root, 'bench', 'node', 'package.json'))
 // untimed .dta read every write case starts from, so the other
 // libraries' reads do not carry its memory.
 const writing = task === 'write' || task === 'zstd'
-const oursNode = lib === 'ours' || writing ? require(join(root, 'js', 'dist', 'node.js')) : null
+// Parquet is @jbearak/datakit's (plan 0021), .dta @jbearak/dta-parser's.
+const oursNode = lib === 'ours' || writing ? { ...require(join(root, 'js', 'dist', 'node.js')), ...require(join(root, 'js', 'datakit', 'dist', 'node.js')) } : null
 const version = (m) => JSON.parse(readFileSync(join(root, 'bench', 'node', 'node_modules', m, 'package.json'), 'utf8')).version
 
 let hyparquet, compressors, writer, pw, arrow, libVersion
-if (lib === 'ours') libVersion = require(join(root, 'js', 'package.json')).version
+if (lib === 'ours') libVersion = require(join(root, 'js', 'datakit', 'package.json')).version
 if (lib === 'hyparquet') {
   hyparquet = await import(require.resolve('hyparquet'))
   compressors = (await import(require.resolve('hyparquet-compressors'))).compressors

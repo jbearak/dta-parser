@@ -45,7 +45,11 @@ build() { # features, target dir, output
   mkdir -p "$(dirname "$3")"
   cp "$2/wasm32-unknown-unknown/release/dta_ffi.wasm" "$3"
 }
+# `scripts/build-wasm.sh dta` builds dta-parser's alone (its publish
+# workflow needs no other).
 build wasm-dta target/wasm-dta js/build/dta.wasm
-build wasm-parquet target/wasm-parquet js/datakit/build/datakit.wasm
 RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-dta,test-hooks target/wasm-dta-test js/build/dta-test.wasm
-RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-parquet,test-hooks target/wasm-parquet-test js/datakit/build/datakit-test.wasm
+if [ "$1" != "dta" ]; then
+  build wasm-parquet target/wasm-parquet js/datakit/build/datakit.wasm
+  RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-parquet,test-hooks target/wasm-parquet-test js/datakit/build/datakit-test.wasm
+fi

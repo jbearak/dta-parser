@@ -44,6 +44,10 @@ test("integer and untyped number columns take the smallest type that holds them"
     [{ name: "a", type: "uint32", values: [0, 4294967295] }, "double"],
     [{ name: "a", type: "int64", values: [1n, null, -5n] }, "byte"],
     [{ name: "a", type: "int64", values: [2n ** 53n] }, "double"],
+    // A .dta integer type whose values pass its range takes the next one.
+    [{ name: "a", type: "long", values: [1, 2147483647] }, "double"],
+    [{ name: "a", type: "byte", values: [101] }, "int"],
+    [{ name: "a", type: "int", values: [-32768] }, "long"],
   ];
   for (const [v, want] of cases) {
     const { variables, cols } = one(v);
@@ -89,6 +93,8 @@ test("dates become %td, counted from 1960, exactly", () => {
   assert.equal(variables[0].format, "%td");
   assert.deepEqual(Array.from(cols[0].values.slice(0, 3)), [3653, 0, 3654]);
   assert.deepEqual(Array.from(cols[0].missing), [0, 0, 0, 1, 3]);
+  assert.equal(one({ name: "d", type: "date", format: "%tdCCYY-NN-DD", values: [0] }).variables[0].format, "%tdCCYY-NN-DD");
+  assert.equal(one({ name: "d", type: "date", format: "%9.0g", values: [0] }).variables[0].format, "%td");
   assert.throws(() => one({ name: "d", type: "date", values: [0.5] }), /d: row 0 holds 0\.5, a fraction of a day; pass timestamps: "truncate"/);
   const t = one({ name: "d", type: "date", values: [0.5, -0.5, -1.25] }, { timestamps: "truncate" });
   assert.deepEqual(Array.from(t.cols[0].values), [3653, 3652, 3651]);
@@ -116,6 +122,18 @@ test("timestamps become %tc, milliseconds since 1960, in each unit, exactly", ()
   assert.equal(variables[0].format, "%tc");
   assert.throws(() => one({ name: "t", type: "timestamp", unit: "ms", timeZone: "UTC", values: [1] }), /t: a \.dta file has no time zones/);
   assert.throws(() => one({ name: "t", type: "timestamp", unit: "h", values: [1] }), /unknown unit "h"/);
+});
+
+test("a value label set .dta cannot hold: an error if used, else left out with a warning", () => {
+  const sets = { frac: new Map([[1.5, "Low"], [MISSING[".a"], "A"]]), fine: new Map([[1, "one"]]) };
+  assert.throws(() => roundTrip({ valueLabels: sets, variables: [{ name: "x", valueLabels: "frac", values: [1.5] }] }), /x: its value label set frac labels 1\.5/);
+  const got = [];
+  const f = join(dir, `${n++}.dta`);
+  node.saveDta({ valueLabels: sets, variables: [{ name: "x", valueLabels: "fine", values: [1] }] }, f, { onWarning: (m) => got.push(...m) });
+  assert.match(got.join("\n"), /frac \(it labels 1\.5\)/);
+  const r = dp.openDtaFile(f);
+  assert.deepEqual(r.valueLabelNames(), ["fine"]);
+  r.close();
 });
 
 test("decimal, time and unknown types", () => {

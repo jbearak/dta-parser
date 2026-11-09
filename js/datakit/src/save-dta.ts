@@ -5,7 +5,7 @@
 import type { Characteristic, Missing, ValueLabels, WriteDataset, WriteVariable } from "@jbearak/dta-parser";
 import { isMissing, missingValue } from "@jbearak/dta-parser/format";
 import { dtaError } from "./_shared/errors";
-import { FACTOR_MARK } from "./dataset";
+import { FACTOR_MARK, warn } from "./dataset";
 import type { Dataset, DatasetVariable } from "./types";
 
 /** Options for `saveDta`. */
@@ -17,6 +17,12 @@ export interface SaveDtaOptions {
    * minus infinity.
    */
   timestamps?: "error" | "truncate";
+  /**
+   * Takes the warnings, as messages, instead of `process.emitWarning`:
+   * a value label set no saved variable uses, left out because a `.dta`
+   * file cannot hold one of its codes.
+   */
+  onWarning?: (messages: string[]) => void;
 }
 
 const RANGES = [
@@ -180,6 +186,21 @@ export function toDta(data: Dataset, options: SaveDtaOptions = {}): WriteDataset
   const sets: Record<string, ValueLabels> = { ...(data.valueLabels ?? {}) };
   const characteristics: Characteristic[] = (data.characteristics ?? []).filter((c) => c.name !== FACTOR_MARK);
   const variables: WriteVariable[] = data.variables.map((v) => convert(v, sets, characteristics, truncate));
+  // A .dta value label's code is a whole number within long's range (or a
+  // missing value). A set a variable uses with another code is an error,
+  // as in R and Python; one no variable uses is left out, with a warning.
+  const left: string[] = [];
+  for (const [name, labels] of Object.entries(sets)) {
+    const bad = [...labels.keys()].find((k) => !isMissing(k) && !(Number.isInteger(k) && (k as number) >= RANGES[2][1] && (k as number) <= RANGES[2][2]));
+    if (bad === undefined) continue;
+    const user = variables.find((v) => v.valueLabels === name);
+    if (user) throw range(`${user.name}: its value label set ${name} labels ${bad}, and a .dta label's code is a whole number within long's range`);
+    delete sets[name];
+    left.push(`${name} (it labels ${bad})`);
+  }
+  if (left.length) {
+    warn(["Value label sets no variable uses were left out, since a .dta file cannot hold one of their codes:", ...left], "DATAKIT_LABELS", options.onWarning);
+  }
   const out: WriteDataset = { variables, valueLabels: sets, characteristics };
   if (data.label !== undefined) out.label = data.label;
   if (data.notes !== undefined) out.notes = data.notes;
@@ -215,7 +236,10 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
       }
       values[i] = r;
     }
-    return { ...base, type: t === "date" ? "long" : "double", format: t === "date" ? "%td" : "%tc", values, missing: nums.missing };
+    // A %td (or %tc) format the variable has, such as %tdCCYY-NN-DD, is kept.
+    const kind = t === "date" ? "%td" : "%tc";
+    const format = v.format?.startsWith(kind) ? v.format : kind;
+    return { ...base, type: t === "date" ? "long" : "double", format, values, missing: nums.missing };
   }
   if (t === "time") throw invalid(`${v.name}: a .dta file has no time of day type; convert it to numbers (seconds since midnight, say) first`);
   if (t === "decimal") {
@@ -240,14 +264,20 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
       return { ...base, format: v.format || undefined, values: texts.values };
     }
   }
-  if (t === undefined || INTEGER_TYPES.has(t) || (t !== undefined && DTA_TYPES.has(t))) {
+  if (t === undefined || INTEGER_TYPES.has(t) || DTA_TYPES.has(t)) {
     const nums = numbersOf(v);
     if (!nums) throw invalid(`${v.name}: a ${t ?? "numeric"} column holds numbers`);
     if (t !== undefined && DTA_TYPES.has(t)) {
       if (nums.big) for (let i = 0; i < nums.values.length; i++) bigCheck(v.name, i, nums);
-      return { ...base, type: t, format: v.format || undefined, values: nums.values, missing: nums.missing };
+      // byte, int and long stop short of their integer type's range (the
+      // codes past it are `.` to `.z`), so a column read from Parquet as
+      // long may hold 2,147,483,647: it takes the next type that holds it,
+      // as Python's save_dta does.
+      const r = RANGES.findIndex(([name]) => name === t);
+      const fits = r < 0 || nums.values.every((x, i) => nums.missing[i] !== 0 || (x >= RANGES[r][1] && x <= RANGES[r][2]));
+      if (fits) return { ...base, type: t, format: v.format || undefined, values: nums.values, missing: nums.missing };
     }
-    const integer = t !== undefined;
+    const integer = t !== undefined && !DTA_TYPES.has(t);
     let whole = true;
     let lo = Infinity;
     let hi = -Infinity;
@@ -268,7 +298,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
     if (lo === Infinity) type = integer ? "byte" : "double";
     // A Parquet integer type's display format would be its own; .dta's
     // default suits the storage type chosen.
-    const format = integer ? undefined : v.format || undefined;
+    const format = integer || (t !== undefined && RANGES.some(([name]) => name === t)) ? undefined : v.format || undefined;
     return { ...base, type: type as WriteVariable["type"], format, values: nums.values, missing: nums.missing };
   }
   throw invalid(`${v.name}: a .dta file cannot hold type ${JSON.stringify(t)}`);
