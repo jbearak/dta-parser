@@ -20,7 +20,7 @@ from ._native import native as _native  # noqa: E402,F401  (checks dta_parser's 
 from ._dta import FixedWidthWarning, read_dta, read_fixed_width, save_dta  # noqa: E402
 from ._meta import LETTERS, Column, Meta, ParquetInfo  # noqa: E402
 from ._parquet import read_parquet, read_parquet_info, save_parquet  # noqa: E402
-from ._tagged import is_tagged_na, na_tag, tagged_na  # noqa: E402
+from ._tagged import by, is_missing, is_na, is_tagged_na, na_tag, tagged_na  # noqa: E402
 
 __all__ = [
     "LETTERS",
@@ -28,6 +28,9 @@ __all__ = [
     "FixedWidthWarning",
     "Meta",
     "ParquetInfo",
+    "by",
+    "is_missing",
+    "is_na",
     "is_tagged_na",
     "na_tag",
     "read_dta",

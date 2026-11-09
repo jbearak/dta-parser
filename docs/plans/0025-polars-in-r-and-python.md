@@ -1,7 +1,11 @@
 # Plan: polars in R and Python, with `is_missing()` and `is_na()`
 
 Status: approved at Gate 1 (revision 4; Claude Sonnet and GPT Sol;
-record in `docs/judging/polars-r-python/`).
+record in `docs/judging/polars-r-python/`). After the gate, on
+2026-11-09, the user said joins keyed on columns holding `.a` to `.z`
+are not a use case: the join recipes and join tests below are dropped,
+and `dk.by` and `datakit_by_pl` are documented for grouping and
+`unique` only.
 
 ## Problem
 

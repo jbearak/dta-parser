@@ -1092,8 +1092,8 @@ with it: R's `NA_real_` with the letter's code in its fifth byte, as
 haven's `tagged_na()` and R's dtaparser hold it. `.` stays a null. An
 integer or `Float32` column holding letters is cast to `Float64`, and
 `meta` keeps its type, so that saving writes it back as byte, int, long
-or float when its values still fit. Three functions read and make
-letters:
+or float when its values still fit. These functions read, make and
+test letters:
 
 - `dk.na_tag(x)`: the letter of each row of `x` (a column name, an
   expression or a Series) as `dk.LETTERS`, polars' Enum of `".a"` to
@@ -1101,7 +1101,12 @@ letters:
 - `dk.is_tagged_na(x, letter=None)`: true where a row holds a letter,
   or the letter given;
 - `dk.tagged_na(".d")`: the float that holds `.d`, for anywhere polars
-  takes a number.
+  takes a number;
+- `dk.is_missing(x)`, or its alias `dk.is_na(x)`: true where a row is
+  `.` or one of `.a` to `.z`, as R's `is.na()` and Stata's `missing()`
+  say (see [The rules](#a-to-z-in-the-frame) below);
+- `dk.by(*columns, suffix="_letter")`: each column and its letters, for
+  grouping with the letters kept apart.
 
 ```python
 df, meta = dk.read_parquet("survey.parquet")
@@ -1126,12 +1131,55 @@ print(income.mean(), income.fill_nan(None).mean())     # nan 2383.3333333333335
 print(income.count(), income.fill_nan(None).count())   # 5 3
 ```
 
-Comparisons already work as in Stata. NaN is greater than every number
-in polars, and Stata's missing values are greater than every number
-too, so `pl.col("income") > 3000` is true for a letter, as Stata's
-`income > 3000` is. `.` is null, so a comparison is null there and
-`filter` drops the row, which Stata would keep; `ne_missing` and
-`eq_missing` keep it.
+**The rules.** A letter is a NaN, and polars treats a NaN as a value:
+it compares it as a number greater than every other and equal to every
+other NaN. `.` is a null, which polars treats as missing. For the rows
+`1, 5000, .a, .b, .`:
+
+| expression | rows `filter` keeps |
+|---|---|
+| `x != 1` | 3: `5000`, `.a` and `.b` |
+| `(x != 1) & x.is_not_null()`, R's `x != 1 & !is.na(x)` written naively | 3: `is_not_null()` sees only `.` |
+| `(x != 1) & ~dk.is_na("x")` | 1: `5000` |
+| `x.fill_nan(None) != 1` | 1: `5000` |
+| `x.is_null()` | `.` only |
+| `x.is_nan()` | `.a` and `.b` only |
+| `dk.is_na("x")`, R's `is.na(x)` | `.`, `.a` and `.b` |
+
+So where R or Stata code tests for a missing value, write
+`dk.is_na(...)` (or `dk.is_missing(...)`), not `is_null()`:
+
+```python
+x = pl.col("income")
+print(df.filter((x != 1850) & x.is_not_null())["id"].to_list())     # [1, 2, 5, 6]: the letters stay
+print(df.filter((x != 1850) & ~dk.is_na("income"))["id"].to_list())  # [1, 6]
+```
+
+`pl.col("income") > 3000` is true for a letter, as Stata's
+`income > 3000` is, since Stata's missing values are greater than every
+number too; `(x > 3000) & ~dk.is_na("income")` leaves them out. `.` is
+null, so a comparison is null there and `filter` drops the row, which
+Stata would keep; `ne_missing` and `eq_missing` keep it.
+
+Given a column name or an expression, `dk.is_na` builds an expression,
+which works on number, Boolean, Decimal, date and time, Categorical and
+Enum columns. On a text column it would count the text "nan" as
+missing, and on Binary, List or Struct columns polars refuses it: there,
+use `pl.col(c).is_null()`, or pass the Series, which `dk.is_na` tests by
+its dtype.
+
+**Grouping.** polars puts every NaN in one group, so `group_by("x")`,
+`unique()` and `value_counts()` merge `.a` with `.b`. `dk.by` adds each
+column's letters as a column of their own:
+
+```python
+print(df.group_by("income").len().height)                 # 5: .d and .r in one group
+print(df.group_by(dk.by("income")).len().height)          # 6
+print(df.with_columns(dk.by("income")).unique(subset=["income", "income_letter"]).height)   # 6
+```
+
+Each argument gets a letter column, all null for a column that is not
+`Float64`.
 
 **Set a letter** (Stata's `replace income = .r if age > 60`):
 
@@ -1582,6 +1630,10 @@ reference. `dta_parser` exports:
 - `tagged_na(letter)`, `na_tag(x)`, `is_tagged_na(x, letter=None)`:
   make `.a` to `.z` as tagged NaNs, and read them from a column name,
   expression or Series ([.a to .z in the frame](#a-to-z-in-the-frame)).
+- `is_missing(x)`, `is_na(x)` (one function): true for `.` and `.a` to
+  `.z`, as R's `is.na()`; `by(*columns, suffix="_letter")`: columns and
+  their letters, for grouping
+  ([.a to .z in the frame](#a-to-z-in-the-frame)).
 - `Meta`, `Column`: the labels, formats and notes beside a frame
   ([Labels](#labels-in-parquet-files)); `Meta` has `labels`, `rename`,
   `select` and `copy`.

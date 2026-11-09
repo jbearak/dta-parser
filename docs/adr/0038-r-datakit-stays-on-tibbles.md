@@ -1,5 +1,9 @@
 # R's datakit stays on tibbles, and `datakit_by()` tells the letters apart
 
+Superseded in part by ADR 0041: R's datakit gains polars functions
+beside the tibble ones, with `is_missing()` and `is_na()` for the rules
+below. `datakit_by()` and its reasons stand.
+
 The user asked on 2026-11-09 whether R's datakit should return and
 accept polars frames, and then arrow tables. It does neither. Plan 0024
 records the evidence; `docs/research/polars-2.md` holds the probes.
@@ -47,7 +51,8 @@ join keys keep the letters apart, and only that call pays for it.
 
 ## Consequences
 
-- R's datakit has no polars or arrow functions, and none are planned.
+- R's datakit has no polars or arrow functions, and none are planned
+  (superseded by ADR 0041: it gains polars functions).
 - `docs/r.md` lists the functions that merge the letters and points to
   `na_tag()` and `datakit_by()`.
 - A script that groups or joins by a column holding letters, and must

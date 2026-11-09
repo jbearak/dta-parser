@@ -329,3 +329,109 @@ def test_r_number():
              0.0: "0", 2.0**1000: "1.07150860718627e+301", 1e-300: "1e-300"}
     for v, want in cases.items():
         assert r_number(v) == want, v
+
+
+# ------------------------------------------------- is_missing, is_na and by (plan 0025)
+
+import datetime as _dt
+import decimal as _decimal
+
+
+def rows():
+    # 1, 5000, .a, .b, . : the rows of plan 0025's table.
+    return pl.DataFrame({"x": tagged([1.0, 5000.0, None, None, None], [None, None, ".a", ".b", None])})
+
+
+def kept(df, e):
+    return df.filter(e).height
+
+
+def test_the_rules_table():
+    df = rows()
+    x = pl.col("x")
+    assert kept(df, x != 1) == 3                               # 5000, .a, .b
+    assert kept(df, (x != 1) & x.is_not_null()) == 3           # R's !is.na, written naively
+    assert kept(df, (x != 1) & x.is_not_nan()) == 1
+    assert kept(df, x.fill_nan(None) != 1) == 1
+    assert kept(df, (x != 1) & ~dk.is_na("x")) == 1
+    assert df.select(dk.is_missing("x"))["x"].to_list() == [False, False, True, True, True]
+    assert df.select(x.is_null())["x"].to_list() == [False, False, False, False, True]
+    assert df.select(x.is_nan())["x"].to_list() == [False, False, True, True, None]
+
+
+def test_is_na_is_is_missing():
+    assert dk.is_na is dk.is_missing
+
+
+SERIES = {
+    "f64": (pl.Series([1.0, None, float("nan")], dtype=pl.Float64), [False, True, True]),
+    "f32": (pl.Series([1.0, None, float("nan")], dtype=pl.Float32), [False, True, True]),
+    "i64": (pl.Series([1, None, 3], dtype=pl.Int64), [False, True, False]),
+    "bool": (pl.Series([True, None, False]), [False, True, False]),
+    "dec": (pl.Series([_decimal.Decimal("1.5"), None, _decimal.Decimal("2")], dtype=pl.Decimal(10, 2)),
+            [False, True, False]),
+    "date": (pl.Series([_dt.date(2024, 1, 1), None, _dt.date(2024, 1, 2)]), [False, True, False]),
+    "datetime": (pl.Series([_dt.datetime(2024, 1, 1), None, _dt.datetime(2024, 1, 2)]), [False, True, False]),
+    "duration": (pl.Series([_dt.timedelta(1), None, _dt.timedelta(2)]), [False, True, False]),
+    "time": (pl.Series([_dt.time(1), None, _dt.time(2)]), [False, True, False]),
+    "cat": (pl.Series(["a", None, "b"], dtype=pl.Categorical), [False, True, False]),
+    "enum": (pl.Series(["a", None, "b"], dtype=pl.Enum(["a", "b"])), [False, True, False]),
+    "null": (pl.Series([None, None, None], dtype=pl.Null), [True, True, True]),
+}
+
+
+@pytest.mark.parametrize("name", list(SERIES))
+def test_is_missing_on_a_series_and_an_expr(name):
+    s, want = SERIES[name]
+    assert dk.is_missing(s.alias(name)).to_list() == want
+    df = pl.DataFrame({name: s})
+    assert df.select(dk.is_missing(name))[name].to_list() == want
+    assert df.select(dk.is_missing(pl.col(name)))[name].to_list() == want
+
+
+def test_is_missing_on_text_and_binary():
+    text = pl.Series("t", ["a", None, "nan"])
+    assert dk.is_missing(text).to_list() == [False, True, False]       # a Series: by its dtype
+    # An Expr has no dtype: the cast reads the text "nan" as a NaN.
+    assert pl.DataFrame({"t": text}).select(dk.is_missing("t"))["t"].to_list() == [False, True, True]
+    binary = pl.Series("b", [b"a", None])
+    assert dk.is_missing(binary).to_list() == [False, True]
+    with pytest.raises(pl.exceptions.InvalidOperationError):
+        pl.DataFrame({"b": binary}).select(dk.is_missing("b"))
+
+
+def test_by_keeps_letters_apart_when_grouping():
+    df = rows()
+    assert df.group_by("x").len().height == 4    # 1, 5000, null, and one group for .a and .b together
+    grouped = df.group_by(dk.by("x")).len()
+    assert grouped.height == 5
+    assert sorted(grouped["x_letter"].to_list(), key=str) == sorted([None, None, ".a", ".b", None], key=str)
+    assert df.with_columns(dk.by("x")).unique(subset=["x", "x_letter"]).height == 5
+
+
+def test_by_on_columns_that_hold_no_letters():
+    df = pl.DataFrame({
+        "i": pl.Series([1, 2, None], dtype=pl.Int64),
+        "s": ["a", "b", None],
+        "c": pl.Series(["a", "b", None], dtype=pl.Categorical),
+        "e": pl.Series(["a", "b", None], dtype=pl.Enum(["a", "b"])),
+    })
+    out = df.select(dk.by("i", "s", "c", "e"))
+    assert out.columns == ["i", "i_letter", "s", "s_letter", "c", "c_letter", "e", "e_letter"]
+    for c in ("i", "s", "c", "e"):
+        assert out[c + "_letter"].null_count() == 3
+    with pytest.raises(pl.exceptions.InvalidOperationError):
+        pl.DataFrame({"b": [b"a", None]}).select(dk.by("b"))
+
+
+def test_by_names_suffix_and_errors():
+    df = rows()
+    assert df.select(dk.by((pl.col("x") * 2).alias("y"), suffix="_why")).columns == ["y", "y_why"]
+    with pytest.raises(ValueError, match="two columns named"):
+        dk.by("x", pl.col("x").alias("x_letter"))
+    with pytest.raises(ValueError, match="suffix"):
+        dk.by("x", suffix="")
+    with pytest.raises(ValueError, match="at least one"):
+        dk.by()
+    with pytest.raises(TypeError, match="not a Series"):
+        dk.by(df["x"])
