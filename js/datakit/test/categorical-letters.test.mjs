@@ -166,3 +166,24 @@ test("saveDta writes a categorical with letters as labelled codes, without the f
     r.close();
   }
 });
+
+test("saveDta keeps the labels on letters of the set a categorical read from Parquet names", () => {
+  const pq = join(dir, "labelled.parquet");
+  node.saveParquet(
+    {
+      valueLabels: { grade: new Map([[1, "low"], [2, "mid"], [3, "high"], [MISSING[".r"], "Refused"]]) },
+      variables: [{ name: "grade", type: "categorical", levels: LEVELS, valueLabels: "grade", values: [0, MISSING[".r"], 2] }],
+    },
+    pq,
+  );
+  const ds = node.readParquet(pq);
+  assert.equal(ds.variables[0].valueLabels, "grade");
+  const f = join(dir, "labelled.dta");
+  node.saveDta(ds, f);
+  const r = dp.openDtaFile(f);
+  assert.equal(r.variables[0].valueLabels, "grade");
+  assert.deepEqual(r.valueLabelNames(), ["grade"]);
+  assert.deepEqual([...r.valueLabels("grade")], [[1, "low"], [2, "mid"], [3, "high"], [MISSING[".r"], "Refused"]]);
+  assert.deepEqual(Array.from(r.readColumns([0])[0].missing), [0, 19, 0]);
+  r.close();
+});

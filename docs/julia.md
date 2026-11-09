@@ -920,8 +920,7 @@ the `dta` entry (see [docs/parquet.md](parquet.md#the-profile)).
 A categorical holding `.a` to `.z`, which Python's and TypeScript's
 datakit write as DOUBLE level numbers, reads as labelled numbers: a
 `CategoricalArray` cannot hold the letters. The column is the level
-numbers 1 to k (a `DtaColumn{Float64}` when the rows read hold a
-letter), `colmetadata(df, :grade, "value_labels")` names its set, and
+numbers 1 to k (a `DtaColumn{Float64}`, whatever rows are read), `colmetadata(df, :grade, "value_labels")` names its set, and
 `metadata(df, "value_labels")` holds the set, which labels 1 to k with
 the levels and keeps any labels on the letters. The set is the one the
 file records, or, when the file has none that fits, one made from the
@@ -1181,7 +1180,7 @@ missing value is a `Vector{Union{Missing,T}}`.
 | STRING, ENUM, JSON | `String` |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | `Vector{UInt8}` |
 | a categorical `save_parquet` (or R's datakit) wrote | `CategoricalArray` with every level, ordered if it was, when CategoricalArrays.jl is loaded; else `String` with one warning |
-| a categorical holding `.a` to `.z` (DOUBLE level numbers with `"logical": "categorical"`, which Python's and TypeScript's datakit write) | labelled numbers, since a `CategoricalArray` cannot hold the letters: the level numbers 1 to k as `Float64`, a `DtaColumn` when the rows read hold letters, its `"value_labels"` naming a set that labels 1 to k with the levels (and any labels on letters). A value that is not a level number reads as `.`, with one warning per call naming the column and the first such row |
+| a categorical holding `.a` to `.z` (DOUBLE level numbers with `"logical": "categorical"`, which Python's and TypeScript's datakit write) | labelled numbers, since a `CategoricalArray` cannot hold the letters: the level numbers 1 to k as a `DtaColumn{Float64}`, whatever rows are read, its `"value_labels"` naming a set that labels 1 to k with the levels (and any labels on letters). A value that is not a level number reads as `.`, with one warning per call naming the column and the first such row |
 | a dictionary of strings in the Arrow schema, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | as above, unordered; levels are the distinct values of the rows read, in order of first appearance |
 | a dictionary of another type in the Arrow schema | its values' type, by the rows above |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |

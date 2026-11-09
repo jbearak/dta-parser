@@ -427,8 +427,8 @@ CategoricalArrays.jl is loaded (else `String`, with one warning).
 
 A categorical holding `.a` to `.z` (written by Python's or TypeScript's
 datakit as DOUBLE level numbers) is labelled numbers, since a
-`CategoricalArray` cannot hold the letters: the level numbers 1 to k as
-`Float64` (a `DtaColumn` when the rows read hold a letter), with
+`CategoricalArray` cannot hold the letters: the level numbers 1 to k as a
+`DtaColumn{Float64}`, whatever rows are read, with
 `colmetadata(df, :x, "value_labels")` naming a set that labels 1 to k
 with the levels (and any labels on letters). A value in such a column
 that is not a level number reads as `.`, with one warning per call
@@ -528,7 +528,10 @@ function read_plans(f::PqFile, plans::Vector{Plan}, start::Int, count::Int, doc,
                 @warn "column \"$(p.name)\": row $(start + Int(b) + 1) of the file holds a value that is not one of " *
                       "its $nlevels level numbers; it is read as `.`"
             end
-            numbers_of(buffers[k], codes[k])
+            # A DtaColumn in every window, letters or not: the type is the
+            # file's, not the rows'.
+            c = codes[k] === nothing ? zeros(UInt8, length(buffers[k])) : codes[k]
+            DtaColumn{Float64}(buffers[k], c)
         elseif p.how === :levels
             levels = p.info["levels"] == "profile" ? Vector{String}(p.info["categories"]) : Vector{String}(rep["levels"][k])
             ordered = p.info["levels"] == "profile" && p.info["ordered"] === true

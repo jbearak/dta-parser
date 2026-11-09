@@ -351,9 +351,14 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
   const codes = given ?? levels.map((_, i) => i + 1);
   const labels: ValueLabels = new Map(levels.map((text, i) => [codes[i], text]));
   if (new Set(levels).size !== levels.length) throw invalid(`${v.name}: two levels share a text`);
-  // The set's name: the one it came from, else the column's; reused when a
-  // set by that name says the same, else name_2, name_3, ...
-  const base = v.categorical?.labelSet ?? v.name;
+  // Labels on .a to .z in the set the variable names (a categorical read
+  // from Parquet holding them has one, plan 0022) are kept.
+  const named = v.valueLabels ? sets[v.valueLabels] : undefined;
+  if (named) for (const [k, text] of named) if (isMissing(k) && k.missing !== ".") labels.set(k, text);
+  // The set's name: the one it came from, else the one it names, else the
+  // column's; reused when a set by that name says the same, else name_2,
+  // name_3, ...
+  const base = v.categorical?.labelSet ?? (v.valueLabels || v.name);
   let name = base;
   for (let k = 2; sets[name] !== undefined && !sameLabels(sets[name], labels); k++) name = `${base}_${k}`;
   sets[name] = sets[name] ?? labels;

@@ -33,6 +33,11 @@ const GRADE_LABELS = Dict(1.0 => "low", 2.0 => "mid", 3.0 => "high")
     @test codes_of(w.grade) == UInt8[2, 0] && w.grade.values[2] == 3.0
     @test colmetadata(w, :grade, "value_labels") == "grade"
     @test metadata(w, "value_labels")["grade"] == GRADE_LABELS
+    # A window without letters (high, .) is a DtaColumn too: the type is
+    # the file's, not the rows'.
+    w = read_parquet(cl_file(); cols = [:grade], skip = 2, n_max = 2)
+    @test w.grade isa DtaColumn{Float64}
+    @test codes_of(w.grade) == UInt8[0, 1] && w.grade.values[1] == 3.0
 end
 
 @testset "the info calls say categorical, DOUBLE" begin

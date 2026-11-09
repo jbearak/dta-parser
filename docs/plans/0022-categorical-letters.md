@@ -1,6 +1,6 @@
 # Plan: Parquet categoricals that keep `.a` to `.z`
 
-Status: draft, revision 4, for Gate 1 (Claude Sonnet and GPT Terra;
+Status: draft, revision 5, for Gate 1 (Claude Sonnet and GPT Terra;
 record in `docs/judging/categorical-letters/`).
 
 ## Problem
@@ -231,6 +231,15 @@ writes none), one without letters gets it as now; every marker in the
 input is dropped first, as now. `saveDta` has no option that turns
 letters into nulls. It reads back as labelled numbers with the letters.
 
+Labels on letters are kept: the set `saveDta` builds (codes to levels)
+takes the entries for `.a` to `.z` of the set the variable names
+(`valueLabels`, which a categorical read from Parquet has: "Refused" on
+`.r`, say), and the name it starts from is `categorical.labelSet`, else
+that `valueLabels`, else the column's name. An existing set by that
+name is reused when it says the same as the built set (numbers and
+letters), as plan 0021's rule has it, so the set read is written back
+under its own name.
+
 `DictionaryColumn.missing`'s TSDoc (`js/src/index.ts`) says it may hold
 2 to 27.
 
@@ -314,6 +323,9 @@ letters into nulls. It reads back as labelled numbers with the letters.
   and codes with `Missing` levels both write the DOUBLE form and read
   back with the letters by row, through `readColumns` (codes 2 to 27)
   and `readRows` (`MISSING[".a"]`, `MISSING[".z"]`).
+- TypeScript `saveDta`: a categorical read from a Parquet file whose set
+  labels `.r` "Refused" writes a set with 1 to k and `.r` under the same
+  name, and reads back so.
 - TypeScript `saveDta`: a categorical with letters, given as a
   `DictionaryColumn` and as codes with `Missing` levels, writes labelled
   codes with the letters and no marker, and reads back so; one without

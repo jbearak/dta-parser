@@ -817,7 +817,7 @@ datakit `save_dta` does (`SaveDtaOptions`):
 | `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
 | `date` (days since 1970) | long `%td`, days since 1960 |
 | `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
-| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and such a variable gets no marker: it reads back as labelled numbers, which keep them, as Python's `save_dta` writes it |
+| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and such a variable gets no marker: it reads back as labelled numbers, which keep them, as Python's `save_dta` writes it. Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
 | `decimal` read as a number | double |
 
 Dates and timestamps are converted exactly, in integer arithmetic, from
