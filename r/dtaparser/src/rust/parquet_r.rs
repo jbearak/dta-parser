@@ -628,7 +628,7 @@ fn codec_name(c: dta_parquet::format::Codec) -> String {
 }
 
 /// A character vector with NA for each `None`, as element `i` of `parent`.
-fn optional_strings_elt(parent: Sexp, i: usize, v: &[Option<String>]) -> Res<()> {
+pub(crate) fn optional_strings_elt(parent: Sexp, i: usize, v: &[Option<String>]) -> Res<()> {
     let x = alloc_elt(parent, i, STRSXP, v.len())?;
     let mut bytes = Vec::new();
     let mut ends = Vec::with_capacity(v.len());
@@ -644,7 +644,7 @@ fn optional_strings_elt(parent: Sexp, i: usize, v: &[Option<String>]) -> Res<()>
 }
 
 /// A string, or NULL, as element `i` of `parent`.
-fn optional_string_elt(parent: Sexp, i: usize, v: Option<&str>) -> Res<()> {
+pub(crate) fn optional_string_elt(parent: Sexp, i: usize, v: Option<&str>) -> Res<()> {
     match v {
         Some(s) => strings_elt(parent, i, &[s]),
         None => Ok(()),

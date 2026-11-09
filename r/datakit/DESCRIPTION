@@ -15,7 +15,9 @@ Description: Data preparation in R. d[i, name, by = g] := value makes or
     haven or labelled. read_parquet() and save_parquet() read and write
     Parquet files that keep them too: an interchange format with readers
     and writers in R, Python, Julia, and TypeScript, so data moves
-    between the four with its labels.
+    between the four with its labels. read_parquet_pl(), read_dta_pl()
+    and read_fixed_width_pl() read into polars frames instead, with
+    .a to .z as tagged NaNs, as Python's datakit does.
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
@@ -33,10 +35,13 @@ Suggests:
     dplyr (>= 1.1.0),
     haven,
     jsonlite,
+    nanoarrow,
     nanoparquet,
+    polars,
     readstata13,
     RcppTOML,
     testthat (>= 3.0.0)
+Additional_repositories: https://community.r-multiverse.org
 Remotes:
     datparser=jbearak/dta-parser/r/datparser,
     dtaparser=jbearak/dta-parser/r/dtaparser

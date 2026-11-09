@@ -4,7 +4,6 @@
 \name{reexports}
 \alias{reexports}
 \alias{read_dta}
-\alias{save_dta}
 \alias{read_meta}
 \alias{var_label}
 \alias{val_labels}
@@ -22,6 +21,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{dtaparser}{\code{\link[dtaparser:drop_labels]{drop_labels()}}, \code{\link[dtaparser:is_tagged_na]{is_tagged_na()}}, \code{\link[dtaparser:missing_rank]{missing_rank()}}, \code{\link[dtaparser:na_tag]{na_tag()}}, \code{\link[dtaparser:read_dta]{read_dta()}}, \code{\link[dtaparser:read_meta]{read_meta()}}, \code{\link[dtaparser:save_dta]{save_dta()}}, \code{\link[dtaparser:tagged_na]{tagged_na()}}, \code{\link[dtaparser:val_label]{val_label()}}, \code{\link[dtaparser:val_labels]{val_labels()}}, \code{\link[dtaparser:var_label]{var_label()}}, \code{\link[dtaparser:with_labels]{with_labels()}}}
+  \item{dtaparser}{\code{\link[dtaparser:drop_labels]{drop_labels()}}, \code{\link[dtaparser:is_tagged_na]{is_tagged_na()}}, \code{\link[dtaparser:missing_rank]{missing_rank()}}, \code{\link[dtaparser:na_tag]{na_tag()}}, \code{\link[dtaparser:read_dta]{read_dta()}}, \code{\link[dtaparser:read_meta]{read_meta()}}, \code{\link[dtaparser:tagged_na]{tagged_na()}}, \code{\link[dtaparser:val_label]{val_label()}}, \code{\link[dtaparser:val_labels]{val_labels()}}, \code{\link[dtaparser:var_label]{var_label()}}, \code{\link[dtaparser:with_labels]{with_labels()}}}
 }}
 

@@ -387,6 +387,211 @@ static SEXP parquet_write(SEXP file, SEXP spec, SEXP options) {
   return R_NilValue;
 }
 
+// polars frames (plan 0025, stage 3): datakit's read_parquet_pl(),
+// read_dta_pl(), read_fixed_width_pl() and the polars methods of
+// save_parquet() and save_dta(), through dta_arrow (arrow_r.rs). A
+// stream is an external pointer of class nanoarrow_array_stream to the
+// C stream interface's struct, which nanoarrow allocated and frees.
+#ifndef ARROW_C_STREAM_INTERFACE
+#define ARROW_C_STREAM_INTERFACE
+struct ArrowSchema;
+struct ArrowArray;
+struct ArrowArrayStream {
+  int (*get_schema)(struct ArrowArrayStream *, struct ArrowSchema *out);
+  int (*get_next)(struct ArrowArrayStream *, struct ArrowArray *out);
+  const char *(*get_last_error)(struct ArrowArrayStream *);
+  void (*release)(struct ArrowArrayStream *);
+  void *private_data;
+};
+#endif
+
+int dtaparser_parquet_read_arrow_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP cols, double skip,
+                                    double n_max, int nested_skip, const char *timestamps, int threads,
+                                    struct ArrowArrayStream *data, struct ArrowArrayStream *letters, SEXP holder,
+                                    char *err, size_t err_len);
+int dtaparser_dta_read_arrow_rs(const char *path, SEXP cols, double skip, double n_max, const char *encoding,
+                                const char *timestamps, struct ArrowArrayStream *data,
+                                struct ArrowArrayStream *letters, SEXP holder, char *err, size_t err_len);
+int dtaparser_parquet_write_arrow_rs(struct ArrowArrayStream *stream, const char *path, SEXP meta,
+                                     const char *compression, int level, int has_level, double row_group_size,
+                                     int missing_letters, const char *timestamps, int threads, char *err,
+                                     size_t err_len);
+int dtaparser_dta_write_arrow_rs(struct ArrowArrayStream *stream, const char *path, SEXP meta, int missing_letters,
+                                 const char *timestamps, char *err, size_t err_len);
+int dtaparser_fixed_width_dta_rs(const char *data, SEXP setups, const char *out, const char *recodes,
+                                 int commented_formats, SEXP holder, char *err, size_t err_len);
+
+// The stream struct behind x. A read's (`fresh`) must hold no stream
+// yet, so that writing ours into it leaks nothing; a write's must hold
+// one, which the write takes.
+static struct ArrowArrayStream *stream_arg(SEXP x, int fresh, const char *what) {
+  if (TYPEOF(x) != EXTPTRSXP || !Rf_inherits(x, "nanoarrow_array_stream"))
+    Rf_error("%s must be a nanoarrow_array_stream", what);
+  struct ArrowArrayStream *s = (struct ArrowArrayStream *) R_ExternalPtrAddr(x);
+  if (s == NULL) Rf_error("%s points at no stream", what);
+  if (fresh && s->release != NULL) Rf_error("internal: %s already holds a stream", what);
+  if (!fresh && s->release == NULL) Rf_error("this stream was consumed: export the frame again");
+  return s;
+}
+
+static void columns_arg(SEXP cols) {
+  if (Rf_isNull(cols)) return;
+  if (TYPEOF(cols) != STRSXP) Rf_error("columns must be names");
+  for (R_xlen_t i = 0; i < XLENGTH(cols); i++)
+    if (STRING_ELT(cols, i) == NA_STRING) Rf_error("column names must not be NA");
+}
+
+static void window_arg(SEXP skip, SEXP n_max, double *s, double *n) {
+  *s = Rf_asReal(skip);
+  *n = Rf_asReal(n_max);
+  if (ISNAN(*s) || *s < 0 || ISNAN(*n) || *n < 0) Rf_error("skip and n_max must be numbers >= 0");
+}
+
+// options: c(nested, timestamps), each a choice by name ("error" or
+// "skip"; "error" or "truncate").
+static SEXP parquet_read_arrow(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP options, SEXP data, SEXP letters) {
+  const char *path;
+  const unsigned char *raw;
+  size_t raw_len;
+  file_arg(file, &path, &raw, &raw_len);
+  columns_arg(cols);
+  double s, n;
+  window_arg(skip, n_max, &s, &n);
+  if (TYPEOF(options) != STRSXP || XLENGTH(options) != 2 || STRING_ELT(options, 0) == NA_STRING ||
+      STRING_ELT(options, 1) == NA_STRING)
+    Rf_error("internal: read options must be 2 strings");
+  const char *nested = CHAR(STRING_ELT(options, 0));
+  const char *timestamps = CHAR(STRING_ELT(options, 1));
+  struct ArrowArrayStream *d = stream_arg(data, 1, "data"), *l = stream_arg(letters, 1, "letters");
+  if (d == l) Rf_error("internal: data and letters are one stream");
+  SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
+  char err[4096] = "";
+  return finish(dtaparser_parquet_read_arrow_rs(path, raw, raw_len, cols, s, n, strcmp(nested, "skip") == 0, timestamps,
+                                                threads_option(), d, l, holder, err, sizeof err),
+                holder, err);
+}
+
+static SEXP dta_read_arrow(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP encoding, SEXP timestamps, SEXP data,
+                           SEXP letters) {
+  const char *p = string_arg(file, "file");
+  const char *enc = Rf_isNull(encoding) ? NULL : string_arg(encoding, "encoding");
+  const char *ts = string_arg(timestamps, "timestamps");
+  columns_arg(cols);
+  double s, n;
+  window_arg(skip, n_max, &s, &n);
+  struct ArrowArrayStream *d = stream_arg(data, 1, "data"), *l = stream_arg(letters, 1, "letters");
+  if (d == l) Rf_error("internal: data and letters are one stream");
+  SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
+  char err[4096] = "";
+  return finish(dtaparser_dta_read_arrow_rs(p, cols, s, n, enc, ts, d, l, holder, err, sizeof err), holder, err);
+}
+
+// The write meta datakit builds: a list of 8, label, timestamp, notes,
+// sort, characteristics (3 character vectors), columns (4 character
+// vectors and a logical), value_labels (names and two lists) and missing
+// (names and a list of streams, which must hold one each). Checked here
+// so that arrow_r.rs reads it without R's help.
+static void write_meta_arg(SEXP meta) {
+  if (TYPEOF(meta) != VECSXP || XLENGTH(meta) != 8) Rf_error("internal: the write meta must be a list of 8");
+  for (int i = 0; i < 4; i++) {
+    SEXP x = VECTOR_ELT(meta, i);
+    if (!Rf_isNull(x) && TYPEOF(x) != STRSXP) Rf_error("internal: write meta element %d must be text", i + 1);
+  }
+  SEXP chars = VECTOR_ELT(meta, 4), cols = VECTOR_ELT(meta, 5), sets = VECTOR_ELT(meta, 6), missing = VECTOR_ELT(meta, 7);
+  if (TYPEOF(chars) != VECSXP || XLENGTH(chars) != 3) Rf_error("internal: characteristics must be a list of 3");
+  for (int i = 0; i < 3; i++) {
+    if (TYPEOF(VECTOR_ELT(chars, i)) != STRSXP || XLENGTH(VECTOR_ELT(chars, i)) != XLENGTH(VECTOR_ELT(chars, 0)))
+      Rf_error("internal: characteristics must be 3 character vectors of one length");
+  }
+  if (TYPEOF(cols) != VECSXP || XLENGTH(cols) != 5) Rf_error("internal: columns must be a list of 5");
+  R_xlen_t ncol = XLENGTH(VECTOR_ELT(cols, 0));
+  for (int i = 0; i < 5; i++) {
+    SEXP x = VECTOR_ELT(cols, i);
+    if (TYPEOF(x) != (i == 4 ? LGLSXP : STRSXP) || XLENGTH(x) != ncol)
+      Rf_error("internal: columns must be 4 character vectors and a logical of one length");
+  }
+  if (TYPEOF(sets) != VECSXP || XLENGTH(sets) != 3 || TYPEOF(VECTOR_ELT(sets, 0)) != STRSXP ||
+      TYPEOF(VECTOR_ELT(sets, 1)) != VECSXP || TYPEOF(VECTOR_ELT(sets, 2)) != VECSXP ||
+      XLENGTH(VECTOR_ELT(sets, 1)) != XLENGTH(VECTOR_ELT(sets, 0)) ||
+      XLENGTH(VECTOR_ELT(sets, 2)) != XLENGTH(VECTOR_ELT(sets, 0)))
+    Rf_error("internal: value_labels must be names, codes and texts");
+  for (R_xlen_t k = 0; k < XLENGTH(VECTOR_ELT(sets, 0)); k++) {
+    SEXP c = VECTOR_ELT(VECTOR_ELT(sets, 1), k), t = VECTOR_ELT(VECTOR_ELT(sets, 2), k);
+    if (TYPEOF(c) != REALSXP || TYPEOF(t) != STRSXP || XLENGTH(c) != XLENGTH(t))
+      Rf_error("internal: a value label set must be doubles and texts of one length");
+  }
+  if (TYPEOF(missing) != VECSXP || XLENGTH(missing) != 2 || TYPEOF(VECTOR_ELT(missing, 0)) != STRSXP ||
+      TYPEOF(VECTOR_ELT(missing, 1)) != VECSXP || XLENGTH(VECTOR_ELT(missing, 1)) != XLENGTH(VECTOR_ELT(missing, 0)))
+    Rf_error("internal: missing must be names and streams");
+  for (R_xlen_t k = 0; k < XLENGTH(VECTOR_ELT(missing, 1)); k++) stream_arg(VECTOR_ELT(VECTOR_ELT(missing, 1), k), 0, "a letters stream");
+  materialize(meta);
+}
+
+// options: list(compression, compression_level (NULL or a number),
+// row_group_size (NULL or a number), missing_letters, timestamps).
+static SEXP parquet_write_arrow(SEXP stream, SEXP file, SEXP meta, SEXP options) {
+  const char *p = string_arg(file, "file");
+  if (TYPEOF(options) != VECSXP || XLENGTH(options) != 5) Rf_error("internal: write options must be a list of 5");
+  const char *compression = string_arg(VECTOR_ELT(options, 0), "compression");
+  SEXP lv = VECTOR_ELT(options, 1), rg = VECTOR_ELT(options, 2);
+  int has_level = !Rf_isNull(lv), level = has_level ? Rf_asInteger(lv) : 0;
+  if (has_level && level == NA_INTEGER) Rf_error("compression_level must be a whole number");
+  double rows = Rf_isNull(rg) ? R_PosInf : Rf_asReal(rg);
+  int letters = Rf_asLogical(VECTOR_ELT(options, 3));
+  if (letters == NA_LOGICAL) Rf_error("missing_letters must be TRUE or FALSE");
+  const char *ts = string_arg(VECTOR_ELT(options, 4), "timestamps");
+  write_meta_arg(meta);
+  struct ArrowArrayStream *s = stream_arg(stream, 0, "the frame's stream");
+  char err[4096] = "";
+  int status = dtaparser_parquet_write_arrow_rs(s, p, meta, compression, level, has_level, rows, letters, ts,
+                                                threads_option(), err, sizeof err);
+  if (status == 2) R_ContinueUnwind(token);
+  if (status == 1) Rf_error("%s", err);
+  return R_NilValue;
+}
+
+// options: list(missing_letters, timestamps).
+static SEXP dta_write_arrow(SEXP stream, SEXP file, SEXP meta, SEXP options) {
+  const char *p = string_arg(file, "file");
+  if (TYPEOF(options) != VECSXP || XLENGTH(options) != 2) Rf_error("internal: write options must be a list of 2");
+  int letters = Rf_asLogical(VECTOR_ELT(options, 0));
+  if (letters == NA_LOGICAL) Rf_error("missing_letters must be TRUE or FALSE");
+  const char *ts = string_arg(VECTOR_ELT(options, 1), "timestamps");
+  write_meta_arg(meta);
+  struct ArrowArrayStream *s = stream_arg(stream, 0, "the frame's stream");
+  char err[4096] = "";
+  int status = dtaparser_dta_write_arrow_rs(s, p, meta, letters, ts, err, sizeof err);
+  if (status == 2) R_ContinueUnwind(token);
+  if (status == 1) Rf_error("%s", err);
+  return R_NilValue;
+}
+
+// The fixed-width file `data`, read through the setup files `setup` (a
+// character vector), written as release 118 to the new file `out`;
+// returns the setup's warnings. ADR 0039 moved the tibble path to
+// datparser; this serves datakit's read_fixed_width_pl() alone.
+static SEXP fixed_width_dta(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP commented_formats) {
+  const char *d = string_arg(data, "file");
+  const char *o = string_arg(out, "out");
+  const char *r = string_arg(recodes, "recodes");
+  if (TYPEOF(setup) != STRSXP || XLENGTH(setup) < 1) Rf_error("setup must be one or more paths");
+  for (R_xlen_t i = 0; i < XLENGTH(setup); i++)
+    if (STRING_ELT(setup, i) == NA_STRING) Rf_error("setup paths must not be NA");
+  int cf = Rf_asLogical(commented_formats);
+  if (cf == NA_LOGICAL) Rf_error("commented_formats must be TRUE or FALSE");
+  SEXP paths = PROTECT(Rf_allocVector(STRSXP, XLENGTH(setup)));
+  for (R_xlen_t i = 0; i < XLENGTH(setup); i++)
+    SET_STRING_ELT(paths, i, Rf_mkCharCE(Rf_translateCharUTF8(STRING_ELT(setup, i)), CE_UTF8));
+  SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
+  char err[4096] = "";
+  int status = dtaparser_fixed_width_dta_rs(d, paths, o, r, cf, holder, err, sizeof err);
+  if (status == 2) R_ContinueUnwind(token);
+  if (status == 1) Rf_error("%s", err);
+  SEXP res = VECTOR_ELT(holder, 0);
+  UNPROTECT(2);
+  return res;
+}
+
 // The letter of a tagged NA for .a to .z, or 0: R's NA (low word 1954)
 // with a letter in bits 32 to 39, as lib.rs writes them.
 static char letter_of(double x) {
@@ -489,9 +694,12 @@ static const R_CallMethodDef routines[] = {
 // columns may hold NA. dtaparser_fixed_width went after 3.1.0 without a
 // new number (datparser reads fixed-width files, ADR 0039): no package
 // of the same release fetches it, and a datakit 3.1.0 that does fails to
-// link and reports the mismatch as if the number differed.
+// link and reports the mismatch as if the number differed. 4:
+// dtaparser_parquet_read_arrow, dtaparser_dta_read_arrow,
+// dtaparser_parquet_write_arrow, dtaparser_dta_write_arrow and
+// dtaparser_fixed_width_dta came (datakit's polars functions, plan 0025).
 static int abi(void) {
-  return 3;
+  return 4;
 }
 
 void R_init_dtaparser(DllInfo *dll) {
@@ -505,6 +713,11 @@ void R_init_dtaparser(DllInfo *dll) {
   R_RegisterCCallable("dtaparser", "dtaparser_parquet_info", (DL_FUNC) &parquet_info);
   R_RegisterCCallable("dtaparser", "dtaparser_parquet_read", (DL_FUNC) &parquet_read);
   R_RegisterCCallable("dtaparser", "dtaparser_parquet_write", (DL_FUNC) &parquet_write);
+  R_RegisterCCallable("dtaparser", "dtaparser_parquet_read_arrow", (DL_FUNC) &parquet_read_arrow);
+  R_RegisterCCallable("dtaparser", "dtaparser_dta_read_arrow", (DL_FUNC) &dta_read_arrow);
+  R_RegisterCCallable("dtaparser", "dtaparser_parquet_write_arrow", (DL_FUNC) &parquet_write_arrow);
+  R_RegisterCCallable("dtaparser", "dtaparser_dta_write_arrow", (DL_FUNC) &dta_write_arrow);
+  R_RegisterCCallable("dtaparser", "dtaparser_fixed_width_dta", (DL_FUNC) &fixed_width_dta);
   R_registerRoutines(dll, NULL, routines, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);

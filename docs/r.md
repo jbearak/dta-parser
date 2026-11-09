@@ -1584,3 +1584,22 @@ datakit exports:
   labels and columns, from its footer.
 - `save_parquet(data, file, compression = "snappy", compression_level = NULL, row_group_size = NULL, missing_letters = TRUE)`:
   write a data frame as Parquet, labels and `.a` to `.z` kept.
+- `save_dta(data, file, ...)`: dtaparser's `save_dta()` for a data
+  frame; for a polars DataFrame, `meta`, `missing_letters` and
+  `timestamps` by name.
+
+datakit's polars functions (R 4.3 or later, with polars from
+R-multiverse and nanoarrow) read into a polars DataFrame and a
+`datakit_meta`, as Python's datakit does, with `.a` to `.z` as tagged
+NaNs in Float64 columns; each has a help page:
+
+- `read_parquet_pl(file, ...)`, `read_dta_pl(file, ...)`,
+  `read_fixed_width_pl(file, setup, ...)`: `list(df, meta)`.
+- `save_parquet()` and `save_dta()` take the frame back, with `meta =`.
+- `is_missing(x)` and `is_na(x)`: what `is.na()` says, for R vectors
+  and for polars expressions and Series, where `$is_null()` sees only
+  `.`.
+- `tagged_na_pl(letter)`, `na_tag_pl(x)`, `is_tagged_na_pl(x, letter = NULL)`:
+  make and read `.a` to `.z` in polars.
+- `datakit_by_pl(..., .suffix = "_letter")`: columns and their letters,
+  to group, `unique()` or join without merging `.a` and `.b`.
