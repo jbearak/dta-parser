@@ -179,6 +179,9 @@ class DtaArray(ExtensionArray):
     (uint8: 0 not missing, 1 `.`, 2 to 27 `.a` to `.z`)."""
 
     __array_priority__ = 1000
+    # Above pandas' own arrays (1000), so `Int64 + DtaArray` is left to
+    # this array; below Index (2000) and Series (3000).
+    __pandas_priority__ = 1500
 
     def __init__(self, values, codes=None, storage="double", copy=False):
         as_array = np.array if copy else np.asarray
@@ -503,6 +506,7 @@ class DtaArray(ExtensionArray):
         if not skipna and missing.any():
             first = int(np.argmax(missing))
             codes[first:] = codes[first]
+        codes[(codes == 0) & np.isnan(out)] = 1  # a NaN the accumulation makes is `.`
         out = np.where(codes != 0, np.nan, out)
         storage = self._dtype if name in ("cummin", "cummax") else DtaDtype("double")
         return self._simple(out, codes, storage)
@@ -512,9 +516,10 @@ class DtaArray(ExtensionArray):
         `MissingValue` matches its letter, NaN or None matches `.`."""
         if isinstance(values, (pd.Series, pd.Index)):
             values = values.array
-        wanted = dta_keys(values) if isinstance(values, (DtaArray, np.ndarray, ExtensionArray)) else \
-            np.fromiter((dta_key(v) for v in values), dtype=np.float64)
-        if not isinstance(wanted, np.ndarray) or wanted.dtype != np.float64:
+        if isinstance(values, DtaArray):
+            wanted = values.keys()
+        else:
+            # Text is never a number, so it matches nothing.
             wanted = np.fromiter((dta_key(v) for v in values if not isinstance(v, (str, bytes))), dtype=np.float64)
         return np.isin(self.keys(), wanted)
 

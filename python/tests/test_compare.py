@@ -119,6 +119,16 @@ def test_arithmetic_keeps_a_missing_operands_code():
         a + "a"
 
 
+@pytest.mark.parametrize("dtype", ["Int64", "Float64", "boolean"])
+def test_arithmetic_with_nullable_arrays_in_both_orders(dtype):
+    other = pd.Series(pd.array([2, None, 1, 0, 1], dtype=dtype if dtype != "boolean" else "Int64").astype(dtype))
+    s = pd.Series(x())
+    assert codes(s + other) == [0, 1, 2, 3, 1]
+    assert codes(other + s) == [0, 1, 2, 3, 1]
+    assert (other + s).dtype == DtaDtype("double")
+    assert result(other == s)[:2] == [bool(other[0] == 1), NA]
+
+
 def test_series_arithmetic_and_operator_ufuncs_keep_codes():
     s = pd.Series(x())
     assert codes(s * 2) == [0, 0, 2, 3, 1]
@@ -193,6 +203,8 @@ def test_cumulative_functions():
     assert np.asarray(s.cummax().array)[[0, 2, 4]].tolist() == [1.0, 2.0, 3.0]
     assert s.cummin().dtype == DtaDtype("byte")
     assert np.asarray(s.cumprod().array)[[0, 2, 4]].tolist() == [1.0, 2.0, 6.0]
+    overflow = DtaArray([1e200, 1e200, 0.0])._accumulate("cumprod")   # inf * 0 is NaN
+    assert overflow.codes.tolist() == [0, 0, 1] and overflow.isna().tolist() == [False, False, True]
 
 
 def test_windows_and_summaries_use_the_numbers():
@@ -228,6 +240,9 @@ def test_fillna_where_mask_clip_round_isin():
     assert codes(rounded) == [0, 2] and np.asarray(rounded.array)[0] == pytest.approx(1.3)
     assert s.isin([1, missing.b]).tolist() == [True, False, False, True, False]
     assert s.isin([np.nan]).tolist() == [False, False, False, False, True]
+    assert s.isin(["1"]).tolist() == [False] * 5          # text matches nothing
+    assert s.array.isin(["x", 5000]).tolist() == [False, True, False, False, False]
+    assert s.isin(pd.Series(DtaArray([np.nan], [3]))).tolist() == [False, False, False, True, False]
 
 
 def test_merge_of_two_dta_array_keys_matches_letter_to_letter():
