@@ -1,5 +1,5 @@
 """read_fixed_width reads fixed-width text through a SAS setup file (plan
-0009), into polars (plan 0019; moved from dta_parser's tests).
+0009), into pandas (plan 0019; plan 0024, stage 4).
 
 What each value should be follows from the setup text written here; the
 converted file is also read with pandas and pyreadstat, which check the
@@ -11,7 +11,7 @@ import os
 import tempfile
 import warnings
 
-import polars as pl
+import numpy as np
 import pytest
 
 import datakit as dk
@@ -53,11 +53,11 @@ def no_warnings(fn, *args, **kw):
 
 def test_setup_mode(files):
     df, meta = no_warnings(dk.read_fixed_width, *files())
-    assert df.columns == ["ID", "SEX", "KIDS"]
-    assert df["ID"].to_list() == [1, 2, 3, 4, 5]
-    assert df["ID"].dtype == pl.Int8
-    assert df["KIDS"].is_null().to_list() == [False, True, True, True, False]
-    assert df["KIDS"].dtype == pl.Int8 and meta._storage == {}
+    assert list(df.columns) == ["ID", "SEX", "KIDS"]
+    assert df["ID"].tolist() == [1, 2, 3, 4, 5]
+    assert df["ID"].dtype == np.int8
+    assert df["KIDS"].isna().tolist() == [False, True, True, True, False]
+    assert df["KIDS"].dtype == "dta[byte]" and tags(df["KIDS"]) == [None] * 5
     assert meta.columns["SEX"].label == "R's sex"
     assert meta.columns["KIDS"].label == "k" * 200
     # 98 and 99 can no longer occur, so their labels are gone.
@@ -66,26 +66,26 @@ def test_setup_mode(files):
 
 def test_tagged_mode(files):
     df, meta = dk.read_fixed_width(*files(), recodes="tagged")
-    assert df["KIDS"].dtype == pl.Float64 and meta._storage == {"KIDS": pl.Int8}
+    assert df["KIDS"].dtype == "dta[byte]"
     assert tags(df["KIDS"]) == [None, ".a", ".b", ".b", None]
-    assert df["KIDS"].fill_nan(None).is_null().to_list() == [False, True, True, True, False]
+    assert df["KIDS"].isna().tolist() == [False, True, True, True, False]
     assert meta.value_labels["kidsf"] == {0: "(0) None", ".a": "(98) DK", ".b": "(99) Not ascertained"}
     df, _ = dk.read_fixed_width(*files(), recodes="tagged", letters=False)
-    assert df["KIDS"].dtype == pl.Int8 and df["KIDS"].is_null().to_list() == [False, True, True, True, False]
+    assert df["KIDS"].dtype == "dta[byte]" and df["KIDS"].array.codes.tolist() == [0, 1, 1, 1, 0]
 
 
 def test_none_mode_and_bad_mode(files):
     df, _ = dk.read_fixed_width(*files(), recodes="none")
-    assert df["KIDS"].to_list() == [2, 98, 99, 99, 0]
+    assert df["KIDS"].tolist() == [2, 98, 99, 99, 0]
     with pytest.raises(ValueError, match='recodes is "setup", "tagged" or "none"'):
         dk.read_fixed_width(*files(), recodes="letters")
 
 
 def test_columns_skip_n_max(files):
     df, meta = dk.read_fixed_width(*files(), columns=["KIDS", "ID"], skip=1, n_max=2)
-    assert df.columns == ["KIDS", "ID"]
+    assert list(df.columns) == ["KIDS", "ID"]
     assert list(meta.columns) == ["KIDS", "ID"]
-    assert df["ID"].to_list() == [2, 3]
+    assert df["ID"].tolist() == [2, 3]
 
 
 def test_warnings(files):
@@ -181,7 +181,7 @@ def test_commented_formats_are_read_unless_turned_off(crlf):
     off, off_meta = dk.read_fixed_width(*crlf(), recodes="none", commented_formats=False)
     assert kids_labels((off, off_meta)) is None
     assert off_meta.value_labels == {}
-    assert off["KIDS"].to_list() == df["KIDS"].to_list() == [0, 98]
+    assert off["KIDS"].tolist() == df["KIDS"].tolist() == [0, 98]
     assert off_meta.columns["KIDS"].label == "Kids"
     with pytest.raises(TypeError, match="True or False"):
         dk.read_fixed_width(*crlf(), commented_formats="yes")
@@ -218,7 +218,8 @@ def test_a_setup_in_several_files_reads_as_the_files_joined(tmp_path):
     data = write_crlf(tmp_path / "x.dat", COMMENTED_DATA)
     files, files_meta = no_warnings(dk.read_fixed_width, data, paths, recodes="none")
     one, one_meta = dk.read_fixed_width(data, joined, recodes="none")
-    assert files.equals(one) and files.schema == one.schema
+    import pandas as pd
+    pd.testing.assert_frame_equal(files, one)
     files_meta.timestamp = one_meta.timestamp
     assert files_meta == one_meta
     assert files_meta.value_labels["SEXF"] == {1: "BOY", 2: "GIRL"}

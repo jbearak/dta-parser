@@ -1,11 +1,12 @@
-"""datakit: data preparation in polars that keeps Stata's labels and
+"""datakit: data preparation in pandas that keeps Stata's labels and
 `.a` to `.z`.
 
 Reads Parquet files, Stata .dta files and fixed-width text with a SAS
-setup file into a polars DataFrame, with the missing values `.a` to `.z`
-as tagged NaNs in its Float64 columns, and a Meta beside it (labels,
-formats and notes), and saves them back as Parquet or .dta. The Parquet files carry a "dta" profile that R's and
-Julia's datakits read too.
+setup file into a pandas DataFrame, whose numeric columns with a missing
+value are dta_parser's `DtaArray`, keeping `.` and `.a` to `.z` and
+comparing them as missing, and a Meta beside it (labels, formats and
+notes), and saves them back as Parquet or .dta. The Parquet files carry a
+"dta" profile that R's and Julia's datakits read too.
 
     import datakit as dk
     df, meta = dk.read_parquet("survey.parquet")
@@ -14,7 +15,7 @@ Julia's datakits read too.
 Guide: https://github.com/jbearak/dta-parser/blob/main/docs/python.md
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from ._native import native as _native  # noqa: E402,F401  (checks dta_parser's ABI first)
 from ._dta import FixedWidthWarning, read_dta, read_fixed_width, save_dta  # noqa: E402

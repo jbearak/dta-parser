@@ -1,23 +1,26 @@
-"""What every read and save shares: the frame and its `Meta` from the
-native reads, `.a` to `.z` as tagged NaNs in the frame, `factors`, and
-the checks a save makes before handing the frame to the native
-writers."""
+"""What every read and save shares: the pandas frame and its `Meta` from
+the native reads, `.a` to `.z` in `DtaArray` columns, `factors`, and the
+columns a save hands the native writers."""
 
 from __future__ import annotations
 
+import decimal as _decimal
 import os
 import re
 import warnings
 
-import polars as pl
+import numpy as np
+import pandas as pd
+
+from dta_parser import DtaArray, DtaDtype, missing
+from dta_parser._array import dta_keys
+from dta_parser._write import _fits
 
 from . import _tagged
-from ._meta import LETTERS, Column, Meta
+from ._meta import Column, Meta
 
-# Stata's dates count from 1960, polars' from 1970.
-_DAYS_1960 = 3653
-_MS_1960 = _DAYS_1960 * 86_400_000
-_UNIT_MS = {"ms": 1, "us": 1_000, "ns": 1_000_000}
+# pandas' default dtype for text: `str` from pandas 3, object before.
+TEXT = pd.Series(["a"]).dtype
 
 
 def warn(message, category=UserWarning):
@@ -86,7 +89,7 @@ def path_of(path):
 # ---------------------------------------------------------------- reads
 
 def meta_of(m):
-    """The Meta of a native read's dict (without `missing`)."""
+    """The Meta of a native read's dict."""
     return Meta(
         label=m["label"],
         notes=list(m["notes"]),
@@ -99,61 +102,123 @@ def meta_of(m):
     )
 
 
-def frame_of(native_frame, m):
-    """The polars frame of a native read, with the casts the read asks
-    for: a categorical of the rows' values, and DECIMAL read as text."""
-    df = pl.DataFrame(native_frame)
-    casts = []
-    for c in m["columns"]:
-        flag = c[6]
-        if flag is None:
-            continue
-        if flag == "categorical":
-            casts.append(pl.col(c[0]).cast(pl.Categorical))
-        elif flag.startswith("decimal("):
-            precision, scale = map(int, flag[len("decimal("):-1].split(","))
-            if precision <= 38:
-                casts.append(decimal(df.get_column(c[0]), precision, scale))
-    return df.with_columns(casts) if casts else df
+def series(array, name):
+    """A Series over `array` without a copy."""
+    return pd.Series(array, name=name, copy=False)
 
 
-def decimal(text, precision, scale):
-    """A DECIMAL column read as text, as Decimal(precision, scale); as
-    Decimal(38, scale) when a value has more digits than its precision
-    allows (as some writers make), with a warning; else text."""
-    try:
-        return text.cast(pl.Decimal(precision, scale))
-    except pl.exceptions.InvalidOperationError:
-        pass
-    try:
-        out = text.cast(pl.Decimal(38, scale))
-        kept = f"Decimal(38, {scale})"
-    except pl.exceptions.InvalidOperationError:
-        out, kept = text, "String"
-    warn(f'column "{text.name}" holds values with more digits than its DECIMAL({precision}, {scale}) allows; '
-         f"read as {kept}, every digit kept")
+def decimals(text, precision, name):
+    """A DECIMAL column read as text (an object array, None for a null):
+    float64 up to 15 digits of precision (a DtaArray when it has a null),
+    else `decimal.Decimal` objects, every digit kept (plan 0018)."""
+    if precision <= 15:
+        null = pd.isna(text)
+        values = np.zeros(len(text), dtype=np.float64)
+        values[~null] = np.asarray(text[~null], dtype=np.float64)
+        if null.any():
+            return DtaArray(np.where(null, np.nan, values), null.astype(np.uint8))
+        return values
+    out = np.empty(len(text), dtype=object)
+    for i, t in enumerate(text):
+        out[i] = None if t is None else _decimal.Decimal(t)
     return out
 
 
-def finish(native_frame, native_letters, m, *, factors, letters, markers=False):
-    """`(df, meta)` from a native read. With `letters`, each column holding
-    `.a` to `.z` in the rows read is Float64 with them as tagged NaNs
-    (`with_letters`); without, they are nulls like `.`. With `markers` (a
-    .dta read), the columns marked `dtaparser_categorical` are Enums again
+def text_column(values, binary):
+    """An object array of text as pandas' default text dtype; of bytes,
+    as it is."""
+    if binary or TEXT == object:
+        return values
+    return pd.array(values, dtype=TEXT)
+
+
+def columns_of(frame, m, letters):
+    """The pandas columns of a native read, as {name: Series}; the names
+    of the columns holding `.a` to `.z`, and of those a categorical
+    holding them made level numbers. Sets `meta`'s formats for dates and
+    timestamps read as Stata's numbers."""
+    texts = [np.empty(frame.rows, dtype=object) if f in ("vu", "vz") else None for f in frame.formats]
+    taken = frame.take(letters, texts)
+    flags = {c[0]: c[6] for c in m["columns"]}
+    out = {}
+    lettered = set()
+    level_numbers = set()
+    origins = {}
+    for name, item, text in zip(frame.names, taken, texts):
+        kind = item[0]
+        if kind == "numpy":
+            a = np.asarray(item[1])
+            zone = item[2]
+            if zone is not None:
+                unit = np.datetime_data(a.dtype)[0]
+                out[name] = series(a.view(np.int64), name).astype(pd.DatetimeTZDtype(unit, zone))
+            else:
+                out[name] = series(a, name)
+        elif kind == "masked":
+            values, mask = np.asarray(item[1]), np.asarray(item[2])
+            if values.dtype == bool:
+                array = pd.arrays.BooleanArray(values, mask)
+            else:
+                array = pd.arrays.IntegerArray(values, mask)
+            out[name] = series(array, name)
+        elif kind == "dta":
+            _, values, codes, storage, origin, has = item
+            out[name] = series(DtaArray._simple(np.asarray(values), np.asarray(codes), DtaDtype(storage)), name)
+            if has:
+                lettered.add(name)
+            if origin is not None:
+                origins[name] = origin
+        elif kind == "category":
+            _, codes, levels, ordered = item
+            cat = pd.Categorical.from_codes(np.asarray(codes), dtype=pd.CategoricalDtype(levels, ordered=ordered),
+                                            validate=False)
+            out[name] = series(cat, name)
+        else:
+            flag = flags.get(name)
+            if flag is not None and flag.startswith("decimal("):
+                precision = int(flag[len("decimal("):-1].split(",")[0])
+                out[name] = series(decimals(text, precision, name), name)
+            elif flag == "categorical":
+                present = text[~pd.isna(text)]
+                levels = pd.unique(present) if len(present) else []
+                cat = pd.Categorical(text, categories=pd.Index(levels, dtype=object), ordered=False)
+                if len(levels) and TEXT != object:
+                    cat = cat.set_categories(pd.Index(levels, dtype=TEXT))
+                out[name] = series(cat, name)
+            else:
+                out[name] = series(text_column(text, item[1]), name)
+    return out, lettered, origins
+
+
+def finish(frame, m, *, factors, letters, markers=False):
+    """`(df, meta)` from a native read. Each numeric column with a missing
+    value in the rows read is a `DtaArray`, `.a` to `.z` in its codes
+    (`letters=False` reads them as `.`). With `markers` (a .dta read), the
+    columns marked `dtaparser_categorical` are categories again
     (`restore_categoricals`), unless they hold letters. `factors` makes
-    labelled columns Enums (`to_factors`), those holding letters too, as
-    R's datakit does: their letters become nulls, with one warning."""
+    labelled columns categories (`to_factors`), those holding letters
+    too, as R's datakit does: their letters become NaN, with one
+    warning."""
     for w in m["warnings"]:
         warn(w)
-    df = frame_of(native_frame, m)
     meta = meta_of(m)
-    found = {}
-    if native_letters is not None and letters:
-        ldf = pl.DataFrame(native_letters)
-        found = {name: ldf.get_column(name) for name in ldf.columns if ldf.get_column(name).null_count() < ldf.height}
-    enums = {n for n in found if isinstance(df.schema[n], pl.Enum)}
+    cols, lettered, origins = columns_of(frame, m, letters)
+    for name, origin in origins.items():
+        if origin == "date":
+            _set_format(meta, name, "%td")
+        elif origin == "datetime":
+            _set_format(meta, name, "%tc")
+        else:
+            col = meta.columns.get(name) or Column()
+            if col.ordered is not None:
+                meta.columns[name] = Column(col.label, col.format, col.value_labels, None)
+    for name, f in zip(frame.names, frame.formats):
+        col = meta.columns.get(name) or Column()
+        if f == "tdD" and name not in origins and col.format is None:
+            # A Parquet DATE, which datetime64[s] holds as seconds.
+            meta.columns[name] = Column(col.label, "%td", col.value_labels, col.ordered)
     if markers:
-        df, stale = restore_categoricals(df, meta, skip=set() if factors else set(found))
+        stale = restore_categoricals(cols, meta, skip=set() if factors else lettered)
         if stale:
             shown = ", ".join(f'"{n}"' for n in stale)
             warn(f"{'column' if len(stale) == 1 else 'columns'} {shown} {'was' if len(stale) == 1 else 'were'} "
@@ -161,49 +226,17 @@ def finish(native_frame, native_letters, m, *, factors, letters, markers=False):
                  "has no label, two codes share a text, a code is not a whole number, `.` is labelled, a date format "
                  "was given, or a column has both markers; read as unmarked columns")
     if factors:
-        df = to_factors(df, meta)
-        lost = [n for n in found if n not in enums and isinstance(df.schema[n], pl.Enum)]
+        to_factors(cols, meta, skip=set(origins))
+        lost = [n for n in lettered if n not in origins and isinstance(cols[n].dtype, pd.CategoricalDtype)]
         if lost:
             shown = ", ".join(f'"{n}"' for n in lost)
-            warn(f".a to .z in {shown} are nulls in {'its Enum' if len(lost) == 1 else 'their Enums'}; "
+            warn(f".a to .z in {shown} are NaN in {'its category' if len(lost) == 1 else 'their categories'}; "
                  "read with factors=False to keep them")
-            found = {n: v for n, v in found.items() if n not in lost}
-    if found:
-        df = with_letters(df, meta, found)
+    if cols:
+        df = pd.DataFrame(cols, copy=False)
+    else:
+        df = pd.DataFrame(index=pd.RangeIndex(frame.rows))
     return df, meta
-
-
-def with_letters(df, meta, found):
-    """`df` with each column of `found` (a Series of LETTERS per column)
-    Float64, its letters tagged NaNs. Integers and Float32 are cast, and
-    their dtype kept in `meta._storage`; a Date or Datetime becomes
-    Stata's number (days, or milliseconds, since 1960) with a `%td` or
-    `%tc` format; an Enum its level numbers from 1, its value label set
-    labelling them."""
-    changes = []
-    for name, letters in found.items():
-        s = df.get_column(name)
-        t = s.dtype
-        if t in (pl.Int8, pl.Int16, pl.Int32, pl.Float32):
-            meta._storage[name] = t
-            values = s.cast(pl.Float64)
-        elif t == pl.Float64:
-            values = s
-        elif t == pl.Date:
-            values = s.cast(pl.Int32).cast(pl.Float64) + _DAYS_1960
-            _set_format(meta, name, "%td")
-        elif isinstance(t, pl.Datetime):
-            values = s.dt.epoch(t.time_unit).cast(pl.Float64) / _UNIT_MS[t.time_unit] + _MS_1960
-            _set_format(meta, name, "%tc")
-        elif isinstance(t, pl.Enum):
-            values = s.to_physical().cast(pl.Float64) + 1
-            col = meta.columns.get(name) or Column()
-            if col.ordered is not None:
-                meta.columns[name] = Column(col.label, col.format, col.value_labels, None)
-        else:
-            continue
-        changes.append(_tagged.tag(values.alias(name), letters))
-    return df.with_columns(changes) if changes else df
 
 
 def _set_format(meta, name, fmt):
@@ -214,7 +247,7 @@ def _set_format(meta, name, fmt):
 
 # The characteristics that mark a column written from a categorical:
 # "ordered <set>" or "unordered <set>". R's factors (plan 0020), and
-# Enums and Categoricals (plan 0023), which may hold .a to .z.
+# categoricals (plan 0023), which may hold .a to .z.
 FACTOR_MARK = "dtaparser_factor"
 CATEGORICAL_MARK = "dtaparser_categorical"
 _MARK = re.compile(r"(ordered|unordered) (.+)", re.DOTALL)
@@ -242,48 +275,76 @@ def marked_levels(mark, set_name, value_labels):
     return [float(k) for k, _ in numeric], texts, m.group(1) == "ordered"
 
 
-def restore_categoricals(df, meta, skip=()):
-    """`df` with each column marked `dtaparser_categorical` that passes the
-    checks of plan 0023 an Enum of its set's texts in code order, unused
-    ones included; its `meta.columns[name].ordered` from the mark, its mark
-    gone from `meta.characteristics`. Its `.a` to `.z` stay with the read's
-    letters. The columns that fail (`marked_levels`, a column that is not
-    numeric, as a `%td` one is once read, a value without a label, or both
-    marks) are left as read, unmarked; their names are returned with
-    `df`. A column of `skip` (one holding `.a` to `.z`, which an Enum
-    cannot hold) is left as its numbers, its mark kept, without a
-    warning. `dtaparser_factor` alone is left as it is (an R factor; plan
-    0020)."""
-    changes = []
+def numbers(s):
+    """`(values, present)` of a numeric column: float64 values and where
+    they are not missing; None for any other column."""
+    a = s.array
+    if isinstance(a, DtaArray):
+        return a._values, a.codes == 0
+    if s.dtype.kind in "iub" and not isinstance(s.dtype, pd.CategoricalDtype):
+        values = s.to_numpy(dtype=np.float64, na_value=np.nan)
+        return values, ~np.isnan(values)
+    if s.dtype.kind == "f":
+        values = s.to_numpy(dtype=np.float64, na_value=np.nan)
+        return values, ~np.isnan(values)
+    return None
+
+
+def _is_integer(s):
+    a = s.array
+    if isinstance(a, DtaArray):
+        return a.dtype.storage in ("byte", "int", "long")
+    return s.dtype.kind in "iub"
+
+
+def restore_categoricals(cols, meta, skip=()):
+    """Each column marked `dtaparser_categorical` that passes the checks
+    of plan 0023 made a category of its set's texts in code order, unused
+    ones included; its `meta.columns[name].ordered` from the mark, its
+    mark gone from `meta.characteristics`. The columns that fail
+    (`marked_levels`, a column that is not numeric, as a `%td` one is
+    once read, a value without a label, or both marks) are left as read,
+    unmarked; their names are returned. A column of `skip` (one holding
+    `.a` to `.z`, which a category cannot hold) is left as its numbers,
+    its mark kept, without a warning. `dtaparser_factor` alone is left as
+    it is (an R factor; plan 0020)."""
     stale = []
-    for name in df.columns:
+    for name in list(cols):
         chars = meta.characteristics.get(name) or {}
         if CATEGORICAL_MARK not in chars or name in skip:
             continue
-        s = df.get_column(name)
+        s = cols[name]
         col = meta.columns.get(name) or Column()
         levels = None
-        if FACTOR_MARK not in chars and s.dtype.is_numeric():
+        got = numbers(s)
+        if FACTOR_MARK not in chars and got is not None:
             levels = marked_levels(chars[CATEGORICAL_MARK], col.value_labels, meta.value_labels)
+        at = None
         if levels is not None:
             codes, texts, ordered = levels
-            present = s.drop_nulls()
-            if s.dtype.is_float():
-                present = present.filter(present.is_not_nan())
-            if not present.cast(pl.Float64).is_in(codes).all():
+            values, present = got
+            keys = np.asarray(codes, dtype=np.float64)
+            if keys.size:
+                at = np.minimum(np.searchsorted(keys, np.where(present, values, keys[0])), len(keys) - 1)
+                if not (keys[at] == values)[present].all():
+                    levels = None
+            elif present.any():
                 levels = None
         if levels is None:
             stale.append(name)
             continue
-        changes.append(s.cast(pl.Float64).replace_strict(codes, texts, default=None, return_dtype=pl.Enum(texts))
-                       .alias(name))
+        codes, texts, ordered = levels
+        present = got[1]
+        codes_out = np.where(present, at, -1) if at is not None else np.full(len(s), -1)
+        cat = pd.Categorical.from_codes(codes_out, dtype=pd.CategoricalDtype(texts, ordered=ordered))
+        cols[name] = pd.Series(cat, name=name)
         meta.columns[name] = Column(col.label, col.format, col.value_labels, ordered)
         rest = {k: v for k, v in chars.items() if k != CATEGORICAL_MARK}
         if rest:
             meta.characteristics[name] = rest
         else:
             del meta.characteristics[name]
-    return (df.with_columns(changes) if changes else df), stale
+    return stale
 
 
 def r_number(v):
@@ -304,26 +365,26 @@ def r_number(v):
     return fixed if len(fixed) <= len(sci) else sci
 
 
-def to_factors(df, meta):
-    """Each labelled numeric column as an Enum, as R's datakit's
-    `read_parquet(factors = TRUE)` makes a factor (`labelled_factor`)."""
-    changes = []
+def to_factors(cols, meta, skip=()):
+    """Each labelled numeric column made a category, as R's datakit's
+    `read_parquet(factors = TRUE)` makes a factor (`labelled_factor`):
+    its levels the sorted values and codes, labelled where a label
+    exists; codes sharing a label one level."""
     for name, col in meta.columns.items():
-        if name not in df.columns or col.value_labels is None:
+        if name not in cols or name in skip or col.value_labels is None:
             continue
-        s = df.get_column(name)
-        if not s.dtype.is_numeric():
+        s = cols[name]
+        got = numbers(s)
+        if got is None or s.dtype.kind == "b":
             continue
         labels = {k: v for k, v in meta.value_labels.get(col.value_labels, {}).items() if not isinstance(k, str)}
         if not labels:
             continue
-        present = s.drop_nulls()
-        if s.dtype.is_float():
-            present = present.filter(present.is_not_nan())
-        values = sorted({float(v) for v in present.unique().to_list()} | {float(k) for k in labels})
-        integer = s.dtype.is_integer()
+        values, present = got
+        found = sorted({float(v) for v in np.unique(values[present])} | {float(k) for k in labels})
+        integer = _is_integer(s)
         text = []
-        for v in values:
+        for v in found:
             if v in labels:
                 text.append(labels[v])
             elif integer:
@@ -331,84 +392,238 @@ def to_factors(df, meta):
             else:
                 text.append(r_number(v))
         levels = list(dict.fromkeys(text))
-        changes.append(
-            s.cast(pl.Float64).replace_strict(values, text, default=None, return_dtype=pl.Enum(levels)).alias(name)
-        )
-    return df.with_columns(changes) if changes else df
+        index = {t: i for i, t in enumerate(levels)}
+        keys = np.asarray(found, dtype=np.float64)
+        code_of = np.asarray([index[t] for t in text], dtype=np.int64)
+        codes = np.full(len(values), -1, dtype=np.int64)
+        if keys.size:
+            at = np.minimum(np.searchsorted(keys, values[present]), len(keys) - 1)
+            codes[present] = code_of[at]
+        cols[name] = pd.Series(pd.Categorical.from_codes(codes, dtype=pd.CategoricalDtype(levels)), name=name)
 
 
 # ---------------------------------------------------------------- saves
 
 def check_frame(df, who):
-    if isinstance(df, pl.LazyFrame):
-        raise TypeError(f"{who} takes a polars DataFrame, not a LazyFrame; call .collect() on it first")
-    if not isinstance(df, pl.DataFrame):
-        raise TypeError(f"{who} takes a polars DataFrame, not {type(df).__name__}")
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"{who} takes a pandas DataFrame, not {type(df).__name__}")
+    names = list(df.columns)
+    for n in names:
+        if not isinstance(n, str):
+            raise TypeError(f"{who}: column names are text, not {n!r}; rename the column first")
+    seen = set()
+    for n in names:
+        if n in seen:
+            raise ValueError(f'{who}: column "{n}" appears more than once')
+        seen.add(n)
 
 
-_INT_RANGE = {pl.Int8: (-127, 100), pl.Int16: (-32_767, 32_740), pl.Int32: (-2_147_483_647, 2_147_483_620)}
+_UNIT = {"s": "s", "ms": "m", "us": "u", "ns": "n"}
+_PER_DAY = {"s": 86_400, "ms": 86_400_000, "us": 86_400_000_000, "ns": 86_400_000_000_000}
+_NS = {"s": 1_000_000_000, "ms": 1_000_000, "us": 1_000, "ns": 1}
+_STORAGE_FORMAT = {"byte": ("c", np.int8), "int": ("s", np.int16), "long": ("i", np.int32),
+                   "float": ("f", np.float32), "double": ("g", np.float64)}
+_WIDER = ("byte", "int", "long", "float", "double")
+_NUMPY_FORMAT = {"i1": "c", "i2": "s", "i4": "i", "i8": "l", "u1": "C", "u2": "S", "u4": "I", "u8": "L",
+                 "f4": "f", "f8": "g", "b1": "b"}
 
 
-def stored(values, storage):
-    """`values` (Float64, its letters already null) as `storage`, the dtype
-    the read widened it from, when every value fits that type exactly;
-    else `values` as it is, written as double."""
-    if storage is None:
-        return values
-    present = values.drop_nulls()
-    if storage == pl.Float32:
-        if present.is_nan().any() or not present.cast(pl.Float32).cast(pl.Float64).equals(present):
-            return values
-        return values.cast(pl.Float32)
-    lo, hi = _INT_RANGE[storage]
-    if present.is_nan().any() or not (present == present.round(0)).all() or present.is_infinite().any():
-        return values
-    if present.len() and (present.min() < lo or present.max() > hi):
-        return values
-    return values.cast(storage)
+def _array(a, dtype):
+    """`a` as a C-contiguous, aligned array of `dtype`, as the native
+    writers take it."""
+    return np.require(np.asarray(a, dtype=dtype), dtype=dtype, requirements=["C", "A"])
+
+
+def stored(storage, values, present):
+    """The storage a `DtaArray` of `storage` is written in: its own when
+    every value fits it exactly, else the next of byte, int, long, float
+    and double that holds every value."""
+    v = values[present]
+    for s in _WIDER[_WIDER.index(storage):]:
+        if _fits(v, s):
+            return s
+    return "double"
+
+
+def _date_kind(fmt):
+    if fmt and re.match(r"%-?(td|d)", fmt):
+        return "td"
+    if fmt and re.match(r"%-?tc", fmt):
+        return "tc"
+    return None
+
+
+def column_spec(name, s, fmt, missing_letters, who):
+    """The tuple the native writers take for column `name` (`frame.rs`,
+    `build`): `(name, format, values, mask, letters, levels, ordered)`."""
+    dtype = s.dtype
+    a = s.array
+    none = None
+
+    def letters_of(codes):
+        if not missing_letters or not (codes > 1).any():
+            return none
+        return _array(np.where(codes > 1, codes, 0), np.uint8)
+
+    if isinstance(a, DtaArray):
+        codes = a.codes
+        present = codes == 0
+        storage = stored(a.dtype.storage, a._values, present)
+        f, np_type = _STORAGE_FORMAT[storage]
+        values = np.where(present, a._values, 0).astype(np_type)
+        return (name, f, _array(values, np_type), _array(~present, bool), letters_of(codes), none, False)
+    if isinstance(dtype, pd.CategoricalDtype):
+        cats = dtype.categories
+        if len(cats) and pd.api.types.infer_dtype(cats, skipna=False) != "string":
+            raise TypeError(f'column "{name}" is a category of {cats.dtype}; {who} writes categories of text: '
+                            f'make its categories text first (s.cat.rename_categories(str))')
+        codes = s.cat.codes.to_numpy()
+        f = _NUMPY_FORMAT[f"{codes.dtype.kind}{codes.dtype.itemsize}"]
+        return (name, f, _array(codes, codes.dtype), _array(codes < 0, bool), none, [str(c) for c in cats],
+                bool(dtype.ordered))
+    if isinstance(dtype, pd.DatetimeTZDtype):
+        if who == "save_dta":
+            raise TypeError(f'column "{name}" has a time zone, which .dta cannot hold; make it naive with '
+                            f'dt.tz_convert(zone).dt.tz_localize(None)')
+        unit = dtype.unit
+        values = a.asi8 if hasattr(a, "asi8") else s.to_numpy().view(np.int64)
+        return (name, f"ts{_UNIT[unit]}:{dtype.tz}", _array(values, np.int64), _array(s.isna().to_numpy(), bool),
+                none, none, False)
+    if dtype.kind == "M":
+        values = s.to_numpy()
+        unit = np.datetime_data(values.dtype)[0]
+        if unit not in _UNIT:
+            values = values.astype("datetime64[s]" if unit in ("D", "h", "m") else "datetime64[ns]")
+            unit = np.datetime_data(values.dtype)[0]
+        ints = values.view(np.int64)
+        nat = np.isnat(values)
+        if _date_kind(fmt) == "td" and not (ints[~nat] % _PER_DAY[unit]).any():
+            days = np.where(nat, 0, ints // _PER_DAY[unit])
+            if days.size and (days.min() < np.iinfo(np.int32).min or days.max() > np.iinfo(np.int32).max):
+                raise ValueError(f'column "{name}": a date is outside the range of dates')
+            return (name, "tdD", _array(days, np.int32), _array(nat, bool), none, none, False)
+        return (name, f"ts{_UNIT[unit]}:", _array(ints, np.int64), _array(nat, bool), none, none, False)
+    if dtype.kind == "m":
+        if who == "save_dta":
+            raise TypeError(f'column "{name}" is {dtype}, which .dta cannot hold; convert it to numbers first')
+        values = s.to_numpy()
+        unit = np.datetime_data(values.dtype)[0]
+        nat = np.isnat(values)
+        ns = values.astype("timedelta64[ns]").view(np.int64)
+        outside = ~nat & ((ns < 0) | (ns >= 86_400 * 1_000_000_000))
+        if outside.any():
+            r = int(np.argmax(outside))
+            raise ValueError(f'column "{name}", row {r + 1}: {values[r]} is not a time of day (0 to 24 hours), '
+                             "which Parquet's TIME holds")
+        return (name, "ttn", _array(ns, np.int64), _array(nat, bool), none, none, False)
+    if isinstance(a, pd.arrays.BooleanArray) or (isinstance(dtype, pd.api.extensions.ExtensionDtype)
+                                                 and hasattr(a, "_mask") and hasattr(a, "_data")):
+        values, mask = a._data, a._mask
+        if values.dtype.kind == "f":
+            mask = mask | np.isnan(values)
+        key = f"{values.dtype.kind}{values.dtype.itemsize}"
+        if key not in _NUMPY_FORMAT:
+            raise TypeError(f'column "{name}" is {dtype}, which {who} does not write')
+        return (name, _NUMPY_FORMAT[key], _array(values, values.dtype), _array(mask, bool), none, none, False)
+    if isinstance(dtype, np.dtype) and dtype.kind in "iufb":
+        key = f"{dtype.kind}{dtype.itemsize}"
+        if key not in _NUMPY_FORMAT:
+            raise TypeError(f'column "{name}" is {dtype}, which {who} does not write; convert it to float64')
+        values = s.to_numpy()
+        if dtype.kind == "f":
+            values64 = values.astype(np.float64, copy=False)
+            codes = _tagged.float_codes(values64)
+            return (name, _NUMPY_FORMAT[key], _array(values, dtype), _array(codes != 0, bool), letters_of(codes),
+                    none, False)
+        return (name, _NUMPY_FORMAT[key], _array(values, dtype), none, none, none, False)
+    if isinstance(dtype, pd.StringDtype) or dtype == object:
+        values = s.to_numpy(dtype=object)
+        null = pd.isna(values)
+        kind = pd.api.types.infer_dtype(values, skipna=True)
+        if kind in ("string", "empty"):
+            return (name, "U", _array(values, object), _array(null, bool), none, none, False)
+        if kind == "bytes":
+            return (name, "Z", _array(values, object), _array(null, bool), none, none, False)
+        if kind == "decimal":
+            raise TypeError(f'column "{name}" holds decimal.Decimal values, which {who} does not write; '
+                            "convert it to float (astype(float)) or to text (astype(str))")
+        if any(isinstance(v, missing.MissingValue) for v in values):
+            raise TypeError(f'column "{name}" is object and holds .a to .z (MissingValue); a numeric column '
+                            f'keeps them as dta[double]: df["{name}"] = df["{name}"].astype("dta[double]")')
+        raise TypeError(f'column "{name}" is object holding {kind} values, which {who} does not write; '
+                        "make it text, bytes or numbers")
+    raise TypeError(f'column "{name}" is {dtype}, which {who} does not write')
 
 
 def prepare(df, meta, missing_letters, who):
-    """The frame to write, and what the native writer takes of meta:
-    label, notes, characteristics, sort (checked), timestamp, columns,
-    value_labels, and missing, the letters of each Float64 column holding
-    tagged NaNs (which the frame given the writer holds as nulls)."""
+    """The columns to write (`column_spec`), and what the native writer
+    takes of meta: label, notes, characteristics, sort (checked),
+    timestamp, columns (each category's `ordered` from its dtype) and
+    value_labels."""
     check_frame(df, who)
     if meta is not None and not isinstance(meta, Meta):
         raise TypeError(f"meta is a datakit.Meta or None, not {type(meta).__name__}")
-    storage = meta._storage if meta is not None else {}
-    letters = {}
-    changes = []
-    for name, t in df.schema.items():
-        if t != pl.Float64:
-            continue
-        s = df.get_column(name)
-        plain, found = _tagged.untag(s)
-        if found is not None and missing_letters:
-            letters[name] = found
-        out = stored(plain, storage.get(name))
-        if found is not None or out.dtype != t:
-            changes.append(out)
-    out = df.with_columns(changes) if changes else df
+    entries = meta.columns if meta is not None else {}
+    specs = []
+    for name in df.columns:
+        col = entries.get(name)
+        specs.append(column_spec(name, df[name], col.format if col else None, missing_letters, who))
+    has_letters = any(sp[4] is not None for sp in specs)
+    ordered = {sp[0]: sp[6] for sp in specs if sp[5] is not None}
     if meta is None:
-        if not letters:
-            return out, None
+        if not has_letters and not any(ordered.values()):
+            return specs, None
         meta = Meta()
-    kept = set(out.columns)
+    kept = set(df.columns)
+    columns = {k: (c.label, c.format, c.value_labels, c.ordered) for k, c in meta.columns.items() if k in kept}
+    for name, o in ordered.items():
+        c = columns.get(name, (None, None, None, None))
+        columns[name] = (c[0], c[1], c[2], o)
     profile = {
         "label": meta.label,
         "notes": list(meta.notes),
         "characteristics": {k: v for k, v in meta.characteristics.items() if k in kept or k == "_dta"},
-        "sort": checked_sort(out, meta.sort, letters),
+        "sort": checked_sort(df, meta.sort, missing_letters),
         "timestamp": meta.timestamp,
-        "columns": {k: (c.label, c.format, c.value_labels, c.ordered) for k, c in meta.columns.items() if k in kept},
+        "columns": columns,
         "value_labels": meta.value_labels,
-        "missing": letters,
     }
-    return out, profile
+    return specs, profile
 
 
-def checked_sort(df, sort, letters):
+def sort_key(s, missing_letters):
+    """A float64 or int64 array that sorts the rows of `s` as Stata
+    orders them: values, then `.`, then `.a` to `.z`."""
+    a = s.array
+    dtype = s.dtype
+    if isinstance(dtype, pd.CategoricalDtype):
+        codes = s.cat.codes.to_numpy().astype(np.int64)
+        return np.where(codes < 0, np.iinfo(np.int64).max, codes)
+    if dtype.kind in "Mm":
+        ints = (a.asi8 if hasattr(a, "asi8") else s.to_numpy().view(np.int64)).astype(np.float64)
+        return np.where(s.isna().to_numpy(), np.inf, ints)
+    if isinstance(dtype, np.dtype) and dtype.kind == "f":
+        codes = _tagged.float_codes(s.to_numpy(dtype=np.float64))
+        if not missing_letters:
+            codes = np.minimum(codes, 1)
+        return dta_keys(DtaArray(s.to_numpy(dtype=np.float64), codes))
+    if isinstance(a, DtaArray) or dtype.kind in "iub":
+        keys = dta_keys(s)
+        if isinstance(a, DtaArray) and not missing_letters:
+            keys = dta_keys(DtaArray(a._values, np.minimum(a.codes, 1)))
+        return np.asarray(keys, dtype=np.float64)
+    # Text (or bytes): a missing value sorts as empty text, as in Stata.
+    values = s.to_numpy(dtype=object)
+    null = pd.isna(values)
+    present = values[~null]
+    empty = b"" if len(present) and isinstance(present[0], bytes) else ""
+    filled = values.copy()
+    filled[null] = empty
+    codes, _ = pd.factorize(filled, sort=True)
+    return codes
+
+
+def checked_sort(df, sort, missing_letters):
     """`sort` up to its first column not in `df`, if the rows are in that
     order as Stata orders them (values, then `.`, then `.a` to `.z`);
     otherwise [] with a warning."""
@@ -417,28 +632,12 @@ def checked_sort(df, sort, letters):
         if name not in df.columns:
             break
         keys.append(name)
-    if not keys or df.height < 2:
+    if not keys or len(df) < 2:
         return keys
-    parts = {}
-    for i, k in enumerate(keys):
-        s = df.get_column(k)
-        if s.dtype == pl.String:
-            parts[f"v{i}"] = s.fill_null("")
-            continue
-        if s.dtype == pl.Binary:
-            parts[f"v{i}"] = s.fill_null(b"")
-            continue
-        nulls = s.is_null()
-        if k in letters:
-            code = letters[k].cast(LETTERS).to_physical().cast(pl.UInt8) + 2
-            tier = pl.select(pl.when(nulls.not_()).then(0).otherwise(code.fill_null(1))).to_series()
-        else:
-            tier = nulls.cast(pl.UInt8)
-        parts[f"t{i}"] = tier
-        parts[f"v{i}"] = s.to_physical() if isinstance(s.dtype, (pl.Enum, pl.Categorical)) else s
-    order = pl.DataFrame(parts).select(pl.arg_sort_by([pl.col(c) for c in parts], maintain_order=True)).to_series()
-    if order.equals(pl.int_range(0, df.height, dtype=order.dtype, eager=True), check_names=False):
+    arrays = [sort_key(df[k], missing_letters) for k in keys]
+    order = np.lexsort(arrays[::-1])
+    if np.array_equal(order, np.arange(len(df))):
         return keys
     warn(f"meta.sort ({', '.join(keys)}) does not describe the order of the frame's rows, so it is not saved; "
-         "sort with the guide's recipe (nulls last, then the letters) to keep it")
+         "sort with the guide's recipe (Stata's order: numbers, then `.`, then the letters) to keep it")
     return []

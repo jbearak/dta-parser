@@ -1,26 +1,27 @@
-"""`Meta`, `Column`, `ParquetInfo` and `LETTERS`: what polars cannot hold,
-kept beside the frame, and the dtype of `na_tag`'s letters."""
+"""`Meta`, `Column`, `ParquetInfo` and `LETTERS`: what a pandas frame
+does not hold, kept beside it, and the dtype of `na_tag`'s letters."""
 
 from __future__ import annotations
 
 import copy as _copy
 from dataclasses import dataclass, field, fields
 
-import polars as pl
+import pandas as pd
 
 GUIDE = "https://github.com/jbearak/dta-parser/blob/main/docs/python.md"
 
-LETTERS = pl.Enum([f".{chr(c)}" for c in range(ord("a"), ord("z") + 1)])
+LETTERS = pd.CategoricalDtype([f".{chr(c)}" for c in range(ord("a"), ord("z") + 1)])
 
 
 def _same(a, b):
-    """Equal values, with polars Series and frames compared by `equals`."""
-    if isinstance(a, (pl.Series, pl.DataFrame)) or isinstance(b, (pl.Series, pl.DataFrame)):
+    """Equal values, with pandas Series and frames compared by `equals`,
+    their dtypes and names (or columns) too."""
+    if isinstance(a, (pd.Series, pd.DataFrame)) or isinstance(b, (pd.Series, pd.DataFrame)):
         if type(a) is not type(b):
             return False
-        if isinstance(a, pl.Series):
-            return a.dtype == b.dtype and a.name == b.name and a.equals(b, check_dtypes=True, check_names=True)
-        return a.schema == b.schema and a.equals(b)
+        if isinstance(a, pd.Series):
+            return a.dtype == b.dtype and a.name == b.name and a.equals(b)
+        return list(a.columns) == list(b.columns) and a.dtypes.equals(b.dtypes) and a.equals(b)
     if isinstance(a, dict) and isinstance(b, dict):
         return a.keys() == b.keys() and all(_same(a[k], b[k]) for k in a)
     if isinstance(a, list) and isinstance(b, list):
@@ -29,8 +30,8 @@ def _same(a, b):
 
 
 def _deep(value):
-    if isinstance(value, (pl.Series, pl.DataFrame)):
-        return value.clone()
+    if isinstance(value, (pd.Series, pd.DataFrame)):
+        return value.copy(deep=True)
     if isinstance(value, dict):
         return {k: _deep(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -46,10 +47,10 @@ class Column:
     format: the display format, such as "%9.2f" or "%td", or None.
     value_labels: the name of the column's value label set in
         `meta.value_labels`, or None. Several columns may share a set.
-    ordered: for an Enum column read from a file's categorical (a
+    ordered: for a `category` column read from a file's categorical (a
         Parquet categorical, or a .dta column marked
-        dtaparser_categorical), the file's "ordered"; written back as it
-        is (save_dta writes None as unordered). None otherwise.
+        dtaparser_categorical), the file's "ordered", as the column's
+        dtype has it. Saving writes the dtype's `ordered`. None otherwise.
 
     Guide: {guide}#labels-in-parquet-files
     """
@@ -65,7 +66,7 @@ Column.__doc__ = Column.__doc__.replace("{guide}", GUIDE)
 
 @dataclass(eq=False)
 class Meta:
-    """Labels, formats, notes and `.a` to `.z` of a polars frame.
+    """Labels, formats and notes of a pandas frame.
 
     Every read returns `(df, meta)`; `save_parquet(df, path, meta=meta)`
     and `save_dta` write it back. The fields are plain values for you to
@@ -83,15 +84,15 @@ class Meta:
         a missing code as text: ".", ".a" to ".z".
     rows: the frame's height as read.
 
-    `.a` to `.z` are not in Meta: they are in the frame, as tagged NaNs
-    in Float64 columns (see `na_tag`).
+    `.a` to `.z` are not in Meta: they are in the frame, in each
+    numeric column's `DtaArray` (see `na_tag`).
 
     Methods: `labels(name)`, `rename(mapping)`, `select(names)` and
-    `copy()`. `==` compares every field. Meta does not follow polars
+    `copy()`. `==` compares every field. Meta does not follow pandas
     operations: a join or a new column is yours to mirror (the guide
     shows how).
 
-    Guide: {guide}#labels-through-polars-operations
+    Guide: {guide}#labels-through-pandas-operations
     """
 
     label: str | None = None
@@ -102,10 +103,6 @@ class Meta:
     columns: dict[str, Column] = field(default_factory=dict)
     value_labels: dict[str, dict[int | float | str, str]] = field(default_factory=dict)
     rows: int = 0
-    # The dtype each column had in the file when a read made it Float64
-    # to hold .a to .z (Int8, Int16, Int32 or Float32), which saving
-    # gives it back when its values still fit; not part of equality.
-    _storage: dict[str, pl.DataType] = field(default_factory=dict, repr=False, compare=False)
 
     def __eq__(self, other):
         if not isinstance(other, Meta):
@@ -115,7 +112,7 @@ class Meta:
     __hash__ = None
 
     def copy(self):
-        """A deep copy: every container new, every Series cloned."""
+        """A deep copy: every container new, every Series copied."""
         out = Meta(**{f.name: _deep(getattr(self, f.name)) for f in fields(self)})
         return out
 
@@ -151,7 +148,6 @@ class Meta:
         r = lambda n: mapping.get(n, n)  # noqa: E731
         out = self.copy()
         out.columns = {r(k): v for k, v in out.columns.items()}
-        out._storage = {r(k): v for k, v in out._storage.items()}
         out.characteristics = {r(k): v for k, v in out.characteristics.items()}
         out.sort = [r(n) for n in out.sort]
         return out
@@ -170,7 +166,6 @@ class Meta:
         keep = set(names)
         out = self.copy()
         out.columns = {n: out.columns[n] for n in names if n in out.columns}
-        out._storage = {k: v for k, v in out._storage.items() if k in keep}
         out.characteristics = {k: v for k, v in out.characteristics.items() if k in keep or k == "_dta"}
         sort = []
         for n in out.sort:
@@ -189,17 +184,20 @@ class ParquetInfo:
     """What `read_parquet_info` reads from a Parquet file's footer.
 
     rows: the number of rows.
-    row_groups: a polars DataFrame of `rows`, `compressed_bytes` and
+    row_groups: a pandas DataFrame of `rows`, `compressed_bytes` and
         `uncompressed_bytes` per row group.
     compression: the codecs the column chunks use, such as ["snappy"].
     created_by: the writer the file names, or None.
     key_value: every key-value entry of the footer as text, the "dta"
         profile and "ARROW:schema" among them.
     meta: the Meta a whole-file read gives, with `rows` the file's.
-    columns: a polars DataFrame with a row per Parquet column: `name`;
+    columns: a pandas DataFrame with a row per Parquet column: `name`;
         `role` ("data", or "nested" for a list, map or struct, which is
-        not read); `dtype`, the polars dtype `read_parquet` gives it, as
-        text (null for a column it does not read); `physical_type` and
+        not read); `dtype`, the pandas dtype `read_parquet` gives it, as
+        text, when the rows read hold no `.a` to `.z` (None for a column
+        it does not read; a numeric column the footer says may hold a
+        null is `dta[...]`, and a NaN in a float column makes it one
+        too); `physical_type` and
         `logical_type`, Parquet's; `label`; `value_labels`, the set's
         name; and `storage`, the Stata storage type a DOUBLE column
         written for `.a` to `.z` has in the profile.
@@ -208,12 +206,12 @@ class ParquetInfo:
     """
 
     rows: int
-    row_groups: pl.DataFrame
+    row_groups: pd.DataFrame
     compression: list[str]
     created_by: str | None
     key_value: dict[str, str]
     meta: Meta
-    columns: pl.DataFrame
+    columns: pd.DataFrame
 
     def __eq__(self, other):
         if not isinstance(other, ParquetInfo):

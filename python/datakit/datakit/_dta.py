@@ -1,4 +1,4 @@
-"""`.dta` files into polars and back, and fixed-width text through its
+"""`.dta` files into pandas and back, and fixed-width text through its
 SAS setup file, with the same `(df, meta)` as Parquet."""
 
 from __future__ import annotations
@@ -15,24 +15,29 @@ from dta_parser._names import reserved_warning
 
 def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters=True, encoding=None,
              timestamps="error"):
-    """Read a Stata .dta file (releases 104 to 119) into a polars DataFrame
-    and its Meta, without pandas.
+    """Read a Stata .dta file (releases 104 to 119) into a pandas DataFrame
+    and its Meta.
 
-    Returns `df, meta`. byte, int, long, float and double become Int8,
-    Int16, Int32, Float32 and Float64, with `.` as null; a column holding
-    `.a` to `.z` in the rows read is Float64 with them as tagged NaNs
-    (see read_parquet's `letters`); strN and text strLs String, binary strLs Binary (a strL column mixing
-    the two is Binary, its text as UTF-8 bytes). A `%td` column is Date
-    and a `%tc` column Datetime("ms"); `%tC` and the other `%t` formats
+    Returns `df, meta`, with the columns dta_parser.read_dta gives: byte,
+    int, long, float and double are int8, int16, int32, float32 and
+    float64 when the rows read hold no missing value, and otherwise a
+    `DtaArray` of that storage type (`dta[byte]` ... `dta[double]`),
+    which keeps `.` and `.a` to `.z` and compares as missing (see
+    read_parquet). strN and text strLs are pandas' default text dtype;
+    binary strLs object of bytes (a strL column mixing the two is bytes,
+    its text as UTF-8). A `%td` column is datetime64[s] and a `%tc`
+    column datetime64[ms], `.` NaT; holding `.a` to `.z`, they are
+    Stata's numbers in a `DtaArray`. `%tC` and the other `%t` formats
     stay numbers, with their format in meta.
 
     A column that save_dta (or TypeScript's saveDta) wrote from a
     categorical, marked by its dtaparser_categorical characteristic, is
-    an Enum of its value labels in code order, whatever `factors` says,
-    with meta.columns[name].ordered from the mark, unless it holds .a to
-    .z in the rows read: then it is its codes, Float64, with its letters
-    as tagged NaNs and its mark kept in meta.characteristics (with
-    factors=True, the Enum, its letters nulls, with a warning). The file must still hold what was written: the
+    a category of its value labels in code order, whatever `factors`
+    says, ordered from the mark, with meta.columns[name].ordered too,
+    unless it holds .a to .z in the rows read: then it is its codes, a
+    `DtaArray` keeping its letters, and its mark stays in
+    meta.characteristics (with factors=True, the category, its letters
+    NaN, with a warning). The file must still hold what was written: the
     same value label set, a label on every value read, codes that are
     whole numbers within long's range with texts of their own, no label
     on `.`, no date format, and not also a dtaparser_factor mark.
@@ -46,9 +51,9 @@ def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters=True
     timestamps: "error" (the default) or "truncate": a `%td` value with a
         fraction of a day, or a `%tc` value with a fraction of a
         millisecond, is an error naming the column and row, or truncated.
-        A value outside polars' range is an error either way.
+        A value outside the range of dates is an error either way.
 
-    Guide: {guide}#dta-files-into-polars
+    Guide: {guide}#dta-files-into-pandas
     """
     columns = f.check_columns(columns)
     f.check_window(skip, n_max)
@@ -56,49 +61,51 @@ def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters=True
     f.check_choice("timestamps", timestamps, ("error", "truncate"))
     if not isinstance(factors, bool):
         raise TypeError(f"factors must be True or False, not {factors!r}")
-    frame, found, m = native.dta_read_arrow(f.path_of(path), columns, skip, n_max, encoding, timestamps)
-    return f.finish(frame, found, m, factors=factors, letters=letters, markers=True)
+    frame, m = native.dta_read_columns(f.path_of(path), columns, skip, n_max, encoding, timestamps)
+    return f.finish(frame, m, factors=factors, letters=letters, markers=True)
 
 
 def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
-    """Write a polars DataFrame as a Stata .dta file (release 118), with
-    what `meta` says, without pandas.
+    """Write a pandas DataFrame as a Stata .dta file (release 118), with
+    what `meta` says.
 
     Each column gets the smallest storage type that holds its values, as
     dta_parser's write_dta chooses: integers byte, int or long (double
-    past long, an error past ±2^53), Float32 float, Float64 double,
-    Boolean byte, String strN or strL, Binary strL. Date is `%td`;
-    Datetime is `%tc`, which holds milliseconds: a value with a fraction
-    of one is an error naming the column and row unless
-    timestamps="truncate", and a time zone is an error. An Enum or
-    Categorical is written as Stata's `encode` makes one: codes 1 to k,
-    stored as long, labelled with its levels in order, its letters kept,
-    in a value label set named after the column (replacing meta's set of
-    that name), or name_2, name_3, ... when another column's labels use
-    that name. The set also keeps the labels on .a to .z of the set
-    meta.columns[name].value_labels names. An Enum cannot hold .a to .z:
-    a column that must keep them is Float64 codes with a value label set. A characteristic,
-    dtaparser_categorical ("ordered <set>" or "unordered <set>", from
-    meta.columns[name].ordered), marks it, so that read_dta gives the
-    Enum back. A dtaparser_factor or dtaparser_categorical in
-    meta.characteristics is not written, for any column.
-    Time, Duration, Decimal and nested dtypes are errors naming the
-    column, as is a name Stata cannot hold.
+    past long, an error past ±2^53), float32 float, float64 double, bool
+    byte, text strN or strL, bytes strL; nullable types the same, <NA>
+    written as `.`. A `DtaArray` is written in its storage type with its
+    codes, or the next type that holds every value when one no longer
+    fits. A datetime64 column is `%td` when meta gives it `%td` and every
+    value is at midnight, else `%tc`, which holds milliseconds: a value
+    with a fraction of one is an error naming the column and row unless
+    timestamps="truncate", and a time zone is an error. A category (of
+    text) is written as Stata's `encode` makes one: codes 1 to k, stored
+    as long, labelled with its categories in order, in a value label set
+    named after the column (replacing meta's set of that name), or
+    name_2, name_3, ... when another column's labels use that name. The
+    set also keeps the labels on .a to .z of the set
+    meta.columns[name].value_labels names. A category cannot hold .a to
+    .z: a column that must keep them is a `DtaArray` of codes with a
+    value label set. A characteristic, dtaparser_categorical ("ordered
+    <set>" or "unordered <set>", from the dtype's `ordered`), marks it,
+    so that read_dta gives the category back. A dtaparser_factor or
+    dtaparser_categorical in meta.characteristics is not written, for
+    any column. timedelta64, Decimal objects and other types are errors
+    naming the column, as is a name Stata cannot hold. The index is not
+    written.
 
-    `.a` to `.z` are the tagged NaNs of Float64 columns, as in
-    save_parquet; a column a read made Float64 to hold them gets its
-    file's storage type back when its values still fit it.
-    missing_letters=False writes them as `.`, and a categorical's set
-    without letter labels.
+    `.a` to `.z` are kept from a `DtaArray`'s codes, and from tagged NaNs
+    in a plain float column, as in save_parquet. missing_letters=False
+    writes them as `.`, and a categorical's set without letter labels.
 
-    Guide: {guide}#dta-files-into-polars
+    Guide: {guide}#dta-files-into-pandas
     """
     f.check_choice("timestamps", timestamps, ("error", "truncate"))
     if not isinstance(missing_letters, bool):
         raise TypeError(f"missing_letters must be True or False, not {missing_letters!r}")
-    out, profile = f.prepare(df, meta, missing_letters, "save_dta")
-    reserved_warning(out.columns, "save_dta")
-    native.dta_write_arrow(out, os.fsdecode(os.fspath(path)), profile, missing_letters, timestamps)
+    specs, profile = f.prepare(df, meta, missing_letters, "save_dta")
+    reserved_warning(list(df.columns), "save_dta")
+    native.dta_write_columns(specs, len(df), os.fsdecode(os.fspath(path)), profile, missing_letters, timestamps)
 
 
 class FixedWidthWarning(UserWarning):
@@ -117,7 +124,7 @@ _RECODES = ("setup", "tagged", "none")
 def read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=None, commented_formats=True,
                      letters=True):
     """Read a fixed-width text file through its SAS setup file into a
-    polars DataFrame and its Meta.
+    pandas DataFrame and its Meta.
 
     For fixed-width ASCII data such as the National Survey of Family
     Growth files of 1973 to 2017-2019, which CDC publishes as .dat files
@@ -143,7 +150,7 @@ def read_fixed_width(path, setup, recodes="setup", columns=None, skip=0, n_max=N
         CDC's setups from 2006-2010 on do. True by default; False reads
         every comment as a comment, and those files then have no value
         labels.
-    letters: keep `.a` to `.z` as tagged NaNs, as in read_parquet.
+    letters: keep `.a` to `.z`, as in read_parquet.
 
     Numeric columns take the smallest storage type that holds their
     values. Statements the reader does not run give one

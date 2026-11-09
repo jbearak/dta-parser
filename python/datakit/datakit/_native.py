@@ -2,16 +2,14 @@
 
 datakit is pure Python; the decoding and encoding are in dta_parser's
 extension module, behind functions documented there as for datakit
-only and versioned by `dta_parser._native.ABI_VERSION`. Importing it
-runs dta_parser's `__init__`, which loads its pandas names lazily, so
-pandas is not imported.
+only and versioned by `dta_parser._native.ABI_VERSION`.
 """
 
 from importlib import metadata
 
 # The version of dta_parser's native functions this datakit was written
 # against.
-ABI = 1
+ABI = 2
 
 
 def _installed(dist):

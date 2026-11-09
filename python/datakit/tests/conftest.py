@@ -16,32 +16,43 @@ def dta(request):
     return request.param
 
 
-def tagged(values, letters=None, name=""):
-    """A Float64 Series of `values`, with the tagged NaN of each letter of
+def lettered(values, letters=None, name=None, storage="double"):
+    """A Series of `values` (a DtaArray of `storage`), with each letter of
     `letters` (".a" to ".z", or None) where it has one."""
-    import polars as pl
+    import pandas as pd
 
     import datakit as dk
 
     letters = letters or [None] * len(values)
-    return pl.Series(name, [dk.tagged_na(t) if t is not None else v for v, t in zip(values, letters)],
-                     dtype=pl.Float64)
+    return pd.Series(pd.array([dk.tagged_na(t) if t is not None else v for v, t in zip(values, letters)],
+                              dtype=f"dta[{storage}]"), name=name)
 
 
 def tags(s):
     """The letters of a Series as a list, None where it has none."""
     import datakit as dk
 
-    return dk.na_tag(s).to_list()
+    return [None if v != v else v for v in dk.na_tag(s).tolist()]
+
+
+def is_text(dtype):
+    """pandas' default text dtype: `str` from pandas 3, object before."""
+    import pandas as pd
+
+    return dtype == object or isinstance(dtype, pd.StringDtype)
 
 
 def assert_same(a, b):
-    """assert_frame_equal, which counts every NaN as equal, and the same
-    letter in every Float64 cell."""
-    import polars as pl
-    from polars.testing import assert_frame_equal
+    """assert_frame_equal, and the same code (`.`, `.a` ...) in every
+    missing cell of a DtaArray or float column."""
+    import numpy as np
+    import pandas as pd
 
-    assert_frame_equal(a, b)
-    for name, t in b.schema.items():
-        if t == pl.Float64:
+    from dta_parser import DtaArray
+
+    pd.testing.assert_frame_equal(a, b)
+    for name in b.columns:
+        if isinstance(b[name].array, DtaArray):
+            assert np.array_equal(a[name].array.codes, b[name].array.codes), name
+        elif b[name].dtype.kind == "f":
             assert tags(a[name]) == tags(b[name]), name

@@ -1,112 +1,131 @@
-"""`.a` to `.z` in the column: tagged NaNs in Float64 (ADR 0036).
+"""`.a` to `.z` in the column (ADR 0040): a `DtaArray`'s codes, which
+compare as missing, or tagged NaNs in a plain float column.
 
-A letter is R's `NA_real_` (a NaN whose low word is 1954) with the
-letter's ASCII code in bits 32 to 39, the layout haven's `tagged_na()`,
-R's dtaparser and the Parquet files' DOUBLE columns use
-(`crates/parquet/src/tagged.rs`). Reading a letter back ignores the sign
-and the quiet bit, which arithmetic may change.
+A `DtaArray` (dta_parser's) keeps a code per row: 0 for a number, 1 for
+`.`, 2 to 27 for `.a` to `.z`. Every numeric column a read gives with a
+missing value is one. `tagged_na(".a")` is `dta_parser.missing.a`, the
+value a `DtaArray` gives back for `.a` and takes in assignment.
+
+A plain `float64` column may hold a letter as a tagged NaN: R's
+`NA_real_` (a NaN whose low word is 1954) with the letter's ASCII code in
+bits 32 to 39, the layout haven's `tagged_na()`, R's dtaparser and the
+Parquet files' DOUBLE columns use. `na_tag` and `is_tagged_na` read
+those too, ignoring the sign and the quiet bit, which arithmetic may
+change, and saving writes them as their letters.
 """
 
 from __future__ import annotations
 
-import struct
+import numpy as np
+import pandas as pd
 
-import polars as pl
+from dta_parser import DtaArray, missing
 
 from ._meta import GUIDE, LETTERS
 
 NA_BITS = 0x7FF0_0000_0000_07A2
 _MASK = 0xFFFF_FFFF_FFFF_FFFF ^ ((1 << 63) | (1 << 51) | (0xFF << 32))
-_LETTERS = [f".{chr(c)}" for c in range(ord("a"), ord("z") + 1)]
-_BYTE_TO_LETTER = {ord(t[1]): t for t in _LETTERS}
+_NAMES = [f".{chr(c)}" for c in range(ord("a"), ord("z") + 1)]
 
 
-def _bits(letter):
+def _code(letter):
+    """The missing code (2 to 27) of ".a" to ".z" or "a" to "z"."""
     if not isinstance(letter, str):
         raise TypeError(f'a letter is text, ".a" to ".z" or "a" to "z", not {letter!r}')
     t = letter[1:] if letter.startswith(".") else letter
     if len(t) != 1 or not ("a" <= t <= "z"):
         raise ValueError(f'a letter is ".a" to ".z" or "a" to "z", not {letter!r}')
-    return NA_BITS | (ord(t) << 32)
+    return ord(t) - ord("a") + 2
 
 
 def tagged_na(letter):
-    """The float that holds Stata's missing value `letter` (".a" to ".z",
-    or "a" to "z"): a NaN tagged with the letter. Use it wherever polars
-    takes a number, such as `pl.when(c).then(dk.tagged_na(".d"))`, in a
-    Float64 column.
+    """Stata's missing value `letter` (".a" to ".z", or "a" to "z"):
+    `dta_parser.missing.a` ... `missing.z`. Assign it into a `DtaArray`
+    column, `df.loc[rows, "x"] = dk.tagged_na(".r")`, or compare with
+    it, `df["x"] == dk.tagged_na(".a")`, which is true exactly on the
+    `.a` rows.
 
     Guide: {guide}#a-to-z-in-the-frame
     """
-    return struct.unpack("<d", struct.pack("<Q", _bits(letter)))[0]
+    return missing.from_code(_code(letter))
 
 
-def _expr(x):
-    if isinstance(x, str):
-        return pl.col(x)
-    if isinstance(x, (pl.Expr, pl.Series)):
-        return x
-    raise TypeError(f"takes a column name, a polars Expr or a polars Series, not {type(x).__name__}")
+def float_codes(values):
+    """The code of each row of a float64 numpy array: 2 to 27 where it is
+    a tagged NaN, 1 for any other NaN, 0 for a number."""
+    values = np.asarray(values, dtype=np.float64)
+    bits = values.view(np.uint64)
+    tagged = (bits & np.uint64(_MASK)) == np.uint64(NA_BITS)
+    byte = ((bits >> np.uint64(32)) & np.uint64(0xFF)).astype(np.int16)
+    tagged &= (byte >= ord("a")) & (byte <= ord("z"))
+    codes = np.isnan(values).astype(np.uint8)
+    codes[tagged] = (byte[tagged] - ord("a") + 2).astype(np.uint8)
+    return codes
+
+
+def tag(codes):
+    """Float64 tagged NaNs for codes 2 to 27 (others 0)."""
+    codes = np.asarray(codes, dtype=np.uint64)
+    return (np.uint64(NA_BITS) | ((codes - np.uint64(2) + np.uint64(ord("a"))) << np.uint64(32))).view(np.float64)
+
+
+def _codes_of(x):
+    """The codes of `x` (a Series or array): a DtaArray's, a float
+    column's from its tagged NaNs, else None."""
+    a = x.array if isinstance(x, (pd.Series, pd.Index)) else x
+    if isinstance(a, DtaArray):
+        return a.codes
+    if isinstance(a, pd.arrays.NumpyExtensionArray):
+        a = a.to_numpy()
+    if isinstance(a, np.ndarray) and a.dtype.kind == "f":
+        return float_codes(a)
+    return None
 
 
 def na_tag(x):
-    """The letter of each row of `x` (a column name, Expr or Series): ".a"
-    to ".z" (dtype LETTERS) where the row is a tagged NaN, null
-    elsewhere, `.` and plain NaN included. Only Float64 holds letters;
-    any other dtype gives all null.
+    """The letter of each row of `x` (a Series or array): ".a" to ".z"
+    where the row holds one, NaN elsewhere, `.` included. A Series of
+    dtype `LETTERS`, a categorical of ".a" to ".z", with `x`'s index and
+    name. It reads a `DtaArray`'s codes and the tagged NaNs of a plain
+    float column; any other column gives NaN on every row.
 
     Guide: {guide}#a-to-z-in-the-frame
     """
-    e = _expr(x)
-    if isinstance(e, pl.Series):
-        if e.dtype != pl.Float64:
-            return pl.Series(e.name, [None] * e.len(), dtype=LETTERS)
-        return pl.select(_na_tag(pl.lit(e))).to_series().alias(e.name)
-    return _na_tag(e)
-
-
-def _na_tag(e):
-    # Any other dtype holds no letter: cast so that the expression works
-    # on it too (a cast never makes R's tag pattern).
-    bits = e.to_physical().cast(pl.Float64, strict=False).reinterpret(dtype=pl.UInt64)
-    byte = (bits // (1 << 32)) % 256
-    tagged = (bits & pl.lit(_MASK, pl.UInt64)) == pl.lit(NA_BITS, pl.UInt64)
-    letter = byte.replace_strict(_BYTE_TO_LETTER, default=None, return_dtype=LETTERS)
-    return pl.when(tagged).then(letter).otherwise(pl.lit(None, LETTERS))
+    if not isinstance(x, (pd.Series, pd.Index, np.ndarray, pd.api.extensions.ExtensionArray, list)):
+        raise TypeError(f"na_tag takes a Series or an array, not {type(x).__name__}")
+    if isinstance(x, list):
+        x = pd.array(x, dtype="dta[double]")
+    codes = _codes_of(x)
+    n = len(x)
+    out = np.full(n, -1, dtype=np.int8)
+    if codes is not None:
+        letters = codes > 1
+        out[letters] = codes[letters].astype(np.int8) - 2
+    cat = pd.Categorical.from_codes(out, dtype=LETTERS)
+    if isinstance(x, pd.Series):
+        return pd.Series(cat, index=x.index, name=x.name)
+    return pd.Series(cat, name=getattr(x, "name", None))
 
 
 def is_tagged_na(x, letter=None):
-    """True where a row of `x` (a column name, Expr or Series) is one of
-    `.a` to `.z`, or the letter `letter` when given; false elsewhere,
-    `.` (null) included.
+    """A numpy bool array: True where a row of `x` (a Series or array)
+    is one of `.a` to `.z`, or the letter `letter` when given; False
+    elsewhere, `.` included.
 
     Guide: {guide}#a-to-z-in-the-frame
     """
-    tags = na_tag(x)
-    if letter is None:
-        return tags.is_not_null()
-    _bits(letter)
-    want = letter if letter.startswith(".") else "." + letter
-    return tags.eq_missing(pl.lit(want, LETTERS)) if isinstance(tags, pl.Expr) else tags.eq_missing(want)
-
-
-def tag(values, letters):
-    """`values` (Float64) with a tagged NaN wherever `letters` (LETTERS) has
-    a letter."""
-    code = letters.to_physical().cast(pl.UInt64) + ord("a")
-    tags = (pl.lit(NA_BITS, pl.UInt64) + code * (1 << 32)).reinterpret(dtype=pl.Float64)
-    return pl.select(pl.when(letters.is_not_null()).then(tags).otherwise(values)).to_series().alias(values.name)
-
-
-def untag(values):
-    """`(values with every tagged NaN null, its letters)`, the letters
-    None when it has none."""
-    letters = na_tag(values)
-    if letters.null_count() == letters.len():
-        return values, None
-    plain = pl.select(pl.when(letters.is_not_null()).then(None).otherwise(values)).to_series().alias(values.name)
-    return plain, letters.alias(values.name)
+    want = None if letter is None else _code(letter)
+    if not isinstance(x, (pd.Series, pd.Index, np.ndarray, pd.api.extensions.ExtensionArray, list)):
+        raise TypeError(f"is_tagged_na takes a Series or an array, not {type(x).__name__}")
+    if isinstance(x, list):
+        x = pd.array(x, dtype="dta[double]")
+    codes = _codes_of(x)
+    if codes is None:
+        return np.zeros(len(x), dtype=bool)
+    return np.asarray(codes > 1 if want is None else codes == want)
 
 
 for _fn in (tagged_na, na_tag, is_tagged_na):
     _fn.__doc__ = _fn.__doc__.replace("{guide}", GUIDE)
+
+__all__ = ["tagged_na", "na_tag", "is_tagged_na", "LETTERS", "_NAMES"]
