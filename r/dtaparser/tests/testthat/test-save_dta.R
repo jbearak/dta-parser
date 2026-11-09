@@ -124,6 +124,26 @@ test_that("columns sharing a label set must agree, and other classes are errors"
   expect_error(saved(list(x = 1)), "is.data.frame")
 })
 
+test_that("an integer column past what a long holds is written as double, exactly", {
+  big <- c(1L, 2147483647L, NA, -2147483647L)
+  path <- saved(data.frame(big = big, ok = c(1L, 2147483620L, NA, -2147483647L)))
+  expect_equal(unname(storage_of(path)), c("double", "long"))
+  back <- read_dta(path)
+  expect_identical(back$big, c(1, 2147483647, NA, -2147483647))
+  expect_identical(back$ok, c(1L, 2147483620L, NA, -2147483647L))
+  # A storage attribute is still honoured, so the value is an error.
+  attr(big, "storage") <- "long"
+  expect_error(saved(data.frame(big = I(big))), "2147483647 does not fit storage type long")
+})
+
+test_that("a column named with a word Stata reserves is written, with one warning", {
+  expect_warning(path <- saved(data.frame(long = 1, `if` = 2, str10 = 3, ok = 4, check.names = FALSE)),
+                 "save_dta: \"long\", \"if\", \"str10\" are words Stata reserves; rename them")
+  expect_identical(names(read_dta(path)), c("long", "if", "str10", "ok"))
+  expect_warning(saved(data.frame(`_N` = 1, check.names = FALSE)), "\"_N\" is a word Stata reserves; rename it")
+  expect_no_warning(saved(data.frame(longer = 1, string = "a", str = 2, Long = 3)))
+})
+
 test_that("metadata attributes are written as given", {
   d <- tibble::tibble(a = 1, b = "x")
   attr(d, "timestamp") <- "01 Feb 2026 03:04"
@@ -140,7 +160,7 @@ test_that("metadata attributes are written as given", {
 test_that("a display format other than the default is kept and written back", {
   path <- write_fixture(
     plain = col(c(1, 2), "byte"),
-    long = col(c(1, 2), "long", "%12.0g"),
+    n = col(c(1, 2), "long", "%12.0g"),
     left = col(c(1.5, 2), "double", "%-10.0g"),
     money = col(c(2100.5, NA), "double", "%9.2f"),
     count = col(c(3, 4), "int", "%5.0fc"),
@@ -152,7 +172,7 @@ test_that("a display format other than the default is kept and written back", {
   d <- read_dta(path)
   # Defaults leave plain vectors; strings and %td dates have no attribute.
   expect_identical(d$plain, c(1L, 2L))
-  expect_identical(d$long, c(1L, 2L))
+  expect_identical(d$n, c(1L, 2L))
   expect_identical(d$left, c(1.5, 2))
   expect_null(attr(d$day, "format"))
   expect_null(attr(d$name, "format"))
