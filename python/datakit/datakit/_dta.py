@@ -74,7 +74,8 @@ def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
     if not isinstance(missing_letters, bool):
         raise TypeError(f"missing_letters must be True or False, not {missing_letters!r}")
     out, profile = f.prepare(df, meta, missing_letters, "save_dta")
-    reserved_warning(df.columns, "save_dta")
+    # The columns written: companion letter columns are not.
+    reserved_warning(out.columns, "save_dta")
     native.dta_write_arrow(out, os.fsdecode(os.fspath(path)), profile, missing_letters, timestamps)
 
 
