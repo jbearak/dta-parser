@@ -8,7 +8,8 @@ Plan 0024 found that a frame library which holds `.a` to `.z` as NaNs
 treats them as values: in pandas, polars and arrow, `x != 1` is true on
 a letter, so `df[df.x != 1]` keeps it. R's `NA` is missing in every
 comparison. The user wants Python to behave as R does, and Python's
-datakit to move to pandas (plan 0024, stage 4), so dta_parser's
+datakit to move to pandas (plan 0024, stage 4; that move was dropped,
+ADR 0041), so dta_parser's
 `DtaArray`, which already keeps a code per row, takes R's rules.
 
 **Comparisons return a pandas `BooleanArray`.** The other operand is

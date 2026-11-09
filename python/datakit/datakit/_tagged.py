@@ -90,6 +90,76 @@ def is_tagged_na(x, letter=None):
     return tags.eq_missing(pl.lit(want, LETTERS)) if isinstance(tags, pl.Expr) else tags.eq_missing(want)
 
 
+def is_missing(x):
+    """True where a row of `x` is missing: `.` (null) or `.a` to `.z`
+    (tagged NaNs), as R's `is.na()` and Stata's `missing()` say. A NaN
+    that is not a letter counts too, as it does for `is.na()`. `is_na`
+    is the same function.
+
+    `x` is a column name, an Expr or a Series. A Series is tested by its
+    dtype: a float with `is_null() | is_nan()`, anything else with
+    `is_null()`. A name or an Expr gives an Expr, which has no dtype until
+    it runs; it is right for numeric, Boolean, Decimal, Date, Datetime,
+    Duration, Time, Categorical, Enum and Null columns. Not for text (the
+    text "nan" would count as missing) nor for Binary, List, Array or
+    Struct (polars raises when it runs): use `pl.col(c).is_null()`, or
+    pass the Series.
+
+    polars' own `is_null()` sees only `.`, so `(x != 1) &
+    x.is_not_null()` keeps the letters; write `(x != 1) & ~dk.is_na(x)`.
+
+    Guide: {guide}#a-to-z-in-the-frame
+    """
+    if isinstance(x, pl.Series):
+        if x.dtype.is_float():
+            return (x.is_null() | x.is_nan()).fill_null(True)
+        return x.is_null()
+    e = _expr(x)
+    return e.is_null() | e.to_physical().cast(pl.Float64, strict=False).is_nan().fill_null(False)
+
+
+is_na = is_missing
+
+
+def by(*columns, suffix="_letter"):
+    """Expressions for grouping by `columns` with `.a` to `.z` kept
+    apart, as R's `datakit_by()` gives: each column, then its
+    letters as `<name><suffix>` (`na_tag`). polars makes every NaN equal,
+    so grouping by a column alone merges the letters.
+
+    Each column is a name or an Expr with an output name. Every argument
+    gets a letter column, all null for a column that is not Float64 (an
+    Expr has no dtype until it runs). A Binary, List, Array or Struct
+    column raises when the expression runs; group by it alone.
+
+        df.group_by(dk.by("x")).len()
+        df.with_columns(dk.by("x")).unique(subset=["x", "x_letter"])
+
+    Guide: {guide}#a-to-z-in-the-frame
+    """
+    if not isinstance(suffix, str) or not suffix:
+        raise ValueError(f"suffix must be non-empty text, not {suffix!r}")
+    out = []
+    names = []
+    for c in columns:
+        e = _expr(c)
+        if isinstance(e, pl.Series):
+            raise TypeError("by takes column names or Exprs, not a Series")
+        try:
+            name = e.meta.output_name()
+        except pl.exceptions.ComputeError:
+            raise ValueError(f"by needs a name for {e}: give it one with .alias()") from None
+        out += [e, _na_tag(e).alias(name + suffix)]
+        names += [name, name + suffix]
+    if not out:
+        raise ValueError("by needs at least one column")
+    twice = sorted({n for n in names if names.count(n) > 1})
+    if twice:
+        shown = ", ".join(f'"{n}"' for n in twice)
+        raise ValueError(f"by would make two columns named {shown}; rename an argument or pick another suffix")
+    return out
+
+
 def tag(values, letters):
     """`values` (Float64) with a tagged NaN wherever `letters` (LETTERS) has
     a letter."""
@@ -108,5 +178,5 @@ def untag(values):
     return plain, letters.alias(values.name)
 
 
-for _fn in (tagged_na, na_tag, is_tagged_na):
+for _fn in (tagged_na, na_tag, is_tagged_na, is_missing, by):
     _fn.__doc__ = _fn.__doc__.replace("{guide}", GUIDE)

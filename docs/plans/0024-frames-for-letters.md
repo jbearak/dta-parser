@@ -1,7 +1,12 @@
 # Plan: frames where `.a` to `.z` compare as missing
 
 Status: approved at Gate 1 (revision 5; Claude Sonnet and GPT Sol;
-record in `docs/judging/frames-for-letters/`).
+record in `docs/judging/frames-for-letters/`). Stages 1 to 3 merged
+(#86, #87, #88). Stage 4 was built and then dropped on 2026-11-09 (PR
+#90 closed): the pandas datakit read a 4,962-column DHS file in 155 ms
+against polars' 20 ms, and pandas sorted it in 103 ms against 6 ms, so
+Python's datakit stays on polars, and R's gains polars too (plan 0025,
+ADR 0041).
 
 ## Problem
 
@@ -154,7 +159,7 @@ it the type of every numeric column that holds a missing value, so
 that a script's filters and groups do not depend on which rows or
 which file it read. Because such columns become common, it also makes
 `DtaArray` work in the pandas operations a numeric column meets. ADR
-0039 records it and amends ADR 0015.
+0040 records it and amends ADR 0015.
 
 **Which columns are a `DtaArray`.** dta_parser's `read_dta` today
 reads a column with only `.` missing as `float32` or `float64` with
@@ -420,8 +425,9 @@ imports datakit without pandas is replaced by one that imports it
 without polars. datakit becomes 0.4.0.
 
 **Docs and checks.** `docs/python.md`'s datakit sections, the README,
-`docs/migration.md` (polars to pandas), and ADR 0040, which supersedes
-ADR 0036 and ADR 0034's paragraph on Python. The cross-language checks
+`docs/migration.md` (polars to pandas), and an ADR superseding ADR
+0036 and ADR 0034's paragraph on Python (never written: stage 4 was
+dropped; ADR 0040 is the DtaArray ADR of stage 3). The cross-language checks
 (`compat/parquet/`) read and write through the pandas datakit. The
 datakit benchmark (`bench/results/parquet-datakit.md`) is re-run and
 the results recorded. There is no speed target: the user wants

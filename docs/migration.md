@@ -17,7 +17,7 @@
 ## dta_parser 0.3 to 0.4
 
 A missing value now behaves as missing in comparisons, as R's `NA` does
-(plan 0024, ADR 0039). Three changes follow:
+(plan 0024, ADR 0040). Three changes follow:
 
 - **A column with only `.` missing is a `DtaArray`** (`dta[byte]` ...
   `dta[double]`), not `float32` or `float64` with `NaN`. `read_dta`

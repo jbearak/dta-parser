@@ -543,7 +543,9 @@ Points a design may need to note for Python:
 
 ## 7. Letters in other frame libraries (probed after this note)
 
-These probes followed the note, while deciding plan 0024. Their scripts
+These probes followed the note, while deciding plan 0024 (whose move
+of Python's datakit to pandas was later dropped; plan 0025, ADR 0041).
+Their scripts
 are in [`polars-2-probes/`](polars-2-probes/); they ran on 2026-11-09
 on the same machine, with R 4.6.1, arrow 26.0.0, dplyr 1.2.1, vctrs
 0.7.3, haven 2.5.5, bench 1.1.4, nanoarrow 0.9.0, Python polars 2.1.0
