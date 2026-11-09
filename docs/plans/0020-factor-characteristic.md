@@ -2,6 +2,10 @@
 
 Status: implemented in R and Python; the user settled its questions on 2026-11-08 (below).
 
+Plan 0023 adds a second marker, `dtaparser_categorical`, which Python's
+and TypeScript's datakit write on their categoricals; unlike this one,
+it allows `.a` to `.z`. This plan's marker and checks are unchanged.
+
 ## Problem
 
 `save_dta()` writes a factor as Stata's `encode` would: codes 1 to k,

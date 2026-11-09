@@ -107,6 +107,11 @@ def test_a_categorical_comes_back_an_enum(tmp_path):
     back, _ = quiet(dk.read_dta, tmp_path / "c.dta")
     assert isinstance(back["c"].dtype, pl.Enum)
     assert back["c"].cast(pl.String).to_list() == ["x", None, "y", "x"]
+    # Only an Enum carries an order: a Categorical meta calls ordered is
+    # still written unordered.
+    meta = dk.Meta(columns={"c": dk.Column(ordered=True)}, rows=4)
+    quiet(dk.save_dta, df, tmp_path / "o.dta", meta=meta)
+    assert chars(tmp_path / "o.dta") == {"c": {"dtaparser_categorical": "unordered c"}}
 
 
 def test_missing_letters_false_writes_dot_and_the_mark(tmp_path):

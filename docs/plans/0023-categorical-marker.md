@@ -1,6 +1,6 @@
 # Plan: a `.dta` marker for categoricals, which may hold `.a` to `.z`
 
-Status: draft, revision 4, for Gate 1 (Claude Sonnet and GPT Terra;
+Status: approved at Gate 1 (revision 5; Claude Sonnet and GPT Terra;
 record in `docs/judging/categorical-marker/`).
 
 ## Problem
@@ -106,7 +106,8 @@ A `dtaparser_categorical` variable is restored when all hold:
   `date_kind` takes in Python); in Python's datakit, whose native reader
   converts first, the frame's column is still numeric. With date
   conversion off (R `dates = FALSE`, pandas `dates=False`) a date
-  format does not fail this check. A writer never
+  format does not fail this check, nor in TypeScript's `readDta`, which
+  never converts dates (it keeps the numbers and their format). A writer never
   gives a categorical a format, so a marked date was edited;
 - the set's numeric codes are whole numbers within long's range, no two
   sharing a text;
@@ -211,7 +212,8 @@ depend on the rows.
 - Each failing check in each reader (Python datakit, TypeScript, R,
   pandas): the set renamed, an unlabelled value, two codes sharing a
   text, a code 1.5 and a code past long's range, a label on `.`, a
-  `%td` and a `%d` format (with date conversion on), a string column,
+  `%td` and a `%d` format (with date conversion on; not in TypeScript,
+  where a marked `%td` column restores, as tested), a string column,
   both markers; each read as unmarked with the categorical warning. A label on a letter no row
   holds passes.
 - Python: an ordered `Enum` comes back ordered, an unordered one

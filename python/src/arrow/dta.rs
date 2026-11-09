@@ -804,7 +804,9 @@ pub fn dta_write_arrow<'py>(
     // Each categorical is marked, so that read_dta gives it back (plan 0023).
     for (k, c) in cols.iter().enumerate() {
         if let Some(set) = &category_sets[k] {
-            let order = if ordered[k] { "ordered" } else { "unordered" };
+            // Only an Enum carries an order; a Categorical is unordered.
+            let enum_ = c.field.meta("_PL_ENUM_VALUES2").is_some();
+            let order = if ordered[k] && enum_ { "ordered" } else { "unordered" };
             characteristics.push(Characteristic { variable: c.field.name.clone(), name: CATEGORICAL_MARK.into(), value: format!("{order} {set}") });
         }
     }
