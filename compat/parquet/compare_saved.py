@@ -1,8 +1,8 @@
 """Compare the .dta files save_dta_compare.sh makes: TypeScript's
 saveDta (DIR/saved_typescript.dta) against Python datakit's save_dta
 (DIR/saved_python.dta) for storage types, display formats, values,
-missing codes and value labels, and against R's save_dta
-(DIR/saved_r.dta) for the factor marker. Values are read with pandas'
+missing codes, value labels and the categorical marker (plan 0023:
+the kind and the order word; set names may differ by plan 0021's rule). Values are read with pandas'
 read_stata, an open-source reader; types, formats, labels and
 characteristics with dta_parser's read_meta. Prints each difference and
 exits with status 1 if there is any not listed in EXPECTED.
@@ -60,14 +60,14 @@ for c, t in tm["columns"].items():
 if tm["label"] != pm["label"] or tm["notes"] != pm["notes"]:
     differ("*", "label, notes", (tm["label"], tm["notes"]), (pm["label"], pm["notes"]))
 
-# The factor marker, against R's.
-rm = meta("r")
-mark = lambda m: {c: x["dtaparser_factor"] for c, x in m["characteristics"].items() if "dtaparser_factor" in x}  # noqa: E731
-if mark(tm) != mark(rm):
-    diffs.append(f"factor markers: TypeScript {mark(tm)}, R {mark(rm)}")
+# The markers (plan 0023): which one, and the order word.
+MARKS = ("dtaparser_factor", "dtaparser_categorical")
+mark = lambda m: {(c, k): x[k].split(" ")[0] for c, x in m["characteristics"].items() for k in MARKS if k in x}  # noqa: E731
+if mark(tm) != mark(pm):
+    diffs.append(f"markers: TypeScript {mark(tm)}, Python {mark(pm)}")
 
 print(f"compared {len(tm['columns'])} columns of TypeScript's saveDta with Python's save_dta"
-      f" ({len(EXPECTED)} expected differences), and factor markers with R's: {mark(tm)}")
+      f" ({len(EXPECTED)} expected differences), markers included: {mark(tm)}")
 if diffs:
     print("DIFFERENT:")
     for x in diffs:

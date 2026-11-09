@@ -25,6 +25,18 @@ def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters="met
     and a `%tc` column Datetime("ms"); `%tC` and the other `%t` formats
     stay numbers, with their format in meta.
 
+    A column that save_dta (or TypeScript's saveDta) wrote from a
+    categorical, marked by its dtaparser_categorical characteristic, is
+    an Enum of its value labels in code order, whatever `factors` says,
+    with meta.columns[name].ordered from the mark; its .a to .z go where
+    `letters` puts them. The file must still hold what was written: the
+    same value label set, a label on every value read, codes that are
+    whole numbers within long's range with texts of their own, no label
+    on `.`, no date format, and not also a dtaparser_factor mark.
+    Otherwise the column is read as if unmarked, with one UserWarning
+    per read naming such columns. dtaparser_factor (R's factors) is not
+    read as a mark.
+
     columns, skip, n_max, factors, letters, letter_suffix: as in
         read_parquet.
     encoding: for text in files before release 118: "windows-1252" (the
@@ -43,7 +55,7 @@ def read_dta(path, columns=None, skip=0, n_max=None, factors=False, letters="met
     if not isinstance(factors, bool):
         raise TypeError(f"factors must be True or False, not {factors!r}")
     frame, found, m = native.dta_read_arrow(f.path_of(path), columns, skip, n_max, encoding, timestamps)
-    return f.finish(frame, found, m, factors=factors, letters=letters, letter_suffix=letter_suffix)
+    return f.finish(frame, found, m, factors=factors, letters=letters, letter_suffix=letter_suffix, markers=True)
 
 
 def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
@@ -61,12 +73,18 @@ def save_dta(df, path, meta=None, *, missing_letters=True, timestamps="error"):
     stored as long, labelled with its levels in order, its letters kept,
     in a value label set named after the column (replacing meta's set of
     that name), or name_2, name_3, ... when another column's labels use
-    that name.
+    that name. The set also keeps the labels on .a to .z of the set
+    meta.columns[name].value_labels names. A characteristic,
+    dtaparser_categorical ("ordered <set>" or "unordered <set>", from
+    meta.columns[name].ordered), marks it, so that read_dta gives the
+    Enum back. A dtaparser_factor or dtaparser_categorical in
+    meta.characteristics is not written, for any column.
     Time, Duration, Decimal and nested dtypes are errors naming the
     column, as is a name Stata cannot hold.
 
     Letters come from companion columns and meta.missing, as in
-    save_parquet; missing_letters=False writes them as `.`.
+    save_parquet; missing_letters=False writes them as `.`, and a
+    categorical's set without letter labels.
 
     Guide: {guide}#dta-files-into-polars
     """

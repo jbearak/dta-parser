@@ -675,6 +675,25 @@ from `read_dta(factors = TRUE)` comes back with codes 1 to k, not the
 file's own codes, which that read did not keep; to write the file's
 codes, read with `factors = FALSE`, the default.
 
+Python's and TypeScript's datakit mark a categorical they write to
+`.dta` with another characteristic, `dtaparser_categorical`, of the same
+form (plan 0023). Unlike a factor, a categorical may hold `.a` to `.z`.
+`read_dta()` reads such a column as a factor, ordered if the marker
+says so, with every level of its value labels, when the rows read hold
+no `.a` to `.z`; when they do, it keeps the numbers as a
+`dtaparser_labelled`, with the letters and their labels, and gives no
+warning, whatever `factors` says. The type can therefore depend on
+`skip` and `n_max`. The checks are a factor's, with letters and labels
+on letters allowed, and a few more: the column is stored as numbers, it
+is not read as a date (a `%td`, `%d` or `%tc` format fails only with
+`dates = TRUE`), its value label set labels no `.`, and its codes are
+whole numbers within long's range. A column that fails one, or carries
+both markers, reads as an unmarked one would (with `factors = TRUE`, as
+a factor from its labels), with one warning of class
+`dtaparser_stale_categorical`. `save_dta()` drops both markers from the
+`characteristics` attribute and writes `dtaparser_factor` afresh on
+each factor.
+
 `read_meta(file)` reads what the file says about itself, without its
 rows: each variable's storage type and display format, and the
 dataset's sort order. Comparing two files needs these: `float` and
@@ -1283,6 +1302,11 @@ R has no categorical type that holds `.a` to `.z`, so `save_parquet()`
 writes the column back as labelled numbers with its letters and value
 label set, not as a categorical. Python and TypeScript then read it as
 labelled numbers too.
+
+In `.dta` files, Python's and TypeScript's datakit mark such columns
+with `dtaparser_categorical`, which `read_dta()` reads as a labelled
+double the same way when the rows read hold a letter, and as a factor
+when they do not ([Plain R types](#plain-r-types-dtaparser)).
 
 ### Parquet files from other tools
 

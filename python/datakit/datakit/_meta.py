@@ -46,8 +46,10 @@ class Column:
     format: the display format, such as "%9.2f" or "%td", or None.
     value_labels: the name of the column's value label set in
         `meta.value_labels`, or None. Several columns may share a set.
-    ordered: for an Enum column read from a file's categorical, the
-        file's "ordered"; written back as it is. None otherwise.
+    ordered: for an Enum column read from a file's categorical (a
+        Parquet categorical, or a .dta column marked
+        dtaparser_categorical), the file's "ordered"; written back as it
+        is (save_dta writes None as unordered). None otherwise.
 
     Guide: {guide}#labels-in-parquet-files
     """

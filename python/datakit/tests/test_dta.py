@@ -196,7 +196,8 @@ def test_save_dta_types_and_errors(tmp_path):
     assert back["bin"].to_list() == [b"\x00\xff", b"", b"x"]
     assert back["d"].to_list() == df["d"].to_list()
     assert back["t"].dtype == pl.Datetime("ms") and back["t"].to_list() == df["t"].to_list()
-    assert back["e"].to_list() == [1, 3, None] and meta.labels("e") == {1: "lo", 2: "mid", 3: "hi"}
+    assert back["e"].dtype == pl.Enum(["lo", "mid", "hi"]) and back["e"].to_list() == ["lo", "hi", None]
+    assert meta.labels("e") == {1: "lo", 2: "mid", 3: "hi"} and meta.columns["e"].ordered is False
     assert meta.label == "Types" and meta.columns["d"].format == "%td" and meta.columns["t"].format == "%tc"
     us = pl.DataFrame({"t": [dt.datetime(2024, 1, 1, 0, 0, 0, 1)]})
     with pytest.raises(ValueError, match='"t", row 1: the datetime is not a whole number of milliseconds'):

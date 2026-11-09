@@ -73,6 +73,23 @@ text, and no \code{.a} to \code{.z}. Otherwise (the file was changed in
 Stata, say) it is read as it would be unmarked, with one warning
 naming such columns.
 
+A column that Python's or TypeScript's datakit wrote from a
+categorical carries another characteristic, \code{dtaparser_categorical},
+and is read as such a factor too, ordered if it was, with every
+level of its value labels, when the rows read hold no \code{.a} to \code{.z}.
+A categorical may hold them, and a factor cannot, so when the rows
+read do, the column keeps its numbers as a \code{dtaparser_labelled},
+letters and their labels included, without a warning, whatever
+\code{factors} says. So the same file can give a factor for some rows and
+numbers for others. The checks are a factor's, except that \code{.a} to
+\code{.z} and labels on them are allowed; the column must also be stored
+as numbers, not be read as a date (with \code{dates = TRUE}, its format
+is not one that makes a \code{Date} or \code{POSIXct}), not label \code{.}, and
+label only whole numbers within long's range. A column failing one
+of them, or carrying both characteristics, is read as unmarked
+(with \code{factors = TRUE}, as any labelled column), with one warning
+of class \code{dtaparser_stale_categorical} naming such columns.
+
 A column whose labels are all on missing values keeps its numbers
 as a \code{dtaparser_labelled} either way (a date column stays a date
 and drops them).

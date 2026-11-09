@@ -1,5 +1,6 @@
 // A whole table from any reader into a `ReadDataset`, and plan 0020's
-// factors restored from a .dta file (plan 0021).
+// factors and plan 0023's categoricals restored from a .dta file (plan
+// 0021).
 
 import type {
   AsyncTableReader,
@@ -29,8 +30,10 @@ export interface ReadDatasetOptions {
   onWarning?: (messages: string[]) => void;
 }
 
-/** The marker plan 0020 writes on a factor's variable. */
+/** The marker plan 0020 writes on an R factor's variable. */
 export const FACTOR_MARK = "dtaparser_factor";
+/** The marker plan 0023 writes on a categorical's variable, which may hold `.a` to `.z`. */
+export const CATEGORICAL_MARK = "dtaparser_categorical";
 
 /** Long's range: the codes a restored factor may have. */
 const LONG_MIN = -2147483647;
@@ -71,7 +74,8 @@ function indicesOf(reader: { variables: readonly Variable[] }, columns?: readonl
  * (`DtaReader`, `ParquetReader`, or another `TableReader`) into a
  * `ReadDataset`: its columns, every value label set, notes,
  * characteristics, label, sort order and (.dta) timestamp. For a .dta
- * file, plan 0020's factors come back as categoricals; see
+ * file, the variables marked `dtaparser_factor` (plan 0020) or
+ * `dtaparser_categorical` (plan 0023) come back as categoricals; see
  * docs/typescript.md, "Read a whole file".
  */
 export function readDataset(reader: TableReader, options: ReadDatasetOptions = {}): ReadDataset {
@@ -119,29 +123,54 @@ function assemble(
 }
 
 /**
- * Turn each variable marked `dtaparser_factor` whose marker still holds
- * into a categorical: plan 0020's four checks, and two more that make it
- * lossless (whole codes within long's range; no label on a missing
- * value). One that fails a check stays as read, with a warning.
+ * Turn each variable marked `dtaparser_factor` (plan 0020) or
+ * `dtaparser_categorical` (plan 0023) whose marker still holds into a
+ * categorical. A factor holds no `.a` to `.z` and its set labels no
+ * missing value; a categorical may hold them, and its set may label them
+ * (but not `.`). One that fails a check, or has both markers, stays as
+ * read, and all of them are named in one warning.
  */
 function restoreFactors(dataset: ReadDataset, onWarning?: (messages: string[]) => void): void {
-  const marks = new Map<string, Characteristic>();
-  for (const c of dataset.characteristics) if (c.name === FACTOR_MARK) marks.set(c.variable, c);
+  const marks = new Map<string, { factor?: Characteristic; categorical?: Characteristic }>();
+  for (const c of dataset.characteristics) {
+    if (c.name !== FACTOR_MARK && c.name !== CATEGORICAL_MARK) continue;
+    const m = marks.get(c.variable) ?? {};
+    if (c.name === FACTOR_MARK) m.factor = c;
+    else m.categorical = c;
+    marks.set(c.variable, m);
+  }
   if (marks.size === 0) return;
   const failed: string[] = [];
+  const kinds = new Set<"factor" | "categorical">();
   const restored = new Set<string>();
   const restoredSets = new Set<string>();
   for (const v of dataset.variables) {
-    const mark = marks.get(v.name);
-    if (!mark) continue;
-    const why = check(v, mark, dataset.valueLabels);
+    const found = marks.get(v.name);
+    if (!found) continue;
+    if (found.factor && found.categorical) {
+      failed.push(`${v.name}: it has both markers, ${FACTOR_MARK} and ${CATEGORICAL_MARK}`);
+      kinds.add("categorical");
+      continue;
+    }
+    const mark = (found.factor ?? found.categorical)!;
+    const categorical = mark.name === CATEGORICAL_MARK;
+    const why = check(v, mark, dataset.valueLabels, categorical);
     if (typeof why === "string") {
       failed.push(`${v.name}: ${why}`);
+      kinds.add(categorical ? "categorical" : "factor");
       continue;
     }
     const { set, ordered } = why;
     const labels = dataset.valueLabels[set];
-    const entries = [...labels].map(([code, text]) => [code as number, text] as const).sort((a, b) => a[0] - b[0]);
+    // The levels are the texts of the set's numeric codes, in code order;
+    // labels on .a to .z (a categorical's) are not levels.
+    const entries: (readonly [number, string])[] = [];
+    let letterLabels = false;
+    for (const [code, text] of labels) {
+      if (isMissing(code)) letterLabels = true;
+      else entries.push([code, text]);
+    }
+    entries.sort((a, b) => a[0] - b[0]);
     const levels = entries.map(([, text]) => text);
     const codes = entries.map(([code]) => code);
     const index = new Map(codes.map((c, i) => [c, i]));
@@ -149,33 +178,43 @@ function restoreFactors(dataset: ReadDataset, onWarning?: (messages: string[]) =
     const n = column.values.length;
     const dict: DictionaryColumn = { kind: "dictionary", codes: new Uint32Array(n), values: levels, missing: new Uint8Array(n) };
     for (let i = 0; i < n; i++) {
-      if (column.missing[i]) dict.missing![i] = 1;
+      // 1 for `.`, 2 to 27 for `.a` to `.z` (only a categorical's).
+      if (column.missing[i]) dict.missing![i] = column.missing[i];
       else dict.codes[i] = index.get(column.values[i])!;
     }
     v.values = dict;
     v.type = "categorical";
-    v.valueLabels = "";
+    // A categorical whose set labels a letter keeps naming the set, so
+    // the labels on its letters are kept; otherwise the set is
+    // `categorical.labelSet` alone.
+    v.valueLabels = letterLabels ? set : "";
     v.categorical = { levels, ordered, labelSet: set, codes };
     restored.add(v.name);
     restoredSets.add(set);
   }
-  dataset.characteristics = dataset.characteristics.filter((c) => !(c.name === FACTOR_MARK && restored.has(c.variable)));
-  // A restored factor's set leaves `valueLabels` unless a column read still uses it.
+  dataset.characteristics = dataset.characteristics.filter((c) => !((c.name === FACTOR_MARK || c.name === CATEGORICAL_MARK) && restored.has(c.variable)));
+  // A restored variable's set leaves `valueLabels` unless a column read still names it.
   const used = new Set(dataset.variables.map((v) => v.valueLabels).filter(Boolean));
   for (const set of restoredSets) if (!used.has(set)) delete dataset.valueLabels[set];
   if (failed.length) {
-    warn(
-      [`${failed.length === 1 ? "A column marked as a factor was" : "Columns marked as factors were"} changed after it was written, so ${failed.length === 1 ? "it is" : "they are"} read as labelled numbers:`, ...failed],
-      "DATAKIT_FACTOR",
-      onWarning,
-    );
+    const one = failed.length === 1;
+    const what = kinds.size === 2 ? "factors or categoricals" : kinds.has("factor") ? "factors" : "categoricals";
+    const heading = one
+      ? `A column marked as ${kinds.has("factor") ? "a factor" : "a categorical"} was changed after it was written, so it is read as labelled numbers:`
+      : `Columns marked as ${what} were changed after they were written, so they are read as labelled numbers:`;
+    warn([heading, ...failed], "DATAKIT_FACTOR", onWarning);
   }
 }
 
 /** The marker's set and ordering, or why it no longer holds. */
-function check(v: ReadVariable, mark: Characteristic, sets: Record<string, ValueLabels>): { set: string; ordered: boolean } | string {
+function check(
+  v: ReadVariable,
+  mark: Characteristic,
+  sets: Record<string, ValueLabels>,
+  categorical: boolean,
+): { set: string; ordered: boolean } | string {
   const m = /^(ordered|unordered) (.+)$/.exec(mark.value);
-  if (!m) return `its ${FACTOR_MARK} characteristic is not "ordered <set>" or "unordered <set>"`;
+  if (!m) return `its ${mark.name} characteristic is not "ordered <set>" or "unordered <set>"`;
   const [, order, set] = m;
   if (v.values.kind !== "number") return "it is not numeric";
   if (v.valueLabels !== set) return `its value label set is ${v.valueLabels ? `"${v.valueLabels}"` : "none"}, not "${set}"`;
@@ -183,14 +222,18 @@ function check(v: ReadVariable, mark: Characteristic, sets: Record<string, Value
   if (!labels) return `the file has no value label set "${set}"`;
   const texts = new Set<string>();
   for (const [code, text] of labels) {
-    if (isMissing(code)) return `its value label set labels the missing value ${code.missing}`;
+    if (isMissing(code)) {
+      // A categorical's set may label .a to .z, with any text.
+      if (categorical && code.missing !== ".") continue;
+      return `its value label set labels the missing value ${code.missing}`;
+    }
     if (!Number.isInteger(code) || code < LONG_MIN || code > LONG_MAX) return `its value label set has the code ${code}, which is not a whole number within long's range`;
     if (texts.has(text)) return `two codes in its value label set share the text "${text}"`;
     texts.add(text);
   }
   const { values, missing } = v.values;
   for (let i = 0; i < values.length; i++) {
-    if (missing[i] > 1) return `row ${i} holds an extended missing value (.a to .z)`;
+    if (missing[i] > 1 && !categorical) return `row ${i} holds an extended missing value (.a to .z)`;
     if (missing[i] === 0 && !labels.has(values[i])) return `row ${i} holds ${values[i]}, which has no label`;
   }
   return { set, ordered: order === "ordered" };

@@ -353,6 +353,33 @@ print([nonresponse.get(v, v) for v in df["income"]])
 To change labels before writing, edit the dictionaries in `attrs`; see
 [Write a file](#write-a-file).
 
+### Columns written from categoricals
+
+Some writers mark a column they wrote from a categorical with a
+characteristic, `ordered <set>` or `unordered <set>`, `<set>` being its
+value label set, and `read_dta` reads it back as a category:
+
+- `dtaparser_factor`: `write_dta` on a `category`, and R's `save_dta` on
+  a factor (plan 0020). The column is a category with its labels as
+  categories in code order, unused ones included, if the file still
+  holds what was written: the same set, a label on every value read, no
+  two codes with the same text, and no `.a` to `.z`.
+- `dtaparser_categorical`: datakit's `save_dta` on an `Enum` or
+  `Categorical`, and TypeScript's `saveDta` on a categorical (plan
+  0023). Such a categorical may hold `.a` to `.z`. When the rows read
+  hold none, the column is a category as above; when they hold some, it
+  is the numbers with their letters (a `DtaArray`), its set in `attrs`,
+  without a warning. Letters, and labels on them, are allowed; a label on
+  `.`, a code that is not a whole number within long's range, a text
+  column, or a date format (unless `dates=False`) are not.
+
+So a column can be a category in one window of rows (`skip`, `n_max`)
+and numbers in another. A column that fails the checks, or that has both
+characteristics, is read as if unmarked, with one warning per read
+naming such columns (`dtaparser_factor` and `dtaparser_categorical` have
+a warning each). The characteristics stay in `attrs`; `write_dta` does
+not write them back, and marks each `category` it writes afresh.
+
 ## Dates
 
 Columns with a `%td` (day) format become `datetime64[s]`, and `%tc`
@@ -402,7 +429,7 @@ Columns without metadata get a storage type from their dtype:
 | `float32`, `float64` | float, double; `NaN` is `.` |
 | nullable `Int*`, `boolean`, `Float*` | as above; `pd.NA` is `.` |
 | `DtaArray` | its storage type and missing codes |
-| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column (or the first free of `name_2`, `name_3`, ... when another column's labels use that name); missing is `.`. A characteristic, `dtaparser_factor`, marks it, so `read_dta` reads it back as the same category, ordered or not (plan 0020) |
+| `category` | long codes 0, 1, 2, ..., with the categories as a value label set named after the column (or the first free of `name_2`, `name_3`, ... when another column's labels use that name); missing is `.`. A characteristic, `dtaparser_factor`, marks it, so `read_dta` reads it back as the same category, ordered or not (plan 0020). A `dtaparser_factor` or `dtaparser_categorical` characteristic in `attrs` is not written: each describes what a writer wrote, and a column that was a category may be numbers now |
 | `datetime64` | `%td` (long) if every value is midnight, else `%tc` (double, milliseconds); `NaT` is `.` |
 | text (`str`, `object` of `str`) | strN up to 2045 bytes, else strL; `None`, `NaN` and `pd.NA` become `""` |
 | `bytes` values | binary strL |
@@ -489,7 +516,7 @@ array with every missing value as `NaN`.
 | `columns=[...]` | `columns=[...]` (names or positions) |
 | `iterator=True`, `chunksize=n`, `StataReader.read(nrows)` | `skip=`, `n_max=` |
 | `convert_dates=False` | `dates=False` |
-| `convert_categoricals=True` (the default) | not done; codes stay numbers; see [Value labels](#value-labels). A column `write_dta` wrote from a category, or R's `save_dta` from a factor, is a category again |
+| `convert_categoricals=True` (the default) | not done; codes stay numbers; see [Value labels](#value-labels). A column `write_dta` wrote from a category, R's `save_dta` from a factor, or datakit's `save_dta` from an `Enum`, is a category again ([Columns written from categoricals](#columns-written-from-categoricals)) |
 | `convert_missing=True` (an `object` column of `StataMissingValue`) | always on: a `DtaArray` |
 | `preserve_dtypes=False` | not available; columns keep their storage width |
 | `index_col="id"` | `dp.read_dta(path).set_index("id")` |
@@ -1181,7 +1208,7 @@ read DECIMAL as the nearest double by default, polars' `Decimal` holds
 it exactly. polars' Enum always compares and
 sorts by level order, so an unordered factor from R reads as an Enum
 that still sorts by level; `meta.columns[name].ordered` keeps the
-file's `ordered` and writes it back.
+file's `ordered` and writes it back, to Parquet and to `.dta`.
 
 **What a round trip does not keep.** A frame and `Meta` that a read
 gave come back from `save_parquet` and `read_parquet` equal, except: a
@@ -1324,6 +1351,53 @@ levels, its letters kept. `Time`, `Duration`, `Decimal` and nested
 dtypes are errors naming the column, as is a name Stata cannot hold.
 Letters come from companion columns and `meta.missing`, with the checks
 `save_parquet` makes.
+
+**Categoricals.** `save_dta` writes each `Enum` and `Categorical` with
+a value label set named after the column (replacing `meta`'s set of
+that name, or `name_2`, `name_3`, ... when another column's labels use
+that name), and marks it with a characteristic, `dtaparser_categorical`
+= `ordered <set>` or `unordered <set>` (from
+`meta.columns[name].ordered`). The set labels the levels at codes 1 to
+k, and keeps the labels on `.a` to `.z` of the set that
+`meta.columns[name].value_labels` names, so "Refused" on `.r` survives
+whatever that set is called. With `missing_letters=False` the letters
+are written as `.`, the set has no letter labels, and the mark is still
+written. A `dtaparser_factor` or `dtaparser_categorical` in
+`meta.characteristics` is not written, for any column: it describes
+what was written before, and the column may be integers now.
+
+`read_dta` gives a marked column back as an `Enum` of its set's texts in
+code order, unused ones included, whatever `factors` says, with
+`meta.columns[name].ordered` from the mark and
+`meta.columns[name].value_labels` naming its set, which
+`meta.value_labels` keeps; its letters go where `letters` puts them, and
+the mark leaves `meta.characteristics`:
+
+```python
+grades = pl.DataFrame({"grade": pl.Series(["low", None, "high"], dtype=pl.Enum(["low", "mid", "high"]))})
+gmeta = dk.Meta(columns={"grade": dk.Column(value_labels="gl", ordered=True)},
+                value_labels={"gl": {".r": "Refused"}},
+                missing={"grade": pl.Series([None, ".r", None], dtype=dk.LETTERS)}, rows=3)
+dk.save_dta(grades, "grades.dta", meta=gmeta)
+g, gm = dk.read_dta("grades.dta")
+print(g["grade"].dtype, g["grade"].to_list())   # Enum(categories=['low', 'mid', 'high']) ['low', None, 'high']
+print(gm.columns["grade"].ordered, gm.labels("grade"))
+# True {1: 'low', 2: 'mid', 3: 'high', '.r': 'Refused'}
+print(gm.missing["grade"].to_list())            # [None, '.r', None]
+```
+
+Through `.dta`, then, a categorical keeps its levels, their order,
+unused levels, letters and letter labels, but its codes become 1 to k:
+a file whose set has codes 10, 20, 30 is written back with 1, 2, 3 and
+the same texts. A `Categorical` comes back as an `Enum`. The mark is
+checked as `dta_parser` checks it ([Columns written from
+categoricals](#columns-written-from-categoricals)), except that
+`read_dta` always converts dates: a marked `%td` or `%d` column, read as
+a `Date`, fails. A column that fails, or has both marks, is read as if unmarked
+(an `Enum` with `factors=True`, as any labelled column), with one
+`UserWarning` per read naming such columns. `dtaparser_factor` alone,
+which R's `save_dta` writes, is not read as a mark: such a column reads
+as labelled numbers, as before.
 
 ### Coming from pyarrow, pandas or polars
 

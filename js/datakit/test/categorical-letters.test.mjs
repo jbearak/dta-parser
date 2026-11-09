@@ -141,15 +141,19 @@ test("a value that is not a level number reads as . with one warning per reader 
   r.close();
 });
 
-test("saveDta writes a categorical with letters as labelled codes, without the factor marker", () => {
+test("saveDta writes a categorical with letters as labelled codes, marked as a categorical", () => {
   for (const values of [CODES, DICT]) {
     const f = join(dir, `letters-${values === DICT ? "dict" : "codes"}.dta`);
     node.saveDta(
       {
-        characteristics: [{ variable: "grade", name: "dtaparser_factor", value: "ordered stale" }],
+        characteristics: [
+          { variable: "grade", name: "dtaparser_factor", value: "ordered stale" },
+          { variable: "num", name: "dtaparser_categorical", value: "unordered stale" },
+        ],
         variables: [
           { name: "grade", type: "categorical", categorical: { levels: LEVELS, ordered: true }, values },
           { name: "plain", type: "categorical", levels: ["a"], values: [0, 0, null, 0, 0, 0] },
+          { name: "num", values: [1, 2, 3, 4, 5, 6] },
         ],
       },
       f,
@@ -161,8 +165,12 @@ test("saveDta writes a categorical with letters as labelled codes, without the f
     assert.deepEqual(Array.from(c.missing), [0, 2, 0, 1, 27, 0]);
     assert.deepEqual([0, 2, 5].map((i) => c.values[i]), [1, 3, 2]);
     assert.deepEqual([...r.valueLabels("grade")], [[1, "low"], [2, "mid"], [3, "high"]]);
-    // Only the column without letters keeps a marker; the stale one is gone.
-    assert.deepEqual(r.characteristics(), [{ variable: "plain", name: "dtaparser_factor", value: "unordered plain" }]);
+    // Each categorical is marked, letters or not (plan 0023); the stale
+    // markers given, on a categorical and on a column of numbers, are gone.
+    assert.deepEqual(r.characteristics(), [
+      { variable: "grade", name: "dtaparser_categorical", value: "ordered grade" },
+      { variable: "plain", name: "dtaparser_categorical", value: "unordered plain" },
+    ]);
     r.close();
   }
 });

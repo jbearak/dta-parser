@@ -48,6 +48,23 @@
 #'   Stata, say) it is read as it would be unmarked, with one warning
 #'   naming such columns.
 #'
+#'   A column that Python's or TypeScript's datakit wrote from a
+#'   categorical carries another characteristic, `dtaparser_categorical`,
+#'   and is read as such a factor too, ordered if it was, with every
+#'   level of its value labels, when the rows read hold no `.a` to `.z`.
+#'   A categorical may hold them, and a factor cannot, so when the rows
+#'   read do, the column keeps its numbers as a `dtaparser_labelled`,
+#'   letters and their labels included, without a warning, whatever
+#'   `factors` says. So the same file can give a factor for some rows and
+#'   numbers for others. The checks are a factor's, except that `.a` to
+#'   `.z` and labels on them are allowed; the column must also be stored
+#'   as numbers, not be read as a date (with `dates = TRUE`, its format
+#'   is not one that makes a `Date` or `POSIXct`), not label `.`, and
+#'   label only whole numbers within long's range. A column failing one
+#'   of them, or carrying both characteristics, is read as unmarked
+#'   (with `factors = TRUE`, as any labelled column), with one warning
+#'   of class `dtaparser_stale_categorical` naming such columns.
+#'
 #'   A column whose labels are all on missing values keeps its numbers
 #'   as a `dtaparser_labelled` either way (a date column stays a date
 #'   and drops them).
@@ -108,22 +125,43 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
   mode <- if (dates) 2L else 0L
   values <- .Call(C_dta_read, file, as.integer(cols - 1L), floor(skip), floor(n_max), encoding, mode)
   names(values) <- names[cols]
-  marked <- factor_marks(meta$characteristics, names(values))
+  marks <- factor_marks(meta$characteristics, names(values))
   stale <- character()
-  for (i in which(!is.na(marked))) {
-    if (marked_factor_holds(values[[i]], marked[[i]], meta$label_sets[cols[i]])) {
-      x <- labelled_factor(values[[i]], meta$storage[cols[i]] %in% c("byte", "int", "long"))
-      if (startsWith(marked[[i]], "ordered ")) class(x) <- c("ordered", "factor")
-      values[[i]] <- x
+  stale_categorical <- character()
+  # Valid categoricals left as labelled numbers for their .a to .z, which
+  # the factors = TRUE pass leaves alone.
+  keep <- logical(length(values))
+  for (i in which(!is.na(marks$factor) | !is.na(marks$categorical))) {
+    x <- values[[i]]
+    integer <- meta$storage[cols[i]] %in% c("byte", "int", "long")
+    if (!is.na(marks$factor[i]) && !is.na(marks$categorical[i])) {
+      stale_categorical <- c(stale_categorical, names(values)[i])
+      next
+    }
+    categorical <- is.na(marks$factor[i])
+    mark <- if (categorical) marks$categorical[i] else marks$factor[i]
+    holds <- if (categorical) {
+      marked_categorical_holds(x, mark, meta$label_sets[cols[i]], meta$storage[cols[i]], meta$formats[cols[i]], dates)
     } else {
-      stale <- c(stale, names(values)[i])
+      marked_factor_holds(x, mark, meta$label_sets[cols[i]])
+    }
+    if (!holds) {
+      if (categorical) stale_categorical <- c(stale_categorical, names(values)[i])
+      else stale <- c(stale, names(values)[i])
+    } else if (categorical && .Call(C_dta_has_letters, x)) {
+      keep[i] <- TRUE
+    } else {
+      x <- labelled_factor(x, integer)
+      if (startsWith(mark, "ordered ")) class(x) <- c("ordered", "factor")
+      values[[i]] <- x
     }
   }
   if (length(stale)) warn_stale(stale)
+  if (length(stale_categorical)) warn_stale_categorical(stale_categorical)
   if (factors) {
     lost <- character()
     for (i in seq_along(values)) {
-      if (is.factor(values[[i]]) || !any(!is.na(attr(values[[i]], "labels", exact = TRUE)))) next
+      if (keep[i] || is.factor(values[[i]]) || !any(!is.na(attr(values[[i]], "labels", exact = TRUE)))) next
       if (warn_extended_missing && .Call(C_dta_has_letters, values[[i]])) lost <- c(lost, names(values)[i])
       values[[i]] <- labelled_factor(values[[i]], meta$storage[cols[i]] %in% c("byte", "int", "long"))
     }
@@ -141,13 +179,18 @@ read_dta <- function(file, col_select = NULL, encoding = NULL, skip = 0, n_max =
   out
 }
 
-# The factor mark (plan 0020) of each of `names`, NA where none.
+# The markers of each of `names`: list(factor =, categorical =), the
+# values of its `dtaparser_factor` (plan 0020) and `dtaparser_categorical`
+# (plan 0023) characteristics, NA where it has none.
 factor_marks <- function(chars, names) {
-  marks <- rep(NA_character_, length(names))
-  if (is.null(chars) || !length(chars$name)) return(marks)
-  mark <- chars$name == FACTOR_MARK
-  marks[match(chars$variable[mark], names, nomatch = 0)] <- chars$value[mark][chars$variable[mark] %in% names]
-  marks
+  mark_of <- function(name) {
+    marks <- rep(NA_character_, length(names))
+    if (is.null(chars) || !length(chars$name)) return(marks)
+    mark <- chars$name == name & chars$variable %in% names
+    marks[match(chars$variable[mark], names)] <- chars$value[mark]
+    marks
+  }
+  list(factor = mark_of(FACTOR_MARK), categorical = mark_of(CATEGORICAL_MARK))
 }
 
 # Whether `x`, read from a column with label set `set` marked as a
@@ -161,6 +204,25 @@ marked_factor_holds <- function(x, mark, set) {
   all(x[!is.na(x)] %in% codes)
 }
 
+# Whether `x`, read from a column stored as `storage` with display format
+# `format` and label set `set`, marked as a categorical with `mark`, still
+# holds what that categorical held (plan 0023): numbers, not read as
+# dates, whose set is the one marked, labels no `.`, gives each code a
+# whole number within long's range and its own text, and labels every
+# value read. Unlike a factor, it may hold .a to .z, labelled or not.
+marked_categorical_holds <- function(x, mark, set, storage, format, dates) {
+  m <- regmatches(mark, regexec("^(ordered|unordered) (.+)$", mark))[[1]]
+  if (!length(m) || !identical(set, m[[3]])) return(FALSE)
+  if (!(storage %in% c("byte", "int", "long", "float", "double"))) return(FALSE)
+  if (dates && grepl("^%-?(td|d|tc)", format)) return(FALSE)
+  labels <- attr(x, "labels", exact = TRUE)
+  if (is.null(labels) || any(is.na(labels) & is.na(na_tag(unclass(labels))))) return(FALSE)
+  codes <- unclass(labels)[!is.na(labels)]
+  if (any(codes != trunc(codes) | codes < -2147483647 | codes > 2147483620)) return(FALSE)
+  if (anyDuplicated(names(codes))) return(FALSE)
+  all(x[!is.na(x)] %in% codes)
+}
+
 # One warning naming marked factor columns read as unmarked.
 warn_stale <- function(cols) {
   rlang::warn(
@@ -168,6 +230,17 @@ warn_stale <- function(cols) {
            "their label set changed, a value has no label or shares its text, or they hold .a to .z; ",
            "read as unmarked columns."),
     class = "dtaparser_stale_factor"
+  )
+}
+
+# One warning naming marked categorical columns read as unmarked.
+warn_stale_categorical <- function(cols) {
+  rlang::warn(
+    paste0("The file marks ", show_columns(cols), " as categoricals, but has changed since they were written: ",
+           "their value label set changed, a value has no label, two codes share a text, ",
+           "a code is not a whole number within long's range, `.` is labelled, a date format was given, ",
+           "they are stored as text, or they have both markers; read as unmarked columns."),
+    class = "dtaparser_stale_categorical"
   )
 }
 

@@ -453,11 +453,12 @@ def test_what_saving_factors_writes(tmp_path):
     back, bm = dk.read_parquet(dk.save_parquet(df, meta=meta, missing_letters=False))
     assert back["z"].dtype == pl.Enum(["Yes", "No", "5"]) and bm.columns["z"].value_labels is None
     assert "yn" in bm.value_labels
-    # .dta: as Stata's encode makes it, codes 1 to k, letters kept.
+    # .dta: as Stata's encode makes it, codes 1 to k, letters and the
+    # letter labels of "yn" kept, marked so that it reads back an Enum.
     dk.save_dta(df, tmp_path / "f.dta", meta=meta)
     back, bm = dk.read_dta(tmp_path / "f.dta")
-    assert back["z"].to_list() == [1, 2, 1, None, 3, 2] and back["z"].dtype == pl.Int32
-    assert bm.value_labels[bm.columns["z"].value_labels] == {1: "Yes", 2: "No", 3: "5"}
+    assert back["z"].dtype == pl.Enum(["Yes", "No", "5"]) and back["z"].to_list() == df["z"].to_list()
+    assert bm.value_labels[bm.columns["z"].value_labels] == {1: "Yes", 2: "No", 3: "5", ".d": "Don't know"}
     assert bm.missing["z"].to_list() == [None, None, None, ".d", None, None]
     df, meta = dk.read_parquet(factors_file(), factors=True, columns=["z"])
     dk.save_dta(df, tmp_path / "g.dta", meta=meta)

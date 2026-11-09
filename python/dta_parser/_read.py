@@ -103,6 +103,12 @@ def _info(raw, cols):
 # The characteristic that marks a column written from a categorical
 # (plan 0020): "ordered" or "unordered", a space, and its label set.
 FACTOR_MARK = "dtaparser_factor"
+# The one that marks a column written from a categorical that may hold
+# .a to .z (plan 0023: datakit's save_dta, TypeScript's saveDta), with
+# the same value.
+CATEGORICAL_MARK = "dtaparser_categorical"
+# The numbers a long holds; a value label's code is one.
+_LONG = (-2147483647, 2147483620)
 
 
 def _marked_factor(mark, set_name, sets, values, codes, flag):
@@ -127,6 +133,47 @@ def _marked_factor(mark, set_name, sets, values, codes, flag):
     at = np.minimum(at, len(keys) - 1)
     if not (keys[at] == values)[present].all():
         return None
+    return pd.Categorical.from_codes(np.where(present, at, -1), categories=texts, ordered=ordered)
+
+
+def _marked_categorical(mark, set_name, sets, values, codes, flag, fmt, dates):
+    """What a column marked `dtaparser_categorical` reads as: a category
+    (no .a to .z in the rows read), True (it has letters: read it as
+    unmarked, a DtaArray), or None when the file no longer holds what
+    was written: its label set changed, the set labels `.`, a code is not
+    a whole number within long's range, two codes share a text, a value
+    has no label, or it has a date format that `dates` converts."""
+    m = re.fullmatch(r"(ordered|unordered) (.+)", mark, re.DOTALL)
+    table = sets.get(set_name)
+    if m is None or m.group(2) != set_name or table is None or (dates and date_kind(fmt)):
+        return None
+    labels = []
+    for k, t in table.items():
+        if isinstance(k, MissingValue):
+            continue
+        k = float(k)
+        if k != k or not k.is_integer() or not _LONG[0] <= k <= _LONG[1]:
+            # NaN is the key of a label on `.`.
+            return None
+        labels.append((k, t))
+    labels.sort()
+    texts = [t for _, t in labels]
+    if len(set(texts)) != len(texts):
+        return None
+    present = codes == 0
+    keys = np.asarray([k for k, _ in labels], dtype=np.float64)
+    at = None
+    if keys.size:
+        at = np.minimum(np.searchsorted(keys, values.astype(np.float64)), len(keys) - 1)
+        if not (keys[at] == values)[present].all():
+            return None
+    elif present.any():
+        return None
+    if flag > 1:
+        return True
+    ordered = m.group(1) == "ordered"
+    if at is None:
+        return pd.Categorical.from_codes(np.full(len(codes), -1), categories=[], ordered=ordered)
     return pd.Categorical.from_codes(np.where(present, at, -1), categories=texts, ordered=ordered)
 
 
@@ -247,6 +294,17 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
     it is read as it would be unmarked, with one warning naming such
     columns.
 
+    A column that datakit's save_dta or TypeScript's saveDta wrote from
+    a categorical, which may hold .a to .z, is marked by another
+    characteristic, dtaparser_categorical. It is a category when the
+    rows read hold none of .a to .z, else the numbers with their letters
+    (a DtaArray), its value labels in attrs, without a warning. It is
+    checked as above, except that .a to .z and labels on them are
+    allowed; a label on `.`, a code that is not a whole number within
+    long's range, a text column, or a date format (with dates=True) also
+    fail. A column with both characteristics is read as unmarked. Such
+    columns get a warning of their own.
+
     columns: names or 0-based indices, read in the order given; all when None.
     skip, n_max: skip that many rows, then read at most n_max (all when None).
     encoding: for files before release 118: "windows-1252" (the default),
@@ -278,21 +336,40 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
             targets.append((objects.ctypes.data, 0))
     flags = _native.read(path, encoding, cols, start, count, targets)
 
-    marks = {v: value for v, n, value in raw["characteristics"] if n == FACTOR_MARK}
+    marks = {}
+    for v, n, value in raw["characteristics"]:
+        if n in (FACTOR_MARK, CATEGORICAL_MARK):
+            marks.setdefault(v, {})[n] = value
     sets = _value_labels(raw["value_labels"]) if marks else {}
     stale = []
+    stale_categorical = []
     data = {}
     for i, (values, codes), flag in zip(cols, arrays, flags):
         name, storage, fmt = variables[i][:3]
+        mark = marks.get(name, {})
         if codes is None:
+            # Text: a categorical is written as numbers, so the file was
+            # edited.
+            if CATEGORICAL_MARK in mark:
+                stale_categorical.append(name)
             data[name] = values if flag else pd.array(values, dtype=_TEXT) if _TEXT != object else values
             continue
-        if name in marks:
-            factor = _marked_factor(marks[name], variables[i][4], sets, values, codes, flag)
+        if len(mark) == 2:
+            # Neither is trusted.
+            stale_categorical.append(name)
+        elif FACTOR_MARK in mark:
+            factor = _marked_factor(mark[FACTOR_MARK], variables[i][4], sets, values, codes, flag)
             if factor is not None:
                 data[name] = factor
                 continue
             stale.append(name)
+        elif CATEGORICAL_MARK in mark:
+            got = _marked_categorical(mark[CATEGORICAL_MARK], variables[i][4], sets, values, codes, flag, fmt, dates)
+            if got is None:
+                stale_categorical.append(name)
+            elif got is not True:
+                data[name] = got
+                continue
         kind = date_kind(fmt) if dates else None
         if kind and flag <= 1:
             converted = _as_dates(values, codes == 1 if flag else None, kind)
@@ -316,6 +393,12 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
         warnings.warn(f"write_dta wrote {shown} as categories, but the file has changed since: their value "
                       "label set changed, a value has no label or shares its text, or they hold .a to .z; "
                       "read as unmarked columns", UserWarning, stacklevel=2)
+    if stale_categorical:
+        shown = ", ".join(stale_categorical)
+        warnings.warn(f"{shown} {'was' if len(stale_categorical) == 1 else 'were'} written as categoricals, but the "
+                      "file has changed since: their value label set changed, a value has no label, two codes share "
+                      "a text, a code is not a whole number, `.` is labelled, a date format was given, or a column "
+                      "has both markers; read as unmarked columns", UserWarning, stacklevel=2)
     df = pd.DataFrame(data, copy=False)
     if not data:
         df = pd.DataFrame(index=pd.RangeIndex(count))

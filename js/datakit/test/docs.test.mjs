@@ -98,7 +98,7 @@ test("every export has TSDoc and appears in docs/typescript.md", { skip }, () =>
     const lines = readFileSync(join(pkg, "src", src), "utf8").split("\n");
     lines.forEach((line, i) => {
       const m = /^export\s+(?:declare\s+)?(?:function|class|const|interface|type)\s+(\w+)/.exec(line);
-      if (!m || m[1].startsWith("_") || lines[i - 1].includes("@internal") || ["FACTOR_MARK", "warn", "toDta", "fixedWidthMode", "setupBytes"].includes(m[1])) return;
+      if (!m || m[1].startsWith("_") || lines[i - 1].includes("@internal") || ["FACTOR_MARK", "CATEGORICAL_MARK", "warn", "toDta", "fixedWidthMode", "setupBytes"].includes(m[1])) return;
       let k = i - 1;
       while (k >= 0 && lines[k].trim() === "") k--;
       assert.ok(lines[k]?.trim().endsWith("*/"), `${src}: ${m[1]} has no TSDoc`);

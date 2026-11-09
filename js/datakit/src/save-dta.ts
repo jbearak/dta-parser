@@ -5,7 +5,7 @@
 import type { Characteristic, Missing, ValueLabels, WriteDataset, WriteVariable } from "@jbearak/dta-parser";
 import { isMissing } from "@jbearak/dta-parser/format";
 import { dtaError } from "./_shared/errors";
-import { FACTOR_MARK, warn } from "./dataset";
+import { CATEGORICAL_MARK, FACTOR_MARK, warn } from "./dataset";
 import type { Dataset, DatasetVariable } from "./types";
 
 /** Options for `saveDta`. */
@@ -184,7 +184,9 @@ export function toDta(data: Dataset, options: SaveDtaOptions = {}): WriteDataset
     throw invalid(`timestamps must be "error" or "truncate", not ${JSON.stringify(options.timestamps)}`);
   }
   const sets: Record<string, ValueLabels> = { ...(data.valueLabels ?? {}) };
-  const characteristics: Characteristic[] = (data.characteristics ?? []).filter((c) => c.name !== FACTOR_MARK);
+  // Both markers leave every column (one that was a categorical may be
+  // numbers now); each categorical gets its own below (plan 0023).
+  const characteristics: Characteristic[] = (data.characteristics ?? []).filter((c) => c.name !== FACTOR_MARK && c.name !== CATEGORICAL_MARK);
   const variables: WriteVariable[] = data.variables.map((v) => convert(v, sets, characteristics, truncate));
   // A .dta value label's code is a whole number within long's range (or a
   // missing value). A set a variable uses with another code is an error,
@@ -347,6 +349,15 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
   if (given !== undefined) {
     if (given.length !== levels.length) throw invalid(`${v.name}: categorical.codes has ${given.length} codes for ${levels.length} levels`);
     for (const k of given) if (!Number.isInteger(k) || k < RANGES[2][1] || k > RANGES[2][2]) throw range(`${v.name}: categorical.codes holds ${k}, not a whole number within long's range`);
+    // Readers order the levels by code, so the codes must increase with them.
+    const seen = new Set<number>();
+    for (const k of given) {
+      if (seen.has(k)) throw invalid(`${v.name}: categorical.codes gives the code ${k} twice`);
+      seen.add(k);
+    }
+    for (let i = 1; i < given.length; i++) {
+      if (given[i] < given[i - 1]) throw invalid(`${v.name}: categorical.codes must increase with the levels, but ${given[i]} follows ${given[i - 1]}`);
+    }
   }
   const codes = given ?? levels.map((_, i) => i + 1);
   const labels: ValueLabels = new Map(levels.map((text, i) => [codes[i], text]));
@@ -365,16 +376,14 @@ function categorical(v: DatasetVariable, sets: Record<string, ValueLabels>, char
   const ordered = v.categorical?.ordered ?? v.ordered ?? false;
   const values = new Float64Array(index.length);
   const missing = new Uint8Array(index.length);
-  let letters = false;
   for (let i = 0; i < index.length; i++) {
     if (index[i] < 0) {
       values[i] = NaN;
       missing[i] = -index[i];
-      if (missing[i] > 1) letters = true;
     } else values[i] = codes[index[i]];
   }
-  // The marker says the variable reads back as a factor; one holding .a
-  // to .z reads back as labelled numbers, which keep them (plan 0022).
-  if (!letters) characteristics.push({ variable: v.name, name: FACTOR_MARK, value: `${ordered ? "ordered" : "unordered"} ${name}` });
+  // The marker says the variable reads back as a categorical, with its
+  // .a to .z and their labels (plan 0023).
+  characteristics.push({ variable: v.name, name: CATEGORICAL_MARK, value: `${ordered ? "ordered" : "unordered"} ${name}` });
   return { name: v.name, label: v.label, type: "long", valueLabels: name, values, missing };
 }
