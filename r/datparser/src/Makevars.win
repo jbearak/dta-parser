@@ -1,0 +1,19 @@
+# R on Windows links with Rtools' gcc, so build the Rust library for the
+# GNU target rather than rustup's default MSVC one. The system libraries
+# are those Rust's standard library needs on Windows.
+TARGET = x86_64-pc-windows-gnu
+LIBDIR = rust/target/$(TARGET)/release
+PKG_LIBS = -L$(LIBDIR) -ldatparser -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
+
+all: $(SHLIB)
+
+$(SHLIB): rustlib
+
+# The core needs no crates from crates.io, so this builds offline.
+rustlib:
+	cd rust && cargo build --release --lib --offline --target $(TARGET) --target-dir target
+
+.PHONY: rustlib
+
+clean:
+	rm -rf $(SHLIB) $(OBJECTS) rust/target

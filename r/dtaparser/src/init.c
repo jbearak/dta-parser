@@ -202,8 +202,6 @@ int dtaparser_meta(const char *path, const char *encoding, SEXP holder, char *er
 int dtaparser_read(const char *path, const int *cols, R_xlen_t ncols, double skip, double n_max, const char *encoding,
                    int mode, int threads, SEXP holder, char *err, size_t err_len);
 int dtaparser_write(const char *path, SEXP spec, int threads, char *err, size_t err_len);
-int dtaparser_fixed_width(const char *data, const char *const *setups, size_t nsetups, const char *out,
-                          const char *recodes, int commented_formats, SEXP holder, char *err, size_t err_len);
 int dtaparser_parquet_info_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP holder, char *err,
                               size_t err_len);
 int dtaparser_parquet_read_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP names,
@@ -241,8 +239,7 @@ static SEXP finish(int status, SEXP holder, const char *err) {
 }
 
 // meta, read and dtaparser_dictionary are .Call routines and also
-// dtatools' callables, and fixed_width is datakit's callable; their
-// errors leave by R's jumps through C frames.
+// dtatools' callables; their errors leave by R's jumps through C frames.
 static SEXP meta(SEXP path, SEXP encoding) {
   const char *p = string_arg(path, "file");
   const char *enc = Rf_isNull(encoding) ? NULL : string_arg(encoding, "encoding");
@@ -301,26 +298,6 @@ static SEXP write(SEXP path, SEXP spec) {
   if (status == 2) R_ContinueUnwind(token);
   if (status == 1) Rf_error("%s", err);
   return R_NilValue;
-}
-
-// Convert a fixed-width file through its SAS setup file, given as one or
-// more files read in order, to the new release 118 file `out`; returns
-// the warnings' messages. datakit's read_fixed_width calls it.
-static SEXP fixed_width(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP commented_formats) {
-  const char *d = string_arg(data, "file"), *o = string_arg(out, "out");
-  const char *r = string_arg(recodes, "recodes");
-  if (!Rf_isString(setup) || XLENGTH(setup) < 1) Rf_error("setup must be one or more paths");
-  R_xlen_t n = XLENGTH(setup);
-  const char **s = (const char **) R_alloc(n, sizeof(char *));
-  for (R_xlen_t i = 0; i < n; i++) {
-    if (STRING_ELT(setup, i) == NA_STRING) Rf_error("setup must not be NA");
-    s[i] = Rf_translateCharUTF8(STRING_ELT(setup, i));
-  }
-  int c = Rf_asLogical(commented_formats);
-  if (c == NA_LOGICAL) Rf_error("commented_formats must be TRUE or FALSE");
-  SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
-  char err[1024] = "";
-  return finish(dtaparser_fixed_width(d, s, (size_t) n, o, r, c, holder, err, sizeof err), holder, err);
 }
 
 // Parquet (plan 0018), datakit's read_parquet, read_parquet_info and
@@ -509,7 +486,10 @@ static const R_CallMethodDef routines[] = {
 // dtaparser_fixed_width came (datakit's read_fixed_width). 3:
 // dtaparser_parquet_read, dtaparser_parquet_write and
 // dtaparser_parquet_info came (datakit's Parquet functions), and packed
-// columns may hold NA.
+// columns may hold NA. dtaparser_fixed_width went in 3.2.0 without a new
+// number (datparser reads fixed-width files, ADR 0039): no package of
+// 3.2.0 fetches it, and a datakit 3.1.0 that does fails to link and
+// reports the mismatch as if the number differed.
 static int abi(void) {
   return 3;
 }
@@ -521,7 +501,6 @@ void R_init_dtaparser(DllInfo *dll) {
   R_RegisterCCallable("dtaparser", "dtaparser_abi", (DL_FUNC) &abi);
   R_RegisterCCallable("dtaparser", "dtaparser_meta", (DL_FUNC) &meta);
   R_RegisterCCallable("dtaparser", "dtaparser_read", (DL_FUNC) &read);
-  R_RegisterCCallable("dtaparser", "dtaparser_fixed_width", (DL_FUNC) &fixed_width);
   R_RegisterCCallable("dtaparser", "dtaparser_dictionary", (DL_FUNC) &dtaparser_dictionary);
   R_RegisterCCallable("dtaparser", "dtaparser_parquet_info", (DL_FUNC) &parquet_info);
   R_RegisterCCallable("dtaparser", "dtaparser_parquet_read", (DL_FUNC) &parquet_read);

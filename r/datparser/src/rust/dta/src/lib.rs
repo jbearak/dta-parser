@@ -1,0 +1,29 @@
+//! Read and write Stata `.dta` files.
+//!
+//! The crate does no I/O of its own: a [`Reader`] reads through a
+//! [`Source`] and [`write`] writes to any `std::io::Write`, so the same code serves files on disk (R) and byte ranges
+//! supplied by JavaScript (wasm).
+
+mod cursor;
+mod encoding;
+mod error;
+mod fixed_width;
+mod header;
+mod legacy;
+pub mod missing;
+mod reader;
+mod source;
+mod strl_index;
+pub mod threads;
+mod types;
+mod writer;
+
+pub use cursor::ByteOrder;
+pub use encoding::Encoding;
+pub use error::{Error, ErrorKind, Result};
+pub use fixed_width::{fixed_width_to_dta, FixedWidth, FixedWidthSetup, FixedWidthWarning, Recodes, WarningKind};
+pub use header::{Metadata, Variable};
+pub use reader::{Characteristic, Column, Options, Reader, ValueLabel, ValueLabelSet};
+pub use source::{Bytes, FileSource, SharedSource, Source};
+pub use types::StorageType;
+pub use writer::{write, write_with, Dataset, Values, WriteOptions, WriteVariable, BLOCK};

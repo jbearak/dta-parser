@@ -1,5 +1,9 @@
 # Fixed-width files are read by converting them to a release 118 file
 
+Superseded for R by ADR 0039: R's datparser builds its columns from
+the core's fixed-width reader in memory, with no temporary file.
+Python, Julia, and TypeScript still convert as this record says.
+
 CDC publishes the National Survey of Family Growth, from the 1973 cycle
 to 2017-2019, as fixed-width text with a SAS setup for each file (plan
 0009; the 2002 to 2017-2019 setups were added later, under "Later

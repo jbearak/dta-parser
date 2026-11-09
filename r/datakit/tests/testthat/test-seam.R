@@ -1,5 +1,5 @@
-# datakit reaches dtaparser's fixed-width converter through a C callable
-# (ADR 0032), and attached last, its := is the one R finds.
+# datakit reaches dtaparser's Parquet functions through C callables
+# (plan 0018), and attached last, its := is the one R finds.
 
 test_that("a dtaparser with another ABI number is refused", {
   expect_invisible(datakit:::check_abi(3L, 3L))

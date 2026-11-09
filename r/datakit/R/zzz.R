@@ -1,6 +1,6 @@
-# datakit reads fixed-width and Parquet files through dtaparser's C
-# functions (ADR 0032, plan 0018). The ABI number datakit was built for;
-# dtaparser's must match.
+# datakit reads Parquet files through dtaparser's C functions (plan
+# 0018), and fixed-width files through datparser (ADR 0039). The ABI
+# number datakit was built for; dtaparser's must match.
 DTAPARSER_ABI <- 3L
 
 .onLoad <- function(libname, pkgname) {

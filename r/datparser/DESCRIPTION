@@ -1,0 +1,28 @@
+Package: datparser
+Title: Read Fixed-Width Text Files Through Their SAS Setup Files
+Version: 3.2.0
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
+Description: read_fixed_width() reads fixed-width .dat files, such as
+    the National Survey of Family Growth's, through the SAS setup files
+    that describe them: columns, variable labels, value labels, record
+    selection and missing-value recodes. Columns come back as a tibble
+    of standard R types, with value labels as attributes and the
+    extended missing values .a to .z as tagged NAs. A small part of the
+    dta-parser library, on its own; datakit includes it.
+License: GPL-3
+Depends: R (>= 4.2)
+Imports:
+    rlang,
+    stats,
+    tibble,
+    tidyselect,
+    utils
+Suggests:
+    haven,
+    jsonlite,
+    testthat (>= 3.0.0)
+SystemRequirements: Cargo (Rust's package manager), rustc
+Encoding: UTF-8
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.1
+Roxygen: list(markdown = TRUE)

@@ -1,0 +1,2 @@
+datparser bundles Rust code from this repository: the dta crate
+(GPL-3.0-only), which takes nothing from crates.io.

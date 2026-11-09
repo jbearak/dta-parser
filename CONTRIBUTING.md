@@ -34,7 +34,8 @@ people and by coding agents alike:
 | `crates/parquet` | Parquet with a dta profile (plan 0018, [ADR 0033](docs/adr/0033-parquet-with-a-dta-profile.md)): reader and writer over `crates/dta`'s `Source` | Rust |
 | `crates/dta-ffi` | the WebAssembly interface for the npm package, and the C interface (`include/dta.h`) for Julia | Rust |
 | `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
-| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width`, and Parquet's `read_parquet` and `save_parquet`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
+| `r/datparser` | the R package for `read_fixed_width` alone; builds R columns from the core's fixed-width reader, with its own copy of `crates/dta` in `src/rust` ([ADR 0039](docs/adr/0039-datparser.md)) | R, Rust, C |
+| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width` (datparser's, with labelled columns as dtaparser's class), and Parquet's `read_parquet` and `save_parquet`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
 | `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser, takes `:=` from datakit ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
 | `python` | the Python package, a PyO3 extension | Python, Rust |
 | `julia/DtaParser` | the Julia package for `.dta`, over the C interface; `DtaParser.Internals` holds what Datakit uses | Julia |

@@ -37,8 +37,8 @@ section.
 ## Install
 
 dtatools needs R 4.2 or later. It reads and writes through dtaparser
-and takes `:=` from datakit, and installing it installs both. None of
-the three is on CRAN. Each release is published as an R package
+and takes `:=` from datakit, and installing it installs both, and
+datparser, which datakit includes. None of the four is on CRAN. Each release is published as an R package
 repository on GitHub, with binaries for macOS (arm64), Windows (x86_64)
 and Ubuntu 24.04 (x86_64) for the current and previous R releases. On
 macOS and Windows:
@@ -47,10 +47,17 @@ macOS and Windows:
 install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
-To analyse or prepare data under R's rules, without dibbles, install dtaparser and datakit instead:
+To analyse or prepare data under R's rules, without dibbles, install datakit instead, which installs dtaparser and datparser:
 
 ```r norun
-install.packages(c("dtaparser", "datakit"), repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+install.packages("datakit", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+```
+
+To read fixed-width files and nothing else, install datparser alone
+(see [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)):
+
+```r norun
+install.packages("datparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
 On Ubuntu 24.04:
@@ -942,11 +949,21 @@ frame with `dtaparser::save_dta()`; dates, labelled columns and `.a` to
 Some surveys are published as fixed-width text with a SAS program, the
 *setup file*, that says where each variable sits. CDC publishes the
 National Survey of Family Growth this way, from 1973 to 2017-2019.
-datakit's `read_fixed_width()` reads such data through its setup
-file: columns from `INPUT`, variable labels from `LABEL`, value labels
+`read_fixed_width()` reads such data through its setup file: columns
+from `INPUT`, variable labels from `LABEL`, value labels
 from `PROC FORMAT` and `FORMAT`, record types from
 `IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
 *missing-value recodes*, such as `IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`.
+
+It lives in datparser, a package of its own that needs neither
+dtaparser nor datakit, and datakit includes it. The two differ in one
+way: datparser gives a column with value labels as a plain integer or
+double vector with a `labels` attribute, and datakit's
+`read_fixed_width()` gives it as a `dtaparser_labelled`, as
+`read_dta()` does, whose labels survive `x[i]` and dplyr and whose
+`.a` to `.z` `val_label()` and `na_tag()` read. The examples below use
+datakit's; datparser's reads the same values (see
+[datparser alone](#datparser-alone)).
 
 ```r
 writeLines(c(
@@ -988,6 +1005,18 @@ but in a variable whose setup recodes 97 "Refused" first, `.a` is
 "Refused". `recodes = "none"` ignores the recodes, keeping the codes as
 numbers.
 
+### datparser alone
+
+datparser reads the file in memory, with its own copy of the Rust
+core, and gives labelled columns as plain vectors:
+
+```r
+d <- datparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
+class(d$KIDS)           # "numeric"
+attr(d$KIDS, "labels")  # (0) None = 0, (98) DK = NA, (99) Not ascertained = NA
+dtaparser::na_tag(attr(d$KIDS, "labels")) # NA "a" "b"
+```
+
 Numeric columns take the smallest type that holds their values, and
 records shorter than the setup's columns read as blank (`NA`).
 Statements the reader does not run, such as other data-step code or a
@@ -995,8 +1024,9 @@ range in `VALUE`, are skipped with one warning; the tibble's
 `warnings` attribute lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes
 inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"`
 in CDC's 2011-2013 to 2015-2017 setups, is read from its first quote to
-its last, without a warning. `col_select`, `skip` and
-`n_max` work as in `read_dta()`, after the whole file is read.
+its last, without a warning. `col_select`, `skip` and `n_max` work as
+in `read_dta()`: only the columns selected are read and warned about,
+and `skip` and `n_max` count the records the setup keeps.
 
 CDC's setups from 2002 on differ in two ways, and `read_fixed_width()`
 reads both. The 2002 setups come in three files (`2002FemPregInput.sas`,
@@ -1536,7 +1566,10 @@ datakit exports:
 
 - `read_fixed_width(file, setup, recodes = "setup", ...)`: read
   fixed-width text through its SAS setup file (see
-  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)).
+  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), with
+  labelled columns as `dtaparser_labelled`. datparser exports the same
+  function, with labelled columns as plain vectors and a `labels`
+  attribute, and nothing else.
 - `d[i, name, by = ] := value`: make or change a column of a data
   frame under R's rules (`?datakit::":="`; see
   [From a do-file to R](#from-a-do-file-to-r)). `colon_equals()` is the

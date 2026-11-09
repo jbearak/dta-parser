@@ -1,15 +1,16 @@
 Package: datakit
 Title: Grouped Assignment, Stata and SAS Data, and Portable Parquet
-Version: 3.1.0
+Version: 3.2.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
 Description: Data preparation in R. d[i, name, by = g] := value makes or
     changes a column of a data frame or tibble for the rows i, within
     groups g: one line in Python, Julia, or Stata, with no ergonomic
     counterpart for data frames in R otherwise. read_dta() and
-    save_dta() read and write Stata .dta files, and read_fixed_width()
-    reads fixed-width .dat files, such as the National Survey of Family
-    Growth's, through their SAS setup files. Columns keep value labels
-    and the extended missing values .a to .z, read and set with
+    save_dta(), from dtaparser, read and write Stata .dta files, and
+    read_fixed_width(), from datparser, reads fixed-width .dat files,
+    such as the National Survey of Family Growth's, through their SAS
+    setup files. Columns keep value labels and the extended missing
+    values .a to .z, read and set with
     var_label(), val_labels(), with_labels(), and tagged_na(), without
     haven or labelled. read_parquet() and save_parquet() read and write
     Parquet files that keep them too: an interchange format with readers
@@ -18,7 +19,8 @@ Description: Data preparation in R. d[i, name, by = g] := value makes or
 License: GPL-3
 Depends: R (>= 4.2)
 Imports:
-    dtaparser (>= 3.1.0),
+    datparser (>= 3.2.0),
+    dtaparser (>= 3.2.0),
     rlang,
     stats,
     tibble,
@@ -36,6 +38,7 @@ Suggests:
     RcppTOML,
     testthat (>= 3.0.0)
 Remotes:
+    datparser=jbearak/dta-parser/r/datparser,
     dtaparser=jbearak/dta-parser/r/dtaparser
 Encoding: UTF-8
 Config/testthat/edition: 3
