@@ -29,7 +29,7 @@ def _load():
     try:
         from dta_parser import _native as native
     except ImportError as e:
-        raise ImportError(f"datakit {__version__} needs dta_parser 0.3, which could not be imported ({e}); "
+        raise ImportError(f"datakit {__version__} needs dta_parser 0.4, which could not be imported ({e}); "
                           f"{reinstall}") from e
     found = getattr(native, "ABI_VERSION", None)
     if found != ABI:

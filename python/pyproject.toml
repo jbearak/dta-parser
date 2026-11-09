@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dta-parser"
-version = "0.3.0"
+version = "0.4.0"
 description = "Read and write Stata .dta files into pandas, keeping .a to .z missing values"
 readme = "README.md"
 license = "GPL-3.0-only"

@@ -275,9 +275,9 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
     """Read a Stata .dta file (releases 104 to 119) into a pandas DataFrame.
 
     Numeric columns keep their storage width (int8, int16, int32, float32,
-    float64) when no value is missing; with only `.` missing they become
-    float32 (byte, int, float) or float64 (long, double) with NaN; with any
-    of `.a` to `.z` they are a DtaArray, which keeps each row's code.
+    float64) when no value is missing in the rows read; with any missing
+    value (`.` or `.a` to `.z`) they are a DtaArray, which keeps each row's
+    code and compares as missing (`x != 1` is <NA> there).
     Text is pandas' default string dtype; a strL column holding binary
     values is object, with `bytes` for those values.
 
@@ -378,15 +378,9 @@ def read_dta(path, columns=None, skip=0, n_max=None, encoding=None, dates=True):
                 continue
         if flag == 0:
             data[name] = values
-        elif flag == 1:
-            if storage in ("byte", "int"):
-                values = values.astype(np.float32)
-            elif storage == "long":
-                values = values.astype(np.float64)
-            if storage in ("byte", "int", "long"):
-                values[codes == 1] = np.nan
-            data[name] = values
         else:
+            # Any missing value, `.` alone included: a DtaArray, which
+            # compares as missing (plan 0024).
             data[name] = DtaArray(values.astype(np.float64, copy=False), codes, storage)
     if stale:
         shown = ", ".join(stale)

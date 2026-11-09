@@ -16,19 +16,21 @@ def test_numbers_keep_their_width_without_missing_values():
     assert df["i8"].dtype == np.int8
     assert df["i16"].dtype == np.int16
     assert df["i32"].dtype == np.int32
-    assert df["f32"].dtype == np.float32
-    assert df["f64"].dtype == np.float64
+    assert df["f32"].dtype == dp.DtaDtype("float")  # these two hold a `.`
+    assert df["f64"].dtype == dp.DtaDtype("double")
     assert df["s"].dtype == TEXT
 
 
-def test_only_system_missing_gives_floats_with_nan():
+def test_only_system_missing_gives_a_dta_array():
+    # Plan 0024: any missing value, `.` alone included, makes a DtaArray,
+    # so `!=` is <NA> on `.` as on a letter.
     df = read_dta(FIXTURES / "readstat_111.dta")
     storage = {k: v["storage"] for k, v in df.attrs["dta"]["columns"].items()}
-    assert storage["i"] == "int" and df["i"].dtype == np.float32
-    assert storage["l"] == "long" and df["l"].dtype == np.float64
-    assert storage["f"] == "float" and df["f"].dtype == np.float32
-    assert storage["d"] == "double" and df["d"].dtype == np.float64
+    for name, kind in [("i", "int"), ("l", "long"), ("f", "float"), ("d", "double")]:
+        assert storage[name] == kind and df[name].dtype == dp.DtaDtype(kind)
     assert df["i"].isna().tolist() == [False, False, True, False, False]
+    assert df["i"].array.codes.tolist() == [0, 0, 1, 0, 0]
+    assert (df["i"] != 1).tolist() == [True, True, pd.NA, True, True]
     # Exact: int16 and int32 values survive the float conversion.
     assert df["i"].tolist()[:2] == [1000.0, -32000.0]
     assert df["l"].tolist()[:3] == [1.0, -2000000000.0, 2000000000.0]
@@ -212,5 +214,5 @@ def test_dates_stay_numbers_with_extended_missing_values_or_fractions(tmp_path):
     assert back["half"].dtype == np.float64
     assert back["ms"].dtype == "datetime64[ms]"
     assert back["ms"][0] == pd.Timestamp("1960-01-01 00:00:00.001")
-    assert back["leap"].dtype == np.float64
+    assert back["leap"].dtype == dp.DtaDtype("double")
     assert back.attrs["dta"]["columns"]["leap"]["format"] == "%tC"

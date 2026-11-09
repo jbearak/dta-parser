@@ -151,9 +151,8 @@ comment                  str
 
 | in the file | in pandas |
 |---|---|
-| byte, int, long, float, double with no missing value | `int8`, `int16`, `int32`, `float32`, `float64` |
-| the same with `.` as the only missing value | `float32` (byte, int, float) or `float64` (long, double), `.` as `NaN` |
-| any numeric type with one or more of `.a` to `.z` | `DtaArray`, dtype `dta[byte]` ... `dta[double]` |
+| byte, int, long, float, double with no missing value in the rows read | `int8`, `int16`, `int32`, `float32`, `float64` |
+| the same with any missing value (`.` or `.a` to `.z`) | `DtaArray`, dtype `dta[byte]` ... `dta[double]` |
 | `%td` dates, `%tc` times | `datetime64[s]`, `datetime64[ms]` (see [Dates](#dates)) |
 | strN, strL text | pandas' default string dtype (`str` on pandas 3, `object` on 2.2) |
 | strL with binary values | `object`, holding `bytes` for those values |
@@ -256,9 +255,13 @@ Stata has 27 numeric missing values: `.` and `.a` to `.z`
   object per letter, that compare equal only to themselves. They print as
   `.a` ... `.z`.
 
-A column that has any of `.a` to `.z` is a `DtaArray`, which stores a
-missing code per row: 0 for a number, 1 for `.`, 2 to 27 for `.a` to
-`.z`.
+A column that has any missing value in the rows read is a `DtaArray`,
+which stores a missing code per row: 0 for a number, 1 for `.`, 2 to 27
+for `.a` to `.z`. It takes 9 bytes a row (a float64 and a code), so a
+`byte` column with a missing value takes more memory than its storage
+type suggests. A column with none keeps its numpy type, so the dtype of
+a column can depend on the rows read; `pd.concat` of two such reads
+gives a `DtaArray` again.
 
 ```python
 import dta_parser as dp
@@ -291,19 +294,51 @@ arr = dp.DtaArray([1.0, np.nan, np.nan], codes=[0, 2, 1], storage="long")
 print(arr.dtype)                          # dta[long]
 ```
 
-**What keeps the codes.** Boolean and positional selection, `loc` and
-`iloc`, `sort_values`, `concat` and `merge` when both columns are
-`DtaArray`s, `reindex` (new rows are `.`), `copy`, scalar get and set,
-and `groupby` on the column, where `.`, `.a`, ... are separate groups as
-in Stata. **What loses them.** Arithmetic (`income + 1` is a `float64`
-column with `NaN`), `fillna`, `astype`, and anything else that goes
-through numpy: the letters become `NaN`, which writes as `.`.
+**Comparisons give `<NA>` for a missing value**, as R's do:
+`income > 1000`, `income != 1000` and `income == np.nan` are `<NA>`
+where `income` is `.`, `.d` or `.r`, in a pandas `boolean` column.
+`df[mask]`, `df.loc[mask]` and `query` drop those rows, as dplyr's
+`filter()` does. To test for one letter, compare with it:
+`income == missing.r` is true on the `.r` rows and false elsewhere, and
+`missing.r == income` is the same. Two `DtaArray` columns compare `<NA>`
+where either is missing, even where both hold `.r`. Text is never equal
+to a number (`==` false, `!=` true) and cannot be ordered against one.
 
-**Comparisons.** `>`, `<` and `==` on a `DtaArray` follow pandas, not
-Stata: a missing value compares false with everything (`income > 1000`
-is false where `income` is `.a`). For Stata's rule, where missing values
-are larger than every number, compare keys:
-`dp.dta_keys(df["income"]) > 1000`.
+```python
+print((income != 1850).tolist())   # [True, <NA>, False, <NA>, <NA>, True]
+print(df[income != 1850]["id"].tolist())   # [1, 6]
+```
+
+`np.where(mask, ...)` and `if mask[i]:` refuse `<NA>`; fill it first,
+`mask.fillna(False)`. pandas' `where` and `mask` treat a `<NA>`
+condition as "replace", so `income.mask(income > 3000, 0)` replaces the
+missing rows too; write `income.mask((income > 3000).fillna(False), 0)`
+or assign with `loc`, which leaves them alone:
+`df.loc[income > 3000, "income"] = 0`.
+
+For Stata's rule, where missing values are larger than every number,
+compare keys: `dp.dta_keys(df["income"]) > 1000`.
+
+**What keeps the codes.** Boolean and positional selection, `loc` and
+`iloc`, `sort_values`, `concat` (with numpy and nullable columns too,
+except int64 and uint64, which give `object` rather than round values
+above 2^53), `merge` when both keys are `DtaArray`s (give a key of
+another type the same dtype first, `astype("dta[double]")`),
+`reindex` (new rows are `.`), `copy`, scalar get and set, `groupby` on
+the column, where `.`, `.a`, ... are separate groups as in Stata,
+`clip`, `round`, `cumsum`, `cumprod`, `cummin` and `cummax` (which skip
+missing rows; with `skipna=False` every row from the first missing one
+on has its code), and arithmetic: `income * 2` keeps `.d` and `.r`
+(where both sides are missing, the left side's code), and a NaN the
+arithmetic makes, such as `0 / 0`, is `.`. numpy functions with an
+operator (`np.add`, `np.abs`) keep the codes too. `fillna(v)` fills
+every missing row, letters included. **What loses them.** `astype(float)`,
+`to_numpy()`, numpy functions without an operator (`np.log`, `np.sqrt`),
+`rolling`, `expanding` and `ewm`: the result is `float64` with `NaN` for
+every missing value. `map` and `apply` see `missing.a` for a letter and
+`NaN` for `.`. `DataFrame.to_numpy()` of a frame with a `DtaArray`
+column is `object`, as pandas makes it for any extension type; write
+`df.to_numpy(dtype=float)`.
 
 **Sorting.** `sort_values` on a `DtaArray` puts missing values last,
 in Stata's order: numbers, `.`, `.a`, ..., `.z`. To sort by several

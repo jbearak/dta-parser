@@ -74,9 +74,35 @@ class DtaDtype(ExtensionDtype):
         raise TypeError(f"Cannot construct a 'DtaDtype' from '{string}'")
 
     def _get_common_dtype(self, dtypes):
-        if all(isinstance(d, DtaDtype) for d in dtypes):
-            return DtaDtype(functools.reduce(_wider, (d.storage for d in dtypes)))
+        # A numpy or nullable type joins as the narrowest storage holding its
+        # whole range exactly; int64 and uint64 do not fit a double, so
+        # pandas falls back to object rather than round them.
+        storages = [_storage_of(d) for d in dtypes]
+        if any(s is None for s in storages):
+            return None
+        return DtaDtype(functools.reduce(_wider, storages))
+
+
+# The storage that holds every value of a numpy dtype exactly.
+_STORAGE_OF_KIND = {
+    "b1": "byte", "i1": "int", "u1": "int", "i2": "long", "u2": "long",
+    "i4": "double", "u4": "double", "f4": "float", "f8": "double",
+}
+
+
+def _storage_of(dtype):
+    if isinstance(dtype, DtaDtype):
+        return dtype.storage
+    if isinstance(dtype, ExtensionDtype):
+        numpy_dtype = getattr(dtype, "numpy_dtype", None)
+        if numpy_dtype is None or not dtype._is_numeric and dtype.kind != "b":
+            return None
+        dtype = numpy_dtype
+    try:
+        dtype = np.dtype(dtype)
+    except TypeError:
         return None
+    return _STORAGE_OF_KIND.get(f"{dtype.kind}{dtype.itemsize}")
 
 
 def _scalar(value):
@@ -91,6 +117,45 @@ def _scalar(value):
     if isinstance(value, (bool, np.bool_)):
         return float(value), 0
     raise TypeError(f"a DtaArray holds numbers and missing values, not {value!r}")
+
+
+def _operand(other, n):
+    """The other operand of a comparison or arithmetic as arrays of length
+    `n`: values (NaN where missing), codes (0, 1 for `.`, 2 to 27), named
+    (True where a `MissingValue` names a letter) and text (True where it is
+    text)."""
+    zeros = np.zeros(n, dtype=bool)
+    if isinstance(other, DtaArray):
+        return other._values, other._codes, zeros, zeros
+    if not is_list_like(other) or isinstance(other, (str, bytes)):
+        if isinstance(other, (str, bytes)):
+            return np.full(n, np.nan), np.zeros(n, dtype=np.uint8), zeros, ~zeros
+        value, code = _scalar(other)
+        named = isinstance(other, MissingValue)
+        return (np.full(n, value), np.full(n, code, dtype=np.uint8),
+                np.full(n, named), zeros)
+    if len(other) != n:
+        raise ValueError(f"operands of lengths {n} and {len(other)} cannot be compared or combined")
+    if isinstance(other, ExtensionArray) and other.dtype._is_numeric:
+        values = other.to_numpy(dtype=np.float64, na_value=np.nan)
+        return values, np.isnan(values).astype(np.uint8), zeros, zeros
+    if isinstance(other, np.ndarray) and other.dtype.kind in "biuf":
+        values = other.astype(np.float64)
+        return values, np.isnan(values).astype(np.uint8), zeros, zeros
+    # Element by element: np.asarray of a list holding text would make
+    # every element text.
+    array = other if isinstance(other, (list, tuple)) else np.asarray(other, dtype=object)
+    values = np.full(n, np.nan)
+    codes = np.zeros(n, dtype=np.uint8)
+    named = zeros.copy()
+    text = zeros.copy()
+    for i, v in enumerate(array):
+        if isinstance(v, (str, bytes)):
+            text[i] = True
+        else:
+            values[i], codes[i] = _scalar(v)
+            named[i] = isinstance(v, MissingValue)
+    return values, codes, named, text
 
 
 def _from_keys(keys):
@@ -114,6 +179,9 @@ class DtaArray(ExtensionArray):
     (uint8: 0 not missing, 1 `.`, 2 to 27 `.a` to `.z`)."""
 
     __array_priority__ = 1000
+    # Above pandas' own arrays (1000), so `Int64 + DtaArray` is left to
+    # this array; below Index (2000) and Series (3000).
+    __pandas_priority__ = 1500
 
     def __init__(self, values, codes=None, storage="double", copy=False):
         as_array = np.array if copy else np.asarray
@@ -359,36 +427,101 @@ class DtaArray(ExtensionArray):
         return np.array([result]) if keepdims else result
 
     def _compare(self, other, op):
+        """A BooleanArray: where the other side names a letter (a
+        `MissingValue`), `==` and `!=` compare letters and an ordering is
+        <NA>; else <NA> where either side is missing; else the numbers.
+        Text: `==` false and `!=` true on the numbers, an ordering an
+        error."""
         if isinstance(other, (pd.Series, pd.Index, pd.DataFrame)):
             return NotImplemented
-        if isinstance(other, MissingValue):
-            hit = self._codes == other.code
-            return hit if op is operator.eq else ~hit if op is operator.ne else op(self._values, np.nan)
-        if isinstance(other, DtaArray):
-            other = other._values
-        return op(self._values, np.asarray(other) if is_list_like(other) else other)
+        n = len(self)
+        values, codes, named, text = _operand(other, n)
+        equality = op in (operator.eq, operator.ne)
+        if text.any() and not equality:
+            raise TypeError(f"cannot compare a DtaArray with text using {op.__name__}")
+        result = np.zeros(n, dtype=bool)
+        known = (self._codes == 0) & (codes == 0) & ~text
+        with np.errstate(invalid="ignore"):
+            result[known] = op(self._values[known], values[known])
+        result[text] = op is operator.ne
+        mask = ~known & ~named & ~text
+        mask |= text & (self._codes != 0)
+        if named.any():
+            if equality:
+                same = self._codes[named] == codes[named]
+                result[named] = same if op is operator.eq else ~same
+            else:
+                mask |= named
+        return pd.arrays.BooleanArray(result, mask)
 
-    def _arith(self, other, op):
+    def _arith(self, other, op, reflected=False):
+        """A DtaArray (double): a row missing on the left keeps its code,
+        else one missing on the right keeps the right's, whatever the
+        numbers give; a NaN the operation makes is `.`."""
         if isinstance(other, (pd.Series, pd.Index, pd.DataFrame)):
             return NotImplemented
-        if isinstance(other, DtaArray):
-            other = other._values
-        elif isinstance(other, MissingValue):
-            other = np.nan
-        return op(self._values, np.asarray(other) if is_list_like(other) else other)
+        n = len(self)
+        values, codes, _, text = _operand(other, n)
+        if text.any():
+            raise TypeError(f"unsupported operand: a DtaArray and text with {op.__name__}")
+        left, right = (values, self._values) if reflected else (self._values, values)
+        left_codes, right_codes = (codes, self._codes) if reflected else (self._codes, codes)
+        with np.errstate(all="ignore"):
+            out = np.asarray(op(left, right), dtype=np.float64)
+        out_codes = np.where(left_codes != 0, left_codes, right_codes)
+        out_codes = np.where((out_codes == 0) & np.isnan(out), np.uint8(1), out_codes).astype(np.uint8)
+        out = np.where(out_codes != 0, np.nan, out)
+        return self._simple(out, out_codes, DtaDtype("double"))
+
+    def _unary(self, values):
+        values = np.where(self._codes != 0, np.nan, values)
+        return self._simple(values, self._codes.copy(), DtaDtype("double"))
 
     def __neg__(self):
-        return -self._values
+        return self._unary(-self._values)
 
     def __pos__(self):
-        return self._values.copy()
+        return self._unary(self._values.copy())
 
     def __abs__(self):
-        return np.abs(self._values)
+        return self._unary(np.abs(self._values))
 
+    def round(self, decimals=0, *args, **kwargs):
+        values = np.round(self._values, decimals)
+        return self._simple(np.where(self._codes != 0, np.nan, values), self._codes.copy(), self._dtype)
 
-def _reflected(op):
-    return lambda a, b: op(b, a)
+    def _accumulate(self, name, *, skipna=True, **kwargs):
+        """cumsum, cumprod, cummin, cummax. With skipna, missing rows keep
+        their codes and are passed over; without, every row from the first
+        missing one on has that row's code."""
+        funcs = {"cumsum": (np.add, 0.0), "cumprod": (np.multiply, 1.0),
+                 "cummin": (np.minimum, np.inf), "cummax": (np.maximum, -np.inf)}
+        if name not in funcs:
+            raise TypeError(f"DtaArray does not support {name}")
+        ufunc, identity = funcs[name]
+        missing = self._codes != 0
+        with np.errstate(all="ignore"):
+            out = ufunc.accumulate(np.where(missing, identity, self._values))
+        codes = self._codes.copy()
+        if not skipna and missing.any():
+            first = int(np.argmax(missing))
+            codes[first:] = codes[first]
+        codes[(codes == 0) & np.isnan(out)] = 1  # a NaN the accumulation makes is `.`
+        out = np.where(codes != 0, np.nan, out)
+        storage = self._dtype if name in ("cummin", "cummax") else DtaDtype("double")
+        return self._simple(out, codes, storage)
+
+    def isin(self, values):
+        """True where the row's value is among `values`, by Stata key: a
+        `MissingValue` matches its letter, NaN or None matches `.`."""
+        if isinstance(values, (pd.Series, pd.Index)):
+            values = values.array
+        if isinstance(values, DtaArray):
+            wanted = values.keys()
+        else:
+            # Text is never a number, so it matches nothing.
+            wanted = np.fromiter((dta_key(v) for v in values if not isinstance(v, (str, bytes))), dtype=np.float64)
+        return np.isin(self.keys(), wanted)
 
 
 for _name, _op in [("eq", operator.eq), ("ne", operator.ne), ("lt", operator.lt),
@@ -399,7 +532,7 @@ for _name, _op in [("add", operator.add), ("sub", operator.sub), ("mul", operato
                    ("truediv", operator.truediv), ("floordiv", operator.floordiv),
                    ("mod", operator.mod), ("pow", operator.pow)]:
     setattr(DtaArray, f"__{_name}__", lambda self, other, op=_op: self._arith(other, op))
-    setattr(DtaArray, f"__r{_name}__", lambda self, other, op=_reflected(_op): self._arith(other, op))
+    setattr(DtaArray, f"__r{_name}__", lambda self, other, op=_op: self._arith(other, op, reflected=True))
 
 
 def dta_key(value):

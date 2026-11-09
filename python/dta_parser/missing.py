@@ -50,9 +50,13 @@ class MissingValue:
         return hash(("dta_parser.missing", self.code))
 
     def __eq__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self is other
 
     def __ne__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self is not other
 
     def __float__(self):
@@ -62,21 +66,39 @@ class MissingValue:
         return _KEYS[self.code - 1]
 
     def __lt__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self._key() < _key_of(other)
 
     def __le__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self._key() <= _key_of(other)
 
     def __gt__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self._key() > _key_of(other)
 
     def __ge__(self, other):
+        if _is_array(other):
+            return NotImplemented
         return self._key() >= _key_of(other)
 
 
 # The doubles Stata stores for `.` to `.z`: finite, increasing, and above
 # every number Stata stores. Index 0 is `.`.
 _KEYS = (np.uint64(0x7FE0000000000000) + (np.arange(27, dtype=np.uint64) << np.uint64(40))).view(np.float64)
+
+
+def _is_array(value):
+    """A list, or an array (numpy, a pandas Series, Index or array, a
+    DtaArray): comparing a
+    MissingValue with one is left to it (it returns NotImplemented), so
+    `missing.a == s` compares row by row, as `s == missing.a` does."""
+    if isinstance(value, (list, np.ndarray)):
+        return True
+    return hasattr(value, "__array__") and hasattr(value, "__len__")
 
 
 def _key_of(value):
