@@ -199,6 +199,52 @@ the script: R parses the literal `1e300` as `1.0000000000000006e300`
 (its own string-to-double conversion is not correctly rounded), so the
 scripts use `2^1000`, which both languages hold exactly.
 
+## One frame in both languages (polars)
+
+    sh compat/parquet/cross_language_polars.sh [DIR]
+
+R's datakit (`read_parquet_pl()`, `read_dta_pl()`) and Python's
+(`read_parquet()`, `read_dta()`) read the same files into polars, and
+Python compares what they read (plan 0025, stage 4). CI runs it in the
+`parquet-r` job. The steps:
+
+1. Python's datakit writes the fixtures with `save_parquet()` and
+   `save_dta()`, from data `cross_language_polars.py` makes: columns
+   holding `.a` to `.z` (Float64 with byte, long, and float storage
+   kept, a date and a timestamp as Stata's numbers, a categorical as its
+   level numbers), an integer with nulls, a Boolean, text with `"nan"`,
+   an Enum, a byte column labelled by a set where two codes share a
+   text, a date, a timestamp, `-0.0`, and `2^1000`; labels on `.a` and
+   `.z` (and on `.` in the Parquet file, since a `.dta` file cannot
+   label `.`); a data label, notes, characteristics, a sort, and a time
+   stamp. The Parquet file adds a zoned timestamp and plain NaNs.
+   pyarrow writes `other.parquet`, with a decimal, Int64, UInt64, a
+   dictionary column, and Float32, which no "dta" profile describes.
+2. Each language reads the two fixtures, with `factors` off and on, and
+   saves what it read with its own `save_parquet()` and `save_dta()`.
+3. Each language makes the same 84 reads (listed in `cases.json`): every
+   fixture and every saved file, whole, with `letters = FALSE`, with
+   `factors = TRUE` (with and without letters), in a window of rows
+   holding no letter, in one holding letters (with and without
+   `letters`), and four columns in an order of their own. Each frame
+   is written as Arrow IPC and its metadata as JSON.
+4. Python compares the two, read by read: column names and order;
+   dtypes, with temporal units, zones, and Enum levels; which rows are
+   null; every valid cell, a Float64 by its 64 bits and a Float32 by its
+   32, so that each letter's payload counts; then the metadata field by
+   field, `storage` by dtype name, value labels as `{"set", "code",
+   "text"}` records with the code a number or `"."`, `".a"` ...
+   `".z"`. Buffers under nulls, chunk boundaries, and dictionary layout
+   are not compared.
+
+Result with R 4.6.1, Python 3.14, and polars 2.1.0 on both sides: 84
+reads, 1,180 columns, 5,935 valid cells, and 756 metadata fields
+compared, and none differ. To check that the comparison catches a
+difference, R's dump was changed once to write `.b` where row 5 of
+`score` holds `.a` in one read: both are NaN, and only the payload
+differs. The check failed with status 1, naming the read, the column,
+and the cell, and passed again once the change was undone.
+
 ## Credits
 
 The fixtures were written with, and the expected values read by, these
