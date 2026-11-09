@@ -86,6 +86,13 @@ def test_the_functions_take_a_name_an_expr_or_a_series():
     assert df.select(dk.is_tagged_na("x", "c"))["x"].to_list() == [False, False, False]
     assert dk.is_tagged_na(df["x"], "b").to_list() == [False, True, False]
     assert dk.na_tag(df["x"]).name == "x"
+    # Other dtypes hold no letter, whatever the form of the argument.
+    other = pl.DataFrame({"i": pl.Series([1, None], dtype=pl.Int8), "f": pl.Series([1.0, None], dtype=pl.Float32),
+                          "s": ["a", None], "d": pl.Series([0, None], dtype=pl.Date)})
+    for c in other.columns:
+        assert other.select(dk.na_tag(c))[c].to_list() == [None, None], c
+        assert other.select(dk.is_tagged_na(pl.col(c)))[c].to_list() == [False, False], c
+        assert dk.is_tagged_na(other[c]).to_list() == [False, False], c
     with pytest.raises(TypeError):
         dk.na_tag(1.0)
     with pytest.raises(ValueError):
