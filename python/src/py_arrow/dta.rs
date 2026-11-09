@@ -1,5 +1,5 @@
 //! datakit's `.dta` functions: `dta_read_arrow` and `dta_write_arrow`,
-//! over `crate::arrow::dta`.
+//! over `dta_arrow::dta`.
 
 use std::collections::HashSet;
 
@@ -9,9 +9,9 @@ use pyo3::types::{PyDict, PyTuple};
 
 use super::parquet::{column_entries, column_names, item, value_labels};
 use super::{import, raise, read_tuple, selectors};
-use crate::arrow::dta::{dta_read, dta_write, CATEGORICAL_MARK, FACTOR_MARK};
-use crate::arrow::meta::WriteMeta;
-use crate::arrow::read::Stamps;
+use dta_arrow::dta::{dta_read, dta_write, CATEGORICAL_MARK, FACTOR_MARK};
+use dta_arrow::meta::WriteMeta;
+use dta_arrow::read::Stamps;
 
 /// Read rows `skip..skip + n_max` of `columns` (names or 0-based
 /// positions; all when None) of the `.dta` file at `path` into Arrow

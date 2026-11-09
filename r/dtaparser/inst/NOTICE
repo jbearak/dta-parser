@@ -1,8 +1,8 @@
-dtaparser bundles Rust code from this repository (the dta and dta-parquet
-crates, GPL-3.0-only) and, for reading and writing Parquet files, these
-crates from crates.io. The source package carries their source in
-src/rust/vendor.tar.xz with each crate's own licence files. A package
-built from GitHub fetches the same versions (src/rust/Cargo.lock).
+dtaparser bundles Rust code from this repository (the dta, dta-parquet,
+and dta-arrow crates, GPL-3.0-only) and, for reading and writing Parquet
+files, these crates from crates.io. The source package carries their
+source in src/rust/vendor.tar.xz with each crate's own licence files. A
+package built from GitHub fetches the same versions (src/rust/Cargo.lock).
 
 Compiled into the package:
 

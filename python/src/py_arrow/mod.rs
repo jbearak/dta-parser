@@ -1,4 +1,4 @@
-//! The Python binding of `crate::arrow` (plan 0025, stage 2a): the
+//! The Python binding of `dta_arrow` (plan 0025, stage 2a): the
 //! functions datakit calls, which turn Python's arguments into what the
 //! pyo3-free modules take, release the GIL around them where they did
 //! before, and turn what they give back into the tuples, dicts and
@@ -6,7 +6,7 @@
 //! dta_parser and versioned by `ABI_VERSION`; datakit is their only
 //! caller.
 //!
-//! Here, not in `crate::arrow`: Python's file objects (a [`dta::Source`]),
+//! Here, not in `dta_arrow`: Python's file objects (a [`dta::Source`]),
 //! the PyCapsules of `__arrow_c_stream__`, the `ArrowTable` class, the
 //! digest (`arrow_digest`, Python's alone) and the ABI number.
 
@@ -21,16 +21,16 @@ use pyo3::ffi;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 
-use crate::arrow::error::Error;
-use crate::arrow::ffi::{export_stream, import_stream, ArrowArrayStream, Imported, Table};
-use crate::arrow::meta::{LabelKey, ReadMeta, ReadOutput};
-use crate::arrow::parquet::Selector;
+use dta_arrow::error::Error;
+use dta_arrow::ffi::{export_stream, import_stream, ArrowArrayStream, Imported, Table};
+use dta_arrow::meta::{LabelKey, ReadMeta, ReadOutput};
+use dta_arrow::parquet::Selector;
 
 /// The version of the functions datakit calls; datakit checks it when it
 /// loads. Raise it when any of them changes what it takes or gives.
 pub const ABI_VERSION: u32 = 1;
 
-/// The Python exception of an error of `crate::arrow`.
+/// The Python exception of an error of `dta_arrow`.
 pub(crate) fn raise(e: Error) -> PyErr {
     match e {
         Error::Value(m) => PyValueError::new_err(m),

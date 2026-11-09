@@ -5,10 +5,10 @@
 //! numpy without its C API (the buffer protocol is not in the abi3 API
 //! before Python 3.11). Writing borrows numpy buffers the same way.
 //! Strings are made here, one Python object per distinct recent value.
-//! Parquet goes through `arrow`, for datakit only (plan 0019), which
-//! uses no pyo3; `py_arrow` is its binding (plan 0025, stage 2a).
+//! Parquet goes through the `dta-arrow` crate (`crates/arrow`), for
+//! datakit only (plan 0019), which uses no pyo3; `py_arrow` is its
+//! binding (plan 0025, stages 2a and 2b).
 
-mod arrow;
 mod py_arrow;
 
 use std::ffi::c_char;
@@ -26,14 +26,14 @@ use dta::{
     Characteristic, Column, Dataset, FileSource, Reader, StorageType, ValueLabel, ValueLabelSet, Values, WriteVariable,
 };
 
-use arrow::create_beside;
+use dta_arrow::create_beside;
 
 fn fail(e: impl std::fmt::Display) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
 fn open(path: &str, encoding: Option<&str>) -> PyResult<Reader<FileSource>> {
-    arrow::dta::open(path, encoding).map_err(py_arrow::raise)
+    dta_arrow::dta::open(path, encoding).map_err(py_arrow::raise)
 }
 
 /// The header, descriptors, value labels and characteristics of a file.

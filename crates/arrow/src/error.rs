@@ -1,12 +1,12 @@
 //! The Arrow modules' error (plan 0025, stage 2a): one variant per kind
 //! of exception the Python functions raised before these modules were
-//! made free of pyo3. The binding (`crate::py_arrow`) raises each as that
-//! exception, with the same message.
+//! made free of pyo3. The binding (dta_parser's `py_arrow`) raises each
+//! as that exception, with the same message.
 
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum Error {
+pub enum Error {
     /// Bad input: a file that cannot be read, a value that cannot be
     /// written, an argument out of its choices (`ValueError`).
     Value(String),
@@ -23,10 +23,10 @@ pub(crate) enum Error {
     Memory(String),
 }
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// A `Value` error with `e`'s message.
-pub(crate) fn fail(e: impl fmt::Display) -> Error {
+pub fn fail(e: impl fmt::Display) -> Error {
     Error::Value(e.to_string())
 }
 
@@ -34,7 +34,7 @@ impl Error {
     /// The error, its message starting with `path` when it is a `Value`
     /// error: a read from a path names the file in what went wrong with
     /// it, and not in a wrong name, position or type, or a lack of memory.
-    pub(crate) fn prefixed(self, path: &str) -> Error {
+    pub fn prefixed(self, path: &str) -> Error {
         match self {
             Error::Value(m) => Error::Value(format!("{path}: {m}")),
             e => e,

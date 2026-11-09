@@ -12,8 +12,12 @@ if [ -d ../../crates/dta ]; then
   mkdir -p src/rust/parquet
   cp -R ../../crates/parquet/src src/rust/parquet/
   sed '/^\[dev-dependencies\]/,$d' ../../crates/parquet/Cargo.toml > src/rust/parquet/Cargo.toml
+  rm -rf src/rust/arrow
+  mkdir -p src/rust/arrow
+  cp -R ../../crates/arrow/src src/rust/arrow/
+  sed '/^\[dev-dependencies\]/,$d' ../../crates/arrow/Cargo.toml > src/rust/arrow/Cargo.toml
 fi
-for crate in dta parquet; do
+for crate in dta parquet arrow; do
   if [ ! -d src/rust/$crate ]; then
     echo "dtaparser: the Rust core (src/rust/$crate) is missing" >&2
     exit 1

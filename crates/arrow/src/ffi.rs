@@ -20,43 +20,43 @@ use super::error::{fail, Error, Result};
 // ------------------------------------------------------------ C structs
 
 #[repr(C)]
-pub(crate) struct ArrowSchema {
-    pub(crate) format: *const c_char,
-    pub(crate) name: *const c_char,
-    pub(crate) metadata: *const c_char,
-    pub(crate) flags: i64,
-    pub(crate) n_children: i64,
-    pub(crate) children: *mut *mut ArrowSchema,
-    pub(crate) dictionary: *mut ArrowSchema,
-    pub(crate) release: Option<unsafe extern "C" fn(*mut ArrowSchema)>,
-    pub(crate) private_data: *mut c_void,
+pub struct ArrowSchema {
+    pub format: *const c_char,
+    pub name: *const c_char,
+    pub metadata: *const c_char,
+    pub flags: i64,
+    pub n_children: i64,
+    pub children: *mut *mut ArrowSchema,
+    pub dictionary: *mut ArrowSchema,
+    pub release: Option<unsafe extern "C" fn(*mut ArrowSchema)>,
+    pub private_data: *mut c_void,
 }
 
 #[repr(C)]
-pub(crate) struct ArrowArray {
-    pub(crate) length: i64,
-    pub(crate) null_count: i64,
-    pub(crate) offset: i64,
-    pub(crate) n_buffers: i64,
-    pub(crate) n_children: i64,
-    pub(crate) buffers: *mut *const c_void,
-    pub(crate) children: *mut *mut ArrowArray,
-    pub(crate) dictionary: *mut ArrowArray,
-    pub(crate) release: Option<unsafe extern "C" fn(*mut ArrowArray)>,
-    pub(crate) private_data: *mut c_void,
+pub struct ArrowArray {
+    pub length: i64,
+    pub null_count: i64,
+    pub offset: i64,
+    pub n_buffers: i64,
+    pub n_children: i64,
+    pub buffers: *mut *const c_void,
+    pub children: *mut *mut ArrowArray,
+    pub dictionary: *mut ArrowArray,
+    pub release: Option<unsafe extern "C" fn(*mut ArrowArray)>,
+    pub private_data: *mut c_void,
 }
 
 #[repr(C)]
-pub(crate) struct ArrowArrayStream {
-    pub(crate) get_schema: Option<unsafe extern "C" fn(*mut ArrowArrayStream, *mut ArrowSchema) -> c_int>,
-    pub(crate) get_next: Option<unsafe extern "C" fn(*mut ArrowArrayStream, *mut ArrowArray) -> c_int>,
-    pub(crate) get_last_error: Option<unsafe extern "C" fn(*mut ArrowArrayStream) -> *const c_char>,
-    pub(crate) release: Option<unsafe extern "C" fn(*mut ArrowArrayStream)>,
-    pub(crate) private_data: *mut c_void,
+pub struct ArrowArrayStream {
+    pub get_schema: Option<unsafe extern "C" fn(*mut ArrowArrayStream, *mut ArrowSchema) -> c_int>,
+    pub get_next: Option<unsafe extern "C" fn(*mut ArrowArrayStream, *mut ArrowArray) -> c_int>,
+    pub get_last_error: Option<unsafe extern "C" fn(*mut ArrowArrayStream) -> *const c_char>,
+    pub release: Option<unsafe extern "C" fn(*mut ArrowArrayStream)>,
+    pub private_data: *mut c_void,
 }
 
-pub(crate) const NULLABLE: i64 = 2;
-pub(crate) const DICTIONARY_ORDERED: i64 = 1;
+pub const NULLABLE: i64 = 2;
+pub const DICTIONARY_ORDERED: i64 = 1;
 
 fn empty_array() -> ArrowArray {
     ArrowArray {
@@ -92,23 +92,23 @@ fn empty_schema() -> ArrowSchema {
 /// A field to export: its format string (the C interface's), name,
 /// flags, metadata (already encoded) and children or dictionary.
 #[derive(Clone)]
-pub(crate) struct Field {
-    pub(crate) name: String,
-    pub(crate) format: String,
-    pub(crate) flags: i64,
-    pub(crate) metadata: Option<Vec<u8>>,
-    pub(crate) children: Vec<Field>,
-    pub(crate) dictionary: Option<Box<Field>>,
+pub struct Field {
+    pub name: String,
+    pub format: String,
+    pub flags: i64,
+    pub metadata: Option<Vec<u8>>,
+    pub children: Vec<Field>,
+    pub dictionary: Option<Box<Field>>,
 }
 
 impl Field {
-    pub(crate) fn new(name: &str, format: &str) -> Self {
+    pub fn new(name: &str, format: &str) -> Self {
         Field { name: name.into(), format: format.into(), flags: NULLABLE, metadata: None, children: Vec::new(), dictionary: None }
     }
 }
 
 /// Encode key-value metadata as the interface lays it out.
-pub(crate) fn metadata(pairs: &[(&str, &[u8])]) -> Vec<u8> {
+pub fn metadata(pairs: &[(&str, &[u8])]) -> Vec<u8> {
     let mut out = Vec::new();
     out.extend_from_slice(&(pairs.len() as i32).to_ne_bytes());
     for (k, v) in pairs {
@@ -169,18 +169,18 @@ unsafe fn free_schema(c: *mut ArrowSchema) {
 }
 
 /// What keeps exported buffers alive.
-pub(crate) type Owner = Arc<dyn Any + Send + Sync>;
+pub type Owner = Arc<dyn Any + Send + Sync>;
 
 /// An array to export: pointers into buffers that `owner` keeps alive.
 #[derive(Clone)]
-pub(crate) struct Array {
-    pub(crate) length: usize,
-    pub(crate) null_count: usize,
-    pub(crate) offset: usize,
-    pub(crate) buffers: Vec<usize>,
-    pub(crate) children: Vec<Array>,
-    pub(crate) dictionary: Option<Box<Array>>,
-    pub(crate) owner: Option<Owner>,
+pub struct Array {
+    pub length: usize,
+    pub null_count: usize,
+    pub offset: usize,
+    pub buffers: Vec<usize>,
+    pub children: Vec<Array>,
+    pub dictionary: Option<Box<Array>>,
+    pub owner: Option<Owner>,
 }
 
 struct ArrayPrivate {
@@ -237,9 +237,9 @@ unsafe fn free_array(c: *mut ArrowArray) {
 /// A table to export: fields and batches (struct arrays, one child per
 /// field).
 #[derive(Clone)]
-pub(crate) struct Table {
-    pub(crate) fields: Vec<Field>,
-    pub(crate) batches: Vec<Array>,
+pub struct Table {
+    pub fields: Vec<Field>,
+    pub batches: Vec<Array>,
 }
 
 struct StreamPrivate {
@@ -277,7 +277,7 @@ unsafe extern "C" fn stream_release(s: *mut ArrowArrayStream) {
 
 /// `table` as an `ArrowArrayStream` that owns a copy of its batches (the
 /// buffers shared through their owners); its `release` frees it.
-pub(crate) fn export_stream(table: &Table) -> ArrowArrayStream {
+pub fn export_stream(table: &Table) -> ArrowArrayStream {
     let private = Box::new(StreamPrivate { next: table.batches.iter().cloned().collect(), table: table.clone() });
     ArrowArrayStream {
         get_schema: Some(stream_get_schema),
@@ -296,7 +296,7 @@ pub(crate) fn export_stream(table: &Table) -> ArrowArrayStream {
 /// alignment than the allocator's own makes Rust zero every byte at
 /// once, which touched a gigabyte on the synthetic `long` before the
 /// read began.)
-pub(crate) struct Block {
+pub struct Block {
     ptr: *mut u8,
     len: usize,
 }
@@ -307,11 +307,11 @@ unsafe impl Send for Block {}
 unsafe impl Sync for Block {}
 
 /// Each buffer in a block starts at a multiple of this.
-pub(crate) const ALIGN: usize = 64;
+pub const ALIGN: usize = 64;
 const BLOCK_ALIGN: usize = 16;
 
 impl Block {
-    pub(crate) fn zeroed(len: usize) -> Result<Self> {
+    pub fn zeroed(len: usize) -> Result<Self> {
         if len == 0 {
             return Ok(Block { ptr: BLOCK_ALIGN as *mut u8, len: 0 });
         }
@@ -324,7 +324,7 @@ impl Block {
         Ok(Block { ptr, len })
     }
 
-    pub(crate) fn addr(&self) -> usize {
+    pub fn addr(&self) -> usize {
         self.ptr as usize
     }
 }
@@ -342,19 +342,19 @@ impl Drop for Block {
 /// [`ALIGN`]: a wide file's thousands of columns then cost one
 /// allocation, not two each.
 #[derive(Default)]
-pub(crate) struct Plan {
+pub struct Plan {
     size: usize,
 }
 
 impl Plan {
     /// Room for `len` bytes; returns its offset.
-    pub(crate) fn add(&mut self, len: usize) -> usize {
+    pub fn add(&mut self, len: usize) -> usize {
         let at = self.size;
         self.size += len.div_ceil(ALIGN) * ALIGN;
         at
     }
 
-    pub(crate) fn block(&self) -> Result<Block> {
+    pub fn block(&self) -> Result<Block> {
         Block::zeroed(self.size)
     }
 }
@@ -363,16 +363,16 @@ impl Plan {
 
 /// A field of an imported schema.
 #[derive(Debug, Clone)]
-pub(crate) struct InField {
-    pub(crate) name: String,
-    pub(crate) format: String,
-    pub(crate) metadata: Vec<(String, Vec<u8>)>,
-    pub(crate) children: Vec<InField>,
-    pub(crate) dictionary: Option<Box<InField>>,
+pub struct InField {
+    pub name: String,
+    pub format: String,
+    pub metadata: Vec<(String, Vec<u8>)>,
+    pub children: Vec<InField>,
+    pub dictionary: Option<Box<InField>>,
 }
 
 impl InField {
-    pub(crate) fn meta(&self, key: &str) -> Option<&[u8]> {
+    pub fn meta(&self, key: &str) -> Option<&[u8]> {
         self.metadata.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_slice())
     }
 }
@@ -423,7 +423,7 @@ unsafe fn read_field(s: *const ArrowSchema) -> InField {
 
 /// An imported array: released when dropped. Its children and dictionary
 /// belong to it.
-pub(crate) struct InArray {
+pub struct InArray {
     raw: Box<ArrowArray>,
 }
 
@@ -443,54 +443,57 @@ impl Drop for InArray {
 
 /// A view of an imported array (the top one or a child).
 #[derive(Clone, Copy)]
-pub(crate) struct ArrayRef<'a> {
+pub struct ArrayRef<'a> {
     raw: &'a ArrowArray,
 }
 
+// Public since the move to a crate of its own (plan 0025, stage 2b); no
+// caller asks whether a view is empty.
+#[allow(clippy::len_without_is_empty)]
 impl<'a> ArrayRef<'a> {
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.raw.length.max(0) as usize
     }
-    pub(crate) fn offset(&self) -> usize {
+    pub fn offset(&self) -> usize {
         self.raw.offset.max(0) as usize
     }
-    pub(crate) fn null_count(&self) -> i64 {
+    pub fn null_count(&self) -> i64 {
         self.raw.null_count
     }
-    pub(crate) fn n_buffers(&self) -> usize {
+    pub fn n_buffers(&self) -> usize {
         self.raw.n_buffers.max(0) as usize
     }
     /// Buffer `i`'s address, 0 when null or absent.
-    pub(crate) fn buffer(&self, i: usize) -> usize {
+    pub fn buffer(&self, i: usize) -> usize {
         if i >= self.n_buffers() {
             return 0;
         }
         // SAFETY: the array has `n_buffers` buffer pointers.
         unsafe { *self.raw.buffers.add(i) as usize }
     }
-    pub(crate) fn child(&self, i: usize) -> Option<ArrayRef<'a>> {
+    pub fn child(&self, i: usize) -> Option<ArrayRef<'a>> {
         if i >= self.raw.n_children.max(0) as usize {
             return None;
         }
         // SAFETY: the array has `n_children` child pointers.
         unsafe { (*self.raw.children.add(i)).as_ref().map(|raw| ArrayRef { raw }) }
     }
-    pub(crate) fn dictionary(&self) -> Option<ArrayRef<'a>> {
+    pub fn dictionary(&self) -> Option<ArrayRef<'a>> {
         // SAFETY: a non-null dictionary pointer is a valid array.
         unsafe { self.raw.dictionary.as_ref().map(|raw| ArrayRef { raw }) }
     }
 }
 
 impl InArray {
-    pub(crate) fn get(&self) -> ArrayRef<'_> {
+    pub fn get(&self) -> ArrayRef<'_> {
         ArrayRef { raw: &self.raw }
     }
 }
 
 /// An imported stream: its schema and every batch.
-pub(crate) struct Imported {
-    pub(crate) schema: InField,
-    pub(crate) batches: Vec<InArray>,
+pub struct Imported {
+    pub schema: InField,
+    pub batches: Vec<InArray>,
 }
 
 /// Take every batch of the stream at `p`, moving it out: its `release`
@@ -499,7 +502,7 @@ pub(crate) struct Imported {
 ///
 /// # Safety
 /// `p` points at a valid `ArrowArrayStream` that no one else is reading.
-pub(crate) unsafe fn import_stream(p: *mut ArrowArrayStream) -> Result<Imported> {
+pub unsafe fn import_stream(p: *mut ArrowArrayStream) -> Result<Imported> {
     let mut stream = std::ptr::read(p);
     (*p).release = None;
     struct Release(*mut ArrowArrayStream);
@@ -546,7 +549,7 @@ pub(crate) unsafe fn import_stream(p: *mut ArrowArrayStream) -> Result<Imported>
 
 /// Whether row `i` (counting the array's offset) has a value.
 #[inline]
-pub(crate) fn valid(a: &ArrayRef, i: usize) -> bool {
+pub fn valid(a: &ArrayRef, i: usize) -> bool {
     let v = a.buffer(0);
     v == 0 || a.null_count() == 0 || unsafe { (*(v as *const u8).add(i / 8) >> (i % 8)) & 1 == 1 }
 }
@@ -556,7 +559,7 @@ pub(crate) fn valid(a: &ArrayRef, i: usize) -> bool {
 ///
 /// # Safety
 /// The array's buffers are of the format given.
-pub(crate) unsafe fn text_at<'a>(a: &ArrayRef<'a>, format: &str, i: usize) -> &'a [u8] {
+pub unsafe fn text_at<'a>(a: &ArrayRef<'a>, format: &str, i: usize) -> &'a [u8] {
     match format {
         "u" | "z" => {
             let o = a.buffer(1) as *const i32;
@@ -587,7 +590,7 @@ pub(crate) unsafe fn text_at<'a>(a: &ArrayRef<'a>, format: &str, i: usize) -> &'
 ///
 /// # Safety
 /// The keys buffer holds row `i` in `format`.
-pub(crate) unsafe fn key_at(a: &ArrayRef, format: &str, i: usize) -> Option<usize> {
+pub unsafe fn key_at(a: &ArrayRef, format: &str, i: usize) -> Option<usize> {
     let p = a.buffer(1);
     Some(match format {
         "C" => *(p as *const u8).add(i) as usize,
@@ -603,7 +606,7 @@ pub(crate) unsafe fn key_at(a: &ArrayRef, format: &str, i: usize) -> Option<usiz
 }
 
 /// Nanoseconds per unit of a `ts` or `tt` format's unit letter.
-pub(crate) fn per_unit(c: u8) -> Option<i128> {
+pub fn per_unit(c: u8) -> Option<i128> {
     Some(match c {
         b's' => 1_000_000_000,
         b'm' => 1_000_000,

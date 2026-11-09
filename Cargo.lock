@@ -60,6 +60,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dta-arrow"
+version = "0.1.0"
+dependencies = [
+ "dta",
+ "dta-parquet",
+]
+
+[[package]]
 name = "dta-ffi"
 version = "1.0.0"
 dependencies = [

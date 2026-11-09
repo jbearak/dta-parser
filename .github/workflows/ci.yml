@@ -131,9 +131,9 @@ jobs:
       - run: scripts/build-r-package.sh
       # Installs from GitHub build r/dtaparser and r/datparser alone, from
       # their committed copies of the Rust core; configure just refreshed
-      # them from crates/dta and crates/parquet.
-      - name: Committed Rust core matches crates/dta and crates/parquet
-        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet r/datparser/src/rust/dta)"
+      # them from crates/dta, crates/parquet, and crates/arrow.
+      - name: Committed Rust core matches crates/dta, crates/parquet, and crates/arrow
+        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet r/dtaparser/src/rust/arrow r/datparser/src/rust/dta)"
       # The source package carries its crates.io crates (plan 0018): it
       # builds with cargo offline and an empty cargo home, so nothing can
       # come from the network or a cache.

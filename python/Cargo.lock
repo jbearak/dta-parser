@@ -62,6 +62,14 @@ name = "dta"
 version = "1.0.0"
 
 [[package]]
+name = "dta-arrow"
+version = "0.1.0"
+dependencies = [
+ "dta",
+ "dta-parquet",
+]
+
+[[package]]
 name = "dta-parquet"
 version = "0.1.0"
 dependencies = [
@@ -78,6 +86,7 @@ name = "dta-parser-python"
 version = "0.3.0"
 dependencies = [
  "dta",
+ "dta-arrow",
  "dta-parquet",
  "pyo3",
 ]

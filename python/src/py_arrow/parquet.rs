@@ -1,6 +1,6 @@
 //! datakit's Parquet functions: `parquet_read_arrow`,
 //! `parquet_info_arrow` and `parquet_write_arrow`, over
-//! `crate::arrow::read` and `crate::arrow::write`.
+//! `dta_arrow::read` and `dta_arrow::write`.
 
 use std::collections::{HashMap, HashSet};
 
@@ -11,11 +11,11 @@ use pyo3::types::{PyBytes, PyDict, PyList, PyString, PyTuple};
 use dta::Source;
 
 use super::{import, meta_dict, raise, read_tuple, selectors};
-use crate::arrow::ffi::Imported;
-use crate::arrow::meta::{Code, ColumnEntry, GivenSet, ParquetInfo, WriteMeta};
-use crate::arrow::parquet::Input;
-use crate::arrow::read::{parquet_info, parquet_read, Stamps};
-use crate::arrow::write::{parquet_options, parquet_write};
+use dta_arrow::ffi::Imported;
+use dta_arrow::meta::{Code, ColumnEntry, GivenSet, ParquetInfo, WriteMeta};
+use dta_arrow::parquet::Input;
+use dta_arrow::read::{parquet_info, parquet_read, Stamps};
+use dta_arrow::write::{parquet_options, parquet_write};
 
 /// A binary Python file object with `seek` and `read`, read on the
 /// calling thread (it is not shared, so a read from one decodes on one
