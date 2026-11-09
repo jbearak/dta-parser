@@ -135,10 +135,12 @@ datakit, and run its tests:
 
 Use a wheel rather than `maturin develop`: an editable `dta_parser`
 puts `python/` on the import path, where the directory `python/datakit`
-hides the installed package. With pyarrow and duckdb installed, the
-tests also check that those tools and polars read back what
+hides the installed package (or put `python/datakit` first on
+`PYTHONPATH`). With pyarrow and duckdb installed, the tests also check
+that those tools, and polars if installed, read back what
 `save_parquet` writes. `bench/parquet/run_polars.py` runs the Python
-Parquet benchmarks against polars and pyarrow, and
+Parquet benchmarks of datakit (into pandas) against pandas, polars and
+pyarrow, and
 `bench/parquet/threads_polars.py` times the Arrow path's reads and
 writes at 1 to 16 threads.
 

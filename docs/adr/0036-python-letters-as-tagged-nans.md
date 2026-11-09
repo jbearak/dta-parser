@@ -1,6 +1,8 @@
 # Python's datakit keeps .a to .z in the frame, as tagged NaNs
 
-Its paragraph on TypeScript is superseded by ADR 0037: TypeScript's
+Superseded for Python by ADR 0040: Python's datakit returns pandas, with
+`.a` to `.z` in `DtaArray` columns, which compare as missing. Its
+paragraph on TypeScript is superseded by ADR 0037: TypeScript's
 `NumberColumn` now holds tagged NaNs too.
 
 Supersedes the paragraph of ADR 0034 on where Python's datakit keeps

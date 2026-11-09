@@ -1,6 +1,6 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R), datakit (Python, into polars), Datakit (Julia) and
+datakit (R), datakit (Python, into pandas), Datakit (Julia) and
 `@jbearak/datakit` (TypeScript) read and write Parquet files that keep a `.dta`
 file's value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
@@ -52,8 +52,8 @@ with more than 15 significant digits, which a double cannot give back,
 is an error, and R's `decimal = "character"` and Julia's
 `decimal = :string` keep every digit as text. TypeScript reads
 precision up to 15 as the nearest double and higher precision as text.
-Python reads precision up to 38 exactly, as polars' `Decimal`, and
-higher precision as text.
+Python reads precision up to 15 as the nearest double and higher
+precision as `decimal.Decimal` objects, every digit kept.
 
 R: [Read a Parquet file](r.md#read-a-parquet-file) and
 [What each Parquet type becomes](r.md#what-each-parquet-type-becomes-in-r).
@@ -94,7 +94,7 @@ TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metad
 
 R: [Labels](r.md#labels-in-parquet-files).
 Python: [Labels](python.md#labels-in-parquet-files), and
-[through polars operations](python.md#labels-through-polars-operations).
+[through pandas operations](python.md#labels-through-pandas-operations).
 Julia: [Labels](julia.md#labels-in-parquet-files).
 TypeScript: [Labels](typescript.md#labels-in-parquet-files).
 
@@ -132,7 +132,7 @@ TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
 R: [Files from other tools](r.md#parquet-files-from-other-tools).
 Python: [Files from other tools](python.md#parquet-files-from-other-tools),
-and [coming from polars, pyarrow or pandas](python.md#coming-from-pyarrow-pandas-or-polars).
+and [coming from pandas, pyarrow or polars](python.md#coming-from-pyarrow-pandas-or-polars).
 Julia: [Files from other tools](julia.md#parquet-files-from-other-tools);
 pandas, pyarrow and polars write microsecond timestamps, so Julia reads
 their files with `timestamps = :truncate`.
@@ -163,26 +163,26 @@ arrow restore factors and time zones. What each value becomes:
 
 | what is written | Parquet physical type | logical type |
 |---|---|---|
-| Stata byte; polars `Int8` | INT32 | INT(8, signed) |
-| Stata int; polars `Int16` | INT32 | INT(16, signed) |
-| Stata long; R integer; polars `Int32` | INT32 | none |
-| R `integer64`; polars `Int64` | INT64 | none |
-| polars `UInt8` to `UInt64` | INT32 or INT64 | INT(8 to 64, unsigned), with unsigned statistics |
-| Stata float; polars `Float32` | FLOAT | none |
-| Stata double; R double; polars `Float64`, and an all-null `Null` column | DOUBLE | none |
-| R logical; polars `Boolean` | BOOLEAN | none |
-| text: strN, strL, R character, polars `String` | BYTE_ARRAY | STRING |
-| binary: a binary strL, an R list of raw vectors, polars `Binary` | BYTE_ARRAY | none |
-| R `Date`; polars `Date` | INT32 | DATE |
-| R `POSIXct`; a polars `Datetime` with a zone | INT64 | TIMESTAMP(MICROS for R, the column's unit for polars, adjusted to UTC); the zone in the profile and `ARROW:schema` |
-| a polars `Datetime` without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
-| polars `Time` | INT64 | TIME(NANOS) |
-| R factor; polars `Enum`, `Categorical` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
-| a categorical holding `.a` to `.z`: a polars `Enum` with letters (from `read_dta(factors=True)`, say); a TypeScript categorical given `MISSING` values or tagged NaNs among its codes | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
+| Stata byte; pandas `int8`, `dta[byte]` | INT32 | INT(8, signed) |
+| Stata int; pandas `int16`, `dta[int]` | INT32 | INT(16, signed) |
+| Stata long; R integer; pandas `int32`, `dta[long]` | INT32 | none |
+| R `integer64`; pandas `int64`, `Int64` | INT64 | none |
+| pandas `uint8` to `uint64` (and `UInt8` to `UInt64`) | INT32 or INT64 | INT(8 to 64, unsigned), with unsigned statistics |
+| Stata float; pandas `float32`, `dta[float]` | FLOAT | none |
+| Stata double; R double; pandas `float64`, `dta[double]` | DOUBLE | none |
+| R logical; pandas `bool`, `boolean` | BOOLEAN | none |
+| text: strN, strL, R character, pandas text | BYTE_ARRAY | STRING |
+| binary: a binary strL, an R list of raw vectors, pandas `object` of `bytes` | BYTE_ARRAY | none |
+| R `Date`; a pandas `datetime64` with the format `%td`, every value at midnight | INT32 | DATE |
+| R `POSIXct`; a pandas tz-aware `datetime64` | INT64 | TIMESTAMP(MICROS for R, the column's unit for pandas, adjusted to UTC); the zone in the profile and `ARROW:schema` |
+| a pandas naive `datetime64` | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
+| pandas `timedelta64` within a day | INT64 | TIME(NANOS) |
+| R factor; pandas `category` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
+| a categorical holding `.a` to `.z`: a TypeScript categorical given `MISSING` values or tagged NaNs among its codes | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
 
 Files dta_parser 0.2 wrote from pandas read too: its `datetime64[s]`
 columns are TIMESTAMP(MILLIS) with `"unit": "s"` in the profile, which
-polars reads as `Datetime("ms")`.
+datakit reads as `datetime64[ms]`.
 
 Missing values:
 
@@ -369,8 +369,8 @@ write the file with `missing_letters = FALSE`.
   wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
   Python's reads, measured the same way, pass at the same counts within
   the noise, so every language uses this rule. The Arrow path that
-  datakit uses with polars (plan 0019) has its own rule, set against
-  polars, which uses every core: reads of 256 KiB or more use one
+  Python's datakit uses (plan 0019; into pandas since plan 0024) has
+  its own rule, set against polars, which uses every core: reads of 256 KiB or more use one
   thread per 32 MiB, at least four and at most twelve, and writes one
   per 8 MiB, at least four and at most sixteen. There the measure is
   polars' wall time, with CPU time within the larger of 1.15 times
@@ -395,8 +395,9 @@ and of other tools reading our files, is in
 [bench/RESULTS.md](../bench/RESULTS.md#parquet); against pyarrow,
 pandas, fastparquet and polars in Python, in
 [Parquet in Python](../bench/RESULTS.md#parquet-in-python) (dta_parser
-0.2's pandas reader); datakit's, into polars, in
-[Parquet into polars, through datakit](../bench/RESULTS.md#parquet-into-polars-through-datakit-plan-0019-pr-2b).
+0.2's pandas reader); datakit's, into polars until plan 0024, in
+[Parquet into polars, through datakit](../bench/RESULTS.md#parquet-into-polars-through-datakit-plan-0019-pr-2b),
+and into pandas in [bench/results/parquet-datakit.md](../bench/results/parquet-datakit.md).
 
 ## Errors and warnings
 
@@ -425,13 +426,15 @@ pandas, fastparquet and polars in Python, in
 | warning: `the dta profile is not JSON (...); the file is read as plain Parquet` | the `dta` entry is damaged | as for any file from another tool |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
 | Python: `KeyError: 'column "x" is not in the file; its columns are ...'`; `IndexError: there is no column 9; the file has 6 data columns` | a name or position in `columns` the file does not have | check against `read_parquet_info(file).columns["name"]` |
-| Python: `the file has nested columns, which are not read: "l", ...; select the columns wanted, or pass nested="skip"` | a list, map or struct column, and no `columns` that leaves it out | select the flat columns, or `nested="skip"`; for the nested data, use polars |
-| Python: `column "x", row 1: the date 19000.5 (days since 1970) has a fraction of a day; pass timestamps="truncate" to drop it` (also `the timestamp ... is not a whole number of microseconds`) | a DOUBLE date or timestamp that `Date` or `Datetime("us")` cannot hold exactly, as R writes one | `timestamps="truncate"` |
-| Python: `column "x", row 1: the timestamp ... (seconds since 1970) is outside polars' Datetime range` (also `Date range`) | a value polars cannot hold | none in polars; read the column with another tool |
-| Python: `column "x" is Decimal, which save_parquet does not write; cast it to Float64 or String` (also Duration, List, Array, Struct, Object, Int128) | a dtype the files here do not hold | cast the column first |
+| Python: `the file has nested columns, which are not read: "l", ...; select the columns wanted, or pass nested="skip"` | a list, map or struct column, and no `columns` that leaves it out | select the flat columns, or `nested="skip"`; for the nested data, use pyarrow or polars |
+| Python: `column "x", row 1: the date 19000.5 (days since 1970) has a fraction of a day; pass timestamps="truncate" to drop it` (also `the timestamp ... is not a whole number of microseconds`) | a DOUBLE date or timestamp that `datetime64[s]` or `datetime64[us]` cannot hold exactly, as R writes one | `timestamps="truncate"` |
+| Python: `column "x", row 1: the timestamp ... (seconds since 1970) is outside the range of timestamps` (also `the range of dates`) | a value outside the range the read's unit holds | read the column with another tool |
+| Python: `column "x" holds decimal.Decimal values, which save_parquet does not write; convert it to float (astype(float)) or to text (astype(str))` (also a category of numbers, mixed `object`, complex, interval, period) | a dtype the files here do not hold | convert the column first |
+| Python: `column "x" is object and holds .a to .z (MissingValue); a numeric column keeps them as dta[double]: ...` | `.a` assigned into a numpy column on pandas 2.2, which made it `object` | `df["x"] = df["x"].astype("dta[double]")`, then assign |
+| Python: `column "x", row 1: ... is not a time of day (0 to 24 hours), which Parquet's TIME holds` | a `timedelta64` outside a day | write it as numbers |
 | warning: `column "x": row 3 holds a value that is not one of its 3 level numbers; it is read as .` (R: `as NA`; TypeScript counts rows from 0, code `DATAKIT_CATEGORICAL`) | another tool wrote a value into a categorical holding `.a` to `.z` | none needed; the value reads as `.` |
 | warning: `column "x" is a categorical whose value label set "s" does not label 1 to 3 with its levels; a set made from the levels is used` | a hand-edited profile | none needed |
-| Python: `save_parquet takes a polars DataFrame, not a LazyFrame; call .collect() on it first` | a `LazyFrame` | as it says |
+| Python: `save_parquet takes a pandas DataFrame, not dict` | another object | `pd.DataFrame(...)` first |
 | Python: `ValueError: compression is "snappy", "zstd", "gzip", "lz4_raw" or "none", not 'lzo'` | `save_parquet(compression=)` | one of those |
 | Python: `ValueError: zstd levels run from 1 to 22, not 99`; `ValueError: snappy has no compression levels` | `compression_level` | a level the codec has, or `None` |
 | Python warning: `meta.sort (x) does not describe the order of the frame's rows, so it is not saved; ...` | rows reordered since the read, or sorted with nulls first | sort as the guide shows, or clear `meta.sort` |

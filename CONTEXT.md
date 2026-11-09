@@ -71,11 +71,12 @@ metadata and `.a` to `.z` in `DtaColumn`s, with no `:=`; it reaches the
 native library through `DtaParser.Internals` and checks DtaParser's ABI
 version when it loads. In Python, `datakit` (distribution
 `dta-datakit`): `read_parquet`, `read_parquet_info`, `save_parquet`,
-`read_dta`, `save_dta` and `read_fixed_width` into polars DataFrames,
-with labels and `.a` to `.z` in a **Meta** beside the frame and no `:=`;
-it is pure Python, calls `dta_parser._native`, and checks its
-`ABI_VERSION` when imported. Python's has `.dta` too because its frames
-are polars and dta_parser's are pandas. In TypeScript,
+`read_dta`, `save_dta` and `read_fixed_width` into pandas DataFrames,
+with `.a` to `.z` in `DtaArray` columns, labels in a **Meta** beside the
+frame, and no `:=`; it is pure Python, calls `dta_parser._native`, and
+checks its `ABI_VERSION` when imported (ADR 0040). Python's has `.dta`
+too, giving the columns `dta_parser.read_dta` gives with a `Meta` in
+place of `attrs`. In TypeScript,
 `@jbearak/datakit`: Parquet (`ParquetReader`, `readParquet`,
 `saveParquet`), `readFixedWidth`, and `readDta` and `saveDta` into a
 **Dataset**; it has its own wasm module, not the format package's, and
@@ -96,22 +97,22 @@ one. Its number columns hold `.` and `.a` to `.z` in their values, as
 _Avoid_: frame, table (unqualified)
 
 **Meta**:
-In Python's datakit, the dataclass returned beside every polars frame,
-since a polars `DataFrame` has no column metadata: the data label,
-notes, characteristics, sort order, time stamp, each column's `Column`
-(variable label, display format, value label set, `ordered`), the value
-label sets. The letters are not in it: they are **tagged NaNs** in the
-frame. It does not follow polars operations.
+In Python's datakit, the dataclass returned beside every pandas frame,
+in place of `attrs`, which pandas does not carry through every
+operation: the data label, notes, characteristics, sort order, time
+stamp, each column's `Column` (variable label, display format, value
+label set, `ordered`), the value label sets. The letters are not in it:
+they are in the frame's `DtaArray` columns. It does not follow pandas
+operations.
 _Avoid_: attrs (pandas'), metadata (unqualified)
 
 **Tagged NaN**:
 How `.a` to `.z` are held in a double: R's `NA_real_` (a NaN whose low
 word is 1954) with the letter's ASCII code in bits 32 to 39, as haven,
-R's dtaparser, the Parquet files' DOUBLE columns, Python's datakit and
-the npm packages' `NumberColumn` hold them. In Python's datakit a column
-holding letters is `Float64`, so the letters follow their rows through
-every polars operation (ADR 0036); polars counts them as NaN values, not
-nulls. In TypeScript `.` is `NA_real_` itself (ADR 0037), and
+R's dtaparser, the Parquet files' DOUBLE columns and the npm packages'
+`NumberColumn` hold them. Python's datakit reads and writes them in a
+plain float column, but keeps letters in `DtaArray` codes, which compare
+as missing (ADR 0040, superseding ADR 0036). In TypeScript `.` is `NA_real_` itself (ADR 0037), and
 `missingCode` reads either. Julia's `DtaColumn` keeps codes beside its
 values instead, reading every one as `missing`.
 _Avoid_: companion column (the representation ADR 0036 replaced)

@@ -1,5 +1,7 @@
 # Migration notes
 
+- [datakit 0.3 to 0.4](#datakit-03-to-04) (Python): datakit returns
+  pandas frames instead of polars ones.
 - [dta_parser 0.3 to 0.4](#dta_parser-03-to-04) (Python): every numeric
   column with a missing value is a `DtaArray`, comparisons give `<NA>`
   for missing values, and arithmetic keeps `.a` to `.z`.
@@ -13,6 +15,51 @@
   whole datasets.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
+
+## datakit 0.3 to 0.4
+
+Python's datakit returns pandas frames instead of polars ones (plan
+0024, ADR 0040). polars treats a NaN as a value, so `.a` to `.z` held as
+tagged NaNs were greater than every number and equal to each other in
+filters and groups; pandas with dta_parser's `DtaArray` treats them as
+missing, as R does. The functions and their arguments are the same,
+and so are the files datakit writes.
+
+- **Frames.** `read_parquet`, `read_dta` and `read_fixed_width` return
+  `(pandas.DataFrame, Meta)`; `save_parquet` and `save_dta` take a
+  pandas frame (its index is not written). polars is no longer
+  installed with datakit; `pl.from_pandas(df)` still works if you want
+  one, but the letters become plain NaNs there.
+- **Columns.** A numeric column with a missing value in the rows read
+  is a `DtaArray` of its storage type (`dta[byte]` ... `dta[double]`),
+  `.` included; one without keeps its numpy type (`int8` ... `float64`).
+  `meta._storage` is gone: the dtype keeps the storage type. INT64,
+  unsigned and BOOLEAN columns with nulls are pandas' nullable `Int64`,
+  `UInt8` ... and `boolean`. Dates are `datetime64[s]`, timestamps
+  `datetime64` in the file's unit, TIME `timedelta64[ns]`, text pandas'
+  text dtype, categoricals `category` (polars' `Enum`). A NaN in a float
+  column is `.`, where polars kept it as a value. DECIMAL of up to 15
+  digits is `float64`, above that `decimal.Decimal` objects.
+- **Letters.** `dk.tagged_na(".a")` returns `dta_parser.missing.a`
+  instead of a tagged float; assign it with
+  `df.loc[rows, "x"] = dk.tagged_na(".a")` into a `DtaArray` column
+  (convert a numpy column first with `astype("dta[double]")`).
+  `dk.na_tag(x)` and `dk.is_tagged_na(x)` take a Series or array, not a
+  column name or polars expression; `na_tag` returns a Series of
+  `dk.LETTERS`, now a pandas `CategoricalDtype`, with NaN where polars
+  gave null, and `is_tagged_na` a numpy bool array.
+- **Comparisons and counts.** `fill_nan(None)` is no longer needed:
+  `isna()`, `count()` and `mean()` treat letters as missing, and
+  `x > 3000` is `<NA>` on a letter, where polars said true. Code that
+  relied on a letter comparing greater than every number should test
+  for it with `dk.is_tagged_na`.
+- **Sorting.** `df.sort_values("x")` sorts a `DtaArray` as Stata does
+  (numbers, `.`, then `.a` to `.z`); the polars recipe with `na_tag` and
+  `nulls_last` is not needed.
+- **`read_parquet_info`.** `info.columns` and `info.row_groups` are
+  pandas frames; `dtype` names pandas dtypes.
+- **Native functions.** dta_parser's native ABI version is 2: install
+  both packages from one checkout.
 
 ## dta_parser 0.3 to 0.4
 

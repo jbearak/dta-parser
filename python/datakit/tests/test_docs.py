@@ -71,7 +71,7 @@ def test_every_export_is_documented_and_links_to_the_guide():
         obj = getattr(dk, name)
         assert f"`{name}" in page or f".{name}" in page, f"docs/python.md does not mention {name}"
         if name == "LETTERS":
-            continue  # a polars dtype; the guide documents it
+            continue  # a pandas dtype; the guide documents it
         doc = inspect.getdoc(obj)
         assert doc, f"{name} has no docstring"
         links = re.findall(re.escape(GUIDE) + r"([\w\-]+)", doc)
