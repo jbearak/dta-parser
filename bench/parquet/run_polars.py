@@ -2,8 +2,9 @@
 read_parquet and save_parquet (and read_dta, save_dta), against pandas
 (pyarrow engine), polars and pyarrow; report plan 0018's targets 1 to 3
 (plan 0024 sets no speed target) and write
-bench/results/parquet-datakit.md (PR 2a's run, through a stand-in for
-datakit, is in bench/results/parquet-polars.md).
+bench/results/parquet-datakit-pandas.md (datakit's polars-era run is in
+bench/results/parquet-datakit.md, PR 2a's stand-in in
+bench/results/parquet-polars.md).
 
     python bench/parquet/run_polars.py [--family F ...] [--libs L ...] [--tasks T ...]
                                        [--inputs I ...] [--only KEY ...] [--report]
@@ -234,7 +235,7 @@ def main():
     ap.add_argument("--data", default="/private/tmp/claude-501/pq-bench")
     ap.add_argument("--out", default="/private/tmp/claude-501/pq-bench-datakit-pandas-out")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-datakit.md"))
+    ap.add_argument("--dest", default=str(ROOT / "bench" / "results" / "parquet-datakit-pandas.md"))
     a = ap.parse_args()
     files = base.find_files(a.family)
     if a.only:

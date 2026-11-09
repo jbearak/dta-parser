@@ -1011,6 +1011,44 @@ gated): `dk.read_dta` takes 0.04 (NSFG), 0.12 (DHS) and 0.31 (synthetic)
 of `dp.read_dta`'s wall time; `dk.save_dta` takes 1.12, 1.17 and 0.59 of
 `dp.write_dta`'s, at 0.37 to 0.47 of its peak RSS.
 
+## Parquet into pandas, through datakit (plan 0024, stage 4)
+
+Python's datakit returns pandas since plan 0024 (ADR 0040). The same
+harness, `bench/parquet/run_polars.py`, now measures `dk.read_parquet`
+and `dk.save_parquet` against pandas with its pyarrow engine, polars
+2.1.0 and pyarrow 26.0.1's `Table`. Every number is in
+[results/parquet-datakit-pandas.md](results/parquet-datakit-pandas.md).
+
+**What was measured, and the load.** The 10 DHS files only, as datakit
+writes them: the NSFG and synthetic `.dta` sources were not on the
+machine. pandas 3.1.1, 2026-11-09. The one-minute load average before
+each run had a median of 3.9 (2.4 to 5.1); plan 0018 asks for under 2.
+Plan 0024 sets no speed target; plan 0018's are reported for
+comparison.
+
+**Ours over theirs, geometric means** (wall, CPU, peak RSS; below 1 is
+better for us):
+
+| case | pandas (pyarrow engine) | polars | pyarrow `Table` |
+|---|---|---|---|
+| whole file | 1.25, 0.23, 0.89 | 4.36, 2.94, 1.98 | 0.57, 0.36, 1.47 |
+| five columns | 0.19, 0.20, 0.89 | 0.98, 0.52, 1.24 | 0.03, 0.04, 0.73 |
+| 1,000 rows | 1.25, 0.23, 0.49 | 4.42, 2.62, 1.47 | 2.09, 0.29, 0.53 |
+| read + pass | 0.99, 0.36, 0.89 | 4.80, 2.77, 1.82 | 1.02, 0.61, 1.46 |
+| write, defaults | 0.38, 0.87, 1.21 | 4.10, 1.02, 2.29 | 0.57, 1.31, 2.25 |
+| write, zstd 3 | 0.37, 0.89, 1.23 | 4.16, 1.08, 2.31 | 0.54, 1.29, 2.28 |
+
+On DHS, the polars-era datakit read whole files in about 0.75 of
+polars' wall time (above); building a pandas frame of `DtaArray`
+columns takes about 4.4 times polars'. A pandas read through its
+pyarrow engine is a little faster in wall time on whole files and
+1,000-row windows, at four times our CPU; ours is faster on five
+columns and on writes.
+
+**.dta into pandas against dta_parser** (published, not gated):
+`dk.read_dta` takes 0.39 of `dp.read_dta`'s wall time on DHS, and
+`dk.save_dta` 1.95 of `dp.write_dta`'s, at 1.08 of its peak RSS.
+
 ## Parquet in TypeScript (npm package)
 
 Plan 0018's gate for the npm package (PR 7): `openParquetFile` and
