@@ -7,7 +7,8 @@
 //! ([`meta::ReadMeta`], [`meta::WriteMeta`]), and returns [`error::Error`].
 //! dta_parser's `py_arrow` (in `python/`) is the Python binding, which
 //! datakit calls. It is a crate of its own (plan 0025, stage 2b) so that
-//! R's dtaparser can build it too.
+//! R's dtaparser builds it too: its `arrow_r.rs` is the R binding, which
+//! R's datakit calls for its polars functions (stage 3).
 
 pub mod dta;
 pub mod error;

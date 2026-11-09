@@ -33,6 +33,7 @@ Suggests:
     dplyr (>= 1.1.0),
     haven,
     jsonlite,
+    nanoarrow,
     nanoparquet,
     readstata13,
     RcppTOML,

@@ -1,6 +1,6 @@
 # dtatools reads through dtaparser's C functions and writes with its save_dta (ADR 0016, ADR 0031).
 # The ABI number dtatools was built for; dtaparser's must match.
-DTAPARSER_ABI <- 3L
+DTAPARSER_ABI <- 4L
 
 .onLoad <- function(libname, pkgname) {
   loadNamespace("dtaparser")

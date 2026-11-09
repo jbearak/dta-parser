@@ -18,6 +18,7 @@ use dta::{
     ValueLabelSet, Values, Variable, WriteOptions, WriteVariable,
 };
 
+mod arrow_r;
 mod parquet_r;
 
 type Sexp = *mut c_void;
