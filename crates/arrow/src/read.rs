@@ -34,27 +34,27 @@ use super::parquet::{
 /// NSFG 2002 FemResp (90 MiB) passed both at four threads, DHS Tajikistan
 /// 2017 wm (212 MiB) at four to six, groups (286 MiB) at eight and long
 /// (954 MiB) at twelve (bench/RESULTS.md, "Threads for polars").
-pub(crate) const ARROW_BYTES_PER_THREAD: u64 = 32 << 20;
-pub(crate) const ARROW_THREADS: usize = 4;
-pub(crate) const ARROW_THREADS_MOST: usize = 12;
+pub const ARROW_BYTES_PER_THREAD: u64 = 32 << 20;
+pub const ARROW_THREADS: usize = 4;
+pub const ARROW_THREADS_MOST: usize = 12;
 /// Reads and writes of fewer bytes than this stay on one thread.
-pub(crate) const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
+pub const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
 /// The thread rule of writes from polars' export: our CPU time stayed
 /// within 1.15 times polars' at every count to 16 while the wall time
 /// kept falling.
-pub(crate) const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
-pub(crate) const ARROW_WRITE_THREADS: usize = 4;
-pub(crate) const ARROW_WRITE_THREADS_MOST: usize = 16;
+pub const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
+pub const ARROW_WRITE_THREADS: usize = 4;
+pub const ARROW_WRITE_THREADS_MOST: usize = 16;
 
 /// polars' Enum of `.a` to `.z` (datakit's `LETTERS`).
-pub(crate) fn letter_names() -> Vec<String> {
+pub fn letter_names() -> Vec<String> {
     (b'a'..=b'z').map(|c| format!(".{}", c as char)).collect()
 }
 
 /// The field metadata that makes polars import a dictionary array as
 /// `Enum(levels)` (polars 2's own export writes it; not a documented
 /// interface, so a test checks polars still honours it).
-pub(crate) fn enum_metadata(levels: &[String]) -> Vec<u8> {
+pub fn enum_metadata(levels: &[String]) -> Vec<u8> {
     let mut v = Vec::new();
     for l in levels {
         v.extend_from_slice(l.len().to_string().as_bytes());
@@ -65,7 +65,7 @@ pub(crate) fn enum_metadata(levels: &[String]) -> Vec<u8> {
 }
 
 /// The key width polars gives an Enum of `n` levels.
-pub(crate) fn key_width(n: usize) -> usize {
+pub fn key_width(n: usize) -> usize {
     if n <= 1 << 8 {
         1
     } else if n <= 1 << 16 {
@@ -75,7 +75,7 @@ pub(crate) fn key_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn key_format(width: usize) -> &'static str {
+pub fn key_format(width: usize) -> &'static str {
     match width {
         1 => "C",
         2 => "S",
@@ -84,7 +84,7 @@ pub(crate) fn key_format(width: usize) -> &'static str {
 }
 
 /// An Arrow utf8 array of `values` (for a dictionary), with its owner.
-pub(crate) fn utf8_array(values: &[String]) -> Array {
+pub fn utf8_array(values: &[String]) -> Array {
     let mut offsets: Vec<i32> = Vec::with_capacity(values.len() + 1);
     let mut data = Vec::new();
     offsets.push(0);
@@ -107,13 +107,13 @@ pub(crate) fn utf8_array(values: &[String]) -> Array {
 /// How dates and timestamps held as doubles that are not whole days or
 /// microseconds read: an error, or truncated.
 #[derive(Clone, Copy, PartialEq)]
-pub(crate) enum Stamps {
+pub enum Stamps {
     Error,
     Truncate,
 }
 
 impl Stamps {
-    pub(crate) fn from_name(s: &str) -> Result<Self> {
+    pub fn from_name(s: &str) -> Result<Self> {
         match s {
             "error" => Ok(Stamps::Error),
             "truncate" => Ok(Stamps::Truncate),
@@ -454,7 +454,7 @@ struct Buffers {
 /// borrows from the reader). `mode` is how dates and timestamps held as
 /// doubles that are not whole days or microseconds read. For datakit only.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn parquet_read<T>(
+pub fn parquet_read<T>(
     input: Input<'_>,
     columns: Option<&[Selector]>,
     skip: u64,
@@ -716,7 +716,7 @@ fn read_arrow<T>(
 /// column it does not read), an Enum's levels, Parquet's types, label,
 /// value label set and storage; and the [`ReadMeta`] of a whole-file
 /// read; given to `give` while the file is open. For datakit only.
-pub(crate) fn parquet_info<T>(input: Input<'_>, give: &mut dyn FnMut(ParquetInfo<'_>) -> T) -> Result<T> {
+pub fn parquet_info<T>(input: Input<'_>, give: &mut dyn FnMut(ParquetInfo<'_>) -> T) -> Result<T> {
     let options = ReadOptions { threads: 1, nested: Nested::Skip, lazy_value_labels: true, ..ReadOptions::default() };
     with_reader_for(input, options, None, &mut |r| {
         let r: &dyn Access = r;
@@ -781,7 +781,7 @@ pub(crate) fn parquet_info<T>(input: Input<'_>, give: &mut dyn FnMut(ParquetInfo
 
 /// The `.a` to `.z` of each column holding any, as a table of Enum
 /// columns (`LETTERS`), null where a row has none.
-pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> Result<Option<Table>> {
+pub fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> Result<Option<Table>> {
     if letters.is_empty() {
         return Ok(None);
     }
@@ -825,7 +825,7 @@ pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)
 }
 
 /// A value-label set's labels, `(code, text)` in order, borrowed.
-pub(crate) fn label_set(set: &dta::ValueLabelSet) -> LabelSet<'_> {
+pub fn label_set(set: &dta::ValueLabelSet) -> LabelSet<'_> {
     set.labels.iter().map(|l| (LabelKey::of(l.value, l.missing), Cow::Borrowed(l.text.as_str()))).collect()
 }
 
@@ -838,18 +838,18 @@ fn label_set_owned(set: dta::ValueLabelSet) -> LabelSet<'static> {
 /// one of its name in place (as a dict's assignment). Sets are kept as
 /// given, a name rarely twice, and [`Sets::finish`] applies the rule.
 #[derive(Default)]
-pub(crate) struct Sets<'a> {
+pub struct Sets<'a> {
     list: Vec<(Text<'a>, LabelSet<'a>)>,
 }
 
 impl<'a> Sets<'a> {
-    pub(crate) fn set(&mut self, name: Text<'a>, labels: LabelSet<'a>) {
+    pub fn set(&mut self, name: Text<'a>, labels: LabelSet<'a>) {
         self.list.push((name, labels));
     }
 
     /// The sets, each name once: in the place it first had, with the
     /// labels it was last given.
-    pub(crate) fn finish(mut self) -> Vec<(Text<'a>, LabelSet<'a>)> {
+    pub fn finish(mut self) -> Vec<(Text<'a>, LabelSet<'a>)> {
         let mut first: HashMap<&str, usize> = HashMap::with_capacity(self.list.len());
         let mut moves = Vec::new();
         for (k, (name, _)) in self.list.iter().enumerate() {

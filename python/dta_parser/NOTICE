@@ -1,6 +1,6 @@
-dta_parser bundles Rust code from this repository (the dta and
-dta-parquet crates, GPL-3.0-only) and these crates from crates.io, at
-the versions in python/Cargo.lock.
+dta_parser bundles Rust code from this repository (the dta,
+dta-parquet, and dta-arrow crates, GPL-3.0-only) and these crates from
+crates.io, at the versions in python/Cargo.lock.
 
 Compiled into the package, for reading and writing Parquet files:
 

@@ -110,7 +110,7 @@ impl dta::SharedSource for ReadAhead {
 }
 
 /// A source given as a trait object (the binding's file objects).
-pub(crate) struct DynSource<'a>(pub(crate) Box<dyn Source + Send + 'a>);
+pub struct DynSource<'a>(pub Box<dyn Source + Send + 'a>);
 
 impl Source for DynSource<'_> {
     fn len(&self) -> u64 {
@@ -127,7 +127,7 @@ impl Source for DynSource<'_> {
 }
 
 /// What the bridge needs of a reader, whatever its source.
-pub(crate) trait Access: Send {
+pub trait Access: Send {
     fn columns(&self) -> &[ColumnInfo];
     fn profile(&self) -> Option<&Profile>;
     fn warnings(&self) -> &[String];
@@ -199,7 +199,7 @@ impl<S: Source + Send> Access for Reader<S> {
 
 /// Where a file comes from: a path, the whole file in memory, or another
 /// source (a binary file object, which the binding wraps).
-pub(crate) enum Input<'a> {
+pub enum Input<'a> {
     Path(String),
     Bytes(&'a [u8]),
     Source(Box<dyn Source + Send + 'a>),
@@ -208,7 +208,7 @@ pub(crate) enum Input<'a> {
 /// Open `input` and run `f` on its reader, which reads only the profile
 /// entries of the columns in `selected` (all when `None`). From a path,
 /// a `Value` error starts with the path.
-pub(crate) fn with_reader_for<T>(
+pub fn with_reader_for<T>(
     input: Input<'_>,
     options: ReadOptions,
     selected: Option<&[&str]>,
@@ -236,7 +236,7 @@ pub(crate) fn with_reader_for<T>(
 /// What kind of column a selected Parquet column is, which `arrow::read`
 /// turns into an Arrow type for polars.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Kind {
+pub enum Kind {
     /// INT32, INT(8) or INT(16), by width in bytes.
     Int { width: u8 },
     /// Unsigned 8 to 64 bits, by width in bytes.
@@ -269,7 +269,7 @@ pub(crate) enum Kind {
 /// The zone a timestamp reads with, for one adjusted to UTC: the
 /// profile's (`""`, an instant written without one, reads as UTC), else
 /// the one `ARROW:schema` gives, else UTC.
-pub(crate) fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String {
+pub fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String {
     match entry.and_then(|p| p.tz.as_deref()) {
         Some(z) if !z.is_empty() => z.to_string(),
         Some(_) => "UTC".into(),
@@ -278,7 +278,7 @@ pub(crate) fn zone_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> String
 }
 
 /// Whether every row group's statistics show column `leaf` has no null.
-pub(crate) fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
+pub fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     if col.required {
         return true;
     }
@@ -293,7 +293,7 @@ pub(crate) fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     })
 }
 
-pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> std::result::Result<Kind, String> {
+pub fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> std::result::Result<Kind, String> {
     Ok(match &col.kind {
         ColumnType::Int8 => Kind::Int { width: 1 },
         ColumnType::Int16 => Kind::Int { width: 2 },
@@ -336,7 +336,7 @@ pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> std::r
     })
 }
 
-pub(crate) fn logical_name(col: &ColumnInfo) -> Option<String> {
+pub fn logical_name(col: &ColumnInfo) -> Option<String> {
     let unit_name = |u: TimeUnit| match u {
         TimeUnit::Millis => "MILLIS",
         TimeUnit::Micros => "MICROS",
@@ -395,7 +395,7 @@ pub(crate) fn logical_name(col: &ColumnInfo) -> Option<String> {
     Some(name.into())
 }
 
-pub(crate) fn codec_name(c: dta_parquet::format::Codec) -> String {
+pub fn codec_name(c: dta_parquet::format::Codec) -> String {
     use dta_parquet::format::Codec::*;
     match c {
         Uncompressed => "none".into(),
@@ -412,7 +412,7 @@ pub(crate) fn codec_name(c: dta_parquet::format::Codec) -> String {
 
 // ---------------------------------------------------------------- profile
 
-pub(crate) fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile> {
+pub fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile> {
     profile.map_or_else(HashMap::new, |p| p.columns.iter().map(|c| (c.name.as_str(), c)).collect())
 }
 
@@ -422,14 +422,14 @@ pub(crate) fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile
 /// columns, or by something that is neither (an error once the file is
 /// open, as before the binding was split off).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Selector {
+pub enum Selector {
     Name(String),
     Position(i64),
     Other,
 }
 
 /// The names asked for when every selector is a name.
-pub(crate) fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
+pub fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
     wanted?
         .iter()
         .map(|w| match w {
@@ -440,7 +440,7 @@ pub(crate) fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
 }
 
 /// The columns asked for, as indices into the reader's columns.
-pub(crate) fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: bool) -> Result<Vec<usize>> {
+pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: bool) -> Result<Vec<usize>> {
     let cols = r.columns();
     let data: Vec<usize> = (0..cols.len()).filter(|&k| cols[k].role == Role::Data).collect();
     let Some(wanted) = wanted else {
@@ -479,7 +479,7 @@ pub(crate) fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: b
 }
 
 /// The message of a read's error, with what Python offers instead.
-pub(crate) fn read_error(m: String, decimal_names: &[String]) -> String {
+pub fn read_error(m: String, decimal_names: &[String]) -> String {
     const DECIMAL: &str = "read the column as text to keep every digit";
     if decimal_names.iter().any(|n| m.starts_with(n.as_str())) && m.contains(DECIMAL) {
         return m.replace(DECIMAL, "this should not happen for a DECIMAL of 15 digits or fewer");

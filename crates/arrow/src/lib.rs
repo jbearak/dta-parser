@@ -5,19 +5,21 @@
 //! Nothing here uses pyo3 (plan 0025, stage 2a): it takes paths, bytes
 //! or a [`dta::Source`], raw Arrow C streams and plain Rust structs
 //! ([`meta::ReadMeta`], [`meta::WriteMeta`]), and returns [`error::Error`].
-//! `crate::py_arrow` is the Python binding, which datakit calls.
+//! dta_parser's `py_arrow` (in `python/`) is the Python binding, which
+//! datakit calls. It is a crate of its own (plan 0025, stage 2b) so that
+//! R's dtaparser can build it too.
 
-pub(crate) mod dta;
-pub(crate) mod error;
-pub(crate) mod ffi;
-pub(crate) mod meta;
-pub(crate) mod parquet;
-pub(crate) mod read;
-pub(crate) mod write;
+pub mod dta;
+pub mod error;
+pub mod ffi;
+pub mod meta;
+pub mod parquet;
+pub mod read;
+pub mod write;
 
 /// A new file beside `path` that no one else has: created exclusively
 /// (so neither an existing file nor a symlink at the name is touched).
-pub(crate) fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
+pub fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
     let pid = std::process::id();
     for n in 0..1000 {
         let tmp = format!("{path}.{pid}.{n}.tmp");

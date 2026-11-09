@@ -19,6 +19,7 @@ on:
       - "r/**"
       - "crates/dta/**"
       - "crates/parquet/**"
+      - "crates/arrow/**"
       - "scripts/build-r-package.sh"
       - "scripts/place-r-binaries.R"
       - ".github/workflows/r-packages.yml"

@@ -34,10 +34,10 @@ const DAY_MS: i64 = 86_400_000;
 
 /// The characteristic R's `save_dta` and pandas' `write_dta` put on a
 /// column written from a factor or category (plan 0020).
-pub(crate) const FACTOR_MARK: &str = "dtaparser_factor";
+pub const FACTOR_MARK: &str = "dtaparser_factor";
 /// The characteristic `save_dta` puts on a column written from an Enum
 /// or Categorical (plan 0023): "ordered <set>" or "unordered <set>".
-pub(crate) const CATEGORICAL_MARK: &str = "dtaparser_categorical";
+pub const CATEGORICAL_MARK: &str = "dtaparser_categorical";
 
 /// `%td`/`%d` dates and `%tc` datetimes, as `read_dta` tells them.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -226,7 +226,7 @@ fn put(t: &Target, rows: usize, first: usize, column: &DtaColumn, file_row: u64,
 
 /// The `.dta` file at `path`, opened to read with `encoding` (by name;
 /// the default when None).
-pub(crate) fn open(path: &str, encoding: Option<&str>) -> Result<Reader<FileSource>> {
+pub fn open(path: &str, encoding: Option<&str>) -> Result<Reader<FileSource>> {
     let encoding = match encoding {
         Some(name) => Encoding::from_name(name).ok_or_else(|| fail(format!("unknown encoding \"{name}\"")))?,
         None => Encoding::default(),
@@ -243,7 +243,7 @@ fn non_empty(s: &str) -> Option<Cow<'_, str>> {
 /// Read rows `skip..skip + n_max` of `columns` (all when None) of the
 /// `.dta` file at `path` into Arrow memory, given to `give` as
 /// [`super::read::parquet_read`] gives a read. For datakit only.
-pub(crate) fn dta_read<T>(
+pub fn dta_read<T>(
     path: &str,
     columns: Option<&[Selector]>,
     skip: u64,
@@ -498,7 +498,7 @@ fn get<T: Copy + Into<f64>>(c: &Chunk, j: usize) -> f64 {
 /// Categorical is codes 1 to k with its levels, the letter labels of the
 /// set meta names for it, and a `dtaparser_categorical` characteristic;
 /// meta's markers are dropped. For datakit only.
-pub(crate) fn dta_write(
+pub fn dta_write(
     imported: &Imported,
     path: &str,
     meta: &WriteMeta,

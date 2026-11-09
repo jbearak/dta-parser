@@ -26,12 +26,12 @@ use super::read::Stamps;
 /// One chunk of a column: the array, the frame's row of its first, and
 /// the offset its parent adds.
 #[derive(Clone, Copy)]
-pub(crate) struct Chunk<'a> {
-    pub(crate) a: ArrayRef<'a>,
-    pub(crate) start: usize,
-    pub(crate) len: usize,
+pub struct Chunk<'a> {
+    pub a: ArrayRef<'a>,
+    pub start: usize,
+    pub len: usize,
     /// Index of the chunk's first row in its buffers.
-    pub(crate) off: usize,
+    pub off: usize,
 }
 
 // SAFETY: the producer's buffers are read only while the write runs,
@@ -40,41 +40,41 @@ unsafe impl Send for Chunk<'_> {}
 unsafe impl Sync for Chunk<'_> {}
 
 /// A column over every batch.
-pub(crate) struct Column<'a> {
-    pub(crate) field: &'a InField,
-    pub(crate) chunks: Vec<Chunk<'a>>,
-    pub(crate) rows: usize,
+pub struct Column<'a> {
+    pub field: &'a InField,
+    pub chunks: Vec<Chunk<'a>>,
+    pub rows: usize,
 }
 
 impl<'a> Column<'a> {
     /// The chunk holding row `r`, from chunk `k` on.
     #[inline]
-    pub(crate) fn seek(&self, mut k: usize, r: usize) -> usize {
+    pub fn seek(&self, mut k: usize, r: usize) -> usize {
         while k + 1 < self.chunks.len() && r >= self.chunks[k].start + self.chunks[k].len {
             k += 1;
         }
         k
     }
 
-    pub(crate) fn find(&self, r: usize) -> usize {
+    pub fn find(&self, r: usize) -> usize {
         self.chunks.partition_point(|c| c.start + c.len <= r).min(self.chunks.len().saturating_sub(1))
     }
 
     /// Row `r`'s place: its chunk and index in the chunk's buffers.
     #[inline]
-    pub(crate) fn at(&self, k: usize, r: usize) -> (&Chunk<'a>, usize) {
+    pub fn at(&self, k: usize, r: usize) -> (&Chunk<'a>, usize) {
         let c = &self.chunks[k];
         (c, c.off + r - c.start)
     }
 
-    pub(crate) fn is_valid(&self, r: usize) -> bool {
+    pub fn is_valid(&self, r: usize) -> bool {
         let (c, j) = self.at(self.find(r), r);
         valid(&c.a, j)
     }
 }
 
 /// The columns of an imported frame.
-pub(crate) fn columns(imported: &Imported) -> Result<Vec<Column<'_>>> {
+pub fn columns(imported: &Imported) -> Result<Vec<Column<'_>>> {
     let schema = &imported.schema;
     if schema.format != "+s" {
         return Err(Error::Type("the Arrow stream is not a table (a struct of columns)".into()));
@@ -98,7 +98,7 @@ pub(crate) fn columns(imported: &Imported) -> Result<Vec<Column<'_>>> {
 }
 
 /// The frame's rows.
-pub(crate) fn height(imported: &Imported) -> usize {
+pub fn height(imported: &Imported) -> usize {
     imported.batches.iter().map(|b| b.get().len()).sum()
 }
 
@@ -175,7 +175,7 @@ fn texts<'a>(col: &'a Column<'a>, format: &'a str) -> Box<GetBytes<'a>> {
 /// An Enum or Categorical: its levels (an Enum's every category; a
 /// Categorical's that its rows use, in polars' order) and each chunk's
 /// key to level map.
-pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> Result<(Vec<String>, Vec<Vec<i32>>)> {
+pub fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> Result<(Vec<String>, Vec<Vec<i32>>)> {
     let dict_field = col.field.dictionary.as_deref().expect("a dictionary");
     let df = dict_field.format.as_str();
     if !matches!(df, "u" | "U" | "vu") {
@@ -221,7 +221,7 @@ pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> R
 
 /// Each row's `.a` to `.z` (2 to 27), or 0, from a `LETTERS` Series or a
 /// String one, as imported.
-pub(crate) fn letter_codes(name: &str, imported: &Imported, rows: usize) -> Result<Vec<u8>> {
+pub fn letter_codes(name: &str, imported: &Imported, rows: usize) -> Result<Vec<u8>> {
     let (field, child) = if imported.schema.format == "+s" {
         (imported.schema.children.first().ok_or_else(|| fail("an empty letters frame"))?, true)
     } else {
@@ -343,7 +343,7 @@ fn dtype_of(format: &str) -> String {
 
 /// The value label sets of `meta`, checked: a text code is `.` or `.a`
 /// to `.z`, a number finite and within ±2^53 where whole.
-pub(crate) fn value_label_sets(sets: &[GivenSet]) -> Result<Vec<ValueLabelSet>> {
+pub fn value_label_sets(sets: &[GivenSet]) -> Result<Vec<ValueLabelSet>> {
     const MAX_EXACT: f64 = 9_007_199_254_740_992.0;
     let mut out = Vec::with_capacity(sets.len());
     for (name, table) in sets {
@@ -371,7 +371,7 @@ pub(crate) fn value_label_sets(sets: &[GivenSet]) -> Result<Vec<ValueLabelSet>> 
 
 /// The options of a write from polars' export: Parquet's, with datakit's
 /// thread rule. Checks the compression's name.
-pub(crate) fn parquet_options(
+pub fn parquet_options(
     compression: &str,
     compression_level: Option<i32>,
     row_group_size: Option<usize>,
@@ -402,7 +402,7 @@ pub(crate) fn parquet_options(
 /// Write the frame `imported` (polars' export) as Parquet to `path`, or
 /// return the file's bytes when `path` is None, with `meta` and the
 /// options [`parquet_options`] gave. For datakit only.
-pub(crate) fn parquet_write(
+pub fn parquet_write(
     imported: &Imported,
     path: Option<&str>,
     meta: &WriteMeta,

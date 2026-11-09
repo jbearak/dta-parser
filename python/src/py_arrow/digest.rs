@@ -14,7 +14,7 @@
 use pyo3::prelude::*;
 
 use super::import;
-use crate::arrow::ffi::{key_at, per_unit, text_at, valid, ArrayRef, InField};
+use dta_arrow::ffi::{key_at, per_unit, text_at, valid, ArrayRef, InField};
 use crate::fail;
 
 /// Mixes words into a 64-bit state; order matters.
