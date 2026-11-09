@@ -20,7 +20,7 @@ import dta_parser
 
 ROOT = Path(__file__).resolve().parents[2]
 PAGE = ROOT / "docs" / "python.md"
-DATAKIT = "## datakit: Parquet, .dta and fixed-width files in polars"
+DATAKIT = "## datakit: Parquet, .dta and fixed-width files in pandas"
 pytestmark = pytest.mark.skipif(not PAGE.exists(), reason="docs/python.md is not here")
 
 
