@@ -13,7 +13,8 @@
 
 use pyo3::prelude::*;
 
-use super::ffi::{import_stream, ArrayRef, InField};
+use super::import;
+use crate::arrow::ffi::{key_at, per_unit, text_at, valid, ArrayRef, InField};
 use crate::fail;
 
 /// Mixes words into a 64-bit state; order matters.
@@ -65,75 +66,6 @@ impl Hasher {
         last[..chunks.remainder().len()].copy_from_slice(chunks.remainder());
         self.word(u64::from_le_bytes(last));
     }
-}
-
-/// Whether row `i` (counting the array's offset) has a value.
-#[inline]
-pub(crate) fn valid(a: &ArrayRef, i: usize) -> bool {
-    let v = a.buffer(0);
-    v == 0 || a.null_count() == 0 || unsafe { (*(v as *const u8).add(i / 8) >> (i % 8)) & 1 == 1 }
-}
-
-/// The bytes of row `i` of a string array (`u`, `U`, `vu` and the binary
-/// ones), counting its offset.
-///
-/// # Safety
-/// The array's buffers are of the format given.
-pub(crate) unsafe fn text_at<'a>(a: &ArrayRef<'a>, format: &str, i: usize) -> &'a [u8] {
-    match format {
-        "u" | "z" => {
-            let o = a.buffer(1) as *const i32;
-            let (s, e) = (*o.add(i) as usize, *o.add(i + 1) as usize);
-            std::slice::from_raw_parts((a.buffer(2) as *const u8).add(s), e - s)
-        }
-        "U" | "Z" => {
-            let o = a.buffer(1) as *const i64;
-            let (s, e) = (*o.add(i) as usize, *o.add(i + 1) as usize);
-            std::slice::from_raw_parts((a.buffer(2) as *const u8).add(s), e - s)
-        }
-        _ => {
-            // A view: 16 bytes, inline up to 12.
-            let v = (a.buffer(1) as *const u8).add(16 * i);
-            let len = u32::from_le_bytes(std::ptr::read_unaligned(v as *const [u8; 4])) as usize;
-            if len <= 12 {
-                std::slice::from_raw_parts(v.add(4), len)
-            } else {
-                let buf = u32::from_le_bytes(std::ptr::read_unaligned(v.add(8) as *const [u8; 4])) as usize;
-                let off = u32::from_le_bytes(std::ptr::read_unaligned(v.add(12) as *const [u8; 4])) as usize;
-                std::slice::from_raw_parts((a.buffer(2 + buf) as *const u8).add(off), len)
-            }
-        }
-    }
-}
-
-/// A dictionary array's key at row `i`.
-///
-/// # Safety
-/// The keys buffer holds row `i` in `format`.
-pub(crate) unsafe fn key_at(a: &ArrayRef, format: &str, i: usize) -> Option<usize> {
-    let p = a.buffer(1);
-    Some(match format {
-        "C" => *(p as *const u8).add(i) as usize,
-        "c" => usize::try_from(*(p as *const i8).add(i)).ok()?,
-        "S" => *(p as *const u16).add(i) as usize,
-        "s" => usize::try_from(*(p as *const i16).add(i)).ok()?,
-        "I" => *(p as *const u32).add(i) as usize,
-        "i" => usize::try_from(*(p as *const i32).add(i)).ok()?,
-        "L" => usize::try_from(*(p as *const u64).add(i)).ok()?,
-        "l" => usize::try_from(*(p as *const i64).add(i)).ok()?,
-        _ => return None,
-    })
-}
-
-/// Nanoseconds per unit of a `ts` or `tt` format's unit letter.
-pub(crate) fn per_unit(c: u8) -> Option<i128> {
-    Some(match c {
-        b's' => 1_000_000_000,
-        b'm' => 1_000_000,
-        b'u' => 1_000,
-        b'n' => 1,
-        _ => return None,
-    })
 }
 
 /// Hash `a`'s rows; `extra` is its parent's offset, which a struct's
@@ -246,7 +178,7 @@ fn hash_array(h: &mut Hasher, field: &InField, a: &ArrayRef, extra: usize) -> Py
 /// polars Series) of one column. For datakit only.
 #[pyfunction]
 pub fn arrow_digest(column: &Bound<'_, PyAny>) -> PyResult<u64> {
-    let imported = import_stream(column)?;
+    let imported = import(column)?;
     // A frame's stream is a struct of one column; a Series' may be the
     // column itself.
     let (field, child) = if imported.schema.format == "+s" {

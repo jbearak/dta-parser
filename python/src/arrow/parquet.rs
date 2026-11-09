@@ -1,15 +1,12 @@
 //! What the Arrow path (`arrow::read`, for datakit's `read_parquet` and
 //! `read_parquet_info`, plan 0019) shares about Parquet: opening a path,
-//! a Python file or bytes; which Python type each Parquet column becomes;
-//! picking the columns asked for; and the names and messages reported.
-//! dta_parser itself reads no Parquet since 0.3; the binding for R
-//! (r/dtaparser/src/rust/parquet_r.rs) is this module's model.
+//! bytes or another source (the binding's file objects); which Arrow type
+//! each Parquet column becomes; picking the columns asked for; and the
+//! names and messages reported. dta_parser itself reads no Parquet since
+//! 0.3; the binding for R (r/dtaparser/src/rust/parquet_r.rs) is this
+//! module's model.
 
 use std::collections::HashMap;
-
-use pyo3::exceptions::{PyIndexError, PyKeyError, PyTypeError, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyString};
 
 use dta::{Bytes, FileSource, Source};
 use dta_parquet::format::{converted, FileMetaData, LogicalType, TimeUnit};
@@ -17,7 +14,7 @@ use dta_parquet::{
     ColumnInfo, ColumnProfile, ColumnType, LevelsFrom, Logical, Output, Profile, ReadOptions, Reader, Role, Storage, TextChunk,
 };
 
-use super::fail;
+use super::error::{fail, Error, Result};
 
 // ---------------------------------------------------------------- sources
 
@@ -112,44 +109,20 @@ impl dta::SharedSource for ReadAhead {
     }
 }
 
-/// A binary Python file object with `seek` and `read`, read on the
-/// calling thread (it is not shared, so a read from one decodes on one
-/// thread).
-pub(crate) struct PyFile {
-    file: Py<PyAny>,
-    len: u64,
-}
+/// A source given as a trait object (the binding's file objects).
+pub(crate) struct DynSource<'a>(pub(crate) Box<dyn Source + Send + 'a>);
 
-impl PyFile {
-    pub(crate) fn new(file: &Bound<'_, PyAny>) -> PyResult<Self> {
-        let len: u64 = file.call_method1("seek", (0, 2))?.extract()?;
-        Ok(PyFile { file: file.clone().unbind(), len })
-    }
-}
-
-impl Source for PyFile {
+impl Source for DynSource<'_> {
     fn len(&self) -> u64 {
-        self.len
+        self.0.len()
     }
 
     fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
-        Python::attach(|py| -> PyResult<()> {
-            let f = self.file.bind(py);
-            f.call_method1("seek", (offset,))?;
-            let mut at = 0;
-            while at < buf.len() {
-                let got = f.call_method1("read", (buf.len() - at,))?;
-                let got = got.cast::<PyBytes>().map_err(|_| PyTypeError::new_err("read() did not return bytes"))?;
-                let b = got.as_bytes();
-                if b.is_empty() {
-                    return Err(PyValueError::new_err("the file ended early"));
-                }
-                buf[at..at + b.len()].copy_from_slice(b);
-                at += b.len();
-            }
-            Ok(())
-        })
-        .map_err(|e| dta::Error::new(format!("reading the file object: {e}")))
+        self.0.read_at(offset, buf)
+    }
+
+    fn shared(&self) -> Option<&dyn dta::SharedSource> {
+        self.0.shared()
     }
 }
 
@@ -224,56 +197,37 @@ impl<S: Source + Send> Access for Reader<S> {
     }
 }
 
-/// Where a file comes from: a path (`str`), the whole file (`bytes`), or
-/// a binary file object.
-enum Input<'a> {
+/// Where a file comes from: a path, the whole file in memory, or another
+/// source (a binary file object, which the binding wraps).
+pub(crate) enum Input<'a> {
     Path(String),
     Bytes(&'a [u8]),
-    File(&'a Bound<'a, PyAny>),
+    Source(Box<dyn Source + Send + 'a>),
 }
 
-fn input<'a>(source: &'a Bound<'a, PyAny>) -> PyResult<Input<'a>> {
-    if let Ok(s) = source.cast::<PyString>() {
-        return Ok(Input::Path(s.to_str()?.to_string()));
-    }
-    if let Ok(b) = source.cast::<PyBytes>() {
-        return Ok(Input::Bytes(b.as_bytes()));
-    }
-    Ok(Input::File(source))
-}
-
-/// [`with_reader`], reading only the profile entries of the columns in
-/// `selected` (all when `None`).
+/// Open `input` and run `f` on its reader, which reads only the profile
+/// entries of the columns in `selected` (all when `None`). From a path,
+/// a `Value` error starts with the path.
 pub(crate) fn with_reader_for<T>(
-    source: &Bound<'_, PyAny>,
+    input: Input<'_>,
     options: ReadOptions,
     selected: Option<&[&str]>,
-    f: &mut dyn FnMut(&mut dyn Access) -> PyResult<T>,
-) -> PyResult<T> {
-    match input(source)? {
+    f: &mut dyn FnMut(&mut dyn Access) -> Result<T>,
+) -> Result<T> {
+    match input {
         Input::Path(p) => {
             let src = ReadAhead::open(&p).map_err(|e| fail(format!("{p}: {e}")))?;
             let mut r = Reader::open_for(src, options, selected).map_err(|e| fail(format!("{p}: {e}")))?;
-            f(&mut r).map_err(|e| prefix(e, &p, source.py()))
+            f(&mut r).map_err(|e| e.prefixed(&p))
         }
         Input::Bytes(b) => {
             let mut r = Reader::open_for(Bytes(b), options, selected).map_err(fail)?;
             f(&mut r)
         }
-        Input::File(obj) => {
-            let mut r = Reader::open_for(PyFile::new(obj)?, options, selected).map_err(fail)?;
+        Input::Source(s) => {
+            let mut r = Reader::open_for(DynSource(s), options, selected).map_err(fail)?;
             f(&mut r)
         }
-    }
-}
-
-/// The error `e`, its message starting with the path when it is a
-/// `ValueError` from the core.
-fn prefix(e: PyErr, path: &str, py: Python<'_>) -> PyErr {
-    if e.is_instance_of::<PyValueError>(py) {
-        PyValueError::new_err(format!("{path}: {}", e.value(py)))
-    } else {
-        e
     }
 }
 
@@ -312,14 +266,6 @@ pub(crate) enum Kind {
     Binary,
 }
 
-pub(crate) fn unit_code(u: TimeUnit) -> &'static str {
-    match u {
-        TimeUnit::Millis => "ms",
-        TimeUnit::Micros => "us",
-        TimeUnit::Nanos => "ns",
-    }
-}
-
 /// The zone a timestamp reads with, for one adjusted to UTC: the
 /// profile's (`""`, an instant written without one, reads as UTC), else
 /// the one `ARROW:schema` gives, else UTC.
@@ -347,7 +293,7 @@ pub(crate) fn no_nulls(meta: &FileMetaData, col: &ColumnInfo) -> bool {
     })
 }
 
-pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> Result<Kind, String> {
+pub(crate) fn kind_of(col: &ColumnInfo, entry: Option<&ColumnProfile>) -> std::result::Result<Kind, String> {
     Ok(match &col.kind {
         ColumnType::Int8 => Kind::Int { width: 1 },
         ColumnType::Int16 => Kind::Int { width: 2 },
@@ -472,8 +418,29 @@ pub(crate) fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile
 
 // ---------------------------------------------------------------- read
 
+/// A column asked for: by name, by 0-based position among the data
+/// columns, or by something that is neither (an error once the file is
+/// open, as before the binding was split off).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Selector {
+    Name(String),
+    Position(i64),
+    Other,
+}
+
+/// The names asked for when every selector is a name.
+pub(crate) fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
+    wanted?
+        .iter()
+        .map(|w| match w {
+            Selector::Name(n) => Some(n.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
 /// The columns asked for, as indices into the reader's columns.
-pub(crate) fn select(r: &dyn Access, wanted: Option<&[Bound<'_, PyAny>]>, nested_skip: bool) -> PyResult<Vec<usize>> {
+pub(crate) fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: bool) -> Result<Vec<usize>> {
     let cols = r.columns();
     let data: Vec<usize> = (0..cols.len()).filter(|&k| cols[k].role == Role::Data).collect();
     let Some(wanted) = wanted else {
@@ -490,21 +457,16 @@ pub(crate) fn select(r: &dyn Access, wanted: Option<&[Bound<'_, PyAny>]>, nested
     let by_name: HashMap<&str, usize> = cols.iter().enumerate().rev().map(|(k, c)| (c.name.as_str(), k)).collect();
     let mut out = Vec::with_capacity(wanted.len());
     for w in wanted {
-        let k = if let Ok(name) = w.cast::<PyString>() {
-            let name = name.to_str()?;
-            *by_name.get(name).ok_or_else(|| {
+        let k = match w {
+            Selector::Name(name) => *by_name.get(name.as_str()).ok_or_else(|| {
                 let shown: Vec<String> = cols.iter().take(20).map(|c| format!("\"{}\"", c.name)).collect();
                 let more = if cols.len() > 20 { format!(" and {} more", cols.len() - 20) } else { String::new() };
-                PyKeyError::new_err(format!(
-                    "column \"{name}\" is not in the file; its columns are {}{more}",
-                    shown.join(", ")
-                ))
-            })?
-        } else {
-            let i: i64 = w.extract().map_err(|_| PyTypeError::new_err("columns are names or 0-based positions"))?;
-            *usize::try_from(i).ok().and_then(|i| data.get(i)).ok_or_else(|| {
-                PyIndexError::new_err(format!("there is no column {i}; the file has {} data columns", data.len()))
-            })?
+                Error::Key(format!("column \"{name}\" is not in the file; its columns are {}{more}", shown.join(", ")))
+            })?,
+            Selector::Position(i) => *usize::try_from(*i).ok().and_then(|i| data.get(i)).ok_or_else(|| {
+                Error::Index(format!("there is no column {i}; the file has {} data columns", data.len()))
+            })?,
+            Selector::Other => return Err(Error::Type("columns are names or 0-based positions".into())),
         };
         if cols[k].role == Role::Nested {
             return Err(fail(format!("column \"{}\" is nested (a list, map or group), which is not read", cols[k].name)));

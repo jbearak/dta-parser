@@ -6,21 +6,25 @@
 //! (booleans packed to bits, days and seconds held as doubles made dates
 //! and timestamps, times made nanoseconds, categorical keys narrowed to
 //! polars' width, a categorical's level numbers held as doubles made
-//! keys), and handed over through `__arrow_c_stream__` with no
-//! copy. `.a` to `.z` come back as a second table of `LETTERS` columns.
+//! keys), and handed over as an Arrow stream with no copy. `.a` to `.z`
+//! come back as a second table of `LETTERS` columns, and the rest as a
+//! [`ReadMeta`].
 
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
-
-use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{ArrowData, ArrowOutput, ColumnType, Logical, Nested, Output, ReadOptions, Storage, TextChunk};
 
-use super::ffi::{self, Array, ArrowTable, Block, Field, Plan, Table, DICTIONARY_ORDERED};
-use crate::fail;
-use crate::parquet::{entries, kind_of, no_nulls, read_error, select, unit_code, with_reader_for, Access, Kind};
+use super::error::{fail, Result};
+use super::ffi::{self, Array, Block, Field, Plan, Table, DICTIONARY_ORDERED};
+use super::meta::{repeats_a_code, ColumnMeta, InfoColumn, LabelKey, LabelSet, ParquetInfo, ReadMeta, ReadOutput, Text};
+use super::parquet::{
+    codec_name, entries, kind_of, logical_name, names_of, no_nulls, read_error, select, with_reader_for, Access, Input, Kind,
+    Selector,
+};
 
 /// The thread rule of Arrow reads (plan 0019, step 3): one thread per
 /// this many bytes decoded, at least `ARROW_THREADS`, at most
@@ -109,7 +113,7 @@ pub(crate) enum Stamps {
 }
 
 impl Stamps {
-    pub(crate) fn from_name(s: &str) -> PyResult<Self> {
+    pub(crate) fn from_name(s: &str) -> Result<Self> {
         match s {
             "error" => Ok(Stamps::Error),
             "truncate" => Ok(Stamps::Truncate),
@@ -336,13 +340,13 @@ fn level_keys(values: usize, bits: &mut [u8], rows: usize, levels: usize) -> (us
 }
 
 /// A row's message: the column, the file's row (1-based), and the text.
-fn at_row(name: &str, row: u64, what: &str) -> PyErr {
+fn at_row(name: &str, row: u64, what: &str) -> super::error::Error {
     fail(format!("column \"{name}\", row {row}: {what}"))
 }
 
 /// Make days held as doubles Date values, in place (`i32`s over the
 /// front of the doubles' buffer).
-fn days(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mode: Stamps) -> PyResult<()> {
+fn days(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mode: Stamps) -> Result<()> {
     for r in 0..rows {
         // SAFETY: the buffer holds `rows` doubles; the i32 written at r
         // overlaps only doubles at r / 2 <= r, already read.
@@ -374,7 +378,7 @@ fn days(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mod
 /// Make seconds held as doubles microseconds, in place: a value is read
 /// as the whole number of microseconds that gives it back exactly, else
 /// it is an error, or truncated.
-fn seconds(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mode: Stamps) -> PyResult<()> {
+fn seconds(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mode: Stamps) -> Result<()> {
     const LIMIT: f64 = 9_223_372_036_854_775_808.0;
     for r in 0..rows {
         let x = unsafe { *(values as *const f64).add(r) };
@@ -442,28 +446,26 @@ struct Buffers {
     _text: Vec<Vec<u8>>,
 }
 
-/// Read rows `skip..skip + n_max` of `columns` (names or positions; every
-/// data column when None) into Arrow memory. Returns `(frame, letters,
-/// meta)`: `frame` and `letters` export Arrow streams (`letters` is None
-/// when no column read holds `.a` to `.z`; its columns are the data
-/// columns that do, each an Enum of `.a` to `.z`); `meta` is a dict of
-/// what `Meta` is made from. For datakit only.
-#[pyfunction]
-#[pyo3(signature = (source, columns=None, skip=0, n_max=None, nested_skip=false, timestamps="error", threads=0, enum_metadata=true))]
+/// Read rows `skip..skip + n_max` of `columns` (every data column when
+/// None) of the Parquet file `input` into Arrow memory: the frame, the
+/// letters (None when no column read holds `.a` to `.z`; its columns are
+/// the data columns that do, each an Enum of `.a` to `.z`), and what
+/// `Meta` is made from, given to `give` while the file is open (it
+/// borrows from the reader). `mode` is how dates and timestamps held as
+/// doubles that are not whole days or microseconds read. For datakit only.
 #[allow(clippy::too_many_arguments)]
-pub fn parquet_read_arrow<'py>(
-    py: Python<'py>,
-    source: &Bound<'py, PyAny>,
-    columns: Option<Vec<Bound<'py, PyAny>>>,
+pub(crate) fn parquet_read<T>(
+    input: Input<'_>,
+    columns: Option<&[Selector]>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
-    timestamps: &str,
+    mode: Stamps,
     threads: usize,
     enum_metadata: bool,
-) -> PyResult<Bound<'py, PyTuple>> {
+    give: &mut dyn FnMut(ReadOutput<'_>) -> T,
+) -> Result<T> {
     let t0 = Instant::now();
-    let mode = Stamps::from_name(timestamps)?;
     let options = ReadOptions {
         threads,
         nested: if nested_skip { Nested::Skip } else { Nested::Error },
@@ -472,25 +474,24 @@ pub fn parquet_read_arrow<'py>(
         ..ReadOptions::default()
     };
     let options = ReadOptions { parallel_bytes: options.parallel_bytes.min(ARROW_PARALLEL_BYTES), ..options };
-    let names: Option<Vec<String>> = columns.as_ref().and_then(|c| c.iter().map(|w| w.extract::<String>().ok()).collect());
-    let names: Option<Vec<&str>> = names.as_ref().map(|n| n.iter().map(String::as_str).collect());
-    with_reader_for(source, options, names.as_deref(), &mut |r| {
-        read_arrow(py, r, columns.as_deref(), skip, n_max, nested_skip, mode, enum_metadata, t0)
+    let names = names_of(columns);
+    with_reader_for(input, options, names.as_deref(), &mut |r| {
+        read_arrow(r, columns, skip, n_max, nested_skip, mode, enum_metadata, t0, give)
     })
 }
 
 #[allow(clippy::too_many_arguments)]
-fn read_arrow<'py>(
-    py: Python<'py>,
+fn read_arrow<T>(
     r: &mut dyn Access,
-    wanted: Option<&[Bound<'py, PyAny>]>,
+    wanted: Option<&[Selector]>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
     mode: Stamps,
     enum_meta: bool,
     t0: Instant,
-) -> PyResult<Bound<'py, PyTuple>> {
+    give: &mut dyn FnMut(ReadOutput<'_>) -> T,
+) -> Result<T> {
     let mut steps = vec![("open", t0.elapsed().as_secs_f64())];
     let t = Instant::now();
     let selected = select(r, wanted, nested_skip)?;
@@ -563,7 +564,7 @@ fn read_arrow<'py>(
     steps.push(("setup", t.elapsed().as_secs_f64()));
 
     let t = Instant::now();
-    let report = py.detach(|| {
+    let report = {
         let mut text = |k: usize, chunk: &TextChunk| -> dta::Result<()> {
             match decimals[k].as_mut() {
                 Some(d) => {
@@ -574,7 +575,7 @@ fn read_arrow<'py>(
             }
         };
         r.read(&ix, skip, n, &mut outputs, &mut text)
-    });
+    };
     drop(outputs);
     let mut report = report.map_err(|e| fail(read_error(e.to_string(), &decimal_names)))?;
     steps.push(("read", t.elapsed().as_secs_f64()));
@@ -694,46 +695,36 @@ fn read_arrow<'py>(
             owner: Some(owner.clone()),
         });
     }
-    let frame = ArrowTable {
-        table: Table {
-            fields,
-            batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
-        },
+    let frame = Table {
+        fields,
+        batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
     };
     let letters_table = letters_table(&cols.iter().map(|c| c.name.clone()).collect::<Vec<_>>(), &letters, rows)?;
     steps.push(("finish", t.elapsed().as_secs_f64()));
 
     let t = Instant::now();
-    let names: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
-    let out = meta_dict(py, r, &cols, &names, rows, bad_levels)?;
-    out.set_item("letter_columns", letters.iter().map(|(k, _)| cols[*k].name.as_str()).collect::<Vec<_>>())?;
+    let mut meta = read_meta(&*r, &cols, rows, bad_levels);
+    meta.letter_columns = letters.iter().map(|(k, _)| cols[*k].name.clone()).collect();
     steps.push(("meta", t.elapsed().as_secs_f64()));
-    out.set_item("steps", steps)?;
-    let letters_obj: Option<Py<ArrowTable>> = match letters_table {
-        Some(t) => Some(Py::new(py, t)?),
-        None => None,
-    };
-    PyTuple::new(py, [Py::new(py, frame)?.into_any(), letters_obj.map_or_else(|| py.None(), Py::into_any), out.into_any().unbind()])
+    meta.steps = Some(steps);
+    Ok(give(ReadOutput { frame, letters: letters_table, meta }))
 }
 
-/// The footer of a Parquet file, for datakit's `read_parquet_info`: a
-/// dict of rows, row_groups [(rows, compressed, uncompressed)],
-/// created_by, compression, key_value [(key, text)], meta (as
-/// `parquet_read_arrow` gives it, for every data column it reads, with
-/// the file's rows) and columns [(name, role, format, flag, levels,
-/// physical_type, logical_type, label, value_labels, storage)], where
-/// `format` is the Arrow format a read gives (None for a column it does
-/// not read), `flag` as in `meta`'s columns, and `levels` an Enum's
-/// levels. For datakit only.
-#[pyfunction]
-pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
+/// The footer of a Parquet file, for datakit's `read_parquet_info`: its
+/// rows, row groups, writer, codecs and key-value metadata; each
+/// column's role, the Arrow format and flag a read gives (None for a
+/// column it does not read), an Enum's levels, Parquet's types, label,
+/// value label set and storage; and the [`ReadMeta`] of a whole-file
+/// read; given to `give` while the file is open. For datakit only.
+pub(crate) fn parquet_info<T>(input: Input<'_>, give: &mut dyn FnMut(ParquetInfo<'_>) -> T) -> Result<T> {
     let options = ReadOptions { threads: 1, nested: Nested::Skip, lazy_value_labels: true, ..ReadOptions::default() };
-    with_reader_for(source, options, None, &mut |r| {
+    with_reader_for(input, options, None, &mut |r| {
+        let r: &dyn Access = r;
         let by_name = entries(r.profile());
         let meta = r.metadata();
         let infos = r.columns();
         let mut cols = Vec::new();
-        let list = PyList::empty(py);
+        let mut columns = Vec::with_capacity(infos.len());
         for (k, c) in infos.iter().enumerate() {
             let entry = by_name.get(c.name.as_str()).copied();
             let nested = c.role == dta_parquet::Role::Nested;
@@ -749,54 +740,48 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
                     col
                 })
             };
-            list.append((
-                &c.name,
-                if nested { "nested" } else { "data" },
-                col.as_ref().map(|c| c.format.clone()),
-                col.as_ref().and_then(|c| c.flag.clone()),
-                col.as_ref().and_then(|c| c.levels.as_ref().map(|(l, _)| l.clone())),
-                c.physical.map(|p| p.name()),
-                crate::parquet::logical_name(c),
-                entry.and_then(|e| e.label.as_deref()),
-                match r.categorical_labels(k) {
+            columns.push(InfoColumn {
+                name: Cow::Borrowed(&c.name),
+                role: if nested { "nested" } else { "data" },
+                format: col.as_ref().map(|c| c.format.clone()),
+                flag: col.as_ref().and_then(|c| c.flag.clone()),
+                levels: col.as_ref().and_then(|c| c.levels.as_ref().map(|(l, _)| l.clone())),
+                physical_type: c.physical.map(|p| p.name()),
+                logical_type: logical_name(c),
+                label: entry.and_then(|e| e.label.as_deref()).map(Cow::Borrowed),
+                value_labels: match r.categorical_labels(k) {
                     // A categorical holding .a to .z: the set it reads with.
-                    Some((set, _)) => Some(set.name),
-                    None => entry.and_then(|e| e.value_labels.clone()),
+                    Some((set, _)) => Some(Cow::Owned(set.name)),
+                    None => entry.and_then(|e| e.value_labels.as_deref()).map(Cow::Borrowed),
                 },
-                c.storage.map(|s| s.name()),
-            ))?;
+                storage: c.storage.map(|s| s.name()),
+            });
             if let Some(col) = col.take() {
                 cols.push(col);
             }
         }
         drop(by_name);
-        let names: Vec<&str> = cols.iter().map(|c| c.name.as_str()).collect();
-        let m = meta_dict(py, r, &cols, &names, usize::try_from(r.rows()).unwrap_or(usize::MAX), Vec::new())?;
-        m.set_item("letter_columns", Vec::<String>::new())?;
-        let out = PyDict::new(py);
-        out.set_item("rows", r.rows())?;
-        let groups: Vec<(u64, u64, u64)> =
-            r.row_groups().iter().map(|g| (g.rows, g.compressed_bytes, g.uncompressed_bytes)).collect();
-        out.set_item("row_groups", groups)?;
-        out.set_item("created_by", r.created_by())?;
-        let codecs: Vec<String> = r.codecs().into_iter().map(crate::parquet::codec_name).collect();
-        out.set_item("compression", codecs)?;
-        let kv: Vec<(String, String)> = r
-            .metadata()
-            .key_value
-            .iter()
-            .map(|kv| (kv.key.clone(), kv.value.as_deref().map(|v| String::from_utf8_lossy(v).into_owned()).unwrap_or_default()))
-            .collect();
-        out.set_item("key_value", kv)?;
-        out.set_item("columns", list)?;
-        out.set_item("meta", m)?;
-        Ok(out)
+        let m = read_meta(r, &cols, usize::try_from(r.rows()).unwrap_or(usize::MAX), Vec::new());
+        Ok(give(ParquetInfo {
+            rows: r.rows(),
+            row_groups: r.row_groups().iter().map(|g| (g.rows, g.compressed_bytes, g.uncompressed_bytes)).collect(),
+            created_by: r.created_by().map(str::to_string),
+            compression: r.codecs().into_iter().map(codec_name).collect(),
+            key_value: r
+                .metadata()
+                .key_value
+                .iter()
+                .map(|kv| (kv.key.clone(), kv.value.as_deref().map(|v| String::from_utf8_lossy(v).into_owned()).unwrap_or_default()))
+                .collect(),
+            columns,
+            meta: m,
+        }))
     })
 }
 
 /// The `.a` to `.z` of each column holding any, as a table of Enum
 /// columns (`LETTERS`), null where a row has none.
-pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> PyResult<Option<ArrowTable>> {
+pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> Result<Option<Table>> {
     if letters.is_empty() {
         return Ok(None);
     }
@@ -833,46 +818,66 @@ pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)
             owner: Some(owner.clone()),
         });
     }
-    Ok(Some(ArrowTable {
-        table: Table {
-            fields,
-            batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
-        },
+    Ok(Some(Table {
+        fields,
+        batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
     }))
 }
 
-/// A value label code as datakit keys it: an int where whole, else a
-/// float; `.` and `.a` to `.z` as text.
-pub(crate) fn label_key<'py>(py: Python<'py>, value: f64, missing: u8) -> PyResult<Bound<'py, PyAny>> {
-    Ok(if missing != 0 {
-        PyString::new(py, &dta::missing::name(missing).unwrap_or_else(|| ".".into())).into_any()
-    } else if value.fract() == 0.0 && value.abs() < 9.0e15 {
-        (value as i64).into_pyobject(py)?.into_any()
-    } else {
-        value.into_pyobject(py)?.into_any()
-    })
+/// A value-label set's labels, `(code, text)` in order, borrowed.
+pub(crate) fn label_set(set: &dta::ValueLabelSet) -> LabelSet<'_> {
+    set.labels.iter().map(|l| (LabelKey::of(l.value, l.missing), Cow::Borrowed(l.text.as_str()))).collect()
 }
 
-/// The value label sets as {name: {code: text}}.
-pub(crate) fn label_sets<'py>(py: Python<'py>, sets: &[dta::ValueLabelSet]) -> PyResult<Bound<'py, PyDict>> {
-    let out = PyDict::new(py);
-    for set in sets {
-        let d = PyDict::new(py);
-        for l in &set.labels {
-            d.set_item(label_key(py, l.value, l.missing)?, &l.text)?;
-        }
-        out.set_item(&set.name, d)?;
+/// A value-label set's labels, `(code, text)` in order, taken.
+fn label_set_owned(set: dta::ValueLabelSet) -> LabelSet<'static> {
+    set.labels.into_iter().map(|l| (LabelKey::of(l.value, l.missing), Cow::Owned(l.text))).collect()
+}
+
+/// Value-label sets by name, in order, a set given again replacing the
+/// one of its name in place (as a dict's assignment). Sets are kept as
+/// given, a name rarely twice, and [`Sets::finish`] applies the rule.
+#[derive(Default)]
+pub(crate) struct Sets<'a> {
+    list: Vec<(Text<'a>, LabelSet<'a>)>,
+}
+
+impl<'a> Sets<'a> {
+    pub(crate) fn set(&mut self, name: Text<'a>, labels: LabelSet<'a>) {
+        self.list.push((name, labels));
     }
-    Ok(out)
+
+    /// The sets, each name once: in the place it first had, with the
+    /// labels it was last given.
+    pub(crate) fn finish(mut self) -> Vec<(Text<'a>, LabelSet<'a>)> {
+        let mut first: HashMap<&str, usize> = HashMap::with_capacity(self.list.len());
+        let mut moves = Vec::new();
+        for (k, (name, _)) in self.list.iter().enumerate() {
+            if let Some(&f) = first.get(name.as_ref()) {
+                moves.push((k, f));
+            } else {
+                first.insert(name, k);
+            }
+        }
+        drop(first);
+        if moves.is_empty() {
+            return self.list;
+        }
+        for &(k, f) in &moves {
+            self.list[f].1 = std::mem::take(&mut self.list[k].1);
+        }
+        let gone: HashSet<usize> = moves.iter().map(|&(k, _)| k).collect();
+        self.list.into_iter().enumerate().filter(|(k, _)| !gone.contains(k)).map(|(_, s)| s).collect()
+    }
 }
 
-/// One value-label set's JSON, `[[code, "text"], ...]`, straight into a
-/// dict, for the common case: numbers or `.`/`.a`-`.z` as codes, text
-/// without escapes, no code twice. `None` for anything else, which the
-/// core's parser then reads (and warns about, as it would have).
-fn fast_set<'py>(py: Python<'py>, json: &[u8]) -> PyResult<Option<Bound<'py, PyDict>>> {
+/// One value-label set's JSON, `[[code, "text"], ...]`, read directly,
+/// for the common case: numbers or `.`/`.a`-`.z` as codes, text without
+/// escapes, no code twice. `None` for anything else, which the core's
+/// parser then reads (and warns about, as it would have).
+fn fast_set(json: &[u8]) -> Option<LabelSet<'_>> {
     const EXACT: f64 = 9_007_199_254_740_992.0;
-    let out = PyDict::new(py);
+    let mut out = Vec::new();
     let mut at = 0usize;
     let ws = |at: &mut usize| {
         while json.get(*at).is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r')) {
@@ -902,21 +907,17 @@ fn fast_set<'py>(py: Python<'py>, json: &[u8]) -> PyResult<Option<Bound<'py, PyD
         std::str::from_utf8(&json[start..start + n]).ok()
     };
     if !eat(&mut at, b'[') {
-        return Ok(None);
+        return None;
     }
-    let mut pairs = 0usize;
     if !eat(&mut at, b']') {
         loop {
             if !eat(&mut at, b'[') {
-                return Ok(None);
+                return None;
             }
             ws(&mut at);
-            let key: Bound<'py, PyAny> = if json.get(at) == Some(&b'"') {
-                let Some(code) = string(&mut at) else { return Ok(None) };
-                if dta::missing::from_name(code).is_none() {
-                    return Ok(None);
-                }
-                PyString::new(py, code).into_any()
+            let key = if json.get(at) == Some(&b'"') {
+                let code = string(&mut at)?;
+                LabelKey::Missing(dta::missing::from_name(code)?)
             } else {
                 let start = at;
                 while json.get(at).is_some_and(|b| matches!(b, b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9')) {
@@ -924,53 +925,54 @@ fn fast_set<'py>(py: Python<'py>, json: &[u8]) -> PyResult<Option<Bound<'py, PyD
                 }
                 let text = std::str::from_utf8(&json[start..at]).unwrap_or("");
                 match text.parse::<i64>() {
-                    Ok(v) if v.unsigned_abs() < 9_000_000_000_000_000 => v.into_pyobject(py)?.into_any(),
+                    Ok(v) if v.unsigned_abs() < 9_000_000_000_000_000 => LabelKey::Int(v),
                     _ => match text.parse::<f64>() {
-                        Ok(v) if v.is_finite() && !(v.fract() == 0.0 && v.abs() > EXACT) => label_key(py, v, 0)?,
-                        _ => return Ok(None),
+                        Ok(v) if v.is_finite() && !(v.fract() == 0.0 && v.abs() > EXACT) => LabelKey::of(v, 0),
+                        _ => return None,
                     },
                 }
             };
             if !eat(&mut at, b',') {
-                return Ok(None);
+                return None;
             }
-            let Some(text) = string(&mut at) else { return Ok(None) };
+            let text = string(&mut at)?;
             if !eat(&mut at, b']') {
-                return Ok(None);
+                return None;
             }
-            out.set_item(key, text)?;
-            pairs += 1;
+            out.push((key, Cow::Borrowed(text)));
             if eat(&mut at, b']') {
                 break;
             }
             if !eat(&mut at, b',') {
-                return Ok(None);
+                return None;
             }
         }
     }
     ws(&mut at);
-    Ok((at == json.len() && out.len() == pairs).then_some(out))
+    (at == json.len() && !repeats_a_code(&out)).then_some(out)
 }
 
-/// The profile's value-label sets as {name: {code: text}}, and a warning
-/// for each set dropped: built from the profile's JSON where
-/// [`fast_set`] takes a set, through the core's parser otherwise.
-fn profile_label_sets<'py>(py: Python<'py>, r: &dyn Access) -> PyResult<(Bound<'py, PyDict>, Vec<String>)> {
-    let read: Vec<dta::ValueLabelSet> = r.profile().map_or_else(Vec::new, |p| p.value_labels.clone());
-    let out = label_sets(py, &read)?;
+/// The profile's value-label sets, and a warning for each set dropped:
+/// read from the profile's JSON where [`fast_set`] takes a set, through
+/// the core's parser otherwise.
+fn profile_label_sets(r: &dyn Access) -> (Sets<'_>, Vec<String>) {
+    let mut out = Sets::default();
+    for set in r.profile().map_or(&[][..], |p| p.value_labels.as_slice()) {
+        out.set(Cow::Borrowed(&set.name), label_set(set));
+    }
     let mut warnings = Vec::new();
     let (text, spans) = r.label_set_spans();
     for (name, span) in spans {
-        if let Some(d) = text.get(span.clone()).map(|j| fast_set(py, j)).transpose()?.flatten() {
-            out.set_item(name, d)?;
+        if let Some(d) = text.get(span.clone()).and_then(fast_set) {
+            out.set(Cow::Borrowed(name), d);
             continue;
         }
         match dta_parquet::Profile::parse_label_set(text, name, span.clone()) {
-            Ok(set) => out.set_item(name, label_sets(py, std::slice::from_ref(&set))?.get_item(name)?)?,
+            Ok(set) => out.set(Cow::Borrowed(name), label_set_owned(set)),
             Err(w) => warnings.push(w),
         }
     }
-    Ok((out, warnings))
+    (out, warnings)
 }
 
 /// Each categorical holding `.a` to `.z` among `cols` (plan 0022): its
@@ -991,74 +993,62 @@ fn categorical_sets(r: &dyn Access, cols: &[usize]) -> (Vec<Option<dta::ValueLab
     (sets, warnings)
 }
 
-/// What `Meta` is made from: rows, names, columns [(name, label, format,
-/// value_labels, ordered, storage, flag, eligible)], value_labels, label,
-/// notes, characteristics {variable: {name: text}}, sort, timestamp and
-/// warnings (the reader's, then `more`). A categorical holding `.a` to
-/// `.z` names the set [`categorical_sets`] gives it, which value_labels
-/// holds.
-fn meta_dict<'py>(
-    py: Python<'py>,
-    r: &dyn Access,
-    cols: &[Col],
-    names: &[&str],
-    rows: usize,
-    mut more: Vec<String>,
-) -> PyResult<Bound<'py, PyDict>> {
-    let out = PyDict::new(py);
-    out.set_item("rows", rows)?;
-    out.set_item("names", names)?;
+/// What `Meta` is made from: rows, names, columns, value labels, label,
+/// notes, characteristics, sort, timestamp and warnings (the reader's,
+/// then `more`). A categorical holding `.a` to `.z` names the set
+/// [`categorical_sets`] gives it, which the value labels hold.
+fn read_meta<'a>(r: &'a dyn Access, cols: &'a [Col], rows: usize, mut more: Vec<String>) -> ReadMeta<'a> {
     let p = r.profile();
     let by_name = entries(p);
     let infos = r.columns();
     let (cat_sets, cat_warnings) = categorical_sets(r, &cols.iter().map(|c| c.index).collect::<Vec<_>>());
-    let list = PyList::empty(py);
-    for (c, cat) in cols.iter().zip(&cat_sets) {
-        let e = by_name.get(c.name.as_str()).copied();
-        list.append((
-            &c.name,
-            e.and_then(|e| e.label.as_deref()),
-            e.and_then(|e| e.format.as_deref()),
-            match cat {
-                Some(set) => Some(set.name.as_str()),
-                None => e.and_then(|e| e.value_labels.as_deref()),
-            },
-            c.levels.as_ref().map(|(_, o)| *o),
-            infos[c.index].storage.map(|s| s.name()),
-            c.flag.as_deref(),
-            c.eligible,
-        ))?;
-    }
-    out.set_item("columns", list)?;
-    let (sets, mut warnings) = profile_label_sets(py, r)?;
-    for set in cat_sets.iter().flatten() {
-        if !sets.contains(&set.name)? {
-            sets.set_item(&set.name, label_sets(py, std::slice::from_ref(set))?.get_item(&set.name)?)?;
+    let columns = cols
+        .iter()
+        .zip(&cat_sets)
+        .map(|(c, cat)| {
+            let e = by_name.get(c.name.as_str()).copied();
+            ColumnMeta {
+                name: Cow::Borrowed(c.name.as_str()),
+                label: e.and_then(|e| e.label.as_deref()).map(Cow::Borrowed),
+                format: e.and_then(|e| e.format.as_deref()).map(Cow::Borrowed),
+                value_labels: match cat {
+                    Some(set) => Some(Cow::Owned(set.name.clone())),
+                    None => e.and_then(|e| e.value_labels.as_deref()).map(Cow::Borrowed),
+                },
+                ordered: c.levels.as_ref().map(|(_, o)| *o),
+                storage: infos[c.index].storage.map(|s| Cow::Borrowed(s.name())),
+                flag: c.flag.clone(),
+                eligible: c.eligible,
+            }
+        })
+        .collect();
+    let (sets, mut warnings) = profile_label_sets(r);
+    let mut sets = sets.finish();
+    for set in cat_sets.into_iter().flatten() {
+        if !sets.iter().any(|(n, _)| *n == set.name) {
+            sets.push((Cow::Owned(set.name.clone()), label_set_owned(set)));
         }
     }
-    out.set_item("value_labels", sets)?;
-    out.set_item("label", p.and_then(|p| p.label.as_deref()))?;
-    out.set_item("notes", p.map_or(&[][..], |p| p.notes.as_slice()))?;
-    let chars = PyDict::new(py);
-    for c in p.map_or(&[][..], |p| p.characteristics.as_slice()) {
-        let d = match chars.get_item(&c.variable)? {
-            Some(d) => d.cast_into::<PyDict>()?,
-            None => {
-                let d = PyDict::new(py);
-                chars.set_item(&c.variable, &d)?;
-                d
-            }
-        };
-        d.set_item(&c.name, &c.value)?;
-    }
-    out.set_item("characteristics", chars)?;
-    out.set_item("sort", p.map_or(&[][..], |p| p.sort.as_slice()))?;
-    out.set_item("timestamp", p.and_then(|p| p.timestamp.as_deref()))?;
     let mut all = r.warnings().to_vec();
     all.append(&mut warnings);
     all.extend(cat_warnings);
     all.append(&mut more);
-    out.set_item("warnings", all)?;
-    let _ = unit_code;
-    Ok(out)
+    ReadMeta {
+        rows,
+        columns,
+        value_labels: sets,
+        label: p.and_then(|p| p.label.clone()),
+        notes: p.map_or_else(Vec::new, |p| p.notes.clone()),
+        characteristics: p
+            .map_or(&[][..], |p| p.characteristics.as_slice())
+            .iter()
+            .map(|c| (c.variable.clone(), c.name.clone(), c.value.clone()))
+            .collect(),
+        sort: p.map_or_else(Vec::new, |p| p.sort.clone()),
+        timestamp: p.and_then(|p| p.timestamp.clone()),
+        warnings: all,
+        letter_columns: Vec::new(),
+        steps: None,
+        release: None,
+    }
 }
