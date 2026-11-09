@@ -25,9 +25,8 @@ null, each letter a tagged NaN):
 | `x.is_null() \| x.is_nan()`, R's `is.na(x)` | `.`, `.a`, `.b` |
 
 polars also makes every NaN equal to every other (so `group_by`,
-`unique`, joins and `is_in` merge `.a` with `.b`), orders NaN above
-every number (`x > 3000` is true on a letter), and does not match null
-keys in a join unless asked (`nulls_equal`).
+`unique` and `is_in` merge `.a` with `.b`), and orders NaN above every
+number (`x > 3000` is true on a letter).
 
 **Decisions.**
 
@@ -41,8 +40,8 @@ keys in a join unless asked (`nulls_equal`).
 4. Both languages get `is_missing()` and its alias `is_na()`: true for
    `.` and `.a` to `.z`, as R's `is.na()` is. Python also gets `dk.by()`
    and R `datakit_by_pl()`, which add a letter column beside each key so
-   grouping and joins keep the letters apart; joins on them need
-   `nulls_equal = TRUE`.
+   grouping and `unique` keep the letters apart. Joins keyed on columns
+   holding letters are not a use case (the user, 2026-11-09).
 
 ## Considered options
 
@@ -56,8 +55,8 @@ keys in a join unless asked (`nulls_equal`).
 
 - Code on polars must use `is_missing()` / `is_na()`, or
   `fill_nan(None)`, where R would use `is.na()`, and `dk.by()` /
-  `datakit_by_pl()` where it groups or joins on a column holding
-  letters. The guides lead with the table above.
+  `datakit_by_pl()` where it groups on a column holding letters. The
+  guides lead with the table above.
 - rlang also exports `is_na()` and `is_missing()`, with other meanings;
   a script that attaches rlang after datakit gets rlang's.
 - dta_parser's `DtaArray` (ADR 0040) stays as it is, for pandas users of
