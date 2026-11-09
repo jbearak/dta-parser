@@ -1,15 +1,14 @@
-//! A Parquet read into Arrow memory that polars adopts (plan 0019, "How
-//! the frame is built"): `parquet_read_arrow`, for datakit only.
+//! A Parquet read into Arrow memory for datakit (plan 0019, "How the
+//! frame is built"; plan 0024, stage 4): `parquet_read_columns`.
 //!
 //! Every column's buffers are laid out in one zeroed allocation, filled
-//! by the core's Arrow outputs on its worker threads, finished here
-//! (booleans packed to bits, days and seconds held as doubles made dates
-//! and timestamps, times made nanoseconds, categorical keys narrowed to
-//! polars' width, a categorical's level numbers held as doubles made
-//! keys), and handed over through `__arrow_c_stream__` with no
-//! copy. `.a` to `.z` come back as a second table of `LETTERS` columns.
+//! by the core's Arrow outputs on its worker threads, and finished here
+//! (days and seconds held as doubles made dates and timestamps, times
+//! made nanoseconds, a categorical's level numbers that are not levels
+//! made `.`), then handed to Python as a [`NativeFrame`], which converts
+//! each column once for pandas (`frame.rs`). `.a` to `.z` stay beside
+//! each column, as (row, code) pairs.
 
-use std::sync::Arc;
 use std::time::Instant;
 
 use pyo3::prelude::*;
@@ -18,7 +17,8 @@ use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{ArrowData, ArrowOutput, ColumnType, Logical, Nested, Output, ReadOptions, Storage, TextChunk};
 
-use super::ffi::{self, Array, ArrowTable, Block, Field, Plan, Table, DICTIONARY_ORDERED};
+use super::ffi::{Block, Plan};
+use super::frame::{NativeColumn, NativeFrame};
 use crate::fail;
 use crate::parquet::{entries, kind_of, no_nulls, read_error, select, unit_code, with_reader_for, Access, Kind};
 
@@ -35,70 +35,12 @@ pub(crate) const ARROW_THREADS: usize = 4;
 pub(crate) const ARROW_THREADS_MOST: usize = 12;
 /// Reads and writes of fewer bytes than this stay on one thread.
 pub(crate) const ARROW_PARALLEL_BYTES: u64 = 256 << 10;
-/// The thread rule of writes from polars' export: our CPU time stayed
+/// The thread rule of writes: with polars' export, our CPU time stayed
 /// within 1.15 times polars' at every count to 16 while the wall time
 /// kept falling.
 pub(crate) const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
 pub(crate) const ARROW_WRITE_THREADS: usize = 4;
 pub(crate) const ARROW_WRITE_THREADS_MOST: usize = 16;
-
-/// polars' Enum of `.a` to `.z` (datakit's `LETTERS`).
-pub(crate) fn letter_names() -> Vec<String> {
-    (b'a'..=b'z').map(|c| format!(".{}", c as char)).collect()
-}
-
-/// The field metadata that makes polars import a dictionary array as
-/// `Enum(levels)` (polars 2's own export writes it; not a documented
-/// interface, so a test checks polars still honours it).
-pub(crate) fn enum_metadata(levels: &[String]) -> Vec<u8> {
-    let mut v = Vec::new();
-    for l in levels {
-        v.extend_from_slice(l.len().to_string().as_bytes());
-        v.push(b';');
-        v.extend_from_slice(l.as_bytes());
-    }
-    ffi::metadata(&[("_PL_ENUM_VALUES2", &v)])
-}
-
-/// The key width polars gives an Enum of `n` levels.
-pub(crate) fn key_width(n: usize) -> usize {
-    if n <= 1 << 8 {
-        1
-    } else if n <= 1 << 16 {
-        2
-    } else {
-        4
-    }
-}
-
-pub(crate) fn key_format(width: usize) -> &'static str {
-    match width {
-        1 => "C",
-        2 => "S",
-        _ => "I",
-    }
-}
-
-/// An Arrow utf8 array of `values` (for a dictionary), with its owner.
-pub(crate) fn utf8_array(values: &[String]) -> Array {
-    let mut offsets: Vec<i32> = Vec::with_capacity(values.len() + 1);
-    let mut data = Vec::new();
-    offsets.push(0);
-    for v in values {
-        data.extend_from_slice(v.as_bytes());
-        offsets.push(data.len() as i32);
-    }
-    let buffers = vec![0, offsets.as_ptr() as usize, data.as_ptr() as usize];
-    Array {
-        length: values.len(),
-        null_count: 0,
-        offset: 0,
-        buffers,
-        children: Vec::new(),
-        dictionary: None,
-        owner: Some(Arc::new((offsets, data))),
-    }
-}
 
 /// How dates and timestamps held as doubles that are not whole days or
 /// microseconds read: an error, or truncated.
@@ -150,19 +92,15 @@ impl Elem {
 #[derive(Clone, PartialEq, Debug)]
 enum Post {
     None,
-    /// 0 and 1 bytes packed into bits.
-    Bool,
-    /// Days held as doubles, made Date (int32).
+    /// Days held as doubles, made days (int32).
     Days,
     /// Seconds held as doubles, made microseconds.
     Seconds,
     /// Times made nanoseconds.
     Scale(i64),
-    /// Keys narrowed to polars' width for this many levels.
-    Narrow(usize),
     /// Level numbers from 1 held as doubles (a categorical holding `.a`
-    /// to `.z`, plan 0022) made keys of polars' width for this many
-    /// levels; a value that is not a level number is read as `.`.
+    /// to `.z`, plan 0022), for this many levels: a value that is not a
+    /// level number is read as `.`.
     LevelNumbers(usize),
 }
 
@@ -175,21 +113,19 @@ struct Col {
     post: Post,
     values_at: usize,
     validity_at: usize,
-    /// Booleans' value bits.
-    bits_at: usize,
     /// A categorical's levels and whether ordered.
     levels: Option<(Vec<String>, bool)>,
     /// A DECIMAL read as text, every digit kept.
     decimal: Option<(u32, u32)>,
-    /// For datakit: "categorical" (polars should make it Categorical),
-    /// "decimal(p,s)" (cast the text to Decimal), or None.
+    /// For datakit: "categorical" (a categorical of the rows' values),
+    /// "decimal(p,s)" (text to make numbers of), or None.
     flag: Option<String>,
     /// A column `.a` to `.z` can be written to (plan 0019, "letters"):
     /// byte, int, long, float, double, date or timestamp in the file.
     eligible: bool,
 }
 
-/// Which polars dtype each Parquet column becomes (plan 0019's table).
+/// Which format each Parquet column is read in (plan 0019's table).
 /// `zone`: the profile's zone of a timestamp held as seconds (`Some("")`
 /// for an instant written without one, read as UTC; `None` for a time
 /// without a zone).
@@ -203,7 +139,6 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
         post,
         values_at: 0,
         validity_at: 0,
-        bits_at: 0,
         levels: None,
         decimal: None,
         flag: None,
@@ -223,7 +158,7 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
         Kind::UInt { width: 4, .. } => col(Elem::U32, "I", may_null, Post::None),
         Kind::UInt { .. } => col(Elem::U64, "L", may_null, Post::None),
         Kind::Int64 => col(Elem::I64, "l", may_null, Post::None),
-        Kind::Bool => col(Elem::U8, "b", may_null, Post::Bool),
+        Kind::Bool => col(Elem::U8, "b", may_null, Post::None),
         Kind::Float32 => col(Elem::F32, "f", may_null, Post::None),
         // A DOUBLE can hold tagged NaNs, so it always has a bitmap.
         Kind::Double { logical: Some(Logical::Date), .. } => col(Elem::F64, "tdD", true, Post::Days),
@@ -254,14 +189,13 @@ fn plan_column(index: usize, name: &str, kind: &Kind, may_null: bool, zone: Opti
             col(Elem::I64, "ttn", may_null, Post::Scale(scale))
         }
         Kind::Category { levels, ordered, rows: false } => {
-            let mut c = col(Elem::Keys, key_format(key_width(levels.len())), may_null, Post::Narrow(levels.len()));
+            let mut c = col(Elem::Keys, "I", may_null, Post::None);
             c.levels = Some((levels.clone(), *ordered));
             c
         }
         Kind::LetterCategory { levels, ordered } => {
-            // The core reads it as a DOUBLE with letters; the keys are made
-            // in place over the doubles after the read.
-            let mut c = col(Elem::F64, key_format(key_width(levels.len())), true, Post::LevelNumbers(levels.len()));
+            // The core reads it as a DOUBLE with letters: level numbers.
+            let mut c = col(Elem::F64, "g", true, Post::LevelNumbers(levels.len()));
             c.levels = Some((levels.clone(), *ordered));
             c
         }
@@ -300,36 +234,18 @@ fn bit(bits: &[u8], r: usize) -> bool {
     (bits[r / 8] >> (r % 8)) & 1 == 1
 }
 
-/// Make level numbers from 1 held as doubles keys of polars' width for
-/// `levels` levels, in place; a value that is not a level number
-/// ([`dta_parquet::level_index`]) is made null (`.`). Returns how many
+/// Read each level number from 1 held as a double that is not one of
+/// `levels` ([`dta_parquet::level_index`]) as null (`.`). Returns how many
 /// were, and the first one's row in the read (from 0).
-fn level_keys(values: usize, bits: &mut [u8], rows: usize, levels: usize) -> (usize, Option<usize>) {
-    let w = key_width(levels);
+fn drop_bad_levels(values: usize, bits: &mut [u8], rows: usize, levels: usize) -> (usize, Option<usize>) {
     let (mut bad, mut first) = (0, None);
     for r in 0..rows {
-        // SAFETY: the buffer holds `rows` doubles; the key written at r
-        // (at most 4 bytes) overlaps only the double at r, already read.
+        // SAFETY: the buffer holds `rows` doubles.
         let x = unsafe { *(values as *const f64).add(r) };
-        let key = if bit(bits, r) {
-            match dta_parquet::level_index(x, levels) {
-                Some(i) => i,
-                None => {
-                    bits[r / 8] &= !(1 << (r % 8));
-                    bad += 1;
-                    first.get_or_insert(r);
-                    0
-                }
-            }
-        } else {
-            0
-        };
-        unsafe {
-            match w {
-                1 => *(values as *mut u8).add(r) = key as u8,
-                2 => *(values as *mut u16).add(r) = key as u16,
-                _ => *(values as *mut u32).add(r) = key,
-            }
+        if bit(bits, r) && dta_parquet::level_index(x, levels).is_none() {
+            bits[r / 8] &= !(1 << (r % 8));
+            bad += 1;
+            first.get_or_insert(r);
         }
     }
     (bad, first)
@@ -360,7 +276,7 @@ fn days(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, mod
                 ));
             }
             if d < f64::from(i32::MIN) || d > f64::from(i32::MAX) {
-                return Err(at_row(name, first_row + r as u64 + 1, &format!("the date {x} (days since 1970) is outside polars' Date range")));
+                return Err(at_row(name, first_row + r as u64 + 1, &format!("the date {x} (days since 1970) is outside the range of dates")));
             }
             d as i32
         } else {
@@ -384,7 +300,7 @@ fn seconds(name: &str, values: usize, bits: &[u8], rows: usize, first_row: u64, 
             }
             let n = (x * 1e6).round();
             if n.abs() >= LIMIT {
-                return Err(at_row(name, first_row + r as u64 + 1, &format!("the timestamp {x} (seconds since 1970) is outside polars' Datetime range")));
+                return Err(at_row(name, first_row + r as u64 + 1, &format!("the timestamp {x} (seconds since 1970) is outside the range of timestamps")));
             }
             if n / 1e6 == x {
                 n as i64
@@ -443,15 +359,13 @@ struct Buffers {
 }
 
 /// Read rows `skip..skip + n_max` of `columns` (names or positions; every
-/// data column when None) into Arrow memory. Returns `(frame, letters,
-/// meta)`: `frame` and `letters` export Arrow streams (`letters` is None
-/// when no column read holds `.a` to `.z`; its columns are the data
-/// columns that do, each an Enum of `.a` to `.z`); `meta` is a dict of
-/// what `Meta` is made from. For datakit only.
+/// data column when None). Returns `(frame, meta)`: `frame` a
+/// [`NativeFrame`], whose `take` gives the columns for pandas, with `.a`
+/// to `.z`; `meta` a dict of what `Meta` is made from. For datakit only.
 #[pyfunction]
-#[pyo3(signature = (source, columns=None, skip=0, n_max=None, nested_skip=false, timestamps="error", threads=0, enum_metadata=true))]
+#[pyo3(signature = (source, columns=None, skip=0, n_max=None, nested_skip=false, timestamps="error", threads=0))]
 #[allow(clippy::too_many_arguments)]
-pub fn parquet_read_arrow<'py>(
+pub fn parquet_read_columns<'py>(
     py: Python<'py>,
     source: &Bound<'py, PyAny>,
     columns: Option<Vec<Bound<'py, PyAny>>>,
@@ -460,7 +374,6 @@ pub fn parquet_read_arrow<'py>(
     nested_skip: bool,
     timestamps: &str,
     threads: usize,
-    enum_metadata: bool,
 ) -> PyResult<Bound<'py, PyTuple>> {
     let t0 = Instant::now();
     let mode = Stamps::from_name(timestamps)?;
@@ -475,12 +388,12 @@ pub fn parquet_read_arrow<'py>(
     let names: Option<Vec<String>> = columns.as_ref().and_then(|c| c.iter().map(|w| w.extract::<String>().ok()).collect());
     let names: Option<Vec<&str>> = names.as_ref().map(|n| n.iter().map(String::as_str).collect());
     with_reader_for(source, options, names.as_deref(), &mut |r| {
-        read_arrow(py, r, columns.as_deref(), skip, n_max, nested_skip, mode, enum_metadata, t0)
+        read_columns(py, r, columns.as_deref(), skip, n_max, nested_skip, mode, t0)
     })
 }
 
 #[allow(clippy::too_many_arguments)]
-fn read_arrow<'py>(
+fn read_columns<'py>(
     py: Python<'py>,
     r: &mut dyn Access,
     wanted: Option<&[Bound<'py, PyAny>]>,
@@ -488,7 +401,6 @@ fn read_arrow<'py>(
     n_max: Option<u64>,
     nested_skip: bool,
     mode: Stamps,
-    enum_meta: bool,
     t0: Instant,
 ) -> PyResult<Bound<'py, PyTuple>> {
     let mut steps = vec![("open", t0.elapsed().as_secs_f64())];
@@ -515,9 +427,6 @@ fn read_arrow<'py>(
         col.values_at = plan.add(rows * col.elem.width());
         if col.validity {
             col.validity_at = plan.add(rows.div_ceil(8));
-        }
-        if col.post == Post::Bool {
-            col.bits_at = plan.add(rows.div_ceil(8));
         }
         cols.push(col);
     }
@@ -579,7 +488,7 @@ fn read_arrow<'py>(
     let mut report = report.map_err(|e| fail(read_error(e.to_string(), &decimal_names)))?;
     steps.push(("read", t.elapsed().as_secs_f64()));
 
-    // Finish each column, and make its Arrow array.
+    // Finish each column.
     let t = Instant::now();
     let mut text_buffers: Vec<Vec<u8>> = Vec::new();
     // (column, buffer indices into text_buffers)
@@ -612,13 +521,6 @@ fn read_arrow<'py>(
         let v = base + col.values_at;
         match &col.post {
             Post::None => {}
-            Post::Bool => {
-                let src = unsafe { slice::<u8>(v, rows) };
-                let dst = unsafe { slice::<u8>(base + col.bits_at, rows.div_ceil(8)) };
-                for (i, &b) in src.iter().enumerate() {
-                    dst[i / 8] |= (b & 1) << (i % 8);
-                }
-            }
             Post::Days => days(&col.name, v, bits, rows, first_row, mode)?,
             Post::Seconds => seconds(&col.name, v, bits, rows, first_row, mode)?,
             Post::Scale(s) if *s != 1 => {
@@ -628,7 +530,7 @@ fn read_arrow<'py>(
             }
             Post::Scale(_) => {}
             Post::LevelNumbers(n) => {
-                let (bad, first) = level_keys(v, bits, rows, *n);
+                let (bad, first) = drop_bad_levels(v, bits, rows, *n);
                 nulls[k] += bad;
                 if let Some(r) = first {
                     bad_levels.push(format!(
@@ -638,69 +540,30 @@ fn read_arrow<'py>(
                     ));
                 }
             }
-            Post::Narrow(n) => {
-                let w = key_width(*n);
-                let keys = v as *mut u32;
-                for i in 0..rows {
-                    // SAFETY: forward compaction: the narrower key at i
-                    // overlaps only keys at indices <= i, already read.
-                    unsafe {
-                        let x = *keys.add(i);
-                        match w {
-                            1 => *(v as *mut u8).add(i) = x as u8,
-                            2 => *(v as *mut u16).add(i) = x as u16,
-                            _ => {}
-                        }
-                    }
-                }
-            }
         }
     }
-    let sizes: Vec<Vec<i64>> = col_text
-        .iter()
-        .map(|ids| ids.iter().map(|&i| text_buffers[i].len() as i64).collect())
-        .collect();
     let text_addr: Vec<usize> = text_buffers.iter().map(|b| b.as_ptr() as usize).collect();
-    let sizes_addr: Vec<usize> = sizes.iter().map(|s| s.as_ptr() as usize).collect();
-    let owner: ffi::Owner = Arc::new((Buffers { _block: block, _text: text_buffers }, sizes));
-    let mut fields = Vec::with_capacity(cols.len());
-    let mut arrays = Vec::with_capacity(cols.len());
-    for (k, col) in cols.iter().enumerate() {
-        let validity = if col.validity && nulls[k] > 0 { base + col.validity_at } else { 0 };
-        let values = if col.post == Post::Bool { base + col.bits_at } else { base + col.values_at };
-        let mut buffers = vec![validity, values];
-        if col.elem == Elem::Views {
-            buffers.extend(col_text[k].iter().map(|&i| text_addr[i]));
-            buffers.push(sizes_addr[k]);
-        }
-        let mut field = Field::new(&col.name, &col.format);
-        let mut dictionary = None;
-        if let Some((levels, _)) = &col.levels {
-            field.dictionary = Some(Box::new(Field::new("", "u")));
-            field.flags |= DICTIONARY_ORDERED;
-            if enum_meta {
-                field.metadata = Some(enum_metadata(levels));
-            }
-            dictionary = Some(Box::new(utf8_array(levels)));
-        }
-        fields.push(field);
-        arrays.push(Array {
-            length: rows,
-            null_count: nulls[k],
-            offset: 0,
-            buffers,
-            children: Vec::new(),
-            dictionary,
-            owner: Some(owner.clone()),
-        });
+    let owner = super::frame::owner(Buffers { _block: block, _text: text_buffers });
+    let mut letters_of: Vec<Vec<(u64, u8)>> = cols.iter().map(|_| Vec::new()).collect();
+    for (k, l) in &letters {
+        letters_of[*k] = l.clone();
     }
-    let frame = ArrowTable {
-        table: Table {
-            fields,
-            batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
-        },
-    };
-    let letters_table = letters_table(&cols.iter().map(|c| c.name.clone()).collect::<Vec<_>>(), &letters, rows)?;
+    let natives: Vec<NativeColumn> = cols
+        .iter()
+        .enumerate()
+        .map(|(k, col)| {
+            let mut n = NativeColumn::new(&col.name, &col.format, base + col.values_at);
+            if col.validity && nulls[k] > 0 {
+                n.validity = base + col.validity_at;
+            }
+            n.nulls = nulls[k];
+            n.text = col_text[k].iter().map(|&i| text_addr[i]).collect();
+            n.levels = col.levels.clone();
+            n.letters = std::mem::take(&mut letters_of[k]);
+            n
+        })
+        .collect();
+    let frame = NativeFrame::new(rows, owner, natives);
     steps.push(("finish", t.elapsed().as_secs_f64()));
 
     let t = Instant::now();
@@ -709,24 +572,21 @@ fn read_arrow<'py>(
     out.set_item("letter_columns", letters.iter().map(|(k, _)| cols[*k].name.as_str()).collect::<Vec<_>>())?;
     steps.push(("meta", t.elapsed().as_secs_f64()));
     out.set_item("steps", steps)?;
-    let letters_obj: Option<Py<ArrowTable>> = match letters_table {
-        Some(t) => Some(Py::new(py, t)?),
-        None => None,
-    };
-    PyTuple::new(py, [Py::new(py, frame)?.into_any(), letters_obj.map_or_else(|| py.None(), Py::into_any), out.into_any().unbind()])
+    PyTuple::new(py, [Py::new(py, frame)?.into_any(), out.into_any().unbind()])
 }
 
 /// The footer of a Parquet file, for datakit's `read_parquet_info`: a
 /// dict of rows, row_groups [(rows, compressed, uncompressed)],
 /// created_by, compression, key_value [(key, text)], meta (as
-/// `parquet_read_arrow` gives it, for every data column it reads, with
+/// `parquet_read_columns` gives it, for every data column it reads, with
 /// the file's rows) and columns [(name, role, format, flag, levels,
-/// physical_type, logical_type, label, value_labels, storage)], where
-/// `format` is the Arrow format a read gives (None for a column it does
-/// not read), `flag` as in `meta`'s columns, and `levels` an Enum's
-/// levels. For datakit only.
+/// physical_type, logical_type, label, value_labels, storage, nulls)],
+/// where `format` is the format a read gives (`NativeColumn::format`;
+/// None for a column it does not read), `flag` as in `meta`'s columns,
+/// `levels` a categorical's levels, and `nulls` whether the footer allows
+/// nulls in it. For datakit only.
 #[pyfunction]
-pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
+pub fn parquet_info_columns<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
     let options = ReadOptions { threads: 1, nested: Nested::Skip, lazy_value_labels: true, ..ReadOptions::default() };
     with_reader_for(source, options, None, &mut |r| {
         let by_name = entries(r.profile());
@@ -764,6 +624,7 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
                     None => entry.and_then(|e| e.value_labels.clone()),
                 },
                 c.storage.map(|s| s.name()),
+                !nested && !no_nulls(meta, c),
             ))?;
             if let Some(col) = col.take() {
                 cols.push(col);
@@ -792,53 +653,6 @@ pub fn parquet_info_arrow<'py>(py: Python<'py>, source: &Bound<'py, PyAny>) -> P
         out.set_item("meta", m)?;
         Ok(out)
     })
-}
-
-/// The `.a` to `.z` of each column holding any, as a table of Enum
-/// columns (`LETTERS`), null where a row has none.
-pub(crate) fn letters_table(names: &[String], letters: &[(usize, Vec<(u64, u8)>)], rows: usize) -> PyResult<Option<ArrowTable>> {
-    if letters.is_empty() {
-        return Ok(None);
-    }
-    let mut plan = Plan::default();
-    let at: Vec<(usize, usize)> = letters.iter().map(|_| (plan.add(rows), plan.add(rows.div_ceil(8)))).collect();
-    let block = plan.block()?;
-    let base = block.addr();
-    let levels = letter_names();
-    let dict = utf8_array(&levels);
-    let owner: ffi::Owner = Arc::new(block);
-    let meta = enum_metadata(&levels);
-    let mut fields = Vec::new();
-    let mut arrays = Vec::new();
-    for ((k, list), &(keys_at, bits_at)) in letters.iter().zip(&at) {
-        let keys = unsafe { slice::<u8>(base + keys_at, rows) };
-        let bits = unsafe { slice::<u8>(base + bits_at, rows.div_ceil(8)) };
-        for &(r, code) in list {
-            let r = r as usize;
-            keys[r] = code - 2;
-            bits[r / 8] |= 1 << (r % 8);
-        }
-        let mut f = Field::new(&names[*k], "C");
-        f.dictionary = Some(Box::new(Field::new("", "u")));
-        f.flags |= DICTIONARY_ORDERED;
-        f.metadata = Some(meta.clone());
-        fields.push(f);
-        arrays.push(Array {
-            length: rows,
-            null_count: rows - list.len(),
-            offset: 0,
-            buffers: vec![base + bits_at, base + keys_at],
-            children: Vec::new(),
-            dictionary: Some(Box::new(dict.clone())),
-            owner: Some(owner.clone()),
-        });
-    }
-    Ok(Some(ArrowTable {
-        table: Table {
-            fields,
-            batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }],
-        },
-    }))
 }
 
 /// A value label code as datakit keys it: an int where whole, else a

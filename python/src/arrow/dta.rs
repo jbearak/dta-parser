@@ -1,17 +1,18 @@
 //! `.dta` files through Arrow memory, for datakit's `read_dta`,
-//! `save_dta` and `read_fixed_width` (plan 0019, "`.dta` in polars"):
-//! `dta_read_arrow` and `dta_write_arrow`, without pandas.
+//! `save_dta` and `read_fixed_width` (plan 0019; plan 0024, stage 4):
+//! `dta_read_columns` and `dta_write_columns`.
 //!
-//! Reading follows `dta_parser.read_dta`'s rules where they apply to
-//! polars: byte, int, long, float and double as Int8, Int16, Int32,
-//! Float32 and Float64 with nulls; `%td` (and `%d`) as Date and `%tc` as
-//! Datetime("ms"); strN and text strLs as String, binary strLs as Binary,
-//! and a strL column mixing the two as Binary (text as its UTF-8 bytes).
-//! Writing makes release 118 as `write_dta` does, from polars' export.
+//! Reading follows `dta_parser.read_dta`'s rules: byte, int, long, float
+//! and double in their own types, nulls beside them (`frame.rs` makes a
+//! column with a missing value a `DtaArray`); `%td` (and `%d`) as days
+//! and `%tc` as milliseconds since 1970; strN and text strLs as text,
+//! binary strLs as bytes, and a strL column mixing the two as bytes
+//! (text as its UTF-8 bytes). Writing makes release 118 as `write_dta`
+//! does, from the columns `frame::build` makes of numpy arrays.
 
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use pyo3::exceptions::{PyKeyError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -19,9 +20,9 @@ use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 
 use dta::{missing, Characteristic, Column as DtaColumn, Dataset, StorageType, ValueLabelSet, Values, WriteVariable};
 
-use super::digest::{key_at, text_at, valid};
-use super::ffi::{self, import_stream, Array, ArrowTable, Field, Plan, Table};
-use super::read::{label_sets, letters_table, Stamps};
+use super::ffi::{key_at, text_at, valid, Imported, Plan, EVERY_LEVEL};
+use super::frame::{NativeColumn, NativeFrame};
+use super::read::{label_sets, Stamps};
 use super::write::{columns, height, Column, Chunk};
 use crate::{create_beside, fail};
 
@@ -32,8 +33,8 @@ const DAY_MS: i64 = 86_400_000;
 /// The characteristic R's `save_dta` and pandas' `write_dta` put on a
 /// column written from a factor or category (plan 0020).
 const FACTOR_MARK: &str = "dtaparser_factor";
-/// The characteristic `save_dta` puts on a column written from an Enum
-/// or Categorical (plan 0023): "ordered <set>" or "unordered <set>".
+/// The characteristic `save_dta` puts on a column written from a categorical
+/// (plan 0023): "ordered <set>" or "unordered <set>".
 const CATEGORICAL_MARK: &str = "dtaparser_categorical";
 
 /// `%td`/`%d` dates and `%tc` datetimes, as `read_dta` tells them.
@@ -165,7 +166,7 @@ fn put(t: &Target, rows: usize, first: usize, column: &DtaColumn, file_row: u64,
                     }
                     let days = d - EPOCH_DAYS as f64;
                     if !(f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&days) {
-                        return Err(row_err(i, format!("the date {v} (days since 1960) is outside polars' Date range")));
+                        return Err(row_err(i, format!("the date {v} (days since 1960) is outside the range of dates")));
                     }
                     Ok(days as i32)
                 }),
@@ -176,7 +177,7 @@ fn put(t: &Target, rows: usize, first: usize, column: &DtaColumn, file_row: u64,
                     }
                     let ms = m - (EPOCH_DAYS * DAY_MS) as f64;
                     if ms.abs() >= 9.2e18 {
-                        return Err(row_err(i, format!("the datetime {v} (milliseconds since 1960) is outside polars' Datetime range")));
+                        return Err(row_err(i, format!("the datetime {v} (milliseconds since 1960) is outside the range of datetimes")));
                     }
                     Ok(ms as i64)
                 }),
@@ -222,12 +223,11 @@ fn put(t: &Target, rows: usize, first: usize, column: &DtaColumn, file_row: u64,
 }
 
 /// Read rows `skip..skip + n_max` of `columns` (names or 0-based
-/// positions; all when None) of the `.dta` file at `path` into Arrow
-/// memory. Returns `(frame, letters, meta)` as `parquet_read_arrow` does.
-/// For datakit only.
+/// positions; all when None) of the `.dta` file at `path`. Returns
+/// `(frame, meta)` as `parquet_read_columns` does. For datakit only.
 #[pyfunction]
 #[pyo3(signature = (path, columns=None, skip=0, n_max=None, encoding=None, timestamps="error"))]
-pub fn dta_read_arrow<'py>(
+pub fn dta_read_columns<'py>(
     py: Python<'py>,
     path: &str,
     columns: Option<Vec<Bound<'py, PyAny>>>,
@@ -343,9 +343,7 @@ pub fn dta_read_arrow<'py>(
             letters.push((k, l));
         }
     }
-    let sizes: Vec<Vec<i64>> = per_col.iter().map(|ids| ids.iter().map(|&i| text[i].len() as i64).collect()).collect();
     let text_addr: Vec<usize> = text.iter().map(|b| b.as_ptr() as usize).collect();
-    let sizes_addr: Vec<usize> = sizes.iter().map(|s| s.as_ptr() as usize).collect();
     let nulls: Vec<usize> = targets
         .iter()
         .map(|t| {
@@ -354,27 +352,35 @@ pub fn dta_read_arrow<'py>(
             rows - bits.iter().map(|b| b.count_ones() as usize).sum::<usize>()
         })
         .collect();
-    let owner: ffi::Owner = Arc::new((block, text, sizes));
-    let mut fields = Vec::new();
-    let mut arrays = Vec::new();
-    for (k, t) in targets.iter().enumerate() {
-        let mut format = t.out.format().to_string();
-        if t.out == Out::Views && t.binary.load(Ordering::Relaxed) {
-            format = "vz".into();
-        }
-        let mut buffers = vec![if nulls[k] > 0 { t.validity } else { 0 }, t.values];
-        if t.out == Out::Views {
-            buffers.extend(per_col[k].iter().map(|&i| text_addr[i]));
-            buffers.push(sizes_addr[k]);
-        }
-        fields.push(Field::new(&t.name, &format));
-        arrays.push(Array { length: rows, null_count: nulls[k], offset: 0, buffers, children: Vec::new(), dictionary: None, owner: Some(owner.clone()) });
+    let mut letters_of: Vec<Vec<(u64, u8)>> = targets.iter().map(|_| Vec::new()).collect();
+    for (k, l) in &letters {
+        letters_of[*k] = l.clone();
     }
-    let frame = ArrowTable {
-        table: Table { fields, batches: vec![Array { length: rows, null_count: 0, offset: 0, buffers: vec![0], children: arrays, dictionary: None, owner: None }] },
-    };
+    let natives: Vec<NativeColumn> = targets
+        .iter()
+        .zip(&selected)
+        .enumerate()
+        .map(|(k, (t, &c))| {
+            let format = if t.out == Out::Views && t.binary.load(Ordering::Relaxed) { "vz" } else { t.out.format() };
+            let mut n = NativeColumn::new(&t.name, format, t.values);
+            if nulls[k] > 0 {
+                n.validity = t.validity;
+            }
+            n.nulls = nulls[k];
+            n.text = per_col[k].iter().map(|&i| text_addr[i]).collect();
+            n.letters = std::mem::take(&mut letters_of[k]);
+            n.storage = match vars[c].storage {
+                StorageType::Byte => Some("byte"),
+                StorageType::Int => Some("int"),
+                StorageType::Long => Some("long"),
+                StorageType::Float => Some("float"),
+                _ => Some("double"),
+            };
+            n
+        })
+        .collect();
+    let frame = NativeFrame::new(rows, super::frame::owner((block, text)), natives);
     let names: Vec<String> = targets.iter().map(|t| t.name.clone()).collect();
-    let letters_obj = letters_table(&names, &letters, rows)?;
 
     // What Meta is made from.
     let out = PyDict::new(py);
@@ -416,11 +422,7 @@ pub fn dta_read_arrow<'py>(
     out.set_item("warnings", Vec::<String>::new())?;
     out.set_item("letter_columns", letters.iter().map(|(k, _)| names[*k].as_str()).collect::<Vec<_>>())?;
     out.set_item("release", m.release)?;
-    let letters_any: Py<PyAny> = match letters_obj {
-        Some(t) => Py::new(py, t)?.into_any(),
-        None => py.None(),
-    };
-    PyTuple::new(py, [Py::new(py, frame)?.into_any(), letters_any, out.into_any().unbind()])
+    PyTuple::new(py, [Py::new(py, frame)?.into_any(), out.into_any().unbind()])
 }
 
 // ---------------------------------------------------------------- write
@@ -475,16 +477,31 @@ fn get<T: Copy + Into<f64>>(c: &Chunk, j: usize) -> f64 {
     unsafe { (*(c.a.buffer(1) as *const T).add(j)).into() }
 }
 
-/// Write the polars frame `df` as release 118 to `path`. `meta` as for
-/// `parquet_write_arrow`. Each Enum or Categorical is codes 1 to k with
-/// its levels, the letter labels of the set meta names for it, and a
-/// `dtaparser_categorical` characteristic; meta's markers are dropped.
-/// For datakit only.
+/// Write `columns` (`rows` rows, as `frame::build` takes them) as
+/// release 118 to `path`. `meta` as for `parquet_write_columns`. Each
+/// categorical is codes 1 to k with its levels, the letter labels of the
+/// set meta names for it, and a `dtaparser_categorical` characteristic;
+/// meta's markers are dropped. For datakit only.
 #[pyfunction]
-#[pyo3(signature = (df, path, meta, missing_letters=true, timestamps="error", timestamp=None))]
-pub fn dta_write_arrow<'py>(
-    _py: Python<'py>,
-    df: &Bound<'py, PyAny>,
+#[pyo3(signature = (columns, rows, path, meta, missing_letters=true, timestamps="error", timestamp=None))]
+#[allow(clippy::too_many_arguments)]
+pub fn dta_write_columns<'py>(
+    py: Python<'py>,
+    columns: &Bound<'py, PyList>,
+    rows: usize,
+    path: &str,
+    meta: Option<&Bound<'py, PyDict>>,
+    missing_letters: bool,
+    timestamps: &str,
+    timestamp: Option<String>,
+) -> PyResult<()> {
+    let (imported, _keep, given) = super::frame::build(py, columns, rows)?;
+    write_dta(&imported, given, path, meta, missing_letters, timestamps, timestamp)
+}
+
+fn write_dta<'py>(
+    imported: &Imported,
+    given: Vec<Option<Vec<u8>>>,
     path: &str,
     meta: Option<&Bound<'py, PyDict>>,
     missing_letters: bool,
@@ -492,9 +509,8 @@ pub fn dta_write_arrow<'py>(
     timestamp: Option<String>,
 ) -> PyResult<()> {
     let mode = Stamps::from_name(timestamps)?;
-    let imported = import_stream(df)?;
-    let nobs = height(&imported);
-    let cols = columns(&imported)?;
+    let nobs = height(imported);
+    let cols = columns(imported)?;
     let item = |k: &str| -> PyResult<Option<Bound<'py, PyAny>>> {
         Ok(match meta {
             Some(m) => m.get_item(k)?.filter(|v| !v.is_none()),
@@ -513,20 +529,15 @@ pub fn dta_write_arrow<'py>(
             return Err(PyValueError::new_err(format!("column \"{n}\" appears more than once")));
         }
     }
-    // Letters.
+    // Letters, on missing rows only.
     let mut letters: Vec<Option<Vec<u8>>> = cols.iter().map(|_| None).collect();
-    if let (Some(m), true) = (item("missing")?, missing_letters) {
-        let m = m.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.missing is not a dict"))?;
-        for (name, series) in m.iter() {
-            let name: String = name.extract()?;
-            let Some(k) = cols.iter().position(|c| c.field.name == name) else { continue };
-            let codes = super::write::letter_codes(&name, &series, nobs)?;
+    if missing_letters {
+        for (k, codes) in given.into_iter().enumerate() {
+            let Some(codes) = codes else { continue };
             if let Some(r) = codes.iter().enumerate().position(|(r, &c)| c != 0 && cols[k].is_valid(r)) {
-                return Err(fail(format!("column \"{name}\": row {} holds a value and a letter; set one of them to null", r + 1)));
+                return Err(fail(format!("column \"{}\": row {} holds a value and a letter; set one of them to null", cols[k].field.name, r + 1)));
             }
-            if codes.iter().any(|&c| c != 0) {
-                letters[k] = Some(codes);
-            }
+            letters[k] = Some(codes);
         }
     }
     let entries: Option<Bound<'py, PyDict>> = match item("columns")? {
@@ -554,7 +565,7 @@ pub fn dta_write_arrow<'py>(
     let category_sets = category_sets(&cols, &named, &sets);
     let mut made: Vec<ValueLabelSet> = Vec::new();
     let mut variables = Vec::with_capacity(cols.len());
-    // Per column, the Enum's key to code (1 to k) maps, kept for the fill.
+    // Per column, the categorical's key to code (1 to k) maps, kept for the fill.
     let mut cat_maps: Vec<Option<Vec<Vec<i32>>>> = cols.iter().map(|_| None).collect();
     for (k, c) in cols.iter().enumerate() {
         let name = c.field.name.clone();
@@ -604,7 +615,7 @@ pub fn dta_write_arrow<'py>(
         let (storage, row): (StorageType, Option<Row>) = if c.field.dictionary.is_some() {
             // As Stata's `encode`: codes 1 to k, long, labelled with the
             // levels in order.
-            let every = c.field.meta("_PL_ENUM_VALUES2").is_some();
+            let every = c.field.meta(EVERY_LEVEL).is_some();
             let (levels, maps) = super::write::categorical(&name, c, every)?;
             set = category_sets[k].clone().expect("a set for each categorical");
             let mut labels: Vec<dta::ValueLabel> =
@@ -659,7 +670,7 @@ pub fn dta_write_arrow<'py>(
                 f if f.starts_with("ts") => {
                     if f.split_once(':').is_some_and(|(_, z)| !z.is_empty()) {
                         return Err(PyTypeError::new_err(format!(
-                            "column \"{name}\" has a time zone, which .dta cannot hold; convert it with dt.replace_time_zone(None) or dt.convert_time_zone"
+                            "column \"{name}\" has a time zone, which .dta cannot hold; make it naive with dt.tz_convert(zone).dt.tz_localize(None)"
                         )));
                     }
                     let per_ms: i64 = match f.as_bytes()[2] {
@@ -804,8 +815,8 @@ pub fn dta_write_arrow<'py>(
     // Each categorical is marked, so that read_dta gives it back (plan 0023).
     for (k, c) in cols.iter().enumerate() {
         if let Some(set) = &category_sets[k] {
-            // Only an Enum carries an order; a Categorical is unordered.
-            let enum_ = c.field.meta("_PL_ENUM_VALUES2").is_some();
+            // Only a categorical of every level carries an order.
+            let enum_ = c.field.meta(EVERY_LEVEL).is_some();
             let order = if ordered[k] && enum_ { "ordered" } else { "unordered" };
             characteristics.push(Characteristic { variable: c.field.name.clone(), name: CATEGORICAL_MARK.into(), value: format!("{order} {set}") });
         }
@@ -828,7 +839,7 @@ pub fn dta_write_arrow<'py>(
     let stamp = timestamp.or(item("timestamp")?.map(|v| v.extract()).transpose()?).unwrap_or_default();
     let data = Dataset { nobs, label, timestamp: stamp, variables, value_labels: sets, characteristics, sort_order };
     let (tmp, file) = create_beside(path).map_err(|e| fail(format!("{path}: {e}")))?;
-    // With the GIL held, as write_dta: text is read through polars' buffers,
+    // With the GIL held, as write_dta: the columns read numpy's buffers,
     // which the GIL keeps from being freed under us.
     let result = dta::write(&data, std::io::BufWriter::with_capacity(1 << 20, file));
     if let Err(e) = result {
@@ -843,7 +854,7 @@ pub fn dta_write_arrow<'py>(
     Ok(())
 }
 
-/// The value label set each categorical column (an Enum or Categorical)
+/// The value label set each categorical column
 /// is written with, None for other columns: the column's own name,
 /// replacing meta's set of that name, unless another column's labels
 /// (`named`) use that set; then the first free name of name_2, name_3,

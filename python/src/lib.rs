@@ -5,8 +5,8 @@
 //! numpy without its C API (the buffer protocol is not in the abi3 API
 //! before Python 3.11). Writing borrows numpy buffers the same way.
 //! Strings are made here, one Python object per distinct recent value.
-//! Parquet goes through `arrow`, for datakit only (plan 0019), with
-//! helpers it shares in `parquet`.
+//! Parquet goes through `arrow`, for datakit only (plans 0019 and 0024),
+//! with helpers it shares in `parquet`.
 
 mod arrow;
 mod parquet;
@@ -251,7 +251,7 @@ unsafe fn put_numbers(storage: StorageType, addr: usize, first: usize, values: &
 /// Strings made lately, so that a column with few distinct values shares
 /// one `str` per value instead of making one per row: 1024 slots by hash.
 /// A column whose values mostly differ stops using it after 4096 rows.
-struct Recent {
+pub(crate) struct Recent {
     /// (the `str` as an address, its UTF-8); address 0 when empty.
     slots: Vec<(usize, Vec<u8>)>,
     lookups: usize,
@@ -264,7 +264,7 @@ impl Recent {
 
     /// Empty until the first string: every column gets one, and 32 KiB
     /// each came to about 100 MB on a file of 3,000 numeric variables.
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Recent { slots: Vec::new(), lookups: 0, hits: 0 }
     }
 
@@ -272,7 +272,7 @@ impl Recent {
     ///
     /// # Safety
     /// The GIL is held; `b` is UTF-8.
-    unsafe fn get(&mut self, b: &[u8]) -> *mut ffi::PyObject {
+    pub(crate) unsafe fn get(&mut self, b: &[u8]) -> *mut ffi::PyObject {
         let make = || ffi::PyUnicode_FromStringAndSize(b.as_ptr() as *const c_char, b.len() as ffi::Py_ssize_t);
         if b.len() > Self::LONGEST || (self.lookups >= 4096 && self.hits * 2 < self.lookups) {
             return make();
@@ -305,7 +305,7 @@ impl Recent {
     ///
     /// # Safety
     /// The GIL is held.
-    unsafe fn clear(&mut self) {
+    pub(crate) unsafe fn clear(&mut self) {
         for slot in &mut self.slots {
             if slot.0 != 0 {
                 ffi::Py_DECREF(slot.0 as *mut ffi::PyObject);
@@ -586,14 +586,14 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(meta, m)?)?;
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;
-    // For datakit only (plan 0019): versioned by ABI_VERSION.
+    // For datakit only (plans 0019 and 0024): versioned by ABI_VERSION.
     m.add("ABI_VERSION", arrow::ABI_VERSION)?;
-    m.add_class::<arrow::ffi::ArrowTable>()?;
-    m.add_function(wrap_pyfunction!(arrow::read::parquet_read_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::read::parquet_info_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::digest::arrow_digest, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::write::parquet_write_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::dta::dta_read_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::dta::dta_write_arrow, m)?)?;
+    m.add_class::<arrow::frame::NativeFrame>()?;
+    m.add_class::<arrow::ffi::Buffer>()?;
+    m.add_function(wrap_pyfunction!(arrow::read::parquet_read_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::read::parquet_info_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::write::parquet_write_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::dta::dta_read_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow::dta::dta_write_columns, m)?)?;
     Ok(())
 }

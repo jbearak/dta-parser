@@ -1,28 +1,26 @@
-//! Writing a polars frame as Parquet from polars' own Arrow export
-//! (`DataFrame.__arrow_c_stream__()`): `parquet_write_arrow`, for datakit
-//! only (plan 0019, `save_parquet`).
+//! Writing a frame as Parquet: `parquet_write_columns`, for datakit only
+//! (plan 0019, `save_parquet`; plan 0024, stage 4).
 //!
-//! The writer reads polars' buffers in place: numbers a block of rows at
-//! a time, text through string views (or offsets), an Enum or Categorical
-//! through its dictionary, whose keys polars makes 8, 16 or 32 bits wide
-//! by the number of categories; an Enum holding `.a` to `.z` is handed to
-//! the core with the letters as level codes -2 to -27, which writes it as
-//! level numbers from 1 (plan 0022). A frame may come in several chunks, and
-//! an array may be a slice. Nothing is copied but the values the encoder
-//! takes.
+//! The writer reads Arrow arrays that `frame::build` lays over numpy's
+//! buffers: numbers a block of rows at a time, in place; text through
+//! offsets (or string views); a categorical through its dictionary,
+//! whose keys are pandas' codes. A categorical holding `.a` to `.z` is
+//! handed to the core with the letters as level codes -2 to -27, which
+//! writes it as level numbers from 1 (plan 0022). A table may come in
+//! several chunks, and an array may be a slice. Nothing is copied but
+//! the values the encoder takes.
 
 use std::collections::HashMap;
 
 use pyo3::exceptions::{PyKeyError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyString};
+use pyo3::types::{PyBytes, PyDict, PyList, PyString};
 
 use dta::{missing, Characteristic, ValueLabel, ValueLabelSet};
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{ColumnProfile, Compression, Fill, GetBytes, Profile, Table, Values, WriteColumn, WriteOptions};
 
-use super::digest::{key_at, text_at, valid};
-use super::ffi::{import_stream, ArrayRef, InField};
+use super::ffi::{key_at, text_at, valid, ArrayRef, Imported, InField, EVERY_LEVEL};
 use super::read::Stamps;
 use crate::{create_beside, fail};
 
@@ -77,7 +75,7 @@ impl<'a> Column<'a> {
 }
 
 /// The columns of an imported frame.
-pub(crate) fn columns(imported: &super::ffi::Imported) -> PyResult<Vec<Column<'_>>> {
+pub(crate) fn columns(imported: &Imported) -> PyResult<Vec<Column<'_>>> {
     let schema = &imported.schema;
     if schema.format != "+s" {
         return Err(PyTypeError::new_err("the Arrow stream is not a table (a struct of columns)"));
@@ -101,7 +99,7 @@ pub(crate) fn columns(imported: &super::ffi::Imported) -> PyResult<Vec<Column<'_
 }
 
 /// The frame's rows.
-pub(crate) fn height(imported: &super::ffi::Imported) -> usize {
+pub(crate) fn height(imported: &Imported) -> usize {
     imported.batches.iter().map(|b| b.get().len()).sum()
 }
 
@@ -175,9 +173,8 @@ fn texts<'a>(col: &'a Column<'a>, format: &'a str) -> Box<GetBytes<'a>> {
     })
 }
 
-/// An Enum or Categorical: its levels (an Enum's every category; a
-/// Categorical's that its rows use, in polars' order) and each chunk's
-/// key to level map.
+/// A categorical: its levels (every level when `every`; otherwise those
+/// its rows use) and each chunk's key to level map.
 pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> PyResult<(Vec<String>, Vec<Vec<i32>>)> {
     let dict_field = col.field.dictionary.as_deref().expect("a dictionary");
     let df = dict_field.format.as_str();
@@ -220,62 +217,6 @@ pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> P
         maps.push(map);
     }
     Ok((levels, maps))
-}
-
-/// Each row's `.a` to `.z` (2 to 27), or 0, from a `LETTERS` Series or a
-/// String one.
-pub(crate) fn letter_codes(name: &str, obj: &Bound<'_, PyAny>, rows: usize) -> PyResult<Vec<u8>> {
-    let imported = import_stream(obj)?;
-    let (field, child) = if imported.schema.format == "+s" {
-        (imported.schema.children.first().ok_or_else(|| fail("an empty letters frame"))?, true)
-    } else {
-        (&imported.schema, false)
-    };
-    let mut out = Vec::with_capacity(rows);
-    for b in &imported.batches {
-        let top = b.get();
-        let (a, extra) = if child { (top.child(0).ok_or_else(|| fail("a batch lacks its column"))?, top.offset()) } else { (top, 0) };
-        let n = if child { top.len() } else { a.len() };
-        for i in 0..n {
-            let j = a.offset() + extra + i;
-            if !valid(&a, j) {
-                out.push(0);
-                continue;
-            }
-            // SAFETY: the formats say the buffers' layout.
-            let text = unsafe {
-                match field.dictionary.as_deref() {
-                    Some(d) => {
-                        let dict = a.dictionary().ok_or_else(|| fail("a dictionary array without its dictionary"))?;
-                        let k = key_at(&a, &field.format, j).ok_or_else(|| fail("a bad dictionary key"))?;
-                        text_at(&dict, &d.format, dict.offset() + k)
-                    }
-                    None if matches!(field.format.as_str(), "u" | "U" | "vu") => text_at(&a, &field.format, j),
-                    None => {
-                        return Err(PyTypeError::new_err(format!(
-                            "the letters of column \"{name}\" are of Arrow type {}, not LETTERS or String",
-                            field.format
-                        )))
-                    }
-                }
-            };
-            let code = std::str::from_utf8(text).ok().and_then(missing::from_name).filter(|&c| c > missing::SYSTEM);
-            out.push(code.ok_or_else(|| {
-                fail(format!(
-                    "the letters of column \"{name}\" hold \"{}\" in row {}, which is not one of .a to .z",
-                    String::from_utf8_lossy(text),
-                    out.len() + 1
-                ))
-            })?);
-        }
-    }
-    if out.len() != rows {
-        return Err(fail(format!(
-            "the letters of column \"{name}\" have {} rows, but the frame has {rows}; carry them with letters_to_columns before changing rows, or drop them with meta.missing.pop(\"{name}\")",
-            out.len()
-        )));
-    }
-    Ok(out)
 }
 
 /// Seconds since 1970 as the core's writer makes them from microseconds.
@@ -332,7 +273,7 @@ fn bytes_bound(cols: &[Column], rows: usize) -> u64 {
     total
 }
 
-/// A polars dtype's name for an Arrow format, for errors.
+/// A type's name for an Arrow format, for errors.
 fn dtype_of(format: &str) -> String {
     match format {
         f if f.starts_with("d:") => "Decimal".into(),
@@ -374,18 +315,19 @@ pub(crate) fn label_sets(sets: &Bound<'_, PyDict>) -> PyResult<Vec<ValueLabelSet
     Ok(out)
 }
 
-/// Write the polars frame `df` (any object with `__arrow_c_stream__`) as
-/// Parquet to `path`, or return the file as `bytes` when `path` is None.
-/// `meta` is None or a dict: label, notes, characteristics {variable:
-/// {name: text}}, sort, timestamp, columns {name: (label, format,
-/// value_labels, ordered)}, value_labels {set: {code: text}}, and missing
-/// {name: Series of `.a` to `.z` or null}. For datakit only.
+/// Write `columns` (`rows` rows, as `frame::build` takes them, with
+/// their letters) as Parquet to `path`, or return the file as `bytes`
+/// when `path` is None. `meta` is None or a dict: label, notes,
+/// characteristics {variable: {name: text}}, sort, timestamp, columns
+/// {name: (label, format, value_labels, ordered)} and value_labels {set:
+/// {code: text}}. For datakit only.
 #[pyfunction]
-#[pyo3(signature = (df, path, meta, compression="snappy", compression_level=None, row_group_size=None, missing_letters=true, timestamps="error", threads=0))]
+#[pyo3(signature = (columns, rows, path, meta, compression="snappy", compression_level=None, row_group_size=None, missing_letters=true, timestamps="error", threads=0))]
 #[allow(clippy::too_many_arguments)]
-pub fn parquet_write_arrow<'py>(
+pub fn parquet_write_columns<'py>(
     py: Python<'py>,
-    df: &Bound<'py, PyAny>,
+    columns: &Bound<'py, PyList>,
+    rows: usize,
     path: Option<String>,
     meta: Option<&Bound<'py, PyDict>>,
     compression: &str,
@@ -415,9 +357,8 @@ pub fn parquet_write_arrow<'py>(
         ahead: Some(usize::MAX),
         ..defaults
     };
-    let imported = import_stream(df)?;
-    let rows = height(&imported);
-    let cols = columns(&imported)?;
+    let (imported, keep, given) = super::frame::build(py, columns, rows)?;
+    let cols = self::columns(&imported)?;
     // The core caps a row group at `row_group_bytes`, counting text row
     // by row on the calling thread (15 million rows of text: 35 ms
     // before any encoding starts). When the whole frame is smaller than
@@ -435,21 +376,13 @@ pub fn parquet_write_arrow<'py>(
     };
     // The letters of each column that has some, checked: only on nulls.
     let mut letters: Vec<Option<Vec<u8>>> = cols.iter().map(|_| None).collect();
-    if let Some(m) = get("missing")? {
-        let m = m.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.missing is not a dict"))?;
-        for (name, series) in m.iter() {
-            let name: String = name.extract()?;
-            let Some(k) = cols.iter().position(|c| c.field.name == name) else { continue };
-            if !missing_letters {
-                continue;
-            }
-            let codes = letter_codes(&name, &series, rows)?;
-            if !codes.iter().any(|&c| c != 0) {
-                continue;
-            }
+    if missing_letters {
+        for (k, codes) in given.into_iter().enumerate() {
+            let Some(codes) = codes else { continue };
             if let Some(r) = codes.iter().enumerate().position(|(r, &c)| c != 0 && cols[k].is_valid(r)) {
                 return Err(fail(format!(
-                    "column \"{name}\": row {} holds a value and the letter {}; set one of them to null",
+                    "column \"{}\": row {} holds a value and the letter {}; set one of them to null",
+                    cols[k].field.name,
                     r + 1,
                     missing::name(codes[r]).unwrap_or_default()
                 )));
@@ -582,7 +515,7 @@ pub fn parquet_write_arrow<'py>(
             Ok(())
         };
         let values = if c.field.dictionary.is_some() {
-            let every = c.field.meta("_PL_ENUM_VALUES2").is_some() || c.field.meta("_PL_ENUM_VALUES").is_some();
+            let every = c.field.meta(EVERY_LEVEL).is_some();
             if l.is_some() {
                 // Letters go on an Enum that meta gives a value label set,
                 // as read_parquet and read_dta(factors=True) make one.
@@ -741,6 +674,7 @@ pub fn parquet_write_arrow<'py>(
     drop(table);
     drop(cols);
     drop(imported);
+    drop(keep);
     match result {
         Ok(Some(buf)) => Ok(Some(PyBytes::new(py, &buf))),
         Ok(None) => Ok(None),
