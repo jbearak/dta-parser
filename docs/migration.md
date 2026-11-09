@@ -1,5 +1,8 @@
 # Migration notes
 
+- [dta_parser 0.3 to 0.4](#dta_parser-03-to-04) (Python): every numeric
+  column with a missing value is a `DtaArray`, comparisons give `<NA>`
+  for missing values, and arithmetic keeps `.a` to `.z`.
 - [dta_parser 0.2 to 0.3](#dta_parser-02-to-03) (Python): Parquet and
   fixed-width text move to datakit, in polars; `StataArray` becomes
   `DtaArray`, and `stata_key` becomes `dta_key`.
@@ -10,6 +13,32 @@
   whole datasets.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
+
+## dta_parser 0.3 to 0.4
+
+A missing value now behaves as missing in comparisons, as R's `NA` does
+(plan 0024, ADR 0039). Three changes follow:
+
+- **A column with only `.` missing is a `DtaArray`** (`dta[byte]` ...
+  `dta[double]`), not `float32` or `float64` with `NaN`. `read_dta`
+  makes every numeric column holding a missing value in the rows read a
+  `DtaArray`; one with none keeps its numpy type. A `DtaArray` takes 9
+  bytes a row. Code that tested `df[c].dtype == np.float64` should test
+  `pd.api.types.is_float_dtype` or the `DtaDtype`; `df[c].to_numpy()`
+  still gives `float64` with `NaN`.
+- **Comparisons give `<NA>` where either side is missing**, in a pandas
+  `boolean` column: `x != 1` was `True` on a missing row and is now
+  `<NA>`. `df[mask]`, `loc` and `query` drop those rows, which for
+  `!=` is a change: `df[df.x != 1]` no longer keeps the missing rows.
+  Add them back with `| df.x.isna()` where you want them.
+  `np.where(mask, ...)` and `if mask[i]:` raise on `<NA>`; use
+  `mask.fillna(False)`. `x == missing.a` still finds the `.a` rows, and
+  `missing.a == x` now does the same instead of returning `False`.
+- **Arithmetic keeps the codes**: `x * 2` is a `DtaArray` that keeps
+  `.a` to `.z`, where it was `float64` with `NaN`. `x.astype(float)`
+  gives the old result.
+
+Python's datakit 0.3 needs dta_parser 0.4.
 
 ## dta_parser 0.2 to 0.3
 
