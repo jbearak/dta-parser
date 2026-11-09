@@ -1,5 +1,5 @@
-// saveDta's conversions (plan 0021, "saveDta") and plan 0020's factors
-// through readDta and readDataset.
+// saveDta's conversions (plan 0021, "saveDta"), and plan 0020's factors
+// and plan 0023's categoricals through readDta and readDataset.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -147,7 +147,7 @@ test("decimal, time and unknown types", () => {
   assert.throws(() => node.saveDta({ variables: [] }, join(dir, "x.dta"), { timestamps: "round" }), /timestamps must be "error" or "truncate"/);
 });
 
-test("categoricals become labelled codes with plan 0020's marker", () => {
+test("categoricals become labelled codes with plan 0023's marker", () => {
   const dict = { kind: "dictionary", codes: Uint32Array.of(1, 0, 0), values: ["low", "high", "unused"], missing: Uint8Array.of(0, 0, 1) };
   const { variables, cols, chars, labels } = roundTrip({
     valueLabels: { g: new Map([[9, "something else"]]) },
@@ -164,13 +164,14 @@ test("categoricals become labelled codes with plan 0020's marker", () => {
   assert.deepEqual(Array.from(cols[0].values.slice(0, 2)), [2, 1]);
   assert.deepEqual(Array.from(cols[0].missing), [0, 0, 1]);
   assert.deepEqual(chars, [
-    { variable: "g", name: "dtaparser_factor", value: "ordered g_2" },
-    { variable: "h", name: "dtaparser_factor", value: "unordered h" },
+    { variable: "g", name: "dtaparser_categorical", value: "ordered g_2" },
+    // No ordering given: unordered.
+    { variable: "h", name: "dtaparser_categorical", value: "unordered h" },
   ]);
-  // .a to .z are kept (plan 0022); the variable then has no marker.
+  // .a to .z are kept (plan 0022), and the variable is marked too (plan 0023).
   const lettered = one({ name: "c", type: "categorical", levels: ["a"], values: [0, MISSING[".a"]] });
   assert.deepEqual(Array.from(lettered.cols[0].missing), [0, 2]);
-  assert.deepEqual(lettered.chars, []);
+  assert.deepEqual(lettered.chars, [{ variable: "c", name: "dtaparser_categorical", value: "unordered c" }]);
   assert.throws(() => one({ name: "c", type: "categorical", values: [0] }), /c: a categorical needs its levels/);
   assert.throws(
     () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["a"], ordered: false, labelSet: "s", codes: [1, 2] } }),
@@ -179,6 +180,19 @@ test("categoricals become labelled codes with plan 0020's marker", () => {
   assert.throws(
     () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["a"], ordered: false, codes: [1.5] } }),
     /c: categorical\.codes holds 1\.5, not a whole number within long's range/,
+  );
+  // Readers order the levels by code, so codes must increase with them.
+  assert.throws(
+    () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["a", "b"], ordered: false, codes: [5, 5] } }),
+    /c: categorical\.codes gives the code 5 twice/,
+  );
+  assert.throws(
+    () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["low", "high"], ordered: false, codes: [20, 10] } }),
+    /c: categorical\.codes must increase with the levels, but 10 follows 20/,
+  );
+  assert.throws(
+    () => one({ name: "c", type: "categorical", values: [0], categorical: { levels: ["a", "b", "c"], ordered: false, codes: [1, 2, 1] } }),
+    /c: categorical\.codes gives the code 1 twice/,
   );
   // An unused set by the column's name that says the same is reused.
   const same = roundTrip({ valueLabels: { h: new Map([[1, "a"], [2, "b"]]) }, variables: [{ name: "h", type: "categorical", levels: ["a", "b"], values: [0] }] });
@@ -211,14 +225,17 @@ test("readDta restores a marked factor, keeping its codes and its set's name", (
   const r = dp.openDta(require("node:fs").readFileSync(f));
   assert.deepEqual(readDataset(r), ds);
   r.close();
-  // Back to .dta: the same codes, set name and marker.
+  // Back to .dta: the same codes and set name, marked as a categorical.
   const back = join(dir, `${n++}.dta`);
   node.saveDta(ds, back);
   const r2 = dp.openDtaFile(back);
   assert.equal(r2.variables[0].valueLabels, "regions");
   assert.deepEqual([...r2.valueLabels("regions")], [[10, "low"], [20, "high"]]);
   assert.deepEqual(Array.from(r2.readColumns([0])[0].values.slice(0, 2)), [10, 20]);
-  assert.deepEqual(r2.characteristics().filter((c) => c.name === "dtaparser_factor"), [{ variable: "region", name: "dtaparser_factor", value: "ordered regions" }]);
+  assert.deepEqual(r2.characteristics(), [
+    { variable: "region", name: "keep", value: "me" },
+    { variable: "region", name: "dtaparser_categorical", value: "ordered regions" },
+  ]);
   r2.close();
   // To Parquet: a categorical, no dangling set reference; back to .dta, codes 1 to k under the column's name.
   const pq = openParquet(writeParquet(ds));
@@ -290,7 +307,7 @@ test("a marker that no longer holds gives labelled numbers and one warning; savi
     const out = join(dir, `${n++}.dta`);
     node.saveDta(ds, out);
     const r = dp.openDtaFile(out);
-    assert.equal(r.characteristics().some((c) => c.name === "dtaparser_factor"), false);
+    assert.equal(r.characteristics().some((c) => c.name === "dtaparser_factor" || c.name === "dtaparser_categorical"), false);
     assert.deepEqual(r.valueLabels(r.variables[0].valueLabels), ds.valueLabels[ds.variables[0].valueLabels]);
     r.close();
   }

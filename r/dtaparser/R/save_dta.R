@@ -37,8 +37,10 @@
 #' whether it was ordered and naming its label set (`"ordered size"`),
 #' so that [read_dta()] reads it back as the same factor. Stata keeps
 #' the characteristic, and other readers do not act on it. Markers already in
-#' the `characteristics` attribute are dropped and written afresh, so a
-#' column that is no longer a factor loses its marker.
+#' the `characteristics` attribute, `dtaparser_factor` and the
+#' `dtaparser_categorical` that Python's and TypeScript's datakit write,
+#' are dropped and written afresh, so a column that is no longer a factor
+#' loses its marker.
 #'
 #' **Strings.** Character columns are strN, or strL beyond 2045 bytes;
 #' `NA` is written as `""`, since Stata strings have no missing value.
@@ -207,9 +209,15 @@ kept_characteristics <- function(chars, names) {
 # is "ordered" or "unordered", a space, and the column's label set.
 FACTOR_MARK <- "dtaparser_factor"
 
-# `chars` without factor marks, plus one for each factor in `data`.
+# The characteristic that marks a categorical column, which may hold .a
+# to .z (plan 0023); its value is as a factor mark's. Python's and
+# TypeScript's datakit write it; save_dta() only drops it.
+CATEGORICAL_MARK <- "dtaparser_categorical"
+
+# `chars` without factor or categorical marks, plus one for each factor
+# in `data`.
 with_factor_marks <- function(chars, data, cols) {
-  if (!is.null(chars)) chars <- chars[chars$name != FACTOR_MARK, , drop = FALSE]
+  if (!is.null(chars)) chars <- chars[!(chars$name %in% c(FACTOR_MARK, CATEGORICAL_MARK)), , drop = FALSE]
   factor <- vapply(data, is.factor, NA, USE.NAMES = FALSE)
   if (!any(factor)) return(chars)
   marks <- data.frame(

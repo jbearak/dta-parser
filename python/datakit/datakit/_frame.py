@@ -6,6 +6,7 @@ native writers."""
 from __future__ import annotations
 
 import os
+import re
 import warnings
 
 import polars as pl
@@ -141,12 +142,22 @@ def decimal(text, precision, scale):
     return out
 
 
-def finish(native_frame, native_letters, m, *, factors, letters, letter_suffix):
-    """`(df, meta)` from a native read, letters placed as `letters` says."""
+def finish(native_frame, native_letters, m, *, factors, letters, letter_suffix, markers=False):
+    """`(df, meta)` from a native read, letters placed as `letters` says.
+    With `markers` (a .dta read), the columns marked `dtaparser_categorical`
+    are Enums again first (`restore_categoricals`)."""
     for w in m["warnings"]:
         warn(w)
     df = frame_of(native_frame, m)
     meta = meta_of(m)
+    if markers:
+        df, stale = restore_categoricals(df, meta)
+        if stale:
+            shown = ", ".join(f'"{n}"' for n in stale)
+            warn(f"{'column' if len(stale) == 1 else 'columns'} {shown} {'was' if len(stale) == 1 else 'were'} "
+                 "written as categoricals, but the file has changed since: their value label set changed, a value "
+                 "has no label, two codes share a text, a code is not a whole number, `.` is labelled, a date format "
+                 "was given, or a column has both markers; read as unmarked columns")
     found = {}
     if native_letters is not None and letters is not None:
         ldf = pl.DataFrame(native_letters)
@@ -171,6 +182,78 @@ def finish(native_frame, native_letters, m, *, factors, letters, letter_suffix):
         meta.missing = found
     meta._digests = {name: native.arrow_digest(df.get_column(name)) for name in meta.missing}
     return df, meta
+
+
+# The characteristics that mark a column written from a categorical:
+# "ordered <set>" or "unordered <set>". R's factors (plan 0020), and
+# Enums and Categoricals (plan 0023), which may hold .a to .z.
+FACTOR_MARK = "dtaparser_factor"
+CATEGORICAL_MARK = "dtaparser_categorical"
+_MARK = re.compile(r"(ordered|unordered) (.+)", re.DOTALL)
+# The numbers a .dta long holds; a value label's code is one.
+_LONG = (-2_147_483_647, 2_147_483_620)
+
+
+def marked_levels(mark, set_name, value_labels):
+    """The levels and order a `dtaparser_categorical` mark gives a column
+    whose value label set is `set_name`, as `(codes, texts, ordered)`, or
+    None when the file no longer holds what was written: the mark names
+    another set or one the file lacks, the set labels `.`, a code is not
+    a whole number within long's range, or two codes share a text."""
+    m = _MARK.fullmatch(mark) if isinstance(mark, str) else None
+    table = value_labels.get(set_name) if set_name else None
+    if m is None or m.group(2) != set_name or table is None or "." in table:
+        return None
+    numeric = sorted((k, t) for k, t in table.items() if not isinstance(k, str))
+    for k, _ in numeric:
+        if not (float(k).is_integer() and _LONG[0] <= k <= _LONG[1]):
+            return None
+    texts = [t for _, t in numeric]
+    if len(set(texts)) != len(texts):
+        return None
+    return [float(k) for k, _ in numeric], texts, m.group(1) == "ordered"
+
+
+def restore_categoricals(df, meta):
+    """`df` with each column marked `dtaparser_categorical` that passes the
+    checks of plan 0023 an Enum of its set's texts in code order, unused
+    ones included; its `meta.columns[name].ordered` from the mark, its mark
+    gone from `meta.characteristics`. Its `.a` to `.z` stay with the read's
+    letters. The columns that fail (`marked_levels`, a column that is not
+    numeric, as a `%td` one is once read, a value without a label, or both
+    marks) are left as read, unmarked; their names are returned with
+    `df`. `dtaparser_factor` alone is left as it is (an R factor; plan
+    0020)."""
+    changes = []
+    stale = []
+    for name in df.columns:
+        chars = meta.characteristics.get(name) or {}
+        if CATEGORICAL_MARK not in chars:
+            continue
+        s = df.get_column(name)
+        col = meta.columns.get(name) or Column()
+        levels = None
+        if FACTOR_MARK not in chars and s.dtype.is_numeric():
+            levels = marked_levels(chars[CATEGORICAL_MARK], col.value_labels, meta.value_labels)
+        if levels is not None:
+            codes, texts, ordered = levels
+            present = s.drop_nulls()
+            if s.dtype.is_float():
+                present = present.filter(present.is_not_nan())
+            if not present.cast(pl.Float64).is_in(codes).all():
+                levels = None
+        if levels is None:
+            stale.append(name)
+            continue
+        changes.append(s.cast(pl.Float64).replace_strict(codes, texts, default=None, return_dtype=pl.Enum(texts))
+                       .alias(name))
+        meta.columns[name] = Column(col.label, col.format, col.value_labels, ordered)
+        rest = {k: v for k, v in chars.items() if k != CATEGORICAL_MARK}
+        if rest:
+            meta.characteristics[name] = rest
+        else:
+            del meta.characteristics[name]
+    return (df.with_columns(changes) if changes else df), stale
 
 
 def add_companions(df, meta, names, suffix, found, *, what="letter_suffix"):

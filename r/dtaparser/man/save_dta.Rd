@@ -53,8 +53,10 @@ Each factor also gets a characteristic, \code{dtaparser_factor}, saying
 whether it was ordered and naming its label set (\code{"ordered size"}),
 so that \code{\link[=read_dta]{read_dta()}} reads it back as the same factor. Stata keeps
 the characteristic, and other readers do not act on it. Markers already in
-the \code{characteristics} attribute are dropped and written afresh, so a
-column that is no longer a factor loses its marker.
+the \code{characteristics} attribute, \code{dtaparser_factor} and the
+\code{dtaparser_categorical} that Python's and TypeScript's datakit write,
+are dropped and written afresh, so a column that is no longer a factor
+loses its marker.
 
 \strong{Strings.} Character columns are strN, or strL beyond 2045 bytes;
 \code{NA} is written as \code{""}, since Stata strings have no missing value.

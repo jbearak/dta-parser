@@ -73,10 +73,13 @@ export interface DatasetVariable {
   /** Whether a categorical's levels are ordered. */
   ordered?: boolean;
   /**
-   * A categorical's levels and ordering, as a reader gives them. A factor
-   * `readDta` restored (plan 0020's `dtaparser_factor`) also has the value
-   * label set it came from, `labelSet`, and each level's code in it,
-   * `codes`, so `saveDta` writes the same set and codes back.
+   * A categorical's levels and ordering, as a reader gives them. A
+   * variable `readDta` restored (marked `dtaparser_factor`, plan 0020, or
+   * `dtaparser_categorical`, plan 0023) also has the value label set it
+   * came from, `labelSet`, and each level's code in it, `codes`, so
+   * `saveDta` writes the same set and codes back. `saveDta` takes codes
+   * that increase with the levels; a code given twice, or out of order,
+   * is an error.
    */
   categorical?: {
     readonly levels: readonly string[] | null;
@@ -112,7 +115,11 @@ export interface ReadVariable extends DatasetVariable {
   type: string;
   format: string;
   label: string;
-  /** The value label set's name; `""` when none (and for a restored factor, whose set is `categorical.labelSet`). */
+  /**
+   * The value label set's name; `""` when none, and for a restored
+   * categorical whose set labels no `.a` to `.z` (its set is
+   * `categorical.labelSet`).
+   */
   valueLabels: string;
   values: TableColumn;
   unit?: "day" | "s" | "ms" | "us" | "ns";
@@ -124,7 +131,10 @@ export interface ReadDataset extends Dataset {
   variables: ReadVariable[];
   label: string;
   notes: string[];
-  /** Every value label set the file has, used or not (a restored factor's set aside). */
+  /**
+   * Every value label set the file has, used or not, except a restored
+   * categorical's set that no variable read names.
+   */
   valueLabels: Record<string, ValueLabels>;
   characteristics: Characteristic[];
   sortedBy: string[];

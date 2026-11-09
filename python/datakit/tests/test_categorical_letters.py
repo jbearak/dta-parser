@@ -103,10 +103,12 @@ def test_save_dta_takes_what_read_parquet_gives(tmp_path):
     _, _, raw = grade()
     back, bm = quiet(dk.read_parquet, raw)
     dk.save_dta(back, tmp_path / "g.dta", meta=bm)
-    d, dm = dk.read_dta(tmp_path / "g.dta")
-    assert d["grade"].to_list() == [1, None, 3, None, None, 2]
+    d, dm = quiet(dk.read_dta, tmp_path / "g.dta")
+    assert d["grade"].dtype == pl.Enum(LEVELS) and d["grade"].to_list() == back["grade"].to_list()
     assert dm.missing["grade"].to_list() == [None, ".a", None, None, ".z", None]
-    assert dm.value_labels[dm.columns["grade"].value_labels] == {1: "low", 2: "mid", 3: "high", 4: "unused"}
+    assert dm.columns["grade"].ordered is True
+    assert dm.value_labels[dm.columns["grade"].value_labels] == {1: "low", 2: "mid", 3: "high", 4: "unused",
+                                                                 ".r": "Refused"}
 
 
 def test_without_letters_it_stays_text():

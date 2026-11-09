@@ -7,7 +7,7 @@ import pandas as pd
 
 from . import _native
 from ._array import DtaDtype
-from ._read import _EPOCH_DAYS, FACTOR_MARK, date_kind
+from ._read import _EPOCH_DAYS, CATEGORICAL_MARK, FACTOR_MARK, date_kind
 from ._names import reserved_warning
 from .missing import MissingValue
 
@@ -248,7 +248,8 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
       named after the column, or name_2, name_3, ... when another
       column's labels use that name), and
       a characteristic, dtaparser_factor, so that read_dta reads it back
-      as the same category, ordered or not;
+      as the same category, ordered or not (a dtaparser_factor or
+      dtaparser_categorical characteristic in attrs is not written);
     - datetime64: %td (long) if every value is midnight, else %tc (double,
       milliseconds); NaT as `.`;
     - text: strN up to 2045 bytes, else strL; None, NaN and pd.NA as "";
@@ -296,7 +297,9 @@ def write_dta(df, path, *, label=None, variable_labels=None, timestamp=None):
     characteristics = []
     for variable, table in (info.get("characteristics") or {}).items():
         if variable in present:
-            characteristics.extend((variable, n, str(v)) for n, v in table.items() if n != FACTOR_MARK)
+            # A mark says what was written; this writer adds its own below.
+            characteristics.extend((variable, n, str(v)) for n, v in table.items()
+                                   if variable == "_dta" or n not in (FACTOR_MARK, CATEGORICAL_MARK))
     # Each categorical is marked, so read_dta reads it back as one.
     for spec, (_, column) in zip(specs, df.items()):
         if isinstance(column.dtype, pd.CategoricalDtype):

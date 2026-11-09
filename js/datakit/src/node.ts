@@ -166,8 +166,9 @@ export interface ReadDtaOptions extends ReadDatasetOptions {
 
 /**
  * Read a Stata .dta file (releases 104 to 119) into a `ReadDataset`, with
- * plan 0020's factors as categoricals. See docs/typescript.md, "Read a
- * whole file".
+ * the variables marked `dtaparser_factor` (plan 0020) or
+ * `dtaparser_categorical` (plan 0023) as categoricals. See
+ * docs/typescript.md, "Read a whole file".
  */
 export function readDta(file: string, options: ReadDtaOptions = {}): ReadDataset {
   const reader = dta().openDtaFile(file, options.encoding ? { encoding: options.encoding } : {});
@@ -182,7 +183,8 @@ export function readDta(file: string, options: ReadDtaOptions = {}): ReadDataset
  * Save a dataset as a Stata .dta file (release 118) at `file`, converting
  * what .dta holds differently: dates to `%td`, timestamps to `%tc`, 64-bit
  * and unsigned integers to the smallest type that holds them,
- * categoricals to labelled codes with plan 0020's marker. See
+ * categoricals to labelled codes marked `dtaparser_categorical` (plan
+ * 0023). See
  * docs/typescript.md, "Save a dataset".
  */
 export function saveDta(data: Dataset, file: string, options: SaveDtaOptions = {}): void {

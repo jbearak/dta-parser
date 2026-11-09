@@ -754,16 +754,33 @@ takes an `AsyncTableReader`. Both take `columns`, `start`, `count` and
 `nested`, `ReadParquetOptions`, and `readDta` adds `encoding`,
 `ReadDtaOptions`).
 
-**Factors.** A column R's dtaparser or Python's dta_parser saved from a
-factor (marked with the `dtaparser_factor` characteristic, plan 0020)
-comes back as a categorical: a `DictionaryColumn` of its levels, with
-`categorical` giving the levels, whether they are ordered, the value
-label set they came from (`labelSet`) and each level's code (`codes`),
-so `saveDta` writes the same codes and set back. If the file was
-changed after it was written, so that the marker no longer holds (a
-value with no label, a `.a` to `.z`, two codes with one text), the
-column comes back as labelled numbers and one warning names it
-(`onWarning`, or a process warning with code `DATAKIT_FACTOR`).
+**Factors and categoricals.** Two characteristics mark a column saved
+from a categorical type. `dtaparser_factor` (plan 0020) marks a column
+R's dtaparser or Python's dta_parser saved from a factor or pandas
+`category`, which holds no `.a` to `.z`. `dtaparser_categorical` (plan
+0023) marks a column `saveDta` or Python's datakit `save_dta` saved
+from a categorical, which may hold them. Either comes back as a
+categorical: a `DictionaryColumn` of its levels (the texts of its
+value label set's numeric codes, in code order, unused ones included),
+with `categorical` giving the levels, whether they are ordered, the
+value label set they came from (`labelSet`) and each level's code
+(`codes`), so `saveDta` writes the same codes and set back. In a
+`dtaparser_categorical` column, `.a` to `.z` stay in `missing` (2 to
+27), and when the set labels one of them the variable's `valueLabels`
+still names the set, which `valueLabels` keeps, so the labels on its
+letters are not lost.
+
+If the file was changed after it was written, so that the marker no
+longer holds, the column comes back as labelled numbers and one
+warning names it with the reason (`onWarning`, or a process warning
+with code `DATAKIT_FACTOR`). The checks: the column is numeric and
+still uses the set the marker names; the set's numeric codes are whole
+numbers within long's range, no two with one text; every value read
+has a label. A factor also fails on a `.a` to `.z` in a row or a label
+on any missing value; a categorical only on a label on `.`. A column
+with both markers is read as labelled numbers and named in the warning
+too. (This reader does not convert dates, so a date format does not
+make a marker fail.)
 
 `readParquetInfo(path)` reads only the footer (`ParquetFileInfo`):
 `info`, `variables` (with their column chunks), every value label set
@@ -817,7 +834,7 @@ datakit `save_dta` does (`SaveDtaOptions`):
 | `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
 | `date` (days since 1970) | long `%td`, days since 1960 |
 | `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
-| `categorical` | codes 1 to k (a restored factor's own codes) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_factor` marker, as R and Python write factors. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and such a variable gets no marker: it reads back as labelled numbers, which keep them, as Python's `save_dta` writes it. Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
+| `categorical` | codes 1 to k (a restored categorical's own `categorical.codes`, which must increase with the levels: a code given twice, or out of order, is an error) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_categorical` marker, `ordered <set>` or `unordered <set>` (`unordered` when no ordering is given), as Python's datakit `save_dta` writes it. `.a` to `.z` in it (a `DictionaryColumn`'s `missing` 2 to 27, or `MISSING` values among the codes) stay letters, and `readDta` gives them back in the categorical. Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
 | `decimal` read as a number | double |
 
 Dates and timestamps are converted exactly, in integer arithmetic, from
@@ -831,7 +848,9 @@ A null in a numeric, date or timestamp column is `.`, and `.a` to `.z`
 stay letters. A `.dta` string has no missing value, so a null string is
 an error naming the variable and row; fill it (with `""`, say) first.
 `time` and a `decimal` read as text (more than 15 digits) are errors
-that say what to do instead. A
+that say what to do instead. The `dataset`'s own `dtaparser_factor` and
+`dtaparser_categorical` characteristics are dropped, for every column,
+so a column that is no longer a categorical keeps no marker. A
 value label set that already has the name a categorical's set would take
 is reused if it maps the same codes to the same texts, and otherwise
 kept, the new set taking `name_2`, `name_3`, and so on.

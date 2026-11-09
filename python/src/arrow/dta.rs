@@ -29,6 +29,13 @@ use crate::{create_beside, fail};
 const EPOCH_DAYS: i64 = 3653;
 const DAY_MS: i64 = 86_400_000;
 
+/// The characteristic R's `save_dta` and pandas' `write_dta` put on a
+/// column written from a factor or category (plan 0020).
+const FACTOR_MARK: &str = "dtaparser_factor";
+/// The characteristic `save_dta` puts on a column written from an Enum
+/// or Categorical (plan 0023): "ordered <set>" or "unordered <set>".
+const CATEGORICAL_MARK: &str = "dtaparser_categorical";
+
 /// `%td`/`%d` dates and `%tc` datetimes, as `read_dta` tells them.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum DateKind {
@@ -469,7 +476,10 @@ fn get<T: Copy + Into<f64>>(c: &Chunk, j: usize) -> f64 {
 }
 
 /// Write the polars frame `df` as release 118 to `path`. `meta` as for
-/// `parquet_write_arrow`. For datakit only.
+/// `parquet_write_arrow`. Each Enum or Categorical is codes 1 to k with
+/// its levels, the letter labels of the set meta names for it, and a
+/// `dtaparser_categorical` characteristic; meta's markers are dropped.
+/// For datakit only.
 #[pyfunction]
 #[pyo3(signature = (df, path, meta, missing_letters=true, timestamps="error", timestamp=None))]
 pub fn dta_write_arrow<'py>(
@@ -527,14 +537,19 @@ pub fn dta_write_arrow<'py>(
         Some(s) => super::write::label_sets(&s.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.value_labels is not a dict"))?)?,
         None => Vec::new(),
     };
-    // Each column's value label set as meta names it.
+    // Each column's value label set as meta names it, and its `ordered`.
     let mut named: Vec<String> = Vec::with_capacity(cols.len());
+    let mut ordered: Vec<bool> = Vec::with_capacity(cols.len());
     for c in &cols {
-        let set = match entries.as_ref().map(|e| e.get_item(&c.field.name)).transpose()?.flatten() {
-            Some(e) => e.extract::<(Option<String>, Option<String>, Option<String>, Option<bool>)>()?.2.unwrap_or_default(),
-            None => String::new(),
+        let (set, o) = match entries.as_ref().map(|e| e.get_item(&c.field.name)).transpose()?.flatten() {
+            Some(e) => {
+                let (_, _, s, o) = e.extract::<(Option<String>, Option<String>, Option<String>, Option<bool>)>()?;
+                (s.unwrap_or_default(), o.unwrap_or(false))
+            }
+            None => (String::new(), false),
         };
         named.push(set);
+        ordered.push(o);
     }
     let category_sets = category_sets(&cols, &named, &sets);
     let mut made: Vec<ValueLabelSet> = Vec::new();
@@ -592,10 +607,17 @@ pub fn dta_write_arrow<'py>(
             let every = c.field.meta("_PL_ENUM_VALUES2").is_some();
             let (levels, maps) = super::write::categorical(&name, c, every)?;
             set = category_sets[k].clone().expect("a set for each categorical");
-            made.push(ValueLabelSet {
-                name: set.clone(),
-                labels: levels.iter().enumerate().map(|(i, t)| dta::ValueLabel { value: (i + 1) as f64, missing: 0, text: t.clone() }).collect(),
-            });
+            let mut labels: Vec<dta::ValueLabel> =
+                levels.iter().enumerate().map(|(i, t)| dta::ValueLabel { value: (i + 1) as f64, missing: 0, text: t.clone() }).collect();
+            // The labels on .a to .z of the set meta names for the column
+            // (plan 0023), from meta's sets as given, before the
+            // categorical's set replaces one of them.
+            if missing_letters {
+                if let Some(given) = sets.iter().find(|s| !named[k].is_empty() && s.name == named[k]) {
+                    labels.extend(given.labels.iter().filter(|l| l.missing > missing::SYSTEM).cloned());
+                }
+            }
+            made.push(ValueLabelSet { name: set.clone(), labels });
             format.clear();
             cat_maps[k] = Some(maps);
             (StorageType::Long, None)
@@ -768,8 +790,22 @@ pub fn dta_write_arrow<'py>(
                 continue;
             }
             for (n, v) in entries.cast_into::<PyDict>()?.iter() {
-                characteristics.push(Characteristic { variable: variable.clone(), name: n.extract()?, value: v.extract()? });
+                let name: String = n.extract()?;
+                // A marker describes what was written; the writer adds its
+                // own below (a column that was a categorical may be
+                // integers now).
+                if variable != "_dta" && (name == FACTOR_MARK || name == CATEGORICAL_MARK) {
+                    continue;
+                }
+                characteristics.push(Characteristic { variable: variable.clone(), name, value: v.extract()? });
             }
+        }
+    }
+    // Each categorical is marked, so that read_dta gives it back (plan 0023).
+    for (k, c) in cols.iter().enumerate() {
+        if let Some(set) = &category_sets[k] {
+            let order = if ordered[k] { "ordered" } else { "unordered" };
+            characteristics.push(Characteristic { variable: c.field.name.clone(), name: CATEGORICAL_MARK.into(), value: format!("{order} {set}") });
         }
     }
     let notes: Vec<String> = item("notes")?.map(|v| v.extract()).transpose()?.unwrap_or_default();
