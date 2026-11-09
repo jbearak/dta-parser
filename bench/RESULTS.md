@@ -1023,18 +1023,17 @@ polars 2.1.0, load average 2. No target. The numbers are in
 
 | case | `read_parquet_pl()` | `pl$read_parquet()` | `read_parquet()` (tibble) |
 |---|---|---|---|
-| whole file | 119 ms | 12 ms | 35 ms |
-| five columns | 12 ms | 4.7 ms | 6.0 ms |
+| whole file | 26 ms | 12 ms | 35 ms |
+| five columns | 12 ms | 4.6 ms | 6.1 ms |
 
-**Where the time goes.** On the whole file, about 90 ms of the 119 ms
-is one call, `df$schema`, which R polars answers by making an R object
-for each of the 4,962 dtypes; `finish_pl()` asks for the schema to
-check which columns are Enums. Python datakit's `dk.read_parquet()`
-reads the same file in 15 ms. Asking only about the columns it needs
-(on a plain read, those holding letters) would remove most of the gap;
-it is not done here, since this stage only measures.
-On five columns, the native read and the import into polars take about
-3 ms, and the rest is datakit's R code around them.
+**Where the time goes.** The first measurement gave 119 ms for the
+whole file: about 90 ms of it was `df$schema`, which R polars answers by
+making an R object for each of the 4,962 dtypes. datakit now asks only
+for the dtypes of the columns each step needs (on a plain read, those
+holding letters), which gave the 26 ms above. Python datakit's
+`dk.read_parquet()` reads the same file in 15 ms. On five columns, the
+native read and the import into polars take about 3 ms, and the rest is
+datakit's R code around them.
 
 ## Parquet in TypeScript (npm package)
 
