@@ -1,7 +1,9 @@
 //! The Arrow C data interface, by hand (plan 0019; ADR 0033's reasons for
 //! not adding arrow-rs): the C structures, export of buffers we own as an
-//! `ArrowArrayStream` in a PyCapsule (`__arrow_c_stream__`), and import
-//! of another library's stream (polars' `DataFrame.__arrow_c_stream__()`).
+//! `ArrowArrayStream`, import of another library's stream (polars'
+//! `DataFrame.__arrow_c_stream__()`), and reading the buffers' layouts.
+//! The binding puts an exported stream in a PyCapsule and takes an
+//! imported one out of one.
 //!
 //! Exported buffers stay alive through an `Arc` held by every array that
 //! points into them, so polars may keep a column after our object and the
@@ -13,9 +15,7 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::ptr::{null, null_mut};
 use std::sync::Arc;
 
-use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::ffi;
-use pyo3::prelude::*;
+use super::error::{fail, Error, Result};
 
 // ------------------------------------------------------------ C structs
 
@@ -275,83 +275,16 @@ unsafe extern "C" fn stream_release(s: *mut ArrowArrayStream) {
     (*s).release = None;
 }
 
-const STREAM: &CStr = c"arrow_array_stream";
-
-unsafe extern "C" fn capsule_destructor(cap: *mut ffi::PyObject) {
-    let p = ffi::PyCapsule_GetPointer(cap, STREAM.as_ptr()) as *mut ArrowArrayStream;
-    if p.is_null() {
-        ffi::PyErr_Clear();
-        return;
-    }
-    // A consumer that took the stream set its release to null.
-    if let Some(r) = (*p).release {
-        r(p);
-    }
-    drop(Box::from_raw(p));
-}
-
-/// `table` as a PyCapsule holding an `ArrowArrayStream`.
-pub(crate) fn stream_capsule<'py>(py: Python<'py>, table: &Table) -> PyResult<Bound<'py, PyAny>> {
+/// `table` as an `ArrowArrayStream` that owns a copy of its batches (the
+/// buffers shared through their owners); its `release` frees it.
+pub(crate) fn export_stream(table: &Table) -> ArrowArrayStream {
     let private = Box::new(StreamPrivate { next: table.batches.iter().cloned().collect(), table: table.clone() });
-    let stream = Box::into_raw(Box::new(ArrowArrayStream {
+    ArrowArrayStream {
         get_schema: Some(stream_get_schema),
         get_next: Some(stream_get_next),
         get_last_error: Some(stream_last_error),
         release: Some(stream_release),
         private_data: Box::into_raw(private) as *mut c_void,
-    }));
-    // SAFETY: the capsule owns `stream` and releases it unless the
-    // consumer moved it out.
-    unsafe {
-        let cap = ffi::PyCapsule_New(stream as *mut c_void, STREAM.as_ptr(), Some(capsule_destructor));
-        if cap.is_null() {
-            stream_release(stream);
-            drop(Box::from_raw(stream));
-            return Err(PyErr::fetch(py));
-        }
-        Ok(Bound::from_owned_ptr(py, cap))
-    }
-}
-
-/// An object polars (or pyarrow) takes with `pl.DataFrame(obj)`: it
-/// exports its table as often as asked, every export sharing the buffers.
-#[pyclass(frozen, module = "dta_parser._native")]
-pub(crate) struct ArrowTable {
-    pub(crate) table: Table,
-}
-
-#[pymethods]
-impl ArrowTable {
-    #[pyo3(signature = (requested_schema = None))]
-    fn __arrow_c_stream__<'py>(
-        &self,
-        py: Python<'py>,
-        requested_schema: Option<Bound<'py, PyAny>>,
-    ) -> PyResult<Bound<'py, PyAny>> {
-        let _ = requested_schema;
-        stream_capsule(py, &self.table)
-    }
-
-    /// The columns' names, in order.
-    #[getter]
-    fn names(&self) -> Vec<String> {
-        self.table.fields.iter().map(|f| f.name.clone()).collect()
-    }
-
-    /// Rows, over every batch.
-    #[getter]
-    fn rows(&self) -> usize {
-        self.table.batches.iter().map(|b| b.length).sum()
-    }
-
-    /// Per column, the address of its values buffer (keys for a
-    /// dictionary, views for text), for tests that check polars took the
-    /// buffers without a copy.
-    #[getter]
-    fn addresses(&self) -> Vec<usize> {
-        self.table.batches.first().map_or_else(Vec::new, |b| {
-            b.children.iter().map(|c| c.buffers.get(1).copied().unwrap_or(0)).collect()
-        })
     }
 }
 
@@ -378,15 +311,15 @@ pub(crate) const ALIGN: usize = 64;
 const BLOCK_ALIGN: usize = 16;
 
 impl Block {
-    pub(crate) fn zeroed(len: usize) -> PyResult<Self> {
+    pub(crate) fn zeroed(len: usize) -> Result<Self> {
         if len == 0 {
             return Ok(Block { ptr: BLOCK_ALIGN as *mut u8, len: 0 });
         }
-        let layout = std::alloc::Layout::from_size_align(len, BLOCK_ALIGN).map_err(|_| PyValueError::new_err("too large"))?;
+        let layout = std::alloc::Layout::from_size_align(len, BLOCK_ALIGN).map_err(|_| fail("too large"))?;
         // SAFETY: the layout has a non-zero size.
         let ptr = unsafe { std::alloc::alloc_zeroed(layout) };
         if ptr.is_null() {
-            return Err(pyo3::exceptions::PyMemoryError::new_err(format!("{len} bytes do not fit in memory here")));
+            return Err(Error::Memory(format!("{len} bytes do not fit in memory here")));
         }
         Ok(Block { ptr, len })
     }
@@ -421,7 +354,7 @@ impl Plan {
         at
     }
 
-    pub(crate) fn block(&self) -> PyResult<Block> {
+    pub(crate) fn block(&self) -> Result<Block> {
         Block::zeroed(self.size)
     }
 }
@@ -560,57 +493,122 @@ pub(crate) struct Imported {
     pub(crate) batches: Vec<InArray>,
 }
 
-/// Take every batch of `obj.__arrow_c_stream__()`.
-pub(crate) fn import_stream(obj: &Bound<'_, PyAny>) -> PyResult<Imported> {
-    let cap = obj
-        .call_method0("__arrow_c_stream__")
-        .map_err(|_| PyTypeError::new_err("the object does not export an Arrow stream (__arrow_c_stream__)"))?;
-    // SAFETY: a capsule named arrow_array_stream holds an ArrowArrayStream,
-    // which we move out, leaving the capsule's released.
-    unsafe {
-        let p = ffi::PyCapsule_GetPointer(cap.as_ptr(), STREAM.as_ptr()) as *mut ArrowArrayStream;
-        if p.is_null() {
-            return Err(PyErr::fetch(obj.py()));
-        }
-        let mut stream = std::ptr::read(p);
-        (*p).release = None;
-        struct Release(*mut ArrowArrayStream);
-        impl Drop for Release {
-            fn drop(&mut self) {
-                // SAFETY: the stream moved out above, released once.
-                unsafe {
-                    if let Some(r) = (*self.0).release {
-                        r(self.0);
-                    }
+/// Take every batch of the stream at `p`, moving it out: its `release`
+/// is set to null, and the stream is released here, once, whatever
+/// happens.
+///
+/// # Safety
+/// `p` points at a valid `ArrowArrayStream` that no one else is reading.
+pub(crate) unsafe fn import_stream(p: *mut ArrowArrayStream) -> Result<Imported> {
+    let mut stream = std::ptr::read(p);
+    (*p).release = None;
+    struct Release(*mut ArrowArrayStream);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            // SAFETY: the stream moved out above, released once.
+            unsafe {
+                if let Some(r) = (*self.0).release {
+                    r(self.0);
                 }
             }
         }
-        let _release = Release(&mut stream);
-        let error = |s: *mut ArrowArrayStream, what: &str| {
-            let msg = (*s).get_last_error.map(|f| cstr(f(s))).unwrap_or_default();
-            PyValueError::new_err(format!("reading the Arrow stream ({what}): {msg}"))
-        };
-        let mut schema = empty_schema();
-        let get_schema = stream.get_schema.ok_or_else(|| PyValueError::new_err("an Arrow stream without get_schema"))?;
-        if get_schema(&mut stream, &mut schema) != 0 {
-            return Err(error(&mut stream, "schema"));
-        }
-        let field = read_field(&schema);
-        if let Some(r) = schema.release {
-            r(&mut schema);
-        }
-        let get_next = stream.get_next.ok_or_else(|| PyValueError::new_err("an Arrow stream without get_next"))?;
-        let mut batches = Vec::new();
-        loop {
-            let mut a = Box::new(empty_array());
-            if get_next(&mut stream, &mut *a) != 0 {
-                return Err(error(&mut stream, "a batch"));
-            }
-            if a.release.is_none() {
-                break;
-            }
-            batches.push(InArray { raw: a });
-        }
-        Ok(Imported { schema: field, batches })
     }
+    let _release = Release(&mut stream);
+    let error = |s: *mut ArrowArrayStream, what: &str| {
+        let msg = (*s).get_last_error.map(|f| cstr(f(s))).unwrap_or_default();
+        fail(format!("reading the Arrow stream ({what}): {msg}"))
+    };
+    let mut schema = empty_schema();
+    let get_schema = stream.get_schema.ok_or_else(|| fail("an Arrow stream without get_schema"))?;
+    if get_schema(&mut stream, &mut schema) != 0 {
+        return Err(error(&mut stream, "schema"));
+    }
+    let field = read_field(&schema);
+    if let Some(r) = schema.release {
+        r(&mut schema);
+    }
+    let get_next = stream.get_next.ok_or_else(|| fail("an Arrow stream without get_next"))?;
+    let mut batches = Vec::new();
+    loop {
+        let mut a = Box::new(empty_array());
+        if get_next(&mut stream, &mut *a) != 0 {
+            return Err(error(&mut stream, "a batch"));
+        }
+        if a.release.is_none() {
+            break;
+        }
+        batches.push(InArray { raw: a });
+    }
+    Ok(Imported { schema: field, batches })
+}
+
+// ------------------------------------------------------------ layouts
+
+/// Whether row `i` (counting the array's offset) has a value.
+#[inline]
+pub(crate) fn valid(a: &ArrayRef, i: usize) -> bool {
+    let v = a.buffer(0);
+    v == 0 || a.null_count() == 0 || unsafe { (*(v as *const u8).add(i / 8) >> (i % 8)) & 1 == 1 }
+}
+
+/// The bytes of row `i` of a string array (`u`, `U`, `vu` and the binary
+/// ones), counting its offset.
+///
+/// # Safety
+/// The array's buffers are of the format given.
+pub(crate) unsafe fn text_at<'a>(a: &ArrayRef<'a>, format: &str, i: usize) -> &'a [u8] {
+    match format {
+        "u" | "z" => {
+            let o = a.buffer(1) as *const i32;
+            let (s, e) = (*o.add(i) as usize, *o.add(i + 1) as usize);
+            std::slice::from_raw_parts((a.buffer(2) as *const u8).add(s), e - s)
+        }
+        "U" | "Z" => {
+            let o = a.buffer(1) as *const i64;
+            let (s, e) = (*o.add(i) as usize, *o.add(i + 1) as usize);
+            std::slice::from_raw_parts((a.buffer(2) as *const u8).add(s), e - s)
+        }
+        _ => {
+            // A view: 16 bytes, inline up to 12.
+            let v = (a.buffer(1) as *const u8).add(16 * i);
+            let len = u32::from_le_bytes(std::ptr::read_unaligned(v as *const [u8; 4])) as usize;
+            if len <= 12 {
+                std::slice::from_raw_parts(v.add(4), len)
+            } else {
+                let buf = u32::from_le_bytes(std::ptr::read_unaligned(v.add(8) as *const [u8; 4])) as usize;
+                let off = u32::from_le_bytes(std::ptr::read_unaligned(v.add(12) as *const [u8; 4])) as usize;
+                std::slice::from_raw_parts((a.buffer(2 + buf) as *const u8).add(off), len)
+            }
+        }
+    }
+}
+
+/// A dictionary array's key at row `i`.
+///
+/// # Safety
+/// The keys buffer holds row `i` in `format`.
+pub(crate) unsafe fn key_at(a: &ArrayRef, format: &str, i: usize) -> Option<usize> {
+    let p = a.buffer(1);
+    Some(match format {
+        "C" => *(p as *const u8).add(i) as usize,
+        "c" => usize::try_from(*(p as *const i8).add(i)).ok()?,
+        "S" => *(p as *const u16).add(i) as usize,
+        "s" => usize::try_from(*(p as *const i16).add(i)).ok()?,
+        "I" => *(p as *const u32).add(i) as usize,
+        "i" => usize::try_from(*(p as *const i32).add(i)).ok()?,
+        "L" => usize::try_from(*(p as *const u64).add(i)).ok()?,
+        "l" => usize::try_from(*(p as *const i64).add(i)).ok()?,
+        _ => return None,
+    })
+}
+
+/// Nanoseconds per unit of a `ts` or `tt` format's unit letter.
+pub(crate) fn per_unit(c: u8) -> Option<i128> {
+    Some(match c {
+        b's' => 1_000_000_000,
+        b'm' => 1_000_000,
+        b'u' => 1_000,
+        b'n' => 1,
+        _ => return None,
+    })
 }

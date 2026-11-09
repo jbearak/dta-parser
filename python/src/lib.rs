@@ -5,11 +5,11 @@
 //! numpy without its C API (the buffer protocol is not in the abi3 API
 //! before Python 3.11). Writing borrows numpy buffers the same way.
 //! Strings are made here, one Python object per distinct recent value.
-//! Parquet goes through `arrow`, for datakit only (plan 0019), with
-//! helpers it shares in `parquet`.
+//! Parquet goes through `arrow`, for datakit only (plan 0019), which
+//! uses no pyo3; `py_arrow` is its binding (plan 0025, stage 2a).
 
 mod arrow;
-mod parquet;
+mod py_arrow;
 
 use std::ffi::c_char;
 use std::slice;
@@ -23,21 +23,17 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 use dta::{
-    Characteristic, Column, Dataset, Encoding, FileSource, Options, Reader, StorageType, ValueLabel, ValueLabelSet,
-    Values, WriteVariable,
+    Characteristic, Column, Dataset, FileSource, Reader, StorageType, ValueLabel, ValueLabelSet, Values, WriteVariable,
 };
+
+use arrow::create_beside;
 
 fn fail(e: impl std::fmt::Display) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
 fn open(path: &str, encoding: Option<&str>) -> PyResult<Reader<FileSource>> {
-    let encoding = match encoding {
-        Some(name) => Encoding::from_name(name).ok_or_else(|| fail(format!("unknown encoding \"{name}\"")))?,
-        None => Encoding::default(),
-    };
-    let source = FileSource::open(path).map_err(|e| fail(format!("{path}: {e}")))?;
-    Reader::open(source, Options { encoding, ..Options::default() }).map_err(|e| fail(format!("{path}: {e}")))
+    arrow::dta::open(path, encoding).map_err(py_arrow::raise)
 }
 
 /// The header, descriptors, value labels and characteristics of a file.
@@ -534,21 +530,6 @@ fn write(
     })
 }
 
-/// A new file beside `path` that no one else has: created exclusively
-/// (so neither an existing file nor a symlink at the name is touched).
-fn create_beside(path: &str) -> std::io::Result<(String, std::fs::File)> {
-    let pid = std::process::id();
-    for n in 0..1000 {
-        let tmp = format!("{path}.{pid}.{n}.tmp");
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {
-            Ok(file) => return Ok((tmp, file)),
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        }
-    }
-    Err(std::io::Error::other("no free name for a temporary file"))
-}
-
 /// Read the fixed-width file `data` as the SAS setup file describes,
 /// given as the files `setups` read in order, and write it as release 118
 /// to the new file `out` (plan 0009). Returns the warnings' messages.
@@ -587,13 +568,13 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(write, m)?)?;
     // For datakit only (plan 0019): versioned by ABI_VERSION.
-    m.add("ABI_VERSION", arrow::ABI_VERSION)?;
-    m.add_class::<arrow::ffi::ArrowTable>()?;
-    m.add_function(wrap_pyfunction!(arrow::read::parquet_read_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::read::parquet_info_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::digest::arrow_digest, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::write::parquet_write_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::dta::dta_read_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(arrow::dta::dta_write_arrow, m)?)?;
+    m.add("ABI_VERSION", py_arrow::ABI_VERSION)?;
+    m.add_class::<py_arrow::ArrowTable>()?;
+    m.add_function(wrap_pyfunction!(py_arrow::parquet::parquet_read_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(py_arrow::parquet::parquet_info_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(py_arrow::digest::arrow_digest, m)?)?;
+    m.add_function(wrap_pyfunction!(py_arrow::parquet::parquet_write_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(py_arrow::dta::dta_read_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(py_arrow::dta::dta_write_arrow, m)?)?;
     Ok(())
 }

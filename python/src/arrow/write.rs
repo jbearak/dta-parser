@@ -13,18 +13,15 @@
 
 use std::collections::HashMap;
 
-use pyo3::exceptions::{PyKeyError, PyTypeError, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyString};
-
 use dta::{missing, Characteristic, ValueLabel, ValueLabelSet};
 use dta_parquet::format::TimeUnit;
 use dta_parquet::{ColumnProfile, Compression, Fill, GetBytes, Profile, Table, Values, WriteColumn, WriteOptions};
 
-use super::digest::{key_at, text_at, valid};
-use super::ffi::{import_stream, ArrayRef, InField};
+use super::create_beside;
+use super::error::{fail, Error, Result};
+use super::ffi::{key_at, text_at, valid, ArrayRef, Imported, InField};
+use super::meta::{Code, GivenSet, WriteMeta};
 use super::read::Stamps;
-use crate::{create_beside, fail};
 
 /// One chunk of a column: the array, the frame's row of its first, and
 /// the offset its parent adds.
@@ -77,10 +74,10 @@ impl<'a> Column<'a> {
 }
 
 /// The columns of an imported frame.
-pub(crate) fn columns(imported: &super::ffi::Imported) -> PyResult<Vec<Column<'_>>> {
+pub(crate) fn columns(imported: &Imported) -> Result<Vec<Column<'_>>> {
     let schema = &imported.schema;
     if schema.format != "+s" {
-        return Err(PyTypeError::new_err("the Arrow stream is not a table (a struct of columns)"));
+        return Err(Error::Type("the Arrow stream is not a table (a struct of columns)".into()));
     }
     let mut out: Vec<Column> =
         schema.children.iter().map(|field| Column { field, chunks: Vec::new(), rows: 0 }).collect();
@@ -101,7 +98,7 @@ pub(crate) fn columns(imported: &super::ffi::Imported) -> PyResult<Vec<Column<'_
 }
 
 /// The frame's rows.
-pub(crate) fn height(imported: &super::ffi::Imported) -> usize {
+pub(crate) fn height(imported: &Imported) -> usize {
     imported.batches.iter().map(|b| b.get().len()).sum()
 }
 
@@ -178,7 +175,7 @@ fn texts<'a>(col: &'a Column<'a>, format: &'a str) -> Box<GetBytes<'a>> {
 /// An Enum or Categorical: its levels (an Enum's every category; a
 /// Categorical's that its rows use, in polars' order) and each chunk's
 /// key to level map.
-pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> PyResult<(Vec<String>, Vec<Vec<i32>>)> {
+pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> Result<(Vec<String>, Vec<Vec<i32>>)> {
     let dict_field = col.field.dictionary.as_deref().expect("a dictionary");
     let df = dict_field.format.as_str();
     if !matches!(df, "u" | "U" | "vu") {
@@ -223,9 +220,8 @@ pub(crate) fn categorical<'a>(name: &str, col: &'a Column<'a>, every: bool) -> P
 }
 
 /// Each row's `.a` to `.z` (2 to 27), or 0, from a `LETTERS` Series or a
-/// String one.
-pub(crate) fn letter_codes(name: &str, obj: &Bound<'_, PyAny>, rows: usize) -> PyResult<Vec<u8>> {
-    let imported = import_stream(obj)?;
+/// String one, as imported.
+pub(crate) fn letter_codes(name: &str, imported: &Imported, rows: usize) -> Result<Vec<u8>> {
     let (field, child) = if imported.schema.format == "+s" {
         (imported.schema.children.first().ok_or_else(|| fail("an empty letters frame"))?, true)
     } else {
@@ -252,7 +248,7 @@ pub(crate) fn letter_codes(name: &str, obj: &Bound<'_, PyAny>, rows: usize) -> P
                     }
                     None if matches!(field.format.as_str(), "u" | "U" | "vu") => text_at(&a, &field.format, j),
                     None => {
-                        return Err(PyTypeError::new_err(format!(
+                        return Err(Error::Type(format!(
                             "the letters of column \"{name}\" are of Arrow type {}, not LETTERS or String",
                             field.format
                         )))
@@ -345,60 +341,46 @@ fn dtype_of(format: &str) -> String {
     }
 }
 
-/// The value label sets of `meta`: {name: {code: text}}, a code an int,
-/// a float or `.`/`.a`-`.z` as text.
-pub(crate) fn label_sets(sets: &Bound<'_, PyDict>) -> PyResult<Vec<ValueLabelSet>> {
+/// The value label sets of `meta`, checked: a text code is `.` or `.a`
+/// to `.z`, a number finite and within ±2^53 where whole.
+pub(crate) fn value_label_sets(sets: &[GivenSet]) -> Result<Vec<ValueLabelSet>> {
     const MAX_EXACT: f64 = 9_007_199_254_740_992.0;
     let mut out = Vec::with_capacity(sets.len());
-    for (name, table) in sets.iter() {
-        let name: String = name.extract()?;
-        let table = table.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err(format!("value label set \"{name}\" is not a dict")))?;
+    for (name, table) in sets {
         let mut labels = Vec::with_capacity(table.len());
-        for (code, text) in table.iter() {
-            let text: String = text.extract().map_err(|_| PyTypeError::new_err(format!("value label set \"{name}\": a label is not text")))?;
-            let label = if let Ok(s) = code.cast::<PyString>() {
-                let s = s.to_str()?;
-                let m = missing::from_name(s).ok_or_else(|| fail(format!("value label set \"{name}\": the code \"{s}\" is not . or .a to .z")))?;
-                ValueLabel { value: f64::NAN, missing: m, text }
-            } else {
-                let v: f64 = code.extract().map_err(|_| PyTypeError::new_err(format!("value label set \"{name}\": a code is not a number or a missing code")))?;
-                if !v.is_finite() || (v.fract() == 0.0 && v.abs() > MAX_EXACT) {
-                    return Err(fail(format!("value label set \"{name}\": the code {v} is not finite or beyond ±2^53")));
+        for (code, text) in table {
+            let text = text.clone();
+            let label = match code {
+                Code::Text(s) => {
+                    let m = missing::from_name(s).ok_or_else(|| fail(format!("value label set \"{name}\": the code \"{s}\" is not . or .a to .z")))?;
+                    ValueLabel { value: f64::NAN, missing: m, text }
                 }
-                ValueLabel { value: v, missing: 0, text }
+                &Code::Number(v) => {
+                    if !v.is_finite() || (v.fract() == 0.0 && v.abs() > MAX_EXACT) {
+                        return Err(fail(format!("value label set \"{name}\": the code {v} is not finite or beyond ±2^53")));
+                    }
+                    ValueLabel { value: v, missing: 0, text }
+                }
             };
             labels.push(label);
         }
-        out.push(ValueLabelSet { name, labels });
+        out.push(ValueLabelSet { name: name.clone(), labels });
     }
     Ok(out)
 }
 
-/// Write the polars frame `df` (any object with `__arrow_c_stream__`) as
-/// Parquet to `path`, or return the file as `bytes` when `path` is None.
-/// `meta` is None or a dict: label, notes, characteristics {variable:
-/// {name: text}}, sort, timestamp, columns {name: (label, format,
-/// value_labels, ordered)}, value_labels {set: {code: text}}, and missing
-/// {name: Series of `.a` to `.z` or null}. For datakit only.
-#[pyfunction]
-#[pyo3(signature = (df, path, meta, compression="snappy", compression_level=None, row_group_size=None, missing_letters=true, timestamps="error", threads=0))]
-#[allow(clippy::too_many_arguments)]
-pub fn parquet_write_arrow<'py>(
-    py: Python<'py>,
-    df: &Bound<'py, PyAny>,
-    path: Option<String>,
-    meta: Option<&Bound<'py, PyDict>>,
+/// The options of a write from polars' export: Parquet's, with datakit's
+/// thread rule. Checks the compression's name.
+pub(crate) fn parquet_options(
     compression: &str,
     compression_level: Option<i32>,
     row_group_size: Option<usize>,
     missing_letters: bool,
-    timestamps: &str,
     threads: usize,
-) -> PyResult<Option<Bound<'py, PyBytes>>> {
-    let mode = Stamps::from_name(timestamps)?;
+) -> Result<WriteOptions> {
     let compression = Compression::from_name(compression).map_err(fail)?;
     let defaults = WriteOptions::default();
-    let options = WriteOptions {
+    Ok(WriteOptions {
         compression,
         compression_level,
         row_group_rows: row_group_size,
@@ -414,10 +396,23 @@ pub fn parquet_write_arrow<'py>(
         // (bench/RESULTS.md, "Parquet into polars, through datakit").
         ahead: Some(usize::MAX),
         ..defaults
-    };
-    let imported = import_stream(df)?;
-    let rows = height(&imported);
-    let cols = columns(&imported)?;
+    })
+}
+
+/// Write the frame `imported` (polars' export) as Parquet to `path`, or
+/// return the file's bytes when `path` is None, with `meta` and the
+/// options [`parquet_options`] gave. For datakit only.
+pub(crate) fn parquet_write(
+    imported: &Imported,
+    path: Option<&str>,
+    meta: &WriteMeta,
+    options: WriteOptions,
+    mode: Stamps,
+) -> Result<Option<Vec<u8>>> {
+    let row_group_size = options.row_group_rows;
+    let missing_letters = options.missing_letters;
+    let rows = height(imported);
+    let cols = columns(imported)?;
     // The core caps a row group at `row_group_bytes`, counting text row
     // by row on the calling thread (15 million rows of text: 35 ms
     // before any encoding starts). When the whole frame is smaller than
@@ -427,23 +422,12 @@ pub fn parquet_write_arrow<'py>(
     } else {
         options
     };
-    let get = |k: &str| -> PyResult<Option<Bound<'py, PyAny>>> {
-        match meta {
-            Some(m) => Ok(m.get_item(k)?.filter(|v| !v.is_none())),
-            None => Ok(None),
-        }
-    };
     // The letters of each column that has some, checked: only on nulls.
     let mut letters: Vec<Option<Vec<u8>>> = cols.iter().map(|_| None).collect();
-    if let Some(m) = get("missing")? {
-        let m = m.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.missing is not a dict"))?;
-        for (name, series) in m.iter() {
-            let name: String = name.extract()?;
-            let Some(k) = cols.iter().position(|c| c.field.name == name) else { continue };
-            if !missing_letters {
-                continue;
-            }
-            let codes = letter_codes(&name, &series, rows)?;
+    if missing_letters {
+        for (name, series) in &meta.missing {
+            let Some(k) = cols.iter().position(|c| c.field.name == *name) else { continue };
+            let codes = letter_codes(name, series, rows)?;
             if !codes.iter().any(|&c| c != 0) {
                 continue;
             }
@@ -510,38 +494,25 @@ pub fn parquet_write_arrow<'py>(
         micros[k] = Some(out);
     }
     // The profile.
-    let mut p = Profile::default();
-    if meta.is_some() {
-        p.label = get("label")?.map(|v| v.extract()).transpose()?;
-        p.timestamp = get("timestamp")?.map(|v| v.extract()).transpose()?;
-        p.notes = get("notes")?.map(|v| v.extract()).transpose()?.unwrap_or_default();
-        p.sort = get("sort")?.map(|v| v.extract()).transpose()?.unwrap_or_default();
-        if let Some(chars) = get("characteristics")? {
-            let chars = chars.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.characteristics is not a dict"))?;
-            for (var, entries) in chars.iter() {
-                let variable: String = var.extract()?;
-                let entries = entries.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("a characteristics entry is not a dict"))?;
-                for (name, value) in entries.iter() {
-                    p.characteristics.push(Characteristic { variable: variable.clone(), name: name.extract()?, value: value.extract()? });
-                }
-            }
-        }
-        if let Some(sets) = get("value_labels")? {
-            let sets = sets.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.value_labels is not a dict"))?;
-            p.value_labels = label_sets(&sets)?;
+    let mut p = Profile {
+        label: meta.label.clone(),
+        timestamp: meta.timestamp.clone(),
+        notes: meta.notes.clone(),
+        sort: meta.sort.clone(),
+        ..Profile::default()
+    };
+    for (variable, entries) in &meta.characteristics {
+        for (name, value) in entries {
+            p.characteristics.push(Characteristic { variable: variable.clone(), name: name.clone(), value: value.clone() });
         }
     }
-    let entries: Option<Bound<'py, PyDict>> = match get("columns")? {
-        Some(c) => Some(c.cast_into::<PyDict>().map_err(|_| PyTypeError::new_err("meta.columns is not a dict"))?),
-        None => None,
-    };
+    p.value_labels = value_label_sets(&meta.value_labels)?;
     let mut ordered_of: HashMap<String, bool> = HashMap::new();
-    if let Some(entries) = &entries {
+    {
         for (k, c) in cols.iter().enumerate() {
             let name = &c.field.name;
-            let Some(e) = entries.get_item(name)? else { continue };
-            type Entry = (Option<String>, Option<String>, Option<String>, Option<bool>);
-            let (label, format, set, ordered): Entry = e.extract()?;
+            let Some(e) = meta.columns.get(name) else { continue };
+            let (label, format, set, ordered) = (e.label.clone(), e.format.clone(), e.value_labels.clone(), e.ordered);
             let is_cat = c.field.dictionary.is_some();
             if is_cat {
                 // A categorical's labels are its levels. One holding .a to
@@ -557,7 +528,7 @@ pub fn parquet_write_arrow<'py>(
             }
             if let Some(s) = &set {
                 if !p.value_labels.iter().any(|v| &v.name == s) {
-                    return Err(PyKeyError::new_err(format!(
+                    return Err(Error::Key(format!(
                         "column \"{name}\" names the value label set \"{s}\", which meta.value_labels does not have"
                     )));
                 }
@@ -575,7 +546,7 @@ pub fn parquet_write_arrow<'py>(
         let name = c.field.name.clone();
         let f = c.field.format.as_str();
         let l = letters[k].as_deref();
-        let refuse = |what: &str| -> PyResult<()> {
+        let refuse = |what: &str| -> Result<()> {
             if l.is_some() {
                 return Err(fail(format!("column \"{name}\" is {what} and has .a to .z, which {what} cannot hold; drop its letters or cast it")));
             }
@@ -706,7 +677,7 @@ pub fn parquet_write_arrow<'py>(
                 other => {
                     let dtype = dtype_of(other);
                     let to = if dtype == "Decimal" { "Float64 or String" } else { "a type save_parquet writes" };
-                    return Err(PyTypeError::new_err(format!(
+                    return Err(Error::Type(format!(
                         "column \"{name}\" is {dtype}, which save_parquet does not write; cast it to {to}"
                     )));
                 }
@@ -716,34 +687,29 @@ pub fn parquet_write_arrow<'py>(
         out.push(WriteColumn { name, values });
     }
     let table = Table { rows, columns: out, profile: p };
-    let result = py.detach(|| -> Result<Option<Vec<u8>>, String> {
-        match &path {
-            None => {
-                let mut buf = Vec::new();
-                dta_parquet::write_with_letters(&table, &mut buf, &options, &has_letters).map_err(|e| e.to_string())?;
-                Ok(Some(buf))
-            }
-            Some(path) => {
-                let (tmp, file) = create_beside(path).map_err(|e| format!("{path}: {e}"))?;
-                let w = std::io::BufWriter::with_capacity(1 << 20, file);
-                if let Err(e) = dta_parquet::write_with_letters(&table, w, &options, &has_letters) {
-                    let _ = std::fs::remove_file(&tmp);
-                    return Err(e.to_string());
-                }
-                std::fs::rename(&tmp, path).map_err(|e| {
-                    let _ = std::fs::remove_file(&tmp);
-                    format!("{path}: {e}")
-                })?;
-                Ok(None)
-            }
+    let result = match path {
+        None => {
+            let mut buf = Vec::new();
+            dta_parquet::write_with_letters(&table, &mut buf, &options, &has_letters).map(|_| Some(buf)).map_err(fail)
         }
-    });
+        Some(path) => match create_beside(path) {
+            Err(e) => Err(fail(format!("{path}: {e}"))),
+            Ok((tmp, file)) => {
+                let w = std::io::BufWriter::with_capacity(1 << 20, file);
+                match dta_parquet::write_with_letters(&table, w, &options, &has_letters) {
+                    Err(e) => {
+                        let _ = std::fs::remove_file(&tmp);
+                        Err(fail(e))
+                    }
+                    Ok(_) => std::fs::rename(&tmp, path).map(|()| None).map_err(|e| {
+                        let _ = std::fs::remove_file(&tmp);
+                        fail(format!("{path}: {e}"))
+                    }),
+                }
+            }
+        },
+    };
     drop(table);
     drop(cols);
-    drop(imported);
-    match result {
-        Ok(Some(buf)) => Ok(Some(PyBytes::new(py, &buf))),
-        Ok(None) => Ok(None),
-        Err(e) => Err(PyValueError::new_err(e)),
-    }
+    result
 }
