@@ -796,14 +796,33 @@ dplyr's `group_by()`, `distinct()`, `count()` and joins, where an `.a`
 row matches both `.a` and `.b` rows of the other table. Sorting,
 subsetting, `ifelse()`, `if_else()`, arithmetic and `bind_rows()` keep
 each letter. To group or join by the letter too, add it as a column of
-its own:
+its own. datakit's `datakit_by()` does that: it returns each column it
+is given and, beside each one that can hold a letter, `<name>_letter`
+(`na_tag()` of it). dplyr splices the result into columns:
 
 ```r
+library(dplyr)
 x <- c(1, dtaparser::tagged_na("a"), dtaparser::tagged_na("b"), NA)
-unique(x)                                       # 1 NA: the letters merged
-d <- tibble::tibble(x = x)
-dplyr::count(d, x, letter = dtaparser::na_tag(x))  # 1, .a, .b and . apart
+unique(x)                                    # 1 NA: the letters merged
+d <- tibble::tibble(x = x, w = 1:4)
+count(d, x, letter = dtaparser::na_tag(x))   # 1, .a, .b and . apart
+count(d, datakit::datakit_by(x))             # the same, as x and x_letter
+d |> group_by(datakit::datakit_by(x)) |> summarise(w = sum(w), .groups = "drop")
+lookup <- tibble::tibble(x = c(dtaparser::tagged_na("a"), NA), why = c("refused", "skipped"))
+d |> mutate(datakit::datakit_by(x)) |>
+  left_join(mutate(lookup, datakit::datakit_by(x)), by = c("x", "x_letter"))
 ```
+
+`summarise()` keeps `x`'s letters, but by default it drops the last
+grouping column, the letter column, so give `.groups = "drop"` (or a
+later grouped step merges the letters again). `.by =` and `join_by()`
+take names, not calls: `summarise(d, n = n(), .by = datakit_by(x))`
+fails with "object 'x' not found", so `mutate()` first and name both
+columns. Keep a join's default `na_matches = "na"`: with `"never"`, the
+`NA` letter column of every number matches nothing. The columns that
+get a letter column are doubles, labelled doubles, `Date` and `POSIXct`;
+an existing column with the letter column's name is replaced, as for
+any named result in dplyr.
 
 `drop_labels(x)` takes off a column's value labels and variable label
 and keeps everything else, for copying a column without its labels as
@@ -1522,6 +1541,9 @@ datakit exports:
   frame under R's rules (`?datakit::":="`; see
   [From a do-file to R](#from-a-do-file-to-r)). `colon_equals()` is the
   generic behind it; dtatools adds the method for dibbles.
+- `datakit_by(..., .suffix = "_letter")`: columns and their `.a` to `.z`
+  letters, for dplyr's `group_by()`, `count()`, `distinct()` and joins
+  to keep the letters apart (see [Plain R types](#plain-r-types-dtaparser)).
 - `read_parquet(file, col_select = NULL, skip = 0, n_max = Inf, factors = FALSE, int64 = "double", decimal = "double", timestamps = "error", nested = "error", warn_extended_missing = TRUE)`:
   read a Parquet file into `read_dta()`'s types (see
   [Parquet files](#parquet-files)).
