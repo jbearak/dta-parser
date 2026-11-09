@@ -135,6 +135,10 @@ def by(*columns, suffix="_letter"):
         df.group_by(dk.by("x")).len()
         df.with_columns(dk.by("x")).unique(subset=["x", "x_letter"])
 
+    To join with the letters kept apart, add the columns to both sides
+    and join on the key and its letter column with `nulls_equal=True`
+    (a row with no letter has a null letter column).
+
     Guide: {guide}#a-to-z-in-the-frame
     """
     if not isinstance(suffix, str) or not suffix:

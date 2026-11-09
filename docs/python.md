@@ -1106,7 +1106,7 @@ test letters:
   `.` or one of `.a` to `.z`, as R's `is.na()` and Stata's `missing()`
   say (see [The rules](#a-to-z-in-the-frame) below);
 - `dk.by(*columns, suffix="_letter")`: each column and its letters, for
-  grouping with the letters kept apart.
+  grouping and joining with the letters kept apart.
 
 ```python
 df, meta = dk.read_parquet("survey.parquet")
@@ -1180,6 +1180,21 @@ print(df.with_columns(dk.by("income")).unique(subset=["income", "income_letter"]
 
 Each argument gets a letter column, all null for a column that is not
 `Float64`.
+
+**Joins.** A key holding letters joins as it groups: polars matches
+every NaN with every other, so `.a` on one side meets both `.a` and `.b`
+on the other, and `.`, a null, meets nothing unless the join says
+`nulls_equal=True`. To keep the letters apart, join on the key and its
+letter column from `dk.by`, with `nulls_equal=True`. Without it, a row
+with no letter, whose letter column is null, matches nothing.
+
+```python
+left = pl.DataFrame({"k": [1.0, dk.tagged_na(".a"), dk.tagged_na(".b"), None]})
+right = left.with_columns(name=pl.Series(["one", "a", "b", "dot"]))
+print(left.join(right, on="k").height)   # 5: 1 meets 1, and .a and .b meet each other
+left, right = left.with_columns(dk.by("k")), right.with_columns(dk.by("k"))
+print(left.join(right, on=["k", "k_letter"], nulls_equal=True, maintain_order="left")["name"].to_list())   # ['one', 'a', 'b', 'dot']
+```
 
 **Set a letter** (Stata's `replace income = .r if age > 60`):
 
@@ -1632,7 +1647,7 @@ reference. `dta_parser` exports:
   expression or Series ([.a to .z in the frame](#a-to-z-in-the-frame)).
 - `is_missing(x)`, `is_na(x)` (one function): true for `.` and `.a` to
   `.z`, as R's `is.na()`; `by(*columns, suffix="_letter")`: columns and
-  their letters, for grouping
+  their letters, for grouping and joins
   ([.a to .z in the frame](#a-to-z-in-the-frame)).
 - `Meta`, `Column`: the labels, formats and notes beside a frame
   ([Labels](#labels-in-parquet-files)); `Meta` has `labels`, `rename`,
