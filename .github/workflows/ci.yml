@@ -190,7 +190,7 @@ jobs:
         working-directory: python
       - run: pip install python/dist/*.whl pytest pyreadstat
       - if: matrix.pandas
-        run: pip install "pandas==${{ matrix.pandas }}"
+        run: pip install "pandas==${{ matrix.pandas }}" "numpy<2.3"
       - run: python -m pytest python/tests
       - run: python -m pytest python/tests
         env:
@@ -225,7 +225,7 @@ jobs:
         working-directory: python
       - run: pip install python/dist/*.whl ./python/datakit pytest pyarrow duckdb
       - if: matrix.pandas
-        run: pip install "pandas==${{ matrix.pandas }}"
+        run: pip install "pandas==${{ matrix.pandas }}" "numpy<2.3"
       - run: python -m pytest python/datakit/tests
       - run: python -m pytest python/datakit/tests
         env:
