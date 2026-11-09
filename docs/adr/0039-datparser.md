@@ -86,5 +86,5 @@ bump together at release.
   as `read_dta` does.
 - `col_select` now chooses which columns are read: unselected columns
   are not parsed and not warned about.
-- Parsing the setup is now most of a read: 0.55 s of 1.27 s for 1995's
-  1.5 MB setup. Making it faster would help every language.
+- Parsing the setup was then most of a read: 0.55 s of 1.27 s for
+  1995's 1.5 MB setup. Plan 0026 made it 24 ms, and the read 0.42 s.
