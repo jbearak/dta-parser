@@ -3,9 +3,12 @@
 # Each ```r block of README.md, docs/guide/*.md and docs/r.md runs, in
 # order, in one environment per file, in a fresh temporary directory, and
 # the packages a file attaches are detached after it.
-# Blocks whose info string says `norun` (installation) are skipped. The
-# docs live in the repository, not the package, so this skips when the
-# package is tested outside a checkout.
+# Blocks whose info string says `norun` (installation) are skipped.
+# Blocks whose info string says `polars` (datakit's polars functions)
+# need R 4.3, polars and nanoarrow: without them they are skipped, or,
+# with DATAKIT_REQUIRE_POLARS=true (CI), the test fails. The docs live
+# in the repository, not the package, so this skips when the package is
+# tested outside a checkout.
 
 repo_root <- normalizePath(file.path(testthat::test_path(), "..", "..", "..", ".."), mustWork = FALSE)
 
@@ -17,7 +20,8 @@ doc_files <- function() {
 }
 
 # The code blocks of one language in a Markdown file: a list of
-# list(line, code), `line` being where the block starts.
+# list(line, code, polars), `line` being where the block starts and
+# `polars` whether its info string says so.
 code_blocks <- function(path, lang) {
   lines <- readLines(path, encoding = "UTF-8", warn = FALSE)
   blocks <- list()
@@ -32,14 +36,28 @@ code_blocks <- function(path, lang) {
     end <- i + 1
     while (end <= length(lines) && !startsWith(lines[end], fence)) end <- end + 1
     if (open[2] == lang && !grepl("norun", open[3])) {
-      blocks[[length(blocks) + 1]] <- list(line = i, code = paste(lines[seq_len(end - i - 1) + i], collapse = "\n"))
+      blocks[[length(blocks) + 1]] <- list(line = i, code = paste(lines[seq_len(end - i - 1) + i], collapse = "\n"),
+                                           polars = grepl("polars", open[3]))
     }
     i <- end + 1
   }
   blocks
 }
 
+# What the polars examples need that is missing: character() if nothing.
+polars_missing <- function() {
+  c(if (getRversion() < "4.3") "R 4.3",
+    if (!requireNamespace("polars", quietly = TRUE)) "polars",
+    if (!requireNamespace("nanoarrow", quietly = TRUE)) "nanoarrow")
+}
+
 test_that("every R example in the docs runs", {
+  missing <- polars_missing()
+  if (length(missing) && identical(tolower(Sys.getenv("DATAKIT_REQUIRE_POLARS")), "true")) {
+    stop("DATAKIT_REQUIRE_POLARS is set, but the docs' polars examples need ", paste(missing, collapse = ", "),
+         call. = FALSE)
+  }
+  skipped <- character()
   for (path in doc_files()) {
     blocks <- code_blocks(path, "r")
     if (!length(blocks)) next
@@ -50,6 +68,10 @@ test_that("every R example in the docs runs", {
     env <- new.env(parent = globalenv())
     for (b in blocks) {
       where <- paste0(basename(path), ":", b$line)
+      if (b$polars && length(missing)) {
+        skipped <- c(skipped, where)
+        next
+      }
       result <- tryCatch({
         utils::capture.output(eval(parse(text = b$code, keep.source = FALSE), envir = env))
         NULL
@@ -62,6 +84,9 @@ test_that("every R example in the docs runs", {
     # so that, say, README.md's dtaparser does not mask dtatools' read_dta
     # in docs/r.md.
     for (name in setdiff(search(), attached)) detach(name, character.only = TRUE)
+  }
+  if (length(skipped)) {
+    testthat::skip(paste0(length(skipped), " polars examples not run: they need ", paste(missing, collapse = ", ")))
   }
 })
 
