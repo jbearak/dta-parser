@@ -93,11 +93,14 @@ static void free_table(SEXP p) {
 static SEXP fw_setup(SEXP setup, SEXP commented_formats) {
   const char **s = paths_arg(setup);
   int c = flag_arg(commented_formats, "commented_formats");
+  // The pointer and its finalizer exist before Rust makes the setup, so
+  // no R allocation can fail while Rust's object has no owner.
+  SEXP out = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+  R_RegisterCFinalizerEx(out, free_setup, TRUE);
   char err[1024] = "";
   Setup *parsed = NULL;
   if (datparser_setup(s, (size_t) XLENGTH(setup), c, &parsed, err, sizeof err)) Rf_error("%s", err);
-  SEXP out = PROTECT(R_MakeExternalPtr(parsed, R_NilValue, R_NilValue));
-  R_RegisterCFinalizerEx(out, free_setup, TRUE);
+  R_SetExternalPtrAddr(out, parsed);
   UNPROTECT(1);
   return out;
 }
@@ -174,13 +177,14 @@ static SEXP fw_read(SEXP setup, SEXP data, SEXP recodes, SEXP cols, SEXP skip, S
   double sk = Rf_asReal(skip), nm = Rf_asReal(n_max);
   if (ISNAN(sk) || sk < 0 || ISNAN(nm) || nm < 0) Rf_error("skip and n_max must be numbers >= 0");
   Setup *s = setup_arg(setup);
-  R_ClearExternalPtr(setup);  // datparser_read takes it
   R_xlen_t ncols = XLENGTH(cols);
+  SEXP holder = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+  R_RegisterCFinalizerEx(holder, free_table, TRUE);
+  R_ClearExternalPtr(setup);  // datparser_read takes it
   char err[1024] = "";
   Table *t = NULL;
   if (datparser_read(s, d, r, INTEGER(cols), (size_t) ncols, &t, err, sizeof err)) Rf_error("%s", err);
-  SEXP holder = PROTECT(R_MakeExternalPtr(t, R_NilValue, R_NilValue));
-  R_RegisterCFinalizerEx(holder, free_table, TRUE);
+  R_SetExternalPtrAddr(holder, t);
   size_t nrows = datparser_nrows(t);
   size_t first = sk >= (double) nrows ? nrows : (size_t) sk;
   size_t n = nrows - first;
