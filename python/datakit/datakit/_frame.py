@@ -213,10 +213,8 @@ def finish(frame, m, *, factors, letters, markers=False):
             if col.ordered is not None:
                 meta.columns[name] = Column(col.label, col.format, col.value_labels, None)
     for name, f in zip(frame.names, frame.formats):
-        col = meta.columns.get(name) or Column()
-        if f == "tdD" and name not in origins and col.format is None:
-            # A Parquet DATE, which datetime64[s] holds as seconds.
-            meta.columns[name] = Column(col.label, "%td", col.value_labels, col.ordered)
+        if f == "tdD" and name not in origins:
+            date_format(meta, name)
     if markers:
         stale = restore_categoricals(cols, meta, skip=set() if factors else lettered)
         if stale:
@@ -237,6 +235,15 @@ def finish(frame, m, *, factors, letters, markers=False):
     else:
         df = pd.DataFrame(index=pd.RangeIndex(frame.rows))
     return df, meta
+
+
+def date_format(meta, name):
+    """Give a Parquet DATE column the format `%td` when it has none, so
+    that saving it writes a DATE again (datetime64[s] holds it as
+    seconds). read_parquet and read_parquet_info both use it."""
+    col = meta.columns.get(name) or Column()
+    if col.format is None:
+        meta.columns[name] = Column(col.label, "%td", col.value_labels, col.ordered)
 
 
 def _set_format(meta, name, fmt):
@@ -600,8 +607,16 @@ def sort_key(s, missing_letters):
         codes = s.cat.codes.to_numpy().astype(np.int64)
         return np.where(codes < 0, np.iinfo(np.int64).max, codes)
     if dtype.kind in "Mm":
-        ints = (a.asi8 if hasattr(a, "asi8") else s.to_numpy().view(np.int64)).astype(np.float64)
-        return np.where(s.isna().to_numpy(), np.inf, ints)
+        # Exact int64 counts, `NaT` last.
+        ints = a.asi8 if hasattr(a, "asi8") else s.to_numpy().view(np.int64)
+        return np.where(s.isna().to_numpy(), np.iinfo(np.int64).max, ints)
+    if dtype.kind in "iu" and not isinstance(a, DtaArray):
+        # Exact integers (a float64 key would merge values above 2^53),
+        # missing values of a nullable column last.
+        int_dtype = np.uint64 if dtype.kind == "u" else np.int64
+        missing = s.isna().to_numpy()
+        values = s.to_numpy(dtype=int_dtype, na_value=0) if missing.any() else s.to_numpy().astype(int_dtype)
+        return np.where(missing, np.iinfo(int_dtype).max, values)
     if isinstance(dtype, np.dtype) and dtype.kind == "f":
         codes = _tagged.float_codes(s.to_numpy(dtype=np.float64))
         if not missing_letters:

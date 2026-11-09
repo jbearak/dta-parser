@@ -147,6 +147,10 @@ def read_parquet_info(source):
     }
     columns = pd.DataFrame({k: pd.Series(v, dtype=f.TEXT if f.TEXT != object else object) for k, v in text.items()})
     groups = info["row_groups"]
+    meta = f.meta_of(info["meta"])
+    for c in cols:
+        if c[2] == "tdD":
+            f.date_format(meta, c[0])
     return ParquetInfo(
         rows=info["rows"],
         row_groups=pd.DataFrame(
@@ -156,7 +160,7 @@ def read_parquet_info(source):
         compression=list(info["compression"]),
         created_by=info["created_by"],
         key_value=dict(info["key_value"]),
-        meta=f.meta_of(info["meta"]),
+        meta=meta,
         columns=columns,
     )
 

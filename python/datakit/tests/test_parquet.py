@@ -695,3 +695,33 @@ def test_duckdb_reads_our_files(tmp_path):
 def test_missing_value_objects_are_refused_with_the_conversion():
     with pytest.raises(TypeError, match=r'astype\("dta\[double\]"\)'):
         dk.save_parquet(pd.DataFrame({"x": pd.Series([missing.b, 2.0], dtype=object)}))
+
+
+def test_read_parquet_info_gives_a_date_its_format_as_read_parquet_does(tmp_path):
+    # A DATE another tool wrote has no format in a profile; both readers
+    # give it %td, so saving with either Meta writes a DATE again.
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    path = tmp_path / "date.parquet"
+    pq.write_table(pa.table({"d": pa.array([dt.date(2024, 1, 31), None], pa.date32())}), path)
+    df, meta = dk.read_parquet(path)
+    info = dk.read_parquet_info(path)
+    assert meta.columns["d"].format == "%td"
+    assert info.meta.columns["d"].format == "%td"
+    out = tmp_path / "back.parquet"
+    dk.save_parquet(df, out, meta=info.meta)
+    assert dk.read_parquet_info(out).columns.set_index("name").loc["d", "logical_type"] == "DATE"
+
+
+def test_sort_order_is_checked_on_exact_integers(tmp_path):
+    # 2**53 and 2**53 + 1 are one float64; out of order as integers, so
+    # meta.sort is not kept.
+    df = pd.DataFrame({"big": np.array([2**53 + 1, 2**53], dtype=np.int64)})
+    meta = dk.Meta(sort=["big"])
+    with pytest.warns(UserWarning, match="does not describe the order"):
+        dk.save_parquet(df, tmp_path / "big.parquet", meta=meta)
+    stamps = pd.DataFrame({"t": pd.to_datetime([2**53 + 1, 2**53], unit="ns")})
+    with pytest.warns(UserWarning, match="does not describe the order"):
+        dk.save_parquet(stamps, tmp_path / "t.parquet", meta=dk.Meta(sort=["t"]))
+    ordered = pd.DataFrame({"big": pd.array([2**53, 2**53 + 1, None], dtype="Int64")})
+    quiet(dk.save_parquet, ordered, tmp_path / "ok.parquet", meta=dk.Meta(sort=["big"]))
