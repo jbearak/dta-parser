@@ -452,11 +452,14 @@ struct Buffers {
 /// the data columns that do, each an Enum of `.a` to `.z`), and what
 /// `Meta` is made from, given to `give` while the file is open (it
 /// borrows from the reader). `mode` is how dates and timestamps held as
-/// doubles that are not whole days or microseconds read. For datakit only.
+/// doubles that are not whole days or microseconds read. `prefer` is a
+/// column read alone in place of `columns` when the file has it
+/// ([`select`]). For datakit only.
 #[allow(clippy::too_many_arguments)]
 pub fn parquet_read<T>(
     input: Input<'_>,
     columns: Option<&[Selector]>,
+    prefer: Option<&str>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
@@ -474,9 +477,14 @@ pub fn parquet_read<T>(
         ..ReadOptions::default()
     };
     let options = ReadOptions { parallel_bytes: options.parallel_bytes.min(ARROW_PARALLEL_BYTES), ..options };
-    let names = names_of(columns);
+    // The profile entries read at opening: those of the names, and of
+    // `prefer`, which may be the column read.
+    let names = names_of(columns).map(|mut n| {
+        n.extend(prefer);
+        n
+    });
     with_reader_for(input, options, names.as_deref(), &mut |r| {
-        read_arrow(r, columns, skip, n_max, nested_skip, mode, enum_metadata, t0, give)
+        read_arrow(r, columns, prefer, skip, n_max, nested_skip, mode, enum_metadata, t0, give)
     })
 }
 
@@ -484,6 +492,7 @@ pub fn parquet_read<T>(
 fn read_arrow<T>(
     r: &mut dyn Access,
     wanted: Option<&[Selector]>,
+    prefer: Option<&str>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
@@ -494,7 +503,7 @@ fn read_arrow<T>(
 ) -> Result<T> {
     let mut steps = vec![("open", t0.elapsed().as_secs_f64())];
     let t = Instant::now();
-    let selected = select(r, wanted, nested_skip)?;
+    let selected = select(r, wanted, prefer, nested_skip)?;
     let n = n_max.unwrap_or(u64::MAX);
     let window = r.window(skip, n);
     let rows = usize::try_from(window.end - window.start).map_err(|_| fail("too many rows to read at once"))?;

@@ -9,3 +9,4 @@ rust-version = "1.82"
 [dependencies]
 dta = { path = "../dta" }
 dta-parquet = { path = "../parquet" }
+

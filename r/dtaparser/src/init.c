@@ -405,8 +405,9 @@ struct ArrowArrayStream {
 };
 #endif
 
-int dtaparser_parquet_read_arrow_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP cols, double skip,
-                                    double n_max, int nested_skip, const char *timestamps, int threads,
+int dtaparser_parquet_read_arrow_rs(const char *path, const unsigned char *raw, size_t raw_len, SEXP cols,
+                                    const char *prefer, double skip, double n_max, int nested_skip,
+                                    const char *timestamps, int threads,
                                     struct ArrowArrayStream *data, struct ArrowArrayStream *letters, SEXP holder,
                                     char *err, size_t err_len);
 int dtaparser_dta_read_arrow_rs(const char *path, SEXP cols, double skip, double n_max, const char *encoding,
@@ -448,7 +449,10 @@ static void window_arg(SEXP skip, SEXP n_max, double *s, double *n) {
 }
 
 // options: c(nested, timestamps), each a choice by name ("error" or
-// "skip"; "error" or "truncate").
+// "skip"; "error" or "truncate"). cols may have a "prefer" attribute, as
+// parquet_read's: the list returned then has the attribute "prefer",
+// TRUE, so that datakit can tell a dtaparser that honours it from an
+// older one that would read the names instead.
 static SEXP parquet_read_arrow(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP options, SEXP data, SEXP letters) {
   const char *path;
   const unsigned char *raw;
@@ -464,11 +468,20 @@ static SEXP parquet_read_arrow(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP
   const char *timestamps = CHAR(STRING_ELT(options, 1));
   struct ArrowArrayStream *d = stream_arg(data, 1, "data"), *l = stream_arg(letters, 1, "letters");
   if (d == l) Rf_error("internal: data and letters are one stream");
+  const char *prefer = NULL;
+  if (TYPEOF(cols) == STRSXP) {
+    SEXP p = Rf_getAttrib(cols, Rf_install("prefer"));
+    if (Rf_isString(p) && XLENGTH(p) == 1 && STRING_ELT(p, 0) != NA_STRING) prefer = Rf_translateCharUTF8(STRING_ELT(p, 0));
+  }
   SEXP holder = PROTECT(Rf_allocVector(VECSXP, 1));
   char err[4096] = "";
-  return finish(dtaparser_parquet_read_arrow_rs(path, raw, raw_len, cols, s, n, strcmp(nested, "skip") == 0, timestamps,
-                                                threads_option(), d, l, holder, err, sizeof err),
-                holder, err);
+  SEXP out = PROTECT(finish(dtaparser_parquet_read_arrow_rs(path, raw, raw_len, cols, prefer, s, n,
+                                                            strcmp(nested, "skip") == 0, timestamps, threads_option(), d,
+                                                            l, holder, err, sizeof err),
+                            holder, err));
+  if (prefer != NULL) Rf_setAttrib(out, Rf_install("prefer"), Rf_ScalarLogical(1));
+  UNPROTECT(1);
+  return out;
 }
 
 static SEXP dta_read_arrow(SEXP file, SEXP cols, SEXP skip, SEXP n_max, SEXP encoding, SEXP timestamps, SEXP data,

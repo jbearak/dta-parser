@@ -125,12 +125,15 @@ impl Codecs {
         declared: usize,
         out: &mut Vec<u8>,
     ) -> Result<()> {
-        out.clear();
+        // snappy and lz4 are given exactly the bytes they must fill, and
+        // fill them or fail, so what `out` held need not be zeroed first:
+        // `grow` zeroes only what it adds. The others start empty.
         match codec {
             Codec::Uncompressed => {
                 if input.len() != declared {
                     return Err(Error::new("an uncompressed page's sizes differ"));
                 }
+                out.clear();
                 grow(out, 0)?;
                 out.extend_from_slice(input);
             }
@@ -151,9 +154,18 @@ impl Codecs {
                     .map_err(|e| Error::new(format!("snappy: {e}")))?;
                 out.truncate(n);
             }
-            Codec::Gzip => gunzip(input, declared, out)?,
-            Codec::Brotli => unbrotli(input, declared, out)?,
-            Codec::Zstd => self.unzstd(input, declared, out)?,
+            Codec::Gzip => {
+                out.clear();
+                gunzip(input, declared, out)?
+            }
+            Codec::Brotli => {
+                out.clear();
+                unbrotli(input, declared, out)?
+            }
+            Codec::Zstd => {
+                out.clear();
+                self.unzstd(input, declared, out)?
+            }
             Codec::Lz4Raw => {
                 if declared > input.len().saturating_mul(LZ4_MAX_RATIO) {
                     return Err(cannot_hold("lz4_raw", declared, input.len()));
@@ -472,6 +484,42 @@ mod tests {
         }
         v.extend_from_slice(b"some text at the end");
         v
+    }
+
+    #[test]
+    fn a_buffer_that_held_a_larger_page_gives_the_same_bytes() {
+        let data = sample();
+        let small = &data[..data.len() / 7];
+        let mut codecs = Codecs::default();
+        for c in [
+            Compression::None,
+            Compression::Snappy,
+            Compression::Gzip,
+            Compression::Zstd,
+            Compression::Lz4Raw,
+        ] {
+            let level = c.level(None).unwrap();
+            let (mut large_packed, mut small_packed) = (Vec::new(), Vec::new());
+            codecs.compress(c, level, &data, &mut large_packed).unwrap();
+            codecs.compress(c, level, small, &mut small_packed).unwrap();
+            // A buffer longer than the page, and one shorter, both full
+            // of other bytes.
+            for held in [data.len() * 2, 3] {
+                let mut out = vec![0xaau8; held];
+                codecs.decompress(c.codec(), &large_packed, data.len(), &mut out).unwrap();
+                assert_eq!(out, data, "{c:?}");
+                codecs.decompress(c.codec(), &small_packed, small.len(), &mut out).unwrap();
+                assert_eq!(out, small, "{c:?}");
+                // A wrong size is the error it was with an empty buffer.
+                for wrong in [small.len() - 1, small.len() + 1] {
+                    let mut empty = Vec::new();
+                    let fresh = codecs.decompress(c.codec(), &small_packed, wrong, &mut empty).unwrap_err();
+                    let mut used = vec![0xaau8; held];
+                    let reused = codecs.decompress(c.codec(), &small_packed, wrong, &mut used).unwrap_err();
+                    assert_eq!(reused.message, fresh.message, "{c:?}");
+                }
+            }
+        }
     }
 
     #[test]

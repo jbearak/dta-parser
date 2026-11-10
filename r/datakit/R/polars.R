@@ -122,16 +122,20 @@ read_parquet_pl <- function(file, col_select = NULL, skip = 0, n_max = Inf, fact
   timestamps <- one_of(timestamps, c("error", "truncate"), "timestamps")
   nested <- one_of(nested, c("error", "skip"), "nested")
   file <- parquet_source(file)
+  # A variable holding names keeps its name as the attribute "prefer":
+  # the reader picks the column of that name if the file has one, so the
+  # footer is read once, there.
   cols <- parquet_selection(rlang::enquo(col_select), file, nested)
   prefer <- attr(cols, "prefer", exact = TRUE)
-  if (!is.null(prefer)) {
-    # A variable holding names, unless the file has a column of its name.
-    names <- .Call(C_dta_parquet_info, file)$columns$name
-    cols <- if (prefer %in% names) prefer else as.character(cols)
-  }
+  if (!is.null(cols)) cols <- structure(enc2utf8(as.character(cols)), prefer = if (!is.null(prefer)) enc2utf8(prefer))
   s <- new_streams()
-  m <- .Call(C_dta_parquet_read_arrow, file, if (!is.null(cols)) enc2utf8(cols), floor(skip), floor(n_max),
-             c(nested, timestamps), s$data, s$letters)
+  m <- .Call(C_dta_parquet_read_arrow, file, cols, floor(skip), floor(n_max), c(nested, timestamps), s$data,
+             s$letters)
+  # A dtaparser built before it read "prefer" (with the same ABI number)
+  # has read the names, whatever the file's columns are.
+  if (!is.null(prefer) && !isTRUE(attr(m, "prefer", exact = TRUE))) {
+    stop("datakit needs dtaparser built from the same release; reinstall dtaparser", call. = FALSE)
+  }
   finish_pl(s, m, factors = factors, letters = letters)
 }
 
@@ -245,6 +249,11 @@ warn_fixed_width_pl <- function(messages) {
               messages = messages)
 }
 
+# The polars frame of a native read's stream, which is a struct of the
+# columns. polars::as_polars_df() does this after inferring the struct's
+# dtype in R, a field at a time (3.4 ms of 5.4 ms for 5,160 columns).
+stream_frame <- function(stream) polars::as_polars_series(stream)$struct$unnest()
+
 # `list(df, meta)` from a native read (Python's _frame.finish). With
 # `letters`, each column holding .a to .z in the rows read is Float64
 # with them as tagged NaNs; with `markers` (a .dta read) the columns
@@ -253,12 +262,12 @@ warn_fixed_width_pl <- function(messages) {
 # their letters nulls, with one warning.
 finish_pl <- function(s, m, factors, letters, markers = FALSE) {
   for (w in m$warnings) warning(w, call. = FALSE)
-  df <- frame_of(polars::as_polars_df(s$data), m)
+  df <- frame_of(stream_frame(s$data), m)
   meta <- meta_of(m)
   found <- character()
   ldf <- NULL
   if (letters && length(m$letter_columns)) {
-    ldf <- polars::as_polars_df(s$letters)
+    ldf <- stream_frame(s$letters)
     counts <- unlist(as.list(ldf$select(polars::pl$all()$null_count()), as_series = FALSE))
     found <- names(counts)[counts < ldf$height]
   }
@@ -304,9 +313,8 @@ frame_of <- function(df, m) {
   pl <- polars::pl
   casts <- list()
   cols <- m$columns
-  for (k in seq_along(cols$name)) {
+  for (k in which(!is.na(cols$flag))) {
     flag <- cols$flag[[k]]
-    if (is.na(flag)) next
     name <- cols$name[[k]]
     if (flag == "categorical") {
       casts <- c(casts, list(pl$col(name)$cast(pl$Categorical())))

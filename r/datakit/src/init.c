@@ -91,6 +91,7 @@ static SEXP fixed_width_dta(SEXP data, SEXP setup, SEXP out, SEXP recodes, SEXP 
 }
 
 SEXP dta_na_groups_tagged(SEXP x, SEXP key, SEXP loc);
+SEXP dta_meta_columns(SEXP names, SEXP label, SEXP format, SEXP value_labels, SEXP ordered);
 
 static const R_CallMethodDef routines[] = {
   {"dta_link", (DL_FUNC) &link, 0},
@@ -103,6 +104,7 @@ static const R_CallMethodDef routines[] = {
   {"dta_dta_write_arrow", (DL_FUNC) &dta_write_arrow, 4},
   {"dta_fixed_width_dta", (DL_FUNC) &fixed_width_dta, 5},
   {"dta_na_groups_tagged", (DL_FUNC) &dta_na_groups_tagged, 3},
+  {"dta_meta_columns", (DL_FUNC) &dta_meta_columns, 5},
   {NULL, NULL, 0}
 };
 

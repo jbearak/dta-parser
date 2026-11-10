@@ -542,9 +542,7 @@ mod tests {
                     text[at] = [b' ', b'\n', b'=', b'=', b'-', 0xff, b'\t'][(next() % 7) as usize];
                 }
             }
-            for _ in 0..next() % 3 {
-                text.push(b'=');
-            }
+            text.extend(std::iter::repeat_n(b'=', (next() % 3) as usize));
             assert_eq!(unbase64(&text), unbase64_rest(&text, Vec::new()), "case {case}: {:?}", String::from_utf8_lossy(&text));
         }
         assert_eq!(unbase64(b"aGVsbG8gd29ybGQ=").as_deref(), Some(&b"hello world"[..]));

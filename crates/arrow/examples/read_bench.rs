@@ -51,6 +51,7 @@ fn main() {
         let (rows, cols, steps) = parquet_read(
             Input::Path(file.clone()),
             columns.as_deref(),
+            None,
             0,
             None,
             true,

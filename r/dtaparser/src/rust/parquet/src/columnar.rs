@@ -266,6 +266,34 @@ fn merge(dst: &[AtomicU8], at: usize, src: &[u8], n: usize) {
     if n == 0 {
         return;
     }
+    let (first, whole) = (at / 8, n / 8);
+    if at % 8 == 0 {
+        if let (Some(d), Some(s)) = (dst.get(first..first + whole), src.get(..whole)) {
+            // A chunk that starts on a byte: its whole bytes at once.
+            // SAFETY: `d` and `s` hold `whole` bytes each and cannot
+            // overlap (`src` is the chunk's own scratch). The bytes of
+            // `d` lie wholly inside this chunk's rows, so no other chunk
+            // reads or writes them, and nothing reads the column before
+            // every chunk's thread is joined; a store through the
+            // atomics' own memory is what `AtomicU8::as_ptr` allows.
+            unsafe { std::ptr::copy_nonoverlapping(s.as_ptr(), d.as_ptr() as *mut u8, whole) };
+            // The last, partial byte is shared with the next chunk.
+            if n % 8 != 0 {
+                let byte = src[whole];
+                if byte != 0 {
+                    if let Some(slot) = dst.get(first + whole) {
+                        slot.fetch_or(byte, Ordering::Relaxed);
+                    }
+                }
+            }
+            return;
+        }
+    }
+    merge_bytes(dst, at, src, n)
+}
+
+/// [`merge`] a byte at a time, for a chunk that starts inside a byte.
+fn merge_bytes(dst: &[AtomicU8], at: usize, src: &[u8], n: usize) {
     let first = at / 8;
     let last = (at + n - 1) / 8;
     let shift = at % 8;
@@ -378,8 +406,12 @@ fn scatter<T: Copy + Default>(
             }
             continue;
         }
-        tmp.clear();
-        tmp.resize(present, T::default());
+        // The scratch keeps its length between blocks; this block's
+        // values are its first `present`, and `next` is given no more.
+        if tmp.len() < present {
+            tmp.resize(present, T::default());
+        }
+        let tmp = &mut tmp[..present];
         if !next(tmp)? {
             return Ok(false);
         }
@@ -421,8 +453,12 @@ fn gather<T: Copy>(h: &mut Hybrid, dict: &[T], dst: &mut [T], idx: &mut Vec<u32>
         if n == 0 {
             return Err(Error::new("RLE data ends early"));
         }
-        idx.clear();
-        idx.resize(n, 0);
+        // The scratch keeps its length between batches (zeroing it for
+        // each cost more than the gather); this batch is its first `n`.
+        if idx.len() < n {
+            idx.resize(n, 0);
+        }
+        let idx = &mut idx[..n];
         h.next(idx)?;
         let max = idx.iter().copied().max().unwrap_or(0);
         if max as usize >= dict.len() {
@@ -539,6 +575,7 @@ impl<P: Physical, T: Element + Default> Consumer for Num<'_, P, T> {
             .ok_or_else(|| Error::new("a dictionary page ends early"))?;
         self.dict = bytes.chunks_exact(P::WIDTH).map(P::from_le).collect();
         self.dict_t.clear();
+        self.dict_t.reserve(self.dict.len());
         self.dict_clean = true;
         for &p in &self.dict {
             match p.convert::<T>() {
@@ -727,7 +764,8 @@ struct Views<'o> {
 
 impl Views<'_> {
     fn view(&mut self, b: &[u8]) -> Result<u128> {
-        if self.utf8 && std::str::from_utf8(b).is_err() {
+        // ASCII, as most survey text is, needs no decoding to check.
+        if self.utf8 && !b.is_ascii() && std::str::from_utf8(b).is_err() {
             return Err(Error::new("a text value is not UTF-8"));
         }
         if b.len() <= 12 {
@@ -752,6 +790,11 @@ impl Views<'_> {
     /// The views of `count` PLAIN values from `values`, skipping the first
     /// `skip`; returns the views of values `skip..count`.
     fn plain(&mut self, values: &[u8], skip: usize, count: usize, into: &mut Vec<u128>) -> Result<()> {
+        // Room for the views at once, by what the bytes can hold (a
+        // value takes at least its 4-byte length, or its fixed width):
+        // `count` is the page header's word, and may be a lie.
+        let most = values.len() / self.fixed.unwrap_or(4);
+        into.reserve(count.min(most).saturating_sub(skip));
         if let Some(w) = self.fixed {
             let need = count.checked_mul(w).filter(|&n| n <= values.len());
             if need.is_none() {
@@ -792,7 +835,7 @@ impl Views<'_> {
 
 impl Consumer for Views<'_> {
     fn dictionary(&mut self, count: usize, values: &[u8]) -> Result<()> {
-        let mut dict = Vec::with_capacity(count);
+        let mut dict = Vec::new();
         self.plain(values, 0, count, &mut dict)?;
         self.dict = dict;
         Ok(())
@@ -926,7 +969,8 @@ fn byte_arrays(values: &[u8], count: usize, mut f: impl FnMut(&[u8]) -> Result<(
 
 impl Consumer for Keys<'_> {
     fn dictionary(&mut self, count: usize, values: &[u8]) -> Result<()> {
-        let mut dict = Vec::with_capacity(count);
+        // By what the bytes can hold, not the page header's word.
+        let mut dict = Vec::with_capacity(count.min(values.len() / 4));
         let mut unknown = HashMap::new();
         byte_arrays(values, count, |v| {
             let c = self.code(v);
@@ -1106,6 +1150,57 @@ pub(crate) fn decode_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A small generator, for the tests that compare a kernel with the
+    /// loop it replaced.
+    pub(super) struct Rng(pub u64);
+
+    impl Rng {
+        pub(super) fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+
+        pub(super) fn below(&mut self, n: usize) -> usize {
+            (self.next() % n as u64) as usize
+        }
+    }
+
+    #[test]
+    fn merging_whole_bytes_gives_what_a_byte_at_a_time_gives() {
+        let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
+        for case in 0..2000 {
+            // Chunks of random sizes, many of them ending on a byte, so
+            // some start on one and take the copy.
+            let chunks = 1 + rng.below(6);
+            let sizes: Vec<usize> =
+                (0..chunks).map(|_| if rng.below(2) == 0 { 8 * rng.below(40) } else { rng.below(300) }).collect();
+            let total: usize = sizes.iter().sum();
+            let rows: Vec<u8> = (0..total).map(|_| (rng.next() & 1) as u8).collect();
+            let mut fast = vec![0u8; total.div_ceil(8)];
+            let mut slow = fast.clone();
+            let mut order: Vec<usize> = (0..chunks).collect();
+            for k in (1..chunks).rev() {
+                order.swap(k, rng.below(k + 1));
+            }
+            let starts: Vec<usize> = sizes.iter().scan(0, |s, &n| Some(std::mem::replace(s, *s + n))).collect();
+            for &k in &order {
+                let (s, n) = (starts[k], sizes[k]);
+                let mut local = vec![0u8; n.div_ceil(8)];
+                pack_into(&mut local, 0, &rows[s..s + n]);
+                merge(atomic(&mut fast), s, &local, n);
+                if n > 0 {
+                    merge_bytes(atomic(&mut slow), s, &local, n);
+                }
+            }
+            assert_eq!(fast, slow, "case {case}: sizes {sizes:?}");
+            for (k, &l) in rows.iter().enumerate() {
+                assert_eq!((fast[k / 8] >> (k % 8)) & 1, l, "case {case} row {k}");
+            }
+        }
+    }
 
     #[test]
     fn bits_pack_and_merge_at_any_offset() {

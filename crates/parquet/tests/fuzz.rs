@@ -202,7 +202,9 @@ fn read_arrow<S: dta::Source>(r: &mut Reader<S>, columns: &[usize], skip: u64, n
     use dta_parquet::{ArrowData, ArrowOutput};
     let w = r.window(skip, n);
     let rows = (w.end - w.start) as usize;
-    let mut store: Vec<(Vec<f64>, Vec<i64>, Vec<u64>, Vec<u128>, Vec<u8>)> =
+    // A column's doubles, integers, unsigned integers, views and bits.
+    type Store = (Vec<f64>, Vec<i64>, Vec<u64>, Vec<u128>, Vec<u8>);
+    let mut store: Vec<Store> =
         vec![(vec![0.0; rows], vec![0; rows], vec![0; rows], vec![0; rows], vec![0; rows.div_ceil(8)]); columns.len()];
     let mut outs: Vec<Output> = columns
         .iter()
