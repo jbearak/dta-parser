@@ -213,9 +213,15 @@ Plan 0018's speed and memory gate for R (PR 3): datakit's
 [results/parquet.md](results/parquet.md), written by
 `bench/parquet/run.py`; this section is written by hand from it.
 
-**Every target holds**, on the 36 NSFG files, the 10 DHS files and the
-three synthetic files, on each of the three inputs (pyarrow's, polars'
-and our files of the same data).
+**Every target held in that run**, on the 36 NSFG files, the 10 DHS
+files and the three synthetic files, on each of the three inputs
+(pyarrow's, polars' and our files of the same data). The run's load
+average was 10 to 17, where plan 0018 asks for under 2, and it timed
+each library's first call in a fresh process. Measured again on
+2026-11-09 at a load of 3, with the calls after the first beside it
+("The first call and the calls after it", below), the reads against
+arrow are closer than this table says, and one target does not hold:
+arrow reads the DHS files whole as fast as we do or faster.
 
 Ours over theirs, geometric means of wall time over the files (NSFG,
 DHS); below 1 is faster. Reads are of pyarrow's files; reads of polars'
@@ -248,6 +254,64 @@ full report.
 - **Not compared.** DuckDB's R package could not read
   pyarrow's 4.8 GB wide.dta file ("Could not read from file ...:
   Invalid argument"); those cases have no comparison.
+
+### The first call and the calls after it
+
+The table above answers one question: what a fresh R process pays for
+its first read. That includes what a library sets up once (arrow
+starts sixteen threads; every library's code is paged in), and a busy
+machine slows a reader on sixteen threads more than one on two. A
+session that reads many files pays the setup once. So the reads were
+measured again on 2026-11-09 (after plan 0027), by
+`bench/parquet/warm.py`: each case in one fresh process, which makes the
+first call and then up to seven more with `gc()` before each; the first
+call and the median of the rest are reported. Load average 2.1 to 6.7,
+median 3.0. datakit 3.1.0 against arrow 26.0.0 and nanoparquet 0.5.2
+(DuckDB's R package was not installed for this run). Every number is in
+[results/parquet-r-warm.md](results/parquet-r-warm.md).
+
+Ours over theirs, geometric means of wall time (NSFG, DHS); below 1 is
+faster. First call, then warm:
+
+| against | input | whole file | five columns | 1,000 rows | read + pass |
+|---|---|---|---|---|---|
+| arrow | pyarrow's files | 0.44, 1.03; 0.69, 1.05 | 0.11, 0.15; 0.19, 0.24 | 0.24, 0.31; 0.37, 0.40 | 0.49, 0.51; 0.48, 0.51 |
+| arrow | our files | 0.51, 1.28; 0.79, 1.33 | 0.17, 0.25; 0.33, 0.45 | 0.29, 0.41; 0.46, 0.56 | 0.52, 0.53; 0.50, 0.53 |
+| nanoparquet | pyarrow's files | 0.52, 0.36; 0.52, 0.39 | 0.33, 0.09; 0.34, 0.12 | 0.26, 0.11; 0.28, 0.15 | 0.84, 0.74; 0.87, 0.90 |
+| nanoparquet | our files | 0.61, 0.45; 0.60, 0.47 | 0.54, 0.16; 0.66, 0.24 | 0.33, 0.15; 0.36, 0.20 | 0.90, 0.78; 0.91, 0.94 |
+
+What this changes:
+
+- **Whole files against arrow.** On DHS we are level with arrow on
+  pyarrow's files (1.03 to 1.05) and slower on our own (1.28 to 1.33),
+  on a quarter to a third of its CPU time (0.23 to 0.31). The earlier
+  0.85 to 0.98 came from the busy machine. On NSFG, 0.44 of arrow's
+  first call is 0.69 once both are warm. Target 1 (at most 1.05) does
+  not hold for arrow's whole-file read of our DHS files.
+- **Our files cost us more than pyarrow's copies of them, and arrow
+  less.** pyarrow's copies do not carry the dta profile: read from
+  them, DHS Tajikistan 2017 wm has no labelled column; from ours, 4,586
+  of its 5,160 are labelled, with their value labels. That is the work
+  the reader exists for, and arrow does none of it on either file.
+- **Five columns and windows** are still well ahead, by less warm than
+  on a first call: against arrow, five columns of pyarrow's files are
+  0.19 to 0.24 warm, not 0.11 to 0.15.
+- **Read and pass** is the same warm as first: about half of arrow's
+  time. It depends on the pass. This one sums each column, counts its
+  missing values and adds up its text's lengths; arrow's vectors are
+  made on first use, and the count of missing values is slow on them.
+  A pass that only sums the numbers and takes `nchar()` of the text ran
+  faster on arrow's frame of pyarrow's long.dta file than on ours, 3.0 s
+  against 3.8 s, in one session on the same day (not part of this run).
+- **nanoparquet**, on one thread, is behind in every case, by less on
+  read and pass (0.74 to 0.94), where R's own work on the strings is
+  most of the time.
+- On the three synthetic files, whole-file reads are 0.63 to 0.66 of
+  arrow's, first or warm, and long.dta alone is level (111 ms against
+  122 ms warm).
+
+Peak memory was not measured again: a process here makes eight reads.
+Writes and DuckDB were not rerun.
 
 ### Fixed because of these runs
 

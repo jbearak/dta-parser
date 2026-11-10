@@ -1,7 +1,7 @@
 # One Parquet benchmark case in R, in a fresh process; bench/parquet/run.py
 # runs it under /usr/bin/time -l, five times per case.
 #
-#   Rscript bench/parquet/case.R LIB TASK FILE OUT COLS SKIP N
+#   Rscript bench/parquet/case.R LIB TASK FILE OUT COLS SKIP N [WARM]
 #
 # LIB is ours (datakit), arrow, nanoparquet or duckdb. TASK is one of
 #   full    read the whole file
@@ -13,11 +13,18 @@
 #   zstd    the same, with zstd at level 3
 #   snappy  the same, with snappy (ours only: for the default codec)
 # Only the task is timed (wall and CPU, user plus system, of this
-# process and its threads); OUT gets a JSON report.
+# process and its threads); OUT gets a JSON report. That first call is
+# the process's first use of the library, with whatever the library
+# sets up once (its threads, its lazily loaded code). With WARM (for
+# bench/parquet/warm.py), a read is then called up to WARM more times,
+# with gc() before each, stopping after 20 seconds once two are done:
+# the report also holds their median wall and CPU times, what a
+# session's later reads cost.
 args <- commandArgs(trailingOnly = TRUE)
 lib <- args[[1]]; task <- args[[2]]; path <- args[[3]]; out_path <- args[[4]]
 cols <- strsplit(args[[5]], ",", fixed = TRUE)[[1]]
 skip <- as.numeric(args[[6]]); n <- as.numeric(args[[7]])
+warm <- if (length(args) >= 8) as.integer(args[[8]]) else 0L
 tmp <- dirname(normalizePath(out_path, mustWork = FALSE))
 
 pkg <- c(ours = "datakit", arrow = "arrow", nanoparquet = "nanoparquet", duckdb = "duckdb")[[lib]]
@@ -145,14 +152,27 @@ if (task %in% c("write", "zstd", "snappy")) {
   unlink(dst)
 } else {
   r <- readers[[lib]]
-  invisible(gc())
-  t0 <- now(); c0 <- cpu()
-  out <- switch(task,
+  run <- function() switch(task,
     full = r$full(path),
     five = r$five(path, cols),
     window = r$window(path, skip, n),
     pass = pass(r$full(path)))
+  invisible(gc())
+  t0 <- now(); c0 <- cpu()
+  out <- run()
   result$wall <- now() - t0; result$cpu <- cpu() - c0
   if (task == "pass") result$checksum <- out else result$rows <- nrow(out)
+  if (warm > 0) {
+    walls <- numeric(); cpus <- numeric(); started <- now()
+    for (i in seq_len(warm)) {
+      rm(out); invisible(gc())
+      t0 <- now(); c0 <- cpu()
+      out <- run()
+      walls[i] <- now() - t0; cpus[i] <- cpu() - c0
+      if (i >= 2 && now() - started > 20) break
+    }
+    result$warm_wall <- stats::median(walls); result$warm_cpu <- stats::median(cpus)
+    result$warm_runs <- length(walls)
+  }
 }
 writeLines(jsonlite::toJSON(result, auto_unbox = TRUE, digits = NA), out_path)
