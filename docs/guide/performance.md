@@ -1,7 +1,7 @@
 # Memory and speed
 
 Measured numbers are in [bench/RESULTS.md](../../bench/RESULTS.md),
-for every language against the other open-source readers. This page
+for R and TypeScript against the other open-source readers. This page
 explains what costs time and memory, so you can predict it for your
 files.
 
@@ -23,8 +23,8 @@ What follows from that:
   only those rows: the reader computes where row `skip` starts and seeks
   there, so 1,000 rows from the end of a large file cost the same as
   1,000 from the start.
-- **Metadata only** (`read_meta` in Python and Julia, `read_dta(n_max = 0)`
-  in R, or opening a file in TypeScript) reads
+- **Metadata only** (`read_meta` or `read_dta(n_max = 0)` in R, or
+  opening a file in TypeScript) reads
   the header, the variable descriptors, and then jumps to the value
   labels; it never reads the rows.
 - **Files over 4 GiB** read the same way; nothing is mapped into memory
@@ -42,16 +42,6 @@ sorting) pays for making them. A column with few distinct values is
 kept as those values plus a code per row, so R makes one string per
 distinct value. [ADR 0010](../adr/0010-packed-strings-in-r.md) and
 [ADR 0011](../adr/0011-dictionary-strings-in-r.md) explain why.
-
-**Python.** The extension fills numpy arrays that Python allocated, in
-their storage width (an `int8` column takes one byte per row), and
-builds Python strings in Rust. A `DtaArray` costs one extra byte per
-row for its codes. Python strings cost about 50 bytes each plus the
-text, which dominates for string-heavy files.
-
-**Julia.** The C library hands each chunk to Julia, which copies it into
-vectors allocated once for the whole result. A `DtaColumn` costs one
-extra byte per row for its codes.
 
 **TypeScript.** The core runs as WebAssembly inside the package. Each
 call into it decodes at most 64 MiB, so a large read is a loop of
@@ -71,4 +61,3 @@ you already hold. Each distinct strL text is stored once.
 - Select the columns you need; read in row windows if the result would
   not fit in memory.
 - In R, avoid touching every value of a string column you do not need.
-- In Python, `dates=False` skips the date conversion pass.

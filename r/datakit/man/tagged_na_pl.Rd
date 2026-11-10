@@ -31,9 +31,7 @@ a Series for a Series.
 In a polars frame from \code{\link[=read_parquet_pl]{read_parquet_pl()}}, \code{\link[=read_dta_pl]{read_dta_pl()}} or
 \code{\link[=read_fixed_width_pl]{read_fixed_width_pl()}}, \code{.} is a null and \code{.a} to \code{.z} are NaNs
 tagged with their letter in Float64 columns, the bits R holds
-\code{\link[dtaparser:tagged_na]{dtaparser::tagged_na()}} in. These expressions make and read them,
-as Python datakit's \code{dk.tagged_na()}, \code{dk.na_tag()} and
-\code{dk.is_tagged_na()} do.
+\code{\link[dtaparser:tagged_na]{dtaparser::tagged_na()}} in. These expressions make and read them.
 }
 \details{
 \code{tagged_na_pl()} is needed because R polars reads every R \code{NA},

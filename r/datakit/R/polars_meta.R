@@ -1,5 +1,5 @@
-# datakit_meta: what a polars frame cannot hold, kept beside it, as
-# Python datakit's Meta (plan 0025, stage 3).
+# datakit_meta: what a polars frame cannot hold, kept beside it
+# (plan 0025, stage 3).
 
 # A datakit_meta from its fields.
 new_datakit_meta <- function(label = NULL, notes = character(), characteristics = list(), sort = character(),
@@ -17,7 +17,7 @@ meta_column <- function(label = NULL, format = NULL, value_labels = NULL, ordere
   list(label = label, format = format, value_labels = value_labels, ordered = ordered)
 }
 
-# The datakit_meta of a native read's list (Python's _frame.meta_of).
+# The datakit_meta of a native read's list.
 # Each column's entry is meta_column() of its four fields, NA as NULL,
 # built in C (src/meta.c).
 meta_of <- function(m) {
@@ -30,8 +30,7 @@ meta_of <- function(m) {
 }
 
 # list(variable, name, value) as a named list of named character
-# vectors, a name given twice keeping its first place and its last text
-# (Python's dict).
+# vectors, a name given twice keeping its first place and its last text.
 characteristics_of <- function(chars) {
   out <- list()
   for (i in seq_along(chars$variable)) {
@@ -48,7 +47,7 @@ characteristics_of <- function(chars) {
 #' The polars readers ([read_parquet_pl()], [read_dta_pl()],
 #' [read_fixed_width_pl()]) return `list(df, meta)`, where `meta` holds
 #' what a polars frame cannot: a list of class `datakit_meta` with the
-#' fields of Python datakit's `Meta`, under the same names. Change them
+#' fields below. Change them
 #' as any list's; [save_parquet()] and [save_dta()] take it back as
 #' `meta =`. It does not follow polars operations: a renamed, dropped or
 #' new column is yours to mirror.
@@ -74,7 +73,7 @@ characteristics_of <- function(chars) {
 #' - `storage`: a named character vector, the polars dtype (`"Int8"`,
 #'   `"Int16"`, `"Int32"` or `"Float32"`) each column had before a read
 #'   made it Float64 to hold `.a` to `.z`; a save gives it back when the
-#'   values still fit. `print()` leaves it out, as Python's does.
+#'   values still fit. `print()` leaves it out.
 #'
 #' `.a` to `.z` are not in `meta`: they are in the frame, as tagged NaNs
 #' (see [tagged_na_pl()]).

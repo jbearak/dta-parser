@@ -29,16 +29,13 @@ The option goes to the read call:
 | language | option |
 |---|---|
 | R | `read_dta(path, encoding = "latin1")` |
-| Python | `dta_parser.read_dta(path, encoding="latin1")` |
-| Julia | `read_dta(path; encoding="latin1")` |
 | TypeScript | `openDtaFile(path, { encoding: "latin1" })` |
 
 After reading, text is the language's ordinary string type (UTF-8 in R,
-Julia and Python's `str`; UTF-16 in JavaScript). Writing always produces
+UTF-16 in JavaScript). Writing always produces
 release 118, so every string goes back as UTF-8: an old file read and
 written once is converted. In R, strings you write must be valid UTF-8;
 `enc2utf8()` converts a string in the native encoding.
 
-Which encoding was used for a file is in the metadata: Python
-`df.attrs["dta"]["encoding"]`, Julia `metadata(t, "encoding")`,
-TypeScript `reader.info.encoding`.
+Which encoding was used for a file is in the metadata in TypeScript:
+`reader.info.encoding`.

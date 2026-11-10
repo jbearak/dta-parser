@@ -816,8 +816,8 @@ function place(col: TableColumn, d: Uint32Array, at: number, n: number, st: Gath
 
 /**
  * A categorical holding `.a` to `.z` in the rows read, as its level
- * numbers from 1 with the letters (ADR 0037), as R, Julia and Python read
- * it: a dictionary's codes cannot hold them. Any other column as it is.
+ * numbers from 1 with the letters (ADR 0037), as R reads it: a
+ * dictionary's codes cannot hold them. Any other column as it is.
  */
 function levelNumbers(c: TableColumn): TableColumn {
   if (c.kind !== "dictionary" || !c.missing?.some((m) => m > 1)) return c;

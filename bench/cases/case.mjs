@@ -2,7 +2,7 @@
 //   node bench/cases/case.mjs READER FILE OUT TASKS RUNS COLS SKIP N
 // READER is ours (@jbearak/dta-parser, built in js/) or statfmt
 // (@irbisadm/statfmt, installed in bench/node/). The arguments are as in
-// bench/cases/case.py.
+// bench/cases/case.R.
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";

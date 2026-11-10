@@ -1,6 +1,6 @@
 [package]
 name = "dta-ffi"
-description = "C ABIs over the dta crate: wasm for npm, native for Julia"
+description = "The C ABI over the dta crate that the npm packages' wasm modules export"
 version = "1.0.0"
 edition = "2021"
 license = "GPL-3.0-only"
@@ -11,12 +11,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 dta = { path = "../dta" }
-# Optional on wasm, so the .dta module carries no Parquet code or
-# libzstd (plan 0021); always there for the native library.
+# Optional, so the .dta module carries no Parquet code or libzstd
+# (plan 0021).
 dta-parquet = { path = "../parquet", optional = true }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-dta-parquet = { path = "../parquet" }
 
 [features]
 default = ["wasm-dta", "wasm-parquet"]
@@ -27,6 +24,3 @@ wasm-parquet = ["dep:dta-parquet"]
 # Test builds of the wasm module: `dta_test_set` lowers the read budget
 # and chunk size. Never in the published module.
 test-hooks = []
-
-[dev-dependencies]
-serde_json = "1"

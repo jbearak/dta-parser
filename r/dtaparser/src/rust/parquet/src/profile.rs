@@ -38,7 +38,7 @@ pub struct Profile {
     /// Names of the columns the data is sorted by.
     pub sort: Vec<String>,
     /// The `.dta` file's time stamp, as that file gave it, where the
-    /// language keeps one (Python and Julia do).
+    /// writer's binding keeps one.
     pub timestamp: Option<String>,
     /// Per-column entries, in the order written.
     pub columns: Vec<ColumnProfile>,

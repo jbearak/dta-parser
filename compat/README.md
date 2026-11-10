@@ -3,9 +3,7 @@
 `fixtures/` holds small `.dta` files made without Stata. `expected/` holds
 what haven, readstata13 and pandas read from each one, as JSON. The Rust
 tests (`crates/dta/tests/compat.rs`), the npm tests and the R tests compare
-dta-parser against them. The Python tests (`python/tests/test_compat.py`)
-read each fixture with pandas and pyreadstat as they run and compare
-against those.
+dta-parser against them.
 
 To regenerate, from the repository root:
 
@@ -59,15 +57,17 @@ None of these is an open bug in that project; see
 ## Our writers, read back by other readers
 
 `readback/` checks every writer we ship against every reader above.
-dtaparser and dtatools (R), dta_parser (Python), DtaParser (Julia) and
-the npm package each save the fixtures again, and also `readback/strls.dta`
-and `readback/binary.dta`: several strL variables over many rows,
-repeated texts, empty strLs, a binary strL, `.a` to `.z`, value labels
-with a long text, and a long variable label (`readback/make_inputs.py`
-writes both and gives their values). haven, readstata13, pandas and
+dtaparser and dtatools (R) and the npm package each save the fixtures
+again, and also `readback/strls.dta` and `readback/binary.dta`: several
+strL variables over many rows, repeated texts, empty strLs, a binary
+strL, `.a` to `.z`, value labels with a long text, and a long variable
+label. `readback/make_inputs.py` gives the values of both; the files
+were written on 2026-11-08 by the Python writer this repository had
+then, and are kept as committed. haven, readstata13, pandas and
 pyreadstat must then read each copy as they read its input, and the two
-strL inputs as `make_inputs.py` built them. CI's `readback` job runs
-it; locally, with everything installed and built:
+strL inputs as `make_inputs.py` describes them. Python runs here only
+to call pandas and pyreadstat. CI's `readback` job runs it; locally,
+with everything installed and built:
 
     sh compat/readback/run.sh /tmp/readback
 

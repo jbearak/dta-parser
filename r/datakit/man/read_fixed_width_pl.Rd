@@ -59,8 +59,7 @@ as nulls (\code{FALSE}).}
 }
 \description{
 As \code{\link[=read_fixed_width]{read_fixed_width()}}, into a polars DataFrame and its
-\code{\link{datakit_meta}}, as Python datakit's
-\code{dk.read_fixed_width()} does: the native reader writes the data as a
+\code{\link{datakit_meta}}: the native reader writes the data as a
 release 118 \code{.dta} file in a temporary directory, which
 \code{\link[=read_dta_pl]{read_dta_pl()}} reads with the selection, window, \code{factors} and
 \code{letters}. No R vector is built.

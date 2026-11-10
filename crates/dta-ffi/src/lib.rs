@@ -1,7 +1,9 @@
-//! C ABIs over the dta crate. On wasm32, the one the npm package's
-//! modules export (`wasm.rs`, `parquet_wasm.rs`); on other targets, a native one for Julia
-//! (`native.rs`, declared in `include/dta.h`). Both use `json.rs`.
+//! The C ABI over the dta crate that the npm packages' wasm modules
+//! export (`wasm.rs`, `parquet_wasm.rs`, `fixed_width_wasm.rs`), with
+//! `json.rs` and `strings.rs`, which are built on every target so their
+//! tests run natively.
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 mod json;
 
 // Used by the wasm modules; built everywhere so its tests run natively.
@@ -22,9 +24,3 @@ mod parquet_wasm;
 
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parquet"))]
 mod fixed_width_wasm;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod parquet_native;

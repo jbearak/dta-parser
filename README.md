@@ -1,7 +1,7 @@
 # dta-parser
 
-Read and write Stata `.dta` files from R, Python, Julia, and
-TypeScript, with one implementation of the format underneath all four.
+Read and write Stata `.dta` files from R and TypeScript, with one
+implementation of the format underneath both.
 
 - **Reads every release from 104 to 119**, from either byte order, and
   **writes release 118**, which Stata 14 and later, haven, pandas and
@@ -20,29 +20,23 @@ TypeScript, with one implementation of the format underneath all four.
 - **Reads fixed-width text through a SAS setup file**, such as the
   National Survey of Family Growth from 1973 to 2017-2019, with the
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
-  (`read_fixed_width` in R, Python and Julia, `readFixedWidth` in
-  TypeScript).
+  (`read_fixed_width` in R, `readFixedWidth` in TypeScript).
 - **Reads and writes Parquet that keeps all of this** (in R, through
-  datakit's `read_parquet()` and `save_parquet()`; in Python, datakit's
-  `read_parquet` and `save_parquet`, into polars; in Julia, Datakit's
-  `read_parquet` and `save_parquet`; in TypeScript, `@jbearak/datakit`'s
-  `readParquet()` and `saveParquet()`): labels, formats and
+  datakit's `read_parquet()` and `save_parquet()`; in TypeScript,
+  `@jbearak/datakit`'s `readParquet()` and `saveParquet()`): labels,
+  formats and
   notes travel in the file's metadata and `.a` to `.z` in its values
   (as NaNs that carry the letter), and the file is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
-  read. A tibble or DataFrame read from a `.dta` file comes back the
-  same. See [docs/parquet.md](docs/parquet.md), whose headings are the
+  read. A tibble read from a `.dta` file comes back the same. See [docs/parquet.md](docs/parquet.md), whose headings are the
   tasks (install, read, columns, rows, metadata, labels, dates, write,
   `.a` to `.z`, other tools' files), or go to each language's Parquet
-  section: [R](docs/r.md#parquet-files),
-  [Python](docs/python.md#parquet-files),
-  [Julia](docs/julia.md#parquet-files) and
+  section: [R](docs/r.md#parquet-files) and
   [TypeScript](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
   each language calls directly; [bench/RESULTS.md](bench/RESULTS.md)
-  compares it with haven, readstata13, pandas, pyreadstat,
-  ReadStatTables.jl, StatFiles.jl and @irbisadm/statfmt.
+  compares it with haven, readstata13, and @irbisadm/statfmt.
 
 ![Time of the other readers over ours on the NSFG and DHS files](bench/charts/headline.svg)
 
@@ -56,10 +50,6 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 |---|---|---|---|
 | R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
 | R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, `tagged_na()` and `with_labels()` make them, and `save_dta()` writes them, dates included |
-| Python | `dta_parser` | [docs/python.md](docs/python.md) | a pandas DataFrame |
-| Python | `datakit` | [docs/python.md](docs/python.md#datakit-parquet-dta-and-fixed-width-files-in-polars) | a polars DataFrame from Parquet, `.dta` or fixed-width text, with labels and `.a` to `.z` in a `Meta` beside it |
-| Julia | `DtaParser` | [docs/julia.md](docs/julia.md) | a Tables.jl table; `DataFrame(t)` |
-| Julia | `Datakit` | [docs/julia.md](docs/julia.md#datakit-parquet-and-fixed-width-text-into-dataframes) | a DataFrame from Parquet or fixed-width text, labels in its metadata, `.a` to `.z` in `DtaColumn`s |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
 | TypeScript, JavaScript | `@jbearak/datakit` | [docs/typescript.md](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets) | a `Dataset` of typed-array columns from Parquet, `.dta` or fixed-width text, with labels and `.a` to `.z`; a reader for Parquet like dta-parser's for `.dta` |
 
@@ -79,36 +69,25 @@ rules. `datakit` is for data preparation:
   and set with `var_label`, `val_labels`, `with_labels`, `tagged_na`,
   and `na_tag`, so haven and labelled are not needed.
 - `read_parquet` and `save_parquet` read and write Parquet files that
-  keep them: an interchange format with readers and writers in R,
-  Python, Julia, and TypeScript, so data goes between them with its
-  labels and letters.
+  keep them: an interchange format with readers and writers in R and
+  TypeScript, so data goes between them with its labels and letters.
 
 `library(datakit)` is all a script attaches, after dplyr and tidyr if it
 uses them, so that its `:=` is the one R finds. datakit re-exports
 dtaparser's functions; dtatools has its own `read_dta`, `save_dta`, and
-label functions for dibbles, so a script uses one of the two. Julia
-has the same split, without `:=`: DtaParser reads and writes `.dta`, and
-Datakit reads Parquet and fixed-width text into DataFrames, saves
-Parquet, and re-exports DtaParser's functions, so `using Datakit` is
-enough. Python's datakit works in polars rather than pandas: it reads
-and saves Parquet, `.dta` and fixed-width text as a polars frame and a
-`Meta` of labels and letters, while `dta_parser` stays the pandas
-package for `.dta` files. TypeScript's `@jbearak/datakit` reads and
-saves Parquet, `.dta` and fixed-width text as a `Dataset` whose columns
-keep their letters, and reads Parquet through the same `TableReader`
-interface as `@jbearak/dta-parser` reads `.dta`.
+label functions for dibbles, so a script uses one of the two.
+TypeScript's `@jbearak/datakit` reads and saves Parquet, `.dta` and
+fixed-width text as a `Dataset` whose columns keep their letters, and
+reads Parquet through the same `TableReader` interface as
+`@jbearak/dta-parser` reads `.dta`.
 
-None of them is on a package registry (CRAN, PyPI, Julia's General
-registry or npm). Install them from this repository:
+None of them is on a package registry (CRAN or npm). Install them from
+this repository:
 
 - **R**: [Install](docs/r.md#install). The project's own R package
   repository has binaries for macOS, Windows and Ubuntu, which need no
   Rust:
   `install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))`.
-- **Python**: [Install](docs/python.md#install), from a checkout:
-  `pip install ./dta-parser/python ./dta-parser/python/datakit`.
-- **Julia**: [Install](docs/julia.md#install), from a checkout with
-  `Pkg.develop`.
 - **TypeScript**: [Install](docs/typescript.md#install), built from a
   checkout.
 
@@ -121,7 +100,7 @@ that matter when you use it (releases, storage types, missing values,
 value labels, encodings, strLs, dates) and how each language represents
 them.
 
-## A first example in each language
+## A first example in R and TypeScript
 
 Each example writes a small file with a labelled column and a "don't
 know" answer, then reads it back.
@@ -138,37 +117,6 @@ save_dta(data.frame(id = 1:3, smoker = smoker), "smokers.dta")
 back <- read_dta("smokers.dta")
 back$smoker             # 1 [Yes]  0 [No]  NA(d) [Don't know]
 val_label(back$smoker)  # "Yes" "No" "Don't know"
-```
-
-**Python**
-
-```python
-import pandas as pd
-import dta_parser as dp
-from dta_parser import missing
-
-df = pd.DataFrame({"id": [1, 2, 3], "smoker": pd.Series([1, 0, missing.d], dtype="dta[byte]")})
-df.attrs["dta"] = {"columns": {"smoker": {"value_labels": "yesno"}},
-                   "value_labels": {"yesno": {0: "No", 1: "Yes", missing.d: "Don't know"}}}
-dp.write_dta(df, "smokers.dta")
-
-back = dp.read_dta("smokers.dta")
-print(back["smoker"].tolist())                          # [1.0, 0.0, .d]
-print(back.attrs["dta"]["value_labels"]["yesno"])       # {0: 'No', 1: 'Yes', .d: "Don't know"}
-```
-
-**Julia**
-
-```julia
-using DtaParser, DataFrames   # DataFrames brings `metadata`
-
-write_dta("smokers.dta", (id = [1, 2, 3], smoker = DtaColumn(Int8[1, 0, 0], UInt8[0, 0, 5]));
-          value_labels = Dict("yesno" => Dict(0 => "No", 1 => "Yes", ".d" => "Don't know")),
-          column_value_labels = Dict(:smoker => "yesno"))
-
-back = read_dta("smokers.dta")
-stata_code(back.smoker, 3)                                  # 0x05, that is .d
-metadata(back, "value_labels")["yesno"][dta_key(".d")]    # "Don't know"
 ```
 
 **TypeScript**
@@ -193,31 +141,31 @@ r.close();
 
 ## What each language supports
 
-The core rows are the same in every language. Where a language differs,
+The core rows are the same in both languages. Where a language differs,
 the table says how.
 
-| feature | R | Python | Julia | TypeScript |
-|---|---|---|---|---|
-| read releases 104 to 119, both byte orders | ✓ | ✓ | ✓ | ✓ |
-| select columns; a row range | ✓ | ✓ | ✓ | ✓ |
-| storage types, variable labels, display formats, data label, notes | ✓ | ✓ | ✓ | ✓ |
-| timestamp, characteristics, sort order | ✓ | ✓ | ✓ | ✓ |
-| value labels, including labels on `.a` to `.z` | ✓ | ✓ | ✓ | ✓ |
-| `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ `DtaArray` | ✓ `DtaColumn` (not through DataFrames' `combine`/`vcat`) | ✓ codes |
-| binary strLs | an error | read and write (`bytes`) | read and write (`Vector{UInt8}`) | read and write (`Uint8Array`) |
-| text encoding option for files before release 118 | ✓ | ✓ | ✓ | ✓ |
-| fixed-width text through a SAS setup file | datparser's and datakit's `read_fixed_width` | datakit's `read_fixed_width` (polars) | Datakit's `read_fixed_width` | datakit's `readFixedWidth` |
-| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `read_parquet`, `save_parquet` (polars) | Datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
-| `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | `datetime64` (opt out) | `Date`, `DateTime` (opt out) | numbers; `formatValue` |
-| write release 118 | ✓ | ✓ | ✓ | ✓ |
-| a key that sorts and compares as Stata does | built into `dta_num` | `dta_key`, `dta_keys` | `dta_key` | `dtaKey`, `dtaKeys` |
-| Stata comparisons, arithmetic and logic on columns; `tab`, group ids, sets | ✓ | | | |
+| feature | R | TypeScript |
+|---|---|---|
+| read releases 104 to 119, both byte orders | ✓ | ✓ |
+| select columns; a row range | ✓ | ✓ |
+| storage types, variable labels, display formats, data label, notes | ✓ | ✓ |
+| timestamp, characteristics, sort order | ✓ | ✓ |
+| value labels, including labels on `.a` to `.z` | ✓ | ✓ |
+| `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ codes |
+| binary strLs | an error | read and write (`Uint8Array`) |
+| text encoding option for files before release 118 | ✓ | ✓ |
+| fixed-width text through a SAS setup file | datparser's and datakit's `read_fixed_width` | datakit's `readFixedWidth` |
+| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
+| `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | numbers; `formatValue` |
+| write release 118 | ✓ | ✓ |
+| a key that sorts and compares as Stata does | built into `dta_num` | `dtaKey`, `dtaKeys` |
+| Stata comparisons, arithmetic and logic on columns; `tab`, group ids, sets | ✓ | |
 
-**Round trips.** In every language, reading a file and writing what was
+**Round trips.** In both languages, reading a file and writing what was
 read gives the same values, missing codes, numeric storage types,
 labels, value labels, display formats and notes, within the table above.
-String columns come back as narrow as their values allow (and in R and
-TypeScript a short strL as a fixed-width string). Text from a file older
+String columns come back as narrow as their values allow (and a short
+strL as a fixed-width string). Text from a file older
 than release 118 comes back as UTF-8.
 
 ## Repository
@@ -225,15 +173,12 @@ than release 118 comes back as UTF-8.
 | path | what |
 |---|---|
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
-| `crates/dta-ffi` | the WebAssembly interface (for TypeScript) and C interface (for Julia) |
+| `crates/dta-ffi` | the WebAssembly interface (for TypeScript) |
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
 | `r/datparser` | the R package that reads fixed-width text through a SAS setup file, `read_fixed_width`, on its own |
 | `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width` (from datparser), and Parquet's `read_parquet` and `save_parquet` |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
-| `python` | the Python package `dta_parser` |
-| `python/datakit` | the Python package for data preparation in polars: Parquet, `.dta`, and fixed-width text with labels and `.a` to `.z` |
-| `julia/DtaParser` | the Julia package |
-| `js` | the npm package |
+| `js` | the npm packages |
 | `compat` | test files from haven, pandas and ReadStat, and what those readers make of them |
 | `bench` | benchmarks against the other readers |
 | `docs` | this documentation, [decisions](docs/adr/) and [plans](docs/plans/) |
@@ -259,11 +204,8 @@ open-source projects:
   unchanged ([missing values](docs/guide/missing-values.md)).
 - **Reference readers**: the tests check what we read against haven,
   [readstata13](https://github.com/sjewo/readstata13) (Jan Marvin
-  Garbuszus, Sebastian Jeworutzki), pandas and
-  [pyreadstat](https://github.com/Roche/pyreadstat) (Otto Fajardo), and
-  the Julia tests against
-  [ReadStatTables.jl](https://github.com/junyuan-chen/ReadStatTables.jl)
-  (Junyuan Chen). See [compat/README.md](compat/README.md) and
+  Garbuszus, Sebastian Jeworutzki), pandas, and
+  [pyreadstat](https://github.com/Roche/pyreadstat) (Otto Fajardo). See [compat/README.md](compat/README.md) and
   [ADR 0005](docs/adr/0005-oracles.md).
 - **Test fixtures**: ReadStat's writer makes the files for releases
   104, 105, 108, 110 and 111 (`compat/make_legacy_fixtures.sh`),
@@ -271,11 +213,12 @@ open-source projects:
   releases 104 to 113 come from pandas' test suite ([compat/fixtures/README.md](compat/fixtures/README.md)).
 - **Benchmarks and documentation**: the
   [benchmark plan](docs/plans/0005-four-languages.md) measures our speed
-  against haven, readstata13, pandas, pyreadstat, ReadStatTables.jl,
-  [StatFiles.jl](https://github.com/queryverse/StatFiles.jl) (David
-  Anthoff) and [@irbisadm/statfmt](https://github.com/irbisadm/statfmt)
-  (Igor Sheko), and [docs/judging](docs/judging/rubric.md) compared our
-  documentation with that of each of them except StatFiles.jl.
+  against haven, readstata13, and
+  [@irbisadm/statfmt](https://github.com/irbisadm/statfmt) (Igor Sheko),
+  and [docs/judging](docs/judging/rubric.md) compared our documentation
+  with that of each of them, of pandas and pyreadstat, and of
+  [ReadStatTables.jl](https://github.com/junyuan-chen/ReadStatTables.jl)
+  (Junyuan Chen).
 - **Parquet**: the reader and writer are our own code, written after
   studying the Parquet format specification and the open-source
   libraries in [docs/acknowledgements.md](docs/acknowledgements.md),

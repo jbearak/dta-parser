@@ -26,7 +26,7 @@ Licenses are in the table at the end.
 
 ## What our Python package must carry through Parquet
 
-`dta_parser.read_dta` ([docs/python.md](../python.md)) returns numpy
+`dta_parser.read_dta` (`docs/python.md`, removed with the package: ADR 0042) returns numpy
 numeric columns, or a `StataArray` (float values plus a `uint8` code per
 row: 0 number, 1 `.`, 2 to 27 `.a` to `.z`) where `.a` to `.z` occur;
 `%td` as `datetime64[s]` and `%tc` as `datetime64[ms]`; pandas' default

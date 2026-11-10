@@ -108,7 +108,7 @@ function assemble(
     if (v.unit !== undefined) out.unit = v.unit;
     if (v.timeZone !== undefined) out.timeZone = v.timeZone;
     // A categorical holding .a to .z in the rows read came back as its level
-    // numbers (ADR 0037): labelled doubles, as R, Julia and Python read it.
+    // numbers (ADR 0037): labelled doubles, as R reads it.
     if (v.type === "categorical" && columns[j].kind === "number") out.type = "double";
     else if (v.categorical !== undefined) out.categorical = { levels: v.categorical.levels && [...v.categorical.levels], ordered: v.categorical.ordered };
     return out;

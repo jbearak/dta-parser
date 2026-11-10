@@ -1,18 +1,17 @@
-// Files going between the languages' datakits (plan 0019, "Across
+// Files going between R's datakit and TypeScript's (plan 0019, "Across
 // languages"; TypeScript since plan 0021). TypeScript's half:
 //
 //     node compat/parquet/cross_language.mjs write DIR   # writes DIR/from_typescript.parquet
-//     node compat/parquet/cross_language.mjs check DIR   # reads DIR/from_r.parquet, from_python*.parquet, from_julia.parquet
+//     node compat/parquet/cross_language.mjs check DIR   # reads DIR/from_r.parquet
 //
-// compat/parquet/cross_language.sh runs every language's halves in turn.
-// The values are the literal data cross_language.R, .py and .jl use, so
-// each side checks the other's file cell by cell: the value, the missing
-// code (`.` or which of `.a` to `.z`), and the labels, formats and value
-// labels. Needs js/ and js/datakit/ built. Exits with status 1 if a check
-// fails.
+// compat/parquet/cross_language.sh runs both languages' halves in turn.
+// The values are the literal data cross_language.R uses, so each side
+// checks the other's file cell by cell: the value, the missing code (`.`
+// or which of `.a` to `.z`), and the labels, formats and value labels.
+// Needs js/ and js/datakit/ built. Exits with status 1 if a check fails.
 
 import { createRequire } from "node:module";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
@@ -94,13 +93,13 @@ const same = (ds, name, want, who) => {
 const variable = (ds, name) => ds.variables.find((v) => v.name === name) ?? {};
 const labels = (ds, name) => {
   const set = ds.valueLabels[variable(ds, name).valueLabels];
-  // In code order (Julia's sets come in its Dict's order), numbers first.
+  // In code order, numbers first.
   const order = ([a], [b]) => (typeof a === typeof b ? (typeof a === "string" ? NAMES.indexOf(a) - NAMES.indexOf(b) : a - b) : typeof a === "string" ? 1 : -1);
   return set ? [...set].map(([k, t]) => [typeof k === "object" ? k.missing : k, t]).sort(order) : [];
 };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-/** What every language's file holds in common. */
+/** What R's file holds that TypeScript's does too. */
 function common(ds, who) {
   same(ds, "id", ["1", "2", "3", "4", "5", "6"], who);
   same(ds, "score", num(1.5, ".", ".a", -2.25, ".z", 2 ** 1000), who);
@@ -141,42 +140,7 @@ check(eq(micros(r, "when"), num(0, 1709285400250000, ".", -1000000, 86400000000,
 same(r, "dayfrac", num(19000.5, 0, ".", -1.25, 1, 2), "R");
 same(r, "dup", ["1", "2", "3", "1", "5", "."], "R");
 
-// Python's file: the letters are tagged NaNs in its Float64 columns (ADR
-// 0036), so its date, timestamp and categorical holding letters are
-// Stata's numbers, as Julia writes them.
-{
-  const f = "from_python.parquet";
-  const p = readParquet(join(dir, f));
-  const MS1960 = 3653 * 86400000;
-  check(p.label === "From Python" && eq(p.notes, ["A note from Python."]), `${f}: data label, notes`);
-  common(p, f);
-  check(eq(micros(p, "when"), num(0, 1709285400250000, ".", -1000000, 86400000000, 1e15)), `${f} when`);
-  same(p, "seen", num(23436, ".d", 23437, ".", 0, ".z"), f);
-  check(variable(p, "seen").format === "%td", `${f} seen: format`);
-  same(p, "stamp", num(MS1960 + 500, ".k", MS1960 + 1e12, ".", MS1960 - 86400250, 1000001 / 1000 + MS1960), f);
-  check(variable(p, "stamp").format === "%tc", `${f} stamp: format`);
-  same(p, "dup", ["1", "2", "3", "1", "5", "."], f);
-  check(eq(labels(p, "dup"), [[1, "Yes"], [2, "No"], [3, "Yes"]]), `${f} dup labels`);
-  // A categorical holding letters (plan 0022): its level numbers, labelled.
-  same(p, "grade", ["1", ".a", "3", ".", ".z", "2"], f);
-  const g = variable(p, "grade");
-  check(g.valueLabels === "grade" && eq(labels(p, "grade"), [[1, "low"], [2, "mid"], [3, "high"]]), `${f} grade: set`);
-}
-
-const jl = join(dir, "from_julia.parquet");
-if (existsSync(jl)) {
-  const j = readParquet(jl);
-  check(j.label === "From Julia" && eq(j.notes, ["A note from Julia."]), "Julia: data label, notes");
-  common(j, "Julia");
-  check(eq(micros(j, "when"), num(0, 1709285400250000, ".", -1000000, 86400000000, 1e15)), "Julia when");
-  // Julia's date with letters is Stata's days since 1960, %td.
-  same(j, "seen", num(23436, ".d", 23437, ".", 0, ".z"), "Julia");
-  check(variable(j, "seen").format === "%td", "Julia seen: format");
-} else {
-  console.log("no from_julia.parquet in", dir, "(run Julia's write first); Julia's file not checked");
-}
-
-console.log(`TypeScript checked ${checked} values and labels in R's, Python's and Julia's files`);
+console.log(`TypeScript checked ${checked} values and labels in R's file`);
 if (failures.length) {
   console.log("FAILED:");
   for (const f of failures) console.log("  ", f);

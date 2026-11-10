@@ -1,5 +1,5 @@
 # datakit's polars functions (plan 0025, stage 3): the reads, the saves,
-# and .a to .z in polars, by Python datakit's rules (_frame.py).
+# and .a to .z in polars.
 
 col <- function(df, name) df$get_column(name)$to_r_vector()
 dtype <- function(df, name) format(df$schema[[name]])
@@ -566,7 +566,7 @@ test_that("read_fixed_width_pl warns once for the setup, and release 118 cuts lo
   expect_identical(col(res$df, "C"), c(3L, 6L))
 })
 
-test_that("a datakit_meta prints its fields as Python's Meta does, without storage", {
+test_that("a datakit_meta prints its fields, without storage", {
   skip_without_polars()
   p <- tempfile(fileext = ".parquet")
   save_parquet(storage_frame(), p)

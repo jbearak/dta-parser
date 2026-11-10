@@ -13,90 +13,72 @@ geometric mean over the files (the exceptions on single files are under
 | language | full read (NSFG, DHS) | read + pass (NSFG, DHS) |
 |---|---|---|
 | R | haven 15×, 41×; readstata13 17×, 46× | haven 7.4×, 15×; readstata13 8.1×, 16× |
-| Python | pandas 2.2×, 3.5×; pyreadstat 11×, 19× | pandas 1.5×, 2.2×; pyreadstat 9.7×, 18× |
-| Julia | ReadStatTables 9.4×, 11×; StatFiles about 1,700×, 8,700× | ReadStatTables 6.6×, 6.8× |
 | TypeScript | statfmt 15×, 14× | statfmt 8.8×, 9.8× |
 
-These are after plan 0007 (fixes 9 to 13 below), which made ours faster
-in every language; the other readers were not re-run.
+These are after plan 0007 (fixes 6 to 9 below), which made ours faster
+in both languages; the other readers were not re-run.
 
-The margin is narrowest in Python, where pandas' reader is NumPy code too,
-and in R's pass over every value, where dtatools makes its packed
-strings into R strings (ADR 0010). Metadata alone is where the others
-come closest: readstata13 (which here reads one row) and ReadStatTables
-are as fast or faster on the smaller files, by fractions of a
+The margin is narrowest in R's pass over every value, where dtatools
+makes its packed strings into R strings (ADR 0010). Metadata alone is
+where the others come closest: readstata13 (which here reads one row)
+is as fast or faster on the smaller files, by fractions of a
 millisecond.
+
+The project once had Python and Julia packages too, measured in the
+same runs. They were removed on 2026-11-09, and their rows, sections,
+and reports with them; where a number below was taken through one of
+them, the text says so.
 
 ### Fixed because of these runs
 
 Each fix is its own commit, with a test where the behaviour can be
-tested (1 to 5). Ours was then measured again with `--readers ours`;
+tested (1 and 2). Ours was then measured again with `--readers ours`;
 the other readers' results were not re-run.
 
-1. **Python, `attrs`** (`python/dta_parser/_read.py`). pandas deep-copies
-   `attrs` into every column and frame it derives, and ours kept the
-   file's metadata there, so each `df[c]` on a 3,000-variable file cost
-   about 5 ms. `attrs["dta"]` is now shared by derived frames (docs/python.md
-   says how to give one its own). 2017_2019_Male: the pass over every
-   value 14.06 s → 0.14 s (pandas 0.24 s), `write_dta` 13.74 s → 0.20 s
-   (pandas 0.51 s).
-2. **Julia, first calls** (`julia/DtaParser/src/precompile.jl`,
-   `read.jl`, `json.jl`). A session's first call compiled the read
-   path: `read_meta` took 0.12 s on long.dta (ReadStatTables 0.006 s), a
-   1,000-row window 0.50 s (0.18 s). A precompile workload over every
-   storage type, and metadata built in typed loops: 0.0015 s and 0.022 s.
-   `read_meta` on 1973_FemResp, warm: 2.6 ms → 1.4 ms.
-3. **TypeScript, writing** (`js/src/index.ts`). Writing what
+1. **TypeScript, writing** (`js/src/index.ts`). Writing what
    `readColumns` returned meant an array of numbers and `Missing` values
    per column, and a `Uint8Array` per string. A variable may now give its
    `Float64Array` and missing codes, and strings are encoded into one
    buffer. long.dta: 10.2 s and 9.3 GB → 3.5 s and 3.4 GB (statfmt
    18.8 s); 2002_FemPreg: 289 MB → 195 MB (statfmt 187 MB).
-4. **Core, chunk size** (`crates/dta/src/reader.rs`). Chunks were 8 MiB
+2. **Core, chunk size** (`crates/dta/src/reader.rs`). Chunks were 8 MiB
    of rows, but a byte decodes to 9 bytes, so files of byte variables
-   held 72 MiB decoded per chunk. Chunks are now 8 MiB decoded. With the
-   next fix, peak memory of a full read of 2015_2017_Male: Python
-   390 MB → 198 MB (pandas 249 MB), R 365 MB → 255 MB (readstata13
-   229 MB), TypeScript 573 MB → 418 MB with fix 7 (statfmt 325 MB).
-5. **Python, string cache** (`python/src/lib.rs`). Every column got a
-   32 KiB cache of recent strings, numeric or not: 100 MB on that file.
-   It is now made on a column's first string.
-6. **Core, column room** (`crates/dta/src/reader.rs`). Decoded columns
-   grew by doubling; they now reserve a chunk's rows. Python's native
-   read: 1976_Preg 7.0 → 4.8 ms, 2015_2017_Male 42.5 → 33.8 ms.
-7. **wasm, read buffers** (`crates/dta-ffi/src/wasm.rs`). Appending
+   held 72 MiB decoded per chunk. Chunks are now 8 MiB decoded. Peak
+   memory of a full read of 2015_2017_Male: R 365 MB → 255 MB
+   (readstata13 229 MB), TypeScript 573 MB → 418 MB with fix 4 (statfmt
+   325 MB).
+3. **Core, column room** (`crates/dta/src/reader.rs`). Decoded columns
+   grew by doubling; they now reserve a chunk's rows. The native read,
+   timed through the Python binding (since removed): 1976_Preg
+   7.0 → 4.8 ms, 2015_2017_Male 42.5 → 33.8 ms.
+4. **wasm, read buffers** (`crates/dta-ffi/src/wasm.rs`). Appending
    chunks regrew the columns in module memory, which never shrinks; a
    read now reserves its rows.
-8. **The harness, not the package**: haven loads tibble and vctrs with
+5. **The harness, not the package**: haven loads tibble and vctrs with
    itself, dtatools on its first read, so 0.08 s fell inside dtatools'
    timed tasks only. Both now load them before the clock.
-
-9. **R, writing packed strings** (plan 0007, `r/dtaparser/src`). The
+6. **R, writing packed strings** (plan 0007, `r/dtaparser/src`). The
    writer made every R string of a column `read_dta` had packed (20M on
    long.dta) before writing it; it now writes their bytes. R's write of
    the synthetic files: 9.3× faster (geometric mean), 27% less peak
    memory; long.dta 6.17 s → 0.80 s.
-10. **Core, writing by block** (plan 0007, `crates/dta/src/writer.rs`).
-    Numbers are filled 1,024 rows per call and rows built column by
-    column in 256 KiB slabs, not a dynamic call per cell. The core's
-    write of wide.dta, one thread: 5.40 s → 2.02 s. Bytes unchanged
-    (`crates/dta/tests/identity.rs`).
-11. **Core, reading** (plan 0007, `crates/dta/src/reader.rs`). 2 MiB
-    chunks, and numbers decoded into sized columns: the core's read of
-    wide.dta 1.00 s → 0.71 s.
-12. **Threads** (plan 0007). Large reads and writes (16 MiB and up)
-    use up to three threads (half the hardware threads on x86): workers
-    read and decode chunks and, in R and Python, fill numeric columns;
-    chunks reach the caller in row order. At three threads every read
-    and write measured used at most 1.15× the CPU time of one thread
-    (`bench/threads/`); e.g. R reads wide.dta 1.19 s → 0.49 s. wasm
-    stays on one thread. Geometric-mean speed-ups of a full read: R
-    2.2×, 1.2×, 1.9× (synthetic, NSFG, DHS), Python 1.9×, 1.35×, 2.0×,
-    Julia 1.8×, 1.3×, 1.5×.
-13. **Python, code arrays** (plan 0007). Writing every missing-value
-    code committed memory for numpy arrays of zeros it had not touched
-    (wide.dta 4.9 → 5.5 GB); only missing values' codes are written.
-14. **TypeScript, strings** (plan 0008 S1–S3). One `TextDecoder.decode`
+7. **Core, writing by block** (plan 0007, `crates/dta/src/writer.rs`).
+   Numbers are filled 1,024 rows per call and rows built column by
+   column in 256 KiB slabs, not a dynamic call per cell. The core's
+   write of wide.dta, one thread: 5.40 s → 2.02 s. Bytes unchanged
+   (`crates/dta/tests/identity.rs`).
+8. **Core, reading** (plan 0007, `crates/dta/src/reader.rs`). 2 MiB
+   chunks, and numbers decoded into sized columns: the core's read of
+   wide.dta 1.00 s → 0.71 s.
+9. **Threads** (plan 0007). Large reads and writes (16 MiB and up)
+   use up to three threads (half the hardware threads on x86): workers
+   read and decode chunks and, in R, fill numeric columns; chunks reach
+   the caller in row order. At three threads every read and write
+   measured used at most 1.15× the CPU time of one thread
+   (`bench/threads/`); e.g. R reads wide.dta 1.19 s → 0.49 s. wasm
+   stays on one thread. Geometric-mean speed-ups of R's full read:
+   2.2×, 1.2×, 1.9× (synthetic, NSFG, DHS).
+10. **TypeScript, strings** (plan 0008 S1–S3). One `TextDecoder.decode`
     per call and a `substring` per value, and dictionaries of repeated
     values built in the wasm module, instead of a `decode` per value.
     Node 24.22, M4 Max, median of 5, string column alone:
@@ -109,11 +91,11 @@ the other readers' results were not re-run.
     | long.dta str10 (all distinct, 10M) | 1,018 ms | 419 ms | ≤ 450 ms |
 
     Node 26 is faster again (groups.dta 446 ms, dictionary 391 ms).
-15. **TypeScript, numbers** (plan 0008 W1). Buffers are copied out of
+11. **TypeScript, numbers** (plan 0008 W1). Buffers are copied out of
     wasm memory once, not twice, and a budgeted read of numbers no
     longer does work per row: wide.dta's full read 2,195 → 1,706 ms
     (Node 24, best of 2, three alternating runs), against a 15% target.
-16. **wasm memory** (plan 0008 M1–M6), Node 24:
+12. **wasm memory** (plan 0008 M1–M6), Node 24:
     - the strL index costs 20 bytes a strL, not 106–130: reading 10M
       strLs peaks at 773 MiB RSS, not 1,468 MiB, and takes 5.7 s, not
       9.1 s (the index itself is 192 MiB; target 250 MB);
@@ -145,17 +127,9 @@ mostly copying rows out of the page cache) and a write 1.2× faster at
 
 ### Targets missed, and why
 
-- **Julia metadata on small files** (25 files, by 0.01 to 0.1 ms). The
-  metadata crosses the C ABI as JSON (the plan's design) and is parsed
-  in Julia; ReadStatTables fills its structures directly. Two
-  optimisation attempts (fix 2) narrowed it; the rest is that JSON.
 - **R metadata and windows on small files** (by 0.02 to 0.2 ms).
   dtatools builds a tibble with per-column attributes; readstata13's
   "metadata" here is a one-row read without them.
-- **Python, read + pass on 1976_Preg** (by 8%; four pregnancy files
-  before plan 0007). Ours gives byte and int columns with `.` as
-  float32 (the plan's representation); the pass sums in float64, so
-  each converts, where pandas' columns are already float64.
 - **R memory** on the pass over every value (7 files) and one full read:
   dtatools keeps the packed text while R makes its strings (ADR 0010),
   and stores every number as a double (ADR 0003) where readstata13 keeps
@@ -168,38 +142,24 @@ mostly copying rows out of the page cache) and a write 1.2× faster at
   than reading, and **wide.dta (4.8 GB) cannot be written** from
   TypeScript: wasm32 memory stops at 4 GiB. Writing row blocks as they
   come would lift that; not done here.
-- **Julia, writing groups.dta**: 1.5 GB against ReadStatTables' 1.0 GB;
-  the C ABI takes every string column as one byte buffer with offsets,
-  a copy of 15M strings.
 
 ### What the correctness checks found
 
 - **Values agree everywhere**: every full read, five-column read, window
   and checksum of every reader equals ours, on every file where both
   ran (missing codes too, where haven keeps `.a`–`.z`).
-- **Labels with trailing spaces**: haven, pyreadstat, ReadStatTables and
-  statfmt (all ReadStat-based) drop trailing spaces from variable and
-  value labels; ours, readstata13 and pandas keep the file's text. This
-  is every metadata "difference" on NSFG and most on DHS.
-- **Windows-1252 text before release 118**: pandas decodes it as
-  Latin-1, so a curly apostrophe (byte 0x92) becomes a control
-  character in one DHS label per file pair; ours, pyreadstat and
-  readstata13 decode it as Windows-1252.
+- **Labels with trailing spaces**: haven and statfmt (both
+  ReadStat-based) drop trailing spaces from variable and value labels;
+  ours and readstata13 keep the file's text. This is every metadata
+  "difference" on NSFG and most on DHS.
 - **Writers**: ours writes back values and metadata that the
-  open-source readers read as they read the source, in all four
-  languages, except where that reader misreads the source (the pandas
-  case above). readstata13's writer drops the data label and display
-  formats, pandas' and pyreadstat's change storage types and formats,
-  ReadStatTables' changes some labels and value labels on DHS files (not
-  investigated further), and pyreadstat cannot write back 30 of the 36
-  NSFG frames it read (all-missing numeric columns arrive as objects).
-- **Readers that could not finish**: StatFiles takes 5–15 minutes per
-  DHS women's file and over a minute on most NSFG files, so tasks 3
-  and 4 were not repeated there; it has no metadata read or writer.
-  statfmt's write of wide.dta failed in the harness, not in statfmt:
-  it wrote the 4.8 GB result with one `fs.writeFileSync`, which Node
-  limits to 2 GiB. The harness now writes it in pieces; the measurement
-  was not repeated, since the other readers' results are not re-run.
+  open-source readers read as they read the source, in both languages.
+  readstata13's writer drops the data label and display formats.
+- **Readers that could not finish**: statfmt's write of wide.dta failed
+  in the harness, not in statfmt: it wrote the 4.8 GB result with one
+  `fs.writeFileSync`, which Node limits to 2 GiB. The harness now
+  writes it in pieces; the measurement was not repeated, since the
+  other readers' results are not re-run.
 
 The earlier R-only measurements (writing from R, survey-shaped string
 columns, grouping) are in [results/r-only.md](results/r-only.md).
@@ -432,465 +392,17 @@ one carried other work throughout, with a one-minute load average of
 measurements are noisier than the plan intended; every comparison ran
 under the same load.
 
-### Julia
+## Threads for reads into polars (plan 0019)
 
-Plan 0018's gate for Julia, run again for plan 0019 (PR 3), where
-Parquet moved from DtaParser to Datakit: Datakit's `read_parquet` and
-`save_parquet`, into and from a `DataFrame` (with its metadata and its
-`DtaColumn`s), against Parquet2.jl 0.2.37 and DuckDB.jl 2.0.0, each
-collected into a `DataFrame`, on the same 36 NSFG, 10 DHS and three
-synthetic files and the same pyarrow, polars and our Parquet files as
-R's. Every file and number is in
-[results/parquet-julia.md](results/parquet-julia.md), written by
-`bench/parquet/run.py --lang julia` (cases in `bench/parquet/case.jl`).
-Target 4 (other tools reading our files) does not depend on the
-language that wrote them, and is R's above.
-
-**Every target holds**, on every file and each of the three inputs.
-
-Ours over theirs, geometric means of wall time over the files (NSFG,
-DHS); below 1 is faster. Reads are of pyarrow's files; the other inputs
-are within a few hundredths, and are in the full report.
-
-| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) |
-|---|---|---|---|---|---|
-| Parquet2.jl | 0.07, 0.10 | 0.16, 0.16 | 0.06, 0.06 | 0.12, 0.16 | 0.03, 0.04 |
-| DuckDB.jl | 0.27, 0.24 | 0.70, 0.71 | 0.28, 0.21 | 0.38, 0.35 | 0.20, 0.25 |
-
-- **Target 1** (geometric mean of wall time and of peak RSS at most
-  1.05 times theirs, over NSFG and over DHS): the highest wall ratio is
-  0.75 (DuckDB, five columns of our DHS files), the highest RSS ratio
-  0.84 (Parquet2.jl, read and pass of pyarrow's DHS files).
-- **Target 2** (no file over 1.25 times, unless by under 20 ms or 16
-  MiB): the closest on wall time is DuckDB reading five columns of our
-  NSFG 1995_FemResp, 334 ms against 347 (0.96); on peak RSS, DuckDB
-  writing groups.dta, 1,616 MB against 1,408 (1.15). Peak RSS includes
-  the table being written, read from the `.dta` file before the timed
-  write, which is the same for every library.
-- **Target 3** (CPU at most theirs times the larger of 1.15 and our
-  speedup): the closest is again DuckDB's five columns of NSFG
-  1995_FemResp, 0.332 s against the 0.398 s allowed.
-- **Not compared.** DuckDB.jl could not read pyarrow's 4.8 GB wide.dta
-  file ("Could not read from file ...: Invalid argument", as DuckDB's R
-  package said); those three cases have no comparison.
-
-The first run had one miss: DuckDB's five columns of polars' NSFG
-1982_FemResp, 501 ms against 336. Our five runs took 0.29 to 0.66 s of
-wall time but 0.25 s of CPU each, at a load average of 26 to 29, while
-other work ran; run again on its own, the case took 251 ms, and that
-measurement is the one in the report.
-
-**Theirs were measured for plan 0018, ours now.** Datakit was measured
-on every case again (3,430 runs); Parquet2.jl's and DuckDB.jl's
-measurements are the ones plan 0018 made, at the same versions, on the
-same files, since re-running them would have taken about ten hours. To
-check that they still hold, Parquet2.jl and DuckDB.jl were measured
-again on the 10 DHS files (whole file of pyarrow's files, and writes):
-the new times were 0.75 to 1.02 times the old (median 0.94), so the
-ratios above may flatter ours by about 6%. The closest margins absorb
-that: target 2's 0.96 would be about 1.03, against 1.25. Our runs had a
-one-minute load average of 11.7 to 44.1 (median 19.0); theirs, 9.3 to
-22.3 (median 12.0). The machine carried other work throughout.
-
-Against DtaParser 0.2, which returned a `DtaTable` and made a
-`DtaColumn` of every numeric column with a missing value: building the
-`DataFrame` and its metadata costs about 2 ms on NSFG 1995_FemResp's
-5,754 columns (0.15 to 0.20 s for the whole read), and a column with
-only `.` is now a `Vector{Union{Missing,T}}`, one pass over its values.
-The ratios above are within 0.05 of DtaParser 0.2's (the largest
-change: DuckDB, read and pass of DHS, 0.35 against 0.30), measured at a
-higher load.
-
-**Time to first read.** In a new session, five runs each, medians, at
-a load average of 10.5 to 12.5:
-
-| | load the packages | first read | first write |
-|---|---|---|---|
-| DtaParser 0.2 (`using DtaParser, DataFrames`; `DataFrame(read_parquet(f))`; `write_parquet`), a small file | 0.314 s | 0.108 s | 0.110 s |
-| Datakit 0.3 (`using Datakit, DataFrames`; `read_parquet(f)`; `save_parquet`), the same file | 0.308 s | 0.024 s | 0.078 s |
-| DtaParser 0.2, NSFG 1995_FemResp (5,754 columns) | 0.281 s | 0.334 s | 0.292 s |
-| Datakit 0.3, the same file | 0.271 s | 0.321 s | 0.310 s |
-
-The small file is `compat/fixtures/haven_118.dta` saved as Parquet.
-Datakit's precompile workload reads and saves a small DataFrame; on the
-wide file the first read is mostly the read itself (about 0.2 s warm),
-not compiling.
-
-Fixed while measuring for plan 0018, each its own commit: DataFrames
-brings SentinelArrays, whose methods invalidated DtaParser's compiled
-read path, so a first `read_parquet` in a session with DataFrames loaded
-spent 0.16 s compiling; DtaParser's DataFrames extension ran the
-precompile workload again, and that read took 0.02 s. `write_parquet`
-no longer compiles a method for each table type (0.2 s on a first
-write of a new type, now 0.04 s). Datakit, which always loads
-DataFrames, runs its workload with DataFrames loaded.
-
-Method as for R, with Julia 1.13.3 and bench/julia's environment. Each
-library used its default threads: Julia's one thread, which Parquet2.jl
-uses, DuckDB.jl's reported one, and ours by the rule above.
-
-## Parquet in Python
-
-Plan 0018's speed and memory gate for Python (PR 5): dta_parser's
-`read_parquet` and `write_parquet` against pyarrow 26.0.1
-(`read_table().to_pandas()`, `DataFrame.to_parquet`), pandas 3.1.1
-(`read_parquet`), fastparquet 2026.9.0 and polars 2.1.0
-(`.to_pandas()`, `from_pandas().write_parquet()`), all of which return
-or take a pandas DataFrame and are gated; and, published but not gated,
-pyarrow's `Table`, polars' `DataFrame` and DuckDB 2.0.0 fetched to Arrow,
-which are other kinds of result. The inputs are the files the R run
-made: the 36 NSFG files, the 10 DHS files and the three synthetic files,
-each as Parquet from our writer, pyarrow and polars. Every file and
-number is in [results/parquet-python.md](results/parquet-python.md),
-written by `bench/parquet/run_py.py`; this section is written by hand
-from it. These are dta_parser 0.2's pandas reader and writer, which
-plan 0019 moved to datakit, in polars; the scripts were removed then
-and are in the history before it (`git show 73ecfd1:bench/parquet/run_py.py`).
-
-**Target 1 holds for wall time everywhere, and for peak RSS against
-every library but fastparquet.** Ours over theirs, geometric means of
-wall time over the files (NSFG, DHS), reads of pyarrow's files (reads of
-polars' and our files are within a few hundredths); below 1 is faster.
-These are from the second run, after the fixes below:
-
-| against | whole file | five columns | 1,000 rows | read + pass | write (defaults) |
-|---|---|---|---|---|---|
-| pyarrow → pandas | 0.18, 0.44 | 0.05, 0.09 | 0.11, 0.23 | 0.36, 0.71 | 0.31, 0.26 |
-| pandas.read_parquet | 0.17, 0.43 | 0.05, 0.09 | 0.11, 0.20 | 0.36, 0.71 | (pyarrow's) |
-| fastparquet | 0.16, 0.15 | 0.13, 0.09 | 0.10, 0.07 | 0.34, 0.30 | 0.17, 0.14 |
-| polars → pandas | 0.45, 0.66 | 0.30, 0.44 | 0.36, 0.50 | 0.70, 0.88 | 0.57, 0.65 |
-
-The highest wall ratio of any gated geometric mean is 0.91 (the read
-and pass of our own DHS files, against polars). Peak RSS is 0.24 to
-0.95 of pyarrow's, pandas' and polars' in every case.
-
-**What misses.** 73 checks (79 in the first run), in four groups:
-
-1. **Peak RSS against fastparquet** (61 of the 73, as in the first run):
-   target 1 on whole-file reads of the DHS files (geometric mean 1.51
-   to 1.54 times, by input), the read and pass of the DHS files (1.16 to
-   1.18), and whole-file reads and the read and pass of our NSFG files
-   (1.06); target 2 on 53 single files: whole-file reads and reads and
-   passes of the DHS files and the widest NSFG files (up to 1.94 times,
-   Myanmar 2016 wm: 642 MB against 332), and five columns and the read
-   and pass of groups.dta (1.75 to 1.99). These are the types the plan
-   fixes, not waste: our result is the data, at the baseline of a
-   Python with pandas loaded plus 8 bytes a value. These files hold
-   their survey codes as INT32 with nulls (the R writer made them from R
-   integers), which `read_parquet` returns as float64, as `read_dta`
-   returns a long holding `.` (plan 0018, "Exactness"). fastparquet
-   returns pandas' nullable Int32, 5 bytes a value. For groups.dta,
-   fastparquet returns text as `object` pointing at a few shared `str`
-   objects (8 bytes a row) where we return pandas' `str` (offsets and
-   bytes per row). A file `write_parquet` wrote from `read_dta`'s frame
-   keeps byte and int columns as INT(8) and INT(16), read as float32
-   with nulls, half the size. Against pyarrow, pandas and polars our
-   peak is 0.24 to 0.95 of theirs. The measured alternative, nullable
-   integer dtypes, is under "Nullable integers" below.
-2. **Writes of the synthetic files against polars** (target 2 in five
-   cases, target 3 in one): long.dta 643 ms against 393 (1.64 times; was
-   1.09 s), groups.dta 168 ms against 127 (1.32; was 308 ms), and with
-   zstd long.dta 1.11 s against 394 ms, wide.dta 1.46 s against 835 ms
-   and groups.dta 173 against 132 ms, with CPU over target 3's
-   allowance on wide.dta with zstd (9.3 s against 7.2). wide.dta's
-   snappy write now passes (0.82 s against 0.88 in the in-process
-   check; it was 1.51 s). What is left is thread count: the core now
-   encodes several row groups at once (fix 7), and by plan 0007's rule
-   these writes take two threads (long.dta, groups.dta) or six
-   (wide.dta), where polars uses sixteen; zstd at level 3 takes 1.6 to
-   2.2 times snappy's CPU time on these values.
-3. **CPU against fastparquet writing wide.dta** (target 3): 4.4 s
-   against 1.13. fastparquet writes PLAIN values with no dictionary,
-   compression or text statistics, so its CPU time is a fraction of any
-   writer that compresses; ours was 9.75 s before fix 8, and long.dta's
-   write and wide.dta's wall time no longer miss. Matching it would need
-   writing random doubles uncompressed.
-4. **Five columns of long.dta against pyarrow, pandas and polars**
-   (target 2, 6 cases): five columns of polars' file 185 ms against
-   pyarrow's 88, pandas' 93 and polars' 120, and of our file 113 ms
-   against 84 and 86. The whole of polars' file (183 ms against 151) no
-   longer misses, and neither does the CPU case of the first run (five
-   columns of our NSFG 1995 file, now 6 ms; fix 6). These reads take two
-   threads by plan 0007's rule; the others use sixteen. Measured on its
-   own, Python matches R here (below): five columns of our long.dta gain
-   0.68 of a thread from the third (R: 0.61) and nothing from the
-   fourth, but the rule goes by size, and a thread per less than 176 MiB
-   would give the whole read of long.dta six threads, which gained
-   nothing over four. polars' file is zstd, which takes our reader about
-   three times the CPU of snappy.
-
-**Not compared.** DuckDB could not read pyarrow's 4.8 GB wide.dta file,
-as in the R run; that published case has no comparison. Target 4 (other
-tools reading our files) concerns the file, and `write_parquet` writes
-the same files as R's `save_parquet` through the same writer, so the R
-run's measurements stand for it.
-
-**Into Arrow and polars types** (published, not gated): our pandas
-frame against pyarrow's `Table`, polars' `DataFrame` and DuckDB's Arrow
-table from the same files, geometric means of wall time (NSFG, DHS):
-whole file 0.21, 0.64 (pyarrow), 0.78, 1.67 (polars), 0.25, 0.19
-(DuckDB); five columns 0.05, 0.09; 0.36, 0.52; 0.32, 0.31; 1,000 rows
-0.13, 0.32; 0.73, 1.59; 0.15, 0.14. A user who wants a polars or Arrow
-table should read with polars or pyarrow (docs/python.md says so).
-
-### Fixed because of these runs
-
-Each is its own commit on the branch.
-
-1. **Columns go into pandas blocks.** Columns of one dtype are decoded
-   into one 2D array, a column per row, and become one pandas block
-   (`pandas.api.internals.create_dataframe_from_blocks`, pandas 3), not
-   one block per column through `pd.DataFrame(dict)`: 40 ms of a 125 ms
-   read of DHS Myanmar 2016 wm went to building the frame.
-2. **Nullable integers straight into floats.** An integer column whose
-   footer shows nulls is decoded into float32 or float64 with NaN, as
-   `read_dta` returns it, instead of into integers and codes that were
-   then widened (69 ms of that read, and its peak memory). It becomes
-   integers again only if the rows read hold no null.
-3. **The footer of a wide file.** Opening a file matched `ARROW:schema`
-   fields and profile entries to columns one search at a time, quadratic
-   in the columns: 15 ms of the 16 ms open of a 5,000-column file, now
-   2.6 ms (`crates/parquet`, so R gains too). Only the selected columns'
-   profile entries reach Python, and the value labels are built as Python
-   dictionaries in Rust.
-4. **Writes from blocks.** Each column's values come from the frame's
-   blocks without a Series per column, and storage types are checked in
-   one native call: NSFG 2006-2010 FemResp wrote in 240 ms, then 165.
-5. **Windows on threads.** A read's thread count comes from its work,
-   which counted a chunk read in part by the rows wanted; a window still
-   decompresses whole pages. Counted as at least a page per chunk, a
-   1,000-row window of the wide.dta file pyarrow wrote (400 columns, no
-   offset index) uses two threads: 155 ms, then 83 (polars: 94 on
-   sixteen) (`crates/parquet`).
-
-6. **Only the selected columns' profile.** A read of some columns by
-   name parses only their entries of the dta profile and the value-label
-   sets they name, and passes over the rest with a scan that only
-   balances brackets and strings (`crates/parquet`,
-   `Reader::open_for`). Five columns of our NSFG 1995 file (a 2.1 MB
-   profile): 17.6 ms, then 5.8; of DHS Myanmar 2016 wm, 8.9 ms, then
-   4.5. Damage outside the selection now gives no warning.
-7. **Row groups pipelined.** The writer encoded a row group's columns on
-   threads and waited for the slowest before starting the next, and row
-   groups under 16 MB used one thread, so a table of few columns left
-   threads idle. Now every column chunk of every row group is a job, in
-   file order: workers start the next row group while the writer puts
-   out this one, still in order, and encoded chunks waiting for those
-   before them are held to 256 MiB. groups.dta 0.31 s, then 0.17;
-   long.dta 1.05 s, then 0.94. R's `save_parquet` of the same files used
-   no more memory (2,016 MB, then 2,029, for long.dta; 5,050, then
-   5,042, for wide.dta) (`crates/parquet`, so R gains too).
-8. **Less CPU for numbers in the writer.** Each thread keeps its largest
-   dictionary hash table for the next chunk instead of growing one from
-   nothing for each (a third of wide.dta's write), and a chunk's
-   dictionary is given up once 90% of its first 32,768 values are
-   different (half of what remained; docs/parquet.md says so). wide.dta
-   1.50 s and 9.3 s of CPU, then 0.82 s and 4.0; long.dta 0.91 s, then
-   0.64. A third change, a shortcut for PLAIN blocks, made a survey
-   file's thousands of integer columns write half again as slowly (DHS
-   Myanmar 2016 wm on one thread: 235 ms, then 357) and was taken out
-   again (`crates/parquet`).
-9. **Less serial work after a threaded read.** Every DOUBLE column was
-   scanned for NaN on the calling thread to tell Python whether any was
-   there (a third of a threaded read of wide.dta), where only integer
-   storage types and dates use that; and text from a dictionary chunk
-   was copied into Arrow buffers with a copy call per row, where now
-   short values are copied 16 bytes at a time. wide.dta 336 ms, then
-   172; long.dta 141 ms, then 114; polars' long.dta 201 ms, then 183.
-
-### Threads in Python
-
-The thread counts by size were set from R's measurements, where making R
-strings costs more on the calling thread. Measured again from Python
-with `bench/parquet/threads_py.py` (the counterpart of threads.R: our
-files, in one process, median of nine after one to warm up, load about
-13; the numbers are in
-[results/parquet-python-threads.json](results/parquet-python-threads.json)),
-Python's reads pass plan 0007's rule at the same counts within the
-noise: two for survey files (NSFG 1995 gains 0.48 of a thread from the
-second, R's 0.60, and two is the floor), four for long.dta, and six for
-wide.dta, which misses at eight only by CPU time, 1.16 times one
-thread's. So Python uses the same rule as R; the core takes no
-per-language constant.
-
-Whole-file reads. Each cell: wall time; CPU time over one thread's; speed gained per thread added since the previous count, in threads. Bold: the rule fails there.
-
-| file (decoded size) | 1 | 2 | 3 | 4 | 6 | 8 | 12 | 16 |
-|---|---|---|---|---|---|---|---|---|
-| NSFG 1995_FemResp (238 MiB) | 86 ms | 58 ms; 1.04×; **0.48** | 48 ms; 1.05×; **0.31** | 43 ms; 1.06×; **0.18** | 39 ms; 1.11×; **0.12** | 37 ms; 1.09×; **0.07** | 36 ms; **1.16×**; **0.01** | 35 ms; **1.18×**; **0.02** |
-| NSFG 2006_2010_FemResp (176 MiB) | 67 ms | 43 ms; 1.04×; 0.55 | 35 ms; 1.06×; **0.36** | 31 ms; 1.07×; **0.26** | 28 ms; **1.16×**; **0.12** | 25 ms; 1.12×; **0.12** | 24 ms; **1.17×**; **0.03** | 23 ms; **1.20×**; **0.06** |
-| DHS Myanmar 2016 wm (246 MiB) | 68 ms | 44 ms; 1.04×; 0.54 | 36 ms; 1.05×; **0.35** | 32 ms; 1.07×; **0.25** | 28 ms; 1.12×; **0.13** | 27 ms; 1.13×; **0.06** | 24 ms; **1.16×**; **0.06** | 25 ms; **1.16×**; **-0.01** |
-| DHS Tajikistan 2017 bh (96 MiB) | 35 ms | 20 ms; 1.01×; 0.75 | 15 ms; 1.02×; 0.62 | 13 ms; 1.02×; **0.41** | 11 ms; **1.21×**; **0.24** | 9 ms; 1.09×; **0.33** | 8 ms; **1.19×**; **0.09** | 8 ms; **1.21×**; **0.02** |
-| groups (74 MiB) | 120 ms | 50 ms; 1.02×; 1.41 | 53 ms; 1.07×; **-0.16** | 55 ms; **1.23×**; **-0.09** | 57 ms; **1.24×**; **-0.03** | 55 ms; **1.16×**; **0.04** | 58 ms; **1.26×**; **-0.03** | 55 ms; **1.28×**; **0.03** |
-| long (777 MiB) | 340 ms | 158 ms; 1.00×; 1.15 | 106 ms; 1.01×; 1.06 | 90 ms; 1.04×; 0.56 | 90 ms; **1.19×**; **0.00** | 88 ms; **1.26×**; **0.04** | 91 ms; **1.31×**; **-0.03** | 67 ms; **1.33×**; **0.34** |
-| wide (4,578 MiB) | 1.08 s | 568 ms; 1.02×; 0.90 | 401 ms; 1.04×; 0.79 | 318 ms; 1.06×; 0.70 | 243 ms; 1.12×; 0.52 | 192 ms; **1.16×**; 0.59 | 164 ms; **1.33×**; **0.24** | 175 ms; **1.49×**; **-0.11** |
-
-Writes (snappy), after fixes 7 and 8. Same cells.
-
-| file (decoded size) | 1 | 2 | 3 | 4 | 6 | 8 | 12 | 16 |
-|---|---|---|---|---|---|---|---|---|
-| NSFG 1995_FemResp (238 MiB) | 264 ms | 168 ms; 1.14×; 0.57 | 152 ms; **1.35×**; **0.16** | 131 ms; **1.38×**; **0.29** | 116 ms; **1.55×**; **0.13** | 108 ms; **1.53×**; **0.08** | 122 ms; **1.78×**; **-0.07** | 114 ms; **1.71×**; **0.04** |
-| NSFG 2006_2010_FemResp (176 MiB) | 213 ms | 137 ms; **1.17×**; 0.56 | 96 ms; 1.07×; 0.66 | 90 ms; **1.19×**; **0.15** | 81 ms; **1.42×**; **0.14** | 85 ms; **1.51×**; **-0.07** | 77 ms; **1.59×**; **0.07** | 81 ms; **1.73×**; **-0.04** |
-| DHS Myanmar 2016 wm (246 MiB) | 241 ms | 200 ms; **1.26×**; **0.20** | 117 ms; **1.16×**; 0.85 | 133 ms; **1.53×**; **-0.24** | 230 ms; **1.82×**; **-0.38** | 222 ms; **2.24×**; **0.02** | 182 ms; **1.92×**; **0.06** | 125 ms; **2.08×**; **0.15** |
-| DHS Tajikistan 2017 bh (96 MiB) | 117 ms | 68 ms; 1.08×; 0.73 | 48 ms; 1.04×; 0.73 | 41 ms; 1.08×; **0.40** | 39 ms; **1.39×**; **0.09** | 35 ms; **1.39×**; **0.16** | 34 ms; **1.43×**; **0.01** | 35 ms; **1.45×**; **-0.01** |
-| groups (74 MiB) | 305 ms | 168 ms; 1.00×; 0.81 | 125 ms; 1.02×; 0.63 | 102 ms; 1.03×; 0.55 | 86 ms; 1.13×; **0.27** | 84 ms; **1.22×**; **0.04** | 78 ms; **1.25×**; **0.08** | 70 ms; **1.20×**; **0.11** |
-| long (777 MiB) | 1.21 s | 647 ms; 1.01×; 0.87 | 537 ms; 1.01×; **0.38** | 481 ms; 1.06×; **0.26** | 435 ms; **1.15×**; **0.13** | 290 ms; **1.18×**; 0.70 | 262 ms; **1.22×**; **0.11** | 224 ms; **1.21×**; **0.20** |
-| wide (4,578 MiB) | 3.73 s | 1.76 s; 1.02×; 1.13 | 1.20 s; 1.05×; 0.99 | 947 ms; 1.14×; 0.83 | 793 ms; **1.17×**; **0.38** | 761 ms; **1.19×**; **0.10** | 844 ms; **1.23×**; **-0.12** | 764 ms; **1.22×**; **0.11** |
-
-Writes no longer follow size. With row groups pipelined, groups.dta
-(two columns) passes the rule up to four threads where R found
-no gain at any count, and long.dta still stops at two; wide.dta passes
-at four and misses at six (0.38 of a thread, CPU 1.17 times), where R
-passed at six before fixes 7 and 8 made each value cheaper. NSFG and
-DHS Tajikistan gain 0.56 or more from a second thread, as in R, with
-CPU time 1.08 to 1.17 times one thread's; the DHS Myanmar row is noise
-(a third thread faster than a second or a fourth). The write
-constants are unchanged: one per 256 MiB gives long.dta and groups.dta
-two threads and wide.dta six. Setting writes per table shape rather
-than size, and measuring R's writes again after fixes 7 and 8, are open.
-
-### Nullable integers (measured, not adopted)
-
-The memory misses against fastparquet come from the type rule, so one
-alternative was measured on a scratch branch
-(`t3/python-parquet-nullable-int-proto`, behind an environment
-variable): an INT8, INT16 or INT32 column whose footer allows nulls is
-read as its integer type with a mask, and becomes pandas' nullable
-Int8, Int16 or Int32 where the rows read hold a null (StataArray still
-where `.a` to `.z` are, which only DOUBLE columns hold). Same files and
-method as above, ours over fastparquet, geometric means of peak RSS
-(default, then nullable):
-
-| case | NSFG | DHS |
-|---|---|---|
-| whole file | 1.04 to 1.06, then 0.97 to 0.99 | 1.51 to 1.54, then 1.28 to 1.32 |
-| read + pass | 1.03 to 1.06, then 0.96 to 0.98 | 1.16 to 1.18, then 0.99 to 1.01 |
-| five columns | 0.91 to 0.96, unchanged | 0.89 to 0.94, then 0.89 to 0.95 |
-
-Target 1's memory misses go from 8 to 3 (the whole-file reads of the DHS
-files, by input) and target 2's on these files from 42 to 15 (the whole-file reads of
-the five DHS women's files, 1.3 to 1.6 times; the rest is text as `str`
-against fastparquet's shared `object`s). The reads take longer: whole
-files 1.24 to 1.31 times the default's wall time, the read and pass
-1.32 to 1.48 times, since each nullable column is its own pandas block
-rather than a column of a float block; they stay 0.19 to 0.23 of
-fastparquet's whole-file time.
-
-What it would change: `read_parquet` would no longer return what
-`read_dta` returns for the same data, so 11 of the 25 compat fixtures'
-round trips (`read_dta` → `write_parquet` → `read_parquet`) and their
-windows fail, as do 5 other tests (a float32 column written as INT8
-comes back Int8; a pandas Int8 column, now kept, did come back as
-float32). Code written for float64 meets pandas' NA: `np.where(x > 1,
-…)` and `if x[i] == 1` raise on a missing value, `x / 2` becomes
-Float64, `x.astype(int)` raises; `to_numpy()`, `np.asarray`, `mean`
-and boolean indexing still work. A hint could keep the round trip for
-files `write_parquet` wrote: recording, for each integer column written
-from float64 or float32, the pandas dtype it came from, so
-`read_parquet` restores it, while files without the hint (R, pyarrow,
-polars, ours from other languages) get the nullable dtypes. pandas'
-own `pandas` key-value entry, which pyarrow writes and reads, holds
-exactly this (`numpy_type` per column) and keeps the dta profile free
-of one language's types; it needs the core writer to take one more
-key-value entry. A file of the same data would then read differently
-from Python depending on which program wrote it, and from `read_dta`'s
-frame unless it went through `write_parquet`.
-
-### Method
-
-As for R above: Apple M4 Max, 128 GB, macOS 26.7.1; Python 3.14.7 in a
-fresh virtual environment with the versions above. Every case ran five
-times (three for wide.dta), each in a fresh process under
-`/usr/bin/time -l` with the file in the page cache; medians of the
-task's wall and CPU time, timed inside the process after its imports,
-and of the process's peak RSS. Each library used its default threads
-(pyarrow, pandas, polars and DuckDB sixteen, fastparquet one, ours by
-the rule in [docs/parquet.md](../docs/parquet.md#defaults-and-the-measurements-behind-them)).
-Writes time writing the frame `dta_parser.read_dta` returns; the other
-libraries get it with `StataArray` columns as float64 and no `attrs`,
-which they cannot write. The read and pass is the whole read and one
-loop over every column (sum of the numbers as float64, count of missing
-values, total length of the text), the same loop for every library.
-The machine was shared with the Julia and TypeScript benchmarks, which
-took turns with this one file by file under a common lock; the
-one-minute load average before each run was 9.3 to 15.2 (median 10.9).
-Every case of our reader was measured again after fixes 6 to 9 (the
-second run); the other libraries' cases are from the first.
-
-## Parquet into polars (plan 0019, PR 2a)
-
-Plan 0019's gate for the Arrow path that Python's datakit (PR 2b) will
-read and write through: `dta_parser._native.parquet_read_arrow` into a
-polars DataFrame with the whole Meta built eagerly
-(`bench/parquet/polars_meta.py`, a thin stand-in for 2b's API, since
-replaced by datakit itself), against
-polars 2.1.0 (`pl.read_parquet`, with `columns=` for five columns and
-`scan_parquet().slice().collect()` for 1,000 rows) and pyarrow 26.0.1
-(`pq.read_table`); writes through `parquet_write_arrow` from polars'
-export against `write_parquet` and `pq.write_table(df.to_arrow())`, at
-each library's defaults and at zstd level 3. Plan 0018's method: five
-runs in fresh processes, medians, the shared benchmark lock held.
-Every file and number is in
-[results/parquet-polars.md](results/parquet-polars.md), written by
-`bench/parquet/run_polars.py`.
-
-**What was measured, and the load.** Not every file: a full run, shared
-with the no-regression runs below and another worktree's benchmarks,
-measured 12 files in two hours, so the gate ran on 13 of the 36 NSFG
-files (the eight from 1973 to 1988, and one from each later round: 2002 and
-2006-2010 FemResp, 2011-2013 Male, 2015-2017 FemPreg, and 2022-2023
-FemResp), all 10 DHS files, and the three synthetic files. The
-one-minute load average before each run had a median of 14.4 (11.2 to
-28.0); plan 0018 asks for under 2.
-
-**Step 0, the baseline.** The spike's build (3ec678a), before any of
-this PR: ours at its defaults over polars, geometric means over four
-files from three writers, wall time 2.03 for whole files and 1.83 for
-the read and pass, CPU 1.24 and 1.15; tuned by hand, 1.04 and 1.15
-([results/parquet-polars-step0.md](results/parquet-polars-step0.md)).
-
-**Reads: target 1 holds.** Ours over polars, geometric means of wall
-time, by the writer of the file (pyarrow, polars, and ours); below 1 is
-faster:
-
-| case | NSFG | DHS | synthetic |
-|---|---|---|---|
-| whole file | 0.40, 0.38, 0.50 | 0.61, 0.59, 0.73 | 0.91, 0.72, 0.82 |
-| five columns | 0.33, 0.30, 0.42 | 0.50, 0.47, 0.66 | 1.05, 0.92, 0.98 |
-| 1,000 rows | 0.44, 0.38, 0.56 | 0.69, 0.63, 0.80 | 0.38, 0.28, 0.34 |
-| read + pass | 0.70, 0.66, 0.75 | 0.81, 0.79, 0.92 | 0.90, 0.72, 0.83 |
-
-As geometric means, peak RSS is 0.27 to 0.94 of polars' in every read
-case, and wall time at most 0.45 of pyarrow's `read_table`.
-
-**Writes: target 1 misses on DHS.** Ours over polars: NSFG 1.02 (wall),
-0.73 (CPU), 0.90 (RSS) at the defaults and 1.05, 0.83, 0.92 at zstd 3;
-DHS 1.16, 0.95, 0.91 and 1.20, 1.03, 0.93. Against pyarrow, 0.20 to
-0.24 of its wall time.
-
-**What misses** ([results/parquet-polars.md](results/parquet-polars.md#misses)):
-
-1. Target 1, writes on DHS against polars (above).
-2. Target 2, writes of the synthetic files, DHS Senegal 2019 bh, and
-   Myanmar 2016 wm against polars (1.36 to 2.19 times, and 1.27 to 1.38
-   times polars' and pyarrow's RSS for long.dta and groups.dta), and
-   the read and pass of our DHS Tajikistan 2017 wm (107 ms against 78).
-3. Target 3, CPU time: 19 read cases, on long.dta, groups.dta,
-   wide.dta, DHS Myanmar 2016 wm, and NSFG 2006-2010 FemResp, up to 22
-   percent over what the rule allows; and the zstd writes of long.dta,
-   wide.dta, and NSFG 2002 FemResp.
-
-The reads' CPU misses are where twelve threads (long.dta) or eight
-(groups.dta) buy wall time at more CPU than polars spends; fewer
-threads would trade them for target 1 misses (the study below).
-
-### Threads for polars
-
-The Arrow path's thread rule was chosen against polars, which uses every
-core, for targets 1 and 3 together (`bench/parquet/threads_polars.py`,
-results in [results/parquet-polars-threads.jsonl](results/parquet-polars-threads.jsonl);
-three runs per cell, load 15 to 24). Each cell: ours over polars, wall;
-CPU. Bold: target 3 fails there.
+Reads into polars and writes from it go through the core's Arrow path,
+which has its own thread rule. It was chosen against polars, which uses
+every core, so that wall time stays near polars' (plan 0018's target 1)
+at a CPU time within target 3 (at most polars' times the larger of 1.15
+and our speedup). The study was run through the Python binding, since removed; R's
+`read_parquet_pl()` and `save_parquet()` of a polars frame call the
+same core and take the same thread counts. Three runs per cell, load 15
+to 24. Each cell: ours over polars, wall; CPU. Bold: target 3 fails
+there.
 
 Whole-file reads of our files, by threads:
 
@@ -914,166 +426,8 @@ So reads take one thread per 32 MiB, at least four and at most twelve
 (NSFG 2002 FemResp gets four, DHS Tajikistan six, groups eight, long
 twelve), and writes one per 8 MiB, at least four and at most sixteen:
 our write's CPU time stays within 1.15 times polars' at every count. Under 256 KiB,
-one thread. The classic reads and writes (R, Julia, npm, pandas) keep
-plan 0018's rule.
-
-### polars' Enum: the metadata route
-
-polars imports an Enum from Arrow when the field's metadata names its
-categories (`_PL_ENUM_VALUES2`); without it, a dictionary column comes
-in as Categorical and needs a cast. 20 million rows, median of runs:
-
-| levels | route | import | whole read | CPU | peak RSS |
-|---|---|---|---|---|---|
-| 40 | metadata | 20 ms | 36 ms | 75 ms | 186 MB |
-| 40 | Categorical, then cast | 183 ms | 199 ms | 240 ms | 278 MB |
-| 300 | metadata | 22 ms | 36 ms | 75 ms | 210 MB |
-| 300 | Categorical, then cast | 169 ms | 182 ms | 225 ms | 303 MB |
-
-The metadata route is taken. It is polars' own, not a documented
-interface, so `python/tests/test_arrow.py` has a test that fails if
-polars stops making an Enum from it.
-
-### .dta into polars (published, not gated)
-
-`dta_read_arrow` and `dta_write_arrow` against dta_parser's pandas path
-(`read_dta`, `write_dta`), same files: reads 0.61 (NSFG), 0.42 (DHS),
-and 0.41 (synthetic) of the wall time, 0.33 to 0.62 of the RSS; writes
-1.22, 1.14, and 0.66 of the wall time, at 0.36 to 0.47 of the RSS. On
-survey files the Arrow write is the slower; it was not profiled in this
-PR.
-
-### No regression in R, Julia, and npm
-
-Plan 0018's Parquet benchmarks, ours only, main's build and this
-branch's back to back per file; a case regresses when the branch's
-median is slower by more than the larger of the two five-run spreads.
-
-- R (main at 0b96824, the same R code as ba27613): 168 cases on 10 files
-  (the synthetic three, NSFG 1973, 1976, 1995, 2002, and 2022-2023
-  FemResp, DHS Tajikistan 2017 and Myanmar 2016 wm); geometric mean
-  0.973; two cases past the spread, by 3 and 8 percent.
-- Julia, through Datakit (main at ba27613): 602 cases on 43 of the 49
-  files; geometric mean 1.001; 15 cases past the spread, by 2 to 18
-  percent, none in a file or task more than once or twice.
-- npm (main at 0b96824, the same npm code as ba27613): 140 cases on the
-  same 10 files as R; geometric mean 0.962; three cases past the spread,
-  by 1 to 4 percent. That is after fix 1 below; before it, 43 cases were
-  past it.
-
-### Fixed because of these runs
-
-1. **npm: a first read of a wide file 85 ms slower.** The first npm run
-   found reads 1.1 to 2.4 times main's in a fresh process (NSFG
-   2022-2023 FemResp, 142 ms against 58), while later reads in the same
-   process were the same. The cause was this PR's wasm memory fix
-   below, which asked for room column by column: thousands of probes on
-   a wide file. It now asks for one block first, as main does, and
-   column by column only when that fails.
-2. **npm: the 64 MiB test module ran out of memory on this branch.**
-   Whether one block of a read call's size was free depended on the
-   heap's layout: main fails the same test at 2,010,000 rows. A read
-   now falls back to room per column, and a text value too large for
-   the budget fails as `DTA_TOO_LARGE` before it is copied instead of
-   aborting the module.
-
-## Parquet into polars, through datakit (plan 0019, PR 2b)
-
-The same gate as PR 2a's (above), now through Python datakit's public
-functions: `dk.read_parquet`, which builds the frame and its whole
-`Meta`, and `dk.save_parquet`, against polars 2.1.0 and pyarrow 26.0.1.
-Every file and number is in
-[results/parquet-datakit.md](results/parquet-datakit.md), written by
-`bench/parquet/run_polars.py`.
-
-**What was measured, and the load.** Every file: the 36 NSFG files, the
-10 DHS files and the three synthetic files, each read as written by
-pyarrow, by polars and by us, and written at the defaults and at zstd
-level 3. Five runs per case in fresh processes (three for wide.dta,
-over 1 GB), medians, the shared benchmark lock held per file; 2026-11-05,
-21:31 to 23:26. The one-minute load average before each run had a
-median of 12.5 (9.1 to 31.3); plan 0018 asks for under 2. The build
-measured is this PR's but for one later change, an exact count of text
-bytes in the write's row-group rule (`bytes_bound`); measured alone on
-groups.dta, the slowest case for it, it left the write at about half of
-polars' time.
-
-**Ours over polars, geometric means of wall time** (below 1 is faster),
-reads by the writer of the file (pyarrow's, polars', ours):
-
-| case | NSFG | DHS | synthetic |
-|---|---|---|---|
-| whole file | 0.39, 0.38, 0.47 | 0.64, 0.62, 0.75 | 0.85, 0.70, 0.81 |
-| five columns | 0.33, 0.31, 0.42 | 0.50, 0.44, 0.61 | 0.95, 0.55, 0.93 |
-| 1,000 rows | 0.44, 0.38, 0.55 | 0.70, 0.64, 0.83 | 0.34, 0.29, 0.27 |
-| read + pass | 0.71, 0.68, 0.74 | 0.80, 0.78, 0.91 | 1.03, 0.78, 0.88 |
-| write, defaults / zstd 3 | 0.81 / 0.90 | 0.72 / 0.80 | 0.91 / 1.10 |
-
-Target 1 holds for every case, wall and peak RSS, on NSFG and DHS. CPU
-time as a geometric mean is at most 1.03 of polars' on NSFG and DHS.
-Against pyarrow's `Table`, ours takes at most 0.48 of its wall time on
-reads and 0.21 on writes.
-
-**What changed in the write path since PR 2a** (2a's writes were 1.02
-and 1.16 of polars' wall time on NSFG and DHS at the defaults, and 1.05
-and 1.20 at zstd):
-
-1. **Encode ahead.** The core writes column chunks in file order on the
-   calling thread while workers encode the next ones; workers could run
-   at most two chunks per thread ahead. A wide survey file is thousands
-   of small chunks of uneven size, so one slow chunk stalled every
-   thread, and each finished chunk woke all of them. The Arrow path now
-   lets workers run as far ahead as the pipeline's byte budget allows
-   (`WriteOptions::ahead`, which R, Julia and npm leave at two per
-   thread). DHS Tajikistan 2017 wm, medians of warm runs in one
-   process: 83 ms and 460 ms of CPU before, 38 ms and 290 ms after,
-   against polars' 57 ms and 370 ms.
-2. **No row-by-row text scan.** To cap a row group at about 1 GiB, the
-   core added up every text value's length on the calling thread before
-   encoding anything: 35 ms for groups.dta's 15 million strings. The
-   binding now counts the frame's bytes from its Arrow buffers and,
-   when the whole frame is under the cap, gives the core the row count
-   that scan would have found.
-3. **Numbers a block at a time.** For a block of values with no nulls on
-   the PLAIN path, the core takes the values a run at a time (statistics
-   over the run, the bytes copied at once) instead of one by one, ending
-   each run where the per-value loop would end the page. A column of 10
-   million random doubles wrote in 35 ms of CPU instead of 60. The files
-   are byte for byte the same: 37 files of every family, codec and row
-   group size, hashed before and after.
-
-**What still misses** ([results/parquet-datakit.md](results/parquet-datakit.md#misses)).
-The user accepted these four misses on 2026-11-06 and merged the PR
-with them, as plan 0019 allows:
-
-1. **Target 2, peak RSS of the long.dta and groups.dta writes**: 1.34 to
-   1.46 times polars' and 1.39 to 1.43 times pyarrow's (2a: 1.27 to
-   1.38). The extra is the sixteen write threads' working buffers; a
-   smaller pipeline budget saved 300 MB on long.dta but cost 40% of its
-   wall time, and left groups.dta as it was.
-2. **Target 2, wall time of the read and pass of pyarrow's long.dta**:
-   164 ms against polars' 123.
-3. **Target 3, CPU time of 13 read cases**, up to 19% over the
-   allowance (2 to 19%): whole-file
-   reads of groups.dta, NSFG 1995 FemResp, NSFG 2006-2010 FemResp, and
-   DHS Senegal 2019 and Myanmar 2016 wm (ours), and of long.dta, groups.dta
-   and NSFG 1995 FemResp (pyarrow's); five columns of long.dta (ours and
-   pyarrow's) and groups.dta (ours); the read and pass of pyarrow's
-   long.dta and groups.dta. 2a had 19 such cases.
-4. **Target 3, the zstd write of wide.dta**: 9.4 s of CPU against
-   polars' 7.0, at 0.91 of its speed. Compressing 4.8 GB of random
-   doubles is most of it; polars' writes of that file cost it the same
-   CPU with zstd as with snappy, while ours spend about 3 s more, which
-   is what zstd at level 3 costs on that data in our tests of a single
-   column, where polars paid it too.
-
-The synthetic family's zstd writes, 1.10 as a geometric mean, are over
-1.05, but plan 0018 sets target 1 for NSFG and DHS.
-
-**.dta into polars against dta_parser's pandas path** (published, not
-gated): `dk.read_dta` takes 0.04 (NSFG), 0.12 (DHS) and 0.31 (synthetic)
-of `dp.read_dta`'s wall time; `dk.save_dta` takes 1.12, 1.17 and 0.59 of
-`dp.write_dta`'s, at 0.37 to 0.47 of its peak RSS.
+one thread. Reads into tibbles and writes from them, and the npm
+package, keep plan 0018's rule ("Threads" above).
 
 ## Parquet into polars from R (plan 0025, stage 4)
 
@@ -1097,10 +451,9 @@ These are after plan 0027 (the next section). Before it,
 whole file: about 90 ms of it was `df$schema`, which R polars answers by
 making an R object for each of the 4,962 dtypes. datakit now asks only
 for the dtypes of the columns each step needs (on a plain read, those
-holding letters), which gave 26 ms. Python datakit's
-`dk.read_parquet()` read the same file in 15 ms. On five columns, the
-native read and the import into polars took about 3 ms, and the rest
-was datakit's R code around them; plan 0027 removed it.
+holding letters), which gave 26 ms. On five columns, the native read
+and the import into polars took about 3 ms, and the rest was datakit's
+R code around them; plan 0027 removed it.
 
 ## Parquet into polars, after reading polars' reader (plan 0027)
 
@@ -1108,15 +461,15 @@ Plan 0027 timed each step of the read into polars, read how
 `polars-parquet` decodes ([acknowledgements](../docs/acknowledgements.md)),
 and changed what the timings pointed at. Measured 2026-11-09 on an
 Apple M4 Max, load average 2.5 to 3.4, files in the page cache, main
-(55775e6) against the branch in scratch libraries and venvs holding the
-same packages, runs alternated. The files are the benchmark's
+(55775e6) against the branch in scratch libraries holding the same
+packages, runs alternated. The files are the benchmark's
 conversions by our writer: DHS Tajikistan 2017 wm (10,718 rows, 5,160
 columns), NSFG 2002 FemResp (7,643 by 3,087), `groups` (15 million rows:
 text of few values, and an int) and `long` (10 million rows, 12
 columns).
 
 **The core** (`crates/arrow/examples/read_bench.rs`: the Arrow read
-both languages call, timed from Rust). Median wall and CPU time, ms,
+that `read_parquet_pl()` calls, timed from Rust). Median wall and CPU time, ms,
 over seven alternated rounds of 3 to 60 reads each:
 
 | file | threads | wall, main | wall, branch | CPU, main | CPU, branch | CPU ratio |
@@ -1162,27 +515,16 @@ is named `cols` (8.5 ms; the reader now resolves it). The tibble
 `read_parquet()` did not change: 32.8 and 32.4 ms on Tajikistan, 21.8
 and 21.5 ms on NSFG 2002.
 
-**Python**, `dk.read_parquet()` against `pl.read_parquet()`, median of
-7 to 25 reads, two alternated rounds (ms; CPU in brackets):
-
-| file | main | branch | polars |
-|---|---|---|---|
-| Tajikistan | 14.8 (35) | 13.4 (28) | 13.7 (30) |
-| NSFG 2002 | 12.2 (24) | 11.1 (20) | 15.9 (20) |
-| groups | 7.7 (49) | 6.4 (39) | 4.5 (48) |
-| long | 34.7 (335) | 27.9 (263) | 27.9 (340) |
-
-**What is not reached.** On `groups`, wall time is 1.4 times polars' in
-Python and 1.6 times in R, at 0.8 of its CPU time: the thread rule
-gives that file 8 threads and polars uses 16. At 12 threads the core
-reads it in 5.1 ms with 42 ms of CPU, and at 16 in 4.8 ms with 48 ms.
-The rule was set on `bench/parquet/threads_polars.py`'s cases ("Threads
-for polars" above), which were not rerun, so it is unchanged. R's
+**What is not reached.** On `groups`, wall time is 1.6 times polars' in
+R: the thread rule gives that file 8 threads and polars uses 16. At 12
+threads the core reads it in 5.1 ms with 42 ms of CPU, and at 16 in
+4.8 ms with 48 ms. The rule was set on the cases under "Threads for
+reads into polars" above, which were not rerun, so it is unchanged. R's
 whole-file read of the Albania file is 1.12 times polars'; what is left
 is the metadata (value label sets and column fields as R objects, about
-2 ms) that polars' own read does not return. Julia's and Node's
-benchmarks were not rerun: of these changes their reads share only the
-codecs' and the base64, and their tests run in CI.
+2 ms) that polars' own read does not return. Node's benchmarks were not
+rerun: of these changes its reads share only the codecs' and the
+base64, and its tests run in CI.
 
 ## Parquet in TypeScript (npm package)
 
@@ -1292,39 +634,30 @@ it, with the same build of everything else.
 
 ## Method
 
-Machine: Apple M4 Max, 128 GB, macOS 26.7.1. R 4.6.1, Python 3.14.7, Julia 1.13.3, Node v26.12.1. Ours are this repository's packages as of the commit that adds these results.
+Machine: Apple M4 Max, 128 GB, macOS 26.7.1. R 4.6.1, Node v26.12.1. Ours are this repository's packages as of the commit that adds these results.
 
 | language | reader | version | options |
 |---|---|---|---|
 | R | dtatools | 1.0.0 | `read_dta()`; strings come back packed, so task 2 pays for making them |
 | R | haven | 2.5.5 | `read_dta()`; converts `%td`/`%tc` (no option not to); converted back for checks |
 | R | readstata13 | 0.11.0 | `read.dta13(convert.factors = FALSE, convert.dates = FALSE)`; task 5 reads one row (no metadata-only read) |
-| Python | dta_parser | 0.1.0 | `read_dta(dates=False)` |
-| Python | pandas | 3.1.0 | `read_stata(convert_dates=False, convert_categoricals=False)`; task 4 reads up to the window with its iterator (no row offset) |
-| Python | pyreadstat | 1.3.7 | `read_dta(disable_datetime_conversion=True)`; writes with `version=14` (release 118) |
-| Julia | DtaParser.jl | 0.1.0 | `read_dta()` (dates converted, as ReadStatTables does) |
-| Julia | ReadStatTables.jl | 0.4.0 | `readstat()`, one thread (`julia` default) |
-| Julia | StatFiles.jl | 1.0.0 | `DataFrame(load(path))`; no selection, metadata read or writer |
 | TypeScript | @jbearak/dta-parser | 1.0.0 | `openDtaFile().readColumns()`; task 6 gives `writeDtaFile` the columns as read |
 | TypeScript | @irbisadm/statfmt | 0.1.1 | `readDta(bytes)` on the whole file in memory; no column selection; task 5 reads one row |
 
-Each file is read once first (page cache warm). Files over 100 MB: a fresh process per run under /usr/bin/time -l, median of five (three over 1 GB). Smaller files: one process per task times a warm-up call, then up to 20 calls (stopping after 60 s once three ran; a warm-up over 60 s is the only run); peak RSS from one more fresh process with one call (a warm-up over 60 s is that run). Every process has 20 minutes. A reader that times out on a file is not run on that family's larger files. StatFiles, which can only slice a full read, is not timed on tasks 3 and 4 where its full read took over 60 s.
+Each file is read once first (page cache warm). Files over 100 MB: a fresh process per run under /usr/bin/time -l, median of five (three over 1 GB). Smaller files: one process per task times a warm-up call, then up to 20 calls (stopping after 60 s once three ran; a warm-up over 60 s is the only run); peak RSS from one more fresh process with one call (a warm-up over 60 s is that run). Every process has 20 minutes. A reader that times out on a file is not run on that family's larger files.
 
 Times are the task alone, from inside the process after its packages loaded (task 6: the write alone, after an untimed read). Peak RSS is the whole process's, from `/usr/bin/time -l`. Node runs with `--max-old-space-size=32768` so that its default heap limit is not what fails. Each task-2 pass is the same loop in every reader of a language (sum of numbers as float64, missing count, string length in characters; JavaScript counts UTF-16 units).
 
-Correctness, outside the timing: each reader's result is hashed per column (numbers as float64 with missing values as a mask, missing codes where the reader keeps `.a`–`.z`, strings as UTF-8), and ours is compared with each open-source reader in its language, on everything both expose; metadata (names, storage types, formats, variable labels, value labels, data label) likewise. Each writer's file is re-read by the language's open-source reader (haven, pandas, ReadStatTables, statfmt) and compared with that reader's read of the source. Task-2 sums agree within 1e-9 × Σ|x|; counts and lengths exactly.
+Correctness, outside the timing: each reader's result is hashed per column (numbers as float64 with missing values as a mask, missing codes where the reader keeps `.a`–`.z`, strings as UTF-8), and ours is compared with each open-source reader in its language, on everything both expose; metadata (names, storage types, formats, variable labels, value labels, data label) likewise. Each writer's file is re-read by the language's open-source reader (haven, statfmt) and compared with that reader's read of the source. Task-2 sums agree within 1e-9 × Σ|x|; counts and lengths exactly.
 
 ## Targets
 
 Ours fastest within its language at task 2 on every NSFG and DHS file and at tasks 3–5 on every file (5% tie band), with peak RSS within 1.5× of the lowest.
 
-1988 checks met, 68 missed.
+987 checks met, 41 missed (R and TypeScript; counted again from the per-file tables after the Python and Julia rows were removed).
 
 | language | task | kind | files missed (ours vs best other) |
 |---|---|---|---|
-| Julia | 5. metadata | speed | 2002_HHvars (0.00011 s vs 0.000102 s); 2022_2023_FemPreg (0.000217 s vs 0.00014 s); 2011_2019_FemaleWgt (8e-05 s vs 7.61e-05 s); 2017_2019_FemPreg (0.000682 s vs 0.000625 s); 1976_Preg (0.000286 s vs 0.00026 s); 2015_2017_FemPreg (0.000922 s vs 0.00082 s); and 19 more |
-| Julia | 6. write | memory | groups.dta (1,551 MB vs 1,027 MB) |
-| Python | 2. read + pass | speed | 1976_Preg (0.01 s vs 0.00925 s) |
 | R | 1. full read | memory | Myanmar 2016 bh (344 MB vs 217 MB) |
 | R | 2. read + pass | memory | 2015_2017_FemResp (373 MB vs 247 MB); 2011_2013_FemResp (375 MB vs 248 MB); 2006_2010_Male (523 MB vs 346 MB); 2006_2010_FemResp (837 MB vs 544 MB); Myanmar 2016 bh (417 MB vs 267 MB); Tajikistan 2017 wm (964 MB vs 548 MB); and 1 more |
 | R | 4. 1,000 rows | speed | groups.dta (0.00135 s vs 0.00125 s); 1976_PSU (0.000268 s vs 0.000249 s); 2002_curr_ins (0.000276 s vs 0.000244 s); 2002_hhpartypnew (0.000271 s vs 0.000229 s) |
@@ -1354,12 +687,6 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 | R | dtatools | 0.242 s | 3.6 s | 0.127 s | 0.00163 s | 0.00146 s | 0.461 s |
 | R | haven | 67× | 4.9× | 60× | 11× | 10× | 14× |
 | R | readstata13 | 67× | 4.9× | 63× | 1.7× | 0.72× | 35× |
-| Python | dta_parser | 0.43 s | 0.962 s | 0.241 s | 0.000554 s | 6.92e-05 s | 0.846 s |
-| Python | pandas | 5× | 2.7× | 6.4× | 1.9e+03× | 4.4× | 5.8× |
-| Python | pyreadstat | 20× | 10× | 18× | 11× | 59× | 32× |
-| Julia | DtaParser.jl | 0.417 s | 0.74 s | 0.219 s | 0.0144 s | 0.00474 s | 0.501 s |
-| Julia | ReadStatTables.jl | 15× | 8.8× | 17× | 9.5× | 1.3× | 7.2× |
-| Julia | StatFiles.jl | 90× | 52× | 1.7e+02× | 2.6e+03× | – (6 no API) | – (6 no API) |
 | TypeScript | @jbearak/dta-parser | 2.28 s | 2.71 s | 0.972 s | 0.00264 s | 0.0014 s | 2.22 s (1 failed) |
 | TypeScript | @irbisadm/statfmt | 4.8× | 4.2× | 13× | 22× | 39× | 6.9× (1 failed) |
 
@@ -1370,12 +697,6 @@ Peak RSS, the same way:
 | R | dtatools | 1,322 MB | 2,559 MB | 525 MB | 99 MB | 97 MB | 1,341 MB |
 | R | haven | 1.4× | 1.2× | 1.6× | 1.1× | 1.1× | 1.4× |
 | R | readstata13 | 1.5× | 1.1× | 1.7× | 0.96× | 0.97× | 1.8× |
-| Python | dta_parser | 1,668 MB | 1,730 MB | 726 MB | 82 MB | 81 MB | 1,774 MB |
-| Python | pandas | 2.6× | 2.5× | 5.4× | 27× | 0.99× | 3.8× |
-| Python | pyreadstat | 2× | 1.9× | 1.5× | 1.1× | 1.1× | 1.9× |
-| Julia | DtaParser.jl | 1,932 MB | 1,955 MB | 830 MB | 301 MB | 300 MB | 2,271 MB |
-| Julia | ReadStatTables.jl | 0.77× | 0.77× | 0.88× | 1.3× | 1.3× | 0.8× |
-| Julia | StatFiles.jl | 1.9× | 1.9× | 4.9× | 13× | – | – |
 | TypeScript | @jbearak/dta-parser | 2,115 MB | 2,126 MB | 832 MB | 56 MB | 52 MB | 3,043 MB |
 | TypeScript | @irbisadm/statfmt | 2.6× | 2.6× | 8× | 17× | 18× | 3.1× |
 
@@ -1431,12 +752,6 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 | R | dtatools | 0.0106 s | 0.0239 s | 0.0031 s | 0.0049 s | 0.00405 s | 0.0178 s |
 | R | haven | 15× | 7.4× | 6.4× | 4.2× | 1.1× | 11× |
 | R | readstata13 | 17× | 8.1× | 4.1× | 4.5× | 0.93× | 17× |
-| Python | dta_parser | 0.0111 s | 0.0228 s | 0.00165 s | 0.00419 s | 0.000761 s | 0.0185 s |
-| Python | pandas | 2.2× | 1.5× | 3× | 9.5× | 2.6× | 3.5× |
-| Python | pyreadstat | 11× | 9.7× | 11× | 4.2× | 5.1× | 50× (30 failed) |
-| Julia | DtaParser.jl | 0.00804 s | 0.0121 s | 0.00233 s | 0.00277 s | 0.00166 s | 0.00983 s |
-| Julia | ReadStatTables.jl | 9.4× | 6.6× | 7.2× | 3.5× | 0.84× | 4.9× |
-| Julia | StatFiles.jl | 1.7e+03× | 1.1e+03× | 1.3e+03× (18 not run) | 1.5e+03× (18 not run) | – (36 no API) | – (36 no API) |
 | TypeScript | @jbearak/dta-parser | 0.0126 s | 0.023 s | 0.00132 s | 0.0024 s | 0.00153 s | 0.018 s |
 | TypeScript | @irbisadm/statfmt | 15× | 8.8× | 1.5e+02× | 12× | 1.6× | 9.2× |
 
@@ -1447,12 +762,6 @@ Peak RSS, the same way:
 | R | dtatools | 174 MB | 215 MB | 102 MB | 112 MB | 100 MB | 194 MB |
 | R | haven | 1.1× | 1.1× | 1.2× | 1.2× | 1.2× | 1× |
 | R | readstata13 | 0.86× | 0.85× | 1.1× | 1.1× | 1.2× | 1× |
-| Python | dta_parser | 138 MB | 139 MB | 87 MB | 96 MB | 86 MB | 146 MB |
-| Python | pandas | 1.1× | 1.1× | 1.2× | 1.4× | 0.95× | 2.3× |
-| Python | pyreadstat | 1.6× | 1.6× | 1.1× | 1.3× | 1.1× | 1.1× |
-| Julia | DtaParser.jl | 333 MB | 337 MB | 306 MB | 305 MB | 302 MB | 346 MB |
-| Julia | ReadStatTables.jl | 1.3× | 1.3× | 1.3× | 1.3× | 1.3× | 1.2× |
-| Julia | StatFiles.jl | 2.9× | 2.9× | 1.9× | 1.9× | – | – |
 | TypeScript | @jbearak/dta-parser | 202 MB | 203 MB | 61 MB | 89 MB | 62 MB | 229 MB |
 | TypeScript | @irbisadm/statfmt | 0.99× | 0.98× | 3.2× | 1.2× | 1.3× | 0.97× |
 
@@ -1482,12 +791,6 @@ Time: for ours, the geometric mean of its seconds over the files; for the others
 | R | dtatools | 0.0522 s | 0.154 s | 0.00945 s | 0.0216 s | 0.0174 s | 0.107 s |
 | R | haven | 41× | 15× | 12× | 6.2× | 1.4× | 23× |
 | R | readstata13 | 46× | 16× | 5.6× | 7.3× | 1.7× | 35× |
-| Python | dta_parser | 0.0642 s | 0.132 s | 0.00576 s | 0.0215 s | 0.00321 s | 0.0952 s |
-| Python | pandas | 3.5× | 2.2× | 6.6× | 16× | 2.9× | 6.1× |
-| Python | pyreadstat | 19× | 18× | 13× | 5.3× | 9.9× | – (10 failed) |
-| Julia | DtaParser.jl | 0.0541 s | 0.0974 s | 0.00764 s | 0.0118 s | 0.00548 s | 0.0396 s |
-| Julia | ReadStatTables.jl | 11× | 6.8× | 9.4× | 4.3× | 1× | 20× |
-| Julia | StatFiles.jl | 8.7e+03× | 4.9e+03× | – (10 not run) | – (10 not run) | – (10 no API) | – (10 no API) |
 | TypeScript | @jbearak/dta-parser | 0.127 s | 0.193 s | 0.00539 s | 0.0109 s | 0.00461 s | 0.165 s |
 | TypeScript | @irbisadm/statfmt | 14× | 9.8× | 3.4e+02× | 13× | 2.3× | 8.4× |
 
@@ -1498,12 +801,6 @@ Peak RSS, the same way:
 | R | dtatools | 412 MB | 552 MB | 105 MB | 127 MB | 102 MB | 484 MB |
 | R | haven | 1× | 1× | 1.3× | 1.2× | 1.3× | 0.9× |
 | R | readstata13 | 0.78× | 0.69× | 1.5× | 1.3× | 1.6× | 0.88× |
-| Python | dta_parser | 339 MB | 340 MB | 89 MB | 110 MB | 87 MB | 361 MB |
-| Python | pandas | 1.3× | 1.3× | 1.8× | 2.7× | 0.95× | 4.9× |
-| Python | pyreadstat | 2.1× | 2× | 1.1× | 1.5× | 1.2× | – |
-| Julia | DtaParser.jl | 417 MB | 419 MB | 307 MB | 310 MB | 303 MB | 441 MB |
-| Julia | ReadStatTables.jl | 1.2× | 1.2× | 1.3× | 1.3× | 1.3× | 1.1× |
-| Julia | StatFiles.jl | 4.6× | 4.7× | – | – | – | – |
 | TypeScript | @jbearak/dta-parser | 603 MB | 603 MB | 68 MB | 136 MB | 66 MB | 858 MB |
 | TypeScript | @irbisadm/statfmt | 0.87× | 0.88× | 7.8× | 1.3× | 1.7× | 0.73× |
 
@@ -1530,32 +827,6 @@ Ours against each reader (write: each writer's file re-read by the open-source r
 | R | dtatools | write | 6 | 0 | 0 |
 | R | haven | write | 6 | 0 | 0 |
 | R | readstata13 | write | 0 | 6 | 0 |
-| Python | pandas | full | 6 | 0 | 0 |
-| Python | pandas | five | 6 | 0 | 0 |
-| Python | pandas | window | 6 | 0 | 0 |
-| Python | pandas | meta | 6 | 0 | 0 |
-| Python | pandas | checksum | 6 | 0 | 0 |
-| Python | pyreadstat | full | 6 | 0 | 0 |
-| Python | pyreadstat | five | 6 | 0 | 0 |
-| Python | pyreadstat | window | 6 | 0 | 0 |
-| Python | pyreadstat | meta | 6 | 0 | 0 |
-| Python | pyreadstat | checksum | 6 | 0 | 0 |
-| Python | dta_parser | write | 6 | 0 | 0 |
-| Python | pandas | write | 1 | 5 | 0 |
-| Python | pyreadstat | write | 1 | 5 | 0 |
-| Julia | ReadStatTables.jl | full | 6 | 0 | 0 |
-| Julia | ReadStatTables.jl | five | 6 | 0 | 0 |
-| Julia | ReadStatTables.jl | window | 6 | 0 | 0 |
-| Julia | ReadStatTables.jl | meta | 6 | 0 | 0 |
-| Julia | ReadStatTables.jl | checksum | 6 | 0 | 0 |
-| Julia | StatFiles.jl | full | 6 | 0 | 0 |
-| Julia | StatFiles.jl | five | 6 | 0 | 0 |
-| Julia | StatFiles.jl | window | 6 | 0 | 0 |
-| Julia | StatFiles.jl | meta | 0 | 0 | 6 |
-| Julia | StatFiles.jl | checksum | 6 | 0 | 0 |
-| Julia | DtaParser.jl | write | 6 | 0 | 0 |
-| Julia | ReadStatTables.jl | write | 6 | 0 | 0 |
-| Julia | StatFiles.jl | write | 0 | 0 | 6 |
 | TypeScript | @irbisadm/statfmt | full | 6 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | five | 6 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | window | 6 | 0 | 0 |
@@ -1565,33 +836,11 @@ Ours against each reader (write: each writer's file re-read by the open-source r
 | TypeScript | @irbisadm/statfmt | write | 5 | 0 | 1 |
 
 - groups.dta, R, readstata13, write: data label: data (1); format: s, a (2)
-- groups.dta, Python, pandas, write: format: s, a (2); storage: a (1)
-- groups.dta, Python, pyreadstat, write: format: s, a (2); storage: a (1)
-- groups.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- groups.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - long_114.dta, R, readstata13, write: data label: data (1); format: b, i, l, d1, d2 … (9)
-- long_114.dta, Python, pandas, write: storage: b (1); format: b (1)
-- long_114.dta, Python, pyreadstat, write: storage: b, i, l, f (4); format: b, i, l, f, s1 … (6)
-- long_114.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- long_114.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - long_117.dta, R, readstata13, write: data label: data (1); format: b, i, l, d1, d2 … (9)
-- long_117.dta, Python, pandas, write: storage: b (1); format: b (1)
-- long_117.dta, Python, pyreadstat, write: storage: b, i, l, f (4); format: b, i, l, f, s1 … (6)
-- long_117.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- long_117.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - long.dta, R, readstata13, write: data label: data (1); format: b, i, l, d1, d2 … (11)
-- long.dta, Python, pandas, write: storage: b (1); format: b, s1, s2 (3)
-- long.dta, Python, pyreadstat, write: storage: b, i, l, f (4); format: b, i, l, f, s1 … (6)
-- long.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- long.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - long_119.dta, R, readstata13, write: data label: data (1); format: b, i, l, d1, d2 … (9)
-- long_119.dta, Python, pandas, write: storage: b (1); format: b (1)
-- long_119.dta, Python, pyreadstat, write: storage: b, i, l, f (4); format: b, i, l, f, s1 … (6)
-- long_119.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- long_119.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - wide.dta, R, readstata13, write: data label: data (1); format: V1, V2, V3, V4, V5 … (400)
-- wide.dta, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- wide.dta, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - wide.dta, TypeScript, @jbearak/dta-parser, write: not compared (Error: dta-parser failed (unreachable); files it had open are now closed)
 - wide.dta, TypeScript, @irbisadm/statfmt, write: not compared (RangeError: The value of "length" is out of range. It must be >= 0 && <= 2147483647. Received 4_800_256_555)
 
@@ -1614,32 +863,6 @@ Ours against each reader (write: each writer's file re-read by the open-source r
 | R | dtatools | write | 36 | 0 | 0 |
 | R | haven | write | 36 | 0 | 0 |
 | R | readstata13 | write | 0 | 36 | 0 |
-| Python | pandas | full | 36 | 0 | 0 |
-| Python | pandas | five | 36 | 0 | 0 |
-| Python | pandas | window | 36 | 0 | 0 |
-| Python | pandas | meta | 36 | 0 | 0 |
-| Python | pandas | checksum | 36 | 0 | 0 |
-| Python | pyreadstat | full | 36 | 0 | 0 |
-| Python | pyreadstat | five | 36 | 0 | 0 |
-| Python | pyreadstat | window | 36 | 0 | 0 |
-| Python | pyreadstat | meta | 18 | 18 | 0 |
-| Python | pyreadstat | checksum | 36 | 0 | 0 |
-| Python | dta_parser | write | 36 | 0 | 0 |
-| Python | pandas | write | 5 | 31 | 0 |
-| Python | pyreadstat | write | 0 | 6 | 30 |
-| Julia | ReadStatTables.jl | full | 36 | 0 | 0 |
-| Julia | ReadStatTables.jl | five | 36 | 0 | 0 |
-| Julia | ReadStatTables.jl | window | 36 | 0 | 0 |
-| Julia | ReadStatTables.jl | meta | 18 | 18 | 0 |
-| Julia | ReadStatTables.jl | checksum | 36 | 0 | 0 |
-| Julia | StatFiles.jl | full | 36 | 0 | 0 |
-| Julia | StatFiles.jl | five | 36 | 0 | 0 |
-| Julia | StatFiles.jl | window | 36 | 0 | 0 |
-| Julia | StatFiles.jl | meta | 0 | 0 | 36 |
-| Julia | StatFiles.jl | checksum | 36 | 0 | 0 |
-| Julia | DtaParser.jl | write | 36 | 0 | 0 |
-| Julia | ReadStatTables.jl | write | 36 | 0 | 0 |
-| Julia | StatFiles.jl | write | 0 | 0 | 36 |
 | TypeScript | @irbisadm/statfmt | full | 36 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | five | 36 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | window | 36 | 0 | 0 |
@@ -1649,253 +872,78 @@ Ours against each reader (write: each writer's file re-read by the open-source r
 | TypeScript | @irbisadm/statfmt | write | 36 | 0 | 0 |
 
 - 1976_PSU, R, readstata13, write: data label: data (1); format: RESPID, PSU, STRAT (3)
-- 1976_PSU, Python, pyreadstat, write: storage: RESPID, PSU, STRAT (3); format: RESPID, PSU, STRAT (3)
-- 1976_PSU, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1976_PSU, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2002_curr_ins, R, readstata13, write: data label: data (1); format: CASEID, CURR_INS, R_SEX (3)
-- 2002_curr_ins, Python, pyreadstat, write: storage: CASEID, CURR_INS, R_SEX (3); format: CASEID, CURR_INS, R_SEX (3)
-- 2002_curr_ins, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_curr_ins, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2002_hhpartypnew, R, readstata13, write: data label: data (1); format: CASEID, HHPARTYP2, R_SEX (3)
-- 2002_hhpartypnew, Python, pyreadstat, write: storage: CASEID, HHPARTYP2, R_SEX (3); format: CASEID, HHPARTYP2, R_SEX (3)
-- 2002_hhpartypnew, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_hhpartypnew, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2002_HHvars, R, readstata13, write: data label: data (1); format: CASEID, R_SEX, HHFAMTYP, HHPARTYP, NCHILDHH … (10); value labels: R_SEX, HHFAMTYP, HHPARTYP, NCHILDHH, HHKIDTYP … (9)
-- 2002_HHvars, Python, pandas, write: storage: CSPBBHH, CSPBSHH, CSPSBHH, CSPOKDHH (4); format: CSPBBHH, CSPBSHH, CSPSBHH, CSPOKDHH (4)
-- 2002_HHvars, Python, pyreadstat, write: storage: CASEID, R_SEX, HHFAMTYP, HHPARTYP, NCHILDHH … (10); format: CASEID, R_SEX, HHFAMTYP, HHPARTYP, NCHILDHH … (10)
-- 2002_HHvars, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_HHvars, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2011_2019_MaleWgt, R, readstata13, write: data label: data (1); format: caseid, WGT2011_2015, WGT2013_2017, WGT2015_2019, WGT2011_2017 … (7)
-- 2011_2019_MaleWgt, Python, pyreadstat, write: storage: caseid (1); format: caseid (1)
-- 2011_2019_MaleWgt, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2011_2019_MaleWgt, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_FemPreg, R, haven, meta: label: WANTSCAL (1)
 - 2022_2023_FemPreg, R, readstata13, write: data label: data (1); format: CaseID, PREGORDR, FTFMODE, BORNALIV, RECNT5YRPRG … (111)
-- 2022_2023_FemPreg, Python, pyreadstat, meta: label: WANTSCAL (1)
-- 2022_2023_FemPreg, Python, pandas, write: storage: BORNALIV, RECNT5YRPRG, BABYSEX, BIRTHWGT, PAYBIRTH1 … (65); format: BORNALIV, RECNT5YRPRG, BABYSEX, BIRTHWGT, PAYBIRTH1 … (65)
-- 2022_2023_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2022_2023_FemPreg, Julia, ReadStatTables.jl, meta: label: WANTSCAL (1)
-- 2022_2023_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2022_2023_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_FemPreg, TypeScript, @irbisadm/statfmt, meta: label: WANTSCAL (1)
 - 2011_2019_FemaleWgt, R, readstata13, write: data label: data (1); format: caseid, WGT2011_2015, WGT2013_2017, WGT2015_2019, WGT2011_2017 … (7)
-- 2011_2019_FemaleWgt, Python, pyreadstat, write: storage: caseid (1); format: caseid (1)
-- 2011_2019_FemaleWgt, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2011_2019_FemaleWgt, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2017_2019_FemPreg, R, readstata13, write: data label: data (1); format: caseid, pregordr, moscurrp, PREGEND1, PREGEND2 … (171); value labels: pregordr, moscurrp, PREGEND1, PREGEND2, hpageend … (164)
-- 2017_2019_FemPreg, Python, pandas, write: storage: moscurrp, PREGEND1, PREGEND2, hpageend, kidage … (88); format: moscurrp, PREGEND1, PREGEND2, hpageend, kidage … (88)
-- 2017_2019_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2017_2019_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2017_2019_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1976_Preg, R, readstata13, write: data label: data (1); format: ID, RECTYPE, BPREC1, BPREC2, BPREC3 … (80); value labels: BPREC4, BPREC5, BPREC6, B5_1, B6LB_1 … (53)
-- 1976_Preg, Python, pandas, write: storage: BPREC5, BPREC6, CHILDNO_1, B5_1, B6LB_1 … (55); format: BPREC5, BPREC6, CHILDNO_1, B5_1, B6LB_1 … (55)
-- 1976_Preg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1976_Preg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1976_Preg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2015_2017_FemPreg, R, readstata13, write: data label: data (1); format: CASEID, PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP … (245); value labels: PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK … (238)
-- 2015_2017_FemPreg, Python, pandas, write: storage: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (159); format: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (159)
-- 2015_2017_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2015_2017_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2015_2017_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1982_Preg, R, haven, meta: label: B27, B29_3 (2)
 - 1982_Preg, R, readstata13, write: data label: data (1); format: BPRec, BP19_20A, BP19_20B, BP19_20C, BP19_20D … (174); value labels: BPRec, BP19_20A, BP19_20B, BP19_20C, BP19_20D … (168)
-- 1982_Preg, Python, pyreadstat, meta: label: B27, B29_3 (2)
-- 1982_Preg, Python, pandas, write: storage: BP19_20B, BP19_20C, BP19_20D, BP19_20E, B19 … (165); format: BP19_20B, BP19_20C, BP19_20D, BP19_20E, B19 … (165)
-- 1982_Preg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1982_Preg, Julia, ReadStatTables.jl, meta: label: B27, B29_3 (2)
-- 1982_Preg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1982_Preg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1982_Preg, TypeScript, @irbisadm/statfmt, meta: label: B27, B29_3 (2)
 - 2013_2015_FemPreg, R, readstata13, write: data label: data (1); format: CASEID, PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP … (275); value labels: PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK … (267)
-- 2013_2015_FemPreg, Python, pandas, write: storage: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (187); format: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (187)
-- 2013_2015_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2013_2015_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2013_2015_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2011_2013_FemPreg, R, readstata13, write: data label: data (1); format: CASEID, PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP … (275); value labels: PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK … (221)
-- 2011_2013_FemPreg, Python, pandas, write: storage: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (186); format: HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK, PREGEND1 … (186)
-- 2011_2013_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2011_2013_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2011_2013_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2002_FemPreg, R, readstata13, write: data label: data (1); format: pregordr, howpreg_n, howpreg_p, moscurrp, nowprgdk … (241); value labels: pregordr, howpreg_p, moscurrp, nowprgdk, pregend1 … (185)
-- 2002_FemPreg, Python, pandas, write: storage: howpreg_n, howpreg_p, moscurrp, nowprgdk, pregend1 … (166); format: howpreg_n, howpreg_p, moscurrp, nowprgdk, pregend1 … (166)
-- 2002_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2002_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1973_FemResp, R, readstata13, write: data label: data (1); format: INT_ID, INT_TIME, INT_AMPM, MAR_STAT, CH_IDEAL … (449); value labels: INT_TIME, INT_AMPM, MAR_STAT, CH_IDEAL, CH_IDEALP … (383)
-- 1973_FemResp, Python, pandas, write: storage: CH_IDEALP, CH_B4M, CH_AGRD, CH_B4WANT, H_CH_WANT … (299); format: CH_IDEALP, CH_B4M, CH_AGRD, CH_B4WANT, H_CH_WANT … (299)
-- 1973_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1973_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1973_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1976_FemResp, R, haven, meta: label: NUMADD_373, NUMADD_473, NUMADD_374, NUMADD_474, NUMADD_375 … (12)
 - 1976_FemResp, R, readstata13, write: data label: data (1); format: RESPID, MARSTAT, A1, A3, A4 … (468); value labels: MARSTAT, A1, A3, A4, A5 … (442)
-- 1976_FemResp, Python, pyreadstat, meta: label: NUMADD_373, NUMADD_473, NUMADD_374, NUMADD_474, NUMADD_375 … (12)
-- 1976_FemResp, Python, pandas, write: storage: A3, A4, A5, A6, A8 … (256); format: A3, A4, A5, A6, A8 … (256)
-- 1976_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1976_FemResp, Julia, ReadStatTables.jl, meta: label: NUMADD_373, NUMADD_473, NUMADD_374, NUMADD_474, NUMADD_375 … (12)
-- 1976_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1976_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1976_FemResp, TypeScript, @irbisadm/statfmt, meta: label: NUMADD_373, NUMADD_473, NUMADD_374, NUMADD_474, NUMADD_375 … (12)
 - 1995_Preg, R, readstata13, write: data label: data (1); format: CASEID, PREGORDR, PREGXEN1, PREGXEN2, PREGXEN3 … (245); value labels: PREGORDR, PREGXEN1, PREGXEN2, PREGXEN3, NBRNLV … (235)
-- 1995_Preg, Python, pandas, write: storage: PREGXEN1, PREGXEN2, PREGXEN3, NBRNLV, MULTBRTH … (189); format: PREGXEN1, PREGXEN2, PREGXEN3, NBRNLV, MULTBRTH … (189)
-- 1995_Preg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1995_Preg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1995_Preg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_MaleResp, R, haven, meta: label: INTACT18, RHADSEX, ENGAGTHN_1, AGELIV_2, CMUNIONP_2 … (24)
 - 2022_2023_MaleResp, R, readstata13, write: data label: data (1); format: CaseID, RSCRAGE, RSCRNINF, RSCRHISP, RSCRRACE … (1156)
-- 2022_2023_MaleResp, Python, pyreadstat, meta: label: INTACT18, RHADSEX, ENGAGTHN_1, AGELIV_2, CMUNIONP_2 … (24)
-- 2022_2023_MaleResp, Python, pandas, write: storage: RSCRHISP, HISPGRP, LMARSTAT, WOMREL, EARNHS_Y … (1005); format: RSCRHISP, HISPGRP, LMARSTAT, WOMREL, EARNHS_Y … (1005)
-- 2022_2023_MaleResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2022_2023_MaleResp, Julia, ReadStatTables.jl, meta: label: INTACT18, RHADSEX, ENGAGTHN_1, AGELIV_2, CMUNIONP_2 … (24)
-- 2022_2023_MaleResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2022_2023_MaleResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_MaleResp, TypeScript, @irbisadm/statfmt, meta: label: INTACT18, RHADSEX, ENGAGTHN_1, AGELIV_2, CMUNIONP_2 … (24)
 - 1982_FemResp, R, haven, meta: label: E6, FPNEED (2)
 - 1982_FemResp, R, readstata13, write: data label: data (1); format: Qtype, cmbirth, A1, A2A, A2B … (741); value labels: Qtype, cmbirth, A1, A2A, A2B … (734)
-- 1982_FemResp, Python, pyreadstat, meta: label: E6, FPNEED (2)
-- 1982_FemResp, Python, pandas, write: storage: A3, A5A1, A5A2, A5A3, A5A4 … (505); format: A3, A5A1, A5A2, A5A3, A5A4 … (505)
-- 1982_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1982_FemResp, Julia, ReadStatTables.jl, meta: label: E6, FPNEED (2)
-- 1982_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1982_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1982_FemResp, TypeScript, @irbisadm/statfmt, meta: label: E6, FPNEED (2)
 - 2006_2010_FemPreg, R, readstata13, write: data label: data (1); format: CASEID, PREGORDR, HOWPREG_N, HOWPREG_P, NOWPRGDK … (281); value labels: PREGORDR, HOWPREG_N, HOWPREG_P, MOSCURRP, NOWPRGDK … (270)
-- 2006_2010_FemPreg, Python, pandas, write: storage: HOWPREG_N, HOWPREG_P, NOWPRGDK, PREGEND1, PREGEND2 … (193); format: HOWPREG_N, HOWPREG_P, NOWPRGDK, PREGEND1, PREGEND2 … (193)
-- 2006_2010_FemPreg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2006_2010_FemPreg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2006_2010_FemPreg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1988_Preg, R, haven, meta: label: NEWFLAG, B_28, B29A, B33B_2, B33B_3 (5)
 - 1988_Preg, R, readstata13, write: data label: data (1); format: SEQNUM, RECTYPE, PREG_NUM, PREGTYPE, NUMBIRTH … (284); value labels: RECTYPE, PREG_NUM, PREGTYPE, NUMBIRTH, OUTCOME1 … (178)
-- 1988_Preg, Python, pyreadstat, meta: label: NEWFLAG, B_28, B29A, B33B_2, B33B_3 (5)
-- 1988_Preg, Python, pandas, write: storage: NUMBIRTH, OUTCOME1, OUTCOME2, OUTCOME3, DELIVERY … (134); format: NUMBIRTH, OUTCOME1, OUTCOME2, OUTCOME3, DELIVERY … (134)
-- 1988_Preg, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1988_Preg, Julia, ReadStatTables.jl, meta: label: NEWFLAG, B_28, B29A, B33B_2, B33B_3 (5)
-- 1988_Preg, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1988_Preg, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1988_Preg, TypeScript, @irbisadm/statfmt, meta: label: NEWFLAG, B_28, B29A, B33B_2, B33B_3 (5)
 - 2002_Male, R, readstata13, write: data label: data (1); format: rscrinf, rdormres, rostscrn, rscreenhisp, rscreenrace … (1989); value labels: rscrinf, rdormres, rostscrn, rscreenhisp, rscreenrace … (1546)
-- 2002_Male, Python, pandas, write: storage: rscreenrace, fmarstat, hispgrp, wplocale, womrel … (1729); format: rscreenrace, fmarstat, hispgrp, wplocale, womrel … (1729)
-- 2002_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2002_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_FemResp, R, haven, meta: label: CMFPLAST, CMLSEX2, CMLSEX3, CMFSEX, ANYFSTER … (26)
 - 2022_2023_FemResp, R, readstata13, write: data label: data (1); format: CaseID, RSCRAGE, RSCRNINF, RSCRHISP, RSCRRACE … (1911)
-- 2022_2023_FemResp, Python, pyreadstat, meta: label: CMFPLAST, CMLSEX2, CMLSEX3, CMFSEX, ANYFSTER … (26)
-- 2022_2023_FemResp, Python, pandas, write: storage: HISPGRP, LMARSTAT, MANREL, EARNHS_Y, MYSCHOL_Y … (1740); format: HISPGRP, LMARSTAT, MANREL, EARNHS_Y, MYSCHOL_Y … (1740)
-- 2022_2023_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2022_2023_FemResp, Julia, ReadStatTables.jl, meta: label: CMFPLAST, CMLSEX2, CMLSEX3, CMFSEX, ANYFSTER … (26)
-- 2022_2023_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2022_2023_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2022_2023_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMFPLAST, CMLSEX2, CMLSEX3, CMFSEX, ANYFSTER … (26)
 - 2015_2017_Male, R, haven, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (56)
 - 2015_2017_Male, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (2942); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (2934)
-- 2015_2017_Male, Python, pyreadstat, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (56)
-- 2015_2017_Male, Python, pandas, write: storage: RSCRHISP, RSCRRACE, HISPGRP, PRIMLANG2, PRIMLANG3 … (2638); format: RSCRHISP, RSCRRACE, HISPGRP, PRIMLANG2, PRIMLANG3 … (2638)
-- 2015_2017_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2015_2017_Male, Julia, ReadStatTables.jl, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (56)
-- 2015_2017_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2015_2017_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2015_2017_Male, TypeScript, @irbisadm/statfmt, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (56)
 - 2013_2015_Male, R, haven, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (50)
 - 2013_2015_Male, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (2937); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (2924)
-- 2013_2015_Male, Python, pyreadstat, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (50)
-- 2013_2015_Male, Python, pandas, write: storage: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, WPLOCALE … (2613); format: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, WPLOCALE … (2613)
-- 2013_2015_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2013_2015_Male, Julia, ReadStatTables.jl, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (50)
-- 2013_2015_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2013_2015_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2013_2015_Male, TypeScript, @irbisadm/statfmt, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (50)
 - 1988_FemResp, R, haven, meta: label: A_6, D6AOP1, D6GOP1, D6AOP5, D6EOP5 … (23)
 - 1988_FemResp, R, readstata13, write: data label: data (1); format: caseid, RECTYPE, QTYPE, QDICMO, A_1 … (1437); value labels: RECTYPE, QTYPE, QDICMO, A_1, A_2 … (1311)
-- 1988_FemResp, Python, pyreadstat, meta: label: A_6, D6AOP1, D6GOP1, D6AOP5, D6EOP5 … (23)
-- 1988_FemResp, Python, pandas, write: storage: A_2, A_8, A10AA, A10AB, A10AC … (914); format: A_2, A_8, A10AA, A10AB, A10AC … (914)
-- 1988_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1988_FemResp, Julia, ReadStatTables.jl, meta: label: A_6, D6AOP1, D6GOP1, D6AOP5, D6EOP5 … (23)
-- 1988_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1988_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 1988_FemResp, TypeScript, @irbisadm/statfmt, meta: label: A_6, D6AOP1, D6GOP1, D6AOP5, D6EOP5 … (23)
 - 2011_2013_Male, R, haven, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (74)
 - 2011_2013_Male, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (3056); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (2372)
-- 2011_2013_Male, Python, pyreadstat, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (74)
-- 2011_2013_Male, Python, pandas, write: storage: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, WPLOCALE … (2731); format: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, WPLOCALE … (2731)
-- 2011_2013_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2011_2013_Male, Julia, ReadStatTables.jl, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (74)
-- 2011_2013_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2011_2013_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2011_2013_Male, TypeScript, @irbisadm/statfmt, meta: label: DKCWPLUSE, CWPCHSIG, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (74)
 - 2017_2019_Male, R, haven, meta: label: dkcwpluse, cwpchsig, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (97)
 - 2017_2019_Male, R, readstata13, write: data label: data (1); format: caseid, rscrninf, rscrage, rscrhisp, rscrrace … (3009); value labels: rscrninf, rscrage, rscrhisp, rscrrace, AGE_A … (3000)
-- 2017_2019_Male, Python, pyreadstat, meta: label: dkcwpluse, cwpchsig, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (97)
-- 2017_2019_Male, Python, pandas, write: storage: hispgrp, PRIMLANG2, PRIMLANG3, fmarstat, wplocale … (2699); format: hispgrp, PRIMLANG2, PRIMLANG3, fmarstat, wplocale … (2699)
-- 2017_2019_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2017_2019_Male, Julia, ReadStatTables.jl, meta: label: dkcwpluse, cwpchsig, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (97)
-- 2017_2019_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2017_2019_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2017_2019_Male, TypeScript, @irbisadm/statfmt, meta: label: dkcwpluse, cwpchsig, CWPCHSIG2, CWPCHSIG3, CWPCHSIG4 … (97)
 - 2017_2019_FemResp, R, haven, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2017_2019_FemResp, R, readstata13, write: data label: data (1); format: caseid, rscrninf, rscrage, rscrhisp, rscrrace … (2609); value labels: rscrninf, rscrage, rscrhisp, rscrrace, AGE_A … (2469)
-- 2017_2019_FemResp, Python, pyreadstat, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2017_2019_FemResp, Python, pandas, write: storage: hispgrp, PRIMLANG2, PRIMLANG3, fmarstat, hplocale … (1943); format: hispgrp, PRIMLANG2, PRIMLANG3, fmarstat, hplocale … (1943)
-- 2017_2019_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2017_2019_FemResp, Julia, ReadStatTables.jl, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2017_2019_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2017_2019_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2017_2019_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2015_2017_FemResp, R, haven, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2015_2017_FemResp, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (3021); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (2870)
-- 2015_2017_FemResp, Python, pyreadstat, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2015_2017_FemResp, Python, pandas, write: storage: RSCRHISP, RSCRRACE, HISPGRP, PRIMLANG2, PRIMLANG3 … (2248); format: RSCRHISP, RSCRRACE, HISPGRP, PRIMLANG2, PRIMLANG3 … (2248)
-- 2015_2017_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2015_2017_FemResp, Julia, ReadStatTables.jl, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2015_2017_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2015_2017_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2015_2017_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2011_2013_FemResp, R, haven, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (17)
 - 2011_2013_FemResp, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (3091); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (2645)
-- 2011_2013_FemResp, Python, pyreadstat, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (17)
-- 2011_2013_FemResp, Python, pandas, write: storage: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, HPLOCALE … (2367); format: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, HPLOCALE … (2367)
-- 2011_2013_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2011_2013_FemResp, Julia, ReadStatTables.jl, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (17)
-- 2011_2013_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2011_2013_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2011_2013_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (17)
 - 2013_2015_FemResp, R, haven, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2013_2015_FemResp, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (3204); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (3048)
-- 2013_2015_FemResp, Python, pyreadstat, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2013_2015_FemResp, Python, pandas, write: storage: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, HPLOCALE … (2426); format: FMARSTAT, HISPGRP, PRIMLANG2, PRIMLANG3, HPLOCALE … (2426)
-- 2013_2015_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2013_2015_FemResp, Julia, ReadStatTables.jl, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
-- 2013_2015_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2013_2015_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2013_2015_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (15)
 - 2002_FemResp, R, readstata13, write: data label: data (1); format: rscrinf, rdormres, rostscrn, rscreenhisp, rscreenrace … (3083); value labels: rscrinf, rdormres, rostscrn, rscreenhisp, rscreenrace … (2759)
-- 2002_FemResp, Python, pandas, write: storage: rscreenrace, fmarstat, hispgrp, hplocale, manrel … (2487); format: rscreenrace, fmarstat, hispgrp, hplocale, manrel … (2487)
-- 2002_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2002_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2002_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2006_2010_Male, R, haven, meta: label: DKCWPLUSE, CMUNIONP, BIOLGPAT10, CRALL518, CRMAL518 … (9)
 - 2006_2010_Male, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (2793); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, RANDVAR1 … (2767)
-- 2006_2010_Male, Python, pyreadstat, meta: label: DKCWPLUSE, CMUNIONP, BIOLGPAT10, CRALL518, CRMAL518 … (9)
-- 2006_2010_Male, Python, pandas, write: storage: FMARSTAT, HISPGRP, WPLOCALE, WOMREL, VACA … (2500); format: FMARSTAT, HISPGRP, WPLOCALE, WOMREL, VACA … (2500)
-- 2006_2010_Male, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2006_2010_Male, Julia, ReadStatTables.jl, meta: label: DKCWPLUSE, CMUNIONP, BIOLGPAT10, CRALL518, CRMAL518 … (9)
-- 2006_2010_Male, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2006_2010_Male, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2006_2010_Male, TypeScript, @irbisadm/statfmt, meta: label: DKCWPLUSE, CMUNIONP, BIOLGPAT10, CRALL518, CRMAL518 … (9)
 - 2006_2010_FemResp, R, haven, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (19)
 - 2006_2010_FemResp, R, readstata13, write: data label: data (1); format: CASEID, RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE … (3734); value labels: RSCRNINF, RSCRAGE, RSCRHISP, RSCRRACE, AGE_A … (3526)
-- 2006_2010_FemResp, Python, pyreadstat, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (19)
-- 2006_2010_FemResp, Python, pandas, write: storage: FMARSTAT, HISPGRP, DAUGHT918, HPLOCALE, MANREL … (3095); format: FMARSTAT, HISPGRP, DAUGHT918, HPLOCALE, MANREL … (3095)
-- 2006_2010_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 2006_2010_FemResp, Julia, ReadStatTables.jl, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (19)
-- 2006_2010_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 2006_2010_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 - 2006_2010_FemResp, TypeScript, @irbisadm/statfmt, meta: label: CMMONSX6, CMMONSX7, CMMONSX9, CMMONSX18, CMMONSX19 … (19)
 - 1995_FemResp, R, haven, meta: label: STRTL069, ENDLO069, MTHUS662 (3)
 - 1995_FemResp, R, readstata13, write: data label: data (1); format: CASEID, PHONEINT, SPANENG, AGE, BDAYCENM … (5754); value labels: PHONEINT, SPANENG, MARSTAT, GOSCHOL, HIGRADE … (5597); label: STRTL069, ENDLO069, MTHUS662 (3)
-- 1995_FemResp, Python, pandas, write: storage: COMPGRD, HAVEDIP, GOGED, DIPGED, GEDSTART … (5225); format: COMPGRD, HAVEDIP, GOGED, DIPGED, GEDSTART … (5225)
-- 1995_FemResp, Python, pyreadstat, write: not compared (AttributeError: 'int' object has no attribute 'encode')
-- 1995_FemResp, Julia, StatFiles.jl, meta: not compared (StatFiles.jl: StatFiles has no metadata read)
-- 1995_FemResp, Julia, StatFiles.jl, write: not compared (StatFiles has no writer)
 
 ### DHS
 
@@ -1916,32 +964,6 @@ Ours against each reader (write: each writer's file re-read by the open-source r
 | R | dtatools | write | 10 | 0 | 0 |
 | R | haven | write | 10 | 0 | 0 |
 | R | readstata13 | write | 0 | 10 | 0 |
-| Python | pandas | full | 10 | 0 | 0 |
-| Python | pandas | five | 10 | 0 | 0 |
-| Python | pandas | window | 10 | 0 | 0 |
-| Python | pandas | meta | 8 | 2 | 0 |
-| Python | pandas | checksum | 10 | 0 | 0 |
-| Python | pyreadstat | full | 10 | 0 | 0 |
-| Python | pyreadstat | five | 10 | 0 | 0 |
-| Python | pyreadstat | window | 10 | 0 | 0 |
-| Python | pyreadstat | meta | 3 | 7 | 0 |
-| Python | pyreadstat | checksum | 10 | 0 | 0 |
-| Python | dta_parser | write | 8 | 2 | 0 |
-| Python | pandas | write | 0 | 10 | 0 |
-| Python | pyreadstat | write | 0 | 0 | 10 |
-| Julia | ReadStatTables.jl | full | 10 | 0 | 0 |
-| Julia | ReadStatTables.jl | five | 10 | 0 | 0 |
-| Julia | ReadStatTables.jl | window | 10 | 0 | 0 |
-| Julia | ReadStatTables.jl | meta | 3 | 7 | 0 |
-| Julia | ReadStatTables.jl | checksum | 10 | 0 | 0 |
-| Julia | StatFiles.jl | full | 10 | 0 | 0 |
-| Julia | StatFiles.jl | five | 10 | 0 | 0 |
-| Julia | StatFiles.jl | window | 10 | 0 | 0 |
-| Julia | StatFiles.jl | meta | 0 | 0 | 10 |
-| Julia | StatFiles.jl | checksum | 10 | 0 | 0 |
-| Julia | DtaParser.jl | write | 10 | 0 | 0 |
-| Julia | ReadStatTables.jl | write | 6 | 4 | 0 |
-| Julia | StatFiles.jl | write | 0 | 0 | 10 |
 | TypeScript | @irbisadm/statfmt | full | 10 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | five | 10 | 0 | 0 |
 | TypeScript | @irbisadm/statfmt | window | 10 | 0 | 0 |
@@ -1954,87 +976,25 @@ DHS disagreements by column position and kind only (ADR 0013).
 
 - Dominican Republic 2013 bh, R, haven, meta: value labels: column 464, column 469 (2); label: column 919 (1)
 - Dominican Republic 2013 bh, R, readstata13, write: data label: data (1); format: column 2, column 4, column 5, column 6, column 7 … (1076); value labels: column 16, column 17, column 18, column 21, column 22 … (984)
-- Dominican Republic 2013 bh, Python, pandas, meta: label: column 227 (1)
-- Dominican Republic 2013 bh, Python, pyreadstat, meta: value labels: column 464, column 469 (2); label: column 919 (1)
-- Dominican Republic 2013 bh, Python, dta_parser, write: label: column 227 (1)
-- Dominican Republic 2013 bh, Python, pandas, write: storage: column 20, column 21, column 22, column 23, column 30 … (956); format: column 20, column 21, column 22, column 23, column 30 … (956)
-- Dominican Republic 2013 bh, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Dominican Republic 2013 bh, Julia, ReadStatTables.jl, meta: value labels: column 464, column 469 (2); label: column 919 (1)
-- Dominican Republic 2013 bh, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Dominican Republic 2013 bh, Julia, ReadStatTables.jl, write: label: column 227, column 895 (2); value labels: column 464, column 469, column 853, column 862, column 1022 (5)
-- Dominican Republic 2013 bh, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Dominican Republic 2013 bh, TypeScript, @irbisadm/statfmt, meta: value labels: column 464, column 469 (2); label: column 919 (1)
 - Turkey 2013 bh, R, readstata13, write: data label: data (1); format: column 2, column 4, column 5, column 6, column 7 … (1171); value labels: column 16, column 17, column 18, column 21, column 22 … (1052)
-- Turkey 2013 bh, Python, pandas, write: storage: column 30, column 35, column 36, column 37, column 38 … (1033); format: column 30, column 35, column 36, column 37, column 38 … (1033)
-- Turkey 2013 bh, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Turkey 2013 bh, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Turkey 2013 bh, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Senegal 2019 bh, R, haven, meta: label: column 1144 (1)
 - Senegal 2019 bh, R, readstata13, write: data label: data (1); format: column 2, column 4, column 5, column 6, column 7 … (1189); value labels: column 17, column 18, column 19, column 22, column 23 … (1092)
-- Senegal 2019 bh, Python, pyreadstat, meta: label: column 1144 (1)
-- Senegal 2019 bh, Python, pandas, write: storage: column 31, column 34, column 36, column 37, column 38 … (987); format: column 31, column 34, column 36, column 37, column 38 … (987)
-- Senegal 2019 bh, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Senegal 2019 bh, Julia, ReadStatTables.jl, meta: label: column 1144 (1)
-- Senegal 2019 bh, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Senegal 2019 bh, Julia, ReadStatTables.jl, write: value labels: column 27, column 28, column 68, column 166, column 181 … (9); label: column 651, column 1149, column 1182 (3)
-- Senegal 2019 bh, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Senegal 2019 bh, TypeScript, @irbisadm/statfmt, meta: label: column 1144 (1)
 - Tajikistan 2017 bh, R, haven, meta: label: column 1007 (1)
 - Tajikistan 2017 bh, R, readstata13, write: data label: data (1); format: column 2, column 4, column 5, column 6, column 7 … (1144); value labels: column 17, column 18, column 19, column 22, column 23 … (1049)
-- Tajikistan 2017 bh, Python, pyreadstat, meta: label: column 1007 (1)
-- Tajikistan 2017 bh, Python, pandas, write: storage: column 31, column 34, column 36, column 37, column 38 … (877); format: column 31, column 34, column 36, column 37, column 38 … (877)
-- Tajikistan 2017 bh, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Tajikistan 2017 bh, Julia, ReadStatTables.jl, meta: label: column 1007 (1)
-- Tajikistan 2017 bh, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Tajikistan 2017 bh, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Tajikistan 2017 bh, TypeScript, @irbisadm/statfmt, meta: label: column 1007 (1)
 - Myanmar 2016 bh, R, readstata13, write: data label: data (1); format: column 2, column 4, column 5, column 6, column 7 … (1182); value labels: column 17, column 18, column 19, column 22, column 23 … (1088)
-- Myanmar 2016 bh, Python, pandas, write: storage: column 31, column 33, column 37, column 38, column 42 … (957); format: column 31, column 33, column 37, column 38, column 42 … (957)
-- Myanmar 2016 bh, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Myanmar 2016 bh, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Myanmar 2016 bh, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Dominican Republic 2013 wm, R, haven, meta: value labels: column 2958, column 2963 (2); label: column 3445 (1)
 - Dominican Republic 2013 wm, R, readstata13, write: data label: data (1); format: column 3, column 4, column 5, column 6, column 7 … (3852); value labels: column 15, column 16, column 17, column 20, column 21 … (3517)
-- Dominican Republic 2013 wm, Python, pandas, meta: label: column 669 (1)
-- Dominican Republic 2013 wm, Python, pyreadstat, meta: value labels: column 2958, column 2963 (2); label: column 3445 (1)
-- Dominican Republic 2013 wm, Python, dta_parser, write: label: column 669 (1)
-- Dominican Republic 2013 wm, Python, pandas, write: storage: column 19, column 20, column 21, column 22, column 29 … (3714); format: column 19, column 20, column 21, column 22, column 29 … (3714)
-- Dominican Republic 2013 wm, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Dominican Republic 2013 wm, Julia, ReadStatTables.jl, meta: value labels: column 2958, column 2963 (2); label: column 3445 (1)
-- Dominican Republic 2013 wm, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Dominican Republic 2013 wm, Julia, ReadStatTables.jl, write: label: column 669, column 3421 (2); value labels: column 2958, column 2963, column 3379, column 3388, column 3548 (5)
-- Dominican Republic 2013 wm, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Dominican Republic 2013 wm, TypeScript, @irbisadm/statfmt, meta: value labels: column 2958, column 2963 (2); label: column 3445 (1)
 - Senegal 2019 wm, R, haven, meta: label: column 4715 (1)
 - Senegal 2019 wm, R, readstata13, write: data label: data (1); format: column 3, column 4, column 5, column 6, column 7 … (4986); value labels: column 16, column 17, column 18, column 21, column 22 … (4556)
-- Senegal 2019 wm, Python, pyreadstat, meta: label: column 4715 (1)
-- Senegal 2019 wm, Python, pandas, write: storage: column 30, column 33, column 35, column 36, column 37 … (4745); format: column 30, column 33, column 35, column 36, column 37 … (4745)
-- Senegal 2019 wm, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Senegal 2019 wm, Julia, ReadStatTables.jl, meta: label: column 4715 (1)
-- Senegal 2019 wm, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Senegal 2019 wm, Julia, ReadStatTables.jl, write: value labels: column 26, column 27, column 67, column 688, column 703 … (17); label: column 1425, column 1426, column 1427, column 1428, column 1429 … (20)
-- Senegal 2019 wm, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Senegal 2019 wm, TypeScript, @irbisadm/statfmt, meta: label: column 4715 (1)
 - Turkey 2013 wm, R, readstata13, write: data label: data (1); format: column 3, column 4, column 5, column 6, column 7 … (4657); value labels: column 15, column 16, column 17, column 20, column 21 … (4147)
-- Turkey 2013 wm, Python, pandas, write: storage: column 29, column 34, column 35, column 36, column 37 … (4506); format: column 29, column 34, column 35, column 36, column 37 … (4506)
-- Turkey 2013 wm, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Turkey 2013 wm, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Turkey 2013 wm, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Tajikistan 2017 wm, R, haven, meta: label: column 4148 (1)
 - Tajikistan 2017 wm, R, readstata13, write: data label: data (1); format: column 3, column 4, column 5, column 6, column 7 … (5149); value labels: column 16, column 17, column 18, column 21, column 22 … (4586)
-- Tajikistan 2017 wm, Python, pyreadstat, meta: label: column 4148 (1)
-- Tajikistan 2017 wm, Python, pandas, write: storage: column 30, column 33, column 35, column 36, column 37 … (4835); format: column 30, column 33, column 35, column 36, column 37 … (4835)
-- Tajikistan 2017 wm, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Tajikistan 2017 wm, Julia, ReadStatTables.jl, meta: label: column 4148 (1)
-- Tajikistan 2017 wm, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Tajikistan 2017 wm, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Tajikistan 2017 wm, TypeScript, @irbisadm/statfmt, meta: label: column 4148 (1)
 - Myanmar 2016 wm, R, haven, meta: label: column 3923 (1)
 - Myanmar 2016 wm, R, readstata13, write: data label: data (1); format: column 3, column 4, column 5, column 6, column 7 … (4982); value labels: column 16, column 17, column 18, column 21, column 22 … (4496)
-- Myanmar 2016 wm, Python, pyreadstat, meta: label: column 3923 (1)
-- Myanmar 2016 wm, Python, pandas, write: storage: column 30, column 32, column 36, column 37, column 41 … (4740); format: column 30, column 32, column 36, column 37, column 41 … (4740)
-- Myanmar 2016 wm, Python, pyreadstat, write: not compared (failed with AttributeError (message withheld: DHS file))
-- Myanmar 2016 wm, Julia, ReadStatTables.jl, meta: label: column 3923 (1)
-- Myanmar 2016 wm, Julia, StatFiles.jl, meta: not compared (not supported by this reader)
-- Myanmar 2016 wm, Julia, StatFiles.jl, write: not compared (not supported by this reader)
 - Myanmar 2016 wm, TypeScript, @irbisadm/statfmt, meta: label: column 3923 (1)

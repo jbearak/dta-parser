@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from expected import dump as pandas_dump  # noqa: E402
 from make_inputs import spec  # noqa: E402
 
-WRITERS = ["dtaparser", "dtatools", "python", "julia", "npm"]
+WRITERS = ["dtaparser", "dtatools", "npm"]
 READERS = ["haven", "readstata13", "pandas", "pyreadstat"]
 R_WRITERS = {"dtaparser", "dtatools"}
 

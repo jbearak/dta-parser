@@ -61,7 +61,7 @@ test("recodes: tagged gives asciiSetupReader's codes with each recode a letter, 
 });
 const MISSING_NAME = (code) => ({ missing: dk.missingValue(code).missing });
 
-// A small setup in CDC's style, as Python's test has it.
+// A small setup in CDC's style.
 const SETUP = [
   "/* A setup in CDC's style */",
   'libname "data-file-path";',

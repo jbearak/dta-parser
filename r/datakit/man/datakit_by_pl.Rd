@@ -23,8 +23,7 @@ polars makes every NaN equal to every other, so \verb{$group_by()} and
 (see Joins below). \code{datakit_by_pl()} returns,
 for each column you give it, the column and its letters as a column
 of its own (\verb{<name><.suffix>}, from \code{\link[=na_tag_pl]{na_tag_pl()}}), so that grouping
-by both keeps the letters apart, as \code{\link[=datakit_by]{datakit_by()}} does for dplyr and
-Python datakit's \code{dk.by()} for polars. polars groups nulls together,
+by both keeps the letters apart, as \code{\link[=datakit_by]{datakit_by()}} does for dplyr. polars groups nulls together,
 so \code{.} is a group of its own.
 }
 \details{

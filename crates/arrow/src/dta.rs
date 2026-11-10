@@ -1,13 +1,13 @@
-//! `.dta` files through Arrow memory, for datakit's `read_dta`,
-//! `save_dta` and `read_fixed_width` (plan 0019, "`.dta` in polars"):
-//! `dta_read_arrow` and `dta_write_arrow`, without pandas.
+//! `.dta` files through Arrow memory, for datakit's `read_dta_pl`,
+//! `save_dta` and `read_fixed_width_pl` (plan 0019, "`.dta` in polars"):
+//! [`dta_read`] and [`dta_write`].
 //!
-//! Reading follows `dta_parser.read_dta`'s rules where they apply to
-//! polars: byte, int, long, float and double as Int8, Int16, Int32,
+//! Reading gives each storage type the polars type that holds it:
+//! byte, int, long, float and double as Int8, Int16, Int32,
 //! Float32 and Float64 with nulls; `%td` (and `%d`) as Date and `%tc` as
 //! Datetime("ms"); strN and text strLs as String, binary strLs as Binary,
 //! and a strL column mixing the two as Binary (text as its UTF-8 bytes).
-//! Writing makes release 118 as `write_dta` does, from polars' export.
+//! Writing makes release 118 from polars' export.
 
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
@@ -24,7 +24,6 @@ use super::create_beside;
 use super::error::{fail, Error, Result};
 use super::ffi::{self, key_at, text_at, valid, Array, Field, Imported, Plan, Table};
 use super::meta::{ColumnMeta, ReadMeta, ReadOutput, WriteMeta};
-use super::parquet::Selector;
 use super::read::{label_set, letters_table, Sets, Stamps};
 use super::write::{columns, height, letter_codes, value_label_sets, Chunk, Column};
 
@@ -32,8 +31,8 @@ use super::write::{columns, height, letter_codes, value_label_sets, Chunk, Colum
 const EPOCH_DAYS: i64 = 3653;
 const DAY_MS: i64 = 86_400_000;
 
-/// The characteristic R's `save_dta` and pandas' `write_dta` put on a
-/// column written from a factor or category (plan 0020).
+/// The characteristic R's `save_dta` puts on a column written from a
+/// factor (plan 0020).
 pub const FACTOR_MARK: &str = "dtaparser_factor";
 /// The characteristic `save_dta` puts on a column written from an Enum
 /// or Categorical (plan 0023): "ordered <set>" or "unordered <set>".
@@ -245,7 +244,7 @@ fn non_empty(s: &str) -> Option<Cow<'_, str>> {
 /// [`super::read::parquet_read`] gives a read. For datakit only.
 pub fn dta_read<T>(
     path: &str,
-    columns: Option<&[Selector]>,
+    columns: Option<&[String]>,
     skip: u64,
     n_max: Option<u64>,
     encoding: Option<&str>,
@@ -260,17 +259,10 @@ pub fn dta_read<T>(
         Some(cs) => {
             let mut out = Vec::with_capacity(cs.len());
             for c in cs {
-                let k = match c {
-                    Selector::Name(s) => vars
-                        .iter()
-                        .position(|v| v.name == *s)
-                        .ok_or_else(|| Error::Key(format!("column \"{s}\" is not in the file")))?,
-                    Selector::Position(i) => usize::try_from(*i)
-                        .ok()
-                        .filter(|&i| i < vars.len())
-                        .ok_or_else(|| Error::Index(format!("there is no column {i}; the file has {}", vars.len())))?,
-                    Selector::Other => return Err(Error::Type("columns are names or 0-based positions".into())),
-                };
+                let k = vars
+                    .iter()
+                    .position(|v| v.name == *c)
+                    .ok_or_else(|| Error::Key(format!("column \"{c}\" is not in the file")))?;
                 if !out.contains(&k) {
                     out.push(k);
                 }
@@ -392,7 +384,7 @@ pub fn dta_read<T>(
     let names: Vec<String> = targets.iter().map(|t| t.name.clone()).collect();
     let letters_table = letters_table(&names, &letters, rows)?;
 
-    // What Meta is made from.
+    // What datakit's `datakit_meta` is made from.
     let none = |s: &str| (!s.is_empty()).then(|| s.to_string());
     let columns = selected
         .iter()
@@ -445,7 +437,7 @@ pub fn dta_read<T>(
 
 /// Whether Stata can hold `name`: a letter or _, then up to 31 letters,
 /// digits or _. A word Stata reserves is allowed: datakit's `save_dta`
-/// warns about it (dta_parser's `reserved_warning`) and writes it.
+/// warns about it (its `reserved_warning`) and writes it.
 fn stata_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else { return false };
@@ -560,7 +552,7 @@ pub fn dta_write(
             set = e.value_labels.clone().unwrap_or_default();
         }
         let f = c.field.format.as_str();
-        // A text format (%9s) is for text columns only, as write_dta keeps it.
+        // A text format (%9s) is kept for text columns only.
         if format.ends_with('s') && !matches!(f, "u" | "U" | "vu" | "z" | "Z" | "vz") {
             format.clear();
         }
@@ -816,8 +808,8 @@ pub fn dta_write(
     let stamp = timestamp.or_else(|| meta.timestamp.clone()).unwrap_or_default();
     let data = Dataset { nobs, label, timestamp: stamp, variables, value_labels: sets, characteristics, sort_order };
     let (tmp, file) = create_beside(path).map_err(|e| fail(format!("{path}: {e}")))?;
-    // The binding calls this with the GIL held, as write_dta: text is read
-    // through polars' buffers, which the GIL keeps from being freed under us.
+    // Text is read through polars' buffers: the binding keeps the imported
+    // stream, which owns them, alive until this returns.
     let result = dta::write(&data, std::io::BufWriter::with_capacity(1 << 20, file));
     if let Err(e) = result {
         let _ = std::fs::remove_file(&tmp);

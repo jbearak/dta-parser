@@ -48,8 +48,8 @@
 #'   Stata, say) it is read as it would be unmarked, with one warning
 #'   naming such columns.
 #'
-#'   A column that Python's or TypeScript's datakit wrote from a
-#'   categorical carries another characteristic, `dtaparser_categorical`,
+#'   A column that datakit wrote from a categorical (R's from a polars
+#'   frame, or TypeScript's) carries another characteristic, `dtaparser_categorical`,
 #'   and is read as such a factor too, ordered if it was, with every
 #'   level of its value labels, when the rows read hold no `.a` to `.z`.
 #'   A categorical may hold them, and a factor cannot, so when the rows

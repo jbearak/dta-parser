@@ -10,7 +10,7 @@ empty string `""` plays that part.
 
 dta-parser calls each one a *missing code*: 0 for a value that is not
 missing, 1 for `.`, 2 for `.a`, ..., 27 for `.z`. The codes are the same
-in every language.
+in R and TypeScript.
 
 ## Order
 
@@ -25,12 +25,9 @@ or grouping on the keys follows Stata.
 | language | key of one value | keys of a column |
 |---|---|---|
 | R | `dta_num` comparisons and `order()` already use it | |
-| Python | `dta_parser.dta_key(v)` | `dta_parser.dta_keys(col)` |
-| Julia | `dta_key(x)`, `dta_key(".a")` | `dta_key(col)` |
 | TypeScript | `dtaKey(cell)` | `dtaKeys(column)` |
 
-The keys are equal across languages, so a key computed in Python
-matches one computed in Julia.
+The keys are the same in both languages, so sorted orders match.
 
 ## How each language holds them
 
@@ -47,38 +44,19 @@ the values themselves, so `c(1, NA, .d)` is a valid column. Comparisons
 on a `dta_num` follow Stata (missing values are larger than every
 number, and never give `NA`).
 
-**Python.** A column with `.` as its only missing value is a float
-column with `NaN`, as pandas expects. A column with any of `.a` to `.z`
-is a `DtaArray`, a pandas extension array that stores a code per row.
-`.` reads as `NaN`; the letters read as `dta_parser.missing.a` to
-`.z`, one object per letter. `isna()` is true for all 27. The codes
-follow their rows through boolean and positional selection, `loc` and
-`iloc`, `sort_values`, `concat` and `merge` of `DtaArray` columns,
-`reindex` (new rows are `.`), `copy`, and `groupby` on the column (where
-`.`, `.a`, ... are separate groups, as in Stata). Arithmetic and other
-operations may turn the letters into `NaN`.
-
-**Julia.** A column with any missing value is a `DtaColumn{T}`, an
-`AbstractVector{Union{Missing,T}}` that stores a code per row. Every
-missing value reads as `missing`; `stata_code(col, i)` gives the code,
-and `set_stata_code!(col, i, code)` sets it. Bulk operations keep the
-codes: slicing, `view`, `copy`, `similar`, `sort`, `permute!`, `vcat`
-and `append!` of `DtaColumn`s, and DataFrames' row selection, `sort`,
-`subset`, `filter` and `copy`. Assigning one element (`b[i] = a[i]`)
-copies `missing`, which becomes `.`. DataFrames' `combine` and `vcat`
-of DataFrames build plain vectors: `.` stays, the letters become `.`.
-
-**TypeScript.** `readColumns` gives a `NumberColumn` with `values`
-(`Float64Array`, `NaN` where missing) and `missing` (`Uint8Array` of
-codes). `readRows` gives each missing cell as a frozen object such as
-`MISSING[".a"]`, so `cell === MISSING[".a"]` works.
+**TypeScript.** `readColumns` gives a `NumberColumn` whose `values` (a
+`Float64Array`) hold the missing values as R does: `.` is `NA`, and
+`.a` to `.z` are NaNs tagged with their letter, in the same bits.
+`missingCode(x)` numbers them (0 for a number, 1 for `.`, 2 to 27 for
+`.a` to `.z`) and `naTag(x)` gives the letter. `readRows` gives each
+missing cell as a frozen object such as `MISSING[".a"]`, so
+`cell === MISSING[".a"]` works.
 
 ## Writing them back
 
-Every language writes the codes it holds. Read a file, filter or sort
+Both languages write the codes they hold. Read a file, filter or sort
 it with the operations above, and write it: `.a` to `.z` are still
-there. Where a language has lost a letter (Python arithmetic, Julia
-element-wise copying), the value is written as `.`.
+there.
 
 Before release 113, files have no extended missing values; each type
 has one missing value, read as `.`.

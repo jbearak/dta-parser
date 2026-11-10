@@ -1,11 +1,11 @@
-//! A `.dta` read gives the `ReadMeta` that dta_parser's binding turns
-//! into the dict datakit's `Meta` is made from (plan 0025, stage 2b).
+//! A `.dta` read gives the `ReadMeta` that a binding turns into what
+//! datakit's `datakit_meta` is made from (plan 0025, stage 2b).
 //!
 //! The fixture, compat/fixtures/haven_118.dta, was written by haven
 //! (compat/make_fixtures.R). Its labels, formats and value labels are
 //! those haven reads back (compat/expected/haven_118.haven.json); the
 //! storage types, eligibility, letters and timestamp are what
-//! `dta_read_arrow` gives Python for it.
+//! `dta_read` gives for it.
 
 use std::borrow::Cow;
 
@@ -93,7 +93,7 @@ fn letters_of(out: &ReadOutput<'_>, k: usize) -> Vec<Option<u8>> {
 }
 
 #[test]
-fn a_dta_read_gives_the_meta_python_holds() {
+fn a_dta_read_gives_the_fixtures_meta() {
     dta_read(FIXTURE, None, 0, None, None, Stamps::Error, &mut |out| {
         assert_eq!(out.meta, expected());
         let names: Vec<&str> = out.frame.fields.iter().map(|f| f.name.as_str()).collect();

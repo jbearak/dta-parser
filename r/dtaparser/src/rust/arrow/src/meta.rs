@@ -1,15 +1,16 @@
 //! What a read gives beside its table, and what a write takes beside its
 //! stream, as plain Rust (plan 0025, stage 2a). The binding turns a
-//! [`ReadMeta`] into the dict datakit's `Meta` is made from, and makes a
-//! [`WriteMeta`] of the dict datakit's `prepare` gives.
+//! [`ReadMeta`] into the list datakit's `datakit_meta` is made from, and
+//! makes a [`WriteMeta`] of the list datakit's `prepare_pl` gives.
 //!
 //! A read's [`ReadMeta`] borrows its text from the reader where it can
 //! (`Cow`), so a read hands it to a callback while the reader is open
 //! rather than copying every name, label and format out.
 //!
-//! Lists that the binding makes dicts of keep dict assignment's rule: an
-//! entry whose key is already there replaces that entry's value and keeps
-//! its place. A reader of these structs in another language follows it.
+//! Lists of keyed entries (a set's codes, a variable's characteristics)
+//! follow the rule of assignment into a keyed map: an entry whose key is
+//! already there replaces that entry's value and keeps its place. A
+//! binding that reads these structs applies it.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -45,8 +46,8 @@ impl LabelKey {
         }
     }
 
-    /// A form that is equal for two keys exactly when Python's `==` says
-    /// they are (an int and a float of one whole value are).
+    /// A form that is equal for two keys exactly when they are the same
+    /// number (an int and a float of one whole value are).
     pub fn canonical(&self) -> CanonicalKey {
         match self {
             LabelKey::Int(i) => CanonicalKey::Whole(i128::from(*i)),
@@ -94,19 +95,20 @@ pub struct ColumnMeta<'a> {
     pub eligible: bool,
 }
 
-/// What a read gives beside its tables: what datakit's `Meta` is made
-/// from, and the read's warnings.
+/// What a read gives beside its tables: what datakit's `datakit_meta` is
+/// made from, and the read's warnings.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ReadMeta<'a> {
     pub rows: usize,
     /// In the frame's order (the names are the frame's).
     pub columns: Vec<ColumnMeta<'a>>,
-    /// `(set, labels)`, each set once; codes by dict assignment's rule.
+    /// `(set, labels)`, each set once; codes by the module's rule for
+    /// keyed entries.
     pub value_labels: Vec<(Text<'a>, LabelSet<'a>)>,
     pub label: Option<String>,
     pub notes: Vec<String>,
-    /// `(variable, name, text)`, by dict assignment's rule on each
-    /// variable's names.
+    /// `(variable, name, text)`, by the module's rule for keyed entries
+    /// on each variable's names.
     pub characteristics: Vec<(String, String, String)>,
     pub sort: Vec<String>,
     pub timestamp: Option<String>,
@@ -120,7 +122,8 @@ pub struct ReadMeta<'a> {
     pub release: Option<u16>,
 }
 
-/// Whether `labels` holds two codes Python's `==` calls equal.
+/// Whether `labels` holds two codes that are the same number
+/// ([`LabelKey::canonical`]).
 pub fn repeats_a_code(labels: &LabelSet<'_>) -> bool {
     // Most sets are short: comparing pairs costs less than a hash set.
     if labels.len() <= 16 {
@@ -194,7 +197,7 @@ pub struct ColumnEntry {
     pub ordered: Option<bool>,
 }
 
-/// What a write takes beside its stream: datakit's `meta` dict, of which
+/// What a write takes beside its stream: datakit's `meta` list, of which
 /// the binding keeps what the writer reads (`columns` and `missing` only
 /// for the frame's columns).
 #[derive(Default)]

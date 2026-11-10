@@ -1,7 +1,12 @@
-"""Write compat/readback/strls.dta and binary.dta with dta_parser's
-writer: inputs that every writer saves again (compat/readback/write.*),
-and that every reader must read as `spec(stem)` gives them
-(compat/readback/check.py).
+"""What compat/readback/strls.dta and binary.dta hold: inputs that every
+writer saves again (compat/readback/write.*), and that every reader
+must read as `spec(stem)` gives them (compat/readback/check.py).
+
+The two files are committed. They were written on 2026-11-08, from the
+definitions below, by the Python writer this repository had then, which
+has since been removed. Nothing here writes them now: running this
+script exits with a message saying so. A replacement writer must be
+able to write a binary strL that is not UTF-8.
 
 strls.dta has several strL variables over many rows, texts repeated
 within a variable and across variables (one entry per distinct text
@@ -10,9 +15,9 @@ long text and a missing code, and an 80-character variable label.
 binary.dta adds a binary strL beside a text one. It is a file of its
 own because haven and pyreadstat read every strL as UTF-8 text and so
 cannot open a file holding a binary strL that is not UTF-8.
-
-Run from the repository root: python3 compat/readback/make_inputs.py
 """
+
+import sys
 
 import numpy as np
 
@@ -92,38 +97,15 @@ def spec(stem):
 
 
 def main():
-    import pandas as pd
-
-    from dta_parser import DtaArray, missing, write_dta
-
-    def numbers(pairs, storage):
-        return DtaArray(np.array([v for v, _ in pairs]), np.array([c for _, c in pairs], dtype=np.uint8), storage=storage)
-
-    all_columns = {
-        "id": np.arange(1, N + 1, dtype=np.int32),
-        "note": pd.Series(NOTE, dtype=object),
-        "remark": pd.Series(REMARK, dtype=object),
-        "essay": pd.Series(ESSAY, dtype=object),
-        "blob": pd.Series(BLOB, dtype=object),
-        "score": numbers(SCORE, "double"),
-        "answer": numbers(ANSWER, "byte"),
-    }
-    for stem, variables in VARIABLES.items():
-        df = pd.DataFrame({n: all_columns[n] for n, _ in variables})
-        columns = {n: {"label": l} for n, l in variables}
-        columns["id"]["storage"] = "long"
-        for n in ("note", "remark", "blob"):
-            if n in columns:
-                columns[n]["storage"] = "strL"
-        if "answer" in columns:
-            columns["answer"]["value_labels"] = "answer"
-        df.attrs["dta"] = {
-            "label": DATA_LABEL,
-            "columns": columns,
-            "value_labels": {"answer": {0: "No", 1: "Yes", 9: LONG_LABEL, missing.d: "Don't know"}}
-            if "answer" in columns else {},
-        }
-        write_dta(df, f"compat/readback/{stem}.dta", timestamp="08 Nov 2026 12:00")
+    sys.exit(
+        "compat/readback/strls.dta and binary.dta are committed files, written on\n"
+        "2026-11-08 by the Python writer this repository had then. That writer is\n"
+        "gone, so this script no longer writes them. To write them again from the\n"
+        "definitions here, a writer must be able to write release 118 with strL\n"
+        "variables, `.` and `.a` to `.z`, value labels on a missing code, and, for\n"
+        "binary.dta, a binary strL that is not UTF-8 (BLOB). spec() must then still\n"
+        "describe what was written."
+    )
 
 
 if __name__ == "__main__":

@@ -163,9 +163,8 @@ test("readParquet, saveParquet, readDta and saveDta round trip", () => {
 
 test("saveParquet of what readParquet read gives the same dataset, for every fixture the writer can write", () => {
   const dir = mkdtempSync(join(tmpdir(), "datakit-pq-"));
-  // What the writer cannot write back, as Python's round-trip test lists
-  // it: TIME and DECIMAL, and unsigned 64-bit values past 2^63 - 1 (the
-  // writer's INT64 is signed).
+  // What the writer cannot write back: TIME and DECIMAL, and unsigned
+  // 64-bit values past 2^63 - 1 (the writer's INT64 is signed).
   const cannot = (v) => v.type === "time" || v.type === "decimal" || v.type === "uint64";
   try {
     for (const name of pqFixtures) {

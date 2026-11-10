@@ -25,19 +25,17 @@ strL. See [strLs](strls.md).
 
 ## What each language reads them as
 
-| storage | R | Python (no missing) | Python (only `.` missing) | Python (any `.a` to `.z`) | Julia (no missing) | Julia (any missing) | TypeScript |
-|---|---|---|---|---|---|---|---|
-| byte | `dta_num` (double) | `int8` | `float32` | `DtaArray` | `Vector{Int8}` | `DtaColumn{Int8}` | `Float64Array` |
-| int | `dta_num` | `int16` | `float32` | `DtaArray` | `Vector{Int16}` | `DtaColumn{Int16}` | `Float64Array` |
-| long | `dta_num` | `int32` | `float64` | `DtaArray` | `Vector{Int32}` | `DtaColumn{Int32}` | `Float64Array` |
-| float | `dta_num` | `float32` | `float32` | `DtaArray` | `Vector{Float32}` | `DtaColumn{Float32}` | `Float64Array` |
-| double | `dta_num` | `float64` | `float64` | `DtaArray` | `Vector{Float64}` | `DtaColumn{Float64}` | `Float64Array` |
-| strN, strL | character | text (`str` on pandas 3, `object` on 2.2) | | | `Vector{String}` | | `string[]` |
-| strL holding binary | an error | `object` of `bytes` | | | `Vector{UInt8}` elements | | `Uint8Array` elements |
+| storage | R | TypeScript |
+|---|---|---|
+| byte | `dta_num` (double) | `Float64Array` |
+| int | `dta_num` | `Float64Array` |
+| long | `dta_num` | `Float64Array` |
+| float | `dta_num` | `Float64Array` |
+| double | `dta_num` | `Float64Array` |
+| strN, strL | character | `string[]` |
+| strL holding binary | an error | `Uint8Array` elements |
 
-Every value converts exactly. A byte or int with `.` becomes `float32` in
-Python because `float32` holds every integer of those types; a long
-needs `float64`. In R every numeric column is a double vector (R
+Every value converts exactly. In R every numeric column is a double vector (R
 integers have only one `NA`, so they could not hold `.a` to `.z`), and
 the column's `storage` attribute keeps the type from the file, so
 writing it back uses the same type.
@@ -51,30 +49,24 @@ from the values:
 | values | storage |
 |---|---|
 | logicals / booleans | byte |
-| integers | the smallest of byte, int, long that holds every value (with the ranges above); else double |
-| integers beyond ±2^53 | an error: a double cannot hold them exactly |
-| 32-bit floats | float |
-| 64-bit floats | double |
+| an R integer column | long |
+| an R double column; a TypeScript numeric column | double |
 | text | strN, with N the longest value in bytes, up to 2045; longer text makes the column a strL |
-| binary (Python `bytes`, Julia `Vector{UInt8}`) | strL |
+| binary (a `Uint8Array` in TypeScript) | strL |
 
-R and TypeScript differ in one way: they do not shrink integers. In R
-an integer column is long and a double column is double unless its
-`storage` attribute says otherwise; in TypeScript a numeric column is
-double unless you set `type`. A value outside the chosen type's range is
-an error in every language, and integer types never truncate. Float
-storage is the exception in R and TypeScript: a double written as float
+Neither language shrinks integers. In R an integer column is long and
+a double column is double unless its `storage` attribute says
+otherwise; in TypeScript a numeric column is double unless you set
+`type`. A value outside the chosen type's range is an error in both
+languages, and integer types never truncate. Float storage is the
+exception: a double written as float
 (`storage = "float"` in R, `type: "float"` in TypeScript) is rounded to
 the nearest float, as any 4-byte float would hold it, so `0.1` reads
 back as `0.10000000149011612`. Choose float only for values that are
-floats already (or where 7 significant digits are enough). Python and
-Julia never round. They write float for `float32`/`Float32` columns; a
-64-bit column is written as double (in Python, as float when its
-`storage` in `attrs` says float and every value is exactly a float). To
-get float storage, convert the column to 32-bit floats first.
+floats already (or where 7 significant digits are enough).
 
 Fixed-width string columns are written as wide as their longest value
 needs, not as wide as they were read: a `str100` column whose values
-are all short comes back narrower. In R and TypeScript a text strL short
+are all short comes back narrower. A text strL short
 enough for a fixed-width string is written as one (see
 [strLs](strls.md)).

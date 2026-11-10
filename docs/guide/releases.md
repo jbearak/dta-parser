@@ -16,9 +16,7 @@ To see a file's release without reading its data:
 
 | language | call |
 |---|---|
-| R | not exposed; `read_dta` reads every release the same way |
-| Python | `dta_parser.read_meta(path)["release"]` |
-| Julia | `read_meta(path)["release"]` |
+| R | `read_meta(path)$release` |
 | TypeScript | `openDtaFile(path).info.release` |
 
 ## What each release can hold

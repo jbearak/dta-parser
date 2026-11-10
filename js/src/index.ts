@@ -80,7 +80,7 @@ export interface Info extends TableInfo {
 /**
  * A numeric variable's values, missing values among them (ADR 0037):
  * `.` is `NA` (R's `NA_real_`) and `.a` to `.z` are NaNs tagged with
- * their letter (`taggedNa`), as R and Python's datakit hold them, so a
+ * their letter (`taggedNa`), as R holds them, so a
  * value and its missing code are one number. `missingCode(values[i])`
  * gives 0 for a number, 1 for `.` and 2 to 27 for `.a` to `.z`, and
  * `naTag` the letter. Any other NaN (a Parquet file's NaN) is a number.
@@ -729,7 +729,7 @@ type DtaVariable = Omit<WriteVariable, "values"> & {
 };
 
 // Words Stata reserves, which it cannot use as variable names (the list
-// the R, Python and Julia writers check too), and str followed by digits.
+// the R writer checks too), and str followed by digits.
 const RESERVED = new Set(["_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long", "_n", "_N", "_pi", "_pred", "_rc", "_skip", "strL", "using", "with"]);
 
 /**
