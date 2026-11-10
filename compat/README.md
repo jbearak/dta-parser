@@ -15,13 +15,10 @@ To regenerate, from the repository root:
 
 `fixtures/README.md` says where each file comes from.
 
-`fixed_width/` holds a synthetic fixed-width data file and its SAS setup
-file, in the style CDC publishes for the NSFG (plan 0009), and
-`expected/fixed_width.json` what asciiSetupReader reads from them, and
-for `recodes = "tagged"` its codes made into haven tagged NAs:
-
-    Rscript compat/fixed_width/make_fixed_width.R
-    Rscript compat/fixed_width/expected_fixed_width.R   # needs asciiSetupReader and haven
+The fixed-width fixtures (a synthetic data file and its SAS setup file,
+with what asciiSetupReader reads from them) moved to
+[datparser](https://github.com/jbearak/datparser) with the reader
+([ADR 0044](../docs/adr/0044-npm-datakit-removed.md)).
 
 ## Which reader is the oracle, per release
 

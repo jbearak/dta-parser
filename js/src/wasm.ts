@@ -1,6 +1,6 @@
 // dta-parser's wasm module and the raw calls into it. Everything above
 // this file deals in JavaScript values; everything here deals in
-// pointers. What it shares with datakit's module is in wasm-core.ts.
+// pointers. The instance and its host callbacks are in wasm-core.ts.
 
 import embedded from "../build/dta.wasm";
 import { dtaError } from "./errors";

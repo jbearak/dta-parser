@@ -677,9 +677,10 @@ from `read_dta(factors = TRUE)` comes back with codes 1 to k, not the
 file's own codes, which that read did not keep; to write the file's
 codes, read with `factors = FALSE`, the default.
 
-TypeScript's datakit marks a
-categorical it writes to `.dta` with another characteristic, `dtaparser_categorical`, of the same
-form (plan 0023). Unlike a factor, a categorical may hold `.a` to `.z`.
+TypeScript's datakit, removed in
+[ADR 0044](adr/0044-npm-datakit-removed.md), marked a categorical it
+wrote to `.dta` with another characteristic, `dtaparser_categorical`,
+of the same form (plan 0023); files it wrote still carry it. Unlike a factor, a categorical may hold `.a` to `.z`.
 `read_dta()` reads such a column as a factor, ordered if the marker
 says so, with every level of its value labels, when the rows read hold
 no `.a` to `.z`; when they do, it keeps the numbers as a
@@ -1221,16 +1222,18 @@ na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
 
 ### Categoricals that hold .a to .z
 
-TypeScript's datakit writes a categorical that holds `.a` to `.z` as
-DOUBLE level numbers (1 for the first level) with tagged
-NaNs for the letters ([docs/parquet.md](parquet.md)). A factor cannot
+TypeScript's datakit, removed in
+[ADR 0044](adr/0044-npm-datakit-removed.md), wrote a categorical that
+holds `.a` to `.z` as DOUBLE level numbers (1 for the first level)
+with tagged NaNs for the letters ([docs/parquet.md](parquet.md)); the
+files it wrote read as before. A factor cannot
 hold the letters, so `read_parquet()` gives such a column as a
 `dtaparser_labelled` double: the numbers 1 to k, `.a` to `.z` as tagged
 NAs, `labels` from its value label set (each level, and any labels on
 letters) and attribute `label_set` the set's name. It stays a labelled
 double with `factors = TRUE`, and gives no warning about lost letters.
 For a column `grade` with levels low, mid and high, written by
-TypeScript:
+TypeScript's datakit:
 
 ```r norun
 g <- read_parquet("grades.parquet")$grade
@@ -1245,10 +1248,9 @@ names the column and the first such row read.
 
 R has no categorical type that holds `.a` to `.z`, so `save_parquet()`
 writes the column back as labelled numbers with its letters and value
-label set, not as a categorical. TypeScript then reads it as labelled
-numbers too.
+label set, not as a categorical.
 
-In `.dta` files, TypeScript's datakit marks such columns with
+In `.dta` files, TypeScript's datakit marked such columns with
 `dtaparser_categorical`, which `read_dta()` reads as a labelled
 double the same way when the rows read hold a letter, and as a factor
 when they do not ([Plain R types](#plain-r-types-dtaparser)).
@@ -1330,7 +1332,7 @@ value exactly (`decimal = "character"` keeps every digit).
 | STRING, ENUM, JSON | character |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | a list of raw vectors, `NULL` for null |
 | a categorical `save_parquet()` wrote | factor, ordered if it was, every level kept |
-| a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit writes) | `dtaparser_labelled` double: codes 1 to k, `.a` to `.z` as tagged NAs, `labels` and `label_set` from its value label set; `factors = TRUE` leaves it so; a value that is not a level number is `NA` with a warning |
+| a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit wrote) | `dtaparser_labelled` double: codes 1 to k, `.a` to `.z` as tagged NAs, `labels` and `label_set` from its value label set; `factors = TRUE` leaves it so; a value that is not a level number is `NA` with a warning |
 | a dictionary of strings in `ARROW:schema`, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered; levels are the distinct values of the rows read, in order of first appearance |
 | a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |

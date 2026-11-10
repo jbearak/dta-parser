@@ -11,16 +11,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-          targets: wasm32-unknown-unknown
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      # The Parquet core builds for wasm; libzstd needs a clang that
-      # targets wasm32 (scripts/build-wasm.sh).
-      - run: sudo apt-get update && sudo apt-get install -y clang llvm
-      - run: cargo build -p dta-parquet --target wasm32-unknown-unknown
-        env:
-          CC_wasm32_unknown_unknown: clang
-          AR_wasm32_unknown_unknown: llvm-ar
       # Reported, not gated: wall and CPU time of reads and writes with 1
       # to 8 threads on x86 (plan 0007), on a 1.4 GB file it writes.
       - name: Thread scaling on x86
@@ -99,8 +91,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      # libzstd in the module needs a clang that targets wasm32.
-      - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh
       - run: npm ci
         working-directory: js
@@ -108,14 +98,6 @@ jobs:
         working-directory: js
       - run: npm test
         working-directory: js
-      # datakit (plan 0021), against the dta-parser just built: its
-      # devDependency links ../ as @jbearak/dta-parser.
-      - run: npm ci
-        working-directory: js/datakit
-      - run: npm run build
-        working-directory: js/datakit
-      - run: npm test
-        working-directory: js/datakit
 
   r:
     runs-on: ubuntu-latest
@@ -198,11 +180,5 @@ jobs:
           extra-packages: any::vctrs, any::haven, any::readstata13, any::jsonlite
       - run: pip install pandas pyreadstat
       - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
-      # libzstd in the module needs a clang that targets wasm32.
-      - run: sudo apt-get update && sudo apt-get install -y clang llvm
-      - run: scripts/build-wasm.sh && cd js && npm ci && npm run build && cd datakit && npm ci && npm run build
+      - run: scripts/build-wasm.sh && cd js && npm ci && npm run build
       - run: sh compat/readback/run.sh "$RUNNER_TEMP/readback"
-      # hyparquet reads back the Parquet files @jbearak/datakit writes.
-      - run: npm ci
-        working-directory: bench/node
-      - run: node compat/parquet/readback.mjs bench/node/node_modules

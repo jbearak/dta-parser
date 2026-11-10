@@ -17,22 +17,20 @@ implementation of the format underneath both.
 - **Keeps the metadata**: variable labels, value labels (including labels
   on `.a` to `.z`), display formats, storage types, the data label and
   notes, characteristics, the sort order and the timestamp.
-- **Reads fixed-width text through a SAS setup file**, such as the
-  National Survey of Family Growth from 1973 to 2017-2019, with the
-  setup's missing-value recodes kept as `.a`, `.b`, ... on request
-  (`readFixedWidth` in TypeScript; in R, `read_fixed_width` in
-  [datparser](https://github.com/jbearak/datparser)).
-- **Reads and writes Parquet that keeps all of this** (in R, through
-  datakit's `read_parquet()` and `save_parquet()`; in TypeScript,
-  `@jbearak/datakit`'s `readParquet()` and `saveParquet()`): labels,
-  formats and
+- **Fixed-width text through a SAS setup file**, such as the National
+  Survey of Family Growth from 1973 to 2017-2019, is read by
+  [datparser](https://github.com/jbearak/datparser)'s
+  `read_fixed_width` (R), in a repository of its own, with the setup's
+  missing-value recodes kept as `.a`, `.b`, ... on request.
+- **Reads and writes Parquet that keeps all of this**, in R, through
+  datakit's `read_parquet()` and `save_parquet()`: labels, formats and
   notes travel in the file's metadata and `.a` to `.z` in its values
-  (as NaNs that carry the letter), and the file is plain Parquet that pyarrow, polars, DuckDB, arrow and nanoparquet
-  read. A tibble read from a `.dta` file comes back the same. See [docs/parquet.md](docs/parquet.md), whose headings are the
-  tasks (install, read, columns, rows, metadata, labels, dates, write,
-  `.a` to `.z`, other tools' files), or go to each language's Parquet
-  section: [R](docs/r.md#parquet-files) and
-  [TypeScript](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets).
+  (as NaNs that carry the letter), and the file is plain Parquet that
+  pyarrow, polars, DuckDB, arrow and nanoparquet read. A tibble read
+  from a `.dta` file comes back the same. See
+  [docs/parquet.md](docs/parquet.md), whose headings are the tasks
+  (install, read, columns, rows, metadata, labels, dates, write, `.a`
+  to `.z`, other tools' files), or [R's Parquet section](docs/r.md#parquet-files).
 - **Reads only what you ask for**: a few columns, a window of rows, or
   the metadata alone, from files of any size, including over 4 GiB.
 - **Fast.** The format is parsed by a Rust core (`crates/dta`) that
@@ -52,7 +50,6 @@ in [bench/RESULTS.md](bench/RESULTS.md).*
 | R | `dtatools` | [docs/r.md](docs/r.md) | a tibble whose numeric columns keep `.a` to `.z` and compare as Stata does |
 | R | `dtaparser` | [docs/r.md](docs/r.md#plain-r-types-dtaparser) | a tibble of standard R types (integers, doubles, `Date`; factors on request), every missing value `NA`, `.a` to `.z` as haven's tagged NAs, labelled columns as a class whose labels survive dplyr; `na_tag()`, `var_label()`, `val_labels()` and `val_label()` read them and the labels back, `tagged_na()` and `with_labels()` make them, and `save_dta()` writes them, dates included |
 | TypeScript, JavaScript | `@jbearak/dta-parser` | [docs/typescript.md](docs/typescript.md) | typed arrays per column, or rows |
-| TypeScript, JavaScript | `@jbearak/datakit` | [docs/typescript.md](docs/typescript.md#datakit-parquet-files-fixed-width-files-and-whole-datasets) | a `Dataset` of typed-array columns from Parquet, `.dta` or fixed-width text, with labels and `.a` to `.z`; a reader for Parquet like dta-parser's for `.dta` |
 
 In R, `dtatools` is for testing Stata pipelines, where Stata's rules
 for missing values matter; `dtaparser` is for analysing data under R's
@@ -68,17 +65,12 @@ rules. `datakit` is for data preparation:
   and set with `var_label`, `val_labels`, `with_labels`, `tagged_na`,
   and `na_tag`, so haven and labelled are not needed.
 - `read_parquet` and `save_parquet` read and write Parquet files that
-  keep them: an interchange format with readers and writers in R and
-  TypeScript, so data goes between them with its labels and letters.
+  keep them, which other Parquet tools read as plain Parquet.
 
 `library(datakit)` is all a script attaches, after dplyr and tidyr if it
 uses them, so that its `:=` is the one R finds. datakit re-exports
 dtaparser's functions; dtatools has its own `read_dta`, `save_dta`, and
 label functions for dibbles, so a script uses one of the two.
-TypeScript's `@jbearak/datakit` reads and saves Parquet, `.dta` and
-fixed-width text as a `Dataset` whose columns keep their letters, and
-reads Parquet through the same `TableReader` interface as
-`@jbearak/dta-parser` reads `.dta`.
 
 None of them is on a package registry (CRAN or npm). Install them from
 this repository:
@@ -153,8 +145,8 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ codes |
 | binary strLs | an error | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ |
-| fixed-width text through a SAS setup file | [datparser](https://github.com/jbearak/datparser)'s `read_fixed_width` | datakit's `readFixedWidth` |
-| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
+| fixed-width text through a SAS setup file | [datparser](https://github.com/jbearak/datparser)'s `read_fixed_width` | |
+| Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ |
 | a key that sorts and compares as Stata does | built into `dta_num` | `dtaKey`, `dtaKeys` |
@@ -176,7 +168,7 @@ than release 118 comes back as UTF-8.
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
 | `r/datakit` | the R package for data preparation: `:=`, and Parquet's `read_parquet` and `save_parquet` |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
-| `js` | the npm packages |
+| `js` | the npm package `@jbearak/dta-parser` |
 | `compat` | test files from haven, pandas and ReadStat, and what those readers make of them |
 | `bench` | benchmarks against the other readers |
 | `docs` | this documentation, [decisions](docs/adr/) and [plans](docs/plans/) |

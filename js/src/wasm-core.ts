@@ -1,9 +1,7 @@
-// What both packages' wasm modules share (plan 0021): instantiating a
-// module from its embedded bytes, the host callbacks, error checking,
-// copying into module memory, and replacing an instance to give memory
-// back. @jbearak/dta-parser (src/wasm.ts) and @jbearak/datakit
-// (datakit/src/wasm.ts) each make their own core over their own module;
-// datakit's build bundles this file.
+// What the wasm module's calls stand on: instantiating the module from
+// its embedded bytes, the host callbacks, error checking, copying into
+// module memory, and replacing an instance to give memory back.
+// src/wasm.ts makes the core over the module.
 
 import { dtaError, type ErrorCode } from "./errors";
 import { inflateRaw } from "./inflate";
@@ -54,8 +52,6 @@ export interface Core<E extends CoreExports> {
   readonly files: Map<number, ReadAt>;
   /** Where files being written go (`host_write`). */
   readonly sinks: Map<number, (bytes: Uint8Array) => void>;
-  /** Number columns the Parquet writer asks for a block at a time (`host_fill`). */
-  readonly fills: Map<number, { values: Float64Array; missing: Uint8Array }>;
   /** A number for a new file or sink. */
   nextFile(): number;
   /** Counts module instances; readers opened on an older one are closed. */
@@ -96,31 +92,18 @@ export function makeCore<E extends CoreExports>(embedded: Uint8Array<ArrayBuffer
   const module = new WebAssembly.Module(moduleBytes(embedded) as Uint8Array<ArrayBuffer>);
   const files = new Map<number, ReadAt>();
   const sinks = new Map<number, (bytes: Uint8Array) => void>();
-  const fills = new Map<number, { values: Float64Array; missing: Uint8Array }>();
   let nextFile = 1;
   /** What the last `ReadAt` or sink threw, for the `DTA_IO` error's cause. */
   let hostError: unknown;
   // Never lets a JavaScript exception unwind through wasm frames; the
   // module reports the failure, and `check` attaches the exception.
   // Pointers and lengths arrive as signed i32: `>>> 0` keeps those past
-  // 2 GiB positive. A module imports only the callbacks it uses.
+  // 2 GiB positive.
   const imports = {
     env: {
       host_read(file: number, ptr: number, len: number, offset: number): number {
         try {
           files.get(file)!(new Uint8Array(wasm.memory.buffer, ptr >>> 0, len >>> 0), offset);
-          return 0;
-        } catch (e) {
-          hostError = e;
-          return 1;
-        }
-      },
-      host_fill(id: number, first: number, n: number, values: number, codes: number): number {
-        try {
-          const src = fills.get(id)!;
-          const buffer = wasm.memory.buffer;
-          new Float64Array(buffer, values >>> 0, n >>> 0).set(src.values.subarray(first, first + (n >>> 0)));
-          new Uint8Array(buffer, codes >>> 0, n >>> 0).set(src.missing.subarray(first, first + (n >>> 0)));
           return 0;
         } catch (e) {
           hostError = e;
@@ -186,7 +169,6 @@ export function makeCore<E extends CoreExports>(embedded: Uint8Array<ArrayBuffer
     },
     files,
     sinks,
-    fills,
     nextFile: () => nextFile++,
     generation: () => generation,
     opened() {

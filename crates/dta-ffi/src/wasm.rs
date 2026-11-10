@@ -1,5 +1,5 @@
 //! The `.dta` exports of the npm package's wasm module (feature
-//! `wasm-dta`); what they share with the Parquet module is in
+//! `wasm-dta`); the allocator, errors and host callbacks they use are in
 //! `wasm_common.rs`.
 //!
 //! The module reads files through one import, `host_read(file, ptr, len,

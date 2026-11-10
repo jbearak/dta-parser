@@ -670,8 +670,14 @@ test_that("nanoparquet reads save_parquet's files", {
 # ---- categoricals holding .a to .z (plan 0022)
 #
 # R cannot write one, so the files in fixtures/ were written by
-# TypeScript's datakit; fixtures/make-categorical-letters.js makes them
-# again. Each has `grade`, levels low < mid < high.
+# TypeScript's datakit (@jbearak/datakit 2.0.0, removed in ADR 0044; its
+# script, fixtures/make-categorical-letters.js, is in commit 408c350).
+# They are not made again. Each has `grade`, levels low < mid < high:
+# categorical-letters.parquet holds low, .a, high, ., .z, mid;
+# -bad.parquet holds low, .a | high, mid in two uncompressed row groups,
+# with high's level number (the DOUBLE 3.0) changed to 1.5 in the second;
+# -collision.parquet adds a column `other` labelled by a set named
+# "grade" that does not fit the categorical.
 
 letters_fixture <- function(name) testthat::test_path("fixtures", paste0("categorical-letters", name, ".parquet"))
 

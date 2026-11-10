@@ -1,8 +1,6 @@
-"""Write js/THIRD-PARTY-NOTICES and js/datakit/THIRD-PARTY-NOTICES: the
-licences of the crates (and C libzstd) compiled into each npm package's
-wasm module (plan 0021: the .dta module, feature wasm-dta, and datakit's,
-feature wasm-parquet), from each crate's own licence file in cargo's
-registry. Run after the modules' crates change:
+"""Write js/THIRD-PARTY-NOTICES: the licences of the crates compiled into
+the npm package's wasm module (feature wasm-dta), from each crate's own
+licence file in cargo's registry. Run after the module's crates change:
 
     python3 scripts/js-notices.py
 
@@ -20,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Where a crate offers a choice, the licence the notices carry, by file.
 PREFER = ["LICENSE-MIT", "LICENSE-MIT.md", "LICENSE", "COPYING", "LICENSE.BSD-3-Clause"]
 # Crates whose repository carries the licence file their package lacks.
-SAME_AS = {"alloc-stdlib": "alloc-no-stdlib"}
+SAME_AS = {}
 
 
 def crates(feature):
@@ -65,14 +63,11 @@ def notices(package, feature, out):
         if text is None:
             raise SystemExit(f"{name}: no licence file found")
         parts.append(f"\n{'=' * 72}\n{name} {version} ({field(toml, 'license')})\n{field(toml, 'repository')}\n{'=' * 72}\n\n{text.strip()}\n")
-        if name == "zstd-sys":
-            parts.append(f"\n{'-' * 72}\nZstandard (libzstd), compiled in by zstd-sys (BSD-3-Clause, chosen\nfrom BSD or GPLv2)\nhttps://github.com/facebook/zstd\n{'-' * 72}\n\n{(d / 'zstd' / 'LICENSE').read_text().strip()}\n")
     out.write_text("".join(parts))
 
 
 def main():
     notices("@jbearak/dta-parser", "wasm-dta", ROOT / "js" / "THIRD-PARTY-NOTICES")
-    notices("@jbearak/datakit", "wasm-parquet", ROOT / "js" / "datakit" / "THIRD-PARTY-NOTICES")
 
 
 if __name__ == "__main__":

@@ -15,7 +15,12 @@ Two checks for `crates/parquet` (plan 0018):
 
 A third set, [`legacy/`](legacy/README.md), holds files R's and
 TypeScript's datakit wrote, with what datakit and pyarrow read from
-them, so that a later reader can be checked against them.
+them, so that a later reader can be checked against them. TypeScript's
+datakit is gone (ADR 0044), so its files there are not made again.
+
+The checks between R's datakit and TypeScript's (`cross_language.sh`,
+`categorical_marker.sh`) and hyparquet's readback of the npm package's
+files (`readback.mjs`) went with it; commit 408c350 has them.
 
 No file here comes from Stata or from any dataset; every value is made by
 the scripts.
@@ -127,56 +132,6 @@ those tools:
   tools see its categoricals with no levels. Ours read them from the
   profile.
 
-### hyparquet reads the npm package's files
-
-    node compat/parquet/readback.mjs bench/node/node_modules
-
-writes, with the npm package's `writeParquet`, a table of every type it
-writes (byte, int, long, float, double with NaN, `.a` to `.z`, int64
-past 2^53, bool, date, zoned and local timestamps, text, binary and an
-ordered categorical with an unused level), with nulls, in every codec,
-in small row groups, and with `missingLetters: false`; hyparquet 1.32.0
-with hyparquet-compressors 1.1.3 (`bench/node`) reads each file and
-every value is checked against what was written, by hyparquet's own
-rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
-`.a` to `.z` as NaN). Result: 315,000 values checked, none differ.
-
-## Across languages
-
-    sh compat/parquet/cross_language.sh [DIR]
-
-R's datakit and TypeScript's each write a file (`cross_language.R
-write`, `from_r.parquet`; `cross_language.mjs write`,
-`from_typescript.parquet`), and each reads the other's and checks it
-cell by cell. Both scripts make the same literal data, so each checks
-every row's value and missing code (`.` or which of `.a` to `.z`), the
-variable labels, display formats, value label sets (with labels on
-letters), the data label and notes. The data has a double, a byte, a
-long and a float column holding letters (the long one written as DOUBLE
-with `"storage": "long"`), an integer with nulls, text, a factor with an
-unused level, dates with a format, zoned times, and a byte column
-labelled by a set where two codes share a text. R's file also has the
-exactness edges: a `Date` with a fraction of a day, which TypeScript
-reads as the DOUBLE count it is written as, and a `POSIXct` whose
-seconds no whole number of microseconds gives back. TypeScript's file
-adds a date and a timestamp holding letters, which R reads as `Date` and
-`POSIXct` with tagged NAs, and an ordered categorical holding letters
-(plan 0022), which R reads as labelled codes with the letters, with
-`factors = TRUE` too.
-
-One value had to change while writing the scripts: R parses the literal
-`1e300` as `1.0000000000000006e300` (its own string-to-double conversion
-is not correctly rounded), so the scripts use `2^1000`, which both
-languages hold exactly.
-
-    sh compat/parquet/categorical_marker.sh [DIR]
-
-TypeScript's datakit saves two categoricals as `.dta` with the
-`dtaparser_categorical` marker (plan 0023), one of them ordered and
-holding `.a` and `.z`. R's dtaparser reads them without a warning: the
-first as a factor, and the second as labelled numbers with its letters,
-with `factors = TRUE` too.
-
 ## Credits
 
 The fixtures were written with, and the expected values read by, these
@@ -191,9 +146,6 @@ open-source projects:
 - [Parquet2.jl](https://gitlab.com/ExpandingMan/Parquet2.jl), MIT, with
   [DecFP.jl](https://github.com/JuliaMath/DecFP.jl), BSD-2-Clause, for its
   decimals
-- [hyparquet-writer](https://github.com/hyparam/hyparquet-writer), MIT,
-  and [hyparquet](https://github.com/hyparam/hyparquet) and
-  [hyparquet-compressors](https://github.com/hyparam/hyparquet-compressors),
-  MIT, for the npm package's readback
+- [hyparquet-writer](https://github.com/hyparam/hyparquet-writer), MIT
 - [pandas](https://pandas.pydata.org/), BSD-3-Clause, for the readback
 - [haven](https://haven.tidyverse.org/), MIT, for the readback's tagged NAs

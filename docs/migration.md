@@ -1,51 +1,42 @@
 # Migration notes
 
-- [dta-parser 1.x to 2.0](#dta-parser-1x-to-20) (TypeScript): Parquet
-  moves to `@jbearak/datakit`, which also reads fixed-width text and
-  whole datasets.
+- [dta-parser 1.x to 2.0](#dta-parser-1x-to-20) (TypeScript): `.dta`
+  only; the Parquet functions are gone.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
 
 The Python packages (`dta_parser` and Python's datakit) and the Julia
 packages (DtaParser.jl and Datakit.jl) were removed on 2026-11-09. Their
-last versions are in the repository's history before that date.
+last versions are in the repository's history before that date. The npm
+package `@jbearak/datakit`, which took 1.x's Parquet functions and added
+fixed-width text and whole datasets, was removed on 2026-11-10 without
+being published ([ADR 0044](adr/0044-npm-datakit-removed.md)); its last
+version is in commit 408c350.
 
 ## dta-parser 1.x to 2.0
 
-`@jbearak/dta-parser` 2.0 reads and writes `.dta` only; Parquet moved to
-`@jbearak/datakit` (plan 0021), whose WebAssembly module carries the
-Parquet code, so dta-parser's is an eighth the size it was (344 KB
-against 2.8 MB). Install both from the checkout
-([datakit: install](typescript.md#datakit-install)); dta-parser is
-datakit's peer dependency.
+`@jbearak/dta-parser` 2.0 reads and writes `.dta` only, so its
+WebAssembly module is an eighth the size it was (344 KB against
+2.8 MB). This repository has no TypeScript Parquet reader or writer
+any more; table-viewer reads Parquet through pqparser
+(github.com/jbearak/pqparser), a private package of its own.
 
 | 1.x | 2.0 |
 |---|---|
-| `openParquet`, `openParquetAsync`, `ParquetReader`, `AsyncParquetReader`, `writeParquet`, `writeParquetTo`, `toDate` from `@jbearak/dta-parser` | the same names from `@jbearak/datakit` |
-| `openParquetFile`, `writeParquetFile` from `@jbearak/dta-parser/node` | the same names from `@jbearak/datakit/node` |
-| the types `ParquetInfo`, `ParquetOptions`, `ParquetVariable`, `ParquetWriteOptions`, `RowGroup`, `ColumnChunk`, `Statistic` | from `@jbearak/datakit` |
-| `writeParquet`'s Parquet-only `WriteVariable` fields and types (`unit`, `timeZone`, `levels`, `ordered`, `categorical`; `bool` to `categorical`; bigint values) | datakit's `DatasetVariable`; dta-parser's `WriteVariable` is `.dta`'s |
+| `openParquet`, `openParquetAsync`, `ParquetReader`, `AsyncParquetReader`, `writeParquet`, `writeParquetTo`, `toDate` from `@jbearak/dta-parser` | gone |
+| `openParquetFile`, `writeParquetFile` from `@jbearak/dta-parser/node` | gone |
+| the types `ParquetInfo`, `ParquetOptions`, `ParquetVariable`, `ParquetWriteOptions`, `RowGroup`, `ColumnChunk`, `Statistic` | gone |
+| `writeParquet`'s Parquet-only `WriteVariable` fields and types (`unit`, `timeZone`, `levels`, `ordered`, `categorical`; `bool` to `categorical`; bigint values) | gone; `WriteVariable` is `.dta`'s |
 | `TableReader`, `AsyncTableReader` | gain `valueLabelNames()`, `characteristics()` and `notes()`; `TableInfo` gains an optional `timestamp`, `Variable` optional `unit`, `timeZone` and `categorical`. A class of yours that implements `TableReader` adds the three methods |
 | `DtaReader` | gains `valueLabelNames()` |
 | `dtaKey`, `dtaKeys` | also from `@jbearak/dta-parser/format` (the same functions) |
 | `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing[i]` becomes `missingCode(values[i])`; `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new. A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
-| `WriteVariable.missing` (and datakit's `DatasetVariable.missing` for a Float64Array) beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values. `DatasetVariable.missing` stays for a BigInt64Array's nulls |
+| `WriteVariable.missing` beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values |
 | `dtaKeys(column)` read `column.missing` | reads the values |
-| a letter `.a` to `.z` in a categorical given to `writeParquet` became a null | kept: the column is written as DOUBLE level numbers and reads back, from `readColumns`, as a `NumberColumn` of the level numbers with the letters (plan 0022, ADR 0037); `readRows` gives the levels as text |
-
-Nothing else changes: apart from categoricals holding `.a` to `.z`
-(above), the Parquet functions read and write the same files the same
-way.
 
 `MISSING`'s objects are now one set per process, shared by every copy of
-dta-parser 2.0 or later and by datakit, so a `ValueLabels` map one read
-is found with another's keys. A copy of 1.x makes its own objects, so do
-not mix 1.x and datakit in one project; npm reports the peer dependency
-conflict.
-
-New in datakit: `readParquet`, `readDta` and `readFixedWidth` read a
-whole table into a `Dataset`, which `saveParquet` and `saveDta` write
-([Read a whole file](typescript.md#read-a-whole-file)).
+dta-parser 2.0 or later, so a `ValueLabels` map one read is found with
+another's keys. A copy of 1.x makes its own objects.
 
 ## Moving to @jbearak/dta-parser 1.0
 

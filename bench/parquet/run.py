@@ -1,7 +1,6 @@
 """Benchmark R's Parquet reader and writer against R's other libraries,
 check plan 0018's speed and memory targets, and write
-bench/results/parquet.md. (TypeScript's has its own driver,
-bench/parquet/run_node.py.)
+bench/results/parquet.md.
 
     python bench/parquet/run.py [--family F ...] [--libs L ...] [--tasks T ...]
                                 [--inputs I ...] [--only KEY ...] [--report]

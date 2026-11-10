@@ -1,14 +1,12 @@
 // The documentation's TypeScript and JavaScript examples run, and every
 // export is documented.
 //
-// Each ```ts or ```js block of README.md and docs/guide/*.md runs, in
-// order, as one module per file, in a fresh
+// Each ```ts or ```js block of README.md, docs/guide/*.md and
+// docs/typescript.md runs, in order, as one module per file, in a fresh
 // temporary directory. Import lines are gathered at the top (merged per
 // module) and each block is wrapped in braces, so blocks share files on
 // disk but not variables. Blocks whose info string says `norun` are
-// skipped. Node strips the type annotations. docs/typescript.md's blocks,
-// which import @jbearak/datakit as well, run in datakit's tests
-// (datakit/test/docs.test.mjs).
+// skipped. Node strips the type annotations.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -27,7 +25,7 @@ const skip = existsSync(page) ? false : "docs/typescript.md is not here";
 function docFiles() {
   const guide = join(root, "docs", "guide");
   const pages = existsSync(guide) ? readdirSync(guide).filter((f) => f.endsWith(".md")).sort().map((f) => join(guide, f)) : [];
-  return [join(root, "README.md"), ...pages];
+  return [join(root, "README.md"), ...pages, page];
 }
 
 /** [line, code] of each ts or js block. */
