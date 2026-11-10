@@ -773,8 +773,8 @@ takes an `AsyncTableReader`. Both take `columns`, `start`, `count` and
 **Factors and categoricals.** Two characteristics mark a column saved
 from a categorical type. `dtaparser_factor` (plan 0020) marks a column
 R's dtaparser saved from a factor, which holds no `.a` to `.z`. `dtaparser_categorical` (plan
-0023) marks a column `saveDta`, or R's datakit `save_dta()` given a polars
-frame, saved from a categorical, which may hold them. Either comes back as a
+0023) marks a column `saveDta` (or, before its polars functions were
+removed, R's datakit) saved from a categorical, which may hold them. Either comes back as a
 categorical: a `DictionaryColumn` of its levels (the texts of its
 value label set's numeric codes, in code order, unused ones included),
 with `categorical` giving the levels, whether they are ordered, the
