@@ -58,7 +58,7 @@
 #'   | STRING, ENUM, JSON | character |
 #'   | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID | a list of raw vectors (`NULL` for null) |
 #'   | a categorical `save_parquet()` wrote | factor, ordered if it was |
-#'   | a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit writes) | [`dtaparser_labelled`][dtaparser::with_labels] double, whatever `factors` says |
+#'   | a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit wrote) | [`dtaparser_labelled`][dtaparser::with_labels] double, whatever `factors` says |
 #'   | a dictionary of strings in `ARROW:schema` (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered |
 #'
 #'   Every missing value is `NA`. In doubles `.a` to `.z` are tagged NAs

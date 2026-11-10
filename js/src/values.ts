@@ -19,7 +19,7 @@ export const MISSING_NAMES = [".", ...Array.from("abcdefghijklmnopqrstuvwxyz", (
  * `MISSING["."]`, `MISSING[".a"]`, ... `MISSING[".z"]`.
  *
  * Made once per JavaScript realm (plan 0021): every copy of this code (the
- * package's entries, @jbearak/datakit, a second installed copy) finds the
+ * package's entries, a second installed copy) finds the
  * objects under one `Symbol.for` key on `globalThis`, so a `ValueLabels`
  * map one of them read is keyed by the objects every other one hands out.
  * What is found there is used only if it has exactly this layout; `v1`

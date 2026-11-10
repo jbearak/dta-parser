@@ -68,34 +68,18 @@ are plain vectors with a `labels` attribute. It lives in its own
 repository, github.com/jbearak/datparser, since 2026-11-10.
 
 **datakit**:
-The data preparation package, one in R and one in TypeScript. In R: `d[i,
-name, by = g] := value` on data frames under R's rules, and
-`read_parquet`, `read_parquet_info` and `save_parquet`; it imports
-dtaparser, reaching the Rust bridge through it.
-In TypeScript,
-`@jbearak/datakit`: Parquet (`ParquetReader`, `readParquet`,
-`saveParquet`), `readFixedWidth`, and `readDta` and `saveDta` into a
-**Dataset**; it has its own wasm module, not the format package's, and
-takes `MISSING` and the column types from `@jbearak/dta-parser`, its
-peer dependency.
-_Avoid_: using datakit for `.dta` reading or labels in R (those are
+The R package for data preparation: `d[i, name, by = g] := value` on
+data frames under R's rules, and `read_parquet`, `read_parquet_info`
+and `save_parquet`; it imports dtaparser, reaching the Rust bridge
+through it. The npm package of the same name, `@jbearak/datakit`, was
+removed unpublished on 2026-11-10 (ADR 0044).
+_Avoid_: using datakit for `.dta` reading or labels (those are
 dtaparser's)
-
-**Dataset**:
-In TypeScript's datakit, a whole table in memory: `variables` (each a
-name, type, format, label, value label set name and `values`, a reader's
-column) and the dataset's label, notes, every value label set,
-characteristics, sort order and `.dta` timestamp. `readDta`,
-`readParquet`, `readFixedWidth` and `readDataset` return one
-(`ReadDataset`, every field filled); `saveParquet` and `saveDta` take
-one. Its number columns hold `.` and `.a` to `.z` in their values, as
-`NA` and **tagged NaNs** (ADR 0037).
-_Avoid_: frame, table (unqualified)
 
 **Tagged NaN**:
 How `.a` to `.z` are held in a double: R's `NA_real_` (a NaN whose low
 word is 1954) with the letter's ASCII code in bits 32 to 39, as haven,
-R's dtaparser, the Parquet files' DOUBLE columns, and the npm packages'
+R's dtaparser, the Parquet files' DOUBLE columns, and the npm package's
 `NumberColumn` hold them. In TypeScript `.` is `NA_real_` itself (ADR 0037), and
 `missingCode` reads either.
 _Avoid_: companion column (the representation ADR 0036 replaced)
@@ -116,8 +100,7 @@ A SAS program published with a fixed-width text data file, saying
 where each variable's columns are, its variable label and value labels,
 and which codes are missing values. CDC publishes one for each NSFG
 file from 1973 to 2017-2019 (in 2002, split into three files).
-`read_fixed_width` reads the data through it: datparser's in R,
-datakit's `readFixedWidth` in TypeScript.
+datparser's `read_fixed_width` reads the data through it.
 _Avoid_: dictionary (Stata's own `.dct` format), codebook
 
 **dta profile**:

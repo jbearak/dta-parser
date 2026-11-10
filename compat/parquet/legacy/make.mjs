@@ -3,8 +3,11 @@
 //
 //     node compat/parquet/legacy/make.mjs
 //
-// Run from the repository root with js/ and js/datakit/ built. make.sh
-// runs it between make.R's two modes. Every value is made here.
+// It no longer runs here: @jbearak/datakit was removed (ADR 0044). It is
+// kept as the record of the data in ts_*.parquet, and runs in a checkout
+// of commit 408c350 or earlier, from the repository root with js/ and
+// js/datakit/ built, between make.R's two modes. Every value is made
+// here.
 
 import { createRequire } from "node:module";
 import { join } from "node:path";

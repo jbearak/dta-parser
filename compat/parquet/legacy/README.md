@@ -12,7 +12,9 @@ make of it:
 | `expected/<name>.json` | what pyarrow 26.0.1 read from it (`expected.py`) |
 | `r_types.rds`, `r_empty.rds`, `r_edges.rds`, `r_rows.rds` | the data frames R wrote |
 
-TypeScript's data is in `make.mjs`.
+TypeScript's data is in `make.mjs`, the record of what `@jbearak/datakit`
+was given; the package was removed (ADR 0044), so the script no longer
+runs here.
 
 No file here comes from Stata or from any dataset; every value is made
 by the scripts.
@@ -48,11 +50,16 @@ In pyarrow's JSON, a NaN is `"NaN:"` and its bits in hexadecimal, so
 
 ## Making them again
 
-The files are made once and committed: the writers will be deleted, so
-the files are not made again in CI. To make them again, from the
-repository root, with `js/` and `js/datakit/` built, dtaparser and
-datakit installed, and pyarrow and numpy importable:
+The files are made once and committed: the writers are being deleted,
+so the files are not made again in CI. The TypeScript writer is gone
+already (ADR 0044): the `ts_*` files are not made again. `make.mjs`
+writes them only in a checkout of commit 408c350 or earlier, with `js/`
+and `js/datakit/` built.
+
+To make R's files and every reading again, from the repository root,
+with dtaparser and datakit installed, and pyarrow and numpy importable:
 
     sh compat/parquet/legacy/make.sh
 
-Two runs give the same bytes.
+It keeps the committed `ts_*.parquet` and reads them with the rest. Two
+runs give the same bytes.

@@ -1,8 +1,9 @@
 # Acknowledgements: Parquet
 
-The Parquet reader and writer in `crates/parquet`, and the datakits'
-Parquet functions built on it (`@jbearak/datakit`'s in TypeScript), are
-our own code. Before
+The Parquet reader and writer in `crates/parquet`, and R's datakit's
+Parquet functions built on it, are our own code, as were those of the
+TypeScript package `@jbearak/datakit` until its removal
+([ADR 0044](adr/0044-npm-datakit-removed.md)). Before
 writing them we studied the Parquet specification and the open-source
 Parquet libraries below: their documentation, their behaviour on files
 we made, and in places their source. No code was copied from any of
@@ -99,19 +100,19 @@ version we studied.
   [hyparquet-writer](https://github.com/hyparam/hyparquet-writer)
   0.18.0** (MIT). hyparquet reads only a file's footer when
   it opens it, as our readers do, and returns footer statistics typed,
-  which the npm package's `info` gives too.
+  which TypeScript's datakit gave too. hyparquet-writer writes two of
+  the fixtures our reader is tested on.
 - **[parquet-wasm](https://github.com/kylebarron/parquet-wasm) 0.9.0**
   (Kyle Barron; MIT or Apache-2.0). A Parquet library in WebAssembly,
-  like the npm package's core; it hands back Arrow memory that the
-  caller copies out and frees, which our synchronous typed-array
-  columns avoid.
+  as TypeScript's datakit was; it hands back Arrow memory that the
+  caller copies out and frees, which that package's synchronous
+  typed-array columns avoided.
 
 ## Codecs we use
 
-These crates are compiled into our packages; their notices ship with
-them ([js/datakit/THIRD-PARTY-NOTICES](../js/datakit/THIRD-PARTY-NOTICES)
-and `r/dtaparser/inst/NOTICE`). The versions
-are those in `Cargo.lock`.
+These crates are compiled into dtaparser, which R's datakit reads and
+writes Parquet through; their notices ship with it
+(`r/dtaparser/inst/NOTICE`). The versions are those in `Cargo.lock`.
 
 | codec | crate | version | license |
 |---|---|---|---|

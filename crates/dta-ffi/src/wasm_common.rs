@@ -1,8 +1,7 @@
-//! What both wasm modules share: the allocator that turns running out of
-//! memory into an error, the error and result exports, and the host's
-//! file callbacks. The `.dta` exports are in `wasm.rs` (feature
-//! `wasm-dta`), the Parquet and fixed-width ones in `parquet_wasm.rs` and
-//! `fixed_width_wasm.rs` (feature `wasm-parquet`).
+//! What the wasm module's exports stand on: the allocator that turns
+//! running out of memory into an error, the error and result exports,
+//! and the host's file callbacks. The `.dta` exports are in `wasm.rs`
+//! (feature `wasm-dta`).
 //!
 //! Calls return 0 (or a null pointer) on failure; `dta_error` then holds
 //! the message. Results larger than a number (JSON, column buffers) are
@@ -307,28 +306,5 @@ pub(crate) fn ensure_room(bytes: usize) -> Result<(), Fail> {
     let mut probe: Vec<u8> = Vec::new();
     probe.try_reserve_exact(bytes).map_err(|_| too_large(bytes))?;
     std::hint::black_box(&probe);
-    Ok(())
-}
-
-/// Room for allocations of `parts` bytes each, held at once: for calls
-/// whose allocations are several buffers. One block of their total is
-/// tried first; only where a heap with holes in it cannot hold that are
-/// the parts tried one by one (thousands of small probes on a wide file
-/// cost a first read more than its decoding).
-#[cfg_attr(not(feature = "wasm-parquet"), allow(dead_code))]
-pub(crate) fn ensure_room_parts(parts: &[usize]) -> Result<(), Fail> {
-    let total = parts.iter().fold(0usize, |a, &b| a.saturating_add(b));
-    if ensure_room(total).is_ok() {
-        return Ok(());
-    }
-    let fail = || too_large(total);
-    let mut probes: Vec<Vec<u8>> = Vec::new();
-    probes.try_reserve_exact(parts.len()).map_err(|_| fail())?;
-    for &bytes in parts {
-        let mut probe: Vec<u8> = Vec::new();
-        probe.try_reserve_exact(bytes).map_err(|_| fail())?;
-        probes.push(probe);
-    }
-    std::hint::black_box(&probes);
     Ok(())
 }

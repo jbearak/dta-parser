@@ -28,8 +28,8 @@ export interface Variable {
   /** Name of the value label set attached; empty when there is none. */
   valueLabels: string;
   /**
-   * Set by readers of formats that have it (Parquet, through
-   * @jbearak/datakit); a .dta reader never sets it. A date's, time's or
+   * Set by readers of formats that have it, such as Parquet; a .dta
+   * reader never sets it. A date's, time's or
    * timestamp's unit: values count days, seconds, ms, µs or ns since
    * 1970-01-01 (since midnight for a time).
    */
@@ -46,7 +46,7 @@ export interface Variable {
 /**
  * What every reader's `info` says: the file's format, its number of rows,
  * its data label and the variables it is sorted by. `DtaReader.info`
- * (`Info`) and `ParquetReader.info` (`ParquetInfo`) say more.
+ * (`Info`) says more.
  */
 export interface TableInfo {
   /** `"dta"` or `"parquet"`. */
@@ -120,11 +120,10 @@ export type Column = NumberColumn | StringColumn;
 
 /**
  * A Parquet INT64 column (or a timestamp, or unsigned 64-bit integers)
- * whose values do not all fit a JavaScript number exactly, as
- * `ParquetReader.readColumns` returns it: `values[i]` is a bigint (a
- * BigUint64Array for unsigned 64-bit integers), and where `missing[i]`
- * is 1 the value is null and `values[i]` is 0. See `int64` in
- * `ParquetOptions` for when a column comes back this way.
+ * whose values do not all fit a JavaScript number exactly, as a Parquet
+ * reader may return it: `values[i]` is a bigint (a BigUint64Array for
+ * unsigned 64-bit integers), and where `missing[i]` is 1 the value is
+ * null and `values[i]` is 0. A .dta reader never returns one.
  */
 export interface BigIntColumn {
   kind: "bigint";
@@ -225,8 +224,8 @@ const unclosed = new FinalizationRegistry((held: { handle: number; generation: n
 });
 
 /**
- * What `DtaReader` and `ParquetReader` both do, so one viewer can read
- * either: `info`, `variables`, `readColumns`, `readRows`, `readRowsAt`,
+ * What `DtaReader` does, and a reader of another format may do too, so
+ * one viewer can read either: `info`, `variables`, `readColumns`, `readRows`, `readRowsAt`,
  * `valueLabels` and `close`, and `using`. Every call is synchronous.
  */
 export interface TableReader {
@@ -253,7 +252,7 @@ export interface TableReader {
 
 /**
  * `TableReader` with promises, for files read through an async function
- * (`openParquetAsync` in @jbearak/datakit): the same members, and the same results.
+ * (such as a remote file): the same members, and the same results.
  */
 export interface AsyncTableReader {
   readonly info: TableInfo;
@@ -594,8 +593,7 @@ export interface WriteVariable {
    * `StringColumn`, `DictionaryColumn`), so what a reader read writes
    * back as it is; a `DictionaryColumn` is written as its strings. A
    * `BigIntColumn`, or a string column with nulls (both only from
-   * Parquet files), is an error: @jbearak/datakit's `saveDta` converts
-   * those.
+   * Parquet files), is an error: convert those first.
    */
   values:
     | readonly (number | Missing | null)[]
@@ -751,7 +749,7 @@ function warnReserved(names: readonly string[]): void {
 function asDtaVariable(v: WriteVariable): DtaVariable {
   const x = v.values;
   const reject = (what: string): never => {
-    throw dtaError("DTA_INVALID", `${v.name}: a .dta file cannot hold ${what}; use saveDta (which converts) or saveParquet from @jbearak/datakit`, undefined, TypeError);
+    throw dtaError("DTA_INVALID", `${v.name}: a .dta file cannot hold ${what}; convert the column first`, undefined, TypeError);
   };
   if (x instanceof BigInt64Array || x instanceof BigUint64Array) return reject("64-bit integers");
   if (x instanceof Float64Array || Array.isArray(x)) {

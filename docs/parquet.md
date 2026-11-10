@@ -1,8 +1,7 @@
 # Parquet files that keep what a `.dta` file says
 
-datakit (R) and `@jbearak/datakit` (TypeScript) read and write Parquet
-files that keep a `.dta`
-file's value labels, variable labels, display formats, notes and extended
+R's datakit reads and writes Parquet files that keep a `.dta` file's
+value labels, variable labels, display formats, notes and extended
 missing values `.a` to `.z`, and also factor levels and time zones. A
 file it writes is ordinary Parquet that pyarrow, pandas, polars,
 DuckDB, arrow and nanoparquet read; what Parquet has no place for goes
@@ -10,6 +9,15 @@ into one JSON entry of the file's metadata, the *dta profile*, which
 those tools ignore. Only flat tables are read and written: nested
 columns (lists, maps, structs) are not, so for nested data use arrow,
 pyarrow or polars.
+
+The npm package `@jbearak/datakit` wrote and read these files in
+TypeScript until it was removed, unpublished, on 2026-11-10
+([ADR 0044](adr/0044-npm-datakit-removed.md)). The files it wrote stay
+readable: R's datakit reads them, labels, letters and categoricals
+included, and `compat/parquet/legacy/` keeps a set of them with what R
+and pyarrow read from each. There is no TypeScript writer any more;
+table-viewer reads Parquet through pqparser
+(github.com/jbearak/pqparser), a private package of its own.
 
 Contents:
 [Tasks](#tasks) ·
@@ -21,48 +29,34 @@ Contents:
 
 ## Tasks
 
-Each task links to its section on the language page.
+Each task links to its section on R's page.
 
 ### Install
 
-Parquet needs no Arrow or other Parquet library: the packages read and
-write it through their own Rust core. In both languages it is in
-datakit, which needs the format package (dtaparser,
-`@jbearak/dta-parser`). R installs from the project's package
-repository, with binaries for macOS, Windows and Ubuntu. The npm
-packages install from a checkout of this repository, which needs Rust
-and a C compiler (for the zstd library).
-
-- R: [Parquet: install](r.md#parquet-install).
-- TypeScript: [datakit: install](typescript.md#datakit-install);
-  `@jbearak/datakit` beside `@jbearak/dta-parser`.
+Parquet needs no Arrow or other Parquet library: datakit reads and
+writes it through the project's own Rust core, in dtaparser, which it
+needs. R installs from the project's package repository, with binaries
+for macOS, Windows and Ubuntu: [Parquet: install](r.md#parquet-install).
 
 ### Read a whole file, and what each type becomes
 
-Each language's type table gives what every Parquet type becomes. Every
+R's type table gives what every Parquet type becomes. Every
 conversion is exact or an error naming the option that keeps the value,
 with one exception: DECIMAL. R reads it by default as the nearest
 double, which may not equal the decimal value exactly; a value with
 more than 15 significant digits, which a double cannot give back, is an
 error, and `decimal = "character"` keeps every digit as text.
-TypeScript reads precision up to 15 as the nearest double and higher
-precision as text.
 
 R: [Read a Parquet file](r.md#read-a-parquet-file) and
 [What each Parquet type becomes](r.md#what-each-parquet-type-becomes-in-r).
-TypeScript: [Read a Parquet file](typescript.md#read-a-parquet-file) and
-[What each Parquet type becomes](typescript.md#what-each-parquet-type-becomes-in-typescript).
 
 ### Read some columns
 
 R: [Read some columns](r.md#read-some-columns-of-a-parquet-file).
-TypeScript: [Read some columns](typescript.md#read-some-columns-of-a-parquet-file).
 
 ### Read a range of rows
 
 R: [Read a range of rows](r.md#read-a-range-of-rows-of-a-parquet-file).
-TypeScript: [Read a range of rows](typescript.md#read-a-range-of-rows-of-a-parquet-file),
-and [in a browser or over HTTP](typescript.md#parquet-in-a-browser-or-over-http).
 Only the row groups that hold the rows are read, and within them only
 the pages that do: through the file's offset index, or, when it has
 none, by walking the page headers.
@@ -70,43 +64,36 @@ none, by walking the page headers.
 ### Get the schema and metadata without the data
 
 R: [Schema and metadata](r.md#a-parquet-files-schema-and-metadata).
-TypeScript: [Schema and metadata](typescript.md#a-parquet-files-schema-and-metadata).
 
 ### Value labels and variable labels
 
 R: [Labels](r.md#labels-in-parquet-files).
-TypeScript: [Labels](typescript.md#labels-in-parquet-files).
 
 ### Dates and timestamps, with time zones
 
 R: [Dates and time zones](r.md#dates-and-time-zones-in-parquet-files).
-TypeScript: [Dates and time zones](typescript.md#dates-and-time-zones-in-parquet-files).
 
 ### Write a table; compression and row groups
 
 R: [Write a Parquet file](r.md#write-a-parquet-file).
-TypeScript: [Write a Parquet file](typescript.md#write-a-parquet-file).
 The defaults are [below](#defaults-and-the-measurements-behind-them).
 
 ### Write labels and a data label, and check them
 
 R: [Write labels](r.md#write-labels-to-a-parquet-file).
-TypeScript: [Write labels](typescript.md#write-labels-to-a-parquet-file).
 
 ### Keep `.a` to `.z` through a write and a read
 
 R: [Keep .a to .z](r.md#keep-a-to-z-in-a-parquet-file).
-TypeScript: [Keep .a to .z](typescript.md#keep-a-to-z-in-a-parquet-file).
 
 ### Read a file another tool wrote
 
 R: [Files from other tools](r.md#parquet-files-from-other-tools).
-TypeScript: [Files from other tools](typescript.md#parquet-files-from-other-tools).
 Every encoding and codec other tools write by default is read. Of the
 encodings, only BIT_PACKED for values is not, which the format has
 deprecated and current writers do not use; what else is not read
 (nested columns, FLOAT16, INTERVAL, LZO, the Hadoop framing of LZ4 and
-encrypted files) is listed in each language's section. These types are read too:
+encrypted files) is listed in R's section. These types are read too:
 unsigned integers, DECIMAL, TIME, INT96, fixed-length binary, UUID,
 ENUM and JSON. A category or factor that
 pandas, polars or arrow wrote (a dictionary of strings in
@@ -115,15 +102,17 @@ the rows read, in order of first appearance, so two windows of one
 column can have different levels; a file we write carries every level
 in the profile instead. An instant's zone (a timestamp adjusted to UTC)
 comes from the profile, else from `ARROW:schema`, else is UTC. A clock
-time (not adjusted to UTC) has no zone: TypeScript reads it without
-one, and R, whose `POSIXct` needs one, reads its clock reading as UTC.
+time (not adjusted to UTC) has no zone: R, whose `POSIXct` needs one,
+reads its clock reading as UTC.
 
 ## The file
 
 A file is plain Parquet: every column OPTIONAL, data pages v1, with
 statistics, an offset index, the legacy converted types beside the
 logical types, and an `ARROW:schema` entry so that pyarrow, polars and
-arrow restore factors and time zones. What each value becomes:
+arrow restore factors and time zones. What each value becomes (the
+rows naming TypeScript are what `@jbearak/datakit` wrote, which R still
+reads):
 
 | what is written | Parquet physical type | logical type |
 |---|---|---|
@@ -167,21 +156,19 @@ Missing values:
   the column if it fits, else the first of the column's name,
   `name_2`, `name_3`, ... that fits or is free, so no other column's set
   changes and the name stays the same through any number of writes and
-  reads. A categorical without letters stays text. R and
-  TypeScript, whose factor and `DictionaryColumn` cannot hold letters,
-  read it as labelled numbers: the level numbers with the letters and
-  the set (`factors = TRUE` leaves it so). TypeScript reads the
-  categorical when the rows read hold no letters, and its `readRows`
-  gives its levels as text. R writes it back as labelled numbers, not a
-  categorical. A value that is
+  reads. A categorical without letters stays text. R, whose factor
+  cannot hold letters, reads it as labelled numbers: the level numbers
+  with the letters and the set (`factors = TRUE` leaves it so). R
+  cannot write one (TypeScript's datakit could), and writes it back as
+  labelled numbers, not a categorical. A value that is
   not a level number (another tool rewrote the column) reads as `.`,
   with one warning naming the column and the first such row.
 - A reader takes a DOUBLE value as `.a` to `.z` only when its bits are
   exactly that pattern with a letter `a` to `z`; any other NaN is NaN,
   a value.
-- `save_parquet(missing_letters = FALSE)` (R) and
-  `missingLetters: false` (TypeScript) write `.a` to `.z` as nulls, for files meant for tools that count NaN as a value. The letters
-  are then lost.
+- `save_parquet(missing_letters = FALSE)` writes `.a` to `.z` as
+  nulls, for files meant for tools that count NaN as a value. The
+  letters are then lost.
 
 ## The profile
 
@@ -228,8 +215,7 @@ metadata:
 - `characteristics` maps `_dta` or a column name to its named texts;
   `notes` and `sort` (column names) are arrays of text; `label` is the
   data label; `timestamp` is the `.dta` file's time stamp, as text, where
-  a language keeps one (R's `meta$timestamp` and TypeScript's
-  `Dataset` do).
+  a reader keeps one (R's `meta$timestamp` does).
 - **Reading is forgiving.** `version` is 1; a higher one is read for
   what is known, with one warning. The profile must be a JSON object of
   at most 64 MiB with no duplicate keys at any level. An entry that
@@ -290,8 +276,7 @@ write the file with `missing_letters = FALSE`.
   files were 16 to 17% smaller than snappy ones, and writing them took
   3 to 11% longer. `zstd` (with
   `compression_level`), `gzip`, `lz4_raw` and `none` are there on
-  request, in both languages, the npm package included: its wasm
-  module carries C libzstd too.
+  request.
 - **Row groups: up to 262,144 rows (polars' default) and about 1 GiB of
   values.** The plan had 64 MiB, which made a DHS file of 5,000 columns
   four row groups where pyarrow and polars write one; pyarrow then took
@@ -320,8 +305,8 @@ write the file with `missing_letters = FALSE`.
   wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
   A write encodes the next
   row groups while it writes out the current one, so a long table of
-  few columns keeps its threads busy. `DTA_THREADS` and each
-  language's threads option set the count instead. The measurements at
+  few columns keeps its threads busy. `DTA_THREADS` and the option
+  `dtaparser.threads` set the count instead. The measurements at
   1 to 16 threads are in
   [bench/RESULTS.md](../bench/RESULTS.md#parquet).
 - **Memory for a read in R.** Before a large read, dtaparser has R
@@ -359,16 +344,5 @@ and of other tools reading our files, is in
 | warning: `dropped "columns.x.storage" from the dta profile: ...` (and other `dropped ...` warnings) | a damaged or hand-edited profile | none needed; the values are read, the entry is not |
 | warning: `the dta profile is not JSON (...); the file is read as plain Parquet` | the `dta` entry is damaged | as for any file from another tool |
 | warning: `the dta profile is version 2, newer than this reader's 1; ...` | a newer writer | update datakit |
-| warning: `column "x": row 3 holds a value that is not one of its 3 level numbers; it is read as .` (R: `as NA`; TypeScript counts rows from 0, code `DATAKIT_CATEGORICAL`) | another tool wrote a value into a categorical holding `.a` to `.z` | none needed; the value reads as `.` |
+| warning: `column "x": row 3 holds a value that is not one of its 3 level numbers; it is read as NA` | another tool wrote a value into a categorical holding `.a` to `.z` | none needed; the value reads as `NA` |
 | warning: `column "x" is a categorical whose value label set "s" does not label 1 to 3 with its levels; a set made from the levels is used` | a hand-edited profile | none needed |
-The TypeScript package gives the same messages, with its own option
-names, and a `code` on each error ([Errors](typescript.md#errors)):
-
-| message (TypeScript) | cause | what to do |
-|---|---|---|
-| `no variable "x"; the file's are ...` (`DTA_OUT_OF_RANGE`) | a name or index in `columns` the file does not have | check `r.variables` |
-| `the file has nested columns, which are not read: "l"; select the columns wanted, or open with nested: "skip"` | `readRows` without `columns` on a file with a list, map or struct | select columns, or `{ nested: "skip" }` |
-| `column "n": the value 9007199254740993 in row 1 ... read with int64: "bigint" to keep every digit` | `int64: "number"`, or statistics that understated a column's range | `{ int64: "bigint" }` |
-| `maxStringBytes is for .dta files; Parquet strings are read whole` | `maxStringBytes` on a Parquet reader | leave it out |
-| `x: a .dta file cannot hold 64-bit integers; use writeParquet` | `writeDta` given bigints | `writeParquet`, or numbers |
-| warnings in `info.warnings` | a damaged or newer dta profile | as above |

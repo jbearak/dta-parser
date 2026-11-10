@@ -4,10 +4,6 @@ Read Stata `.dta` files (releases 104 to 119) and write release 118, in
 Node and browsers, synchronously. The format is implemented once, in
 Rust, and runs here as an embedded wasm module of 344 KB.
 
-For Parquet files that keep a `.dta` file's labels and `.a` to `.z`,
-fixed-width text through SAS setup files, and whole datasets to change
-and save, use `@jbearak/datakit`, which works beside this package.
-
 ```ts
 import { openDta, formatValue, MISSING, type Missing } from "@jbearak/dta-parser";
 import { openDtaFile, writeDtaFile } from "@jbearak/dta-parser/node";
@@ -37,5 +33,6 @@ A file is read only as far as asked: opening reads the header and the
 variable descriptors, and `readColumns` decodes just the requested
 variables and rows. Each call into the module holds at most 64 MiB of
 decoded data. See [docs/migration.md](https://github.com/jbearak/dta-parser/blob/main/docs/migration.md)
-for moving from 0.x or 1.x (2.0 moved Parquet to `@jbearak/datakit`).
+for moving from 0.x or 1.x (2.0 reads and writes `.dta` files only; 1.1
+read Parquet as well).
 The module uses no code from crates.io (`THIRD-PARTY-NOTICES`).
