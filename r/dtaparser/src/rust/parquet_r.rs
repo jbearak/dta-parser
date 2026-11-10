@@ -889,6 +889,7 @@ fn read_into(
     // stay where they are until the read returns.
     let mut outputs: Vec<Output> = Vec::with_capacity(cols.len());
     for col in &mut cols {
+        // None when no codes were allocated, and when there are no rows.
         let codes = (!col.codes.is_empty()).then(|| unsafe { std::slice::from_raw_parts_mut(col.codes.as_mut_ptr(), rows) });
         let output = unsafe {
             match &col.kind {
@@ -921,10 +922,10 @@ fn read_into(
                 }
                 Kind::Int64(Int64Mode::Character) if col.unsigned => Output::UInt64(
                     Numbers::new(slice_mut(col.int64s.as_mut_ptr() as *mut u64, rows), 0)
-                        .with_codes(codes.expect("codes")),
+                        .with_codes(codes.unwrap_or_default()),
                 ),
                 Kind::Int64(Int64Mode::Character) => Output::Int64(
-                    Numbers::new(slice_mut(col.int64s.as_mut_ptr(), rows), 0).with_codes(codes.expect("codes")),
+                    Numbers::new(slice_mut(col.int64s.as_mut_ptr(), rows), 0).with_codes(codes.unwrap_or_default()),
                 ),
                 Kind::Text | Kind::Binary => Output::Text,
             }

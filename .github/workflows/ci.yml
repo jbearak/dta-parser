@@ -43,9 +43,10 @@ jobs:
         with:
           command: check licenses
 
-  # Parquet (plan 0018): pyarrow's reading of the committed fixtures is
-  # still what compat/parquet/expected holds, and pyarrow, pandas, polars,
-  # and DuckDB read back the files dta-parquet writes.
+  # Parquet (plan 0018): pyarrow's reading of the committed fixtures and
+  # of the legacy fixtures is still what their expected/ holds, and
+  # pyarrow, pandas, polars, and DuckDB read back the files dta-parquet
+  # writes.
   parquet-python:
     runs-on: ubuntu-latest
     steps:
@@ -56,8 +57,9 @@ jobs:
           python-version: "3.13"
       - run: pip install pyarrow pandas polars duckdb
       - run: python compat/parquet/expected.py
+      - run: python compat/parquet/legacy/expected.py
       - name: Committed expected values match pyarrow's reading
-        run: git diff --exit-code -- compat/parquet/expected
+        run: git diff --exit-code -- compat/parquet/expected compat/parquet/legacy/expected
       - run: cargo run -p dta-parquet --example samples -- "$RUNNER_TEMP/parquet"
       - run: python compat/parquet/readback.py "$RUNNER_TEMP/parquet"
 

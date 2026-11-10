@@ -13,6 +13,10 @@ Two checks for `crates/parquet` (plan 0018):
   checked against what the writer was given and against plan 0018's
   table "What other tools see in our files".
 
+A third set, [`legacy/`](legacy/README.md), holds files R's and
+TypeScript's datakit wrote, with what datakit and pyarrow read from
+them, so that a later reader can be checked against them.
+
 No file here comes from Stata or from any dataset; every value is made by
 the scripts.
 
