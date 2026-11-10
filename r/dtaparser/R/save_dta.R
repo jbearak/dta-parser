@@ -211,7 +211,8 @@ FACTOR_MARK <- "dtaparser_factor"
 
 # The characteristic that marks a categorical column, which may hold .a
 # to .z (plan 0023); its value is as a factor mark's. datakit writes
-# it (R's for a polars frame, and TypeScript's); save_dta() only drops it.
+# it (TypeScript's; R's did for a polars frame); save_dta() only drops
+# it.
 CATEGORICAL_MARK <- "dtaparser_categorical"
 
 # `chars` without factor or categorical marks, plus one for each factor

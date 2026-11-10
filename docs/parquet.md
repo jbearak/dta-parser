@@ -127,21 +127,19 @@ arrow restore factors and time zones. What each value becomes:
 
 | what is written | Parquet physical type | logical type |
 |---|---|---|
-| Stata byte; polars `Int8` | INT32 | INT(8, signed) |
-| Stata int; polars `Int16` | INT32 | INT(16, signed) |
-| Stata long; R integer; polars `Int32` | INT32 | none |
-| R `integer64`; polars `Int64` | INT64 | none |
-| polars `UInt8` to `UInt64` | INT32 or INT64 | INT(8 to 64, unsigned), with unsigned statistics |
-| Stata float; polars `Float32` | FLOAT | none |
-| Stata double; R double; polars `Float64`, and an all-null `Null` column | DOUBLE | none |
-| R logical; polars `Boolean` | BOOLEAN | none |
-| text: strN, strL, R character, polars `String` | BYTE_ARRAY | STRING |
-| binary: a binary strL, an R list of raw vectors, polars `Binary` | BYTE_ARRAY | none |
-| R `Date`; polars `Date` | INT32 | DATE |
-| R `POSIXct`; a polars `Datetime` with a zone | INT64 | TIMESTAMP(MICROS for R, the column's unit for polars, adjusted to UTC); the zone in the profile and `ARROW:schema` |
-| a polars `Datetime` without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
-| polars `Time` | INT64 | TIME(NANOS) |
-| R factor; polars `Enum`, `Categorical` | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
+| Stata byte | INT32 | INT(8, signed) |
+| Stata int | INT32 | INT(16, signed) |
+| Stata long; R integer | INT32 | none |
+| R `integer64`; a TypeScript `int64` | INT64 | none |
+| Stata float | FLOAT | none |
+| Stata double; R double | DOUBLE | none |
+| R logical | BOOLEAN | none |
+| text: strN, strL, R character | BYTE_ARRAY | STRING |
+| binary: a binary strL, an R list of raw vectors | BYTE_ARRAY | none |
+| R `Date` | INT32 | DATE |
+| R `POSIXct`; a TypeScript timestamp with a zone | INT64 | TIMESTAMP(MICROS for R, the column's unit for TypeScript, adjusted to UTC); the zone in the profile and `ARROW:schema` |
+| a TypeScript timestamp without a zone | INT64 | TIMESTAMP(its unit, not adjusted to UTC) |
+| R factor; a TypeScript categorical | BYTE_ARRAY, dictionary-encoded, every level in order in every row group | STRING; levels and ordering in the profile |
 | a categorical holding `.a` to `.z`: a TypeScript categorical given `MISSING` values or tagged NaNs among its codes | DOUBLE: level numbers from 1, the letters as tagged NaNs | none; `"logical": "categorical"`, levels, ordering and a value label set in the profile |
 
 Missing values:
@@ -320,20 +318,9 @@ write the file with `missing_letters = FALSE`.
   per-column work on the calling thread. Large files have more to
   share: long.dta (777 MiB) passed for reads up to four threads and
   wide.dta (4.6 GB) up to eight, and wide.dta's writes up to six.
-  The Arrow path that
-  R's datakit uses with polars (plans 0019 and 0025) has its own rule, set against
-  polars, which uses every core: reads of 256 KiB or more use one
-  thread per 32 MiB, at least four and at most twelve, and writes one
-  per 8 MiB, at least four and at most sixteen. There the measure is
-  polars' wall time, with CPU time within the larger of 1.15 times
-  polars' and the speed gained. A read on the Arrow path also hands
-  nothing to the calling thread in row order, so more threads stay
-  busy. A write encodes the next
+  A write encodes the next
   row groups while it writes out the current one, so a long table of
-  few columns keeps its threads busy. On the Arrow path the workers encode as
-  far ahead of the column chunk being written out as 256 MiB of encoded
-  chunks allows, rather than two chunks per thread, so a wide survey
-  file's many small chunks keep every thread busy. `DTA_THREADS` and each
+  few columns keeps its threads busy. `DTA_THREADS` and each
   language's threads option set the count instead. The measurements at
   1 to 16 threads are in
   [bench/RESULTS.md](../bench/RESULTS.md#parquet).

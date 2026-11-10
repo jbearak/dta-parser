@@ -171,13 +171,11 @@ languages hold exactly.
 
     sh compat/parquet/categorical_marker.sh [DIR]
 
-Each datakit saves two categoricals as `.dta` with the
-`dtaparser_categorical` marker (plan 0023), one of them ordered:
-TypeScript's from a `Dataset`, with `.a` and `.z` in the ordered one,
-and R's from a polars frame. TypeScript reads R's file as categoricals,
-and R's dtaparser reads both without a warning: the first column as a
-factor, and the second as an ordered factor from R's file and as
-labelled numbers with its letters from TypeScript's.
+TypeScript's datakit saves two categoricals as `.dta` with the
+`dtaparser_categorical` marker (plan 0023), one of them ordered and
+holding `.a` and `.z`. R's dtaparser reads them without a warning: the
+first as a factor, and the second as labelled numbers with its letters,
+with `factors = TRUE` too.
 
 ## Credits
 

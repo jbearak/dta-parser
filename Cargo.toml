@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dta", "crates/dta-ffi", "crates/parquet", "crates/arrow"]
+members = ["crates/dta", "crates/dta-ffi", "crates/parquet"]
 exclude = ["r", "bench"]
 
 [profile.release]

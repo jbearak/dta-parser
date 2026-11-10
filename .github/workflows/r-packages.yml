@@ -19,7 +19,6 @@ on:
       - "r/**"
       - "crates/dta/**"
       - "crates/parquet/**"
-      - "crates/arrow/**"
       - "scripts/build-r-package.sh"
       - "scripts/place-r-binaries.R"
       - ".github/workflows/r-packages.yml"
@@ -55,10 +54,6 @@ jobs:
     env:
       # CRAN's arm64 builds of R run on macOS 11 and later.
       MACOSX_DEPLOYMENT_TARGET: "11.0"
-      # The tests below run datakit's polars tests (plan 0025), which
-      # fail instead of skipping when polars or nanoarrow is missing.
-      # polars needs R 4.3; oldrel-1 is R 4.5 since R 4.6 (April 2026).
-      DATAKIT_REQUIRE_POLARS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -71,19 +66,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::nanoarrow
-      # R-multiverse has polars binaries for macOS and Windows; on Ubuntu
-      # 24.04 polars installs from source, and NOT_CRAN=true makes it
-      # download its prebuilt Rust library instead of compiling it.
-      - name: Install polars from R-multiverse
-        shell: Rscript {0}
-        env:
-          NOT_CRAN: "true"
-        run: install.packages("polars", repos = c("https://community.r-multiverse.org", getOption("repos")))
-      # install.packages() only warns when an install fails.
-      - name: polars and nanoarrow load
-        shell: Rscript {0}
-        run: library(polars); library(nanoarrow)
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite
       - uses: actions/download-artifact@v4
         with:
           name: r-source

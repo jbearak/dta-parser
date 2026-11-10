@@ -31,7 +31,6 @@ people and by coding agents alike:
 |---|---|---|
 | `crates/dta` | the format: reader (releases 104 to 119) and release 118 writer | Rust |
 | `crates/parquet` | Parquet with a dta profile (plan 0018, [ADR 0033](docs/adr/0033-parquet-with-a-dta-profile.md)): reader and writer over `crates/dta`'s `Source` | Rust |
-| `crates/arrow` | the Arrow C data interface by hand, and Parquet and `.dta` reads and writes through Arrow memory, for datakit's polars functions in R (plans 0019 and 0025) | Rust |
 | `crates/dta-ffi` | the WebAssembly interface for the npm packages | Rust |
 | `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
 | `r/datparser` | the R package for `read_fixed_width` alone; builds R columns from the core's fixed-width reader, with its own copy of `crates/dta` in `src/rust` ([ADR 0039](docs/adr/0039-datparser.md)) | R, Rust, C |
@@ -96,10 +95,9 @@ Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools"
 
 `scripts/build-r-package.sh` makes the source tarballs that CI
 installs. dtaparser carries a committed copy of the Rust core in
-`r/dtaparser/src/rust/dta`, `r/dtaparser/src/rust/parquet`, and
-`r/dtaparser/src/rust/arrow`, so it installs from GitHub without the
+`r/dtaparser/src/rust/dta` and `r/dtaparser/src/rust/parquet`, so it installs from GitHub without the
 rest of the repository. Its `configure` refreshes the copies from
-`crates/dta`, `crates/parquet`, and `crates/arrow` whenever it runs in a
+`crates/dta` and `crates/parquet` whenever it runs in a
 checkout; commit the result with any change to
 the core, or CI fails. The tarball also carries the crates.io crates
 the Parquet core uses (`src/rust/vendor.tar.xz`), so it builds with no

@@ -119,10 +119,6 @@ jobs:
 
   r:
     runs-on: ubuntu-latest
-    # datakit's polars tests (plan 0025) fail instead of skipping when
-    # polars or nanoarrow is missing, and so do the docs' polars examples.
-    env:
-      DATAKIT_REQUIRE_POLARS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -135,26 +131,15 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: r/dtaparser
-          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::arrow, any::nanoparquet, any::nanoarrow
-      # R-multiverse has no polars binary for Ubuntu 24.04, so polars
-      # installs from source; NOT_CRAN=true makes it download its
-      # prebuilt Rust library instead of compiling it.
-      - name: Install polars from R-multiverse
-        shell: Rscript {0}
-        env:
-          NOT_CRAN: "true"
-        run: install.packages("polars", repos = c("https://community.r-multiverse.org", getOption("repos")))
-      # install.packages() only warns when an install fails.
-      - name: polars and nanoarrow load
-        run: Rscript -e 'library(polars); library(nanoarrow)'
+          extra-packages: any::vctrs, any::haven, any::testthat, any::dplyr, any::readstata13, any::RcppTOML, any::bit64, any::jsonlite, any::arrow, any::nanoparquet
       # Build the source packages, then install them from outside the
       # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh
       # Installs from GitHub build r/dtaparser and r/datparser alone, from
       # their committed copies of the Rust core; configure just refreshed
-      # them from crates/dta, crates/parquet, and crates/arrow.
-      - name: Committed Rust core matches crates/dta, crates/parquet, and crates/arrow
-        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet r/dtaparser/src/rust/arrow r/datparser/src/rust/dta)"
+      # them from crates/dta and crates/parquet.
+      - name: Committed Rust core matches crates/dta and crates/parquet
+        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet r/datparser/src/rust/dta)"
       # The source package carries its crates.io crates (plan 0018): it
       # builds with cargo offline and an empty cargo home, so nothing can
       # come from the network or a cache.
