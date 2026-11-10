@@ -194,6 +194,33 @@ fn read(r: &mut Reader<dta::Bytes<&[u8]>>, columns: &[usize], skip: u64, n: u64)
     .map(drop)
 }
 
+/// Read `columns` of rows `skip..skip + n` into the Arrow outputs, which
+/// decode through their own kernels (`columnar.rs`): text and bytes as
+/// views, DECIMAL as text, numbers into a type that holds every value.
+fn read_arrow<S: dta::Source>(r: &mut Reader<S>, columns: &[usize], skip: u64, n: u64) -> dta::Result<()> {
+    use dta_parquet::ColumnType::*;
+    use dta_parquet::{ArrowData, ArrowOutput};
+    let w = r.window(skip, n);
+    let rows = (w.end - w.start) as usize;
+    let mut store: Vec<(Vec<f64>, Vec<i64>, Vec<u64>, Vec<u128>, Vec<u8>)> =
+        vec![(vec![0.0; rows], vec![0; rows], vec![0; rows], vec![0; rows], vec![0; rows.div_ceil(8)]); columns.len()];
+    let mut outs: Vec<Output> = columns
+        .iter()
+        .zip(store.iter_mut())
+        .map(|(&c, v)| {
+            let data = match r.columns()[c].kind {
+                Decimal { .. } => return Output::Text,
+                Text | Binary => ArrowData::Views(&mut v.3),
+                Float | Double => ArrowData::Float64(&mut v.0),
+                UInt8 | UInt16 | UInt32 | UInt64 => ArrowData::UInt64(&mut v.2),
+                _ => ArrowData::Int64(&mut v.1),
+            };
+            Output::Arrow(ArrowOutput { validity: Some(&mut v.4), data })
+        })
+        .collect();
+    r.read(columns, skip, n, &mut outs, |_, _| Ok(())).map(drop)
+}
+
 /// What one damaged file did: an error opening it, or how many reads it
 /// took and how many failed.
 fn run_case(bytes: &[u8], rng: &mut Rng) -> Result<(usize, usize, usize), String> {
@@ -223,17 +250,30 @@ fn run_case(bytes: &[u8], rng: &mut Rng) -> Result<(usize, usize, usize), String
     let (mut reads, mut failed) = (0, 0);
     for (skip, n) in windows {
         let w = r.window(skip, n);
-        let (result, largest) = largest_during(|| read(&mut r, &columns, skip, n));
-        reads += 1;
-        if let Err(e) = result {
-            failed += 1;
-            if e.message.contains("panicked") {
-                return Err(format!("rows {skip}+{n}: {}", e.message));
-            }
-        }
         let limit = bound(len, (w.end - w.start) as usize * columns.len().max(1));
-        if largest > limit {
-            return Err(format!("rows {skip}+{n} asked for {largest} bytes, more than {limit}"));
+        // Through the plain outputs, then through the Arrow outputs, which
+        // have their own kernels.
+        for arrow in [false, true] {
+            let (result, largest) = largest_during(|| {
+                if arrow {
+                    read_arrow(&mut r, &columns, skip, n)
+                } else {
+                    read(&mut r, &columns, skip, n)
+                }
+            });
+            reads += 1;
+            if let Err(e) = result {
+                failed += 1;
+                if e.message.contains("panicked") {
+                    return Err(format!("rows {skip}+{n}{}: {}", if arrow { " (Arrow)" } else { "" }, e.message));
+                }
+            }
+            if largest > limit {
+                return Err(format!(
+                    "rows {skip}+{n}{} asked for {largest} bytes, more than {limit}",
+                    if arrow { " (Arrow)" } else { "" }
+                ));
+            }
         }
     }
     Ok((1, reads, failed))

@@ -256,6 +256,33 @@ fn an_empty_group_is_not_a_column() {
 
 // ---- S4: the damage plan 0018 names ----
 
+/// Read `columns` of rows `skip..skip + n` into the Arrow outputs, which
+/// decode through their own kernels (`columnar.rs`): text and bytes as
+/// views, DECIMAL as text, numbers into a type that holds every value.
+fn read_arrow<S: dta::Source>(r: &mut Reader<S>, columns: &[usize], skip: u64, n: u64) -> dta::Result<()> {
+    use dta_parquet::ColumnType::*;
+    use dta_parquet::{ArrowData, ArrowOutput};
+    let w = r.window(skip, n);
+    let rows = (w.end - w.start) as usize;
+    let mut store: Vec<(Vec<f64>, Vec<i64>, Vec<u64>, Vec<u128>, Vec<u8>)> =
+        vec![(vec![0.0; rows], vec![0; rows], vec![0; rows], vec![0; rows], vec![0; rows.div_ceil(8)]); columns.len()];
+    let mut outs: Vec<Output> = columns
+        .iter()
+        .zip(store.iter_mut())
+        .map(|(&c, v)| {
+            let data = match r.columns()[c].kind {
+                Decimal { .. } => return Output::Text,
+                Text | Binary => ArrowData::Views(&mut v.3),
+                Float | Double => ArrowData::Float64(&mut v.0),
+                UInt8 | UInt16 | UInt32 | UInt64 => ArrowData::UInt64(&mut v.2),
+                _ => ArrowData::Int64(&mut v.1),
+            };
+            Output::Arrow(ArrowOutput { validity: Some(&mut v.4), data })
+        })
+        .collect();
+    r.read(columns, skip, n, &mut outs, |_, _| Ok(())).map(drop)
+}
+
 /// Read every column of `file`, whole and as a window (which, without an
 /// offset index, walks the page headers), on one thread and on four.
 fn read_all(file: &[u8]) -> Vec<dta::Result<()>> {
@@ -285,6 +312,12 @@ fn read_all(file: &[u8]) -> Vec<dta::Result<()>> {
                 r.read(&columns, skip, n, &mut outs, |_, _| Ok(())).map(drop)
             });
             out.push(result);
+            // The same through the Arrow outputs, which have their own kernels.
+            let arrow = Reader::open(dta::Bytes(file), options).and_then(|mut r| {
+                let columns = r.data_columns()?;
+                read_arrow(&mut r, &columns, skip, n)
+            });
+            out.push(arrow);
         }
     }
     out

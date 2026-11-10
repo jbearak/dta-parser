@@ -65,6 +65,7 @@ version = "0.1.0"
 dependencies = [
  "dta",
  "dta-parquet",
+ "libc",
 ]
 
 [[package]]
