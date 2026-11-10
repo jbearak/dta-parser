@@ -63,16 +63,15 @@ reach the core through.
 **datparser**:
 The R package that reads fixed-width text through a SAS setup file,
 `read_fixed_width`, and nothing else: it needs neither dtaparser nor
-datakit, and builds its columns in memory from its own copy of the core
-(ADR 0039). Labelled columns are plain vectors with a `labels`
-attribute; datakit's `read_fixed_width` gives them dtaparser's class.
+datakit, and builds its columns in memory (ADR 0039). Labelled columns
+are plain vectors with a `labels` attribute. It lives in its own
+repository, github.com/jbearak/datparser, since 2026-11-10.
 
 **datakit**:
 The data preparation package, one in R and one in TypeScript. In R: `d[i,
-name, by = g] := value` on data frames under R's rules,
-`read_fixed_width`, and `read_parquet`, `read_parquet_info` and
-`save_parquet`; it imports dtaparser, reaching the Rust bridge through
-it, and datparser, whose `read_fixed_width` it wraps.
+name, by = g] := value` on data frames under R's rules, and
+`read_parquet`, `read_parquet_info` and `save_parquet`; it imports
+dtaparser, reaching the Rust bridge through it.
 In TypeScript,
 `@jbearak/datakit`: Parquet (`ParquetReader`, `readParquet`,
 `saveParquet`), `readFixedWidth`, and `readDta` and `saveDta` into a
@@ -117,8 +116,8 @@ A SAS program published with a fixed-width text data file, saying
 where each variable's columns are, its variable label and value labels,
 and which codes are missing values. CDC publishes one for each NSFG
 file from 1973 to 2017-2019 (in 2002, split into three files).
-`read_fixed_width` reads the data through it: datparser's in R (and
-datakit's, which wraps it), datakit's `readFixedWidth` in TypeScript.
+`read_fixed_width` reads the data through it: datparser's in R,
+datakit's `readFixedWidth` in TypeScript.
 _Avoid_: dictionary (Stata's own `.dct` format), codebook
 
 **dta profile**:

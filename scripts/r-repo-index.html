@@ -4,19 +4,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>dtatools, datakit, datparser, and dtaparser @VERSION@</title>
+<title>dtatools, datakit, and dtaparser @VERSION@</title>
 <style>body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5 } pre { background: #f4f4f4; padding: .75rem; overflow-x: auto }</style>
 </head>
 <body>
-<h1>dtatools, datakit, datparser, and dtaparser @VERSION@</h1>
+<h1>dtatools, datakit, and dtaparser @VERSION@</h1>
 <p>An R package repository for
 <a href="https://github.com/jbearak/dta-parser">dta-parser</a>'s R
 packages. It holds binaries for macOS (arm64), Windows (x86_64) and
 Ubuntu 24.04 (x86_64) for the current and previous R releases, and the
-source packages; dtaparser's and datparser's need Rust to build.
-Installing dtatools installs the other three; for R's rules without
-dibbles, install <code>"datakit"</code> the same way, and for
-<code>read_fixed_width()</code> alone, <code>"datparser"</code>.</p>
+source packages; dtaparser's needs Rust to build.
+Installing dtatools installs the other two; for R's rules without
+dibbles, install <code>"datakit"</code> the same way.
+<code>read_fixed_width()</code> is in
+<a href="https://github.com/jbearak/datparser">datparser</a>.</p>
 
 <h2>macOS and Windows</h2>
 <pre>install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))</pre>

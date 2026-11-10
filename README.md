@@ -20,7 +20,8 @@ implementation of the format underneath both.
 - **Reads fixed-width text through a SAS setup file**, such as the
   National Survey of Family Growth from 1973 to 2017-2019, with the
   setup's missing-value recodes kept as `.a`, `.b`, ... on request
-  (`read_fixed_width` in R, `readFixedWidth` in TypeScript).
+  (`readFixedWidth` in TypeScript; in R, `read_fixed_width` in
+  [datparser](https://github.com/jbearak/datparser)).
 - **Reads and writes Parquet that keeps all of this** (in R, through
   datakit's `read_parquet()` and `save_parquet()`; in TypeScript,
   `@jbearak/datakit`'s `readParquet()` and `saveParquet()`): labels,
@@ -62,9 +63,7 @@ rules. `datakit` is for data preparation:
   and Stata do this in a line; for a data frame, R has no ergonomic way
   to otherwise.
 - It reads and writes Stata `.dta` files (`read_dta`, `read_meta`,
-  `save_dta`) and reads fixed-width `.dat` files through their SAS
-  setup files (`read_fixed_width`, from `datparser`, which also stands
-  alone for those who need only that).
+  `save_dta`).
 - Columns keep value labels and the missing values `.a` to `.z`, read
   and set with `var_label`, `val_labels`, `with_labels`, `tagged_na`,
   and `na_tag`, so haven and labelled are not needed.
@@ -154,7 +153,7 @@ the table says how.
 | `.` and `.a` to `.z` kept per value and written back | ✓ `dta_num` | ✓ codes |
 | binary strLs | an error | read and write (`Uint8Array`) |
 | text encoding option for files before release 118 | ✓ | ✓ |
-| fixed-width text through a SAS setup file | datparser's and datakit's `read_fixed_width` | datakit's `readFixedWidth` |
+| fixed-width text through a SAS setup file | [datparser](https://github.com/jbearak/datparser)'s `read_fixed_width` | datakit's `readFixedWidth` |
 | Parquet files that keep labels and `.a` to `.z` | datakit's `read_parquet`, `save_parquet` | datakit's `readParquet`, `saveParquet`; `openParquetFile`, the same reader interface as `.dta` |
 | `%td`, `%tc` as dates | dtatools: numbers with their format; dtaparser: `Date`, `POSIXct` | numbers; `formatValue` |
 | write release 118 | ✓ | ✓ |
@@ -175,8 +174,7 @@ than release 118 comes back as UTF-8.
 | `crates/dta` | the format, in Rust: reader and release 118 writer |
 | `crates/dta-ffi` | the WebAssembly interface (for TypeScript) |
 | `r/dtaparser` | the R package that reads into standard R types, and the R bridge to the core |
-| `r/datparser` | the R package that reads fixed-width text through a SAS setup file, `read_fixed_width`, on its own |
-| `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width` (from datparser), and Parquet's `read_parquet` and `save_parquet` |
+| `r/datakit` | the R package for data preparation: `:=`, and Parquet's `read_parquet` and `save_parquet` |
 | `r/dtatools` | the R package with Stata's rules, built on dtaparser and datakit |
 | `js` | the npm packages |
 | `compat` | test files from haven, pandas and ReadStat, and what those readers make of them |

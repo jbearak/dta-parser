@@ -37,8 +37,8 @@ section.
 ## Install
 
 dtatools needs R 4.2 or later. It reads and writes through dtaparser
-and takes `:=` from datakit, and installing it installs both, and
-datparser, which datakit includes. None of the four is on CRAN. Each release is published as an R package
+and takes `:=` from datakit, and installing it installs both. None of
+the three is on CRAN. Each release is published as an R package
 repository on GitHub, with binaries for macOS (arm64), Windows (x86_64)
 and Ubuntu 24.04 (x86_64) for the current and previous R releases. On
 macOS and Windows:
@@ -47,17 +47,10 @@ macOS and Windows:
 install.packages("dtatools", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
-To analyse or prepare data under R's rules, without dibbles, install datakit instead, which installs dtaparser and datparser:
+To analyse or prepare data under R's rules, without dibbles, install datakit instead, which installs dtaparser:
 
 ```r norun
 install.packages("datakit", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
-```
-
-To read fixed-width files and nothing else, install datparser alone
-(see [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)):
-
-```r norun
-install.packages("datparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
 ```
 
 On Ubuntu 24.04:
@@ -947,128 +940,13 @@ frame with `dtaparser::save_dta()`; dates, labelled columns and `.a` to
 
 ## Fixed-width files with a SAS setup file
 
-Some surveys are published as fixed-width text with a SAS program, the
-*setup file*, that says where each variable sits. CDC publishes the
-National Survey of Family Growth this way, from 1973 to 2017-2019.
-`read_fixed_width()` reads such data through its setup file: columns
-from `INPUT`, variable labels from `LABEL`, value labels
-from `PROC FORMAT` and `FORMAT`, record types from
-`IF rec_type < 5 THEN DELETE; ELSE INPUT ...`, and the setup's
-*missing-value recodes*, such as `IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;`.
+`read_fixed_width()`, which reads fixed-width text such as the National
+Survey of Family Growth's through its SAS setup file, is in its own
+package, [datparser](https://github.com/jbearak/datparser), with its
+own documentation. It needs neither dtaparser nor datakit:
 
-It lives in datparser, a package of its own that needs neither
-dtaparser nor datakit, and datakit includes it. The two differ in one
-way: datparser gives a column with value labels as a plain integer or
-double vector with a `labels` attribute, and datakit's
-`read_fixed_width()` gives it as a `dtaparser_labelled`, as
-`read_dta()` does, whose labels survive `x[i]` and dplyr and whose
-`.a` to `.z` `val_label()` and `na_tag()` read. The examples below use
-datakit's; datparser's reads the same values (see
-[datparser alone](#datparser-alone)).
-
-```r
-writeLines(c(
-  "PROC FORMAT;",
-  "  VALUE kidsf 0='(0) None' 98='(98) DK' 99='(99) Not ascertained';",
-  "DATA;",
-  "INPUT ID 1-3 KIDS 4-5;",
-  "LABEL KIDS = 'Number of children';",
-  "IF (KIDS = 98 OR KIDS = 99) THEN KIDS = .;",
-  "FORMAT KIDS kidsf.;"
-), "survey.sas")
-writeLines(c("001 2", "00298", "00399", "004 0"), "survey.dat")
-```
-
-By default the recodes apply as the setup writes them, so 98 and 99 are
-`NA`, and the columns are as `read_dta()` returns them:
-
-```r
-df <- datakit::read_fixed_width("survey.dat", "survey.sas")
-df$KIDS               # 2 NA NA 0
-dtaparser::var_label(df$KIDS) # "Number of children"
-```
-
-`recodes = "tagged"` keeps why each value is missing, as labelled
-missing values: per variable, the codes recoded to `.` become haven's
-tagged NAs `.a`, `.b`, ... in the order the setup names them, and each
-code's value label moves to its letter:
-
-```r
-df <- datakit::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
-dtaparser::na_tag(df$KIDS)     # NA "a" "b" NA
-is.na(df$KIDS)                 # FALSE TRUE TRUE FALSE
-dtaparser::val_label(df$KIDS)  # NA "(98) DK" "(99) Not ascertained" "(0) None"
-dtaparser::na_tag(dtaparser::val_labels(df$KIDS)) # (0) None = NA, (98) DK = "a", (99) ... = "b"
-```
-
-A letter means what that variable's labels say: `.a` is 98 "DK" here,
-but in a variable whose setup recodes 97 "Refused" first, `.a` is
-"Refused". `recodes = "none"` ignores the recodes, keeping the codes as
-numbers.
-
-### datparser alone
-
-datparser reads the file in memory, with its own copy of the Rust
-core, and gives labelled columns as plain vectors:
-
-```r
-d <- datparser::read_fixed_width("survey.dat", "survey.sas", recodes = "tagged")
-class(d$KIDS)           # "numeric"
-attr(d$KIDS, "labels")  # (0) None = 0, (98) DK = NA, (99) Not ascertained = NA
-dtaparser::na_tag(attr(d$KIDS, "labels")) # NA "a" "b"
-```
-
-Numeric columns take the smallest type that holds their values, and
-records shorter than the setup's columns read as blank (`NA`).
-Statements the reader does not run, such as other data-step code or a
-range in `VALUE`, are skipped with one warning; the tibble's
-`warnings` attribute lists them all. A `LENGTH` statement for numbers, which sets only how SAS stores them, is skipped without one. A variable label with stray quotes
-inside it, such as `X = "WHETHER " SAME AS LAST MONTH" WAS ANSWERED"`
-in CDC's 2011-2013 to 2015-2017 setups, is read from its first quote to
-its last, without a warning. `col_select`, `skip` and `n_max` work as
-in `read_dta()`: only the columns selected are read and warned about,
-and `skip` and `n_max` count the records the setup keeps.
-
-CDC's setups from 2002 on differ in two ways, and `read_fixed_width()`
-reads both. The 2002 setups come in three files (`2002FemPregInput.sas`,
-`2002FemPregVarLabel.sas`, `2002FemPregValueLabel.sas`); give `setup`
-the paths in that order, and they are read as one setup. A statement
-may not run from one file into the next, and errors and warnings name a
-file by its place (`"file 2 line 8"`):
-
-```r
-writeLines(c("DATA;", "INPUT ID 1-3 KIDS 4-5;", "RUN;"), "input.sas")
-writeLines(c(
-  "PROC FORMAT;",
-  "  VALUE kidsf 0='(0) None' 98='(98) DK';",
-  "RUN;",
-  "FORMAT KIDS kidsf.;"
-), "labels.sas")
-df <- datakit::read_fixed_width("survey.dat", c("input.sas", "labels.sas"),
-                                  recodes = "none")
-attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
-```
-
-From 2006-2010 on, CDC puts the `PROC FORMAT` step and the `FORMAT`
-statement each in a block comment (`/* ... */`), so that SAS users
-without CDC's format catalog can run the file as published. The value
-labels are still there, so by default a comment that holds nothing but
-a `PROC FORMAT` step or a `FORMAT` statement is read as code; a comment
-that only mentions them stays a comment. `commented_formats = FALSE`
-reads every comment as a comment, and those files then have no value
-labels:
-
-```r
-writeLines(c(
-  "/*", "PROC FORMAT;", "  VALUE kidsf 0='(0) None' 98='(98) DK';", "*/",
-  "DATA;", "INPUT ID 1-3 KIDS 4-5;",
-  "/*", "FORMAT KIDS kidsf.;", "*/"
-), "commented.sas")
-df <- datakit::read_fixed_width("survey.dat", "commented.sas", recodes = "none")
-attr(df$KIDS, "labels")  # (0) None = 0, (98) DK = 98
-df <- datakit::read_fixed_width("survey.dat", "commented.sas", recodes = "none",
-                                  commented_formats = FALSE)
-attr(df$KIDS, "labels")  # NULL
+```r norun
+remotes::install_github("jbearak/datparser")
 ```
 
 ## Parquet files
@@ -1565,12 +1443,6 @@ labelled column (see [Labelled columns](#labelled-columns)):
 
 datakit exports:
 
-- `read_fixed_width(file, setup, recodes = "setup", ...)`: read
-  fixed-width text through its SAS setup file (see
-  [Fixed-width files](#fixed-width-files-with-a-sas-setup-file)), with
-  labelled columns as `dtaparser_labelled`. datparser exports the same
-  function, with labelled columns as plain vectors and a `labels`
-  attribute, and nothing else.
 - `d[i, name, by = ] := value`: make or change a column of a data
   frame under R's rules (`?datakit::":="`; see
   [From a do-file to R](#from-a-do-file-to-r)). `colon_equals()` is the

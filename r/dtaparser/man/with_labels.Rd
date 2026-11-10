@@ -21,7 +21,7 @@ A \code{dtaparser_labelled} with \code{x}'s codes. Its labels are kept
 in code order, \code{.a} to \code{.z} last.
 }
 \description{
-With \code{factors = FALSE}, \code{\link[=read_dta]{read_dta()}} (and datakit's \code{read_fixed_width()}) return a
+With \code{factors = FALSE}, \code{\link[=read_dta]{read_dta()}} returns a
 column with value labels as a \code{dtaparser_labelled}: its codes, \code{.a} to
 \code{.z} among them as tagged NAs, with the labels and the variable label
 as attributes. The class tells vctrs, and so dplyr, how to combine it,

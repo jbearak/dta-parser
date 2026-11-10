@@ -125,7 +125,7 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-      # datakit and dtatools import dtaparser and datparser, which are on
+      # datakit and dtatools import dtaparser, which is on
       # no registry, so resolve dtaparser's dependencies and add the
       # others' by hand.
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -135,30 +135,27 @@ jobs:
       # Build the source packages, then install them from outside the
       # checkout, as a user without the repository would.
       - run: scripts/build-r-package.sh
-      # Installs from GitHub build r/dtaparser and r/datparser alone, from
-      # their committed copies of the Rust core; configure just refreshed
+      # Installs from GitHub build r/dtaparser alone, from
+      # its committed copy of the Rust core; configure just refreshed
       # them from crates/dta and crates/parquet.
       - name: Committed Rust core matches crates/dta and crates/parquet
-        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet r/datparser/src/rust/dta)"
+        run: test -z "$(git status --porcelain -- r/dtaparser/src/rust/dta r/dtaparser/src/rust/parquet)"
       # The source package carries its crates.io crates (plan 0018): it
       # builds with cargo offline and an empty cargo home, so nothing can
       # come from the network or a cache.
-      - name: dtaparser's and datparser's source packages build offline
+      - name: dtaparser's source package builds offline
         run: |
           home="$(mktemp -d)"
           lib="$(mktemp -d)"
           cd "$RUNNER_TEMP"
           CARGO_NET_OFFLINE=true CARGO_HOME="$home" R CMD INSTALL -l "$lib" "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz
-          CARGO_NET_OFFLINE=true CARGO_HOME="$home" R CMD INSTALL -l "$lib" "$GITHUB_WORKSPACE"/r/datparser_*.tar.gz
           test -z "$(find "$home" -name '*.crate')"
       - run: |
           cd "$RUNNER_TEMP"
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtaparser_*.tar.gz
-          R CMD INSTALL "$GITHUB_WORKSPACE"/r/datparser_*.tar.gz
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/datakit_*.tar.gz
           R CMD INSTALL "$GITHUB_WORKSPACE"/r/dtatools_*.tar.gz
       - run: Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
-      - run: Rscript -e 'testthat::test_dir("r/datparser/tests/testthat", package = "datparser", load_package = "installed")'
       - run: Rscript -e 'testthat::test_dir("r/datakit/tests/testthat", package = "datakit", load_package = "installed")'
       - run: Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
       # The Raven sidecars (ADR 0032) are TOML; Raven itself is not run.
@@ -167,7 +164,6 @@ jobs:
       # parallel read and write paths.
       - run: |
           Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
-          Rscript -e 'testthat::test_dir("r/datparser/tests/testthat", package = "datparser", load_package = "installed")'
           Rscript -e 'testthat::test_dir("r/datakit/tests/testthat", package = "datakit", load_package = "installed")'
           Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
         env:
@@ -201,7 +197,7 @@ jobs:
           working-directory: r/dtaparser
           extra-packages: any::vctrs, any::haven, any::readstata13, any::jsonlite
       - run: pip install pandas pyreadstat
-      - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
+      - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
       # libzstd in the module needs a clang that targets wasm32.
       - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh && cd js && npm ci && npm run build && cd datakit && npm ci && npm run build

@@ -1,6 +1,6 @@
 #' Labelled columns that keep their labels
 #'
-#' With `factors = FALSE`, [read_dta()] (and datakit's `read_fixed_width()`) return a
+#' With `factors = FALSE`, [read_dta()] returns a
 #' column with value labels as a `dtaparser_labelled`: its codes, `.a` to
 #' `.z` among them as tagged NAs, with the labels and the variable label
 #' as attributes. The class tells vctrs, and so dplyr, how to combine it,

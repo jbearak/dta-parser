@@ -1,5 +1,9 @@
 # `read_fixed_width` moves to datparser, which reads in memory
 
+On 2026-11-10 datparser moved to a repository of its own,
+[jbearak/datparser](https://github.com/jbearak/datparser), and datakit
+stopped wrapping it: datakit's `read_fixed_width` is removed.
+
 On 2026-11-09 the user asked for R's `read_fixed_width` to move into a
 package of its own, datparser, so that someone who only reads
 fixed-width files does not install dtaparser and datakit, with datakit
