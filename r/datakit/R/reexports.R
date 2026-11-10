@@ -6,6 +6,10 @@
 #' @export
 dtaparser::read_dta
 
+#' @importFrom dtaparser save_dta
+#' @export
+dtaparser::save_dta
+
 #' @importFrom dtaparser read_meta
 #' @export
 dtaparser::read_meta

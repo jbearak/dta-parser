@@ -16,16 +16,3 @@ fresh_r <- function(code) {
   out[!grepl("^OMP:", out)]
 }
 
-# Skip a test of the polars functions without polars, nanoarrow or R
-# 4.3; with DATAKIT_REQUIRE_POLARS=true (CI) fail instead, so that they
-# cannot be skipped silently.
-skip_without_polars <- function() {
-  missing <- c(if (getRversion() < "4.3") "R 4.3",
-               if (!requireNamespace("polars", quietly = TRUE)) "polars",
-               if (!requireNamespace("nanoarrow", quietly = TRUE)) "nanoarrow")
-  if (!length(missing)) return(invisible(TRUE))
-  if (identical(tolower(Sys.getenv("DATAKIT_REQUIRE_POLARS")), "true")) {
-    stop("DATAKIT_REQUIRE_POLARS is set, but this needs ", paste(missing, collapse = ", "), call. = FALSE)
-  }
-  testthat::skip(paste("needs", paste(missing, collapse = ", ")))
-}

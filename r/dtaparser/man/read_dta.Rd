@@ -73,10 +73,11 @@ text, and no \code{.a} to \code{.z}. Otherwise (the file was changed in
 Stata, say) it is read as it would be unmarked, with one warning
 naming such columns.
 
-A column that datakit wrote from a categorical (R's from a polars
-frame, or TypeScript's) carries another characteristic, \code{dtaparser_categorical},
-and is read as such a factor too, ordered if it was, with every
-level of its value labels, when the rows read hold no \code{.a} to \code{.z}.
+A column that datakit wrote from a categorical (TypeScript's, or R's
+from a polars frame, which datakit no longer writes) carries another
+characteristic, \code{dtaparser_categorical}, and is read as such a factor
+too, ordered if it was, with every level of its value labels, when
+the rows read hold no \code{.a} to \code{.z}.
 A categorical may hold them, and a factor cannot, so when the rows
 read do, the column keeps its numbers as a \code{dtaparser_labelled},
 letters and their labels included, without a warning, whatever

@@ -25,5 +25,5 @@ test_that("a dtaparser with another ABI number is refused", {
   expect_invisible(dtatools:::check_abi(1L, 1L))
   expect_error(dtatools:::check_abi(2L, 1L), "reinstall dtaparser")
   expect_error(dtatools:::check_abi(NA_integer_, 1L), "reinstall dtaparser")
-  expect_identical(dtatools:::DTAPARSER_ABI, 4L)
+  expect_identical(dtatools:::DTAPARSER_ABI, 5L)
 })

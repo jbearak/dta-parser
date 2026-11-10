@@ -54,7 +54,7 @@ version we studied.
   and contributors; MIT). Its `compression`, `compression_level` and
   `row_group_size` arguments are the names we use, and its errors on an
   unknown column name, listing the valid ones, are the model for ours.
-  R's datakit reads into polars frames on request. Plan 0027 read how its
+  Plan 0027 read how its
   Parquet reader, `polars-parquet`, decodes (at commit 0925185), to see
   why it was faster than ours on some files, and took these ideas from
   it, with no code: a chunk's validity bitmap built from the level
