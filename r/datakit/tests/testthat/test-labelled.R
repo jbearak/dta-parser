@@ -1,5 +1,5 @@
 # := on dtaparser's labelled columns (ADR 0028, ADR 0029): codes widen,
-# labels join, and a label assigns its code; read_fixed_width makes the class.
+# labels join, and a label assigns its code.
 
 test_that(":= widens labelled codes and keeps class, labels and letters", {
   d <- tibble::tibble(g = c(1, 1, 2), v = with_labels(c(1L, 0L, NA), c(No = 0, Yes = 1), label = "V"))
@@ -30,20 +30,6 @@ test_that(":= assigns a label's code, widening integer codes for .a to .z", {
   expect_identical(na_tag(f$v), c("r", NA, NA))
   expect_s3_class(f$v, "dtaparser_labelled")
   expect_error(d[1, v] := "Maybe", "not a label")
-})
-
-test_that("read_fixed_width gives the class", {
-  dir <- tempfile()
-  dir.create(dir)
-  writeLines(c(
-    "PROC FORMAT; VALUE kidsf 0='None' 98='DK';",
-    "DATA; INPUT KIDS 1-2;",
-    "FORMAT KIDS kidsf.;"
-  ), file.path(dir, "s.sas"))
-  writeLines(c(" 2", "98", " 0"), file.path(dir, "s.dat"))
-  kids <- read_fixed_width(file.path(dir, "s.dat"), file.path(dir, "s.sas"), recodes = "none")$KIDS
-  expect_s3_class(kids, "dtaparser_labelled")
-  expect_identical(val_label(kids), c(NA, "DK", "None"))
 })
 
 test_that(":= keeps a display format on labelled and plain columns, codes widened or not", {

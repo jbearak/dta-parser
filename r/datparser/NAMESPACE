@@ -1,2 +1,0 @@
-useDynLib(datparser, .registration = TRUE, .fixes = "C_")
-export(read_fixed_width)

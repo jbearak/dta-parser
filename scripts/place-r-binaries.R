@@ -35,8 +35,8 @@ if (Sys.info()[["sysname"]] == "Linux") {
   names <- basename(files)
   type <- if (mac) "mac.binary" else "win.binary"
 }
-# dtaparser, datparser, datakit, and dtatools.
-stopifnot(length(files) == 4)
+# dtaparser, datakit, and dtatools.
+stopifnot(length(files) == 3)
 
 dir.create(dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(assets, recursive = TRUE, showWarnings = FALSE)

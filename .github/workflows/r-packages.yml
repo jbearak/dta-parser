@@ -4,7 +4,7 @@
 # On a pull request that touches the R packages or the Rust core, build
 # and test them on each platform. On a tag r-v<version>, also publish:
 # a CRAN-like repository on GitHub Pages, from which install.packages()
-# and pak fetch dtatools, datakit, datparser, and dtaparser without a Rust toolchain, and a
+# and pak fetch dtatools, datakit, and dtaparser without a Rust toolchain, and a
 # GitHub release holding the same files. Pages holds the latest release
 # only; the releases keep every one.
 #
@@ -35,7 +35,7 @@ jobs:
       - name: Versions match the tag
         if: startsWith(github.ref, 'refs/tags/r-v')
         run: |
-          for p in dtaparser datparser datakit dtatools; do
+          for p in dtaparser datakit dtatools; do
             test -f "r/${p}_${GITHUB_REF_NAME#r-v}.tar.gz"
           done
       - uses: actions/upload-artifact@v4
@@ -78,14 +78,12 @@ jobs:
         run: |
           mkdir built && cd built
           R CMD INSTALL --build ../source/dtaparser_*.tar.gz
-          R CMD INSTALL --build ../source/datparser_*.tar.gz
           R CMD INSTALL --build ../source/datakit_*.tar.gz
           R CMD INSTALL --build ../source/dtatools_*.tar.gz
       - name: Test them
         shell: bash
         run: |
           Rscript -e 'testthat::test_dir("r/dtaparser/tests/testthat", package = "dtaparser", load_package = "installed")'
-          Rscript -e 'testthat::test_dir("r/datparser/tests/testthat", package = "datparser", load_package = "installed")'
           Rscript -e 'testthat::test_dir("r/datakit/tests/testthat", package = "datakit", load_package = "installed")'
           Rscript -e 'testthat::test_dir("r/dtatools/tests/testthat", package = "dtatools", load_package = "installed")'
       - run: Rscript scripts/place-r-binaries.R built out
@@ -134,4 +132,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" assets/* \
             --title "R packages ${GITHUB_REF_NAME#r-v}" \
-            --notes "dtatools, datakit, datparser, and dtaparser ${GITHUB_REF_NAME#r-v}: source packages, and binaries for macOS (arm64), Windows (x86_64) and Ubuntu 24.04 (x86_64). Install them with install.packages() from https://jbearak.github.io/dta-parser; see docs/r.md."
+            --notes "dtatools, datakit, and dtaparser ${GITHUB_REF_NAME#r-v}: source packages, and binaries for macOS (arm64), Windows (x86_64) and Ubuntu 24.04 (x86_64). Install them with install.packages() from https://jbearak.github.io/dta-parser; see docs/r.md."

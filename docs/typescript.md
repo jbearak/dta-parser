@@ -897,8 +897,8 @@ CDC publishes as `.dat` files with a SAS setup file, into a
 (LABEL), value labels (PROC FORMAT and FORMAT), record-type selection
 (IF ... THEN DELETE) and missing-value recodes (`IF (X = 98 OR X = 99)
 THEN X = .;`). `setup` is a path, or a list of paths read in order as
-one setup (CDC's 2002 files come in three). It is the reader R's
-datparser uses:
+one setup (CDC's 2002 files come in three). R's datparser
+(github.com/jbearak/datparser) has a copy of the same reader:
 
 ```ts
 import { writeFileSync } from "node:fs";
