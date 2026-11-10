@@ -1,7 +1,7 @@
 # Plan: Parquet reads into polars as fast as polars' own
 
-Status: revision 3, after two rounds of review by Claude Opus and GPT Sol (see
-"Review").
+Status: done. Revision 3, after two rounds of review by Claude Opus and
+GPT Sol (see "Review"); the results are under "What was done".
 
 ## Problem
 
@@ -288,6 +288,35 @@ are in the text. Revision 1's findings:
 polars was read at commit
 09251856d4ca82595e27476fd52a2e00d6ba6a00 (dated 2026-11-10 in UTC+11),
 on 2026-11-09.
+
+## What was done
+
+Every change of revision 3 was made and kept, each faster on at least
+one file and slower on none (the numbers by change are in
+`bench/RESULTS.md`, "Parquet into polars, after reading polars'
+reader"), with these differences from the text above:
+
+- Section 0's test of tiny row groups that end inside a byte was
+  already there (`tests/arrow.rs`, `written_tables_read_the_same_into_arrow`:
+  row groups of 3, 7 and 1,001 rows, on 4 threads, in windows, against
+  the plain outputs), so none was added.
+- The Arrow arm of `tests/fuzz.rs` failed at once on the reservation of
+  section 0: ten of 5,600 damaged files asked for 16 to 34 GB.
+- Changes 5 and 6 were measured together.
+- Change 2: `meta$columns` is built in C in datakit (`src/meta.c`); the
+  form built in R a field at a time still took 2.6 ms.
+- Change 3: the metadata list's column fields are passed to R without a
+  copy each (0.3 ms). `export_stream`'s copies did not show and stay.
+- Change 9: only the base64 of the `ARROW:schema` entry, which was 12%
+  of opening the wide file. The footer's and the profile's allocations
+  are the rest of it and were left.
+- The thread rule is unchanged: its cases were not rerun.
+- Julia's and Node's benchmarks were not rerun.
+
+Reached: R's `read_parquet_pl()` is 1.02 to 1.12 times
+`pl$read_parquet()` on whole wide files (it was 1.9 to 2.2) and faster
+on five columns, and the core's CPU time is below polars' on all four
+files. Not reached: wall time on `groups`, which is a thread count.
 
 ## Documents
 

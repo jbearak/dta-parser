@@ -54,7 +54,19 @@ version we studied.
   and contributors; MIT). Its `compression`, `compression_level` and
   `row_group_size` arguments are the names we use, and its errors on an
   unknown column name, listing the valid ones, are the model for ours.
-  datakit for Python returns polars frames.
+  datakit for Python returns polars frames. Plan 0027 read how its
+  Parquet reader, `polars-parquet`, decodes (at commit 0925185), to see
+  why it was faster than ours on some files, and took these ideas from
+  it, with no code: a chunk's validity bitmap built from the level
+  bytes themselves, a byte or more at a time; dictionary indices
+  unpacked by functions in which the bit width is a constant; UTF-8
+  checked less often than once per value (ours skips the decoder for
+  ASCII); and page buffers that are not zeroed before a codec fills
+  them. It also showed what we left alone: its fused unpack-and-gather
+  and its branch-free placing of values among nulls. That crate began
+  as Jorge Leitão's arrow2 and parquet2 and has parts ported from
+  [arrow-rs](https://github.com/apache/arrow-rs) (all Apache-2.0); its
+  later changes are under polars' MIT license.
 - **[pandas](https://github.com/pandas-dev/pandas) 3.1.1** (AQR Capital
   Management, Lambda Foundry, the PyData Development Team and open
   source contributors; BSD-3-Clause). Its `df.attrs` in Parquet showed what

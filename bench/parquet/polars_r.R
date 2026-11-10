@@ -95,7 +95,7 @@ ms <- function(s) formatC(s * 1000, format = "f", digits = 1)
 cpu_name <- tryCatch(system("sysctl -n machdep.cpu.brand_string", intern = TRUE), error = function(e) "unknown",
                      warning = function(w) "unknown")
 lines <- c(
-  "# Parquet benchmark: R's polars reader (plan 0025, stage 4)",
+  "# Parquet benchmark: R's polars reader (plan 0025, stage 4; after plan 0027)",
   "",
   "Written by `bench/parquet/polars_r.R`. No target: this records what `read_parquet_pl()` costs beside polars' own reader and datakit's tibble `read_parquet()`.",
   "",

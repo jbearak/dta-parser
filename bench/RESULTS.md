@@ -1023,17 +1023,102 @@ polars 2.1.0, load average 2. No target. The numbers are in
 
 | case | `read_parquet_pl()` | `pl$read_parquet()` | `read_parquet()` (tibble) |
 |---|---|---|---|
-| whole file | 26 ms | 12 ms | 35 ms |
-| five columns | 12 ms | 4.6 ms | 6.1 ms |
+| whole file | 13.6 ms | 12.1 ms | 35 ms |
+| five columns | 3.7 ms | 4.6 ms | 5.6 ms |
+
+These are after plan 0027 (the next section). Before it,
+`read_parquet_pl()` took 26 ms and 12 ms.
 
 **Where the time goes.** The first measurement gave 119 ms for the
 whole file: about 90 ms of it was `df$schema`, which R polars answers by
 making an R object for each of the 4,962 dtypes. datakit now asks only
 for the dtypes of the columns each step needs (on a plain read, those
-holding letters), which gave the 26 ms above. Python datakit's
-`dk.read_parquet()` reads the same file in 15 ms. On five columns, the
-native read and the import into polars take about 3 ms, and the rest is
-datakit's R code around them.
+holding letters), which gave 26 ms. Python datakit's
+`dk.read_parquet()` read the same file in 15 ms. On five columns, the
+native read and the import into polars took about 3 ms, and the rest
+was datakit's R code around them; plan 0027 removed it.
+
+## Parquet into polars, after reading polars' reader (plan 0027)
+
+Plan 0027 timed each step of the read into polars, read how
+`polars-parquet` decodes ([acknowledgements](../docs/acknowledgements.md)),
+and changed what the timings pointed at. Measured 2026-11-09 on an
+Apple M4 Max, load average 2.5 to 3.4, files in the page cache, main
+(55775e6) against the branch in scratch libraries and venvs holding the
+same packages, runs alternated. The files are the benchmark's
+conversions by our writer: DHS Tajikistan 2017 wm (10,718 rows, 5,160
+columns), NSFG 2002 FemResp (7,643 by 3,087), `groups` (15 million rows:
+text of few values, and an int) and `long` (10 million rows, 12
+columns).
+
+**The core** (`crates/arrow/examples/read_bench.rs`: the Arrow read
+both languages call, timed from Rust). Median wall and CPU time, ms,
+over seven alternated rounds of 3 to 60 reads each:
+
+| file | threads | wall, main | wall, branch | CPU, main | CPU, branch | CPU ratio |
+|---|---|---|---|---|---|---|
+| Tajikistan | 1 | 25.4 | 19.5 | 25.4 | 19.5 | 0.77 |
+| Tajikistan | default | 11.0 | 9.5 | 31.3 | 24.1 | 0.77 |
+| Tajikistan, five columns | default | 3.5 | 3.2 | 3.7 | 3.4 | 0.91 |
+| NSFG 2002 | 1 | 17.8 | 14.8 | 17.8 | 14.8 | 0.83 |
+| NSFG 2002 | default | 9.5 | 8.2 | 20.9 | 17.2 | 0.82 |
+| groups | 1 | 42.4 | 33.7 | 42.4 | 33.7 | 0.79 |
+| groups | default | 7.8 | 6.4 | 49.9 | 39.6 | 0.80 |
+| long | 1 | 272 | 202 | 272 | 202 | 0.74 |
+| long | default | 35.0 | 27.7 | 338 | 261 | 0.77 |
+
+By change, one-thread CPU time against the build before it: copying a
+chunk's whole validity bytes instead of storing them one at a time,
+0.87 (Tajikistan) to 0.97; whole bytes of definition levels and
+unpacking dictionary indices in place, measured together, 0.92
+(Tajikistan), 0.77 (groups) and 0.92 (long); not zeroing a snappy
+page's buffer and skipping the UTF-8 decoder for ASCII, 0.82 on `long`
+and within 1% elsewhere; base64 four digits at a time, 0.91 on five
+columns of Tajikistan.
+
+**R**, `read_parquet_pl()` against `pl$read_parquet()`, best wall time
+of 15 reads in one process, two alternated rounds (ms):
+
+| file | case | main | branch | polars |
+|---|---|---|---|---|
+| Tajikistan | whole | 26.6 | 14.2 | 13.9 |
+| Tajikistan | five columns | 12.8 | 3.7 | 4.7 |
+| NSFG 2002 | whole | 20.1 | 12.5 | 15.2 |
+| NSFG 2002 | five columns | 11.5 | 3.0 | 3.4 |
+| groups | whole | 8.4 | 6.9 | 4.3 |
+
+Most of R's gain is outside the decoder. On Tajikistan, building
+`meta$columns` with an R call per column took 7.1 ms (now 0.2 ms, in
+C); `polars::as_polars_df()` on the stream took 5.4 ms, 3.4 ms of it
+inferring the struct's dtype in R, which
+`as_polars_series(stream)$struct$unnest()` does without (2.1 ms; polars'
+own exported stream costs the same 5.4 ms through `as_polars_df()`);
+and `col_select = cols` read the footer into R to see whether a column
+is named `cols` (8.5 ms; the reader now resolves it). The tibble
+`read_parquet()` did not change: 32.8 and 32.4 ms on Tajikistan, 21.8
+and 21.5 ms on NSFG 2002.
+
+**Python**, `dk.read_parquet()` against `pl.read_parquet()`, median of
+7 to 25 reads, two alternated rounds (ms; CPU in brackets):
+
+| file | main | branch | polars |
+|---|---|---|---|
+| Tajikistan | 14.8 (35) | 13.4 (28) | 13.7 (30) |
+| NSFG 2002 | 12.2 (24) | 11.1 (20) | 15.9 (20) |
+| groups | 7.7 (49) | 6.4 (39) | 4.5 (48) |
+| long | 34.7 (335) | 27.9 (263) | 27.9 (340) |
+
+**What is not reached.** On `groups`, wall time is 1.4 times polars' in
+Python and 1.6 times in R, at 0.8 of its CPU time: the thread rule
+gives that file 8 threads and polars uses 16. At 12 threads the core
+reads it in 5.1 ms with 42 ms of CPU, and at 16 in 4.8 ms with 48 ms.
+The rule was set on `bench/parquet/threads_polars.py`'s cases ("Threads
+for polars" above), which were not rerun, so it is unchanged. R's
+whole-file read of the Albania file is 1.12 times polars'; what is left
+is the metadata (value label sets and column fields as R objects, about
+2 ms) that polars' own read does not return. Julia's and Node's
+benchmarks were not rerun: of these changes their reads share only the
+codecs' and the base64, and their tests run in CI.
 
 ## Parquet in TypeScript (npm package)
 
