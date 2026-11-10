@@ -72,7 +72,7 @@ A tibble, with the column types of \code{\link[dtaparser:read_dta]{dtaparser::re
    STRING, ENUM, JSON \tab character \cr
    BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID \tab a list of raw vectors (\code{NULL} for null) \cr
    a categorical \code{save_parquet()} wrote \tab factor, ordered if it was \cr
-   a categorical holding \code{.a} to \code{.z} (DOUBLE level numbers, which Python's and TypeScript's datakit write) \tab \code{\link[dtaparser:with_labels]{dtaparser_labelled}} double, whatever \code{factors} says \cr
+   a categorical holding \code{.a} to \code{.z} (DOUBLE level numbers, which TypeScript's datakit writes) \tab \code{\link[dtaparser:with_labels]{dtaparser_labelled}} double, whatever \code{factors} says \cr
    a dictionary of strings in \code{ARROW:schema} (an arrow factor, a pandas \code{category}, a polars \code{Categorical}) \tab factor, unordered \cr
 }
 

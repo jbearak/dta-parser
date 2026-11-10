@@ -47,9 +47,15 @@ build() { # features, target dir, output
 }
 # `scripts/build-wasm.sh dta` builds dta-parser's alone (its publish
 # workflow needs no other).
+# The cap is set in a subshell: an assignment before a call of a shell
+# function outlives the call in some shells (macOS's sh among them),
+# and would cap the module built next.
+capped() {
+  (RUSTFLAGS="-C link-arg=--max-memory=67108864"; export RUSTFLAGS; build "$@")
+}
 build wasm-dta target/wasm-dta js/build/dta.wasm
-RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-dta,test-hooks target/wasm-dta-test js/build/dta-test.wasm
+capped wasm-dta,test-hooks target/wasm-dta-test js/build/dta-test.wasm
 if [ "$1" != "dta" ]; then
   build wasm-parquet target/wasm-parquet js/datakit/build/datakit.wasm
-  RUSTFLAGS="-C link-arg=--max-memory=67108864" build wasm-parquet,test-hooks target/wasm-parquet-test js/datakit/build/datakit-test.wasm
+  capped wasm-parquet,test-hooks target/wasm-parquet-test js/datakit/build/datakit-test.wasm
 fi

@@ -5,8 +5,7 @@
 #' becomes.
 #'
 #' For a polars DataFrame, as [read_dta_pl()] or [read_parquet_pl()]
-#' returns, it writes release 118 with what `meta` says, as Python
-#' datakit's `dk.save_dta()` does. Each column gets the smallest storage
+#' returns, it writes release 118 with what `meta` says. Each column gets the smallest storage
 #' type that holds its values: integers byte, int or long (double past
 #' long, an error past +/-2^53), Float32 float, Float64 double, Boolean
 #' byte, String strN or strL, Binary strL. A Date is `%td`; a Datetime

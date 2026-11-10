@@ -22,7 +22,7 @@
 The polars readers (\code{\link[=read_parquet_pl]{read_parquet_pl()}}, \code{\link[=read_dta_pl]{read_dta_pl()}},
 \code{\link[=read_fixed_width_pl]{read_fixed_width_pl()}}) return \code{list(df, meta)}, where \code{meta} holds
 what a polars frame cannot: a list of class \code{datakit_meta} with the
-fields of Python datakit's \code{Meta}, under the same names. Change them
+fields below. Change them
 as any list's; \code{\link[=save_parquet]{save_parquet()}} and \code{\link[=save_dta]{save_dta()}} take it back as
 \verb{meta =}. It does not follow polars operations: a renamed, dropped or
 new column is yours to mirror.
@@ -50,7 +50,7 @@ texts, the values the codes, \code{NA} for \code{.} and tagged \code{NA}s
 \item \code{storage}: a named character vector, the polars dtype (\code{"Int8"},
 \code{"Int16"}, \code{"Int32"} or \code{"Float32"}) each column had before a read
 made it Float64 to hold \code{.a} to \code{.z}; a save gives it back when the
-values still fit. \code{print()} leaves it out, as Python's does.
+values still fit. \code{print()} leaves it out.
 }
 
 \code{.a} to \code{.z} are not in \code{meta}: they are in the frame, as tagged NaNs

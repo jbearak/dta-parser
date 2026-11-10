@@ -1,17 +1,13 @@
-"""Benchmark our Parquet reader and writer against the other libraries
-of one language, check plan 0018's speed and memory targets, and write
-bench/results/parquet.md (R) or parquet-julia.md (Julia).
+"""Benchmark R's Parquet reader and writer against R's other libraries,
+check plan 0018's speed and memory targets, and write
+bench/results/parquet.md. (TypeScript's has its own driver,
+bench/parquet/run_node.py.)
 
-    python bench/parquet/run.py [--lang r|julia] [--family F ...] [--libs L ...]
-                                [--tasks T ...] [--inputs I ...] [--only KEY ...] [--report]
+    python bench/parquet/run.py [--family F ...] [--libs L ...] [--tasks T ...]
+                                [--inputs I ...] [--only KEY ...] [--report]
 
-R (the default): datakit's read_parquet() and save_parquet() against
-arrow, nanoparquet and duckdb. Julia (--lang julia): Datakit's
-read_parquet and save_parquet, into and from a DataFrame, against
-Parquet2.jl and DuckDB.jl, in
-bench/julia's environment (bench/parquet/case.jl). Target 4, other tools
-reading our files, does not depend on the language that wrote them, so
-the Julia run leaves it out.
+datakit's read_parquet() and save_parquet() against arrow, nanoparquet,
+and duckdb (bench/parquet/case.R).
 
 Run it from the repository root with a Python that has pyarrow, polars
 and duckdb; R needs datakit, arrow, nanoparquet, duckdb and jsonlite
@@ -63,9 +59,7 @@ MB = 1e6
 MIB = 1 << 20
 RUNS = 5
 TIMEOUT = 20 * 60
-LIBS_BY_LANG = {"r": ["ours", "arrow", "nanoparquet", "duckdb"], "julia": ["ours", "parquet2", "duckdb"]}
-LIBS = LIBS_BY_LANG["r"]
-LANG = "r"
+LIBS = ["ours", "arrow", "nanoparquet", "duckdb"]
 READS = ["full", "five", "window", "pass"]
 WRITES = ["write", "zstd"]
 INPUTS = ["pyarrow", "polars", "ours"]
@@ -179,9 +173,6 @@ def cached(path, make):
 
 
 def case_cmd(*args):
-    if LANG == "julia":
-        return ["julia", "--project=" + str(ROOT / "bench" / "julia"), "--startup-file=no",
-                str(HERE / "case.jl"), *args]
     return ["Rscript", str(HERE / "case.R"), *args]
 
 
@@ -212,7 +203,7 @@ def run_all(files, out, libs, tasks, inputs, tools):
                 if time.time() - t > 1 or "error" in m:
                     shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                     print(f"  {task} {lib}: {shown}", flush=True)
-        if "snappy" in tasks and LANG == "r":
+        if "snappy" in tasks:
             warm(f["dta"])
             cmd = ["Rscript", str(HERE / "case.R"), "ours", "snappy", str(f["dta"]), str(report), "", "0", "0"]
             path = out / "raw" / f["key"] / "dta" / "ours-snappy.json"
@@ -221,7 +212,7 @@ def run_all(files, out, libs, tasks, inputs, tools):
             if time.time() - t > 1 or "error" in m:
                 shown = m["error"][:200] if "error" in m else f"{m['wall']:.4g} s, {m['rss']:.0f} MB"
                 print(f"  snappy ours: {shown}", flush=True)
-        if "tool" in tasks and LANG == "r":
+        if "tool" in tasks:
             for tool in tools:
                 for inp in (tool, "ours", "ours_zstd"):
                     warm(f["files"][inp])
@@ -320,7 +311,7 @@ def evaluate(files, out):
 
 def report(files, out, dest):
     rows, tool_rows, misses = evaluate(files, out)
-    lines = [f"# Parquet benchmarks ({'Julia' if LANG == 'julia' else 'R'})", "",
+    lines = ["# Parquet benchmarks (R)", "",
              "Written by `bench/parquet/run.py`; see bench/RESULTS.md for what the numbers mean.", ""]
     loads = []
     versions = {}
@@ -395,9 +386,7 @@ def report(files, out, dest):
 
 
 def main():
-    global LIBS, LANG
     ap = argparse.ArgumentParser()
-    ap.add_argument("--lang", choices=sorted(LIBS_BY_LANG), default="r")
     ap.add_argument("--family", nargs="*", default=list(FAMILIES))
     ap.add_argument("--libs", nargs="*")
     ap.add_argument("--tasks", nargs="*", default=READS + WRITES + ["tool"])
@@ -409,12 +398,9 @@ def main():
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--dest")
     a = ap.parse_args()
-    LANG = a.lang
-    LIBS = LIBS_BY_LANG[LANG]
-    julia = LANG == "julia"
     a.libs = a.libs or LIBS
-    a.out = a.out or "/private/tmp/claude-501/pq-bench-out" + ("-julia" if julia else "")
-    a.dest = a.dest or str(ROOT / "bench" / "results" / ("parquet-julia.md" if julia else "parquet.md"))
+    a.out = a.out or "/private/tmp/claude-501/pq-bench-out"
+    a.dest = a.dest or str(ROOT / "bench" / "results" / "parquet.md")
     files = find_files(a.family)
     if a.only:
         files = [f for f in files if f["key"] in a.only or f["label"] in a.only]

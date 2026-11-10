@@ -1,5 +1,5 @@
 //! Time the Arrow read of a Parquet file: the path datakit's polars
-//! frames come from in R and Python, without either language around it.
+//! frames come from in R, without R around it.
 //!
 //!     cargo run --release -p dta-arrow --example read_bench -- FILE [RUNS] [THREADS] [COLUMNS]
 //!
@@ -11,7 +11,7 @@
 
 use std::time::Instant;
 
-use dta_arrow::parquet::{Input, Selector};
+use dta_arrow::parquet::Input;
 use dta_arrow::read::{parquet_info, parquet_read, Stamps};
 
 #[cfg(unix)]
@@ -40,9 +40,9 @@ fn main() {
         info.columns.iter().filter(|c| c.format.is_some()).map(|c| c.name.to_string()).collect()
     })
     .expect("the file's footer");
-    let columns: Option<Vec<Selector>> = (n_columns > 0 && n_columns < names.len()).then(|| {
+    let columns: Option<Vec<String>> = (n_columns > 0 && n_columns < names.len()).then(|| {
         (0..n_columns)
-            .map(|i| Selector::Name(names[i * (names.len() - 1) / (n_columns - 1).max(1)].clone()))
+            .map(|i| names[i * (names.len() - 1) / (n_columns - 1).max(1)].clone())
             .collect()
     });
 
@@ -57,7 +57,6 @@ fn main() {
             true,
             Stamps::Error,
             threads,
-            true,
             &mut |out| (out.frame.batches[0].length, out.frame.fields.len(), out.meta.steps.clone().unwrap_or_default()),
         )
         .expect("the read");

@@ -63,10 +63,8 @@ with list, map or struct columns, which are not read.}
 }
 \description{
 \code{read_parquet_pl()} and \code{read_dta_pl()} read a file into a polars
-DataFrame and a \code{\link{datakit_meta}} beside it, as
-Python datakit's \code{dk.read_parquet()} and \code{dk.read_dta()} do, with the
-same columns: both languages read through dtaparser's Arrow streams
-and follow one set of rules. No R vector is built. \code{\link[=read_parquet]{read_parquet()}}
+DataFrame and a \code{\link{datakit_meta}} beside it,
+through dtaparser's Arrow streams. No R vector is built. \code{\link[=read_parquet]{read_parquet()}}
 and \code{\link[=read_dta]{read_dta()}} read into a tibble instead.
 }
 \details{

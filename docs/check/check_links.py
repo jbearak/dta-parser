@@ -3,7 +3,7 @@
     python3 docs/check/check_links.py
 
 Looks at README.md, CONTRIBUTING.md and every .md file under docs/ and
-in the package directories (js/, python/, r/dtatools/). A link to a
+in the package directories (js/, r/dtatools/). A link to a
 file must name one that exists; a link with #anchor must name a heading
 of the target (or of the same file), using GitHub's anchor rules.
 Links to http(s) and mailto are not fetched. Exits 1 on any broken
@@ -23,7 +23,7 @@ FENCE = re.compile(r"^(`{3,}|~{3,})")
 def files():
     out = [ROOT / "README.md", ROOT / "CONTRIBUTING.md"]
     out += sorted((ROOT / "docs").rglob("*.md"))
-    for sub in ("js", "python", "r/dtatools"):
+    for sub in ("js", "r/dtatools"):
         out += sorted(p for p in (ROOT / sub).glob("*.md"))
     return [p for p in out if p.exists()]
 

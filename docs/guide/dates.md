@@ -23,20 +23,6 @@ dates.
 
 ## What each language does
 
-**Python and Julia convert `%td` and `%tc`** unless you turn it off:
-
-| | `%td` becomes | `%tc` becomes | `.` becomes | turn off |
-|---|---|---|---|---|
-| Python | `datetime64[s]` | `datetime64[ms]` | `NaT` | `read_dta(path, dates=False)` |
-| Julia | `Date` | `DateTime` | `missing` | `read_dta(path; dates=false)` |
-
-A column converts only if every value is a whole number in range and
-none is `.a` to `.z`. Otherwise it stays a numeric column with its
-format, so no value or missing code is lost. `%tC` always stays numeric:
-a calendar type without leap seconds would put its values up to 27
-seconds off. The other formats (`%tw`, `%tm`, `%tq`, `%th`, `%ty`) stay
-numeric too; the language pages show how to convert them.
-
 **R keeps every date as a number** with its `format` attribute. To get
 a `Date`, add the days to 1960-01-01: `as.Date(unclass(x), origin =
 "1960-01-01")`. Times: `as.POSIXct(unclass(x) / 1000, origin =
@@ -54,8 +40,6 @@ which shows a value as its format says (`%td` gives `02jan1980`;
 |---|---|---|
 | R | a `Date` column through `dibble()` or `as_dibble()` | long `%td` |
 | R | a number with `format = "%td"` (or any date format) | its storage, with that format |
-| Python | `datetime64` | long `%td` if every value is midnight, else double `%tc` (milliseconds; finer non-zero parts are an error); `NaT` is `.` |
-| Julia | `Date`, `DateTime` | long `%td`, double `%tc` |
 | TypeScript | a number with `format: "%td"` | its storage type, with that format |
 
 A `%tc` value needs a double: milliseconds since 1960 pass the range of

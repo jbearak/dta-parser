@@ -63,7 +63,7 @@ are dropped.}
 
 \item{timestamps}{For a polars DataFrame, \code{"error"} (the default) or
 \code{"truncate"}; kept for files written with letters in a Datetime
-column by R, Julia or TypeScript.}
+column by R or TypeScript.}
 }
 \value{
 \code{data}, invisibly.
@@ -120,8 +120,7 @@ for \code{save_dta()}.
 \section{polars frames}{
 
 \code{save_parquet()} is a generic. A polars DataFrame, as
-\code{\link[=read_parquet_pl]{read_parquet_pl()}} returns, is written with what its \code{meta} says, as
-Python datakit's \code{dk.save_parquet()} writes it: its \code{.a} to \code{.z} (the
+\code{\link[=read_parquet_pl]{read_parquet_pl()}} returns, is written with what its \code{meta} says: its \code{.a} to \code{.z} (the
 tagged NaNs of Float64 columns) are written as they are; a column a
 read made Float64 to hold them is written with its file's storage type
 in the profile when its values still fit it; \code{meta$sort} is kept only

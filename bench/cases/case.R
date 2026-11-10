@@ -1,7 +1,9 @@
 # Benchmark tasks for R's .dta readers; bench/run.py drives this.
 #   Rscript bench/cases/case.R READER FILE OUT TASKS RUNS COLS SKIP N
-# READER is ours (dtatools), haven or readstata13. The arguments are as
-# in bench/cases/case.py.
+# READER is ours (dtatools), haven or readstata13. TASKS is a comma list
+# of 1 to 6 (see bench/run.py) or "check". RUNS 1 times one run; more
+# times a warm-up call, then RUNS calls. COLS (comma list), SKIP and N
+# are task 3's columns and task 4's window. OUT gets a JSON report.
 args <- commandArgs(trailingOnly = TRUE)
 reader <- args[[1]]; path <- args[[2]]; out_path <- args[[3]]; tasks <- args[[4]]
 runs <- as.integer(args[[5]]); cols <- strsplit(args[[6]], ",")[[1]]

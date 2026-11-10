@@ -1,9 +1,9 @@
 //! The Arrow C data interface, by hand (plan 0019; ADR 0033's reasons for
 //! not adding arrow-rs): the C structures, export of buffers we own as an
-//! `ArrowArrayStream`, import of another library's stream (polars'
-//! `DataFrame.__arrow_c_stream__()`), and reading the buffers' layouts.
-//! The binding puts an exported stream in a PyCapsule and takes an
-//! imported one out of one.
+//! `ArrowArrayStream`, import of another library's stream (a polars
+//! frame's Arrow export), and reading the buffers' layouts. The binding
+//! moves an exported stream into a struct its language allocated (R's
+//! does so with nanoarrow) and takes an imported one out of one.
 //!
 //! Exported buffers stay alive through an `Arc` held by every array that
 //! points into them, so polars may keep a column after our object and the

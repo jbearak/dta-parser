@@ -1,6 +1,5 @@
 // `saveDta`'s conversion: a `Dataset`, which may hold Parquet's types, into
-// what dta-parser's `writeDta` takes (plan 0021, "saveDta"). The rules
-// follow Python datakit's `save_dta`.
+// what dta-parser's `writeDta` takes (plan 0021, "saveDta").
 
 import type { Characteristic, Missing, ValueLabels, WriteDataset, WriteVariable } from "@jbearak/dta-parser";
 import { isMissing } from "@jbearak/dta-parser/format";
@@ -194,7 +193,7 @@ export function toDta(data: Dataset, options: SaveDtaOptions = {}): WriteDataset
   const variables: WriteVariable[] = data.variables.map((v) => convert(v, sets, characteristics, truncate));
   // A .dta value label's code is a whole number within long's range (or a
   // missing value). A set a variable uses with another code is an error,
-  // as in R and Python; one no variable uses is left out, with a warning.
+  // as in R; one no variable uses is left out, with a warning.
   const left: string[] = [];
   for (const [name, labels] of Object.entries(sets)) {
     const bad = [...labels.keys()].find((k) => !isMissing(k) && !(Number.isInteger(k) && (k as number) >= RANGES[2][1] && (k as number) <= RANGES[2][2]));
@@ -278,8 +277,7 @@ function convert(v: DatasetVariable, sets: Record<string, ValueLabels>, characte
       if (nums.big) for (let i = 0; i < nums.values.length; i++) bigCheck(v.name, i, nums);
       // byte, int and long stop short of their integer type's range (the
       // codes past it are `.` to `.z`), so a column read from Parquet as
-      // long may hold 2,147,483,647: it takes the next type that holds it,
-      // as Python's save_dta does.
+      // long may hold 2,147,483,647: it takes the next type that holds it.
       const r = RANGES.findIndex(([name]) => name === t);
       const fits = r < 0 || nums.values.every((x, i) => nums.missing[i] !== 0 || (x >= RANGES[r][1] && x <= RANGES[r][2]));
       if (fits) return { ...base, type: t, format: v.format || undefined, values: withCodes(nums.values, nums.missing) };

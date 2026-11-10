@@ -2,7 +2,7 @@
 // readDta restores a marked one with its letter labels, or reads it as
 // labelled numbers, with a warning, when the file changed since. One
 // holding .a to .z in the rows read stays labelled numbers holding them,
-// its marker kept (ADR 0037), as in Python.
+// its marker kept (ADR 0037).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

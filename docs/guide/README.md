@@ -1,22 +1,21 @@
 # Guide: what is in a `.dta` file, and what each language gets
 
 These pages explain the parts of a Stata `.dta` file that change how you
-read or write one, and what dta-parser turns each part into in R,
-Python, Julia and TypeScript. The language pages
-([R](../r.md), [Python](../python.md), [Julia](../julia.md),
+read or write one, and what dta-parser turns each part into in R and
+TypeScript. The language pages ([R](../r.md) and
 [TypeScript](../typescript.md)) show the calls; these pages explain why
 the results look the way they do.
 
 | page | read it when |
 |---|---|
 | [Releases](releases.md) | a file will not open, or you need to know what an old file can hold |
-| [Storage types](storage-types.md) | you wonder why a column is `Int8` or `float32`, or a write fails with "does not fit" |
+| [Storage types](storage-types.md) | you wonder why a column is a double or a `Float64Array`, or a write fails with "does not fit" |
 | [Missing values](missing-values.md) | you need `.a` to `.z`, or a filter or sort treats missing values in a way you did not expect |
 | [Value labels](value-labels.md) | a column holds codes such as 1 and 2 and you want the text |
 | [Text encodings](encodings.md) | accented letters come out wrong in a file older than Stata 14 |
 | [strLs](strls.md) | a file has long text or binary values |
 | [Dates and times](dates.md) | a column with a `%td` or `%tc` format should be dates |
-| [How each language represents a file](representations.md) | you work in more than one language, or move data between them |
+| [How each language represents a file](representations.md) | you work in both languages, or move data between them |
 | [Memory and speed](performance.md) | a file is large |
 
 ## A `.dta` file in one paragraph
@@ -31,5 +30,5 @@ value label sets. Stata calls rows *observations* and columns
 
 dta-parser reads releases 104 to 119 in either byte order and writes
 release 118. The format is implemented once, in Rust; each language
-package calls that one implementation, so the four packages read every
-file the same way.
+package calls that one implementation, so the R and TypeScript packages
+read every file the same way.

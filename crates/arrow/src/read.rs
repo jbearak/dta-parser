@@ -1,5 +1,5 @@
 //! A Parquet read into Arrow memory that polars adopts (plan 0019, "How
-//! the frame is built"): `parquet_read_arrow`, for datakit only.
+//! the frame is built"): [`parquet_read`], for datakit only.
 //!
 //! Every column's buffers are laid out in one zeroed allocation, filled
 //! by the core's Arrow outputs on its worker threads, finished here
@@ -23,7 +23,6 @@ use super::ffi::{self, Array, Block, Field, Plan, Table, DICTIONARY_ORDERED};
 use super::meta::{repeats_a_code, ColumnMeta, InfoColumn, LabelKey, LabelSet, ParquetInfo, ReadMeta, ReadOutput, Text};
 use super::parquet::{
     codec_name, entries, kind_of, logical_name, names_of, no_nulls, read_error, select, with_reader_for, Access, Input, Kind,
-    Selector,
 };
 
 /// The thread rule of Arrow reads (plan 0019, step 3): one thread per
@@ -46,7 +45,7 @@ pub const ARROW_WRITE_BYTES_PER_THREAD: u64 = 8 << 20;
 pub const ARROW_WRITE_THREADS: usize = 4;
 pub const ARROW_WRITE_THREADS_MOST: usize = 16;
 
-/// polars' Enum of `.a` to `.z` (datakit's `LETTERS`).
+/// polars' Enum of `.a` to `.z` (datakit's `letters_dtype()`).
 pub fn letter_names() -> Vec<String> {
     (b'a'..=b'z').map(|c| format!(".{}", c as char)).collect()
 }
@@ -450,7 +449,7 @@ struct Buffers {
 /// None) of the Parquet file `input` into Arrow memory: the frame, the
 /// letters (None when no column read holds `.a` to `.z`; its columns are
 /// the data columns that do, each an Enum of `.a` to `.z`), and what
-/// `Meta` is made from, given to `give` while the file is open (it
+/// `datakit_meta` is made from, given to `give` while the file is open (it
 /// borrows from the reader). `mode` is how dates and timestamps held as
 /// doubles that are not whole days or microseconds read. `prefer` is a
 /// column read alone in place of `columns` when the file has it
@@ -458,14 +457,13 @@ struct Buffers {
 #[allow(clippy::too_many_arguments)]
 pub fn parquet_read<T>(
     input: Input<'_>,
-    columns: Option<&[Selector]>,
+    columns: Option<&[String]>,
     prefer: Option<&str>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
     mode: Stamps,
     threads: usize,
-    enum_metadata: bool,
     give: &mut dyn FnMut(ReadOutput<'_>) -> T,
 ) -> Result<T> {
     let t0 = Instant::now();
@@ -484,20 +482,19 @@ pub fn parquet_read<T>(
         n
     });
     with_reader_for(input, options, names.as_deref(), &mut |r| {
-        read_arrow(r, columns, prefer, skip, n_max, nested_skip, mode, enum_metadata, t0, give)
+        read_arrow(r, columns, prefer, skip, n_max, nested_skip, mode, t0, give)
     })
 }
 
 #[allow(clippy::too_many_arguments)]
 fn read_arrow<T>(
     r: &mut dyn Access,
-    wanted: Option<&[Selector]>,
+    wanted: Option<&[String]>,
     prefer: Option<&str>,
     skip: u64,
     n_max: Option<u64>,
     nested_skip: bool,
     mode: Stamps,
-    enum_meta: bool,
     t0: Instant,
     give: &mut dyn FnMut(ReadOutput<'_>) -> T,
 ) -> Result<T> {
@@ -688,9 +685,7 @@ fn read_arrow<T>(
         if let Some((levels, _)) = &col.levels {
             field.dictionary = Some(Box::new(Field::new("", "u")));
             field.flags |= DICTIONARY_ORDERED;
-            if enum_meta {
-                field.metadata = Some(enum_metadata(levels));
-            }
+            field.metadata = Some(enum_metadata(levels));
             dictionary = Some(Box::new(utf8_array(levels)));
         }
         fields.push(field);
@@ -844,7 +839,7 @@ fn label_set_owned(set: dta::ValueLabelSet) -> LabelSet<'static> {
 }
 
 /// Value-label sets by name, in order, a set given again replacing the
-/// one of its name in place (as a dict's assignment). Sets are kept as
+/// one of its name in place (`meta.rs`'s rule for keyed entries). Sets are kept as
 /// given, a name rarely twice, and [`Sets::finish`] applies the rule.
 #[derive(Default)]
 pub struct Sets<'a> {
@@ -1002,7 +997,7 @@ fn categorical_sets(r: &dyn Access, cols: &[usize]) -> (Vec<Option<dta::ValueLab
     (sets, warnings)
 }
 
-/// What `Meta` is made from: rows, names, columns, value labels, label,
+/// What `datakit_meta` is made from: rows, names, columns, value labels, label,
 /// notes, characteristics, sort, timestamp and warnings (the reader's,
 /// then `more`). A categorical holding `.a` to `.z` names the set
 /// [`categorical_sets`] gives it, which the value labels hold.

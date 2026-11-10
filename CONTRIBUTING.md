@@ -13,7 +13,7 @@ people and by coding agents alike:
 - Stata is not used: not run, not installed, and none of its files
   (ado files, help files, example datasets) are read or copied.
 - Expected values in tests come only from open-source readers (haven,
-  ReadStat, pandas, pyreadstat, readstata13, ReadStatTables) and never
+  ReadStat, pandas, pyreadstat, readstata13) and never
   from output Stata produced. [ADR 0005](docs/adr/0005-oracles.md) and
   [ADR 0006](docs/adr/0006-fixture-sources.md) explain this.
 - Test files are made with this library's writer, or with haven, pandas
@@ -23,8 +23,7 @@ people and by coding agents alike:
 - Facts about the format come from general knowledge and open-source
   projects' code and documentation, written in your own words; never
   from official Stata documentation.
-- Nothing is published to npm, PyPI, CRAN or the Julia registry without
-  the maintainer's say-so.
+- Nothing is published to npm or CRAN without the maintainer's say-so.
 
 ## Layout
 
@@ -32,16 +31,13 @@ people and by coding agents alike:
 |---|---|---|
 | `crates/dta` | the format: reader (releases 104 to 119) and release 118 writer | Rust |
 | `crates/parquet` | Parquet with a dta profile (plan 0018, [ADR 0033](docs/adr/0033-parquet-with-a-dta-profile.md)): reader and writer over `crates/dta`'s `Source` | Rust |
-| `crates/arrow` | the Arrow C data interface by hand, and Parquet and `.dta` reads and writes through Arrow memory, for datakit (plans 0019 and 0025); `python/src/py_arrow` is its Python binding | Rust |
-| `crates/dta-ffi` | the WebAssembly interface for the npm package, and the C interface (`include/dta.h`) for Julia | Rust |
+| `crates/arrow` | the Arrow C data interface by hand, and Parquet and `.dta` reads and writes through Arrow memory, for datakit's polars functions in R (plans 0019 and 0025) | Rust |
+| `crates/dta-ffi` | the WebAssembly interface for the npm packages | Rust |
 | `r/dtaparser` | the R package for standard R types; the bridge to the core is in its `src/rust` | R, Rust, C |
 | `r/datparser` | the R package for `read_fixed_width` alone; builds R columns from the core's fixed-width reader, with its own copy of `crates/dta` in `src/rust` ([ADR 0039](docs/adr/0039-datparser.md)) | R, Rust, C |
 | `r/datakit` | the R package for data preparation: `:=`, `read_fixed_width` (datparser's, with labelled columns as dtaparser's class), and Parquet's `read_parquet` and `save_parquet`; reaches the core through dtaparser ([ADR 0032](docs/adr/0032-datakit.md)) | R, C |
 | `r/dtatools` | the R package with Stata's rules; reads and writes through dtaparser, takes `:=` from datakit ([ADR 0016](docs/adr/0016-dtaparser-under-dtatools.md)) | R, C |
-| `python` | the Python package, a PyO3 extension | Python, Rust |
-| `julia/DtaParser` | the Julia package for `.dta`, over the C interface; `DtaParser.Internals` holds what Datakit uses | Julia |
-| `julia/Datakit` | the Julia package for data preparation: Parquet and `read_fixed_width` into DataFrames; reaches the C interface through DtaParser ([ADR 0034](docs/adr/0034-datakit-in-python-and-julia.md)) | Julia |
-| `js` | the npm package, over the WebAssembly module | TypeScript |
+| `js` | the npm packages, over their WebAssembly modules | TypeScript |
 | `compat` | fixtures and what other readers make of them | |
 | `bench` | benchmarks | |
 | `docs` | user documentation, [decisions](docs/adr/) and [plans](docs/plans/) | Markdown |
@@ -117,50 +113,12 @@ macOS, Windows and Ubuntu, publishes them with the source packages as
 the R repository on GitHub Pages, and makes a GitHub release of the
 same files.
 
-**Python package** (Python 3.10 or later):
-
-```sh
-pip install maturin pytest pyreadstat
-pip install ./python
-python -m pytest python/tests
-```
-
-Run pytest from the repository root, not from `python/`, or Python
-imports the source directory instead of the installed package.
-
-**datakit for Python** (`python/datakit`, pure Python on `dta_parser`'s
-compiled core): build `dta_parser` as a wheel and install it, then
-datakit, and run its tests:
-
-    (cd python && maturin build --release --out dist) && pip install python/dist/*.whl
-    pip install -e python/datakit pytest pyarrow duckdb
-    python -m pytest python/datakit/tests
-
-Use a wheel rather than `maturin develop`: an editable `dta_parser`
-puts `python/` on the import path, where the directory `python/datakit`
-hides the installed package. With pyarrow and duckdb installed, the
-tests also check that those tools and polars read back what
-`save_parquet` writes. `bench/parquet/run_polars.py` runs the Python
-Parquet benchmarks against polars and pyarrow, and
-`bench/parquet/threads_polars.py` times the Arrow path's reads and
-writes at 1 to 16 threads.
-
-**Julia package** (Julia 1.10 or later):
-
-```sh
-julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
-```
-
-`Pkg.build` runs cargo to build `crates/dta-ffi` and copies the library
-into `julia/DtaParser/deps/usr/lib`.
-
 ## Documentation
 
 User documentation lives in `README.md`, `docs/guide/` (concepts, for
-every language) and one page per language (`docs/r.md`,
-`docs/python.md`, `docs/julia.md`, `docs/typescript.md`). The API
-reference is in the code: roxygen comments (R), docstrings (Python and
-Julia) and TSDoc (TypeScript).
+both languages) and one page per language (`docs/r.md` and
+`docs/typescript.md`). The API reference is in the code: roxygen
+comments (R) and TSDoc (TypeScript).
 
 ### Every example runs
 
@@ -170,14 +128,11 @@ Each language's test suite runs that language's code blocks from
 | language | test | blocks |
 |---|---|---|
 | R | `r/dtatools/tests/testthat/test-docs.R` | ` ```r ` |
-| Python | `python/tests/test_docs.py` | ` ```python ` |
-| Julia | `julia/DtaParser/test/docs.jl` | ` ```julia ` |
 | TypeScript | `js/test/docs.test.mjs` | ` ```ts ` and ` ```js ` |
 
 The blocks of one file run in order in a fresh temporary directory, so
-a later block can read a file an earlier one wrote. In R, Python and
-Julia they share one session per file; in TypeScript each block has its
-own scope, and the import lines of all blocks are merged at the top.
+a later block can read a file an earlier one wrote. In R they share
+one session per file; in TypeScript each block has its own scope, and the import lines of all blocks are merged at the top.
 Every page starts with a block that writes the file the rest read; no
 `.dta` file is committed for the docs.
 
@@ -191,8 +146,8 @@ for shell commands, which never run.
 
 ### Every export is documented
 
-The same tests fail when an exported function has no help page (R),
-docstring (Python, Julia) or TSDoc comment (TypeScript), or is not
+The same tests fail when an exported function has no help page (R)
+or TSDoc comment (TypeScript), or is not
 mentioned on its language page. When you add an export, document it in
 both places.
 
@@ -238,4 +193,4 @@ Rounds and their transcripts go in `docs/judging/`.
 Small commits, each one logical change, with a message that says what
 changed and why. A pull request says what it changes and how it was
 tested; CI must pass. Do not commit build output (`target/`,
-`js/dist/`, `julia/DtaParser/deps/usr/`) or data files.
+`js/dist/`) or data files.

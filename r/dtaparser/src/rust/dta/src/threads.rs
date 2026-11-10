@@ -1,12 +1,13 @@
 //! How many threads a read or write may use (plan 0007).
 //!
 //! The default is at most three: on an M4 Max, every read and write
-//! measured from R, Python and Rust kept its CPU time within 1.15× of
-//! the same task on one thread at three threads, and Python's full read
-//! of a 4.8 GB file did not at four (memory bandwidth shared by more
-//! cores makes each do its work more slowly). On x86, hardware threads
-//! usually come in SMT pairs that add little, so half of them count.
-//! wasm has no threads.
+//! measured when the default was chosen (from R, from Rust, and from
+//! the Python binding the project then had) kept its CPU time within
+//! 1.15× of the same task on one thread at three threads, and that
+//! Python binding's full read of a 4.8 GB file did not at four (memory
+//! bandwidth shared by more cores makes each do its work more slowly).
+//! On x86, hardware threads usually come in SMT pairs that add little,
+//! so half of them count. wasm has no threads.
 
 /// The number of worker threads for a task asked to use `requested`
 /// (0 for the default): `requested` if given, else `DTA_THREADS` if it

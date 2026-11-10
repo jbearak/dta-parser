@@ -3,8 +3,8 @@
 //
 // `.` is R's NA_real_, a NaN whose low word is 1954, and `.a` to `.z` are
 // that NaN with the letter's ASCII code in bits 32 to 39: the layout of
-// haven's and dtaparser's tagged NAs, Python's datakit and the Parquet
-// files' DOUBLE columns. Any other NaN is a number. Reading the code
+// haven's and dtaparser's tagged NAs, R datakit's polars frames and the
+// Parquet files' DOUBLE columns. Any other NaN is a number. Reading the code
 // ignores the sign and the quiet bit, which arithmetic, and a NaN stored
 // in a plain array, may change.
 

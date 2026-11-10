@@ -86,27 +86,8 @@ first appearance, which the test checks against pyarrow's values.
 ## Readback
 
     cargo run -p dta-parquet --example samples -- DIR
-    python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB; and datakit's own files
+    python3 compat/parquet/readback.py DIR     # pyarrow, pandas, polars, DuckDB
     Rscript compat/parquet/readback.R DIR      # arrow, nanoparquet
-    julia --project=bench/julia compat/parquet/readback.jl   # Parquet2.jl reads Datakit's files
-
-Where Python's datakit is installed, `readback.py` also writes its own
-files with `save_parquet` (every dtype it writes, with nulls, `.a` to
-`.z` as tagged NaNs in Float64 columns written with the storage types
-byte, int, long and float and as double, an ordered Enum with an unused level, in snappy, zstd, gzip and
-no compression, in row groups of 64 rows, and with `missing_letters`
-off) and checks what pyarrow, polars and DuckDB read, value by value:
-letters as NaN, and the levels and zone. With pyarrow 26.0.1, polars
-2.1.0 and DuckDB 2.0.0, every check passes.
-
-`readback.jl` writes its own files with Datakit's `save_parquet`
-(every type it writes, with nulls, `.a` to `.z`, categoricals and a
-zone, in snappy, zstd, gzip and no compression, and in row groups of
-100 rows) and checks what Parquet2.jl 0.2.37 reads from them: every
-value as written, `.a` to `.z` as NaN with their tagged bits, a
-categorical as its text, a zoned time as its UTC `DateTime`, INT(8) and
-INT(16) as `Int8` and `Int16`, and the `dta` key in the file's
-metadata. Every check passes.
 
 `samples` writes every type with nulls, `.a` to `.z`, categoricals
 (ordered and not, with an unused level) and time zones; the same in each
@@ -160,90 +141,39 @@ rules (INT64 as bigint, DATE and TIMESTAMP as `Date`s in milliseconds,
 
     sh compat/parquet/cross_language.sh [DIR]
 
-R's datakit and Python's datakit each write a file
-(`cross_language.R write`, `cross_language.py write`; Python's letters
-are tagged NaNs in Float64 columns, so its date, timestamp and
-categorical holding letters are Stata's numbers, as Julia writes them).
-Julia's Datakit checks R's and Python's cell by cell
-(`cross_language.jl check`); then Julia writes one, R checks Julia's
-and Python's, and Python checks R's and Julia's. Both scripts make the same literal data, so
-each checks every row's value and missing code (`.` or which of `.a`
-to `.z`), the variable labels, display formats, value label sets (with
-labels on letters), the data label and notes. The data has a double, a
-byte, a long and a float column holding letters (the long one written
-as DOUBLE with `"storage": "long"`), an integer with nulls, text,
-a factor with an unused level, dates with a format, and zoned times.
-R's file also has the exactness edges: a `Date` with a fraction of a
-day, which Julia reads exactly as Stata's days since 1960 with `%td`,
-and a `POSIXct` whose seconds no whole number of microseconds gives
-back, which Julia refuses by default (the error names the column, the
-row and `timestamps = :truncate`) and truncates to the millisecond with
-it. Julia's file has a date column holding letters, as Julia holds one
-(Stata's days since 1960), which R reads as numbers with their `%td`
-format. Python reads R's exactness edges as errors naming the column,
-the row and `timestamps="truncate"`, and with it as the truncated date
-and microsecond. Python's file adds a date and a timestamp holding
-letters, which R reads as `Date` and `POSIXct` with tagged NAs and Julia
-as Stata's days and milliseconds, and two labelled columns for
-`factors`: R writes the levels and values its `read_parquet(factors =
-TRUE)` gives for its file and Python's (`factors_r.json`), and Python's
-`factors=True` must give the same (a set with two codes labelled "Yes",
-and numbers as R writes them, such as `1e+05`).
+R's datakit and TypeScript's each write a file (`cross_language.R
+write`, `from_r.parquet`; `cross_language.mjs write`,
+`from_typescript.parquet`), and each reads the other's and checks it
+cell by cell. Both scripts make the same literal data, so each checks
+every row's value and missing code (`.` or which of `.a` to `.z`), the
+variable labels, display formats, value label sets (with labels on
+letters), the data label and notes. The data has a double, a byte, a
+long and a float column holding letters (the long one written as DOUBLE
+with `"storage": "long"`), an integer with nulls, text, a factor with an
+unused level, dates with a format, zoned times, and a byte column
+labelled by a set where two codes share a text. R's file also has the
+exactness edges: a `Date` with a fraction of a day, which TypeScript
+reads as the DOUBLE count it is written as, and a `POSIXct` whose
+seconds no whole number of microseconds gives back. TypeScript's file
+adds a date and a timestamp holding letters, which R reads as `Date` and
+`POSIXct` with tagged NAs, and an ordered categorical holding letters
+(plan 0022), which R reads as labelled codes with the letters, with
+`factors = TRUE` too.
 
-Result with R 4.6.1 (dtaparser and datakit from this checkout) and
-Julia 1.13.3: Julia checked 94 values and labels in R's file, R checked
-60 in Julia's, and none differ. With Python 3.14 and polars 2.1.0 (plan
-0019, PR 2b): Julia checked 276 in R's and Python's files, R 202 in
-Julia's and Python's, and Python 321 in R's and Julia's; none differ. One value had to change while writing
-the script: R parses the literal `1e300` as `1.0000000000000006e300`
-(its own string-to-double conversion is not correctly rounded), so the
-scripts use `2^1000`, which both languages hold exactly.
+One value had to change while writing the scripts: R parses the literal
+`1e300` as `1.0000000000000006e300` (its own string-to-double conversion
+is not correctly rounded), so the scripts use `2^1000`, which both
+languages hold exactly.
 
-## One frame in both languages (polars)
+    sh compat/parquet/categorical_marker.sh [DIR]
 
-    sh compat/parquet/cross_language_polars.sh [DIR]
-
-R's datakit (`read_parquet_pl()`, `read_dta_pl()`) and Python's
-(`read_parquet()`, `read_dta()`) read the same files into polars, and
-Python compares what they read (plan 0025, stage 4). CI runs it in the
-`parquet-r` job. The steps:
-
-1. Python's datakit writes the fixtures with `save_parquet()` and
-   `save_dta()`, from data `cross_language_polars.py` makes: columns
-   holding `.a` to `.z` (Float64 with byte, long, and float storage
-   kept, a date and a timestamp as Stata's numbers, a categorical as its
-   level numbers), an integer with nulls, a Boolean, text with `"nan"`,
-   an Enum, a byte column labelled by a set where two codes share a
-   text, a date, a timestamp, `-0.0`, and `2^1000`; labels on `.a` and
-   `.z` (and on `.` in the Parquet file, since a `.dta` file cannot
-   label `.`); a data label, notes, characteristics, a sort, and a time
-   stamp. The Parquet file adds a zoned timestamp and plain NaNs.
-   pyarrow writes `other.parquet`, with a decimal, Int64, UInt64, a
-   dictionary column, and Float32, which no "dta" profile describes.
-2. Each language reads the two fixtures, with `factors` off and on, and
-   saves what it read with its own `save_parquet()` and `save_dta()`.
-3. Each language makes the same 84 reads (listed in `cases.json`): every
-   fixture and every saved file, whole, with `letters = FALSE`, with
-   `factors = TRUE` (with and without letters), in a window of rows
-   holding no letter, in one holding letters (with and without
-   `letters`), and four columns in an order of their own. Each frame
-   is written as Arrow IPC and its metadata as JSON.
-4. Python compares the two, read by read: column names and order;
-   dtypes, with temporal units, zones, and Enum levels; which rows are
-   null; every valid cell, a Float64 by its 64 bits and a Float32 by its
-   32, so that each letter's payload counts; then the metadata field by
-   field, `storage` by dtype name, value labels as `{"set", "code",
-   "text"}` records with the code a number or `"."`, `".a"` ...
-   `".z"`. Buffers under nulls, chunk boundaries, and dictionary layout
-   are not compared.
-
-Result with R 4.6.1, Python 3.14, and polars 2.1.0 on both sides: 84
-reads, 1,180 columns, 5,935 valid cells, and 756 metadata fields
-compared, and none differ. To check that the comparison catches a
-difference, R's dump was changed once to write `.b` where row 5 of
-`score` holds `.a` in one read: both are NaN, and only the payload
-differs. The check failed with status 1, naming the read, the column,
-and the cell, and passed again once the change was undone.
+Each datakit saves two categoricals as `.dta` with the
+`dtaparser_categorical` marker (plan 0023), one of them ordered:
+TypeScript's from a `Dataset`, with `.a` and `.z` in the ordered one,
+and R's from a polars frame. TypeScript reads R's file as categoricals,
+and R's dtaparser reads both without a warning: the first column as a
+factor, and the second as an ordered factor from R's file and as
+labelled numbers with its letters from TypeScript's.
 
 ## Credits
 

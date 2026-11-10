@@ -685,8 +685,8 @@ from `read_dta(factors = TRUE)` comes back with codes 1 to k, not the
 file's own codes, which that read did not keep; to write the file's
 codes, read with `factors = FALSE`, the default.
 
-Python's and TypeScript's datakit mark a categorical they write to
-`.dta` with another characteristic, `dtaparser_categorical`, of the same
+TypeScript's datakit, and `save_dta()` given a polars frame, mark a
+categorical they write to `.dta` with another characteristic, `dtaparser_categorical`, of the same
 form (plan 0023). Unlike a factor, a categorical may hold `.a` to `.z`.
 `read_dta()` reads such a column as a factor, ordered if the marker
 says so, with every level of its value labels, when the rows read hold
@@ -721,7 +721,6 @@ The list also holds `release`, `label`, `timestamp`, `value_labels`
 (each set's codes, named by their text), `notes` and `characteristics`.
 `variables` is a tibble with columns `name`, `storage`, `format`,
 `label` and `label_set`. Text fields hold `""` when the file has none.
-Python's and Julia's `read_meta` return the same facts.
 
 Code that compares with labels, as in `region == "South"`, reads more
 clearly than code that compares with codes. For that, read with
@@ -1345,16 +1344,16 @@ na_tag(read_parquet("nulls.parquet")$income)    # NA NA NA NA NA NA
 
 ### Categoricals that hold .a to .z
 
-Python's and TypeScript's datakit write a categorical that holds `.a`
-to `.z` as DOUBLE level numbers (1 for the first level) with tagged
+TypeScript's datakit writes a categorical that holds `.a` to `.z` as
+DOUBLE level numbers (1 for the first level) with tagged
 NaNs for the letters ([docs/parquet.md](parquet.md)). A factor cannot
 hold the letters, so `read_parquet()` gives such a column as a
 `dtaparser_labelled` double: the numbers 1 to k, `.a` to `.z` as tagged
 NAs, `labels` from its value label set (each level, and any labels on
 letters) and attribute `label_set` the set's name. It stays a labelled
 double with `factors = TRUE`, and gives no warning about lost letters.
-For a column `grade` with levels low, mid and high, written by Python
-or TypeScript:
+For a column `grade` with levels low, mid and high, written by
+TypeScript:
 
 ```r norun
 g <- read_parquet("grades.parquet")$grade
@@ -1369,11 +1368,11 @@ names the column and the first such row read.
 
 R has no categorical type that holds `.a` to `.z`, so `save_parquet()`
 writes the column back as labelled numbers with its letters and value
-label set, not as a categorical. Python and TypeScript then read it as
-labelled numbers too.
+label set, not as a categorical. TypeScript then reads it as labelled
+numbers too.
 
-In `.dta` files, Python's and TypeScript's datakit mark such columns
-with `dtaparser_categorical`, which `read_dta()` reads as a labelled
+In `.dta` files, TypeScript's datakit marks such columns with
+`dtaparser_categorical`, which `read_dta()` reads as a labelled
 double the same way when the rows read hold a letter, and as a factor
 when they do not ([Plain R types](#plain-r-types-dtaparser)).
 
@@ -1454,7 +1453,7 @@ value exactly (`decimal = "character"` keeps every digit).
 | STRING, ENUM, JSON | character |
 | BYTE_ARRAY or FIXED_LEN_BYTE_ARRAY without a text annotation, UUID | a list of raw vectors, `NULL` for null |
 | a categorical `save_parquet()` wrote | factor, ordered if it was, every level kept |
-| a categorical holding `.a` to `.z` (DOUBLE level numbers, which Python's and TypeScript's datakit write) | `dtaparser_labelled` double: codes 1 to k, `.a` to `.z` as tagged NAs, `labels` and `label_set` from its value label set; `factors = TRUE` leaves it so; a value that is not a level number is `NA` with a warning |
+| a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit writes) | `dtaparser_labelled` double: codes 1 to k, `.a` to `.z` as tagged NAs, `labels` and `label_set` from its value label set; `factors = TRUE` leaves it so; a value that is not a level number is `NA` with a warning |
 | a dictionary of strings in `ARROW:schema`, with no levels in the profile (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered; levels are the distinct values of the rows read, in order of first appearance |
 | a dictionary of another type in `ARROW:schema` | its values' type, by the rows above |
 | FLOAT16, INTERVAL | not read: an error naming the column and type |
@@ -1486,11 +1485,8 @@ read into a polars DataFrame instead of a tibble. Each returns
 `list(df, meta)`: the frame, and a `datakit_meta` holding what a polars
 frame cannot, such as variable labels, display formats, value labels,
 notes, and the data label. `save_parquet()` and `save_dta()` take the
-frame and its `meta` back. Python's datakit reads the same way and
-returns the same pair: both read through dtaparser's native code, so a
-file gives the same columns, dtypes, values, and metadata in both
-languages (`compat/parquet/cross_language_polars.sh` checks this, cell
-by cell). The tibble functions in the sections above are unchanged.
+frame and its `meta` back. The tibble functions in the sections above
+are unchanged.
 
 Contents:
 [Install](#polars-install) ·
@@ -1536,8 +1532,7 @@ columns are R integers, so its `age` is Int32. `col_select`, `skip`, `n_max`, an
 `read_fixed_width_pl(file, setup)` reads fixed-width text through its
 SAS setup file into the same pair.
 
-`meta` is a list with the fields of Python's `Meta`, under the same
-names: `label`, `notes`, `characteristics`, `sort`, `timestamp`,
+`meta` is a list with these fields: `label`, `notes`, `characteristics`, `sort`, `timestamp`,
 `columns`, `value_labels`, `rows`, and `storage`. Change it as you
 would any list. It does not follow polars operations: when you rename,
 drop, or add a column, change `meta$columns` to match.
@@ -1550,7 +1545,7 @@ dtaparser, so R does not unload it on its own.
 
 ### .a to .z in a polars frame
 
-Every read keeps `.a` to `.z` in the frame, as Python's datakit does. A
+Every read keeps `.a` to `.z` in the frame. A
 column holding any of them in the rows read is Float64, and each letter
 is a NaN tagged with it: R's `NA_real_` with the letter's code in its
 fifth byte, as `tagged_na()` makes. `.` is a null. An Int8, Int16,
@@ -1762,7 +1757,7 @@ dtatools again.
 
 **"x holds binary strLs, which dtaparser does not read".** The column
 stores binary data (an image, say). Leave it out with `col_select`, or
-read the file with the Python, Julia or TypeScript package.
+read the file with the TypeScript package.
 
 **"unsupported .dta release".** The file is not a `.dta` file, or its
 release is older than 104 or newer than 119. See
@@ -1855,7 +1850,7 @@ datakit exports:
 
 datakit's polars functions (R 4.3 or later, with polars from
 R-multiverse and nanoarrow) read into a polars DataFrame and a
-`datakit_meta`, as Python's datakit does, with `.a` to `.z` as tagged
+`datakit_meta`, with `.a` to `.z` as tagged
 NaNs in Float64 columns; each has a help page:
 
 - `read_parquet_pl(file, ...)`, `read_dta_pl(file, ...)`,

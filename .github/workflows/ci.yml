@@ -26,6 +26,14 @@ jobs:
       - name: Thread scaling on x86
         run: cargo run --release -p dta --example threads -- --synthetic "$RUNNER_TEMP"
 
+  # The .dta core on Windows, where paths, files, and threads differ.
+  rust-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p dta
+
   # The licences of every crate the workspace uses (deny.toml).
   licenses:
     runs-on: ubuntu-latest
@@ -36,9 +44,8 @@ jobs:
           command: check licenses
 
   # Parquet (plan 0018): pyarrow's reading of the committed fixtures is
-  # still what compat/parquet/expected holds, and pyarrow, pandas, polars
-  # and DuckDB read back the files dta-parquet writes, and those Python's
-  # datakit writes (plan 0019).
+  # still what compat/parquet/expected holds, and pyarrow, pandas, polars,
+  # and DuckDB read back the files dta-parquet writes.
   parquet-python:
     runs-on: ubuntu-latest
     steps:
@@ -47,10 +54,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install pyarrow pandas polars duckdb maturin
-      - run: maturin build --release --out dist
-        working-directory: python
-      - run: pip install python/dist/*.whl ./python/datakit
+      - run: pip install pyarrow pandas polars duckdb
       - run: python compat/parquet/expected.py
       - name: Committed expected values match pyarrow's reading
         run: git diff --exit-code -- compat/parquet/expected
@@ -58,51 +62,21 @@ jobs:
       - run: python compat/parquet/readback.py "$RUNNER_TEMP/parquet"
 
   # arrow (R) and nanoparquet read back the files dta-parquet writes.
-  # Then R's and Python's datakits read the same Parquet and .dta files,
-  # and each other's saves, into polars, and Python compares the frames
-  # and metadata (plan 0025, stage 4).
   parquet-r:
     runs-on: ubuntu-latest
-    env:
-      DATAKIT_REQUIRE_POLARS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-      - run: Rscript -e 'install.packages(c("arrow", "nanoparquet", "haven", "jsonlite", "nanoarrow", "rlang", "tibble", "tidyselect", "vctrs"))'
-      # R-multiverse has no polars binary for Ubuntu 24.04, so polars
-      # installs from source; NOT_CRAN=true makes it download its
-      # prebuilt Rust library instead of compiling it.
-      - name: Install polars from R-multiverse
-        shell: Rscript {0}
-        env:
-          NOT_CRAN: "true"
-        run: install.packages("polars", repos = c("https://community.r-multiverse.org", getOption("repos")))
-      # install.packages() only warns when an install fails.
-      - name: polars and nanoarrow load
-        run: Rscript -e 'library(polars); library(nanoarrow)'
+      - run: Rscript -e 'install.packages(c("arrow", "nanoparquet", "haven", "jsonlite", "rlang", "tibble", "tidyselect", "vctrs"))'
       - run: cargo run -p dta-parquet --example samples -- "$RUNNER_TEMP/parquet"
       - run: Rscript compat/parquet/readback.R "$RUNNER_TEMP/parquet"
-      - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datparser && R CMD INSTALL r/datakit
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      # Python's polars is the release R's polars tracks, so both sides
-      # run the same polars.
-      - name: Install dta_parser, datakit, pyarrow and the polars R has
-        run: |
-          pip install maturin pyarrow "polars==$(Rscript -e 'cat(format(packageVersion("polars")[, 1:2]))').*"
-          (cd python && maturin build --release --out dist)
-          pip install python/dist/*.whl ./python/datakit
-      - run: sh compat/parquet/cross_language_polars.sh "$RUNNER_TEMP/polars"
-        env:
-          PYTHON: python
 
   # Relative links and anchors in the Markdown docs. The docs' code
-  # examples run in each language's own job (test-docs.R, test_docs.py,
-  # docs.jl, docs.test.mjs).
+  # examples run in each language's own job (test-docs.R,
+  # docs.test.mjs).
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -213,199 +187,10 @@ jobs:
           DTA_TEST_SMALL_CHUNKS: "1"
           DTA_THREADS: "4"
 
-  python:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python: ["3.10", "3.14"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-      - run: cargo clippy --manifest-path python/Cargo.toml --all-targets -- -D warnings
-      # Build the abi3 wheel and install it, so the tests import what a
-      # user would install, not the source tree.
-      - run: pip install maturin
-      - run: maturin build --release --out dist
-        working-directory: python
-      - run: pip install python/dist/*.whl pytest pyreadstat
-      - run: python -m pytest python/tests
-      - run: python -m pytest python/tests
-        env:
-          DTA_TEST_SMALL_CHUNKS: "1"
-          DTA_THREADS: "4"
-      # With pyarrow and polars, the tests of dta_parser's Arrow path
-      # (python/tests/test_arrow.py) run too.
-      - run: pip install pyarrow polars
-      - run: python -m pytest python/tests
-
-  # Python's datakit (plan 0019): pure Python on dta_parser's wheel. Its
-  # tests (the docs' examples among them), with small chunks and threads
-  # too; then both sdists build offline and install into a fresh venv,
-  # which imports datakit without pandas.
-  datakit-python:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python: ["3.10", "3.14"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-      - run: pip install maturin setuptools
-      - run: maturin build --release --out dist
-        working-directory: python
-      - run: pip install python/dist/*.whl ./python/datakit pytest pyarrow duckdb
-      - run: python -m pytest python/datakit/tests
-      - run: python -m pytest python/datakit/tests
-        env:
-          DTA_TEST_SMALL_CHUNKS: "1"
-          DTA_THREADS: "4"
-      - name: Both sdists build offline
-        # Without build isolation the runner's own setuptools builds
-        # datakit; it needs 77 or later for an SPDX license string.
-        run: |
-          pip install "setuptools>=77"
-          maturin sdist --out "$RUNNER_TEMP/sdist"
-          (cd datakit && python -c "from setuptools import build_meta as b; b.build_sdist('$RUNNER_TEMP/sdist')")
-          CARGO_NET_OFFLINE=true pip wheel --no-index --no-build-isolation --no-deps -w "$RUNNER_TEMP/wheels" "$RUNNER_TEMP"/sdist/*.tar.gz
-        working-directory: python
-      - name: A fresh venv installs both and imports datakit without pandas
-        run: |
-          python -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install "$RUNNER_TEMP"/wheels/*.whl
-          cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/venv/bin/python" -c "import sys, datakit; assert 'pandas' not in sys.modules"
-
-  # One abi3 wheel per supported platform, each installed into a fresh
-  # venv and smoke-tested. Nothing is published.
-  wheels:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-latest, target: x86_64, manylinux: "2014" }
-          - { os: ubuntu-latest, target: aarch64, manylinux: "2014" }
-          - { os: macos-latest, target: aarch64, manylinux: auto }
-          - { os: windows-latest, target: x64, manylinux: auto }
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      # On Linux this builds in a manylinux2014 container (a cross one for
-      # aarch64).
-      - uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          manylinux: ${{ matrix.manylinux }}
-          args: --release --out dist
-          working-directory: python
-      - name: Smoke-test the wheel in a fresh venv
-        if: matrix.target != 'aarch64' || runner.os != 'Linux'
-        shell: bash
-        run: |
-          python -m venv "$RUNNER_TEMP/venv"
-          if [ -f "$RUNNER_TEMP/venv/Scripts/python.exe" ]; then
-            py="$RUNNER_TEMP/venv/Scripts/python.exe"
-          else
-            py="$RUNNER_TEMP/venv/bin/python"
-          fi
-          "$py" -m pip install python/dist/*.whl
-          cd "$RUNNER_TEMP"
-          "$py" "$GITHUB_WORKSPACE/python/tests/smoke.py"
-      - uses: docker/setup-qemu-action@v3
-        if: matrix.target == 'aarch64' && runner.os == 'Linux'
-        with:
-          platforms: arm64
-      - name: Smoke-test the wheel in a fresh venv on arm64 (QEMU)
-        if: matrix.target == 'aarch64' && runner.os == 'Linux'
-        run: |
-          docker run --rm --platform linux/arm64 -v "$GITHUB_WORKSPACE:/w:ro" -w /tmp python:3.12-slim \
-            bash -c 'python -m venv /tmp/venv && /tmp/venv/bin/pip install /w/python/dist/*.whl && /tmp/venv/bin/python /w/python/tests/smoke.py'
-
-  # The rust job's `cargo test --workspace` already runs the C ABI tests
-  # (crates/dta-ffi/tests/capi.rs). Here Pkg.build runs deps/build.jl,
-  # which builds the library with cargo.
-  julia:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        julia: ["1.10", "1"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.julia }}
-      - uses: julia-actions/cache@v2
-      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
-      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.test()'
-        env:
-          DTA_TEST_SMALL_CHUNKS: "1"
-          DTA_THREADS: "4"
-
-  # Datakit (julia/Datakit), on DtaParser from the same checkout: its
-  # tests, which include the docs tests (docs/julia.md and its README),
-  # and installing both into a fresh depot. Julia 1.10 does not read
-  # [sources], so DtaParser is developed into Datakit's environment first.
-  datakit-julia:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        julia: ["1.10", "1"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.julia }}
-      - uses: julia-actions/cache@v2
-      - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.develop(path="julia/DtaParser"); Pkg.instantiate(); Pkg.build("DtaParser"); Pkg.test()'
-      - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.test()'
-        env:
-          DTA_TEST_SMALL_CHUNKS: "1"
-          DTA_THREADS: "4"
-      - run: julia --startup-file=no julia/Datakit/test/install.jl
-
-  # Windows: the core's tests (writes may use threads there; reads stay
-  # serial), and the native library builds (dta_ffi.dll), loads, and
-  # reads and writes a path with non-ASCII characters, in DtaParser and
-  # in Datakit (Parquet and fixed-width text).
-  julia-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test -p dta
-      - run: cargo build --release -p dta-ffi
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: "1"
-      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
-      - run: julia --project=julia/DtaParser julia/DtaParser/test/smoke.jl
-      - run: julia --project=julia/Datakit -e 'using Pkg; Pkg.develop(path="julia/DtaParser"); Pkg.instantiate()'
-      - run: julia --project=julia/Datakit julia/Datakit/test/smoke.jl
-
   # Every writer's files read back in every other reader: dtaparser and
-  # dtatools (R), dta_parser (Python), DtaParser (Julia) and the npm
-  # package save the fixtures and compat/readback's strL inputs again,
-  # and haven, readstata13, pandas and pyreadstat must read each copy as
+  # dtatools (R) and the npm package save the fixtures and
+  # compat/readback's strL inputs again, and haven, readstata13, pandas,
+  # and pyreadstat must read each copy as
   # they read its input (compat/readback/check.py, with its known
   # exceptions).
   readback:
@@ -421,10 +206,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: "1"
-      - uses: julia-actions/cache@v2
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
@@ -432,12 +213,8 @@ jobs:
         with:
           working-directory: r/dtaparser
           extra-packages: any::vctrs, any::haven, any::readstata13, any::jsonlite
-      - run: pip install maturin
-      - run: maturin build --release --out dist
-        working-directory: python
-      - run: pip install python/dist/*.whl pyreadstat
+      - run: pip install pandas pyreadstat
       - run: R CMD INSTALL r/dtaparser && R CMD INSTALL r/datparser && R CMD INSTALL r/datakit && R CMD INSTALL r/dtatools
-      - run: julia --project=julia/DtaParser -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
       # libzstd in the module needs a clang that targets wasm32.
       - run: sudo apt-get update && sudo apt-get install -y clang llvm
       - run: scripts/build-wasm.sh && cd js && npm ci && npm run build && cd datakit && npm ci && npm run build

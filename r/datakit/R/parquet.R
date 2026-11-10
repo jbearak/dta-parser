@@ -58,7 +58,7 @@
 #'   | STRING, ENUM, JSON | character |
 #'   | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY, UUID | a list of raw vectors (`NULL` for null) |
 #'   | a categorical `save_parquet()` wrote | factor, ordered if it was |
-#'   | a categorical holding `.a` to `.z` (DOUBLE level numbers, which Python's and TypeScript's datakit write) | [`dtaparser_labelled`][dtaparser::with_labels] double, whatever `factors` says |
+#'   | a categorical holding `.a` to `.z` (DOUBLE level numbers, which TypeScript's datakit writes) | [`dtaparser_labelled`][dtaparser::with_labels] double, whatever `factors` says |
 #'   | a dictionary of strings in `ARROW:schema` (an arrow factor, a pandas `category`, a polars `Categorical`) | factor, unordered |
 #'
 #'   Every missing value is `NA`. In doubles `.a` to `.z` are tagged NAs
@@ -285,11 +285,10 @@ key_value_table <- function(kv) {
 #'   are dropped.
 #' @param timestamps For a polars DataFrame, `"error"` (the default) or
 #'   `"truncate"`; kept for files written with letters in a Datetime
-#'   column by R, Julia or TypeScript.
+#'   column by R or TypeScript.
 #' @section polars frames:
 #' `save_parquet()` is a generic. A polars DataFrame, as
-#' [read_parquet_pl()] returns, is written with what its `meta` says, as
-#' Python datakit's `dk.save_parquet()` writes it: its `.a` to `.z` (the
+#' [read_parquet_pl()] returns, is written with what its `meta` says: its `.a` to `.z` (the
 #' tagged NaNs of Float64 columns) are written as they are; a column a
 #' read made Float64 to hold them is written with its file's storage type
 #' in the profile when its values still fit it; `meta$sort` is kept only

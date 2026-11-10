@@ -50,8 +50,7 @@ becomes.
 }
 \details{
 For a polars DataFrame, as \code{\link[=read_dta_pl]{read_dta_pl()}} or \code{\link[=read_parquet_pl]{read_parquet_pl()}}
-returns, it writes release 118 with what \code{meta} says, as Python
-datakit's \code{dk.save_dta()} does. Each column gets the smallest storage
+returns, it writes release 118 with what \code{meta} says. Each column gets the smallest storage
 type that holds its values: integers byte, int or long (double past
 long, an error past +/-2^53), Float32 float, Float64 double, Boolean
 byte, String strN or strL, Binary strL. A Date is \verb{\%td}; a Datetime

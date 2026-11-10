@@ -5,7 +5,7 @@ and missing values `.a` to `.z`:
 
 - **Parquet files** that keep value labels, variable labels, display
   formats, `.a` to `.z`, notes, categoricals and time zones, read and
-  written by R's, Python's and Julia's datakits too, and plain Parquet
+  written by R's datakit too, and plain Parquet
   to every other tool. `ParquetReader` reads columns and windows of rows
   synchronously through the same `TableReader` interface as
   `@jbearak/dta-parser`'s `DtaReader`; `openParquetAsync` reads over

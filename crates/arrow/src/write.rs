@@ -1,6 +1,6 @@
-//! Writing a polars frame as Parquet from polars' own Arrow export
-//! (`DataFrame.__arrow_c_stream__()`): `parquet_write_arrow`, for datakit
-//! only (plan 0019, `save_parquet`).
+//! Writing a polars frame as Parquet from polars' own Arrow export (an
+//! Arrow C stream): [`parquet_write`], for datakit only (plan 0019,
+//! `save_parquet`).
 //!
 //! The writer reads polars' buffers in place: numbers a block of rows at
 //! a time, text through string views (or offsets), an Enum or Categorical

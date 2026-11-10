@@ -1,6 +1,6 @@
 # A factor written by save_dta reads back as the same factor, ordered
 # and unused levels included, whatever `factors` says (plan 0020), and
-# so does a categorical Python's or TypeScript's datakit marked, unless
+# so does a categorical datakit marked, unless
 # the rows read hold .a to .z (plan 0023). A marked column the file no
 # longer holds as written reads as unmarked, with a warning. Stale files
 # are made by editing a saved file's bytes, as a change in Stata would.

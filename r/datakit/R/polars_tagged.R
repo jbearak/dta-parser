@@ -1,5 +1,5 @@
-# .a to .z in polars (plan 0025): tagged NaNs in Float64 columns, as in
-# Python's datakit (_tagged.py) and ADR 0036. A letter is R's NA_real_
+# .a to .z in polars (plan 0025): tagged NaNs in Float64 columns
+# (ADR 0036). A letter is R's NA_real_
 # (a NaN whose low word is 1954) with the letter's ASCII code in bits 32
 # to 39, the layout of dtaparser's tagged_na(). Reading one back ignores
 # the sign and the quiet bit, which arithmetic may change.
@@ -17,7 +17,7 @@ check_polars <- function(what) {
   rlang::check_installed(c("polars", "nanoarrow"), reason = paste0("for ", what, "()"))
 }
 
-# The Enum of ".a" to ".z" that na_tag_pl() gives (Python's LETTERS).
+# The Enum of ".a" to ".z" that na_tag_pl() gives.
 letters_dtype <- function() polars::pl$Enum(paste0(".", letters))
 
 u64 <- function(x) polars::pl$lit(x)$cast(polars::pl$UInt64)
@@ -73,9 +73,7 @@ one_letter <- function(letter) {
 #' In a polars frame from [read_parquet_pl()], [read_dta_pl()] or
 #' [read_fixed_width_pl()], `.` is a null and `.a` to `.z` are NaNs
 #' tagged with their letter in Float64 columns, the bits R holds
-#' [dtaparser::tagged_na()] in. These expressions make and read them,
-#' as Python datakit's `dk.tagged_na()`, `dk.na_tag()` and
-#' `dk.is_tagged_na()` do.
+#' [dtaparser::tagged_na()] in. These expressions make and read them.
 #'
 #' `tagged_na_pl()` is needed because R polars reads every R `NA`,
 #' tagged or not, as a null: `pl$lit(tagged_na("a"))` is a null, not
@@ -217,8 +215,7 @@ is_missing.polars_series <- function(x) {
 #' (see Joins below). `datakit_by_pl()` returns,
 #' for each column you give it, the column and its letters as a column
 #' of its own (`<name><.suffix>`, from [na_tag_pl()]), so that grouping
-#' by both keeps the letters apart, as [datakit_by()] does for dplyr and
-#' Python datakit's `dk.by()` for polars. polars groups nulls together,
+#' by both keeps the letters apart, as [datakit_by()] does for dplyr. polars groups nulls together,
 #' so `.` is a group of its own.
 #'
 #' ```r

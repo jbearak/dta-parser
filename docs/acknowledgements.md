@@ -54,7 +54,7 @@ version we studied.
   and contributors; MIT). Its `compression`, `compression_level` and
   `row_group_size` arguments are the names we use, and its errors on an
   unknown column name, listing the valid ones, are the model for ours.
-  datakit for Python returns polars frames. Plan 0027 read how its
+  R's datakit reads into polars frames on request. Plan 0027 read how its
   Parquet reader, `polars-parquet`, decodes (at commit 0925185), to see
   why it was faster than ours on some files, and took these ideas from
   it, with no code: a chunk's validity bitmap built from the level
@@ -84,17 +84,17 @@ version we studied.
   against, and a measure of how fast a footer can be read.
 - **[Parquet2.jl](https://gitlab.com/ExpandingMan/Parquet2.jl) 0.2.37**
   (Expanding Man and contributors; MIT). It reads columns and row
-  groups lazily, as Datakit does. It also showed what Julia users lose
-  today: it reads `.a` to `.z` as `missing`, and a column with value
-  labels cannot be written.
+  groups lazily, as our readers do. It reads `.a` to `.z` as `missing`,
+  and cannot write a column with value labels: the gap the profile
+  fills.
 - **[Arrow.jl](https://github.com/apache/arrow-julia) 2.8.1** (Apache
   Software Foundation; Apache-2.0). How Julia tables carry field
   metadata and dictionary columns through Arrow memory; it keeps a
-  categorical column but not whether it is ordered, which Datakit
+  categorical column but not whether it is ordered, which our profile
   keeps.
 - **[ReadStatTables.jl](https://github.com/junyuan-chen/ReadStatTables.jl)
   0.4.0** (Junyuan Chen; MIT). How a Julia table holds Stata's value
-  labels, and the gap we fill: `.a` to `.z` read as `missing`.
+  labels; it reads `.a` to `.z` as `missing`, which our files keep.
 - **[hyparquet](https://github.com/hyparam/hyparquet) 1.32.0 and
   [hyparquet-writer](https://github.com/hyparam/hyparquet-writer)
   0.18.0** (MIT). hyparquet reads only a file's footer when
@@ -109,8 +109,8 @@ version we studied.
 ## Codecs we use
 
 These crates are compiled into our packages; their notices ship with
-them ([js/datakit/THIRD-PARTY-NOTICES](../js/datakit/THIRD-PARTY-NOTICES),
-`python/dta_parser/NOTICE` and `r/dtaparser/inst/NOTICE`). The versions
+them ([js/datakit/THIRD-PARTY-NOTICES](../js/datakit/THIRD-PARTY-NOTICES)
+and `r/dtaparser/inst/NOTICE`). The versions
 are those in `Cargo.lock`.
 
 | codec | crate | version | license |

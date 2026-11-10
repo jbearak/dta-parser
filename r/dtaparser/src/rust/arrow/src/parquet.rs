@@ -1,10 +1,9 @@
-//! What the Arrow path (`arrow::read`, for datakit's `read_parquet` and
-//! `read_parquet_info`, plan 0019) shares about Parquet: opening a path,
-//! bytes or another source (the binding's file objects); which Arrow type
-//! each Parquet column becomes; picking the columns asked for; and the
-//! names and messages reported. dta_parser itself reads no Parquet since
-//! 0.3; the binding for R (r/dtaparser/src/rust/parquet_r.rs) is this
-//! module's model.
+//! What the Arrow path (`read.rs`, for datakit's `read_parquet_pl`, plan
+//! 0019) shares about Parquet: opening a path or bytes; which Arrow
+//! type each Parquet column becomes;
+//! picking the columns asked for; and the names and messages reported.
+//! The binding of the Parquet core for R
+//! (r/dtaparser/src/rust/parquet_r.rs) is this module's model.
 
 use std::collections::HashMap;
 
@@ -109,23 +108,6 @@ impl dta::SharedSource for ReadAhead {
     }
 }
 
-/// A source given as a trait object (the binding's file objects).
-pub struct DynSource<'a>(pub Box<dyn Source + Send + 'a>);
-
-impl Source for DynSource<'_> {
-    fn len(&self) -> u64 {
-        self.0.len()
-    }
-
-    fn read_at(&mut self, offset: u64, buf: &mut [u8]) -> dta::Result<()> {
-        self.0.read_at(offset, buf)
-    }
-
-    fn shared(&self) -> Option<&dyn dta::SharedSource> {
-        self.0.shared()
-    }
-}
-
 /// What the bridge needs of a reader, whatever its source.
 pub trait Access: Send {
     fn columns(&self) -> &[ColumnInfo];
@@ -197,12 +179,10 @@ impl<S: Source + Send> Access for Reader<S> {
     }
 }
 
-/// Where a file comes from: a path, the whole file in memory, or another
-/// source (a binary file object, which the binding wraps).
+/// Where a file comes from: a path, or the whole file in memory.
 pub enum Input<'a> {
     Path(String),
     Bytes(&'a [u8]),
-    Source(Box<dyn Source + Send + 'a>),
 }
 
 /// Open `input` and run `f` on its reader, which reads only the profile
@@ -222,10 +202,6 @@ pub fn with_reader_for<T>(
         }
         Input::Bytes(b) => {
             let mut r = Reader::open_for(Bytes(b), options, selected).map_err(fail)?;
-            f(&mut r)
-        }
-        Input::Source(s) => {
-            let mut r = Reader::open_for(DynSource(s), options, selected).map_err(fail)?;
             f(&mut r)
         }
     }
@@ -418,32 +394,16 @@ pub fn entries(profile: Option<&Profile>) -> HashMap<&str, &ColumnProfile> {
 
 // ---------------------------------------------------------------- read
 
-/// A column asked for: by name, by 0-based position among the data
-/// columns, or by something that is neither (an error once the file is
-/// open, as before the binding was split off).
-#[derive(Clone, Debug, PartialEq)]
-pub enum Selector {
-    Name(String),
-    Position(i64),
-    Other,
-}
-
-/// The names asked for when every selector is a name.
-pub fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
-    wanted?
-        .iter()
-        .map(|w| match w {
-            Selector::Name(n) => Some(n.as_str()),
-            _ => None,
-        })
-        .collect()
+/// The names asked for, as string slices.
+pub fn names_of(wanted: Option<&[String]>) -> Option<Vec<&str>> {
+    wanted.map(|w| w.iter().map(String::as_str).collect())
 }
 
 /// The columns asked for, as indices into the reader's columns. When
 /// the file has a column named `prefer`, that column alone is read in
 /// their place: R's `col_select = cols` means the column `cols` if there
 /// is one, as tidyselect reads it, and the names in `cols` otherwise.
-pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, prefer: Option<&str>, nested_skip: bool) -> Result<Vec<usize>> {
+pub fn select(r: &dyn Access, wanted: Option<&[String]>, prefer: Option<&str>, nested_skip: bool) -> Result<Vec<usize>> {
     let cols = r.columns();
     let data: Vec<usize> = (0..cols.len()).filter(|&k| cols[k].role == Role::Data).collect();
     let Some(wanted) = wanted else {
@@ -458,21 +418,15 @@ pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, prefer: Option<&str>,
         return Ok(data);
     };
     let by_name: HashMap<&str, usize> = cols.iter().enumerate().rev().map(|(k, c)| (c.name.as_str(), k)).collect();
-    let preferred = prefer.and_then(|p| by_name.contains_key(p).then(|| [Selector::Name(p.to_string())]));
+    let preferred = prefer.and_then(|p| by_name.contains_key(p).then(|| [p.to_string()]));
     let wanted = preferred.as_ref().map_or(wanted, |p| &p[..]);
     let mut out = Vec::with_capacity(wanted.len());
-    for w in wanted {
-        let k = match w {
-            Selector::Name(name) => *by_name.get(name.as_str()).ok_or_else(|| {
-                let shown: Vec<String> = cols.iter().take(20).map(|c| format!("\"{}\"", c.name)).collect();
-                let more = if cols.len() > 20 { format!(" and {} more", cols.len() - 20) } else { String::new() };
-                Error::Key(format!("column \"{name}\" is not in the file; its columns are {}{more}", shown.join(", ")))
-            })?,
-            Selector::Position(i) => *usize::try_from(*i).ok().and_then(|i| data.get(i)).ok_or_else(|| {
-                Error::Index(format!("there is no column {i}; the file has {} data columns", data.len()))
-            })?,
-            Selector::Other => return Err(Error::Type("columns are names or 0-based positions".into())),
-        };
+    for name in wanted {
+        let k = *by_name.get(name.as_str()).ok_or_else(|| {
+            let shown: Vec<String> = cols.iter().take(20).map(|c| format!("\"{}\"", c.name)).collect();
+            let more = if cols.len() > 20 { format!(" and {} more", cols.len() - 20) } else { String::new() };
+            Error::Key(format!("column \"{name}\" is not in the file; its columns are {}{more}", shown.join(", ")))
+        })?;
         if cols[k].role == Role::Nested {
             return Err(fail(format!("column \"{}\" is nested (a list, map or group), which is not read", cols[k].name)));
         }
@@ -483,7 +437,9 @@ pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, prefer: Option<&str>,
     Ok(out)
 }
 
-/// The message of a read's error, with what Python offers instead.
+/// The message of a read's error. The core's advice to read a DECIMAL
+/// column as text is replaced: this path already reads those named in
+/// `decimal_names` as text.
 pub fn read_error(m: String, decimal_names: &[String]) -> String {
     const DECIMAL: &str = "read the column as text to keep every digit";
     if decimal_names.iter().any(|n| m.starts_with(n.as_str())) && m.contains(DECIMAL) {

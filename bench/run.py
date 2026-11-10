@@ -1,12 +1,12 @@
-"""Benchmark every .dta reader in R, Python, Julia and TypeScript, check
-that they agree, and write bench/RESULTS.md with a chart per dataset family.
+"""Benchmark every .dta reader in R and TypeScript, check that they
+agree, and write bench/RESULTS.md with a chart per dataset family.
 
     python bench/run.py [--family F ...] [--file KEY ...] [--report]
 
-Run it from the repository root with the Python that has dta_parser,
-pandas and pyreadstat installed. It needs R with dtatools, haven and
-readstata13; Julia with bench/julia's environment instantiated and
-DtaParser built; Node with js/ built and bench/node/ installed.
+Run it from the repository root; any Python 3 will do (the driver uses
+only the standard library). It needs R with dtaparser, dtatools, haven,
+readstata13, digest, and jsonlite; Node with js/ built and bench/node/
+installed.
 
 Files (never committed):
   synthetic  long, wide, groups and long_114/117/119 in BENCH_DIR
@@ -27,8 +27,7 @@ call, then up to 20 calls (stopping after 60 s once three ran; a warm-up
 over 60 s is the only run); peak RSS from one more fresh process with one
 call (a warm-up over 60 s is that run). Every process has 20 minutes. A
 reader that times out on a file is not run on that family's larger
-files. StatFiles, which can only slice a full read, is not timed on
-tasks 3 and 4 where its full read took over 60 s.
+files.
 
 Every measurement is cached under --out (default
 /private/tmp/claude-501/bench-out); delete a file there to run it again.
@@ -47,8 +46,6 @@ import sys
 import time
 from pathlib import Path
 
-import dta_parser
-
 ROOT = Path(__file__).resolve().parent.parent
 BENCH = ROOT / "bench"
 MB = 1e6
@@ -60,16 +57,6 @@ LANGS = {
         "readers": {"ours": "dtatools", "haven": "haven", "readstata13": "readstata13"},
         "oracle": "haven",
     },
-    "Python": {
-        "cmd": [sys.executable, "bench/cases/case.py"],
-        "readers": {"ours": "dta_parser", "pandas": "pandas", "pyreadstat": "pyreadstat"},
-        "oracle": "pandas",
-    },
-    "Julia": {
-        "cmd": ["julia", "--project=bench/julia", "bench/cases/case.jl"],
-        "readers": {"ours": "DtaParser.jl", "readstattables": "ReadStatTables.jl", "statfiles": "StatFiles.jl"},
-        "oracle": "readstattables",
-    },
     "TypeScript": {
         "cmd": ["node", "--expose-gc", "--max-old-space-size=32768", "bench/cases/case.mjs"],
         "readers": {"ours": "@jbearak/dta-parser", "statfmt": "@irbisadm/statfmt"},
@@ -79,11 +66,7 @@ LANGS = {
 TASKS = {1: "full read", 2: "read + pass", 3: "5 columns", 4: "1,000 rows", 5: "metadata", 6: "write"}
 # Tasks that read the whole file whatever is asked, per reader: skipped
 # where that reader's full read timed out.
-FULL_READS = {"statfiles": {2, 3, 4, 6}, "statfmt": {2, 3, 6}}
-# Tasks a reader can only do as its full read plus a slice: not run again
-# where its full read took over a minute.
-NO_SELECTION = {"statfiles": {3, 4}}
-SLOW = 60
+FULL_READS = {"statfmt": {2, 3, 6}}
 FAMILIES = {"synthetic": "Synthetic", "nsfg": "NSFG (public use)", "dhs": "DHS"}
 # One survey per DHS Program region, each near the median size of the
 # local copies (ADR 0013).
@@ -117,9 +100,8 @@ def find_files():
                     key = "dhs-" + survey.lower().replace(" ", "-") + f"-{recode}"
                     files.append({"family": "dhs", "key": key, "path": p, "label": f"{survey} {recode}",
                                   "region": region})
-    for f in files:
-        meta = dta_parser.read_meta(str(f["path"]))
-        names = list(meta["columns"])
+    for f, meta in zip(files, read_metas([f["path"] for f in files])):
+        names = meta["names"]
         f.update(size=f["path"].stat().st_size, nobs=meta["nobs"], nvars=len(names),
                  release=meta["release"], names=names)
         # Five columns spread over the file; a window from the middle.
@@ -129,6 +111,31 @@ def find_files():
         f["n"] = min(1000, meta["nobs"] - f["skip"])
     files.sort(key=lambda f: (list(FAMILIES).index(f["family"]), f["size"]))
     return files
+
+
+META_R = """
+paths <- readLines(file("stdin"))
+metas <- lapply(paths, function(p) {
+  m <- dtaparser::read_meta(p)
+  list(release = m$release, nobs = m$nobs, names = I(m$variables$name))
+})
+cat(jsonlite::toJSON(metas, auto_unbox = TRUE, digits = NA))
+"""
+
+
+def read_metas(paths):
+    """Each file's release, row count and variable names, for planning the
+    cases: one R process asks dtaparser::read_meta() of every file."""
+    if not paths:
+        return []
+    r = subprocess.run(["Rscript", "-e", META_R], input="\n".join(str(p) for p in paths) + "\n",
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit("reading the files' metadata in R failed:\n" + r.stderr[-2000:])
+    metas = json.loads(r.stdout)
+    for m in metas:
+        m["nobs"] = int(m["nobs"])
+    return metas
 
 
 # ---------------------------------------------------------------- running
@@ -233,14 +240,11 @@ def run_all(files, out, chosen=None):
                         cached(base / f"{task}.json", lambda: {"error": "not run: timed out on a smaller file",
                                                                "skipped": True})
                     continue
-                full_timed_out = full_slow = False
+                full_timed_out = False
                 for task in TASKS:
                     def make():
                         if full_timed_out and task in FULL_READS.get(reader, {2, 6}):
                             return {"error": "not run: the full read timed out", "skipped": True}
-                        if full_slow and task in NO_SELECTION.get(reader, ()):
-                            return {"error": "not run: it is the full read plus a slice, and the full read "
-                                             f"took over {SLOW} s", "skipped": True}
                         t = time.time()
                         m = measure(lang, reader, f, task, out)
                         result = m["error"][:120] if "error" in m else f"{statistics.median(m['times']):.4g} s"
@@ -250,8 +254,6 @@ def run_all(files, out, chosen=None):
                     if task == 1 and m.get("timeout"):
                         full_timed_out = True
                         slow.add((f["family"], lang, reader))
-                    if task == 1 and m.get("times") and statistics.median(m["times"]) > SLOW:
-                        full_slow = True
                 if full_timed_out:
                     cached(base / "check.json", lambda: {"error": "not run: the full read timed out"})
                     continue
@@ -434,8 +436,6 @@ def runtime_versions():
         return m.group(1) if m else text.strip().splitlines()[0] if text.strip() else "?"
     return {
         "R": first_line(["Rscript", "-e", "cat(format(getRversion()))"]),
-        "Python": sys.version.split()[0],
-        "Julia": first_line(["julia", "--version"], r"version (\S+)"),
         "Node": first_line(["node", "--version"]),
     }
 
@@ -512,8 +512,7 @@ def family_rss_summary(fam_files, out):
 
 
 EXCEPTIONS = {"AttributeError", "TypeError", "ValueError", "KeyError", "IndexError", "OverflowError",
-              "RuntimeError", "NotImplementedError", "UnicodeDecodeError", "ArgumentError", "MethodError",
-              "BoundsError", "InexactError", "ErrorException", "RangeError"}
+              "RuntimeError", "NotImplementedError", "UnicodeDecodeError", "RangeError"}
 
 
 def error_kind(msg):
@@ -544,7 +543,7 @@ def detail_tables(fam_files, out, private):
     for lang, spec in LANGS.items():
         parts.append(f"## {lang}\n")
         parts.append("Each cell: median seconds / peak RSS MB. Startup (process start to packages "
-                     "loaded) and first call (warm-up, including Julia's compilation) are in the last columns, for ours.\n")
+                     "loaded) and first call (warm-up) are in the last columns, for ours.\n")
         readers = list(spec["readers"])
         head = "| file | task | " + " | ".join(spec["readers"][r] for r in readers) + " | ours: startup s | ours: first call s |"
         lines = [head, "|---|---|" + "---|" * (len(readers) + 2)]
@@ -612,19 +611,13 @@ def write_report(files, out):
              "Generated by `bench/run.py`; the findings section is written by hand from these numbers.", ""]
     lines += [notes.strip(), ""] if notes else []
     lines += ["## Method", "",
-              f"Machine: {machine()}. R {rt['R']}, Python {rt['Python']}, Julia {rt['Julia']}, Node {rt['Node']}. "
+              f"Machine: {machine()}. R {rt['R']}, Node {rt['Node']}. "
               "Ours are this repository's packages as of the commit that adds these results.", "",
               "| language | reader | version | options |", "|---|---|---|---|"]
     options = {
         ("R", "ours"): "`read_dta()`; strings come back packed, so task 2 pays for making them",
         ("R", "haven"): "`read_dta()`; converts `%td`/`%tc` (no option not to); converted back for checks",
         ("R", "readstata13"): "`read.dta13(convert.factors = FALSE, convert.dates = FALSE)`; task 5 reads one row (no metadata-only read)",
-        ("Python", "ours"): "`read_dta(dates=False)`",
-        ("Python", "pandas"): "`read_stata(convert_dates=False, convert_categoricals=False)`; task 4 reads up to the window with its iterator (no row offset)",
-        ("Python", "pyreadstat"): "`read_dta(disable_datetime_conversion=True)`; writes with `version=14` (release 118)",
-        ("Julia", "ours"): "`read_dta()` (dates converted, as ReadStatTables does)",
-        ("Julia", "readstattables"): "`readstat()`, one thread (`julia` default)",
-        ("Julia", "statfiles"): "`DataFrame(load(path))`; no selection, metadata read or writer",
         ("TypeScript", "ours"): "`openDtaFile().readColumns()`; task 6 gives `writeDtaFile` the columns as read",
         ("TypeScript", "statfmt"): "`readDta(bytes)` on the whole file in memory; no column selection; task 5 reads one row",
     }
@@ -642,8 +635,8 @@ def write_report(files, out):
               "with missing values as a mask, missing codes where the reader keeps `.a`–`.z`, strings as UTF-8), "
               "and ours is compared with each open-source reader in its language, on everything both expose; "
               "metadata (names, storage types, formats, variable labels, value labels, data label) likewise. "
-              "Each writer's file is re-read by the language's open-source reader (haven, pandas, "
-              "ReadStatTables, statfmt) and compared with that reader's read of the source. Task-2 sums agree "
+              "Each writer's file is re-read by the language's open-source reader (haven, "
+              "statfmt) and compared with that reader's read of the source. Task-2 sums agree "
               "within 1e-9 × Σ|x|; counts and lengths exactly.", ""]
 
     hits, misses = targets(files, out)
@@ -753,7 +746,7 @@ def correctness_section(files, out):
 
 def pick_readers(names):
     """--readers: "ours" for ours in every language, or Language-reader
-    pairs such as Python-ours."""
+    pairs such as R-ours."""
     chosen = set()
     for name in names:
         for lang, spec in LANGS.items():
@@ -773,14 +766,6 @@ def installed_versions():
     for line in r.splitlines():
         name, version = line.split()
         found[("R", name)] = version
-    from importlib.metadata import version
-    found[("Python", "pandas")] = version("pandas")
-    found[("Python", "pyreadstat")] = version("pyreadstat")
-    jl = subprocess.run(["julia", "--project=bench/julia", "-e",
-                         "using ReadStatTables, StatFiles; println(pkgversion(ReadStatTables), \" \", pkgversion(StatFiles))"],
-                        cwd=ROOT, capture_output=True, text=True).stdout.split()
-    if len(jl) == 2:
-        found[("Julia", "readstattables")], found[("Julia", "statfiles")] = jl
     package = BENCH / "node" / "node_modules" / "@irbisadm" / "statfmt" / "package.json"
     found[("TypeScript", "statfmt")] = json.loads(package.read_text())["version"]
     return found
@@ -805,7 +790,7 @@ def main():
     ap.add_argument("--report", action="store_true", help="only rebuild RESULTS.md from the cache")
     ap.add_argument("--readers", nargs="*",
                     help="re-measure only these readers on the chosen files (ours, or pairs such as "
-                         "Python-ours), dropping their cached results first; the others' stay")
+                         "R-ours), dropping their cached results first; the others' stay")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

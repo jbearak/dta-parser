@@ -226,7 +226,7 @@ r.close();
 ```
 
 `start` defaults to 0 and `count` to the rest of the file. Unlike the
-R and Python packages, a range that runs past the last row throws a
+R packages, a range that runs past the last row throws a
 `RangeError`; compute `count` from `r.info.nobs`. The reader seeks to
 `start`, so reading the last rows of a large file costs the same as the
 first.
@@ -354,7 +354,7 @@ Stata has 27 numeric missing values: `.` and `.a` to `.z` (see the
 [guide](guide/missing-values.md)).
 
 - **In a `NumberColumn`, a missing value is a number in `values`**, as R
-  and Python's datakit hold it: `.` is `NA` (R's `NA_real_`) and `.a` to
+  holds it: `.` is `NA` (R's `NA_real_`) and `.a` to
   `.z` are NaNs tagged with their letter, in the bits haven's
   `tagged_na()` uses. A value and its missing value are one number, so
   they cannot come apart. `missingCode(x)` numbers them: 0 for a
@@ -407,8 +407,8 @@ r.close();
 ```
 
 The keys are the doubles Stata stores for missing values: finite and
-larger than any number Stata stores. The same keys come out of the R,
-Python and Julia packages.
+larger than any number Stata stores. The same keys come out of the R
+packages.
 
 **Keep the letters in a `Float64Array`.** It keeps a NaN's bits as they
 are. A plain array, or arithmetic, may quiet the NaN, which
@@ -662,7 +662,7 @@ lists every change.
 ## datakit: Parquet files, fixed-width files and whole datasets
 
 `@jbearak/datakit` is data preparation that keeps what a `.dta` file
-says, as R's, Python's and Julia's datakits are. It reads and writes
+says, as R's datakit is. It reads and writes
 Parquet files with the same labels, display formats, `.a` to `.z`, data
 label and notes, and also categoricals (with their levels and ordering)
 and time zones; it reads fixed-width text through a SAS setup file; and
@@ -671,8 +671,8 @@ and save as Parquet or `.dta`. `@jbearak/dta-parser` alone is enough
 when you only read or write `.dta` files.
 
 The Parquet files are plain Parquet that pyarrow, pandas, polars,
-DuckDB, arrow (R), nanoparquet and hyparquet read, and R's, Python's and
-Julia's datakits read them with their labels;
+DuckDB, arrow (R), nanoparquet and hyparquet read, and R's datakit
+reads them with their labels;
 [docs/parquet.md](parquet.md) says what each tool sees and gives the
 file's specification. `openParquetFile(path)` returns a `ParquetReader`,
 which implements dta-parser's `TableReader`, so code that reads `.dta`
@@ -716,7 +716,7 @@ cd /path/to/your/project && npm install /path/to/dta-parser/js /path/to/dta-pars
 
 Its WebAssembly module holds the Parquet reader and writer, with every
 codec (zstd is C libzstd, compiled in), and the fixed-width reader,
-built from the same Rust core as the R, Python and Julia packages, with
+built from the same Rust core as the R packages, with
 no Arrow or other JavaScript library: 2.8 MB, 457 KB compressed with
 brotli. dta-parser's own module, for `.dta`, is 344 KB (91 KB with
 brotli); a script that imports only datakit's main entry never loads it.
@@ -772,10 +772,9 @@ takes an `AsyncTableReader`. Both take `columns`, `start`, `count` and
 
 **Factors and categoricals.** Two characteristics mark a column saved
 from a categorical type. `dtaparser_factor` (plan 0020) marks a column
-R's dtaparser or Python's dta_parser saved from a factor or pandas
-`category`, which holds no `.a` to `.z`. `dtaparser_categorical` (plan
-0023) marks a column `saveDta` or Python's datakit `save_dta` saved
-from a categorical, which may hold them. Either comes back as a
+R's dtaparser saved from a factor, which holds no `.a` to `.z`. `dtaparser_categorical` (plan
+0023) marks a column `saveDta`, or R's datakit `save_dta()` given a polars
+frame, saved from a categorical, which may hold them. Either comes back as a
 categorical: a `DictionaryColumn` of its levels (the texts of its
 value label set's numeric codes, in code order, unused ones included),
 with `categorical` giving the levels, whether they are ordered, the
@@ -786,8 +785,8 @@ variable's `valueLabels` still names the set, which `valueLabels`
 keeps, so the labels on its letters are not lost. A `DictionaryColumn`
 cannot hold `.a` to `.z`, so a `dtaparser_categorical` column holding
 them in the rows read stays labelled numbers, its codes with the
-letters, and keeps its marker in `characteristics`, as in Python, R and
-Julia; `saveDta` writes it back as labelled numbers.
+letters, and keeps its marker in `characteristics`, as in R;
+`saveDta` writes it back as labelled numbers.
 
 If the file was changed after it was written, so that the marker no
 longer holds, the column comes back as labelled numbers and one
@@ -843,8 +842,8 @@ console.log(year.kind === "number" && Array.from(year.values.slice(0, 3)), year.
 console.log(back.valueLabels.nonresponse.get(MISSING[".d"]));   // Don't know
 ```
 
-`saveDta` converts what a `.dta` file holds differently, as Python's
-datakit `save_dta` does (`SaveDtaOptions`):
+`saveDta` converts what a `.dta` file holds differently
+(`SaveDtaOptions`):
 
 | `type` | written as |
 |---|---|
@@ -853,7 +852,7 @@ datakit `save_dta` does (`SaveDtaOptions`):
 | `bool`, `int64`, `uint8` to `uint64`, or numbers with no `type` | the smallest of byte (−127 to 100), int (−32,767 to 32,740) and long (−2,147,483,647 to 2,147,483,620) that holds every value, when all are whole; else double. A 64-bit or unsigned value past ±2^53 is an error |
 | `date` (days since 1970) | long `%td`, days since 1960 |
 | `timestamp` (counts of `unit` since 1970) | double `%tc`, milliseconds since 1960 |
-| `categorical` | codes 1 to k (a restored categorical's own `categorical.codes`, which must increase with the levels: a code given twice, or out of order, is an error) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_categorical` marker, `ordered <set>` or `unordered <set>` (`unordered` when no ordering is given), as Python's datakit `save_dta` writes it. `.a` to `.z` in it (`MISSING` values or tagged NaNs among the codes) stay letters, and `readDta` gives them back as labelled numbers holding them (a `DictionaryColumn` cannot hold them). Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
+| `categorical` | codes 1 to k (a restored categorical's own `categorical.codes`, which must increase with the levels: a code given twice, or out of order, is an error) stored as long, a value label set of the levels named after the column (or the set it came from), and the `dtaparser_categorical` marker, `ordered <set>` or `unordered <set>` (`unordered` when no ordering is given). `.a` to `.z` in it (`MISSING` values or tagged NaNs among the codes) stay letters, and `readDta` gives them back as labelled numbers holding them (a `DictionaryColumn` cannot hold them). Labels on `.a` to `.z` in the set the variable's `valueLabels` names are kept, and the set is written under that name when it otherwise says the same |
 | `decimal` read as a number | double |
 
 Dates and timestamps are converted exactly, in integer arithmetic, from
@@ -898,8 +897,8 @@ CDC publishes as `.dat` files with a SAS setup file, into a
 (LABEL), value labels (PROC FORMAT and FORMAT), record-type selection
 (IF ... THEN DELETE) and missing-value recodes (`IF (X = 98 OR X = 99)
 THEN X = .;`). `setup` is a path, or a list of paths read in order as
-one setup (CDC's 2002 files come in three). It is the reader R's and
-Python's datakits use:
+one setup (CDC's 2002 files come in three). It is the reader R's
+datparser uses:
 
 ```ts
 import { writeFileSync } from "node:fs";
@@ -1284,7 +1283,7 @@ leaves no file.
 The options (`ParquetWriteOptions`): `compression` is `"snappy"` (the
 default), `"zstd"`, `"gzip"`, `"lz4_raw"` or `"none"`, with
 `compressionLevel` where the codec has levels. Snappy is the default,
-as in the other languages' packages, because other tools read our
+as in R's datakit, because other tools read our
 snappy files faster than our zstd ones
 ([the measurements](parquet.md#defaults-and-the-measurements-behind-them));
 zstd files of survey data are about a sixth smaller. zstd is C libzstd,
@@ -1426,7 +1425,7 @@ digit.
 | STRING, ENUM, JSON | `string` | `StringColumn`; `missing[i]` 1 for a null | `string`, or `MISSING["."]` for a null |
 | BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY (with UUID) unannotated | `binary` | `StringColumn` of `Uint8Array` | `Uint8Array` |
 | a categorical (dta profile) | `categorical` | `DictionaryColumn`: every level, in order; `categorical.ordered` | `string` |
-| a categorical holding `.a` to `.z` (DOUBLE, `"logical": "categorical"`) | `categorical` | `DictionaryColumn` as above when the rows read hold no `.a` to `.z`; with them, a `NumberColumn` of its level numbers from 1 and the letters as tagged NaNs, as R, Julia and Python read it (`readDta`/`readParquet` give such a variable type `double`); `valueLabels` names its set. A value that is not a level number reads as `.`, with one process warning per reader and column (code `DATAKIT_CATEGORICAL`) | `string`, or `MISSING[".a"]` ... |
+| a categorical holding `.a` to `.z` (DOUBLE, `"logical": "categorical"`) | `categorical` | `DictionaryColumn` as above when the rows read hold no `.a` to `.z`; with them, a `NumberColumn` of its level numbers from 1 and the letters as tagged NaNs, as R reads it (`readDta`/`readParquet` give such a variable type `double`); `valueLabels` names its set. A value that is not a level number reads as `.`, with one process warning per reader and column (code `DATAKIT_CATEGORICAL`) | `string`, or `MISSING[".a"]` ... |
 | a dictionary of strings in `ARROW:schema` | `categorical` | `DictionaryColumn`, levels from the rows read | `string` |
 | a dictionary of other values in `ARROW:schema` | its value type | as that type | as that type |
 | null, anywhere | | `NA` in a `NumberColumn`; elsewhere `missing[i]` 1 | `MISSING["."]` |
@@ -1511,7 +1510,7 @@ Nested columns are the one thing they read that this package does not.
 
 ## Threads
 
-WebAssembly runs on one thread, so the npm package reads and writes on one thread. The R, Python and Julia packages use up to three on large files.
+WebAssembly runs on one thread, so the npm package reads and writes on one thread. The R packages use up to three on large files.
 
 ## Errors
 

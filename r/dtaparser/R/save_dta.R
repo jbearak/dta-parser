@@ -38,7 +38,7 @@
 #' so that [read_dta()] reads it back as the same factor. Stata keeps
 #' the characteristic, and other readers do not act on it. Markers already in
 #' the `characteristics` attribute, `dtaparser_factor` and the
-#' `dtaparser_categorical` that Python's and TypeScript's datakit write,
+#' `dtaparser_categorical` that datakit writes for a categorical,
 #' are dropped and written afresh, so a column that is no longer a factor
 #' loses its marker.
 #'
@@ -179,7 +179,7 @@ integer_storage <- function(x) {
 }
 
 # Words Stata reserves, which it cannot use as variable names (the list
-# Python's writer checks too), and str followed by digits.
+# TypeScript's writer checks too), and str followed by digits.
 reserved_names <- c("_all", "_b", "byte", "_coef", "_cons", "double", "float", "if", "in", "int", "long",
                     "_n", "_N", "_pi", "_pred", "_rc", "_skip", "strL", "using", "with")
 is_reserved_name <- function(names) {
@@ -210,8 +210,8 @@ kept_characteristics <- function(chars, names) {
 FACTOR_MARK <- "dtaparser_factor"
 
 # The characteristic that marks a categorical column, which may hold .a
-# to .z (plan 0023); its value is as a factor mark's. Python's and
-# TypeScript's datakit write it; save_dta() only drops it.
+# to .z (plan 0023); its value is as a factor mark's. datakit writes
+# it (R's for a polars frame, and TypeScript's); save_dta() only drops it.
 CATEGORICAL_MARK <- "dtaparser_categorical"
 
 # `chars` without factor or categorical marks, plus one for each factor

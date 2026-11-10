@@ -1,5 +1,4 @@
-//! The R binding of `dta_arrow` (plan 0025, stage 3), as dta_parser's
-//! `py_arrow` is Python's: datakit's `read_parquet_pl()`,
+//! The R binding of `dta_arrow` (plan 0025, stage 3): datakit's `read_parquet_pl()`,
 //! `read_dta_pl()`, `read_fixed_width_pl()` and the polars methods of
 //! `save_parquet()` and `save_dta()` reach these through the C callables
 //! in init.c.
@@ -25,7 +24,7 @@ use dta_arrow::dta::{dta_read, dta_write, CATEGORICAL_MARK, FACTOR_MARK};
 use dta_arrow::error::Error;
 use dta_arrow::ffi::{export_stream, import_stream, ArrowArrayStream, Imported};
 use dta_arrow::meta::{repeats_a_code, Code, ColumnEntry, GivenSet, LabelKey, LabelSet, ReadMeta, ReadOutput, WriteMeta};
-use dta_arrow::parquet::{Input, Selector};
+use dta_arrow::parquet::Input;
 use dta_arrow::read::{parquet_read, Stamps};
 use dta_arrow::write::{parquet_options, parquet_write};
 
@@ -39,8 +38,8 @@ extern "C" {
     fn R_ExternalPtrAddr(s: Sexp) -> *mut c_void;
 }
 
-/// An error of `dta_arrow` as R's: its message. (Python raises each kind
-/// as its own exception; R has one kind of error.)
+/// An error of `dta_arrow` as R's: its message. (R has one kind of error,
+/// so the variant is not kept.)
 fn fail(e: Error) -> Fail {
     Fail::Message(e.to_string())
 }
@@ -89,8 +88,8 @@ fn window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
 ///
 /// # Safety
 /// `cols` is `NULL` or a character vector without `NA` (init.c checks).
-unsafe fn selectors(cols: Sexp) -> Option<Vec<Selector>> {
-    (TYPEOF(cols) == STRSXP).then(|| strings(cols).into_iter().map(|s| Selector::Name(s.unwrap_or_default())).collect())
+unsafe fn selectors(cols: Sexp) -> Option<Vec<String>> {
+    (TYPEOF(cols) == STRSXP).then(|| strings(cols).into_iter().map(Option::unwrap_or_default).collect())
 }
 
 // ---------------------------------------------------------------- reads
@@ -119,7 +118,7 @@ fn code_double(key: &LabelKey) -> f64 {
     }
 }
 
-/// `labels` as Python's dict gives them: a code given twice keeps its
+/// `labels` by `dta_arrow::meta`'s rule for keyed entries: a code given twice keeps its
 /// first place and its last text.
 fn as_dict<'a, 'b>(labels: &'b LabelSet<'a>) -> Vec<(&'b LabelKey, &'b str)> {
     if !repeats_a_code(labels) {
@@ -139,8 +138,8 @@ fn as_dict<'a, 'b>(labels: &'b LabelSet<'a>) -> Vec<(&'b LabelKey, &'b str)> {
     out
 }
 
-/// The metadata list of a read, as element 0 of `holder`, under the
-/// names of the dict Python's binding makes (`py_arrow::meta_dict`):
+/// The metadata list of a read, as element 0 of `holder`, under these
+/// names:
 /// rows; names; columns, a list of vectors (name, label, format,
 /// value_labels, ordered, storage, flag, eligible); value_labels, a named
 /// list of named doubles (names the texts, values the codes, `.` as `NA`
@@ -255,7 +254,7 @@ pub unsafe extern "C" fn dtaparser_parquet_read_arrow_rs(
         let mode = Stamps::from_name(&timestamps).map_err(fail)?;
         let (skip, n_max) = window(skip, n_max);
         let threads = threads.max(0) as usize;
-        parquet_read(input, columns.as_deref(), prefer.as_deref(), skip, n_max, nested_skip != 0, mode, threads, true, &mut |out| {
+        parquet_read(input, columns.as_deref(), prefer.as_deref(), skip, n_max, nested_skip != 0, mode, threads, &mut |out| {
             give(out, holder, data, letters)
         })
         .map_err(fail)?
@@ -477,7 +476,7 @@ pub unsafe extern "C" fn dtaparser_dta_write_arrow_rs(
 /// Read the fixed-width file `data` as the SAS setup files `setups` (a
 /// character vector, read in order) describe, and write it as release
 /// 118 to the new file `out` (created here; an existing file is an
-/// error), as Python's `native.fixed_width` does. The setup's warnings,
+/// error). The setup's warnings,
 /// a character vector, are element 0 of `holder`.
 ///
 /// # Safety

@@ -73,8 +73,8 @@ text, and no \code{.a} to \code{.z}. Otherwise (the file was changed in
 Stata, say) it is read as it would be unmarked, with one warning
 naming such columns.
 
-A column that Python's or TypeScript's datakit wrote from a
-categorical carries another characteristic, \code{dtaparser_categorical},
+A column that datakit wrote from a categorical (R's from a polars
+frame, or TypeScript's) carries another characteristic, \code{dtaparser_categorical},
 and is read as such a factor too, ordered if it was, with every
 level of its value labels, when the rows read hold no \code{.a} to \code{.z}.
 A categorical may hold them, and a factor cannot, so when the rows

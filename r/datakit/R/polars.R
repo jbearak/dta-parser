@@ -1,7 +1,6 @@
 # Parquet, .dta and fixed-width files into polars frames and back (plan
-# 0025, stage 3), through dtaparser's Arrow streams: R builds no column,
-# and the rules are Python datakit's (_frame.py), written in R polars
-# expressions.
+# 0025, stage 3), through dtaparser's Arrow streams: R builds no column:
+# the rules are written as polars expressions.
 
 # Stata's dates count from 1960, polars' from 1970.
 DAYS_1960 <- 3653
@@ -37,10 +36,8 @@ new_streams <- function() {
 #' Read a Parquet or `.dta` file into a polars DataFrame
 #'
 #' `read_parquet_pl()` and `read_dta_pl()` read a file into a polars
-#' DataFrame and a [`datakit_meta`][datakit_meta] beside it, as
-#' Python datakit's `dk.read_parquet()` and `dk.read_dta()` do, with the
-#' same columns: both languages read through dtaparser's Arrow streams
-#' and follow one set of rules. No R vector is built. [read_parquet()]
+#' DataFrame and a [`datakit_meta`][datakit_meta] beside it,
+#' through dtaparser's Arrow streams. No R vector is built. [read_parquet()]
 #' and [read_dta()] read into a tibble instead.
 #'
 #' **Types.** Parquet's types become polars' (INT64 and DECIMAL exactly;
@@ -177,8 +174,7 @@ dta_selection <- function(select, file, encoding) {
 #' Read a fixed-width text file through its SAS setup file into polars
 #'
 #' As [read_fixed_width()], into a polars DataFrame and its
-#' [`datakit_meta`][datakit_meta], as Python datakit's
-#' `dk.read_fixed_width()` does: the native reader writes the data as a
+#' [`datakit_meta`][datakit_meta]: the native reader writes the data as a
 #' release 118 `.dta` file in a temporary directory, which
 #' [read_dta_pl()] reads with the selection, window, `factors` and
 #' `letters`. No R vector is built.
@@ -254,7 +250,7 @@ warn_fixed_width_pl <- function(messages) {
 # dtype in R, a field at a time (3.4 ms of 5.4 ms for 5,160 columns).
 stream_frame <- function(stream) polars::as_polars_series(stream)$struct$unnest()
 
-# `list(df, meta)` from a native read (Python's _frame.finish). With
+# `list(df, meta)` from a native read. With
 # `letters`, each column holding .a to .z in the rows read is Float64
 # with them as tagged NaNs; with `markers` (a .dta read) the columns
 # marked dtaparser_categorical are Enums again unless they hold letters;
@@ -308,7 +304,7 @@ warn_stale_pl <- function(stale) {
 }
 
 # The frame with the casts the read asks for: a categorical of the rows'
-# values, and DECIMAL text as Decimal (Python's frame_of).
+# values, and DECIMAL text as Decimal.
 frame_of <- function(df, m) {
   pl <- polars::pl
   casts <- list()
@@ -363,7 +359,7 @@ is_numeric_dtype <- function(dt) inherits(dt, "polars_dtype_numeric") && !inheri
 
 # The levels a dtaparser_categorical mark gives a column whose set is
 # `set_name`, as list(codes, texts, ordered), or NULL when the file no
-# longer holds what was written (Python's marked_levels).
+# longer holds what was written.
 marked_levels <- function(mark, set_name, value_labels) {
   if (!is.character(mark) || length(mark) != 1) return(NULL)
   m <- regmatches(mark, regexec("^(ordered|unordered) ([\\s\\S]+)$", mark, perl = TRUE))[[1]]
@@ -383,7 +379,7 @@ marked_levels <- function(mark, set_name, value_labels) {
 }
 
 # Each column marked dtaparser_categorical that still fits its mark an
-# Enum of its set's texts in code order (Python's restore_categoricals).
+# Enum of its set's texts in code order.
 restore_categoricals <- function(df, meta, skip = character()) {
   pl <- polars::pl
   changes <- list()
@@ -414,7 +410,7 @@ restore_categoricals <- function(df, meta, skip = character()) {
 }
 
 # Each labelled numeric column as an Enum, as read_parquet(factors =
-# TRUE) makes a factor (Python's to_factors).
+# TRUE) makes a factor.
 to_factors <- function(df, meta) {
   pl <- polars::pl
   changes <- list()
@@ -438,7 +434,7 @@ to_factors <- function(df, meta) {
 }
 
 # `df` with each column of `found` Float64, its letters (from `ldf`)
-# tagged NaNs (Python's with_letters).
+# tagged NaNs.
 with_letters <- function(df, meta, ldf, found) {
   pl <- polars::pl
   schema <- schema_of(df, found)
@@ -504,7 +500,7 @@ check_frame <- function(data, who) {
 
 # The dtype a column a read widened to Float64 is written as: `storage`
 # when every value (its letters already null) fits it exactly, else
-# Float64 (Python's stored()). NULL to leave it.
+# Float64. NULL to leave it.
 stored_dtype <- function(out, name, storage) {
   pl <- polars::pl
   if (is.null(storage) || is.na(storage)) return(NULL)
@@ -525,8 +521,8 @@ stored_dtype <- function(out, name, storage) {
   switch(storage, Int8 = pl$Int8, Int16 = pl$Int16, Int32 = pl$Int32)
 }
 
-# The frame to write and what the native writer takes of meta (Python's
-# prepare): every tagged NaN null in the frame, its letters in
+# The frame to write and what the native writer takes of meta:
+# every tagged NaN null in the frame, its letters in
 # `missing`; a column a read widened given its storage type back; the
 # sort checked. Returns list(df, meta), meta in write_meta()'s form.
 prepare_pl <- function(data, meta, missing_letters, who) {
@@ -604,7 +600,7 @@ write_meta <- function(meta, kept, sort, missing) {
 
 # `sort` up to its first column not in `df`, if the rows are in that
 # order as Stata orders them (values, then `.`, then .a to .z);
-# otherwise character() with a warning (Python's checked_sort).
+# otherwise character() with a warning.
 checked_sort <- function(df, sort, letters_df) {
   pl <- polars::pl
   keys <- character()

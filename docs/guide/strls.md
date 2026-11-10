@@ -20,8 +20,6 @@ handling in your code unless a column holds binary values:
 | language | text strL | binary strL |
 |---|---|---|
 | R | character | an error naming the column ("holds binary strLs, which dtatools does not read"); skip the column with `col_select` |
-| Python | `str` (or `object` on pandas 2.2) | the column becomes `object`, holding `bytes` for binary values and `str` for text ones |
-| Julia | `String` | `Vector{UInt8}` elements; the column's element type widens to hold both |
 | TypeScript | `string` | `Uint8Array` elements |
 
 Reading a strL column costs a pass over the strL section to build an
@@ -34,10 +32,8 @@ dta-parser writes text longer than 2045 bytes as a strL, and stores each
 distinct text once. Shorter text is a fixed-width `strN`, where N is the
 longest value in bytes.
 
-Binary values are written as binary strLs in Python (`bytes` values)
-and Julia (`Vector{UInt8}` values). The R and TypeScript writers take
-text only.
+Binary values are written as binary strLs in TypeScript (`Uint8Array`
+values). The R writer takes text only.
 
-A text strL keeps its strL storage on a round trip in Python and Julia
-even when every value is short, because the storage type is kept from
-the read. In R and TypeScript, short text is written as `strN`.
+A text strL does not keep its strL storage on a round trip when every
+value is short: short text is written as `strN`.
