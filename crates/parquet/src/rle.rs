@@ -75,6 +75,44 @@ fn unpack8<T: Small>(bytes: &[u8], width: u8, out: &mut [T]) {
     }
 }
 
+/// Unpack whole groups of eight `W`-bit values from `buf` at `at` into
+/// `out` (a multiple of eight long), reading the bytes where they lie:
+/// value `i` of a group loads eight bytes from bit `i * W`, so a group
+/// needs `W + 8` bytes of `buf` from its start. Stops at the first group
+/// without them (one near the buffer's end, which [`unpack8`] pads) and
+/// returns the groups unpacked. `W` is a constant, so the shifts are.
+#[inline]
+fn unpack_in_place<const W: usize>(buf: &[u8], mut at: usize, out: &mut [u32]) -> usize {
+    let mask = if W >= 32 { u64::from(u32::MAX) } else { (1u64 << W) - 1 };
+    let mut done = 0;
+    for group in out.chunks_exact_mut(8) {
+        let Some(b) = at.checked_add(W + 8).and_then(|end| buf.get(at..end)) else {
+            break;
+        };
+        for (i, o) in group.iter_mut().enumerate() {
+            let bit = i * W;
+            let word = u64::from_le_bytes(b[bit >> 3..(bit >> 3) + 8].try_into().expect("8 bytes"));
+            *o = ((word >> (bit & 7)) & mask) as u32;
+        }
+        at += W;
+        done += 1;
+    }
+    done
+}
+
+/// [`unpack_in_place`] for `width`, which is at most 32.
+fn unpack_groups(buf: &[u8], at: usize, width: u8, out: &mut [u32]) -> usize {
+    macro_rules! by_width {
+        ($($w:literal)*) => {
+            match width {
+                $($w => unpack_in_place::<$w>(buf, at, out),)*
+                _ => 0,
+            }
+        };
+    }
+    by_width!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32)
+}
+
 /// Decode `out.len()` values of the hybrid encoding from the start of
 /// `buf`. Returns the bytes used. Runs may hold more values than asked
 /// for (the last bit-packed run is padded to a multiple of eight); the
@@ -378,6 +416,14 @@ impl<'a> Hybrid<'a> {
                 // Whole groups straight into `out`, while their bytes are
                 // all there.
                 let mut groups = (out.len() - i).min(self.packed_left) / 8;
+                // The groups whose bytes are all in the run, read in place
+                // while the buffer has room for their loads.
+                let whole = (self.packed_end - self.packed_at.min(self.packed_end)).checked_div(w).map_or(groups, |n| n.min(groups));
+                let done = unpack_groups(self.buf, self.packed_at, self.width, &mut out[i..i + whole * 8]);
+                self.packed_at += done * w;
+                self.packed_left -= done * 8;
+                i += done * 8;
+                groups -= done;
                 while groups > 0 && self.packed_at + w <= self.packed_end {
                     unpack8(&self.buf[self.packed_at..self.packed_at + w], self.width, &mut out[i..i + 8]);
                     self.packed_at += w;
@@ -447,6 +493,48 @@ fn copy_bits(dst: &mut [u8], to: usize, src: &[u8], from: usize, len: usize) {
     }
 }
 
+/// OR `len` bits of `src` from bit `from` into `dst` from bit `to`, and
+/// count the ones among them. When both start on a byte, as a page's
+/// first bit-packed run does in a chunk read from its first row, whole
+/// bytes are OR-ed and counted eight at a time.
+fn or_bits(dst: &mut [u8], to: usize, src: &[u8], from: usize, len: usize) -> usize {
+    if to % 8 != 0 || from % 8 != 0 {
+        copy_bits(dst, to, src, from, len);
+        return count_bits(src, from, len);
+    }
+    let whole = len / 8;
+    let s = &src[from / 8..from / 8 + whole];
+    for (d, b) in dst[to / 8..to / 8 + whole].iter_mut().zip(s) {
+        *d |= *b;
+    }
+    let mut ones = 0;
+    let mut words = s.chunks_exact(8);
+    for w in &mut words {
+        ones += u64::from_le_bytes(w.try_into().expect("8 bytes")).count_ones() as usize;
+    }
+    ones += words.remainder().iter().map(|b| b.count_ones() as usize).sum::<usize>();
+    let rest = len % 8;
+    if rest > 0 {
+        // The bits past `len` are the run's padding, or another page's.
+        let byte = src[from / 8 + whole] & ((1u8 << rest) - 1);
+        dst[to / 8 + whole] |= byte;
+        ones += byte.count_ones() as usize;
+    }
+    ones
+}
+
+/// The ones among `len` bits of `src` from bit `from`.
+fn count_bits(src: &[u8], from: usize, len: usize) -> usize {
+    let mut ones = 0;
+    let mut k = from;
+    while k < from + len {
+        let m = (from + len - k).min(8 - k % 8);
+        ones += ((src[k / 8] >> (k % 8)) & ((1u16 << m) - 1) as u8).count_ones() as usize;
+        k += m;
+    }
+    ones
+}
+
 /// Set bits `to..to + len` of `dst`.
 fn set_bits(dst: &mut [u8], to: usize, len: usize) {
     let end = to + len;
@@ -514,16 +602,8 @@ pub(crate) fn levels_bits(buf: &[u8], take: std::ops::Range<usize>, bits: &mut [
                 before += (run[skip / 8] & ((1u8 << (skip % 8)) - 1)).count_ones() as usize;
             }
             if n > skip {
-                let len = n - skip;
                 let d = to + pos + skip - take.start;
-                copy_bits(bits, d, run, skip, len);
-                // The ones copied, counted from the source.
-                let mut k = skip;
-                while k < n {
-                    let m = (n - k).min(8 - k % 8);
-                    ones += ((run[k / 8] >> (k % 8)) & ((1u16 << m) - 1) as u8).count_ones() as usize;
-                    k += m;
-                }
+                ones += or_bits(bits, d, run, skip, n - skip);
             }
             at += have;
             pos += n;
@@ -737,6 +817,82 @@ mod tests {
         assert!(Hybrid::new(&[0x03, 0x01], 8).unwrap().next(&mut out).is_err());
         assert!(Hybrid::new(&[], 3).unwrap().next(&mut out).is_err());
         assert!(Hybrid::new(&[0x00], 3).unwrap().skip(4).is_err());
+    }
+
+    #[test]
+    fn groups_unpack_in_place_as_padded_ones_do() {
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for width in 0..=32u8 {
+            let w = width as usize;
+            for groups in [1usize, 2, 5, 130] {
+                // Nothing, a few bytes and plenty after the groups' own.
+                for extra in [0usize, 3, 7, 8, 40] {
+                    let buf: Vec<u8> = (0..groups * w + extra).map(|_| next() as u8).collect();
+                    let mut fast = vec![u32::MAX; groups * 8];
+                    let done = unpack_groups(&buf, 0, width, &mut fast);
+                    // Every group whose loads fit, and no other.
+                    let fit = (0..groups).take_while(|g| g * w + w + 8 <= buf.len()).count();
+                    assert_eq!(done, fit, "width {width}, {groups} groups, {extra} more bytes");
+                    for g in 0..done {
+                        let mut slow = [0u32; 8];
+                        unpack8(&buf[g * w..(g + 1) * w], width, &mut slow);
+                        assert_eq!(fast[g * 8..g * 8 + 8], slow, "width {width} group {g}");
+                    }
+                    assert!(fast[done * 8..].iter().all(|&v| v == u32::MAX), "width {width}: wrote past what it unpacked");
+                }
+            }
+        }
+        // The stateful reader gives the same values whether its groups
+        // are read in place or padded: a buffer cut right after the run.
+        for width in [1u8, 3, 7, 12, 20, 32] {
+            let values: Vec<u32> = (0..1000).map(|_| (next() as u32) & (((1u64 << width) - 1) as u32)).collect();
+            let mut buf = Vec::new();
+            encode(&values, width, &mut buf);
+            for batch in [8usize, 64, 1000, 37] {
+                let mut h = Hybrid::new(&buf, width).unwrap();
+                let mut out = vec![0u32; values.len()];
+                for part in out.chunks_mut(batch) {
+                    h.next(part).unwrap();
+                }
+                assert_eq!(out, values, "width {width} batch {batch}");
+            }
+        }
+    }
+
+    #[test]
+    fn whole_bytes_or_as_single_bits_do() {
+        let mut seed = 0x2545_f491_4f6c_dd1du64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for case in 0..4000 {
+            let src: Vec<u8> = (0..40).map(|_| next() as u8).collect();
+            // Bits already set, inside the range and around it, survive.
+            let before: Vec<u8> = (0..48).map(|_| (next() & next()) as u8).collect();
+            let from = if case % 2 == 0 { 8 * (next() % 4) as usize } else { (next() % 32) as usize };
+            let to = if case % 2 == 0 { 8 * (next() % 4) as usize } else { (next() % 32) as usize };
+            let len = (next() % 280) as usize;
+            let (mut fast, mut slow) = (before.clone(), before.clone());
+            let ones = or_bits(&mut fast, to, &src, from, len);
+            copy_bits(&mut slow, to, &src, from, len);
+            assert_eq!(fast, slow, "case {case}: from {from} to {to} len {len}");
+            let bit = |b: &[u8], k: usize| (b[k / 8] >> (k % 8)) & 1;
+            assert_eq!(ones, (0..len).filter(|&k| bit(&src, from + k) == 1).count(), "case {case}");
+            for k in 0..before.len() * 8 {
+                let inside = k >= to && k < to + len;
+                let want = if inside { bit(&before, k) | bit(&src, from + k - to) } else { bit(&before, k) };
+                assert_eq!(bit(&fast, k), want, "case {case} bit {k}");
+            }
+        }
     }
 
     #[test]

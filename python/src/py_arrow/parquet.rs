@@ -95,7 +95,7 @@ pub fn parquet_read_arrow<'py>(
     let columns = selectors(columns.as_deref())?;
     let out = py
         .detach(|| {
-            parquet_read(input, columns.as_deref(), skip, n_max, nested_skip, mode, threads, enum_metadata, &mut read_tuple)
+            parquet_read(input, columns.as_deref(), None, skip, n_max, nested_skip, mode, threads, enum_metadata, &mut read_tuple)
         })
         .map_err(raise)??;
     Ok(out.into_bound(py))

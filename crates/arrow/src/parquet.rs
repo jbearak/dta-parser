@@ -439,8 +439,11 @@ pub fn names_of(wanted: Option<&[Selector]>) -> Option<Vec<&str>> {
         .collect()
 }
 
-/// The columns asked for, as indices into the reader's columns.
-pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: bool) -> Result<Vec<usize>> {
+/// The columns asked for, as indices into the reader's columns. When
+/// the file has a column named `prefer`, that column alone is read in
+/// their place: R's `col_select = cols` means the column `cols` if there
+/// is one, as tidyselect reads it, and the names in `cols` otherwise.
+pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, prefer: Option<&str>, nested_skip: bool) -> Result<Vec<usize>> {
     let cols = r.columns();
     let data: Vec<usize> = (0..cols.len()).filter(|&k| cols[k].role == Role::Data).collect();
     let Some(wanted) = wanted else {
@@ -455,6 +458,8 @@ pub fn select(r: &dyn Access, wanted: Option<&[Selector]>, nested_skip: bool) ->
         return Ok(data);
     };
     let by_name: HashMap<&str, usize> = cols.iter().enumerate().rev().map(|(k, c)| (c.name.as_str(), k)).collect();
+    let preferred = prefer.and_then(|p| by_name.contains_key(p).then(|| [Selector::Name(p.to_string())]));
+    let wanted = preferred.as_ref().map_or(wanted, |p| &p[..]);
     let mut out = Vec::with_capacity(wanted.len());
     for w in wanted {
         let k = match w {

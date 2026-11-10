@@ -158,16 +158,17 @@ fn meta_list(holder: Sexp, m: &ReadMeta<'_>) -> Res<()> {
     strings_elt(out, 1, &m.columns.iter().map(|c| c.name.as_ref()).collect::<Vec<&str>>())?;
     let fields = ["name", "label", "format", "value_labels", "ordered", "storage", "flag", "eligible"];
     let cols = named_list(out, 2, &fields)?;
-    let text = |f: &dyn Fn(&dta_arrow::meta::ColumnMeta<'_>) -> Option<String>| -> Vec<Option<String>> {
+    // Each field as it lies in the metadata, with no copy per column.
+    fn text<'m>(m: &'m ReadMeta<'_>, f: impl Fn(&'m dta_arrow::meta::ColumnMeta<'_>) -> Option<&'m str>) -> Vec<Option<&'m str>> {
         m.columns.iter().map(f).collect()
-    };
-    optional_strings_elt(cols, 0, &text(&|c| Some(c.name.to_string())))?;
-    optional_strings_elt(cols, 1, &text(&|c| c.label.as_ref().map(|s| s.to_string())))?;
-    optional_strings_elt(cols, 2, &text(&|c| c.format.as_ref().map(|s| s.to_string())))?;
-    optional_strings_elt(cols, 3, &text(&|c| c.value_labels.as_ref().map(|s| s.to_string())))?;
+    }
+    optional_strings_elt(cols, 0, &text(m, |c| Some(c.name.as_ref())))?;
+    optional_strings_elt(cols, 1, &text(m, |c| c.label.as_deref()))?;
+    optional_strings_elt(cols, 2, &text(m, |c| c.format.as_deref()))?;
+    optional_strings_elt(cols, 3, &text(m, |c| c.value_labels.as_deref()))?;
     logicals_elt(cols, 4, &m.columns.iter().map(|c| c.ordered).collect::<Vec<_>>())?;
-    optional_strings_elt(cols, 5, &text(&|c| c.storage.as_ref().map(|s| s.to_string())))?;
-    optional_strings_elt(cols, 6, &text(&|c| c.flag.clone()))?;
+    optional_strings_elt(cols, 5, &text(m, |c| c.storage.as_deref()))?;
+    optional_strings_elt(cols, 6, &text(m, |c| c.flag.as_deref()))?;
     logicals_elt(cols, 7, &m.columns.iter().map(|c| Some(c.eligible)).collect::<Vec<_>>())?;
     let set_names: Vec<&str> = m.value_labels.iter().map(|(n, _)| n.as_ref()).collect();
     let sets = named_list(out, 3, &set_names)?;
@@ -228,6 +229,7 @@ pub unsafe extern "C" fn dtaparser_parquet_read_arrow_rs(
     raw: *const u8,
     raw_len: usize,
     cols: Sexp,
+    prefer: *const c_char,
     skip: f64,
     n_max: f64,
     nested_skip: c_int,
@@ -248,11 +250,12 @@ pub unsafe extern "C" fn dtaparser_parquet_read_arrow_rs(
     };
     let timestamps = c_str(timestamps).unwrap_or_default();
     let columns = selectors(cols);
+    let prefer = c_str(prefer);
     guard(err, err_len, || {
         let mode = Stamps::from_name(&timestamps).map_err(fail)?;
         let (skip, n_max) = window(skip, n_max);
         let threads = threads.max(0) as usize;
-        parquet_read(input, columns.as_deref(), skip, n_max, nested_skip != 0, mode, threads, true, &mut |out| {
+        parquet_read(input, columns.as_deref(), prefer.as_deref(), skip, n_max, nested_skip != 0, mode, threads, true, &mut |out| {
             give(out, holder, data, letters)
         })
         .map_err(fail)?

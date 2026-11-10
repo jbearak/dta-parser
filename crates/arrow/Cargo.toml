@@ -9,3 +9,7 @@ rust-version = "1.82"
 [dependencies]
 dta = { path = "../dta" }
 dta-parquet = { path = "../parquet" }
+
+[dev-dependencies]
+# examples/read_bench.rs measures CPU time with getrusage.
+libc = "0.2"

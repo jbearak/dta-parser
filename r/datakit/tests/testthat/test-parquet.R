@@ -761,3 +761,18 @@ test_that("a set that does not fit the categorical keeps its name for the column
   expect_identical(attr(y$other, "labels"), c(yes = 1))
   expect_identical(read_parquet_info(q)$columns$value_labels, c("grade_2", "other"))
 })
+
+test_that("read_parquet_pl: a nested column named like the variable in col_select is an error", {
+  skip_without_polars()
+  # It is picked, as read_parquet() picks it, whatever `nested` says.
+  f <- file.path(parquet_fixtures(), "fixtures", "pyarrow_nested.parquet")
+  info <- read_parquet_info(f)$columns
+  nested_name <- info$name[info$role == "nested"][1]
+  assign(nested_name, "id")
+  for (nested in c("error", "skip")) {
+    expect_error(eval(bquote(read_parquet_pl(f, col_select = .(as.name(nested_name)), nested = .(nested)))),
+                 "is nested")
+    expect_error(eval(bquote(read_parquet(f, col_select = .(as.name(nested_name)), nested = .(nested)))),
+                 "nested")
+  }
+})

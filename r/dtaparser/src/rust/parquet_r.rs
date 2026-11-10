@@ -628,14 +628,14 @@ fn codec_name(c: dta_parquet::format::Codec) -> String {
 }
 
 /// A character vector with NA for each `None`, as element `i` of `parent`.
-pub(crate) fn optional_strings_elt(parent: Sexp, i: usize, v: &[Option<String>]) -> Res<()> {
+pub(crate) fn optional_strings_elt<S: AsRef<str>>(parent: Sexp, i: usize, v: &[Option<S>]) -> Res<()> {
     let x = alloc_elt(parent, i, STRSXP, v.len())?;
     let mut bytes = Vec::new();
     let mut ends = Vec::with_capacity(v.len());
     let mut missing = Vec::with_capacity(v.len());
     for s in v {
         if let Some(s) = s {
-            bytes.extend_from_slice(s.as_bytes());
+            bytes.extend_from_slice(s.as_ref().as_bytes());
         }
         ends.push(bytes.len());
         missing.push(s.is_none() as u8);

@@ -452,10 +452,41 @@ fn fields(fb: &Flat) -> Option<Vec<ArrowField>> {
     Some(out)
 }
 
+/// Each byte's base64 value, or 255 for a byte that is not a digit
+/// (padding and whitespace among them).
+const BASE64: [u8; 256] = {
+    let mut t = [255u8; 256];
+    let digits = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut i = 0;
+    while i < 64 {
+        t[digits[i] as usize] = i as u8;
+        i += 1;
+    }
+    t
+};
+
 /// Standard base64, with or without padding; ASCII whitespace is
-/// skipped.
+/// skipped. Four digits at a time while they are all digits (a wide
+/// file's entry is hundreds of kilobytes of them), then a byte at a
+/// time from the first group that holds anything else.
 fn unbase64(text: &[u8]) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(text.len() / 4 * 3 + 3);
+    let mut at = 0;
+    for group in text.chunks_exact(4) {
+        let v = [BASE64[group[0] as usize], BASE64[group[1] as usize], BASE64[group[2] as usize], BASE64[group[3] as usize]];
+        if (v[0] | v[1] | v[2] | v[3]) > 63 {
+            break;
+        }
+        let word = u32::from(v[0]) << 18 | u32::from(v[1]) << 12 | u32::from(v[2]) << 6 | u32::from(v[3]);
+        out.extend_from_slice(&word.to_be_bytes()[1..]);
+        at += 4;
+    }
+    unbase64_rest(&text[at..], out)
+}
+
+/// [`unbase64`] a byte at a time, appending to `out` (which holds whole
+/// groups of four digits' bytes, so no bits are carried in).
+fn unbase64_rest(text: &[u8], mut out: Vec<u8>) -> Option<Vec<u8>> {
     let (mut acc, mut bits) = (0u32, 0u32);
     let mut padding = 0;
     for &c in text {
@@ -489,6 +520,33 @@ fn unbase64(text: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base64_by_fours_reads_as_a_byte_at_a_time_does() {
+        let mut seed = 0x1234_5678_9abc_def1u64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        let digits = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        for case in 0..5000 {
+            let len = (next() % 70) as usize;
+            let mut text: Vec<u8> = (0..len).map(|_| digits[(next() % 64) as usize]).collect();
+            // Sometimes whitespace, padding or a byte that is no digit,
+            // anywhere.
+            for _ in 0..next() % 4 {
+                if !text.is_empty() {
+                    let at = (next() as usize) % text.len();
+                    text[at] = [b' ', b'\n', b'=', b'=', b'-', 0xff, b'\t'][(next() % 7) as usize];
+                }
+            }
+            text.extend(std::iter::repeat_n(b'=', (next() % 3) as usize));
+            assert_eq!(unbase64(&text), unbase64_rest(&text, Vec::new()), "case {case}: {:?}", String::from_utf8_lossy(&text));
+        }
+        assert_eq!(unbase64(b"aGVsbG8gd29ybGQ=").as_deref(), Some(&b"hello world"[..]));
+    }
 
     #[test]
     fn our_own_entry_reads_back() {

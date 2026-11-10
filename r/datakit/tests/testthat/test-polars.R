@@ -196,6 +196,24 @@ test_that("col_select takes names, positions and tidyselect", {
   cols <- "x"
   expect_identical(read_parquet_pl(p, col_select = cols)$df$columns, "x")
   expect_error(read_parquet_pl(p, col_select = "nope"), "nope")
+  # As tidyselect does, and read_parquet(), a column named like the
+  # variable wins; without one, the variable's names are read.
+  id <- c("x", "id")
+  expect_identical(read_parquet_pl(p, col_select = id)$df$columns, "id")
+  wanted <- c("x", "id")
+  expect_identical(read_parquet_pl(p, col_select = wanted)$df$columns, c("x", "id"))
+  expect_identical(read_parquet_pl(p, col_select = wanted)$meta$columns$x$label, "Answer")
+  expect_identical(names(read_parquet_pl(p, col_select = id)$meta$columns), "id")
+  none <- character()
+  expect_identical(read_parquet_pl(p, col_select = none)$df$columns, character())
+  nope <- c("x", "missing")
+  expect_error(read_parquet_pl(p, col_select = nope), "column \"missing\" is not in the file")
+  # A variable with a name that is not ASCII.
+  u <- tempfile(fileext = ".parquet")
+  save_parquet(tibble::tibble(a = 1:2, "\u00e9t\u00e9" = c(1.5, 2)), u)
+  assign("\u00e9t\u00e9", "a")
+  expect_identical(eval(bquote(read_parquet_pl(u, col_select = .(as.name("\u00e9t\u00e9")))))$df$columns,
+                   "\u00e9t\u00e9")
   q <- tempfile(fileext = ".dta")
   save_dta(storage_frame(), q)
   expect_identical(read_dta_pl(q, col_select = c(f, b))$df$columns, c("f", "b"))
@@ -558,4 +576,29 @@ test_that("a datakit_meta prints its fields as Python's Meta does, without stora
   expect_true("  b: label = NULL, format = NULL, value_labels = NULL, ordered = NULL" %in% out)
   expect_false(any(grepl("storage|Int8", out)))
   expect_output(print(read_parquet_pl(survey_parquet())$meta), "x: 1 = \"One\", .a = \"Refused\"", fixed = TRUE)
+})
+
+test_that("meta's columns are meta_column() of each column's fields, NA as NULL", {
+  # What meta_of() built before it built a field at a time.
+  by_column <- function(cols) {
+    na_null <- function(x) if (is.na(x)) NULL else x
+    out <- lapply(seq_along(cols$name), function(k) {
+      datakit:::meta_column(na_null(cols$label[[k]]), na_null(cols$format[[k]]), na_null(cols$value_labels[[k]]),
+                            na_null(cols$ordered[[k]]))
+    })
+    names(out) <- cols$name
+    out
+  }
+  m <- function(cols) {
+    list(columns = cols, label = NULL, notes = character(), characteristics = list(variable = character(),
+         name = character(), value = character()), sort = character(), timestamp = NULL, value_labels = list(), rows = 0)
+  }
+  some <- list(name = c("a", "b", "c", "d"), label = c("A", NA, NA, "D"), format = c(NA, "%td", NA, "%9.0g"),
+               value_labels = c(NA, NA, "yn", "yn"), ordered = c(NA, TRUE, FALSE, NA))
+  none <- list(name = character(), label = character(), format = character(), value_labels = character(),
+               ordered = logical())
+  one <- lapply(some, function(x) x[1])
+  for (cols in list(some, none, one)) {
+    expect_identical(datakit:::meta_of(m(cols))$columns, by_column(cols))
+  }
 })

@@ -17,16 +17,13 @@ meta_column <- function(label = NULL, format = NULL, value_labels = NULL, ordere
   list(label = label, format = format, value_labels = value_labels, ordered = ordered)
 }
 
-na_null <- function(x) if (is.na(x)) NULL else x
-
 # The datakit_meta of a native read's list (Python's _frame.meta_of).
+# Each column's entry is meta_column() of its four fields, NA as NULL,
+# built in C (src/meta.c).
 meta_of <- function(m) {
   cols <- m$columns
-  columns <- lapply(seq_along(cols$name), function(k) {
-    meta_column(na_null(cols$label[[k]]), na_null(cols$format[[k]]), na_null(cols$value_labels[[k]]),
-                na_null(cols$ordered[[k]]))
-  })
-  names(columns) <- cols$name
+  columns <- .Call(C_dta_meta_columns, as.character(cols$name), as.character(cols$label), as.character(cols$format),
+                   as.character(cols$value_labels), as.logical(cols$ordered))
   new_datakit_meta(label = m$label, notes = m$notes, characteristics = characteristics_of(m$characteristics),
                    sort = m$sort, timestamp = m$timestamp, columns = columns, value_labels = m$value_labels,
                    rows = m$rows)
