@@ -575,6 +575,7 @@ impl<P: Physical, T: Element + Default> Consumer for Num<'_, P, T> {
             .ok_or_else(|| Error::new("a dictionary page ends early"))?;
         self.dict = bytes.chunks_exact(P::WIDTH).map(P::from_le).collect();
         self.dict_t.clear();
+        self.dict_t.reserve(self.dict.len());
         self.dict_clean = true;
         for &p in &self.dict {
             match p.convert::<T>() {
@@ -763,7 +764,8 @@ struct Views<'o> {
 
 impl Views<'_> {
     fn view(&mut self, b: &[u8]) -> Result<u128> {
-        if self.utf8 && std::str::from_utf8(b).is_err() {
+        // ASCII, as most survey text is, needs no decoding to check.
+        if self.utf8 && !b.is_ascii() && std::str::from_utf8(b).is_err() {
             return Err(Error::new("a text value is not UTF-8"));
         }
         if b.len() <= 12 {
