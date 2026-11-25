@@ -771,8 +771,8 @@ From `@jbearak/dta-parser`:
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
   `MISSING`'s objects are shared by every copy of the package in a
-  process (dta-parser 1.2 or later), so labels read by one are found with
-  another's keys.
+  JavaScript realm (dta-parser 1.2 or later; a worker or a `vm` context
+  has its own), so labels read by one are found with another's keys.
 - `dtaKey(cell)`, `dtaKeys(column)`: Stata's sort order as numbers.
   `stataKey` and `stataKeys`, their names in 1.0, still work and are
   deprecated.

@@ -38,11 +38,12 @@ any more; table-viewer reads Parquet through pqparser
 | `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing[i]` becomes `missingCode(values[i])`; `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new. A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
 | `WriteVariable.missing` beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values |
 | `dtaKeys(column)` read `column.missing` | reads the values |
-| `formatValue` showed a `%w.0g` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
+| `formatValue` showed a `%w.0g` or `%wg` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
 
-`MISSING`'s objects are now one set per process, shared by every copy of
-dta-parser 1.2 or later, so a `ValueLabels` map one read is found with
-another's keys. A copy of 1.0 or 1.1 makes its own objects.
+`MISSING`'s objects are now one set per JavaScript realm (a thread; a
+worker or a `vm` context has its own), shared by every copy of
+dta-parser 1.2 or later there, so a `ValueLabels` map one read is found
+with another's keys. A copy of 1.0 or 1.1 makes its own objects.
 
 ## Moving to @jbearak/dta-parser 1.0
 

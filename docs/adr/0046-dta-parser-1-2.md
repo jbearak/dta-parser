@@ -21,7 +21,7 @@ What 1.2 removes or changes from 1.1, in full in
   the rest), which 1.1.0 added;
 - `NumberColumn.missing` and `WriteVariable.missing` beside a
   Float64Array (ADR 0037);
-- `formatValue`'s digits for `%w.0g` (ADR 0045).
+- `formatValue`'s digits for `%w.0g` and `%wg` (ADR 0045).
 
 ## Consequences
 
