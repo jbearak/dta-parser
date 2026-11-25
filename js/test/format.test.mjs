@@ -20,12 +20,12 @@ test("numbers by %f, %g, %e, with and without commas", () => {
 });
 
 test("%g prints numbers as R does", () => {
-  // 7 significant digits; fixed unless scientific is narrower.
+  // 7 significant digits at %9.0g; fixed unless scientific is narrower.
   assert.equal(formatValue(0.5, "%9.0g"), "0.5");
   assert.equal(formatValue(1 / 3, "%9.0g"), "0.3333333");
   assert.equal(formatValue(0.1 + 0.2, "%9.0g"), "0.3");
-  assert.equal(formatValue(123456789012, "%10.0g"), "123456789012");
-  assert.equal(formatValue(1234567890123, "%10.0g"), "1.234568e+12");
+  assert.equal(formatValue(123456789012, "%9.0g"), "123456789012");
+  assert.equal(formatValue(1234567890123, "%9.0g"), "1.234568e+12");
   assert.equal(formatValue(100000, "%9.0g"), "1e+05");
   assert.equal(formatValue(123456, "%9.0g"), "123456");
   assert.equal(formatValue(0.0001, "%9.0g"), "1e-04");
@@ -39,6 +39,93 @@ test("%g prints numbers as R does", () => {
   // Formats that are not %f, %e, %g or dates.
   assert.equal(formatValue(42, "%21x"), "42");
   assert.equal(formatValue(1 / 3, "%8.0f!"), "0.3333333");
+});
+
+// Expected text is what R 4.6.2 prints: format(x, digits = d), with d the
+// digits the width gives (w - 2, at least 7 and at most 15).
+test("%w.0g shows the significant digits its width has room for", () => {
+  // Two doubles a wide format tells apart.
+  assert.equal(formatValue(12345678.12345, "%21.0g"), "12345678.12345");
+  assert.equal(formatValue(12345678.22345, "%21.0g"), "12345678.22345");
+  // %9.0g, a float's usual format, stays at 7 digits.
+  assert.equal(formatValue(Math.SQRT2, "%9.0g"), "1.414214");
+  assert.equal(formatValue(12345678.12345, "%9.0g"), "12345678");
+  assert.equal(formatValue(1234567890123, "%9.0g"), "1.234568e+12");
+  assert.equal(formatValue(0.000012345678912, "%9.0g"), "1.234568e-05");
+  // A digit more for each column, from %10.0g's 8 ...
+  assert.equal(formatValue(Math.SQRT2, "%10.0g"), "1.4142136");
+  assert.equal(formatValue(-Math.SQRT2, "%10.0g"), "-1.4142136");
+  assert.equal(formatValue(1234.56789, "%10.0g"), "1234.5679");
+  assert.equal(formatValue(2 / 3, "%10.0g"), "0.66666667");
+  assert.equal(formatValue(12345678.12345, "%10.0g"), "12345678");
+  assert.equal(formatValue(123456.7, "%10.0g"), "123456.7");
+  assert.equal(formatValue(1 / 7, "%11.0g"), "0.142857143");
+  assert.equal(formatValue(Math.SQRT2, "%12.0g"), "1.414213562");
+  assert.equal(formatValue(12345678.12345, "%12.0g"), "12345678.12");
+  assert.equal(formatValue(1 / 7, "%13.0g"), "0.14285714286");
+  assert.equal(formatValue(1 / 7, "%14.0g"), "0.142857142857");
+  assert.equal(formatValue(0.000012345678912, "%14.0g"), "1.2345678912e-05");
+  assert.equal(formatValue(Math.SQRT2, "%15.0g"), "1.414213562373");
+  assert.equal(formatValue(98765.4321012345, "%15.0g"), "98765.43210123");
+  assert.equal(formatValue(1 / 7, "%16.0g"), "0.14285714285714");
+  // ... to 15 at %17.0g, the most a double holds; wider formats show no more.
+  for (const f of ["%17.0g", "%18.0g", "%21.0g", "%50.0g", "%400.0g", "%-21.0g", "%021.0g", "%21g"]) {
+    assert.equal(formatValue(Math.SQRT2, f), "1.4142135623731", f);
+    assert.equal(formatValue(1 / 3, f), "0.333333333333333", f);
+    assert.equal(formatValue(123456789.123456789, f), "123456789.123457", f);
+    assert.equal(formatValue(1e-20 / 3, f), "3.33333333333333e-21", f);
+    // No digits past a double's 15: these are 0.30000000000000004 and
+    // 0.7999999999999999.
+    assert.equal(formatValue(0.1 + 0.2, f), "0.3", f);
+    assert.equal(formatValue(0.1 + 0.7, f), "0.8", f);
+    assert.equal(formatValue(0.1, f), "0.1", f);
+    assert.equal(formatValue(100000, f), "1e+05", f);
+    assert.equal(formatValue(2 ** 53, f), "9007199254740992", f);
+    assert.equal(formatValue(1e300, f), "1e+300", f);
+    assert.equal(formatValue(0, f), "0", f);
+    assert.equal(formatValue(42, f), "42", f);
+  }
+  // A number of more digits than the width gives shows in whichever of
+  // fixed and scientific notation is narrower, as at 7 digits.
+  assert.equal(formatValue(1234567890123, "%10.0g"), "1234567890123");
+  assert.equal(formatValue(12345678901234567, "%10.0g"), "1.2345679e+16");
+  assert.equal(formatValue(9999999999.5, "%12.0g"), "1e+10");
+  // A width under 9, or none, shows 7 digits as before.
+  for (const f of ["%8.0g", "%5.0g", "%1.0g", "%0.0g", "%.0g", "%g", "%8g"]) {
+    assert.equal(formatValue(Math.SQRT2, f), "1.414214", f);
+    assert.equal(formatValue(12345678.12345, f), "12345678", f);
+  }
+});
+
+test("only %w.0g follows its width", () => {
+  // An explicit d in %w.dg is the digits, whatever the width.
+  assert.equal(formatValue(Math.SQRT2, "%21.3g"), "1.41");
+  assert.equal(formatValue(Math.SQRT2, "%21.7g"), "1.414214");
+  assert.equal(formatValue(Math.SQRT2, "%9.10g"), "1.414213562");
+  assert.equal(formatValue(12345678.12345, "%21.9g"), "12345678.1");
+  // %f and %e keep their decimals.
+  assert.equal(formatValue(Math.SQRT2, "%21.2f"), "1.41");
+  assert.equal(formatValue(Math.SQRT2, "%21.0f"), "1");
+  assert.equal(formatValue(12345678.12345, "%21.3e"), "1.235e+07");
+  assert.equal(formatValue(12345678.12345, "%21.0e"), "1e+07");
+  // A trailing c adds its commas as before, to the digits the width gives.
+  assert.equal(formatValue(1234567, "%12.0gc"), "1,234,567");
+  assert.equal(formatValue(1234567.891, "%9.0gc"), "1,234,568");
+  assert.equal(formatValue(1234567.891, "%12.0gc"), "1,234,567.891");
+  assert.equal(formatValue(12345678.12345, "%21.0gc"), "12,345,678.12345");
+  assert.equal(formatValue(12345678.12345, "%21.2fc"), "12,345,678.12");
+  // Formats that are not %f, %e, %g or dates show 7 digits.
+  assert.equal(formatValue(Math.SQRT2, "%21x"), "1.414214");
+  assert.equal(formatValue(Math.SQRT2, "%21.0f!"), "1.414214");
+  // Dates and times, missing values and labels do not look at the width.
+  assert.equal(formatValue(22950.75, "%21.0g", new Map([[22950.75, "label"]])), "label");
+  assert.equal(formatValue(MISSING[".b"], "%21.0g"), ".b");
+  assert.equal(formatValue(NaN, "%21.0g"), ".");
+  assert.equal(formatValue(Infinity, "%21.0g"), ".");
+  assert.equal(formatValue(22950.75, "%td"), "2022-11-01");
+  assert.equal(formatValue(22950.75, "%tdCCYY"), "2022-11-01");
+  assert.equal(formatValue(1000 * (3600 + 61) + 250, "%tcHH:MM:SS.sss"), "1960-01-01 01:01:01");
+  assert.equal(formatValue(757.5, "%tm"), "2023m2");
 });
 
 test("missing values and labels", () => {

@@ -16,12 +16,17 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  *
  * - With `labels`, a labelled value shows its label.
  * - A missing value shows as `.`, `.a`, ... (or its label).
- * - `%g` (and any format that is not `%f`, `%e` or a date) shows the
- *   number as R prints it: 7 significant digits (`d` for `%w.dg`),
- *   trailing zeros dropped, in fixed notation unless scientific is
- *   narrower (0.5, 0.3333333, 123456789012, 1e-05). `%f` and `%e` keep
- *   their decimals, and a trailing `c` adds commas. Widths are left to
- *   the caller.
+ * - `%g` shows the number as R prints it, trailing zeros dropped, in
+ *   fixed notation unless scientific is narrower (0.5, 0.3333333,
+ *   123456789012, 1e-05). `%w.dg` shows `d` significant digits. `%w.0g`
+ *   shows the digits its width has room for beside a sign and a decimal
+ *   point, `w - 2`, but at least 7 and at most 15 (the most a double
+ *   holds): 7 for `%9.0g` and narrower, 8 for `%10.0g`, 10 for
+ *   `%12.0g`, 15 for `%17.0g` and wider (ADR 0045). A format that is
+ *   not `%f`, `%e`, `%g` or a date shows 7.
+ * - `%f` and `%e` keep their decimals, and a trailing `c` adds commas.
+ * - The width does nothing else: the text is not padded or aligned, and
+ *   may be longer than the width.
  * - `%td` (and the older `%d`) shows as R shows a Date (`2022-10-31`),
  *   and `%tc` and `%tC` as a POSIXct in UTC (`2022-10-31 13:05:09`),
  *   whatever their mask. `%tC`'s leap seconds are not counted.
@@ -86,8 +91,10 @@ function compile(format: string): (v: number) => string {
   const num = NUMBER.exec(format);
   if (!num) return (v) => general(v);
   const digits = num[4] === undefined ? undefined : Number(num[4]);
+  // %w.0g (and %wg) takes its digits from its width.
+  const significant = digits || widthDigits(num[3] === undefined ? 0 : Number(num[3]));
   const plain: (v: number) => string =
-    num[5] === "f" ? (v) => v.toFixed(digits ?? 0) : num[5] === "e" ? (v) => exponential(v, digits ?? 0) : (v) => general(v, digits || 7);
+    num[5] === "f" ? (v) => v.toFixed(digits ?? 0) : num[5] === "e" ? (v) => exponential(v, digits ?? 0) : (v) => general(v, significant);
   return num[6] ? (v) => commas(plain(v)) : plain;
 }
 
@@ -110,11 +117,29 @@ function byName(labels: ValueLabels): Map<string, Missing> {
   return view.keys;
 }
 
+/** The significant digits `general` shows when no format says otherwise: R's. */
+const DIGITS = 7;
+/** The most significant digits a double holds exactly enough to give back. */
+const DOUBLE_DIGITS = 15;
+
+/**
+ * The significant digits a `%w.0g` format shows: a number of `d` digits
+ * takes up to `d + 2` characters in fixed notation (a sign and a decimal
+ * point), so a width of `w` has room for `w - 2`. Never fewer than 7,
+ * so `%9.0g` (a float's usual format) and narrower formats show what R
+ * shows by default, and never more than 15: a 16th or 17th digit is
+ * the double's binary rounding (0.1 + 0.2 as 0.30000000000000004), not
+ * the data's.
+ */
+function widthDigits(width: number): number {
+  return Math.min(DOUBLE_DIGITS, Math.max(DIGITS, width - 2));
+}
+
 /**
  * A number as R prints it: `digits` significant digits at most (trailing
  * zeros dropped), in fixed notation unless scientific is narrower.
  */
-function general(v: number, digits = 7): string {
+function general(v: number, digits = DIGITS): string {
   if (v === 0) return "0";
   if (Number.isInteger(v) && Math.abs(v) < 1e15 && digits <= 101) {
     // Fast path: an integer whose significant digits fit needs no rounding.
