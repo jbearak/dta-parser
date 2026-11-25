@@ -141,7 +141,8 @@ if (nanPayloads) {
     assert.equal(dtaKey(col.values[1]), dtaKey(MISSING["."]));
     // Copied value by value it cannot be written, rather than written as `.`.
     for (const plain of [Array.from(col.values), [1, NA], new Float64Array([1, NA])]) {
-      assert.throws(() => writeDta({ variables: [{ name: "x", values: plain }] }), { code: "DTA_INVALID", name: "RangeError", message: /clears NaN payloads/ });
+      // Rows count from 1, as the module's errors count them.
+      assert.throws(() => writeDta({ variables: [{ name: "x", values: plain }] }), { code: "DTA_INVALID", name: "RangeError", message: /^x row 2: .*clears NaN payloads/ });
     }
     r.close();
   });
