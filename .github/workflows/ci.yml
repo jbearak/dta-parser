@@ -99,6 +99,30 @@ jobs:
       - run: npm test
         working-directory: js
 
+  # The same tests on Bun, whose engine (JavaScriptCore, as Safari's)
+  # gives every NaN loaded into a number one bit pattern: the missing
+  # values must come from a column's bytes (ADR 0047).
+  npm-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.5
+      - run: scripts/build-wasm.sh
+      - run: npm ci
+        working-directory: js
+      - run: npm run build
+        working-directory: js
+      - run: bun test ./test/
+        working-directory: js
+
   r:
     runs-on: ubuntu-latest
     steps:

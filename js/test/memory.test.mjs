@@ -266,11 +266,15 @@ test("closing the last reader after a large read replaces the module instance", 
 });
 
 test("a reader dropped without close() releases its handle, never a borrowed fd", { skip }, async () => {
-  const { setFlagsFromString } = await import("node:v8");
-  const { runInNewContext } = await import("node:vm");
   const fs = await import("node:fs");
-  setFlagsFromString("--expose-gc");
-  const gc = runInNewContext("gc");
+  let gc;
+  if (typeof Bun !== "undefined") gc = () => Bun.gc(true);
+  else {
+    const { setFlagsFromString } = await import("node:v8");
+    const { runInNewContext } = await import("node:vm");
+    setFlagsFromString("--expose-gc");
+    gc = runInNewContext("gc");
+  }
   const path = join(mkdtempSync(join(tmpdir(), "dta-fd-")), "small.dta");
   fs.writeFileSync(path, small);
   const fd = fs.openSync(path, "r");

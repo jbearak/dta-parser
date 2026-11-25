@@ -15,7 +15,10 @@ const TIME = /^%(-)?t?([cCdwmqhy])(.*)$/;
  * `%12.0gc`, `%10.3e`, `%td`, `%tc`, `%tm` and so on.
  *
  * - With `labels`, a labelled value shows its label.
- * - A missing value shows as `.`, `.a`, ... (or its label).
+ * - A missing value shows as `.`, `.a`, ... (or its label). A number
+ *   that is a tagged NaN shows its letter only where numbers keep NaN
+ *   payloads (V8); on Bun and in Safari any NaN shows as `.`, so pass a
+ *   `readRows` cell there (ADR 0047).
  * - `%g` shows the number as R prints it, trailing zeros dropped, in
  *   fixed notation unless scientific is narrower (0.5, 0.3333333,
  *   123456789012, 1e-05). `%w.dg` shows `d` significant digits. `%w.0g`

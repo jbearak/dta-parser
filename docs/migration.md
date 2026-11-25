@@ -1,5 +1,7 @@
 # Migration notes
 
+- [dta-parser 1.2.0 to 1.2.1](#dta-parser-120-to-121) (TypeScript):
+  missing values on Bun and in Safari; `missingCodes` is new.
 - [dta-parser 1.1 to 1.2](#dta-parser-11-to-12) (TypeScript): `.dta`
   only; the Parquet functions are gone.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
@@ -12,6 +14,34 @@ package `@jbearak/datakit`, which took 1.1's Parquet functions and added
 fixed-width text and whole datasets, was removed on 2026-11-10 without
 being published ([ADR 0044](adr/0044-npm-datakit-removed.md)); its last
 version is in commit 408c350.
+
+## dta-parser 1.2.0 to 1.2.1
+
+1.2.0 lost Stata's missing values on JavaScriptCore, the engine of Bun
+and Safari. `readRows` gave a `.a` as a plain NaN, so a labelled `.a`
+showed as `.`. `NA`, which `writeDta` takes for `.`, was a plain NaN
+there too. JavaScriptCore gives every NaN it loads into a number the
+same bits, and 1.2.0 read each value's letter through a number. 1.2.1
+reads and writes the letters through a `Float64Array`'s bytes, which
+every engine keeps ([ADR 0047](adr/0047-missing-codes-from-bytes.md)).
+On Node the only change is the new function.
+
+| 1.2.0 | 1.2.1 |
+|---|---|
+| on Bun and in Safari, `readRows`, `readRowsAt`, `dtaKeys`, and `writeDta` of a column as read lost `.a` to `.z`, and `readRows` gave `.` as NaN | they give the same answers as on Node |
+| `missingCode(values[i])` was the only way to read a column's codes | the new `missingCodes(column)` gives them all, from the bytes, on every engine, as 1.1's `NumberColumn.missing` held them |
+| on Bun and in Safari, `taggedNa(".a")` gave a plain NaN | it throws `DTA_INVALID`; use `MISSING[".a"]` there |
+| on Bun and in Safari, `writeDta` said only "NaN does not fit storage type double" for a NaN that is not a missing value | it says the engine clears NaN payloads, and to use `null` or `MISSING` values |
+
+`missingCode`, `naTag`, and `isTaggedNa` still read a number, so on Bun
+and in Safari they cannot see a letter. There `missingCode` is 0 for
+every number, `naTag` is undefined, `isTaggedNa` is false, and `NA` is
+a plain NaN. `formatValue` and `dtaKey` of a value loaded from a column
+treat it as `.`; pass them a `readRows` cell instead. On V8, which runs
+Node, Deno, Chrome, and Electron, all of these work as in 1.2.0.
+
+A project moving from 1.1 that read `column.missing` uses
+`missingCodes(column)`.
 
 ## dta-parser 1.1 to 1.2
 
@@ -35,8 +65,8 @@ any more; table-viewer reads Parquet through pqparser
 | `TableReader`, `AsyncTableReader` | gain `valueLabelNames()`, `characteristics()` and `notes()`; `TableInfo` gains an optional `timestamp`, `Variable` optional `unit`, `timeZone` and `categorical`. A class of yours that implements `TableReader` adds the three methods |
 | `DtaReader` | gains `valueLabelNames()` |
 | `dtaKey`, `dtaKeys` | also from `@jbearak/dta-parser/format` (the same functions) |
-| `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing[i]` becomes `missingCode(values[i])`; `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new. A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
-| `WriteVariable.missing` beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values |
+| `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing` becomes `missingCodes(column)` (from 1.2.1; on V8 also `missingCode(values[i])`); `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new, and work on V8 only (see 1.2.1 above). A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
+| `WriteVariable.missing` beside a Float64Array | gone: pass a column as read, or (on V8) put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values |
 | `dtaKeys(column)` read `column.missing` | reads the values |
 | `formatValue` showed a `%w.0g` or `%wg` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
 

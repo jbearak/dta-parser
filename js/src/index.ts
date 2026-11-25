@@ -8,13 +8,13 @@ export type { DtaError, EncodingName, ErrorCode, ReadAt };
 
 import { MISSING, MISSING_NAMES, isMissing, missingValue, type Cell, type Missing, type MissingName, type ValueLabels } from "./values";
 import { packNumbers, packTexts } from "./shared";
-import { applyCodes, codesOf, missingCode } from "./tagged";
+import { NAN_PAYLOADS, applyCodes, codesOf } from "./tagged";
 
 export type { Cell, Missing, MissingName, ValueLabels };
 
 // The same objects and functions as /format exports: build.mjs makes
 // this import the /format bundle, so there is one copy at run time.
-export { MISSING, NA, dtaKey, dtaKeys, isMissing, isTaggedNa, missingCode, missingValue, naTag, stataKey, stataKeys, taggedNa } from "./format-entry";
+export { MISSING, NA, dtaKey, dtaKeys, isMissing, isTaggedNa, missingCode, missingCodes, missingValue, naTag, stataKey, stataKeys, taggedNa } from "./format-entry";
 
 /** One variable's descriptor, as the file stores it. */
 export interface Variable {
@@ -81,9 +81,13 @@ export interface Info extends TableInfo {
  * A numeric variable's values, missing values among them (ADR 0037):
  * `.` is `NA` (R's `NA_real_`) and `.a` to `.z` are NaNs tagged with
  * their letter (`taggedNa`), as R holds them, so a
- * value and its missing code are one number. `missingCode(values[i])`
- * gives 0 for a number, 1 for `.` and 2 to 27 for `.a` to `.z`, and
- * `naTag` the letter. Any other NaN (a Parquet file's NaN) is a number.
+ * value and its missing code are one number in the array's bytes.
+ * `missingCodes(column)` reads them from the bytes on every engine: 0
+ * for a number, 1 for `.` and 2 to 27 for `.a` to `.z`.
+ * `missingCode(values[i])` and `naTag(values[i])` read one value, but
+ * only where NaNs keep their payload as numbers (V8: Node, Deno,
+ * Chrome; not JavaScriptCore: Bun, Safari) (ADR 0047). Any other NaN is
+ * a number.
  */
 export interface NumberColumn {
   kind: "number";
@@ -584,7 +588,9 @@ export interface WriteVariable {
   name: string;
   /**
    * Numbers, with `null`, a `Missing`, `NA` or a `taggedNa` for missing
-   * values, or strings.
+   * values (`null` and `Missing` on every engine; `NA` and `taggedNa`
+   * only where NaNs keep their payload as numbers, see `missingCode`),
+   * or strings.
    * Strings become strN, or strL beyond 2045 bytes. A Uint8Array is a
    * binary strL, and makes the variable strL; it may sit among strings,
    * as `StringColumn.values` holds them.
@@ -667,7 +673,9 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     if (v.values instanceof Float64Array) {
       const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
       if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: a Float64Array cannot be ${v.type}`, undefined, TypeError);
-      return { kind: "numbers", meta, storage, values: v.values, missing: codesOf(v.values) };
+      const missing = codesOf(v.values);
+      untaggedNaNs(v.name, v.values, missing);
+      return { kind: "numbers", meta, storage, values: v.values, missing };
     }
     // A variable read (`{ ...variable, values: column }`) has its strN type.
     const textType = v.type === "string" || /^str[0-9]+$/.test(v.type ?? "");
@@ -681,7 +689,9 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
     const storage = STORAGE[(v.type ?? "double") as keyof typeof STORAGE];
     if (storage === undefined) throw dtaError("DTA_INVALID", `${v.name}: unknown type ${v.type}`, undefined, TypeError);
     if (v.values.some(isText)) throw dtaError("DTA_INVALID", `${v.name} is ${v.type} but holds strings`, undefined, TypeError);
-    return { kind: "numbers", meta, storage, ...packNumbers(v.values as readonly (number | Missing | null)[]) };
+    const packed = packNumbers(v.values as readonly (number | Missing | null)[]);
+    untaggedNaNs(v.name, v.values as readonly unknown[], packed.missing);
+    return { kind: "numbers", meta, storage, ...packed };
   });
   for (const [name, labels] of Object.entries(data.valueLabels ?? {})) {
     field(name, "a value label set name");
@@ -719,6 +729,26 @@ export function writeDtaTo(data: WriteDataset, sink: (bytes: Uint8Array) => void
       : `${pad(t.getDate())} ${MONTHS[t.getMonth()]} ${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
   const notes = (data.notes ?? []).map((n) => field(n, "a note"));
   wasm.write(nobs, parts, [field(data.label, "the data label"), stamp, ...notes], sink);
+}
+
+/**
+ * On an engine that clears NaN payloads, a NaN that is not a missing
+ * value is most likely `NA` or a tagged NaN that lost its code on the
+ * way (ADR 0047): say so, rather than only that NaN does not fit.
+ */
+function untaggedNaNs(name: string, values: ArrayLike<unknown>, missing: Uint8Array): void {
+  if (NAN_PAYLOADS) return;
+  for (let i = 0; i < missing.length; i++) {
+    const x = values[i];
+    if (missing[i] === 0 && typeof x === "number" && x !== x) {
+      throw dtaError(
+        "DTA_INVALID",
+        `${name} row ${i + 1}: NaN is not a missing value: this JavaScript engine clears NaN payloads, so NA and tagged NaNs cannot pass as numbers; use null or MISSING values, or a column as read`,
+        undefined,
+        RangeError,
+      );
+    }
+  }
 }
 
 /** The variable as `writeDtaTo` takes it: a column object as plain values. */
@@ -787,13 +817,15 @@ export { formatValue } from "./format-entry";
 
 /** The first `count` rows of `cols` as arrays of cells. */
 function cells(cols: Column[], count: number): Cell[][] {
+  // Codes from the columns' bytes: a NaN loaded into a number may have
+  // lost its payload (ADR 0047).
+  const codes = cols.map((c) => (c.kind === "number" ? codesOf(c.values) : undefined));
   const rows: Cell[][] = [];
   for (let i = 0; i < count; i++) {
-    rows.push(cols.map((c) => {
+    rows.push(cols.map((c, k) => {
       if (c.kind === "string") return c.values[i];
-      const x = c.values[i];
-      const code = x === x ? 0 : missingCode(x);
-      return code ? missingValue(code) : x;
+      const code = codes[k]![i];
+      return code ? missingValue(code) : c.values[i];
     }));
   }
   return rows;

@@ -81,7 +81,8 @@ How `.a` to `.z` are held in a double: R's `NA_real_` (a NaN whose low
 word is 1954) with the letter's ASCII code in bits 32 to 39, as haven,
 R's dtaparser, the Parquet files' DOUBLE columns, and the npm package's
 `NumberColumn` hold them. In TypeScript `.` is `NA_real_` itself (ADR 0037), and
-`missingCode` reads either.
+`missingCodes` reads either from a column's bytes; `missingCode` reads a
+number, on V8 only (ADR 0047).
 _Avoid_: companion column (the representation ADR 0036 replaced)
 
 **dtatools**:

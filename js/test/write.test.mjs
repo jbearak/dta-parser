@@ -6,8 +6,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 
+import { nanPayloads } from "./engine.mjs";
 const require = createRequire(import.meta.url);
-const { openDta, writeDta, MISSING, missingCode } = require("../dist/index.js");
+const { openDta, writeDta, MISSING, missingCodes } = require("../dist/index.js");
 const { writeDtaFile, openDtaFile } = require("../dist/node.js");
 
 const compat = new URL("../../compat/", import.meta.url);
@@ -67,7 +68,9 @@ test("every fixture survives readColumns, writeDta, readColumns", () => {
       label: v.label,
       valueLabels: valueLabels[v.valueLabels] ? v.valueLabels : undefined,
       ...(cols[i].kind === "number"
-        ? { type: v.type, values: Array.from(cols[i].values) } // tagged NaNs in a plain array
+        ? // Tagged NaNs in a plain array where numbers keep NaN payloads;
+          // elsewhere the Float64Array (ADR 0047).
+          { type: v.type, values: nanPayloads ? Array.from(cols[i].values) : cols[i].values }
         : { type: v.type === "strL" ? "strL" : undefined, values: cols[i].values }),
     }));
     const again = openDta(
@@ -114,9 +117,9 @@ test("number columns write back as readColumns gives them", () => {
   }
 });
 
-/** Each number's missing code (deepEqual counts every NaN as equal, whatever its tag). */
+/** Each number's missing code, from its bytes (deepEqual counts every NaN as equal, whatever its tag). */
 function codes(column) {
-  return column.kind === "number" ? Array.from(column.values, missingCode) : null;
+  return column.kind === "number" ? Array.from(missingCodes(column)) : null;
 }
 
 /** A file with every kind of metadata and a strL column holding binary values. */
