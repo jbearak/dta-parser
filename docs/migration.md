@@ -40,10 +40,10 @@ any more; table-viewer reads Parquet through pqparser
 | `dtaKeys(column)` read `column.missing` | reads the values |
 | `formatValue` showed a `%w.0g` or `%wg` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
 
-`MISSING`'s objects are now one set per JavaScript realm (a thread; a
-worker or a `vm` context has its own), shared by every copy of
-dta-parser 1.2 or later there, so a `ValueLabels` map one read is found
-with another's keys. A copy of 1.0 or 1.1 makes its own objects.
+`MISSING`'s objects are now one set per JavaScript realm (a worker or a
+`vm` context has its own), shared by every copy of dta-parser 1.2 or
+later there, so a `ValueLabels` map one read is found with another's
+keys. A copy of 1.0 or 1.1 makes its own objects.
 
 ## Moving to @jbearak/dta-parser 1.0
 
