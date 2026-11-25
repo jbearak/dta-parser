@@ -10,8 +10,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"],
-    "skipLibCheck": true,
-    "paths": { "@jbearak/dta-parser": ["./src/index.ts"] }
+    "skipLibCheck": true
   },
   "include": ["src"]
 }

@@ -1,7 +1,7 @@
 // Stata's sort order for numbers and missing values: plain JavaScript,
 // no wasm, so the /format entry has it too (plan 0021).
 
-import { missingCode } from "./tagged";
+import { codesOf, missingCode } from "./tagged";
 import { MISSING_NAMES, type Missing } from "./values";
 
 // The doubles Stata itself stores for `.` to `.z`: finite, increasing,
@@ -23,10 +23,15 @@ export function dtaKey(value: number | Missing): number {
   return MISSING_KEYS[MISSING_NAMES.indexOf(value.missing)];
 }
 
-/** `dtaKey` for every value of a NumberColumn. */
+/** `dtaKey` for every value of a NumberColumn, its missing values read from the column's bytes. */
 export function dtaKeys(column: { readonly values: Float64Array }): Float64Array {
-  const out = new Float64Array(column.values.length);
-  for (let i = 0; i < out.length; i++) out[i] = dtaKey(column.values[i]);
+  const values = column.values;
+  const codes = codesOf(values);
+  const out = new Float64Array(values.length);
+  for (let i = 0; i < out.length; i++) {
+    const x = values[i];
+    out[i] = x === x ? x : MISSING_KEYS[Math.max(codes[i], 1) - 1];
+  }
   return out;
 }
 

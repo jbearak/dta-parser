@@ -31,8 +31,16 @@ const formatEntry = {
   },
 };
 await build({ ...common, entryPoints: ["src/index.ts"], outfile: "dist/index.js", plugins: [deflated, formatEntry] });
-// The Node entry point uses the main one rather than embedding a second copy.
-await build({ ...common, entryPoints: ["src/node.ts"], outfile: "dist/node.js", external: ["@jbearak/dta-parser"] });
+// The Node entry point uses the main one rather than embedding a second
+// copy. (It imports ./index rather than the package's own name, so no
+// tsconfig `paths` sends Bun to src/ in this repository.)
+const mainEntry = {
+  name: "main-entry",
+  setup(b) {
+    b.onResolve({ filter: /^\.\/index$/ }, () => ({ path: "./index.js", external: true }));
+  },
+};
+await build({ ...common, entryPoints: ["src/node.ts"], outfile: "dist/node.js", plugins: [mainEntry] });
 // The formatting entry point has no wasm and no Node built-ins, so a
 // webview or browser bundle can use it. (Built for the node platform
 // only so esbuild marks its exports for Node's ESM `import`.)

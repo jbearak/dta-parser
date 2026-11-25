@@ -1,7 +1,7 @@
 // @jbearak/dta-parser/node: read .dta files from disk.
 
 import * as fs from "node:fs";
-import { DtaReader, writeDtaTo, type Options, type WriteDataset } from "@jbearak/dta-parser";
+import { DtaReader, writeDtaTo, type Options, type WriteDataset } from "./index";
 
 /**
  * Open a .dta file by path, or by a file descriptor the caller owns and

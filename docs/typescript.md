@@ -173,7 +173,7 @@ r.close();
 | in the file | `readColumns` | `readRows` cell |
 |---|---|---|
 | byte, int, long, float, double | `NumberColumn`: `values` (`Float64Array`) | `number` |
-| `.`, `.a` to `.z` | `values[i]` is `NA` or a tagged NaN (`missingCode(values[i])` is 1 to 27) | `MISSING["."]` ... `MISSING[".z"]` |
+| `.`, `.a` to `.z` | `values[i]` is `NA` or a tagged NaN (`missingCodes(column)[i]` is 1 to 27) | `MISSING["."]` ... `MISSING[".z"]` |
 | strN, strL text | `StringColumn`: `values` of `string` | `string` |
 | strL with binary values | `Uint8Array` elements | `Uint8Array` |
 | dates | numbers; see [Dates](#dates-and-display-formats) | `number` |
@@ -345,26 +345,38 @@ Stata has 27 numeric missing values: `.` and `.a` to `.z` (see the
   holds it: `.` is `NA` (R's `NA_real_`) and `.a` to
   `.z` are NaNs tagged with their letter, in the bits haven's
   `tagged_na()` uses. A value and its missing value are one number, so
-  they cannot come apart. `missingCode(x)` numbers them: 0 for a
-  number, 1 for `.`, 2 for `.a`, ..., 27 for `.z`. `naTag(x)` gives the
+  they cannot come apart. `missingCodes(column)` numbers them, read
+  from the column's bytes: 0 for a number, 1 for `.`, 2 for `.a`, ...,
+  27 for `.z`, as 1.1's `NumberColumn.missing` did. Any other NaN is a
+  number.
+- **One value as a number works only on V8** (Node, Deno, Chrome,
+  Electron). `missingCode(x)` gives one value's code, `naTag(x)` its
   letter (`".d"`), `isTaggedNa(x, letter?)` tests for one, and
-  `taggedNa(".d")` and `NA` make them. Any other NaN, such as a Parquet
-  file's NaN, is a number.
+  `taggedNa(".d")` and `NA` make them. JavaScriptCore (Bun, Safari)
+  gives every NaN it loads from an array into a number the same bits,
+  so the letter is gone before any function sees it
+  ([ADR 0047](adr/0047-missing-codes-from-bytes.md)). There
+  `missingCode` gives 0 for every number, `naTag` undefined,
+  `isTaggedNa` false, `NA` is a plain NaN, and `taggedNa` throws
+  `DTA_INVALID` rather than return a number without its letter. Code
+  that must run on Bun or in Safari reads letters with
+  `missingCodes(column)`, `readRows` or `dtaKeys`, and writes them as
+  `null` and `MISSING` values or as a column it read.
 - **In a row, a missing cell is one of the 27 frozen objects in
   `MISSING`**, so `cell === MISSING[".d"]` works. `missingValue(code)`
   gives the object for a code, and `isMissing(cell)` tells a missing
   value from a number or string.
 
 ```ts
-import { MISSING, isMissing, missingCode, missingValue, naTag } from "@jbearak/dta-parser";
+import { MISSING, isMissing, missingCodes, missingValue } from "@jbearak/dta-parser";
 import { openDtaFile } from "@jbearak/dta-parser/node";
 
 const r = openDtaFile("survey.dta");
 const [income] = r.readColumns(["income"]);
 if (income.kind === "number") {
-  console.log(Array.from(income.values, missingCode));   // [ 0, 5, 0, 1, 19, 0 ]
-  console.log(naTag(income.values[1]));                  // .d
-  console.log(missingValue(missingCode(income.values[4])));   // { missing: '.r' }
+  const codes = missingCodes(income);
+  console.log(Array.from(codes));        // [ 0, 5, 0, 1, 19, 0 ]
+  console.log(missingValue(codes[4]));   // { missing: '.r' }
 }
 const cells = r.readRows(0, 6, ["income"]).map((row) => row[0]);
 console.log(cells.filter((c) => c === MISSING[".r"]).length);   // 1
@@ -398,12 +410,16 @@ The keys are the doubles Stata stores for missing values: finite and
 larger than any number Stata stores. The same keys come out of the R
 packages.
 
-**Keep the letters in a `Float64Array`.** It keeps a NaN's bits as they
-are. A plain array, or arithmetic, may quiet the NaN, which
-`missingCode` reads through. `Float64Array.prototype.sort()` makes every
-NaN the same and loses the letters, and `JSON.stringify` writes `null`:
-sort by `dtaKeys`, as above, and convert to cells (`readRows`) or codes
-(`missingCode`) before serializing.
+**Keep the letters in a `Float64Array`.** Its bytes keep a NaN's bits
+on every engine, and `slice()`, `set()`, `subarray()` and
+`Float64Array.from(array)` copy them. Copying value by value (`map`, a
+loop, `Array.from`) loads each value into a number, which keeps the
+letter on V8, quieted, and loses it on JavaScriptCore; `writeDta` then
+refuses the NaN rather than write it as `.`.
+`Float64Array.prototype.sort()` makes every NaN the same and loses the
+letters, and `JSON.stringify` writes `null`: sort by `dtaKeys`, as
+above, and convert to cells (`readRows`) or codes (`missingCodes`)
+before serializing.
 
 ## Value labels
 
@@ -546,7 +562,7 @@ Each variable:
 | field | meaning |
 |---|---|
 | `name` | 1 to 32 letters, digits or `_`, not starting with a digit |
-| `values` | numbers, with `null`, a `MISSING` value, `NA` or a `taggedNa` for missing; or strings, among which a `Uint8Array` is a binary strL; or a `Float64Array`, as a `NumberColumn` holds them, `NA` and tagged NaNs its missing values |
+| `values` | numbers, with `null`, a `MISSING` value, `NA` or a `taggedNa` for missing (`NA` and `taggedNa` on V8 only); or strings, among which a `Uint8Array` is a binary strL; or a `Float64Array`, as a `NumberColumn` holds them, `NA` and tagged NaNs in its bytes its missing values |
 | `type` | `"byte"`, `"int"`, `"long"`, `"float"` or `"double"` (the default) for numbers; for strings, leave it out or give `"strL"` to write strL whatever the length |
 | `format` | display format such as `"%9.2f"` or `"%td"`; default the type's |
 | `label` | variable label |
@@ -671,7 +687,7 @@ Parquet through pqparser (github.com/jbearak/pqparser), a private
 package. `TableReader` gained `valueLabelNames()`, `characteristics()`
 and `notes()`, so a class of yours that implements it needs them too. `NumberColumn` has no `missing` array: its missing
 values are numbers in `values` (`NA` and tagged NaNs, ADR 0037), so
-`missing[i]` becomes `missingCode(values[i])`, and a `WriteVariable` has
+`missing` becomes `missingCodes(column)` (1.2.1), and a `WriteVariable` has
 no `missing` either. [docs/migration.md](migration.md#dta-parser-11-to-12)
 lists every change.
 
@@ -773,6 +789,10 @@ From `@jbearak/dta-parser`:
   `MISSING`'s objects are shared by every copy of the package in a
   JavaScript realm (dta-parser 1.2 or later; a worker or a `vm` context
   has its own), so labels read by one are found with another's keys.
+- `missingCodes(column)`: a `NumberColumn`'s missing codes, from its
+  bytes, on every engine; `NA`, `taggedNa`, `missingCode`, `naTag`,
+  `isTaggedNa`: missing values as numbers, on V8 only (see
+  [Missing values](#missing-values)).
 - `dtaKey(cell)`, `dtaKeys(column)`: Stata's sort order as numbers.
   `stataKey` and `stataKeys`, their names in 1.0, still work and are
   deprecated.
@@ -791,7 +811,8 @@ From `@jbearak/dta-parser`:
 From `@jbearak/dta-parser/format` (no WebAssembly, no Node built-ins):
 
 - `formatValue`, `MISSING`, `missingValue`, `isMissing`, `dtaKey`,
-  `dtaKeys`, and the types `Cell`, `Missing`, `MissingName`,
+  `dtaKeys`, `missingCodes`, `NA`, `taggedNa`, `missingCode`, `naTag`,
+  `isTaggedNa`, and the types `Cell`, `Missing`, `MissingName`,
   `ValueLabels`, as above: the same objects and functions as the main
   entry's.
 

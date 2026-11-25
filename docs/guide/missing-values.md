@@ -47,8 +47,11 @@ number, and never give `NA`).
 **TypeScript.** `readColumns` gives a `NumberColumn` whose `values` (a
 `Float64Array`) hold the missing values as R does: `.` is `NA`, and
 `.a` to `.z` are NaNs tagged with their letter, in the same bits.
-`missingCode(x)` numbers them (0 for a number, 1 for `.`, 2 to 27 for
-`.a` to `.z`) and `naTag(x)` gives the letter. `readRows` gives each
+`missingCodes(column)` numbers them from the column's bytes (0 for a
+number, 1 for `.`, 2 to 27 for `.a` to `.z`). `missingCode(x)` and
+`naTag(x)` read one value as a number, which works on V8 (Node, Chrome)
+but not on JavaScriptCore (Bun, Safari), where a NaN loses its letter
+on the way into a number. `readRows` gives each
 missing cell as a frozen object such as `MISSING[".a"]`, so
 `cell === MISSING[".a"]` works.
 
