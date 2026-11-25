@@ -17,27 +17,28 @@ version is in commit 408c350.
 
 ## dta-parser 1.2.0 to 1.2.1
 
-1.2.0 lost Stata's missing values on JavaScriptCore (Bun, Safari):
-`readRows` gave a `.a` as a plain NaN, so a labelled `.a` showed as `.`,
-and `NA`, which `writeDta` takes for `.`, was a plain NaN there.
-JavaScriptCore gives every NaN it loads into a number the same bits, and
-1.2.0 read each value's letter through a number. 1.2.1 reads and writes
-the letters through a `Float64Array`'s bytes, which every engine keeps
-([ADR 0047](adr/0047-missing-codes-from-bytes.md)). On Node nothing
-changes but the new function.
+1.2.0 lost Stata's missing values on JavaScriptCore, the engine of Bun
+and Safari. `readRows` gave a `.a` as a plain NaN, so a labelled `.a`
+showed as `.`. `NA`, which `writeDta` takes for `.`, was a plain NaN
+there too. JavaScriptCore gives every NaN it loads into a number the
+same bits, and 1.2.0 read each value's letter through a number. 1.2.1
+reads and writes the letters through a `Float64Array`'s bytes, which
+every engine keeps ([ADR 0047](adr/0047-missing-codes-from-bytes.md)).
+On Node the only change is the new function.
 
 | 1.2.0 | 1.2.1 |
 |---|---|
-| on Bun and in Safari, `readRows`, `readRowsAt`, `dtaKeys` and `writeDta` of a column read lost `.a` to `.z`, and `readRows` gave `.` as NaN | they give the same answers as on Node |
-| `missingCode(values[i])` was the only way to read a column's codes | `missingCodes(column)` (new) gives them all, from the bytes, on every engine: what 1.1's `NumberColumn.missing` held |
-| on Bun and in Safari, `taggedNa(".a")` gave a plain NaN | it throws `DTA_INVALID`: use `MISSING[".a"]` there |
-| on Bun and in Safari, `writeDta` said only "NaN does not fit storage type double" for a NaN that is not a missing value | it says the engine clears NaN payloads and to use `null` or `MISSING` values |
+| on Bun and in Safari, `readRows`, `readRowsAt`, `dtaKeys`, and `writeDta` of a column as read lost `.a` to `.z`, and `readRows` gave `.` as NaN | they give the same answers as on Node |
+| `missingCode(values[i])` was the only way to read a column's codes | the new `missingCodes(column)` gives them all, from the bytes, on every engine, as 1.1's `NumberColumn.missing` held them |
+| on Bun and in Safari, `taggedNa(".a")` gave a plain NaN | it throws `DTA_INVALID`; use `MISSING[".a"]` there |
+| on Bun and in Safari, `writeDta` said only "NaN does not fit storage type double" for a NaN that is not a missing value | it says the engine clears NaN payloads, and to use `null` or `MISSING` values |
 
-`missingCode`, `naTag` and `isTaggedNa` still read a number, so on Bun
-and in Safari they cannot see a letter: `missingCode` is 0 for every
-number there, `naTag` undefined and `isTaggedNa` false. `NA` is a plain
-NaN there. On V8 (Node, Deno, Chrome, Electron) all five work as in
-1.2.0.
+`missingCode`, `naTag`, and `isTaggedNa` still read a number, so on Bun
+and in Safari they cannot see a letter. There `missingCode` is 0 for
+every number, `naTag` is undefined, `isTaggedNa` is false, and `NA` is
+a plain NaN. `formatValue` and `dtaKey` of a value loaded from a column
+treat it as `.`; pass them a `readRows` cell instead. On V8, which runs
+Node, Deno, Chrome, and Electron, all of these work as in 1.2.0.
 
 A project moving from 1.1 that read `column.missing` uses
 `missingCodes(column)`.

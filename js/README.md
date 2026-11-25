@@ -36,3 +36,8 @@ decoded data. See [docs/migration.md](https://github.com/jbearak/dta-parser/blob
 for moving from 0.x, 1.0, or 1.1 (1.2 reads and writes `.dta` files only; 1.1
 read Parquet as well).
 The module uses no code from crates.io (`THIRD-PARTY-NOTICES`).
+
+On Bun and in Safari, read a column's missing values with
+`missingCodes(column)` or `readRows`, not `missingCode(values[i])`.
+Their engine drops a NaN's letter when it loads the value into a
+number ([missing values](https://github.com/jbearak/dta-parser/blob/main/docs/typescript.md#missing-values)).

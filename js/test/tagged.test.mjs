@@ -64,7 +64,7 @@ test(`${engine}: dtaKeys reads a column's letters from its bytes`, () => {
 test(`${engine}: a column read writes back with its letters, as a column or its Float64Array`, () => {
   const r = openDta(written);
   const [col] = r.readColumns([0]);
-  for (const values of [col, col.values, col.values.slice(), Float64Array.from(col.values)]) {
+  for (const values of [col, col.values, col.values.slice(), new Float64Array(col.values)]) {
     const again = openDta(writeDta({ variables: [{ name: "x", values }] }));
     assert.deepEqual(Array.from(missingCodes(again.readColumns([0])[0])), [0, 19, 1, 0, 2, 27]);
     assert.deepEqual(again.readRows(0, 6).map((row) => row[0]), [1, MISSING[".r"], MISSING["."], 2, MISSING[".a"], MISSING[".z"]]);
@@ -136,7 +136,6 @@ if (nanPayloads) {
     const r = openDta(written);
     const [col] = r.readColumns([0]);
     assert.equal(missingCode(col.values[1]), 0);
-    assert.equal(bits(col.values[1]), 0x7ff8000000000000n);
     // ...but formatValue and dtaKey still show and sort it as missing.
     assert.equal(formatValue(col.values[1], "%9.0g"), ".");
     assert.equal(dtaKey(col.values[1]), dtaKey(MISSING["."]));

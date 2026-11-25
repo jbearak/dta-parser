@@ -349,19 +349,21 @@ Stata has 27 numeric missing values: `.` and `.a` to `.z` (see the
   from the column's bytes: 0 for a number, 1 for `.`, 2 for `.a`, ...,
   27 for `.z`, as 1.1's `NumberColumn.missing` did. Any other NaN is a
   number.
-- **One value as a number works only on V8** (Node, Deno, Chrome,
-  Electron). `missingCode(x)` gives one value's code, `naTag(x)` its
-  letter (`".d"`), `isTaggedNa(x, letter?)` tests for one, and
-  `taggedNa(".d")` and `NA` make them. JavaScriptCore (Bun, Safari)
-  gives every NaN it loads from an array into a number the same bits,
-  so the letter is gone before any function sees it
+- **A single value as a number works on V8 only**, which runs Node,
+  Deno, Chrome, and Electron. `missingCode(x)` gives one value's code,
+  `naTag(x)` its letter (`".d"`), and `isTaggedNa(x, letter?)` tests for
+  one. `taggedNa(".d")` and `NA` make them. JavaScriptCore, which runs
+  Bun and Safari, gives every NaN it loads from an array into a number
+  the same bits, so the letter is gone before any function sees it
   ([ADR 0047](adr/0047-missing-codes-from-bytes.md)). There
-  `missingCode` gives 0 for every number, `naTag` undefined,
-  `isTaggedNa` false, `NA` is a plain NaN, and `taggedNa` throws
-  `DTA_INVALID` rather than return a number without its letter. Code
-  that must run on Bun or in Safari reads letters with
-  `missingCodes(column)`, `readRows` or `dtaKeys`, and writes them as
-  `null` and `MISSING` values or as a column it read.
+  `missingCode` gives 0 for every number, `naTag` gives undefined, and
+  `isTaggedNa` gives false. `NA` is a plain NaN, and `taggedNa` throws
+  `DTA_INVALID` rather than return a number without its letter.
+  `formatValue(values[i])` and `dtaKey(values[i])` treat the NaN as `.`,
+  so a labelled `.a` shows as `.`. On Bun or in Safari, read letters
+  with `missingCodes(column)`, `readRows`, or `dtaKeys`, and pass
+  `formatValue` a `readRows` cell or `missingValue(codes[i])`. Write
+  letters as `null` and `MISSING` values, or as a column you read.
 - **In a row, a missing cell is one of the 27 frozen objects in
   `MISSING`**, so `cell === MISSING[".d"]` works. `missingValue(code)`
   gives the object for a code, and `isMissing(cell)` tells a missing
@@ -411,11 +413,11 @@ larger than any number Stata stores. The same keys come out of the R
 packages.
 
 **Keep the letters in a `Float64Array`.** Its bytes keep a NaN's bits
-on every engine, and `slice()`, `set()`, `subarray()` and
-`Float64Array.from(array)` copy them. Copying value by value (`map`, a
-loop, `Array.from`) loads each value into a number, which keeps the
-letter on V8, quieted, and loses it on JavaScriptCore; `writeDta` then
-refuses the NaN rather than write it as `.`.
+on every engine. `slice()`, `subarray()`, `set()` from another
+Float64Array, and `new Float64Array(column.values)` copy the bytes.
+Copying value by value, with `map`, a loop, or `Array.from`, loads each
+value into a number. V8 keeps the letter, quieted. JavaScriptCore loses
+it, and `writeDta` then refuses the NaN rather than write it as `.`.
 `Float64Array.prototype.sort()` makes every NaN the same and loses the
 letters, and `JSON.stringify` writes `null`: sort by `dtaKeys`, as
 above, and convert to cells (`readRows`) or codes (`missingCodes`)
