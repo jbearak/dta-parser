@@ -1,6 +1,6 @@
 # Migration notes
 
-- [dta-parser 1.x to 2.0](#dta-parser-1x-to-20) (TypeScript): `.dta`
+- [dta-parser 1.1 to 1.2](#dta-parser-11-to-12) (TypeScript): `.dta`
   only; the Parquet functions are gone.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
@@ -8,20 +8,25 @@
 The Python packages (`dta_parser` and Python's datakit) and the Julia
 packages (DtaParser.jl and Datakit.jl) were removed on 2026-11-09. Their
 last versions are in the repository's history before that date. The npm
-package `@jbearak/datakit`, which took 1.x's Parquet functions and added
+package `@jbearak/datakit`, which took 1.1's Parquet functions and added
 fixed-width text and whole datasets, was removed on 2026-11-10 without
 being published ([ADR 0044](adr/0044-npm-datakit-removed.md)); its last
 version is in commit 408c350.
 
-## dta-parser 1.x to 2.0
+## dta-parser 1.1 to 1.2
 
-`@jbearak/dta-parser` 2.0 reads and writes `.dta` only, so its
+1.2 removes and changes what the table below lists, though its number
+is a minor release's ([ADR 0046](adr/0046-dta-parser-1-2.md)). A range
+such as `^1.0.0` takes 1.2; a project that needs 1.1's Parquet
+functions or `NumberColumn.missing` pins `~1.1.0`.
+
+`@jbearak/dta-parser` 1.2 reads and writes `.dta` only, so its
 WebAssembly module is an eighth the size it was (344 KB against
 2.8 MB). This repository has no TypeScript Parquet reader or writer
 any more; table-viewer reads Parquet through pqparser
 (github.com/jbearak/pqparser), a private package of its own.
 
-| 1.x | 2.0 |
+| 1.1 | 1.2 |
 |---|---|
 | `openParquet`, `openParquetAsync`, `ParquetReader`, `AsyncParquetReader`, `writeParquet`, `writeParquetTo`, `toDate` from `@jbearak/dta-parser` | gone |
 | `openParquetFile`, `writeParquetFile` from `@jbearak/dta-parser/node` | gone |
@@ -33,11 +38,12 @@ any more; table-viewer reads Parquet through pqparser
 | `NumberColumn.missing`, a code per row (0 a number, 1 `.`, 2 to 27 `.a` to `.z`), `values[i]` NaN where it was not 0 | gone: `values[i]` is the missing value itself, `NA` for `.` and a tagged NaN for `.a` to `.z`, in R's bits (ADR 0037). `missing[i]` becomes `missingCode(values[i])`; `naTag`, `isTaggedNa`, `taggedNa` and `NA` are new. A NaN without a tag (a Parquet file's NaN) is a number, as `missing[i]` 0 was |
 | `WriteVariable.missing` beside a Float64Array | gone: put `NA` and `taggedNa(".a")` in the Float64Array; a plain array still takes `null` and `MISSING` values |
 | `dtaKeys(column)` read `column.missing` | reads the values |
-| `formatValue` showed a `%w.0g` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
+| `formatValue` showed a `%w.0g` or `%wg` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
 
-`MISSING`'s objects are now one set per process, shared by every copy of
-dta-parser 2.0 or later, so a `ValueLabels` map one read is found with
-another's keys. A copy of 1.x makes its own objects.
+`MISSING`'s objects are now one set per JavaScript realm (a worker or a
+`vm` context has its own), shared by every copy of dta-parser 1.2 or
+later there, so a `ValueLabels` map one read is found with another's
+keys. A copy of 1.0 or 1.1 makes its own objects.
 
 ## Moving to @jbearak/dta-parser 1.0
 

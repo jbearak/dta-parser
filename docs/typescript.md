@@ -27,7 +27,7 @@ Contents:
 [Recipes](#recipes) ·
 [Coming from @irbisadm/statfmt](#coming-from-irbisadmstatfmt) ·
 [Coming from @jbearak/dta-parser 0.x](#coming-from-jbearakdta-parser-0x) ·
-[Coming from @jbearak/dta-parser 1.x](#coming-from-jbearakdta-parser-1x) ·
+[Coming from @jbearak/dta-parser 1.0 or 1.1](#coming-from-jbearakdta-parser-10-or-11) ·
 [Troubleshooting](#troubleshooting) ·
 [API reference](#api-reference)
 
@@ -36,9 +36,9 @@ section.
 
 ## Install
 
-The package this page describes (dta-parser 2.0) is not on npm: you
-build it from a checkout of this repository. (npm has dta-parser's 0.x
-and 1.x releases; 1.1 read Parquet itself, which 2.0 does not.) It
+The package this page describes (dta-parser 1.2) is not on npm: you
+build it from a checkout of this repository. (npm has dta-parser's 0.x,
+1.0, and 1.1 releases; 1.1 read Parquet itself, which 1.2 does not.) It
 runs on Node 24 or later; its types are checked with TypeScript 5.9
 and 7. In a browser, through your bundler, the
 `@jbearak/dta-parser` entry point needs WebAssembly and `BigInt64Array`.
@@ -660,9 +660,11 @@ only Stata.
 1.0 is a new, synchronous API. [docs/migration.md](migration.md) maps
 each 0.x call to its 1.0 replacement.
 
-## Coming from @jbearak/dta-parser 1.x
+## Coming from @jbearak/dta-parser 1.0 or 1.1
 
-2.0 reads and writes `.dta` files only. 1.1's Parquet functions moved
+1.2 takes things away, though its number is a minor release's
+([ADR 0046](adr/0046-dta-parser-1-2.md)): a project that needs what
+follows pins `~1.1.0`. 1.2 reads and writes `.dta` files only. 1.1's Parquet functions moved
 to `@jbearak/datakit`, which was removed before it was published
 ([ADR 0044](adr/0044-npm-datakit-removed.md)); table-viewer now reads
 Parquet through pqparser (github.com/jbearak/pqparser), a private
@@ -670,7 +672,7 @@ package. `TableReader` gained `valueLabelNames()`, `characteristics()`
 and `notes()`, so a class of yours that implements it needs them too. `NumberColumn` has no `missing` array: its missing
 values are numbers in `values` (`NA` and tagged NaNs, ADR 0037), so
 `missing[i]` becomes `missingCode(values[i])`, and a `WriteVariable` has
-no `missing` either. [docs/migration.md](migration.md#dta-parser-1x-to-20)
+no `missing` either. [docs/migration.md](migration.md#dta-parser-11-to-12)
 lists every change.
 
 ## Threads
@@ -769,8 +771,8 @@ From `@jbearak/dta-parser`:
 - `writeDta(dataset)`, `writeDtaTo(dataset, sink)`: write release 118.
 - `MISSING`, `missingValue(code)`, `isMissing(cell)`: missing values.
   `MISSING`'s objects are shared by every copy of the package in a
-  process (dta-parser 2.0 or later), so labels read by one are found with
-  another's keys.
+  JavaScript realm (dta-parser 1.2 or later; a worker or a `vm` context
+  has its own), so labels read by one are found with another's keys.
 - `dtaKey(cell)`, `dtaKeys(column)`: Stata's sort order as numbers.
   `stataKey` and `stataKeys`, their names in 1.0, still work and are
   deprecated.

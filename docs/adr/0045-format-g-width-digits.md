@@ -90,6 +90,6 @@ What follows from it:
   0.1 stored as a float is `0.100000001490116` at `%21.0g`. At its usual
   `%9.0g` it is `0.1`.
 
-The change is in `@jbearak/dta-parser` 2.0, which is not published yet,
-so it adds a line to the 1.x to 2.0 migration notes and no version bump.
-1.x keeps 7 digits.
+The change is in the next release of `@jbearak/dta-parser`, which this
+ADR first called 2.0 and is 1.2 (ADR 0046). It adds a line to the 1.1
+to 1.2 migration notes. 1.0 and 1.1 keep 7 digits.

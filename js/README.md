@@ -33,6 +33,6 @@ A file is read only as far as asked: opening reads the header and the
 variable descriptors, and `readColumns` decodes just the requested
 variables and rows. Each call into the module holds at most 64 MiB of
 decoded data. See [docs/migration.md](https://github.com/jbearak/dta-parser/blob/main/docs/migration.md)
-for moving from 0.x or 1.x (2.0 reads and writes `.dta` files only; 1.1
+for moving from 0.x, 1.0, or 1.1 (1.2 reads and writes `.dta` files only; 1.1
 read Parquet as well).
 The module uses no code from crates.io (`THIRD-PARTY-NOTICES`).
