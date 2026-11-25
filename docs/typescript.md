@@ -465,12 +465,12 @@ significant digits comes from the format:
 | `%w.0g`, `%wg` | `w - 2`, but at least 7 and at most 15 |
 | a format `formatValue` does not know | 7 |
 
-A number of `d` significant digits takes up to `d + 2` characters, with
-its sign and decimal point, so a width of `w` has room for `w - 2`.
+The two taken from the width are for a sign and a decimal point.
 `%9.0g`, a float's usual format, and anything narrower show 7 digits,
 R's own default; `%10.0g`, a double's usual format, shows 8; `%12.0g`
 shows 10; `%17.0g` and anything wider show 15, the most a double holds
-(a 16th or 17th digit would show `0.1 + 0.2` as `0.30000000000000004`).
+(at 16 digits `0.1 + 0.7` would show as `0.7999999999999999`, and at 17
+`0.1 + 0.2` as `0.30000000000000004`).
 So a double column widened to `%21.0g` tells `12345678.12345` from
 `12345678.22345`, which 7 digits both show as `12345678`. `formatValue`
 sees the value and not its storage type: a float variable given a wide

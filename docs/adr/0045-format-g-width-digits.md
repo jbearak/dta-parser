@@ -26,17 +26,19 @@ narrower.
 
 Why these three numbers:
 
-- `w - 2`. In fixed notation a number of `d` significant digits takes up
-  to `d + 2` characters, the two being its sign and its decimal point.
-  A width of `w` therefore has room for `w - 2`.
+- `w - 2`. A sign and a decimal point each take a character of the
+  width, and the digits get the rest. Zeros that only place the decimal
+  point are not counted (`-0.12345678` at `%10.0g` is 11 characters), so
+  the text can still be longer than the width.
 - At least 7. `%9.0g` is a float's usual format, a float holds about 7
   digits, and 7 is R's default. Narrower formats keep 7 too. They are
   the usual formats of byte and int variables, whose values need 5
   digits at most, so fewer digits would change output for no gain.
 - At most 15. A double gives back any decimal of 15 significant digits
   unchanged (the Parquet reader's `DOUBLE_DIGITS` is the same number).
-  A 16th or 17th digit is the double's binary rounding: `0.1 + 0.2`
-  would show as `0.30000000000000004`.
+  Past 15 the digits are the double's binary rounding: `0.1 + 0.7`
+  would show as `0.7999999999999999` at 16, and `0.1 + 0.2` as
+  `0.30000000000000004` at 17.
 
 This is the library's own rule. No rule of Stata's was looked up or
 tested against (`AGENTS.md` forbids both), and the tests' expected text
@@ -64,7 +66,7 @@ What follows from it:
   new digit count. `1234567890123` at `%10.0g` was `1.234568e+12` and is
   `1234567890123` (at 8 digits both take 13 characters, and a tie goes
   to fixed).
-- Two doubles that differ only past the 15th digit still show alike.
+- Two doubles that round to the same 15 digits still show alike.
 - The last digit can differ from R's more often than at 7 digits. A
   value exactly halfway between two candidates (`4028701782226562.5` at
   15 digits) rounds up, as `formatValue` always has, where R rounds to
