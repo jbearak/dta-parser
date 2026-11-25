@@ -67,15 +67,24 @@ What follows from it:
   `1234567890123` (at 8 digits both take 13 characters, and a tie goes
   to fixed).
 - Two doubles that round to the same 15 digits still show alike.
-- The last digit can differ from R's more often than at 7 digits. A
-  value exactly halfway between two candidates (`4028701782226562.5` at
-  15 digits) rounds up, as `formatValue` always has, where R rounds to
-  even. R on a machine without extended precision (Apple silicon) can
-  also round the other way when a value is within a rounding error of
-  halfway. Of 20,000 random values at widths 9 to 22, 112 differed from
-  R 4.6.2 on such a machine in the last digit, 79 exact ties and 33 within two
-  units in the double's last place of one. All 20,000 were the double's
-  exact value rounded half up.
+- The last digit can differ from R's more often than at 7 digits, in
+  two cases. Neither is a fault in R.
+  - A value exactly halfway between two candidates rounds up, as
+    `formatValue` always has, and R rounds it to even:
+    `4028701782226562.5` at 15 digits ends in 3 here and in 2 in R.
+  - R counts a number's digits after scaling it by a power of ten, in
+    `long double` where that is wider than a double and in a double
+    where it is not (`scientific()` in R's `src/main/format.c`, whose
+    comment says "accuracy limited by double rounding problem"). An R
+    build without a wider `long double`, such as the one on Apple
+    silicon used here, can therefore round a value within a rounding
+    error of halfway the other way: `0.034082841873168949` at 15 digits
+    is `0.0340828418731689` here and `0.034082841873169` in that R.
+
+  Of 20,000 random values at widths 9 to 22, 112 differed from that R
+  (4.6.2) in the last digit: 79 exact ties, and 33 within two units in
+  the double's last place of one. All 20,000 were the double's exact
+  value rounded half up.
 - `formatValue` sees a value, not its storage type. A float variable
   given a wide format shows the digits of the double it was read into:
   0.1 stored as a float is `0.100000001490116` at `%21.0g`. At its usual
