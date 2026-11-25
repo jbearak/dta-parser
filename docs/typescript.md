@@ -447,21 +447,46 @@ const [row] = r.readRows(0, 1);
 const fmt = (i: number) => formatValue(row[i], r.variables[i].format, r.valueLabels(r.variables[i].valueLabels));
 console.log(fmt(1), fmt(4));                          // North 2024-03-01
 console.log(formatValue(1 / 3, "%9.0g"));             // 0.3333333
+console.log(formatValue(1 / 3, "%10.0g"));            // 0.33333333
+console.log(formatValue(12345678.12345, "%21.0g"));   // 12345678.12345
 console.log(formatValue(1234.5678, "%9.2f"));         // 1234.57
 console.log(formatValue(1234567, "%12.0gc"));         // 1,234,567
 r.close();
 ```
 
 `formatValue` shows `%g` numbers (and any format it does not know) as R
-prints them: 7 significant digits, or `d` for `%w.dg`, in fixed
-notation unless scientific is narrower (`0.5`, `123456789012`,
-`1e-05`). `%f` and `%e` keep their decimals, and a `c` adds thousands
+prints them, in fixed notation unless scientific is narrower (`0.5`,
+`123456789012`, `1e-05`), with trailing zeros dropped. The number of
+significant digits comes from the format:
+
+| Format | Significant digits |
+|---|---|
+| `%w.dg`, `d` above 0 | `d` |
+| `%w.0g`, `%wg` | `w - 2`, but at least 7 and at most 15 |
+| a format `formatValue` does not know | 7 |
+
+The two taken from the width are for a sign and a decimal point.
+`%9.0g`, a float's usual format, and anything narrower show 7 digits,
+R's own default; `%10.0g`, a double's usual format, shows 8; `%12.0g`
+shows 10; `%17.0g` and anything wider show 15, the most a double holds
+(at 16 digits `0.1 + 0.7` would show as `0.7999999999999999`, and at 17
+`0.1 + 0.2` as `0.30000000000000004`).
+So a double column widened to `%21.0g` tells `12345678.12345` from
+`12345678.22345`, which 7 digits both show as `12345678`. `formatValue`
+sees the value and not its storage type: a float variable given a wide
+format shows the digits of the double it was read into, so 0.1 stored
+as a float shows as `0.100000001490116` at `%21.0g`
+([ADR 0045](adr/0045-format-g-width-digits.md)).
+
+`%f` and `%e` keep their decimals, and a `c` adds thousands
 separators. `%td` and the older `%d` show as R shows a `Date`
 (`2024-03-01`), and `%tc` and `%tC` as a `POSIXct` in UTC
 (`2024-03-01 13:05:09`), whatever their mask; `%tC`'s leap seconds are
 not counted. `%tw`, `%tm`, `%tq`, `%th` and `%ty`, which have no R
 class, show as `1960w1`, `2023m2`, `1959q4`, `1961h2` and `2024`, or by
-masks such as `Mon_CCYY`. Widths are left to the caller. A labelled
+masks such as `Mon_CCYY`. A width sets the digits of a `%w.0g` and
+nothing else: the text is not padded or aligned, and may be longer than
+the width. A labelled
 value shows its label; a missing value shows `.`, `.a` and so on, or
 its label.
 
