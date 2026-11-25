@@ -1,6 +1,6 @@
 # Migration notes
 
-- [dta-parser 1.x to 2.0](#dta-parser-1x-to-20) (TypeScript): `.dta`
+- [dta-parser 1.1 to 1.2](#dta-parser-11-to-12) (TypeScript): `.dta`
   only; the Parquet functions are gone.
 - [Moving to @jbearak/dta-parser 1.0](#moving-to-jbearakdta-parser-10)
   (TypeScript).
@@ -8,20 +8,25 @@
 The Python packages (`dta_parser` and Python's datakit) and the Julia
 packages (DtaParser.jl and Datakit.jl) were removed on 2026-11-09. Their
 last versions are in the repository's history before that date. The npm
-package `@jbearak/datakit`, which took 1.x's Parquet functions and added
+package `@jbearak/datakit`, which took 1.1's Parquet functions and added
 fixed-width text and whole datasets, was removed on 2026-11-10 without
 being published ([ADR 0044](adr/0044-npm-datakit-removed.md)); its last
 version is in commit 408c350.
 
-## dta-parser 1.x to 2.0
+## dta-parser 1.1 to 1.2
 
-`@jbearak/dta-parser` 2.0 reads and writes `.dta` only, so its
+1.2 removes and changes what the table below lists, though its number
+is a minor release's ([ADR 0046](adr/0046-dta-parser-1-2.md)). A range
+such as `^1.0.0` takes 1.2; a project that needs 1.1's Parquet
+functions or `NumberColumn.missing` pins `~1.1.0`.
+
+`@jbearak/dta-parser` 1.2 reads and writes `.dta` only, so its
 WebAssembly module is an eighth the size it was (344 KB against
 2.8 MB). This repository has no TypeScript Parquet reader or writer
 any more; table-viewer reads Parquet through pqparser
 (github.com/jbearak/pqparser), a private package of its own.
 
-| 1.x | 2.0 |
+| 1.1 | 1.2 |
 |---|---|
 | `openParquet`, `openParquetAsync`, `ParquetReader`, `AsyncParquetReader`, `writeParquet`, `writeParquetTo`, `toDate` from `@jbearak/dta-parser` | gone |
 | `openParquetFile`, `writeParquetFile` from `@jbearak/dta-parser/node` | gone |
@@ -36,8 +41,8 @@ any more; table-viewer reads Parquet through pqparser
 | `formatValue` showed a `%w.0g` number with 7 significant digits whatever its width | shows `w - 2`, at least 7 and at most 15: `%9.0g` and narrower as before, `%10.0g` 8 digits (`1234.56789` is `1234.5679`, not `1234.568`), `%17.0g` and wider 15 ([ADR 0045](adr/0045-format-g-width-digits.md)). `%w.dg` with a `d`, `%f`, `%e`, and dates are as they were |
 
 `MISSING`'s objects are now one set per process, shared by every copy of
-dta-parser 2.0 or later, so a `ValueLabels` map one read is found with
-another's keys. A copy of 1.x makes its own objects.
+dta-parser 1.2 or later, so a `ValueLabels` map one read is found with
+another's keys. A copy of 1.0 or 1.1 makes its own objects.
 
 ## Moving to @jbearak/dta-parser 1.0
 
