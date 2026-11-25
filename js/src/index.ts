@@ -743,7 +743,7 @@ function untaggedNaNs(name: string, values: ArrayLike<unknown>, missing: Uint8Ar
     if (missing[i] === 0 && typeof x === "number" && x !== x) {
       throw dtaError(
         "DTA_INVALID",
-        `${name} row ${i}: NaN is not a missing value: this JavaScript engine clears NaN payloads, so NA and tagged NaNs cannot pass as numbers; use null or MISSING values, or a column as read`,
+        `${name} row ${i + 1}: NaN is not a missing value: this JavaScript engine clears NaN payloads, so NA and tagged NaNs cannot pass as numbers; use null or MISSING values, or a column as read`,
         undefined,
         RangeError,
       );
